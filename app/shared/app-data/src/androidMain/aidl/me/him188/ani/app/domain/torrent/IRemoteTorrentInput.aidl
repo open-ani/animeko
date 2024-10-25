@@ -1,7 +1,7 @@
 // IRemoteTorrentInput.aidl
 package me.him188.ani.app.domain.torrent;
 
-import me.him188.ani.app.domain.torrent.IRemoteTorrentInputOnWait;
+import me.him188.ani.app.domain.torrent.IRemoteTorrentInputOnWaitCallback;
 import me.him188.ani.app.domain.torrent.IRemotePieceList;
 import me.him188.ani.app.domain.torrent.IDisposableHandle;
 
@@ -14,7 +14,7 @@ interface IRemoteTorrentInput {
     
     long getLogicalStartOffset();
     
-    IRemoteTorrentInputOnWait getOnWaitCallback();
+    IRemoteTorrentInputOnWaitCallback getOnWaitCallback();
     
     int getBufferSize();
     

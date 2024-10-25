@@ -18,7 +18,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.io.files.Path
 import me.him188.ani.app.domain.torrent.IRemoteTorrentFileEntry
-import me.him188.ani.app.domain.torrent.ITorrentFileEntryStatsFlow
+import me.him188.ani.app.domain.torrent.ITorrentFileEntryStatsCallback
 import me.him188.ani.app.domain.torrent.parcel.PTorrentFileEntryStats
 import me.him188.ani.app.torrent.api.files.TorrentFileEntry
 import me.him188.ani.app.torrent.api.files.TorrentFileHandle
@@ -35,7 +35,7 @@ class RemoteTorrentFileEntry(
 ) : TorrentFileEntry {
     override val fileStats: Flow<TorrentFileEntry.Stats>
         get() = callbackFlow {
-            val disposable = remote.getFileStats(object : ITorrentFileEntryStatsFlow.Stub() {
+            val disposable = remote.getFileStats(object : ITorrentFileEntryStatsCallback.Stub() {
                 override fun onEmit(stat: PTorrentFileEntryStats?) {
                     if (stat != null) trySend(stat.toStats())
                 }

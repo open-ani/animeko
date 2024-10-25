@@ -15,7 +15,7 @@ import kotlinx.coroutines.runBlocking
 import me.him188.ani.app.domain.torrent.IDisposableHandle
 import me.him188.ani.app.domain.torrent.IRemoteTorrentFileEntryList
 import me.him188.ani.app.domain.torrent.IRemoteTorrentSession
-import me.him188.ani.app.domain.torrent.ITorrentSessionStatsFlow
+import me.him188.ani.app.domain.torrent.ITorrentSessionStatsCallback
 import me.him188.ani.app.domain.torrent.parcel.PPeerInfo
 import me.him188.ani.app.domain.torrent.parcel.PTorrentSessionStats
 import me.him188.ani.app.torrent.api.TorrentSession
@@ -26,7 +26,7 @@ class TorrentSessionProxy(
     private val delegate: TorrentSession,
     context: CoroutineContext
 ) : IRemoteTorrentSession.Stub(), CoroutineScope by context.childScope() {
-    override fun getSessionStats(flow: ITorrentSessionStatsFlow?): IDisposableHandle {
+    override fun getSessionStats(flow: ITorrentSessionStatsCallback?): IDisposableHandle {
         val job = launch { 
             delegate.sessionStats.collect {
                 if (it == null) return@collect

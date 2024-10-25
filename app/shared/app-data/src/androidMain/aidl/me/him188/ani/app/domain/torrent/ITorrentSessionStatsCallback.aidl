@@ -1,10 +1,10 @@
-// ITorrentSessionStatsFlow.aidl
+// ITorrentSessionStatsCallback.aidl
 package me.him188.ani.app.domain.torrent;
 
 import me.him188.ani.app.domain.torrent.parcel.PTorrentSessionStats;
 
 // Declare any non-default types here with import statements
 
-interface ITorrentSessionStatsFlow {
+interface ITorrentSessionStatsCallback {
     void onEmit(in PTorrentSessionStats stat);
 }

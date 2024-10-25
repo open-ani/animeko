@@ -15,7 +15,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
 import me.him188.ani.app.domain.torrent.IRemoteTorrentSession
-import me.him188.ani.app.domain.torrent.ITorrentSessionStatsFlow
+import me.him188.ani.app.domain.torrent.ITorrentSessionStatsCallback
 import me.him188.ani.app.domain.torrent.parcel.PTorrentSessionStats
 import me.him188.ani.app.torrent.api.TorrentSession
 import me.him188.ani.app.torrent.api.files.TorrentFileEntry
@@ -26,7 +26,7 @@ class RemoteTorrentSession(
 ) : TorrentSession {
     override val sessionStats: Flow<TorrentSession.Stats?>
         get() = callbackFlow {
-            val disposable = remote.getSessionStats(object : ITorrentSessionStatsFlow.Stub() {
+            val disposable = remote.getSessionStats(object : ITorrentSessionStatsCallback.Stub() {
                 override fun onEmit(stat: PTorrentSessionStats?) {
                     if (stat != null) trySend(stat.toStats())
                 }

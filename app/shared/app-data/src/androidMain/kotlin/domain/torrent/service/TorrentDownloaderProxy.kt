@@ -16,7 +16,7 @@ import kotlinx.io.files.Path
 import me.him188.ani.app.domain.torrent.IDisposableHandle
 import me.him188.ani.app.domain.torrent.IRemoteTorrentDownloader
 import me.him188.ani.app.domain.torrent.IRemoteTorrentSession
-import me.him188.ani.app.domain.torrent.ITorrentDownloaderStatsFlow
+import me.him188.ani.app.domain.torrent.ITorrentDownloaderStatsCallback
 import me.him188.ani.app.domain.torrent.parcel.PEncodedTorrentInfo
 import me.him188.ani.app.domain.torrent.parcel.PTorrentDownloaderStats
 import me.him188.ani.app.domain.torrent.parcel.PTorrentLibInfo
@@ -32,7 +32,7 @@ class TorrentDownloaderProxy(
     context: CoroutineContext,
 ) : IRemoteTorrentDownloader.Stub(), CoroutineScope by context.childScope() {
     
-    override fun getTotalStatus(flow: ITorrentDownloaderStatsFlow?): IDisposableHandle {
+    override fun getTotalStatus(flow: ITorrentDownloaderStatsCallback?): IDisposableHandle {
         val job = launch {
             delegate.totalStats.collect {
                 flow?.onEmit(

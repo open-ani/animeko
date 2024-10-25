@@ -17,7 +17,7 @@ import me.him188.ani.app.domain.torrent.IRemotePieceList
 import me.him188.ani.app.domain.torrent.IRemoteTorrentFileEntry
 import me.him188.ani.app.domain.torrent.IRemoteTorrentFileHandle
 import me.him188.ani.app.domain.torrent.IRemoteTorrentInput
-import me.him188.ani.app.domain.torrent.ITorrentFileEntryStatsFlow
+import me.him188.ani.app.domain.torrent.ITorrentFileEntryStatsCallback
 import me.him188.ani.app.domain.torrent.parcel.PTorrentFileEntryStats
 import me.him188.ani.app.torrent.api.files.TorrentFileEntry
 import me.him188.ani.utils.coroutines.childScope
@@ -28,7 +28,7 @@ class TorrentFileEntryProxy(
     private val delegate: TorrentFileEntry,
     context: CoroutineContext
 ) : IRemoteTorrentFileEntry.Stub(), CoroutineScope by context.childScope() {
-    override fun getFileStats(flow: ITorrentFileEntryStatsFlow?): IDisposableHandle {
+    override fun getFileStats(flow: ITorrentFileEntryStatsCallback?): IDisposableHandle {
         val job = launch {
             delegate.fileStats.collect {
                 flow?.onEmit(PTorrentFileEntryStats(it.downloadedBytes, it.downloadProgress))

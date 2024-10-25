@@ -16,7 +16,7 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.io.files.Path
 import me.him188.ani.app.domain.torrent.IRemoteTorrentDownloader
-import me.him188.ani.app.domain.torrent.ITorrentDownloaderStatsFlow
+import me.him188.ani.app.domain.torrent.ITorrentDownloaderStatsCallback
 import me.him188.ani.app.domain.torrent.parcel.PEncodedTorrentInfo
 import me.him188.ani.app.domain.torrent.parcel.PTorrentDownloaderStats
 import me.him188.ani.app.torrent.api.TorrentDownloader
@@ -33,7 +33,7 @@ class RemoteTorrentDownloader(
 ) : TorrentDownloader {
     override val totalStats: Flow<TorrentDownloader.Stats>
         get() = callbackFlow {
-            val disposable = remote.getTotalStatus(object : ITorrentDownloaderStatsFlow.Stub() {
+            val disposable = remote.getTotalStatus(object : ITorrentDownloaderStatsCallback.Stub() {
                 override fun onEmit(stat: PTorrentDownloaderStats?) {
                     if (stat != null) trySend(stat.toStats())
                 }
@@ -71,7 +71,7 @@ class RemoteTorrentDownloader(
     }
 
     override fun getSaveDirForTorrent(data: EncodedTorrentInfo): SystemPath {
-        val remotePath = remote.getSaveDirForTorrent(PEncodedTorrentInfo(data.data));
+        val remotePath = remote.getSaveDirForTorrent(PEncodedTorrentInfo(data.data))
         return Path(remotePath).inSystem
     }
 

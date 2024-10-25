@@ -25,11 +25,11 @@ import kotlinx.serialization.json.Json
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
 import me.him188.ani.app.data.models.preference.ProxySettings
 import me.him188.ani.app.data.models.preference.TorrentPeerConfig
-import me.him188.ani.app.domain.torrent.IAnitorrentConfigFlow
-import me.him188.ani.app.domain.torrent.IProxySettingsFlow
+import me.him188.ani.app.domain.torrent.IAnitorrentConfigCallback
+import me.him188.ani.app.domain.torrent.IProxySettingsCallback
 import me.him188.ani.app.domain.torrent.IRemoteAniTorrentEngine
 import me.him188.ani.app.domain.torrent.IRemoteTorrentDownloader
-import me.him188.ani.app.domain.torrent.ITorrentPeerConfigFlow
+import me.him188.ani.app.domain.torrent.ITorrentPeerConfigCallback
 import me.him188.ani.app.domain.torrent.engines.AnitorrentEngine
 import me.him188.ani.app.domain.torrent.parcel.PAnitorrentConfig
 import me.him188.ani.app.domain.torrent.parcel.PProxySettings
@@ -55,8 +55,8 @@ class AniTorrentService : LifecycleService(), CoroutineScope {
     private val anitorrent: CompletableDeferred<AnitorrentEngine> = CompletableDeferred()
 
     private val binder = object : IRemoteAniTorrentEngine.Stub() {
-        override fun getAnitorrentConfigFlow(): IAnitorrentConfigFlow {
-            return object : IAnitorrentConfigFlow.Stub() {
+        override fun getAnitorrentConfigFlow(): IAnitorrentConfigCallback {
+            return object : IAnitorrentConfigCallback.Stub() {
                 override fun onEmit(config: PAnitorrentConfig?) {
                     if (config != null) anitorrentConfig.tryEmit(
                         json.decodeFromString(AnitorrentConfig.serializer(), config.serializedJson)
@@ -65,8 +65,8 @@ class AniTorrentService : LifecycleService(), CoroutineScope {
             }
         }
 
-        override fun getProxySettingsFlow(): IProxySettingsFlow {
-            return object : IProxySettingsFlow.Stub() {
+        override fun getProxySettingsFlow(): IProxySettingsCallback {
+            return object : IProxySettingsCallback.Stub() {
                 override fun onEmit(config: PProxySettings?) {
                     if (config != null) proxySettings.tryEmit(
                         json.decodeFromString(ProxySettings.serializer(), config.serializedJson)
@@ -75,8 +75,8 @@ class AniTorrentService : LifecycleService(), CoroutineScope {
             }
         }
 
-        override fun getTorrentPeerConfigFlow(): ITorrentPeerConfigFlow {
-            return object : ITorrentPeerConfigFlow.Stub() {
+        override fun getTorrentPeerConfigFlow(): ITorrentPeerConfigCallback {
+            return object : ITorrentPeerConfigCallback.Stub() {
                 override fun onEmit(config: PTorrentPeerConfig?) {
                     if (config != null) torrentPeerConfig.tryEmit(
                         json.decodeFromString(TorrentPeerConfig.serializer(), config.serializedJson)
