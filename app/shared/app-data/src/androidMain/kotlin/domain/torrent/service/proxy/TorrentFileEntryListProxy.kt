@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.app.domain.torrent.service
+package me.him188.ani.app.domain.torrent.service.proxy
 
 import kotlinx.coroutines.CoroutineScope
 import me.him188.ani.app.domain.torrent.IRemoteTorrentFileEntry

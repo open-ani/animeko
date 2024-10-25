@@ -34,6 +34,7 @@ import me.him188.ani.app.domain.torrent.engines.AnitorrentEngine
 import me.him188.ani.app.domain.torrent.parcel.PAnitorrentConfig
 import me.him188.ani.app.domain.torrent.parcel.PProxySettings
 import me.him188.ani.app.domain.torrent.parcel.PTorrentPeerConfig
+import me.him188.ani.app.domain.torrent.service.proxy.TorrentDownloaderProxy
 import me.him188.ani.utils.io.inSystem
 import kotlin.coroutines.CoroutineContext
 
