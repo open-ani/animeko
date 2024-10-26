@@ -146,6 +146,7 @@ actual fun Context.setSystemBarVisible(visible: Boolean) {
                         or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN // Hide the nav bar and status bar
                         or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
                         or View.SYSTEM_UI_FLAG_FULLSCREEN)
+            this.window.addFlags(android.view.WindowManager.LayoutParams.FLAG_FULLSCREEN)
         }
     }
 }
