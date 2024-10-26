@@ -18,6 +18,7 @@ import me.him188.ani.app.data.repository.EpisodeHistories
 import me.him188.ani.app.data.repository.MediaSourceSaves
 import me.him188.ani.app.data.repository.MediaSourceSubscriptionsSaveData
 import me.him188.ani.app.data.repository.MikanIndexes
+import me.him188.ani.app.data.repository.SavedWindowState
 import me.him188.ani.utils.io.SystemPath
 
 // 一个对象, 可都写到 common 里, 不用每个 store 都 expect/actual
@@ -72,6 +73,16 @@ abstract class PlatformDataStoreManager {
             produceFile = { resolveDataStoreFile("danmakuFilter") },
             corruptionHandler = ReplaceFileCorruptionHandler {
                 emptyList()
+            },
+        )
+    }
+    val savedWindowStateStore by lazy {
+        DataStoreFactory.create(
+            serializer = SavedWindowState.serializer()
+                .asDataStoreSerializer({ SavedWindowState.Default }),
+            produceFile = { resolveDataStoreFile("windowState") },
+            corruptionHandler = ReplaceFileCorruptionHandler {
+                SavedWindowState.Default
             },
         )
     }

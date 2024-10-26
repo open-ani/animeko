@@ -17,12 +17,14 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
@@ -31,6 +33,7 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.application
+import androidx.compose.ui.window.rememberWindowState
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -43,7 +46,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.io.files.Path
 import me.him188.ani.app.data.models.preference.configIfEnabledOrNull
+import me.him188.ani.app.data.persistent.dataStores
+import me.him188.ani.app.data.repository.SavedWindowState
 import me.him188.ani.app.data.repository.SettingsRepository
+import me.him188.ani.app.data.repository.WindowStateRepository
+import me.him188.ani.app.data.repository.WindowStateRepositoryImpl
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.resolver.DesktopWebVideoSourceResolver
 import me.him188.ani.app.domain.media.resolver.HttpStreamingVideoSourceResolver
@@ -236,6 +243,7 @@ object AniDesktop {
                     single<UpdateInstaller> { DesktopUpdateInstaller.currentOS() }
                     single<PermissionManager> { GrantedPermissionManager }
                     single<NotifManager> { NoopNotifManager }
+                    single<WindowStateRepository> { WindowStateRepositoryImpl(context.dataStores.savedWindowStateStore) }
                 },
             )
         }.startCommonKoinModule(coroutineScope)
@@ -288,9 +296,50 @@ object AniDesktop {
         }
 
         application {
+            // 记录窗口大小
+            val windowStateRepository = koin.koin.get<WindowStateRepository>()
+            val density = LocalDensity.current
+            val state = rememberWindowState()
+            DisposableEffect(true) {
+                coroutineScope.launch {
+                    val savedState = windowStateRepository.flow.firstOrNull()?.let { saved ->
+                        if (saved == SavedWindowState.Default) return@let null
+                        with(density) {
+                            WindowState(
+                                position = WindowPosition(
+                                    x = saved.x.toDp(),
+                                    y = saved.y.toDp(),
+                                ),
+                                size = DpSize(
+                                    width = saved.width.toDp(),
+                                    height = saved.height.toDp(),
+                                ),
+                            )
+                        }
+                    } ?: state
+
+                    state.size = savedState.size
+                    state.position = savedState.position
+                }
+                onDispose {
+                    coroutineScope.launch {
+                        with(density) {
+                            windowStateRepository.update(
+                                SavedWindowState(
+                                    x = state.position.x.toPx(),
+                                    y = state.position.y.toPx(),
+                                    width = state.size.width.toPx(),
+                                    height = state.size.height.toPx(),
+                                ),
+                            )
+                        }
+                    }
+                }
+            }
+
             Window(
                 onCloseRequest = { exitApplication() },
-                state = windowState,
+                state = state,
                 title = "Ani",
                 icon = painterResource(Res.drawable.a_round),
             ) {
