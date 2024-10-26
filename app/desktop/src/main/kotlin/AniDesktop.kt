@@ -33,7 +33,6 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.application
-import androidx.compose.ui.window.rememberWindowState
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -299,7 +298,6 @@ object AniDesktop {
             // 记录窗口大小
             val windowStateRepository = koin.koin.get<WindowStateRepository>()
             val density = LocalDensity.current
-            val state = rememberWindowState()
             DisposableEffect(true) {
                 coroutineScope.launch {
                     val savedState = windowStateRepository.flow.firstOrNull()?.let { saved ->
@@ -316,20 +314,20 @@ object AniDesktop {
                                 ),
                             )
                         }
-                    } ?: state
+                    } ?: windowState
 
-                    state.size = savedState.size
-                    state.position = savedState.position
+                    windowState.size = savedState.size
+                    windowState.position = savedState.position
                 }
                 onDispose {
                     coroutineScope.launch {
                         with(density) {
                             windowStateRepository.update(
                                 SavedWindowState(
-                                    x = state.position.x.toPx(),
-                                    y = state.position.y.toPx(),
-                                    width = state.size.width.toPx(),
-                                    height = state.size.height.toPx(),
+                                    x = windowState.position.x.toPx(),
+                                    y = windowState.position.y.toPx(),
+                                    width = windowState.size.width.toPx(),
+                                    height = windowState.size.height.toPx(),
                                 ),
                             )
                         }
@@ -339,7 +337,7 @@ object AniDesktop {
 
             Window(
                 onCloseRequest = { exitApplication() },
-                state = state,
+                state = windowState,
                 title = "Ani",
                 icon = painterResource(Res.drawable.a_round),
             ) {
