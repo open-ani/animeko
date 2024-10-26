@@ -12,23 +12,16 @@ package me.him188.ani.app.data.repository
 import io.ktor.client.plugins.ResponseException
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.ApiResponse
-import me.him188.ani.app.data.models.episode.EpisodeCollection
 import me.him188.ani.app.data.models.runApiRequest
 import me.him188.ani.app.data.models.subject.RatingCounts
 import me.him188.ani.app.data.models.subject.RatingInfo
 import me.him188.ani.app.data.models.subject.SelfRatingInfo
-import me.him188.ani.app.data.models.subject.SubjectCollection
-import me.him188.ani.app.data.models.subject.SubjectCollectionStats
-import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectManager
-import me.him188.ani.app.data.models.subject.Tag
-import me.him188.ani.app.data.models.subject.toInfoboxItem
 import me.him188.ani.app.domain.session.OpaqueSession
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.session.username
@@ -43,7 +36,6 @@ import me.him188.ani.datasources.bangumi.models.BangumiRating
 import me.him188.ani.datasources.bangumi.models.BangumiSubject
 import me.him188.ani.datasources.bangumi.models.BangumiSubjectCollectionType
 import me.him188.ani.datasources.bangumi.models.BangumiSubjectType
-import me.him188.ani.datasources.bangumi.models.BangumiUserEpisodeCollection
 import me.him188.ani.datasources.bangumi.models.BangumiUserSubjectCollection
 import me.him188.ani.datasources.bangumi.models.BangumiUserSubjectCollectionModifyPayload
 import me.him188.ani.datasources.bangumi.processing.toCollectionType
@@ -165,16 +157,6 @@ class RemoteBangumiSubjectRepository : BangumiSubjectRepository, KoinComponent {
     }
 }
 
-fun BangumiUserSubjectCollection.toSubjectCollectionItem(
-    subject: BangumiSubject,
-    episodes: List<EpisodeCollection>,
-): SubjectCollection = SubjectCollection(
-    info = subject.toSubjectInfo(),
-    episodes = episodes,
-    collectionType = type.toCollectionType(),
-    selfRatingInfo = toSelfRatingInfo(),
-)
-
 fun BangumiUserSubjectCollection.toSelfRatingInfo(): SelfRatingInfo {
     return SelfRatingInfo(
         score = rate,
@@ -184,35 +166,35 @@ fun BangumiUserSubjectCollection.toSelfRatingInfo(): SelfRatingInfo {
     )
 }
 
-fun BangumiSubject.toSubjectInfo(): SubjectInfo {
-    return SubjectInfo(
-        id = id,
-        name = name,
-        nameCn = nameCn,
-        summary = this.summary,
-        nsfw = this.nsfw,
-        locked = this.locked,
-        platform = this.platform,
-        volumes = this.volumes,
-        eps = this.eps,
-        totalEpisodes = this.totalEpisodes,
-        airDateString = this.date,
-        tags = this.tags.map { Tag(it.name, it.count) }.sortedByDescending { it.count },
-        infobox = this.infobox?.map { it.toInfoboxItem() }.orEmpty(),
-        imageCommon = this.images.common,
-        imageLarge = this.images.large,
-        collection = this.collection.run {
-            SubjectCollectionStats(
-                wish = wish,
-                doing = doing,
-                done = collect,
-                onHold = onHold,
-                dropped = dropped,
-            )
-        },
-        ratingInfo = this.rating.toRatingInfo(),
-    )
-}
+//fun BangumiSubject.toSubjectInfo(): SubjectInfo {
+//    return SubjectInfo(
+//        id = id,
+//        name = name,
+//        nameCn = nameCn,
+//        summary = this.summary,
+//        nsfw = this.nsfw,
+//        locked = this.locked,
+//        platform = this.platform,
+//        volumes = this.volumes,
+//        eps = this.eps,
+//        totalEpisodes = this.totalEpisodes,
+//        airDateString = this.date,
+//        tags = this.tags.map { Tag(it.name, it.count) }.sortedByDescending { it.count },
+//        infobox = this.infobox?.map { it.toInfoboxItem() }.orEmpty(),
+//        imageCommon = this.images.common,
+//        imageLarge = this.images.large,
+//        collection = this.collection.run {
+//            SubjectCollectionStats(
+//                wish = wish,
+//                doing = doing,
+//                done = collect,
+//                onHold = onHold,
+//                dropped = dropped,
+//            )
+//        },
+//        ratingInfo = this.rating.toRatingInfo(),
+//    )
+//}
 
 
 private fun BangumiRating.toRatingInfo(): RatingInfo = RatingInfo(
@@ -223,23 +205,14 @@ private fun BangumiRating.toRatingInfo(): RatingInfo = RatingInfo(
 )
 
 private fun BangumiCount.toRatingCounts() = RatingCounts(
-    intArrayOf(
-        _1 ?: 0,
-        _2 ?: 0,
-        _3 ?: 0,
-        _4 ?: 0,
-        _5 ?: 0,
-        _6 ?: 0,
-        _7 ?: 0,
-        _8 ?: 0,
-        _9 ?: 0,
-        _10 ?: 0,
-    ),
+    _1 ?: 0,
+    _2 ?: 0,
+    _3 ?: 0,
+    _4 ?: 0,
+    _5 ?: 0,
+    _6 ?: 0,
+    _7 ?: 0,
+    _8 ?: 0,
+    _9 ?: 0,
+    _10 ?: 0,
 )
-
-fun BangumiUserEpisodeCollection.toEpisodeCollection(): EpisodeCollection {
-    return EpisodeCollection(
-        episodeInfo = episode.toEpisodeInfo(),
-        collectionType = type.toCollectionType(),
-    )
-}

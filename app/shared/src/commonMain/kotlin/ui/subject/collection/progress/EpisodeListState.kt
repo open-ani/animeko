@@ -31,7 +31,6 @@ import me.him188.ani.app.data.models.subject.SubjectManager
 import me.him188.ani.app.data.models.subject.setEpisodeWatched
 import me.him188.ani.app.data.repository.SettingsRepository
 import me.him188.ani.app.tools.MonoTasker
-import me.him188.ani.app.tools.ldc.ContentPolicy
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
 import kotlin.coroutines.CoroutineContext
@@ -47,7 +46,7 @@ class EpisodeListStateFactory(
         .flowOn(flowCoroutineContext)
 
     fun episodes(subjectId: Int) =
-        subjectManager.subjectProgressFlow(subjectId, ContentPolicy.CACHE_ONLY)
+        subjectManager.subjectProgressFlow(subjectId)
             .flowOn(flowCoroutineContext)
 
     suspend fun onSetEpisodeWatched(subjectId: Int, episodeId: Int, watched: Boolean) {

@@ -1,9 +1,17 @@
-package me.him188.ani.app.data.repository
+/*
+ * Copyright (C) 2024 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
+package me.him188.ani.app.data.network
 
 import io.ktor.client.plugins.ClientRequestException
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.retry
 import kotlinx.coroutines.withContext
@@ -37,7 +45,7 @@ import org.koin.core.component.inject
  * 执行网络请求查询.
  * 建议优先使用 [SubjectManager], 可以使用缓存.
  */
-interface BangumiEpisodeRepository : Repository {
+interface BangumiEpisodeService {
     suspend fun getEpisodeById(episodeId: Int): BangumiEpisodeDetail?
 
     /**
@@ -61,7 +69,7 @@ interface BangumiEpisodeRepository : Repository {
     suspend fun setEpisodeCollection(subjectId: Int, episodeId: List<Int>, type: BangumiEpisodeCollectionType)
 }
 
-class EpisodeRepositoryImpl : BangumiEpisodeRepository, KoinComponent {
+class EpisodeRepositoryImpl : BangumiEpisodeService, KoinComponent {
     private val client by inject<BangumiClient>()
     private val logger = logger(EpisodeRepositoryImpl::class)
     override suspend fun getEpisodeById(episodeId: Int): BangumiEpisodeDetail? {
@@ -151,7 +159,7 @@ class EpisodeRepositoryImpl : BangumiEpisodeRepository, KoinComponent {
     }
 }
 
-fun BangumiEpisode.toEpisodeInfo(): EpisodeInfo {
+internal fun BangumiEpisode.toEpisodeInfo(): EpisodeInfo {
     return EpisodeInfo(
         id = this.id,
         type = getEpisodeTypeByBangumiCode(this.type),
@@ -159,9 +167,9 @@ fun BangumiEpisode.toEpisodeInfo(): EpisodeInfo {
         nameCn = this.nameCn,
         airDate = PackedDate.parseFromDate(this.airdate),
         comment = this.comment,
-        duration = this.duration,
+//        duration = this.duration,
         desc = this.desc,
-        disc = this.disc,
+//        disc = this.disc,
         sort = EpisodeSort(this.sort),
         ep = EpisodeSort(this.ep ?: BigNum.ONE),
 //        durationSeconds = this.durationSeconds
@@ -180,7 +188,7 @@ private fun getEpisodeTypeByBangumiCode(code: Int): EpisodeType? {
     }
 }
 
-fun BangumiEpisodeDetail.toEpisodeInfo(): EpisodeInfo {
+internal fun BangumiEpisodeDetail.toEpisodeInfo(): EpisodeInfo {
     return EpisodeInfo(
         id = id,
         type = getEpisodeTypeByBangumiCode(this.type),
@@ -189,9 +197,9 @@ fun BangumiEpisodeDetail.toEpisodeInfo(): EpisodeInfo {
         sort = EpisodeSort(this.sort, getEpisodeTypeByBangumiCode(this.type)),
         airDate = PackedDate.parseFromDate(this.airdate),
         comment = comment,
-        duration = duration,
+//        duration = duration,
         desc = desc,
-        disc = disc,
+//        disc = disc,
         ep = EpisodeSort(this.ep ?: BigNum.ONE),
     )
 }

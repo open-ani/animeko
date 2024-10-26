@@ -9,24 +9,6 @@
 
 package me.him188.ani.app.domain.search
 
-import me.him188.ani.app.data.models.subject.SubjectInfo
-import me.him188.ani.datasources.api.paging.PagedSource
-import me.him188.ani.datasources.api.source.ConnectionStatus
-
-/**
- * 提供番剧名称索引的数据源. 支持使用关键字搜索正式名称.
- */
-interface SubjectProvider {
-    /**
-     * Unique ID. Can be name of the provider.
-     */
-    val id: String
-
-    suspend fun testConnection(): ConnectionStatus
-
-    fun startSearch(query: SubjectSearchQuery): PagedSource<SubjectInfo>
-}
-
 class SubjectSearchQuery(
     val keyword: String,
     val type: SubjectType = SubjectType.ANIME,

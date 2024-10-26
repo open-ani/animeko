@@ -29,10 +29,10 @@ import me.him188.ani.app.data.models.subject.SelfRatingInfo
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectManager
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
-import me.him188.ani.app.data.models.subject.subjectInfoFlow
 import me.him188.ani.app.data.repository.BangumiRelatedCharactersRepository
 import me.him188.ani.app.data.repository.CommentRepository
 import me.him188.ani.app.data.repository.SettingsRepository
+import me.him188.ani.app.data.repository.SubjectRepository
 import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.navigation.BrowserNavigator
 import me.him188.ani.app.platform.ContextMP
@@ -59,12 +59,14 @@ class SubjectDetailsViewModel(
     private val subjectId: Int,
 ) : AbstractViewModel(), KoinComponent {
     private val subjectManager: SubjectManager by inject()
+    private val subjectRepository: SubjectRepository by inject()
     private val browserNavigator: BrowserNavigator by inject()
     private val bangumiRelatedCharactersRepository: BangumiRelatedCharactersRepository by inject()
     private val settingsRepository: SettingsRepository by inject()
     private val commentRepository: CommentRepository by inject()
 
-    private val subjectInfo: SharedFlow<SubjectInfo> = subjectManager.subjectInfoFlow(subjectId).shareInBackground()
+    private val subjectInfo: SharedFlow<SubjectInfo> =
+        subjectRepository.getSubjectDetails(subjectId).shareInBackground()
     private val subjectCollectionFlow = subjectManager.subjectCollectionFlow(subjectId).shareInBackground()
 
     lateinit var navigator: AniNavigator

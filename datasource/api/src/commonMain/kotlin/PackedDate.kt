@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 @file:Suppress("NOTHING_TO_INLINE", "KotlinRedundantDiagnosticSuppress", "unused")
 
 package me.him188.ani.datasources.api
@@ -11,9 +20,6 @@ import kotlinx.serialization.Serializable
 import me.him188.ani.datasources.api.PackedDate.Companion.Invalid
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
-import kotlin.jvm.JvmField
-import kotlin.jvm.JvmInline
-import kotlin.jvm.JvmStatic
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -22,13 +28,11 @@ import kotlin.time.Duration.Companion.milliseconds
  */
 @JvmInline
 @Serializable
-value class PackedDate @PublishedApi internal constructor(
+value class PackedDate(
     /**
      * 高 16 位为年, 中 8 位为月, 低 8 位为日
      */
-    @JvmField
-    @PublishedApi
-    internal val packed: Int
+    @JvmField val packed: Int // room access it
 ) : Comparable<PackedDate> {
     inline val isValid: Boolean get() = packed != Int.MAX_VALUE
     inline val isInvalid: Boolean get() = packed == Int.MAX_VALUE

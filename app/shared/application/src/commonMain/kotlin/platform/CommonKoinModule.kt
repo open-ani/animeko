@@ -19,6 +19,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.shareIn
@@ -29,11 +30,12 @@ import me.him188.ani.app.data.models.preference.configIfEnabledOrNull
 import me.him188.ani.app.data.models.runApiRequest
 import me.him188.ani.app.data.models.subject.SubjectManager
 import me.him188.ani.app.data.models.subject.SubjectManagerImpl
+import me.him188.ani.app.data.network.BangumiEpisodeService
+import me.him188.ani.app.data.network.EpisodeRepositoryImpl
 import me.him188.ani.app.data.persistent.createDatabaseBuilder
 import me.him188.ani.app.data.persistent.dataStores
 import me.him188.ani.app.data.persistent.database.AniDatabase
 import me.him188.ani.app.data.repository.BangumiCommentRepositoryImpl
-import me.him188.ani.app.data.repository.BangumiEpisodeRepository
 import me.him188.ani.app.data.repository.BangumiRelatedCharactersRepository
 import me.him188.ani.app.data.repository.BangumiSubjectRepository
 import me.him188.ani.app.data.repository.CommentRepository
@@ -43,7 +45,6 @@ import me.him188.ani.app.data.repository.EpisodePlayHistoryRepository
 import me.him188.ani.app.data.repository.EpisodePlayHistoryRepositoryImpl
 import me.him188.ani.app.data.repository.EpisodePreferencesRepository
 import me.him188.ani.app.data.repository.EpisodePreferencesRepositoryImpl
-import me.him188.ani.app.data.repository.EpisodeRepositoryImpl
 import me.him188.ani.app.data.repository.EpisodeScreenshotRepository
 import me.him188.ani.app.data.repository.MediaSourceInstanceRepository
 import me.him188.ani.app.data.repository.MediaSourceInstanceRepositoryImpl
@@ -53,16 +54,19 @@ import me.him188.ani.app.data.repository.MikanIndexCacheRepositoryImpl
 import me.him188.ani.app.data.repository.PreferencesRepositoryImpl
 import me.him188.ani.app.data.repository.ProfileRepository
 import me.him188.ani.app.data.repository.RemoteBangumiSubjectRepository
+import me.him188.ani.app.data.repository.RepositoryUsernameProvider
 import me.him188.ani.app.data.repository.SettingsRepository
+import me.him188.ani.app.data.repository.SubjectCollectionRepository
+import me.him188.ani.app.data.repository.SubjectRepository
+import me.him188.ani.app.data.repository.SubjectSearchHistoryRepository
+import me.him188.ani.app.data.repository.SubjectSearchHistoryRepositoryImpl
 import me.him188.ani.app.data.repository.SubjectSearchRepository
-import me.him188.ani.app.data.repository.SubjectSearchRepositoryImpl
 import me.him188.ani.app.data.repository.TokenRepository
 import me.him188.ani.app.data.repository.TokenRepositoryImpl
 import me.him188.ani.app.data.repository.TrendsRepository
 import me.him188.ani.app.data.repository.UserRepository
 import me.him188.ani.app.data.repository.UserRepositoryImpl
 import me.him188.ani.app.data.repository.WhatslinkEpisodeScreenshotRepository
-import me.him188.ani.app.domain.bangumi.BangumiSubjectProvider
 import me.him188.ani.app.domain.danmaku.DanmakuManager
 import me.him188.ani.app.domain.danmaku.DanmakuManagerImpl
 import me.him188.ani.app.domain.media.cache.DefaultMediaAutoCacheService
@@ -79,12 +83,12 @@ import me.him188.ani.app.domain.media.fetch.toClientProxyConfig
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceCodecManager
 import me.him188.ani.app.domain.mediasource.subscription.MediaSourceSubscriptionUpdater
 import me.him188.ani.app.domain.mediasource.subscription.SubscriptionUpdateData
-import me.him188.ani.app.domain.search.SubjectProvider
 import me.him188.ani.app.domain.session.AniAuthClient
 import me.him188.ani.app.domain.session.BangumiSessionManager
 import me.him188.ani.app.domain.session.OpaqueSession
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.session.unverifiedAccessToken
+import me.him188.ani.app.domain.session.username
 import me.him188.ani.app.domain.torrent.TorrentManager
 import me.him188.ani.app.domain.update.UpdateManager
 import me.him188.ani.app.ui.subject.episode.video.TorrentMediaCacheProgressState
@@ -105,8 +109,12 @@ import me.him188.ani.utils.ktor.userAgent
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
 import org.koin.core.KoinApplication
+import org.koin.core.scope.Scope
 import org.koin.dsl.module
 import kotlin.time.Duration.Companion.minutes
+
+private val Scope.client get() = get<BangumiClient>()
+private val Scope.database get() = get<AniDatabase>()
 
 fun KoinApplication.getCommonKoinModule(getContext: () -> Context, coroutineScope: CoroutineScope) = module {
     // Repositories
@@ -131,14 +139,41 @@ fun KoinApplication.getCommonKoinModule(getContext: () -> Context, coroutineScop
             }.shareIn(coroutineScope, started = SharingStarted.Lazily, replay = 1),
         )
     }
-    single<SubjectProvider> { BangumiSubjectProvider(get<BangumiClient>()) }
+
+    single<RepositoryUsernameProvider> {
+        RepositoryUsernameProvider {
+            @OptIn(OpaqueSession::class)
+            get<SessionManager>().username.first()
+        }
+    }
+    single<SubjectRepository> {
+        SubjectRepository(get())
+    }
+    single<SubjectCollectionRepository> {
+        SubjectCollectionRepository(
+            api = suspend { client.getApi() }.asFlow(),
+            subjectRepository = get(),
+            dao = database.subjectCollection(),
+            usernameProvider = get(),
+        )
+    }
+    single<SubjectSearchRepository> {
+        SubjectSearchRepository(
+            searchApi = suspend { client.getSearchApi() }.asFlow(),
+            subjectRepository = get(),
+        )
+    }
+    single<SubjectSearchHistoryRepository> {
+        SubjectSearchHistoryRepositoryImpl(database.searchHistory(), database.searchTag())
+    }
+
     single<BangumiSubjectRepository> { RemoteBangumiSubjectRepository() }
     single<BangumiRelatedCharactersRepository> { BangumiRelatedCharactersRepository(get()) }
     single<EpisodeScreenshotRepository> { WhatslinkEpisodeScreenshotRepository() }
     single<SubjectManager> { SubjectManagerImpl(getContext().dataStores) }
     single<UserRepository> { UserRepositoryImpl() }
     single<CommentRepository> { BangumiCommentRepositoryImpl(get()) }
-    single<BangumiEpisodeRepository> { EpisodeRepositoryImpl() }
+    single<BangumiEpisodeService> { EpisodeRepositoryImpl() }
     single<MediaSourceInstanceRepository> {
         MediaSourceInstanceRepositoryImpl(getContext().dataStores.mediaSourceSaveStore)
     }
@@ -149,9 +184,6 @@ fun KoinApplication.getCommonKoinModule(getContext: () -> Context, coroutineScop
         EpisodePlayHistoryRepositoryImpl(getContext().dataStores.episodeHistoryStore)
     }
     single<ProfileRepository> { ProfileRepository() }
-    single<SubjectSearchRepository> {
-        get<AniDatabase>().run { SubjectSearchRepositoryImpl(searchHistory(), searchTag()) }
-    }
     single<TrendsRepository> { TrendsRepository(lazy { get<AniAuthClient>().trendsApi }) }
 
     single<DanmakuManager> {
@@ -262,7 +294,7 @@ fun KoinApplication.getCommonKoinModule(getContext: () -> Context, coroutineScop
     CacheProgressStateFactoryManager.register(TorrentVideoData::class) { videoData, state ->
         TorrentMediaCacheProgressState(videoData.pieces) { state.value }
     }
-    
+
     single<MeteredNetworkDetector> { createMeteredNetworkDetector(getContext()) }
 }
 

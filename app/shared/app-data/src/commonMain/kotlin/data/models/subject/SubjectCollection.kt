@@ -10,7 +10,6 @@
 package me.him188.ani.app.data.models.subject
 
 import androidx.compose.runtime.Immutable
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 import me.him188.ani.app.data.models.episode.EpisodeCollection
 import me.him188.ani.app.data.models.episode.episode
@@ -20,9 +19,7 @@ import me.him188.ani.datasources.api.topic.UnifiedCollectionType
  * 包含用户的观看进度的条目及其剧集信息
  */
 @Immutable
-@Serializable
 data class SubjectCollection(
-    // TODO: this is very shit, do not store them all together
     val info: SubjectInfo,
     val episodes: List<EpisodeCollection>, // must be sorted by sort
     val collectionType: UnifiedCollectionType,
@@ -32,7 +29,7 @@ data class SubjectCollection(
     val selfRatingInfo: SelfRatingInfo,
 ) {
     val displayName: String get() = info.displayName
-    val subjectId: Int get() = info.id
+    val subjectId: Int get() = info.subjectId
 
     override fun toString(): String = "SubjectCollectionItem($displayName)"
 

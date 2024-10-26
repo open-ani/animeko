@@ -110,7 +110,7 @@ data class SubjectAiringInfo(
             }
             return SubjectAiringInfo(
                 kind = kind,
-                episodeCount = info.totalEpisodesOrEps,
+                episodeCount = info.totalEpisodes,
                 airDate = info.airDate,
                 firstSort = null,
                 latestSort = null,

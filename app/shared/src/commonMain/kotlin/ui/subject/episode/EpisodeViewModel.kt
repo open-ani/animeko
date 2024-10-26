@@ -39,18 +39,19 @@ import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.episode.episode
 import me.him188.ani.app.data.models.episode.renderEpisodeEp
-import me.him188.ani.app.data.models.episode.type
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectManager
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
-import me.him188.ani.app.data.models.subject.episodeInfoFlow
-import me.him188.ani.app.data.models.subject.subjectInfoFlow
 import me.him188.ani.app.data.repository.CommentRepository
 import me.him188.ani.app.data.repository.DanmakuRegexFilterRepository
+import me.him188.ani.app.data.repository.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.EpisodePlayHistoryRepository
 import me.him188.ani.app.data.repository.EpisodePreferencesRepository
+import me.him188.ani.app.data.repository.EpisodeRepository
 import me.him188.ani.app.data.repository.SettingsRepository
+import me.him188.ani.app.data.repository.SubjectCollectionRepository
+import me.him188.ani.app.data.repository.SubjectRepository
 import me.him188.ani.app.domain.danmaku.DanmakuManager
 import me.him188.ani.app.domain.media.cache.EpisodeCacheStatus
 import me.him188.ani.app.domain.media.cache.MediaCacheManager
@@ -222,7 +223,11 @@ private class EpisodeViewModelImpl(
 ) : KoinComponent, EpisodeViewModel() {
     override val episodeId: MutableStateFlow<Int> = MutableStateFlow(initialDanmakuId)
     private val playerStateFactory: PlayerStateFactory by inject()
+    private val subjectRepository: SubjectRepository by inject()
+    private val subjectCollectionRepository: SubjectCollectionRepository by inject()
     private val subjectManager: SubjectManager by inject()
+    private val episodeRepository: EpisodeRepository by inject()
+    private val episodeCollectionRepository: EpisodeCollectionRepository by inject()
     private val mediaCacheManager: MediaCacheManager by inject()
     private val danmakuManager: DanmakuManager by inject()
     override val videoSourceResolver: VideoSourceResolver by inject()
@@ -233,11 +238,12 @@ private class EpisodeViewModelImpl(
     private val commentRepository: CommentRepository by inject()
     private val episodePlayHistoryRepository: EpisodePlayHistoryRepository by inject()
 
-    private val subjectInfo = subjectManager.subjectInfoFlow(subjectId).shareInBackground()
+    private val subjectInfo = subjectRepository.subjectInfoFlow(subjectId)
+        .shareInBackground()
     private val episodeInfo =
         episodeId.transformLatest { episodeId ->
             emit(null) // 清空前端
-            emitAll(subjectManager.episodeInfoFlow(episodeId))
+            emitAll(episodeRepository.episodeInfoFlow(subjectId, episodeId))
         }.stateInBackground(null)
 
     // Media Selection
@@ -427,10 +433,10 @@ private class EpisodeViewModelImpl(
         .produceState(EpisodePresentation.Placeholder)
     override val authState: AuthState = AuthState()
 
-    private val episodeCollectionsFlow = subjectManager.episodeCollectionsFlow(subjectId)
+    private val episodeCollectionsFlow = episodeCollectionRepository.episodeCollectionsFlow(subjectId)
         .shareInBackground()
 
-    private val subjectCollection = subjectManager.subjectCollectionFlow(subjectId)
+    private val subjectCollection = subjectCollectionRepository.subjectCollectionFlow(subjectId)
         .shareInBackground()
 
     override val episodeDetailsState: EpisodeDetailsState = kotlin.run {

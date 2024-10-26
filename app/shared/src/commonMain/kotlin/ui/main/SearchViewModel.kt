@@ -21,7 +21,6 @@ import me.him188.ani.app.data.models.subject.SubjectManager
 import me.him188.ani.app.data.repository.BangumiRelatedCharactersRepository
 import me.him188.ani.app.data.repository.SubjectSearchRepository
 import me.him188.ani.app.data.repository.TrendsRepository
-import me.him188.ani.app.domain.search.SubjectProvider
 import me.him188.ani.app.domain.search.SubjectSearchQuery
 import me.him188.ani.app.domain.search.SubjectSearcherImpl
 import me.him188.ani.app.domain.session.OpaqueSession
