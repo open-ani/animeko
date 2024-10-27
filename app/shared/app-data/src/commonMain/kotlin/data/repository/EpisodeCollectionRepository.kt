@@ -17,6 +17,7 @@ import androidx.paging.PagingData
 import androidx.paging.PagingState
 import androidx.paging.RemoteMediator
 import androidx.paging.map
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
@@ -24,6 +25,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.episode.EpisodeCollections
 import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.network.BangumiEpisodeService
@@ -162,28 +164,30 @@ class EpisodeCollectionRepository(
             loadType: LoadType,
             state: PagingState<Int, T>,
         ): MediatorResult {
-            val offset = when (loadType) {
-                LoadType.REFRESH -> 0
-                LoadType.PREPEND -> return MediatorResult.Success(endOfPaginationReached = true)
-                LoadType.APPEND -> state.pages.size * state.config.pageSize
-            }
+            return withContext(Dispatchers.IO) {
+                val offset = when (loadType) {
+                    LoadType.REFRESH -> 0
+                    LoadType.PREPEND -> return@withContext MediatorResult.Success(endOfPaginationReached = true)
+                    LoadType.APPEND -> state.pages.size * state.config.pageSize
+                }
 
-            val episodeType = epTypeFilter.first()
+                val episodeType = epTypeFilter.first()
 
-            val episodes = episodeService.getEpisodeCollectionInfosPaged(
-                subjectId,
-                episodeType = episodeType?.toBangumiEpType(),
-                offset = offset,
-                limit = state.config.pageSize,
-            )
-
-            episodes.page.takeIf { it.isNotEmpty() }?.let { list ->
-                episodeCollectionDao.upsert(
-                    list.map { it.toEntity(subjectId) },
+                val episodes = episodeService.getEpisodeCollectionInfosPaged(
+                    subjectId,
+                    episodeType = episodeType?.toBangumiEpType(),
+                    offset = offset,
+                    limit = state.config.pageSize,
                 )
-            }
 
-            return MediatorResult.Success(endOfPaginationReached = episodes.page.isEmpty())
+                episodes.page.takeIf { it.isNotEmpty() }?.let { list ->
+                    episodeCollectionDao.upsert(
+                        list.map { it.toEntity(subjectId) },
+                    )
+                }
+
+                MediatorResult.Success(endOfPaginationReached = episodes.page.isEmpty())
+            }
         }
     }
 }

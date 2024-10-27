@@ -18,9 +18,11 @@ import androidx.paging.PagingState
 import androidx.paging.RemoteMediator
 import androidx.paging.map
 import io.ktor.client.plugins.ResponseException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
@@ -55,6 +57,7 @@ import me.him188.ani.datasources.bangumi.processing.toSubjectCollectionType
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.platform.currentTimeMillis
+import kotlin.coroutines.CoroutineContext
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -83,6 +86,7 @@ class SubjectCollectionRepository(
     private val episodeCollectionRepository: EpisodeCollectionRepository,
     private val usernameProvider: RepositoryUsernameProvider,
     private val getCurrentDate: () -> PackedDate = { PackedDate.now() },
+    private val ioDispatcher: CoroutineContext = Dispatchers.IO,
 ) : Repository {
     fun subjectCollectionFlow(subjectId: Int): Flow<SubjectCollectionInfo> =
         subjectCollectionDao.findById(subjectId).map { entity ->
@@ -171,54 +175,58 @@ class SubjectCollectionRepository(
     private inner class SubjectCollectionRemoteMediator<T : Any>(
         private val query: CollectionsFilterQuery,
     ) : RemoteMediator<Int, T>() {
-        override suspend fun initialize(): InitializeAction {
+        override suspend fun initialize(): InitializeAction = withContext(ioDispatcher) {
             if ((currentTimeMillis() - subjectCollectionDao.lastUpdated()).milliseconds > 1.hours) {
-                return InitializeAction.LAUNCH_INITIAL_REFRESH
+                InitializeAction.LAUNCH_INITIAL_REFRESH
+            } else {
+                InitializeAction.SKIP_INITIAL_REFRESH
             }
-            return InitializeAction.SKIP_INITIAL_REFRESH
         }
 
         override suspend fun load(
             loadType: LoadType,
             state: PagingState<Int, T>,
         ): MediatorResult {
-            val offset = when (loadType) {
-                LoadType.REFRESH -> {
-                    subjectCollectionDao.deleteAll()
-                    0
-                }
-
-                LoadType.PREPEND -> return MediatorResult.Success(endOfPaginationReached = true)
-                LoadType.APPEND -> {
-                    val lastLoadedPage = state.pages.lastOrNull()
-                    if (lastLoadedPage != null) {
-                        lastLoadedPage.itemsBefore + lastLoadedPage.data.size
-                    } else {
-                        0
-                    }
-                }
-            }
             return try {
-                val username = usernameProvider.getOrThrow()
-                val resp = api.first().getUserCollectionsByUsername(
-                    username,
-                    type = query.type?.toSubjectCollectionType(),
-                    limit = state.config.pageSize,
-                    offset = offset,
-                ).body()
-                val collections = resp.data.orEmpty()
-                val items = batchGetSubjectDetails(collections.map { it.subjectId })
-                    .map { batch ->
-                        val collection =
-                            collections.first { it.subjectId == batch.subjectInfo.subjectId }
-                        batch.toEntity(
-                            collection.type.toCollectionType(),
-                            collection.toSelfRatingInfo(),
-                        )
-                    }
-                    .also { subjectCollectionDao.upsert(it) }
+                withContext(ioDispatcher) {
+                    val offset = when (loadType) {
+                        LoadType.REFRESH -> {
+                            subjectCollectionDao.deleteAll()
+                            0
+                        }
 
-                return MediatorResult.Success(endOfPaginationReached = items.isEmpty())
+                        LoadType.PREPEND -> return@withContext MediatorResult.Success(endOfPaginationReached = true)
+                        LoadType.APPEND -> {
+                            val lastLoadedPage = state.pages.lastOrNull()
+                            if (lastLoadedPage != null) {
+                                lastLoadedPage.itemsBefore + lastLoadedPage.data.size
+                            } else {
+                                0
+                            }
+                        }
+                    }
+
+                    val username = usernameProvider.getOrThrow()
+                    val resp = api.first().getUserCollectionsByUsername(
+                        username,
+                        type = query.type?.toSubjectCollectionType(),
+                        limit = state.config.pageSize,
+                        offset = offset,
+                    ).body()
+                    val collections = resp.data.orEmpty()
+                    val items = batchGetSubjectDetails(collections.map { it.subjectId })
+                        .map { batch ->
+                            val collection =
+                                collections.first { it.subjectId == batch.subjectInfo.subjectId }
+                            batch.toEntity(
+                                collection.type.toCollectionType(),
+                                collection.toSelfRatingInfo(),
+                            )
+                        }
+                        .also { subjectCollectionDao.upsert(it) }
+
+                    MediatorResult.Success(endOfPaginationReached = items.isEmpty())
+                }
             } catch (e: RepositoryException) {
                 MediatorResult.Error(e)
             } catch (e: ResponseException) {
