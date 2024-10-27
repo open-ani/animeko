@@ -10,6 +10,7 @@
 <resources>
     <string name="app_name">Animeko</string>
     <string name="app_package" translatable="false">me.him188.ani</string>
-    <string name="service_torrent_engine_description">Animeko torrent background service</string>
+    <string name="service_torrent_engine_description">Animeko BT engine foreground service</string>
+    <string name="app_service_content_text">Animeko BT engine service is running foreground</string>
 
 </resources>

@@ -9,5 +9,6 @@
 
 <resources>
     <string name="app_name">Animeko</string>
-    <string name="service_torrent_engine_description">Animeko BT 引擎后台服务</string>
+    <string name="service_torrent_engine_description">Animeko BT 引擎前台服务</string>
+    <string name="app_service_content_text">Animeko BT 引擎服务正在运行</string>
 </resources>

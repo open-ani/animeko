@@ -12,7 +12,11 @@ package me.him188.ani.app.domain.torrent.service
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.drawable.Icon
+import android.os.Build
 import android.os.IBinder
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
@@ -128,8 +132,12 @@ class AniTorrentService : LifecycleService(), CoroutineScope {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        super.onStartCommand(intent, flags, startId)
-        pushNotification()
+        if (intent?.getBooleanExtra("stopService", false) == true) {
+            stopSelf()
+            return super.onStartCommand(intent, flags, startId)
+        }
+
+        pushNotification(intent)
         return START_STICKY
     }
     
@@ -141,50 +149,66 @@ class AniTorrentService : LifecycleService(), CoroutineScope {
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
-        return super.onUnbind(intent)
+        super.onUnbind(intent)
+        logger.info { "client unbind anitorrent." }
+        return true
     }
 
-    private fun pushNotification() {
-        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+    private fun pushNotification(startIntent: Intent?) {
+        val notificationName = (startIntent?.getIntExtra("app_name", -1) ?: -1)
+            .let { if (it == -1) "Animeko" else getString(it) }
+        val notificationContentText = (startIntent?.getIntExtra("app_service_content_text", -1) ?: -1)
+            .let { if (it == -1) "Animeko BT 引擎正在运行中" else getString(it) }
+        val notificationStickerContent = (startIntent?.getIntExtra("app_service_content_text", -1) ?: -1)
+            .let { if (it == -1) "Animeko BT 引擎正在运行中" else getString(it) }
+        val notificationIcon = (startIntent?.getIntExtra("app_icon", -1) ?: -1)
+            .let { if (it != -1) defaultNotificationIcon else Icon.createWithResource(this, it) }
 
-        val existingNotification =
-            notificationManager.activeNotifications.find { it.id == NOTIFICATION_ID }
+        val openActivityIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            startIntent?.getParcelableExtra("open_activity_intent", Intent::class.java)
+        } else {
+            startIntent?.getParcelableExtra<Intent>("open_activity_intent")
+        }
+        
+        
+        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        val existingNotification = notificationManager.activeNotifications.find { it.id == NOTIFICATION_ID }
 
         if (existingNotification == null) {
-            var channel = notificationManager.getNotificationChannel(NOTIFICATION_CHANNEL_ID)
+            val channel = notificationManager.getNotificationChannel(NOTIFICATION_CHANNEL_ID)
+                ?: NotificationChannel(NOTIFICATION_CHANNEL_ID, notificationName, NotificationManager.IMPORTANCE_HIGH)
+                    .apply { lockscreenVisibility = Notification.VISIBILITY_PUBLIC }
+                    .also { notificationManager.createNotificationChannel(it) }
 
-            if (channel == null) {
-                channel = NotificationChannel(
-                    NOTIFICATION_CHANNEL_ID,
-                    this::class.simpleName,
-                    NotificationManager.IMPORTANCE_LOW
-                ).apply { lockscreenVisibility = Notification.VISIBILITY_PUBLIC }
+            val openActivityAction = if (openActivityIntent == null) null else
+                PendingIntent.getActivity(this, 0, openActivityIntent, PendingIntent.FLAG_IMMUTABLE)
+            val stopServiceAction = PendingIntent.getService(
+                this, 0,
+                Intent(this, this::class.java).apply { putExtra("stopService", true) },
+                PendingIntent.FLAG_IMMUTABLE,
+            )
 
-                notificationManager.createNotificationChannel(channel)
-            }
-
-            val notification = createNotification(channel.id)
-            startForeground(NOTIFICATION_ID, notification)
-        } else {
-            notificationManager.notify(NOTIFICATION_ID, createNotification(NOTIFICATION_CHANNEL_ID))
-        }
-    }
-
-    private fun createNotification(channelId: String): Notification {
-        return Notification.Builder(this, channelId)
-            .apply {
-                val content = "Animeko BT 引擎正在运行中"
-
-                setContentTitle(this::class.simpleName)
-                setContentText(content)
-                setTicker(content)
-
-                setActions()
+            val notification = Notification.Builder(this, channel.id).apply {
+                setContentTitle(notificationName)
+                setContentText(notificationContentText)
+                setSmallIcon(notificationIcon)
+                setContentIntent(openActivityAction)
+                setActions(
+                    Notification.Action.Builder(notificationIcon, "停止", stopServiceAction).build(),
+                )
+                setTicker(notificationStickerContent)
+                setVisibility(Notification.VISIBILITY_PUBLIC)
             }.build()
+
+            startForeground(NOTIFICATION_ID, notification)
+        }
     }
     
     companion object {
         private const val NOTIFICATION_ID = 114
         private const val NOTIFICATION_CHANNEL_ID = "me.him188.ani.app.domain.torrent.service.AniTorrentService"
+        private val defaultNotificationIcon: Icon by lazy {
+            Icon.createWithBitmap(Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888))
+        }
     }
 }

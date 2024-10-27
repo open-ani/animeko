@@ -19,6 +19,7 @@ import android.util.Log
 import io.ktor.client.engine.okhttp.OkHttp
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.launch
+import me.him188.ani.android.activity.MainActivity
 import me.him188.ani.app.domain.media.cache.MediaCacheNotificationTask
 import me.him188.ani.app.domain.torrent.TorrentManager
 import me.him188.ani.app.domain.torrent.service.AniTorrentService
@@ -103,7 +104,15 @@ class AniApplication : Application() {
             // In service process, we don't need any dependency which is use in app process.
             return
         }
-        startForegroundService(Intent(this, AniTorrentService::class.java))
+
+        startForegroundService(
+            Intent(this, AniTorrentService::class.java).apply {
+                putExtra("app_name", me.him188.ani.R.string.app_name)
+                putExtra("app_service_content_text", me.him188.ani.R.string.app_service_content_text)
+                putExtra("app_icon", me.him188.ani.R.mipmap.a_round)
+                putExtra("open_activity_intent", Intent(this@AniApplication, MainActivity::class.java))
+            },
+        )
 
         instance = Instance()
 
