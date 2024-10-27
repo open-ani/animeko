@@ -14,6 +14,7 @@ import androidx.room.Dao
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
+import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
@@ -34,7 +35,6 @@ import me.him188.ani.utils.platform.currentTimeMillis
             onDelete = ForeignKey.CASCADE,
         ),
     ],
-    primaryKeys = ["episodeId"],
     indices = [
         Index(value = ["subjectId", "episodeId"], unique = true),
 //        Index(
@@ -46,7 +46,7 @@ import me.him188.ani.utils.platform.currentTimeMillis
 )
 data class EpisodeCollectionEntity(
     val subjectId: Int,
-    val episodeId: Int,
+    @PrimaryKey val episodeId: Int,
 
     val episodeType: EpisodeType?,
     val name: String,

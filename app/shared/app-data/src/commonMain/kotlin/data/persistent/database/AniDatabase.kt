@@ -32,7 +32,7 @@ import me.him188.ani.app.data.persistent.database.eneity.SearchTagEntity
     ],
     version = 2,
     autoMigrations = [
-        AutoMigration(from = 1, to = 2, spec = Migrations.Migration1To2::class),
+        AutoMigration(from = 1, to = 2, spec = Migrations.NoopMigration::class), // 4.0.0-alpha03
     ],
 )
 @ConstructedBy(AniDatabaseConstructor::class)
@@ -51,7 +51,7 @@ expect object AniDatabaseConstructor : RoomDatabaseConstructor<AniDatabase> {
 internal object Migrations {
 
     // NOOP, version 2 has only additions.
-    class Migration1To2 : AutoMigrationSpec {
+    class NoopMigration : AutoMigrationSpec {
         override fun onPostMigrate(connection: SQLiteConnection) {
         }
     }

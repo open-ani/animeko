@@ -10,6 +10,7 @@
 package me.him188.ani.app.data.persistent.database
 
 import androidx.paging.PagingSource
+import androidx.room.ColumnInfo
 import androidx.room.Dao
 import androidx.room.Embedded
 import androidx.room.Entity
@@ -36,11 +37,13 @@ import me.him188.ani.utils.platform.currentTimeMillis
     tableName = "subject_collection",
     indices = [
         Index(value = ["subjectId"], unique = true),
+        Index(value = ["lastUpdated"], unique = false, orders = [Index.Order.DESC]),
     ],
 )
 @TypeConverters(ProtoConverters::class)
 data class SubjectCollectionEntity(
-    @PrimaryKey val subjectId: Int,
+    @PrimaryKey(autoGenerate = true) val _index: Long = 0, // 用于按插入顺序排序
+    val subjectId: Int,
 
     // SubjectInfo
     val name: String,
@@ -63,6 +66,7 @@ data class SubjectCollectionEntity(
     val selfRatingInfo: SelfRatingInfo,
     val collectionType: UnifiedCollectionType,
 
+    @ColumnInfo(defaultValue = "CURRENT_TIMESTAMP")
     val lastUpdated: Long = currentTimeMillis(),
 )
 
@@ -123,6 +127,7 @@ interface SubjectCollectionDao {
         """
         select * from subject_collection 
         where (:collectionType IS NULL OR collectionType = :collectionType)
+        order by _index
         """,
     )
     fun filterByCollectionTypePaging(

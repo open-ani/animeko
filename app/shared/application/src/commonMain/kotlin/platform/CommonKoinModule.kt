@@ -20,6 +20,7 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asFlow
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.shareIn
@@ -143,7 +144,7 @@ fun KoinApplication.getCommonKoinModule(getContext: () -> Context, coroutineScop
     single<RepositoryUsernameProvider> {
         RepositoryUsernameProvider {
             @OptIn(OpaqueSession::class)
-            get<SessionManager>().username.first()
+            get<SessionManager>().username.filterNotNull().first()
         }
     }
     single<SubjectCollectionRepository> {

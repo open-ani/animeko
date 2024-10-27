@@ -185,14 +185,21 @@ class SubjectCollectionRepository(
                     0
                 }
                 LoadType.PREPEND -> return MediatorResult.Success(endOfPaginationReached = true)
-                LoadType.APPEND -> state.anchorPosition// state.pages.size * state.config.pageSize
+                LoadType.APPEND -> {
+                    val lastLoadedPage = state.pages.lastOrNull()
+                    if (lastLoadedPage != null) {
+                        lastLoadedPage.itemsBefore + lastLoadedPage.data.size
+                    } else {
+                        0
+                    }
+                }
             }
             return try {
                 val username = usernameProvider.getOrThrow()
                 val resp = api.first().getUserCollectionsByUsername(
                     username,
                     type = query.type?.toSubjectCollectionType(),
-                    limit = 30,
+                    limit = state.config.pageSize,
                     offset = offset,
                 ).body()
                 val collections = resp.data.orEmpty()
@@ -360,7 +367,7 @@ private fun BatchSubjectDetails.toEntity(
             ratingInfo = ratingInfo,
             collectionStats = collectionStats,
             completeDate = completeDate,
-            selfRatingInfo = selfRatingInfo, // TODO:  selfRatingInfo
+            selfRatingInfo = selfRatingInfo,
             collectionType = collectionType,
         )
     }
