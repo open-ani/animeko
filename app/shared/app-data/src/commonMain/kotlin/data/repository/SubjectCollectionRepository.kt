@@ -52,6 +52,8 @@ import me.him188.ani.datasources.bangumi.models.BangumiUserSubjectCollection
 import me.him188.ani.datasources.bangumi.models.BangumiUserSubjectCollectionModifyPayload
 import me.him188.ani.datasources.bangumi.processing.toCollectionType
 import me.him188.ani.datasources.bangumi.processing.toSubjectCollectionType
+import me.him188.ani.utils.logging.error
+import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.platform.currentTimeMillis
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.milliseconds
@@ -319,13 +321,27 @@ class SubjectCollectionRepository(
             }
         """.trimIndent(),
         )
+        resp["errors"]?.let {
+            logger.error("batchGetSubjectDetails failed for query $ids: $it")
+        }
         val list = resp
             .getOrFail("data")
             .let { element ->
                 when (element) {
                     is JsonObject -> {
-                        element.values.map {
-                            it.jsonObject.toBatchSubjectDetails()
+                        element.values.mapIndexed { index, it ->
+                            if (it is JsonNull) { // error
+                                val id = ids[index]
+                                BatchSubjectDetails(
+                                    SubjectInfo.Empty.copy(
+                                        subjectId = id, subjectType = SubjectType.ANIME,
+                                        nameCn = "<错误 $id>",
+                                        name = "<错误 $id>",
+                                    ),
+                                )
+                            } else {
+                                it.jsonObject.toBatchSubjectDetails()
+                            }
                         }
                     }
 
@@ -335,6 +351,10 @@ class SubjectCollectionRepository(
             }
 
         return list
+    }
+
+    private companion object {
+        val logger = logger<SubjectCollectionRepository>()
     }
 }
 
