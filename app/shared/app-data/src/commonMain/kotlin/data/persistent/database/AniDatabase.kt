@@ -9,11 +9,14 @@
 
 package me.him188.ani.app.data.persistent.database
 
+import androidx.room.AutoMigration
 import androidx.room.ConstructedBy
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.RoomDatabaseConstructor
 import androidx.room.TypeConverters
+import androidx.room.migration.AutoMigrationSpec
+import androidx.sqlite.SQLiteConnection
 import me.him188.ani.app.data.persistent.ProtoConverters
 import me.him188.ani.app.data.persistent.database.dao.SearchHistoryDao
 import me.him188.ani.app.data.persistent.database.dao.SearchTagDao
@@ -28,6 +31,9 @@ import me.him188.ani.app.data.persistent.database.eneity.SearchTagEntity
         EpisodeCollectionEntity::class,
     ],
     version = 2,
+    autoMigrations = [
+        AutoMigration(from = 1, to = 2, spec = Migrations.Migration1To2::class),
+    ],
 )
 @ConstructedBy(AniDatabaseConstructor::class)
 @TypeConverters(ProtoConverters::class)
@@ -40,4 +46,13 @@ abstract class AniDatabase : RoomDatabase() {
 
 expect object AniDatabaseConstructor : RoomDatabaseConstructor<AniDatabase> {
     override fun initialize(): AniDatabase
+}
+
+internal object Migrations {
+
+    // NOOP, version 2 has only additions.
+    class Migration1To2 : AutoMigrationSpec {
+        override fun onPostMigrate(connection: SQLiteConnection) {
+        }
+    }
 }

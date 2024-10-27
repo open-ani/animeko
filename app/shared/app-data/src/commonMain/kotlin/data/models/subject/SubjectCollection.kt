@@ -9,10 +9,6 @@
 
 package me.him188.ani.app.data.models.subject
 
-import me.him188.ani.app.data.repository.SubjectCollectionInfo
-
-typealias SubjectCollection = SubjectCollectionInfo
-
 ///**
 // * 包含用户的观看进度的条目及其剧集信息
 // */

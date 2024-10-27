@@ -20,10 +20,9 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
-import me.him188.ani.app.data.models.episode.EpisodeCollection
-import me.him188.ani.app.data.models.episode.episode
 import me.him188.ani.app.data.models.episode.isKnownCompleted
 import me.him188.ani.app.data.models.preference.MediaCacheSettings
+import me.him188.ani.app.data.repository.EpisodeCollectionInfo
 import me.him188.ani.app.data.repository.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.SettingsRepository
 import me.him188.ani.app.data.repository.SubjectCollectionInfo
@@ -86,7 +85,7 @@ class DefaultMediaAutoCacheService(
      */
     private val subjectCollections: suspend (MediaCacheSettings) -> List<SubjectCollectionInfo>,
     private val configLazy: Flow<MediaCacheSettings>,
-    private val epsNotCached: suspend (subjectId: Int) -> List<EpisodeCollection>,
+    private val epsNotCached: suspend (subjectId: Int) -> List<EpisodeCollectionInfo>,
     /**
      * Used to query if a episode already has a cache.
      */
@@ -114,15 +113,15 @@ class DefaultMediaAutoCacheService(
             val firstUnwatched = firstEpisodeToCache(
                 eps = epsNotCached(subject.subjectId),
                 hasAlreadyCached = {
-                    cacheManager.cacheStatusForEpisode(subject.subjectId, it.episode.episodeId)
+                    cacheManager.cacheStatusForEpisode(subject.subjectId, it.episodeInfo.episodeId)
                         .firstOrNull() != EpisodeCacheStatus.NotCached
                 },
                 maxCount = config.maxCountPerSubject,
             ).firstOrNull() ?: continue // 都看过了
 
-            logger.info { "Caching ${subject.debugName()} ${firstUnwatched.episode.name}" }
+            logger.info { "Caching ${subject.debugName()} ${firstUnwatched.episodeInfo.name}" }
             createCache(subject, firstUnwatched)
-            logger.info { "Completed creating cache for ${subject.debugName()} ${firstUnwatched.episode.name}, delay 1 min" }
+            logger.info { "Completed creating cache for ${subject.debugName()} ${firstUnwatched.episodeInfo.name}, delay 1 min" }
 
             delay(1.minutes) // don't fetch too fast from sources
         }
@@ -132,21 +131,26 @@ class DefaultMediaAutoCacheService(
 
     private suspend fun createCache(
         subject: SubjectCollectionInfo,
-        firstUnwatched: EpisodeCollection
+        firstUnwatched: EpisodeCollectionInfo
     ) {
         val fetcher = mediaFetcherLazy.first()
-        val fetchSession = fetcher.newSession(MediaFetchRequest.create(subject.subjectInfo, firstUnwatched.episode))
+        val fetchSession = fetcher.newSession(
+            MediaFetchRequest.create(
+                subject.subjectInfo,
+                firstUnwatched.episodeInfo,
+            ),
+        )
         val selector = mediaSelectorFactory.create(
             subject.subjectId,
             fetchSession.cumulativeResults,
         )
         val selected = selector.autoSelect.awaitCompletedAndSelectDefault(fetchSession)
         if (selected == null) {
-            logger.info { "No media selected for ${subject.debugName()} ${firstUnwatched.episode.name}" }
+            logger.info { "No media selected for ${subject.debugName()} ${firstUnwatched.episodeInfo.name}" }
             return
         }
         val cache = targetStorage.first().cache(selected, MediaCacheMetadata(fetchSession.request.first()))
-        logger.info { "Created cache '${cache.cacheId}' for ${subject.debugName()} ${firstUnwatched.episode.name}" }
+        logger.info { "Created cache '${cache.cacheId}' for ${subject.debugName()} ${firstUnwatched.episodeInfo.name}" }
     }
 
     override fun startRegularCheck(scope: CoroutineScope) {
@@ -176,14 +180,14 @@ class DefaultMediaAutoCacheService(
          */
         // public for testing
         fun firstEpisodeToCache(
-            eps: List<EpisodeCollection>,
-            hasAlreadyCached: suspend (EpisodeCollection) -> Boolean,
+            eps: List<EpisodeCollectionInfo>,
+            hasAlreadyCached: suspend (EpisodeCollectionInfo) -> Boolean,
             maxCount: Int = Int.MAX_VALUE,
-        ): Flow<EpisodeCollection> {
+        ): Flow<EpisodeCollectionInfo> {
             var cachedCount = 0
             return eps
                 .asSequence()
-                .takeWhile { it.episode.isKnownCompleted }
+                .takeWhile { it.episodeInfo.isKnownCompleted }
                 .dropWhile {
                     it.collectionType.isDoneOrDropped() // 已经看过的不考虑
                 }

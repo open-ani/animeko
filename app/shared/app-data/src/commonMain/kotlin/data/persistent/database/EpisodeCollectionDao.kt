@@ -72,6 +72,7 @@ interface EpisodeCollectionDao {
         SELECT * FROM episode_collection
         WHERE subjectId = :subjectId
         AND (:episodeType IS NULL OR episodeType = :episodeType)
+        ORDER BY sort ASC
         """,
     )
     fun filterBySubjectId(
@@ -79,7 +80,12 @@ interface EpisodeCollectionDao {
         episodeType: EpisodeType?,
     ): Flow<List<EpisodeCollectionEntity>>
 
-    @Query("""SELECT * FROM episode_collection WHERE subjectId = :subjectId""")
+    @Query(
+        """
+        SELECT * FROM episode_collection
+        WHERE subjectId = :subjectId 
+        ORDER BY sort ASC""",
+    )
     fun filterBySubjectIdPaging(subjectId: Int): PagingSource<Int, EpisodeCollectionEntity>
 
 
@@ -103,7 +109,7 @@ interface EpisodeCollectionDao {
     )
 
 
-    @Query("""select * from episode_collection""")
+    @Query("""select * from episode_collection ORDER BY sort ASC""")
     fun all(): Flow<List<EpisodeCollectionEntity>>
 
 

@@ -23,7 +23,7 @@ import kotlin.coroutines.cancellation.CancellationException
 interface Repository {
     companion object {
         val defaultPagingConfig = PagingConfig(
-            pageSize = 20,
+            pageSize = 10,
             enablePlaceholders = false,
         )
     }

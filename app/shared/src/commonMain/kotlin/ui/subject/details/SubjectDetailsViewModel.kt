@@ -13,13 +13,12 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Stable
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onCompletion
-import me.him188.ani.app.data.models.episode.type
 import me.him188.ani.app.data.models.preference.EpisodeListProgressTheme
 import me.him188.ani.app.data.models.subject.RatingInfo
 import me.him188.ani.app.data.models.subject.RelatedCharacterInfo
@@ -27,12 +26,13 @@ import me.him188.ani.app.data.models.subject.RelatedPersonInfo
 import me.him188.ani.app.data.models.subject.RelatedSubjectInfo
 import me.him188.ani.app.data.models.subject.SelfRatingInfo
 import me.him188.ani.app.data.models.subject.SubjectInfo
-import me.him188.ani.app.data.models.subject.SubjectManager
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
 import me.him188.ani.app.data.repository.BangumiRelatedCharactersRepository
 import me.him188.ani.app.data.repository.CommentRepository
+import me.him188.ani.app.data.repository.EpisodeCollectionRepository
+import me.him188.ani.app.data.repository.EpisodeProgressRepository
 import me.him188.ani.app.data.repository.SettingsRepository
-import me.him188.ani.app.data.repository.SubjectRepository
+import me.him188.ani.app.data.repository.SubjectCollectionRepository
 import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.navigation.BrowserNavigator
 import me.him188.ani.app.platform.ContextMP
@@ -49,6 +49,7 @@ import me.him188.ani.app.ui.subject.components.comment.CommentLoader
 import me.him188.ani.app.ui.subject.components.comment.CommentState
 import me.him188.ani.app.ui.subject.rating.EditableRatingState
 import me.him188.ani.app.ui.subject.rating.RateRequest
+import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
 import org.koin.core.component.KoinComponent
@@ -58,27 +59,28 @@ import org.koin.core.component.inject
 class SubjectDetailsViewModel(
     private val subjectId: Int,
 ) : AbstractViewModel(), KoinComponent {
-    private val subjectManager: SubjectManager by inject()
-    private val subjectRepository: SubjectRepository by inject()
+    private val subjectCollectionRepository: SubjectCollectionRepository by inject()
+    private val episodeProgressRepository: EpisodeProgressRepository by inject()
+    private val episodeCollectionRepository: EpisodeCollectionRepository by inject()
     private val browserNavigator: BrowserNavigator by inject()
     private val bangumiRelatedCharactersRepository: BangumiRelatedCharactersRepository by inject()
     private val settingsRepository: SettingsRepository by inject()
     private val commentRepository: CommentRepository by inject()
 
-    private val subjectInfo: SharedFlow<SubjectInfo> =
-        subjectRepository.getSubjectDetails(subjectId).shareInBackground()
-    private val subjectCollectionFlow = subjectManager.subjectCollectionFlow(subjectId).shareInBackground()
+    private val subjectCollectionFlow = subjectCollectionRepository.subjectCollectionFlow(subjectId).shareInBackground()
+    private val subjectInfo: Flow<SubjectInfo> = subjectCollectionFlow.map { it.subjectInfo }
 
     lateinit var navigator: AniNavigator
 
     val authState = AuthState()
 
-    private val subjectProgressInfoState = subjectCollectionFlow.map { SubjectProgressInfo.calculate(it) }
-        .produceState(null)
+    private val subjectProgressInfoState =
+        subjectCollectionFlow.map { SubjectProgressInfo.compute(it.subjectInfo, it.episodes, PackedDate.now()) }
+            .produceState(null)
 
     val subjectProgressState = kotlin.run {
         SubjectProgressStateFactory(
-            subjectManager,
+            episodeProgressRepository,
             onPlay = { subjectId, episodeId ->
                 navigator.navigateEpisodeDetails(subjectId, episodeId)
             },
@@ -115,7 +117,8 @@ class SubjectDetailsViewModel(
     val episodeListState by lazy {
         EpisodeListStateFactory(
             settingsRepository,
-            subjectManager,
+            episodeCollectionRepository,
+            episodeProgressRepository,
             backgroundScope,
         ).run {
             EpisodeListState(
@@ -133,13 +136,13 @@ class SubjectDetailsViewModel(
             .map { it.collectionType }
             .produceState(UnifiedCollectionType.NOT_COLLECTED),
         hasAnyUnwatched = hasAnyUnwatched@{
-            val collections = subjectManager.episodeCollectionsFlow(subjectId)
+            val collections = episodeCollectionRepository.subjectEpisodeCollectionInfosFlow(subjectId)
                 .flowOn(Dispatchers.Default).firstOrNull() ?: return@hasAnyUnwatched true
-            collections.any { !it.type.isDoneOrDropped() }
+            collections.any { !it.collectionType.isDoneOrDropped() }
         },
-        onSetSelfCollectionType = { subjectManager.setSubjectCollectionType(subjectId, it) },
+        onSetSelfCollectionType = { subjectCollectionRepository.setSubjectCollectionTypeOrDelete(subjectId, it) },
         onSetAllEpisodesWatched = {
-            subjectManager.setAllEpisodesWatched(subjectId)
+            episodeCollectionRepository.setAllEpisodesWatched(subjectId)
         },
         backgroundScope,
     )
@@ -156,7 +159,7 @@ class SubjectDetailsViewModel(
             collection.collectionType != UnifiedCollectionType.NOT_COLLECTED
         },
         onRate = { request ->
-            subjectManager.updateRating(
+            subjectCollectionRepository.updateRating(
                 subjectId,
                 request,
             )
@@ -193,6 +196,6 @@ class SubjectDetailsViewModel(
     }
 }
 
-suspend inline fun SubjectManager.updateRating(subjectId: Int, request: RateRequest) {
+suspend inline fun SubjectCollectionRepository.updateRating(subjectId: Int, request: RateRequest) {
     return this.updateRating(subjectId, request.score, request.comment, isPrivate = request.isPrivate)
 }

@@ -95,6 +95,10 @@ val LazyPagingItems<*>.isLoadingFirstOrNextPage: Boolean
     get() = loadState.append is LoadState.Loading
 
 @Stable
+val LazyPagingItems<*>.isLoadingNextPage: Boolean
+    get() = isLoadingFirstOrNextPage && !isLoadingFirstPage
+
+@Stable
 val LazyPagingItems<*>.hasFirstPage: Boolean
     get() = itemCount > 0
 

@@ -36,7 +36,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
-import kotlinx.coroutines.flow.retry
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
@@ -44,11 +43,11 @@ import kotlinx.coroutines.supervisorScope
 import me.him188.ani.app.data.models.episode.displayName
 import me.him188.ani.app.data.models.episode.isKnownCompleted
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
-import me.him188.ani.app.data.models.subject.SubjectManager
 import me.him188.ani.app.data.models.subject.nameCnOrName
-import me.him188.ani.app.data.models.subject.subjectInfoFlow
+import me.him188.ani.app.data.repository.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.EpisodePreferencesRepository
 import me.him188.ani.app.data.repository.SettingsRepository
+import me.him188.ani.app.data.repository.SubjectCollectionRepository
 import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.cache.requester.CacheRequestStage
 import me.him188.ani.app.domain.media.cache.requester.EpisodeCacheRequest
@@ -70,6 +69,7 @@ import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.subject.episode.mediaFetch.MediaSourceInfoProvider
 import me.him188.ani.utils.coroutines.flows.combine
+import me.him188.ani.utils.coroutines.retryUntilSuccess
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
@@ -92,18 +92,20 @@ interface SubjectCacheViewModel {
 class SubjectCacheViewModelImpl(
     override val subjectId: Int,
 ) : AbstractViewModel(), KoinComponent, SubjectCacheViewModel {
-    private val subjectManager: SubjectManager by inject()
+    private val subjectCollectionRepository: SubjectCollectionRepository by inject()
+    private val episodeCollectionRepository: EpisodeCollectionRepository by inject()
     private val settingsRepository: SettingsRepository by inject()
     private val cacheManager: MediaCacheManager by inject()
     private val mediaSourceManager: MediaSourceManager by inject()
     private val episodePreferencesRepository: EpisodePreferencesRepository by inject()
 
-    private val subjectInfoFlow = subjectManager.subjectInfoFlow(subjectId).shareInBackground()
-    override val subjectTitle by subjectInfoFlow.map { it.nameCnOrName }.produceState(null)
+    private val subjectInfoFlow = subjectCollectionRepository.subjectCollectionFlow(subjectId).shareInBackground()
+    override val subjectTitle by subjectInfoFlow.map { it.subjectInfo.nameCnOrName }.produceState(null)
     override val mediaSelectorSettingsFlow: Flow<MediaSelectorSettings> get() = settingsRepository.mediaSelectorSettings.flow
 
-    private val episodeCollectionsFlow = subjectManager.episodeCollectionsFlow(subjectId).retry()
-        .shareInBackground()
+    private val episodeCollectionsFlow =
+        episodeCollectionRepository.subjectEpisodeCollectionInfosFlow(subjectId).retryUntilSuccess()
+            .shareInBackground()
 
     private val episodesFlow = episodeCollectionsFlow.take(1).transformLatest { episodes ->
         supervisorScope {
@@ -112,7 +114,7 @@ class SubjectCacheViewModelImpl(
                 episodes.map { episodeCollection ->
                     val episode = episodeCollection.episodeInfo
 
-                    val cacheStatusFlow = cacheManager.cacheStatusForEpisode(subjectId, episode.id)
+                    val cacheStatusFlow = cacheManager.cacheStatusForEpisode(subjectId, episode.episodeId)
 
                     val cacheRequester = EpisodeCacheRequester(
                         mediaSourceManager.mediaFetcher,
@@ -120,7 +122,7 @@ class SubjectCacheViewModelImpl(
                         storagesLazy = cacheManager.enabledStorages,
                     )
                     EpisodeCacheState(
-                        episodeId = episode.id,
+                        episodeId = episode.episodeId,
                         cacheRequester = cacheRequester,
                         currentStageState = cacheRequester.stage.produceState(scope = this),
                         infoState = stateOf(
@@ -157,10 +159,12 @@ class SubjectCacheViewModelImpl(
             }
         }.produceState(null),
         onRequestCache = { episode, autoSelectByCached ->
+            val subjectInfo = subjectInfoFlow.first().subjectInfo
             episode.cacheRequester.request(
                 EpisodeCacheRequest(
-                    subjectInfoFlow.first(),
-                    subjectManager.getEpisodeInfo(episode.episodeId),
+                    subjectInfo,
+                    episodeCollectionRepository.episodeCollectionInfoFlow(subjectInfo.subjectId, episode.episodeId)
+                        .map { it.episodeInfo }.first(),
                 ),
             ).run {
                 if (autoSelectByCached) {

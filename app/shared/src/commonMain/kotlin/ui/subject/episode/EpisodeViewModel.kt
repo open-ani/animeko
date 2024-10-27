@@ -37,21 +37,18 @@ import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.withContext
-import me.him188.ani.app.data.models.episode.episode
 import me.him188.ani.app.data.models.episode.renderEpisodeEp
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.data.models.subject.SubjectInfo
-import me.him188.ani.app.data.models.subject.SubjectManager
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
 import me.him188.ani.app.data.repository.CommentRepository
 import me.him188.ani.app.data.repository.DanmakuRegexFilterRepository
 import me.him188.ani.app.data.repository.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.EpisodePlayHistoryRepository
 import me.him188.ani.app.data.repository.EpisodePreferencesRepository
-import me.him188.ani.app.data.repository.EpisodeRepository
+import me.him188.ani.app.data.repository.EpisodeProgressRepository
 import me.him188.ani.app.data.repository.SettingsRepository
 import me.him188.ani.app.data.repository.SubjectCollectionRepository
-import me.him188.ani.app.data.repository.SubjectRepository
 import me.him188.ani.app.domain.danmaku.DanmakuManager
 import me.him188.ani.app.domain.media.cache.EpisodeCacheStatus
 import me.him188.ani.app.domain.media.cache.MediaCacheManager
@@ -68,7 +65,6 @@ import me.him188.ani.app.domain.media.selector.autoSelect
 import me.him188.ani.app.domain.media.selector.eventHandling
 import me.him188.ani.app.domain.session.AuthState
 import me.him188.ani.app.platform.Context
-import me.him188.ani.app.tools.ldc.ContentPolicy
 import me.him188.ani.app.ui.comment.BangumiCommentSticker
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.foundation.AuthState
@@ -108,6 +104,7 @@ import me.him188.ani.danmaku.api.Danmaku
 import me.him188.ani.danmaku.api.DanmakuEvent
 import me.him188.ani.danmaku.api.DanmakuPresentation
 import me.him188.ani.danmaku.ui.DanmakuConfig
+import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.source.MediaFetchRequest
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
@@ -220,13 +217,12 @@ private class EpisodeViewModelImpl(
     initialDanmakuId: Int,
     initialIsFullscreen: Boolean = false,
     context: Context,
+    val getCurrentDate: () -> PackedDate = { PackedDate.now() },
 ) : KoinComponent, EpisodeViewModel() {
     override val episodeId: MutableStateFlow<Int> = MutableStateFlow(initialDanmakuId)
     private val playerStateFactory: PlayerStateFactory by inject()
-    private val subjectRepository: SubjectRepository by inject()
     private val subjectCollectionRepository: SubjectCollectionRepository by inject()
-    private val subjectManager: SubjectManager by inject()
-    private val episodeRepository: EpisodeRepository by inject()
+    private val episodeProgressRepository: EpisodeProgressRepository by inject()
     private val episodeCollectionRepository: EpisodeCollectionRepository by inject()
     private val mediaCacheManager: MediaCacheManager by inject()
     private val danmakuManager: DanmakuManager by inject()
@@ -238,13 +234,14 @@ private class EpisodeViewModelImpl(
     private val commentRepository: CommentRepository by inject()
     private val episodePlayHistoryRepository: EpisodePlayHistoryRepository by inject()
 
-    private val subjectInfo = subjectRepository.subjectInfoFlow(subjectId)
-        .shareInBackground()
-    private val episodeInfo =
-        episodeId.transformLatest { episodeId ->
-            emit(null) // 清空前端
-            emitAll(episodeRepository.episodeInfoFlow(subjectId, episodeId))
-        }.stateInBackground(null)
+    private val subjectCollection = subjectCollectionRepository.subjectCollectionFlow(subjectId)
+    private val subjectInfo = subjectCollection.map { it.subjectInfo }
+    private val episodeCollection = episodeId.transformLatest { episodeId ->
+        emit(null) // 清空前端
+        emitAll(episodeCollectionRepository.episodeCollectionInfoFlow(subjectId, episodeId))
+    }.stateInBackground(null)
+
+    private val episodeInfo = episodeCollection.map { it?.episodeInfo }
 
     // Media Selection
 
@@ -423,7 +420,7 @@ private class EpisodeViewModelImpl(
     private val episodePresentationFlow =
         episodeId
             .flatMapLatest { episodeId ->
-                subjectManager.episodeCollectionFlow(subjectId, episodeId, ContentPolicy.CACHE_ONLY)
+                episodeCollectionRepository.episodeCollectionInfoFlow(subjectId, episodeId)
             }.map {
                 it.toPresentation()
             }
@@ -433,10 +430,7 @@ private class EpisodeViewModelImpl(
         .produceState(EpisodePresentation.Placeholder)
     override val authState: AuthState = AuthState()
 
-    private val episodeCollectionsFlow = episodeCollectionRepository.episodeCollectionsFlow(subjectId)
-        .shareInBackground()
-
-    private val subjectCollection = subjectCollectionRepository.subjectCollectionFlow(subjectId)
+    private val episodeCollectionsFlow = episodeCollectionRepository.subjectEpisodeCollectionInfosFlow(subjectId)
         .shareInBackground()
 
     override val episodeDetailsState: EpisodeDetailsState = kotlin.run {
@@ -445,7 +439,8 @@ private class EpisodeViewModelImpl(
             subjectInfo = subjectInfo.produceState(SubjectInfo.Empty),
             airingLabelState = AiringLabelState(
                 subjectCollection.map { it.airingInfo }.produceState(null),
-                subjectCollection.map { SubjectProgressInfo.calculate(it) }.produceState(null),
+                subjectCollection.map { SubjectProgressInfo.compute(it.subjectInfo, it.episodes, getCurrentDate()) }
+                    .produceState(null),
             ),
         )
     }
@@ -454,8 +449,8 @@ private class EpisodeViewModelImpl(
         val episodeCacheStatusListState by episodeCollectionsFlow.flatMapLatest { list ->
             combine(
                 list.map { collection ->
-                    mediaCacheManager.cacheStatusForEpisode(subjectId, collection.episode.id).map {
-                        collection.episode.id to it
+                    mediaCacheManager.cacheStatusForEpisode(subjectId, collection.episodeId).map {
+                        collection.episodeId to it
                     }
                 },
             ) {
@@ -467,23 +462,23 @@ private class EpisodeViewModelImpl(
         EpisodeCarouselState(
             episodes = episodeCollectionsFlow.produceState(emptyList()),
             playingEpisode = episodeId.combine(episodeCollectionsFlow) { id, collections ->
-                collections.firstOrNull { it.episode.id == id }
+                collections.firstOrNull { it.episodeId == id }
             }.produceState(null),
             cacheStatus = {
                 episodeCacheStatusListState.firstOrNull { status ->
-                    status.first == it.episode.episodeId
+                    status.first == it.episodeInfo.episodeId
                 }?.second ?: EpisodeCacheStatus.NotCached
             },
             onSelect = {
-                switchEpisode(it.episode.episodeId)
+                switchEpisode(it.episodeInfo.episodeId)
             },
             onChangeCollectionType = { episode, it ->
                 collectionButtonEnabled.value = false
                 launchInBackground {
                     try {
-                        subjectManager.setEpisodeCollectionType(
+                        episodeCollectionRepository.setEpisodeCollectionType(
                             subjectId,
-                            episodeId = episode.episode.episodeId,
+                            episodeId = episode.episodeInfo.episodeId,
                             collectionType = it,
                         )
                     } finally {
@@ -505,9 +500,9 @@ private class EpisodeViewModelImpl(
                     episodeCollectionsFlow.firstOrNull() ?: return@EditableSubjectCollectionTypeState true
                 collections.any { !it.collectionType.isDoneOrDropped() }
             },
-            onSetSelfCollectionType = { subjectManager.setSubjectCollectionType(subjectId, it) },
+            onSetSelfCollectionType = { subjectCollectionRepository.setSubjectCollectionTypeOrDelete(subjectId, it) },
             onSetAllEpisodesWatched = {
-                subjectManager.setAllEpisodesWatched(subjectId)
+                episodeCollectionRepository.setAllEpisodesWatched(subjectId)
             },
             backgroundScope,
         )
@@ -698,7 +693,7 @@ private class EpisodeViewModelImpl(
                                 if (pos > max.toFloat() * 0.9) {
                                     logger.info { "观看到 90%, 标记看过" }
                                     runUntilSuccess(maxAttempts = 5) {
-                                        subjectManager.setEpisodeCollectionType(
+                                        episodeCollectionRepository.setEpisodeCollectionType(
                                             subjectId,
                                             episodeId.value,
                                             UnifiedCollectionType.DONE,
@@ -745,7 +740,7 @@ private class EpisodeViewModelImpl(
                         episodeCollectionsFlow,
                     ) { pos, id, collections ->
                         // 不止一集并且当前是第一集时不跳过
-                        if (collections.size > 1 && collections.getOrNull(0)?.episode?.id == id) return@combine
+                        if (collections.size > 1 && collections.getOrNull(0)?.episodeId == id) return@combine
                         playerSkipOpEdState.update(pos)
                     }.collect()
                 }

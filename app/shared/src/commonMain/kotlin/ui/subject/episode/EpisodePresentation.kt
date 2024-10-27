@@ -11,12 +11,11 @@ package me.him188.ani.app.ui.subject.episode
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
-import me.him188.ani.app.data.models.episode.EpisodeCollection
 import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.episode.displayName
-import me.him188.ani.app.data.models.episode.episode
 import me.him188.ani.app.data.models.episode.isKnownCompleted
 import me.him188.ani.app.data.models.episode.renderEpisodeEp
+import me.him188.ani.app.data.repository.EpisodeCollectionInfo
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 
 /**
@@ -63,11 +62,11 @@ data class EpisodePresentation(
     }
 }
 
-fun EpisodeCollection.toPresentation() = EpisodePresentation(
-    episodeId = this.episode.episodeId,
-    title = episode.displayName,
-    ep = episode.renderEpisodeEp(),
-    sort = episode.sort.toString(),
+fun EpisodeCollectionInfo.toPresentation() = EpisodePresentation(
+    episodeId = this.episodeInfo.episodeId,
+    title = episodeInfo.displayName,
+    ep = episodeInfo.renderEpisodeEp(),
+    sort = episodeInfo.sort.toString(),
     collectionType = collectionType,
-    isKnownBroadcast = episode.isKnownCompleted,
+    isKnownBroadcast = episodeInfo.isKnownCompleted,
 )

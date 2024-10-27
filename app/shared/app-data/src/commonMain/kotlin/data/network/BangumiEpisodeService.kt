@@ -47,14 +47,14 @@ import org.koin.core.component.inject
  */
 interface BangumiEpisodeService {
     /**
-     * 获取用户在这个条目下的所有剧集的收藏状态. 当用户没有收藏此条目时返回 [EpisodeCollectionInfo.collectionType] 均为 [UnifiedCollectionType.NOT_COLLECTED].
+     * 获取用户在这个条目下的所有剧集的收藏状态. 当用户没有收藏此条目时返回 [collectionType] 均为 [UnifiedCollectionType.NOT_COLLECTED].
      *
      * @return 分页的剧集收藏信息. 使用 `toList()` 可以获取所有数据.
      */
     suspend fun getEpisodeCollectionInfosBySubjectId(subjectId: Int, epType: EpisodeType?): Flow<EpisodeCollectionInfo>
 
     /**
-     * 获取用户在这个条目下的所有剧集的收藏状态. 当用户没有收藏此条目时返回 [EpisodeCollectionInfo.collectionType] 均为 [UnifiedCollectionType.NOT_COLLECTED].
+     * 获取用户在这个条目下的所有剧集的收藏状态. 当用户没有收藏此条目时返回 [collectionType] 均为 [UnifiedCollectionType.NOT_COLLECTED].
      *
      * @return 分页的剧集收藏信息.
      */
@@ -66,7 +66,7 @@ interface BangumiEpisodeService {
     ): Paged<EpisodeCollectionInfo>
 
     /**
-     * 获取单个剧集的信息和用户的收藏状态. 如果用户没有收藏这个剧集所属的条目, 则返回 [EpisodeCollectionInfo.collectionType] 为 [UnifiedCollectionType.NOT_COLLECTED].
+     * 获取单个剧集的信息和用户的收藏状态. 如果用户没有收藏这个剧集所属的条目, 则返回 [collectionType] 为 [UnifiedCollectionType.NOT_COLLECTED].
      *
      * 只有在 [episodeId] 找不到对应的公开剧集时返回 `null`.
      */
@@ -219,14 +219,13 @@ class EpisodeRepositoryImpl : BangumiEpisodeService, KoinComponent {
 
 private fun EpisodeInfo.createNotCollected(): EpisodeCollectionInfo {
     return EpisodeCollectionInfo(
-        episodeId = episodeId,
-        collectionType = UnifiedCollectionType.NOT_COLLECTED,
         episodeInfo = this,
+        collectionType = UnifiedCollectionType.NOT_COLLECTED,
     )
 }
 
 private fun BangumiUserEpisodeCollection.toEpisodeCollectionInfo() =
-    EpisodeCollectionInfo(episode.id, type.toCollectionType(), episode.toEpisodeInfo())
+    EpisodeCollectionInfo(episode.toEpisodeInfo(), type.toCollectionType())
 
 internal fun BangumiEpisode.toEpisodeInfo(): EpisodeInfo {
     return EpisodeInfo(

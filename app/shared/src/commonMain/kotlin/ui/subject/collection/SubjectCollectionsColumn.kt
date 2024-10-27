@@ -25,12 +25,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardColors
 import androidx.compose.material3.CardDefaults
@@ -42,29 +43,31 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.Stable
-import androidx.compose.runtime.State
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.paging.compose.LazyPagingItems
 import androidx.window.core.layout.WindowWidthSizeClass
-import kotlinx.coroutines.CoroutineScope
-import me.him188.ani.app.data.models.episode.EpisodeCollection
 import me.him188.ani.app.data.models.episode.EpisodeInfo
-import me.him188.ani.app.data.models.subject.SubjectCollection
+import me.him188.ani.app.data.models.subject.SubjectAiringInfo
 import me.him188.ani.app.data.models.subject.SubjectInfo
-import me.him188.ani.app.tools.MonoTasker
+import me.him188.ani.app.data.models.subject.SubjectProgressInfo
+import me.him188.ani.app.data.repository.EpisodeCollectionInfo
+import me.him188.ani.app.data.repository.SubjectCollectionInfo
+import me.him188.ani.app.tools.paging.exceptions
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.ifThen
+import me.him188.ani.app.ui.foundation.isInDebugMode
 import me.him188.ani.app.ui.foundation.stateOf
+import me.him188.ani.app.ui.search.isLoadingNextPage
 import me.him188.ani.app.ui.subject.collection.components.AiringLabel
 import me.him188.ani.app.ui.subject.collection.components.AiringLabelState
 import me.him188.ani.app.ui.subject.collection.components.EditCollectionTypeDropDown
@@ -72,55 +75,11 @@ import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollect
 import me.him188.ani.app.ui.subject.details.components.COVER_WIDTH_TO_HEIGHT_RATIO
 import me.him188.ani.app.ui.subject.rating.TestSelfRatingInfo
 import me.him188.ani.datasources.api.EpisodeSort
+import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
+import me.him188.ani.utils.logging.error
+import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.platform.annotations.TestOnly
-
-@Stable
-class SubjectCollectionColumnState(
-    cachedData: State<List<SubjectCollection>>,
-    hasMore: State<Boolean>,
-    isKnownAuthorizedAndEmpty: State<Boolean>,
-    private val onRequestMore: suspend () -> Unit,
-    private val onAutoRefresh: suspend () -> Unit,
-    private val onManualRefresh: suspend () -> Unit,
-    backgroundScope: CoroutineScope,
-) {
-    private val requestMoreTasker = MonoTasker(backgroundScope)
-    private val refreshTasker = MonoTasker(backgroundScope)
-
-    val cachedData: List<SubjectCollection> by cachedData
-    val hasMore by hasMore
-
-    /**
-     * 如果未登录, 此属性会一直未 false
-     */
-    val isKnownAuthorizedAndEmpty by isKnownAuthorizedAndEmpty
-
-    internal val gridState = LazyGridState()
-
-    fun requestMore() {
-        if (requestMoreTasker.isRunning) return
-        requestMoreTasker.launch {
-            onRequestMore()
-        }
-    }
-
-    val isRefreshing get() = refreshTasker.isRunning
-
-    fun startAutoRefresh() {
-        requestMoreTasker.cancel()
-        refreshTasker.launch {
-            onAutoRefresh()
-        }
-    }
-
-    suspend fun manualRefresh() {
-        requestMoreTasker.cancel()
-        refreshTasker.launch {
-            onManualRefresh()
-        }.join()
-    }
-}
 
 /**
  * Lazy column of [item]s, designed for My Collections.
@@ -131,8 +90,8 @@ class SubjectCollectionColumnState(
  */
 @Composable
 fun SubjectCollectionsColumn(
-    state: SubjectCollectionColumnState,
-    item: @Composable (item: SubjectCollection) -> Unit,
+    items: LazyPagingItems<SubjectCollectionInfo>,
+    item: @Composable (item: SubjectCollectionInfo) -> Unit,
     modifier: Modifier = Modifier,
     enableAnimation: Boolean = true,
     allowProgressIndicator: Boolean = true,
@@ -143,20 +102,66 @@ fun SubjectCollectionsColumn(
     LazyVerticalGrid(
         GridCells.Adaptive(360.dp),
         modifier,
-        state.gridState,
+        rememberLazyGridState(),
         verticalArrangement = Arrangement.spacedBy(spacedBy),
         horizontalArrangement = Arrangement.spacedBy(spacedBy),
         contentPadding = PaddingValues(horizontal = spacedBy),
     ) {
         item(span = { GridItemSpan(maxLineSpan) }) { Spacer(Modifier.height(1.dp)) } // 添加新 item 时保持到顶部
 
-        items(state.cachedData, key = { it.subjectId }) { collection ->
-            Box(Modifier.ifThen(enableAnimation) { animateItem() }) {
-                item(collection)
+        items(items.itemSnapshotList, key = { it?.subjectId ?: 0 }) { collection ->
+            collection?.let {
+                Box(Modifier.ifThen(enableAnimation) { animateItem() }) {
+                    item(it)
+                }
             }
         }
 
-        if (state.hasMore) {
+        if (items.loadState.hasError) {
+            item("error", span = { GridItemSpan(maxLineSpan) }) {
+                val typography = MaterialTheme.typography
+                val colorScheme = MaterialTheme.colorScheme
+                Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        remember(colorScheme, typography) {
+                            buildAnnotatedString {
+                                pushStyle(typography.labelLarge.toSpanStyle())
+                                append("加载失败，")
+                                pushLink(
+                                    LinkAnnotation.Clickable(
+                                        "retry",
+                                    ) {
+                                        items.retry()
+                                    },
+                                )
+                                pushStyle(
+                                    typography.labelLarge.toSpanStyle()
+                                        .copy(
+                                            textDecoration = TextDecoration.Underline,
+                                            color = colorScheme.primary,
+                                        ),
+                                )
+                                append("点击重试")
+                            }
+                        },
+                    )
+
+                    if (isInDebugMode()) {
+                        Button(
+                            {
+                                items.loadState.exceptions().forEach {
+                                    logger("SubjectCollectionsColumn").error(it)
+                                }
+                            },
+                        ) {
+                            Text("[Debug] Dump Stacktrace")
+                        }
+                    }
+                }
+            }
+        }
+
+        if (items.isLoadingNextPage) {
             item("dummy loader", span = { GridItemSpan(maxLineSpan) }) {
                 if (allowProgressIndicator) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
@@ -165,7 +170,6 @@ fun SubjectCollectionsColumn(
                 } else {
                     Spacer(Modifier.height(1.dp))
                 }
-                state.requestMore()
             }
         }
 
@@ -180,7 +184,7 @@ fun SubjectCollectionsColumn(
  */
 @Composable
 fun SubjectCollectionItem(
-    item: SubjectCollection,
+    item: SubjectCollectionInfo,
     editableSubjectCollectionTypeState: EditableSubjectCollectionTypeState,
     onClick: () -> Unit,
     onShowEpisodeList: () -> Unit,
@@ -198,7 +202,7 @@ fun SubjectCollectionItem(
     ) {
         Row(Modifier.weight(1f, fill = false)) {
             AsyncImage(
-                item.info.imageCommon,
+                item.subjectInfo.imageLarge,
                 contentDescription = null,
                 modifier = Modifier
                     .height(height).width(height * COVER_WIDTH_TO_HEIGHT_RATIO),
@@ -223,7 +227,7 @@ fun SubjectCollectionItem(
  */
 @Composable
 private fun SubjectCollectionItemContent(
-    item: SubjectCollection,
+    item: SubjectCollectionInfo,
     editableSubjectCollectionTypeState: EditableSubjectCollectionTypeState,
     onShowEpisodeList: () -> Unit,
     playButton: @Composable () -> Unit,
@@ -237,7 +241,7 @@ private fun SubjectCollectionItemContent(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                item.displayName,
+                item.subjectInfo.displayName,
                 style = MaterialTheme.typography.titleMedium,
                 overflow = TextOverflow.Ellipsis,
                 maxLines = 1,
@@ -294,30 +298,26 @@ val TestSubjectCollections
     get() = buildList {
         var id = 0
         val eps = listOf(
-            EpisodeCollection(
+            EpisodeCollectionInfo(
                 episodeInfo = EpisodeInfo(
                     episodeId = 6385,
                     name = "Diana Houston",
                     nameCn = "Nita O'Donnell",
                     comment = 5931,
-                    duration = "",
                     desc = "gubergren",
-                    disc = 2272,
                     sort = EpisodeSort(1),
                     ep = EpisodeSort(1),
                 ),
                 collectionType = UnifiedCollectionType.DONE,
             ),
-            EpisodeCollection(
+            EpisodeCollectionInfo(
                 episodeInfo = EpisodeInfo(
                     episodeId = 6386,
                     name = "Diana Houston",
                     nameCn = "Nita O'Donnell",
                     sort = EpisodeSort(2),
                     comment = 5931,
-                    duration = "",
                     desc = "gubergren",
-                    disc = 2272,
                     ep = EpisodeSort(2),
                 ),
                 collectionType = UnifiedCollectionType.DONE,
@@ -340,16 +340,14 @@ val TestSubjectCollections
             add(
                 testSubjectCollection(
                     ++id,
-                    episodes = eps + EpisodeCollection(
+                    episodes = eps + EpisodeCollectionInfo(
                         episodeInfo = EpisodeInfo(
                             episodeId = 6386,
                             name = "Diana Houston",
                             nameCn = "Nita O'Donnell",
                             sort = EpisodeSort(2),
                             comment = 5931,
-                            duration = "",
                             desc = "gubergren",
-                            disc = 2272,
                             ep = EpisodeSort(2),
                         ),
                         collectionType = UnifiedCollectionType.DONE,
@@ -360,39 +358,27 @@ val TestSubjectCollections
         }
     }
 
-@TestOnly
-@Composable
-internal fun rememberTestSubjectCollectionColumnState(
-    cachedData: List<SubjectCollection> = TestSubjectCollections,
-    hasMore: Boolean = false,
-    isKnownEmpty: Boolean = false,
-): SubjectCollectionColumnState {
-    val scope = rememberCoroutineScope()
-    return remember {
-        SubjectCollectionColumnState(
-            cachedData = mutableStateOf(cachedData),
-            hasMore = mutableStateOf(hasMore),
-            isKnownAuthorizedAndEmpty = mutableStateOf(isKnownEmpty),
-            onRequestMore = {},
-            onAutoRefresh = {},
-            onManualRefresh = {},
-            backgroundScope = scope,
-        )
-    }
-}
 
 @TestOnly
 private fun testSubjectCollection(
     id: Int,
-    episodes: List<EpisodeCollection>,
+    episodes: List<EpisodeCollectionInfo>,
     collectionType: UnifiedCollectionType,
-) = SubjectCollection(
-    info = SubjectInfo.Empty.copy(
+): SubjectCollectionInfo {
+    val subjectInfo = SubjectInfo.Empty.copy(
         id,
         nameCn = "中文条目名称",
         name = "Subject Name",
-    ),
-    episodes = episodes,
-    collectionType = collectionType,
-    selfRatingInfo = TestSelfRatingInfo,
-)
+    )
+    return SubjectCollectionInfo(
+        subjectInfo = subjectInfo,
+        episodes = episodes,
+        collectionType = collectionType,
+        selfRatingInfo = TestSelfRatingInfo,
+        airingInfo = SubjectAiringInfo.computeFromEpisodeList(
+            episodes.map { it.episodeInfo },
+            airDate = subjectInfo.airDate,
+        ),
+        progressInfo = SubjectProgressInfo.compute(subjectInfo, episodes, PackedDate.now()),
+    )
+}

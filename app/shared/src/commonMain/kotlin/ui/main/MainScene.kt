@@ -58,6 +58,7 @@ import me.him188.ani.app.ui.foundation.layout.setRequestFullScreen
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.subject.collection.CollectionPage
+import me.him188.ani.app.ui.subject.collection.UserCollectionsViewModel
 import me.him188.ani.app.ui.subject.details.SubjectDetailsScene
 import me.him188.ani.utils.platform.isAndroid
 
@@ -152,12 +153,16 @@ private fun MainSceneContent(
                         )
                     }
 
-                    MainScenePage.Collection -> CollectionPage(
-                        windowInsets = windowInsets,
-                        onClickSearch = { onNavigateToPage(MainScenePage.Search) },
-                        onClickSettings = { navigator.navigateSettings() },
-                        Modifier.fillMaxSize(),
-                    )
+                    MainScenePage.Collection -> {
+                        val vm = viewModel<UserCollectionsViewModel> { UserCollectionsViewModel() }
+                        CollectionPage(
+                            state = vm.state,
+                            windowInsets = windowInsets,
+                            onClickSearch = { onNavigateToPage(MainScenePage.Search) },
+                            onClickSettings = { navigator.navigateSettings() },
+                            Modifier.fillMaxSize(),
+                        )
+                    }
 
                     MainScenePage.CacheManagement -> CacheManagementPage(
                         viewModel { CacheManagementViewModel(navigator) },

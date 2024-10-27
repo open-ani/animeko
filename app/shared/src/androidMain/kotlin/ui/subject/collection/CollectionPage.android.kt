@@ -11,33 +11,27 @@
 
 package me.him188.ani.app.ui.subject.collection
 
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import kotlinx.coroutines.runBlocking
-import me.him188.ani.app.tools.ldc.mutate
-import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.tooling.preview.PreviewScreenSizes
+import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview
 import me.him188.ani.utils.platform.annotations.TestOnly
 
 @Composable
-@Preview
-private fun PreviewCollectionPage() {
-    ProvideCompositionLocalsForPreview {
-        viewModel {
-            MyCollectionsViewModel().apply {
-                val testData = TestSubjectCollections
-                runBlocking {
-                    collectionsByType.forEach { c ->
-                        c.cache.mutate {
-                            testData.filter { it.collectionType == c.type }
-                        }
-                    }
-                }
-            }
-        }
-
-        CollectionPage(WindowInsets(0.dp), {}, {})
-    }
+@PreviewScreenSizes
+private fun PreviewCollectionPage() = ProvideFoundationCompositionLocalsForPreview {
+    val scope = rememberCoroutineScope()
+//    CollectionPage(
+//        remember {
+//            UserCollectionsState(
+//                startSearch = {
+//                    MutableStateFlow(PagingData.from(TestSubjectCollections))
+//                },
+//                createTestAuthState(scope),
+//                stateOf(TestUserInfo),
+//                episodeListStateFactory = 
+//            )
+//        },
+//        WindowInsets(0.dp), {}, {},
+//    )
 }

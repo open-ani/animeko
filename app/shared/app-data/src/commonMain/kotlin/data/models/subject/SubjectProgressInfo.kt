@@ -12,6 +12,9 @@ package me.him188.ani.app.data.models.subject
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import me.him188.ani.app.data.models.episode.EpisodeInfo
+import me.him188.ani.app.data.models.episode.isKnownCompleted
+import me.him188.ani.app.data.repository.EpisodeCollectionInfo
+import me.him188.ani.app.data.repository.SubjectInfo
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.ifInvalid
@@ -31,7 +34,7 @@ data class SubjectProgressInfo(
     val nextEpisodeIdToPlay: Int?,
 ) {
     /**
-     * 仅供 [calculate]
+     * 仅供 [compute]
      */
     class Episode(
         val id: Int,
@@ -55,7 +58,27 @@ data class SubjectProgressInfo(
             null,
         )
 
-        fun calculate(
+        fun compute(
+            subjectInfo: SubjectInfo,
+            episodes: List<EpisodeCollectionInfo>,
+            currentDate: PackedDate,
+        ): SubjectProgressInfo {
+            return compute(
+                subjectStarted = currentDate > subjectInfo.airDate,
+                episodes = episodes.map {
+                    Episode(
+                        it.episodeId,
+                        it.collectionType,
+                        it.episodeInfo.sort,
+                        it.episodeInfo.airDate,
+                        it.episodeInfo.isKnownCompleted,
+                    )
+                },
+                subjectAirDate = subjectInfo.airDate,
+            )
+        }
+
+        fun compute(
             subjectStarted: Boolean,
             episodes: List<Episode>,
             subjectAirDate: PackedDate,

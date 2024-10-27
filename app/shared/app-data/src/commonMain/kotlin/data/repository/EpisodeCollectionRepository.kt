@@ -20,6 +20,7 @@ import androidx.paging.map
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.toList
@@ -29,6 +30,8 @@ import me.him188.ani.app.data.network.BangumiEpisodeService
 import me.him188.ani.app.data.network.toBangumiEpType
 import me.him188.ani.app.data.persistent.database.EpisodeCollectionDao
 import me.him188.ani.app.data.persistent.database.EpisodeCollectionEntity
+import me.him188.ani.app.data.persistent.database.SubjectCollectionDao
+import me.him188.ani.app.data.repository.Repository.Companion.defaultPagingConfig
 import me.him188.ani.datasources.api.EpisodeType.MainStory
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.platform.currentTimeMillis
@@ -37,12 +40,14 @@ import kotlin.time.Duration.Companion.milliseconds
 
 @Immutable
 data class EpisodeCollectionInfo(
-    val episodeId: Int,
-    val collectionType: UnifiedCollectionType,
     val episodeInfo: EpisodeInfo,
-)
+    val collectionType: UnifiedCollectionType,
+) {
+    val episodeId: Int get() = episodeInfo.episodeId
+}
 
 class EpisodeCollectionRepository(
+    private val subjectDao: SubjectCollectionDao,
     private val episodeCollectionDao: EpisodeCollectionDao,
     private val bangumiEpisodeService: BangumiEpisodeService,
     private val enableAllEpisodeTypes: Flow<Boolean>,
@@ -71,9 +76,12 @@ class EpisodeCollectionRepository(
     fun subjectEpisodeCollectionInfosFlow(
         subjectId: Int
     ): Flow<List<EpisodeCollectionInfo>> = epTypeFilter.flatMapLatest { epType ->
+        if (subjectDao.get(subjectId).totalEpisodes == 0) {
+            return@flatMapLatest flowOf(emptyList())
+        }
         episodeCollectionDao.filterBySubjectId(subjectId, epType).mapLatest { episodes ->
             if (episodes.isNotEmpty() &&
-                ((episodes.maxOfOrNull { it.lastUpdated } ?: 0) - currentTimeMillis()).milliseconds <= 1.hours
+                (currentTimeMillis() - (episodes.maxOfOrNull { it.lastUpdated } ?: 0)).milliseconds <= 1.hours
             ) {
                 // 有有效缓存则直接返回
                 return@mapLatest episodes.map { it.toEpisodeCollectionInfo() }
@@ -88,10 +96,7 @@ class EpisodeCollectionRepository(
 
     fun subjectEpisodeCollectionsPager(
         subjectId: Int,
-        pagingConfig: PagingConfig = PagingConfig(
-            pageSize = 20,
-            enablePlaceholders = false,
-        ),
+        pagingConfig: PagingConfig = defaultPagingConfig,
     ): Flow<PagingData<EpisodeCollectionInfo>> = Pager(
         config = pagingConfig,
         remoteMediator = EpisodeCollectionsRemoteMediator(
@@ -147,7 +152,7 @@ class EpisodeCollectionRepository(
         val subjectId: Int,
     ) : RemoteMediator<Int, T>() {
         override suspend fun initialize(): InitializeAction {
-            if ((episodeCollectionDao.lastUpdated() - currentTimeMillis()).milliseconds > 1.hours) {
+            if ((currentTimeMillis() - episodeCollectionDao.lastUpdated()).milliseconds > 1.hours) {
                 return InitializeAction.LAUNCH_INITIAL_REFRESH
             }
             return InitializeAction.SKIP_INITIAL_REFRESH
@@ -217,9 +222,8 @@ private fun EpisodeCollectionInfo.toEntity(subjectId: Int): EpisodeCollectionEnt
 
 private fun EpisodeCollectionEntity.toEpisodeCollectionInfo() =
     EpisodeCollectionInfo(
-        episodeId = episodeId,
-        collectionType = selfCollectionType,
         episodeInfo = toEpisodeInfo(),
+        collectionType = selfCollectionType,
     )
 
 private fun EpisodeCollectionEntity.toEpisodeInfo(): EpisodeInfo {

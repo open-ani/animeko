@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.utils.coroutines
 
 import kotlinx.coroutines.CancellationException
@@ -170,8 +179,8 @@ fun <T> Flow<T>.retryEvery(duration: Duration): Flow<T> = retry { cause ->
 /**
  * 一直重复直到成功. 每次重试前等待指数退避时间.
  */
-fun <T> Flow<T>.retryUntilSuccess(max: Duration = 5.seconds): Flow<T> {
-    require(max > 0.seconds)
+fun <T> Flow<T>.retryUntilSuccess(maxWait: Duration = 10.seconds): Flow<T> {
+    require(maxWait > 0.seconds)
     var duration = 1.seconds
     return retry { cause ->
         if (cause is CancellationException) {
@@ -179,7 +188,7 @@ fun <T> Flow<T>.retryUntilSuccess(max: Duration = 5.seconds): Flow<T> {
         }
         delay(duration)
         duration *= 2
-        duration = duration.coerceAtMost(max)
+        duration = duration.coerceAtMost(maxWait)
         return@retry true
     }
 }

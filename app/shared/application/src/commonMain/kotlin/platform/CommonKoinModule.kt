@@ -40,10 +40,12 @@ import me.him188.ani.app.data.repository.BangumiRelatedCharactersRepository
 import me.him188.ani.app.data.repository.CommentRepository
 import me.him188.ani.app.data.repository.DanmakuRegexFilterRepository
 import me.him188.ani.app.data.repository.DanmakuRegexFilterRepositoryImpl
+import me.him188.ani.app.data.repository.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.EpisodePlayHistoryRepository
 import me.him188.ani.app.data.repository.EpisodePlayHistoryRepositoryImpl
 import me.him188.ani.app.data.repository.EpisodePreferencesRepository
 import me.him188.ani.app.data.repository.EpisodePreferencesRepositoryImpl
+import me.him188.ani.app.data.repository.EpisodeProgressRepository
 import me.him188.ani.app.data.repository.EpisodeScreenshotRepository
 import me.him188.ani.app.data.repository.MediaSourceInstanceRepository
 import me.him188.ani.app.data.repository.MediaSourceInstanceRepositoryImpl
@@ -112,6 +114,7 @@ import kotlin.time.Duration.Companion.minutes
 
 private val Scope.client get() = get<BangumiClient>()
 private val Scope.database get() = get<AniDatabase>()
+private val Scope.settingsRepository get() = get<SettingsRepository>()
 
 fun KoinApplication.getCommonKoinModule(getContext: () -> Context, coroutineScope: CoroutineScope) = module {
     // Repositories
@@ -148,7 +151,8 @@ fun KoinApplication.getCommonKoinModule(getContext: () -> Context, coroutineScop
             client = client,
             api = suspend { client.getApi() }.asFlow(),
             bangumiSubjectService = get(),
-            dao = database.subjectCollection(),
+            subjectCollectionDao = database.subjectCollection(),
+            episodeCollectionRepository = get(),
             usernameProvider = get(),
         )
     }
@@ -162,12 +166,27 @@ fun KoinApplication.getCommonKoinModule(getContext: () -> Context, coroutineScop
         SubjectSearchHistoryRepositoryImpl(database.searchHistory(), database.searchTag())
     }
 
+    // Data layer network services
     single<BangumiSubjectService> { RemoteBangumiSubjectService() }
+    single<BangumiEpisodeService> { EpisodeRepositoryImpl() }
+
     single<BangumiRelatedCharactersRepository> { BangumiRelatedCharactersRepository(get()) }
+    single<EpisodeCollectionRepository> {
+        EpisodeCollectionRepository(
+            episodeCollectionDao = database.episodeCollection(),
+            bangumiEpisodeService = get(),
+            enableAllEpisodeTypes = settingsRepository.debugSettings.flow.map { it.showAllEpisodes },
+        )
+    }
+    single<EpisodeProgressRepository> {
+        EpisodeProgressRepository(
+            episodeCollectionRepository = get(),
+            cacheManager = get(),
+        )
+    }
     single<EpisodeScreenshotRepository> { WhatslinkEpisodeScreenshotRepository() }
     single<UserRepository> { UserRepositoryImpl() }
     single<CommentRepository> { BangumiCommentRepositoryImpl(get()) }
-    single<BangumiEpisodeService> { EpisodeRepositoryImpl() }
     single<MediaSourceInstanceRepository> {
         MediaSourceInstanceRepositoryImpl(getContext().dataStores.mediaSourceSaveStore)
     }

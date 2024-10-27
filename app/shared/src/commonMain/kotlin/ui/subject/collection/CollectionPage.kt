@@ -23,8 +23,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
@@ -47,10 +45,10 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
-import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults.Indicator
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -59,20 +57,21 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LifecycleEventEffect
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.paging.LoadState
+import androidx.paging.PagingData
+import androidx.paging.compose.collectAsLazyPagingItemsWithLifecycle
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
+import me.him188.ani.app.data.models.UserInfo
+import me.him188.ani.app.data.repository.CollectionsFilterQuery
+import me.him188.ani.app.data.repository.SubjectCollectionInfo
 import me.him188.ani.app.domain.session.AuthState
 import me.him188.ani.app.navigation.LocalNavigator
-import me.him188.ani.app.tools.rememberUiMonoTasker
 import me.him188.ani.app.ui.adaptive.AniTopAppBar
 import me.him188.ani.app.ui.adaptive.AniTopAppBarDefaults
 import me.him188.ani.app.ui.foundation.LocalPlatform
@@ -84,7 +83,10 @@ import me.him188.ani.app.ui.foundation.session.SessionTipsArea
 import me.him188.ani.app.ui.foundation.session.SessionTipsIcon
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.widgets.PullToRefreshBox
+import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeState
+import me.him188.ani.app.ui.subject.collection.progress.EpisodeListStateFactory
 import me.him188.ani.app.ui.subject.collection.progress.SubjectProgressButton
+import me.him188.ani.app.ui.subject.collection.progress.SubjectProgressStateFactory
 import me.him188.ani.app.ui.subject.collection.progress.rememberEpisodeListState
 import me.him188.ani.app.ui.subject.collection.progress.rememberSubjectProgressState
 import me.him188.ani.app.ui.subject.episode.list.EpisodeListDialog
@@ -104,45 +106,62 @@ val COLLECTION_TABS_SORTED = listOf(
     UnifiedCollectionType.DONE,
 )
 
+@Stable
+class UserCollectionsState(
+    private val startSearch: (filterQuery: CollectionsFilterQuery) -> Flow<PagingData<SubjectCollectionInfo>>,
+    val authState: AuthState,
+    selfInfoState: State<UserInfo?>,
+    val episodeListStateFactory: EpisodeListStateFactory,
+    val subjectProgressStateFactory: SubjectProgressStateFactory,
+    val createEditableSubjectCollectionTypeState: (subjectCollection: SubjectCollectionInfo) -> EditableSubjectCollectionTypeState,
+) {
+    private var filterQuery by mutableStateOf(1 to CollectionsFilterQuery.Empty)
+
+    val currentPager by derivedStateOf {
+        startSearch(filterQuery.second)
+    }
+
+    val selfInfo: UserInfo? by selfInfoState
+
+    fun updateQuery(query: CollectionsFilterQuery.() -> CollectionsFilterQuery) {
+        val current = filterQuery
+        filterQuery = current.copy(current.first, current.second.let(query))
+    }
+
+    fun refresh() {
+        val current = filterQuery
+        filterQuery = current.copy(current.first + 1)
+    }
+}
+
 @Composable
 fun CollectionPage(
+    state: UserCollectionsState,
     windowInsets: WindowInsets,
     onClickSearch: () -> Unit,
     onClickSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val vm = viewModel { MyCollectionsViewModel() } // TODO: remove vm
-    vm.navigator = LocalNavigator.current
-
     val pagerState =
         rememberPagerState(initialPage = COLLECTION_TABS_SORTED.size / 2) { COLLECTION_TABS_SORTED.size }
 
     // 如果有缓存, 列表区域要展示缓存, 错误就用图标放在角落
-    val showSessionErrorInList by remember(vm) {
-        derivedStateOf {
-            val collection = vm.collectionsByType(COLLECTION_TABS_SORTED[pagerState.currentPage])
-            collection.subjectCollectionColumnState.isKnownAuthorizedAndEmpty
-        }
-    }
+    val items = state.currentPager.collectAsLazyPagingItemsWithLifecycle()
     CollectionPageLayout(
         windowInsets,
-        pagerState,
         onClickSettings = onClickSettings,
         sessionError = {
-            if (!showSessionErrorInList) {
-                SessionTipsIcon(vm.authState)
-            }
+            SessionTipsIcon(state.authState)
         },
         avatar = {
-            SelfAvatar(vm.authState, vm.selfInfo)
+            SelfAvatar(state.authState, state.selfInfo)
         },
         filters = {
             CollectionTypeScrollableTabRow(
                 pagerState,
                 Modifier.padding(horizontal = currentWindowAdaptiveInfo().windowSizeClass.paneHorizontalPadding),
             ) { type ->
-                val cache = vm.collectionsByType(type).cache
-                val size by cache.totalSize.collectAsStateWithLifecycle(null)
+                val size = items.itemCount
                 if (size == null) {
                     Text(
                         text = type.displayText(),
@@ -160,79 +179,58 @@ fun CollectionPage(
                 }
             }
         },
-        onRefresh = { type ->
-            val collection = vm.collectionsByType(type)
-            collection.subjectCollectionColumnState.manualRefresh()
+        isRefreshing = { items.loadState.refresh is LoadState.Loading },
+        onRefresh = {
+            items.refresh()
         },
         modifier,
-    ) { type ->
-        val collection = vm.collectionsByType(type)
-
-        val gridState = rememberLazyGridState()
-
-        val autoUpdateScope = rememberUiMonoTasker()
-        LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
-            autoUpdateScope.launch {
-                if (collection.shouldDoAutoRefresh()) {
-                    collection.subjectCollectionColumnState.manualRefresh()
-                    gridState.animateScrollToItem(0) // 手动刷新完成回到顶部
-                }
-            }
-        }
-
+    ) {
         when {
             // 假设没登录, 但是有缓存, 需要展示缓存
-            vm.authState.isKnownGuest && showSessionErrorInList -> {
+            state.authState.isKnownGuest && items.itemCount == 0 -> {
                 SessionTipsArea(
-                    vm.authState,
-                    guest = { GuestTips(vm.authState, onClickSearch) },
+                    state.authState,
+                    guest = { GuestTips(state.authState, onClickSearch) },
                     Modifier.padding(top = 32.dp)
                         .padding(horizontal = 16.dp),
                 )
             }
 
-            collection.subjectCollectionColumnState.isKnownAuthorizedAndEmpty -> {
-                Column(
-                    Modifier.padding(top = 32.dp).padding(horizontal = 16.dp)
-                        .fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                ) {
-                    SideEffect {
-                        collection.subjectCollectionColumnState.requestMore()
-                    }
-
-                    Text("~ 空空如也 ~", style = MaterialTheme.typography.titleMedium)
-
-                    Button(onClickSearch, Modifier.fillMaxWidth()) {
-                        Icon(Icons.Rounded.Search, null)
-                        Text("搜索", Modifier.padding(start = 8.dp))
-                    }
-                }
-            }
+            // TODO: empty hint 
+//            state.authState.isKnownLoggedIn && items.itemCount == 0 && items.loadState.isIdle -> {
+//                Column(
+//                    Modifier.padding(top = 32.dp).padding(horizontal = 16.dp)
+//                        .fillMaxSize(),
+//                    horizontalAlignment = Alignment.CenterHorizontally,
+//                    verticalArrangement = Arrangement.spacedBy(16.dp),
+//                ) {
+//                    Text("~ 空空如也 ~", style = MaterialTheme.typography.titleMedium)
+//
+//                    Button(onClickSearch, Modifier.fillMaxWidth()) {
+//                        Icon(Icons.Rounded.Search, null)
+//                        Text("搜索", Modifier.padding(start = 8.dp))
+//                    }
+//                }
+//            }
 
             else -> {
                 PullToRefreshBox(
-                    collection.subjectCollectionColumnState.isRefreshing,
-                    onRefresh = {
-                        collection.subjectCollectionColumnState.startAutoRefresh()
-                    },
-                    state = collection.pullToRefreshState,
+                    items.loadState.refresh is LoadState.Loading,
+                    onRefresh = { items.refresh() },
+                    state = rememberPullToRefreshState(),
                     enabled = LocalPlatform.current.isMobile(),
-                    indicator = {
-                        Indicator(
-                            modifier = Modifier.align(Alignment.TopCenter),
-                            isRefreshing = collection.subjectCollectionColumnState.isRefreshing,
-                            state = collection.pullToRefreshState,
-                        )
-                    },
                 ) {
-                    TabContent(
-                        collection.subjectCollectionColumnState,
-                        vm = vm,
-                        type = type,
-                        enableAnimation = vm.myCollectionsSettings.enableListAnimation,
-                        allowProgressIndicator = vm.authState.isKnownLoggedIn,
+                    SubjectCollectionsColumn(
+                        items,
+                        item = { collection ->
+                            SubjectCollectionItem(
+                                collection,
+                                state.episodeListStateFactory,
+                                state.subjectProgressStateFactory,
+                                state.createEditableSubjectCollectionTypeState(collection),
+                            )
+                        },
+                        enableAnimation = true,
                     )
                 }
             }
@@ -247,14 +245,14 @@ fun CollectionPage(
 @Composable
 private fun CollectionPageLayout(
     windowInsets: WindowInsets,
-    pagerState: PagerState,
     onClickSettings: () -> Unit,
     sessionError: @Composable () -> Unit,
     avatar: @Composable () -> Unit,
     filters: @Composable CollectionPageFilters.() -> Unit,
-    onRefresh: suspend (UnifiedCollectionType) -> Unit,
+    isRefreshing: () -> Boolean,
+    onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
-    content: @Composable (type: UnifiedCollectionType) -> Unit,
+    content: @Composable () -> Unit,
 ) {
     Scaffold(
         modifier,
@@ -271,16 +269,11 @@ private fun CollectionPageLayout(
 
                         if (LocalPlatform.current.isDesktop()) {
                             // PC 无法下拉刷新
-                            val refreshTasker = rememberUiMonoTasker()
                             IconButton(
                                 {
-                                    val type = COLLECTION_TABS_SORTED[pagerState.currentPage]
-                                    if (!refreshTasker.isRunning) {
-                                        refreshTasker.launch {
-                                            onRefresh(type)
-                                        }
-                                    }
+                                    onRefresh()
                                 },
+                                enabled = !isRefreshing(),
                             ) {
                                 Icon(Icons.Rounded.Refresh, null)
                             }
@@ -301,16 +294,8 @@ private fun CollectionPageLayout(
         contentWindowInsets = windowInsets.only(WindowInsetsSides.Top),
         containerColor = AniThemeDefaults.pageContentBackgroundColor,
     ) { topBarPaddings ->
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier.fillMaxSize().padding(topBarPaddings),
-            userScrollEnabled = LocalPlatform.current.isMobile(),
-            verticalAlignment = Alignment.Top,
-        ) { index ->
-            val type = COLLECTION_TABS_SORTED[index]
-            Box(modifier = Modifier.fillMaxSize()) {
-                content(type)
-            }
+        Box(modifier = Modifier.padding(topBarPaddings).fillMaxSize()) {
+            content()
         }
     }
 }
@@ -380,83 +365,69 @@ object CollectionPageFilters {
 
 }
 
-/**
- * @param contentPadding overall content padding
- */
 @Composable
-private fun TabContent(
-    state: SubjectCollectionColumnState,
-    vm: MyCollectionsViewModel,
-    type: UnifiedCollectionType,
+private fun SubjectCollectionItem(
+    subjectCollection: SubjectCollectionInfo,
+    episodeListStateFactory: EpisodeListStateFactory,
+    subjectProgressStateFactory: SubjectProgressStateFactory,
+    editableSubjectCollectionTypeState: EditableSubjectCollectionTypeState,
+    type: UnifiedCollectionType = subjectCollection.collectionType,
     modifier: Modifier = Modifier,
-    enableAnimation: Boolean = true,
-    allowProgressIndicator: Boolean = true,
 ) {
-    SubjectCollectionsColumn(
-        state = state,
-        item = { subjectCollection ->
-            var showEpisodeProgressDialog by rememberSaveable { mutableStateOf(false) }
+    var showEpisodeProgressDialog by rememberSaveable { mutableStateOf(false) }
 
-            // 即使对话框不显示也加载, 避免打开对话框要等待一秒才能看到进度
-            val episodeProgressState = vm.episodeListStateFactory
-                .rememberEpisodeListState(subjectCollection.subjectId)
+    // 即使对话框不显示也加载, 避免打开对话框要等待一秒才能看到进度
+    val episodeProgressState = episodeListStateFactory
+        .rememberEpisodeListState(subjectCollection.subjectId)
 
-            val navigator = LocalNavigator.current
-            if (showEpisodeProgressDialog) {
-                EpisodeListDialog(
-                    episodeProgressState,
-                    title = {
-                        Text(subjectCollection.displayName)
-                    },
-                    onDismissRequest = { showEpisodeProgressDialog = false },
-                    actions = {
-                        OutlinedButton({ navigator.navigateSubjectDetails(subjectCollection.subjectId) }) {
-                            Text("条目详情")
-                        }
-                    },
-                )
-            }
+    val navigator = LocalNavigator.current
+    if (showEpisodeProgressDialog) {
+        EpisodeListDialog(
+            episodeProgressState,
+            title = {
+                Text(subjectCollection.subjectInfo.displayName)
+            },
+            onDismissRequest = { showEpisodeProgressDialog = false },
+            actions = {
+                OutlinedButton({ navigator.navigateSubjectDetails(subjectCollection.subjectId) }) {
+                    Text("条目详情")
+                }
+            },
+        )
+    }
 
-            val subjectProgressState = vm.subjectProgressStateFactory
-                .rememberSubjectProgressState(subjectCollection)
+    val subjectProgressState = subjectProgressStateFactory
+        .rememberSubjectProgressState(subjectCollection)
 
-            val editableSubjectCollectionTypeState = remember(vm) {
-                vm.createEditableSubjectCollectionTypeState(subjectCollection)
-            }
-
-            SubjectCollectionItem(
-                subjectCollection,
-                editableSubjectCollectionTypeState = editableSubjectCollectionTypeState,
-                onClick = {
-                    navigator.navigateSubjectDetails(subjectCollection.subjectId)
-                },
-                onShowEpisodeList = {
-                    showEpisodeProgressDialog = true
-                },
-                playButton = {
-                    if (type != UnifiedCollectionType.DONE) {
-                        if (subjectProgressState.isDone) {
-                            FilledTonalButton(
-                                {
-                                    editableSubjectCollectionTypeState.setSelfCollectionType(UnifiedCollectionType.DONE)
-                                },
-                                enabled = !editableSubjectCollectionTypeState.isSetSelfCollectionTypeWorking,
-                            ) {
-                                Text("移至\"看过\"", Modifier.requiredWidth(IntrinsicSize.Max), softWrap = false)
-                            }
-                        } else {
-                            SubjectProgressButton(
-                                subjectProgressState,
-                            )
-                        }
-                    }
-                },
-                colors = AniThemeDefaults.primaryCardColors(),
-            )
+    SubjectCollectionItem(
+        subjectCollection,
+        editableSubjectCollectionTypeState = editableSubjectCollectionTypeState,
+        onClick = {
+            navigator.navigateSubjectDetails(subjectCollection.subjectId)
         },
-        modifier,
-        enableAnimation = enableAnimation,
-        allowProgressIndicator = allowProgressIndicator,
+        onShowEpisodeList = {
+            showEpisodeProgressDialog = true
+        },
+        playButton = {
+            if (type != UnifiedCollectionType.DONE) {
+                if (subjectProgressState.isDone) {
+                    FilledTonalButton(
+                        {
+                            editableSubjectCollectionTypeState.setSelfCollectionType(UnifiedCollectionType.DONE)
+                        },
+                        enabled = !editableSubjectCollectionTypeState.isSetSelfCollectionTypeWorking,
+                    ) {
+                        Text("移至\"看过\"", Modifier.requiredWidth(IntrinsicSize.Max), softWrap = false)
+                    }
+                } else {
+                    SubjectProgressButton(
+                        subjectProgressState,
+                    )
+                }
+            }
+        },
+        colors = AniThemeDefaults.primaryCardColors(),
+        modifier = modifier,
     )
 }
 

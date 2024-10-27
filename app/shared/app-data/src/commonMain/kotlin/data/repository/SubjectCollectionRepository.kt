@@ -30,10 +30,13 @@ import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import me.him188.ani.app.data.models.episode.isKnownCompleted
 import me.him188.ani.app.data.models.subject.RatingCounts
 import me.him188.ani.app.data.models.subject.RatingInfo
 import me.him188.ani.app.data.models.subject.SelfRatingInfo
+import me.him188.ani.app.data.models.subject.SubjectAiringInfo
 import me.him188.ani.app.data.models.subject.SubjectCollectionStats
+import me.him188.ani.app.data.models.subject.SubjectProgressInfo
 import me.him188.ani.app.data.models.subject.Tag
 import me.him188.ani.app.data.network.BangumiSubjectService
 import me.him188.ani.app.data.persistent.database.SubjectCollectionDao
@@ -59,60 +62,80 @@ typealias BangumiSubjectApi = DefaultApi
  */
 @Immutable
 data class SubjectCollectionInfo(
-    val subjectId: Int,
-    val type: UnifiedCollectionType,
+    val collectionType: UnifiedCollectionType,
     val subjectInfo: SubjectInfo,
     val selfRatingInfo: SelfRatingInfo,
-)
-
+    val episodes: List<EpisodeCollectionInfo>,
+    val airingInfo: SubjectAiringInfo,
+    val progressInfo: SubjectProgressInfo,
+) {
+    val subjectId: Int get() = subjectInfo.subjectId
+}
 
 class SubjectCollectionRepository(
     private val client: BangumiClient,
     private val api: Flow<BangumiSubjectApi>,
     private val bangumiSubjectService: BangumiSubjectService,
-    private val dao: SubjectCollectionDao,
+    private val subjectCollectionDao: SubjectCollectionDao,
+    private val episodeCollectionRepository: EpisodeCollectionRepository,
     private val usernameProvider: RepositoryUsernameProvider,
+    private val getCurrentDate: () -> PackedDate = { PackedDate.now() },
 ) : Repository {
     fun subjectCollectionFlow(subjectId: Int): Flow<SubjectCollectionInfo> =
-        dao.findById(subjectId).map { entity ->
+        subjectCollectionDao.findById(subjectId).map { entity ->
             if (entity != null) {
-                return@map entity.toSubjectCollectionInfo()
+                return@map entity.toSubjectCollectionInfo(
+                    episodes = getSubjectEpisodeCollections(subjectId),
+                    currentDate = getCurrentDate(),
+                )
             } else {
                 val collection = bangumiSubjectService.subjectCollectionById(subjectId).first()
                 batchGetSubjectDetails(listOf(subjectId)).first()
                     .toEntity(
                         collection?.type.toCollectionType(),
-                        selfRatingInfo = collection?.toSelfRatingInfo() ?: SelfRatingInfo.Empty
+                        selfRatingInfo = collection?.toSelfRatingInfo() ?: SelfRatingInfo.Empty,
                     )
                     .also {
-                        dao.upsert(it)
+                        subjectCollectionDao.upsert(it)
                     }
-                    .toSubjectCollectionInfo()
+                    .toSubjectCollectionInfo(
+                        episodes = getSubjectEpisodeCollections(subjectId),
+                        currentDate = getCurrentDate(),
+                    )
             }
         }
+
+    private suspend fun getSubjectEpisodeCollections(subjectId: Int) =
+        episodeCollectionRepository.subjectEpisodeCollectionInfosFlow(subjectId).first()
 
     fun mostRecentlyUpdatedSubjectCollectionsFlow(
         limit: Int,
         type: UnifiedCollectionType? = null, // null for all
-    ): Flow<List<SubjectCollectionInfo>> = dao.filterMostRecent(type, limit).map { list ->
-        list.map {
-            it.toSubjectCollectionInfo()
+    ): Flow<List<SubjectCollectionInfo>> = subjectCollectionDao.filterMostRecent(type, limit).map { list ->
+        list.map { entity ->
+            entity.toSubjectCollectionInfo(
+                episodes = getSubjectEpisodeCollections(entity.subjectId),
+                currentDate = getCurrentDate(),
+            )
         }
     }
 
     fun subjectCollectionsPager(
-        type: UnifiedCollectionType? = null, // null for all
+        query: CollectionsFilterQuery = CollectionsFilterQuery.Empty,
         pagingConfig: PagingConfig = defaultPagingConfig,
     ): Flow<PagingData<SubjectCollectionInfo>> = Pager(
         config = pagingConfig,
         initialKey = 0,
-        remoteMediator = SubjectCollectionRemoteMediator(type),
+        remoteMediator = SubjectCollectionRemoteMediator(query),
         pagingSourceFactory = {
-            dao.filterByCollectionTypePaging(type)
+            subjectCollectionDao.filterByCollectionTypePaging(query.type)
         },
     ).flow.map { data ->
-        data.map {
-            it.toSubjectCollectionInfo()
+        data.map { entity ->
+            entity.toSubjectCollectionInfo(
+                episodes = getSubjectEpisodeCollections(entity.subjectId),
+                currentDate = getCurrentDate(),
+            )
         }
     }
 
@@ -133,7 +156,7 @@ class SubjectCollectionRepository(
             ),
         )
 
-        dao.updateRating(
+        subjectCollectionDao.updateRating(
             subjectId,
             score,
             comment,
@@ -143,10 +166,10 @@ class SubjectCollectionRepository(
     }
 
     private inner class SubjectCollectionRemoteMediator<T : Any>(
-        private val type: UnifiedCollectionType?,
+        private val query: CollectionsFilterQuery,
     ) : RemoteMediator<Int, T>() {
         override suspend fun initialize(): InitializeAction {
-            if ((dao.lastUpdated() - currentTimeMillis()).milliseconds > 1.hours) {
+            if ((currentTimeMillis() - subjectCollectionDao.lastUpdated()).milliseconds > 1.hours) {
                 return InitializeAction.LAUNCH_INITIAL_REFRESH
             }
             return InitializeAction.SKIP_INITIAL_REFRESH
@@ -159,13 +182,13 @@ class SubjectCollectionRepository(
             val offset = when (loadType) {
                 LoadType.REFRESH -> 0
                 LoadType.PREPEND -> return MediatorResult.Success(endOfPaginationReached = true)
-                LoadType.APPEND -> state.pages.size * state.config.pageSize
+                LoadType.APPEND -> state.anchorPosition// state.pages.size * state.config.pageSize
             }
             return try {
                 val username = usernameProvider.getOrThrow()
                 val resp = api.first().getUserCollectionsByUsername(
                     username,
-                    type = type?.toSubjectCollectionType(),
+                    type = query.type?.toSubjectCollectionType(),
                     limit = 30,
                     offset = offset,
                 ).body()
@@ -176,10 +199,10 @@ class SubjectCollectionRepository(
                             collections.first { it.subjectId == batch.subjectInfo.subjectId }
                         batch.toEntity(
                             collection.type.toCollectionType(),
-                            collection.toSelfRatingInfo()
+                            collection.toSelfRatingInfo(),
                         )
                     }
-                    .also { dao.upsert(it) }
+                    .also { subjectCollectionDao.upsert(it) }
 
                 return MediatorResult.Success(endOfPaginationReached = items.isEmpty())
             } catch (e: RepositoryException) {
@@ -202,7 +225,7 @@ class SubjectCollectionRepository(
         } else {
             patchSubjectCollection(
                 subjectId,
-                BangumiUserSubjectCollectionModifyPayload(type.toSubjectCollectionType())
+                BangumiUserSubjectCollectionModifyPayload(type.toSubjectCollectionType()),
             )
         }
     }
@@ -212,7 +235,7 @@ class SubjectCollectionRepository(
         payload: BangumiUserSubjectCollectionModifyPayload,
     ) {
         api.first().postUserCollection(subjectId, payload)
-        dao.updateType(subjectId, payload.type.toCollectionType())
+        subjectCollectionDao.updateType(subjectId, payload.type.toCollectionType())
     }
 
     private suspend fun deleteSubjectCollection(subjectId: Int) {
@@ -277,9 +300,10 @@ class SubjectCollectionRepository(
               ${
                 ids.joinToString(separator = "\n") { id ->
                     """
-                        "s$id:subject(id: $id){...SubjectFragment}"
+                        s$id:subject(id: $id){...SubjectFragment}
                 """
                 }
+            }
             }
         """.trimIndent(),
         )
@@ -289,6 +313,14 @@ class SubjectCollectionRepository(
                 it.jsonObject.toBatchSubjectDetails()
             }
         return list
+    }
+}
+
+data class CollectionsFilterQuery(
+    val type: UnifiedCollectionType?,
+) {
+    companion object {
+        val Empty = CollectionsFilterQuery(null)
     }
 }
 
@@ -433,8 +465,8 @@ private fun JsonObject.toBatchSubjectDetails(): BatchSubjectDetails {
 }
 
 
-private fun JsonObject.getOrFail(key: String): JsonObject {
-    return get(key)?.jsonObject ?: throw NoSuchElementException("key $key not found")
+private fun JsonObject.getOrFail(key: String): JsonElement {
+    return get(key) ?: throw NoSuchElementException("key $key not found")
 }
 
 private fun JsonObject.getIntOrFail(key: String): Int {
@@ -449,7 +481,30 @@ private fun JsonObject.getBooleanOrFail(key: String): Boolean {
     return get(key)?.jsonPrimitive?.boolean ?: throw NoSuchElementException("key $key not found")
 }
 
-private fun SubjectCollectionEntity.toSubjectCollectionInfo(): SubjectCollectionInfo {
-    return SubjectCollectionInfo(subjectId, collectionType, toSubjectInfo(), selfRatingInfo)
+private fun SubjectCollectionEntity.toSubjectCollectionInfo(
+    episodes: List<EpisodeCollectionInfo>,
+    currentDate: PackedDate,
+): SubjectCollectionInfo {
+    val subjectInfo = toSubjectInfo()
+    return SubjectCollectionInfo(
+        collectionType = collectionType,
+        subjectInfo = subjectInfo,
+        selfRatingInfo = selfRatingInfo,
+        airingInfo = SubjectAiringInfo.computeFromEpisodeList(episodes.map { it.episodeInfo }, airDate),
+        episodes = episodes,
+        progressInfo = SubjectProgressInfo.compute(
+            subjectStarted = currentDate > subjectInfo.airDate,
+            episodes = episodes.map {
+                SubjectProgressInfo.Episode(
+                    it.episodeId,
+                    it.collectionType,
+                    it.episodeInfo.sort,
+                    it.episodeInfo.airDate,
+                    it.episodeInfo.isKnownCompleted,
+                )
+            },
+            subjectAirDate = subjectInfo.airDate,
+        ),
+    )
 }
 
