@@ -11,8 +11,6 @@ package me.him188.ani.app.domain.torrent
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flow
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
 import me.him188.ani.app.data.models.preference.ProxySettings
 import me.him188.ani.app.data.models.preference.TorrentPeerConfig
@@ -71,22 +69,10 @@ class RemoteTorrentManager(
                 connection,
                 parentCoroutineContext,
                 { type -> saveDirLazy.resolve(type.id) },
-                flow {
-                    val proxySettings = settingsRepository.proxySettings
-                    emit(proxySettings.flow.first())
-                    proxySettings.flow.collect { emit(it) }
-                },
-                flow {
-                    val proxySettings = settingsRepository.anitorrentConfig
-                    emit(proxySettings.flow.first())
-                    proxySettings.flow.collect { emit(it) }
-                },
+                settingsRepository.proxySettings.flow,
+                settingsRepository.anitorrentConfig.flow,
                 meteredNetworkDetector.isMeteredNetworkFlow.distinctUntilChanged(),
-                flow {
-                    val proxySettings = settingsRepository.torrentPeerConfig
-                    emit(proxySettings.flow.first())
-                    proxySettings.flow.collect { emit(it) }
-                },
+                settingsRepository.torrentPeerConfig.flow,
             )
         }
     }
