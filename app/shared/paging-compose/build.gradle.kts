@@ -19,6 +19,7 @@ plugins {
 kotlin {
     sourceSets.commonMain.dependencies {
         implementation(libs.paging.common)
+        implementation(libs.compose.lifecycle.runtime.compose)
     }
     sourceSets.commonTest.dependencies {
         implementation(projects.utils.uiTesting)

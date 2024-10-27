@@ -39,7 +39,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.MainScenePage
@@ -176,14 +175,15 @@ private fun MainSceneContent(
                             vm.searchPageState,
                             windowInsets,
                             detailContent = {
-                                val subjectDetailsViewModelState by
-                                vm.subjectDetailsViewModelFlow.collectAsStateWithLifecycle(null)
-                                subjectDetailsViewModelState?.let {
+                                vm.subjectDetailsViewModel?.let {
                                     it.navigator = LocalNavigator.current
                                     SubjectDetailsScene(it)
                                 }
                             },
                             Modifier.fillMaxSize(),
+                            onSelect = { _, item ->
+                                vm.viewSubjectDetails(item.subjectId)
+                            },
                         )
                     }
                 }

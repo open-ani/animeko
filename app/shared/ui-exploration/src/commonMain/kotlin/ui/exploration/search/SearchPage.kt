@@ -45,6 +45,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.paging.compose.LazyPagingItems
 import androidx.window.core.layout.WindowWidthSizeClass
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.flow.collectLatest
@@ -61,7 +62,7 @@ import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.widgets.TopAppBarGoBackButton
 import me.him188.ani.app.ui.search.SearchDefaults
-import me.him188.ani.app.ui.search.SearchState
+import me.him188.ani.app.ui.search.collectItemsWithLifecycle
 
 @Composable
 fun SearchPage(
@@ -69,6 +70,7 @@ fun SearchPage(
     windowInsets: WindowInsets,
     detailContent: @Composable (subjectId: Int) -> Unit,
     modifier: Modifier = Modifier,
+    onSelect: (index: Int, item: SubjectPreviewItemInfo) -> Unit = { _, _ -> },
     focusSearchBarByDefault: Boolean = true,
     navigator: ThreePaneScaffoldNavigator<*> = rememberListDetailPaneScaffoldNavigator(),
 ) {
@@ -77,6 +79,7 @@ fun SearchPage(
     }
 
     val focusRequester = remember { FocusRequester() }
+    val items = state.searchState.collectItemsWithLifecycle()
     SearchPageLayout(
         navigator,
         windowInsets,
@@ -97,10 +100,13 @@ fun SearchPage(
             val aniNavigator = LocalNavigator.current
             val scope = rememberCoroutineScope()
             SearchPageResultColumn(
-                state.searchState,
+                items = items,
                 selectedItemIndex = { state.selectedItemIndex },
                 onSelect = { index ->
                     state.selectedItemIndex = index
+                    items[index]?.let {
+                        onSelect(index, it)
+                    }
                     navigator.navigateTo(ListDetailPaneScaffoldRole.Detail)
                 },
                 onPlay = { info ->
@@ -110,7 +116,7 @@ fun SearchPage(
                             aniNavigator.navigateEpisodeDetails(it.subjectId, playInfo.episodeId)
                         }
                     }
-                },
+                }, // collect only once
             )
         },
         detailContent = {
@@ -118,7 +124,7 @@ fun SearchPage(
                 state.selectedItemIndex,
                 transitionSpec = AniThemeDefaults.emphasizedAnimatedContentTransition,
             ) { index ->
-                state.searchState.items.getOrNull(index)?.let {
+                items[index]?.let {
                     detailContent(it.subjectId)
                 }
             }
@@ -134,7 +140,7 @@ fun SearchPage(
 
 @Composable
 internal fun SearchPageResultColumn(
-    state: SearchState<SubjectPreviewItemInfo>,
+    items: LazyPagingItems<SubjectPreviewItemInfo>,
     selectedItemIndex: () -> Int,
     onSelect: (index: Int) -> Unit,
     onPlay: (info: SubjectPreviewItemInfo) -> Unit,
@@ -146,7 +152,7 @@ internal fun SearchPageResultColumn(
     val bringIntoViewRequesters = remember { mutableStateMapOf<Int, BringIntoViewRequester>() }
 
     SearchDefaults.ResultColumn(
-        state,
+        items,
         modifier
             .focusGroup()
             .onSizeChanged { height = it.height }
@@ -155,36 +161,40 @@ internal fun SearchPageResultColumn(
         lazyListState = lazyListState,
     ) {
         itemsIndexed(
-            state.items,
-            key = { _, it -> it.subjectId },
+            items.itemSnapshotList,
+            key = { _, it -> it?.subjectId ?: 0 },
             contentType = { _, _ -> 1 },
         ) { index, info ->
             val requester = remember { BringIntoViewRequester() }
             // 记录 item 对应的 requester
-            DisposableEffect(requester) {
-                bringIntoViewRequesters[info.subjectId] = requester
-                onDispose {
-                    bringIntoViewRequesters.remove(info.subjectId)
+            if (info != null) {
+                DisposableEffect(requester) {
+                    bringIntoViewRequesters[info.subjectId] = requester
+                    onDispose {
+                        bringIntoViewRequesters.remove(info.subjectId)
+                    }
                 }
-            }
 
-            SubjectPreviewItem(
-                selected = index == selectedItemIndex(),
-                onClick = { onSelect(index) },
-                onPlay = { onPlay(info) },
-                info = info,
-                Modifier
-                    .fillMaxWidth()
-                    .bringIntoViewRequester(requester)
-                    .padding(vertical = currentWindowAdaptiveInfo().windowSizeClass.paneVerticalPadding / 2),
-            )
+                SubjectPreviewItem(
+                    selected = index == selectedItemIndex(),
+                    onClick = { onSelect(index) },
+                    onPlay = { onPlay(info) },
+                    info = info,
+                    Modifier
+                        .fillMaxWidth()
+                        .bringIntoViewRequester(requester)
+                        .padding(vertical = currentWindowAdaptiveInfo().windowSizeClass.paneVerticalPadding / 2),
+                )
+            } else {
+                // placeholder
+            }
         }
     }
 
     LaunchedEffect(Unit) {
         snapshotFlow(selectedItemIndex)
             .collectLatest {
-                bringIntoViewRequesters[state.items.getOrNull(it)?.subjectId]?.bringIntoView()
+                bringIntoViewRequesters[items[it]?.subjectId]?.bringIntoView()
             }
     }
 }

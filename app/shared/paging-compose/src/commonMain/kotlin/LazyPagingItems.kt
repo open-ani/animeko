@@ -16,6 +16,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.paging.CombinedLoadStates
 import androidx.paging.ItemSnapshotList
 import androidx.paging.LoadState
@@ -199,6 +202,38 @@ public fun <T : Any> Flow<PagingData<T>>.collectAsLazyPagingItems(
             lazyPagingItems.collectLoadState()
         } else {
             withContext(context) { lazyPagingItems.collectLoadState() }
+        }
+    }
+
+    return lazyPagingItems
+}
+
+// Ani ADDED:
+@Composable
+public fun <T : Any> Flow<PagingData<T>>.collectAsLazyPagingItemsWithLifecycle(
+    context: CoroutineContext = EmptyCoroutineContext,
+    lifecycle: Lifecycle = LocalLifecycleOwner.current.lifecycle,
+    minActiveState: Lifecycle.State = Lifecycle.State.STARTED,
+): LazyPagingItems<T> {
+    val lazyPagingItems = remember(this) { LazyPagingItems(this) }
+
+    LaunchedEffect(lazyPagingItems) {
+        lifecycle.repeatOnLifecycle(minActiveState) {
+            if (context == EmptyCoroutineContext) {
+                lazyPagingItems.collectPagingData()
+            } else {
+                withContext(context) { lazyPagingItems.collectPagingData() }
+            }
+        }
+    }
+
+    LaunchedEffect(lazyPagingItems) {
+        lifecycle.repeatOnLifecycle(minActiveState) {
+            if (context == EmptyCoroutineContext) {
+                lazyPagingItems.collectLoadState()
+            } else {
+                withContext(context) { lazyPagingItems.collectLoadState() }
+            }
         }
     }
 

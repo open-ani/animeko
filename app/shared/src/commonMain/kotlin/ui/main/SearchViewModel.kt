@@ -10,32 +10,27 @@
 package me.him188.ani.app.ui.main
 
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.snapshotFlow
-import kotlinx.coroutines.Dispatchers
+import androidx.compose.runtime.setValue
+import androidx.paging.map
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
-import me.him188.ani.app.data.models.ApiResponse
 import me.him188.ani.app.data.repository.BangumiRelatedCharactersRepository
 import me.him188.ani.app.data.repository.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.SubjectSearchHistoryRepository
 import me.him188.ani.app.data.repository.SubjectSearchRepository
 import me.him188.ani.app.data.repository.TrendsRepository
 import me.him188.ani.app.domain.search.SubjectSearchQuery
-import me.him188.ani.app.domain.search.SubjectSearcherImpl
 import me.him188.ani.app.domain.session.OpaqueSession
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.session.userInfo
-import me.him188.ani.app.tools.ldc.LazyDataCache
 import me.him188.ani.app.ui.exploration.search.SearchPageState
 import me.him188.ani.app.ui.exploration.search.SubjectPreviewItemInfo
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.foundation.AuthState
-import me.him188.ani.app.ui.search.LdcSearchState
+import me.him188.ani.app.ui.search.PagingSearchState
 import me.him188.ani.app.ui.subject.details.SubjectDetailsViewModel
-import me.him188.ani.datasources.api.paging.map
-import me.him188.ani.utils.coroutines.onReplacement
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
@@ -54,7 +49,6 @@ class SearchViewModel : AbstractViewModel(), KoinComponent {
     private val episodeCollectionRepository: EpisodeCollectionRepository by inject()
     private val subjectSearchRepository: SubjectSearchRepository by inject()
 
-    private val searcher = SubjectSearcherImpl(subjectSearchRepository, backgroundScope.coroutineContext)
     private val queryState = mutableStateOf("")
 
     val searchPageState: SearchPageState = SearchPageState(
@@ -67,37 +61,35 @@ class SearchViewModel : AbstractViewModel(), KoinComponent {
             }
         },
         queryState = queryState,
-        searchState = LdcSearchState(
-            createLdc = {
-                LazyDataCache(
-                    createSource = {
-                        ApiResponse.success(
-                            subjectSearchRepository.startSearch(SubjectSearchQuery(keyword = queryState.value))
-                                .map { SubjectPreviewItemInfo.compute(it, null, null) },
+        searchState = PagingSearchState(
+            createPager = {
+                subjectSearchRepository.searchSubjects(SubjectSearchQuery(keyword = queryState.value)).map { data ->
+                    data.map {
+                        SubjectPreviewItemInfo.compute(
+                            it,
+                            null, null, // TODO: search results
                         )
-                    },
-                    getKey = { it.subjectId },
-                    debugName = "ExplorationTabViewModel.searchPageState.ldc",
-                )
+                    }
+                }
             },
-            backgroundScope.coroutineContext,
         ),
         backgroundScope,
     )
 
-    val subjectDetailsViewModelFlow = snapshotFlow { searchPageState.selectedItem }
-        .flowOn(Dispatchers.Main)
-        .map {
-            SubjectDetailsViewModel(it?.subjectId ?: return@map null)
-        }
-        .onReplacement {
-            it?.cancelScope()
-        }
-        .flowOn(Dispatchers.Default)
-        .shareInBackground()
+    fun viewSubjectDetails(
+        subjectId: Int
+    ) {
+        subjectDetailsViewModel?.cancelScope()
+        subjectDetailsViewModel = null
+        subjectDetailsViewModel = SubjectDetailsViewModel(subjectId)
+    }
+
+    var subjectDetailsViewModel: SubjectDetailsViewModel? by mutableStateOf(null)
+        private set
 
     override fun onCleared() {
         super.onCleared()
-        subjectDetailsViewModelFlow.replayCache.firstOrNull()?.cancelScope()
+        subjectDetailsViewModel?.cancelScope()
+        subjectDetailsViewModel = null
     }
 }

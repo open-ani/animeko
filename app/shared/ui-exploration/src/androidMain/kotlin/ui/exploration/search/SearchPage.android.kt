@@ -23,6 +23,7 @@ import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPrev
 import me.him188.ani.app.ui.foundation.layout.CarouselItemDefaults.Text
 import me.him188.ani.app.ui.foundation.layout.Zero
 import me.him188.ani.app.ui.foundation.preview.PreviewSizeClasses
+import me.him188.ani.app.ui.search.collectItemsWithLifecycle
 import me.him188.ani.utils.platform.annotations.TestOnly
 
 @OptIn(TestOnly::class)
@@ -49,10 +50,12 @@ fun PreviewSearchPage() = ProvideFoundationCompositionLocalsForPreview {
 fun PreviewSearchPageResultColumn() = ProvideFoundationCompositionLocalsForPreview {
     val scope = rememberCoroutineScope()
     Surface(color = MaterialTheme.colorScheme.surfaceContainerLowest) {
+        val state = createTestFinishedSubjectSearchState()
         SearchPageResultColumn(
-            state = createTestFinishedSubjectSearchState(),
+            items = state.collectItemsWithLifecycle(),
             selectedItemIndex = { 1 },
-            {}, {},
+            onSelect = {},
+            onPlay = {},
         )
     }
 }
