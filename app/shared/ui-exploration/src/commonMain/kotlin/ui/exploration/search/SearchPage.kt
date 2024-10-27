@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
@@ -46,6 +45,8 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
+import androidx.paging.compose.itemContentType
+import androidx.paging.compose.itemKey
 import androidx.window.core.layout.WindowWidthSizeClass
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.flow.collectLatest
@@ -160,11 +161,12 @@ internal fun SearchPageResultColumn(
             .keyboardPageToScroll({ height.toFloat() }, lazyListState),
         lazyListState = lazyListState,
     ) {
-        itemsIndexed(
-            items.itemSnapshotList,
-            key = { _, it -> it?.subjectId ?: 0 },
-            contentType = { _, _ -> 1 },
-        ) { index, info ->
+        items(
+            items.itemCount,
+            key = items.itemKey { it.subjectId },
+            contentType = items.itemContentType { 1 },
+        ) { index ->
+            val info = items[index]
             val requester = remember { BringIntoViewRequester() }
             // 记录 item 对应的 requester
             if (info != null) {

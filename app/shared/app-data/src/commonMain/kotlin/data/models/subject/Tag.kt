@@ -15,7 +15,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 @Immutable
-class Tag(
+data class Tag(
     val name: String,
     val count: Int,
 )

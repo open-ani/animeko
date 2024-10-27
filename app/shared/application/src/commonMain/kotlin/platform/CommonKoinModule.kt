@@ -173,6 +173,7 @@ fun KoinApplication.getCommonKoinModule(getContext: () -> Context, coroutineScop
     single<BangumiRelatedCharactersRepository> { BangumiRelatedCharactersRepository(get()) }
     single<EpisodeCollectionRepository> {
         EpisodeCollectionRepository(
+            subjectDao = database.subjectCollection(),
             episodeCollectionDao = database.episodeCollection(),
             bangumiEpisodeService = get(),
             enableAllEpisodeTypes = settingsRepository.debugSettings.flow.map { it.showAllEpisodes },

@@ -45,6 +45,10 @@ data class SubjectInfo(
     // 以下为来自 infoxbox 的信息
     val completeDate: PackedDate,
 ) {
+    override fun toString(): String {
+        return "SubjectInfo(subjectId=$subjectId, nameCn='$nameCn')"
+    }
+    
     /**
      * 主要显示名称
      */

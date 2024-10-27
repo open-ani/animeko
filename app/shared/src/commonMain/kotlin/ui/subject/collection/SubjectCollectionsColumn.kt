@@ -26,7 +26,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -55,6 +54,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
+import androidx.paging.compose.itemContentType
+import androidx.paging.compose.itemKey
 import androidx.window.core.layout.WindowWidthSizeClass
 import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.subject.SubjectAiringInfo
@@ -109,8 +110,8 @@ fun SubjectCollectionsColumn(
     ) {
         item(span = { GridItemSpan(maxLineSpan) }) { Spacer(Modifier.height(1.dp)) } // 添加新 item 时保持到顶部
 
-        items(items.itemSnapshotList, key = { it?.subjectId ?: 0 }) { collection ->
-            collection?.let {
+        items(items.itemCount, items.itemKey(), contentType = items.itemContentType()) { index ->
+            items[index]?.let {
                 Box(Modifier.ifThen(enableAnimation) { animateItem() }) {
                     item(it)
                 }
@@ -118,7 +119,7 @@ fun SubjectCollectionsColumn(
         }
 
         if (items.loadState.hasError) {
-            item("error", span = { GridItemSpan(maxLineSpan) }) {
+            item(span = { GridItemSpan(maxLineSpan) }) {
                 val typography = MaterialTheme.typography
                 val colorScheme = MaterialTheme.colorScheme
                 Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -161,8 +162,9 @@ fun SubjectCollectionsColumn(
             }
         }
 
+
         if (items.isLoadingNextPage) {
-            item("dummy loader", span = { GridItemSpan(maxLineSpan) }) {
+            item(span = { GridItemSpan(maxLineSpan) }) {
                 if (allowProgressIndicator) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
                         CircularProgressIndicator()
@@ -173,7 +175,10 @@ fun SubjectCollectionsColumn(
             }
         }
 
-        item(span = { GridItemSpan(maxLineSpan) }) { Spacer(Modifier.height(1.dp)) }
+//        item(span = { GridItemSpan(maxLineSpan) }) {
+//            items[items.itemCount] // trigger loading next page
+//            Spacer(Modifier.height(1.dp))
+//        }
     }
 }
 

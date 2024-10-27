@@ -19,7 +19,7 @@ import me.him188.ani.datasources.api.topic.UnifiedCollectionType
  */
 @Serializable
 @Immutable
-class SubjectCollectionStats(
+data class SubjectCollectionStats(
     val wish: Int,
     val doing: Int,
     val done: Int,

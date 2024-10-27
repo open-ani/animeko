@@ -44,7 +44,11 @@ data class EpisodeInfo(
     val ep: EpisodeSort? = null,
 //    /** 服务器解析的时长，无法解析时为 `0` */
 //    val durationSeconds: Int? = null
-)
+) {
+    override fun toString(): String {
+        return "EpisodeInfo(episodeId=$episodeId, nameCn='$nameCn', sort=$sort)"
+    }
+}
 
 @Stable
 val EpisodeInfo.displayName get() = nameCn.ifBlank { name }

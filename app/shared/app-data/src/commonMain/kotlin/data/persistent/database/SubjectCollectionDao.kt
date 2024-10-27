@@ -120,7 +120,6 @@ interface SubjectCollectionDao {
         """
         select * from subject_collection 
         where (:collectionType IS NULL OR collectionType = :collectionType)
-        order by lastUpdated desc
         """,
     )
     fun filterByCollectionTypePaging(
