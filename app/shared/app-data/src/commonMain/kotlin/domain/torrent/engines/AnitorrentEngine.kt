@@ -24,11 +24,11 @@ import me.him188.ani.app.data.models.preference.MediaSourceProxySettings
 import me.him188.ani.app.data.models.preference.ProxySettings
 import me.him188.ani.app.data.models.preference.TorrentPeerConfig
 import me.him188.ani.app.domain.media.fetch.toClientProxyConfig
+import me.him188.ani.app.domain.torrent.AbstractTorrentEngine
+import me.him188.ani.app.domain.torrent.TorrentEngineType
 import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.platform.getAniUserAgent
 import me.him188.ani.app.platform.versionCode
-import me.him188.ani.app.domain.torrent.AbstractTorrentEngine
-import me.him188.ani.app.domain.torrent.TorrentEngineType
 import me.him188.ani.app.torrent.anitorrent.AnitorrentDownloaderFactory
 import me.him188.ani.app.torrent.anitorrent.AnitorrentTorrentDownloader
 import me.him188.ani.app.torrent.api.HttpFileDownloader
@@ -62,7 +62,11 @@ class AnitorrentEngine(
     override val location: MediaSourceLocation get() = MediaSourceLocation.Local
     override val isSupported: Flow<Boolean>
         get() = flowOf(tryLoadLibraries())
-
+    
+    init {
+        initialized.complete(Unit)
+    }
+    
     private fun tryLoadLibraries(): Boolean {
         try {
             anitorrentFactory.libraryLoader.loadLibraries()

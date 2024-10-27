@@ -18,6 +18,7 @@ import kotlinx.collections.immutable.plus
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.suspendCancellableCoroutine
+import me.him188.ani.app.torrent.api.pieces.PieceListSubscriptions.Subscription
 
 /**
  * 高性能 [Piece] 集合. 每个 [PieceList] 一定包含连续的 [Piece.pieceIndex]. 可能为空.
@@ -39,15 +40,13 @@ abstract class PieceList(
     /**
      * 每个 piece 的大小 bytes.
      */
-    @PublishedApi
     @JvmField
-    internal val sizes: LongArray, // immutable
+    val sizes: LongArray, // immutable
     /**
      * piece 的数据偏移量, 即在种子文件中的 offset bytes.
      */
-    @PublishedApi
     @JvmField
-    internal val dataOffsets: LongArray,// immutable
+    val dataOffsets: LongArray,// immutable
     /**
      * 第 0 个元素的 piece index. 如果列表为空则为 `0`.
      */
@@ -102,9 +101,8 @@ abstract class PieceList(
      * 不会检查是否越界.
      */
     @OptIn(RawPieceConstructor::class)
-    @PublishedApi
     // inline is needed to help compiler vectorization
-    internal inline fun createPieceByListIndexUnsafe(listIndex: Int): Piece =
+    inline fun createPieceByListIndexUnsafe(listIndex: Int): Piece =
         Piece(initialPieceIndex + listIndex)
 
     /**
@@ -133,6 +131,18 @@ abstract class PieceList(
      */
     abstract suspend fun Piece.awaitFinished()
 
+    /**
+     * 订阅 [Piece.state] 的变化
+     * 
+     * @param piece [Piece.Invalid] 订阅所有 Piece 变化
+     */
+    abstract fun subscribePieceState(piece: Piece, onStateChange: PieceList.(Piece, PieceState) -> Unit): Subscription
+
+    /**
+     * 取消订阅 [Piece.state] 的变化
+     */
+    abstract fun unsubscribePieceState(subscription: Subscription)
+
     companion object {
         val Empty = create(0) { 0 }
 
@@ -152,7 +162,7 @@ abstract class PieceList(
                 pieceOffset += sizes[i]
             }
 
-            return PieceListImpl(sizes, offsets, states, initialPieceIndex)
+            return DefaultPieceList(sizes, offsets, states, initialPieceIndex)
         }
 
         fun create(
@@ -179,64 +189,18 @@ abstract class PieceList(
             sizes[numPieces - 1] = totalSize % pieceSize
             offsets[numPieces - 1] = totalSize - (totalSize % pieceSize) + initialDataOffset
 
-            return PieceListImpl(sizes, offsets, states, initialPieceIndex)
+            return DefaultPieceList(sizes, offsets, states, initialPieceIndex)
         }
 
-    }
-}
-
-private class PieceListImpl(
-    sizes: LongArray, // immutable
-    dataOffsets: LongArray, // immutable
-    private val states: Array<PieceState>, // mutable
-    initialPieceIndex: Int, // 第 0 个元素的 piece index
-) : PieceList(sizes, dataOffsets, initialPieceIndex) {
-    init {
-        require(sizes.size == dataOffsets.size) { "sizes.size != dataOffsets.size" }
-        require(sizes.size == states.size) { "sizes.size != states.size" }
-    }
-
-    private val subscriptions = PieceListSubscriptions()
-
-    override var Piece.state: PieceState
-        get() = states[pieceIndex]
-        set(value) {
-            states[pieceIndex] = value
-            subscriptions.notifyPieceStateChanges(this@PieceListImpl, this)
-        }
-
-    private val lock = SynchronizedObject()
-
-    override fun Piece.compareAndSetState(expect: PieceState, update: PieceState): Boolean {
-        synchronized(lock) {
-            if (state == expect) {
-                state = update
-                return true
-            }
-            return false
-        }
-    }
-
-    override suspend fun Piece.awaitFinished() {
-        val piece = this
-        suspendCancellableCoroutine { cont ->
-            val subscriptions = subscriptions
-            val sub = subscriptions.subscribe(piece.pieceIndex) { subscription, piece ->
-                if (piece.state == PieceState.FINISHED) {
-                    cont.resumeWith(Result.success(Unit))
-                    subscriptions.unsubscribe(subscription)
-                }
-            }
-            cont.invokeOnCancellation {
-                subscriptions.unsubscribe(sub)
-            }
-        }
     }
 }
 
 class PieceListSubscriptions {
     // use object identity
     class Subscription(
+        /**
+         * `-1` for subscribing all pieces
+         */
         val pieceIndex: Int,
         val onStateChange: PieceList.(Subscription, Piece) -> Unit,
     )
@@ -249,7 +213,7 @@ class PieceListSubscriptions {
     fun notifyPieceStateChanges(pieceList: PieceList, changedPiece: Piece) {
         val subscriptions = subscriptions.value
         for (subscription in subscriptions) {
-            if (subscription.pieceIndex == changedPiece.pieceIndex) {
+            if (subscription.pieceIndex == -1 || subscription.pieceIndex == changedPiece.pieceIndex) {
                 subscription.onStateChange(pieceList, subscription, changedPiece)
             }
         }
@@ -274,7 +238,70 @@ class PieceListSubscriptions {
     }
 }
 
-private class PieceListSlice(
+class DefaultPieceList(
+    sizes: LongArray, // immutable
+    dataOffsets: LongArray, // immutable
+    private val states: Array<PieceState>, // mutable
+    initialPieceIndex: Int, // 第 0 个元素的 piece index
+) : PieceList(sizes, dataOffsets, initialPieceIndex) {
+    init {
+        require(sizes.size == dataOffsets.size) { "sizes.size != dataOffsets.size" }
+        require(sizes.size == states.size) { "sizes.size != states.size" }
+    }
+
+    internal val subscriptions = PieceListSubscriptions()
+
+    override var Piece.state: PieceState
+        get() = states[pieceIndex]
+        set(value) {
+            states[pieceIndex] = value
+            subscriptions.notifyPieceStateChanges(this@DefaultPieceList, this)
+        }
+
+    private val lock = SynchronizedObject()
+
+    override fun Piece.compareAndSetState(expect: PieceState, update: PieceState): Boolean {
+        synchronized(lock) {
+            if (state == expect) {
+                state = update
+                return true
+            }
+            return false
+        }
+    }
+
+    /**
+     * subscribe state changes of all pieces.
+     */
+    override fun subscribePieceState(piece: Piece, onStateChange: PieceList.(Piece, PieceState) -> Unit): Subscription {
+        return subscriptions.subscribe(piece.pieceIndex) { _, p -> onStateChange(p, p.state) }
+    }
+
+    /**
+     * unsubscribe states
+     */
+    override fun unsubscribePieceState(subscription: Subscription) {
+        subscriptions.unsubscribe(subscription)
+    }
+
+    override suspend fun Piece.awaitFinished() {
+        val piece = this
+        suspendCancellableCoroutine { cont ->
+            val subscriptions = subscriptions
+            val sub = subscriptions.subscribe(piece.pieceIndex) { subscription, piece ->
+                if (piece.state == PieceState.FINISHED) {
+                    cont.resumeWith(Result.success(Unit))
+                    subscriptions.unsubscribe(subscription)
+                }
+            }
+            cont.invokeOnCancellation {
+                subscriptions.unsubscribe(sub)
+            }
+        }
+    }
+}
+
+class PieceListSlice(
     private val delegate: PieceList,
     startIndex: Int,
     endIndex: Int,
@@ -307,6 +334,15 @@ private class PieceListSlice(
         with(delegate) {
             awaitFinished()
         }
+    }
+
+    // register subscription to delegate.
+    override fun subscribePieceState(piece: Piece, onStateChange: PieceList.(Piece, PieceState) -> Unit): Subscription {
+        return delegate.subscribePieceState(piece, onStateChange)
+    }
+    
+    override fun unsubscribePieceState(subscription: Subscription) {
+        delegate.unsubscribePieceState(subscription)
     }
 }
 

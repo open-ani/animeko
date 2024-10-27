@@ -10,6 +10,7 @@
 package me.him188.ani.app.domain.torrent
 
 import androidx.annotation.CallSuper
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
@@ -99,12 +100,16 @@ abstract class AbstractTorrentEngine<Downloader : TorrentDownloader, Config : An
 ) : TorrentEngine {
     protected val logger = logger(this::class)
     protected val scope = parentCoroutineContext.childScope()
+    
+    protected val initialized: CompletableDeferred<Unit> = CompletableDeferred()
 
     private val downloader = flow { emit(config.first()) }
         .map { config ->
             // TODO: 这里不能 combine proxySettings, 因为这会导致更换设置时重新创建 downloader, 而 #775.
             //  而且在播放视频时, 关闭 downloader, 视频仍然会持有旧的 torrent session, 而旧的已经被关闭了, 视频就会一直显示缓冲中.
             //  目前没有必要在 proxySettings 变更时重新创建 downloader, 因为 downloader 不会使用代理.
+            initialized.await()
+            
             newInstance(config, proxySettings.first()).also { downloader ->
                 scope.coroutineContext.job.invokeOnCompletion {
                     downloader.close()
@@ -126,11 +131,13 @@ abstract class AbstractTorrentEngine<Downloader : TorrentDownloader, Config : An
 
     init {
         scope.launch {
+            initialized.await() // subclass 初始化完成后再开始
             config.drop(1).debounce(1000).collect {
                 downloader.value?.applyConfig(it)
             }
         }
-        scope.launch { 
+        scope.launch {
+            initialized.await() // subclass 初始化完成后再开始
             combine(peerFilterSettings, downloader) { s, d -> s to d }
                 .collectLatest { (settings, downloader) ->
                     if (downloader == null) return@collectLatest

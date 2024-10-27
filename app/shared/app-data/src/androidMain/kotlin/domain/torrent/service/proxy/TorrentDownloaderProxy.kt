@@ -69,12 +69,12 @@ class TorrentDownloaderProxy(
     }
 
     override fun startDownload(data: PEncodedTorrentInfo?, overrideSaveDir: String?): IRemoteTorrentSession? {
-        if (data == null || overrideSaveDir == null) return null
+        if (data == null) return null
         
         val session = runBlocking { 
             delegate.startDownload(
                 EncodedTorrentInfo.createRaw(data.data), 
-                overrideSaveDir = Path(overrideSaveDir).inSystem
+                overrideSaveDir = overrideSaveDir?.run { Path(this).inSystem }
             ) 
         }
         return TorrentSessionProxy(session, coroutineContext)

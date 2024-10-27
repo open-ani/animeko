@@ -15,4 +15,8 @@ import kotlinx.parcelize.Parcelize
 @Parcelize
 class PAnitorrentConfig(
     val serializedJson: String
-) : Parcelable
+) : Parcelable {
+    override fun toString(): String {
+        return serializedJson
+    }
+}

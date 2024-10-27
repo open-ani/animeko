@@ -22,7 +22,9 @@
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <!--    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"-->
     <!--            tools:ignore="ScopedStorage" />-->
 
@@ -73,7 +75,8 @@
                 android:name="me.him188.ani.app.domain.torrent.service.AniTorrentService"
                 android:description="@string/service_torrent_engine_description"
                 android:enabled="true"
-                android:process=":AniTorrentService"
+                android:process=":torrent_service"
+                android:foregroundServiceType="specialUse"
                 android:exported="false" />
     </application>
 </manifest>

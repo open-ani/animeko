@@ -15,6 +15,7 @@ import me.him188.ani.app.domain.torrent.IPieceStateObserver
 import me.him188.ani.app.domain.torrent.IRemotePieceList
 import me.him188.ani.app.torrent.api.pieces.Piece
 import me.him188.ani.app.torrent.api.pieces.PieceList
+import me.him188.ani.app.torrent.api.pieces.PieceListSubscriptions
 import me.him188.ani.app.torrent.api.pieces.PieceState
 
 @SuppressLint("NewApi")
@@ -34,6 +35,17 @@ class RemotePieceList(
 
     override fun Piece.compareAndSetState(expect: PieceState, update: PieceState): Boolean {
         error("set Piece state is not allowed in remote PieceList")
+    }
+
+    override fun subscribePieceState(
+        piece: Piece,
+        onStateChange: PieceList.(Piece, PieceState) -> Unit
+    ): PieceListSubscriptions.Subscription { 
+        error("unimplemented.") 
+    }
+
+    override fun unsubscribePieceState(subscription: PieceListSubscriptions.Subscription) {
+        error("unimplemented.") 
     }
 
     override suspend fun Piece.awaitFinished() {

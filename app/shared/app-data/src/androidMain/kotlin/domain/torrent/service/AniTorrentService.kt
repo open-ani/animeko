@@ -9,6 +9,9 @@
 
 package me.him188.ani.app.domain.torrent.service
 
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Intent
 import android.os.IBinder
 import androidx.lifecycle.LifecycleService
@@ -35,18 +38,22 @@ import me.him188.ani.app.domain.torrent.parcel.PAnitorrentConfig
 import me.him188.ani.app.domain.torrent.parcel.PProxySettings
 import me.him188.ani.app.domain.torrent.parcel.PTorrentPeerConfig
 import me.him188.ani.app.domain.torrent.service.proxy.TorrentDownloaderProxy
+import me.him188.ani.app.torrent.anitorrent.AnitorrentDownloaderFactory
 import me.him188.ani.utils.io.inSystem
+import me.him188.ani.utils.logging.info
+import me.him188.ani.utils.logging.logger
 import kotlin.coroutines.CoroutineContext
 
 class AniTorrentService : LifecycleService(), CoroutineScope {
+    private val logger = logger(this::class)
     override val coroutineContext: CoroutineContext
         get() = lifecycleScope.coroutineContext + CoroutineName("AniTorrentService") + SupervisorJob()
     
     // config flow for constructing torrent engine.
     private val saveDirDeferred: CompletableDeferred<String> = CompletableDeferred()
-    private val proxySettings: MutableSharedFlow<ProxySettings> = MutableSharedFlow(extraBufferCapacity = 1)
-    private val torrentPeerConfig: MutableSharedFlow<TorrentPeerConfig> = MutableSharedFlow(extraBufferCapacity = 1)
-    private val anitorrentConfig: MutableSharedFlow<AnitorrentConfig> = MutableSharedFlow(extraBufferCapacity = 1)
+    private val proxySettings: MutableSharedFlow<ProxySettings> = MutableSharedFlow(1)
+    private val torrentPeerConfig: MutableSharedFlow<TorrentPeerConfig> = MutableSharedFlow(1)
+    private val anitorrentConfig: MutableSharedFlow<AnitorrentConfig> = MutableSharedFlow(1)
     
     private val json = Json { 
         ignoreUnknownKeys = true
@@ -59,6 +66,7 @@ class AniTorrentService : LifecycleService(), CoroutineScope {
         override fun getAnitorrentConfigFlow(): IAnitorrentConfigCallback {
             return object : IAnitorrentConfigCallback.Stub() {
                 override fun onEmit(config: PAnitorrentConfig?) {
+                    logger.info { "received client AnitorrentConfig: $config" }
                     if (config != null) anitorrentConfig.tryEmit(
                         json.decodeFromString(AnitorrentConfig.serializer(), config.serializedJson)
                     )
@@ -69,6 +77,7 @@ class AniTorrentService : LifecycleService(), CoroutineScope {
         override fun getProxySettingsFlow(): IProxySettingsCallback {
             return object : IProxySettingsCallback.Stub() {
                 override fun onEmit(config: PProxySettings?) {
+                    logger.info { "received client ProxySettings: $config" }
                     if (config != null) proxySettings.tryEmit(
                         json.decodeFromString(ProxySettings.serializer(), config.serializedJson)
                     )
@@ -79,6 +88,7 @@ class AniTorrentService : LifecycleService(), CoroutineScope {
         override fun getTorrentPeerConfigFlow(): ITorrentPeerConfigCallback {
             return object : ITorrentPeerConfigCallback.Stub() {
                 override fun onEmit(config: PTorrentPeerConfig?) {
+                    logger.info { "received client TorrentPeerConfig: $config" }
                     if (config != null) torrentPeerConfig.tryEmit(
                         json.decodeFromString(TorrentPeerConfig.serializer(), config.serializedJson)
                     )
@@ -87,6 +97,7 @@ class AniTorrentService : LifecycleService(), CoroutineScope {
         }
 
         override fun setSaveDir(saveDir: String?) {
+            logger.info { "received client saveDir: $saveDir" }
             if (saveDir != null) saveDirDeferred.complete(saveDir)
         }
 
@@ -97,7 +108,9 @@ class AniTorrentService : LifecycleService(), CoroutineScope {
 
     }
     
-    init {
+    override fun onCreate() {
+        super.onCreate()
+        
         launch {
             // try to initialize anitorrent engine.
             anitorrent.complete(
@@ -106,15 +119,72 @@ class AniTorrentService : LifecycleService(), CoroutineScope {
                     proxySettings,
                     torrentPeerConfig,
                     Path(saveDirDeferred.await()).inSystem,
-                    coroutineContext
+                    coroutineContext,
+                    AnitorrentDownloaderFactory()
                 )
             )
+            logger.info { "anitorrent is initialized." }
         }
     }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        super.onStartCommand(intent, flags, startId)
+        pushNotification()
+        return START_STICKY
+    }
+    
     
     override fun onBind(intent: Intent): IBinder {
         super.onBind(intent)
+        logger.info { "client bind anitorrent." }
         return binder
     }
+
+    override fun onUnbind(intent: Intent?): Boolean {
+        return super.onUnbind(intent)
+    }
+
+    private fun pushNotification() {
+        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+
+        val existingNotification =
+            notificationManager.activeNotifications.find { it.id == NOTIFICATION_ID }
+
+        if (existingNotification == null) {
+            var channel = notificationManager.getNotificationChannel(NOTIFICATION_CHANNEL_ID)
+
+            if (channel == null) {
+                channel = NotificationChannel(
+                    NOTIFICATION_CHANNEL_ID,
+                    this::class.simpleName,
+                    NotificationManager.IMPORTANCE_LOW
+                ).apply { lockscreenVisibility = Notification.VISIBILITY_PUBLIC }
+
+                notificationManager.createNotificationChannel(channel)
+            }
+
+            val notification = createNotification(channel.id)
+            startForeground(NOTIFICATION_ID, notification)
+        } else {
+            notificationManager.notify(NOTIFICATION_ID, createNotification(NOTIFICATION_CHANNEL_ID))
+        }
+    }
+
+    private fun createNotification(channelId: String): Notification {
+        return Notification.Builder(this, channelId)
+            .apply {
+                val content = "Animeko BT 引擎正在运行中"
+
+                setContentTitle(this::class.simpleName)
+                setContentText(content)
+                setTicker(content)
+
+                setActions()
+            }.build()
+    }
     
+    companion object {
+        private const val NOTIFICATION_ID = 114
+        private const val NOTIFICATION_CHANNEL_ID = "me.him188.ani.app.domain.torrent.service.AniTorrentService"
+    }
 }

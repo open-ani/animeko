@@ -11,7 +11,6 @@ package me.him188.ani.app.domain.torrent.client
 
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
@@ -25,6 +24,7 @@ import me.him188.ani.app.domain.torrent.parcel.PAnitorrentConfig
 import me.him188.ani.app.domain.torrent.parcel.PProxySettings
 import me.him188.ani.app.domain.torrent.parcel.PTorrentPeerConfig
 import me.him188.ani.app.domain.torrent.service.TorrentServiceConnection
+import me.him188.ani.app.torrent.anitorrent.AnitorrentLibraryLoader
 import me.him188.ani.app.torrent.api.TorrentDownloader
 import me.him188.ani.datasources.api.source.MediaSourceLocation
 import me.him188.ani.utils.coroutines.childScope
@@ -58,29 +58,28 @@ class RemoteAnitorrentEngine(
     init {
         // transfer from app to service.
         childScope.launch {
-            val remoteProxySettingsFlow = getBinderOrFail().proxySettingsFlow
-            proxySettingsFlow.collectLatest {
+            proxySettingsFlow.collect {
                 val serialized = json.encodeToString(ProxySettings.serializer(), it)
-                remoteProxySettingsFlow.onEmit(PProxySettings(serialized))
+                getBinderOrFail().proxySettingsFlow.onEmit(PProxySettings(serialized))
             }
         }
         childScope.launch {
-            val remoteTorrentPeerConfigFlow = getBinderOrFail().torrentPeerConfigFlow
-            peerFilterConfig.collectLatest {
+            peerFilterConfig.collect {
                 val serialized = json.encodeToString(TorrentPeerConfig.serializer(), it)
-                remoteTorrentPeerConfigFlow.onEmit(PTorrentPeerConfig(serialized))
+                getBinderOrFail().torrentPeerConfigFlow.onEmit(PTorrentPeerConfig(serialized))
             }
         }
         childScope.launch {
-            val remoteAnitorrentConfigFlow = getBinderOrFail().anitorrentConfigFlow
-            anitorrentConfigFlow.collectLatest {
+            anitorrentConfigFlow.collect {
                 val serialized = json.encodeToString(AnitorrentConfig.serializer(), it)
-                remoteAnitorrentConfigFlow.onEmit(PAnitorrentConfig(serialized))
+                getBinderOrFail().anitorrentConfigFlow.onEmit(PAnitorrentConfig(serialized))
             }
         }
         childScope.launch { 
             getBinderOrFail().setSaveDir(saveDir.absolutePath)
         }
+
+        AnitorrentLibraryLoader.loadLibraries()
     }
 
     override suspend fun testConnection(): Boolean {

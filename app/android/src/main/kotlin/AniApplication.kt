@@ -9,26 +9,33 @@
 
 package me.him188.ani.android
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.Application
+import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import io.ktor.client.engine.okhttp.OkHttp
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.media.cache.MediaCacheNotificationTask
+import me.him188.ani.app.domain.torrent.TorrentManager
+import me.him188.ani.app.domain.torrent.service.AniTorrentService
 import me.him188.ani.app.platform.AndroidLoggingConfigurator
 import me.him188.ani.app.platform.JvmLogHelper
 import me.him188.ani.app.platform.createAppRootCoroutineScope
 import me.him188.ani.app.platform.getCommonKoinModule
 import me.him188.ani.app.platform.startCommonKoinModule
-import me.him188.ani.app.domain.torrent.TorrentManager
 import me.him188.ani.app.ui.settings.tabs.getLogsDir
 import me.him188.ani.app.ui.settings.tabs.media.DEFAULT_TORRENT_CACHE_DIR_NAME
 import org.koin.android.ext.android.getKoin
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.startKoin
+import java.lang.reflect.InvocationTargetException
+import java.lang.reflect.Method
 import java.nio.file.Paths
+
 
 class AniApplication : Application() {
     companion object {
@@ -82,6 +89,7 @@ class AniApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        
         val logsDir = applicationContext.getLogsDir().absolutePath
         AndroidLoggingConfigurator.configure(logsDir)
         runCatching {
@@ -89,6 +97,13 @@ class AniApplication : Application() {
         }.onFailure {
             Log.e("AniApplication", "Failed to delete old logs", it)
         }
+
+        
+        if (processName().endsWith(AniTorrentService::class.simpleName!!)) {
+            // In service process, we don't need any dependency which is use in app process.
+            return
+        }
+        startForegroundService(Intent(this, AniTorrentService::class.java))
 
         instance = Instance()
 
@@ -117,6 +132,31 @@ class AniApplication : Application() {
         koin.get<TorrentManager>() // start sharing, connect to DHT now
         scope.launch(CoroutineName("MediaCacheNotificationTask")) {
             MediaCacheNotificationTask(koin.get(), koin.get()).run()
+        }
+    }
+
+    @SuppressLint("DiscouragedPrivateApi")
+    private fun processName(): String {
+        if (Build.VERSION.SDK_INT >= 28) return getProcessName()
+
+        // Using the same technique as Application.getProcessName() for older devices
+        // Using reflection since ActivityThread is an internal API
+        try {
+            @SuppressLint("PrivateApi") val activityThread = Class.forName("android.app.ActivityThread")
+
+            // Before API 18, the method was incorrectly named "currentPackageName", but it still returned the process name
+            // See https://github.com/aosp-mirror/platform_frameworks_base/commit/b57a50bd16ce25db441da5c1b63d48721bb90687
+            val getProcessName: Method = activityThread.getDeclaredMethod("currentProcessName")
+            return getProcessName.invoke(null) as String
+            
+        } catch (e: ClassNotFoundException) {
+            throw RuntimeException(e)
+        } catch (e: NoSuchMethodException) {
+            throw RuntimeException(e)
+        } catch (e: IllegalAccessException) {
+            throw RuntimeException(e)
+        } catch (e: InvocationTargetException) {
+            throw RuntimeException(e)
         }
     }
 }

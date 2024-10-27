@@ -43,8 +43,8 @@ class TorrentInputConstructor
 @RawTorrentInputConstructorParameter constructor(
     val file: SystemPath,
     val pieces: PieceList,
-    logicalStartOffset: Long,
-    onWait: suspend (Piece) -> Unit,
-    bufferSize: Int,
-    size: Long
+    val logicalStartOffset: Long,
+    val onWait: suspend (Piece) -> Unit,
+    val bufferSize: Int,
+    val size: Long
 )

@@ -240,7 +240,7 @@ class AnitorrentDownloadSession(
          * 在 Remote TorrentFileEntry 中创建 TorrentInput 实例, 需要获取 TorrentInput 构建参数
          */
         @OptIn(RawTorrentInputConstructorParameter::class)
-        internal suspend fun createTorrentInputParameters(): TorrentInputConstructor {
+        suspend fun createTorrentInputParameters(): TorrentInputConstructor {
             return TorrentInputConstructor(
                 resolveDownloadingFile(),
                 pieces,
