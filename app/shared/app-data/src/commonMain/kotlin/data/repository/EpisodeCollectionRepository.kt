@@ -76,7 +76,7 @@ class EpisodeCollectionRepository(
     fun subjectEpisodeCollectionInfosFlow(
         subjectId: Int
     ): Flow<List<EpisodeCollectionInfo>> = epTypeFilter.flatMapLatest { epType ->
-        if (subjectDao.get(subjectId).totalEpisodes == 0) {
+        if (subjectDao.findById(subjectId).first()?.totalEpisodes == 0) {
             return@flatMapLatest flowOf(emptyList())
         }
         episodeCollectionDao.filterBySubjectId(subjectId, epType).mapLatest { episodes ->

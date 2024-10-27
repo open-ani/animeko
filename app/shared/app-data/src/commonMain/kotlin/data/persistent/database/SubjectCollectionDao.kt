@@ -72,9 +72,6 @@ data class SubjectCollectionEntity(
 
 @Dao
 interface SubjectCollectionDao {
-    @Query("""SELECT * FROM subject_collection WHERE subjectId = :subjectId""")
-    suspend fun get(subjectId: Int): SubjectCollectionEntity
-
     @Upsert
     suspend fun upsert(item: SubjectCollectionEntity)
 

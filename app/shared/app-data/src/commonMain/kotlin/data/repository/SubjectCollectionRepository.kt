@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.boolean
@@ -184,6 +185,7 @@ class SubjectCollectionRepository(
                     subjectCollectionDao.deleteAll()
                     0
                 }
+
                 LoadType.PREPEND -> return MediatorResult.Success(endOfPaginationReached = true)
                 LoadType.APPEND -> {
                     val lastLoadedPage = state.pages.lastOrNull()
@@ -319,9 +321,19 @@ class SubjectCollectionRepository(
         )
         val list = resp
             .getOrFail("data")
-            .jsonObject.values.map {
-                it.jsonObject.toBatchSubjectDetails()
+            .let { element ->
+                when (element) {
+                    is JsonObject -> {
+                        element.values.map {
+                            it.jsonObject.toBatchSubjectDetails()
+                        }
+                    }
+
+                    is JsonNull -> throw IllegalStateException("batchGetSubjectDetails response data is null for ids $ids: $resp")
+                    else -> throw IllegalStateException("Unexpected response: $element")
+                }
             }
+
         return list
     }
 }

@@ -141,6 +141,7 @@ fun CollectionPage(
     onClickSearch: () -> Unit,
     onClickSettings: () -> Unit,
     modifier: Modifier = Modifier,
+    enableAnimation: Boolean = true,
 ) {
     val pagerState =
         rememberPagerState(initialPage = COLLECTION_TABS_SORTED.size / 2) { COLLECTION_TABS_SORTED.size }
@@ -230,7 +231,7 @@ fun CollectionPage(
                                 state.createEditableSubjectCollectionTypeState(collection),
                             )
                         },
-                        enableAnimation = true,
+                        enableAnimation = enableAnimation,
                     )
                 }
             }

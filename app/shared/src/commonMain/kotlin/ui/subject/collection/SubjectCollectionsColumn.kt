@@ -110,7 +110,7 @@ fun SubjectCollectionsColumn(
     ) {
         item(span = { GridItemSpan(maxLineSpan) }) { Spacer(Modifier.height(1.dp)) } // 添加新 item 时保持到顶部
 
-        items(items.itemCount, items.itemKey(), contentType = items.itemContentType()) { index ->
+        items(items.itemCount, items.itemKey { it.subjectId }, contentType = items.itemContentType { 1 }) { index ->
             items[index]?.let {
                 Box(Modifier.ifThen(enableAnimation) { animateItem() }) {
                     item(it)

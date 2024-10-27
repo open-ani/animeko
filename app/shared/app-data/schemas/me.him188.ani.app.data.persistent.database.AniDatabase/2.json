@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 2,
-    "identityHash": "4f769470642121a0104479e469e01acc",
+    "identityHash": "750aeee5c1ee22c2f1042c4684699c90",
     "entities": [
       {
         "tableName": "search_history",
@@ -294,6 +294,17 @@
             ],
             "orders": [],
             "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_subject_collection_subjectId` ON `${TABLE_NAME}` (`subjectId`)"
+          },
+          {
+            "name": "index_subject_collection_lastUpdated",
+            "unique": false,
+            "columnNames": [
+              "lastUpdated"
+            ],
+            "orders": [
+              "DESC"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_subject_collection_lastUpdated` ON `${TABLE_NAME}` (`lastUpdated` DESC)"
           }
         ]
       },
@@ -407,7 +418,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '4f769470642121a0104479e469e01acc')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '750aeee5c1ee22c2f1042c4684699c90')"
     ]
   }
 }
