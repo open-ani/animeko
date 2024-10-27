@@ -11,6 +11,9 @@
     <string name="app_name">Animeko</string>
     <string name="app_package" translatable="false">me.him188.ani</string>
     <string name="service_torrent_engine_description">Animeko BT engine foreground service</string>
-    <string name="app_service_content_text">Animeko BT engine service is running foreground</string>
+    <string name="app_service_title_text_idle">No download tasks</string>
+    <string name="app_service_title_text_working">Downloading %1$d resource(s)</string>
+    <string name="app_service_content_text">DOWN: %1$s, UP: %2$s</string>
+    <string name="app_service_stop_text">STOP</string>
 
 </resources>
