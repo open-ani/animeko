@@ -343,8 +343,9 @@ class SubjectCollectionRepository(
                                 BatchSubjectDetails(
                                     SubjectInfo.Empty.copy(
                                         subjectId = id, subjectType = SubjectType.ANIME,
-                                        nameCn = "<错误 $id>",
-                                        name = "<错误 $id>",
+                                        nameCn = "<$id 错误>",
+                                        name = "<$id 错误>",
+                                        summary = resp["errors"].toString(),
                                     ),
                                 )
                             } else {
@@ -460,60 +461,65 @@ private fun JsonObject.toBatchSubjectDetails(): BatchSubjectDetails {
         }
         ?: PackedDate.Invalid
 
-    return BatchSubjectDetails(
-        SubjectInfo(
-            subjectId = getIntOrFail("id"),
-            subjectType = SubjectType.ANIME,
-            name = getStringOrFail("name"),
-            nameCn = getStringOrFail("name_cn"),
-            summary = getStringOrFail("summary"),
-            nsfw = getBooleanOrFail("nsfw"),
-            imageLarge = getOrFail("images").jsonObject.getStringOrFail("large"),
-            totalEpisodes = getIntOrFail("eps"),
-            airDate = PackedDate.parseFromDate(getOrFail("airtime").jsonObject.getStringOrFail("date")),
-            tags = getOrFail("tags").jsonArray.map {
-                val obj = it.jsonObject
-                Tag(
-                    obj.getStringOrFail("name"),
-                    obj.getIntOrFail("count"),
-                )
-            },
-            aliases = infobox("别名").filter { it.isNotEmpty() }.toList(),
-            ratingInfo = getOrFail("rating").jsonObject.let { rating ->
-                RatingInfo(
-                    rank = rating.getIntOrFail("rank"),
-                    total = rating.getIntOrFail("total"),
-                    count = rating.getOrFail("count").jsonArray.let { array ->
-                        RatingCounts(
-                            s1 = array[0].jsonPrimitive.int,
-                            s2 = array[1].jsonPrimitive.int,
-                            s3 = array[2].jsonPrimitive.int,
-                            s4 = array[3].jsonPrimitive.int,
-                            s5 = array[4].jsonPrimitive.int,
-                            s6 = array[5].jsonPrimitive.int,
-                            s7 = array[6].jsonPrimitive.int,
-                            s8 = array[7].jsonPrimitive.int,
-                            s9 = array[8].jsonPrimitive.int,
-                            s10 = array[9].jsonPrimitive.int,
-                        )
-                    },
-                    score = rating.getStringOrFail("score"),
-                )
-            },
-            collectionStats = getOrFail("collection").jsonObject.let { collection ->
-                SubjectCollectionStats(
-                    wish = collection.getIntOrFail("wish"),
-                    doing = collection.getIntOrFail("doing"),
-                    done = collection.getIntOrFail("collect"),
-                    onHold = collection.getIntOrFail("on_hold"),
-                    dropped = collection.getIntOrFail("dropped"),
-                )
-            },
-            completeDate = completionDate,
-        ),
-    )
+    return try {
+        BatchSubjectDetails(
+            SubjectInfo(
+                subjectId = getIntOrFail("id"),
+                subjectType = SubjectType.ANIME,
+                name = getStringOrFail("name"),
+                nameCn = getStringOrFail("name_cn"),
+                summary = getStringOrFail("summary"),
+                nsfw = getBooleanOrFail("nsfw"),
+                imageLarge = getOrFail("images").jsonObjectOrNull?.getString("large") ?: "", // 有少数没有
+                totalEpisodes = getIntOrFail("eps"),
+                airDate = PackedDate.parseFromDate(getOrFail("airtime").jsonObject.getStringOrFail("date")),
+                tags = getOrFail("tags").jsonArray.map {
+                    val obj = it.jsonObject
+                    Tag(
+                        obj.getStringOrFail("name"),
+                        obj.getIntOrFail("count"),
+                    )
+                },
+                aliases = infobox("别名").filter { it.isNotEmpty() }.toList(),
+                ratingInfo = getOrFail("rating").jsonObject.let { rating ->
+                    RatingInfo(
+                        rank = rating.getIntOrFail("rank"),
+                        total = rating.getIntOrFail("total"),
+                        count = rating.getOrFail("count").jsonArray.let { array ->
+                            RatingCounts(
+                                s1 = array[0].jsonPrimitive.int,
+                                s2 = array[1].jsonPrimitive.int,
+                                s3 = array[2].jsonPrimitive.int,
+                                s4 = array[3].jsonPrimitive.int,
+                                s5 = array[4].jsonPrimitive.int,
+                                s6 = array[5].jsonPrimitive.int,
+                                s7 = array[6].jsonPrimitive.int,
+                                s8 = array[7].jsonPrimitive.int,
+                                s9 = array[8].jsonPrimitive.int,
+                                s10 = array[9].jsonPrimitive.int,
+                            )
+                        },
+                        score = rating.getStringOrFail("score"),
+                    )
+                },
+                collectionStats = getOrFail("collection").jsonObject.let { collection ->
+                    SubjectCollectionStats(
+                        wish = collection.getIntOrFail("wish"),
+                        doing = collection.getIntOrFail("doing"),
+                        done = collection.getIntOrFail("collect"),
+                        onHold = collection.getIntOrFail("on_hold"),
+                        dropped = collection.getIntOrFail("dropped"),
+                    )
+                },
+                completeDate = completionDate,
+            ),
+        )
+    } catch (e: Exception) {
+        throw IllegalStateException("Failed to parse subject details for subject id ${this["id"]}: $this", e)
+    }
 }
 
+private val JsonElement.jsonObjectOrNull get() = (this as? JsonObject)
 
 private fun JsonObject.getOrFail(key: String): JsonElement {
     return get(key) ?: throw NoSuchElementException("key $key not found")
@@ -523,8 +529,12 @@ private fun JsonObject.getIntOrFail(key: String): Int {
     return get(key)?.jsonPrimitive?.int ?: throw NoSuchElementException("key $key not found")
 }
 
+private fun JsonObject.getString(key: String): String? {
+    return get(key)?.jsonPrimitive?.content
+}
+
 private fun JsonObject.getStringOrFail(key: String): String {
-    return get(key)?.jsonPrimitive?.content ?: throw NoSuchElementException("key $key not found")
+    return getString(key) ?: throw NoSuchElementException("key $key not found")
 }
 
 private fun JsonObject.getBooleanOrFail(key: String): Boolean {
