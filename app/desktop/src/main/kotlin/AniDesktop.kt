@@ -37,6 +37,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.LocalPlatformContext
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
@@ -294,47 +295,14 @@ object AniDesktop {
             AppStartupTasks.verifySession(sessionManager, navigator)
         }
 
+        val windowStateRepository = koin.koin.get<WindowStateRepository>()
+        var savedWindowState: SavedWindowState? = null
+        coroutineScope.launch {
+            savedWindowState = windowStateRepository.flow.firstOrNull()
+        }
+        
         application {
-            // 记录窗口大小
-            val windowStateRepository = koin.koin.get<WindowStateRepository>()
-            val density = LocalDensity.current
-            DisposableEffect(true) {
-                coroutineScope.launch {
-                    val savedState = windowStateRepository.flow.firstOrNull()?.let { saved ->
-                        if (saved == SavedWindowState.Default) return@let null
-                        with(density) {
-                            WindowState(
-                                position = WindowPosition(
-                                    x = saved.x.toDp(),
-                                    y = saved.y.toDp(),
-                                ),
-                                size = DpSize(
-                                    width = saved.width.toDp(),
-                                    height = saved.height.toDp(),
-                                ),
-                            )
-                        }
-                    } ?: windowState
-
-                    windowState.size = savedState.size
-                    windowState.position = savedState.position
-                }
-                onDispose {
-                    coroutineScope.launch {
-                        with(density) {
-                            windowStateRepository.update(
-                                SavedWindowState(
-                                    x = windowState.position.x.toPx(),
-                                    y = windowState.position.y.toPx(),
-                                    width = windowState.size.width.toPx(),
-                                    height = windowState.size.height.toPx(),
-                                ),
-                            )
-                        }
-                    }
-                }
-            }
-
+            WindowStateRecorder(windowState, savedWindowState, windowStateRepository, coroutineScope) 
             Window(
                 onCloseRequest = { exitApplication() },
                 state = windowState,
@@ -446,6 +414,46 @@ private fun FrameWindowScope.MainWindowContent(
                             AniAppContent(aniNavigator, NavRoutes.Main(it.mainSceneInitialPage))
                         }
                         Toast({ showing }, { Text(content) })
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun WindowStateRecorder(
+    windowState: WindowState,
+    saved: SavedWindowState?,
+    windowStateRepository: WindowStateRepository,
+    coroutineScope: CoroutineScope
+) {
+    // 记录窗口大小
+    with(LocalDensity.current) {
+        DisposableEffect(true) {
+            if (saved != null && saved != SavedWindowState.Default) {
+                windowState.apply {
+                    position = WindowPosition(
+                        x = saved.x.toDp(),
+                        y = saved.y.toDp(),
+                    )
+                    size = DpSize(
+                        width = saved.width.toDp(),
+                        height = saved.height.toDp(),
+                    )
+                }
+            }
+            onDispose {
+                windowState.apply {
+                    coroutineScope.launch {
+                        windowStateRepository.update(
+                            SavedWindowState(
+                                x = position.x.toPx(),
+                                y = position.y.toPx(),
+                                width = size.width.toPx(),
+                                height = size.height.toPx(),
+                            ),
+                        )
                     }
                 }
             }
