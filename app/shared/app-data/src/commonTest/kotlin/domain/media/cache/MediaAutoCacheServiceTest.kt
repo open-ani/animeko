@@ -34,10 +34,8 @@ class MediaAutoCacheServiceTest {
         nameCn = "Nita O'Donnell",
         sort = EpisodeSort(1),
         comment = 5931,
-        duration = "",
         desc = "gubergren",
         airDate = airDate, // 一定已经开播
-        disc = 2272,
         ep = EpisodeSort(1),
     )
 
