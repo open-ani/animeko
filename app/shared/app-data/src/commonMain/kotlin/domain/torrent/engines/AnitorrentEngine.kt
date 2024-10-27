@@ -14,11 +14,9 @@ import io.ktor.client.plugins.UserAgent
 import io.ktor.client.request.get
 import io.ktor.client.statement.readBytes
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.shareIn
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
 import me.him188.ani.app.data.models.preference.MediaSourceProxySettings
 import me.him188.ani.app.data.models.preference.ProxySettings
@@ -37,7 +35,6 @@ import me.him188.ani.app.torrent.api.TorrentDownloaderFactory
 import me.him188.ani.app.torrent.api.peer.PeerFilter
 import me.him188.ani.datasources.api.source.MediaSourceLocation
 import me.him188.ani.datasources.api.topic.FileSize
-import me.him188.ani.utils.coroutines.onReplacement
 import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.ktor.createDefaultHttpClient
 import me.him188.ani.utils.ktor.proxy
@@ -80,18 +77,15 @@ class AnitorrentEngine(
 
     override suspend fun testConnection(): Boolean = isSupported.first()
 
-    // client 需要监听 proxySettings 更新, 否则在切换设置后必须重启才能生效
-    private val client = proxySettings.map { proxySettings ->
-        createDefaultHttpClient {
+    private fun createTorrentFileDownloader(proxySettings: MediaSourceProxySettings): HttpFileDownloader {
+        return createDefaultHttpClient {
             install(UserAgent) {
                 agent = getAniUserAgent()
             }
-            proxy(proxySettings.default.toClientProxyConfig())
+            proxy(proxySettings.toClientProxyConfig())
             expectSuccess = true
-        }
-    }.onReplacement {
-        it.close()
-    }.shareIn(scope, started = SharingStarted.Lazily, replay = 1)
+        }.asHttpFileDownloader()
+    }
 
     override suspend fun newInstance(
         config: AnitorrentConfig,
@@ -103,7 +97,7 @@ class AnitorrentEngine(
         }
         return anitorrentFactory.createDownloader(
             rootDataDirectory = saveDir,
-            client.asHttpFileDownloader(),
+            createTorrentFileDownloader(proxySettings),
             config.toTorrentDownloaderConfig(),
             parentCoroutineContext = scope.coroutineContext,
         ) as AnitorrentTorrentDownloader<*, *>
@@ -143,9 +137,10 @@ private fun computeTorrentUserAgent(
     versionCode: String = currentAniBuildConfig.versionCode,
 ): String = "ani_libtorrent/${versionCode}"
 
-private fun Flow<HttpClient>.asHttpFileDownloader(): HttpFileDownloader = object : HttpFileDownloader {
-    override suspend fun download(url: String): ByteArray = first().get(url).readBytes()
+private fun HttpClient.asHttpFileDownloader(): HttpFileDownloader = object : HttpFileDownloader {
+    override suspend fun download(url: String): ByteArray = get(url).readBytes()
     override fun close() {
+        this@asHttpFileDownloader.close()
     }
 
     override fun toString(): String {
