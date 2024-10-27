@@ -42,7 +42,8 @@ macOS 构建操作很简单.
    ```properties
    ani.enable.anitorrent=true
    ```
-6. 完成. 现在可以运行 `./gradlew desktop:run` 测试, 或者在 IDE 右上角选择 "Run Desktop" 配置.
+6. 完成. 现在可以运行 `./gradlew :app:desktop:runDistributable` 测试, 或者在 IDE 右上角选择 "Run
+   Desktop" 配置.
 
 ### B. Windows (Visual Studio 工具链)
 
@@ -98,7 +99,8 @@ Windows 上构建 native 代码是*比较有挑战性*的. 使用 Visual Studio 
    # 也有可能是以下位置：
    CMAKE=C\:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\bin\\cmake.exe
    ```
-10. 完成. 现在可以运行 `./gradlew desktop:run` 测试, 或者在 IDE 右上角选择 "Run Desktop" 配置.
+10. 完成. 现在可以运行 `./gradlew :app:desktop:runDistributable` 测试, 或者在 IDE 右上角选择 "Run
+    Desktop" 配置.
 
 ### C. Windows (自定义工具链)
 

@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 import com.android.build.api.dsl.CommonExtension
 import com.android.build.api.dsl.LibraryExtension
 import org.jetbrains.compose.ComposeExtension
@@ -15,8 +24,6 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
  * 
  * 如果开了 android, 就会配置 desktop + android, 否则只配置 jvm.
  */
-
-extra.set("ani.jvm.target", 17)
 
 val android = extensions.findByType(LibraryExtension::class)
 val composeExtension = extensions.findByType(ComposeExtension::class)

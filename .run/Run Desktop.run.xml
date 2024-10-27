@@ -1,10 +1,19 @@
+<!--
+  ~ Copyright (C) 2024 OpenAni and contributors.
+  ~
+  ~ 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+  ~ Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+  ~
+  ~ https://github.com/open-ani/ani/blob/main/LICENSE
+  -->
+
 <component name="ProjectRunConfigurationManager">
     <configuration default="false" name="Run Desktop" type="JetRunConfigurationType">
         <option name="MAIN_CLASS_NAME" value="me.him188.ani.app.desktop.AniDesktop" />
-        <module name="ani.app.desktop.main" />
+        <module name="animeko.app.desktop.main" />
         <shortenClasspath name="NONE" />
         <option name="VM_PARAMETERS"
-                value="-Dorg.slf4j.simpleLogger.defaultLogLevel=TRACE -Dkotlinx.coroutines.debug=on -Dani.debug=true" />
+                value="-Dorg.slf4j.simpleLogger.defaultLogLevel=TRACE -Dkotlinx.coroutines.debug=on -Dani.debug=true -Xmx128m" />
         <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/app/desktop/test-sandbox" />
         <method v="2">
             <option name="Make" enabled="true" />

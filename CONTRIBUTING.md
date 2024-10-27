@@ -72,10 +72,11 @@ git clone --recursive https://github.com/open-ani/ani.git
 ### 准备 JDK (JetBrains Runtime with JCEF)
 
 由于 PC 端使用 [JCEF](https://github.com/jetbrains/jcef) (内置浏览器), JDK 必须使用 JetBrains
-Runtime (JCEF), 版本 21 或 17, 下文简称 JBR.
+Runtime (JCEF), 版本 17 或 21, 下文简称 JBR.
 
 需要自行安装 JBR. 在 Android Studio 或 IntelliJ IDEA 中, 如下图所示, 可打开设置
-`Build, Execution, Deployment -> Build Tools -> Gradle`, 修改 Gradle JDK 配置为 JBR (JCEF) 21 或 17.
+`Build, Execution, Deployment -> Build Tools -> Gradle`, 修改 Gradle JDK 配置为 JBR (JCEF) 17 或 21.
+如果使用 21, 则需要在 `local.properties` 中添加一行 `jvm.toolchain.version=21`. 如果使用 17 则无需修改配置.
 
 <img src=".readme/images/contributing/idea-settings-download-jdk.png" alt="download jbr" width="400"/>
 <img src=".readme/images/contributing/idea-settings-download-jdk-version.png" alt="choose version" width="200"/>
@@ -92,7 +93,6 @@ Runtime (JCEF), 版本 21 或 17, 下文简称 JBR.
 
 ### 格式化
 
-;
 建议在 IDE 的 Commit 页面, 点击右下角设置, 勾选 "Reformat code" 和 "Optimize imports".
 在提交时将会自动格式化代码.
 
@@ -158,8 +158,8 @@ flowchart TD
     end
 ```
 
-蓝色为最终目标. 它们将会构建成为 APP.
-绿色的是 iOS 模拟器目标, 仅为运行测试.
+蓝色 (android, desktop, iosArm64) 为最终目标. 它们将会构建成为 APP.
+绿色的 (iosSimulatorArm64) 是 iOS 模拟器目标, 仅为运行测试.
 
 [Skiko]: https://github.com/JetBrains/skiko
 

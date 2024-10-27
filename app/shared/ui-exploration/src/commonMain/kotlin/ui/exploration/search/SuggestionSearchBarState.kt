@@ -93,7 +93,10 @@ fun <T> SuggestionSearchBar(
             SearchBarDefaults.InputField(
                 query = state.query,
                 onQueryChange = { state.query = it.trim('\n') },
-                onSearch = { state.expanded = false },
+                onSearch = {
+                    state.expanded = false
+                    state.startSearch()
+                },
                 expanded = state.expanded,
                 onExpandedChange = { state.expanded = it },
                 inputFieldModifier.fillMaxWidth().onEnterKeyEvent {

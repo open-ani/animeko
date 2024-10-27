@@ -117,6 +117,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - run: echo "jvm.toolchain.version=21" >> local.properties
+
       - if: ${{ env.isMac == 'true' }}
         name: Install Native Dependencies
         run: chmod +x ./ci-helper/install-deps-macos-ci.sh && ./ci-helper/install-deps-macos-ci.sh

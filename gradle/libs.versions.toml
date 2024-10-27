@@ -38,6 +38,7 @@ ipaddress-parser = "5.5.1"
 androidx-annotation = "1.8.2"
 androidx-media3 = "1.4.1"
 androidx-lifecycle = "2.8.6"
+paging = "3.3.2"
 
 mockito = "5.12.0"
 mockito-kotlin = "5.4.0"
@@ -163,6 +164,9 @@ androidx-room-paging = { group = "androidx.room", name = "room-paging", version.
 androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 sqlite = { module = "androidx.sqlite:sqlite", version.ref = "sqlite" }
 sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "sqlite" }
+
+paging-common = { module = "androidx.paging:paging-common", version.ref = "paging" }
+paging-compose-android = { module = "androidx.paging:paging-compose", version.ref = "paging" }
 
 # Navigation
 precompose = { module = "moe.tlaster:precompose", version = "1.5.10" }

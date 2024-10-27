@@ -13,6 +13,7 @@ import io.ktor.http.Cookie
 import io.ktor.http.Url
 import io.ktor.http.parseServerSetCookieHeader
 import io.ktor.util.date.toJvmDate
+import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -145,6 +146,10 @@ class CefVideoExtractor(
         val deferred = CompletableDeferred<WebResource>()
 
         val browser = AniCefApp.suspendCoroutineOnCefContext {
+            val lastUrl = object {
+                // broswer.url is not updated immediately, so we need to keep track of the current url.
+                var value: String? by atomic(null)
+            }
             client.createBrowser(
                 pageUrl,
                 CefRendering.DEFAULT,
@@ -170,7 +175,7 @@ class CefVideoExtractor(
                         private fun handleUrl(
                             request: CefRequest,
                             browser: CefBrowser
-                        ): Boolean {
+                        ): Boolean = synchronized(this) {
                             val url = request.url
                             val matched = resourceMatcher(url)
                             when (matched) {
@@ -182,8 +187,9 @@ class CefVideoExtractor(
                                 }
 
                                 Instruction.LoadPage -> {
-                                    if (browser.url == url) return false // don't recurse
-                                    logger.info { "CEF loading nested page: $url" }
+                                    if (browser.url == url || lastUrl.value == url) return false // don't recurse
+                                    logger.info { "CEF loading nested page: $url, lastUrl=${lastUrl.value}" }
+                                    lastUrl.value = url
                                     AniCefApp.runOnCefContext {
                                         browser.executeJavaScript("window.location.href='$url';", "", 1)
                                     }

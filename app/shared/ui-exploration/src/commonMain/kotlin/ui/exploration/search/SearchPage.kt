@@ -40,6 +40,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -67,12 +69,14 @@ fun SearchPage(
     windowInsets: WindowInsets,
     detailContent: @Composable (subjectId: Int) -> Unit,
     modifier: Modifier = Modifier,
+    focusSearchBarByDefault: Boolean = true,
     navigator: ThreePaneScaffoldNavigator<*> = rememberListDetailPaneScaffoldNavigator(),
 ) {
     BackHandler(navigator.canNavigateBack()) {
         navigator.navigateBack()
     }
 
+    val focusRequester = remember { FocusRequester() }
     SearchPageLayout(
         navigator,
         windowInsets,
@@ -84,6 +88,7 @@ fun SearchPage(
                         currentWindowAdaptiveInfo().windowSizeClass.windowWidthSizeClass >= WindowWidthSizeClass.MEDIUM
                                 || !state.suggestionSearchBarState.expanded,
                     ) { contentPadding },
+                inputFieldModifier = Modifier.focusRequester(focusRequester),
                 windowInsets = windowInsets,
                 placeholder = { Text("搜索") },
             )
@@ -120,6 +125,11 @@ fun SearchPage(
         },
         modifier,
     )
+    if (focusSearchBarByDefault) {
+        LaunchedEffect(Unit) {
+            focusRequester.requestFocus()
+        }
+    }
 }
 
 @Composable

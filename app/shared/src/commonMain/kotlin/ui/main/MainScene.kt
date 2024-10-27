@@ -176,7 +176,10 @@ private fun MainSceneContent(
                             vm.searchPageState,
                             windowInsets,
                             detailContent = {
-                                vm.subjectDetailsViewModelFlow.collectAsStateWithLifecycle(null).value?.let {
+                                val subjectDetailsViewModelState by
+                                vm.subjectDetailsViewModelFlow.collectAsStateWithLifecycle(null)
+                                subjectDetailsViewModelState?.let {
+                                    it.navigator = LocalNavigator.current
                                     SubjectDetailsScene(it)
                                 }
                             },
