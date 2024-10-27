@@ -123,7 +123,7 @@ class DanmakuLoaderImpl(
                         subjectPrimaryName = subject.displayName,
                         subjectNames = subject.allNames,
                         subjectPublishDate = subject.airDate,
-                        episodeId = episode.id,
+                        episodeId = episode.episodeId,
                         episodeSort = episode.sort,
                         episodeEp = episode.ep,
                         episodeName = episode.displayName,

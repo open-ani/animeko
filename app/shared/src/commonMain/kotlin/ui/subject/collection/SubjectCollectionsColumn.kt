@@ -296,7 +296,7 @@ val TestSubjectCollections
         val eps = listOf(
             EpisodeCollection(
                 episodeInfo = EpisodeInfo(
-                    id = 6385,
+                    episodeId = 6385,
                     name = "Diana Houston",
                     nameCn = "Nita O'Donnell",
                     comment = 5931,
@@ -310,7 +310,7 @@ val TestSubjectCollections
             ),
             EpisodeCollection(
                 episodeInfo = EpisodeInfo(
-                    id = 6386,
+                    episodeId = 6386,
                     name = "Diana Houston",
                     nameCn = "Nita O'Donnell",
                     sort = EpisodeSort(2),
@@ -342,7 +342,7 @@ val TestSubjectCollections
                     ++id,
                     episodes = eps + EpisodeCollection(
                         episodeInfo = EpisodeInfo(
-                            id = 6386,
+                            episodeId = 6386,
                             name = "Diana Houston",
                             nameCn = "Nita O'Donnell",
                             sort = EpisodeSort(2),

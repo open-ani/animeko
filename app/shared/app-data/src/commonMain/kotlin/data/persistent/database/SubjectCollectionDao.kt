@@ -9,45 +9,66 @@
 
 package me.him188.ani.app.data.persistent.database
 
+import androidx.paging.PagingSource
 import androidx.room.Dao
+import androidx.room.Embedded
 import androidx.room.Entity
-import androidx.room.ForeignKey
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.TypeConverters
 import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
+import me.him188.ani.app.data.models.subject.RatingInfo
+import me.him188.ani.app.data.models.subject.SelfRatingInfo
+import me.him188.ani.app.data.models.subject.SubjectCollectionStats
 import me.him188.ani.app.data.models.subject.SubjectInfo
+import me.him188.ani.app.data.models.subject.Tag
 import me.him188.ani.app.data.persistent.ProtoConverters
+import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.platform.currentTimeMillis
-
-private const val TABLE_NAME = "subject_collection"
 
 /**
  * @see SubjectInfo
  */
 @Entity(
-    tableName = TABLE_NAME,
-    foreignKeys = [
-        ForeignKey(
-            entity = SubjectEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["subjectId"],
-        ),
+    tableName = "subject_collection",
+    indices = [
+        Index(value = ["subjectId"], unique = true),
     ],
 )
 @TypeConverters(ProtoConverters::class)
 data class SubjectCollectionEntity(
     @PrimaryKey val subjectId: Int,
-    val type: UnifiedCollectionType,
-    val created: Long = currentTimeMillis(),
+
+    // SubjectInfo
+    val name: String,
+    val nameCn: String,
+    val summary: String,
+    val nsfw: Boolean,
+    val imageLarge: String,
+    val totalEpisodes: Int,
+    val airDate: PackedDate,
+    val aliases: List<String>,
+    val tags: List<Tag>,
+    @Embedded(prefix = "collection_stats_")
+    val collectionStats: SubjectCollectionStats,
+    @Embedded(prefix = "rating_")
+    val ratingInfo: RatingInfo,
+    val completeDate: PackedDate,
+    // SubjectCollectionInfo
+
+    @Embedded(prefix = "self_rating_")
+    val selfRatingInfo: SelfRatingInfo,
+    val collectionType: UnifiedCollectionType,
+
     val lastUpdated: Long = currentTimeMillis(),
 )
 
 @Dao
 interface SubjectCollectionDao {
-    @Query("""SELECT * FROM $TABLE_NAME WHERE subjectId = :subjectId""")
+    @Query("""SELECT * FROM subject_collection WHERE subjectId = :subjectId""")
     suspend fun get(subjectId: Int): SubjectCollectionEntity
 
     @Upsert
@@ -56,41 +77,62 @@ interface SubjectCollectionDao {
     @Upsert
     suspend fun upsert(item: List<SubjectCollectionEntity>)
 
-    @Query("""UPDATE $TABLE_NAME SET type = :type, lastUpdated = :lastUpdated WHERE subjectId = :subjectId""")
+    @Query("""UPDATE subject_collection SET collectionType = :collectionType, lastUpdated = :lastUpdated WHERE subjectId = :subjectId""")
     suspend fun updateType(
         subjectId: Int,
-        type: UnifiedCollectionType,
+        collectionType: UnifiedCollectionType,
         lastUpdated: Long = currentTimeMillis(),
     )
 
-    @Query("""DELETE FROM $TABLE_NAME WHERE subjectId = :subjectId""")
+    @Query("""DELETE FROM subject_collection WHERE subjectId = :subjectId""")
     suspend fun delete(subjectId: Int)
 
     /**
      * Retrieves a paginated list of `SubjectCollectionEntity` items, optionally filtered by type.
      *
-     * @param type Optional filter for the `type` of items. If `null`, all items are retrieved.
+     * @param collectionType Optional filter for the `type` of items. If `null`, all items are retrieved.
      * @param limit Specifies the maximum number of items to retrieve.
      * @param offset Defines the starting position within the result set, allowing for pagination.
      * @return A `Flow` of a list of `SubjectCollectionEntity` items.
      */
     @Query(
         """
-        select * from $TABLE_NAME 
-        where (:type IS NULL OR type = :type)
+        select * from subject_collection 
+        where (:collectionType IS NULL OR collectionType = :collectionType)
         order by lastUpdated desc
-        limit :limit offset :offset
+        limit :limit
         """,
     )
-    fun getFlow(
-        type: UnifiedCollectionType? = null,
+    fun filterMostRecent(
+        collectionType: UnifiedCollectionType? = null,
         limit: Int,
-        offset: Int,
     ): Flow<List<SubjectCollectionEntity>>
 
-    @Query("""SELECT * FROM $TABLE_NAME WHERE subjectId = :subjectId""")
+    /**
+     * Retrieves a paginated list of `SubjectCollectionEntity` items, optionally filtered by type.
+     *
+     * @param collectionType Optional filter for the `type` of items. If `null`, all items are retrieved.
+     * @param limit Specifies the maximum number of items to retrieve.
+     * @param offset Defines the starting position within the result set, allowing for pagination.
+     * @return A `Flow` of a list of `SubjectCollectionEntity` items.
+     */
+    @Query(
+        """
+        select * from subject_collection 
+        where (:collectionType IS NULL OR collectionType = :collectionType)
+        order by lastUpdated desc
+        """,
+    )
+    fun filterByCollectionTypePaging(
+        collectionType: UnifiedCollectionType? = null,
+    ): PagingSource<Int, SubjectCollectionEntity>
+
+    @Query("""SELECT * FROM subject_collection WHERE subjectId = :subjectId""")
     fun findById(subjectId: Int): Flow<SubjectCollectionEntity?>
 
-    @Query("""SELECT lastUpdated FROM $TABLE_NAME ORDER BY lastUpdated DESC LIMIT 1""")
+    @Query("""SELECT lastUpdated FROM subject_collection ORDER BY lastUpdated DESC LIMIT 1""")
     suspend fun lastUpdated(): Long
+
+    @Query("""UPDATE subject_collection SET self_rating_score = :score, self_rating_comment = :comment, self_rating_tags = :tags, self_rating_isPrivate = :private WHERE subjectId = :subjectId""")
+    suspend fun updateRating(subjectId: Int, score: Int?, comment: String?, tags: List<String>?, private: Boolean?)
 }

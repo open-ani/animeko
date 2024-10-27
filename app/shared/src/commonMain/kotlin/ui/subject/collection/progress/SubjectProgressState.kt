@@ -92,7 +92,7 @@ class SubjectProgressState(
 
     @Stable
     fun episodeCacheStatus(episodeId: Int): EpisodeCacheStatus? {
-        return episodeProgressInfos.find { it.episode.id == episodeId }?.cacheStatus
+        return episodeProgressInfos.find { it.episode.episodeId == episodeId }?.cacheStatus
     }
 
     fun play(episodeId: Int) {

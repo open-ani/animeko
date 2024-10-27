@@ -110,8 +110,8 @@ fun MediaFetchRequest.Companion.create(
     episode: EpisodeInfo,
 ): MediaFetchRequest {
     return MediaFetchRequest(
-        subjectId = subject.id.toString(),
-        episodeId = episode.id.toString(),
+        subjectId = subject.subjectId.toString(),
+        episodeId = episode.episodeId.toString(),
         subjectNameCN = subject.nameCnOrName,
         subjectNames = subject.allNames.toSet(),
         episodeSort = episode.sort,

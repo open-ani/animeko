@@ -64,7 +64,7 @@ internal val TestSubjectInfo
             Tag("日常", 3758),
         ),
         ratingInfo = TestRatingInfo,
-        collection = TestCollectionStats,
+        collectionStats = TestCollectionStats,
     )
 
 @TestOnly

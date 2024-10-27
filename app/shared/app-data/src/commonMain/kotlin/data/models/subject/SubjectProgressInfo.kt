@@ -12,9 +12,6 @@ package me.him188.ani.app.data.models.subject
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import me.him188.ani.app.data.models.episode.EpisodeInfo
-import me.him188.ani.app.data.models.episode.episode
-import me.him188.ani.app.data.models.episode.isKnownCompleted
-import me.him188.ani.app.data.models.episode.type
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.ifInvalid
@@ -57,24 +54,6 @@ data class SubjectProgressInfo(
             ContinueWatchingStatus.Done,
             null,
         )
-
-        fun calculate(
-            collection: SubjectCollection,
-        ): SubjectProgressInfo {
-            return calculate(
-                collection.hasStarted,
-                collection.episodes.map {
-                    Episode(
-                        it.episode.id,
-                        it.type,
-                        it.episode.sort,
-                        it.episode.airDate,
-                        it.episode.isKnownCompleted,
-                    )
-                },
-                collection.info.airDate,
-            )
-        }
 
         fun calculate(
             subjectStarted: Boolean,

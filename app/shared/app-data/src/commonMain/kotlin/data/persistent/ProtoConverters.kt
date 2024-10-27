@@ -52,6 +52,7 @@ class ProtoConverters {
         return protobuf.decodeFromByteArray(IntArraySerializer(), value)
     }
 
+
     @TypeConverter
     fun episodeSortToByteArray(value: EpisodeSort): ByteArray {
         return protobuf.encodeToByteArray(EpisodeSort.serializer(), value)

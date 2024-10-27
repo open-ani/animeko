@@ -14,29 +14,26 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
-import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.episode.EpisodeCollection
 import me.him188.ani.app.data.models.episode.episode
 import me.him188.ani.app.data.models.episode.isKnownCompleted
 import me.him188.ani.app.data.models.preference.MediaCacheSettings
-import me.him188.ani.app.data.models.subject.SubjectCollection
-import me.him188.ani.app.data.models.subject.SubjectManager
+import me.him188.ani.app.data.repository.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.SettingsRepository
+import me.him188.ani.app.data.repository.SubjectCollectionInfo
+import me.him188.ani.app.data.repository.SubjectCollectionRepository
 import me.him188.ani.app.domain.media.cache.storage.MediaCacheStorage
 import me.him188.ani.app.domain.media.fetch.MediaFetcher
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.fetch.create
 import me.him188.ani.app.domain.media.selector.MediaSelectorFactory
 import me.him188.ani.app.domain.media.selector.autoSelect
-import me.him188.ani.app.tools.ldc.ContentPolicy
-import me.him188.ani.app.tools.ldc.data
 import me.him188.ani.datasources.api.MediaCacheMetadata
 import me.him188.ani.datasources.api.source.MediaFetchRequest
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
@@ -62,20 +59,15 @@ fun DefaultMediaAutoCacheService.Companion.createWithKoin(
     mediaSelectorFactory = MediaSelectorFactory.withKoin(koin),
     subjectCollections = { settings ->
         @Suppress("DEPRECATION")
-        koin.get<SubjectManager>()
-            .collectionsByType[UnifiedCollectionType.DOING]!!
-            .data(ContentPolicy.CACHE_FIRST)
-            .filter { it.isNotEmpty() }
-            .map { list ->
-                list.take(settings.mostRecentCount)
-            }
+        koin.get<SubjectCollectionRepository>()
+            .mostRecentlyUpdatedSubjectCollectionsFlow(settings.mostRecentCount, UnifiedCollectionType.DOING)
             .first()
     },
     configLazy = flow {
         emitAll(koin.get<SettingsRepository>().mediaCacheSettings.flow)
     },
     epsNotCached = {
-        koin.get<SubjectManager>().episodeCollectionsFlow(it).first()
+        koin.get<EpisodeCollectionRepository>().subjectEpisodeCollectionInfosFlow(it).first()
     },
     cacheManager = koin.inject(),
     targetStorage = flow {
@@ -92,7 +84,7 @@ class DefaultMediaAutoCacheService(
     /**
      * Emits list of subjects to be considered caching. 通常是 "在看" 分类的. 只需要前几个 (根据配置 [MediaCacheSettings.mostRecentOnly]).
      */
-    private val subjectCollections: suspend (MediaCacheSettings) -> List<SubjectCollection>,
+    private val subjectCollections: suspend (MediaCacheSettings) -> List<SubjectCollectionInfo>,
     private val configLazy: Flow<MediaCacheSettings>,
     private val epsNotCached: suspend (subjectId: Int) -> List<EpisodeCollection>,
     /**
@@ -122,7 +114,7 @@ class DefaultMediaAutoCacheService(
             val firstUnwatched = firstEpisodeToCache(
                 eps = epsNotCached(subject.subjectId),
                 hasAlreadyCached = {
-                    cacheManager.cacheStatusForEpisode(subject.subjectId, it.episode.id)
+                    cacheManager.cacheStatusForEpisode(subject.subjectId, it.episode.episodeId)
                         .firstOrNull() != EpisodeCacheStatus.NotCached
                 },
                 maxCount = config.maxCountPerSubject,
@@ -139,11 +131,11 @@ class DefaultMediaAutoCacheService(
     }
 
     private suspend fun createCache(
-        subject: SubjectCollection,
+        subject: SubjectCollectionInfo,
         firstUnwatched: EpisodeCollection
     ) {
         val fetcher = mediaFetcherLazy.first()
-        val fetchSession = fetcher.newSession(MediaFetchRequest.create(subject.info, firstUnwatched.episode))
+        val fetchSession = fetcher.newSession(MediaFetchRequest.create(subject.subjectInfo, firstUnwatched.episode))
         val selector = mediaSelectorFactory.create(
             subject.subjectId,
             fetchSession.cumulativeResults,
@@ -175,7 +167,7 @@ class DefaultMediaAutoCacheService(
         }
     }
 
-    private fun SubjectCollection.debugName() = displayName
+    private fun SubjectCollectionInfo.debugName() = subjectInfo.displayName
 
     companion object {
         val logger = logger(DefaultMediaAutoCacheService::class)

@@ -12,10 +12,10 @@ package me.him188.ani.app.domain.media.selector
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
-import me.him188.ani.app.data.models.subject.subjectCompletedFlow
+import me.him188.ani.app.data.repository.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.EpisodePreferencesRepository
 import me.him188.ani.app.data.repository.SettingsRepository
-import me.him188.ani.app.data.repository.SubjectRepository
+import me.him188.ani.app.data.repository.subjectCompletedFlow
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.selector.MediaSelectorFactory.Companion.withRepositories
 import me.him188.ani.datasources.api.Media
@@ -39,14 +39,14 @@ interface MediaSelectorFactory {
         fun withKoin(koin: Koin = KoinPlatform.getKoin()): MediaSelectorFactory = withRepositories(
             episodePreferencesRepository = koin.get(),
             settingsRepository = koin.get(),
-            subjectRepository = koin.get(),
+            episodeCollectionRepository = koin.get(),
             mediaSourceManager = koin.get(),
         )
 
         fun withRepositories(
             episodePreferencesRepository: EpisodePreferencesRepository,
             settingsRepository: SettingsRepository,
-            subjectRepository: SubjectRepository,
+            episodeCollectionRepository: EpisodeCollectionRepository,
             mediaSourceManager: MediaSourceManager,
             subtitlePreferences: MediaSelectorSubtitlePreferences = MediaSelectorSubtitlePreferences.CurrentPlatform,
         ): MediaSelectorFactory = object : MediaSelectorFactory {
@@ -57,7 +57,7 @@ interface MediaSelectorFactory {
             ): MediaSelector {
                 return DefaultMediaSelector(
                     MediaSelectorContext.createFlow(
-                        subjectRepository.subjectCompletedFlow(subjectId),
+                        episodeCollectionRepository.subjectCompletedFlow(subjectId),
                         mediaSourceManager.allInstances,
                         flowOf(subtitlePreferences),
                     ),

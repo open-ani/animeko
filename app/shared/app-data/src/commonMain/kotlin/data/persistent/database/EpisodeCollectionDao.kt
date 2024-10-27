@@ -10,40 +10,78 @@
 package me.him188.ani.app.data.persistent.database
 
 import androidx.paging.PagingSource
-import androidx.room.ColumnInfo
 import androidx.room.Dao
-import androidx.room.Embedded
 import androidx.room.Entity
 import androidx.room.ForeignKey
-import androidx.room.PrimaryKey
+import androidx.room.Index
 import androidx.room.Query
 import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
-import me.him188.ani.app.data.models.episode.EpisodeInfo
+import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.EpisodeType
+import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.platform.currentTimeMillis
 
 
+@Entity(
+    tableName = "episode_collection",
+    foreignKeys = [
+        ForeignKey(
+            entity = SubjectCollectionEntity::class,
+            parentColumns = ["subjectId"],
+            childColumns = ["subjectId"],
+        ),
+    ],
+    primaryKeys = ["episodeId"],
+    indices = [
+        Index(value = ["subjectId", "episodeId"], unique = true),
+//        Index(
+//            value = ["subjectId", "sort"],
+//            unique = true,
+//            orders = [Index.Order.ASC]
+//        ),
+    ],
+)
+data class EpisodeCollectionEntity(
+    val subjectId: Int,
+    val episodeId: Int,
+
+    val episodeType: EpisodeType?,
+    val name: String,
+    val nameCn: String,
+    val airDate: PackedDate,
+    val comment: Int,
+    val desc: String,
+    val sort: EpisodeSort,
+    val ep: EpisodeSort? = null,
+
+    val selfCollectionType: UnifiedCollectionType,
+    val lastUpdated: Long = currentTimeMillis(),
+)
+
+
 @Dao
 interface EpisodeCollectionDao {
-    @Query("""SELECT * FROM episode_collection JOIN episode WHERE episodeId = :episodeId LIMIT 1""")
-    fun getByEpisodeId(episodeId: Int): PagingSource<Int, EpisodeCollectionDetail>
+    @Query("""SELECT * FROM episode_collection WHERE episodeId = :episodeId LIMIT 1""")
+    fun findByEpisodeId(episodeId: Int): Flow<EpisodeCollectionEntity?>
+
 
     @Query(
         """
-        SELECT * FROM episode_collection JOIN episode
+        SELECT * FROM episode_collection
         WHERE subjectId = :subjectId
-        AND (:episodeType IS NULL OR episode.type = :episodeType)
-        """
+        AND (:episodeType IS NULL OR episodeType = :episodeType)
+        """,
     )
     fun filterBySubjectId(
         subjectId: Int,
         episodeType: EpisodeType?,
-    ): Flow<List<EpisodeCollectionDetail>>
+    ): Flow<List<EpisodeCollectionEntity>>
 
-    @Query("""SELECT * FROM episode_collection JOIN episode WHERE subjectId = :subjectId""")
-    fun filterBySubjectIdPaging(subjectId: Int): PagingSource<Int, EpisodeCollectionDetail>
+    @Query("""SELECT * FROM episode_collection WHERE subjectId = :subjectId""")
+    fun filterBySubjectIdPaging(subjectId: Int): PagingSource<Int, EpisodeCollectionEntity>
+
 
     @Upsert
     suspend fun upsert(item: EpisodeCollectionEntity)
@@ -51,44 +89,50 @@ interface EpisodeCollectionDao {
     @Upsert
     suspend fun upsert(item: List<EpisodeCollectionEntity>)
 
+    @Query("""UPDATE episode_collection SET selfCollectionType = :type WHERE subjectId = :subjectId AND episodeId = :episodeId""")
+    suspend fun updateSelfCollectionType(
+        subjectId: Int,
+        episodeId: Int,
+        type: UnifiedCollectionType,
+    )
+
+    @Query("""UPDATE episode_collection SET selfCollectionType = :type WHERE subjectId = :subjectId""")
+    suspend fun setAllEpisodesWatched(
+        subjectId: Int,
+        type: UnifiedCollectionType = UnifiedCollectionType.DONE,
+    )
+
+
     @Query("""select * from episode_collection""")
-    fun getFlow(): Flow<List<EpisodeCollectionDetail>>
+    fun all(): Flow<List<EpisodeCollectionEntity>>
+
 
     @Query("""SELECT lastUpdated FROM episode_collection ORDER BY lastUpdated DESC LIMIT 1""")
     suspend fun lastUpdated(): Long
 }
 
-@Entity(
-    tableName = "episode_collection",
-    foreignKeys = [
-        ForeignKey(
-            entity = SubjectEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["subjectId"],
-        ),
-        ForeignKey(
-            entity = EpisodeEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["episodeId"],
-        ),
-    ],
-    indices = [
-        androidx.room.Index(value = ["subjectId", "episodeId"], unique = true),
-    ]
-)
-data class EpisodeCollectionEntity(
-    val subjectId: Int,
-    @PrimaryKey val episodeId: Int,
-    val type: UnifiedCollectionType,
-    @ColumnInfo(defaultValue = "CURRENT_TIMESTAMP")
-    val lastUpdated: Long = currentTimeMillis(),
-)
-
-data class EpisodeCollectionDetail(
-    val subjectId: Int,
-    val episodeId: Int,
-    val type: UnifiedCollectionType,
-    val lastUpdated: Long = currentTimeMillis(),
-    @Embedded
-    val episodeInfo: EpisodeInfo,
-)
+//@Entity(
+//    tableName = "episode_collection",
+//    foreignKeys = [
+//        ForeignKey(
+//            entity = SubjectEntity::class,
+//            parentColumns = ["id"],
+//            childColumns = ["subjectId"],
+//        ),
+//        ForeignKey(
+//            entity = EpEn::class,
+//            parentColumns = ["id"],
+//            childColumns = ["episodeId"],
+//        ),
+//    ],
+//    indices = [
+//        Index(value = ["subjectId", "episodeId"], unique = true),
+//    ]
+//)
+//data class EpisodeCollectionEntity(
+//    val subjectId: Int,
+//    @PrimaryKey val episodeId: Int,
+//    val type: UnifiedCollectionType,
+//    @ColumnInfo(defaultValue = "CURRENT_TIMESTAMP")
+//    val lastUpdated: Long = currentTimeMillis(),
+//)

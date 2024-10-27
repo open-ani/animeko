@@ -30,7 +30,7 @@ class MediaAutoCacheServiceTest {
         id: Int = this.id++,
         airDate: PackedDate = PackedDate(0, 1, 1)
     ) = EpisodeInfo(
-        id = id,
+        episodeId = id,
         name = "Diana Houston",
         nameCn = "Nita O'Donnell",
         sort = EpisodeSort(1),
@@ -125,7 +125,7 @@ class MediaAutoCacheServiceTest {
         ).toList()
 
         assertEquals(3, res.size)
-        assertEquals(1, res.first().episode.id)
+        assertEquals(1, res.first().episode.episodeId)
     }
 
     @Test
@@ -138,7 +138,7 @@ class MediaAutoCacheServiceTest {
                 EpisodeCollection(ep(id = 3), collectionType = UnifiedCollectionType.WISH),
             ),
             hasAlreadyCached = {
-                it.episode.id <= 0
+                it.episode.episodeId <= 0
             },
             maxCount = 1,
         ).toList()
@@ -156,12 +156,12 @@ class MediaAutoCacheServiceTest {
                 EpisodeCollection(ep(id = 3), collectionType = UnifiedCollectionType.WISH),
             ),
             hasAlreadyCached = {
-                it.episode.id <= 1
+                it.episode.episodeId <= 1
             },
             maxCount = 3,
         ).toList()
 
-        assertEquals(listOf(2), res.map { it.episode.id })
+        assertEquals(listOf(2), res.map { it.episode.episodeId })
     }
 
     @Test
@@ -179,6 +179,6 @@ class MediaAutoCacheServiceTest {
             maxCount = 1,
         ).toList()
 
-        assertEquals(listOf(0), res.map { it.episode.id })
+        assertEquals(listOf(0), res.map { it.episode.episodeId })
     }
 }

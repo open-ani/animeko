@@ -84,7 +84,7 @@ class EpisodeListState(
     val episodes: List<EpisodeProgressItem> by derivedStateOf {
         this.episodeProgressInfoList.map {
             EpisodeProgressItem(
-                episodeId = it.episode.id,
+                episodeId = it.episode.episodeId,
                 episodeSort = it.episode.renderEpisodeEp(),
                 collectionType = it.collectionType,
                 isOnAir = it.episode.isKnownOnAir,

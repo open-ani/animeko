@@ -52,6 +52,7 @@ import me.him188.ani.app.ui.settings.tabs.media.source.MediaSourceLoader
 import me.him188.ani.app.ui.settings.tabs.media.source.MediaSourceSubscriptionGroupState
 import me.him188.ani.datasources.api.source.ConnectionStatus
 import me.him188.ani.datasources.api.source.asAutoCloseable
+import me.him188.ani.datasources.bangumi.BangumiClient
 import me.him188.ani.utils.ktor.createDefaultHttpClient
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -59,7 +60,7 @@ import org.koin.core.component.inject
 class SettingsViewModel : AbstractSettingsViewModel(), KoinComponent {
     private val settingsRepository: SettingsRepository by inject()
     private val permissionManager: PermissionManager by inject()
-    private val bangumiSubjectProvider: SubjectProvider by inject()
+    private val bangumiClient: BangumiClient by inject()
     private val danmakuRegexFilterRepository: DanmakuRegexFilterRepository by inject()
 
     private val mediaSourceManager: MediaSourceManager by inject()
@@ -162,9 +163,9 @@ class SettingsViewModel : AbstractSettingsViewModel(), KoinComponent {
     val otherTesters: DefaultConnectionTesterRunner<ConnectionTester> = DefaultConnectionTesterRunner(
         listOf(
             ConnectionTester(
-                id = BangumiSubjectProvider.ID, // Bangumi 顺便也测一下
+                id = "Bangumi", // Bangumi 顺便也测一下
             ) {
-                if (bangumiSubjectProvider.testConnection() == ConnectionStatus.SUCCESS) {
+                if (bangumiClient.testConnection() == ConnectionStatus.SUCCESS) {
                     ConnectionTestResult.SUCCESS
                 } else {
                     ConnectionTestResult.FAILED

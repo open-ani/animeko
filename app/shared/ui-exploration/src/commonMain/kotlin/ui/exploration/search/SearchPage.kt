@@ -119,7 +119,7 @@ fun SearchPage(
                 transitionSpec = AniThemeDefaults.emphasizedAnimatedContentTransition,
             ) { index ->
                 state.searchState.items.getOrNull(index)?.let {
-                    detailContent(it.id)
+                    detailContent(it.subjectId)
                 }
             }
         },
@@ -156,15 +156,15 @@ internal fun SearchPageResultColumn(
     ) {
         itemsIndexed(
             state.items,
-            key = { _, it -> it.id },
+            key = { _, it -> it.subjectId },
             contentType = { _, _ -> 1 },
         ) { index, info ->
             val requester = remember { BringIntoViewRequester() }
             // 记录 item 对应的 requester
             DisposableEffect(requester) {
-                bringIntoViewRequesters[info.id] = requester
+                bringIntoViewRequesters[info.subjectId] = requester
                 onDispose {
-                    bringIntoViewRequesters.remove(info.id)
+                    bringIntoViewRequesters.remove(info.subjectId)
                 }
             }
 
@@ -184,7 +184,7 @@ internal fun SearchPageResultColumn(
     LaunchedEffect(Unit) {
         snapshotFlow(selectedItemIndex)
             .collectLatest {
-                bringIntoViewRequesters[state.items.getOrNull(it)?.id]?.bringIntoView()
+                bringIntoViewRequesters[state.items.getOrNull(it)?.subjectId]?.bringIntoView()
             }
     }
 }

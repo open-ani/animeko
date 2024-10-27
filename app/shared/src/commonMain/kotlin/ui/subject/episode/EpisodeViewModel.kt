@@ -471,11 +471,11 @@ private class EpisodeViewModelImpl(
             }.produceState(null),
             cacheStatus = {
                 episodeCacheStatusListState.firstOrNull { status ->
-                    status.first == it.episode.id
+                    status.first == it.episode.episodeId
                 }?.second ?: EpisodeCacheStatus.NotCached
             },
             onSelect = {
-                switchEpisode(it.episode.id)
+                switchEpisode(it.episode.episodeId)
             },
             onChangeCollectionType = { episode, it ->
                 collectionButtonEnabled.value = false
@@ -483,7 +483,7 @@ private class EpisodeViewModelImpl(
                     try {
                         subjectManager.setEpisodeCollectionType(
                             subjectId,
-                            episodeId = episode.episode.id,
+                            episodeId = episode.episode.episodeId,
                             collectionType = it,
                         )
                     } finally {
@@ -503,7 +503,7 @@ private class EpisodeViewModelImpl(
             hasAnyUnwatched = {
                 val collections =
                     episodeCollectionsFlow.firstOrNull() ?: return@EditableSubjectCollectionTypeState true
-                collections.any { !it.type.isDoneOrDropped() }
+                collections.any { !it.collectionType.isDoneOrDropped() }
             },
             onSetSelfCollectionType = { subjectManager.setSubjectCollectionType(subjectId, it) },
             onSetAllEpisodesWatched = {

@@ -9,79 +9,85 @@
 
 package me.him188.ani.app.data.repository
 
+import androidx.compose.runtime.Immutable
 import androidx.paging.LoadType
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
-import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import androidx.paging.RemoteMediator
 import androidx.paging.map
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.toList
+import me.him188.ani.app.data.models.episode.EpisodeCollections
 import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.network.BangumiEpisodeService
+import me.him188.ani.app.data.network.toBangumiEpType
 import me.him188.ani.app.data.persistent.database.EpisodeCollectionDao
 import me.him188.ani.app.data.persistent.database.EpisodeCollectionEntity
-import me.him188.ani.app.data.persistent.database.EpisodeDao
-import me.him188.ani.app.data.persistent.database.EpisodeEntity
-import me.him188.ani.datasources.api.EpisodeSort
-import me.him188.ani.datasources.api.EpisodeType
-import me.him188.ani.datasources.api.EpisodeType.ED
-import me.him188.ani.datasources.api.EpisodeType.MAD
 import me.him188.ani.datasources.api.EpisodeType.MainStory
-import me.him188.ani.datasources.api.EpisodeType.OP
-import me.him188.ani.datasources.api.EpisodeType.PV
-import me.him188.ani.datasources.api.EpisodeType.SP
-import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
-import me.him188.ani.datasources.bangumi.apis.DefaultApi
-import me.him188.ani.datasources.bangumi.models.BangumiEpType
-import me.him188.ani.datasources.bangumi.models.BangumiEpisode
-import me.him188.ani.datasources.bangumi.processing.toCollectionType
 import me.him188.ani.utils.platform.currentTimeMillis
-import me.him188.ani.utils.serialization.BigNum
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.milliseconds
 
+@Immutable
 data class EpisodeCollectionInfo(
     val episodeId: Int,
-    val type: UnifiedCollectionType,
+    val collectionType: UnifiedCollectionType,
     val episodeInfo: EpisodeInfo,
 )
 
 class EpisodeCollectionRepository(
-    private val episodeApi: DefaultApi,
-    private val episodeDao: EpisodeDao,
-    private val bangumiEpisodeService: BangumiEpisodeService,
-//    private val episodeRepository: EpisodeRepository,
     private val episodeCollectionDao: EpisodeCollectionDao,
-) {
-    fun episodeCollectionsFlow(
-        subjectId: Int,
-        epType: BangumiEpType = BangumiEpType.MainStory,
-    ): Flow<List<EpisodeCollectionInfo>> {
-        return episodeCollectionDao.filterBySubjectId(subjectId)
-            .map { collections ->
-                if (collections.isEmpty()) { // 缓存没有
-                    bangumiEpisodeService.getSubjectEpisodeCollections(subjectId, epType)
-                    val episodes = episodeRepository.episodesFlow(subjectId).first()
+    private val bangumiEpisodeService: BangumiEpisodeService,
+    private val enableAllEpisodeTypes: Flow<Boolean>,
+) : Repository {
+    private val epTypeFilter get() = enableAllEpisodeTypes.map { if (it) null else MainStory }
 
+    /**
+     * 获取指定条目的指定剧集信息, 如果没有则从网络获取并缓存
+     */
+    fun episodeCollectionInfoFlow(subjectId: Int, episodeId: Int): Flow<EpisodeCollectionInfo> {
+        return episodeCollectionDao.findByEpisodeId(episodeId).map { entity ->
+            entity?.toEpisodeCollectionInfo()
+                ?: kotlin.run {
+                    bangumiEpisodeService.getEpisodeCollectionById(episodeId)
+                        ?.also {
+                            episodeCollectionDao.upsert(it.toEntity(subjectId))
+                        }
+                        ?: throw NoSuchElementException("Episode $episodeId not found")
                 }
-                collections.map {
-                    EpisodeCollectionInfo(
-                        episodeId = it.episodeId,
-                        type = it.type,
-                        episodeInfo = episodeRepository.episodeInfoFlow(subjectId, it.episodeId).first(
-                        )
-                }
-            }
+        }
     }
 
-    fun episodeCollectionsPager(
+    /**
+     * 获取指定条目的所有剧集信息, 如果没有则从网络获取并缓存
+     */
+    fun subjectEpisodeCollectionInfosFlow(
+        subjectId: Int
+    ): Flow<List<EpisodeCollectionInfo>> = epTypeFilter.flatMapLatest { epType ->
+        episodeCollectionDao.filterBySubjectId(subjectId, epType).mapLatest { episodes ->
+            if (episodes.isNotEmpty() &&
+                ((episodes.maxOfOrNull { it.lastUpdated } ?: 0) - currentTimeMillis()).milliseconds <= 1.hours
+            ) {
+                // 有有效缓存则直接返回
+                return@mapLatest episodes.map { it.toEpisodeCollectionInfo() }
+            }
+            bangumiEpisodeService.getEpisodeCollectionInfosBySubjectId(subjectId, epType)
+                .toList() // 目前先直接全拿了, 反正一般情况下剧集数量很少
+                .also { list ->
+                    episodeCollectionDao.upsert(list.map { it.toEntity(subjectId) })
+                }
+        }
+    }
+
+    fun subjectEpisodeCollectionsPager(
         subjectId: Int,
-        epType: BangumiEpType = BangumiEpType.MainStory,
         pagingConfig: PagingConfig = PagingConfig(
             pageSize = 20,
             enablePlaceholders = false,
@@ -89,50 +95,56 @@ class EpisodeCollectionRepository(
     ): Flow<PagingData<EpisodeCollectionInfo>> = Pager(
         config = pagingConfig,
         remoteMediator = EpisodeCollectionsRemoteMediator(
-            episodeCollectionDao, episodeApi, episodeDao,
-            subjectId, epType,
+            episodeCollectionDao, bangumiEpisodeService,
+            subjectId,
         ),
         pagingSourceFactory = {
             episodeCollectionDao.filterBySubjectIdPaging(subjectId)
-            object : PagingSource<Int, EpisodeCollectionInfo>() {
-                override fun getRefreshKey(state: PagingState<Int, EpisodeCollectionInfo>): Int? = null
-                override suspend fun load(params: LoadParams<Int>): LoadResult<Int, EpisodeCollectionInfo> {
-                    val collections = episodeCollectionDao.filterBySubjectId(subjectId).first()
-//                        val items = episodes.map { entity ->
-//                            EpisodeCollectionInfo(
-//                                episodeInfo = entity.toEpisodeInfo(),
-//                                type = collections.find { it.episodeId == entity.id }?.type
-//                                    ?: UnifiedCollectionType.NOT_COLLECTED,
-//                            )
-//                        }
-                    return LoadResult.Page(
-                        data = collections.map {
-                            EpisodeCollectionInfo(
-                                episodeId = it.episodeId,
-                                type = it.type,
-                            )
-                        },
-                        prevKey = null,
-                        nextKey = null,
-                    )
-                }
-            }
+//            object : PagingSource<Int, EpisodeCollectionInfo>() {
+//                override fun getRefreshKey(state: PagingState<Int, EpisodeCollectionInfo>): Int? = null
+//                override suspend fun load(params: LoadParams<Int>): LoadResult<Int, EpisodeCollectionInfo> {
+//                    return LoadResult.Page(
+//                        data = episodeCollectionDao.filterBySubjectId(subjectId, epType)
+//                            .first()
+//                            .map {
+//                                it.toEpisodeCollectionInfo()
+//                            },
+//                        prevKey = null,
+//                        nextKey = null,
+//                    )
+//                }
+//            }
         },
     ).flow.map { data ->
-        data.map { entity ->
-            EpisodeCollectionInfo(
-                episodeId = entity.episodeId,
-                type = entity.type,
-            )
+        data.map {
+            it.toEpisodeCollectionInfo()
         }
     }
 
-    private class EpisodeCollectionsRemoteMediator<T : Any>(
+    /**
+     * 设置指定条目的所有剧集为已看.
+     */
+    suspend fun setAllEpisodesWatched(subjectId: Int) {
+        val episodeIds = subjectEpisodeCollectionInfosFlow(subjectId)
+            .first()
+            .map { it.episodeId }
+
+        bangumiEpisodeService.setEpisodeCollection(subjectId, episodeIds, UnifiedCollectionType.DONE)
+        episodeCollectionDao.setAllEpisodesWatched(subjectId)
+    }
+
+    suspend fun setEpisodeCollectionType(subjectId: Int, episodeId: Int, collectionType: UnifiedCollectionType) {
+        bangumiEpisodeService.setEpisodeCollection(subjectId, listOf(episodeId), collectionType)
+        episodeCollectionDao.updateSelfCollectionType(subjectId, episodeId, collectionType)
+    }
+
+    /**
+     * Loads [EpisodeCollectionEntity]
+     */
+    private inner class EpisodeCollectionsRemoteMediator<T : Any>(
         private val episodeCollectionDao: EpisodeCollectionDao,
-        private val episodeApi: DefaultApi,
-        private val episodeDao: EpisodeDao,
+        private val episodeService: BangumiEpisodeService,
         val subjectId: Int,
-        val epType: BangumiEpType,
     ) : RemoteMediator<Int, T>() {
         override suspend fun initialize(): InitializeAction {
             if ((episodeCollectionDao.lastUpdated() - currentTimeMillis()).milliseconds > 1.hours) {
@@ -151,63 +163,75 @@ class EpisodeCollectionRepository(
                 LoadType.APPEND -> state.pages.size * state.config.pageSize
             }
 
-            val episodes = episodeApi.getUserSubjectEpisodeCollection(
+            val episodeType = epTypeFilter.first()
+
+            val episodes = episodeService.getEpisodeCollectionInfosPaged(
                 subjectId,
-                episodeType = epType,
+                episodeType = episodeType?.toBangumiEpType(),
                 offset = offset,
                 limit = state.config.pageSize,
-            ).body()
+            )
 
-            episodes.data?.takeIf { it.isNotEmpty() }?.let { list ->
-                episodeDao.upsert(
-                    list.map {
-                        it.episode.toEntity(subjectId)
-                    },
-                )
-
+            episodes.page.takeIf { it.isNotEmpty() }?.let { list ->
                 episodeCollectionDao.upsert(
-                    list.map {
-                        EpisodeCollectionEntity(
-                            subjectId = subjectId,
-                            episodeId = it.episode.id,
-                            type = it.type.toCollectionType(),
-                        )
-                    },
+                    list.map { it.toEntity(subjectId) },
                 )
             }
 
-            return MediatorResult.Success(endOfPaginationReached = episodes.data.isNullOrEmpty())
+            return MediatorResult.Success(endOfPaginationReached = episodes.page.isEmpty())
         }
     }
 }
 
-internal fun BangumiEpisode.toEntity(subjectId: Int): EpisodeEntity {
-    return EpisodeEntity(
-        subjectId = subjectId,
-        id = this.id,
-        type = getEpisodeTypeByBangumiCode(this.type),
-        name = this.name,
-        nameCn = this.nameCn,
-        airDate = PackedDate.parseFromDate(this.airdate),
-        comment = this.comment,
-//        duration = this.duration,
-        desc = this.desc,
-//        disc = this.disc,
-        sort = EpisodeSort(this.sort),
-        ep = EpisodeSort(this.ep ?: BigNum.ONE),
-//        durationSeconds = this.durationSeconds
-    )
-}
-
-private fun getEpisodeTypeByBangumiCode(code: Int): EpisodeType? {
-    return when (code) {
-        0 -> MainStory
-        1 -> SP
-        2 -> OP
-        3 -> ED
-        4 -> PV
-        5 -> MAD
-        else -> null
+/**
+ * 获取指定条目是否已经完结. 不是用户是否看完, 只要条目本身完结了就算.
+ */
+fun EpisodeCollectionRepository.subjectCompletedFlow(subjectId: Int): Flow<Boolean> {
+    return subjectEpisodeCollectionInfosFlow(subjectId).map { epCollection ->
+        EpisodeCollections.isSubjectCompleted(epCollection.map { it.episodeInfo })
     }
 }
 
+suspend inline fun EpisodeCollectionRepository.setEpisodeWatched(subjectId: Int, episodeId: Int, watched: Boolean) =
+    setEpisodeCollectionType(
+        subjectId,
+        episodeId,
+        if (watched) UnifiedCollectionType.DONE else UnifiedCollectionType.WISH,
+    )
+
+private fun EpisodeCollectionInfo.toEntity(subjectId: Int): EpisodeCollectionEntity {
+    return EpisodeCollectionEntity(
+        subjectId = subjectId,
+        episodeId = episodeId,
+        episodeType = episodeInfo.type,
+        name = episodeInfo.name,
+        nameCn = episodeInfo.nameCn,
+        airDate = episodeInfo.airDate,
+        comment = episodeInfo.comment,
+        desc = episodeInfo.desc,
+        sort = episodeInfo.sort,
+        ep = episodeInfo.ep,
+        selfCollectionType = collectionType,
+    )
+}
+
+private fun EpisodeCollectionEntity.toEpisodeCollectionInfo() =
+    EpisodeCollectionInfo(
+        episodeId = episodeId,
+        collectionType = selfCollectionType,
+        episodeInfo = toEpisodeInfo(),
+    )
+
+private fun EpisodeCollectionEntity.toEpisodeInfo(): EpisodeInfo {
+    return EpisodeInfo(
+        episodeId = this.episodeId,
+        type = this.episodeType ?: MainStory,
+        name = this.name,
+        nameCn = this.nameCn,
+        airDate = this.airDate,
+        comment = this.comment,
+        desc = this.desc,
+        sort = this.sort,
+        ep = this.ep,
+    )
+}

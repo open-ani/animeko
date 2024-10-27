@@ -7,6 +7,8 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
+@file:OptIn(TestOnly::class)
+
 package me.him188.ani.app.ui.rating
 
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -20,7 +22,9 @@ import androidx.compose.ui.unit.dp
 import me.him188.ani.app.data.models.subject.RatingCounts
 import me.him188.ani.app.data.models.subject.RatingInfo
 import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview
+import me.him188.ani.utils.platform.annotations.TestOnly
 
+@TestOnly
 private val TestRatingInfo = RatingInfo(
     rank = 123,
     total = 100,

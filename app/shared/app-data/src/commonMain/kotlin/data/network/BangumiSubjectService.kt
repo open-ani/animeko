@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.app.data.repository
+package me.him188.ani.app.data.network
 
 import io.ktor.client.plugins.ResponseException
 import io.ktor.http.HttpStatusCode
@@ -16,12 +16,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
-import me.him188.ani.app.data.models.ApiResponse
-import me.him188.ani.app.data.models.runApiRequest
 import me.him188.ani.app.data.models.subject.RatingCounts
 import me.him188.ani.app.data.models.subject.RatingInfo
-import me.him188.ani.app.data.models.subject.SelfRatingInfo
-import me.him188.ani.app.data.models.subject.SubjectManager
 import me.him188.ani.app.domain.session.OpaqueSession
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.session.username
@@ -47,8 +43,8 @@ import org.koin.core.component.inject
  * Performs network requests.
  * Use [SubjectManager] instead.
  */
-interface BangumiSubjectRepository : Repository {
-    suspend fun getSubject(id: Int): ApiResponse<BangumiSubject>
+interface BangumiSubjectService {
+    suspend fun getSubject(id: Int): BangumiSubject
 
     fun getSubjectCollections(
         username: String,
@@ -67,7 +63,7 @@ interface BangumiSubjectRepository : Repository {
     suspend fun deleteSubjectCollection(subjectId: Int)
 }
 
-suspend inline fun BangumiSubjectRepository.setSubjectCollectionTypeOrDelete(
+suspend inline fun BangumiSubjectService.setSubjectCollectionTypeOrDelete(
     subjectId: Int,
     type: BangumiSubjectCollectionType?
 ) {
@@ -78,14 +74,12 @@ suspend inline fun BangumiSubjectRepository.setSubjectCollectionTypeOrDelete(
     }
 }
 
-class RemoteBangumiSubjectRepository : BangumiSubjectRepository, KoinComponent {
+class RemoteBangumiSubjectService : BangumiSubjectService, KoinComponent {
     private val client: BangumiClient by inject()
     private val sessionManager: SessionManager by inject()
     private val logger = logger(this::class)
 
-    override suspend fun getSubject(id: Int): ApiResponse<BangumiSubject> = runApiRequest {
-        client.getApi().getSubjectById(id).body()
-    }
+    override suspend fun getSubject(id: Int): BangumiSubject = client.getApi().getSubjectById(id).body()
 
     override suspend fun patchSubjectCollection(subjectId: Int, payload: BangumiUserSubjectCollectionModifyPayload) {
         client.getApi().postUserCollection(subjectId, payload)
@@ -157,14 +151,6 @@ class RemoteBangumiSubjectRepository : BangumiSubjectRepository, KoinComponent {
     }
 }
 
-fun BangumiUserSubjectCollection.toSelfRatingInfo(): SelfRatingInfo {
-    return SelfRatingInfo(
-        score = rate,
-        comment = comment.takeUnless { it.isNullOrBlank() },
-        tags = tags,
-        isPrivate = private,
-    )
-}
 
 //fun BangumiSubject.toSubjectInfo(): SubjectInfo {
 //    return SubjectInfo(

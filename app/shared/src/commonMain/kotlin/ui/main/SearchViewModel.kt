@@ -17,8 +17,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import me.him188.ani.app.data.models.ApiResponse
-import me.him188.ani.app.data.models.subject.SubjectManager
 import me.him188.ani.app.data.repository.BangumiRelatedCharactersRepository
+import me.him188.ani.app.data.repository.EpisodeCollectionRepository
+import me.him188.ani.app.data.repository.SubjectSearchHistoryRepository
 import me.him188.ani.app.data.repository.SubjectSearchRepository
 import me.him188.ani.app.data.repository.TrendsRepository
 import me.him188.ani.app.domain.search.SubjectSearchQuery
@@ -42,7 +43,7 @@ import org.koin.core.component.inject
 class SearchViewModel : AbstractViewModel(), KoinComponent {
     private val trendsRepository: TrendsRepository by inject()
     private val sessionManager: SessionManager by inject()
-    private val searchHistoryRepository: SubjectSearchRepository by inject()
+    private val searchHistoryRepository: SubjectSearchHistoryRepository by inject()
     private val bangumiRelatedCharactersRepository: BangumiRelatedCharactersRepository by inject()
 
     private val authState = AuthState()
@@ -50,10 +51,10 @@ class SearchViewModel : AbstractViewModel(), KoinComponent {
     @OptIn(OpaqueSession::class)
     private val selfInfoState = sessionManager.userInfo.produceState(null)
 
-    private val subjectProvider: SubjectProvider by inject()
-    private val subjectManager: SubjectManager by inject()
+    private val episodeCollectionRepository: EpisodeCollectionRepository by inject()
+    private val subjectSearchRepository: SubjectSearchRepository by inject()
 
-    private val searcher = SubjectSearcherImpl(subjectProvider, backgroundScope.coroutineContext)
+    private val searcher = SubjectSearcherImpl(subjectSearchRepository, backgroundScope.coroutineContext)
     private val queryState = mutableStateOf("")
 
     val searchPageState: SearchPageState = SearchPageState(
@@ -61,8 +62,8 @@ class SearchViewModel : AbstractViewModel(), KoinComponent {
         suggestionsState = searchHistoryRepository.getHistoryFlow()
             .produceState(emptyList()),// todo: suggestions
         onRequestPlay = { info ->
-            subjectManager.subjectCollectionFlow(info.id).first().episodes.firstOrNull()?.let {
-                SearchPageState.EpisodeTarget(info.id, it.episodeInfo.id)
+            episodeCollectionRepository.subjectEpisodeCollectionInfosFlow(info.subjectId).first().firstOrNull()?.let {
+                SearchPageState.EpisodeTarget(info.subjectId, it.episodeInfo.episodeId)
             }
         },
         queryState = queryState,
@@ -71,11 +72,11 @@ class SearchViewModel : AbstractViewModel(), KoinComponent {
                 LazyDataCache(
                     createSource = {
                         ApiResponse.success(
-                            subjectProvider.startSearch(SubjectSearchQuery(keyword = queryState.value))
+                            subjectSearchRepository.startSearch(SubjectSearchQuery(keyword = queryState.value))
                                 .map { SubjectPreviewItemInfo.compute(it, null, null) },
                         )
                     },
-                    getKey = { it.id },
+                    getKey = { it.subjectId },
                     debugName = "ExplorationTabViewModel.searchPageState.ldc",
                 )
             },
@@ -87,7 +88,7 @@ class SearchViewModel : AbstractViewModel(), KoinComponent {
     val subjectDetailsViewModelFlow = snapshotFlow { searchPageState.selectedItem }
         .flowOn(Dispatchers.Main)
         .map {
-            SubjectDetailsViewModel(it?.id ?: return@map null)
+            SubjectDetailsViewModel(it?.subjectId ?: return@map null)
         }
         .onReplacement {
             it?.cancelScope()

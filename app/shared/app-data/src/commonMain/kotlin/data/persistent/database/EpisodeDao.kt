@@ -9,63 +9,51 @@
 
 package me.him188.ani.app.data.persistent.database
 
-import androidx.paging.PagingSource
-import androidx.room.Dao
-import androidx.room.Entity
-import androidx.room.ForeignKey
-import androidx.room.PrimaryKey
-import androidx.room.Query
-import androidx.room.Upsert
-import kotlinx.coroutines.flow.Flow
-import me.him188.ani.app.data.models.episode.EpisodeInfo
-import me.him188.ani.datasources.api.EpisodeSort
-import me.him188.ani.datasources.api.EpisodeType
-import me.him188.ani.datasources.api.PackedDate
-
-@Dao
-interface EpisodeDao {
-    @Query("""SELECT * FROM episode WHERE id = :id""")
-    fun findByEpisodeId(id: Int): Flow<EpisodeEntity?>
-
-    @Upsert
-    suspend fun upsert(item: EpisodeEntity)
-
-    @Upsert
-    suspend fun upsert(item: List<EpisodeEntity>)
-
-    @Query("""select * from episode""")
-    fun all(): PagingSource<Int, EpisodeEntity>
-
-    @Query("""SELECT * FROM episode WHERE subjectId = :subjectId ORDER BY sort""")
-    fun filterBySubjectId(subjectId: Int): Flow<List<EpisodeEntity>>
-
-    @Query("""SELECT * FROM episode WHERE subjectId = :subjectId ORDER BY sort""")
-    fun filterBySubjectIdPaging(subjectId: Int): PagingSource<Int, EpisodeEntity>
-}
-
-
-/**
- * @see EpisodeInfo
- */
-@Entity(
-    tableName = "episode",
-    foreignKeys = [
-        ForeignKey(
-            entity = SubjectEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["subjectId"],
-        ),
-    ],
-)
-data class EpisodeEntity(
-    val subjectId: Int,
-    @PrimaryKey val id: Int,
-    val type: EpisodeType?,
-    val name: String,
-    val nameCn: String,
-    val airDate: PackedDate,
-    val comment: Int,
-    val desc: String,
-    val sort: EpisodeSort,
-    val ep: EpisodeSort? = null,
-)
+//
+//@Dao
+//interface EpisodeDao {
+//    @Query("""SELECT * FROM episode WHERE id = :id""")
+//    fun findByEpisodeId(id: Int): Flow<EpisodeEntity?>
+//
+//    @Upsert
+//    suspend fun upsert(item: EpisodeEntity)
+//
+//    @Upsert
+//    suspend fun upsert(item: List<EpisodeEntity>)
+//
+//    @Query("""select * from episode""")
+//    fun all(): PagingSource<Int, EpisodeEntity>
+//
+//    @Query("""SELECT * FROM episode WHERE subjectId = :subjectId ORDER BY sort""")
+//    fun filterBySubjectId(subjectId: Int): Flow<List<EpisodeEntity>>
+//
+//    @Query("""SELECT * FROM episode WHERE subjectId = :subjectId ORDER BY sort""")
+//    fun filterBySubjectIdPaging(subjectId: Int): PagingSource<Int, EpisodeEntity>
+//}
+//
+//
+///**
+// * @see EpisodeInfo
+// */
+//@Entity(
+//    tableName = "episode",
+//    foreignKeys = [
+//        ForeignKey(
+//            entity = SubjectEntity::class,
+//            parentColumns = ["id"],
+//            childColumns = ["subjectId"],
+//        ),
+//    ],
+//)
+//data class EpisodeEntity(
+//    val subjectId: Int,
+//    @PrimaryKey val id: Int,
+//    val type: EpisodeType?,
+//    val name: String,
+//    val nameCn: String,
+//    val airDate: PackedDate,
+//    val comment: Int,
+//    val desc: String,
+//    val sort: EpisodeSort,
+//    val ep: EpisodeSort? = null,
+//)

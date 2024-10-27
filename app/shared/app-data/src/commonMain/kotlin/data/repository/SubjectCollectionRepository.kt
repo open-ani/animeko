@@ -14,17 +14,35 @@ import androidx.paging.LoadType
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
-import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import androidx.paging.RemoteMediator
+import androidx.paging.map
 import io.ktor.client.plugins.ResponseException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.boolean
+import kotlinx.serialization.json.int
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import me.him188.ani.app.data.models.subject.RatingCounts
+import me.him188.ani.app.data.models.subject.RatingInfo
+import me.him188.ani.app.data.models.subject.SelfRatingInfo
+import me.him188.ani.app.data.models.subject.SubjectCollectionStats
+import me.him188.ani.app.data.models.subject.Tag
+import me.him188.ani.app.data.network.BangumiSubjectService
 import me.him188.ani.app.data.persistent.database.SubjectCollectionDao
 import me.him188.ani.app.data.persistent.database.SubjectCollectionEntity
 import me.him188.ani.app.data.repository.Repository.Companion.defaultPagingConfig
+import me.him188.ani.app.domain.search.SubjectType
+import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
+import me.him188.ani.datasources.bangumi.BangumiClient
 import me.him188.ani.datasources.bangumi.apis.DefaultApi
 import me.him188.ani.datasources.bangumi.models.BangumiUserSubjectCollection
 import me.him188.ani.datasources.bangumi.models.BangumiUserSubjectCollectionModifyPayload
@@ -44,193 +62,135 @@ data class SubjectCollectionInfo(
     val subjectId: Int,
     val type: UnifiedCollectionType,
     val subjectInfo: SubjectInfo,
+    val selfRatingInfo: SelfRatingInfo,
 )
 
+
 class SubjectCollectionRepository(
+    private val client: BangumiClient,
     private val api: Flow<BangumiSubjectApi>,
-    private val subjectRepository: SubjectRepository,
+    private val bangumiSubjectService: BangumiSubjectService,
     private val dao: SubjectCollectionDao,
     private val usernameProvider: RepositoryUsernameProvider,
 ) : Repository {
-    fun subjectCollectionFlow(subjectId: Int): Flow<SubjectCollectionInfo> {
-        return dao.findById(subjectId).map { entity ->
-            if (entity == null) {
-                val response = api.first().getUserCollection("-", subjectId).body()
-                dao.upsert(
-                    SubjectCollectionEntity(
-                        response.subjectId,
-                        response.type.toCollectionType()
-                    )
-                )
-                SubjectCollectionInfo(
-                    subjectId,
-                    response.type.toCollectionType(),
-                    subjectRepository.getSubjectDetails(subjectId).subjectInfo,
-                )
+    fun subjectCollectionFlow(subjectId: Int): Flow<SubjectCollectionInfo> =
+        dao.findById(subjectId).map { entity ->
+            if (entity != null) {
+                return@map entity.toSubjectCollectionInfo()
             } else {
-                val subjectInfo = subjectRepository.getSubjectDetails(subjectId)
-                entity.toSubjectCollectionInfo(subjectInfo.subjectInfo)
+                val collection = bangumiSubjectService.subjectCollectionById(subjectId).first()
+                batchGetSubjectDetails(listOf(subjectId)).first()
+                    .toEntity(
+                        collection?.type.toCollectionType(),
+                        selfRatingInfo = collection?.toSelfRatingInfo() ?: SelfRatingInfo.Empty
+                    )
+                    .also {
+                        dao.upsert(it)
+                    }
+                    .toSubjectCollectionInfo()
             }
+        }
+
+    fun mostRecentlyUpdatedSubjectCollectionsFlow(
+        limit: Int,
+        type: UnifiedCollectionType? = null, // null for all
+    ): Flow<List<SubjectCollectionInfo>> = dao.filterMostRecent(type, limit).map { list ->
+        list.map {
+            it.toSubjectCollectionInfo()
         }
     }
 
-    fun subjectCollectionPager(
+    fun subjectCollectionsPager(
         type: UnifiedCollectionType? = null, // null for all
         pagingConfig: PagingConfig = defaultPagingConfig,
     ): Flow<PagingData<SubjectCollectionInfo>> = Pager(
         config = pagingConfig,
         initialKey = 0,
-        remoteMediator = object : RemoteMediator<Int, SubjectCollectionInfo>() {
-            override suspend fun initialize(): InitializeAction {
-                if ((dao.lastUpdated() - currentTimeMillis()).milliseconds > 1.hours) {
-                    return InitializeAction.LAUNCH_INITIAL_REFRESH
-                }
-                return InitializeAction.SKIP_INITIAL_REFRESH
-            }
-
-            override suspend fun load(
-                loadType: LoadType,
-                state: PagingState<Int, SubjectCollectionInfo>,
-            ): MediatorResult {
-                val offset = when (loadType) {
-                    LoadType.REFRESH -> 0
-                    LoadType.PREPEND -> return MediatorResult.Success(endOfPaginationReached = true)
-                    LoadType.APPEND -> state.pages.size * state.config.pageSize
-                }
-                return try {
-                    val username = usernameProvider.getOrThrow()
-                    val resp = api.first().getUserCollectionsByUsername(
-                        username,
-                        type = type?.toSubjectCollectionType(),
-                        limit = 30,
-                        offset = offset,
-                    ).body()
-                    val items = resp.data?.map { it.toEntity() }
-                    dao.upsert(items.orEmpty())
-                    return MediatorResult.Success(endOfPaginationReached = items.isNullOrEmpty())
-                } catch (e: RepositoryException) {
-                    MediatorResult.Error(e)
-                } catch (e: ResponseException) {
-                    MediatorResult.Error(e)
-                } catch (e: Exception) {
-                    MediatorResult.Error(e)
-                }
-            }
-
-        },
+        remoteMediator = SubjectCollectionRemoteMediator(type),
         pagingSourceFactory = {
-            object : PagingSource<Int, SubjectCollectionInfo>() {
-                override fun getRefreshKey(state: PagingState<Int, SubjectCollectionInfo>): Int? =
-                    null
-
-                override suspend fun load(params: LoadParams<Int>): LoadResult<Int, SubjectCollectionInfo> {
-                    val offset = params.key
-                        ?: return LoadResult.Error(IllegalArgumentException("Key is null"))
-                    return try {
-                        val items = dao.getFlow(type, params.loadSize, offset = offset).first()
-                        val subjectDetails =
-                            subjectRepository.batchGetSubjectDetails(items.map { it.subjectId })
-                        return LoadResult.Page(
-                            items.mapNotNull { entity ->
-                                val details =
-                                    subjectDetails.find { it.subjectInfo.subjectId == entity.subjectId }
-                                        ?: return@mapNotNull null
-
-                                entity.toSubjectCollectionInfo(
-                                    details.subjectInfo,
-                                )
-                            },
-                            prevKey = offset,
-                            nextKey = if (items.isEmpty()) null else offset + params.loadSize,
-                        )
-                    } catch (e: Exception) {
-                        LoadResult.Error(e)
-                    }
-                }
-            }
+            dao.filterByCollectionTypePaging(type)
         },
-    ).flow
-
-    fun subjectCollectionInfoFlow(subjectId: Int): Flow<SubjectCollectionInfo> {
-        return dao.findById(subjectId).map { entity ->
-            if (entity == null) {
-                val response = api.first().getUserCollection("-", subjectId).body()
-                dao.upsert(
-                    SubjectCollectionEntity(
-                        response.subjectId,
-                        response.type.toCollectionType()
-                    )
-                )
-                SubjectCollectionInfo(
-                    subjectId,
-                    response.type.toCollectionType(),
-                    subjectRepository.getSubjectDetails(subjectId).subjectInfo,
-                )
-            } else {
-                val subjectInfo = subjectRepository.getSubjectDetails(subjectId)
-                entity.toSubjectCollectionInfo(subjectInfo.subjectInfo)
-            }
+    ).flow.map { data ->
+        data.map {
+            it.toSubjectCollectionInfo()
         }
     }
 
-    fun getSubjectCollectionPager(
+    suspend fun updateRating(
         subjectId: Int,
-    ): Flow<PagingData<SubjectCollectionInfo>> {
-        return Pager(
-            config = PagingConfig(pageSize = 1),
-            remoteMediator = object : RemoteMediator<Unit, SubjectCollectionInfo>() {
-                override suspend fun load(
-                    loadType: LoadType,
-                    state: PagingState<Unit, SubjectCollectionInfo>,
-                ): MediatorResult {
-                    when (loadType) {
-                        LoadType.REFRESH -> {} // OK
-                        LoadType.PREPEND -> return MediatorResult.Success(endOfPaginationReached = true)
-                        LoadType.APPEND -> {
-                            state.lastItemOrNull()
-                                ?: return MediatorResult.Success(
-                                    endOfPaginationReached = true,
-                                )
+        score: Int? = null, // 0 to remove rating
+        comment: String? = null, // set empty to remove
+        tags: List<String>? = null,
+        isPrivate: Boolean? = null,
+    ) {
+        bangumiSubjectService.patchSubjectCollection(
+            subjectId,
+            BangumiUserSubjectCollectionModifyPayload(
+                rate = score,
+                comment = comment,
+                tags = tags,
+                private = isPrivate,
+            ),
+        )
 
-                            // OK
-                        }
-                    }
+        dao.updateRating(
+            subjectId,
+            score,
+            comment,
+            tags,
+            isPrivate,
+        )
+    }
 
-                    return try {
-                        val response = api.first().getUserCollection("-", subjectId).body()
-                        dao.upsert(
-                            SubjectCollectionEntity(
-                                response.subjectId,
-                                response.type.toCollectionType()
-                            )
+    private inner class SubjectCollectionRemoteMediator<T : Any>(
+        private val type: UnifiedCollectionType?,
+    ) : RemoteMediator<Int, T>() {
+        override suspend fun initialize(): InitializeAction {
+            if ((dao.lastUpdated() - currentTimeMillis()).milliseconds > 1.hours) {
+                return InitializeAction.LAUNCH_INITIAL_REFRESH
+            }
+            return InitializeAction.SKIP_INITIAL_REFRESH
+        }
+
+        override suspend fun load(
+            loadType: LoadType,
+            state: PagingState<Int, T>,
+        ): MediatorResult {
+            val offset = when (loadType) {
+                LoadType.REFRESH -> 0
+                LoadType.PREPEND -> return MediatorResult.Success(endOfPaginationReached = true)
+                LoadType.APPEND -> state.pages.size * state.config.pageSize
+            }
+            return try {
+                val username = usernameProvider.getOrThrow()
+                val resp = api.first().getUserCollectionsByUsername(
+                    username,
+                    type = type?.toSubjectCollectionType(),
+                    limit = 30,
+                    offset = offset,
+                ).body()
+                val collections = resp.data.orEmpty()
+                val items = batchGetSubjectDetails(collections.map { it.subjectId })
+                    .map { batch ->
+                        val collection =
+                            collections.first { it.subjectId == batch.subjectInfo.subjectId }
+                        batch.toEntity(
+                            collection.type.toCollectionType(),
+                            collection.toSelfRatingInfo()
                         )
-                        MediatorResult.Success(endOfPaginationReached = true)
-                    } catch (e: Exception) {
-                        MediatorResult.Error(e)
                     }
-                }
-            },
-            pagingSourceFactory = {
-                object : PagingSource<Unit, SubjectCollectionInfo>() {
-                    override fun getRefreshKey(state: PagingState<Unit, SubjectCollectionInfo>): Unit? =
-                        null
+                    .also { dao.upsert(it) }
 
-                    override suspend fun load(params: LoadParams<Unit>): LoadResult<Unit, SubjectCollectionInfo> {
-                        return try {
-                            val entity = dao.get(subjectId)
-                            val subjectInfo = subjectRepository.getSubjectDetails(subjectId)
-                            LoadResult.Page(
-                                listOf(entity.toSubjectCollectionInfo(subjectInfo.subjectInfo)),
-                                prevKey = null,
-                                nextKey = null,
-                            )
-                        } catch (e: Exception) {
-                            LoadResult.Error(e)
-                        }
-                    }
-                }
-            },
-        ).flow
+                return MediatorResult.Success(endOfPaginationReached = items.isEmpty())
+            } catch (e: RepositoryException) {
+                MediatorResult.Error(e)
+            } catch (e: ResponseException) {
+                MediatorResult.Error(e)
+            } catch (e: Exception) {
+                MediatorResult.Error(e)
+            }
+        }
+
     }
 
     suspend fun setSubjectCollectionTypeOrDelete(
@@ -258,11 +218,238 @@ class SubjectCollectionRepository(
     private suspend fun deleteSubjectCollection(subjectId: Int) {
         // TODO: deleteSubjectCollection
     }
+
+
+    private suspend fun getSubjectDetails(ids: Int): BatchSubjectDetails {
+        return batchGetSubjectDetails(listOf(ids)).first()
+    }
+
+    suspend fun batchGetSubjectDetails(ids: List<Int>): List<BatchSubjectDetails> {
+        if (ids.isEmpty()) {
+            return emptyList()
+        }
+        val resp = client.executeGraphQL(
+            """
+            fragment Ep on Episode {
+              id
+              type
+              name
+              name_cn
+              airdate
+              comment
+              description
+              sort
+            }
+
+            fragment SubjectFragment on Subject {
+              id
+              name
+              name_cn
+              images{large, common}
+              characters {
+                order
+                type
+                character {
+                  id
+                  name
+                }
+              }
+              infobox {
+                values {
+                  k
+                  v
+                }
+                key
+              }
+              summary
+              eps
+              collection{collect , doing, dropped, on_hold, wish}
+              airtime{date}
+              rating{count, rank, score, total}
+              nsfw
+              tags{count, name}
+              
+              leadingEpisodes : episodes(limit: 1) { ...Ep }
+              trailingEpisodes : episodes(limit: 1, offset:-1) { ...Ep }
+            }
+
+            query BatchGetSubjectQuery {
+              ${
+                ids.joinToString(separator = "\n") { id ->
+                    """
+                        "s$id:subject(id: $id){...SubjectFragment}"
+                """
+                }
+            }
+        """.trimIndent(),
+        )
+        val list = resp
+            .getOrFail("data")
+            .jsonObject.values.map {
+                it.jsonObject.toBatchSubjectDetails()
+            }
+        return list
+    }
 }
 
-private fun BangumiUserSubjectCollection.toEntity() =
-    SubjectCollectionEntity(subjectId, this.type.toCollectionType())
+class BatchSubjectDetails(
+    val subjectInfo: SubjectInfo,
+)
 
-private fun SubjectCollectionEntity.toSubjectCollectionInfo(subjectInfo: SubjectInfo): SubjectCollectionInfo {
-    return SubjectCollectionInfo(subjectId, type, subjectInfo)
+private fun BangumiUserSubjectCollection.toSelfRatingInfo(): SelfRatingInfo {
+    return SelfRatingInfo(
+        score = rate,
+        comment = comment.takeUnless { it.isNullOrBlank() },
+        tags = tags,
+        isPrivate = private,
+    )
 }
+
+private fun BatchSubjectDetails.toEntity(
+    collectionType: UnifiedCollectionType,
+    selfRatingInfo: SelfRatingInfo,
+): SubjectCollectionEntity =
+    subjectInfo.run {
+        SubjectCollectionEntity(
+            subjectId = subjectId,
+//            subjectType = SubjectType.ANIME,
+            name = name,
+            nameCn = nameCn,
+            summary = summary,
+            nsfw = nsfw,
+            imageLarge = imageLarge,
+            totalEpisodes = totalEpisodes,
+            airDate = airDate,
+            tags = tags,
+            aliases = aliases,
+            ratingInfo = ratingInfo,
+            collectionStats = collectionStats,
+            completeDate = completeDate,
+            selfRatingInfo = selfRatingInfo, // TODO:  selfRatingInfo
+            collectionType = collectionType,
+        )
+    }
+
+private fun SubjectCollectionEntity.toSubjectInfo(): SubjectInfo {
+    return SubjectInfo(
+        subjectId = subjectId,
+        subjectType = SubjectType.ANIME,
+        name = name,
+        nameCn = nameCn,
+        summary = summary,
+        nsfw = nsfw,
+        imageLarge = imageLarge,
+        totalEpisodes = totalEpisodes,
+        airDate = airDate,
+        tags = tags,
+        aliases = aliases,
+        ratingInfo = ratingInfo,
+        collectionStats = collectionStats,
+        completeDate = completeDate,
+    )
+}
+
+private fun JsonElement.vSequence(): Sequence<String> {
+    return when (this) {
+        is JsonArray -> this.asSequence().flatMap { it.vSequence() }
+        is JsonPrimitive -> sequenceOf(content)
+        is JsonObject -> this["v"]?.vSequence() ?: emptySequence()
+        else -> emptySequence()
+    }
+}
+
+private fun JsonObject.toBatchSubjectDetails(): BatchSubjectDetails {
+    fun infobox(key: String): Sequence<String> = sequence {
+        for (jsonElement in getOrFail("infobox").jsonArray) {
+            if (jsonElement.jsonObject.getStringOrFail("key") == key) {
+                yieldAll(jsonElement.jsonObject.getOrFail("values").vSequence())
+            }
+        }
+    }
+
+    val completionDate = (infobox("播放结束") + infobox("放送结束"))
+        .firstOrNull()
+        ?.let {
+            PackedDate.parseFromDate(
+                it.replace('年', '-')
+                    .replace('月', '-')
+                    .removeSuffix("日"),
+            )
+        }
+        ?: PackedDate.Invalid
+
+    return BatchSubjectDetails(
+        SubjectInfo(
+            subjectId = getIntOrFail("id"),
+            subjectType = SubjectType.ANIME,
+            name = getStringOrFail("name"),
+            nameCn = getStringOrFail("name_cn"),
+            summary = getStringOrFail("summary"),
+            nsfw = getBooleanOrFail("nsfw"),
+            imageLarge = getOrFail("images").jsonObject.getStringOrFail("large"),
+            totalEpisodes = getIntOrFail("eps"),
+            airDate = PackedDate.parseFromDate(getOrFail("airtime").jsonObject.getStringOrFail("date")),
+            tags = getOrFail("tags").jsonArray.map {
+                val obj = it.jsonObject
+                Tag(
+                    obj.getStringOrFail("name"),
+                    obj.getIntOrFail("count"),
+                )
+            },
+            aliases = infobox("别名").filter { it.isNotEmpty() }.toList(),
+            ratingInfo = getOrFail("rating").jsonObject.let { rating ->
+                RatingInfo(
+                    rank = rating.getIntOrFail("rank"),
+                    total = rating.getIntOrFail("total"),
+                    count = rating.getOrFail("count").jsonArray.let { array ->
+                        RatingCounts(
+                            s1 = array[0].jsonPrimitive.int,
+                            s2 = array[1].jsonPrimitive.int,
+                            s3 = array[2].jsonPrimitive.int,
+                            s4 = array[3].jsonPrimitive.int,
+                            s5 = array[4].jsonPrimitive.int,
+                            s6 = array[5].jsonPrimitive.int,
+                            s7 = array[6].jsonPrimitive.int,
+                            s8 = array[7].jsonPrimitive.int,
+                            s9 = array[8].jsonPrimitive.int,
+                            s10 = array[9].jsonPrimitive.int,
+                        )
+                    },
+                    score = rating.getStringOrFail("score"),
+                )
+            },
+            collectionStats = getOrFail("collection").jsonObject.let { collection ->
+                SubjectCollectionStats(
+                    wish = collection.getIntOrFail("wish"),
+                    doing = collection.getIntOrFail("doing"),
+                    done = collection.getIntOrFail("collect"),
+                    onHold = collection.getIntOrFail("on_hold"),
+                    dropped = collection.getIntOrFail("dropped"),
+                )
+            },
+            completeDate = completionDate,
+        ),
+    )
+}
+
+
+private fun JsonObject.getOrFail(key: String): JsonObject {
+    return get(key)?.jsonObject ?: throw NoSuchElementException("key $key not found")
+}
+
+private fun JsonObject.getIntOrFail(key: String): Int {
+    return get(key)?.jsonPrimitive?.int ?: throw NoSuchElementException("key $key not found")
+}
+
+private fun JsonObject.getStringOrFail(key: String): String {
+    return get(key)?.jsonPrimitive?.content ?: throw NoSuchElementException("key $key not found")
+}
+
+private fun JsonObject.getBooleanOrFail(key: String): Boolean {
+    return get(key)?.jsonPrimitive?.boolean ?: throw NoSuchElementException("key $key not found")
+}
+
+private fun SubjectCollectionEntity.toSubjectCollectionInfo(): SubjectCollectionInfo {
+    return SubjectCollectionInfo(subjectId, collectionType, toSubjectInfo(), selfRatingInfo)
+}
+

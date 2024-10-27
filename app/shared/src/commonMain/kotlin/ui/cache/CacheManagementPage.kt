@@ -48,8 +48,7 @@ import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.plus
 import kotlinx.coroutines.supervisorScope
-import me.him188.ani.app.data.models.subject.SubjectManager
-import me.him188.ani.app.data.models.subject.subjectInfoFlow
+import me.him188.ani.app.data.repository.SubjectCollectionRepository
 import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.cache.engine.MediaStats
 import me.him188.ani.app.domain.media.cache.engine.sum
@@ -90,7 +89,7 @@ class CacheManagementViewModel(
     private val navigator: AniNavigator,
 ) : AbstractViewModel(), KoinComponent {
     private val cacheManager: MediaCacheManager by inject()
-    private val subjectManager: SubjectManager by inject()
+    private val subjectCollectionRepository: SubjectCollectionRepository by inject()
 
     val lazyGridState: CacheGroupGridLayoutState = LazyStaggeredGridState()
 
@@ -115,13 +114,13 @@ class CacheManagementViewModel(
             val firstCache = episodes.first()
             CacheGroupState(
                 media = firstCache.origin.unwrapCached(),
-                commonInfo = subjectManager.subjectInfoFlow(firstCache.metadata.subjectIdInt) // 既会查缓存, 也会查网络, 基本上不会有查不到的情况
+                commonInfo = subjectCollectionRepository.subjectCollectionFlow(firstCache.metadata.subjectIdInt) // 既会查缓存, 也会查网络, 基本上不会有查不到的情况
                     .map {
                         createGroupCommonInfo(
-                            subjectId = it.id,
+                            subjectId = it.subjectId,
                             firstCache = firstCache,
-                            subjectDisplayName = it.displayName,
-                            imageUrl = it.imageLarge,
+                            subjectDisplayName = it.subjectInfo.displayName,
+                            imageUrl = it.subjectInfo.imageLarge,
                         )
                     }
                     .catch {

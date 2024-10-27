@@ -28,16 +28,15 @@ import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.map
 import me.him188.ani.app.data.models.preference.configIfEnabledOrNull
 import me.him188.ani.app.data.models.runApiRequest
-import me.him188.ani.app.data.models.subject.SubjectManager
-import me.him188.ani.app.data.models.subject.SubjectManagerImpl
 import me.him188.ani.app.data.network.BangumiEpisodeService
+import me.him188.ani.app.data.network.BangumiSubjectService
 import me.him188.ani.app.data.network.EpisodeRepositoryImpl
+import me.him188.ani.app.data.network.RemoteBangumiSubjectService
 import me.him188.ani.app.data.persistent.createDatabaseBuilder
 import me.him188.ani.app.data.persistent.dataStores
 import me.him188.ani.app.data.persistent.database.AniDatabase
 import me.him188.ani.app.data.repository.BangumiCommentRepositoryImpl
 import me.him188.ani.app.data.repository.BangumiRelatedCharactersRepository
-import me.him188.ani.app.data.repository.BangumiSubjectRepository
 import me.him188.ani.app.data.repository.CommentRepository
 import me.him188.ani.app.data.repository.DanmakuRegexFilterRepository
 import me.him188.ani.app.data.repository.DanmakuRegexFilterRepositoryImpl
@@ -53,11 +52,9 @@ import me.him188.ani.app.data.repository.MikanIndexCacheRepository
 import me.him188.ani.app.data.repository.MikanIndexCacheRepositoryImpl
 import me.him188.ani.app.data.repository.PreferencesRepositoryImpl
 import me.him188.ani.app.data.repository.ProfileRepository
-import me.him188.ani.app.data.repository.RemoteBangumiSubjectRepository
 import me.him188.ani.app.data.repository.RepositoryUsernameProvider
 import me.him188.ani.app.data.repository.SettingsRepository
 import me.him188.ani.app.data.repository.SubjectCollectionRepository
-import me.him188.ani.app.data.repository.SubjectRepository
 import me.him188.ani.app.data.repository.SubjectSearchHistoryRepository
 import me.him188.ani.app.data.repository.SubjectSearchHistoryRepositoryImpl
 import me.him188.ani.app.data.repository.SubjectSearchRepository
@@ -146,13 +143,11 @@ fun KoinApplication.getCommonKoinModule(getContext: () -> Context, coroutineScop
             get<SessionManager>().username.first()
         }
     }
-    single<SubjectRepository> {
-        SubjectRepository(get())
-    }
     single<SubjectCollectionRepository> {
         SubjectCollectionRepository(
+            client = client,
             api = suspend { client.getApi() }.asFlow(),
-            subjectRepository = get(),
+            bangumiSubjectService = get(),
             dao = database.subjectCollection(),
             usernameProvider = get(),
         )
@@ -167,10 +162,9 @@ fun KoinApplication.getCommonKoinModule(getContext: () -> Context, coroutineScop
         SubjectSearchHistoryRepositoryImpl(database.searchHistory(), database.searchTag())
     }
 
-    single<BangumiSubjectRepository> { RemoteBangumiSubjectRepository() }
+    single<BangumiSubjectService> { RemoteBangumiSubjectService() }
     single<BangumiRelatedCharactersRepository> { BangumiRelatedCharactersRepository(get()) }
     single<EpisodeScreenshotRepository> { WhatslinkEpisodeScreenshotRepository() }
-    single<SubjectManager> { SubjectManagerImpl(getContext().dataStores) }
     single<UserRepository> { UserRepositoryImpl() }
     single<CommentRepository> { BangumiCommentRepositoryImpl(get()) }
     single<BangumiEpisodeService> { EpisodeRepositoryImpl() }

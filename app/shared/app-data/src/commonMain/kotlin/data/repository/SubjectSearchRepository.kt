@@ -17,37 +17,30 @@ import androidx.paging.PagingState
 import io.ktor.client.plugins.ResponseException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
-import me.him188.ani.app.data.models.subject.RatingInfo
-import me.him188.ani.app.data.models.subject.SubjectInfo
-import me.him188.ani.app.data.models.subject.Tag
 import me.him188.ani.app.domain.search.SubjectSearchQuery
 import me.him188.ani.app.domain.search.SubjectType
-import me.him188.ani.datasources.bangumi.BangumiClientImpl
 import me.him188.ani.datasources.bangumi.client.BangumiSearchApi
-import me.him188.ani.datasources.bangumi.models.BangumiSearchSubjects200ResponseDataInner
 import me.him188.ani.datasources.bangumi.models.BangumiSubjectType
-import me.him188.ani.datasources.bangumi.models.subjects.BangumiLegacySubject
 import me.him188.ani.datasources.bangumi.models.subjects.BangumiSubjectImageSize
-import me.him188.ani.utils.serialization.BigNum
 
 class SubjectSearchRepository(
     private val searchApi: Flow<BangumiSearchApi>,
-    private val subjectRepository: SubjectRepository,
+    private val subjectRepository: SubjectCollectionRepository,
 ) {
     fun searchSubjects(
         searchQuery: SubjectSearchQuery,
         useNewApi: Boolean = false,
         pagingConfig: PagingConfig = Repository.defaultPagingConfig
-    ): Flow<PagingData<me.him188.ani.app.data.repository.SubjectInfo>> = Pager(
+    ): Flow<PagingData<SubjectInfo>> = Pager(
         config = pagingConfig,
         initialKey = 0,
 //        remoteMediator = SubjectSearchRemoteMediator(useNewApi, searchQuery, pagingConfig),
         pagingSourceFactory = {
-            object : PagingSource<Int, me.him188.ani.app.data.repository.SubjectInfo>() {
-                override fun getRefreshKey(state: PagingState<Int, me.him188.ani.app.data.repository.SubjectInfo>): Int? =
+            object : PagingSource<Int, SubjectInfo>() {
+                override fun getRefreshKey(state: PagingState<Int, SubjectInfo>): Int? =
                     state.anchorPosition
 
-                override suspend fun load(params: LoadParams<Int>): LoadResult<Int, me.him188.ani.app.data.repository.SubjectInfo> {
+                override suspend fun load(params: LoadParams<Int>): LoadResult<Int, SubjectInfo> {
                     val offset = params.key ?: return LoadResult.Error(IllegalArgumentException("Key is null"))
                     return try {
                         val api = searchApi.first()
@@ -155,29 +148,3 @@ private fun SubjectType.toBangumiSubjectType(): BangumiSubjectType = when (this)
     SubjectType.ANIME -> BangumiSubjectType.Anime
 }
 
-
-private fun BangumiLegacySubject.toSubjectInfo(): SubjectInfo {
-    return SubjectInfo(
-        id = id,
-        name = originalName,
-        nameCn = chineseName,
-        summary = summary,
-        imageLarge = BangumiClientImpl.getSubjectImageUrl(
-            id,
-            BangumiSubjectImageSize.LARGE,
-        ),
-        ratingInfo = RatingInfo.Empty.copy(rank = rank ?: 0, score = BigNum.ZERO.toString()),
-    )
-}
-
-private fun BangumiSearchSubjects200ResponseDataInner.toSubjectInfo(): SubjectInfo {
-    return SubjectInfo(
-        id = id,
-        name = name,
-        nameCn = nameCn,
-        summary = summary,
-        tags = tags.map { Tag(it.name, it.count) },
-        imageLarge = image,
-        ratingInfo = RatingInfo.Empty.copy(rank = rank, score = score.toString()),
-    )
-}

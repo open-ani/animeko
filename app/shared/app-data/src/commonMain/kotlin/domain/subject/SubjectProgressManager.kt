@@ -15,11 +15,9 @@ import androidx.paging.PagingData
 import kotlinx.coroutines.flow.Flow
 import me.him188.ani.app.data.models.episode.EpisodeProgressInfo
 import me.him188.ani.app.data.repository.EpisodeCollectionRepository
-import me.him188.ani.app.data.repository.EpisodeRepository
 import me.him188.ani.app.domain.media.cache.MediaCacheManager
 
 class SubjectProgressManager(
-    private val episodeRepository: EpisodeRepository,
     private val episodeCollectionRepository: EpisodeCollectionRepository,
     private val cacheManager: MediaCacheManager,
 ) {

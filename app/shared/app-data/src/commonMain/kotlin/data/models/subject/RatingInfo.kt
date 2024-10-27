@@ -14,6 +14,7 @@ import androidx.compose.runtime.Stable
 import androidx.room.Embedded
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import me.him188.ani.utils.platform.annotations.TestOnly
 
 @Immutable
 @Serializable
@@ -68,4 +69,20 @@ class RatingCounts(
         @Stable
         val Zero = RatingCounts()
     }
+}
+
+@TestOnly
+fun RatingCounts(intArray: IntArray): RatingCounts {
+    return RatingCounts(
+        s1 = intArray[0],
+        s2 = intArray[1],
+        s3 = intArray[2],
+        s4 = intArray[3],
+        s5 = intArray[4],
+        s6 = intArray[5],
+        s7 = intArray[6],
+        s8 = intArray[7],
+        s9 = intArray[8],
+        s10 = intArray[9],
+    )
 }

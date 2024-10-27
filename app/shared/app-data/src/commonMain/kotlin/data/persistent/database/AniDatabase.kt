@@ -24,9 +24,7 @@ import me.him188.ani.app.data.persistent.database.eneity.SearchTagEntity
     entities = [
         SearchHistoryEntity::class,
         SearchTagEntity::class,
-        SubjectEntity::class,
         SubjectCollectionEntity::class,
-        EpisodeEntity::class,
         EpisodeCollectionEntity::class,
     ],
     version = 2,
@@ -36,9 +34,7 @@ import me.him188.ani.app.data.persistent.database.eneity.SearchTagEntity
 abstract class AniDatabase : RoomDatabase() {
     abstract fun searchHistory(): SearchHistoryDao
     abstract fun searchTag(): SearchTagDao
-    abstract fun subject(): SubjectDao
     abstract fun subjectCollection(): SubjectCollectionDao
-    abstract fun episode(): EpisodeDao
     abstract fun episodeCollection(): EpisodeCollectionDao
 }
 
