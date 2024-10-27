@@ -180,7 +180,10 @@ class SubjectCollectionRepository(
             state: PagingState<Int, T>,
         ): MediatorResult {
             val offset = when (loadType) {
-                LoadType.REFRESH -> 0
+                LoadType.REFRESH -> {
+                    subjectCollectionDao.deleteAll()
+                    0
+                }
                 LoadType.PREPEND -> return MediatorResult.Success(endOfPaginationReached = true)
                 LoadType.APPEND -> state.anchorPosition// state.pages.size * state.config.pageSize
             }

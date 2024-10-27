@@ -87,6 +87,9 @@ interface SubjectCollectionDao {
     @Query("""DELETE FROM subject_collection WHERE subjectId = :subjectId""")
     suspend fun delete(subjectId: Int)
 
+    @Query("""DELETE FROM subject_collection""")
+    suspend fun deleteAll()
+
     /**
      * Retrieves a paginated list of `SubjectCollectionEntity` items, optionally filtered by type.
      *

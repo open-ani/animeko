@@ -31,6 +31,7 @@ import me.him188.ani.utils.platform.currentTimeMillis
             entity = SubjectCollectionEntity::class,
             parentColumns = ["subjectId"],
             childColumns = ["subjectId"],
+            onDelete = ForeignKey.CASCADE,
         ),
     ],
     primaryKeys = ["episodeId"],
