@@ -361,7 +361,7 @@ object RichTextDefaults {
             model = remember(element.imageUrl, context) {
                 ImageRequest.Builder(context)
                     .data(element.imageUrl)
-                    .crossfade(true)
+                    .crossfade(false)
                     .build()
             },
             contentDescription = null,
