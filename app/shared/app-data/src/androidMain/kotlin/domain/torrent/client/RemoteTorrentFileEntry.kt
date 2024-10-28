@@ -73,24 +73,21 @@ class RemoteTorrentFileEntry(
     }
 
     override suspend fun createInput(): SeekableInput {
-        val remoteInput = remote.createInput()
-        
-        val file = Path(remoteInput.saveFile).inSystem
-        val onWaitCallback = remoteInput.onWaitCallback
+        val remoteInput = remote.torrentInputParams
+
+        val file = Path(remoteInput.file).inSystem
         
         return TorrentInput(
-            file = withContext(Dispatchers.IO) {
-                RandomAccessFile(file.toFile(), "r")
-            },
-            pieces = RemotePieceList(remoteInput.pieces),
+            file = withContext(Dispatchers.IO) { RandomAccessFile(file.toFile(), "r") },
+            pieces = pieces,
             logicalStartOffset = remoteInput.logicalStartOffset,
-            onWait = { 
-                suspendCancellableCoroutine { cont -> 
-                    cont.resumeWith(Result.success(onWaitCallback.onWait(it.pieceIndex))) 
+            onWait = {
+                suspendCancellableCoroutine { cont ->
+                    cont.resumeWith(Result.success(remote.torrentInputOnWait(it.pieceIndex)))
                 }
             },
             bufferSize = remoteInput.bufferSize,
-            size = remoteInput.size
+            size = remoteInput.size,
         )
     }
 }

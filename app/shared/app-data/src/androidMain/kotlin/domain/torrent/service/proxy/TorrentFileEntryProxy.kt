@@ -16,10 +16,9 @@ import me.him188.ani.app.domain.torrent.IDisposableHandle
 import me.him188.ani.app.domain.torrent.IRemotePieceList
 import me.him188.ani.app.domain.torrent.IRemoteTorrentFileEntry
 import me.him188.ani.app.domain.torrent.IRemoteTorrentFileHandle
-import me.him188.ani.app.domain.torrent.IRemoteTorrentInput
-import me.him188.ani.app.domain.torrent.IRemoteTorrentInputOnWaitCallback
 import me.him188.ani.app.domain.torrent.ITorrentFileEntryStatsCallback
 import me.him188.ani.app.domain.torrent.parcel.PTorrentFileEntryStats
+import me.him188.ani.app.domain.torrent.parcel.PTorrentInputParameter
 import me.him188.ani.app.torrent.anitorrent.session.AnitorrentDownloadSession
 import me.him188.ani.app.torrent.api.files.TorrentFileEntry
 import me.him188.ani.utils.coroutines.childScope
@@ -68,46 +67,25 @@ class TorrentFileEntryProxy(
         return delegate.resolveFileMaybeEmptyOrNull()?.absolutePath
     }
 
-    override fun createInput(): IRemoteTorrentInput {
+    override fun getTorrentInputParams(): PTorrentInputParameter? {
         check(delegate is AnitorrentDownloadSession.AnitorrentEntry) {
             "Expected delegate instance is AnitorrentEntry, actual $delegate"
         }
-        
         val torrentInputParameters = runBlocking { delegate.createTorrentInputParameters() }
-        val pieceList = torrentInputParameters.pieces
-        
-        return object : IRemoteTorrentInput.Stub() {
-            override fun getSaveFile(): String {
-                return torrentInputParameters.file.absolutePath
-            }
 
-            override fun getPieces(): IRemotePieceList {
-                
-                return PieceListProxy(pieceList, coroutineContext)
-            }
+        return PTorrentInputParameter(
+            file = torrentInputParameters.file.absolutePath,
+            logicalStartOffset = torrentInputParameters.logicalStartOffset,
+            bufferSize = torrentInputParameters.bufferSize,
+            size = torrentInputParameters.size,
+        )
+    }
 
-            override fun getLogicalStartOffset(): Long {
-                return torrentInputParameters.logicalStartOffset
-            }
-
-            override fun getOnWaitCallback(): IRemoteTorrentInputOnWaitCallback {
-                return object : IRemoteTorrentInputOnWaitCallback.Stub() {
-                    override fun onWait(pieceIndex: Int) {
-                        runBlocking { 
-                            val piece = with(pieceList) { createPieceByListIndexUnsafe(pieceIndex) }
-                            torrentInputParameters.onWait(piece) 
-                        }
-                    }
-                }
-            }
-
-            override fun getBufferSize(): Int {
-                return torrentInputParameters.bufferSize
-            }
-
-            override fun getSize(): Long {
-                return torrentInputParameters.size
-            }
+    override fun torrentInputOnWait(pieceIndex: Int) {
+        check(delegate is AnitorrentDownloadSession.AnitorrentEntry) {
+            "Expected delegate instance is AnitorrentEntry, actual $delegate"
         }
+
+        delegate.updatePieceDeadlinesForSeek(delegate.pieces.getByPieceIndex(pieceIndex))
     }
 }

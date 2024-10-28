@@ -251,7 +251,7 @@ class AnitorrentDownloadSession(
             )
         }
 
-        private fun updatePieceDeadlinesForSeek(requested: Piece) {
+        fun updatePieceDeadlinesForSeek(requested: Piece) {
             with(pieces) {
                 if (!controller.isDownloading(requested.pieceIndex)) {
                     logger.info { "[TorrentDownloadControl] $torrentId: Resetting deadlines to download ${requested.pieceIndex}" }
