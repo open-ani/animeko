@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.ui.subject.collection
 
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -65,9 +66,12 @@ import me.him188.ani.app.data.repository.EpisodeCollectionInfo
 import me.him188.ani.app.data.repository.SubjectCollectionInfo
 import me.him188.ani.app.tools.paging.exceptions
 import me.him188.ani.app.ui.foundation.AsyncImage
+import me.him188.ani.app.ui.foundation.animation.StandardAccelerate
+import me.him188.ani.app.ui.foundation.animation.StandardDecelerate
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.isInDebugMode
 import me.him188.ani.app.ui.foundation.stateOf
+import me.him188.ani.app.ui.foundation.theme.EasingDurations
 import me.him188.ani.app.ui.search.isLoadingNextPage
 import me.him188.ani.app.ui.subject.collection.components.AiringLabel
 import me.him188.ani.app.ui.subject.collection.components.AiringLabelState
@@ -110,9 +114,24 @@ fun SubjectCollectionsColumn(
     ) {
         item(span = { GridItemSpan(maxLineSpan) }) { Spacer(Modifier.height(1.dp)) } // 添加新 item 时保持到顶部
 
-        items(items.itemCount, items.itemKey { it.subjectId }, contentType = items.itemContentType { 1 }) { index ->
+        items(
+            items.itemCount,
+            items.itemKey { it.subjectId },
+            contentType = items.itemContentType { it.progressInfo.nextEpisodeIdToPlay != null },
+        ) { index ->
             items[index]?.let {
-                Box(Modifier.ifThen(enableAnimation) { animateItem() }) {
+                Box(
+                    Modifier.ifThen(enableAnimation) {
+                        animateItem(
+                            fadeInSpec = tween(
+                                EasingDurations.standardAccelerate,
+                                delayMillis = EasingDurations.standardDecelerate,
+                                easing = StandardAccelerate,
+                            ),
+                            fadeOutSpec = tween(EasingDurations.standardDecelerate, easing = StandardDecelerate),
+                        )
+                    },
+                ) {
                     item(it)
                 }
             }
