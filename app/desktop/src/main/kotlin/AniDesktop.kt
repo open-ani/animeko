@@ -450,6 +450,12 @@ private fun WindowStateRecorder(
                     )
                 }
             }
+            // 保证窗口最小尺寸
+            val minimumSize = DpSize(800.dp, 600.dp)
+            if (windowState.size.width < minimumSize.width && windowState.size.height < minimumSize.height) {
+                windowState.size = minimumSize
+            }
+            
             onDispose {
                 update(
                     SavedWindowState(
