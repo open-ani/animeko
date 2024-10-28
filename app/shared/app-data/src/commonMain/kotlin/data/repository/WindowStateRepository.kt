@@ -19,7 +19,7 @@ interface WindowStateRepository : Repository {
 }
 
 @Serializable
-class SavedWindowState(
+data class SavedWindowState(
     val x: Float,
     val y: Float,
     val width: Float,
