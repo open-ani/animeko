@@ -455,7 +455,12 @@ private fun WindowStateRecorder(
             if (windowState.size.width < minimumSize.width && windowState.size.height < minimumSize.height) {
                 windowState.size = minimumSize
             }
-            
+            // 只允许出现在主屏幕上
+            val screenSize = ScreenUtils.getScreenSize()
+            if (windowState.position.x > screenSize.width || windowState.position.y > screenSize.height) {
+                windowState.position = WindowPosition(Alignment.TopStart)
+            }
+
             onDispose {
                 update(
                     SavedWindowState(
