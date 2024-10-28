@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.pager.PagerState
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.HowToReg
 import androidx.compose.material.icons.rounded.Refresh
@@ -43,6 +42,7 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRowDefaults
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
@@ -78,7 +78,6 @@ import me.him188.ani.app.ui.adaptive.AniTopAppBarDefaults
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.layout.isAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.paneHorizontalPadding
-import me.him188.ani.app.ui.foundation.pagerTabIndicatorOffset
 import me.him188.ani.app.ui.foundation.session.SelfAvatar
 import me.him188.ani.app.ui.foundation.session.SessionTipsArea
 import me.him188.ani.app.ui.foundation.session.SessionTipsIcon
@@ -116,11 +115,27 @@ class UserCollectionsState(
     val episodeListStateFactory: EpisodeListStateFactory,
     val subjectProgressStateFactory: SubjectProgressStateFactory,
     val createEditableSubjectCollectionTypeState: (subjectCollection: SubjectCollectionInfo) -> EditableSubjectCollectionTypeState,
+    defaultQuery: CollectionsFilterQuery = CollectionsFilterQuery(
+        type = UnifiedCollectionType.DOING,
+    ),
 ) {
-    private var filterQuery by mutableStateOf(1 to CollectionsFilterQuery.Empty)
+    private var filterQueryPair by mutableStateOf(
+        1 to defaultQuery,
+    )
+
+    private val filterQuery by derivedStateOf { filterQueryPair.second }
+
+    private val availableTypes = COLLECTION_TABS_SORTED
+    val selectedTypeIndex by derivedStateOf {
+        availableTypes.indexOf(filterQuery.type)
+    }
+
+    fun selectTypeIndex(index: Int) {
+        updateQuery { copy(type = availableTypes[index]) }
+    }
 
     val currentPager by derivedStateOf {
-        startSearch(filterQuery.second)
+        startSearch(filterQueryPair.second) // subscribe to both id and query, don't change to just `filterQuery`
     }
 
     val selfInfo: UserInfo? by selfInfoState
@@ -128,13 +143,13 @@ class UserCollectionsState(
     val collectionCounts: SubjectCollectionCounts? by collectionCountsState
 
     fun updateQuery(query: CollectionsFilterQuery.() -> CollectionsFilterQuery) {
-        val current = filterQuery
-        filterQuery = current.copy(current.first, current.second.let(query))
+        val current = filterQueryPair
+        filterQueryPair = current.copy(current.first, current.second.let(query))
     }
 
     fun refresh() {
-        val current = filterQuery
-        filterQuery = current.copy(current.first + 1)
+        val current = filterQueryPair
+        filterQueryPair = current.copy(current.first + 1)
     }
 }
 
@@ -147,9 +162,6 @@ fun CollectionPage(
     modifier: Modifier = Modifier,
     enableAnimation: Boolean = true,
 ) {
-    val pagerState =
-        rememberPagerState(initialPage = COLLECTION_TABS_SORTED.size / 2) { COLLECTION_TABS_SORTED.size }
-
     // 如果有缓存, 列表区域要展示缓存, 错误就用图标放在角落
     val items = state.currentPager.collectAsLazyPagingItemsWithLifecycle()
     CollectionPageLayout(
@@ -163,7 +175,8 @@ fun CollectionPage(
         },
         filters = {
             CollectionTypeScrollableTabRow(
-                pagerState,
+                selectedIndex = state.selectedTypeIndex,
+                onSelect = { index -> state.selectTypeIndex(index) },
                 Modifier.padding(horizontal = currentWindowAdaptiveInfo().windowSizeClass.paneHorizontalPadding),
             ) { type ->
                 val size = state.collectionCounts
@@ -332,7 +345,8 @@ object CollectionPageFilters {
 
     @Composable
     fun CollectionTypeScrollableTabRow(
-        pagerState: PagerState,
+        selectedIndex: Int,
+        onSelect: (Int) -> Unit,
         modifier: Modifier = Modifier,
         itemLabel: @Composable (UnifiedCollectionType) -> Unit = { type ->
             Text(type.displayText(), softWrap = false)
@@ -341,11 +355,11 @@ object CollectionPageFilters {
         val uiScope = rememberCoroutineScope()
         val widths = remember { mutableStateListOf(*COLLECTION_TABS_SORTED.map { 24.dp }.toTypedArray()) }
         ScrollableTabRow(
-            selectedTabIndex = pagerState.currentPage,
+            selectedTabIndex = selectedIndex,
             indicator = @Composable { tabPositions ->
                 TabRowDefaults.PrimaryIndicator(
-                    Modifier.pagerTabIndicatorOffset(pagerState, tabPositions),
-                    width = widths[pagerState.currentPage],
+                    Modifier.tabIndicatorOffset(tabPositions[selectedIndex]),
+                    width = widths[selectedIndex],
                 )
             },
             containerColor = Color.Unspecified,
@@ -355,8 +369,8 @@ object CollectionPageFilters {
         ) {
             COLLECTION_TABS_SORTED.forEachIndexed { index, collectionType ->
                 Tab(
-                    selected = pagerState.currentPage == index,
-                    onClick = { uiScope.launch { pagerState.animateScrollToPage(index) } },
+                    selected = selectedIndex == index,
+                    onClick = { uiScope.launch { onSelect(index) } },
                     text = {
                         val density = LocalDensity.current
                         Box(Modifier.onPlaced { widths[index] = with(density) { it.size.width.toDp() } }) {
