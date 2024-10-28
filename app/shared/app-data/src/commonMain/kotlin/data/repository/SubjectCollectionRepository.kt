@@ -54,6 +54,7 @@ import me.him188.ani.datasources.bangumi.models.BangumiUserSubjectCollection
 import me.him188.ani.datasources.bangumi.models.BangumiUserSubjectCollectionModifyPayload
 import me.him188.ani.datasources.bangumi.processing.toCollectionType
 import me.him188.ani.datasources.bangumi.processing.toSubjectCollectionType
+import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.platform.currentTimeMillis
@@ -86,7 +87,7 @@ class SubjectCollectionRepository(
     private val episodeCollectionRepository: EpisodeCollectionRepository,
     private val usernameProvider: RepositoryUsernameProvider,
     private val getCurrentDate: () -> PackedDate = { PackedDate.now() },
-    private val ioDispatcher: CoroutineContext = Dispatchers.IO,
+    private val ioDispatcher: CoroutineContext = Dispatchers.IO_,
 ) : Repository {
     fun subjectCollectionFlow(subjectId: Int): Flow<SubjectCollectionInfo> =
         subjectCollectionDao.findById(subjectId).map { entity ->
@@ -120,13 +121,13 @@ class SubjectCollectionRepository(
         type: UnifiedCollectionType? = null, // null for all
     ): Flow<List<SubjectCollectionInfo>> =
         subjectCollectionDao.filterMostRecentCollected(type, limit).map { list ->
-        list.map { entity ->
-            entity.toSubjectCollectionInfo(
-                episodes = getSubjectEpisodeCollections(entity.subjectId),
-                currentDate = getCurrentDate(),
-            )
+            list.map { entity ->
+                entity.toSubjectCollectionInfo(
+                    episodes = getSubjectEpisodeCollections(entity.subjectId),
+                    currentDate = getCurrentDate(),
+                )
+            }
         }
-    }
 
     fun subjectCollectionsPager(
         query: CollectionsFilterQuery = CollectionsFilterQuery.Empty,
@@ -196,7 +197,10 @@ class SubjectCollectionRepository(
                             0
                         }
 
-                        LoadType.PREPEND -> return@withContext MediatorResult.Success(endOfPaginationReached = true)
+                        LoadType.PREPEND -> return@withContext MediatorResult.Success(
+                            endOfPaginationReached = true
+                        )
+
                         LoadType.APPEND -> {
                             val lastLoadedPage = state.pages.lastOrNull()
                             if (lastLoadedPage != null) {
@@ -471,7 +475,8 @@ private fun JsonObject.toBatchSubjectDetails(): BatchSubjectDetails {
                 nameCn = getStringOrFail("name_cn"),
                 summary = getStringOrFail("summary"),
                 nsfw = getBooleanOrFail("nsfw"),
-                imageLarge = getOrFail("images").jsonObjectOrNull?.getString("large") ?: "", // 有少数没有
+                imageLarge = getOrFail("images").jsonObjectOrNull?.getString("large")
+                    ?: "", // 有少数没有
                 totalEpisodes = getIntOrFail("eps"),
                 airDate = PackedDate.parseFromDate(getOrFail("airtime").jsonObject.getStringOrFail("date")),
                 tags = getOrFail("tags").jsonArray.map {
@@ -516,7 +521,10 @@ private fun JsonObject.toBatchSubjectDetails(): BatchSubjectDetails {
             ),
         )
     } catch (e: Exception) {
-        throw IllegalStateException("Failed to parse subject details for subject id ${this["id"]}: $this", e)
+        throw IllegalStateException(
+            "Failed to parse subject details for subject id ${this["id"]}: $this",
+            e
+        )
     }
 }
 
@@ -551,7 +559,10 @@ private fun SubjectCollectionEntity.toSubjectCollectionInfo(
         collectionType = collectionType,
         subjectInfo = subjectInfo,
         selfRatingInfo = selfRatingInfo,
-        airingInfo = SubjectAiringInfo.computeFromEpisodeList(episodes.map { it.episodeInfo }, airDate),
+        airingInfo = SubjectAiringInfo.computeFromEpisodeList(
+            episodes.map { it.episodeInfo },
+            airDate
+        ),
         episodes = episodes,
         progressInfo = SubjectProgressInfo.compute(
             subjectStarted = currentDate > subjectInfo.airDate,

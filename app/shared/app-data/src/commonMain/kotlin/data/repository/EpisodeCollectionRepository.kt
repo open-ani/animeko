@@ -36,6 +36,7 @@ import me.him188.ani.app.data.persistent.database.SubjectCollectionDao
 import me.him188.ani.app.data.repository.Repository.Companion.defaultPagingConfig
 import me.him188.ani.datasources.api.EpisodeType.MainStory
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
+import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.platform.currentTimeMillis
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.milliseconds
@@ -164,7 +165,7 @@ class EpisodeCollectionRepository(
             loadType: LoadType,
             state: PagingState<Int, T>,
         ): MediatorResult {
-            return withContext(Dispatchers.IO) {
+            return withContext(Dispatchers.IO_) {
                 val offset = when (loadType) {
                     LoadType.REFRESH -> 0
                     LoadType.PREPEND -> return@withContext MediatorResult.Success(endOfPaginationReached = true)

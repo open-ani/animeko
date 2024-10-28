@@ -35,6 +35,7 @@ import me.him188.ani.datasources.bangumi.models.BangumiSubjectType
 import me.him188.ani.datasources.bangumi.models.BangumiUserSubjectCollection
 import me.him188.ani.datasources.bangumi.models.BangumiUserSubjectCollectionModifyPayload
 import me.him188.ani.datasources.bangumi.processing.toCollectionType
+import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.logging.logger
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -97,7 +98,7 @@ class RemoteBangumiSubjectService : BangumiSubjectService, KoinComponent {
         return PageBasedPagedSource { page ->
             try {
                 val pageSize = 10
-                withContext(Dispatchers.IO) {
+                withContext(Dispatchers.IO_) {
                     client.getApi().getUserCollectionsByUsername(
                         username,
                         offset = page * pageSize, limit = pageSize,
