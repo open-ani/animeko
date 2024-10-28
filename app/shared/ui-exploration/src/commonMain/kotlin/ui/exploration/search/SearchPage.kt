@@ -125,7 +125,7 @@ fun SearchPage(
                 state.selectedItemIndex,
                 transitionSpec = AniThemeDefaults.emphasizedAnimatedContentTransition,
             ) { index ->
-                items[index]?.let {
+                items.itemSnapshotList.getOrNull(index)?.let {
                     detailContent(it.subjectId)
                 }
             }
@@ -196,7 +196,7 @@ internal fun SearchPageResultColumn(
     LaunchedEffect(Unit) {
         snapshotFlow(selectedItemIndex)
             .collectLatest {
-                bringIntoViewRequesters[items[it]?.subjectId]?.bringIntoView()
+                bringIntoViewRequesters[items.itemSnapshotList.getOrNull(it)?.subjectId]?.bringIntoView()
             }
     }
 }
