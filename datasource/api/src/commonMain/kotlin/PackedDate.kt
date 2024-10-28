@@ -20,6 +20,9 @@ import kotlinx.serialization.Serializable
 import me.him188.ani.datasources.api.PackedDate.Companion.Invalid
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
+import kotlin.jvm.JvmField
+import kotlin.jvm.JvmInline
+import kotlin.jvm.JvmStatic
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
