@@ -20,8 +20,10 @@ import androidx.paging.map
 import io.ktor.client.plugins.ResponseException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.retry
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -38,6 +40,7 @@ import me.him188.ani.app.data.models.subject.RatingCounts
 import me.him188.ani.app.data.models.subject.RatingInfo
 import me.him188.ani.app.data.models.subject.SelfRatingInfo
 import me.him188.ani.app.data.models.subject.SubjectAiringInfo
+import me.him188.ani.app.data.models.subject.SubjectCollectionCounts
 import me.him188.ani.app.data.models.subject.SubjectCollectionStats
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
 import me.him188.ani.app.data.models.subject.Tag
@@ -89,6 +92,31 @@ class SubjectCollectionRepository(
     private val getCurrentDate: () -> PackedDate = { PackedDate.now() },
     private val ioDispatcher: CoroutineContext = Dispatchers.IO_,
 ) : Repository {
+    fun subjectCollectionCountsFlow(): Flow<SubjectCollectionCounts?> {
+        return (bangumiSubjectService.subjectCollectionCountsFlow() as Flow<SubjectCollectionCounts?>)
+            .retry(2)
+            .catch {
+                logger.error("Failed to get subject collection counts", it)
+                emit(null)
+            }
+//        return combine(
+//            subjectCollectionDao.countCollected(UnifiedCollectionType.WISH),
+//            subjectCollectionDao.countCollected(UnifiedCollectionType.DOING),
+//            subjectCollectionDao.countCollected(UnifiedCollectionType.DONE),
+//            subjectCollectionDao.countCollected(UnifiedCollectionType.ON_HOLD),
+//            subjectCollectionDao.countCollected(UnifiedCollectionType.DROPPED),
+//        ) { wish, doing, done, onHold, dropped ->
+//            SubjectCollectionCounts(
+//                wish = wish,
+//                doing = doing,
+//                done = done,
+//                onHold = onHold,
+//                dropped = dropped,
+//                total = wish + doing + done + onHold + dropped,
+//            )
+//        }
+    }
+
     fun subjectCollectionFlow(subjectId: Int): Flow<SubjectCollectionInfo> =
         subjectCollectionDao.findById(subjectId).map { entity ->
             if (entity != null) {
@@ -198,7 +226,7 @@ class SubjectCollectionRepository(
                         }
 
                         LoadType.PREPEND -> return@withContext MediatorResult.Success(
-                            endOfPaginationReached = true
+                            endOfPaginationReached = true,
                         )
 
                         LoadType.APPEND -> {
@@ -523,7 +551,7 @@ private fun JsonObject.toBatchSubjectDetails(): BatchSubjectDetails {
     } catch (e: Exception) {
         throw IllegalStateException(
             "Failed to parse subject details for subject id ${this["id"]}: $this",
-            e
+            e,
         )
     }
 }
@@ -561,7 +589,7 @@ private fun SubjectCollectionEntity.toSubjectCollectionInfo(
         selfRatingInfo = selfRatingInfo,
         airingInfo = SubjectAiringInfo.computeFromEpisodeList(
             episodes.map { it.episodeInfo },
-            airDate
+            airDate,
         ),
         episodes = episodes,
         progressInfo = SubjectProgressInfo.compute(

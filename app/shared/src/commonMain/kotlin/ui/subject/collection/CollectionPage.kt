@@ -68,6 +68,7 @@ import androidx.paging.compose.collectAsLazyPagingItemsWithLifecycle
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.UserInfo
+import me.him188.ani.app.data.models.subject.SubjectCollectionCounts
 import me.him188.ani.app.data.repository.CollectionsFilterQuery
 import me.him188.ani.app.data.repository.SubjectCollectionInfo
 import me.him188.ani.app.domain.session.AuthState
@@ -111,6 +112,7 @@ class UserCollectionsState(
     private val startSearch: (filterQuery: CollectionsFilterQuery) -> Flow<PagingData<SubjectCollectionInfo>>,
     val authState: AuthState,
     selfInfoState: State<UserInfo?>,
+    collectionCountsState: State<SubjectCollectionCounts?>,
     val episodeListStateFactory: EpisodeListStateFactory,
     val subjectProgressStateFactory: SubjectProgressStateFactory,
     val createEditableSubjectCollectionTypeState: (subjectCollection: SubjectCollectionInfo) -> EditableSubjectCollectionTypeState,
@@ -122,6 +124,8 @@ class UserCollectionsState(
     }
 
     val selfInfo: UserInfo? by selfInfoState
+
+    val collectionCounts: SubjectCollectionCounts? by collectionCountsState
 
     fun updateQuery(query: CollectionsFilterQuery.() -> CollectionsFilterQuery) {
         val current = filterQuery
@@ -162,7 +166,7 @@ fun CollectionPage(
                 pagerState,
                 Modifier.padding(horizontal = currentWindowAdaptiveInfo().windowSizeClass.paneHorizontalPadding),
             ) { type ->
-                val size = items.itemCount
+                val size = state.collectionCounts
                 if (size == null) {
                     Text(
                         text = type.displayText(),
@@ -172,7 +176,7 @@ fun CollectionPage(
                 } else {
                     Text(
                         text = remember(type, size) {
-                            type.displayText() + " " + size
+                            type.displayText() + " " + size.getCount(type)
                         },
                         Modifier.width(IntrinsicSize.Max),
                         softWrap = false,

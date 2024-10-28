@@ -120,7 +120,7 @@ interface SubjectCollectionDao {
     @Query(
         """
         select * from subject_collection 
-        where (:collectionType IS NULL OR collectionType = :collectionType)
+        where (collectionType is NOT NULL AND (:collectionType IS NULL OR collectionType = :collectionType))
         order by _index
         """,
     )
@@ -136,4 +136,10 @@ interface SubjectCollectionDao {
 
     @Query("""UPDATE subject_collection SET self_rating_score = :score, self_rating_comment = :comment, self_rating_tags = :tags, self_rating_isPrivate = :private WHERE subjectId = :subjectId""")
     suspend fun updateRating(subjectId: Int, score: Int?, comment: String?, tags: List<String>?, private: Boolean?)
+
+    /**
+     * 只包含保存在数据库的, 可能不完整
+     */
+    @Query("""SELECT COUNT(*) FROM subject_collection WHERE (collectionType is NOT NULL AND (:collectionType IS NULL OR collectionType = :collectionType))""")
+    fun countCollected(collectionType: UnifiedCollectionType?): Flow<Int>
 }

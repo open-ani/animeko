@@ -73,6 +73,7 @@ class UserCollectionsViewModel : AbstractViewModel(), KoinComponent {
         startSearch = { subjectCollectionRepository.subjectCollectionsPager(it) },
         authState,
         sessionManager.userInfo.produceState(null),
+        collectionCountsState = subjectCollectionRepository.subjectCollectionCountsFlow().produceState(null),
         episodeListStateFactory,
         subjectProgressStateFactory,
         createEditableSubjectCollectionTypeState = {

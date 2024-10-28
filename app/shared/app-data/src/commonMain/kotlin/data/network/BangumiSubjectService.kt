@@ -13,11 +13,15 @@ import io.ktor.client.plugins.ResponseException
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.subject.RatingCounts
 import me.him188.ani.app.data.models.subject.RatingInfo
+import me.him188.ani.app.data.models.subject.SubjectCollectionCounts
 import me.him188.ani.app.domain.session.OpaqueSession
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.session.username
@@ -35,6 +39,7 @@ import me.him188.ani.datasources.bangumi.models.BangumiSubjectType
 import me.him188.ani.datasources.bangumi.models.BangumiUserSubjectCollection
 import me.him188.ani.datasources.bangumi.models.BangumiUserSubjectCollectionModifyPayload
 import me.him188.ani.datasources.bangumi.processing.toCollectionType
+import me.him188.ani.datasources.bangumi.processing.toSubjectCollectionType
 import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.logging.logger
 import org.koin.core.component.KoinComponent
@@ -62,6 +67,11 @@ interface BangumiSubjectService {
 
     suspend fun patchSubjectCollection(subjectId: Int, payload: BangumiUserSubjectCollectionModifyPayload)
     suspend fun deleteSubjectCollection(subjectId: Int)
+
+    /**
+     * 获取各个收藏分类的数量.
+     */
+    fun subjectCollectionCountsFlow(): Flow<SubjectCollectionCounts>
 }
 
 suspend inline fun BangumiSubjectService.setSubjectCollectionTypeOrDelete(
@@ -88,6 +98,29 @@ class RemoteBangumiSubjectService : BangumiSubjectService, KoinComponent {
 
     override suspend fun deleteSubjectCollection(subjectId: Int) {
         // TODO:  deleteSubjectCollection
+    }
+
+    @OptIn(OpaqueSession::class)
+    override fun subjectCollectionCountsFlow(): Flow<SubjectCollectionCounts> {
+        return sessionManager.username.filterNotNull().map { username ->
+            val types = UnifiedCollectionType.entries - UnifiedCollectionType.NOT_COLLECTED
+            val totals = IntArray(types.size) { type ->
+                client.getApi().getUserCollectionsByUsername(
+                    username,
+                    subjectType = BangumiSubjectType.Anime,
+                    type = types[type].toSubjectCollectionType(),
+                    limit = 1, // we only need the total count. API requires at least 1
+                ).body().total ?: 0
+            }
+            SubjectCollectionCounts(
+                wish = totals[UnifiedCollectionType.WISH.ordinal],
+                doing = totals[UnifiedCollectionType.DOING.ordinal],
+                done = totals[UnifiedCollectionType.DONE.ordinal],
+                onHold = totals[UnifiedCollectionType.ON_HOLD.ordinal],
+                dropped = totals[UnifiedCollectionType.DROPPED.ordinal],
+                total = totals.sum(),
+            )
+        }.flowOn(Dispatchers.IO_)
     }
 
     override fun getSubjectCollections(
