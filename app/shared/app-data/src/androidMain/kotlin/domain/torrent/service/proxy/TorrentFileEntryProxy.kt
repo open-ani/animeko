@@ -68,7 +68,7 @@ class TorrentFileEntryProxy(
     }
 
     override fun getTorrentInputParams(): PTorrentInputParameter? {
-        check(delegate is AnitorrentDownloadSession.AnitorrentEntry) {
+        require(delegate is AnitorrentDownloadSession.AnitorrentEntry) {
             "Expected delegate instance is AnitorrentEntry, actual $delegate"
         }
         val torrentInputParameters = runBlocking { delegate.createTorrentInputParameters() }
@@ -82,7 +82,7 @@ class TorrentFileEntryProxy(
     }
 
     override fun torrentInputOnWait(pieceIndex: Int) {
-        check(delegate is AnitorrentDownloadSession.AnitorrentEntry) {
+        require(delegate is AnitorrentDownloadSession.AnitorrentEntry) {
             "Expected delegate instance is AnitorrentEntry, actual $delegate"
         }
 

@@ -19,7 +19,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.suspendCancellableCoroutine
 import me.him188.ani.app.torrent.api.pieces.PieceListSubscriptions.Subscription
-import kotlin.jvm.JvmField
 
 /**
  * 高性能 [Piece] 集合. 每个 [PieceList] 一定包含连续的 [Piece.pieceIndex]. 可能为空.
@@ -68,8 +67,7 @@ abstract class PieceList(
     abstract var Piece.state: PieceState
     abstract fun Piece.compareAndSetState(expect: PieceState, update: PieceState): Boolean
 
-    @PublishedApi
-    internal inline val Piece.indexInList get() = pieceIndex - initialPieceIndex
+    inline val Piece.indexInList get() = pieceIndex - initialPieceIndex
 
     /**
      * 该 piece 的数据长度 bytes
@@ -253,9 +251,9 @@ class DefaultPieceList(
     internal val subscriptions = PieceListSubscriptions()
 
     override var Piece.state: PieceState
-        get() = states[pieceIndex]
+        get() = states[indexInList]
         set(value) {
-            states[pieceIndex] = value
+            states[indexInList] = value
             subscriptions.notifyPieceStateChanges(this@DefaultPieceList, this)
         }
 

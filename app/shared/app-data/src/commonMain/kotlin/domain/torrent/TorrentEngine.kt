@@ -100,7 +100,9 @@ abstract class AbstractTorrentEngine<Downloader : TorrentDownloader, Config : An
 ) : TorrentEngine {
     protected val logger = logger(this::class)
     protected val scope = parentCoroutineContext.childScope()
-    
+
+    // AbstractTorrentEngine 创建时会立刻获取 downloader 和 config，如果在 subclass 初始化完成之前获取可能会出现问题
+    // subclass 初始化之后需要 complete 此 deferred
     protected val initialized: CompletableDeferred<Unit> = CompletableDeferred()
 
     private val downloader = flow { emit(config.first()) }

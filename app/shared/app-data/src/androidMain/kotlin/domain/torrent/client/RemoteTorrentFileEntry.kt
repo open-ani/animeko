@@ -29,6 +29,8 @@ import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.io.inSystem
 import me.him188.ani.utils.io.toFile
 import java.io.RandomAccessFile
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 class RemoteTorrentFileEntry(
     private val remote: IRemoteTorrentFileEntry
@@ -60,9 +62,9 @@ class RemoteTorrentFileEntry(
         return suspendCancellableCoroutine { cont ->
             try {
                 val result = remote.resolveFile()
-                cont.resumeWith(Result.success(Path(result).inSystem))
+                cont.resume(Path(result).inSystem)
             } catch (re: RemoteException) {
-                cont.resumeWith(Result.failure(re))
+                cont.resumeWithException(re)
             }
         }
     }
@@ -83,7 +85,7 @@ class RemoteTorrentFileEntry(
             logicalStartOffset = remoteInput.logicalStartOffset,
             onWait = {
                 suspendCancellableCoroutine { cont ->
-                    cont.resumeWith(Result.success(remote.torrentInputOnWait(it.pieceIndex)))
+                    cont.resume(remote.torrentInputOnWait(it.pieceIndex))
                 }
             },
             bufferSize = remoteInput.bufferSize,

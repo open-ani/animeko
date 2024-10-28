@@ -11,6 +11,8 @@ package me.him188.ani.app.domain.torrent.service.proxy
 
 import android.annotation.SuppressLint
 import android.os.SharedMemory
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.CoroutineScope
 import me.him188.ani.app.domain.torrent.IDisposableHandle
 import me.him188.ani.app.domain.torrent.IPieceStateObserver
@@ -19,6 +21,7 @@ import me.him188.ani.app.torrent.api.pieces.Piece
 import me.him188.ani.app.torrent.api.pieces.PieceList
 import me.him188.ani.app.torrent.api.pieces.PieceListSubscriptions
 import me.him188.ani.app.torrent.api.pieces.PieceState
+import me.him188.ani.app.torrent.api.pieces.forEach
 import me.him188.ani.utils.coroutines.childScope
 import kotlin.coroutines.CoroutineContext
 
@@ -32,13 +35,13 @@ class PieceListProxy(
     
     private val pieceStateSubscriber: PieceListSubscriptions.Subscription
     private val internalPieceStateObservers: MutableList<PieceStateObserver> = mutableListOf()
+
+    private val lock = SynchronizedObject()
     
     init {
         with(delegate) {
-            // fill shared buffer of piece state
-            sizes.forEachIndexed { index, _ -> 
-                val piece = getByPieceIndex(index)
-                pieceStatesRwBuf.put(index, piece.state.ordinal.toByte()) 
+            delegate.forEach { piece ->
+                pieceStatesRwBuf.put(piece.indexInList, piece.state.ordinal.toByte())
             }
 
             // subscribe new changes
@@ -49,10 +52,14 @@ class PieceListProxy(
     
     private fun onPieceStateChange(piece: Piece, state: PieceState) {
         // update shared memory first
-        pieceStatesRwBuf.put(piece.pieceIndex, state.ordinal.toByte())
-        internalPieceStateObservers.forEach { observer ->
-            // notify observer to get new state.
-            if (piece.pieceIndex == observer.pieceIndex) observer.observer.onUpdate()
+        with(delegate) {
+            pieceStatesRwBuf.put(piece.indexInList, state.ordinal.toByte())
+        }
+        synchronized(lock) {
+            internalPieceStateObservers.forEach { observer ->
+                // notify observer to get new state.
+                if (piece.pieceIndex == observer.pieceIndex) observer.observer.onUpdate()
+            }
         }
     }
     
@@ -76,11 +83,13 @@ class PieceListProxy(
         pieceIndex: Int,
         observer: IPieceStateObserver?
     ): IDisposableHandle? {
-        if (observer == null) return null
-        val newObserver = PieceStateObserver(pieceIndex, observer)
-        
-        internalPieceStateObservers.add(newObserver)
-        return DisposableHandleProxy { internalPieceStateObservers.remove(newObserver) }
+        synchronized(lock) {
+            if (observer == null) return null
+            val newObserver = PieceStateObserver(pieceIndex, observer)
+
+            internalPieceStateObservers.add(newObserver)
+            return DisposableHandleProxy { internalPieceStateObservers.remove(newObserver) }
+        }
     }
 
     override fun dispose() {

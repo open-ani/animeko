@@ -17,27 +17,25 @@ import android.os.IBinder
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.withContext
 import me.him188.ani.app.domain.torrent.IRemoteAniTorrentEngine
 import me.him188.ani.utils.logging.debug
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicReference
 
 class TorrentServiceConnection(
     private val context: Context
 ): LifecycleEventObserver, ServiceConnection {
     private val logger = logger<TorrentServiceConnection>()
-    
-    private val binder: AtomicReference<IRemoteAniTorrentEngine> = AtomicReference()
+
+    private var binder: CompletableDeferred<IRemoteAniTorrentEngine> = CompletableDeferred()
     val connected: MutableStateFlow<Boolean> = MutableStateFlow(false)
-    
-    private val awaitMap = ConcurrentHashMap<Any, CompletableDeferred<IRemoteAniTorrentEngine>>()
+
+    private val lock = SynchronizedObject()
     
     override fun onStateChanged(source: LifecycleOwner, event: Lifecycle.Event) {
         when (event) {
@@ -64,12 +62,15 @@ class TorrentServiceConnection(
         logger.debug { "AniTorrentService is connected, name = $name" }
         if (service != null) {
             val result = IRemoteAniTorrentEngine.Stub.asInterface(service)
-            
-            binder.compareAndSet(null, result)
+
+            synchronized(lock) {
+                if (binder.isCompleted) {
+                    binder = CompletableDeferred(result)
+                } else {
+                    binder.complete(result)
+                }
+            }
             connected.value = true
-            
-            awaitMap.forEach { (_, u) -> u.complete(result) }
-            awaitMap.clear()
         } else {
             logger.error { "Failed to get binder of AniTorrentService." }
             connected.value = false
@@ -78,20 +79,13 @@ class TorrentServiceConnection(
 
     override fun onServiceDisconnected(name: ComponentName?) {
         logger.debug { "AniTorrentService is disconnected, name = $name" }
-        binder.set(null)
+        synchronized(lock) {
+            binder = CompletableDeferred()
+        }
         connected.value = false
     }
 
     suspend fun awaitBinder(): IRemoteAniTorrentEngine {
-        val currentBinder = binder.get()
-        if (currentBinder != null) return currentBinder
-        
-        val key = Any()
-        val deferred = CompletableDeferred<IRemoteAniTorrentEngine>()
-        
-        awaitMap[key] = deferred
-        return withContext(CoroutineExceptionHandler { _, _ -> awaitMap.remove(key) }) {
-            deferred.await()
-        }
+        return binder.await()
     }
 }

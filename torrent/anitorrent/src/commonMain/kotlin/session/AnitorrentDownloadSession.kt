@@ -243,9 +243,7 @@ class AnitorrentDownloadSession(
         suspend fun createTorrentInputParameters(): TorrentInputConstructor {
             return TorrentInputConstructor(
                 resolveDownloadingFile(),
-                pieces,
                 logicalStartOffset = offset,
-                onWait = { updatePieceDeadlinesForSeek(it) },
                 bufferSize = DEFAULT_BUFFER_PER_DIRECTION,
                 size = length
             )

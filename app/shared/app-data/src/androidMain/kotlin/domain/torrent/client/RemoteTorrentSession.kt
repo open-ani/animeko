@@ -20,6 +20,8 @@ import me.him188.ani.app.domain.torrent.parcel.PTorrentSessionStats
 import me.him188.ani.app.torrent.api.TorrentSession
 import me.him188.ani.app.torrent.api.files.TorrentFileEntry
 import me.him188.ani.app.torrent.api.peer.PeerInfo
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 class RemoteTorrentSession(
     private val remote: IRemoteTorrentSession
@@ -39,9 +41,9 @@ class RemoteTorrentSession(
         return suspendCancellableCoroutine { cont ->
             try {
                 val result = remote.name
-                cont.resumeWith(Result.success(result))
+                cont.resume(result)
             } catch (re: RemoteException) {
-                cont.resumeWith(Result.failure(re))
+                cont.resumeWithException(re)
             }
         }
     }
@@ -50,9 +52,9 @@ class RemoteTorrentSession(
         return suspendCancellableCoroutine { cont ->
             try {
                 val result = remote.files
-                cont.resumeWith(Result.success(RemoteTorrentFileEntryList(result)))
+                cont.resume(RemoteTorrentFileEntryList(result))
             } catch (re: RemoteException) {
-                cont.resumeWith(Result.failure(re))
+                cont.resumeWithException(re)
             }
         }
     }
@@ -65,9 +67,9 @@ class RemoteTorrentSession(
         return suspendCancellableCoroutine { cont ->
             try {
                 val result = remote.close()
-                cont.resumeWith(Result.success(result))
+                cont.resume(result)
             } catch (re: RemoteException) {
-                cont.resumeWith(Result.failure(re))
+                cont.resumeWithException(re)
             }
         }
     }
@@ -76,9 +78,9 @@ class RemoteTorrentSession(
         return suspendCancellableCoroutine { cont ->
             try {
                 val result = remote.closeIfNotInUse()
-                cont.resumeWith(Result.success(result))
+                cont.resume(result)
             } catch (re: RemoteException) {
-                cont.resumeWith(Result.failure(re))
+                cont.resumeWithException(re)
             }
         }
     }

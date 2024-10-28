@@ -27,6 +27,8 @@ import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.io.absolutePath
 import me.him188.ani.utils.io.inSystem
 import kotlin.coroutines.CoroutineContext
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 class RemoteTorrentDownloader(
     private val remote: IRemoteTorrentDownloader
@@ -48,9 +50,9 @@ class RemoteTorrentDownloader(
         return suspendCancellableCoroutine { cont ->
             try {
                 val result = remote.fetchTorrent(uri, timeoutSeconds)
-                cont.resumeWith(Result.success(result.toEncodedTorrentInfo()))
+                cont.resume(result.toEncodedTorrentInfo())
             } catch (re: RemoteException) {
-                cont.resumeWith(Result.failure(re))
+                cont.resumeWithException(re)
             }
         }
     }
@@ -63,9 +65,9 @@ class RemoteTorrentDownloader(
         return suspendCancellableCoroutine { cont ->
             try {
                 val result = remote.startDownload(PEncodedTorrentInfo(data.data), overrideSaveDir?.absolutePath)
-                cont.resumeWith(Result.success(RemoteTorrentSession(result)))
+                cont.resume(RemoteTorrentSession(result))
             } catch (re: RemoteException) {
-                cont.resumeWith(Result.failure(re))
+                cont.resumeWithException(re)
             }
         }
     }

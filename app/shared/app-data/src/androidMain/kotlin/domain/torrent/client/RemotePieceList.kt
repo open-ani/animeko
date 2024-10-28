@@ -11,12 +11,14 @@ package me.him188.ani.app.domain.torrent.client
 
 import android.annotation.SuppressLint
 import kotlinx.coroutines.suspendCancellableCoroutine
+import me.him188.ani.app.domain.torrent.IDisposableHandle
 import me.him188.ani.app.domain.torrent.IPieceStateObserver
 import me.him188.ani.app.domain.torrent.IRemotePieceList
 import me.him188.ani.app.torrent.api.pieces.Piece
 import me.him188.ani.app.torrent.api.pieces.PieceList
 import me.him188.ani.app.torrent.api.pieces.PieceListSubscriptions
 import me.him188.ani.app.torrent.api.pieces.PieceState
+import kotlin.coroutines.resume
 
 @SuppressLint("NewApi")
 class RemotePieceList(
@@ -30,7 +32,7 @@ class RemotePieceList(
     private val pieceStateBuf by lazy { pieceStateSharedMem.mapReadOnly() }
 
     override var Piece.state: PieceState
-        get() = PIECE_STATE_ENTRIES[pieceStateBuf.get(pieceIndex).toInt()]
+        get() = PIECE_STATE_ENTRIES[pieceStateBuf.get(indexInList).toInt()]
         set(_) { error("set Piece state is not allowed in remote PieceList") }
 
     override fun Piece.compareAndSetState(expect: PieceState, update: PieceState): Boolean {
@@ -49,23 +51,32 @@ class RemotePieceList(
     }
 
     override suspend fun Piece.awaitFinished() {
+        if (state == PieceState.READY) return
+        
         val readyState = suspendCancellableCoroutine { cont ->
-            val disposableHandle = remote.registerPieceStateObserver(
-                pieceIndex,
-                object : IPieceStateObserver.Stub() {
-                    override fun onUpdate() {
-                        val newState = state
-                        if (newState == PieceState.READY) {
-                            cont.resumeWith(Result.success(newState))
+            // suspendCancellableCoroutine 调用之后到此 block 被调度执行之前
+            // 如果 state 是 ready 了，下面就监听不到 ready state 了
+            if (state == PieceState.READY) cont.resume(state)
+
+            var disposableHandle: IDisposableHandle? = null
+            try {
+                // remote 必须保证 register observer 调用后一定可以监听到新的 state
+                disposableHandle = remote.registerPieceStateObserver(
+                    pieceIndex,
+                    object : IPieceStateObserver.Stub() {
+                        override fun onUpdate() {
+                            val newState = state
+                            if (newState == PieceState.READY) {
+                                cont.resume(newState)
+                            }
                         }
-                    }
-                },
-            )
-            // todo: 如果在 register 此 cancellation handler 前上面已经 resume 了,
-            // 那这个 disposable handle 是不是不会被调用?
-            cont.invokeOnCancellation { disposableHandle.dispose() }
+                    },
+                )
+            } finally {
+                disposableHandle?.dispose()
+            }
         }
-        require(state == readyState) { "Remote state of piece $this is changed from READY to $state" }
+        check(state == readyState) { "Remote state of piece $this is changed from READY to $state" }
     }
     
     fun dispose() {

@@ -15,6 +15,8 @@ import me.him188.ani.app.domain.torrent.IRemoteTorrentFileHandle
 import me.him188.ani.app.torrent.api.files.FilePriority
 import me.him188.ani.app.torrent.api.files.TorrentFileEntry
 import me.him188.ani.app.torrent.api.files.TorrentFileHandle
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 class RemoteTorrentFileHandle(
     private val remote: IRemoteTorrentFileHandle
@@ -33,9 +35,9 @@ class RemoteTorrentFileHandle(
         return suspendCancellableCoroutine { cont ->
             try {
                 val result = remote.close()
-                cont.resumeWith(Result.success(result))
+                cont.resume(result)
             } catch (re: RemoteException) {
-                cont.resumeWith(Result.failure(re))
+                cont.resumeWithException(re)
             }
         }
     }
@@ -44,9 +46,9 @@ class RemoteTorrentFileHandle(
         return suspendCancellableCoroutine { cont ->
             try {
                 val result = remote.closeAndDelete()
-                cont.resumeWith(Result.success(result))
+                cont.resume(result)
             } catch (re: RemoteException) {
-                cont.resumeWith(Result.failure(re))
+                cont.resumeWithException(re)
             }
         }
     }
