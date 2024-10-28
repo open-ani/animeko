@@ -17,7 +17,6 @@ import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import androidx.room.Query
-import androidx.room.TypeConverters
 import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 import me.him188.ani.app.data.models.subject.RatingInfo
@@ -25,7 +24,6 @@ import me.him188.ani.app.data.models.subject.SelfRatingInfo
 import me.him188.ani.app.data.models.subject.SubjectCollectionStats
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.Tag
-import me.him188.ani.app.data.persistent.ProtoConverters
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.platform.currentTimeMillis
@@ -40,7 +38,6 @@ import me.him188.ani.utils.platform.currentTimeMillis
         Index(value = ["lastUpdated"], unique = false, orders = [Index.Order.DESC]),
     ],
 )
-@TypeConverters(ProtoConverters::class)
 data class SubjectCollectionEntity(
     @PrimaryKey(autoGenerate = true) val _index: Long = 0, // 用于按插入顺序排序
     val subjectId: Int,

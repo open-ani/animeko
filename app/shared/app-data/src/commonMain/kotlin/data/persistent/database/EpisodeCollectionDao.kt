@@ -64,7 +64,14 @@ data class EpisodeCollectionEntity(
 
 @Dao
 interface EpisodeCollectionDao {
-    @Query("""SELECT * FROM episode_collection WHERE episodeId = :episodeId LIMIT 1""")
+    @Query(
+        """
+        SELECT * FROM episode_collection 
+        WHERE episodeId = :episodeId 
+        ORDER BY sort DESC
+        LIMIT 1
+        """
+    )
     fun findByEpisodeId(episodeId: Int): Flow<EpisodeCollectionEntity?>
 
 

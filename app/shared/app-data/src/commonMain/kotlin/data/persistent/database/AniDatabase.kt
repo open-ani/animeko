@@ -17,6 +17,7 @@ import androidx.room.RoomDatabaseConstructor
 import androidx.room.TypeConverters
 import androidx.room.migration.AutoMigrationSpec
 import androidx.sqlite.SQLiteConnection
+import me.him188.ani.app.data.persistent.EpisodeSortConverter
 import me.him188.ani.app.data.persistent.ProtoConverters
 import me.him188.ani.app.data.persistent.database.dao.SearchHistoryDao
 import me.him188.ani.app.data.persistent.database.dao.SearchTagDao
@@ -36,7 +37,7 @@ import me.him188.ani.app.data.persistent.database.eneity.SearchTagEntity
     ],
 )
 @ConstructedBy(AniDatabaseConstructor::class)
-@TypeConverters(ProtoConverters::class)
+@TypeConverters(ProtoConverters::class, EpisodeSortConverter::class)
 abstract class AniDatabase : RoomDatabase() {
     abstract fun searchHistory(): SearchHistoryDao
     abstract fun searchTag(): SearchTagDao
