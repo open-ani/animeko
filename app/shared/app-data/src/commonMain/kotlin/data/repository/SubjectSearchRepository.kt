@@ -15,13 +15,16 @@ import androidx.paging.PagingData
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import io.ktor.client.plugins.ResponseException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 import me.him188.ani.app.domain.search.SubjectSearchQuery
 import me.him188.ani.app.domain.search.SubjectType
 import me.him188.ani.datasources.bangumi.client.BangumiSearchApi
 import me.him188.ani.datasources.bangumi.models.BangumiSubjectType
 import me.him188.ani.datasources.bangumi.models.subjects.BangumiSubjectImageSize
+import me.him188.ani.utils.coroutines.IO_
 
 class SubjectSearchRepository(
     private val searchApi: Flow<BangumiSearchApi>,
@@ -36,54 +39,60 @@ class SubjectSearchRepository(
         initialKey = 0,
 //        remoteMediator = SubjectSearchRemoteMediator(useNewApi, searchQuery, pagingConfig),
         pagingSourceFactory = {
-            object : PagingSource<Int, SubjectInfo>() {
-                override fun getRefreshKey(state: PagingState<Int, SubjectInfo>): Int? =
-                    state.anchorPosition
-
-                override suspend fun load(params: LoadParams<Int>): LoadResult<Int, SubjectInfo> {
-                    val offset = params.key ?: return LoadResult.Error(IllegalArgumentException("Key is null"))
-                    return try {
-                        val api = searchApi.first()
-                        val res = if (useNewApi) {
-                            api.searchSubjectByKeywords(
-                                searchQuery.keyword,
-                                offset = offset,
-                                limit = params.loadSize,
-                            ).page.map {
-                                it.id
-                            }
-                        } else {
-                            api.searchSubjectsByKeywordsWithOldApi(
-                                searchQuery.keyword,
-                                type = searchQuery.type.toBangumiSubjectType(),
-                                responseGroup = BangumiSubjectImageSize.SMALL,
-                                start = offset,
-                                maxResults = params.loadSize,
-                            ).page.map {
-                                it.id
-                            }
-                        }
-
-                        val subjectInfos = subjectRepository.batchGetSubjectDetails(res)
-
-                        return LoadResult.Page(
-                            subjectInfos.map {
-                                it.subjectInfo
-                            },
-                            prevKey = offset,
-                            nextKey = if (subjectInfos.isEmpty()) null else offset + params.loadSize,
-                        )
-                    } catch (e: RepositoryException) {
-                        LoadResult.Error(e)
-                    } catch (e: ResponseException) {
-                        LoadResult.Error(e)
-                    } catch (e: Exception) {
-                        LoadResult.Error(e)
-                    }
-                }
-            }
+            SubjectSearchPagingSource(useNewApi, searchQuery)
         },
     ).flow
+
+    private inner class SubjectSearchPagingSource(
+        private val useNewApi: Boolean,
+        private val searchQuery: SubjectSearchQuery
+    ) : PagingSource<Int, SubjectInfo>() {
+        override fun getRefreshKey(state: PagingState<Int, SubjectInfo>): Int? = null
+        override suspend fun load(
+            params: LoadParams<Int>
+        ): LoadResult<Int, SubjectInfo> = withContext(Dispatchers.IO_) {
+            val offset = params.key
+                ?: return@withContext LoadResult.Error(IllegalArgumentException("Key is null"))
+            return@withContext try {
+                val api = searchApi.first()
+                val res = if (useNewApi) {
+                    api.searchSubjectByKeywords(
+                        searchQuery.keyword,
+                        offset = offset,
+                        limit = params.loadSize,
+                    ).page.map {
+                        it.id
+                    }
+                } else {
+                    api.searchSubjectsByKeywordsWithOldApi(
+                        searchQuery.keyword,
+                        type = searchQuery.type.toBangumiSubjectType(),
+                        responseGroup = BangumiSubjectImageSize.SMALL,
+                        start = offset,
+                        maxResults = params.loadSize,
+                    ).page.map {
+                        it.id
+                    }
+                }
+
+                val subjectInfos = subjectRepository.batchGetSubjectDetails(res)
+
+                return@withContext LoadResult.Page(
+                    subjectInfos.map {
+                        it.subjectInfo
+                    },
+                    prevKey = if (offset == 0) null else offset,
+                    nextKey = if (subjectInfos.isEmpty()) null else offset + params.loadSize,
+                )
+            } catch (e: RepositoryException) {
+                LoadResult.Error(e)
+            } catch (e: ResponseException) {
+                LoadResult.Error(e)
+            } catch (e: Exception) {
+                LoadResult.Error(e)
+            }
+        }
+    }
 
 //    private inner class SubjectSearchRemoteMediator(
 //        val useNewApi: Boolean,
