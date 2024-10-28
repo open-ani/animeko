@@ -99,12 +99,12 @@ interface SubjectCollectionDao {
     @Query(
         """
         select * from subject_collection 
-        where (:collectionType IS NULL OR collectionType = :collectionType)
+        where (collectionType is NOT NULL AND (:collectionType IS NULL OR collectionType = :collectionType))
         order by lastUpdated desc
         limit :limit
         """,
     )
-    fun filterMostRecent(
+    fun filterMostRecentCollected(
         collectionType: UnifiedCollectionType? = null,
         limit: Int,
     ): Flow<List<SubjectCollectionEntity>>

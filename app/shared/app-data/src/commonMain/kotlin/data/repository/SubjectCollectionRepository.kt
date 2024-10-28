@@ -118,7 +118,8 @@ class SubjectCollectionRepository(
     fun mostRecentlyUpdatedSubjectCollectionsFlow(
         limit: Int,
         type: UnifiedCollectionType? = null, // null for all
-    ): Flow<List<SubjectCollectionInfo>> = subjectCollectionDao.filterMostRecent(type, limit).map { list ->
+    ): Flow<List<SubjectCollectionInfo>> =
+        subjectCollectionDao.filterMostRecentCollected(type, limit).map { list ->
         list.map { entity ->
             entity.toSubjectCollectionInfo(
                 episodes = getSubjectEpisodeCollections(entity.subjectId),
