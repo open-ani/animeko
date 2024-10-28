@@ -13,6 +13,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.core.DataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.nullable
 import me.him188.ani.app.data.models.danmaku.DanmakuRegexFilter
 import me.him188.ani.app.data.repository.EpisodeHistories
 import me.him188.ani.app.data.repository.MediaSourceSaves
@@ -78,11 +79,11 @@ abstract class PlatformDataStoreManager {
     }
     val savedWindowStateStore by lazy {
         DataStoreFactory.create(
-            serializer = SavedWindowState.serializer()
-                .asDataStoreSerializer({ SavedWindowState.Default }),
+            serializer = SavedWindowState.serializer().nullable
+                .asDataStoreSerializer({ null }),
             produceFile = { resolveDataStoreFile("windowState") },
             corruptionHandler = ReplaceFileCorruptionHandler {
-                SavedWindowState.Default
+                null
             },
         )
     }

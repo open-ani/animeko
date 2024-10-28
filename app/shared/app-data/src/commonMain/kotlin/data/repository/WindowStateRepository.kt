@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.Serializable
 
 interface WindowStateRepository : Repository {
-    val flow: Flow<SavedWindowState>
+    val flow: Flow<SavedWindowState?>
     suspend fun update(states: SavedWindowState)
 }
 
@@ -24,16 +24,12 @@ class SavedWindowState(
     val y: Float,
     val width: Float,
     val height: Float,
-) {
-    companion object {
-        val Default = SavedWindowState(0f, 0f, width = 1000f, height = 800f)
-    }
-}
+)
 
 class WindowStateRepositoryImpl(
-    private val store: DataStore<SavedWindowState>,
+    private val store: DataStore<SavedWindowState?>,
 ) : WindowStateRepository {
-    override val flow: Flow<SavedWindowState> = store.data
+    override val flow: Flow<SavedWindowState?> = store.data
 
     override suspend fun update(states: SavedWindowState) {
         store.updateData {

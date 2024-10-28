@@ -37,7 +37,6 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.LocalPlatformContext
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
@@ -296,13 +295,21 @@ object AniDesktop {
         }
 
         val windowStateRepository = koin.koin.get<WindowStateRepository>()
-        var savedWindowState: SavedWindowState? = null
-        coroutineScope.launch {
-            savedWindowState = windowStateRepository.flow.firstOrNull()
+        val savedWindowState: SavedWindowState? = runBlocking {
+            windowStateRepository.flow.firstOrNull()
         }
-        
+
         application {
-            WindowStateRecorder(windowState, savedWindowState, windowStateRepository, coroutineScope) 
+            WindowStateRecorder(
+                windowState = windowState,
+                saved = savedWindowState,
+                update = {
+                    coroutineScope.launch {
+                        windowStateRepository.update(it)
+                    }
+                },
+            ) 
+            
             Window(
                 onCloseRequest = { exitApplication() },
                 state = windowState,
@@ -425,13 +432,13 @@ private fun FrameWindowScope.MainWindowContent(
 private fun WindowStateRecorder(
     windowState: WindowState,
     saved: SavedWindowState?,
-    windowStateRepository: WindowStateRepository,
-    coroutineScope: CoroutineScope
+    update: (SavedWindowState) -> Unit,
 ) {
     // 记录窗口大小
-    with(LocalDensity.current) {
-        DisposableEffect(true) {
-            if (saved != null && saved != SavedWindowState.Default) {
+    val density = LocalDensity.current
+    DisposableEffect(density) {
+        with(density) {
+            if (saved != null) {
                 windowState.apply {
                     position = WindowPosition(
                         x = saved.x.toDp(),
@@ -444,18 +451,14 @@ private fun WindowStateRecorder(
                 }
             }
             onDispose {
-                windowState.apply {
-                    coroutineScope.launch {
-                        windowStateRepository.update(
-                            SavedWindowState(
-                                x = position.x.toPx(),
-                                y = position.y.toPx(),
-                                width = size.width.toPx(),
-                                height = size.height.toPx(),
-                            ),
-                        )
-                    }
-                }
+                update(
+                    SavedWindowState(
+                        x = windowState.position.x.toPx(),
+                        y = windowState.position.y.toPx(),
+                        width = windowState.size.width.toPx(),
+                        height = windowState.size.height.toPx(),
+                    ),
+                )
             }
         }
     }
