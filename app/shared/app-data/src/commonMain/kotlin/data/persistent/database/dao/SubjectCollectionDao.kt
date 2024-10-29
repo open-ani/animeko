@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.app.data.persistent.database
+package me.him188.ani.app.data.persistent.database.dao
 
 import androidx.paging.PagingSource
 import androidx.room.ColumnInfo

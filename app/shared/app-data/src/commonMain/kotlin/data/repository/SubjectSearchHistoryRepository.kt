@@ -12,9 +12,9 @@ package me.him188.ani.app.data.repository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import me.him188.ani.app.data.persistent.database.dao.SearchHistoryDao
+import me.him188.ani.app.data.persistent.database.dao.SearchHistoryEntity
 import me.him188.ani.app.data.persistent.database.dao.SearchTagDao
-import me.him188.ani.app.data.persistent.database.eneity.SearchHistoryEntity
-import me.him188.ani.app.data.persistent.database.eneity.SearchTagEntity
+import me.him188.ani.app.data.persistent.database.dao.SearchTagEntity
 import org.koin.core.component.KoinComponent
 
 interface SubjectSearchHistoryRepository {

@@ -30,9 +30,9 @@ import me.him188.ani.app.data.models.episode.EpisodeCollections
 import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.network.BangumiEpisodeService
 import me.him188.ani.app.data.network.toBangumiEpType
-import me.him188.ani.app.data.persistent.database.EpisodeCollectionDao
-import me.him188.ani.app.data.persistent.database.EpisodeCollectionEntity
-import me.him188.ani.app.data.persistent.database.SubjectCollectionDao
+import me.him188.ani.app.data.persistent.database.dao.EpisodeCollectionDao
+import me.him188.ani.app.data.persistent.database.dao.EpisodeCollectionEntity
+import me.him188.ani.app.data.persistent.database.dao.SubjectCollectionDao
 import me.him188.ani.app.data.repository.Repository.Companion.defaultPagingConfig
 import me.him188.ani.datasources.api.EpisodeType.MainStory
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType

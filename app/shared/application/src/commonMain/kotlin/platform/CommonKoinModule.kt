@@ -33,9 +33,9 @@ import me.him188.ani.app.data.network.BangumiEpisodeService
 import me.him188.ani.app.data.network.BangumiSubjectService
 import me.him188.ani.app.data.network.EpisodeRepositoryImpl
 import me.him188.ani.app.data.network.RemoteBangumiSubjectService
-import me.him188.ani.app.data.persistent.createDatabaseBuilder
 import me.him188.ani.app.data.persistent.dataStores
 import me.him188.ani.app.data.persistent.database.AniDatabase
+import me.him188.ani.app.data.persistent.database.createDatabaseBuilder
 import me.him188.ani.app.data.repository.BangumiCommentRepositoryImpl
 import me.him188.ani.app.data.repository.BangumiRelatedCharactersRepository
 import me.him188.ani.app.data.repository.CommentRepository

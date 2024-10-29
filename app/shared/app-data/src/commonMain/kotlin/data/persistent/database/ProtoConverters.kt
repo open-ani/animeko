@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.app.data.persistent
+package me.him188.ani.app.data.persistent.database
 
 import androidx.room.TypeConverter
 import kotlinx.serialization.builtins.IntArraySerializer

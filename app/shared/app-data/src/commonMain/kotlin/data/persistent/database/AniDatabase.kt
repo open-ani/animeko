@@ -17,12 +17,14 @@ import androidx.room.RoomDatabaseConstructor
 import androidx.room.TypeConverters
 import androidx.room.migration.AutoMigrationSpec
 import androidx.sqlite.SQLiteConnection
-import me.him188.ani.app.data.persistent.EpisodeSortConverter
-import me.him188.ani.app.data.persistent.ProtoConverters
+import me.him188.ani.app.data.persistent.database.dao.EpisodeCollectionDao
+import me.him188.ani.app.data.persistent.database.dao.EpisodeCollectionEntity
 import me.him188.ani.app.data.persistent.database.dao.SearchHistoryDao
+import me.him188.ani.app.data.persistent.database.dao.SearchHistoryEntity
 import me.him188.ani.app.data.persistent.database.dao.SearchTagDao
-import me.him188.ani.app.data.persistent.database.eneity.SearchHistoryEntity
-import me.him188.ani.app.data.persistent.database.eneity.SearchTagEntity
+import me.him188.ani.app.data.persistent.database.dao.SearchTagEntity
+import me.him188.ani.app.data.persistent.database.dao.SubjectCollectionDao
+import me.him188.ani.app.data.persistent.database.dao.SubjectCollectionEntity
 
 @Database(
     entities = [

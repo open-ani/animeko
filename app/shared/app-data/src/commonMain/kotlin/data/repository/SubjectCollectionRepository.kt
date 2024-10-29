@@ -46,8 +46,8 @@ import me.him188.ani.app.data.models.subject.SubjectCollectionStats
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
 import me.him188.ani.app.data.models.subject.Tag
 import me.him188.ani.app.data.network.BangumiSubjectService
-import me.him188.ani.app.data.persistent.database.SubjectCollectionDao
-import me.him188.ani.app.data.persistent.database.SubjectCollectionEntity
+import me.him188.ani.app.data.persistent.database.dao.SubjectCollectionDao
+import me.him188.ani.app.data.persistent.database.dao.SubjectCollectionEntity
 import me.him188.ani.app.data.repository.Repository.Companion.defaultPagingConfig
 import me.him188.ani.app.domain.search.SubjectType
 import me.him188.ani.datasources.api.PackedDate
