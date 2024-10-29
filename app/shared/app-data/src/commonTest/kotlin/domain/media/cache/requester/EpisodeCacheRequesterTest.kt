@@ -17,7 +17,6 @@ import kotlinx.coroutines.test.runTest
 import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
-import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.domain.media.SOURCE_DMHY
 import me.him188.ani.app.domain.media.TestMediaList
 import me.him188.ani.app.domain.media.cache.storage.TestMediaCacheStorage
@@ -139,7 +138,7 @@ class EpisodeCacheRequesterTest {
         sort: EpisodeSort = EpisodeSort(0)
     ): EpisodeCacheRequest {
         return EpisodeCacheRequest(
-            subjectInfo = SubjectInfo.Empty,
+            subjectInfo = me.him188.ani.app.data.models.SubjectInfo.Empty,
             episodeInfo = EpisodeInfo(0, sort = sort),
         )
     }

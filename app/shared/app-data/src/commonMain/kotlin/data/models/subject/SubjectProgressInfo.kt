@@ -11,10 +11,10 @@ package me.him188.ani.app.data.models.subject
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
+import me.him188.ani.app.data.models.SubjectInfo
 import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.episode.isKnownCompleted
 import me.him188.ani.app.data.repository.EpisodeCollectionInfo
-import me.him188.ani.app.data.repository.SubjectInfo
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.ifInvalid

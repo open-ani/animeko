@@ -20,12 +20,12 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
+import me.him188.ani.app.data.models.SubjectCollectionInfo
 import me.him188.ani.app.data.models.episode.isKnownCompleted
 import me.him188.ani.app.data.models.preference.MediaCacheSettings
 import me.him188.ani.app.data.repository.EpisodeCollectionInfo
 import me.him188.ani.app.data.repository.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.SettingsRepository
-import me.him188.ani.app.data.repository.SubjectCollectionInfo
 import me.him188.ani.app.data.repository.SubjectCollectionRepository
 import me.him188.ani.app.domain.media.cache.storage.MediaCacheStorage
 import me.him188.ani.app.domain.media.fetch.MediaFetcher

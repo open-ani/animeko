@@ -39,7 +39,6 @@ import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.episode.renderEpisodeEp
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
-import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
 import me.him188.ani.app.data.repository.CommentRepository
 import me.him188.ani.app.data.repository.DanmakuRegexFilterRepository
@@ -436,7 +435,7 @@ private class EpisodeViewModelImpl(
     override val episodeDetailsState: EpisodeDetailsState = kotlin.run {
         EpisodeDetailsState(
             episodePresentation = episodePresentationFlow.filterNotNull().produceState(EpisodePresentation.Placeholder),
-            subjectInfo = subjectInfo.produceState(SubjectInfo.Empty),
+            subjectInfo = subjectInfo.produceState(me.him188.ani.app.data.models.SubjectInfo.Empty),
             airingLabelState = AiringLabelState(
                 subjectCollection.map { it.airingInfo }.produceState(null),
                 subjectCollection.map { SubjectProgressInfo.compute(it.subjectInfo, it.episodes, getCurrentDate()) }

@@ -22,7 +22,7 @@ import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.paging.PagingData
 import androidx.paging.compose.collectAsLazyPagingItemsWithLifecycle
 import kotlinx.coroutines.flow.MutableStateFlow
-import me.him188.ani.app.data.repository.SubjectCollectionInfo
+import me.him188.ani.app.data.models.SubjectCollectionInfo
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.subject.collection.components.rememberTestEditableSubjectCollectionTypeState
 import me.him188.ani.app.ui.subject.collection.progress.SubjectProgressButton

@@ -21,7 +21,6 @@ import me.him188.ani.app.data.models.subject.RelatedPersonInfo
 import me.him188.ani.app.data.models.subject.RelatedSubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectAiringInfo
 import me.him188.ani.app.data.models.subject.SubjectCollectionStats
-import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectRelation
 import me.him188.ani.app.data.models.subject.Tag
 import me.him188.ani.datasources.api.PackedDate
@@ -50,7 +49,7 @@ internal val TestCollectionStats
 
 @TestOnly
 internal val TestSubjectInfo
-    get() = SubjectInfo.Empty.copy(
+    get() = me.him188.ani.app.data.models.SubjectInfo.Empty.copy(
         nameCn = "孤独摇滚！",
         name = "ぼっち・ざ・ろっく！",
         airDate = PackedDate(2023, 10, 1),

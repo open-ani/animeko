@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.app.data.repository
 
 import kotlinx.coroutines.Dispatchers
@@ -31,18 +40,6 @@ import me.him188.ani.datasources.bangumi.models.BangumiSubjectType
 import me.him188.ani.datasources.bangumi.models.BangumiV0SubjectRelation
 import me.him188.ani.utils.coroutines.flows.runOrEmitEmptyList
 
-@Serializable
-data class QInfobox(
-    val key: String,
-    val values: List<QInfoboxValue> = emptyList(),
-)
-
-@Serializable
-data class QInfoboxValue(
-    val k: String?,
-    val v: String,
-)
-
 private val json = Json {
     ignoreUnknownKeys = true
 }
@@ -51,7 +48,19 @@ class BangumiRelatedCharactersRepository(
     private val client: BangumiClient,
 ) {
     @Serializable
-    data class QCharacterOrPerson(
+    private data class QInfobox(
+        val key: String,
+        val values: List<QInfoboxValue> = emptyList(),
+    )
+
+    @Serializable
+    private data class QInfoboxValue(
+        val k: String?,
+        val v: String,
+    )
+
+    @Serializable
+    private data class QCharacterOrPerson(
         val id: Int,
         val infobox: List<QInfobox>
     ) {

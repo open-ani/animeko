@@ -13,7 +13,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import kotlinx.serialization.Serializable
 
-typealias SubjectInfo = me.him188.ani.app.data.repository.SubjectInfo
+typealias SubjectInfo = me.him188.ani.app.data.models.SubjectInfo
 
 //
 ///**

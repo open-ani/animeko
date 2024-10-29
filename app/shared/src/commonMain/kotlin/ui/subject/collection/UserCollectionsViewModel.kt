@@ -15,11 +15,11 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
+import me.him188.ani.app.data.models.SubjectCollectionInfo
 import me.him188.ani.app.data.models.preference.MyCollectionsSettings
 import me.him188.ani.app.data.repository.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.EpisodeProgressRepository
 import me.him188.ani.app.data.repository.SettingsRepository
-import me.him188.ani.app.data.repository.SubjectCollectionInfo
 import me.him188.ani.app.data.repository.SubjectCollectionRepository
 import me.him188.ani.app.domain.session.AuthState
 import me.him188.ani.app.domain.session.OpaqueSession

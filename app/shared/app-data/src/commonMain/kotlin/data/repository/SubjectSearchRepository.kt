@@ -19,6 +19,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
+import me.him188.ani.app.data.models.SubjectInfo
 import me.him188.ani.app.domain.search.SubjectSearchQuery
 import me.him188.ani.app.domain.search.SubjectType
 import me.him188.ani.datasources.bangumi.client.BangumiSearchApi

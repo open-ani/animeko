@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.data.repository
 
-import androidx.compose.runtime.Immutable
 import androidx.paging.LoadType
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
@@ -35,6 +34,8 @@ import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import me.him188.ani.app.data.models.SubjectCollectionInfo
+import me.him188.ani.app.data.models.SubjectInfo
 import me.him188.ani.app.data.models.episode.isKnownCompleted
 import me.him188.ani.app.data.models.subject.RatingCounts
 import me.him188.ani.app.data.models.subject.RatingInfo
@@ -66,21 +67,6 @@ import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.milliseconds
 
 typealias BangumiSubjectApi = DefaultApi
-
-/**
- * 用户对一个条目的收藏情况
- */
-@Immutable
-data class SubjectCollectionInfo(
-    val collectionType: UnifiedCollectionType,
-    val subjectInfo: SubjectInfo,
-    val selfRatingInfo: SelfRatingInfo,
-    val episodes: List<EpisodeCollectionInfo>,
-    val airingInfo: SubjectAiringInfo,
-    val progressInfo: SubjectProgressInfo,
-) {
-    val subjectId: Int get() = subjectInfo.subjectId
-}
 
 class SubjectCollectionRepository(
     private val client: BangumiClient,
