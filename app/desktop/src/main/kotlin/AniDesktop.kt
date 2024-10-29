@@ -439,26 +439,28 @@ private fun WindowStateRecorder(
     DisposableEffect(density) {
         with(density) {
             if (saved != null) {
-                windowState.apply {
+                val savedWindowState = WindowState(
                     position = WindowPosition(
                         x = saved.x.toDp(),
                         y = saved.y.toDp(),
-                    )
+                    ),
                     size = DpSize(
                         width = saved.width.toDp(),
                         height = saved.height.toDp(),
-                    )
+                    ),
+                )
+                //保存的窗口尺寸和大小全都合规时，才使用，否则使用默认设置
+                val minimumSize = DpSize(800.dp, 600.dp)
+                val screenSize = ScreenUtils.getScreenSize()
+                if (
+                    (savedWindowState.size.width > minimumSize.width || savedWindowState.size.height > minimumSize.height)
+                    && savedWindowState.position.x < screenSize.width && savedWindowState.position.y < screenSize.height
+                ) {
+                    windowState.apply {
+                        position = savedWindowState.position
+                        size = savedWindowState.size
+                    }
                 }
-            }
-            // 保证窗口最小尺寸
-            val minimumSize = DpSize(800.dp, 600.dp)
-            if (windowState.size.width < minimumSize.width && windowState.size.height < minimumSize.height) {
-                windowState.size = minimumSize
-            }
-            // 只允许出现在主屏幕上
-            val screenSize = ScreenUtils.getScreenSize()
-            if (windowState.position.x > screenSize.width || windowState.position.y > screenSize.height) {
-                windowState.position = WindowPosition(Alignment.TopStart)
             }
 
             onDispose {
