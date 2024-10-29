@@ -16,9 +16,9 @@ import androidx.compose.runtime.setValue
 import androidx.paging.map
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import me.him188.ani.app.data.repository.EpisodeCollectionRepository
-import me.him188.ani.app.data.repository.SubjectSearchHistoryRepository
-import me.him188.ani.app.data.repository.SubjectSearchRepository
+import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
+import me.him188.ani.app.data.repository.subject.SubjectSearchHistoryRepository
+import me.him188.ani.app.data.repository.subject.SubjectSearchRepository
 import me.him188.ani.app.domain.search.SubjectSearchQuery
 import me.him188.ani.app.ui.exploration.search.SearchPageState
 import me.him188.ani.app.ui.exploration.search.SubjectPreviewItemInfo

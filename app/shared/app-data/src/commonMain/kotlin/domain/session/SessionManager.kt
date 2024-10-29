@@ -14,7 +14,6 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.filterNot
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapNotNull
 import me.him188.ani.app.data.models.ApiFailure
@@ -23,7 +22,7 @@ import me.him188.ani.app.data.models.UserInfo
 import me.him188.ani.app.data.models.networkError
 import me.him188.ani.app.data.models.serviceUnavailable
 import me.him188.ani.app.data.models.unauthorized
-import me.him188.ani.app.data.repository.Session
+import me.him188.ani.app.data.repository.user.Session
 import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.utils.platform.annotations.TestOnly
 import kotlin.coroutines.cancellation.CancellationException

@@ -12,10 +12,10 @@ package me.him188.ani.app.domain.media.selector
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
-import me.him188.ani.app.data.repository.EpisodeCollectionRepository
-import me.him188.ani.app.data.repository.EpisodePreferencesRepository
-import me.him188.ani.app.data.repository.SettingsRepository
-import me.him188.ani.app.data.repository.subjectCompletedFlow
+import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
+import me.him188.ani.app.data.repository.episode.subjectCompletedFlow
+import me.him188.ani.app.data.repository.media.EpisodePreferencesRepository
+import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.selector.MediaSelectorFactory.Companion.withRepositories
 import me.him188.ani.datasources.api.Media

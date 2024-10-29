@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.app.data.repository
+package me.him188.ani.app.data.repository.player
 
 import androidx.datastore.core.DataStore
 import kotlinx.coroutines.flow.Flow
@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.Serializable
 import me.him188.ani.app.data.models.player.EpisodeHistory
+import me.him188.ani.app.data.repository.Repository
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 

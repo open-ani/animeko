@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.app.data.repository
+package me.him188.ani.app.data.repository.subject
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map

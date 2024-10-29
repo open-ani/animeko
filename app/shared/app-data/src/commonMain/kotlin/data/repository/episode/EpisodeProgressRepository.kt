@@ -7,13 +7,14 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.app.data.repository
+package me.him188.ani.app.data.repository.episode
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import me.him188.ani.app.data.models.episode.EpisodeProgressInfo
+import me.him188.ani.app.data.repository.Repository
 import me.him188.ani.app.domain.media.cache.MediaCacheManager
 
 class EpisodeProgressRepository(

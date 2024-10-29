@@ -27,10 +27,10 @@ import me.him188.ani.app.data.models.episode.EpisodeProgressItem
 import me.him188.ani.app.data.models.episode.isKnownOnAir
 import me.him188.ani.app.data.models.episode.renderEpisodeEp
 import me.him188.ani.app.data.models.preference.EpisodeListProgressTheme
-import me.him188.ani.app.data.repository.EpisodeCollectionRepository
-import me.him188.ani.app.data.repository.EpisodeProgressRepository
-import me.him188.ani.app.data.repository.SettingsRepository
-import me.him188.ani.app.data.repository.setEpisodeWatched
+import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
+import me.him188.ani.app.data.repository.episode.EpisodeProgressRepository
+import me.him188.ani.app.data.repository.episode.setEpisodeWatched
+import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
