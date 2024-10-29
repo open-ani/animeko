@@ -255,7 +255,6 @@ class SubjectCollectionRepositoryImpl(
                 withContext(ioDispatcher) {
                     val offset = when (loadType) {
                         LoadType.REFRESH -> {
-                            subjectCollectionDao.deleteAll()
                             0
                         }
 
@@ -280,6 +279,13 @@ class SubjectCollectionRepositoryImpl(
                         limit = state.config.pageSize,
                         offset = offset,
                     ).body()
+
+                    // 此时请求成功了
+                    if (loadType == LoadType.REFRESH) {
+                        // 刷新时删除所有数据. 必须在请求成功后才刷新, 否则会导致无网络时删除所有数据且无法获取新数据.
+                        subjectCollectionDao.deleteAll()
+                    }
+
                     val collections = resp.data.orEmpty()
                     val items = batchGetSubjectDetails(collections.map { it.subjectId })
                         .map { batch ->
