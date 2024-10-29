@@ -18,6 +18,8 @@ import me.him188.ani.app.torrent.api.pieces.Piece
 import me.him188.ani.app.torrent.api.pieces.PieceList
 import me.him188.ani.app.torrent.api.pieces.PieceListSubscriptions
 import me.him188.ani.app.torrent.api.pieces.PieceState
+import me.him188.ani.utils.logging.info
+import me.him188.ani.utils.logging.logger
 import kotlin.coroutines.resume
 
 @SuppressLint("NewApi")
@@ -28,6 +30,8 @@ class RemotePieceList(
     remote.immutableDataOffsetArray,
     remote.immutableInitialPieceIndex
 ) {
+    private val logger = logger<RemotePieceList>()
+    
     private val pieceStateSharedMem by lazy { remote.pieceStateArrayMemRegion }
     private val pieceStateBuf by lazy { pieceStateSharedMem.mapReadOnly() }
 
@@ -51,31 +55,34 @@ class RemotePieceList(
     }
 
     override suspend fun Piece.awaitFinished() {
-        if (state == PieceState.READY) return
-        
-        val readyState = suspendCancellableCoroutine { cont ->
-            // suspendCancellableCoroutine 调用之后到此 block 被调度执行之前
-            // 如果 state 是 ready 了，下面就监听不到 ready state 了
-            if (state == PieceState.READY) cont.resume(state)
+        if (state == PieceState.FINISHED) return
 
-            var disposableHandle: IDisposableHandle? = null
-            try {
+        var disposableHandle: IDisposableHandle? = null
+        val readyState = try {
+            suspendCancellableCoroutine { cont ->
+                // suspendCancellableCoroutine 调用之后到此 block 被调度执行之前
+                // 如果 state 是 ready 了，下面就监听不到 ready state 了
+                if (state == PieceState.FINISHED) cont.resume(state)
+
+                logger.info { "Awaiting state remote piece $pieceIndex to ${PieceState.FINISHED}." }
                 // remote 必须保证 register observer 调用后一定可以监听到新的 state
                 disposableHandle = remote.registerPieceStateObserver(
                     pieceIndex,
                     object : IPieceStateObserver.Stub() {
                         override fun onUpdate() {
                             val newState = state
-                            if (newState == PieceState.READY) {
+                            if (newState == PieceState.FINISHED) {
                                 cont.resume(newState)
                             }
                         }
                     },
                 )
-            } finally {
-                disposableHandle?.dispose()
             }
+        } finally {
+            logger.info { "Got state of remote piece $pieceIndex: $state." }
+            disposableHandle?.dispose()
         }
+        
         check(state == readyState) { "Remote state of piece $this is changed from READY to $state" }
     }
     

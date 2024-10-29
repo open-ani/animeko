@@ -11,8 +11,6 @@ package me.him188.ani.app.domain.torrent.service.proxy
 
 import android.annotation.SuppressLint
 import android.os.SharedMemory
-import kotlinx.atomicfu.locks.SynchronizedObject
-import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.CoroutineScope
 import me.him188.ani.app.domain.torrent.IDisposableHandle
 import me.him188.ani.app.domain.torrent.IPieceStateObserver
@@ -23,6 +21,8 @@ import me.him188.ani.app.torrent.api.pieces.PieceListSubscriptions
 import me.him188.ani.app.torrent.api.pieces.PieceState
 import me.him188.ani.app.torrent.api.pieces.forEach
 import me.him188.ani.utils.coroutines.childScope
+import me.him188.ani.utils.logging.logger
+import java.util.concurrent.locks.ReentrantLock
 import kotlin.coroutines.CoroutineContext
 
 @SuppressLint("NewApi")
@@ -30,13 +30,15 @@ class PieceListProxy(
     private val delegate: PieceList,
     context: CoroutineContext
 ) : IRemotePieceList.Stub(), CoroutineScope by context.childScope() {
+    private val logger = logger<PieceListProxy>()
     private val pieceStateSharedMem = SharedMemory.create("piece_list_states$delegate", delegate.sizes.size)
     private val pieceStatesRwBuf = pieceStateSharedMem.mapReadWrite()
     
     private val pieceStateSubscriber: PieceListSubscriptions.Subscription
-    private val internalPieceStateObservers: MutableList<PieceStateObserver> = mutableListOf()
+    private val stateObservers: MutableList<PieceStateObserver> = mutableListOf()
 
-    private val lock = SynchronizedObject()
+    private val lock: ReentrantLock = ReentrantLock(false)
+    private val condition = lock.newCondition()
     
     init {
         with(delegate) {
@@ -55,12 +57,19 @@ class PieceListProxy(
         with(delegate) {
             pieceStatesRwBuf.put(piece.indexInList, state.ordinal.toByte())
         }
-        synchronized(lock) {
-            internalPieceStateObservers.forEach { observer ->
+
+        while (!lock.tryLock()) {
+            condition.await()
+        }
+        try {
+            stateObservers.forEach { observer ->
                 // notify observer to get new state.
                 if (piece.pieceIndex == observer.pieceIndex) observer.observer.onUpdate()
             }
+        } finally {
+            lock.unlock()
         }
+
     }
     
     override fun getImmutableSizeArray(): LongArray {
@@ -83,17 +92,35 @@ class PieceListProxy(
         pieceIndex: Int,
         observer: IPieceStateObserver?
     ): IDisposableHandle? {
-        synchronized(lock) {
-            if (observer == null) return null
-            val newObserver = PieceStateObserver(pieceIndex, observer)
+        if (observer == null) return null
+        lock.lock()
 
-            internalPieceStateObservers.add(newObserver)
-            return DisposableHandleProxy { internalPieceStateObservers.remove(newObserver) }
+        val newObserver: PieceStateObserver?
+        try {
+            newObserver = PieceStateObserver(pieceIndex, observer)
+            stateObservers.add(newObserver)
+            logger.info("Registered state observer for piece $pieceIndex.")
+        } finally {
+            condition.signalAll()
+            lock.unlock()
+        }
+
+        return DisposableHandleProxy {
+            lock.lock()
+
+            try {
+                stateObservers.remove(newObserver)
+                logger.info("Removed state observer of piece $pieceIndex.")
+            } finally {
+                condition.signalAll()
+                lock.unlock()
+            }
         }
     }
 
     override fun dispose() {
         delegate.unsubscribePieceState(pieceStateSubscriber)
+        pieceStateSharedMem.close()
     }
     
     private class PieceStateObserver(val pieceIndex: Int, val observer: IPieceStateObserver)
