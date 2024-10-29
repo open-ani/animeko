@@ -35,7 +35,7 @@ class SubjectDetailsState(
     relatedSubjectsState: State<List<RelatedSubjectInfo>?>,
     val airingLabelState: AiringLabelState,
 ) {
-    val info by derivedStateOf { subjectInfoState.value ?: me.him188.ani.app.data.models.SubjectInfo.Empty }
+    val info by derivedStateOf { subjectInfoState.value ?: SubjectInfo.Empty }
 
     val coverImageUrl by derivedStateOf { info.imageLarge }
 
@@ -58,7 +58,7 @@ class SubjectDetailsState(
      */
     val isLoading: Boolean by derivedStateOf {
         selfCollectionTypeOrNull == null
-                || charactersOrNull == null || info === me.him188.ani.app.data.models.SubjectInfo.Empty
+                || charactersOrNull == null || info === SubjectInfo.Empty
                 || personsOrNull == null
                 || relatedSubjectsOrNull == null
                 || airingLabelState.isLoading

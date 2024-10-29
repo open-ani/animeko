@@ -24,7 +24,7 @@ class SubjectPresentation(
         val Placeholder = SubjectPresentation(
             title = "placeholder",
             isPlaceholder = true,
-            info = me.him188.ani.app.data.models.SubjectInfo.Empty,
+            info = SubjectInfo.Empty,
         )
     }
 }

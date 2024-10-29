@@ -54,7 +54,7 @@ import me.him188.ani.utils.platform.annotations.TestOnly
 fun PreviewEpisodeDetailsLongTitle() = ProvideFoundationCompositionLocalsForPreview {
     val state = rememberTestEpisodeDetailsState(
         remember {
-            me.him188.ani.app.data.models.SubjectInfo.Empty.copy(
+            SubjectInfo.Empty.copy(
                 nameCn = "中文条目名称啊中文条目名称中文条啊目名称中文条目名称中文条目名称中文",
             )
         },
@@ -67,7 +67,7 @@ fun PreviewEpisodeDetailsLongTitle() = ProvideFoundationCompositionLocalsForPrev
 fun PreviewEpisodeDetailsShortTitle() = ProvideFoundationCompositionLocalsForPreview {
     val state = rememberTestEpisodeDetailsState(
         remember {
-            me.him188.ani.app.data.models.SubjectInfo.Empty.copy(
+            SubjectInfo.Empty.copy(
                 nameCn = "小市民系列",
             )
         },
@@ -80,7 +80,7 @@ fun PreviewEpisodeDetailsShortTitle() = ProvideFoundationCompositionLocalsForPre
 fun PreviewEpisodeDetailsScroll() = ProvideFoundationCompositionLocalsForPreview {
     val state = rememberTestEpisodeDetailsState(
         remember {
-            me.him188.ani.app.data.models.SubjectInfo.Empty.copy(
+            SubjectInfo.Empty.copy(
                 nameCn = "小市民系列",
             )
         },
@@ -95,7 +95,7 @@ fun PreviewEpisodeDetailsScroll() = ProvideFoundationCompositionLocalsForPreview
 fun PreviewEpisodeDetailsDoing() = ProvideFoundationCompositionLocalsForPreview {
     val state = rememberTestEpisodeDetailsState(
         remember {
-            me.him188.ani.app.data.models.SubjectInfo.Empty.copy(
+            SubjectInfo.Empty.copy(
                 nameCn = "小市民系列",
             )
         },
@@ -157,7 +157,7 @@ fun PreviewEpisodeDetailsNotSelected() = ProvideFoundationCompositionLocalsForPr
 @OptIn(TestOnly::class)
 @Composable
 private fun rememberTestEpisodeDetailsState(
-    subjectInfo: SubjectInfo = me.him188.ani.app.data.models.SubjectInfo.Empty.copy(
+    subjectInfo: SubjectInfo = SubjectInfo.Empty.copy(
         nameCn = "中文条目名称啊中文条目名称中文条啊目名称中文条目名称中文条目名称中文",
     ),
 ) = remember {

@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.Serializable
-import me.him188.ani.app.data.models.EpisodeHistory
+import me.him188.ani.app.data.models.player.EpisodeHistory
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 

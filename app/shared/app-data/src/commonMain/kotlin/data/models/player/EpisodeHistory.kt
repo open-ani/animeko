@@ -7,10 +7,13 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.app.data.models
+package me.him188.ani.app.data.models.player
 
 import kotlinx.serialization.Serializable
 
+/**
+ * 播放记录
+ */
 @Serializable
 data class EpisodeHistory(
     val episodeId: Int,

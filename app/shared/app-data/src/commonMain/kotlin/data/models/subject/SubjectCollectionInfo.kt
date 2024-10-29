@@ -7,12 +7,9 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.app.data.models
+package me.him188.ani.app.data.models.subject
 
 import androidx.compose.runtime.Immutable
-import me.him188.ani.app.data.models.subject.SelfRatingInfo
-import me.him188.ani.app.data.models.subject.SubjectAiringInfo
-import me.him188.ani.app.data.models.subject.SubjectProgressInfo
 import me.him188.ani.app.data.repository.EpisodeCollectionInfo
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 

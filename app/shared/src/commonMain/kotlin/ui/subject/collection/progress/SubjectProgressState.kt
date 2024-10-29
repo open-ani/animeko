@@ -20,9 +20,9 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.flowOn
-import me.him188.ani.app.data.models.SubjectCollectionInfo
 import me.him188.ani.app.data.models.episode.EpisodeProgressInfo
 import me.him188.ani.app.data.models.subject.ContinueWatchingStatus
+import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
 import me.him188.ani.app.data.repository.EpisodeProgressRepository
 import me.him188.ani.app.domain.media.cache.EpisodeCacheStatus
