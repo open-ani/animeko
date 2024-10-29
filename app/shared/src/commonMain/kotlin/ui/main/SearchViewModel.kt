@@ -16,19 +16,13 @@ import androidx.compose.runtime.setValue
 import androidx.paging.map
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import me.him188.ani.app.data.repository.BangumiRelatedCharactersRepository
 import me.him188.ani.app.data.repository.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.SubjectSearchHistoryRepository
 import me.him188.ani.app.data.repository.SubjectSearchRepository
-import me.him188.ani.app.data.repository.TrendsRepository
 import me.him188.ani.app.domain.search.SubjectSearchQuery
-import me.him188.ani.app.domain.session.OpaqueSession
-import me.him188.ani.app.domain.session.SessionManager
-import me.him188.ani.app.domain.session.userInfo
 import me.him188.ani.app.ui.exploration.search.SearchPageState
 import me.him188.ani.app.ui.exploration.search.SubjectPreviewItemInfo
 import me.him188.ani.app.ui.foundation.AbstractViewModel
-import me.him188.ani.app.ui.foundation.AuthState
 import me.him188.ani.app.ui.search.PagingSearchState
 import me.him188.ani.app.ui.subject.details.SubjectDetailsViewModel
 import org.koin.core.component.KoinComponent
@@ -36,15 +30,7 @@ import org.koin.core.component.inject
 
 @Stable
 class SearchViewModel : AbstractViewModel(), KoinComponent {
-    private val trendsRepository: TrendsRepository by inject()
-    private val sessionManager: SessionManager by inject()
     private val searchHistoryRepository: SubjectSearchHistoryRepository by inject()
-    private val bangumiRelatedCharactersRepository: BangumiRelatedCharactersRepository by inject()
-
-    private val authState = AuthState()
-
-    @OptIn(OpaqueSession::class)
-    private val selfInfoState = sessionManager.userInfo.produceState(null)
 
     private val episodeCollectionRepository: EpisodeCollectionRepository by inject()
     private val subjectSearchRepository: SubjectSearchRepository by inject()

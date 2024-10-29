@@ -7,22 +7,15 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.app.data.models
+package me.him188.ani.app.data.models.episode
 
-/**
- * 与数据源无关的用户信息
- */
-data class UserInfo(
-    val id: Int,
-    /**
-     * 对于自己, 一定有
-     */
-    val username: String?,
-    val nickname: String? = null,
-    val avatarUrl: String? = null,
-    val sign: String? = null
+import androidx.compose.runtime.Immutable
+import me.him188.ani.datasources.api.topic.UnifiedCollectionType
+
+@Immutable
+data class EpisodeCollectionInfo(
+    val episodeInfo: EpisodeInfo,
+    val collectionType: UnifiedCollectionType,
 ) {
-    companion object {
-        val EMPTY = UserInfo(0, "")
-    }
+    val episodeId: Int get() = episodeInfo.episodeId
 }

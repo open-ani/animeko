@@ -29,16 +29,18 @@ import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.map
 import me.him188.ani.app.data.models.preference.configIfEnabledOrNull
 import me.him188.ani.app.data.models.runApiRequest
+import me.him188.ani.app.data.network.BangumiBangumiCommentServiceImpl
+import me.him188.ani.app.data.network.BangumiCommentService
 import me.him188.ani.app.data.network.BangumiEpisodeService
+import me.him188.ani.app.data.network.BangumiProfileService
+import me.him188.ani.app.data.network.BangumiRelatedPeopleService
 import me.him188.ani.app.data.network.BangumiSubjectService
 import me.him188.ani.app.data.network.EpisodeRepositoryImpl
 import me.him188.ani.app.data.network.RemoteBangumiSubjectService
+import me.him188.ani.app.data.network.TrendsRepository
 import me.him188.ani.app.data.persistent.dataStores
 import me.him188.ani.app.data.persistent.database.AniDatabase
 import me.him188.ani.app.data.persistent.database.createDatabaseBuilder
-import me.him188.ani.app.data.repository.BangumiCommentRepositoryImpl
-import me.him188.ani.app.data.repository.BangumiRelatedCharactersRepository
-import me.him188.ani.app.data.repository.CommentRepository
 import me.him188.ani.app.data.repository.DanmakuRegexFilterRepository
 import me.him188.ani.app.data.repository.DanmakuRegexFilterRepositoryImpl
 import me.him188.ani.app.data.repository.EpisodeCollectionRepository
@@ -54,7 +56,6 @@ import me.him188.ani.app.data.repository.MediaSourceSubscriptionRepository
 import me.him188.ani.app.data.repository.MikanIndexCacheRepository
 import me.him188.ani.app.data.repository.MikanIndexCacheRepositoryImpl
 import me.him188.ani.app.data.repository.PreferencesRepositoryImpl
-import me.him188.ani.app.data.repository.ProfileRepository
 import me.him188.ani.app.data.repository.RepositoryUsernameProvider
 import me.him188.ani.app.data.repository.SettingsRepository
 import me.him188.ani.app.data.repository.SubjectCollectionRepository
@@ -63,9 +64,6 @@ import me.him188.ani.app.data.repository.SubjectSearchHistoryRepositoryImpl
 import me.him188.ani.app.data.repository.SubjectSearchRepository
 import me.him188.ani.app.data.repository.TokenRepository
 import me.him188.ani.app.data.repository.TokenRepositoryImpl
-import me.him188.ani.app.data.repository.TrendsRepository
-import me.him188.ani.app.data.repository.UserRepository
-import me.him188.ani.app.data.repository.UserRepositoryImpl
 import me.him188.ani.app.data.repository.WhatslinkEpisodeScreenshotRepository
 import me.him188.ani.app.domain.danmaku.DanmakuManager
 import me.him188.ani.app.domain.danmaku.DanmakuManagerImpl
@@ -171,7 +169,7 @@ fun KoinApplication.getCommonKoinModule(getContext: () -> Context, coroutineScop
     single<BangumiSubjectService> { RemoteBangumiSubjectService() }
     single<BangumiEpisodeService> { EpisodeRepositoryImpl() }
 
-    single<BangumiRelatedCharactersRepository> { BangumiRelatedCharactersRepository(get()) }
+    single<BangumiRelatedPeopleService> { BangumiRelatedPeopleService(get()) }
     single<EpisodeCollectionRepository> {
         EpisodeCollectionRepository(
             subjectDao = database.subjectCollection(),
@@ -187,8 +185,7 @@ fun KoinApplication.getCommonKoinModule(getContext: () -> Context, coroutineScop
         )
     }
     single<EpisodeScreenshotRepository> { WhatslinkEpisodeScreenshotRepository() }
-    single<UserRepository> { UserRepositoryImpl() }
-    single<CommentRepository> { BangumiCommentRepositoryImpl(get()) }
+    single<BangumiCommentService> { BangumiBangumiCommentServiceImpl(get()) }
     single<MediaSourceInstanceRepository> {
         MediaSourceInstanceRepositoryImpl(getContext().dataStores.mediaSourceSaveStore)
     }
@@ -198,7 +195,7 @@ fun KoinApplication.getCommonKoinModule(getContext: () -> Context, coroutineScop
     single<EpisodePlayHistoryRepository> {
         EpisodePlayHistoryRepositoryImpl(getContext().dataStores.episodeHistoryStore)
     }
-    single<ProfileRepository> { ProfileRepository() }
+    single<BangumiProfileService> { BangumiProfileService() }
     single<TrendsRepository> { TrendsRepository(lazy { get<AniAuthClient>().trendsApi }) }
 
     single<DanmakuManager> {

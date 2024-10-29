@@ -1,4 +1,13 @@
-package me.him188.ani.app.data.repository
+/*
+ * Copyright (C) 2024 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
+package me.him188.ani.app.data.network
 
 import me.him188.ani.app.data.models.ApiResponse
 import me.him188.ani.app.data.models.UserInfo
@@ -16,7 +25,7 @@ import me.him188.ani.datasources.bangumi.next.models.BangumiNextGetSubjectEpisod
 import me.him188.ani.datasources.bangumi.next.models.BangumiNextSubjectInterestCommentListInner
 import me.him188.ani.utils.logging.logger
 
-sealed interface CommentRepository {
+sealed interface BangumiCommentService {
     fun getSubjectEpisodeComments(episodeId: Int): PagedSource<EpisodeComment>
     fun getSubjectComments(subjectId: Int): PagedSource<SubjectComment>
 
@@ -24,10 +33,10 @@ sealed interface CommentRepository {
     suspend fun postEpisodeComment(episodeId: Int, content: String, replyToCommentId: Int? = null): ApiResponse<Unit>
 }
 
-class BangumiCommentRepositoryImpl(
+class BangumiBangumiCommentServiceImpl(
     private val client: BangumiClient
-) : CommentRepository {
-    private val logger = logger(CommentRepository::class)
+) : BangumiCommentService {
+    private val logger = logger(BangumiCommentService::class)
 
     override fun getSubjectComments(subjectId: Int): PagedSource<SubjectComment> {
         return PageBasedPagedSource { page ->

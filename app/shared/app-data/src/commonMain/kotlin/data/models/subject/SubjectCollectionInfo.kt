@@ -10,7 +10,7 @@
 package me.him188.ani.app.data.models.subject
 
 import androidx.compose.runtime.Immutable
-import me.him188.ani.app.data.repository.EpisodeCollectionInfo
+import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 
 /**

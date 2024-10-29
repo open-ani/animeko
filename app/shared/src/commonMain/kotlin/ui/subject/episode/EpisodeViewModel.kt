@@ -41,7 +41,7 @@ import me.him188.ani.app.data.models.episode.renderEpisodeEp
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
-import me.him188.ani.app.data.repository.CommentRepository
+import me.him188.ani.app.data.network.BangumiCommentService
 import me.him188.ani.app.data.repository.DanmakuRegexFilterRepository
 import me.him188.ani.app.data.repository.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.EpisodePlayHistoryRepository
@@ -231,7 +231,7 @@ private class EpisodeViewModelImpl(
     private val danmakuRegexFilterRepository: DanmakuRegexFilterRepository by inject()
     private val mediaSourceManager: MediaSourceManager by inject()
     private val episodePreferencesRepository: EpisodePreferencesRepository by inject()
-    private val commentRepository: CommentRepository by inject()
+    private val bangumiCommentService: BangumiCommentService by inject()
     private val episodePlayHistoryRepository: EpisodePlayHistoryRepository by inject()
 
     private val subjectCollection = subjectCollectionRepository.subjectCollectionFlow(subjectId)
@@ -577,7 +577,7 @@ private class EpisodeViewModelImpl(
     private val episodeCommentLoader = CommentLoader.createForEpisode(
         episodeId = episodeId,
         coroutineContext = backgroundScope.coroutineContext,
-        episodeCommentSource = { commentRepository.getSubjectEpisodeComments(it) },
+        episodeCommentSource = { bangumiCommentService.getSubjectEpisodeComments(it) },
     )
 
     override val episodeCommentState: CommentState = CommentState(
@@ -606,10 +606,10 @@ private class EpisodeViewModelImpl(
         onSend = { context, content ->
             when (context) {
                 is CommentContext.Episode ->
-                    commentRepository.postEpisodeComment(episodeId.value, content)
+                    bangumiCommentService.postEpisodeComment(episodeId.value, content)
 
                 is CommentContext.Reply ->
-                    commentRepository.postEpisodeComment(episodeId.value, content, context.commentId)
+                    bangumiCommentService.postEpisodeComment(episodeId.value, content, context.commentId)
 
                 is CommentContext.Subject -> {} // TODO: send subject comment
             }

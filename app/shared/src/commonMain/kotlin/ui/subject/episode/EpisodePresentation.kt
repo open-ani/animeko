@@ -11,11 +11,11 @@ package me.him188.ani.app.ui.subject.episode
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
+import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.episode.displayName
 import me.him188.ani.app.data.models.episode.isKnownCompleted
 import me.him188.ani.app.data.models.episode.renderEpisodeEp
-import me.him188.ani.app.data.repository.EpisodeCollectionInfo
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 
 /**

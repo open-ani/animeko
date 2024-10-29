@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.data.repository
 
-import androidx.compose.runtime.Immutable
 import androidx.paging.LoadType
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
@@ -26,6 +25,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.withContext
+import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.network.BangumiEpisodeService
 import me.him188.ani.app.data.network.toBangumiEpType
@@ -40,14 +40,6 @@ import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.platform.currentTimeMillis
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.milliseconds
-
-@Immutable
-data class EpisodeCollectionInfo(
-    val episodeInfo: EpisodeInfo,
-    val collectionType: UnifiedCollectionType,
-) {
-    val episodeId: Int get() = episodeInfo.episodeId
-}
 
 class EpisodeCollectionRepository(
     private val subjectDao: SubjectCollectionDao,
@@ -108,20 +100,6 @@ class EpisodeCollectionRepository(
         ),
         pagingSourceFactory = {
             episodeCollectionDao.filterBySubjectIdPaging(subjectId)
-//            object : PagingSource<Int, EpisodeCollectionInfo>() {
-//                override fun getRefreshKey(state: PagingState<Int, EpisodeCollectionInfo>): Int? = null
-//                override suspend fun load(params: LoadParams<Int>): LoadResult<Int, EpisodeCollectionInfo> {
-//                    return LoadResult.Page(
-//                        data = episodeCollectionDao.filterBySubjectId(subjectId, epType)
-//                            .first()
-//                            .map {
-//                                it.toEpisodeCollectionInfo()
-//                            },
-//                        prevKey = null,
-//                        nextKey = null,
-//                    )
-//                }
-//            }
         },
     ).flow.map { data ->
         data.map {

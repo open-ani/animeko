@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.app.data.repository
+package me.him188.ani.app.data.network
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -44,7 +44,7 @@ private val json = Json {
     ignoreUnknownKeys = true
 }
 
-class BangumiRelatedCharactersRepository(
+class BangumiRelatedPeopleService(
     private val client: BangumiClient,
 ) {
     @Serializable

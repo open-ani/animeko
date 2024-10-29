@@ -27,8 +27,8 @@ import me.him188.ani.app.data.models.subject.RelatedSubjectInfo
 import me.him188.ani.app.data.models.subject.SelfRatingInfo
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
-import me.him188.ani.app.data.repository.BangumiRelatedCharactersRepository
-import me.him188.ani.app.data.repository.CommentRepository
+import me.him188.ani.app.data.network.BangumiCommentService
+import me.him188.ani.app.data.network.BangumiRelatedPeopleService
 import me.him188.ani.app.data.repository.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.EpisodeProgressRepository
 import me.him188.ani.app.data.repository.SettingsRepository
@@ -63,9 +63,9 @@ class SubjectDetailsViewModel(
     private val episodeProgressRepository: EpisodeProgressRepository by inject()
     private val episodeCollectionRepository: EpisodeCollectionRepository by inject()
     private val browserNavigator: BrowserNavigator by inject()
-    private val bangumiRelatedCharactersRepository: BangumiRelatedCharactersRepository by inject()
+    private val bangumiRelatedPeopleService: BangumiRelatedPeopleService by inject()
     private val settingsRepository: SettingsRepository by inject()
-    private val commentRepository: CommentRepository by inject()
+    private val bangumiCommentService: BangumiCommentService by inject()
 
     private val subjectCollectionFlow = subjectCollectionRepository.subjectCollectionFlow(subjectId).shareInBackground()
     private val subjectInfo: Flow<SubjectInfo> = subjectCollectionFlow.map { it.subjectInfo }
@@ -102,13 +102,13 @@ class SubjectDetailsViewModel(
                 subjectCollectionFlow.map { it.airingInfo }.produceState(null),
                 subjectProgressInfoState,
             ),
-            personsState = bangumiRelatedCharactersRepository.relatedPersonsFlow(subjectId).map {
+            personsState = bangumiRelatedPeopleService.relatedPersonsFlow(subjectId).map {
                 RelatedPersonInfo.sortList(it)
             }.onCompletion { if (it != null) emit(emptyList()) }.produceState(null),
-            charactersState = bangumiRelatedCharactersRepository.relatedCharactersFlow(subjectId).map {
+            charactersState = bangumiRelatedPeopleService.relatedCharactersFlow(subjectId).map {
                 RelatedCharacterInfo.sortList(it)
             }.produceState(null),
-            relatedSubjectsState = bangumiRelatedCharactersRepository.relatedSubjectsFlow(subjectId).map {
+            relatedSubjectsState = bangumiRelatedPeopleService.relatedSubjectsFlow(subjectId).map {
                 RelatedSubjectInfo.sortList(it)
             }.produceState(null),
         )
@@ -173,7 +173,7 @@ class SubjectDetailsViewModel(
     private val subjectCommentLoader = CommentLoader.createForSubject(
         subjectId = flowOf(subjectId),
         coroutineContext = backgroundScope.coroutineContext,
-        subjectCommentSource = { commentRepository.getSubjectComments(it) },
+        subjectCommentSource = { bangumiCommentService.getSubjectComments(it) },
     )
 
     val subjectCommentState: CommentState = CommentState(

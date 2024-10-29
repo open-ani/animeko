@@ -7,11 +7,12 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.app.data.repository
+package me.him188.ani.app.data.network
 
 import me.him188.ani.app.data.models.ApiResponse
 import me.him188.ani.app.data.models.trending.TrendingSubjectInfo
 import me.him188.ani.app.data.models.trending.TrendsInfo
+import me.him188.ani.app.data.repository.Repository
 import me.him188.ani.client.apis.TrendsAniApi
 import me.him188.ani.client.models.AniTrends
 
