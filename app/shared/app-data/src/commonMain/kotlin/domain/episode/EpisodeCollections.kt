@@ -7,9 +7,11 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.app.data.models.episode
+package me.him188.ani.app.domain.episode
 
 import androidx.compose.ui.util.fastAll
+import me.him188.ani.app.data.models.episode.EpisodeInfo
+import me.him188.ani.app.data.models.episode.isKnownCompleted
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.minus
 import kotlin.time.Duration.Companion.days
