@@ -31,6 +31,7 @@ kotlin {
         api(projects.app.shared.videoPlayer.torrentSource)
         api(libs.kotlinx.coroutines.core)
         api(libs.kotlinx.serialization.core)
+        implementation(libs.kotlinx.serialization.protobuf)
         api(libs.kotlinx.collections.immutable)
         implementation(libs.kotlinx.serialization.json)
         implementation(projects.utils.io)
@@ -47,6 +48,7 @@ kotlin {
         api(libs.datastore.core) // Data Persistence
         api(libs.datastore.preferences.core) // Preferences
         api(libs.androidx.room.runtime)
+        api(libs.androidx.room.paging)
         api(libs.sqlite.bundled)
 
         api(projects.datasource.datasourceApi)

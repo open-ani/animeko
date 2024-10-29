@@ -27,10 +27,10 @@ import me.him188.ani.app.data.models.preference.MediaSourceProxySettings
 import me.him188.ani.app.data.models.preference.ProxyAuthorization
 import me.him188.ani.app.data.models.preference.ProxyConfig
 import me.him188.ani.app.data.models.preference.configIfEnabledOrNull
-import me.him188.ani.app.data.repository.MediaSourceInstanceRepository
-import me.him188.ani.app.data.repository.MikanIndexCacheRepository
-import me.him188.ani.app.data.repository.SettingsRepository
-import me.him188.ani.app.data.repository.updateConfig
+import me.him188.ani.app.data.repository.media.MediaSourceInstanceRepository
+import me.him188.ani.app.data.repository.media.MikanIndexCacheRepository
+import me.him188.ani.app.data.repository.media.updateConfig
+import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.media.cache.MediaCacheManager.Companion.LOCAL_FS_MEDIA_SOURCE_ID
 import me.him188.ani.app.domain.mediasource.instance.MediaSourceInstance
 import me.him188.ani.app.domain.mediasource.instance.MediaSourceSave

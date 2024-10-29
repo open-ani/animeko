@@ -43,7 +43,7 @@ import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.search.SearchState
 
 @Stable
-class SuggestionSearchBarState<T>(
+class SuggestionSearchBarState<T : Any>(
     historyState: State<List<String>>, // must be distinct
     suggestionsState: State<List<String>>, // must be distinct
     queryState: MutableState<String> = mutableStateOf(""),
@@ -78,7 +78,7 @@ enum class SuggestionSearchPreviewType {
 }
 
 @Composable
-fun <T> SuggestionSearchBar(
+fun <T : Any> SuggestionSearchBar(
     state: SuggestionSearchBarState<T>,
     modifier: Modifier = Modifier,
     inputFieldModifier: Modifier = Modifier,

@@ -2,7 +2,7 @@
 gluegen-rt = "2.5.0"
 jna = "5.13.0" # 不要轻易改这个版本, 它可能导致 VLC 兼容性问题
 jsonpathkt-kotlinx = "3.0.2"
-kotlin = "2.0.20"
+kotlin = "2.0.21"
 # kotlinx
 coroutines = "1.9.0-RC.2" # https://github.com/Kotlin/kotlinx.coroutines/releases
 serialization = "1.7.1" # https://github.com/Kotlin/kotlinx.serialization/releases
@@ -27,10 +27,10 @@ datastore = "1.1.1" # https://developer.android.com/jetpack/androidx/releases/da
 coil = "3.0.0-alpha10" # https://github.com/coil-kt/coil/releases
 mongodb-driver-kotlin-coroutine = "4.10.1"
 logback = "1.4.14"
-ksp = "2.0.20-1.0.24" # https://github.com/google/ksp/releases
-room = "2.7.0-alpha07" # https://developer.android.com/jetpack/androidx/releases/room#declaring_dependencies
+ksp = "2.0.21-1.0.26" # https://github.com/google/ksp/releases
+room = "2.7.0-alpha10" # https://developer.android.com/jetpack/androidx/releases/room#declaring_dependencies
 snakeyaml = "2.2"
-sqlite = "2.5.0-alpha07"
+sqlite = "2.5.0-alpha10"
 constraintlayout-compose = "0.4.0"
 antlr-kotlin = "1.0.0-RC4"
 oshai-kotlin-logging = "7.0.0" # Only for native. On JVM we use slf4j directly.

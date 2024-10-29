@@ -17,9 +17,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
-import me.him188.ani.app.data.models.episode.EpisodeCollection
+import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.data.models.episode.EpisodeInfo
-import me.him188.ani.app.data.models.episode.episode
 import me.him188.ani.app.domain.media.cache.EpisodeCacheStatus
 import me.him188.ani.app.tools.toProgress
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
@@ -46,7 +45,7 @@ val TestEpisodes = buildList {
 
 @Stable
 val TestEpisodeCollections = TestEpisodes.map {
-    EpisodeCollection(
+    EpisodeCollectionInfo(
         it,
         when ((it.ep?.number ?: 0).toInt().rem(3)) {
             0 -> UnifiedCollectionType.DONE
@@ -73,7 +72,7 @@ fun PreviewEpisodeCarouselOnSurface() = ProvideCompositionLocalsForPreview {
                     episodes = mutableStateOf(TestEpisodeCollections),
                     playingEpisode = mutableStateOf(TestEpisodeCollections[2]),
                     cacheStatus = {
-                        when ((it.episode.sort.number ?: 0).toInt().rem(3)) {
+                        when ((it.episodeInfo.sort.number ?: 0).toInt().rem(3)) {
                             0 -> EpisodeCacheStatus.Cached(123.megaBytes)
                             1 -> EpisodeCacheStatus.Caching(0.3f.toProgress(), 123.megaBytes)
                             else -> EpisodeCacheStatus.NotCached

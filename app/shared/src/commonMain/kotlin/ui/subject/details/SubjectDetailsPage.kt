@@ -134,7 +134,7 @@ fun SubjectDetailsScene(
         onClickOpenExternal = { vm.browseSubjectBangumi(context) },
         collectionData = {
             SubjectDetailsDefaults.CollectionData(
-                collectionStats = vm.subjectDetailsState.info.collection,
+                collectionStats = vm.subjectDetailsState.info.collectionStats,
             )
         },
         collectionActions = {

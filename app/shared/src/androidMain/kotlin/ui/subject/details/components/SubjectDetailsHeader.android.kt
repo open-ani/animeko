@@ -114,7 +114,7 @@ fun PreviewSubjectDetailsHeader(
             },
             collectionData = {
                 SubjectDetailsDefaults.CollectionData(
-                    collectionStats = subjectInfo.collection,
+                    collectionStats = subjectInfo.collectionStats,
                 )
             },
             collectionAction = {

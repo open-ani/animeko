@@ -26,7 +26,7 @@ import coil3.compose.LocalPlatformContext
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.preference.configIfEnabledOrNull
-import me.him188.ani.app.data.repository.SettingsRepository
+import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.torrent.service.TorrentServiceConnection
 import me.him188.ani.app.navigation.AniNavigator

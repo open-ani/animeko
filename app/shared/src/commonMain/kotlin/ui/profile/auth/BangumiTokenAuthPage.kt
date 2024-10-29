@@ -43,7 +43,7 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import me.him188.ani.app.data.repository.AccessTokenSession
+import me.him188.ani.app.data.repository.user.AccessTokenSession
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.navigation.BrowserNavigator
 import me.him188.ani.app.navigation.LocalNavigator

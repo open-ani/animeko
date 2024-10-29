@@ -15,10 +15,8 @@ import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
-import me.him188.ani.app.data.repository.AccessTokenSession
-import me.him188.ani.app.data.repository.GuestSession
-import me.him188.ani.app.domain.session.SessionEvent
-import me.him188.ani.app.domain.session.SessionManager
+import me.him188.ani.app.data.repository.user.AccessTokenSession
+import me.him188.ani.app.data.repository.user.GuestSession
 import kotlin.test.Test
 import kotlin.test.assertEquals
 

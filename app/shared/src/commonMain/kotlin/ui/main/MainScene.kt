@@ -39,7 +39,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.MainScenePage
@@ -59,6 +58,7 @@ import me.him188.ani.app.ui.foundation.layout.setRequestFullScreen
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.subject.collection.CollectionPage
+import me.him188.ani.app.ui.subject.collection.UserCollectionsViewModel
 import me.him188.ani.app.ui.subject.details.SubjectDetailsScene
 import me.him188.ani.utils.platform.isAndroid
 
@@ -153,12 +153,17 @@ private fun MainSceneContent(
                         )
                     }
 
-                    MainScenePage.Collection -> CollectionPage(
-                        windowInsets = windowInsets,
-                        onClickSearch = { onNavigateToPage(MainScenePage.Search) },
-                        onClickSettings = { navigator.navigateSettings() },
-                        Modifier.fillMaxSize(),
-                    )
+                    MainScenePage.Collection -> {
+                        val vm = viewModel<UserCollectionsViewModel> { UserCollectionsViewModel() }
+                        CollectionPage(
+                            state = vm.state,
+                            windowInsets = windowInsets,
+                            onClickSearch = { onNavigateToPage(MainScenePage.Search) },
+                            onClickSettings = { navigator.navigateSettings() },
+                            Modifier.fillMaxSize(),
+                            enableAnimation = vm.myCollectionsSettings.enableListAnimation,
+                        )
+                    }
 
                     MainScenePage.CacheManagement -> CacheManagementPage(
                         viewModel { CacheManagementViewModel(navigator) },
@@ -176,14 +181,15 @@ private fun MainSceneContent(
                             vm.searchPageState,
                             windowInsets,
                             detailContent = {
-                                val subjectDetailsViewModelState by
-                                vm.subjectDetailsViewModelFlow.collectAsStateWithLifecycle(null)
-                                subjectDetailsViewModelState?.let {
+                                vm.subjectDetailsViewModel?.let {
                                     it.navigator = LocalNavigator.current
                                     SubjectDetailsScene(it)
                                 }
                             },
                             Modifier.fillMaxSize(),
+                            onSelect = { _, item ->
+                                vm.viewSubjectDetails(item.subjectId)
+                            },
                         )
                     }
                 }

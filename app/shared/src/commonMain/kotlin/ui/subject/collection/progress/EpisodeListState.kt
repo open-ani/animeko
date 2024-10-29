@@ -27,11 +27,11 @@ import me.him188.ani.app.data.models.episode.EpisodeProgressItem
 import me.him188.ani.app.data.models.episode.isKnownOnAir
 import me.him188.ani.app.data.models.episode.renderEpisodeEp
 import me.him188.ani.app.data.models.preference.EpisodeListProgressTheme
-import me.him188.ani.app.data.models.subject.SubjectManager
-import me.him188.ani.app.data.models.subject.setEpisodeWatched
-import me.him188.ani.app.data.repository.SettingsRepository
+import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
+import me.him188.ani.app.data.repository.episode.EpisodeProgressRepository
+import me.him188.ani.app.data.repository.episode.setEpisodeWatched
+import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.tools.MonoTasker
-import me.him188.ani.app.tools.ldc.ContentPolicy
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
 import kotlin.coroutines.CoroutineContext
@@ -39,7 +39,8 @@ import kotlin.coroutines.CoroutineContext
 @Stable
 class EpisodeListStateFactory(
     settingsRepository: SettingsRepository,
-    private val subjectManager: SubjectManager,
+    private val episodeCollectionRepository: EpisodeCollectionRepository,
+    private val episodeProgressRepository: EpisodeProgressRepository,
     val backgroundScope: CoroutineScope,
     private val flowCoroutineContext: CoroutineContext = Dispatchers.Default,
 ) {
@@ -47,11 +48,11 @@ class EpisodeListStateFactory(
         .flowOn(flowCoroutineContext)
 
     fun episodes(subjectId: Int) =
-        subjectManager.subjectProgressFlow(subjectId, ContentPolicy.CACHE_ONLY)
+        episodeProgressRepository.subjectEpisodeProgressesInfoFlow(subjectId)
             .flowOn(flowCoroutineContext)
 
     suspend fun onSetEpisodeWatched(subjectId: Int, episodeId: Int, watched: Boolean) {
-        subjectManager.setEpisodeWatched(subjectId, episodeId, watched)
+        episodeCollectionRepository.setEpisodeWatched(subjectId, episodeId, watched)
     }
 }
 
@@ -85,7 +86,7 @@ class EpisodeListState(
     val episodes: List<EpisodeProgressItem> by derivedStateOf {
         this.episodeProgressInfoList.map {
             EpisodeProgressItem(
-                episodeId = it.episode.id,
+                episodeId = it.episode.episodeId,
                 episodeSort = it.episode.renderEpisodeEp(),
                 collectionType = it.collectionType,
                 isOnAir = it.episode.isKnownOnAir,

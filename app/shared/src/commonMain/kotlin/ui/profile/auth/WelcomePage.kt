@@ -57,7 +57,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import me.him188.ani.app.data.repository.GuestSession
+import me.him188.ani.app.data.repository.user.GuestSession
 import me.him188.ani.app.domain.session.AuthState
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.navigation.LocalNavigator

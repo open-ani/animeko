@@ -36,9 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CoroutineScope
-import me.him188.ani.app.data.models.episode.EpisodeCollection
-import me.him188.ani.app.data.models.episode.episode
-import me.him188.ani.app.data.models.episode.type
+import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.domain.media.cache.EpisodeCacheStatus
 import me.him188.ani.app.domain.media.cache.isCachedOrCaching
 import me.him188.ani.app.tools.MonoTasker
@@ -59,11 +57,11 @@ import me.him188.ani.utils.platform.format1f
  */
 @Stable
 class EpisodeCarouselState(
-    episodes: State<List<EpisodeCollection>>,
-    playingEpisode: State<EpisodeCollection?>,
-    private val cacheStatus: (EpisodeCollection) -> EpisodeCacheStatus,
-    val onSelect: (EpisodeCollection) -> Unit,
-    val onChangeCollectionType: suspend (episode: EpisodeCollection, UnifiedCollectionType) -> Unit,
+    episodes: State<List<EpisodeCollectionInfo>>,
+    playingEpisode: State<EpisodeCollectionInfo?>,
+    private val cacheStatus: (EpisodeCollectionInfo) -> EpisodeCacheStatus,
+    val onSelect: (EpisodeCollectionInfo) -> Unit,
+    val onChangeCollectionType: suspend (episode: EpisodeCollectionInfo, UnifiedCollectionType) -> Unit,
     internal val gridState: LazyGridState = LazyGridState(),
     backgroundScope: CoroutineScope,
 ) {
@@ -88,18 +86,18 @@ class EpisodeCarouselState(
     internal fun getEpisode(index: Int) = episodes.getOrNull(index)
 
     @Stable
-    internal fun isPlaying(episode: EpisodeCollection): Boolean {
+    internal fun isPlaying(episode: EpisodeCollectionInfo): Boolean {
         return playingEpisode == episode
     }
 
     @Stable
-    internal fun cacheStatus(episode: EpisodeCollection): EpisodeCacheStatus {
+    internal fun cacheStatus(episode: EpisodeCollectionInfo): EpisodeCacheStatus {
         return this.cacheStatus.invoke(episode)
     }
 
     private val setCollectionTypeTasker = MonoTasker(backgroundScope)
     val isSettingCollectionType get() = setCollectionTypeTasker.isRunning
-    fun setCollectionType(episode: EpisodeCollection, type: UnifiedCollectionType) {
+    fun setCollectionType(episode: EpisodeCollectionInfo, type: UnifiedCollectionType) {
         setCollectionTypeTasker.launch {
             onChangeCollectionType(episode, type)
         }
@@ -143,19 +141,19 @@ fun EpisodeCarousel(
                     PlayingEpisodeItem(
                         episodeSort = {
                             Text(
-                                collection.episode.sort.toString(),
+                                collection.episodeInfo.sort.toString(),
                                 color = if (isPlaying) MaterialTheme.colorScheme.primary else LocalContentColor.current,
                             )
                         },
                         title = {
                             Text(
-                                collection.episode.nameCn.ifEmpty { "第 ${collection.episode.sort} 话" },
+                                collection.episodeInfo.nameCn.ifEmpty { "第 ${collection.episodeInfo.sort} 话" },
                                 color = if (isPlaying) MaterialTheme.colorScheme.primary else LocalContentColor.current,
                             )
                         },
                         watchStatus = {
                             EpisodeWatchStatusButton(
-                                collection.type.isDoneOrDropped(),
+                                collection.collectionType.isDoneOrDropped(),
                                 onUnmark = {
                                     state.setCollectionType(collection, UnifiedCollectionType.NOT_COLLECTED)
                                 },
@@ -172,7 +170,7 @@ fun EpisodeCarousel(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
                                 Icon(Icons.AutoMirrored.Outlined.Chat, contentDescription = "评论数量")
-                                Text(collection.episode.comment.toString(), softWrap = false)
+                                Text(collection.episodeInfo.comment.toString(), softWrap = false)
                             }
 
                             EpisodeCacheStatusLabel(state, collectionUpdated)
@@ -216,7 +214,7 @@ fun EpisodeCarousel(
 @Composable
 private fun EpisodeCacheStatusLabel(
     state: EpisodeCarouselState,
-    episode: EpisodeCollection,
+    episode: EpisodeCollectionInfo,
 ) {
     val cacheStatusState by remember(state, episode) {
         derivedStateOf { state.cacheStatus(episode) }

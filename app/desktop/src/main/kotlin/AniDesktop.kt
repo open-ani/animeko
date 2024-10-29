@@ -43,7 +43,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.io.files.Path
 import me.him188.ani.app.data.models.preference.configIfEnabledOrNull
-import me.him188.ani.app.data.repository.SettingsRepository
+import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.resolver.DesktopWebVideoSourceResolver
 import me.him188.ani.app.domain.media.resolver.HttpStreamingVideoSourceResolver
@@ -253,12 +253,10 @@ object AniDesktop {
                 cacheDir = File(projectDirectories.cacheDir).resolve("jcef-cache"),
                 proxyServer = proxySettings?.url,
                 proxyAuthUsername = proxySettings?.authorization?.username,
-                proxyAuthPassword = proxySettings?.authorization?.password
+                proxyAuthPassword = proxySettings?.authorization?.password,
             )
-        }
-        
-        // 预先加载 VLC, https://github.com/open-ani/ani/issues/618
-        coroutineScope.launch {
+
+            // 预先加载 VLC, https://github.com/open-ani/ani/issues/618
             kotlin.runCatching {
                 VlcjVideoPlayerState.prepareLibraries()
             }.onFailure {

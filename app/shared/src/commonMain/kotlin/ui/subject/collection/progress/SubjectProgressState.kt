@@ -22,12 +22,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.flowOn
 import me.him188.ani.app.data.models.episode.EpisodeProgressInfo
 import me.him188.ani.app.data.models.subject.ContinueWatchingStatus
-import me.him188.ani.app.data.models.subject.SubjectCollection
-import me.him188.ani.app.data.models.subject.SubjectManager
+import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
+import me.him188.ani.app.data.repository.episode.EpisodeProgressRepository
 import me.him188.ani.app.domain.media.cache.EpisodeCacheStatus
 import me.him188.ani.app.tools.WeekFormatter
-import me.him188.ani.app.tools.ldc.ContentPolicy
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.PackedDate
@@ -38,16 +37,17 @@ import kotlin.coroutines.CoroutineContext
 // 在 VM 中创建
 @Stable
 class SubjectProgressStateFactory(
-    private val subjectManager: SubjectManager,
+    private val episodeProgressRepository: EpisodeProgressRepository,
     val onPlay: (subjectId: Int, episodeId: Int) -> Unit,
     private val flowCoroutineContext: CoroutineContext = Dispatchers.Default,
+    val getCurrentDate: () -> PackedDate = { PackedDate.now() },
 ) {
-    fun subjectCollection(subjectId: Int) =
-        subjectManager.subjectCollectionFlow(subjectId)
-            .flowOn(flowCoroutineContext)
+//    fun subjectCollection(subjectId: Int) =
+//        subjectManager.subjectCollectionFlow(subjectId)
+//            .flowOn(flowCoroutineContext)
 
-    fun episodeProgressInfoList(subjectId: Int) = subjectManager
-        .subjectProgressFlow(subjectId, ContentPolicy.CACHE_ONLY)
+    fun episodeProgressInfoList(subjectId: Int) = episodeProgressRepository
+        .subjectEpisodeProgressesInfoFlow(subjectId)
         .flowOn(flowCoroutineContext)
 }
 
@@ -56,13 +56,17 @@ class SubjectProgressStateFactory(
  */
 @Composable
 fun SubjectProgressStateFactory.rememberSubjectProgressState(
-    subjectCollection: SubjectCollection,
+    subjectCollection: SubjectCollectionInfo,
 ): SubjectProgressState {
     val subjectId: Int = subjectCollection.subjectId
     val subjectCollectionState by rememberUpdatedState(subjectCollection)
     val info = remember {
         derivedStateOf {
-            SubjectProgressInfo.calculate(subjectCollectionState)
+            SubjectProgressInfo.compute(
+                subjectCollectionState.subjectInfo,
+                subjectCollectionState.episodes,
+                getCurrentDate(),
+            )
         }
     }
     val episodeProgressInfoList = remember(subjectId) { episodeProgressInfoList(subjectId) }
@@ -93,7 +97,7 @@ class SubjectProgressState(
 
     @Stable
     fun episodeCacheStatus(episodeId: Int): EpisodeCacheStatus? {
-        return episodeProgressInfos.find { it.episode.id == episodeId }?.cacheStatus
+        return episodeProgressInfos.find { it.episode.episodeId == episodeId }?.cacheStatus
     }
 
     fun play(episodeId: Int) {

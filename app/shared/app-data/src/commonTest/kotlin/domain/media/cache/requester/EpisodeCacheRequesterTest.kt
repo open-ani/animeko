@@ -15,22 +15,22 @@ import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import me.him188.ani.app.data.models.episode.EpisodeInfo
+import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
 import me.him188.ani.app.data.models.subject.SubjectInfo
+import me.him188.ani.app.domain.media.SOURCE_DMHY
 import me.him188.ani.app.domain.media.TestMediaList
 import me.him188.ani.app.domain.media.cache.storage.TestMediaCacheStorage
 import me.him188.ani.app.domain.media.createTestDefaultMedia
 import me.him188.ani.app.domain.media.fetch.MediaFetcherConfig
 import me.him188.ani.app.domain.media.fetch.MediaSourceMediaFetcher
 import me.him188.ani.app.domain.media.fetch.awaitCompletion
-import me.him188.ani.app.domain.mediasource.instance.createTestMediaSourceInstance
 import me.him188.ani.app.domain.media.selector.DefaultMediaSelector
 import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.media.selector.MediaSelectorContext
 import me.him188.ani.app.domain.media.selector.MediaSelectorFactory
 import me.him188.ani.app.domain.media.selector.MediaSelectorSubtitlePreferences
-import me.him188.ani.app.data.models.preference.MediaPreference
-import me.him188.ani.app.domain.media.SOURCE_DMHY
+import me.him188.ani.app.domain.mediasource.instance.createTestMediaSourceInstance
 import me.him188.ani.datasources.api.CachedMedia
 import me.him188.ani.datasources.api.DefaultMedia
 import me.him188.ani.datasources.api.EpisodeSort
@@ -49,7 +49,6 @@ import me.him188.ani.datasources.api.topic.Resolution
 import me.him188.ani.datasources.api.topic.ResourceLocation
 import me.him188.ani.datasources.api.topic.SubtitleLanguage.ChineseSimplified
 import me.him188.ani.datasources.api.topic.SubtitleLanguage.ChineseTraditional
-import me.him188.ani.utils.platform.currentTimeMillis
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.test.Test
@@ -203,7 +202,7 @@ class EpisodeCacheRequesterTest {
     fun `done has correct metadata`() = runTest {
         val request = createRequest().run {
             copy(
-                subjectInfo.copy(id = 12, name = "ひ", nameCn = "孤独摇滚"),
+                subjectInfo.copy(subjectId = 12, name = "ひ", nameCn = "孤独摇滚"),
                 episodeInfo.copy(sort = EpisodeSort(2), name = "第二集"), // 2 in 12
             )
         }
@@ -432,7 +431,7 @@ class EpisodeCacheRequesterTest {
 
         val request = createRequest().run {
             copy(
-                subjectInfo.copy(id = 12, name = "ひ", nameCn = "孤独摇滚"),
+                subjectInfo.copy(subjectId = 12, name = "ひ", nameCn = "孤独摇滚"),
                 episodeInfo.copy(sort = EpisodeSort(2), name = "第二集"), // 2 in 12
             )
         }
@@ -474,7 +473,7 @@ class EpisodeCacheRequesterTest {
 
         val request = createRequest().run {
             copy(
-                subjectInfo.copy(id = 12, name = "ひ", nameCn = "孤独摇滚"),
+                subjectInfo.copy(subjectId = 12, name = "ひ", nameCn = "孤独摇滚"),
                 episodeInfo.copy(sort = EpisodeSort(2), name = "第二集"), // 2 in 12
             )
         }

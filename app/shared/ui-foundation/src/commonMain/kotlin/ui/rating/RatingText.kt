@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -26,6 +27,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.data.models.subject.RatingInfo
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
+import me.him188.ani.utils.platform.format1f
 
 
 // https://www.figma.com/design/LET1n9mmDa6npDTIlUuJjU/Main?node-id=133-2765&t=innxKfrf4vLdukgs-4
@@ -40,9 +42,7 @@ fun RatingText(
             MaterialTheme.colorScheme.tertiary,
         ) {
             val text = remember(rating.score) {
-                if (!rating.score.contains(".")) {
-                    "${rating.score}.0"
-                } else rating.score
+                renderScore(rating.score)
             }
             Text(
                 text,
@@ -84,3 +84,18 @@ fun RatingText(
         }
     }
 }
+
+/**
+ * Output format: `1.0`, `6.1`, `0.0`, `10.0`
+ */
+@Stable
+fun renderScore(score: String): String {
+    return if (!score.contains(".")) {
+        "$score.0"
+    } else {
+        score.toFloatOrNull()?.let {
+            String.format1f(it)
+        } ?: score
+    }
+}
+

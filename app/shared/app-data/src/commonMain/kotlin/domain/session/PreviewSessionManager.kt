@@ -15,8 +15,8 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import me.him188.ani.app.data.models.UserInfo
-import me.him188.ani.app.data.repository.AccessTokenSession
-import me.him188.ani.app.data.repository.Session
+import me.him188.ani.app.data.repository.user.AccessTokenSession
+import me.him188.ani.app.data.repository.user.Session
 import me.him188.ani.utils.platform.currentTimeMillis
 import kotlin.time.Duration.Companion.days
 

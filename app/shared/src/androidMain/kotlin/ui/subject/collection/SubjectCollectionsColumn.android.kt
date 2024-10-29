@@ -15,10 +15,14 @@ import android.content.res.Configuration.UI_MODE_NIGHT_YES
 import android.content.res.Configuration.UI_MODE_TYPE_NORMAL
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewLightDark
-import me.him188.ani.app.data.models.subject.SubjectCollection
+import androidx.paging.PagingData
+import androidx.paging.compose.collectAsLazyPagingItemsWithLifecycle
+import kotlinx.coroutines.flow.MutableStateFlow
+import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.subject.collection.components.rememberTestEditableSubjectCollectionTypeState
 import me.him188.ani.app.ui.subject.collection.progress.SubjectProgressButton
@@ -31,22 +35,22 @@ import me.him188.ani.utils.platform.annotations.TestOnly
 private fun PreviewSubjectCollectionsColumnPhone() {
     ProvideCompositionLocalsForPreview {
         SubjectCollectionsColumn(
-            state = rememberTestSubjectCollectionColumnState(),
+            items = rememberTestItems(),
             item = { TestSubjectCollectionItem(it) },
         )
     }
 }
+
+@Composable
+private fun rememberTestItems() =
+    remember { MutableStateFlow(PagingData.from(TestSubjectCollections)) }.collectAsLazyPagingItemsWithLifecycle()
 
 @PreviewLightDark
 @Composable
 private fun PreviewSubjectCollectionsColumnEmptyButLoading() {
     ProvideCompositionLocalsForPreview {
         SubjectCollectionsColumn(
-            state = rememberTestSubjectCollectionColumnState(
-                cachedData = emptyList(),
-                hasMore = true,
-                isKnownEmpty = false,
-            ),
+            items = rememberTestItems(),
             item = { TestSubjectCollectionItem(it) },
             Modifier.fillMaxWidth(),
         )
@@ -58,11 +62,7 @@ private fun PreviewSubjectCollectionsColumnEmptyButLoading() {
 private fun PreviewSubjectCollectionsColumnEmpty() {
     ProvideCompositionLocalsForPreview {
         SubjectCollectionsColumn(
-            state = rememberTestSubjectCollectionColumnState(
-                cachedData = emptyList(),
-                hasMore = false,
-                isKnownEmpty = true,
-            ),
+            items = rememberTestItems(),
             item = { TestSubjectCollectionItem(it) },
             Modifier.fillMaxWidth(),
         )
@@ -71,7 +71,7 @@ private fun PreviewSubjectCollectionsColumnEmpty() {
 
 @OptIn(TestOnly::class)
 @Composable
-private fun TestSubjectCollectionItem(it: SubjectCollection) {
+private fun TestSubjectCollectionItem(it: SubjectCollectionInfo) {
     SubjectCollectionItem(
         item = it,
         editableSubjectCollectionTypeState = rememberTestEditableSubjectCollectionTypeState(),
@@ -103,7 +103,7 @@ private fun TestSubjectCollectionItem(it: SubjectCollection) {
 private fun PreviewSubjectCollectionsColumnDesktopLarge() {
     ProvideCompositionLocalsForPreview {
         SubjectCollectionsColumn(
-            rememberTestSubjectCollectionColumnState(),
+            items = rememberTestItems(),
             item = { TestSubjectCollectionItem(it) },
         )
     }

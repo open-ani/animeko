@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
@@ -45,6 +44,9 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.paging.compose.LazyPagingItems
+import androidx.paging.compose.itemContentType
+import androidx.paging.compose.itemKey
 import androidx.window.core.layout.WindowWidthSizeClass
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.flow.collectLatest
@@ -61,7 +63,7 @@ import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.widgets.TopAppBarGoBackButton
 import me.him188.ani.app.ui.search.SearchDefaults
-import me.him188.ani.app.ui.search.SearchState
+import me.him188.ani.app.ui.search.collectItemsWithLifecycle
 
 @Composable
 fun SearchPage(
@@ -69,6 +71,7 @@ fun SearchPage(
     windowInsets: WindowInsets,
     detailContent: @Composable (subjectId: Int) -> Unit,
     modifier: Modifier = Modifier,
+    onSelect: (index: Int, item: SubjectPreviewItemInfo) -> Unit = { _, _ -> },
     focusSearchBarByDefault: Boolean = true,
     navigator: ThreePaneScaffoldNavigator<*> = rememberListDetailPaneScaffoldNavigator(),
 ) {
@@ -77,6 +80,7 @@ fun SearchPage(
     }
 
     val focusRequester = remember { FocusRequester() }
+    val items = state.searchState.collectItemsWithLifecycle()
     SearchPageLayout(
         navigator,
         windowInsets,
@@ -97,10 +101,13 @@ fun SearchPage(
             val aniNavigator = LocalNavigator.current
             val scope = rememberCoroutineScope()
             SearchPageResultColumn(
-                state.searchState,
+                items = items,
                 selectedItemIndex = { state.selectedItemIndex },
                 onSelect = { index ->
                     state.selectedItemIndex = index
+                    items[index]?.let {
+                        onSelect(index, it)
+                    }
                     navigator.navigateTo(ListDetailPaneScaffoldRole.Detail)
                 },
                 onPlay = { info ->
@@ -110,7 +117,7 @@ fun SearchPage(
                             aniNavigator.navigateEpisodeDetails(it.subjectId, playInfo.episodeId)
                         }
                     }
-                },
+                }, // collect only once
             )
         },
         detailContent = {
@@ -118,8 +125,8 @@ fun SearchPage(
                 state.selectedItemIndex,
                 transitionSpec = AniThemeDefaults.emphasizedAnimatedContentTransition,
             ) { index ->
-                state.searchState.items.getOrNull(index)?.let {
-                    detailContent(it.id)
+                items.itemSnapshotList.getOrNull(index)?.let {
+                    detailContent(it.subjectId)
                 }
             }
         },
@@ -134,7 +141,7 @@ fun SearchPage(
 
 @Composable
 internal fun SearchPageResultColumn(
-    state: SearchState<SubjectPreviewItemInfo>,
+    items: LazyPagingItems<SubjectPreviewItemInfo>,
     selectedItemIndex: () -> Int,
     onSelect: (index: Int) -> Unit,
     onPlay: (info: SubjectPreviewItemInfo) -> Unit,
@@ -146,7 +153,7 @@ internal fun SearchPageResultColumn(
     val bringIntoViewRequesters = remember { mutableStateMapOf<Int, BringIntoViewRequester>() }
 
     SearchDefaults.ResultColumn(
-        state,
+        items,
         modifier
             .focusGroup()
             .onSizeChanged { height = it.height }
@@ -154,37 +161,42 @@ internal fun SearchPageResultColumn(
             .keyboardPageToScroll({ height.toFloat() }, lazyListState),
         lazyListState = lazyListState,
     ) {
-        itemsIndexed(
-            state.items,
-            key = { _, it -> it.id },
-            contentType = { _, _ -> 1 },
-        ) { index, info ->
+        items(
+            items.itemCount,
+            key = items.itemKey { it.subjectId },
+            contentType = items.itemContentType { 1 },
+        ) { index ->
+            val info = items[index]
             val requester = remember { BringIntoViewRequester() }
             // 记录 item 对应的 requester
-            DisposableEffect(requester) {
-                bringIntoViewRequesters[info.id] = requester
-                onDispose {
-                    bringIntoViewRequesters.remove(info.id)
+            if (info != null) {
+                DisposableEffect(requester) {
+                    bringIntoViewRequesters[info.subjectId] = requester
+                    onDispose {
+                        bringIntoViewRequesters.remove(info.subjectId)
+                    }
                 }
-            }
 
-            SubjectPreviewItem(
-                selected = index == selectedItemIndex(),
-                onClick = { onSelect(index) },
-                onPlay = { onPlay(info) },
-                info = info,
-                Modifier
-                    .fillMaxWidth()
-                    .bringIntoViewRequester(requester)
-                    .padding(vertical = currentWindowAdaptiveInfo().windowSizeClass.paneVerticalPadding / 2),
-            )
+                SubjectPreviewItem(
+                    selected = index == selectedItemIndex(),
+                    onClick = { onSelect(index) },
+                    onPlay = { onPlay(info) },
+                    info = info,
+                    Modifier
+                        .fillMaxWidth()
+                        .bringIntoViewRequester(requester)
+                        .padding(vertical = currentWindowAdaptiveInfo().windowSizeClass.paneVerticalPadding / 2),
+                )
+            } else {
+                // placeholder
+            }
         }
     }
 
     LaunchedEffect(Unit) {
         snapshotFlow(selectedItemIndex)
             .collectLatest {
-                bringIntoViewRequesters[state.items.getOrNull(it)?.id]?.bringIntoView()
+                bringIntoViewRequesters[items.itemSnapshotList.getOrNull(it)?.subjectId]?.bringIntoView()
             }
     }
 }

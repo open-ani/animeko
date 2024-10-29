@@ -230,13 +230,19 @@ internal class ExoPlayerState @UiThread constructor(
                     }
 
                     override fun onTracksChanged(tracks: Tracks) {
-                        subtitleTracks.candidates.value =
+                        val newSubtitleTracks =
                             tracks.groups.asSequence()
                                 .filter { it.type == C.TRACK_TYPE_TEXT }
                                 .flatMapIndexed { groupIndex: Int, group: Tracks.Group ->
                                     group.getSubtitleTracks()
                                 }
                                 .toList()
+                        // 新的字幕轨道和原来不同时才会更改，同时将 current 设置为新字幕轨道列表的第一个
+                        if (newSubtitleTracks != subtitleTracks.candidates.value) {
+                            subtitleTracks.candidates.value = newSubtitleTracks
+                            subtitleTracks.current.value = newSubtitleTracks.firstOrNull()
+                        }
+                        
                         audioTracks.candidates.value =
                             tracks.groups.asSequence()
                                 .filter { it.type == C.TRACK_TYPE_AUDIO }
@@ -385,6 +391,7 @@ internal class ExoPlayerState @UiThread constructor(
             subtitleTracks.current.collect {
                 player.trackSelectionParameters = player.trackSelectionParameters.buildUpon().apply {
                     setPreferredTextLanguage(it?.internalId) // dummy value to trigger a select, we have custom selector
+                    setTrackTypeDisabled(C.TRACK_TYPE_TEXT, it == null) // disable subtitle track
                 }.build()
             }
         }
