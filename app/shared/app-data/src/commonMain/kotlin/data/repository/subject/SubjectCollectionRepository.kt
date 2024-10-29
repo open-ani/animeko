@@ -74,7 +74,49 @@ import kotlin.time.Duration.Companion.milliseconds
 
 typealias BangumiSubjectApi = DefaultApi
 
-class SubjectCollectionRepository(
+/**
+ * 条目信息和条目收藏的仓库.
+ *
+ * [SubjectInfo], [SubjectCollectionInfo], [SubjectCollectionCounts]
+ */
+sealed interface SubjectCollectionRepository : Repository {
+    /**
+     * 获取条目收藏统计信息 cold [Flow]. Flow 将会 emit 至少一个值, 失败时 emit `null`.
+     */
+    fun subjectCollectionCountsFlow(): Flow<SubjectCollectionCounts?>
+
+    fun subjectCollectionFlow(subjectId: Int): Flow<SubjectCollectionInfo>
+
+    fun subjectCollectionsPager(
+        query: CollectionsFilterQuery = CollectionsFilterQuery.Empty,
+        pagingConfig: PagingConfig = defaultPagingConfig,
+    ): Flow<PagingData<SubjectCollectionInfo>>
+
+    /**
+     * 获取最近更新的条目收藏 cold [Flow].
+     */
+    fun mostRecentlyUpdatedSubjectCollectionsFlow(
+        limit: Int,
+        type: UnifiedCollectionType? = null, // null for all
+    ): Flow<List<SubjectCollectionInfo>>
+
+    suspend fun updateRating(
+        subjectId: Int,
+        score: Int? = null, // 0 to remove rating
+        comment: String? = null, // set empty to remove
+        tags: List<String>? = null,
+        isPrivate: Boolean? = null,
+    )
+
+    suspend fun setSubjectCollectionTypeOrDelete(
+        subjectId: Int,
+        type: UnifiedCollectionType?,
+    )
+
+    suspend fun batchGetSubjectDetails(ids: List<Int>): List<BatchSubjectDetails>
+}
+
+class SubjectCollectionRepositoryImpl(
     private val client: BangumiClient,
     private val api: Flow<BangumiSubjectApi>,
     private val bangumiSubjectService: BangumiSubjectService,
@@ -83,8 +125,8 @@ class SubjectCollectionRepository(
     private val usernameProvider: RepositoryUsernameProvider,
     private val getCurrentDate: () -> PackedDate = { PackedDate.now() },
     private val ioDispatcher: CoroutineContext = Dispatchers.IO_,
-) : Repository {
-    fun subjectCollectionCountsFlow(): Flow<SubjectCollectionCounts?> {
+) : SubjectCollectionRepository {
+    override fun subjectCollectionCountsFlow(): Flow<SubjectCollectionCounts?> {
         return (bangumiSubjectService.subjectCollectionCountsFlow() as Flow<SubjectCollectionCounts?>)
             .retry(2)
             .catch {
@@ -109,7 +151,7 @@ class SubjectCollectionRepository(
 //        }
     }
 
-    fun subjectCollectionFlow(subjectId: Int): Flow<SubjectCollectionInfo> =
+    override fun subjectCollectionFlow(subjectId: Int): Flow<SubjectCollectionInfo> =
         subjectCollectionDao.findById(subjectId).map { entity ->
             if (entity != null) {
                 return@map entity.toSubjectCollectionInfo(
@@ -136,9 +178,9 @@ class SubjectCollectionRepository(
     private suspend fun getSubjectEpisodeCollections(subjectId: Int) =
         episodeCollectionRepository.subjectEpisodeCollectionInfosFlow(subjectId).first()
 
-    fun mostRecentlyUpdatedSubjectCollectionsFlow(
+    override fun mostRecentlyUpdatedSubjectCollectionsFlow(
         limit: Int,
-        type: UnifiedCollectionType? = null, // null for all
+        type: UnifiedCollectionType?, // null for all
     ): Flow<List<SubjectCollectionInfo>> =
         subjectCollectionDao.filterMostRecentCollected(type, limit).map { list ->
             list.map { entity ->
@@ -149,9 +191,9 @@ class SubjectCollectionRepository(
             }
         }
 
-    fun subjectCollectionsPager(
-        query: CollectionsFilterQuery = CollectionsFilterQuery.Empty,
-        pagingConfig: PagingConfig = defaultPagingConfig,
+    override fun subjectCollectionsPager(
+        query: CollectionsFilterQuery,
+        pagingConfig: PagingConfig,
     ): Flow<PagingData<SubjectCollectionInfo>> = Pager(
         config = pagingConfig,
         initialKey = 0,
@@ -168,12 +210,12 @@ class SubjectCollectionRepository(
         }
     }
 
-    suspend fun updateRating(
+    override suspend fun updateRating(
         subjectId: Int,
-        score: Int? = null, // 0 to remove rating
-        comment: String? = null, // set empty to remove
-        tags: List<String>? = null,
-        isPrivate: Boolean? = null,
+        score: Int?, // 0 to remove rating
+        comment: String?, // set empty to remove
+        tags: List<String>?,
+        isPrivate: Boolean?,
     ) {
         bangumiSubjectService.patchSubjectCollection(
             subjectId,
@@ -263,7 +305,7 @@ class SubjectCollectionRepository(
 
     }
 
-    suspend fun setSubjectCollectionTypeOrDelete(
+    override suspend fun setSubjectCollectionTypeOrDelete(
         subjectId: Int,
         type: UnifiedCollectionType?,
     ) {
@@ -294,7 +336,7 @@ class SubjectCollectionRepository(
         return batchGetSubjectDetails(listOf(ids)).first()
     }
 
-    suspend fun batchGetSubjectDetails(ids: List<Int>): List<BatchSubjectDetails> {
+    override suspend fun batchGetSubjectDetails(ids: List<Int>): List<BatchSubjectDetails> {
         if (ids.isEmpty()) {
             return emptyList()
         }

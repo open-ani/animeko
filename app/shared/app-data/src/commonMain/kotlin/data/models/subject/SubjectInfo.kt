@@ -19,26 +19,61 @@ import me.him188.ani.datasources.api.PackedDate
  */
 @Immutable
 data class SubjectInfo(
+    /**
+     * Bangumi 条目 ID
+     */
     val subjectId: Int,
     val subjectType: SubjectType,
+    /**
+     * 条目原名
+     * @see displayName
+     * @see aliases
+     */
     val name: String,
+    /**
+     * 简体中文名称
+     * @see displayName
+     * @see aliases
+     */
     val nameCn: String,
+    /**
+     * 简介, 可能为空. 当条目解析出错时, 此字段可能包含错误原因 (堆栈).
+     */
     val summary: String,
     val nsfw: Boolean,
     val imageLarge: String,
+    /**
+     * 总集数, 0 表示未知.
+     */
     val totalEpisodes: Int,
     /**
-     * 放送开始
+     * 放送开始日期. 时区为条目所在地区的时区, 即一般为 UTC+9.
      * @sample me.him188.ani.app.ui.subject.renderSubjectSeason
      */
     val airDate: PackedDate,
 
+    /**
+     * 标签列表, 可能为空. 标签可能是由维基人指定的 [公共标签][Tag.isCanonical], 也可能是用户自定义的标签. See [Tag].
+     */
     val tags: List<Tag>,
+    /**
+     * 别名列表, 可能为空. 每个元素不可能为空.
+     * @see allNames
+     */
     val aliases: List<String>,
+    /**
+     * 评分信息, 包含评分人数, 评分分数, 评分人数等
+     */
     val ratingInfo: RatingInfo,
+    /**
+     * 全站收藏统计
+     */
     val collectionStats: SubjectCollectionStats,
 
     // 以下为来自 infoxbox 的信息
+    /**
+     * 完成日期. 时区为条目所在地区的时区, 即一般为 UTC+9.
+     */
     val completeDate: PackedDate,
 ) {
     override fun toString(): String {

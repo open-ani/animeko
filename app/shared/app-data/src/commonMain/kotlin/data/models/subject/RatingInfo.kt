@@ -16,6 +16,10 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import me.him188.ani.utils.platform.annotations.TestOnly
 
+/**
+ * 一个条目的评分信息, 包含评分人数, 评分分数, 评分人数等
+ * @see SubjectInfo.ratingInfo
+ */
 @Immutable
 @Serializable
 data class RatingInfo(

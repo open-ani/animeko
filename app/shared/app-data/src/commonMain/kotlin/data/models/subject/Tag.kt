@@ -13,6 +13,11 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import kotlinx.serialization.Serializable
 
+/**
+ * 一个标签. 标签可能是由维基人指定的 [公共标签][isCanonical], 也可能是用户自定义的标签.
+ *
+ * 可通过 [Tag.kind] 获取到对应的公共标签种类 [CanonicalTagKind].
+ */
 @Serializable
 @Immutable
 data class Tag(
@@ -21,7 +26,7 @@ data class Tag(
 )
 
 /**
- * 是否为公共标签.
+ * 是否为 [Bangumi 公共标签](https://bgm.tv/wiki/tag/list).
  */
 @Stable
 val Tag.isCanonical: Boolean

@@ -57,7 +57,6 @@ fun DefaultMediaAutoCacheService.Companion.createWithKoin(
     mediaFetcherLazy = koin.get<MediaSourceManager>().mediaFetcher,
     mediaSelectorFactory = MediaSelectorFactory.withKoin(koin),
     subjectCollections = { settings ->
-        @Suppress("DEPRECATION")
         koin.get<SubjectCollectionRepository>()
             .mostRecentlyUpdatedSubjectCollectionsFlow(settings.mostRecentCount, UnifiedCollectionType.DOING)
             .first()
