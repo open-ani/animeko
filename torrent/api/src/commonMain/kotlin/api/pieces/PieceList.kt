@@ -11,15 +11,8 @@ package me.him188.ani.app.torrent.api.pieces
 
 import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
-import kotlinx.collections.immutable.PersistentList
-import kotlinx.collections.immutable.minus
-import kotlinx.collections.immutable.persistentListOf
-import kotlinx.collections.immutable.plus
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.suspendCancellableCoroutine
 import me.him188.ani.app.torrent.api.pieces.PieceListSubscriptions.Subscription
-import kotlin.jvm.JvmField
 
 /**
  * 高性能 [Piece] 集合. 每个 [PieceList] 一定包含连续的 [Piece.pieceIndex]. 可能为空.
@@ -131,18 +124,6 @@ abstract class PieceList(
      */
     abstract suspend fun Piece.awaitFinished()
 
-    /**
-     * 订阅 [Piece.state] 的变化
-     * 
-     * @param piece [Piece.Invalid] 订阅所有 Piece 变化
-     */
-    abstract fun subscribePieceState(piece: Piece, onStateChange: PieceList.(Piece, PieceState) -> Unit): Subscription
-
-    /**
-     * 取消订阅 [Piece.state] 的变化
-     */
-    abstract fun unsubscribePieceState(subscription: Subscription)
-
     companion object {
         val Empty = create(0) { 0 }
 
@@ -195,55 +176,14 @@ abstract class PieceList(
     }
 }
 
-class PieceListSubscriptions {
-    // use object identity
-    class Subscription(
-        /**
-         * `-1` for subscribing all pieces
-         */
-        val pieceIndex: Int,
-        val onStateChange: PieceList.(Subscription, Piece) -> Unit,
-    )
 
-    private val subscriptions: MutableStateFlow<PersistentList<Subscription>> = MutableStateFlow(persistentListOf())
-
-    /**
-     * Call related subscribers
-     */
-    fun notifyPieceStateChanges(pieceList: PieceList, changedPiece: Piece) {
-        val subscriptions = subscriptions.value
-        for (subscription in subscriptions) {
-            if (subscription.pieceIndex == -1 || subscription.pieceIndex == changedPiece.pieceIndex) {
-                subscription.onStateChange(pieceList, subscription, changedPiece)
-            }
-        }
-    }
-
-    fun subscribe(pieceIndex: Int, onStateChange: PieceList.(Subscription, Piece) -> Unit): Subscription {
-        val subscriptions = subscriptions
-        while (true) {
-            val prevValue = subscriptions.value
-            val sub = Subscription(pieceIndex, onStateChange)
-            val nextValue = prevValue.plus(sub)
-            if (subscriptions.compareAndSet(prevValue, nextValue)) {
-                return sub
-            }
-        }
-    }
-
-    fun unsubscribe(subscription: Subscription) {
-        subscriptions.update { list ->
-            list.minus(subscription)
-        }
-    }
-}
 
 class DefaultPieceList(
     sizes: LongArray, // immutable
     dataOffsets: LongArray, // immutable
     private val states: Array<PieceState>, // mutable
     initialPieceIndex: Int, // 第 0 个元素的 piece index
-) : PieceList(sizes, dataOffsets, initialPieceIndex) {
+) : PieceList(sizes, dataOffsets, initialPieceIndex), PieceSubscribable {
     init {
         require(sizes.size == dataOffsets.size) { "sizes.size != dataOffsets.size" }
         require(sizes.size == states.size) { "sizes.size != states.size" }
@@ -309,11 +249,12 @@ class PieceListSlice(
     sizes = delegate.sizes.copyOfRange(startIndex, endIndex),
     dataOffsets = delegate.dataOffsets.copyOfRange(startIndex, endIndex),
     initialPieceIndex = delegate.initialPieceIndex + startIndex,
-) {
+), PieceSubscribable {
     init {
         require(startIndex >= 0) { "startIndex < 0" }
         require(endIndex <= delegate.sizes.size) { "endIndex > list.sizes.size" }
         require(startIndex <= endIndex) { "startIndex >= endIndex" }
+        requireNotNull(delegate as? PieceSubscribable)
     }
 
     override var Piece.state: PieceState
@@ -338,11 +279,11 @@ class PieceListSlice(
 
     // register subscription to delegate.
     override fun subscribePieceState(piece: Piece, onStateChange: PieceList.(Piece, PieceState) -> Unit): Subscription {
-        return delegate.subscribePieceState(piece, onStateChange)
+        return (delegate as PieceSubscribable).subscribePieceState(piece, onStateChange)
     }
     
     override fun unsubscribePieceState(subscription: Subscription) {
-        delegate.unsubscribePieceState(subscription)
+        (delegate as PieceSubscribable).unsubscribePieceState(subscription)
     }
 }
 

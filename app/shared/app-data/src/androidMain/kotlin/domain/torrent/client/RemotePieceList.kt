@@ -16,7 +16,6 @@ import me.him188.ani.app.domain.torrent.IPieceStateObserver
 import me.him188.ani.app.domain.torrent.IRemotePieceList
 import me.him188.ani.app.torrent.api.pieces.Piece
 import me.him188.ani.app.torrent.api.pieces.PieceList
-import me.him188.ani.app.torrent.api.pieces.PieceListSubscriptions
 import me.him188.ani.app.torrent.api.pieces.PieceState
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
@@ -37,21 +36,12 @@ class RemotePieceList(
 
     override var Piece.state: PieceState
         get() = PIECE_STATE_ENTRIES[pieceStateBuf.get(indexInList).toInt()]
-        set(_) { error("set Piece state is not allowed in remote PieceList") }
+        set(_) {
+            throw UnsupportedOperationException("set Piece state is not allowed in remote PieceList")
+        }
 
     override fun Piece.compareAndSetState(expect: PieceState, update: PieceState): Boolean {
-        error("set Piece state is not allowed in remote PieceList")
-    }
-
-    override fun subscribePieceState(
-        piece: Piece,
-        onStateChange: PieceList.(Piece, PieceState) -> Unit
-    ): PieceListSubscriptions.Subscription { 
-        error("unimplemented.") 
-    }
-
-    override fun unsubscribePieceState(subscription: PieceListSubscriptions.Subscription) {
-        error("unimplemented.") 
+        throw UnsupportedOperationException("set Piece state is not allowed in remote PieceList")
     }
 
     override suspend fun Piece.awaitFinished() {

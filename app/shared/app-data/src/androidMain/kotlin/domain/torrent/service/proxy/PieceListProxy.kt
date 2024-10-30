@@ -19,6 +19,7 @@ import me.him188.ani.app.torrent.api.pieces.Piece
 import me.him188.ani.app.torrent.api.pieces.PieceList
 import me.him188.ani.app.torrent.api.pieces.PieceListSubscriptions
 import me.him188.ani.app.torrent.api.pieces.PieceState
+import me.him188.ani.app.torrent.api.pieces.PieceSubscribable
 import me.him188.ani.app.torrent.api.pieces.forEach
 import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.logging.logger
@@ -41,14 +42,15 @@ class PieceListProxy(
     private val condition = lock.newCondition()
     
     init {
+        requireNotNull(delegate as? PieceSubscribable)
         with(delegate) {
             delegate.forEach { piece ->
                 pieceStatesRwBuf.put(piece.indexInList, piece.state.ordinal.toByte())
             }
 
             // subscribe new changes
-            pieceStateSubscriber = 
-                subscribePieceState(Piece.Invalid) { piece, state -> onPieceStateChange(piece, state) }
+            pieceStateSubscriber = (this as PieceSubscribable)
+                .subscribePieceState(Piece.Invalid) { piece, state -> onPieceStateChange(piece, state) }
         }
     }
     
@@ -119,7 +121,7 @@ class PieceListProxy(
     }
 
     override fun dispose() {
-        delegate.unsubscribePieceState(pieceStateSubscriber)
+        (delegate as PieceSubscribable).unsubscribePieceState(pieceStateSubscriber)
         pieceStateSharedMem.close()
     }
     
