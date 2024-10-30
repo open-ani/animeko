@@ -16,7 +16,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
 import me.him188.ani.app.data.models.preference.ProxySettings
 import me.him188.ani.app.data.models.preference.TorrentPeerConfig
-import me.him188.ani.app.data.repository.SettingsRepository
+import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.platform.MeteredNetworkDetector
 import me.him188.ani.datasources.api.topic.FileSize.Companion.kiloBytes
 import me.him188.ani.utils.coroutines.childScope
