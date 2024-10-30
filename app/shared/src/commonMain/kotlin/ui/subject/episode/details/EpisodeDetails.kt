@@ -126,6 +126,7 @@ fun EpisodeDetails(
     mediaSelectorPresentation: MediaSelectorPresentation,
     mediaSourceResultsPresentation: MediaSourceResultsPresentation,
     authState: AuthState,
+    onSwitchEpisode: (episodeId: Int) -> Unit,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
 ) {
@@ -136,7 +137,6 @@ fun EpisodeDetails(
     if (state.subjectId != 0) {
         val subjectDetailsViewModel =
             viewModel(key = state.subjectId.toString()) { SubjectDetailsViewModel(state.subjectId) }
-        subjectDetailsViewModel.navigator = LocalNavigator.current
         if (showSubjectDetails) {
             ModalBottomSheet(
                 { showSubjectDetails = false },
@@ -146,6 +146,7 @@ fun EpisodeDetails(
             ) {
                 SubjectDetailsScene(
                     subjectDetailsViewModel,
+                    onPlay = onSwitchEpisode,
                     showTopBar = false,
                     showBlurredBackground = false,
                 )

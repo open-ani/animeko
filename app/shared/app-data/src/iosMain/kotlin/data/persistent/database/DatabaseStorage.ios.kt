@@ -19,7 +19,7 @@ import me.him188.ani.utils.io.resolve
 actual fun Context.createDatabaseBuilder(): RoomDatabase.Builder<AniDatabase> {
     this.asIosContext()
     return Room.databaseBuilder<AniDatabase>(
-        name = files.dataDir.resolve("ani_room_database.db").absolutePath,
+        name = files.dataDir.resolve("ani_room_database_main.db").absolutePath,
     ) {
         AniDatabaseConstructor.initialize()
     }

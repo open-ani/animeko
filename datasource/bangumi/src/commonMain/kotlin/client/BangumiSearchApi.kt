@@ -10,6 +10,7 @@
 package me.him188.ani.datasources.bangumi.client
 
 import me.him188.ani.datasources.api.paging.Paged
+import me.him188.ani.datasources.bangumi.BangumiRateLimitedException
 import me.him188.ani.datasources.bangumi.models.BangumiSubject
 import me.him188.ani.datasources.bangumi.models.BangumiSubjectType
 import me.him188.ani.datasources.bangumi.models.search.BangumiSort
@@ -54,6 +55,7 @@ interface BangumiSearchApi {
      * @see BangumiSubjectType
      * @see BangumiSubjectImageSize
      *
+     * @throws BangumiRateLimitedException
      */
     suspend fun searchSubjectsByKeywordsWithOldApi(
         keyword: String,

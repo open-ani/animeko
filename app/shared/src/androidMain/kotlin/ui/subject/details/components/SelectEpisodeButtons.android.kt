@@ -12,70 +12,39 @@ package me.him188.ani.app.ui.subject.details.components
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.PreviewLightDark
+import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.ui.tooling.preview.PreviewParameterProvider
+import me.him188.ani.app.data.models.subject.SubjectProgressInfo
 import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview
 import me.him188.ani.app.ui.subject.collection.progress.TestSubjectProgressInfos
 import me.him188.ani.app.ui.subject.collection.progress.rememberTestSubjectProgressState
 import me.him188.ani.utils.platform.annotations.TestOnly
 
-
 @OptIn(TestOnly::class)
-@Composable
-@PreviewLightDark
-private fun PreviewSelectEpisodeButtonsDone() {
-    ProvideFoundationCompositionLocalsForPreview {
-        Surface {
-            SubjectDetailsDefaults.SelectEpisodeButtons(
-                rememberTestSubjectProgressState(
-                    TestSubjectProgressInfos.Done,
-                ),
-                {},
-            )
-        }
-    }
+class PreviewSubjectProgressInfoProvider : PreviewParameterProvider<SubjectProgressInfo> {
+    override val values: Sequence<SubjectProgressInfo>
+        get() = sequenceOf(
+            TestSubjectProgressInfos.Done,
+            TestSubjectProgressInfos.ContinueWatching2,
+            TestSubjectProgressInfos.Watched2,
+            TestSubjectProgressInfos.NotOnAir,
+        )
+
 }
 
 @OptIn(TestOnly::class)
 @Composable
 @PreviewLightDark
-private fun PreviewSelectEpisodeButtonsContinue() {
+private fun PreviewSelectEpisodeButtons(
+    @PreviewParameter(PreviewSubjectProgressInfoProvider::class) progressInfo: SubjectProgressInfo,
+) {
     ProvideFoundationCompositionLocalsForPreview {
         Surface {
             SubjectDetailsDefaults.SelectEpisodeButtons(
                 rememberTestSubjectProgressState(
-                    TestSubjectProgressInfos.ContinueWatching2,
+                    progressInfo,
                 ),
                 {},
-            )
-        }
-    }
-}
-
-@OptIn(TestOnly::class)
-@Composable
-@PreviewLightDark
-private fun PreviewSelectEpisodeButtonsWatched() {
-    ProvideFoundationCompositionLocalsForPreview {
-        Surface {
-            SubjectDetailsDefaults.SelectEpisodeButtons(
-                rememberTestSubjectProgressState(
-                    TestSubjectProgressInfos.Watched2,
-                ),
-                {},
-            )
-        }
-    }
-}
-
-@OptIn(TestOnly::class)
-@Composable
-@PreviewLightDark
-private fun PreviewSelectEpisodeButtonsNotOnAir() {
-    ProvideFoundationCompositionLocalsForPreview {
-        Surface {
-            SubjectDetailsDefaults.SelectEpisodeButtons(
-                rememberTestSubjectProgressState(
-                    TestSubjectProgressInfos.NotOnAir,
-                ),
                 {},
             )
         }

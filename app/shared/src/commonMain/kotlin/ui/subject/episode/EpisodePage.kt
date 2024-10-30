@@ -199,7 +199,7 @@ private fun EpisodeSceneContent(
     SideEffect {
         context.setSystemBarVisible(!vm.isFullscreen)
     }
-    
+
     BoxWithConstraints(modifier) {
         val showExpandedUI =
             currentWindowAdaptiveInfo().windowSizeClass.windowWidthSizeClass != WindowWidthSizeClass.COMPACT
@@ -292,6 +292,7 @@ private fun EpisodeSceneTabletVeryWide(
                 ) { index ->
                     when (index) {
                         0 -> Box(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                            val navigator = LocalNavigator.current
                             EpisodeDetails(
                                 vm.episodeDetailsState,
                                 vm.episodeCarouselState,
@@ -301,6 +302,11 @@ private fun EpisodeSceneTabletVeryWide(
                                 vm.mediaSelectorPresentation,
                                 vm.mediaSourceResultsPresentation,
                                 vm.authState,
+                                onSwitchEpisode = { episodeId ->
+                                    if (!vm.episodeSelectorState.selectEpisodeId(episodeId)) {
+                                        navigator.navigateEpisodeDetails(vm.subjectId, episodeId)
+                                    }
+                                },
                             )
                         }
 
@@ -411,6 +417,7 @@ private fun EpisodeSceneContentPhone(
             EpisodeVideo(vm, vm.videoControllerState, vm.isFullscreen)
         },
         episodeDetails = {
+            val navigator = LocalNavigator.current
             EpisodeDetails(
                 vm.episodeDetailsState,
                 vm.episodeCarouselState,
@@ -420,6 +427,11 @@ private fun EpisodeSceneContentPhone(
                 vm.mediaSelectorPresentation,
                 vm.mediaSourceResultsPresentation,
                 vm.authState,
+                onSwitchEpisode = { episodeId ->
+                    if (!vm.episodeSelectorState.selectEpisodeId(episodeId)) {
+                        navigator.navigateEpisodeDetails(vm.subjectId, episodeId)
+                    }
+                },
                 Modifier.fillMaxSize(),
             )
         },

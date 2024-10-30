@@ -87,6 +87,7 @@ private fun TestSubjectCollectionItem(it: SubjectCollectionInfo) {
                         else -> TestSubjectProgressInfos.Done
                     },
                 ),
+                {},
             )
         },
     )

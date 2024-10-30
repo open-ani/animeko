@@ -26,12 +26,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.MoreVert
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardColors
 import androidx.compose.material3.CardDefaults
@@ -48,9 +48,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.LinkAnnotation
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -64,12 +61,10 @@ import me.him188.ani.app.data.models.subject.SubjectAiringInfo
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
-import me.him188.ani.app.tools.paging.exceptions
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.animation.StandardAccelerate
 import me.him188.ani.app.ui.foundation.animation.StandardDecelerate
 import me.him188.ani.app.ui.foundation.ifThen
-import me.him188.ani.app.ui.foundation.isInDebugMode
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.foundation.theme.EasingDurations
 import me.him188.ani.app.ui.search.isLoadingNextPage
@@ -82,8 +77,6 @@ import me.him188.ani.app.ui.subject.rating.TestSelfRatingInfo
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
-import me.him188.ani.utils.logging.error
-import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.platform.annotations.TestOnly
 
 /**
@@ -98,8 +91,8 @@ fun SubjectCollectionsColumn(
     items: LazyPagingItems<SubjectCollectionInfo>,
     item: @Composable (item: SubjectCollectionInfo) -> Unit,
     modifier: Modifier = Modifier,
+    gridState: LazyGridState = rememberLazyGridState(),
     enableAnimation: Boolean = true,
-    allowProgressIndicator: Boolean = true,
 ) {
     val isCompact = currentWindowAdaptiveInfo().windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.COMPACT
     val spacedBy = if (isCompact) 16.dp else 24.dp
@@ -107,7 +100,7 @@ fun SubjectCollectionsColumn(
     LazyVerticalGrid(
         GridCells.Adaptive(360.dp),
         modifier,
-        rememberLazyGridState(),
+        gridState,
         verticalArrangement = Arrangement.spacedBy(spacedBy),
         horizontalArrangement = Arrangement.spacedBy(spacedBy),
         contentPadding = PaddingValues(horizontal = spacedBy),
@@ -139,57 +132,14 @@ fun SubjectCollectionsColumn(
 
         if (items.loadState.hasError) {
             item(span = { GridItemSpan(maxLineSpan) }) {
-                val typography = MaterialTheme.typography
-                val colorScheme = MaterialTheme.colorScheme
-                Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        remember(colorScheme, typography) {
-                            buildAnnotatedString {
-                                pushStyle(typography.labelLarge.toSpanStyle())
-                                append("加载失败，")
-                                pushLink(
-                                    LinkAnnotation.Clickable(
-                                        "retry",
-                                    ) {
-                                        items.retry()
-                                    },
-                                )
-                                pushStyle(
-                                    typography.labelLarge.toSpanStyle()
-                                        .copy(
-                                            textDecoration = TextDecoration.Underline,
-                                            color = colorScheme.primary,
-                                        ),
-                                )
-                                append("点击重试")
-                            }
-                        },
-                    )
-
-                    if (isInDebugMode()) {
-                        Button(
-                            {
-                                items.loadState.exceptions().forEach {
-                                    logger("SubjectCollectionsColumn").error(it)
-                                }
-                            },
-                        ) {
-                            Text("[Debug] Dump Stacktrace")
-                        }
-                    }
-                }
             }
         }
 
 
         if (items.isLoadingNextPage) {
             item(span = { GridItemSpan(maxLineSpan) }) {
-                if (allowProgressIndicator) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-                        CircularProgressIndicator()
-                    }
-                } else {
-                    Spacer(Modifier.height(1.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                    CircularProgressIndicator()
                 }
             }
         }

@@ -123,7 +123,7 @@ fun PreviewSubjectDetailsHeader(
                 )
             },
             selectEpisodeButton = {
-                SubjectDetailsDefaults.SelectEpisodeButtons(rememberTestSubjectProgressState(), {})
+                SubjectDetailsDefaults.SelectEpisodeButtons(rememberTestSubjectProgressState(), {}, {})
             },
             rating = {
                 EditableRating(

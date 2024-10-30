@@ -18,7 +18,7 @@ import me.him188.ani.app.data.persistent.database.dao.SearchTagEntity
 import org.koin.core.component.KoinComponent
 
 interface SubjectSearchHistoryRepository {
-    suspend fun addHistory(history: SearchHistoryEntity)
+    suspend fun addHistory(content: String)
     fun getHistoryFlow(): Flow<List<String>>
     suspend fun deleteHistoryBySeq(seq: Int)
 
@@ -34,12 +34,12 @@ class SubjectSearchHistoryRepositoryImpl(
     private val searchHistory: SearchHistoryDao,
     private val searchTag: SearchTagDao,
 ) : SubjectSearchHistoryRepository, KoinComponent {
-    override suspend fun addHistory(history: SearchHistoryEntity) {
-        searchHistory.insert(history)
+    override suspend fun addHistory(content: String) {
+        searchHistory.insert(SearchHistoryEntity(content = content))
     }
 
     override fun getHistoryFlow(): Flow<List<String>> {
-        return searchHistory.getFlow().map { list -> list.map { it.content } }
+        return searchHistory.all().map { list -> list.map { it.content } }
     }
 
     override suspend fun deleteHistoryBySeq(seq: Int) {

@@ -16,6 +16,6 @@ import me.him188.ani.app.platform.Context
 actual fun Context.createDatabaseBuilder(): RoomDatabase.Builder<AniDatabase> {
     return Room.databaseBuilder<AniDatabase>(
         context = applicationContext,
-        name = applicationContext.getDatabasePath("ani_room_database.db").absolutePath,
+        name = applicationContext.getDatabasePath("ani_room_database_main.db").absolutePath,
     )
 }

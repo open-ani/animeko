@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.ui.exploration.search
 
+import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
@@ -24,6 +25,7 @@ import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.ui.search.PagingSearchState
 import me.him188.ani.app.ui.search.SearchState
 import me.him188.ani.app.ui.search.TestSearchState
+import me.him188.ani.app.ui.search.launchAsItemsIn
 import me.him188.ani.utils.platform.annotations.TestOnly
 
 @Stable
@@ -31,9 +33,10 @@ class SearchPageState(
     searchHistoryState: State<List<String>>,
     suggestionsState: State<List<String>>,
     val onRequestPlay: suspend (SubjectPreviewItemInfo) -> EpisodeTarget?,
-    queryState: MutableState<String> = mutableStateOf(""),
     val searchState: SearchState<SubjectPreviewItemInfo>,
     backgroundScope: CoroutineScope,
+    queryState: MutableState<String> = mutableStateOf(""),
+    private val onStartSearch: (String) -> Unit = {},
 ) {
     // to navigate to episode page
     data class EpisodeTarget(
@@ -41,13 +44,18 @@ class SearchPageState(
         val episodeId: Int,
     )
 
-    val query by queryState
     val suggestionSearchBarState = SuggestionSearchBarState(
         historyState = searchHistoryState,
         suggestionsState = suggestionsState,
-        queryState = queryState,
         searchState = searchState,
+        queryState = queryState,
+        onStartSearch = { query ->
+            onStartSearch(query)
+        },
     )
+    val gridState = LazyStaggeredGridState()
+
+    val items = searchState.launchAsItemsIn(backgroundScope)
 
     var selectedItemIndex: Int by mutableIntStateOf(0)
 

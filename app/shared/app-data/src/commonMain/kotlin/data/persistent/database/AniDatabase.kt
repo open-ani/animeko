@@ -17,6 +17,7 @@ import androidx.room.RoomDatabaseConstructor
 import androidx.room.TypeConverters
 import androidx.room.migration.AutoMigrationSpec
 import androidx.sqlite.SQLiteConnection
+import androidx.sqlite.execSQL
 import me.him188.ani.app.data.persistent.database.dao.EpisodeCollectionDao
 import me.him188.ani.app.data.persistent.database.dao.EpisodeCollectionEntity
 import me.him188.ani.app.data.persistent.database.dao.SearchHistoryDao
@@ -33,9 +34,10 @@ import me.him188.ani.app.data.persistent.database.dao.SubjectCollectionEntity
         SubjectCollectionEntity::class,
         EpisodeCollectionEntity::class,
     ],
-    version = 2,
+    version = 3,
     autoMigrations = [
         AutoMigration(from = 1, to = 2, spec = Migrations.NoopMigration::class), // 4.0.0-alpha03
+        AutoMigration(from = 2, to = 3, spec = Migrations.Migration_2_3::class), // 4.0.0-alpha03
     ],
 )
 @ConstructedBy(AniDatabaseConstructor::class)
@@ -51,11 +53,19 @@ expect object AniDatabaseConstructor : RoomDatabaseConstructor<AniDatabase> {
     override fun initialize(): AniDatabase
 }
 
+@Suppress("ClassName")
 internal object Migrations {
 
     // NOOP, version 2 has only additions.
     class NoopMigration : AutoMigrationSpec {
         override fun onPostMigrate(connection: SQLiteConnection) {
+        }
+    }
+
+    class Migration_2_3 : AutoMigrationSpec {
+        override fun onPostMigrate(connection: SQLiteConnection) {
+            connection.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `distinct_content` ON `search_history`(`content`)")
+            connection.execSQL("CREATE INDEX IF NOT EXISTS `sequence_desc` ON `search_history`(`sequence` DESC)")
         }
     }
 }

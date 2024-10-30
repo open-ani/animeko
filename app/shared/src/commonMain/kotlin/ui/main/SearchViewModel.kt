@@ -23,6 +23,7 @@ import me.him188.ani.app.domain.search.SubjectSearchQuery
 import me.him188.ani.app.ui.exploration.search.SearchPageState
 import me.him188.ani.app.ui.exploration.search.SubjectPreviewItemInfo
 import me.him188.ani.app.ui.foundation.AbstractViewModel
+import me.him188.ani.app.ui.foundation.launchInBackground
 import me.him188.ani.app.ui.search.PagingSearchState
 import me.him188.ani.app.ui.subject.details.SubjectDetailsViewModel
 import org.koin.core.component.KoinComponent
@@ -59,7 +60,12 @@ class SearchViewModel : AbstractViewModel(), KoinComponent {
                 }
             },
         ),
-        backgroundScope,
+        backgroundScope = backgroundScope,
+        onStartSearch = { query ->
+            launchInBackground {
+                searchHistoryRepository.addHistory(query)
+            }
+        },
     )
 
     fun viewSubjectDetails(

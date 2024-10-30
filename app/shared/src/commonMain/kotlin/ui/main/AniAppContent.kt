@@ -27,11 +27,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
-import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldDefaults
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -53,6 +51,7 @@ import me.him188.ani.app.navigation.NavRoutes
 import me.him188.ani.app.navigation.OverrideNavigation
 import me.him188.ani.app.navigation.SettingsTab
 import me.him188.ani.app.platform.LocalContext
+import me.him188.ani.app.ui.adaptive.navigation.AniNavigationSuiteDefaults
 import me.him188.ani.app.ui.cache.CacheManagementPage
 import me.him188.ani.app.ui.cache.CacheManagementViewModel
 import me.him188.ani.app.ui.cache.details.MediaCacheDetailsPage
@@ -132,8 +131,8 @@ private fun AniAppContentImpl(
                     slideInHorizontally(
                         tween(
                             enterDuration,
-                            easing = enterEasing
-                        )
+                            easing = enterEasing,
+                        ),
                     ) { (it * (1f / 5)).roundToInt() }
                         .plus(fadeIn(tween(enterDuration, easing = enterEasing)))
                 }
@@ -154,8 +153,8 @@ private fun AniAppContentImpl(
                     slideOutHorizontally(
                         tween(
                             exitDuration,
-                            easing = exitEasing
-                        )
+                            easing = exitEasing,
+                        ),
                     ) { (it * (1f / 7)).roundToInt() }
                         .plus(fadeOut(tween(exitDuration, easing = exitEasing)))
                 }
@@ -179,7 +178,7 @@ private fun AniAppContentImpl(
             ) { backStack ->
                 val route = backStack.toRoute<NavRoutes.Main>()
                 val navigationLayoutType =
-                    NavigationSuiteScaffoldDefaults.calculateFromAdaptiveInfo(
+                    AniNavigationSuiteDefaults.calculateLayoutType(
                         currentWindowAdaptiveInfo(),
                     )
                 var currentPage by rememberSaveable { mutableStateOf(route.initialPage) }
@@ -213,7 +212,7 @@ private fun AniAppContentImpl(
             ) {
                 BangumiOAuthScene(
                     viewModel { BangumiOAuthViewModel() },
-                    windowInsets = windowInsets
+                    windowInsets = windowInsets,
                 )
             }
             composable<NavRoutes.BangumiTokenAuth>(
@@ -238,8 +237,11 @@ private fun AniAppContentImpl(
                 val vm = viewModel<SubjectDetailsViewModel>(key = details.subjectId.toString()) {
                     SubjectDetailsViewModel(details.subjectId)
                 }
-                SideEffect { vm.navigator = aniNavigator }
-                SubjectDetailsScene(vm, windowInsets = windowInsets)
+                SubjectDetailsScene(
+                    vm,
+                    onPlay = { aniNavigator.navigateEpisodeDetails(details.subjectId, it) },
+                    windowInsets = windowInsets,
+                )
             }
             composable<NavRoutes.EpisodeDetail>(
                 enterTransition = enterTransition,

@@ -14,20 +14,23 @@ import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
-import io.ktor.client.plugins.ResponseException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.repository.Repository
-import me.him188.ani.app.data.repository.RepositoryException
+import me.him188.ani.app.data.repository.RepositoryRateLimitedException
 import me.him188.ani.app.domain.search.SubjectSearchQuery
 import me.him188.ani.app.domain.search.SubjectType
+import me.him188.ani.datasources.bangumi.BangumiRateLimitedException
 import me.him188.ani.datasources.bangumi.client.BangumiSearchApi
 import me.him188.ani.datasources.bangumi.models.BangumiSubjectType
 import me.him188.ani.datasources.bangumi.models.subjects.BangumiSubjectImageSize
 import me.him188.ani.utils.coroutines.IO_
+import me.him188.ani.utils.logging.error
+import me.him188.ani.utils.logging.logger
+import kotlin.coroutines.cancellation.CancellationException
 
 class SubjectSearchRepository(
     private val searchApi: Flow<BangumiSearchApi>,
@@ -67,14 +70,18 @@ class SubjectSearchRepository(
                         it.id
                     }
                 } else {
-                    api.searchSubjectsByKeywordsWithOldApi(
-                        searchQuery.keyword,
-                        type = searchQuery.type.toBangumiSubjectType(),
-                        responseGroup = BangumiSubjectImageSize.SMALL,
-                        start = offset,
-                        maxResults = params.loadSize,
-                    ).page.map {
-                        it.id
+                    try {
+                        api.searchSubjectsByKeywordsWithOldApi(
+                            searchQuery.keyword,
+                            type = searchQuery.type.toBangumiSubjectType(),
+                            responseGroup = BangumiSubjectImageSize.SMALL,
+                            start = offset,
+                            maxResults = params.loadSize,
+                        ).page.map {
+                            it.id
+                        }
+                    } catch (e: BangumiRateLimitedException) {
+                        throw RepositoryRateLimitedException(cause = e)
                     }
                 }
 
@@ -87,11 +94,10 @@ class SubjectSearchRepository(
                     prevKey = if (offset == 0) null else offset,
                     nextKey = if (subjectInfos.isEmpty()) null else offset + params.loadSize,
                 )
-            } catch (e: RepositoryException) {
-                LoadResult.Error(e)
-            } catch (e: ResponseException) {
-                LoadResult.Error(e)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
+                logger.error(e) { "Failed to load subjects" }
                 LoadResult.Error(e)
             }
         }
@@ -154,6 +160,10 @@ class SubjectSearchRepository(
 //            )
 //        }
 //    }
+
+    private companion object {
+        private val logger = logger<SubjectSearchRepository>()
+    }
 }
 
 private fun SubjectType.toBangumiSubjectType(): BangumiSubjectType = when (this) {

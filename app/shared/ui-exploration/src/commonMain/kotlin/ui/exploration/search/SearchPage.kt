@@ -11,6 +11,8 @@ package me.him188.ani.app.ui.exploration.search
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.focusGroup
+import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -20,7 +22,9 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
+import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.material3.Text
@@ -58,12 +62,13 @@ import me.him188.ani.app.ui.foundation.interaction.keyboardDirectionToSelectItem
 import me.him188.ani.app.ui.foundation.interaction.keyboardPageToScroll
 import me.him188.ani.app.ui.foundation.layout.AniListDetailPaneScaffold
 import me.him188.ani.app.ui.foundation.layout.compareTo
+import me.him188.ani.app.ui.foundation.layout.paneHorizontalPadding
 import me.him188.ani.app.ui.foundation.layout.paneVerticalPadding
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.widgets.TopAppBarGoBackButton
 import me.him188.ani.app.ui.search.SearchDefaults
-import me.him188.ani.app.ui.search.collectItemsWithLifecycle
+import me.him188.ani.app.ui.search.collectHasQueryAsState
 
 @Composable
 fun SearchPage(
@@ -80,7 +85,7 @@ fun SearchPage(
     }
 
     val focusRequester = remember { FocusRequester() }
-    val items = state.searchState.collectItemsWithLifecycle()
+    val items = state.items
     SearchPageLayout(
         navigator,
         windowInsets,
@@ -100,8 +105,11 @@ fun SearchPage(
         searchResultList = {
             val aniNavigator = LocalNavigator.current
             val scope = rememberCoroutineScope()
+
+            val hasQuery by state.searchState.collectHasQueryAsState()
             SearchPageResultColumn(
                 items = items,
+                showSummary = { hasQuery },
                 selectedItemIndex = { state.selectedItemIndex },
                 onSelect = { index ->
                     state.selectedItemIndex = index
@@ -118,6 +126,7 @@ fun SearchPage(
                         }
                     }
                 }, // collect only once
+                state = state.gridState,
             )
         },
         detailContent = {
@@ -142,25 +151,55 @@ fun SearchPage(
 @Composable
 internal fun SearchPageResultColumn(
     items: LazyPagingItems<SubjectPreviewItemInfo>,
+    showSummary: () -> Boolean, // 可在还没发起任何搜索时不展示
     selectedItemIndex: () -> Int,
     onSelect: (index: Int) -> Unit,
     onPlay: (info: SubjectPreviewItemInfo) -> Unit,
     modifier: Modifier = Modifier,
+    state: LazyStaggeredGridState = rememberLazyStaggeredGridState()
 ) {
-    val lazyListState = rememberLazyListState()
     var height by remember { mutableIntStateOf(0) }
 
     val bringIntoViewRequesters = remember { mutableStateMapOf<Int, BringIntoViewRequester>() }
 
     SearchDefaults.ResultColumn(
         items,
+        problem = {
+            SearchDefaults.SearchProblemCard(
+                problem = it,
+                onRetry = { items.retry() },
+                onLogin = {}, // noop
+                modifier = Modifier.fillMaxWidth(),
+            )
+        },
         modifier
             .focusGroup()
             .onSizeChanged { height = it.height }
-            .keyboardDirectionToSelectItem(selectedItemIndex, onSelect, lazyListState)
-            .keyboardPageToScroll({ height.toFloat() }, lazyListState),
-        lazyListState = lazyListState,
+            .keyboardDirectionToSelectItem(
+                selectedItemIndex,
+            ) {
+                state.animateScrollToItem(it)
+                onSelect(it)
+            }
+            .keyboardPageToScroll({ height.toFloat() }) {
+                state.animateScrollBy(it)
+            },
+        lazyStaggeredGridState = state,
+        horizontalArrangement = Arrangement.spacedBy(currentWindowAdaptiveInfo().windowSizeClass.paneHorizontalPadding),
     ) {
+        if (showSummary()) {
+            item(span = StaggeredGridItemSpan.FullLine) {
+                SearchDefaults.SearchSummaryItem(
+                    items,
+                    Modifier.animateItem(
+                        fadeInSpec = AniThemeDefaults.feedItemFadeInSpec,
+                        placementSpec = AniThemeDefaults.feedItemPlacementSpec,
+                        fadeOutSpec = AniThemeDefaults.feedItemFadeOutSpec,
+                    ),
+                )
+            }
+        }
+
         items(
             items.itemCount,
             key = items.itemKey { it.subjectId },
@@ -183,6 +222,11 @@ internal fun SearchPageResultColumn(
                     onPlay = { onPlay(info) },
                     info = info,
                     Modifier
+                        .animateItem(
+                            fadeInSpec = AniThemeDefaults.feedItemFadeInSpec,
+                            placementSpec = AniThemeDefaults.feedItemPlacementSpec,
+                            fadeOutSpec = AniThemeDefaults.feedItemFadeOutSpec,
+                        )
                         .fillMaxWidth()
                         .bringIntoViewRequester(requester)
                         .padding(vertical = currentWindowAdaptiveInfo().windowSizeClass.paneVerticalPadding / 2),

@@ -33,7 +33,6 @@ import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.episode.EpisodeProgressRepository
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
-import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.navigation.BrowserNavigator
 import me.him188.ani.app.platform.ContextMP
 import me.him188.ani.app.ui.foundation.AbstractViewModel
@@ -70,8 +69,6 @@ class SubjectDetailsViewModel(
     private val subjectCollectionFlow = subjectCollectionRepository.subjectCollectionFlow(subjectId).shareInBackground()
     private val subjectInfo: Flow<SubjectInfo> = subjectCollectionFlow.map { it.subjectInfo }
 
-    lateinit var navigator: AniNavigator
-
     val authState = AuthState()
 
     private val subjectProgressInfoState =
@@ -81,15 +78,10 @@ class SubjectDetailsViewModel(
     val subjectProgressState = kotlin.run {
         SubjectProgressStateFactory(
             episodeProgressRepository,
-            onPlay = { subjectId, episodeId ->
-                navigator.navigateEpisodeDetails(subjectId, episodeId)
-            },
         ).run {
             SubjectProgressState(
-                stateOf(subjectId),
                 subjectProgressInfoState,
                 episodeProgressInfoList(subjectId).produceState(emptyList()),
-                onPlay,
             )
         }
     }

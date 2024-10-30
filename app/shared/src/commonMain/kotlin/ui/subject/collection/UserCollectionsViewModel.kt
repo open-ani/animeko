@@ -9,8 +9,10 @@
 
 package me.him188.ani.app.ui.subject.collection
 
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.paging.compose.launchAsLazyPagingItemsIn
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.firstOrNull
@@ -51,6 +53,8 @@ class UserCollectionsViewModel : AbstractViewModel(), KoinComponent {
 
     val authState: AuthState = AuthState()
 
+    val lazyGridState = LazyGridState()
+
     private val episodeListStateFactory: EpisodeListStateFactory = EpisodeListStateFactory(
         settingsRepository,
         episodeCollectionRepository,
@@ -59,9 +63,6 @@ class UserCollectionsViewModel : AbstractViewModel(), KoinComponent {
     )
     private val subjectProgressStateFactory: SubjectProgressStateFactory = SubjectProgressStateFactory(
         episodeProgressRepository,
-        onPlay = { subjectId: Int, episodeId ->
-            navigator.navigateEpisodeDetails(subjectId, episodeId)
-        },
     )
 
     val myCollectionsSettings: MyCollectionsSettings by settingsRepository.uiSettings.flow
@@ -80,6 +81,9 @@ class UserCollectionsViewModel : AbstractViewModel(), KoinComponent {
             createEditableSubjectCollectionTypeState(it)
         },
     )
+
+    // 否则会导致切换页面后需要重新加载并丢失滚动进度
+    val items = state.currentPager.launchAsLazyPagingItemsIn(backgroundScope)
 
     private fun createEditableSubjectCollectionTypeState(collection: SubjectCollectionInfo): EditableSubjectCollectionTypeState =
         // 必须不能有后台持续任务

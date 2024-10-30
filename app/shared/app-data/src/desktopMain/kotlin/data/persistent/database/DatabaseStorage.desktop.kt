@@ -17,6 +17,6 @@ import me.him188.ani.app.platform.DesktopContext
 actual fun Context.createDatabaseBuilder(): RoomDatabase.Builder<AniDatabase> {
     this as DesktopContext
     return Room.databaseBuilder<AniDatabase>(
-        name = dataDir.resolve("ani_room_database.db").absolutePath,
+        name = dataDir.resolve("ani_room_database_main.db").absolutePath,
     )
 }

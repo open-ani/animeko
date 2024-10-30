@@ -74,6 +74,7 @@ internal fun PreviewSubjectDetails() {
                 SubjectDetailsDefaults.SelectEpisodeButtons(
                     rememberTestSubjectProgressState(info = TestSubjectProgressInfos.ContinueWatching2),
                     onShowEpisodeList = {},
+                    onPlay = {},
                 )
             },
             connectedScrollState = connectedScrollState,

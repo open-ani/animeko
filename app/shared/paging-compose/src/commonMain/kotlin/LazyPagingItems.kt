@@ -29,11 +29,13 @@ import androidx.paging.PagingDataEvent
 import androidx.paging.PagingDataPresenter
 import androidx.paging.PagingSource
 import androidx.paging.RemoteMediator
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
@@ -200,6 +202,32 @@ public fun <T : Any> Flow<PagingData<T>>.collectAsLazyPagingItems(
     }
 
     LaunchedEffect(lazyPagingItems) {
+        if (context == EmptyCoroutineContext) {
+            lazyPagingItems.collectLoadState()
+        } else {
+            withContext(context) { lazyPagingItems.collectLoadState() }
+        }
+    }
+
+    return lazyPagingItems
+}
+
+// Ani ADDED:
+fun <T : Any> Flow<PagingData<T>>.launchAsLazyPagingItemsIn(
+    scope: CoroutineScope,
+    context: CoroutineContext = EmptyCoroutineContext
+): LazyPagingItems<T> {
+    val lazyPagingItems = LazyPagingItems(this)
+
+    scope.launch {
+        if (context == EmptyCoroutineContext) {
+            lazyPagingItems.collectPagingData()
+        } else {
+            withContext(context) { lazyPagingItems.collectPagingData() }
+        }
+    }
+
+    scope.launch {
         if (context == EmptyCoroutineContext) {
             lazyPagingItems.collectLoadState()
         } else {

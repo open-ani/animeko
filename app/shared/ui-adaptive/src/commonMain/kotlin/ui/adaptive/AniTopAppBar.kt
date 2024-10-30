@@ -32,6 +32,7 @@ import androidx.compose.material3.TopAppBarColors
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.ui.Alignment
@@ -103,12 +104,20 @@ fun AniTopAppBar(
                 }
 
                 Box(
-                    Modifier.paddingIfNotEmpty(
-                        start = horizontalPadding,
-                        end = (horizontalPadding - 4.dp - additionalPadding).coerceAtLeast(0.dp), // `actions` 自带 4
-                    ),
+                    Modifier
+                        .minimumInteractiveComponentSize()
+                        .paddingIfNotEmpty(
+                            start = horizontalPadding,
+                            end = (horizontalPadding - 4.dp - additionalPadding).coerceAtLeast(0.dp), // `actions` 自带 4
+                        ),
                 ) {
-                    Box(Modifier.size(48.dp)) {
+                    Box(
+                        Modifier.size(
+                            if (windowSizeClass.windowWidthSizeClass.isAtLeastMedium
+                                && windowSizeClass.windowHeightSizeClass.isAtLeastMedium
+                            ) 48.dp else 36.dp,
+                        ),
+                    ) {
                         avatar()
                     }
                 }
@@ -130,7 +139,7 @@ object AniTopAppBarDefaults {
 }
 
 @Composable
-private fun AdaptiveSearchBar(
+fun AdaptiveSearchBar(
     windowSizeClass: WindowSizeClass,
     searchIconButton: @Composable (() -> Unit)?,
     modifier: Modifier = Modifier,
@@ -152,6 +161,7 @@ private fun AdaptiveSearchBar(
                     if (searchBar != null) {
                         Box(
                             Modifier.sizeIn(minWidth = 240.dp, maxWidth = 360.dp),
+                            contentAlignment = Alignment.CenterEnd,
                         ) {
                             searchBar()
                         }
@@ -161,6 +171,7 @@ private fun AdaptiveSearchBar(
                     if (searchBar != null) {
                         Box(
                             Modifier.sizeIn(minWidth = 360.dp, maxWidth = 480.dp),
+                            contentAlignment = Alignment.CenterEnd,
                         ) {
 
                             searchBar()

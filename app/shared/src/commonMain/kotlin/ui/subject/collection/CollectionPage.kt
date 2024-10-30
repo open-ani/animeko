@@ -23,6 +23,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.HowToReg
@@ -64,7 +66,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.paging.LoadState
 import androidx.paging.PagingData
-import androidx.paging.compose.collectAsLazyPagingItemsWithLifecycle
+import androidx.paging.compose.LazyPagingItems
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.UserInfo
@@ -142,7 +144,7 @@ class UserCollectionsState(
 
     val collectionCounts: SubjectCollectionCounts? by collectionCountsState
 
-    fun updateQuery(query: CollectionsFilterQuery.() -> CollectionsFilterQuery) {
+    private fun updateQuery(query: CollectionsFilterQuery.() -> CollectionsFilterQuery) {
         val current = filterQueryPair
         filterQueryPair = current.copy(current.first, current.second.let(query))
     }
@@ -156,14 +158,15 @@ class UserCollectionsState(
 @Composable
 fun CollectionPage(
     state: UserCollectionsState,
+    items: LazyPagingItems<SubjectCollectionInfo>,
     windowInsets: WindowInsets,
     onClickSearch: () -> Unit,
     onClickSettings: () -> Unit,
     modifier: Modifier = Modifier,
     enableAnimation: Boolean = true,
+    lazyGridState: LazyGridState = rememberLazyGridState(),
 ) {
     // 如果有缓存, 列表区域要展示缓存, 错误就用图标放在角落
-    val items = state.currentPager.collectAsLazyPagingItemsWithLifecycle()
     CollectionPageLayout(
         windowInsets,
         onClickSettings = onClickSettings,
@@ -214,23 +217,6 @@ fun CollectionPage(
                 )
             }
 
-            // TODO: empty hint 
-//            state.authState.isKnownLoggedIn && items.itemCount == 0 && items.loadState.isIdle -> {
-//                Column(
-//                    Modifier.padding(top = 32.dp).padding(horizontal = 16.dp)
-//                        .fillMaxSize(),
-//                    horizontalAlignment = Alignment.CenterHorizontally,
-//                    verticalArrangement = Arrangement.spacedBy(16.dp),
-//                ) {
-//                    Text("~ 空空如也 ~", style = MaterialTheme.typography.titleMedium)
-//
-//                    Button(onClickSearch, Modifier.fillMaxWidth()) {
-//                        Icon(Icons.Rounded.Search, null)
-//                        Text("搜索", Modifier.padding(start = 8.dp))
-//                    }
-//                }
-//            }
-
             else -> {
                 PullToRefreshBox(
                     items.loadState.refresh is LoadState.Loading,
@@ -249,6 +235,7 @@ fun CollectionPage(
                             )
                         },
                         enableAnimation = enableAnimation,
+                        gridState = lazyGridState,
                     )
                 }
             }
@@ -441,6 +428,11 @@ private fun SubjectCollectionItem(
                 } else {
                     SubjectProgressButton(
                         subjectProgressState,
+                        onPlay = {
+                            subjectProgressState.episodeIdToPlay?.let {
+                                navigator.navigateEpisodeDetails(subjectCollection.subjectId, it)
+                            }
+                        },
                     )
                 }
             }

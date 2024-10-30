@@ -11,6 +11,7 @@ package me.him188.ani.app.data.persistent.database.dao
 
 import androidx.room.Dao
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.Upsert
@@ -25,10 +26,24 @@ interface SearchHistoryDao {
     suspend fun deleteBySequence(sequence: Int)
 
     @Query("select * from `search_history` order by sequence desc")
-    fun getFlow(): Flow<List<SearchHistoryEntity>>
+    fun all(): Flow<List<SearchHistoryEntity>>
 }
 
-@Entity(tableName = "search_history")
+@Entity(
+    tableName = "search_history",
+    indices = [
+        Index(
+            value = ["content"],
+            name = "distinct_content",
+            unique = true,
+        ),
+        Index(
+            value = ["sequence"],
+            name = "sequence_desc",
+            orders = [Index.Order.DESC],
+        ),
+    ],
+)
 data class SearchHistoryEntity(
     @PrimaryKey(autoGenerate = true) val sequence: Int = 0,
     val content: String

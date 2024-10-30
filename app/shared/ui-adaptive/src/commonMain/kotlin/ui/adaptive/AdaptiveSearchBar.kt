@@ -20,7 +20,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.window.core.layout.WindowWidthSizeClass
+import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.layout.compareTo
+import me.him188.ani.utils.platform.isMobile
 
 /**
  * @see DockedSearchBar
@@ -38,7 +40,9 @@ fun AdaptiveSearchBar(
     windowInsets: WindowInsets = SearchBarDefaults.windowInsets,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    if (currentWindowAdaptiveInfo().windowSizeClass.windowWidthSizeClass >= WindowWidthSizeClass.MEDIUM) {
+    if (currentWindowAdaptiveInfo().windowSizeClass.windowWidthSizeClass >= WindowWidthSizeClass.MEDIUM
+        && !LocalPlatform.current.isMobile() // #1104
+    ) {
         PopupSearchBar(
             inputField,
             expanded,

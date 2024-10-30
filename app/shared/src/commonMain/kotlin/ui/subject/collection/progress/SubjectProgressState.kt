@@ -26,6 +26,7 @@ import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
 import me.him188.ani.app.data.repository.episode.EpisodeProgressRepository
 import me.him188.ani.app.domain.media.cache.EpisodeCacheStatus
+import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.tools.WeekFormatter
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.datasources.api.EpisodeSort
@@ -38,7 +39,6 @@ import kotlin.coroutines.CoroutineContext
 @Stable
 class SubjectProgressStateFactory(
     private val episodeProgressRepository: EpisodeProgressRepository,
-    val onPlay: (subjectId: Int, episodeId: Int) -> Unit,
     private val flowCoroutineContext: CoroutineContext = Dispatchers.Default,
     val getCurrentDate: () -> PackedDate = { PackedDate.now() },
 ) {
@@ -71,12 +71,11 @@ fun SubjectProgressStateFactory.rememberSubjectProgressState(
     }
     val episodeProgressInfoList = remember(subjectId) { episodeProgressInfoList(subjectId) }
         .collectAsStateWithLifecycle(emptyList())
+    val navigator = LocalNavigator.current
     return remember(info, this, subjectId) {
         SubjectProgressState(
-            stateOf(subjectId),
             info,
             episodeProgressInfoList,
-            onPlay = onPlay,
         )
     }
 }
@@ -86,22 +85,15 @@ fun SubjectProgressStateFactory.rememberSubjectProgressState(
  */
 @Stable // Test: AiringProgressTests
 class SubjectProgressState(
-    subjectId: State<Int>,
     info: State<SubjectProgressInfo?>,
     episodeProgressInfos: State<List<EpisodeProgressInfo>>,
-    private val onPlay: (subjectId: Int, episodeId: Int) -> Unit,
     private val weekFormatter: WeekFormatter = WeekFormatter.System,
 ) {
     private val episodeProgressInfos by episodeProgressInfos
-    private val subjectId by subjectId
 
     @Stable
     fun episodeCacheStatus(episodeId: Int): EpisodeCacheStatus? {
         return episodeProgressInfos.find { it.episode.episodeId == episodeId }?.cacheStatus
-    }
-
-    fun play(episodeId: Int) {
-        onPlay(subjectId, episodeId)
     }
 
     private val continueWatchingStatus by derivedStateOf {
@@ -163,10 +155,6 @@ class SubjectProgressState(
             else -> false
         }
     }
-
-    fun onClickButton() {
-        episodeIdToPlay?.let { play(it) }
-    }
 }
 
 
@@ -205,10 +193,8 @@ fun rememberTestSubjectProgressState(
 ): SubjectProgressState {
     return remember {
         SubjectProgressState(
-            stateOf(1),
             info = stateOf(info),
             episodeProgressInfos = mutableStateOf(emptyList()),
-            onPlay = { _, _ -> },
         )
     }
 }
