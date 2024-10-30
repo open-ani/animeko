@@ -50,6 +50,7 @@ includeProject(":torrent:anitorrent:anitorrent-native")
 
 // client
 includeProject(":app:shared")
+includeProject(":app:shared:paging-compose")
 includeProject(":app:shared:app-platform")
 includeProject(":app:shared:app-data")
 includeProject(":app:shared:ui-foundation")

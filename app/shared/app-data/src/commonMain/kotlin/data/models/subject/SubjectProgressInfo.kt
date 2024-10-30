@@ -11,10 +11,9 @@ package me.him188.ani.app.data.models.subject
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
+import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.data.models.episode.EpisodeInfo
-import me.him188.ani.app.data.models.episode.episode
 import me.him188.ani.app.data.models.episode.isKnownCompleted
-import me.him188.ani.app.data.models.episode.type
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.ifInvalid
@@ -34,7 +33,7 @@ data class SubjectProgressInfo(
     val nextEpisodeIdToPlay: Int?,
 ) {
     /**
-     * 仅供 [calculate]
+     * 仅供 [compute]
      */
     class Episode(
         val id: Int,
@@ -58,25 +57,27 @@ data class SubjectProgressInfo(
             null,
         )
 
-        fun calculate(
-            collection: SubjectCollection,
+        fun compute(
+            subjectInfo: SubjectInfo,
+            episodes: List<EpisodeCollectionInfo>,
+            currentDate: PackedDate,
         ): SubjectProgressInfo {
-            return calculate(
-                collection.hasStarted,
-                collection.episodes.map {
+            return compute(
+                subjectStarted = currentDate > subjectInfo.airDate,
+                episodes = episodes.map {
                     Episode(
-                        it.episode.id,
-                        it.type,
-                        it.episode.sort,
-                        it.episode.airDate,
-                        it.episode.isKnownCompleted,
+                        it.episodeId,
+                        it.collectionType,
+                        it.episodeInfo.sort,
+                        it.episodeInfo.airDate,
+                        it.episodeInfo.isKnownCompleted,
                     )
                 },
-                collection.info.airDate,
+                subjectAirDate = subjectInfo.airDate,
             )
         }
 
-        fun calculate(
+        fun compute(
             subjectStarted: Boolean,
             episodes: List<Episode>,
             subjectAirDate: PackedDate,

@@ -9,7 +9,7 @@
 
 package me.him188.ani.app.data.models
 
-import me.him188.ani.app.data.models.episode.EpisodeCollections
+import me.him188.ani.app.domain.episode.EpisodeCollections
 import me.him188.ani.datasources.api.PackedDate
 import kotlin.test.Test
 import kotlin.test.assertFalse

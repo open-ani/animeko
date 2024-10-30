@@ -15,7 +15,7 @@ import kotlinx.coroutines.flow.toList
 import me.him188.ani.app.data.models.ApiFailure
 import me.him188.ani.app.data.models.ApiResponse
 import me.him188.ani.app.data.models.UserInfo
-import me.him188.ani.app.data.repository.GuestSession
+import me.him188.ani.app.data.repository.user.GuestSession
 import me.him188.ani.app.domain.media.fetch.AtomicInteger
 import kotlin.test.Test
 import kotlin.test.assertEquals

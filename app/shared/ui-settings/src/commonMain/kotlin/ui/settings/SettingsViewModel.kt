@@ -14,7 +14,6 @@ import androidx.compose.runtime.getValue
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.get
 import kotlinx.coroutines.flow.map
-import me.him188.ani.app.domain.bangumi.BangumiSubjectProvider
 import me.him188.ani.app.data.models.danmaku.DanmakuFilterConfig
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
 import me.him188.ani.app.data.models.preference.DanmakuSettings
@@ -27,17 +26,16 @@ import me.him188.ani.app.data.models.preference.UISettings
 import me.him188.ani.app.data.models.preference.UpdateSettings
 import me.him188.ani.app.data.models.preference.VideoResolverSettings
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
-import me.him188.ani.app.data.repository.DanmakuRegexFilterRepository
-import me.him188.ani.app.data.repository.MediaSourceInstanceRepository
-import me.him188.ani.app.data.repository.MediaSourceSubscriptionRepository
-import me.him188.ani.app.data.repository.SettingsRepository
+import me.him188.ani.app.data.repository.media.MediaSourceInstanceRepository
+import me.him188.ani.app.data.repository.media.MediaSourceSubscriptionRepository
+import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepository
+import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.danmaku.AniBangumiSeverBaseUrls
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceCodecManager
 import me.him188.ani.app.domain.mediasource.codec.serializeSubscriptionToString
 import me.him188.ani.app.domain.mediasource.subscription.MediaSourceSubscriptionUpdater
 import me.him188.ani.app.platform.PermissionManager
-import me.him188.ani.app.domain.search.SubjectProvider
 import me.him188.ani.app.ui.foundation.launchInBackground
 import me.him188.ani.app.ui.settings.danmaku.DanmakuRegexFilterState
 import me.him188.ani.app.ui.settings.framework.AbstractSettingsViewModel
@@ -54,6 +52,7 @@ import me.him188.ani.app.ui.settings.tabs.media.source.MediaSourceLoader
 import me.him188.ani.app.ui.settings.tabs.media.source.MediaSourceSubscriptionGroupState
 import me.him188.ani.datasources.api.source.ConnectionStatus
 import me.him188.ani.datasources.api.source.asAutoCloseable
+import me.him188.ani.datasources.bangumi.BangumiClient
 import me.him188.ani.utils.ktor.createDefaultHttpClient
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -61,7 +60,7 @@ import org.koin.core.component.inject
 class SettingsViewModel : AbstractSettingsViewModel(), KoinComponent {
     private val settingsRepository: SettingsRepository by inject()
     private val permissionManager: PermissionManager by inject()
-    private val bangumiSubjectProvider: SubjectProvider by inject()
+    private val bangumiClient: BangumiClient by inject()
     private val danmakuRegexFilterRepository: DanmakuRegexFilterRepository by inject()
 
     private val mediaSourceManager: MediaSourceManager by inject()
@@ -164,9 +163,9 @@ class SettingsViewModel : AbstractSettingsViewModel(), KoinComponent {
     val otherTesters: DefaultConnectionTesterRunner<ConnectionTester> = DefaultConnectionTesterRunner(
         listOf(
             ConnectionTester(
-                id = BangumiSubjectProvider.ID, // Bangumi 顺便也测一下
+                id = "Bangumi", // Bangumi 顺便也测一下
             ) {
-                if (bangumiSubjectProvider.testConnection() == ConnectionStatus.SUCCESS) {
+                if (bangumiClient.testConnection() == ConnectionStatus.SUCCESS) {
                     ConnectionTestResult.SUCCESS
                 } else {
                     ConnectionTestResult.FAILED

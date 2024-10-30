@@ -13,6 +13,10 @@ package me.him188.ani.app.ui.foundation.theme
 
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.core.FiniteAnimationSpec
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.VisibilityThreshold
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -26,6 +30,7 @@ import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.IntOffset
 import me.him188.ani.app.ui.foundation.animation.EmphasizedAccelerateEasing
 import me.him188.ani.app.ui.foundation.animation.EmphasizedDecelerateEasing
 import me.him188.ani.app.ui.foundation.animation.StandardAccelerate
@@ -86,6 +91,24 @@ object AniThemeDefaults {
             contentColor = contentColorFor(MaterialTheme.colorScheme.surfaceContainerHigh),
         )
 
+
+    @Stable
+    val feedItemFadeInSpec: FiniteAnimationSpec<Float> = tween(
+        EasingDurations.standardAccelerate,
+        delayMillis = EasingDurations.standardDecelerate,
+        easing = StandardAccelerate,
+    )
+
+    @Stable
+    val feedItemPlacementSpec = spring(
+        stiffness = Spring.StiffnessMediumLow,
+        visibilityThreshold = IntOffset.VisibilityThreshold,
+    )
+
+    @Stable
+    val feedItemFadeOutSpec: FiniteAnimationSpec<Float> =
+        tween(EasingDurations.standardDecelerate, easing = StandardDecelerate)
+
     /**
      * 适用中小型组件.
      */
@@ -93,13 +116,13 @@ object AniThemeDefaults {
     val standardAnimatedContentTransition: AnimatedContentTransitionScope<*>.() -> ContentTransform = {
         // Follow M3 Clean fades
         val fadeIn = fadeIn(
-            animationSpec = tween(
+            tween(
                 EasingDurations.standardAccelerate,
                 delayMillis = EasingDurations.standardDecelerate,
                 easing = StandardAccelerate,
             ),
         )
-        val fadeOut = fadeOut(animationSpec = tween(EasingDurations.standardDecelerate, easing = StandardDecelerate))
+        val fadeOut = fadeOut(feedItemFadeOutSpec)
         fadeIn.togetherWith(fadeOut)
     }
 

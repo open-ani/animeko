@@ -43,11 +43,12 @@ import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.search.SearchState
 
 @Stable
-class SuggestionSearchBarState<T>(
+class SuggestionSearchBarState<T : Any>(
     historyState: State<List<String>>, // must be distinct
     suggestionsState: State<List<String>>, // must be distinct
-    queryState: MutableState<String> = mutableStateOf(""),
     private val searchState: SearchState<T>,
+    queryState: MutableState<String> = mutableStateOf(""),
+    private val onStartSearch: (query: String) -> Unit = {},
 ) {
     var query by queryState
     var expanded by mutableStateOf(false)
@@ -68,6 +69,7 @@ class SuggestionSearchBarState<T>(
     fun startSearch() {
         searchState.startSearch()
         expanded = false
+        onStartSearch(query)
     }
 }
 
@@ -78,7 +80,7 @@ enum class SuggestionSearchPreviewType {
 }
 
 @Composable
-fun <T> SuggestionSearchBar(
+fun <T : Any> SuggestionSearchBar(
     state: SuggestionSearchBarState<T>,
     modifier: Modifier = Modifier,
     inputFieldModifier: Modifier = Modifier,

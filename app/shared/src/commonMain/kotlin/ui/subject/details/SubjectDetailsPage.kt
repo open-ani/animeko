@@ -105,6 +105,7 @@ import me.him188.ani.utils.platform.isMobile
 fun SubjectDetailsScene(
     vm: SubjectDetailsViewModel,
     modifier: Modifier = Modifier,
+    onPlay: (episodeId: Int) -> Unit,
     showTopBar: Boolean = true,
     showBlurredBackground: Boolean = true,
     windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
@@ -134,7 +135,7 @@ fun SubjectDetailsScene(
         onClickOpenExternal = { vm.browseSubjectBangumi(context) },
         collectionData = {
             SubjectDetailsDefaults.CollectionData(
-                collectionStats = vm.subjectDetailsState.info.collection,
+                collectionStats = vm.subjectDetailsState.info.collectionStats,
             )
         },
         collectionActions = {
@@ -154,6 +155,7 @@ fun SubjectDetailsScene(
             SubjectDetailsDefaults.SelectEpisodeButtons(
                 vm.subjectProgressState,
                 onShowEpisodeList = { showSelectEpisode = true },
+                onPlay = onPlay,
             )
         },
         connectedScrollState = connectedScrollState,

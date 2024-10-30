@@ -41,7 +41,7 @@ class SubjectProgressInfoTest {
         episodes: List<Episode>,
         subjectAirDate: PackedDate = Invalid,
     ): SubjectProgressInfo {
-        return SubjectProgressInfo.calculate(
+        return SubjectProgressInfo.compute(
             subjectStarted,
             episodes,
             subjectAirDate,

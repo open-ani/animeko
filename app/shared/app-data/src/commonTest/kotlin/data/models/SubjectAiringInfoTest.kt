@@ -23,7 +23,7 @@ class SubjectAiringInfoTest {
     private fun ep(
         sort: Int,
         airDate: PackedDate = PackedDate.Invalid,
-    ): EpisodeInfo = EpisodeInfo(id = ++idCounter, sort = EpisodeSort(sort), airDate = airDate)
+    ): EpisodeInfo = EpisodeInfo(episodeId = ++idCounter, sort = EpisodeSort(sort), airDate = airDate)
 
     @Test
     fun `empty episode list is upcoming`() {

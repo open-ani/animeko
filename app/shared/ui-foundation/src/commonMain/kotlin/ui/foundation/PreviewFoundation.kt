@@ -85,7 +85,7 @@ inline fun ProvideFoundationCompositionLocalsForPreview(
             aniNavigator.setNavController(navController)
         }
         ProvidePlatformCompositionLocalsForPreview {
-            MaterialTheme(colorScheme = if (isSystemInDarkTheme()) aniLightColorTheme() else aniDarkColorTheme()) {
+            MaterialTheme(colorScheme = if (isSystemInDarkTheme()) aniDarkColorTheme() else aniLightColorTheme()) {
                 content()
             }
         }

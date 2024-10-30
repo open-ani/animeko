@@ -1,19 +1,10 @@
 /*
- * Ani
- * Copyright (C) 2022-2024 Him188
+ * Copyright (C) 2024 OpenAni and contributors.
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
 package me.him188.ani.datasources.bangumi
@@ -32,6 +23,7 @@ import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
@@ -55,7 +47,7 @@ import kotlinx.serialization.json.put
 import me.him188.ani.datasources.api.paging.Paged
 import me.him188.ani.datasources.api.source.ConnectionStatus
 import me.him188.ani.datasources.bangumi.apis.DefaultApi
-import me.him188.ani.datasources.bangumi.client.BangumiClientSubjects
+import me.him188.ani.datasources.bangumi.client.BangumiSearchApi
 import me.him188.ani.datasources.bangumi.models.BangumiSubject
 import me.him188.ani.datasources.bangumi.models.BangumiSubjectType
 import me.him188.ani.datasources.bangumi.models.BangumiUser
@@ -92,7 +84,7 @@ interface BangumiClient : Closeable {
         @SerialName("refresh_token") val refreshToken: String,
     )
 
-    suspend fun executeGraphQL(query: String): JsonObject
+    suspend fun executeGraphQL(query: String, variables: JsonObject? = null): JsonObject
 
     @Serializable
     data class GetTokenStatusResponse(
@@ -113,7 +105,7 @@ interface BangumiClient : Closeable {
     suspend fun getApi(): DefaultApi
     suspend fun getNextApi(): SubjectBangumiNextApi
 
-    suspend fun getSubjects(): BangumiClientSubjects
+    suspend fun getSearchApi(): BangumiSearchApi
 
     companion object Factory {
         fun create(
@@ -141,10 +133,12 @@ fun createBangumiClient(
         }
     }
 }
+
 class DelegateBangumiClient(
     private val client: Flow<BangumiClient>,
 ) : BangumiClient {
-    override suspend fun executeGraphQL(query: String): JsonObject = client.first().executeGraphQL(query)
+    override suspend fun executeGraphQL(query: String, variables: JsonObject?): JsonObject =
+        client.first().executeGraphQL(query, variables)
 
     override suspend fun getSelfInfoByToken(accessToken: String?): BangumiUser =
         client.first().getSelfInfoByToken(accessToken)
@@ -159,7 +153,7 @@ class DelegateBangumiClient(
 
     override suspend fun getApi(): DefaultApi = client.first().getApi()
     override suspend fun getNextApi(): SubjectBangumiNextApi = client.first().getNextApi()
-    override suspend fun getSubjects(): BangumiClientSubjects = client.first().getSubjects()
+    override suspend fun getSearchApi(): BangumiSearchApi = client.first().getSearchApi()
 
     override fun close() {
     }
@@ -178,12 +172,15 @@ class BangumiClientImpl(
 
     private val logger = logger(this::class)
 
-    override suspend fun executeGraphQL(query: String): JsonObject {
+    override suspend fun executeGraphQL(query: String, variables: JsonObject?): JsonObject {
         val resp = httpClient.post("$BANGUMI_API_HOST/v0/graphql") {
             contentType(ContentType.Application.Json)
             setBody(
                 buildJsonObject {
                     put("query", query)
+                    if (variables != null) {
+                        put("variables", variables)
+                    }
                 },
             )
         }
@@ -256,7 +253,7 @@ class BangumiClientImpl(
         val data: List<BangumiSubject>? = null,
     )
 
-    private val subjects = object : BangumiClientSubjects {
+    private val subjects = object : BangumiSearchApi {
         override suspend fun searchSubjectByKeywords(
             keyword: String,
             offset: Int?,
@@ -330,6 +327,25 @@ class BangumiClientImpl(
                 throw IllegalStateException("Failed to search subject by keywords with old api: $resp")
             }
 
+            if (resp.status == HttpStatusCode.NotFound) {
+                return Paged.empty()
+            }
+
+            if (resp.contentType() == ContentType.Text.Html) {
+                // 对不起，您在  秒内只能进行一次搜索，请返回。
+                val text = resp.bodyAsText()
+                if (text.contains("内只能进行一次搜索")) {
+                    /*
+                    用客户端 get, 如果没有搜索结果, 会返回一个 HTML 提示"对不起，您在  秒内只能进行一次搜索，请返回。", 但是用 chrome 就正常返回了 404
+
+                    https://api.bgm.tv/search/subject/%E6%90%9C%E7%B4%A2%E4%B8%8D%E5%88%B0%E6%90%9C%E7%B4%A2%E4%B8%8D%E5%88%B0%E6%90%9C%E7%B4%A2%E4%B8%8D%E5%88%B0%E6%B5%8B%E8%AF%95?type=2&responseGroup=SMALL&start=0&max_results=90
+                     */
+                    // 所以我们这里当它为空
+                    return Paged.empty()
+//                    throw BangumiRateLimitedException()
+                }
+            }
+
             val json = resp.body<JsonObject>()
             return json.run {
                 // results: subject total
@@ -354,7 +370,7 @@ class BangumiClientImpl(
         }
     }
 
-    override suspend fun getSubjects(): BangumiClientSubjects = subjects
+    override suspend fun getSearchApi(): BangumiSearchApi = subjects
 
     override fun close() {
         httpClient.close()
@@ -367,3 +383,5 @@ class BangumiClientImpl(
         }
     }
 }
+
+class BangumiRateLimitedException : Exception("Rate limited by Bangumi API")

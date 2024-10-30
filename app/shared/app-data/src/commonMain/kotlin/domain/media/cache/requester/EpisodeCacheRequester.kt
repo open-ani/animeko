@@ -18,8 +18,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.subject.SubjectInfo
-import me.him188.ani.app.data.models.subject.SubjectManager
-import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.requester.CacheRequestStage.MediaSelected
 import me.him188.ani.app.domain.media.cache.storage.MediaCacheStorage
 import me.him188.ani.app.domain.media.cache.storage.contains
@@ -84,13 +82,13 @@ data class EpisodeCacheRequest(
     val episodeInfo: EpisodeInfo,
 )
 
-suspend fun EpisodeCacheRequester.request(
-    subjectId: Int, episodeId: Int, subjectManager: SubjectManager,
-): CacheRequestStage.SelectMedia {
-    val subjectInfo = subjectManager.getSubjectInfo(subjectId)
-    val episodeInfo = subjectManager.getEpisodeInfo(episodeId)
-    return request(EpisodeCacheRequest(subjectInfo, episodeInfo))
-}
+//suspend fun EpisodeCacheRequester.request(
+//    subjectId: Int, episodeId: Int, subjectManager: SubjectManager,
+//): CacheRequestStage.SelectMedia {
+//    val subjectInfo = subjectManager.getSubjectInfo(subjectId)
+//    val episodeInfo = subjectManager.getEpisodeInfo(episodeId)
+//    return request(EpisodeCacheRequest(subjectInfo, episodeInfo))
+//}
 
 fun EpisodeCacheRequester(
     mediaFetcherLazy: Flow<MediaFetcher>,
@@ -131,7 +129,7 @@ class EpisodeCacheRequesterImpl(
     ) : CacheRequestStage.SelectMedia, AbstractWorkingStage(request), CloseableStage {
         override val mediaSelector: MediaSelector by lazy {
             mediaSelectorFactory.create(
-                request.subjectInfo.id,
+                request.subjectInfo.subjectId,
                 fetchSession.cumulativeResults,
             )
         }

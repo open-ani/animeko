@@ -9,8 +9,6 @@
 
 package me.him188.ani.app.ui.foundation.interaction
 
-import androidx.compose.foundation.gestures.animateScrollBy
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
@@ -23,8 +21,7 @@ import kotlinx.coroutines.launch
 
 fun Modifier.keyboardDirectionToSelectItem(
     selectedItemIndex: () -> Int,
-    onSelect: (Int) -> Unit,
-    lazyListState: LazyListState,
+    onSelect: suspend (Int) -> Unit,
 ) = composed {
     val scope = rememberCoroutineScope()
     onPreviewKeyEvent {
@@ -33,7 +30,6 @@ fun Modifier.keyboardDirectionToSelectItem(
                 Key.DirectionUp -> {
                     scope.launch {
                         val newIndex = (selectedItemIndex() - 1).coerceAtLeast(0)
-                        lazyListState.animateScrollToItem(newIndex)
                         onSelect(newIndex)
                     }
                     true
@@ -42,7 +38,6 @@ fun Modifier.keyboardDirectionToSelectItem(
                 Key.DirectionDown -> {
                     scope.launch {
                         val newIndex = selectedItemIndex() + 1
-                        lazyListState.animateScrollToItem(newIndex)
                         onSelect(newIndex)
                     }
                     true
@@ -56,19 +51,19 @@ fun Modifier.keyboardDirectionToSelectItem(
 
 fun Modifier.keyboardPageToScroll(
     height: () -> Float,
-    lazyListState: LazyListState,
+    onScrollBy: suspend (px: Float) -> Unit,
 ) = composed {
     val scope = rememberCoroutineScope()
     onPreviewKeyEvent {
         if (it.type == KeyEventType.KeyUp) {
             when (it.key) {
                 Key.PageDown -> {
-                    scope.launch { lazyListState.animateScrollBy(height()) }
+                    scope.launch { onScrollBy(height()) }
                     true
                 }
 
                 Key.PageUp -> {
-                    scope.launch { lazyListState.animateScrollBy(-height()) }
+                    scope.launch { onScrollBy(-height()) }
                     true
                 }
 

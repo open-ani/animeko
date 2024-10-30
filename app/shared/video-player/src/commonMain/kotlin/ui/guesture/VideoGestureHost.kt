@@ -618,19 +618,17 @@ fun VideoGestureHost(
                     Box(
                         Modifier
                             .ifThen(family.swipeLhsForBrightness) {
-                                brightnessController.let { controller ->
-                                    swipeLevelControl(
-                                        controller,
-                                        ((maxHeight - 100.dp) / 40).coerceAtLeast(2.dp),
-                                        Orientation.Vertical,
-                                        step = 0.01f,
-                                        afterStep = {
-                                            indicatorTasker.launch {
-                                                indicatorState.showBrightnessRange(controller.level)
-                                            }
-                                        },
-                                    )
-                                }
+                                swipeLevelControlWithIndicator(
+                                    brightnessController,
+                                    ((maxHeight - 100.dp) / 40).coerceAtLeast(2.dp),
+                                    Orientation.Vertical,
+                                    indicatorState,
+                                    indicatorTasker,
+                                    step = 0.01f,
+                                    setup = {
+                                        indicatorState.state = BRIGHTNESS
+                                    },
+                                )
                             }
                             .weight(1f)
                             .fillMaxHeight(),
@@ -641,19 +639,17 @@ fun VideoGestureHost(
                     Box(
                         Modifier
                             .ifThen(family.swipeRhsForVolume) {
-                                audioController?.let { controller ->
-                                    swipeLevelControl(
-                                        controller,
-                                        ((maxHeight - 100.dp) / 40).coerceAtLeast(2.dp),
-                                        Orientation.Vertical,
-                                        step = 0.05f,
-                                        afterStep = {
-                                            indicatorTasker.launch {
-                                                indicatorState.showVolumeRange(controller.level)
-                                            }
-                                        },
-                                    )
-                                }
+                                swipeLevelControlWithIndicator(
+                                    audioController,
+                                    ((maxHeight - 100.dp) / 40).coerceAtLeast(2.dp),
+                                    Orientation.Vertical,
+                                    indicatorState,
+                                    indicatorTasker,
+                                    step = 0.05f,
+                                    setup = {
+                                        indicatorState.state = VOLUME
+                                    },
+                                )
                             }
                             .weight(1f)
                             .fillMaxHeight(),
@@ -781,19 +777,17 @@ fun VideoGestureHost(
                     Box(
                         Modifier
                             .ifThen(family.swipeLhsForBrightness) {
-                                brightnessController.let { controller ->
-                                    swipeLevelControl(
-                                        controller,
-                                        ((maxHeight - 100.dp) / 40).coerceAtLeast(2.dp),
-                                        Orientation.Vertical,
-                                        step = 0.01f,
-                                        afterStep = {
-                                            indicatorTasker.launch {
-                                                indicatorState.showBrightnessRange(controller.level)
-                                            }
-                                        },
-                                    )
-                                }
+                                swipeLevelControlWithIndicator(
+                                    brightnessController,
+                                    ((maxHeight - 100.dp) / 40).coerceAtLeast(2.dp),
+                                    Orientation.Vertical,
+                                    indicatorState,
+                                    indicatorTasker,
+                                    step = 0.01f,
+                                    setup = {
+                                        indicatorState.state = BRIGHTNESS
+                                    },
+                                )
                             }
                             .weight(1f)
                             .fillMaxHeight(),
@@ -804,19 +798,17 @@ fun VideoGestureHost(
                     Box(
                         Modifier
                             .ifThen(family.swipeRhsForVolume) {
-                                audioController?.let { controller ->
-                                    swipeLevelControl(
-                                        controller,
-                                        ((maxHeight - 100.dp) / 40).coerceAtLeast(2.dp),
-                                        Orientation.Vertical,
-                                        step = 0.05f,
-                                        afterStep = {
-                                            indicatorTasker.launch {
-                                                indicatorState.showVolumeRange(controller.level)
-                                            }
-                                        },
-                                    )
-                                }
+                                swipeLevelControlWithIndicator(
+                                    audioController,
+                                    ((maxHeight - 100.dp) / 40).coerceAtLeast(2.dp),
+                                    Orientation.Vertical,
+                                    indicatorState,
+                                    indicatorTasker,
+                                    step = 0.05f,
+                                    setup = {
+                                        indicatorState.state = VOLUME
+                                    },
+                                )
                             }
                             .weight(1f)
                             .fillMaxHeight(),

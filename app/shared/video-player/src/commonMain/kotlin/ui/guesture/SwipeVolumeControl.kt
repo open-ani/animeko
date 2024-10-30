@@ -4,11 +4,14 @@ import androidx.annotation.MainThread
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.debugInspectorInfo
 import androidx.compose.ui.unit.Dp
+import kotlinx.coroutines.CoroutineScope
 import me.him188.ani.app.platform.features.AudioManager
 import me.him188.ani.app.platform.features.BrightnessManager
 import me.him188.ani.app.platform.features.StreamType
+import me.him188.ani.app.tools.MonoTasker
 
 interface LevelController {
     val level: Float
@@ -63,12 +66,42 @@ fun BrightnessManager.asLevelController(): LevelController = object : LevelContr
     }
 }
 
+fun Modifier.swipeLevelControlWithIndicator(
+    controller: LevelController,
+    stepSize: Dp,
+    orientation: Orientation,
+    indicatorState: GestureIndicatorState,
+    indicatorTasker: MonoTasker,
+    step: Float = 0.05f,
+    setup: () -> Unit = {}
+): Modifier = this then swipeLevelControl(
+    controller = controller, stepSize = stepSize, orientation = orientation, step = step,
+    afterStep = {
+        indicatorTasker.launch {
+            setup()
+            indicatorState.progressValue = controller.level
+        }
+    },
+    onDragStarted = {
+        indicatorTasker.launch {
+            indicatorState.visible = true
+        }
+    },
+    onDragStopped = {
+        indicatorTasker.launch {
+            indicatorState.visible = false
+        }
+    },
+)
+
 fun Modifier.swipeLevelControl(
     controller: LevelController,
     stepSize: Dp,
     orientation: Orientation,
     step: Float = 0.05f,
     afterStep: (StepDirection) -> Unit = {},
+    onDragStarted: suspend CoroutineScope.(startedPosition: Offset) -> Unit = {},
+    onDragStopped: suspend CoroutineScope.(velocity: Float) -> Unit = {},
 ): Modifier = composed(
     inspectorInfo = debugInspectorInfo {
         name = "swipeLevelControl"
@@ -89,6 +122,8 @@ fun Modifier.swipeLevelControl(
             },
         ),
         orientation = orientation,
+        onDragStarted = onDragStarted,
+        onDragStopped = onDragStopped,
     )
 
 }

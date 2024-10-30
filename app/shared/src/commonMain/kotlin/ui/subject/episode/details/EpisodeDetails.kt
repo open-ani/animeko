@@ -62,7 +62,6 @@ import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import me.him188.ani.app.data.models.episode.displayName
-import me.him188.ani.app.data.models.episode.type
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.domain.session.AuthState
 import me.him188.ani.app.navigation.LocalNavigator
@@ -104,7 +103,7 @@ class EpisodeDetailsState(
     private val episode by episodePresentation
     private val subject by subjectInfo
 
-    val subjectId by derivedStateOf { subject.id }
+    val subjectId by derivedStateOf { subject.subjectId }
     val episodeTitle by derivedStateOf { episode.title }
     val episodeSort by derivedStateOf { episode.sort }
     val subjectTitle by derivedStateOf { subject.displayName }
@@ -127,6 +126,7 @@ fun EpisodeDetails(
     mediaSelectorPresentation: MediaSelectorPresentation,
     mediaSourceResultsPresentation: MediaSourceResultsPresentation,
     authState: AuthState,
+    onSwitchEpisode: (episodeId: Int) -> Unit,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
 ) {
@@ -137,7 +137,6 @@ fun EpisodeDetails(
     if (state.subjectId != 0) {
         val subjectDetailsViewModel =
             viewModel(key = state.subjectId.toString()) { SubjectDetailsViewModel(state.subjectId) }
-        subjectDetailsViewModel.navigator = LocalNavigator.current
         if (showSubjectDetails) {
             ModalBottomSheet(
                 { showSubjectDetails = false },
@@ -147,6 +146,7 @@ fun EpisodeDetails(
             ) {
                 SubjectDetailsScene(
                     subjectDetailsViewModel,
+                    onPlay = onSwitchEpisode,
                     showTopBar = false,
                     showBlurredBackground = false,
                 )
@@ -232,7 +232,7 @@ fun EpisodeDetails(
                         watchStatus = {
                             if (authState.isKnownLoggedIn) {
                                 EpisodeWatchStatusButton(
-                                    episode.type.isDoneOrDropped(),
+                                    episode.collectionType.isDoneOrDropped(),
                                     onUnmark = {
                                         episodeCarouselState.setCollectionType(
                                             episode,
@@ -240,7 +240,10 @@ fun EpisodeDetails(
                                         )
                                     },
                                     onMarkAsDone = {
-                                        episodeCarouselState.setCollectionType(episode, UnifiedCollectionType.DONE)
+                                        episodeCarouselState.setCollectionType(
+                                            episode,
+                                            UnifiedCollectionType.DONE,
+                                        )
                                     },
                                     enabled = !episodeCarouselState.isSettingCollectionType,
                                 )

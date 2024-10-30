@@ -451,6 +451,7 @@ class VlcjVideoPlayerState(parentCoroutineContext: CoroutineContext) : PlayerSta
                     listOf(Label(null, it.description())),
                 )
             }
+        subtitleTracks.current.value = subtitleTracks.candidates.value.firstOrNull()
     }
 
     private fun reloadAudioTracks() {

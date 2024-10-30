@@ -64,6 +64,47 @@ data class SubjectAiringInfo(
             upcomingSort = null,
         )
 
+//        /**
+//         * 在有剧集信息的时候使用, 计算最准确的结果
+//         */
+//        fun computeFromFirstAndLastEpisode(
+//            firstEpisode: EpisodeInfo?,
+//            lastEpisode: EpisodeInfo?,
+//            episodeCount: Int,
+//            airDate: PackedDate,
+//        ): SubjectAiringInfo {
+//            // See test SubjectAiringInfoTest
+//            // Change with care!
+//            val kind = if (firstEpisode == null && lastEpisode == null) {
+//                SubjectAiringKind.UPCOMING
+//            } else {
+//                check(firstEpisode != null && lastEpisode != null) {
+//                    "firstEpisode and lastEpisode must be both null or both not null"
+//                }
+//                when {
+//                    firstEpisode.isKnownCompleted && lastEpisode.isKnownCompleted -> SubjectAiringKind.COMPLETED
+//                    firstEpisode.isKnownOnAir && lastEpisode.isKnownOnAir -> SubjectAiringKind.UPCOMING
+//                    firstEpisode.isKnownCompleted || lastEpisode.isKnownCompleted -> SubjectAiringKind.ON_AIR
+//                    airDate.isValid -> when {
+//                        airDate <= PackedDate.now() -> SubjectAiringKind.COMPLETED
+//                        PackedDate.now() - airDate > 10 * 30 * 365.days -> SubjectAiringKind.COMPLETED // 播出 10 年后判定为完结, 一些老番缺失信息
+//                        else -> SubjectAiringKind.UPCOMING
+//                    }
+//
+//                    else -> SubjectAiringKind.UPCOMING
+//                }
+//            }
+//            return SubjectAiringInfo(
+//                kind = kind,
+//                episodeCount = episodeCount,
+//                airDate = airDate.ifInvalid { list.firstOrNull()?.airDate ?: PackedDate.Invalid },
+//                firstSort = list.firstOrNull()?.sort,
+//                latestSort = list.lastOrNull { it.isKnownCompleted }?.sort,
+//                upcomingSort = if (kind == SubjectAiringKind.COMPLETED) null else list.firstOrNull { it.isKnownOnAir }?.sort
+//                    ?: list.firstOrNull { it.airDate.isInvalid }?.sort,
+//            )
+//        }
+
         /**
          * 在有剧集信息的时候使用, 计算最准确的结果
          */
@@ -110,7 +151,7 @@ data class SubjectAiringInfo(
             }
             return SubjectAiringInfo(
                 kind = kind,
-                episodeCount = info.totalEpisodesOrEps,
+                episodeCount = info.totalEpisodes,
                 airDate = info.airDate,
                 firstSort = null,
                 latestSort = null,

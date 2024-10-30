@@ -57,7 +57,7 @@ internal fun PreviewSubjectDetails() {
             onClickOpenExternal = {},
             collectionData = {
                 SubjectDetailsDefaults.CollectionData(
-                    collectionStats = state.info.collection,
+                    collectionStats = state.info.collectionStats,
                 )
             },
             collectionActions = {
@@ -74,6 +74,7 @@ internal fun PreviewSubjectDetails() {
                 SubjectDetailsDefaults.SelectEpisodeButtons(
                     rememberTestSubjectProgressState(info = TestSubjectProgressInfos.ContinueWatching2),
                     onShowEpisodeList = {},
+                    onPlay = {},
                 )
             },
             connectedScrollState = connectedScrollState,

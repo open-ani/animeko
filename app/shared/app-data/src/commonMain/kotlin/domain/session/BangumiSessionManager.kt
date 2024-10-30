@@ -33,12 +33,12 @@ import me.him188.ani.app.data.models.UserInfo
 import me.him188.ani.app.data.models.flatMap
 import me.him188.ani.app.data.models.fold
 import me.him188.ani.app.data.models.map
-import me.him188.ani.app.data.repository.AccessTokenSession
-import me.him188.ani.app.data.repository.GuestSession
-import me.him188.ani.app.data.repository.ProfileRepository
-import me.him188.ani.app.data.repository.Session
-import me.him188.ani.app.data.repository.TokenRepository
-import me.him188.ani.app.data.repository.isValid
+import me.him188.ani.app.data.network.BangumiProfileService
+import me.him188.ani.app.data.repository.user.AccessTokenSession
+import me.him188.ani.app.data.repository.user.GuestSession
+import me.him188.ani.app.data.repository.user.Session
+import me.him188.ani.app.data.repository.user.TokenRepository
+import me.him188.ani.app.data.repository.user.isValid
 import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.ui.foundation.BackgroundScope
 import me.him188.ani.app.ui.foundation.HasBackgroundScope
@@ -59,14 +59,14 @@ fun BangumiSessionManager(
     parentCoroutineContext: CoroutineContext,
 ): BangumiSessionManager {
     val tokenRepository: TokenRepository by koin.inject()
-    val profileRepository: ProfileRepository by koin.inject()
+    val bangumiProfileService: BangumiProfileService by koin.inject()
     val client: AniAuthClient by koin.inject()
 
     return BangumiSessionManager(
         tokenRepository,
         refreshToken = tokenRepository.refreshToken,
         getSelfInfo = { accessToken ->
-            profileRepository.getSelfUserInfo(accessToken)
+            bangumiProfileService.getSelfUserInfo(accessToken)
         },
         refreshAccessToken = refreshAccessToken@{ refreshToken ->
             client.refreshAccessToken(refreshToken).map {

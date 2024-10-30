@@ -76,10 +76,8 @@ class AiringProgressTests {
                 progressInfoState = progressInfoState,
             ),
             SubjectProgressState(
-                stateOf(1),
                 stateOf(subjectProgressInfo),
                 stateOf(emptyList()),
-                onPlay = { _, _ -> },
                 weekFormatter = WeekFormatter { today },
             ),
         )

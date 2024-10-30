@@ -18,7 +18,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.io.files.Path
 import me.him188.ani.android.activity.MainActivity
 import me.him188.ani.android.navigation.AndroidBrowserNavigator
-import me.him188.ani.app.data.repository.SettingsRepository
+import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.resolver.AndroidWebVideoSourceResolver
 import me.him188.ani.app.domain.media.resolver.HttpStreamingVideoSourceResolver

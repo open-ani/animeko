@@ -23,10 +23,10 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import kotlinx.io.files.Path
-import me.him188.ani.app.data.repository.DanmakuRegexFilterRepository
-import me.him188.ani.app.data.repository.DanmakuRegexFilterRepositoryImpl
-import me.him188.ani.app.data.repository.PreferencesRepositoryImpl
-import me.him188.ani.app.data.repository.SettingsRepository
+import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepository
+import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepositoryImpl
+import me.him188.ani.app.data.repository.user.PreferencesRepositoryImpl
+import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.media.resolver.HttpStreamingVideoSourceResolver
 import me.him188.ani.app.domain.media.resolver.LocalFileVideoSourceResolver
 import me.him188.ani.app.domain.media.resolver.TorrentVideoSourceResolver

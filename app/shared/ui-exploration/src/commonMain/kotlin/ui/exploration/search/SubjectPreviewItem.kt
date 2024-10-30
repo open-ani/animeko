@@ -31,7 +31,7 @@ import me.him188.ani.utils.platform.annotations.TestOnly
 
 @Immutable
 class SubjectPreviewItemInfo(
-    val id: Int,
+    val subjectId: Int,
     val imageUrl: String,
     val title: String,
     val tags: String,
@@ -102,7 +102,7 @@ class SubjectPreviewItemInfo(
             }
 
             return SubjectPreviewItemInfo(
-                id = subjectInfo.id,
+                subjectId = subjectInfo.subjectId,
                 subjectInfo.imageLarge,
                 subjectInfo.nameCnOrName,
                 tags,
@@ -119,7 +119,7 @@ class SubjectPreviewItemInfo(
 internal val TestSubjectPreviewItemInfos
     get() = listOf(
         SubjectPreviewItemInfo(
-            id = 1,
+            subjectId = 1,
             imageUrl = "https://example.com/image.jpg",
             title = "关于我转生变成史莱姆这档事 第三季",
             tags = "2024 年 10 月 · 全 24 话 · 奇幻 / 战斗",
@@ -133,7 +133,7 @@ internal val TestSubjectPreviewItemInfos
             ),
         ),
         SubjectPreviewItemInfo(
-            id = 2,
+            subjectId = 2,
             imageUrl = "https://example.com/image.jpg",
             title = "关于我转生变成史莱姆这档事 第三季",
             tags = "2024 年 10 月 · 全 24 话 · 奇幻 / 战斗",

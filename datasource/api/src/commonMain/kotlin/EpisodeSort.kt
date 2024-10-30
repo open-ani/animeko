@@ -1,6 +1,16 @@
+/*
+ * Copyright (C) 2024 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.datasources.api
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.protobuf.ProtoNumber
 import me.him188.ani.datasources.api.EpisodeSort.Normal
 import me.him188.ani.datasources.api.EpisodeSort.Special
 import me.him188.ani.datasources.api.EpisodeType.ED
@@ -27,7 +37,7 @@ import me.him188.ani.utils.serialization.BigNum
  *
  * @see EpisodeRange
  */
-@Serializable // do not change package name!
+@Serializable // do not change package name! // both Json and PB
 sealed class EpisodeSort : Comparable<EpisodeSort> {
     /**
      * 若是普通剧集, 则返回序号, 例如 ``, 否则返回 null.
@@ -67,7 +77,7 @@ sealed class EpisodeSort : Comparable<EpisodeSort> {
      */
     @Serializable
     class Normal internal constructor(
-        override val number: Float, // Luckily ".5" can be precisely represented in IEEE 754
+        @ProtoNumber(1) override val number: Float, // Luckily ".5" can be precisely represented in IEEE 754
     ) : EpisodeSort() {
         override val raw: String
             get() {
@@ -82,8 +92,8 @@ sealed class EpisodeSort : Comparable<EpisodeSort> {
 
     @Serializable
     class Special internal constructor(
-        val type: EpisodeType,
-        override val number: Float?,
+        @ProtoNumber(1) val type: EpisodeType,
+        @ProtoNumber(2) override val number: Float?,
     ) : EpisodeSort() {
         override val raw: String get() = "${type.value}${getNumberStr(number)}" // "SP01"
         override fun toString(): String = raw
@@ -91,7 +101,7 @@ sealed class EpisodeSort : Comparable<EpisodeSort> {
 
     @Serializable
     class Unknown internal constructor(
-        override val raw: String
+        @ProtoNumber(1) override val raw: String
     ) : EpisodeSort() {
         override val number: Float? get() = null
         override fun toString(): String = raw

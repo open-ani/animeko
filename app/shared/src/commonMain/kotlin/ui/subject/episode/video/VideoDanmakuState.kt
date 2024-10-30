@@ -119,11 +119,11 @@ class DanmakuLoaderImpl(
                 val episode = request.episodeInfo
                 val result = onFetch(
                     DanmakuSearchRequest(
-                        subjectId = subject.id,
+                        subjectId = subject.subjectId,
                         subjectPrimaryName = subject.displayName,
                         subjectNames = subject.allNames,
                         subjectPublishDate = subject.airDate,
-                        episodeId = episode.id,
+                        episodeId = episode.episodeId,
                         episodeSort = episode.sort,
                         episodeEp = episode.ep,
                         episodeName = episode.displayName,

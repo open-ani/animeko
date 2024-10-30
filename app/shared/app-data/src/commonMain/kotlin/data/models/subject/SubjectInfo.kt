@@ -11,66 +11,74 @@ package me.him188.ani.app.data.models.subject
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
-import kotlinx.serialization.Serializable
+import me.him188.ani.app.domain.search.SubjectType
 import me.him188.ani.datasources.api.PackedDate
-import me.him188.ani.utils.logging.info
-import me.him188.ani.utils.logging.logger
-import kotlin.jvm.JvmStatic
 
 /**
- * 详细信息.
+ * 条目本身的信息
  */
 @Immutable
-@Serializable
 data class SubjectInfo(
-    val id: Int = 0,
-    // 可搜索 "吹响！悠风号 第三季.json" 看示例
-    val name: String = "",
-    val nameCn: String = "",
-    val summary: String = "",
-    val nsfw: Boolean = false,
-    val locked: Boolean = false,
-    /* TV, Web, 欧美剧, PS4... */
-    val platform: String = "",
-//    val images: Images,
-    /* 书籍条目的册数，由旧服务端从wiki中解析 */
-    val volumes: Int = 0,
-    /* 由旧服务端从wiki中解析，对于书籍条目为`话数` */
-    val eps: Int = 0,
-    /* 数据库中的章节数量 */
-    val totalEpisodes: Int = 0,
-//    val rating: Rating,
-    val tags: List<Tag> = emptyList(), // must be sorted by count
-    /* air date in `YYYY-MM-DD` format */
-    val airDateString: String? = null,
-    val infobox: List<InfoboxItem> = emptyList(),
-    val imageCommon: String = "",
+    /**
+     * Bangumi 条目 ID
+     */
+    val subjectId: Int,
+    val subjectType: SubjectType,
+    /**
+     * 条目原名
+     * @see displayName
+     * @see aliases
+     */
+    val name: String,
+    /**
+     * 简体中文名称
+     * @see displayName
+     * @see aliases
+     */
+    val nameCn: String,
+    /**
+     * 简介, 可能为空. 当条目解析出错时, 此字段可能包含错误原因 (堆栈).
+     */
+    val summary: String,
+    val nsfw: Boolean,
     val imageLarge: String,
     /**
-     * 该条目的全站收藏统计
+     * 总集数, 0 表示未知.
      */
-    val collection: SubjectCollectionStats = SubjectCollectionStats.Zero,
-    val ratingInfo: RatingInfo,
-) {
+    val totalEpisodes: Int,
     /**
-     * 放送开始
+     * 放送开始日期. 时区为条目所在地区的时区, 即一般为 UTC+9.
      * @sample me.him188.ani.app.ui.subject.renderSubjectSeason
      */
-    val airDate: PackedDate = if (airDateString == null) PackedDate.Invalid else PackedDate.parseFromDate(airDateString)
+    val airDate: PackedDate,
 
     /**
-     * 放送结束. 当没有结束时间时为 [PackedDate.Invalid]
+     * 标签列表, 可能为空. 标签可能是由维基人指定的 [公共标签][Tag.isCanonical], 也可能是用户自定义的标签. See [Tag].
      */
-    val completeDate: PackedDate =
-        (findInfoboxValue("播放结束") ?: findInfoboxValue("放送结束"))
-            ?.let {
-                PackedDate.parseFromDate(
-                    it.replace('年', '-')
-                        .replace('月', '-')
-                        .removeSuffix("日"),
-                )
-            }
-            ?: PackedDate.Invalid
+    val tags: List<Tag>,
+    /**
+     * 别名列表, 可能为空. 每个元素不可能为空.
+     * @see allNames
+     */
+    val aliases: List<String>,
+    /**
+     * 评分信息, 包含评分人数, 评分分数, 评分人数等
+     */
+    val ratingInfo: RatingInfo,
+    /**
+     * 全站收藏统计
+     */
+    val collectionStats: SubjectCollectionStats,
+
+    // 以下为来自 infoxbox 的信息
+    /**
+     * 完成日期. 时区为条目所在地区的时区, 即一般为 UTC+9.
+     */
+    val completeDate: PackedDate,
+) {
+    override fun toString(): String {
+        return "SubjectInfo(subjectId=$subjectId, nameCn='$nameCn')"
+    }
 
     /**
      * 主要显示名称
@@ -86,46 +94,32 @@ data class SubjectInfo(
             fun addIfNotBlank(name2: String) {
                 if (name2.isNotBlank()) add(name2)
             }
-            logger.info { "Computing allNames for '$name', nameCn='${nameCn}', aliases=${aliasSequence.toList()}" }
             addIfNotBlank(nameCn)
             addIfNotBlank(name)
-            aliasSequence.forEach { addIfNotBlank(it) }
+            aliases.forEach { addIfNotBlank(it) }
         }
     }
 
     companion object {
         @Stable
-        @JvmStatic
         val Empty = SubjectInfo(
-            ratingInfo = RatingInfo.Empty,
+            subjectId = 0,
+            subjectType = SubjectType.ANIME,
+            name = "",
+            nameCn = "",
+            summary = "",
+            nsfw = false,
             imageLarge = "",
+            totalEpisodes = 0,
+            airDate = PackedDate.Invalid,
+            tags = emptyList(),
+            aliases = emptyList(),
+            ratingInfo = RatingInfo.Empty,
+            collectionStats = SubjectCollectionStats.Zero,
+            completeDate = PackedDate.Invalid,
         )
-
-        private val logger = logger<SubjectInfo>()
     }
 }
-
-@Stable
-fun SubjectInfo.findInfoboxValue(key: String): String? = infobox.firstOrNull { it.name == key }?.valueOrNull
 
 @Stable
 val SubjectInfo.nameCnOrName get() = nameCn.takeIf { it.isNotBlank() } ?: name
-
-@Stable
-val SubjectInfo.totalEpisodesOrEps: Int
-    get() {
-        val totalEpisodes = totalEpisodes
-        if (totalEpisodes != 0) return totalEpisodes
-        return eps
-    }
-
-
-@Serializable
-@Immutable
-class InfoboxItem(
-    val name: String,
-    val values: List<String>,
-) {
-    val valueOrNull get() = values.firstOrNull()
-}
-

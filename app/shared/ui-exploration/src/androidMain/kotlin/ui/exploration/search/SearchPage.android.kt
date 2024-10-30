@@ -16,43 +16,109 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewLightDark
+import androidx.paging.LoadState
+import androidx.paging.LoadStates
+import androidx.paging.PagingData
+import kotlinx.coroutines.flow.MutableStateFlow
+import me.him188.ani.app.data.repository.RepositoryNetworkException
 import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.layout.CarouselItemDefaults.Text
 import me.him188.ani.app.ui.foundation.layout.Zero
 import me.him188.ani.app.ui.foundation.preview.PreviewSizeClasses
+import me.him188.ani.app.ui.search.PreviewSearchProblemCard
+import me.him188.ani.app.ui.search.TestSearchState
+import me.him188.ani.app.ui.search.collectItemsWithLifecycle
 import me.him188.ani.utils.platform.annotations.TestOnly
 
-@OptIn(TestOnly::class)
 @Composable
 @PreviewSizeClasses
 @Preview
 fun PreviewSearchPage() = ProvideFoundationCompositionLocalsForPreview {
-    val scope = rememberCoroutineScope()
-    val searchPageState = createTestSearchPageState(scope)
-    SideEffect {
-        searchPageState.searchState.startSearch()
-    }
-    Surface(color = MaterialTheme.colorScheme.surfaceContainerLowest) {
-        SearchPage(
-            searchPageState,
-            WindowInsets.Zero,
-            { Text("Hello, World!") },
-        )
-    }
+    PreviewImpl()
+}
+
+@OptIn(TestOnly::class)
+@Composable
+@PreviewSizeClasses
+@PreviewLightDark
+fun PreviewSearchPageEmptyResult() = ProvideFoundationCompositionLocalsForPreview {
+    PreviewImpl(
+        createTestSearchPageState(
+            rememberCoroutineScope(),
+            TestSearchState(
+                MutableStateFlow(MutableStateFlow(PagingData.from(emptyList()))),
+            ),
+        ),
+    )
+}
+
+/**
+ * @see PreviewSearchProblemCard
+ */
+@OptIn(TestOnly::class)
+@Composable
+@PreviewSizeClasses
+@PreviewLightDark
+fun PreviewSearchPageError() = ProvideFoundationCompositionLocalsForPreview {
+    PreviewImpl(
+        createTestSearchPageState(
+            rememberCoroutineScope(),
+            remember {
+                TestSearchState(
+                    MutableStateFlow(
+                        MutableStateFlow(
+                            PagingData.from(
+                                emptyList(),
+                                sourceLoadStates = LoadStates(
+                                    LoadState.NotLoading(true),
+                                    LoadState.NotLoading(true),
+                                    LoadState.Error(RepositoryNetworkException()),
+                                ),
+                                mediatorLoadStates = LoadStates(
+                                    LoadState.NotLoading(true),
+                                    LoadState.NotLoading(true),
+                                    LoadState.Error(RepositoryNetworkException()),
+                                ),
+                            ),
+                        ),
+                    ),
+                )
+            },
+        ),
+    )
 }
 
 @Composable
 @PreviewLightDark
 fun PreviewSearchPageResultColumn() = ProvideFoundationCompositionLocalsForPreview {
-    val scope = rememberCoroutineScope()
     Surface(color = MaterialTheme.colorScheme.surfaceContainerLowest) {
+        val state = createTestFinishedSubjectSearchState()
         SearchPageResultColumn(
-            state = createTestFinishedSubjectSearchState(),
+            items = state.collectItemsWithLifecycle(),
+            showSummary = { true },
             selectedItemIndex = { 1 },
-            {}, {},
+            onSelect = {},
+            onPlay = {},
+        )
+    }
+}
+
+
+@Composable
+@OptIn(TestOnly::class)
+private fun PreviewImpl(state: SearchPageState = createTestSearchPageState(rememberCoroutineScope())) {
+    SideEffect {
+        state.searchState.startSearch()
+    }
+    Surface(color = MaterialTheme.colorScheme.surfaceContainerLowest) {
+        SearchPage(
+            state,
+            WindowInsets.Zero,
+            { Text("Hello, World!") },
         )
     }
 }

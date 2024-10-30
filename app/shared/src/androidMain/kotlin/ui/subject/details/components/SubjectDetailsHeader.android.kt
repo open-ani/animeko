@@ -114,7 +114,7 @@ fun PreviewSubjectDetailsHeader(
             },
             collectionData = {
                 SubjectDetailsDefaults.CollectionData(
-                    collectionStats = subjectInfo.collection,
+                    collectionStats = subjectInfo.collectionStats,
                 )
             },
             collectionAction = {
@@ -123,7 +123,7 @@ fun PreviewSubjectDetailsHeader(
                 )
             },
             selectEpisodeButton = {
-                SubjectDetailsDefaults.SelectEpisodeButtons(rememberTestSubjectProgressState(), {})
+                SubjectDetailsDefaults.SelectEpisodeButtons(rememberTestSubjectProgressState(), {}, {})
             },
             rating = {
                 EditableRating(

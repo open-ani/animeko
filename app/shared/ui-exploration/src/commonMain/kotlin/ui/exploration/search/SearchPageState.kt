@@ -9,24 +9,23 @@
 
 package me.him188.ani.app.ui.exploration.search
 
+import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.paging.PagingData
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.asFlow
-import me.him188.ani.app.data.models.ApiResponse
+import kotlinx.coroutines.flow.MutableStateFlow
 import me.him188.ani.app.tools.MonoTasker
-import me.him188.ani.app.tools.ldc.LazyDataCache
-import me.him188.ani.app.ui.search.LdcSearchState
+import me.him188.ani.app.ui.search.PagingSearchState
 import me.him188.ani.app.ui.search.SearchState
 import me.him188.ani.app.ui.search.TestSearchState
-import me.him188.ani.datasources.api.paging.SinglePagePagedSource
+import me.him188.ani.app.ui.search.launchAsItemsIn
 import me.him188.ani.utils.platform.annotations.TestOnly
 
 @Stable
@@ -34,9 +33,10 @@ class SearchPageState(
     searchHistoryState: State<List<String>>,
     suggestionsState: State<List<String>>,
     val onRequestPlay: suspend (SubjectPreviewItemInfo) -> EpisodeTarget?,
-    queryState: MutableState<String> = mutableStateOf(""),
     val searchState: SearchState<SubjectPreviewItemInfo>,
     backgroundScope: CoroutineScope,
+    queryState: MutableState<String> = mutableStateOf(""),
+    private val onStartSearch: (String) -> Unit = {},
 ) {
     // to navigate to episode page
     data class EpisodeTarget(
@@ -44,16 +44,20 @@ class SearchPageState(
         val episodeId: Int,
     )
 
-    val query by queryState
     val suggestionSearchBarState = SuggestionSearchBarState(
         historyState = searchHistoryState,
         suggestionsState = suggestionsState,
-        queryState = queryState,
         searchState = searchState,
+        queryState = queryState,
+        onStartSearch = { query ->
+            onStartSearch(query)
+        },
     )
+    val gridState = LazyStaggeredGridState()
+
+    val items = searchState.launchAsItemsIn(backgroundScope)
 
     var selectedItemIndex: Int by mutableIntStateOf(0)
-    val selectedItem by derivedStateOf { searchState.items.getOrNull(selectedItemIndex) }
 
     val playTasker = MonoTasker(backgroundScope)
     var playingItem: SubjectPreviewItemInfo? by mutableStateOf(null)
@@ -71,7 +75,7 @@ class SearchPageState(
 fun createTestSearchPageState(
     backgroundScope: CoroutineScope,
     searchState: SearchState<SubjectPreviewItemInfo> = TestSearchState(
-        TestSubjectPreviewItemInfos,
+        MutableStateFlow(MutableStateFlow(PagingData.from(TestSubjectPreviewItemInfos))),
     )
 ): SearchPageState {
     val results = mutableStateOf<List<SubjectPreviewItemInfo>>(emptyList())
@@ -90,25 +94,14 @@ fun createTestSearchPageState(
 
 @TestOnly
 fun createTestInteractiveSubjectSearchState(scope: CoroutineScope): SearchState<SubjectPreviewItemInfo> {
-    return LdcSearchState(
-        {
-            LazyDataCache(
-                {
-                    ApiResponse.success(
-                        SinglePagePagedSource {
-                            TestSubjectPreviewItemInfos.asFlow()
-                        },
-                    )
-                },
-            )
-        },
-        scope.coroutineContext,
-    )
+    return PagingSearchState {
+        MutableStateFlow(PagingData.from(TestSubjectPreviewItemInfos))
+    }
 }
 
 @TestOnly
 fun createTestFinishedSubjectSearchState(): SearchState<SubjectPreviewItemInfo> {
     return TestSearchState(
-        TestSubjectPreviewItemInfos,
+        MutableStateFlow(MutableStateFlow(PagingData.from(TestSubjectPreviewItemInfos))),
     )
 }

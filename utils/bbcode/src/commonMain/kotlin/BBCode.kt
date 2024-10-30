@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.utils.bbcode
 
 import org.antlr.v4.kotlinruntime.CharStreams
@@ -52,7 +61,8 @@ private class ElementBuilder(
     }
 
     private fun popContext() {
-        contexts.removeLast()
+        // Caused by: java.lang.NoSuchMethodError: No interface method removeLast()Ljava/lang/Object; in class Ljava/util/List; or its super classes (declaration of 'java.util.List' appears in /apex/com.android.art/javalib/core-oj.jar)
+        if (contexts.isEmpty()) throw NoSuchElementException("List is empty.") else contexts.removeAt(contexts.lastIndex)
     }
 
     inline fun withContext(new: Context.() -> Context, block: () -> Unit) {

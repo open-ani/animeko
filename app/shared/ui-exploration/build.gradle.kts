@@ -26,7 +26,7 @@ kotlin {
     }
     sourceSets.commonTest.dependencies {
     }
-    sourceSets.jvmTest.dependencies {
+    sourceSets.named("jvmTest").dependencies {
         implementation(kotlin("reflect"))
     }
     sourceSets.androidMain.dependencies {

@@ -16,15 +16,18 @@ import androidx.compose.material3.DrawerDefaults
 import androidx.compose.material3.NavigationBarDefaults
 import androidx.compose.material3.NavigationRailDefaults
 import androidx.compose.material3.Surface
+import androidx.compose.material3.adaptive.WindowAdaptiveInfo
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
-import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldDefaults
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldLayout
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Stable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.window.core.layout.WindowHeightSizeClass
+import androidx.window.core.layout.WindowWidthSizeClass
 import me.him188.ani.app.ui.foundation.interaction.WindowDragArea
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 
@@ -39,7 +42,7 @@ fun AniNavigationSuiteLayout(
     navigationSuite: @Composable () -> Unit, // Ani modified
     modifier: Modifier = Modifier,
     layoutType: NavigationSuiteType =
-        NavigationSuiteScaffoldDefaults.calculateFromAdaptiveInfo(currentWindowAdaptiveInfo()),
+        AniNavigationSuiteDefaults.calculateLayoutType(currentWindowAdaptiveInfo()),
 //    navigationSuiteColors: NavigationSuiteColors = NavigationSuiteDefaults.colors(), // Ani modified
     navigationContainerColor: Color = AniThemeDefaults.navigationContainerColor,
     navigationContentColor: Color = contentColorFor(AniThemeDefaults.navigationContainerColor),
@@ -76,3 +79,31 @@ fun AniNavigationSuiteLayout(
         )
     }
 }
+
+@Stable
+object AniNavigationSuiteDefaults {
+    fun calculateLayoutType(adaptiveInfo: WindowAdaptiveInfo): NavigationSuiteType {
+        return with(adaptiveInfo) {
+            // ani changed: use NavigationRail on landscape phones
+            if (windowSizeClass.windowHeightSizeClass == WindowHeightSizeClass.COMPACT
+                && windowSizeClass.windowWidthSizeClass != WindowWidthSizeClass.COMPACT
+            ) {
+                return NavigationSuiteType.NavigationRail
+            }
+            // below is original logic
+
+            if (windowPosture.isTabletop ||
+                windowSizeClass.windowHeightSizeClass == WindowHeightSizeClass.COMPACT
+            ) {
+                NavigationSuiteType.NavigationBar
+            } else if (windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED ||
+                windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.MEDIUM
+            ) {
+                NavigationSuiteType.NavigationRail
+            } else {
+                NavigationSuiteType.NavigationBar
+            }
+        }
+    }
+}
+

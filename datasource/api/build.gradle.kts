@@ -18,6 +18,7 @@ kotlin {
     sourceSets.commonMain {
         dependencies {
             implementation(libs.kotlinx.serialization.core)
+            implementation(libs.kotlinx.serialization.protobuf)
             api(libs.kotlinx.coroutines.core)
             api(libs.kotlinx.datetime)
             api(projects.utils.ktorClient)
