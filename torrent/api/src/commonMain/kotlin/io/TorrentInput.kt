@@ -39,7 +39,7 @@ expect fun TorrentInput(
 )
 annotation class RawTorrentInputConstructorParameter
 
-class TorrentInputConstructor 
+class TorrentInputParameters 
 @RawTorrentInputConstructorParameter constructor(
     val file: SystemPath,
     val logicalStartOffset: Long,

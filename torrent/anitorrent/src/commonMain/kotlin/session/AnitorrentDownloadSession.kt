@@ -50,7 +50,7 @@ import me.him188.ani.app.torrent.api.pieces.minBy
 import me.him188.ani.app.torrent.api.pieces.sumOf
 import me.him188.ani.app.torrent.io.RawTorrentInputConstructorParameter
 import me.him188.ani.app.torrent.io.TorrentInput
-import me.him188.ani.app.torrent.io.TorrentInputConstructor
+import me.him188.ani.app.torrent.io.TorrentInputParameters
 import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.io.BufferedInput.Companion.DEFAULT_BUFFER_PER_DIRECTION
 import me.him188.ani.utils.io.SeekableInput
@@ -241,12 +241,12 @@ class AnitorrentDownloadSession(
          * 在 Remote TorrentFileEntry 中创建 TorrentInput 实例, 需要获取 TorrentInput 构建参数
          */
         @OptIn(RawTorrentInputConstructorParameter::class)
-        suspend fun createTorrentInputParameters(): TorrentInputConstructor {
-            return TorrentInputConstructor(
+        suspend fun createTorrentInputParameters(): TorrentInputParameters {
+            return TorrentInputParameters(
                 resolveDownloadingFile(),
                 logicalStartOffset = offset,
                 bufferSize = DEFAULT_BUFFER_PER_DIRECTION,
-                size = length
+                size = length,
             )
         }
 
