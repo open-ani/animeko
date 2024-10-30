@@ -10,6 +10,7 @@
 package me.him188.ani.android.activity
 
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.SystemBarStyle
@@ -61,7 +62,9 @@ class MainActivity : AniComponentActivity() {
     private val aniNavigator = AniNavigator()
     
     init {
-        lifecycle.addObserver(torrentServiceConnector)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            lifecycle.addObserver(torrentServiceConnector)
+        }
     }
 
     override fun onNewIntent(intent: Intent) {

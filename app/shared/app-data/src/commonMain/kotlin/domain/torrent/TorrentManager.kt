@@ -16,8 +16,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
 import me.him188.ani.app.data.models.preference.ProxySettings
 import me.him188.ani.app.data.models.preference.TorrentPeerConfig
-import me.him188.ani.app.data.repository.user.SettingsRepository
-import me.him188.ani.app.domain.torrent.engines.AnitorrentEngine
+import me.him188.ani.app.data.repository.SettingsRepository
 import me.him188.ani.app.platform.MeteredNetworkDetector
 import me.him188.ani.datasources.api.topic.FileSize.Companion.kiloBytes
 import me.him188.ani.utils.coroutines.childScope
@@ -42,7 +41,7 @@ enum class TorrentEngineType(
     RemoteAnitorrent("anitorrent")
 }
 
-abstract class AbstractTorrentManager(
+class DefaultTorrentManager(
     parentCoroutineContext: CoroutineContext,
     private val saveDir: (type: TorrentEngineType) -> SystemPath,
     private val proxySettingsFlow: Flow<ProxySettings>,
@@ -51,14 +50,6 @@ abstract class AbstractTorrentManager(
     private val peerFilterConfig: Flow<TorrentPeerConfig>
 ) : TorrentManager {
     private val scope = parentCoroutineContext.childScope()
-    
-    abstract fun createAniTorrentEngine(
-        config: Flow<AnitorrentConfig>,
-        proxySettings: Flow<ProxySettings>,
-        peerFilterSettings: Flow<TorrentPeerConfig>,
-        saveDir: SystemPath,
-        parentCoroutineContext: CoroutineContext,
-    ): TorrentEngine
 
     private val anitorrent: TorrentEngine by lazy {
         createAniTorrentEngine(
@@ -82,47 +73,14 @@ abstract class AbstractTorrentManager(
 
         listOf(anitorrent)
     }
-}
 
-class DefaultTorrentManager(
-    parentCoroutineContext: CoroutineContext,
-    saveDir: (type: TorrentEngineType) -> SystemPath,
-    proxySettingsFlow: Flow<ProxySettings>,
-    anitorrentConfigFlow: Flow<AnitorrentConfig>,
-    isMeteredNetworkFlow: Flow<Boolean>,
-    peerFilterConfig: Flow<TorrentPeerConfig>
-) : AbstractTorrentManager(
-    parentCoroutineContext, 
-    saveDir, 
-    proxySettingsFlow, 
-    anitorrentConfigFlow, 
-    isMeteredNetworkFlow, 
-    peerFilterConfig
-) {
-
-    override fun createAniTorrentEngine(
-        config: Flow<AnitorrentConfig>,
-        proxySettings: Flow<ProxySettings>,
-        peerFilterSettings: Flow<TorrentPeerConfig>,
-        saveDir: SystemPath,
-        parentCoroutineContext: CoroutineContext
-    ): TorrentEngine {
-        return AnitorrentEngine(
-            config, 
-            proxySettings, 
-            peerFilterSettings, 
-            saveDir, 
-            parentCoroutineContext
-        )
-    }
-    
     companion object {
         fun create(
             parentCoroutineContext: CoroutineContext,
             settingsRepository: SettingsRepository,
             meteredNetworkDetector: MeteredNetworkDetector,
             baseSaveDir: () -> SystemPath,
-        ): AbstractTorrentManager {
+        ): DefaultTorrentManager {
             val saveDirLazy by lazy(baseSaveDir)
             return DefaultTorrentManager(
                 parentCoroutineContext,
@@ -132,8 +90,16 @@ class DefaultTorrentManager(
                 settingsRepository.proxySettings.flow,
                 settingsRepository.anitorrentConfig.flow,
                 meteredNetworkDetector.isMeteredNetworkFlow.distinctUntilChanged(),
-                settingsRepository.torrentPeerConfig.flow
+                settingsRepository.torrentPeerConfig.flow,
             )
         }
     }
 }
+
+expect fun createAniTorrentEngine(
+    config: Flow<AnitorrentConfig>,
+    proxySettings: Flow<ProxySettings>,
+    peerFilterSettings: Flow<TorrentPeerConfig>,
+    saveDir: SystemPath,
+    parentCoroutineContext: CoroutineContext,
+): TorrentEngine

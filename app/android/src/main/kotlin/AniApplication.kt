@@ -105,17 +105,21 @@ class AniApplication : Application() {
             return
         }
 
-        startForegroundService(
-            Intent(this, AniTorrentService::class.java).apply {
-                putExtra("app_name", me.him188.ani.R.string.app_name)
-                putExtra("app_service_title_text_idle", me.him188.ani.R.string.app_service_content_text)
-                putExtra("app_service_title_text_working", me.him188.ani.R.string.app_service_content_text)
-                putExtra("app_service_content_text", me.him188.ani.R.string.app_service_content_text)
-                putExtra("app_service_stop_text", me.him188.ani.R.string.app_service_content_text)
-                putExtra("app_icon", me.him188.ani.R.mipmap.a_round)
-                putExtra("open_activity_intent", Intent(this@AniApplication, MainActivity::class.java))
-            },
-        )
+        // Only use torrent service at Android 8.1 (27) or above.
+        // Our minimal support is Android 8.0 (26)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            startForegroundService(
+                Intent(this, AniTorrentService::class.java).apply {
+                    putExtra("app_name", me.him188.ani.R.string.app_name)
+                    putExtra("app_service_title_text_idle", me.him188.ani.R.string.app_service_content_text)
+                    putExtra("app_service_title_text_working", me.him188.ani.R.string.app_service_content_text)
+                    putExtra("app_service_content_text", me.him188.ani.R.string.app_service_content_text)
+                    putExtra("app_service_stop_text", me.him188.ani.R.string.app_service_content_text)
+                    putExtra("app_icon", me.him188.ani.R.mipmap.a_round)
+                    putExtra("open_activity_intent", Intent(this@AniApplication, MainActivity::class.java))
+                },
+            )
+        }
 
         instance = Instance()
 

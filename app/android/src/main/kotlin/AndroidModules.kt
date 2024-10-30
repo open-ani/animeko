@@ -25,7 +25,7 @@ import me.him188.ani.app.domain.media.resolver.HttpStreamingVideoSourceResolver
 import me.him188.ani.app.domain.media.resolver.LocalFileVideoSourceResolver
 import me.him188.ani.app.domain.media.resolver.TorrentVideoSourceResolver
 import me.him188.ani.app.domain.media.resolver.VideoSourceResolver
-import me.him188.ani.app.domain.torrent.RemoteTorrentManager
+import me.him188.ani.app.domain.torrent.DefaultTorrentManager
 import me.him188.ani.app.domain.torrent.TorrentManager
 import me.him188.ani.app.domain.torrent.service.TorrentServiceConnection
 import me.him188.ani.app.navigation.BrowserNavigator
@@ -152,8 +152,7 @@ fun getAndroidModules(
             }
         }
 
-        RemoteTorrentManager.create(
-            get(),
+        DefaultTorrentManager.create(
             coroutineScope.coroutineContext,
             get(),
             get(),
