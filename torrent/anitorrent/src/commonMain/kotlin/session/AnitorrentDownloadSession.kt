@@ -51,6 +51,7 @@ import me.him188.ani.app.torrent.api.pieces.sumOf
 import me.him188.ani.app.torrent.io.RawTorrentInputConstructorParameter
 import me.him188.ani.app.torrent.io.TorrentInput
 import me.him188.ani.app.torrent.io.TorrentInputConstructor
+import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.io.BufferedInput.Companion.DEFAULT_BUFFER_PER_DIRECTION
 import me.him188.ani.utils.io.SeekableInput
 import me.him188.ani.utils.io.SystemPath
@@ -76,7 +77,7 @@ class AnitorrentDownloadSession(
     private val onPostClose: (AnitorrentDownloadSession) -> Unit,
     private val onDelete: (AnitorrentDownloadSession) -> Unit,
     parentCoroutineContext: CoroutineContext,
-    dispatcher: CoroutineContext = Dispatchers.IO,
+    dispatcher: CoroutineContext = Dispatchers.IO_,
 ) : TorrentSession, SynchronizedObject() {
     val logger = logger(this::class)
     val handleId get() = handle.id // 内存地址, 不可持久
@@ -194,7 +195,7 @@ class AnitorrentDownloadSession(
 
             override suspend fun closeAndDelete() {
                 close()
-                withContext(Dispatchers.IO) { deleteEntireTorrentIfNotInUse() }
+                withContext(Dispatchers.IO_) { deleteEntireTorrentIfNotInUse() }
             }
         }
 
@@ -223,7 +224,7 @@ class AnitorrentDownloadSession(
 
         override suspend fun createInput(): SeekableInput {
             val input = resolveDownloadingFile()
-            return withContext(Dispatchers.IO) {
+            return withContext(Dispatchers.IO_) {
                 TorrentInput(
                     input,
                     pieces,
@@ -356,7 +357,7 @@ class AnitorrentDownloadSession(
                     saveDirectory = saveDirectory,
                     relativePath = path,
                     isDebug = false,
-                    parentCoroutineContext = Dispatchers.IO,
+                    parentCoroutineContext = Dispatchers.IO_,
                     initialDownloadedBytes = calculateTotalFinishedSize(list).coerceAtMost(size),
                 ).also {
                     currentOffset += size
