@@ -18,12 +18,10 @@ import me.him188.ani.app.domain.torrent.IRemotePieceList
 import me.him188.ani.app.torrent.api.pieces.Piece
 import me.him188.ani.app.torrent.api.pieces.PieceList
 import me.him188.ani.app.torrent.api.pieces.PieceListSubscriptions
-import me.him188.ani.app.torrent.api.pieces.PieceState
 import me.him188.ani.app.torrent.api.pieces.PieceSubscribable
 import me.him188.ani.app.torrent.api.pieces.forEach
 import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.logging.logger
-import java.util.concurrent.locks.ReentrantLock
 import kotlin.coroutines.CoroutineContext
 
 @RequiresApi(Build.VERSION_CODES.O_MR1)
@@ -39,41 +37,20 @@ class PieceListProxy(
     
     private val pieceStateSubscriber: PieceListSubscriptions.Subscription
     private val stateObservers: MutableList<PieceStateObserver> = mutableListOf()
-
-    private val lock: ReentrantLock = ReentrantLock(false)
-    private val condition = lock.newCondition()
     
     init {
-        requireNotNull(delegate as? PieceSubscribable)
+        require(delegate is PieceSubscribable) { "Delegate $delegate is not PieceSubscribable" }
         with(delegate) {
             delegate.forEach { piece ->
                 pieceStatesRwBuf.put(piece.indexInList, piece.state.ordinal.toByte())
             }
 
-            // subscribe new changes
+            // subscribe changes to shared memory
             pieceStateSubscriber = (this as PieceSubscribable)
-                .subscribePieceState(Piece.Invalid) { piece, state -> onPieceStateChange(piece, state) }
+                .subscribePieceState(Piece.Invalid) { piece, state ->
+                    pieceStatesRwBuf.put(piece.indexInList, state.ordinal.toByte())
+                }
         }
-    }
-    
-    private fun onPieceStateChange(piece: Piece, state: PieceState) {
-        // update shared memory first
-        with(delegate) {
-            pieceStatesRwBuf.put(piece.indexInList, state.ordinal.toByte())
-        }
-
-        while (!lock.tryLock()) {
-            condition.await()
-        }
-        try {
-            stateObservers.forEach { observer ->
-                // notify observer to get new state.
-                if (piece.pieceIndex == observer.pieceIndex) observer.observer.onUpdate()
-            }
-        } finally {
-            lock.unlock()
-        }
-
     }
     
     override fun getImmutableSizeArray(): LongArray {
@@ -97,28 +74,14 @@ class PieceListProxy(
         observer: IPieceStateObserver?
     ): IDisposableHandle? {
         if (observer == null) return null
-        lock.lock()
 
-        val newObserver: PieceStateObserver?
-        try {
-            newObserver = PieceStateObserver(pieceIndex, observer)
-            stateObservers.add(newObserver)
-            logger.info("Registered state observer for piece $pieceIndex.")
-        } finally {
-            condition.signalAll()
-            lock.unlock()
+        val subscription = with(delegate) {
+            (this as PieceSubscribable)
+                .subscribePieceState(getByPieceIndex(pieceIndex)) { _, _ -> observer.onUpdate() }
         }
 
         return DisposableHandleProxy {
-            lock.lock()
-
-            try {
-                stateObservers.remove(newObserver)
-                logger.info("Removed state observer of piece $pieceIndex.")
-            } finally {
-                condition.signalAll()
-                lock.unlock()
-            }
+            (delegate as PieceSubscribable).unsubscribePieceState(subscription)
         }
     }
 

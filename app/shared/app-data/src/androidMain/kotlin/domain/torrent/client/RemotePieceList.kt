@@ -51,10 +51,6 @@ class RemotePieceList(
         var disposableHandle: IDisposableHandle? = null
         val readyState = try {
             suspendCancellableCoroutine { cont ->
-                // suspendCancellableCoroutine 调用之后到此 block 被调度执行之前
-                // 如果 state 是 ready 了，下面就监听不到 ready state 了
-                if (state == PieceState.FINISHED) cont.resume(state)
-
                 logger.info { "Awaiting state remote piece $pieceIndex to ${PieceState.FINISHED}." }
                 // remote 必须保证 register observer 调用后一定可以监听到新的 state
                 disposableHandle = remote.registerPieceStateObserver(
@@ -68,6 +64,8 @@ class RemotePieceList(
                         }
                     },
                 )
+                // 注册 listener 之后如果 state 是 ready 了，下面就监听不到 ready state 了
+                if (state == PieceState.FINISHED) cont.resume(state)
             }
         } finally {
             logger.info { "Got state of remote piece $pieceIndex: $state." }
