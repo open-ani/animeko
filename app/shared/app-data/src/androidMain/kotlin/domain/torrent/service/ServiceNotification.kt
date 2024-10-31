@@ -102,8 +102,7 @@ class ServiceNotification(
      * update notification to current state.
      */
     fun updateNotification(displayStrategy: NotificationDisplayStrategy) {
-        val currentNotification = notificationService.activeNotifications.find { it.id == NOTIFICATION_ID }
-        if (currentNotification == null) return
+        notificationService.activeNotifications.find { it.id == NOTIFICATION_ID } ?: return
 
         val notification = buildNotification(notificationAppearance, displayStrategy)
         notificationService.notify(NOTIFICATION_ID, notification)
