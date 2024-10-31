@@ -50,16 +50,21 @@ class ServiceNotification(
     }
 
     fun parseNotificationStrategyFromIntent(intent: Intent?): NotificationAppearance {
-        val name = (intent?.getIntExtra("app_name", -1) ?: -1)
-            .let { if (it == -1) defaultNotificationAppearance.name else context.getString(it) }
-        val titleIdle = (intent?.getIntExtra("app_service_title_text_idle", -1) ?: -1)
-            .let { if (it == -1) defaultNotificationAppearance.titleIdle else context.getString(it) }
-        val titleWorking = (intent?.getIntExtra("app_service_title_text_working", -1) ?: -1)
-            .let { if (it == -1) defaultNotificationAppearance.titleWorking else context.getString(it) }
-        val content = (intent?.getIntExtra("app_service_content_text", -1) ?: -1)
-            .let { if (it == -1) defaultNotificationAppearance.content else context.getString(it) }
-        val stopActionText = (intent?.getIntExtra("app_service_stop_text", -1) ?: -1)
-            .let { if (it == -1) defaultNotificationAppearance.name else context.getString(it) }
+        val name = intent.getStringOrDefault("app_name") {
+            defaultNotificationAppearance.name
+        }
+        val titleIdle = intent.getStringOrDefault("app_service_title_text_idle") {
+            defaultNotificationAppearance.titleIdle
+        }
+        val titleWorking = intent.getStringOrDefault("app_service_title_text_working") {
+            defaultNotificationAppearance.titleWorking
+        }
+        val content = intent.getStringOrDefault("app_service_content_text") {
+            defaultNotificationAppearance.content
+        }
+        val stopActionText = intent.getStringOrDefault("app_service_stop_text") {
+            defaultNotificationAppearance.stopActionText
+        }
         val icon = (intent?.getIntExtra("app_icon", -1) ?: -1)
             .let { if (it != -1) defaultNotificationAppearance.icon else Icon.createWithResource(context, it) }
 
@@ -147,6 +152,11 @@ class ServiceNotification(
             setOngoing(displayStrategy is NotificationDisplayStrategy.Working)
             setVisibility(Notification.VISIBILITY_PUBLIC)
         }.build()
+    }
+
+    private fun Intent?.getStringOrDefault(extraName: String, default: () -> String): String {
+        val result = this?.getIntExtra(extraName, -1) ?: -1
+        return if (result == -1) default() else context.getString(result)
     }
 
     companion object {
