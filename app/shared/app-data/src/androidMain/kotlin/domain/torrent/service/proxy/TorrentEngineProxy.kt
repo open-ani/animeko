@@ -10,7 +10,6 @@
 package me.him188.ani.app.domain.torrent.service.proxy
 
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
@@ -38,8 +37,9 @@ class TorrentEngineProxy(
     private val anitorrentConfig: MutableSharedFlow<AnitorrentConfig>,
     private val anitorrent: CompletableDeferred<AnitorrentEngine>,
     context: CoroutineContext,
-) : IRemoteAniTorrentEngine.Stub(), CoroutineScope by context.childScope() {
+) : IRemoteAniTorrentEngine.Stub() {
     private val logger = logger(this::class)
+    private val scope = context.childScope()
 
     private val json = Json {
         ignoreUnknownKeys = true
@@ -86,6 +86,6 @@ class TorrentEngineProxy(
 
     override fun getDownlaoder(): IRemoteTorrentDownloader {
         val downloader = runBlocking { anitorrent.await().getDownloader() }
-        return TorrentDownloaderProxy(downloader, coroutineContext)
+        return TorrentDownloaderProxy(downloader, scope.coroutineContext)
     }
 }

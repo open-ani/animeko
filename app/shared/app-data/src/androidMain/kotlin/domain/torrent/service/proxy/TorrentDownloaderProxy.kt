@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.domain.torrent.service.proxy
 
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.io.files.Path
@@ -30,10 +29,11 @@ import kotlin.coroutines.CoroutineContext
 class TorrentDownloaderProxy(
     private val delegate: TorrentDownloader,
     context: CoroutineContext,
-) : IRemoteTorrentDownloader.Stub(), CoroutineScope by context.childScope() {
+) : IRemoteTorrentDownloader.Stub() {
+    private val scope = context.childScope()
     
     override fun getTotalStatus(flow: ITorrentDownloaderStatsCallback?): IDisposableHandle {
-        val job = launch {
+        val job = scope.launch {
             delegate.totalStats.collect {
                 flow?.onEmit(
                     PTorrentDownloaderStats(
@@ -77,7 +77,7 @@ class TorrentDownloaderProxy(
                 overrideSaveDir = overrideSaveDir?.run { Path(this).inSystem }
             ) 
         }
-        return TorrentSessionProxy(session, coroutineContext)
+        return TorrentSessionProxy(session, scope.coroutineContext)
     }
 
     override fun getSaveDirForTorrent(data: PEncodedTorrentInfo?): String? {

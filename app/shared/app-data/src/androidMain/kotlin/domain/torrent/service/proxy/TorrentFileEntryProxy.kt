@@ -11,7 +11,6 @@ package me.him188.ani.app.domain.torrent.service.proxy
 
 import android.os.Build
 import androidx.annotation.RequiresApi
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import me.him188.ani.app.domain.torrent.IDisposableHandle
@@ -30,9 +29,11 @@ import kotlin.coroutines.CoroutineContext
 class TorrentFileEntryProxy(
     private val delegate: TorrentFileEntry,
     context: CoroutineContext
-) : IRemoteTorrentFileEntry.Stub(), CoroutineScope by context.childScope() {
+) : IRemoteTorrentFileEntry.Stub() {
+    private val scope = context.childScope()
+    
     override fun getFileStats(flow: ITorrentFileEntryStatsCallback?): IDisposableHandle {
-        val job = launch {
+        val job = scope.launch {
             delegate.fileStats.collect {
                 flow?.onEmit(PTorrentFileEntryStats(it.downloadedBytes, it.downloadProgress))
             }
@@ -51,7 +52,7 @@ class TorrentFileEntryProxy(
 
     @RequiresApi(Build.VERSION_CODES.O_MR1)
     override fun getPieces(): IRemotePieceList {
-        return PieceListProxy(delegate.pieces, coroutineContext)
+        return PieceListProxy(delegate.pieces, scope.coroutineContext)
     }
 
     override fun getSupportsStreaming(): Boolean {
@@ -59,7 +60,7 @@ class TorrentFileEntryProxy(
     }
 
     override fun createHandle(): IRemoteTorrentFileHandle {
-        return TorrentFileHandleProxy(delegate.createHandle(), coroutineContext)
+        return TorrentFileHandleProxy(delegate.createHandle(), scope.coroutineContext)
     }
 
     override fun resolveFile(): String {

@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.domain.torrent.service.proxy
 
-import kotlinx.coroutines.CoroutineScope
 import me.him188.ani.app.domain.torrent.IRemoteTorrentFileEntry
 import me.him188.ani.app.domain.torrent.IRemoteTorrentFileEntryList
 import me.him188.ani.app.torrent.api.files.TorrentFileEntry
@@ -19,9 +18,11 @@ import kotlin.coroutines.CoroutineContext
 class TorrentFileEntryListProxy(
     val delegate: List<TorrentFileEntry>,
     context: CoroutineContext
-) : IRemoteTorrentFileEntryList.Stub(), CoroutineScope by context.childScope() {
+) : IRemoteTorrentFileEntryList.Stub() {
+    private val scope = context.childScope()
+    
     override fun get(index: Int): IRemoteTorrentFileEntry {
-        return TorrentFileEntryProxy(delegate[index], coroutineContext)
+        return TorrentFileEntryProxy(delegate[index], scope.coroutineContext)
     }
 
     override fun getSize(): Int {

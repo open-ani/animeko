@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.domain.torrent.service.proxy
 
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import me.him188.ani.app.domain.torrent.IDisposableHandle
@@ -25,9 +24,11 @@ import kotlin.coroutines.CoroutineContext
 class TorrentSessionProxy(
     private val delegate: TorrentSession,
     context: CoroutineContext
-) : IRemoteTorrentSession.Stub(), CoroutineScope by context.childScope() {
+) : IRemoteTorrentSession.Stub() {
+    private val scope = context.childScope()
+    
     override fun getSessionStats(flow: ITorrentSessionStatsCallback?): IDisposableHandle {
-        val job = launch { 
+        val job = scope.launch { 
             delegate.sessionStats.collect {
                 if (it == null) return@collect
                 flow?.onEmit(
@@ -52,8 +53,8 @@ class TorrentSessionProxy(
 
     override fun getFiles(): IRemoteTorrentFileEntryList {
         val list = runBlocking { delegate.getFiles() }
-        
-        return TorrentFileEntryListProxy(list, coroutineContext)
+
+        return TorrentFileEntryListProxy(list, scope.coroutineContext)
     }
 
     override fun getPeers(): Array<PPeerInfo> {

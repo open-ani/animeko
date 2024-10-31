@@ -12,7 +12,6 @@ package me.him188.ani.app.domain.torrent.service.proxy
 import android.os.Build
 import android.os.SharedMemory
 import androidx.annotation.RequiresApi
-import kotlinx.coroutines.CoroutineScope
 import me.him188.ani.app.domain.torrent.IDisposableHandle
 import me.him188.ani.app.domain.torrent.IPieceStateObserver
 import me.him188.ani.app.domain.torrent.IRemotePieceList
@@ -31,8 +30,10 @@ import kotlin.coroutines.CoroutineContext
 class PieceListProxy(
     private val delegate: PieceList,
     context: CoroutineContext
-) : IRemotePieceList.Stub(), CoroutineScope by context.childScope() {
+) : IRemotePieceList.Stub() {
     private val logger = logger<PieceListProxy>()
+    private val scope = context.childScope()
+    
     private val pieceStateSharedMem = SharedMemory.create("piece_list_states$delegate", delegate.sizes.size)
     private val pieceStatesRwBuf = pieceStateSharedMem.mapReadWrite()
     
