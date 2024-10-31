@@ -9,7 +9,8 @@
 
 package me.him188.ani.app.domain.torrent.client
 
-import android.annotation.SuppressLint
+import android.os.Build
+import androidx.annotation.RequiresApi
 import kotlinx.coroutines.suspendCancellableCoroutine
 import me.him188.ani.app.domain.torrent.IDisposableHandle
 import me.him188.ani.app.domain.torrent.IPieceStateObserver
@@ -21,7 +22,7 @@ import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import kotlin.coroutines.resume
 
-@SuppressLint("NewApi")
+@RequiresApi(Build.VERSION_CODES.O_MR1)
 class RemotePieceList(
     private val remote: IRemotePieceList,
 ) : PieceList(

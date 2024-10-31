@@ -9,8 +9,9 @@
 
 package me.him188.ani.app.domain.torrent.service.proxy
 
-import android.annotation.SuppressLint
+import android.os.Build
 import android.os.SharedMemory
+import androidx.annotation.RequiresApi
 import kotlinx.coroutines.CoroutineScope
 import me.him188.ani.app.domain.torrent.IDisposableHandle
 import me.him188.ani.app.domain.torrent.IPieceStateObserver
@@ -26,7 +27,7 @@ import me.him188.ani.utils.logging.logger
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.coroutines.CoroutineContext
 
-@SuppressLint("NewApi")
+@RequiresApi(Build.VERSION_CODES.O_MR1)
 class PieceListProxy(
     private val delegate: PieceList,
     context: CoroutineContext

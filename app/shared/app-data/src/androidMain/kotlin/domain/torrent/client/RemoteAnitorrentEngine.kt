@@ -9,6 +9,8 @@
 
 package me.him188.ani.app.domain.torrent.client
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
@@ -32,6 +34,7 @@ import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.io.absolutePath
 import kotlin.coroutines.CoroutineContext
 
+@RequiresApi(Build.VERSION_CODES.O_MR1)
 class RemoteAnitorrentEngine(
     private val connection: TorrentServiceConnection,
 

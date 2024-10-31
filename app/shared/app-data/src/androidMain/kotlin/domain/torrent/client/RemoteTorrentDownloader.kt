@@ -9,7 +9,9 @@
 
 package me.him188.ani.app.domain.torrent.client
 
+import android.os.Build
 import android.os.RemoteException
+import androidx.annotation.RequiresApi
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -30,6 +32,7 @@ import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
+@RequiresApi(Build.VERSION_CODES.O_MR1)
 class RemoteTorrentDownloader(
     private val remote: IRemoteTorrentDownloader
 ) : TorrentDownloader {

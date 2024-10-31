@@ -9,6 +9,8 @@
 
 package me.him188.ani.app.domain.torrent.service.proxy
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -47,6 +49,7 @@ class TorrentFileEntryProxy(
         return delegate.pathInTorrent
     }
 
+    @RequiresApi(Build.VERSION_CODES.O_MR1)
     override fun getPieces(): IRemotePieceList {
         return PieceListProxy(delegate.pieces, coroutineContext)
     }

@@ -9,10 +9,13 @@
 
 package me.him188.ani.app.domain.torrent.client
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import me.him188.ani.app.domain.torrent.IRemoteTorrentFileEntry
 import me.him188.ani.app.domain.torrent.IRemoteTorrentFileEntryList
 import me.him188.ani.app.torrent.api.files.TorrentFileEntry
 
+@RequiresApi(Build.VERSION_CODES.O_MR1)
 class RemoteTorrentFileEntryList(
     private val remote: IRemoteTorrentFileEntryList
 ): AbstractList<TorrentFileEntry>() {

@@ -9,7 +9,9 @@
 
 package me.him188.ani.app.domain.torrent.client
 
+import android.os.Build
 import android.os.RemoteException
+import androidx.annotation.RequiresApi
 import kotlinx.coroutines.suspendCancellableCoroutine
 import me.him188.ani.app.domain.torrent.IRemoteTorrentFileHandle
 import me.him188.ani.app.torrent.api.files.FilePriority
@@ -18,6 +20,7 @@ import me.him188.ani.app.torrent.api.files.TorrentFileHandle
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
+@RequiresApi(Build.VERSION_CODES.O_MR1)
 class RemoteTorrentFileHandle(
     private val remote: IRemoteTorrentFileHandle
 ) : TorrentFileHandle {
