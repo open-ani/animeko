@@ -24,6 +24,7 @@ class RemoteTorrentFileEntryList(
     override val size: Int by lazy { remote.size }
 
     override fun get(index: Int): TorrentFileEntry {
+        // 一个 torrent 的文件列表不会变化, 重复获取也不会有问题, 不需要注意线程安全问题
         val cached = cachedMap[index]
         return if (cached != null) {
             RemoteTorrentFileEntry(cached)

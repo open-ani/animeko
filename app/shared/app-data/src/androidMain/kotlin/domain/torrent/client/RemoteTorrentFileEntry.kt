@@ -10,13 +10,11 @@
 package me.him188.ani.app.domain.torrent.client
 
 import android.os.Build
-import android.os.RemoteException
 import androidx.annotation.RequiresApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.io.files.Path
 import me.him188.ani.app.domain.torrent.IRemoteTorrentFileEntry
@@ -26,13 +24,12 @@ import me.him188.ani.app.torrent.api.files.TorrentFileEntry
 import me.him188.ani.app.torrent.api.files.TorrentFileHandle
 import me.him188.ani.app.torrent.api.pieces.PieceList
 import me.him188.ani.app.torrent.io.TorrentInput
+import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.io.SeekableInput
 import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.io.inSystem
 import me.him188.ani.utils.io.toFile
 import java.io.RandomAccessFile
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
 
 @RequiresApi(Build.VERSION_CODES.O_MR1)
 class RemoteTorrentFileEntry(
@@ -62,13 +59,9 @@ class RemoteTorrentFileEntry(
     }
 
     override suspend fun resolveFile(): SystemPath {
-        return suspendCancellableCoroutine { cont ->
-            try {
-                val result = remote.resolveFile()
-                cont.resume(Path(result).inSystem)
-            } catch (re: RemoteException) {
-                cont.resumeWithException(re)
-            }
+        return withContext(Dispatchers.IO_) {
+            val result = remote.resolveFile()
+            Path(result).inSystem
         }
     }
 
@@ -83,12 +76,14 @@ class RemoteTorrentFileEntry(
         val file = Path(remoteInput.file).inSystem
         
         return TorrentInput(
-            file = withContext(Dispatchers.IO) { RandomAccessFile(file.toFile(), "r") },
+            file = withContext(Dispatchers.IO_) {
+                RandomAccessFile(file.toFile(), "r")
+            },
             pieces = pieces,
             logicalStartOffset = remoteInput.logicalStartOffset,
             onWait = {
-                suspendCancellableCoroutine { cont ->
-                    cont.resume(remote.torrentInputOnWait(it.pieceIndex))
+                withContext(Dispatchers.IO_) {
+                    remote.torrentInputOnWait(it.pieceIndex)
                 }
             },
             bufferSize = remoteInput.bufferSize,

@@ -10,20 +10,19 @@
 package me.him188.ani.app.domain.torrent.client
 
 import android.os.Build
-import android.os.RemoteException
 import androidx.annotation.RequiresApi
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 import me.him188.ani.app.domain.torrent.IRemoteTorrentSession
 import me.him188.ani.app.domain.torrent.ITorrentSessionStatsCallback
 import me.him188.ani.app.domain.torrent.parcel.PTorrentSessionStats
 import me.him188.ani.app.torrent.api.TorrentSession
 import me.him188.ani.app.torrent.api.files.TorrentFileEntry
 import me.him188.ani.app.torrent.api.peer.PeerInfo
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
+import me.him188.ani.utils.coroutines.IO_
 
 @RequiresApi(Build.VERSION_CODES.O_MR1)
 class RemoteTorrentSession(
@@ -41,25 +40,11 @@ class RemoteTorrentSession(
         }
 
     override suspend fun getName(): String {
-        return suspendCancellableCoroutine { cont ->
-            try {
-                val result = remote.name
-                cont.resume(result)
-            } catch (re: RemoteException) {
-                cont.resumeWithException(re)
-            }
-        }
+        return withContext(Dispatchers.IO_) { remote.name }
     }
 
     override suspend fun getFiles(): List<TorrentFileEntry> {
-        return suspendCancellableCoroutine { cont ->
-            try {
-                val result = remote.files
-                cont.resume(RemoteTorrentFileEntryList(result))
-            } catch (re: RemoteException) {
-                cont.resumeWithException(re)
-            }
-        }
+        return withContext(Dispatchers.IO_) { RemoteTorrentFileEntryList(remote.files) }
     }
 
     override fun getPeers(): List<PeerInfo> {
@@ -67,24 +52,14 @@ class RemoteTorrentSession(
     }
 
     override suspend fun close() {
-        return suspendCancellableCoroutine { cont ->
-            try {
-                val result = remote.close()
-                cont.resume(result)
-            } catch (re: RemoteException) {
-                cont.resumeWithException(re)
-            }
+        withContext(Dispatchers.IO_) {
+            remote.close()
         }
     }
 
     override suspend fun closeIfNotInUse() {
-        return suspendCancellableCoroutine { cont ->
-            try {
-                val result = remote.closeIfNotInUse()
-                cont.resume(result)
-            } catch (re: RemoteException) {
-                cont.resumeWithException(re)
-            }
+        withContext(Dispatchers.IO_) {
+            remote.closeIfNotInUse()
         }
     }
 }

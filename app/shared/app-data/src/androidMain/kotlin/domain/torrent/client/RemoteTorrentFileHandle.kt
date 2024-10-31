@@ -10,15 +10,14 @@
 package me.him188.ani.app.domain.torrent.client
 
 import android.os.Build
-import android.os.RemoteException
 import androidx.annotation.RequiresApi
-import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import me.him188.ani.app.domain.torrent.IRemoteTorrentFileHandle
 import me.him188.ani.app.torrent.api.files.FilePriority
 import me.him188.ani.app.torrent.api.files.TorrentFileEntry
 import me.him188.ani.app.torrent.api.files.TorrentFileHandle
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
+import me.him188.ani.utils.coroutines.IO_
 
 @RequiresApi(Build.VERSION_CODES.O_MR1)
 class RemoteTorrentFileHandle(
@@ -35,26 +34,14 @@ class RemoteTorrentFileHandle(
     }
 
     override suspend fun close() {
-        return suspendCancellableCoroutine { cont ->
-            try {
-                val result = remote.close()
-                cont.resume(result)
-            } catch (re: RemoteException) {
-                cont.resumeWithException(re)
-            }
+        withContext(Dispatchers.IO_) {
+            remote.close()
         }
     }
 
     override suspend fun closeAndDelete() {
-        return suspendCancellableCoroutine { cont ->
-            try {
-                val result = remote.closeAndDelete()
-                cont.resume(result)
-            } catch (re: RemoteException) {
-                cont.resumeWithException(re)
-            }
+        withContext(Dispatchers.IO_) {
+            remote.closeAndDelete()
         }
     }
-
-
 }
