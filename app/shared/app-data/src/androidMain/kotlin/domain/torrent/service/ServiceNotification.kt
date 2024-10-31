@@ -110,7 +110,7 @@ class ServiceNotification(
     }
 
     /**
-     * build notification
+     * build notification and show it initially
      */
     private fun buildNotification(
         appearance: NotificationAppearance,
