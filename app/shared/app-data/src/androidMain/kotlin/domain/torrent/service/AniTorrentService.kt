@@ -16,6 +16,7 @@ import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
@@ -36,7 +37,9 @@ import kotlin.coroutines.CoroutineContext
 class AniTorrentService : LifecycleService(), CoroutineScope {
     private val logger = logger(this::class)
     override val coroutineContext: CoroutineContext
-        get() = lifecycleScope.coroutineContext + CoroutineName("AniTorrentService") + SupervisorJob()
+        get() = lifecycleScope.coroutineContext +
+                CoroutineName("AniTorrentService") +
+                SupervisorJob(lifecycleScope.coroutineContext[Job])
     
     // config flow for constructing torrent engine.
     private val saveDirDeferred: CompletableDeferred<String> = CompletableDeferred()
