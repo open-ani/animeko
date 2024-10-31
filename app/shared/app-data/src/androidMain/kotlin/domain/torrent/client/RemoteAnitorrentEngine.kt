@@ -63,19 +63,19 @@ class RemoteAnitorrentEngine(
         childScope.launch {
             proxySettingsFlow.collect {
                 val serialized = json.encodeToString(ProxySettings.serializer(), it)
-                getBinderOrFail().proxySettingsFlow.onEmit(PProxySettings(serialized))
+                getBinderOrFail().proxySettingsCollector.collect(PProxySettings(serialized))
             }
         }
         childScope.launch {
             peerFilterConfig.collect {
                 val serialized = json.encodeToString(TorrentPeerConfig.serializer(), it)
-                getBinderOrFail().torrentPeerConfigFlow.onEmit(PTorrentPeerConfig(serialized))
+                getBinderOrFail().torrentPeerConfigCollector.collect(PTorrentPeerConfig(serialized))
             }
         }
         childScope.launch {
             anitorrentConfigFlow.collect {
                 val serialized = json.encodeToString(AnitorrentConfig.serializer(), it)
-                getBinderOrFail().anitorrentConfigFlow.onEmit(PAnitorrentConfig(serialized))
+                getBinderOrFail().anitorrentConfigCollector.collect(PAnitorrentConfig(serialized))
             }
         }
         childScope.launch { 
