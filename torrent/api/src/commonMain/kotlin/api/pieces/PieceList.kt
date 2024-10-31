@@ -277,7 +277,8 @@ class PieceListSlice(
         }
     }
 
-    // register subscription to delegate.
+    // Slice and delegating PieceList share the same Piece index space so we can just forward the call. 
+    // See [Piece] for details.
     override fun subscribePieceState(piece: Piece, onStateChange: PieceList.(Piece, PieceState) -> Unit): Subscription {
         return (delegate as PieceSubscribable).subscribePieceState(piece, onStateChange)
     }
