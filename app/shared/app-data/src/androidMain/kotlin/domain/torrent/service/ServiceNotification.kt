@@ -43,7 +43,7 @@ class ServiceNotification(
             ?: NotificationChannel(
                 NOTIFICATION_CHANNEL_ID,
                 notificationAppearance.name,
-                NotificationManager.IMPORTANCE_HIGH,
+                NotificationManager.IMPORTANCE_LOW,
             )
                 .apply { lockscreenVisibility = Notification.VISIBILITY_PUBLIC }
                 .also { notificationService.createNotificationChannel(it) }
