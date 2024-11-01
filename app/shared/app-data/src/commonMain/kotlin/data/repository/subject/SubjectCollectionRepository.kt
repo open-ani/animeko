@@ -61,6 +61,7 @@ import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.bangumi.BangumiClient
 import me.him188.ani.datasources.bangumi.apis.DefaultApi
+import me.him188.ani.datasources.bangumi.models.BangumiSubjectType
 import me.him188.ani.datasources.bangumi.models.BangumiUserSubjectCollection
 import me.him188.ani.datasources.bangumi.models.BangumiUserSubjectCollectionModifyPayload
 import me.him188.ani.datasources.bangumi.processing.toCollectionType
@@ -276,6 +277,7 @@ class SubjectCollectionRepositoryImpl(
                     val username = usernameProvider.getOrThrow()
                     val resp = api.first().getUserCollectionsByUsername(
                         username,
+                        subjectType = BangumiSubjectType.Anime,
                         type = query.type?.toSubjectCollectionType(),
                         limit = state.config.pageSize,
                         offset = offset,
