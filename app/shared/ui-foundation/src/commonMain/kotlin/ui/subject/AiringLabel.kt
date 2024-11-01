@@ -165,7 +165,7 @@ fun AiringLabel(
 }
 
 @TestOnly
-internal fun createTestAiringLabelState(
+fun createTestAiringLabelState(
     airingInfo: SubjectAiringInfo = TestSubjectAiringInfo,
     progressInfo: SubjectProgressInfo = TestSubjectProgressInfos.ContinueWatching2,
 ): AiringLabelState = AiringLabelState(stateOf(airingInfo), stateOf(progressInfo))

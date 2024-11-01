@@ -11,10 +11,11 @@ package me.him188.ani.app.ui.subject.details.state
 
 import androidx.compose.runtime.mutableStateOf
 import kotlinx.coroutines.CoroutineScope
+import me.him188.ani.app.data.models.subject.TestSelfRatingInfo
+import me.him188.ani.app.data.models.subject.TestSubjectCollections
 import me.him188.ani.app.domain.session.createTestAuthState
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.search.createTestPager
-import me.him188.ani.app.ui.subject.collection.TestSubjectCollections
 import me.him188.ani.app.ui.subject.collection.components.createTestEditableSubjectCollectionTypeState
 import me.him188.ani.app.ui.subject.collection.progress.createTestEpisodeListState
 import me.him188.ani.app.ui.subject.collection.progress.createTestSubjectProgressState
@@ -23,7 +24,6 @@ import me.him188.ani.app.ui.subject.createTestAiringLabelState
 import me.him188.ani.app.ui.subject.details.TestRelatedSubjects
 import me.him188.ani.app.ui.subject.details.TestSubjectCharacterList
 import me.him188.ani.app.ui.subject.details.TestSubjectInfo
-import me.him188.ani.app.ui.subject.rating.TestSelfRatingInfo
 import me.him188.ani.app.ui.subject.rating.createTestEditableRatingState
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.platform.annotations.TestOnly

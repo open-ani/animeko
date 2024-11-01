@@ -58,6 +58,7 @@ import me.him188.ani.datasources.bangumi.next.apis.SubjectBangumiNextApi
 import me.him188.ani.utils.ktor.ClientProxyConfig
 import me.him188.ani.utils.ktor.proxy
 import me.him188.ani.utils.ktor.registerLogging
+import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.serialization.toJsonArray
 import kotlin.coroutines.CoroutineContext
@@ -84,7 +85,10 @@ interface BangumiClient : Closeable {
         @SerialName("refresh_token") val refreshToken: String,
     )
 
-    suspend fun executeGraphQL(query: String, variables: JsonObject? = null): JsonObject
+    /**
+     * @param actionName 本次操作的调试名称. 用于在日志中记录. 方便在安卓等协程无法正确显示调用栈的地方定位问题
+     */
+    suspend fun executeGraphQL(actionName: String, query: String, variables: JsonObject? = null): JsonObject
 
     @Serializable
     data class GetTokenStatusResponse(
@@ -137,8 +141,8 @@ fun createBangumiClient(
 class DelegateBangumiClient(
     private val client: Flow<BangumiClient>,
 ) : BangumiClient {
-    override suspend fun executeGraphQL(query: String, variables: JsonObject?): JsonObject =
-        client.first().executeGraphQL(query, variables)
+    override suspend fun executeGraphQL(actionName: String, query: String, variables: JsonObject?): JsonObject =
+        client.first().executeGraphQL(actionName, query, variables)
 
     override suspend fun getSelfInfoByToken(accessToken: String?): BangumiUser =
         client.first().getSelfInfoByToken(accessToken)
@@ -172,17 +176,23 @@ class BangumiClientImpl(
 
     private val logger = logger(this::class)
 
-    override suspend fun executeGraphQL(query: String, variables: JsonObject?): JsonObject {
-        val resp = httpClient.post("$BANGUMI_API_HOST/v0/graphql") {
-            contentType(ContentType.Application.Json)
-            setBody(
-                buildJsonObject {
-                    put("query", query)
-                    if (variables != null) {
-                        put("variables", variables)
-                    }
-                },
-            )
+    override suspend fun executeGraphQL(actionName: String, query: String, variables: JsonObject?): JsonObject {
+        val resp = try {
+            httpClient.post("$BANGUMI_API_HOST/v0/graphql") {
+                contentType(ContentType.Application.Json)
+                setBody(
+                    buildJsonObject {
+                        put("query", query)
+                        if (variables != null) {
+                            put("variables", variables)
+                        }
+                    },
+                )
+            }
+        } catch (e: Exception) {
+            // POST https://api.bgm.tv/v0/graphql [Authorized]: 400  in 317.809375ms
+            logger.error { "Failed to execute GraphQL query action'$actionName', the query is: \n$query" } // 记录一下 query, 
+            throw e
         }
 
         return resp.body()

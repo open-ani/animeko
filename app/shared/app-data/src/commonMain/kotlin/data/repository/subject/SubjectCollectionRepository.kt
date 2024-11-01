@@ -350,6 +350,7 @@ class SubjectCollectionRepositoryImpl(
             return emptyList()
         }
         val resp = client.executeGraphQL(
+            "SubjectCollectionRepositoryImpl.batchGetSubjectDetails",
             """
             fragment Ep on Episode {
               id

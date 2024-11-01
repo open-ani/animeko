@@ -108,48 +108,58 @@ class BangumiRelatedPeopleService(
 
     private suspend fun queryGraphQLCharacters(
         ids: Sequence<Int>,
-    ) = client.executeGraphQL(
-        """
-            query MyQuery {
-              ${ids.distinct().joinToString("\n") { "c${it}: character(id: ${it}) { ...CharacterFragment }" }}
-            }
-    
-            fragment CharacterFragment on Character {
-              infobox {
-                values {
-                  k
-                  v
+    ): List<QCharacterOrPerson> {
+        val distinctIds = ids.distinct().toList()
+        if (distinctIds.isEmpty()) return emptyList()
+        return client.executeGraphQL(
+            "BangumiRelatedPeopleService.queryGraphQLCharacters",
+            """
+                query MyQuery {
+                  ${distinctIds.joinToString("\n") { "c${it}: character(id: ${it}) { ...CharacterFragment }" }}
                 }
-                key
-              }
-              id
-            }
-        """.trimIndent(),
-    )["data"]!!.jsonObject.values.map {
-        json.decodeFromJsonElement(QCharacterOrPerson.serializer(), it)
+        
+                fragment CharacterFragment on Character {
+                  infobox {
+                    values {
+                      k
+                      v
+                    }
+                    key
+                  }
+                  id
+                }
+            """.trimIndent(),
+        )["data"]!!.jsonObject.values.map {
+            json.decodeFromJsonElement(QCharacterOrPerson.serializer(), it)
+        }
     }
 
     private suspend fun queryGraphQLPersons(
         ids: Sequence<Int>,
-    ) = client.executeGraphQL(
-        """
-            query MyQuery {
-              ${ids.joinToString("\n") { "c${it}: person(id: ${it}) { ...CharacterFragment }" }}
-            }
-    
-            fragment CharacterFragment on Person {
-              infobox {
-                values {
-                  k
-                  v
+    ): List<QCharacterOrPerson> {
+        val distinctIds = ids.distinct().toList()
+        if (distinctIds.isEmpty()) return emptyList()
+        return client.executeGraphQL(
+            "BangumiRelatedPeopleService.queryGraphQLPersons",
+            """
+                query MyQuery {
+                  ${distinctIds.joinToString("\n") { "c${it}: person(id: ${it}) { ...CharacterFragment }" }}
                 }
-                key
-              }
-              id
-            }
-        """.trimIndent(),
-    )["data"]!!.jsonObject.values.map {
-        json.decodeFromJsonElement(QCharacterOrPerson.serializer(), it)
+        
+                fragment CharacterFragment on Person {
+                  infobox {
+                    values {
+                      k
+                      v
+                    }
+                    key
+                  }
+                  id
+                }
+            """.trimIndent(),
+        )["data"]!!.jsonObject.values.map {
+            json.decodeFromJsonElement(QCharacterOrPerson.serializer(), it)
+        }
     }
 
 

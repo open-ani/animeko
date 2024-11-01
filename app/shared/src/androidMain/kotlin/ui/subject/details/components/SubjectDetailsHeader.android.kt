@@ -23,11 +23,11 @@ import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.layout.DummySharedTransitionLayout
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.subject.AiringLabelState
+import me.him188.ani.app.ui.subject.TestSubjectAiringInfo
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeButton
 import me.him188.ani.app.ui.subject.collection.components.rememberTestEditableSubjectCollectionTypeState
 import me.him188.ani.app.ui.subject.collection.progress.rememberTestSubjectProgressState
 import me.him188.ani.app.ui.subject.details.TestCoverImage
-import me.him188.ani.app.ui.subject.details.TestSubjectAiringInfo
 import me.him188.ani.app.ui.subject.details.TestSubjectInfo
 import me.him188.ani.app.ui.subject.rating.EditableRating
 import me.him188.ani.app.ui.subject.rating.rememberTestEditableRatingState

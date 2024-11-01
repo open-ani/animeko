@@ -63,7 +63,7 @@ fun TrendingSubjectsCarousel(
         val item = state.subjects.getOrNull(index)
         CarouselItem(
             label = { CarouselItemDefaults.Text(item?.nameCn ?: "") },
-            Modifier.placeholder(state.isPlaceholder, shape = CarouselItemDefaults.shape),
+            Modifier.placeholder(state.isPlaceholder, shape = rememberMaskShape(CarouselItemDefaults.shape)),
         ) {
             if (item != null) {
                 Surface({ onClick(item) }) {

@@ -65,10 +65,12 @@ import me.him188.ani.app.ui.foundation.layout.isAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.setRequestFullScreen
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
+import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.subject.collection.CollectionPage
 import me.him188.ani.app.ui.subject.collection.UserCollectionsViewModel
 import me.him188.ani.app.ui.subject.details.SubjectDetailsPage
 import me.him188.ani.utils.platform.isAndroid
+import kotlin.coroutines.cancellation.CancellationException
 
 
 @Composable
@@ -193,6 +195,7 @@ private fun MainSceneContent(
                         }
                         val listDetailNavigator = rememberListDetailPaneScaffoldNavigator()
                         val scope = rememberCoroutineScope()
+                        val toaster = LocalToaster.current
                         SearchPage(
                             vm.searchPageState,
                             windowInsets,
@@ -225,10 +228,18 @@ private fun MainSceneContent(
                             onSelect = { index, item ->
                                 vm.searchPageState.selectedItemIndex = index
                                 scope.launch {
-                                    vm.viewSubjectDetails(item.subjectId) // 加载完成后才切换, 否则 shared transition 会黑屏一小会
-                                    listDetailNavigator.navigateTo(ListDetailPaneScaffoldRole.Detail)
+                                    try {
+                                        vm.viewSubjectDetails(item.subjectId) // 加载完成后才切换, 否则 shared transition 会黑屏一小会
+                                        listDetailNavigator.navigateTo(ListDetailPaneScaffoldRole.Detail)
+                                    } catch (e: CancellationException) {
+                                        throw e
+                                    } catch (e: Exception) {
+                                        toaster.toast("加载失败: ${e.message}")
+                                        throw e
+                                    }
                                 }
                             },
+                            navigator = listDetailNavigator,
                         )
                     }
                 }
