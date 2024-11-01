@@ -19,6 +19,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.io.files.Path
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
@@ -82,6 +83,7 @@ class AniTorrentService : LifecycleService(), CoroutineScope {
 
         launch {
             val anitorrentDownloader = anitorrent.await().getDownloader()
+            anitorrentDownloader.openSessions
             anitorrentDownloader.totalStats.sampleWithInitial(1000).collect { stat ->
                 notification.updateNotification(
                     NotificationDisplayStrategy.Idle(stat.downloadSpeed.bytes, stat.uploadSpeed.bytes),
