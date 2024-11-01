@@ -10,14 +10,19 @@
 package me.him188.ani.android
 
 import android.content.Intent
+import android.os.Build
 import android.widget.Toast
 import androidx.core.app.NotificationManagerCompat
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.io.files.Path
 import me.him188.ani.android.activity.MainActivity
 import me.him188.ani.android.navigation.AndroidBrowserNavigator
+import me.him188.ani.app.data.models.preference.AnitorrentConfig
+import me.him188.ani.app.data.models.preference.ProxySettings
+import me.him188.ani.app.data.models.preference.TorrentPeerConfig
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.resolver.AndroidWebVideoSourceResolver
@@ -26,7 +31,12 @@ import me.him188.ani.app.domain.media.resolver.LocalFileVideoSourceResolver
 import me.him188.ani.app.domain.media.resolver.TorrentVideoSourceResolver
 import me.him188.ani.app.domain.media.resolver.VideoSourceResolver
 import me.him188.ani.app.domain.torrent.DefaultTorrentManager
+import me.him188.ani.app.domain.torrent.LocalAnitorrentEngineFactory
+import me.him188.ani.app.domain.torrent.TorrentEngine
+import me.him188.ani.app.domain.torrent.TorrentEngineFactory
 import me.him188.ani.app.domain.torrent.TorrentManager
+import me.him188.ani.app.domain.torrent.client.RemoteAnitorrentEngine
+import me.him188.ani.app.domain.torrent.engines.AnitorrentEngine
 import me.him188.ani.app.domain.torrent.service.TorrentServiceConnection
 import me.him188.ani.app.navigation.BrowserNavigator
 import me.him188.ani.app.platform.AndroidPermissionManager
@@ -37,6 +47,7 @@ import me.him188.ani.app.tools.update.AndroidUpdateInstaller
 import me.him188.ani.app.tools.update.UpdateInstaller
 import me.him188.ani.app.videoplayer.ExoPlayerStateFactory
 import me.him188.ani.app.videoplayer.ui.state.PlayerStateFactory
+import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.io.deleteRecursively
 import me.him188.ani.utils.io.exists
 import me.him188.ani.utils.io.inSystem
@@ -47,8 +58,10 @@ import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
 import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
+import org.koin.mp.KoinPlatform
 import java.io.File
 import kotlin.concurrent.thread
+import kotlin.coroutines.CoroutineContext
 
 fun getAndroidModules(
     defaultTorrentCacheDir: File,
@@ -157,6 +170,28 @@ fun getAndroidModules(
             get(),
             get(),
             baseSaveDir = { Path(cacheDir).inSystem },
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+                object : TorrentEngineFactory {
+                    override fun createTorrentEngine(
+                        parentCoroutineContext: CoroutineContext,
+                        config: Flow<AnitorrentConfig>,
+                        proxySettings: Flow<ProxySettings>,
+                        peerFilterSettings: Flow<TorrentPeerConfig>,
+                        saveDir: SystemPath
+                    ): TorrentEngine {
+                        return RemoteAnitorrentEngine(
+                            get(),
+                            config,
+                            proxySettings,
+                            peerFilterSettings,
+                            saveDir,
+                            parentCoroutineContext,
+                        )
+                    }
+                }
+            } else {
+                LocalAnitorrentEngineFactory
+            },
         )
     }
     single<PlayerStateFactory> { ExoPlayerStateFactory() }

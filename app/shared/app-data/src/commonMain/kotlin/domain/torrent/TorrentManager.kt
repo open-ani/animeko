@@ -43,6 +43,7 @@ enum class TorrentEngineType(
 
 class DefaultTorrentManager(
     parentCoroutineContext: CoroutineContext,
+    factory: TorrentEngineFactory,
     private val saveDir: (type: TorrentEngineType) -> SystemPath,
     private val proxySettingsFlow: Flow<ProxySettings>,
     private val anitorrentConfigFlow: Flow<AnitorrentConfig>,
@@ -52,15 +53,15 @@ class DefaultTorrentManager(
     private val scope = parentCoroutineContext.childScope()
 
     private val anitorrent: TorrentEngine by lazy {
-        createAniTorrentEngine(
+        factory.createTorrentEngine(
+            scope.coroutineContext + CoroutineName("AnitorrentEngine"),
             combine(anitorrentConfigFlow, isMeteredNetworkFlow) { config, isMetered ->
-                val isUploadLimited = isMetered && config.limitUploadOnMeteredNetwork 
+                val isUploadLimited = isMetered && config.limitUploadOnMeteredNetwork
                 config.copy(uploadRateLimit = if (isUploadLimited) 1.kiloBytes else config.uploadRateLimit)
             },
             proxySettingsFlow,
             peerFilterConfig,
             saveDir(TorrentEngineType.Anitorrent),
-            scope.coroutineContext + CoroutineName("AnitorrentEngine"),
         )
     }
 
@@ -80,10 +81,12 @@ class DefaultTorrentManager(
             settingsRepository: SettingsRepository,
             meteredNetworkDetector: MeteredNetworkDetector,
             baseSaveDir: () -> SystemPath,
+            torrentEngineFactory: TorrentEngineFactory = LocalAnitorrentEngineFactory,
         ): DefaultTorrentManager {
             val saveDirLazy by lazy(baseSaveDir)
             return DefaultTorrentManager(
                 parentCoroutineContext,
+                torrentEngineFactory,
                 { type ->
                     saveDirLazy.resolve(type.id)
                 },
@@ -95,11 +98,3 @@ class DefaultTorrentManager(
         }
     }
 }
-
-expect fun createAniTorrentEngine(
-    config: Flow<AnitorrentConfig>,
-    proxySettings: Flow<ProxySettings>,
-    peerFilterSettings: Flow<TorrentPeerConfig>,
-    saveDir: SystemPath,
-    parentCoroutineContext: CoroutineContext,
-): TorrentEngine
