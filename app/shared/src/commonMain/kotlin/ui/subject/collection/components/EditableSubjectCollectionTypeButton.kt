@@ -19,12 +19,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -33,7 +35,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.tools.MonoTasker
-import me.him188.ani.app.ui.foundation.rememberBackgroundScope
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.platform.annotations.TestOnly
 
@@ -145,19 +146,25 @@ private fun SetAllEpisodeDoneDialog(
 @TestOnly
 @Composable
 fun rememberTestEditableSubjectCollectionTypeState(type: UnifiedCollectionType = UnifiedCollectionType.WISH): EditableSubjectCollectionTypeState {
-    val backgroundScope = rememberBackgroundScope()
+    val backgroundScope = rememberCoroutineScope()
     val selfCollectionType = remember {
         mutableStateOf(type)
     }
     return remember {
-        EditableSubjectCollectionTypeState(
-            selfCollectionType,
-            hasAnyUnwatched = { false },
-            onSetSelfCollectionType = {
-                selfCollectionType.value = it
-            },
-            onSetAllEpisodesWatched = { },
-            backgroundScope.backgroundScope,
-        )
+        createTestEditableSubjectCollectionTypeState(selfCollectionType, backgroundScope)
     }
 }
+
+@TestOnly
+fun createTestEditableSubjectCollectionTypeState(
+    selfCollectionType: MutableState<UnifiedCollectionType>,
+    backgroundScope: CoroutineScope
+) = EditableSubjectCollectionTypeState(
+    selfCollectionType,
+    hasAnyUnwatched = { false },
+    onSetSelfCollectionType = {
+        selfCollectionType.value = it
+    },
+    onSetAllEpisodesWatched = { },
+    backgroundScope,
+)

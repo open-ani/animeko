@@ -17,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
+import me.him188.ani.app.ui.search.rememberTestLazyPagingItems
 import me.him188.ani.app.ui.subject.details.TestRelatedSubjects
 import me.him188.ani.app.ui.subject.details.TestSubjectCharacterList
 import me.him188.ani.app.ui.subject.details.TestSubjectInfo
@@ -30,9 +31,13 @@ private fun PreviewDetailsTab() {
         Scaffold {
             SubjectDetailsDefaults.DetailsTab(
                 TestSubjectInfo,
-                TestSubjectStaffInfo,
-                TestSubjectCharacterList,
-                TestRelatedSubjects,
+                rememberTestLazyPagingItems(TestSubjectStaffInfo),
+                exposedStaff = rememberTestLazyPagingItems(TestSubjectStaffInfo.take(6)),
+                totalStaffCount = TestSubjectStaffInfo.size,
+                rememberTestLazyPagingItems(TestSubjectCharacterList),
+                exposedCharacters = rememberTestLazyPagingItems(TestSubjectCharacterList.take(6)),
+                totalCharactersCount = TestSubjectCharacterList.size,
+                rememberTestLazyPagingItems(TestRelatedSubjects),
                 Modifier.padding(it),
             )
         }

@@ -161,6 +161,35 @@ data class SubjectAiringInfo(
     }
 }
 
+object TestSubjectAiringInfos {
+    val OnAir12Eps = SubjectAiringInfo(
+        SubjectAiringKind.ON_AIR,
+        episodeCount = 12,
+        airDate = PackedDate(2023, 10, 1),
+        firstSort = EpisodeSort(1),
+        latestSort = EpisodeSort(2),
+        upcomingSort = EpisodeSort(3),
+    )
+
+    val Upcoming24Eps = SubjectAiringInfo(
+        SubjectAiringKind.UPCOMING,
+        episodeCount = 24,
+        airDate = PackedDate(2023, 10, 1),
+        firstSort = EpisodeSort(1),
+        latestSort = null,
+        upcomingSort = EpisodeSort(1),
+    )
+
+    val Completed12Eps = SubjectAiringInfo(
+        SubjectAiringKind.COMPLETED,
+        episodeCount = 12,
+        airDate = PackedDate(2023, 10, 1),
+        firstSort = EpisodeSort(1),
+        latestSort = EpisodeSort(12),
+        upcomingSort = null,
+    )
+}
+
 // Mainly for SubjectAiringLabel
 @Stable
 fun SubjectAiringInfo.computeTotalEpisodeText(): String? {

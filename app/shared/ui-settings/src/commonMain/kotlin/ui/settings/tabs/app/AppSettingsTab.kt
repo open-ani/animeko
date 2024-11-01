@@ -192,12 +192,12 @@ fun SettingsScope.AppearanceGroup(
 
         Group(title = { Text("我的追番") }, useThinHeader = true) {
             SwitchItem(
-                checked = uiSettings.myCollections.enableListAnimation,
+                checked = uiSettings.myCollections.enableListAnimation1,
                 onCheckedChange = {
                     state.update(
                         uiSettings.copy(
                             myCollections = uiSettings.myCollections.copy(
-                                enableListAnimation = !uiSettings.myCollections.enableListAnimation,
+                                enableListAnimation1 = !uiSettings.myCollections.enableListAnimation1,
                             ),
                         ),
                     )

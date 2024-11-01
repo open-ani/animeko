@@ -9,16 +9,7 @@
 
 package me.him188.ani.app.ui.main
 
-import androidx.compose.animation.AnimatedContentTransitionScope
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.SharedTransitionLayout
-import androidx.compose.animation.core.LinearOutSlowInEasing
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
@@ -37,7 +28,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavBackStackEntry
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -57,9 +47,9 @@ import me.him188.ani.app.ui.cache.CacheManagementViewModel
 import me.him188.ani.app.ui.cache.details.MediaCacheDetailsPage
 import me.him188.ani.app.ui.cache.details.MediaCacheDetailsPageViewModel
 import me.him188.ani.app.ui.cache.details.MediaDetailsLazyGrid
-import me.him188.ani.app.ui.foundation.animation.EmphasizedDecelerateEasing
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBarPadding
+import me.him188.ani.app.ui.foundation.theme.AniNavigationMotionScheme
 import me.him188.ani.app.ui.profile.BangumiOAuthViewModel
 import me.him188.ani.app.ui.profile.auth.BangumiOAuthScene
 import me.him188.ani.app.ui.profile.auth.BangumiTokenAuthPage
@@ -76,12 +66,11 @@ import me.him188.ani.app.ui.settings.tabs.media.torrent.peer.PeerFilterSettingsP
 import me.him188.ani.app.ui.settings.tabs.media.torrent.peer.PeerFilterSettingsViewModel
 import me.him188.ani.app.ui.subject.cache.SubjectCacheScene
 import me.him188.ani.app.ui.subject.cache.SubjectCacheViewModelImpl
-import me.him188.ani.app.ui.subject.details.SubjectDetailsScene
+import me.him188.ani.app.ui.subject.details.SubjectDetailsPage
 import me.him188.ani.app.ui.subject.details.SubjectDetailsViewModel
 import me.him188.ani.app.ui.subject.episode.EpisodeScene
 import me.him188.ani.app.ui.subject.episode.EpisodeViewModel
 import me.him188.ani.datasources.api.source.FactoryId
-import kotlin.math.roundToInt
 import kotlin.reflect.typeOf
 
 /**
@@ -116,48 +105,10 @@ private fun AniAppContentImpl(
 
     SharedTransitionLayout {
         NavHost(navController, startDestination = initialRoute, modifier) {
-            // https://m3.material.io/styles/motion/easing-and-duration/applying-easing-and-duration#e5b958f0-435d-4e84-aed4-8d1ea395fa5c
-            val enterDuration = 500
-            val exitDuration = 200
-
-            // https://m3.material.io/styles/motion/easing-and-duration/applying-easing-and-duration#26a169fb-caf3-445e-8267-4f1254e3e8bb
-            // TODO: We should actually use Container transform in CMP 1.7
-            // https://developer.android.com/develop/ui/compose/animation/shared-elements
-            val enterEasing = EmphasizedDecelerateEasing
-            val exitEasing = LinearOutSlowInEasing
-
-            val enterTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition? =
-                {
-                    slideInHorizontally(
-                        tween(
-                            enterDuration,
-                            easing = enterEasing,
-                        ),
-                    ) { (it * (1f / 5)).roundToInt() }
-                        .plus(fadeIn(tween(enterDuration, easing = enterEasing)))
-                }
-
-            val exitTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition? =
-                {
-                    fadeOut(tween(exitDuration, easing = exitEasing))
-                }
-
-            val popEnterTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition? =
-                {
-                    fadeIn(tween(enterDuration, easing = enterEasing))
-                }
-
-            // 从页面 A 回到上一个页面 B, 切走页面 A 的动画
-            val popExitTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition? =
-                {
-                    slideOutHorizontally(
-                        tween(
-                            exitDuration,
-                            easing = exitEasing,
-                        ),
-                    ) { (it * (1f / 7)).roundToInt() }
-                        .plus(fadeOut(tween(exitDuration, easing = exitEasing)))
-                }
+            val enterTransition = AniNavigationMotionScheme.enterTransition
+            val exitTransition = AniNavigationMotionScheme.exitTransition
+            val popEnterTransition = AniNavigationMotionScheme.popEnterTransition
+            val popExitTransition = AniNavigationMotionScheme.popExitTransition
 
             composable<NavRoutes.Welcome>(
                 enterTransition = enterTransition,
@@ -237,9 +188,10 @@ private fun AniAppContentImpl(
                 val vm = viewModel<SubjectDetailsViewModel>(key = details.subjectId.toString()) {
                     SubjectDetailsViewModel(details.subjectId)
                 }
-                SubjectDetailsScene(
+                SubjectDetailsPage(
                     vm,
                     onPlay = { aniNavigator.navigateEpisodeDetails(details.subjectId, it) },
+                    animatedVisibilityScope = this,
                     windowInsets = windowInsets,
                 )
             }

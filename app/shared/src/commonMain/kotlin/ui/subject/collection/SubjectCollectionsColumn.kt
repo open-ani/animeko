@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.ui.subject.collection
 
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -55,36 +54,24 @@ import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemContentType
 import androidx.paging.compose.itemKey
 import androidx.window.core.layout.WindowWidthSizeClass
-import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
-import me.him188.ani.app.data.models.episode.EpisodeInfo
-import me.him188.ani.app.data.models.subject.SubjectAiringInfo
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
-import me.him188.ani.app.data.models.subject.SubjectInfo
-import me.him188.ani.app.data.models.subject.SubjectProgressInfo
 import me.him188.ani.app.ui.foundation.AsyncImage
-import me.him188.ani.app.ui.foundation.animation.StandardAccelerate
-import me.him188.ani.app.ui.foundation.animation.StandardDecelerate
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.stateOf
-import me.him188.ani.app.ui.foundation.theme.EasingDurations
+import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.search.isLoadingNextPage
-import me.him188.ani.app.ui.subject.collection.components.AiringLabel
-import me.him188.ani.app.ui.subject.collection.components.AiringLabelState
+import me.him188.ani.app.ui.subject.AiringLabel
+import me.him188.ani.app.ui.subject.AiringLabelState
 import me.him188.ani.app.ui.subject.collection.components.EditCollectionTypeDropDown
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeState
 import me.him188.ani.app.ui.subject.details.components.COVER_WIDTH_TO_HEIGHT_RATIO
-import me.him188.ani.app.ui.subject.rating.TestSelfRatingInfo
-import me.him188.ani.datasources.api.EpisodeSort
-import me.him188.ani.datasources.api.PackedDate
-import me.him188.ani.datasources.api.topic.UnifiedCollectionType
-import me.him188.ani.utils.platform.annotations.TestOnly
 
 /**
  * Lazy column of [item]s, designed for My Collections.
  *
  * 自带一圈 padding
  *
- * @param item composes each item. See [SubjectCollection]
+ * @param item composes each item. See [SubjectCollectionInfo]
  */
 @Composable
 fun SubjectCollectionsColumn(
@@ -101,9 +88,7 @@ fun SubjectCollectionsColumn(
         GridCells.Adaptive(360.dp),
         modifier,
         gridState,
-        verticalArrangement = Arrangement.spacedBy(spacedBy),
-        horizontalArrangement = Arrangement.spacedBy(spacedBy),
-        contentPadding = PaddingValues(horizontal = spacedBy),
+        contentPadding = PaddingValues(all = spacedBy / 2),
     ) {
         item(span = { GridItemSpan(maxLineSpan) }) { Spacer(Modifier.height(1.dp)) } // 添加新 item 时保持到顶部
 
@@ -114,16 +99,15 @@ fun SubjectCollectionsColumn(
         ) { index ->
             items[index]?.let {
                 Box(
-                    Modifier.ifThen(enableAnimation) {
-                        animateItem(
-                            fadeInSpec = tween(
-                                EasingDurations.standardAccelerate,
-                                delayMillis = EasingDurations.standardDecelerate,
-                                easing = StandardAccelerate,
-                            ),
-                            fadeOutSpec = tween(EasingDurations.standardDecelerate, easing = StandardDecelerate),
-                        )
-                    },
+                    Modifier
+                        .padding(all = spacedBy / 2)
+                        .ifThen(enableAnimation) {
+                            animateItem(
+                                fadeInSpec = AniThemeDefaults.feedItemFadeInSpec,
+                                placementSpec = AniThemeDefaults.feedItemPlacementSpec,
+                                fadeOutSpec = AniThemeDefaults.feedItemFadeOutSpec,
+                            )
+                        },
                 ) {
                     item(it)
                 }
@@ -266,93 +250,3 @@ private fun SubjectCollectionItemContent(
     }
 }
 
-
-@TestOnly
-val TestSubjectCollections
-    get() = buildList {
-        var id = 0
-        val eps = listOf(
-            EpisodeCollectionInfo(
-                episodeInfo = EpisodeInfo(
-                    episodeId = 6385,
-                    name = "Diana Houston",
-                    nameCn = "Nita O'Donnell",
-                    comment = 5931,
-                    desc = "gubergren",
-                    sort = EpisodeSort(1),
-                    ep = EpisodeSort(1),
-                ),
-                collectionType = UnifiedCollectionType.DONE,
-            ),
-            EpisodeCollectionInfo(
-                episodeInfo = EpisodeInfo(
-                    episodeId = 6386,
-                    name = "Diana Houston",
-                    nameCn = "Nita O'Donnell",
-                    sort = EpisodeSort(2),
-                    comment = 5931,
-                    desc = "gubergren",
-                    ep = EpisodeSort(2),
-                ),
-                collectionType = UnifiedCollectionType.DONE,
-            ),
-
-            )
-        add(
-            testSubjectCollection(++id, eps, UnifiedCollectionType.DOING),
-        )
-        add(
-            testSubjectCollection(++id, eps, UnifiedCollectionType.DOING),
-        )
-        add(
-            testSubjectCollection(++id, eps, UnifiedCollectionType.DOING),
-        )
-        add(
-            testSubjectCollection(++id, eps, collectionType = UnifiedCollectionType.WISH),
-        )
-        repeat(10) {
-            add(
-                testSubjectCollection(
-                    ++id,
-                    episodes = eps + EpisodeCollectionInfo(
-                        episodeInfo = EpisodeInfo(
-                            episodeId = 6386,
-                            name = "Diana Houston",
-                            nameCn = "Nita O'Donnell",
-                            sort = EpisodeSort(2),
-                            comment = 5931,
-                            desc = "gubergren",
-                            ep = EpisodeSort(2),
-                        ),
-                        collectionType = UnifiedCollectionType.DONE,
-                    ),
-                    collectionType = UnifiedCollectionType.WISH,
-                ),
-            )
-        }
-    }
-
-
-@TestOnly
-private fun testSubjectCollection(
-    id: Int,
-    episodes: List<EpisodeCollectionInfo>,
-    collectionType: UnifiedCollectionType,
-): SubjectCollectionInfo {
-    val subjectInfo = SubjectInfo.Empty.copy(
-        id,
-        nameCn = "中文条目名称",
-        name = "Subject Name",
-    )
-    return SubjectCollectionInfo(
-        subjectInfo = subjectInfo,
-        episodes = episodes,
-        collectionType = collectionType,
-        selfRatingInfo = TestSelfRatingInfo,
-        airingInfo = SubjectAiringInfo.computeFromEpisodeList(
-            episodes.map { it.episodeInfo },
-            airDate = subjectInfo.airDate,
-        ),
-        progressInfo = SubjectProgressInfo.compute(subjectInfo, episodes, PackedDate.now()),
-    )
-}

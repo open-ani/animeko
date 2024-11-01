@@ -82,8 +82,8 @@ class UserCollectionsViewModel : AbstractViewModel(), KoinComponent {
         },
     )
 
-    // 否则会导致切换页面后需要重新加载并丢失滚动进度
-    val items = state.currentPager.launchAsLazyPagingItemsIn(backgroundScope)
+    // 在 VM 生命周期, 否则会导致切换页面后需要重新加载并丢失滚动进度
+    val items = state.currentPagerFlow.launchAsLazyPagingItemsIn(backgroundScope)
 
     private fun createEditableSubjectCollectionTypeState(collection: SubjectCollectionInfo): EditableSubjectCollectionTypeState =
         // 必须不能有后台持续任务

@@ -17,12 +17,14 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
@@ -43,6 +45,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.io.files.Path
 import me.him188.ani.app.data.models.preference.configIfEnabledOrNull
+import me.him188.ani.app.data.persistent.dataStores
+import me.him188.ani.app.data.repository.SavedWindowState
+import me.him188.ani.app.data.repository.WindowStateRepository
+import me.him188.ani.app.data.repository.WindowStateRepositoryImpl
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.resolver.DesktopWebVideoSourceResolver
@@ -236,6 +242,7 @@ object AniDesktop {
                     single<UpdateInstaller> { DesktopUpdateInstaller.currentOS() }
                     single<PermissionManager> { GrantedPermissionManager }
                     single<NotifManager> { NoopNotifManager }
+                    single<WindowStateRepository> { WindowStateRepositoryImpl(context.dataStores.savedWindowStateStore) }
                 },
             )
         }.startCommonKoinModule(coroutineScope)
@@ -285,7 +292,22 @@ object AniDesktop {
             AppStartupTasks.verifySession(sessionManager, navigator)
         }
 
+        val windowStateRepository = koin.koin.get<WindowStateRepository>()
+        val savedWindowState: SavedWindowState? = runBlocking {
+            windowStateRepository.flow.firstOrNull()
+        }
+
         application {
+            WindowStateRecorder(
+                windowState = windowState,
+                saved = savedWindowState,
+                update = {
+                    coroutineScope.launch {
+                        windowStateRepository.update(it)
+                    }
+                },
+            ) 
+            
             Window(
                 onCloseRequest = { exitApplication() },
                 state = windowState,
@@ -399,6 +421,55 @@ private fun FrameWindowScope.MainWindowContent(
                         Toast({ showing }, { Text(content) })
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun WindowStateRecorder(
+    windowState: WindowState,
+    saved: SavedWindowState?,
+    update: (SavedWindowState) -> Unit,
+) {
+    // 记录窗口大小
+    val density = LocalDensity.current
+    DisposableEffect(density) {
+        with(density) {
+            if (saved != null) {
+                val savedWindowState = WindowState(
+                    position = WindowPosition(
+                        x = saved.x.toDp(),
+                        y = saved.y.toDp(),
+                    ),
+                    size = DpSize(
+                        width = saved.width.toDp(),
+                        height = saved.height.toDp(),
+                    ),
+                )
+                //保存的窗口尺寸和大小全都合规时，才使用，否则使用默认设置
+                val minimumSize = DpSize(800.dp, 600.dp)
+                val screenSize = ScreenUtils.getScreenSize()
+                if (
+                    (savedWindowState.size.width > minimumSize.width || savedWindowState.size.height > minimumSize.height)
+                    && savedWindowState.position.x < screenSize.width && savedWindowState.position.y < screenSize.height
+                ) {
+                    windowState.apply {
+                        position = savedWindowState.position
+                        size = savedWindowState.size
+                    }
+                }
+            }
+
+            onDispose {
+                update(
+                    SavedWindowState(
+                        x = windowState.position.x.toPx(),
+                        y = windowState.position.y.toPx(),
+                        width = windowState.size.width.toPx(),
+                        height = windowState.size.height.toPx(),
+                    ),
+                )
             }
         }
     }

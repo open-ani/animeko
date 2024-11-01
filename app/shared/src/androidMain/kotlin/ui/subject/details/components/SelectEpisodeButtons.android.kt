@@ -15,8 +15,8 @@ import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
+import me.him188.ani.app.data.models.subject.TestSubjectProgressInfos
 import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview
-import me.him188.ani.app.ui.subject.collection.progress.TestSubjectProgressInfos
 import me.him188.ani.app.ui.subject.collection.progress.rememberTestSubjectProgressState
 import me.him188.ani.utils.platform.annotations.TestOnly
 

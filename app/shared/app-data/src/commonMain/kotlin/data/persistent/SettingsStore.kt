@@ -13,7 +13,9 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.core.DataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.nullable
 import me.him188.ani.app.data.models.danmaku.DanmakuRegexFilter
+import me.him188.ani.app.data.repository.SavedWindowState
 import me.him188.ani.app.data.repository.media.MediaSourceSaves
 import me.him188.ani.app.data.repository.media.MediaSourceSubscriptionsSaveData
 import me.him188.ani.app.data.repository.media.MikanIndexes
@@ -72,6 +74,16 @@ abstract class PlatformDataStoreManager {
             produceFile = { resolveDataStoreFile("danmakuFilter") },
             corruptionHandler = ReplaceFileCorruptionHandler {
                 emptyList()
+            },
+        )
+    }
+    val savedWindowStateStore by lazy {
+        DataStoreFactory.create(
+            serializer = SavedWindowState.serializer().nullable
+                .asDataStoreSerializer({ null }),
+            produceFile = { resolveDataStoreFile("windowState") },
+            corruptionHandler = ReplaceFileCorruptionHandler {
+                null
             },
         )
     }

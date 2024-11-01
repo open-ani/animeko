@@ -9,11 +9,16 @@
 
 package me.him188.ani.app.ui.exploration.trends
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Surface
+import androidx.compose.material3.carousel.CarouselDefaults
+import androidx.compose.material3.carousel.CarouselState
 import androidx.compose.material3.carousel.HorizontalMultiBrowseCarousel
 import androidx.compose.material3.carousel.rememberCarouselState
 import androidx.compose.runtime.Composable
@@ -26,6 +31,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.data.models.trending.TrendingSubjectInfo
+import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.layout.CarouselItem
 import me.him188.ani.app.ui.foundation.layout.CarouselItemDefaults
@@ -39,24 +45,25 @@ fun TrendingSubjectsCarousel(
     contentPadding: PaddingValues = PaddingValues(0.dp),
     itemSpacing: Dp = 8.dp,
     modifier: Modifier = Modifier,
-) {
-    val size = CarouselItemDefaults.itemSize()
-    val carouselState = rememberCarouselState(initialItem = 0) {
+    carouselState: CarouselState = rememberCarouselState(initialItem = 0) {
         state.numItems
     }
+) {
+    val size = CarouselItemDefaults.itemSize()
     HorizontalMultiBrowseCarousel(
         carouselState,
         preferredItemWidth = size.preferredWidth,
         modifier.padding(contentPadding).fillMaxWidth(),
         itemSpacing = itemSpacing,
-//        flingBehavior = CarouselDefaults.multiBrowseFlingBehavior(
-//            carouselState,
-//            snapAnimationSpec = spring(stiffness = Spring.StiffnessMedium),
-//        ),
+        flingBehavior = CarouselDefaults.multiBrowseFlingBehavior(
+            carouselState,
+            snapAnimationSpec = spring(stiffness = Spring.StiffnessMedium),
+        ),
     ) { index ->
-        val item = state.subjects?.getOrNull(index)
+        val item = state.subjects.getOrNull(index)
         CarouselItem(
             label = { CarouselItemDefaults.Text(item?.nameCn ?: "") },
+            Modifier.placeholder(state.isPlaceholder, shape = CarouselItemDefaults.shape),
         ) {
             if (item != null) {
                 Surface({ onClick(item) }) {
@@ -67,6 +74,8 @@ fun TrendingSubjectsCarousel(
                         contentScale = ContentScale.Crop,
                     )
                 }
+            } else {
+                Box(Modifier.height(size.imageHeight).fillMaxWidth())
             }
         }
     }
@@ -77,9 +86,14 @@ fun TrendingSubjectsCarousel(
 class TrendingSubjectsState(
     subjectsState: State<List<TrendingSubjectInfo>?>, // null means loading
 ) {
-    val subjects by subjectsState
+    val subjects by derivedStateOf {
+        subjectsState.value ?: listOf(null, null, null, null, null, null, null, null)
+    }
+    val isPlaceholder by derivedStateOf {
+        subjectsState.value == null
+    }
     val numItems by derivedStateOf {
-        subjects?.size ?: 0
+        subjects.size
     }
 }
 

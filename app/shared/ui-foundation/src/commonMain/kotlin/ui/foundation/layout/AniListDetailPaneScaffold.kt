@@ -9,6 +9,9 @@
 
 package me.him188.ani.app.ui.foundation.layout
 
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
@@ -45,6 +48,7 @@ fun <T> AniListDetailPaneScaffold(
     listPaneContent: @Composable (PaneScope.() -> Unit),
     detailPane: @Composable (PaneScope.() -> Unit),
     modifier: Modifier = Modifier,
+    useSharedTransition: Boolean = false,
     listPanePreferredWidth: Dp = Dp.Unspecified,
     layoutParameters: ListDetailLayoutParameters = ListDetailLayoutParameters.calculate(navigator.scaffoldDirective),
 ) {
@@ -52,60 +56,75 @@ fun <T> AniListDetailPaneScaffold(
         navigator.navigateBack()
     }
     val layoutParametersState by rememberUpdatedState(layoutParameters)
-    ListDetailPaneScaffold(
-        navigator.scaffoldDirective,
-        navigator.scaffoldValue,
-        listPane = {
-            val threePaneScaffoldScope = this
-            AnimatedPane1(Modifier.preferredWidth(listPanePreferredWidth)) {
-                Column {
-                    listPaneTopAppBar()
-                    val scope = remember(threePaneScaffoldScope) {
-                        object : PaneScope {
-                            override val listDetailLayoutParameters: ListDetailLayoutParameters
-                                get() = layoutParametersState
 
-                            override fun Modifier.paneContentPadding(): Modifier =
-                                Modifier.padding(layoutParametersState.listPaneContentPaddingValues)
-                        }
-                    }
-                    listPaneContent(scope)
-                }
-            }
-        },
-        detailPane = {
-            val threePaneScaffoldScope = this
-            AnimatedPane1 {
-                Card(
-                    shape = layoutParameters.detailPaneShape,
-                    colors = layoutParameters.detailPaneColors,
-                ) {
-                    val scope = remember(threePaneScaffoldScope) {
-                        object : PaneScope {
-                            override val listDetailLayoutParameters: ListDetailLayoutParameters
-                                get() = layoutParametersState
+    SharedTransitionLayout {
+        ListDetailPaneScaffold(
+            navigator.scaffoldDirective,
+            navigator.scaffoldValue,
+            listPane = {
+                val threePaneScaffoldScope = this
+                AnimatedPane1(Modifier.preferredWidth(listPanePreferredWidth), useSharedTransition) {
+                    Column {
+                        listPaneTopAppBar()
+                        val scope =
+                            remember(threePaneScaffoldScope, this@SharedTransitionLayout, this@AnimatedPane1) {
+                                object : PaneScope, SharedTransitionScope by this@SharedTransitionLayout {
+                                    override val listDetailLayoutParameters: ListDetailLayoutParameters
+                                        get() = layoutParametersState
+                                    override val animatedVisibilityScope: AnimatedVisibilityScope
+                                        get() = this@AnimatedPane1
 
-                            override fun Modifier.paneContentPadding(): Modifier =
-                                Modifier.padding(layoutParametersState.detailPaneContentPaddingValues)
-                        }
+                                    override fun Modifier.paneContentPadding(): Modifier =
+                                        Modifier.padding(layoutParametersState.listPaneContentPaddingValues)
+                                }
+                            }
+                        listPaneContent(scope)
                     }
-                    detailPane(scope)
                 }
-            }
-        },
-        modifier,
-    )
+            },
+            detailPane = {
+                val threePaneScaffoldScope = this
+                AnimatedPane1(useSharedTransition = useSharedTransition) {
+                    Card(
+                        shape = layoutParameters.detailPaneShape,
+                        colors = layoutParameters.detailPaneColors,
+                    ) {
+                        val scope =
+                            remember(threePaneScaffoldScope, this@SharedTransitionLayout, this@AnimatedPane1) {
+                                object : PaneScope, SharedTransitionScope by this@SharedTransitionLayout {
+                                    override val listDetailLayoutParameters: ListDetailLayoutParameters
+                                        get() = layoutParametersState
+                                    override val animatedVisibilityScope: AnimatedVisibilityScope
+                                        get() = this@AnimatedPane1
+
+                                    override fun Modifier.paneContentPadding(): Modifier =
+                                        Modifier.padding(layoutParametersState.detailPaneContentPaddingValues)
+                                }
+                            }
+                        detailPane(scope)
+                    }
+                }
+            },
+            modifier,
+        )
+    }
 }
 
 @Stable
-interface PaneScope {
+interface PaneScope : SharedTransitionScope {
     val listDetailLayoutParameters: ListDetailLayoutParameters
+    val animatedVisibilityScope: AnimatedVisibilityScope
 
     /**
      * 增加自动的 content padding
      */
     @Stable
     fun Modifier.paneContentPadding(): Modifier
+}
+
+enum class AniListDetailPaneNavigationType {
+    NAV_HOST,
+    LIST_DETAIL,
 }
 
 @Immutable

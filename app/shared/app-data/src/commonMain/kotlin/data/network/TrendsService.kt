@@ -9,24 +9,54 @@
 
 package me.him188.ani.app.data.network
 
-import me.him188.ani.app.data.models.ApiResponse
+import androidx.paging.Pager
+import androidx.paging.PagingData
+import androidx.paging.PagingSource
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.trending.TrendingSubjectInfo
 import me.him188.ani.app.data.models.trending.TrendsInfo
 import me.him188.ani.app.data.repository.Repository
+import me.him188.ani.app.data.repository.Repository.Companion.defaultPagingConfig
+import me.him188.ani.app.data.repository.runWrappingExceptionAsLoadResult
+import me.him188.ani.app.tools.paging.SinglePagePagingSource
 import me.him188.ani.client.apis.TrendsAniApi
 import me.him188.ani.client.models.AniTrends
+import me.him188.ani.utils.coroutines.IO_
+import kotlin.coroutines.CoroutineContext
 
 class TrendsRepository(
     apiLazy: Lazy<TrendsAniApi>,
+    private val ioDispatcher: CoroutineContext = Dispatchers.IO_
 ) : Repository {
     private val api by apiLazy
 
-    suspend fun getTrending(): ApiResponse<TrendsInfo> = me.him188.ani.app.data.models.runApiRequest {
-        api.getTrends().body().toTrendingInfo()
+    suspend fun getTrendsInfo(): TrendsInfo {
+        return withContext(ioDispatcher) {
+            api.getTrends().body().toTrendsInfo()
+        }
+    }
+
+    fun trendsInfoPager(): Flow<PagingData<TrendsInfo>> {
+        return Pager(defaultPagingConfig) {
+            SinglePagePagingSource<Unit, TrendsInfo> {
+                runWrappingExceptionAsLoadResult {
+                    val trendsInfo = withContext(ioDispatcher) {
+                        api.getTrends().body().toTrendsInfo()
+                    }
+                    PagingSource.LoadResult.Page(
+                        listOf(trendsInfo),
+                        null,
+                        null,
+                    )
+                }
+            }
+        }.flow
     }
 }
 
-fun AniTrends.toTrendingInfo(): TrendsInfo {
+fun AniTrends.toTrendsInfo(): TrendsInfo {
     return TrendsInfo(
         subjects = trendingSubjects.map {
             TrendingSubjectInfo(it.bangumiId, it.nameCn, it.imageLarge)

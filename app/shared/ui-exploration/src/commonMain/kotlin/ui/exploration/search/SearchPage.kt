@@ -9,7 +9,8 @@
 
 package me.him188.ani.app.ui.exploration.search
 
-import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.Arrangement
@@ -29,7 +30,6 @@ import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
-import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
 import androidx.compose.material3.adaptive.navigation.ThreePaneScaffoldNavigator
 import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
 import androidx.compose.runtime.Composable
@@ -57,10 +57,12 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.ui.adaptive.AniTopAppBar
+import me.him188.ani.app.ui.foundation.animation.SharedTransitionKeys
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.interaction.keyboardDirectionToSelectItem
 import me.him188.ani.app.ui.foundation.interaction.keyboardPageToScroll
 import me.him188.ani.app.ui.foundation.layout.AniListDetailPaneScaffold
+import me.him188.ani.app.ui.foundation.layout.PaneScope
 import me.him188.ani.app.ui.foundation.layout.compareTo
 import me.him188.ani.app.ui.foundation.layout.paneHorizontalPadding
 import me.him188.ani.app.ui.foundation.layout.paneVerticalPadding
@@ -74,7 +76,7 @@ import me.him188.ani.app.ui.search.collectHasQueryAsState
 fun SearchPage(
     state: SearchPageState,
     windowInsets: WindowInsets,
-    detailContent: @Composable (subjectId: Int) -> Unit,
+    detailContent: @Composable PaneScope.(subjectId: Int) -> Unit,
     modifier: Modifier = Modifier,
     onSelect: (index: Int, item: SubjectPreviewItemInfo) -> Unit = { _, _ -> },
     focusSearchBarByDefault: Boolean = true,
@@ -112,11 +114,9 @@ fun SearchPage(
                 showSummary = { hasQuery },
                 selectedItemIndex = { state.selectedItemIndex },
                 onSelect = { index ->
-                    state.selectedItemIndex = index
                     items[index]?.let {
                         onSelect(index, it)
                     }
-                    navigator.navigateTo(ListDetailPaneScaffoldRole.Detail)
                 },
                 onPlay = { info ->
                     scope.launch(start = CoroutineStart.UNDISPATCHED) {
@@ -126,17 +126,19 @@ fun SearchPage(
                         }
                     }
                 }, // collect only once
+                animatedVisibilityScope = animatedVisibilityScope,
                 state = state.gridState,
             )
         },
         detailContent = {
-            AnimatedContent(
-                state.selectedItemIndex,
-                transitionSpec = AniThemeDefaults.emphasizedAnimatedContentTransition,
-            ) { index ->
-                items.itemSnapshotList.getOrNull(index)?.let {
-                    detailContent(it.subjectId)
-                }
+//            AnimatedContent(
+//                state.selectedItemIndex,
+//                transitionSpec = AniThemeDefaults.emphasizedAnimatedContentTransition,
+//            ) { index ->
+//               
+//            }
+            items.itemSnapshotList.getOrNull(state.selectedItemIndex)?.let {
+                detailContent(it.subjectId)
             }
         },
         modifier,
@@ -149,12 +151,13 @@ fun SearchPage(
 }
 
 @Composable
-internal fun SearchPageResultColumn(
+internal fun SharedTransitionScope.SearchPageResultColumn(
     items: LazyPagingItems<SubjectPreviewItemInfo>,
     showSummary: () -> Boolean, // 可在还没发起任何搜索时不展示
     selectedItemIndex: () -> Int,
     onSelect: (index: Int) -> Unit,
     onPlay: (info: SubjectPreviewItemInfo) -> Unit,
+    animatedVisibilityScope: AnimatedVisibilityScope,
     modifier: Modifier = Modifier,
     state: LazyStaggeredGridState = rememberLazyStaggeredGridState()
 ) {
@@ -222,6 +225,10 @@ internal fun SearchPageResultColumn(
                     onPlay = { onPlay(info) },
                     info = info,
                     Modifier
+                        .sharedElement(
+                            rememberSharedContentState(SharedTransitionKeys.subjectBounds(info.subjectId)),
+                            animatedVisibilityScope,
+                        )
                         .animateItem(
                             fadeInSpec = AniThemeDefaults.feedItemFadeInSpec,
                             placementSpec = AniThemeDefaults.feedItemPlacementSpec,
@@ -230,6 +237,25 @@ internal fun SearchPageResultColumn(
                         .fillMaxWidth()
                         .bringIntoViewRequester(requester)
                         .padding(vertical = currentWindowAdaptiveInfo().windowSizeClass.paneVerticalPadding / 2),
+                    image = {
+                        SubjectItemDefaults.Image(
+                            info.imageUrl,
+//                            Modifier.sharedElement(
+//                                rememberSharedContentState(SharedTransitionKeys.subjectCoverImage(subjectId = info.subjectId)),
+//                                animatedVisibilityScope,
+//                            ),
+                        )
+                    },
+                    title = { maxLines ->
+                        Text(
+                            info.title,
+//                            Modifier.sharedElement(
+//                                rememberSharedContentState(SharedTransitionKeys.subjectTitle(subjectId = info.subjectId)),
+//                                animatedVisibilityScope,
+//                            ),
+                            maxLines = maxLines,
+                        )
+                    },
                 )
             } else {
                 // placeholder
@@ -253,8 +279,8 @@ internal fun SearchPageLayout(
     navigator: ThreePaneScaffoldNavigator<*>,
     windowInsets: WindowInsets,
     searchBar: @Composable (contentPadding: Modifier) -> Unit,
-    searchResultList: @Composable () -> Unit,
-    detailContent: @Composable () -> Unit,
+    searchResultList: @Composable PaneScope.() -> Unit,
+    detailContent: @Composable PaneScope.() -> Unit,
     modifier: Modifier = Modifier,
     searchBarHeight: Dp = 64.dp,
 ) {
@@ -302,5 +328,6 @@ internal fun SearchPageLayout(
         },
         modifier,
         listPanePreferredWidth = 480.dp,
+        useSharedTransition = true,
     )
 }

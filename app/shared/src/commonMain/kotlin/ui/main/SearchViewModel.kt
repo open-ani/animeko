@@ -10,9 +10,7 @@
 package me.him188.ani.app.ui.main
 
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.paging.map
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -25,7 +23,8 @@ import me.him188.ani.app.ui.exploration.search.SubjectPreviewItemInfo
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.foundation.launchInBackground
 import me.him188.ani.app.ui.search.PagingSearchState
-import me.him188.ani.app.ui.subject.details.SubjectDetailsViewModel
+import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateFactory
+import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateLoader
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
@@ -35,6 +34,7 @@ class SearchViewModel : AbstractViewModel(), KoinComponent {
 
     private val episodeCollectionRepository: EpisodeCollectionRepository by inject()
     private val subjectSearchRepository: SubjectSearchRepository by inject()
+    private val subjectDetailsStateFactory: SubjectDetailsStateFactory by inject()
 
     private val queryState = mutableStateOf("")
 
@@ -62,26 +62,24 @@ class SearchViewModel : AbstractViewModel(), KoinComponent {
         ),
         backgroundScope = backgroundScope,
         onStartSearch = { query ->
+            subjectDetailsStateLoader.clear()
             launchInBackground {
                 searchHistoryRepository.addHistory(query)
             }
         },
     )
 
-    fun viewSubjectDetails(
+    val subjectDetailsStateLoader = SubjectDetailsStateLoader(subjectDetailsStateFactory, backgroundScope)
+
+    suspend fun viewSubjectDetails(
         subjectId: Int
     ) {
-        subjectDetailsViewModel?.cancelScope()
-        subjectDetailsViewModel = null
-        subjectDetailsViewModel = SubjectDetailsViewModel(subjectId)
+        subjectDetailsStateLoader.clear()
+        subjectDetailsStateLoader.load(subjectId).join()
     }
-
-    var subjectDetailsViewModel: SubjectDetailsViewModel? by mutableStateOf(null)
-        private set
 
     override fun onCleared() {
         super.onCleared()
-        subjectDetailsViewModel?.cancelScope()
-        subjectDetailsViewModel = null
     }
 }
+

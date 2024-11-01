@@ -98,23 +98,38 @@ interface SubjectCollectionDao {
      */
     @Query(
         """
-        select * from subject_collection 
-        where (collectionType is NOT NULL AND (:collectionType IS NULL OR collectionType = :collectionType))
-        order by lastUpdated desc
-        limit :limit
-        """,
+    SELECT * FROM subject_collection 
+    WHERE collectionType IS NOT NULL 
+    AND (collectionType IN (:collectionTypes))
+    ORDER BY lastUpdated DESC
+    LIMIT :limit
+    OFFSET :offset
+    """,
     )
-    fun filterMostRecentCollected(
-        collectionType: UnifiedCollectionType? = null,
+    fun filterMostRecentUpdated(
+        collectionTypes: List<UnifiedCollectionType>,
         limit: Int,
+        offset: Int = 0,
+    ): Flow<List<SubjectCollectionEntity>>
+
+    @Query(
+        """
+    SELECT * FROM subject_collection 
+    WHERE collectionType IS NOT NULL 
+    ORDER BY lastUpdated DESC
+    LIMIT :limit
+    OFFSET :offset
+    """,
+    )
+    fun mostRecentUpdated(
+        limit: Int,
+        offset: Int = 0,
     ): Flow<List<SubjectCollectionEntity>>
 
     /**
      * Retrieves a paginated list of `SubjectCollectionEntity` items, optionally filtered by type.
      *
-     * @param collectionType Optional filter for the `type` of items. If `null`, all items are retrieved.
-     * @param limit Specifies the maximum number of items to retrieve.
-     * @param offset Defines the starting position within the result set, allowing for pagination.
+     * @param collectionTypes Optional filter for the `type` of items. If `null`, all items are retrieved. If empty, no item will be returned.
      * @return A `Flow` of a list of `SubjectCollectionEntity` items.
      */
     @Query(
@@ -143,3 +158,18 @@ interface SubjectCollectionDao {
     @Query("""SELECT COUNT(*) FROM subject_collection WHERE (collectionType is NOT NULL AND (:collectionType IS NULL OR collectionType = :collectionType))""")
     fun countCollected(collectionType: UnifiedCollectionType?): Flow<Int>
 }
+
+fun SubjectCollectionDao.filterMostRecentUpdated(
+    collectionTypes: List<UnifiedCollectionType>?,
+    limit: Int,
+    offset: Int = 0,
+): Flow<List<SubjectCollectionEntity>> = if (collectionTypes == null) {
+    mostRecentUpdated(limit, offset)
+} else {
+    filterMostRecentUpdated(collectionTypes, limit, offset)
+}
+
+fun SubjectCollectionDao.filterMostRecentUpdated(
+    collectionType: UnifiedCollectionType? = null,
+    limit: Int,
+): Flow<List<SubjectCollectionEntity>> = filterMostRecentUpdated(listOfNotNull(collectionType), limit)

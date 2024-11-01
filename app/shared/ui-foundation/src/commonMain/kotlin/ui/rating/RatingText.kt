@@ -38,7 +38,7 @@ fun RatingText(
 ) {
     Row(modifier.height(IntrinsicSize.Min), verticalAlignment = Alignment.CenterVertically) {
         ProvideTextStyleContentColor(
-            MaterialTheme.typography.titleMedium,
+            MaterialTheme.typography.titleLarge,
             MaterialTheme.colorScheme.tertiary,
         ) {
             val text = remember(rating.score) {

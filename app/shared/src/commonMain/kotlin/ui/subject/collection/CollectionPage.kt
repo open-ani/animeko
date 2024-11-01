@@ -59,15 +59,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.paging.LoadState
+import androidx.paging.LoadStates
 import androidx.paging.PagingData
 import androidx.paging.compose.LazyPagingItems
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.UserInfo
 import me.him188.ani.app.data.models.subject.SubjectCollectionCounts
@@ -136,9 +140,21 @@ class UserCollectionsState(
         updateQuery { copy(type = availableTypes[index]) }
     }
 
-    val currentPager by derivedStateOf {
-        startSearch(filterQueryPair.second) // subscribe to both id and query, don't change to just `filterQuery`
-    }
+    val currentPagerFlow: Flow<PagingData<SubjectCollectionInfo>> =
+        snapshotFlow { filterQueryPair.second } // subscribe to both id and query, don't change to just `filterQuery`
+            .transformLatest {
+                emit(
+                    PagingData.from(
+                        emptyList(),
+                        LoadStates(
+                            refresh = LoadState.Loading,
+                            append = LoadState.NotLoading(false),
+                            prepend = LoadState.NotLoading(false),
+                        ),
+                    ),
+                )
+                emitAll(startSearch(it))
+            }
 
     val selfInfo: UserInfo? by selfInfoState
 
@@ -357,7 +373,7 @@ object CollectionPageFilters {
             COLLECTION_TABS_SORTED.forEachIndexed { index, collectionType ->
                 Tab(
                     selected = selectedIndex == index,
-                    onClick = { uiScope.launch { onSelect(index) } },
+                    onClick = { onSelect(index) },
                     text = {
                         val density = LocalDensity.current
                         Box(Modifier.onPlaced { widths[index] = with(density) { it.size.width.toDp() } }) {

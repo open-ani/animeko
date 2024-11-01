@@ -10,6 +10,12 @@
 package me.him188.ani.app.data.repository
 
 import androidx.paging.PagingSource
+import io.ktor.client.plugins.ClientRequestException
+import io.ktor.client.plugins.ServerResponseException
+import io.ktor.http.HttpStatusCode
+import kotlinx.io.IOException
+import me.him188.ani.app.data.repository.RepositoryException.Companion.wrapOrThrowCancellation
+import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * 数据层抛出的异常.
@@ -18,7 +24,43 @@ sealed class RepositoryException : Exception {
     constructor() : super()
     constructor(message: String?) : super(message)
     constructor(message: String?, cause: Throwable?) : super(message, cause)
+
+    companion object {
+        fun wrapOrThrowCancellation(cause: Throwable): RepositoryException = when (cause) {
+            is CancellationException -> throw cause
+            is RepositoryException -> cause
+            is ClientRequestException -> {
+                when (cause.response.status) {
+                    HttpStatusCode.Unauthorized -> RepositoryAuthorizationException(cause.response.status.description)
+                    HttpStatusCode.Forbidden -> RepositoryAuthorizationException(cause.response.status.description)
+                    HttpStatusCode.TooManyRequests -> RepositoryRateLimitedException(cause.response.status.description)
+                    else -> RepositoryUnknownException(cause)
+                }
+            }
+
+            is IOException -> RepositoryNetworkException(null, cause)
+            is ServerResponseException -> RepositoryServiceUnavailableException(cause.response.status.description)
+
+            else -> RepositoryUnknownException(cause)
+        }
+    }
 }
+
+inline fun <K : Any, V : Any> runWrappingExceptionAsLoadResult(block: () -> PagingSource.LoadResult<K, V>): PagingSource.LoadResult<K, V> {
+    return try {
+        block()
+    } catch (e: Throwable) {
+        PagingSource.LoadResult.Error(wrapOrThrowCancellation(e))
+    }
+}
+
+//fun <K : Any, T : Any> PagingSource.LoadResult.Companion.fromResult(result: Result<PagingSource.LoadResult<K, T>>): PagingSource.LoadResult<*, T> {
+//    return result.fold(
+//        onSuccess = { return it },
+//        onFailure = { PagingSource.LoadResult.Error<K, T>(it) },
+//    )
+//}
+
 
 /**
  * 一个请求需要用户登录, 而用户未登录.
@@ -43,6 +85,8 @@ class RepositoryServiceUnavailableException(message: String? = null, cause: Thro
  */
 class RepositoryRateLimitedException(message: String? = null, cause: Throwable? = null) :
     RepositoryException(message, cause)
+
+class RepositoryUnknownException(throwable: Throwable) : RepositoryException(null, cause = throwable)
 
 val PagingSource.LoadResult.Error<*, *>.repositoryException: RepositoryException?
     get() = throwable as? RepositoryException

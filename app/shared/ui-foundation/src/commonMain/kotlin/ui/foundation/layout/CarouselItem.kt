@@ -12,6 +12,7 @@ package me.him188.ani.app.ui.foundation.layout
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
@@ -25,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -53,12 +55,39 @@ fun CarouselItemScope.CarouselItem(
     label: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     supportingText: @Composable () -> Unit = {},
-    overlay: @Composable () -> Unit = {},
+    overlay: @Composable BoxScope.() -> Unit = {},
     colors: CarouselItemColors = CarouselItemDefaults.colors(),
-    shape: Shape = MaterialTheme.shapes.extraLarge,
+    shape: Shape = CarouselItemDefaults.shape,
     image: @Composable () -> Unit,
 ) {
     val maskShape = rememberMaskShape(shape)
+    BasicCarouselItem(
+        label,
+        modifier,
+        supportingText,
+        overlay,
+        colors,
+        maskShape,
+        image,
+    )
+}
+
+/**
+ * @param label see [CarouselItemDefaults.Text]
+ * @param supportingText see [CarouselItemDefaults.Text]
+ *
+ * @see CarouselItemDefaults.itemSize
+ */
+@Composable // Preview: PreviewTrendingSubjectsCarousel
+fun BasicCarouselItem(
+    label: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+    supportingText: @Composable () -> Unit = {},
+    overlay: @Composable BoxScope.() -> Unit = {},
+    colors: CarouselItemColors = CarouselItemDefaults.colors(),
+    maskShape: Shape = RectangleShape,
+    image: @Composable () -> Unit,
+) {
     Box(modifier) {
         Box(Modifier.clip(maskShape)) {
             image()
@@ -84,9 +113,12 @@ fun CarouselItemScope.CarouselItem(
                 }
             }
         }
-        overlay()
+        Box(Modifier.matchParentSize()) {
+            overlay()
+        }
     }
 }
+
 
 @Immutable
 data class CarouselItemColors(
@@ -96,6 +128,10 @@ data class CarouselItemColors(
 
 @Stable
 object CarouselItemDefaults {
+    val shape: Shape
+        @Composable
+        get() = MaterialTheme.shapes.extraLarge
+
     @Composable
     fun colors(): CarouselItemColors = aniDarkColorTheme().run {
         return CarouselItemColors(onSurface, onSurface)

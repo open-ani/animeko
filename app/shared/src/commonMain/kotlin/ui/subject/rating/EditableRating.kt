@@ -19,13 +19,15 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import kotlinx.coroutines.CoroutineScope
 import me.him188.ani.app.data.models.subject.RatingInfo
 import me.him188.ani.app.data.models.subject.SelfRatingInfo
+import me.him188.ani.app.data.models.subject.SubjectInfo
+import me.him188.ani.app.data.models.subject.TestSelfRatingInfo
 import me.him188.ani.app.tools.MonoTasker
-import me.him188.ani.app.ui.foundation.rememberBackgroundScope
 import me.him188.ani.app.ui.subject.details.TestSubjectInfo
 import me.him188.ani.utils.platform.annotations.TestOnly
 
@@ -126,28 +128,25 @@ fun EditableRating(
     )
 }
 
-
-@TestOnly
-internal val TestSelfRatingInfo
-    get() = SelfRatingInfo(
-        score = 7,
-        comment = "test",
-        tags = listOf("My tag"),
-        isPrivate = false,
-    )
-
 @Composable
 @TestOnly
 fun rememberTestEditableRatingState(): EditableRatingState {
-    val backgroundScope = rememberBackgroundScope()
+    val backgroundScope = rememberCoroutineScope()
     return remember {
-        EditableRatingState(
-            ratingInfo = mutableStateOf(TestSubjectInfo.ratingInfo),
-            selfRatingInfo = mutableStateOf(TestSelfRatingInfo),
-            enableEdit = mutableStateOf(true),
-            isCollected = { true },
-            onRate = { _ -> },
-            backgroundScope.backgroundScope,
-        )
+        createTestEditableRatingState(TestSubjectInfo, TestSelfRatingInfo, backgroundScope)
     }
 }
+
+@TestOnly
+fun createTestEditableRatingState(
+    subjectInfo: SubjectInfo,
+    selfRatingInfo: SelfRatingInfo,
+    backgroundScope: CoroutineScope,
+) = EditableRatingState(
+    ratingInfo = mutableStateOf(subjectInfo.ratingInfo),
+    selfRatingInfo = mutableStateOf(selfRatingInfo),
+    enableEdit = mutableStateOf(true),
+    isCollected = { true },
+    onRate = { _ -> },
+    backgroundScope,
+)

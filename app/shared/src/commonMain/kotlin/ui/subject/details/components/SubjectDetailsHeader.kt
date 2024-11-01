@@ -9,6 +9,8 @@
 
 package me.him188.ani.app.ui.subject.details.components
 
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -47,17 +49,18 @@ import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.OutlinedTag
+import me.him188.ani.app.ui.foundation.animation.SharedTransitionKeys
 import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.paddingIfNotEmpty
-import me.him188.ani.app.ui.subject.collection.components.AiringLabel
-import me.him188.ani.app.ui.subject.collection.components.AiringLabelState
+import me.him188.ani.app.ui.subject.AiringLabel
+import me.him188.ani.app.ui.subject.AiringLabelState
 import me.him188.ani.app.ui.subject.renderSubjectSeason
 
 const val COVER_WIDTH_TO_HEIGHT_RATIO = 849 / 1200f
 
 // 图片和标题
 @Composable
-internal fun SubjectDetailsHeader(
+internal fun SharedTransitionScope.SubjectDetailsHeader(
     info: SubjectInfo,
     coverImageUrl: String?,
     airingLabelState: AiringLabelState,
@@ -65,13 +68,21 @@ internal fun SubjectDetailsHeader(
     collectionAction: @Composable () -> Unit,
     selectEpisodeButton: @Composable BoxScope.() -> Unit,
     rating: @Composable () -> Unit,
+    animatedVisibilityScope: AnimatedVisibilityScope,
     modifier: Modifier = Modifier,
 ) {
     if (currentWindowAdaptiveInfo().isWidthAtLeastMedium) {
         SubjectDetailsHeaderWide(
+            subjectId = info.subjectId,
             coverImageUrl = coverImageUrl,
             title = {
-                Text(info.displayName)
+                Text(
+                    info.displayName,
+                    Modifier.sharedElement(
+                        rememberSharedContentState(SharedTransitionKeys.subjectTitle(info.subjectId)),
+                        animatedVisibilityScope,
+                    ),
+                )
             },
             subtitle = {
                 Text(info.name)
@@ -89,13 +100,21 @@ internal fun SubjectDetailsHeader(
             collectionAction = collectionAction,
             selectEpisodeButton = selectEpisodeButton,
             rating = rating,
+            animatedVisibilityScope = animatedVisibilityScope,
             modifier = modifier,
         )
     } else {
         SubjectDetailsHeaderCompact(
+            subjectId = info.subjectId,
             coverImageUrl = coverImageUrl,
             title = {
-                Text(info.displayName)
+                Text(
+                    info.displayName,
+                    Modifier.sharedElement(
+                        rememberSharedContentState(SharedTransitionKeys.subjectTitle(info.subjectId)),
+                        animatedVisibilityScope,
+                    ),
+                )
             },
             subtitle = {
                 Text(info.name)
@@ -113,6 +132,7 @@ internal fun SubjectDetailsHeader(
             collectionAction = collectionAction,
             selectEpisodeButton = selectEpisodeButton,
             rating = rating,
+            animatedVisibilityScope,
             modifier = modifier,
         )
     }
@@ -121,7 +141,8 @@ internal fun SubjectDetailsHeader(
 
 // 适合手机, 窄
 @Composable
-fun SubjectDetailsHeaderCompact(
+fun SharedTransitionScope.SubjectDetailsHeaderCompact(
+    subjectId: Int,
     coverImageUrl: String?,
     title: @Composable () -> Unit,
     subtitle: @Composable () -> Unit,
@@ -130,6 +151,7 @@ fun SubjectDetailsHeaderCompact(
     collectionAction: @Composable () -> Unit,
     selectEpisodeButton: @Composable BoxScope.() -> Unit,
     rating: @Composable () -> Unit,
+    animatedVisibilityScope: AnimatedVisibilityScope,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier) {
@@ -141,6 +163,10 @@ fun SubjectDetailsHeaderCompact(
                     coverImageUrl,
                     null,
                     Modifier
+                        .sharedElement(
+                            rememberSharedContentState(SharedTransitionKeys.subjectCoverImage(subjectId)),
+                            animatedVisibilityScope,
+                        )
                         .width(imageWidth)
                         .height(imageWidth / COVER_WIDTH_TO_HEIGHT_RATIO),
                     contentScale = ContentScale.Crop,
@@ -208,7 +234,8 @@ fun SubjectDetailsHeaderCompact(
 }
 
 @Composable
-fun SubjectDetailsHeaderWide(
+fun SharedTransitionScope.SubjectDetailsHeaderWide(
+    subjectId: Int,
     coverImageUrl: String?,
     title: @Composable () -> Unit,
     subtitle: @Composable () -> Unit,
@@ -217,6 +244,7 @@ fun SubjectDetailsHeaderWide(
     collectionAction: @Composable () -> Unit,
     selectEpisodeButton: @Composable BoxScope.() -> Unit,
     rating: @Composable () -> Unit,
+    animatedVisibilityScope: AnimatedVisibilityScope,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier) {
@@ -231,6 +259,10 @@ fun SubjectDetailsHeaderWide(
                     coverImageUrl,
                     null,
                     Modifier
+                        .sharedElement(
+                            rememberSharedContentState(SharedTransitionKeys.subjectCoverImage(subjectId)),
+                            animatedVisibilityScope,
+                        )
                         .width(imageWidth)
                         .height(imageWidth / COVER_WIDTH_TO_HEIGHT_RATIO),
                     contentScale = ContentScale.Crop,

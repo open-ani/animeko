@@ -49,6 +49,7 @@ import me.him188.ani.app.data.models.subject.Tag
 import me.him188.ani.app.data.network.BangumiSubjectService
 import me.him188.ani.app.data.persistent.database.dao.SubjectCollectionDao
 import me.him188.ani.app.data.persistent.database.dao.SubjectCollectionEntity
+import me.him188.ani.app.data.persistent.database.dao.filterMostRecentUpdated
 import me.him188.ani.app.data.repository.Repository
 import me.him188.ani.app.data.repository.Repository.Companion.defaultPagingConfig
 import me.him188.ani.app.data.repository.RepositoryException
@@ -97,7 +98,7 @@ sealed interface SubjectCollectionRepository : Repository {
      */
     fun mostRecentlyUpdatedSubjectCollectionsFlow(
         limit: Int,
-        type: UnifiedCollectionType? = null, // null for all
+        types: List<UnifiedCollectionType>? = null, // null for all
     ): Flow<List<SubjectCollectionInfo>>
 
     suspend fun updateRating(
@@ -180,9 +181,9 @@ class SubjectCollectionRepositoryImpl(
 
     override fun mostRecentlyUpdatedSubjectCollectionsFlow(
         limit: Int,
-        type: UnifiedCollectionType?, // null for all
+        types: List<UnifiedCollectionType>?, // null for all
     ): Flow<List<SubjectCollectionInfo>> =
-        subjectCollectionDao.filterMostRecentCollected(type, limit).map { list ->
+        subjectCollectionDao.filterMostRecentUpdated(types, limit).map { list ->
             list.map { entity ->
                 entity.toSubjectCollectionInfo(
                     episodes = getSubjectEpisodeCollections(entity.subjectId),

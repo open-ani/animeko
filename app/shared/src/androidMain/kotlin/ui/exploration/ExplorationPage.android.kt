@@ -15,12 +15,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.tooling.preview.PreviewLightDark
+import me.him188.ani.app.data.models.subject.TestFollowedSubjectInfos
 import me.him188.ani.app.domain.session.TestUserInfo
 import me.him188.ani.app.domain.session.createTestAuthState
 import me.him188.ani.app.ui.exploration.trends.createTestTrendingSubjectsState
 import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.preview.PreviewSizeClasses
 import me.him188.ani.app.ui.foundation.stateOf
+import me.him188.ani.app.ui.search.createTestPager
 import me.him188.ani.utils.platform.annotations.TestOnly
 
 @Composable
@@ -35,6 +37,7 @@ internal fun PreviewExplorationPage() {
                     authState = createTestAuthState(scope),
                     selfInfoState = stateOf(TestUserInfo),
                     createTestTrendingSubjectsState(),
+                    followedSubjectsPager = createTestPager(TestFollowedSubjectInfos),
                 )
             },
             {},

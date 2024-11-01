@@ -11,17 +11,17 @@ package me.him188.ani.app.ui.subject.details
 
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.tooling.preview.Preview
+import me.him188.ani.app.data.models.subject.TestSubjectProgressInfos
 import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview
+import me.him188.ani.app.ui.foundation.layout.DummySharedTransitionLayout
 import me.him188.ani.app.ui.foundation.layout.rememberConnectedScrollState
-import me.him188.ani.app.ui.foundation.stateOf
+import me.him188.ani.app.ui.search.rememberTestLazyPagingItems
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeButton
-import me.him188.ani.app.ui.subject.collection.components.createTestAiringLabelState
 import me.him188.ani.app.ui.subject.collection.components.rememberTestEditableSubjectCollectionTypeState
-import me.him188.ani.app.ui.subject.collection.progress.TestSubjectProgressInfos
 import me.him188.ani.app.ui.subject.collection.progress.rememberTestSubjectProgressState
 import me.him188.ani.app.ui.subject.components.comment.generateUiComment
 import me.him188.ani.app.ui.subject.components.comment.rememberTestCommentState
@@ -30,31 +30,21 @@ import me.him188.ani.app.ui.subject.details.components.DetailsTab
 import me.him188.ani.app.ui.subject.details.components.SelectEpisodeButtons
 import me.him188.ani.app.ui.subject.details.components.SubjectCommentColumn
 import me.him188.ani.app.ui.subject.details.components.SubjectDetailsDefaults
+import me.him188.ani.app.ui.subject.details.state.createTestSubjectDetailsState
 import me.him188.ani.app.ui.subject.rating.EditableRating
 import me.him188.ani.app.ui.subject.rating.rememberTestEditableRatingState
-import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.platform.annotations.TestOnly
 
 @OptIn(TestOnly::class)
 @Preview
 @Preview(device = "spec:width=1280dp,height=800dp,dpi=240")
 @Composable
-internal fun PreviewSubjectDetails() {
-    ProvideFoundationCompositionLocalsForPreview {
-        val state = remember {
-            SubjectDetailsState(
-                subjectInfoState = stateOf(TestSubjectInfo),
-                selfCollectionTypeState = stateOf(UnifiedCollectionType.WISH),
-                airingLabelState = createTestAiringLabelState(),
-                charactersState = stateOf(TestSubjectCharacterList),
-                personsState = stateOf(emptyList()),
-                relatedSubjectsState = stateOf(TestRelatedSubjects),
-            )
-        }
-        val connectedScrollState = rememberConnectedScrollState()
-        SubjectDetailsPage(
+internal fun PreviewSubjectDetails() = ProvideFoundationCompositionLocalsForPreview {
+    val state = createTestSubjectDetailsState(rememberCoroutineScope())
+    val connectedScrollState = rememberConnectedScrollState()
+    DummySharedTransitionLayout {
+        SubjectDetailsPageLayout(
             state = state,
-            onClickOpenExternal = {},
             collectionData = {
                 SubjectDetailsDefaults.CollectionData(
                     collectionStats = state.info.collectionStats,
@@ -81,9 +71,13 @@ internal fun PreviewSubjectDetails() {
             detailsTab = {
                 SubjectDetailsDefaults.DetailsTab(
                     info = TestSubjectInfo,
-                    staff = TestSubjectStaffInfo,
-                    characters = TestSubjectCharacterList,
-                    relatedSubjects = TestRelatedSubjects,
+                    staff = rememberTestLazyPagingItems(TestSubjectStaffInfo),
+                    exposedStaff = rememberTestLazyPagingItems(TestSubjectStaffInfo.take(6)),
+                    totalStaffCount = TestSubjectStaffInfo.size,
+                    characters = rememberTestLazyPagingItems(TestSubjectCharacterList),
+                    exposedCharacters = rememberTestLazyPagingItems(TestSubjectCharacterList.take(6)),
+                    totalCharactersCount = TestSubjectCharacterList.size,
+                    relatedSubjects = rememberTestLazyPagingItems(TestRelatedSubjects),
                     Modifier.nestedScroll(connectedScrollState.nestedScrollConnection),
                 )
             },
@@ -99,6 +93,7 @@ internal fun PreviewSubjectDetails() {
                 )
             },
             discussionsTab = {},
+            animatedVisibilityScope = animatedVisibilityScope,
         )
     }
 }

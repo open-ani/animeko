@@ -62,6 +62,7 @@ import androidx.paging.LoadState
 import androidx.paging.LoadStates
 import androidx.paging.PagingData
 import androidx.paging.compose.LazyPagingItems
+import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItemsWithLifecycle
 import androidx.paging.compose.launchAsLazyPagingItemsIn
 import kotlinx.coroutines.CoroutineScope
@@ -174,7 +175,7 @@ val LazyPagingItems<*>.isLoadingFirstOrNextPage: Boolean
 
 @Stable
 val LazyPagingItems<*>.isLoadingNextPage: Boolean
-    get() = isLoadingFirstOrNextPage && !isLoadingFirstPage
+    get() = isLoadingFirstOrNextPage
 
 @Stable
 val LazyPagingItems<*>.hasFirstPage: Boolean
@@ -506,7 +507,7 @@ object SearchDefaults {
 private fun <T : Any> LazyPagingItems<T>.rememberSearchErrorState(): State<SearchProblem?> {
     return remember(this) {
         derivedStateOf {
-            SearchProblem.compute(loadState)
+            SearchProblem.fromCombinedLoadStates(loadState)
         }
     }
 }
@@ -523,7 +524,7 @@ sealed class SearchProblem {
     data class UnknownError(val throwable: Throwable?) : SearchProblem()
 
     companion object {
-        fun compute(states: CombinedLoadStates): SearchProblem? {
+        fun fromCombinedLoadStates(states: CombinedLoadStates): SearchProblem? {
             if (!states.hasError) {
                 return null
             }
@@ -538,5 +539,25 @@ sealed class SearchProblem {
             }
             return UnknownError(exceptions.firstOrNull())
         }
+
+        fun fromException(e: Throwable): SearchProblem {
+            return when (e) {
+                is RepositoryAuthorizationException -> RequiresLogin
+                is RepositoryNetworkException -> NetworkError
+                is RepositoryServiceUnavailableException -> ServiceUnavailable
+                is RepositoryRateLimitedException -> RateLimited
+                else -> UnknownError(e)
+            }
+        }
     }
 }
+
+
+@TestOnly
+@Composable
+fun <T : Any> rememberTestLazyPagingItems(list: List<T>): LazyPagingItems<T> {
+    return createTestPager(list).collectAsLazyPagingItems()
+}
+
+@TestOnly
+fun <T : Any> createTestPager(list: List<T>) = MutableStateFlow(PagingData.from(list))

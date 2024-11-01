@@ -38,7 +38,6 @@ import me.him188.ani.datasources.bangumi.models.BangumiRelatedCharacter
 import me.him188.ani.datasources.bangumi.models.BangumiRelatedPerson
 import me.him188.ani.datasources.bangumi.models.BangumiSubjectType
 import me.him188.ani.datasources.bangumi.models.BangumiV0SubjectRelation
-import me.him188.ani.utils.coroutines.flows.runOrEmitEmptyList
 
 private val json = Json {
     ignoreUnknownKeys = true
@@ -75,10 +74,8 @@ class BangumiRelatedPeopleService(
      */
     fun relatedCharactersFlow(subjectId: Int): Flow<List<RelatedCharacterInfo>> {
         return flow {
-            val characters = runOrEmitEmptyList {
-                withContext(Dispatchers.IO) {
-                    client.getApi().getRelatedCharactersBySubjectId(subjectId).body()
-                }
+            val characters = withContext(Dispatchers.IO) {
+                client.getApi().getRelatedCharactersBySubjectId(subjectId).body()
             }
 
             // 查 GraphQL 要一秒, 先按日文显示 
@@ -157,14 +154,12 @@ class BangumiRelatedPeopleService(
 
 
     /**
-     * 查询该条目的 staff. 返回的 flow 至少会 emit 一个 list.
+     * 查询该条目的 staff.
      */
     fun relatedPersonsFlow(subjectId: Int): Flow<List<RelatedPersonInfo>> {
         return flow {
-            val persons = runOrEmitEmptyList {
-                withContext(Dispatchers.IO) {
-                    client.getApi().getRelatedPersonsBySubjectId(subjectId).body()
-                }
+            val persons = withContext(Dispatchers.IO) {
+                client.getApi().getRelatedPersonsBySubjectId(subjectId).body()
             }
             emit(
                 persons.map { character ->
@@ -187,10 +182,8 @@ class BangumiRelatedPeopleService(
 
     fun relatedSubjectsFlow(subjectId: Int): Flow<List<RelatedSubjectInfo>> {
         return flow {
-            val subjects = runOrEmitEmptyList {
-                withContext(Dispatchers.IO) {
-                    client.getApi().getRelatedSubjectsBySubjectId(subjectId).body()
-                }
+            val subjects = withContext(Dispatchers.IO) {
+                client.getApi().getRelatedSubjectsBySubjectId(subjectId).body()
             }
             emit(subjects.mapNotNull { it.toRelatedSubjectInfo() })
         }

@@ -12,8 +12,9 @@ package me.him188.ani.app.ui.subject.components.comment
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.CoroutineScope
 import me.him188.ani.app.data.models.UserInfo
-import me.him188.ani.app.ui.foundation.rememberBackgroundScope
 import me.him188.ani.app.ui.richtext.UIRichElement
 import me.him188.ani.utils.platform.annotations.TestOnly
 import me.him188.ani.utils.platform.currentTimeMillis
@@ -24,19 +25,25 @@ import kotlin.time.Duration.Companion.minutes
 @Composable
 @TestOnly
 fun rememberTestCommentState(commentList: List<UIComment>): CommentState {
-    val scope = rememberBackgroundScope()
+    val scope = rememberCoroutineScope()
     return remember {
-        CommentState(
-            sourceVersion = mutableStateOf(Any()),
-            list = mutableStateOf(commentList),
-            hasMore = mutableStateOf(false),
-            onReload = { },
-            onLoadMore = { },
-            onSubmitCommentReaction = { _, _ -> },
-            backgroundScope = scope.backgroundScope,
-        )
+        createTestCommentState(scope, commentList)
     }
 }
+
+@TestOnly
+fun createTestCommentState(
+    scope: CoroutineScope,
+    commentList: List<UIComment> = generateUiComment(10),
+) = CommentState(
+    sourceVersion = mutableStateOf(Any()),
+    list = mutableStateOf(commentList),
+    hasMore = mutableStateOf(false),
+    onReload = { },
+    onLoadMore = { },
+    onSubmitCommentReaction = { _, _ -> },
+    backgroundScope = scope,
+)
 
 @TestOnly
 fun generateUiComment(

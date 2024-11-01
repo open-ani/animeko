@@ -22,6 +22,7 @@ import me.him188.ani.app.data.models.subject.SubjectAiringKind.UPCOMING
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
 import me.him188.ani.app.tools.WeekFormatter
 import me.him188.ani.app.ui.foundation.stateOf
+import me.him188.ani.app.ui.subject.AiringLabelState
 import me.him188.ani.app.ui.subject.collection.progress.SubjectProgressState
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.PackedDate

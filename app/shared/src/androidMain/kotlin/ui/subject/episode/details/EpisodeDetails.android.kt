@@ -20,6 +20,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
@@ -32,8 +33,9 @@ import me.him188.ani.app.domain.session.SessionStatus
 import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.rememberBackgroundScope
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeState
-import me.him188.ani.app.ui.subject.collection.components.createTestAiringLabelState
 import me.him188.ani.app.ui.subject.collection.components.rememberTestEditableSubjectCollectionTypeState
+import me.him188.ani.app.ui.subject.createTestAiringLabelState
+import me.him188.ani.app.ui.subject.details.state.createTestSubjectDetailsLoader
 import me.him188.ani.app.ui.subject.episode.EpisodePresentation
 import me.him188.ani.app.ui.subject.episode.mediaFetch.MediaSelectorPresentation
 import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberTestMediaSelectorPresentation
@@ -160,18 +162,22 @@ private fun rememberTestEpisodeDetailsState(
     subjectInfo: SubjectInfo = SubjectInfo.Empty.copy(
         nameCn = "中文条目名称啊中文条目名称中文条啊目名称中文条目名称中文条目名称中文",
     ),
-) = remember {
-    EpisodeDetailsState(
-        episodePresentation = mutableStateOf(
-            EpisodePresentation.Placeholder.copy(
-                title = "一个剧集",
-                sort = "01",
-                isPlaceholder = false,
+): EpisodeDetailsState {
+    val scope = rememberCoroutineScope()
+    return remember {
+        EpisodeDetailsState(
+            episodePresentation = mutableStateOf(
+                EpisodePresentation.Placeholder.copy(
+                    title = "一个剧集",
+                    sort = "01",
+                    isPlaceholder = false,
+                ),
             ),
-        ),
-        subjectInfo = mutableStateOf(subjectInfo),
-        airingLabelState = createTestAiringLabelState(),
-    )
+            subjectInfo = mutableStateOf(subjectInfo),
+            airingLabelState = createTestAiringLabelState(),
+            subjectDetailsStateLoader = createTestSubjectDetailsLoader(scope),
+        )
+    }
 }
 
 @OptIn(TestOnly::class)

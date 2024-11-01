@@ -69,7 +69,7 @@ class SubjectPreviewItemInfo(
                 append(
                     (sourceTag + genreTags)
                         .take(3)
-                        .joinToString(" / "),
+                        .joinToString(" / ") { it.name },
                 )
             }
             val staff = relatedPersonList?.let {
@@ -155,16 +155,18 @@ fun SubjectPreviewItem(
     onPlay: () -> Unit,
     info: SubjectPreviewItemInfo,
     modifier: Modifier = Modifier,
+    image: @Composable () -> Unit = {
+        SubjectItemDefaults.Image(info.imageUrl)
+    },
+    title: @Composable (Int) -> Unit = { maxLines ->
+        Text(info.title, maxLines = maxLines)
+    },
 ) {
     SubjectItemLayout(
         selected = selected,
         onClick = onClick,
-        image = {
-            SubjectItemDefaults.Image(info.imageUrl)
-        },
-        title = { maxLines ->
-            Text(info.title, maxLines = maxLines)
-        },
+        image = image,
+        title = title,
         tags = {
             Text(info.tags, maxLines = 2, overflow = TextOverflow.Ellipsis)
         },

@@ -57,6 +57,7 @@ import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepository
 import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepositoryImpl
 import me.him188.ani.app.data.repository.player.EpisodeScreenshotRepository
 import me.him188.ani.app.data.repository.player.WhatslinkEpisodeScreenshotRepository
+import me.him188.ani.app.data.repository.subject.FollowedSubjectsRepository
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepositoryImpl
 import me.him188.ani.app.data.repository.subject.SubjectSearchHistoryRepository
@@ -90,6 +91,8 @@ import me.him188.ani.app.domain.session.unverifiedAccessToken
 import me.him188.ani.app.domain.session.username
 import me.him188.ani.app.domain.torrent.TorrentManager
 import me.him188.ani.app.domain.update.UpdateManager
+import me.him188.ani.app.ui.subject.details.state.DefaultSubjectDetailsStateFactory
+import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateFactory
 import me.him188.ani.app.ui.subject.episode.video.TorrentMediaCacheProgressState
 import me.him188.ani.app.videoplayer.torrent.TorrentVideoData
 import me.him188.ani.app.videoplayer.ui.state.CacheProgressStateFactoryManager
@@ -154,6 +157,12 @@ fun KoinApplication.getCommonKoinModule(getContext: () -> Context, coroutineScop
             subjectCollectionDao = database.subjectCollection(),
             episodeCollectionRepository = get(),
             usernameProvider = get(),
+        )
+    }
+    single<FollowedSubjectsRepository> {
+        FollowedSubjectsRepository(
+            subjectCollectionRepository = get(),
+            episodeCollectionRepository = get(),
         )
     }
     single<SubjectSearchRepository> {
@@ -309,6 +318,7 @@ fun KoinApplication.getCommonKoinModule(getContext: () -> Context, coroutineScop
     }
 
     single<MeteredNetworkDetector> { createMeteredNetworkDetector(getContext()) }
+    single<SubjectDetailsStateFactory> { DefaultSubjectDetailsStateFactory() }
 }
 
 

@@ -28,17 +28,22 @@ import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
+import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteDefaults
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.launch
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.MainScenePage
 import me.him188.ani.app.navigation.getIcon
@@ -52,6 +57,7 @@ import me.him188.ani.app.ui.cache.CacheManagementViewModel
 import me.him188.ani.app.ui.exploration.ExplorationPage
 import me.him188.ani.app.ui.exploration.search.SearchPage
 import me.him188.ani.app.ui.foundation.LocalPlatform
+import me.him188.ani.app.ui.foundation.animation.SharedTransitionKeys
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBarPadding
@@ -61,7 +67,7 @@ import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.subject.collection.CollectionPage
 import me.him188.ani.app.ui.subject.collection.UserCollectionsViewModel
-import me.him188.ani.app.ui.subject.details.SubjectDetailsScene
+import me.him188.ani.app.ui.subject.details.SubjectDetailsPage
 import me.him188.ani.utils.platform.isAndroid
 
 
@@ -168,7 +174,7 @@ private fun MainSceneContent(
                             onClickSearch = { onNavigateToPage(MainScenePage.Search) },
                             onClickSettings = { navigator.navigateSettings() },
                             Modifier.fillMaxSize(),
-                            enableAnimation = vm.myCollectionsSettings.enableListAnimation,
+                            enableAnimation = vm.myCollectionsSettings.enableListAnimation1,
                             lazyGridState = vm.lazyGridState,
                         )
                     }
@@ -185,25 +191,43 @@ private fun MainSceneContent(
                         BackHandler(true) {
                             onNavigateToPage(MainScenePage.Exploration)
                         }
+                        val listDetailNavigator = rememberListDetailPaneScaffoldNavigator()
+                        val scope = rememberCoroutineScope()
                         SearchPage(
                             vm.searchPageState,
                             windowInsets,
                             detailContent = {
-                                vm.subjectDetailsViewModel?.let { subjectDetailsViewModel ->
-                                    SubjectDetailsScene(
-                                        subjectDetailsViewModel,
+                                vm.subjectDetailsStateLoader.subjectDetailsStateFlow?.let { stateFlow ->
+                                    val state by stateFlow.collectAsStateWithLifecycle()
+                                    SubjectDetailsPage(
+                                        state,
                                         onPlay = { episodeId ->
                                             navigator.navigateEpisodeDetails(
-                                                subjectDetailsViewModel.subjectDetailsState.info.subjectId,
+                                                state.info.subjectId,
                                                 episodeId,
+                                            )
+                                        },
+                                        animatedVisibilityScope,
+                                        Modifier.ifThen(listDetailLayoutParameters.isSinglePane) {
+                                            sharedElement(
+                                                rememberSharedContentState(
+                                                    SharedTransitionKeys.subjectBounds(
+                                                        state.info.subjectId,
+                                                    ),
+                                                ),
+                                                animatedVisibilityScope,
                                             )
                                         },
                                     )
                                 }
                             },
                             Modifier.fillMaxSize(),
-                            onSelect = { _, item ->
-                                vm.viewSubjectDetails(item.subjectId)
+                            onSelect = { index, item ->
+                                vm.searchPageState.selectedItemIndex = index
+                                scope.launch {
+                                    vm.viewSubjectDetails(item.subjectId) // 加载完成后才切换, 否则 shared transition 会黑屏一小会
+                                    listDetailNavigator.navigateTo(ListDetailPaneScaffoldRole.Detail)
+                                }
                             },
                         )
                     }

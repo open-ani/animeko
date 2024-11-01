@@ -19,7 +19,6 @@ import me.him188.ani.app.data.models.subject.RatingInfo
 import me.him188.ani.app.data.models.subject.RelatedCharacterInfo
 import me.him188.ani.app.data.models.subject.RelatedPersonInfo
 import me.him188.ani.app.data.models.subject.RelatedSubjectInfo
-import me.him188.ani.app.data.models.subject.SubjectAiringInfo
 import me.him188.ani.app.data.models.subject.SubjectCollectionStats
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectRelation
@@ -70,9 +69,6 @@ internal val TestSubjectInfo
 
 @TestOnly
 internal const val TestCoverImage = "https://ui-avatars.com/api/?name=John+Doe"
-
-@TestOnly
-internal val TestSubjectAiringInfo get() = SubjectAiringInfo.EmptyCompleted
 
 
 @TestOnly

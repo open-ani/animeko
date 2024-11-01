@@ -63,8 +63,11 @@ import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
 import me.him188.ani.utils.platform.annotations.TestOnly
+import me.him188.ani.utils.platform.currentTimeMillis
 import kotlin.concurrent.Volatile
 import kotlin.coroutines.CoroutineContext
+import kotlin.jvm.JvmField
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 private val PROGRESS_RANGE = 0f..1f
@@ -558,7 +561,10 @@ class AnitorrentDownloadSession(
                 if (pieceIndexes.isEmpty()) {
                     return
                 }
-                logger.debug { "[$handleId][TorrentDownloadControl] Prioritizing pieces: $pieceIndexes" }
+                if (enablePieceLogs || (currentTimeMillis() - startupTime).milliseconds > 5.seconds) {
+                    enablePieceLogs = true
+                    logger.debug { "[$handleId][TorrentDownloadControl] Prioritizing pieces: $pieceIndexes" }
+                }
                 val smallestIndex = pieceIndexes.minBy { it }
 
                 // 超高优先下载第一个 piece, 防止它一直请求后面的 (因为一旦有 piece 完成, window 就会往后变大)
@@ -581,6 +587,14 @@ class AnitorrentDownloadSession(
                 }
             }
         }
+    }
+
+    private companion object {
+        @JvmField
+        val startupTime = currentTimeMillis()
+
+        @JvmField
+        var enablePieceLogs = false // faster
     }
 }
 

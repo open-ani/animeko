@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.app.ui.subject.collection.components
+package me.him188.ani.app.ui.subject
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.FlowRow
@@ -29,11 +29,10 @@ import me.him188.ani.app.data.models.subject.ContinueWatchingStatus
 import me.him188.ani.app.data.models.subject.SubjectAiringInfo
 import me.him188.ani.app.data.models.subject.SubjectAiringKind
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
+import me.him188.ani.app.data.models.subject.TestSubjectProgressInfos
 import me.him188.ani.app.data.models.subject.computeTotalEpisodeText
 import me.him188.ani.app.data.models.subject.isOnAir
 import me.him188.ani.app.ui.foundation.stateOf
-import me.him188.ani.app.ui.subject.collection.progress.TestSubjectProgressInfos
-import me.him188.ani.app.ui.subject.details.TestSubjectAiringInfo
 import me.him188.ani.utils.platform.annotations.TestOnly
 
 // Test: AiringProgressTests
@@ -170,3 +169,7 @@ internal fun createTestAiringLabelState(
     airingInfo: SubjectAiringInfo = TestSubjectAiringInfo,
     progressInfo: SubjectProgressInfo = TestSubjectProgressInfos.ContinueWatching2,
 ): AiringLabelState = AiringLabelState(stateOf(airingInfo), stateOf(progressInfo))
+
+
+@TestOnly
+val TestSubjectAiringInfo get() = SubjectAiringInfo.EmptyCompleted

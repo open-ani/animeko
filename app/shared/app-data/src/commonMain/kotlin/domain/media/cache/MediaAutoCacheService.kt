@@ -58,7 +58,7 @@ fun DefaultMediaAutoCacheService.Companion.createWithKoin(
     mediaSelectorFactory = MediaSelectorFactory.withKoin(koin),
     subjectCollections = { settings ->
         koin.get<SubjectCollectionRepository>()
-            .mostRecentlyUpdatedSubjectCollectionsFlow(settings.mostRecentCount, UnifiedCollectionType.DOING)
+            .mostRecentlyUpdatedSubjectCollectionsFlow(settings.mostRecentCount, listOf(UnifiedCollectionType.DOING))
             .first()
     },
     configLazy = flow {

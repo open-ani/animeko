@@ -29,7 +29,6 @@ import me.him188.ani.app.domain.media.cache.EpisodeCacheStatus
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.tools.WeekFormatter
 import me.him188.ani.app.ui.foundation.stateOf
-import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.toLocalDateOrNull
 import me.him188.ani.utils.platform.annotations.TestOnly
@@ -157,44 +156,19 @@ class SubjectProgressState(
     }
 }
 
-
-@Stable
-@TestOnly
-object TestSubjectProgressInfos {
-    @Stable
-    val NotOnAir = SubjectProgressInfo(
-        continueWatchingStatus = ContinueWatchingStatus.NotOnAir(PackedDate.Invalid),
-        nextEpisodeIdToPlay = null,
-    )
-
-    @Stable
-    val ContinueWatching2 = SubjectProgressInfo(
-        continueWatchingStatus = ContinueWatchingStatus.Continue(1, EpisodeSort(2), EpisodeSort(1)),
-        nextEpisodeIdToPlay = null,
-    )
-
-    @Stable
-    val Watched2 = SubjectProgressInfo(
-        continueWatchingStatus = ContinueWatchingStatus.Watched(1, EpisodeSort(2), PackedDate.Invalid),
-        nextEpisodeIdToPlay = null,
-    )
-
-    @Stable
-    val Done = SubjectProgressInfo(
-        continueWatchingStatus = ContinueWatchingStatus.Done,
-        nextEpisodeIdToPlay = null,
-    )
-}
-
 @Composable
 @TestOnly
 fun rememberTestSubjectProgressState(
     info: SubjectProgressInfo = SubjectProgressInfo.Done,
 ): SubjectProgressState {
     return remember {
-        SubjectProgressState(
-            info = stateOf(info),
-            episodeProgressInfos = mutableStateOf(emptyList()),
-        )
+        createTestSubjectProgressState(info)
     }
 }
+
+@TestOnly
+fun createTestSubjectProgressState(info: SubjectProgressInfo = SubjectProgressInfo.Done) =
+    SubjectProgressState(
+        info = stateOf(info),
+        episodeProgressInfos = mutableStateOf(emptyList()),
+    )

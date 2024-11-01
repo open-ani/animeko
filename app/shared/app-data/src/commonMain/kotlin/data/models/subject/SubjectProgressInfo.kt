@@ -18,6 +18,7 @@ import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.ifInvalid
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
+import me.him188.ani.utils.platform.annotations.TestOnly
 
 /**
  * 用户对一个条目的观看进度
@@ -162,7 +163,7 @@ data class SubjectProgressInfo(
 
 @Stable
 inline val SubjectProgressInfo.hasNewEpisodeToPlay: Boolean
-    get() = nextEpisodeIdToPlay != null
+    get() = continueWatchingStatus is ContinueWatchingStatus.Start || continueWatchingStatus is ContinueWatchingStatus.Continue
 
 sealed class ContinueWatchingStatus {
     data object Start : ContinueWatchingStatus()
@@ -196,4 +197,33 @@ sealed class ContinueWatchingStatus {
     ) : ContinueWatchingStatus()
 
     data object Done : ContinueWatchingStatus()
+}
+
+
+@Stable
+@TestOnly
+object TestSubjectProgressInfos {
+    @Stable
+    val NotOnAir = SubjectProgressInfo(
+        continueWatchingStatus = ContinueWatchingStatus.NotOnAir(PackedDate.Invalid),
+        nextEpisodeIdToPlay = null,
+    )
+
+    @Stable
+    val ContinueWatching2 = SubjectProgressInfo(
+        continueWatchingStatus = ContinueWatchingStatus.Continue(1, EpisodeSort(2), EpisodeSort(1)),
+        nextEpisodeIdToPlay = null,
+    )
+
+    @Stable
+    val Watched2 = SubjectProgressInfo(
+        continueWatchingStatus = ContinueWatchingStatus.Watched(1, EpisodeSort(2), PackedDate.Invalid),
+        nextEpisodeIdToPlay = null,
+    )
+
+    @Stable
+    val Done = SubjectProgressInfo(
+        continueWatchingStatus = ContinueWatchingStatus.Done,
+        nextEpisodeIdToPlay = null,
+    )
 }
