@@ -33,6 +33,7 @@ import me.him188.ani.app.data.models.preference.ProxySettings
 import me.him188.ani.app.data.models.preference.TorrentPeerConfig
 import me.him188.ani.app.domain.torrent.engines.AnitorrentEngine
 import me.him188.ani.app.domain.torrent.service.proxy.TorrentEngineProxy
+import me.him188.ani.app.platform.BuildConfig
 import me.him188.ani.app.torrent.anitorrent.AnitorrentDownloaderFactory
 import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
 import me.him188.ani.utils.coroutines.IO_
@@ -109,7 +110,12 @@ class AniTorrentService : LifecycleService(), CoroutineScope {
         notification.createNotification(this)
 
         // 启动完成的广播
-        sendBroadcast(Intent(INTENT_STARTUP))
+        sendBroadcast(
+            Intent().apply {
+                setPackage(packageName)
+                setAction(INTENT_STARTUP)
+            },
+        )
         
         return START_STICKY
     }
