@@ -12,6 +12,7 @@ package me.him188.ani.android
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.Application
+import android.content.ComponentName
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
@@ -86,7 +87,11 @@ class AniApplication : Application() {
         )
     }
 
-    inner class Instance
+    inner class Instance {
+        fun startAniTorrentService(): ComponentName? {
+            return this@AniApplication.startAniTorrentService()
+        }
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -108,17 +113,7 @@ class AniApplication : Application() {
         // Only use torrent service at Android 8.1 (27) or above.
         // Our minimal support is Android 8.0 (26)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-            startForegroundService(
-                Intent(this, AniTorrentService::class.java).apply {
-                    putExtra("app_name", me.him188.ani.R.string.app_name)
-                    putExtra("app_service_title_text_idle", me.him188.ani.R.string.app_service_content_text)
-                    putExtra("app_service_title_text_working", me.him188.ani.R.string.app_service_content_text)
-                    putExtra("app_service_content_text", me.him188.ani.R.string.app_service_content_text)
-                    putExtra("app_service_stop_text", me.him188.ani.R.string.app_service_content_text)
-                    putExtra("app_icon", me.him188.ani.R.mipmap.a_round)
-                    putExtra("open_activity_intent", Intent(this@AniApplication, MainActivity::class.java))
-                },
-            )
+            startAniTorrentService()
         }
 
         instance = Instance()
@@ -174,5 +169,19 @@ class AniApplication : Application() {
         } catch (e: InvocationTargetException) {
             throw RuntimeException(e)
         }
+    }
+
+    private fun startAniTorrentService(): ComponentName? {
+        return startForegroundService(
+            Intent(this, AniTorrentService::class.java).apply {
+                putExtra("app_name", me.him188.ani.R.string.app_name)
+                putExtra("app_service_title_text_idle", me.him188.ani.R.string.app_service_content_text)
+                putExtra("app_service_title_text_working", me.him188.ani.R.string.app_service_content_text)
+                putExtra("app_service_content_text", me.him188.ani.R.string.app_service_content_text)
+                putExtra("app_service_stop_text", me.him188.ani.R.string.app_service_content_text)
+                putExtra("app_icon", me.him188.ani.R.mipmap.a_round)
+                putExtra("open_activity_intent", Intent(this@AniApplication, MainActivity::class.java))
+            },
+        )
     }
 }

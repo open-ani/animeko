@@ -12,8 +12,10 @@ package me.him188.ani.app.domain.torrent.service
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.ServiceConnection
 import android.os.IBinder
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
@@ -28,7 +30,8 @@ import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
 
 class TorrentServiceConnection(
-    private val context: Context
+    private val context: Context,
+    private val onRequiredRestartService: () -> ComponentName?,
 ): LifecycleEventObserver, ServiceConnection {
     private val logger = logger<TorrentServiceConnection>()
 
@@ -36,17 +39,30 @@ class TorrentServiceConnection(
     val connected: MutableStateFlow<Boolean> = MutableStateFlow(false)
 
     private val lock = SynchronizedObject()
+    private var lifecycleActive = false
+
+    /**
+     * [AniTorrentService] 启动完成时发送广播, 随后 app 应该绑定服务获取接口
+     *
+     * 首次启动 [AniTorrentService] 完成不在此绑定接口, 由 [onStateChanged] 中的 [Lifecycle.Event.ON_CREATE] 触发绑定.
+     *
+     * [onServiceDisconnected] 断开连接后将会注册此广播接收 [AniTorrentService] 启动完成事件.
+     */
+    private val restartBroadcast = ServiceRestartBroadcast { _, _ ->
+        logger.debug { "AniTorrentService is restarted, rebinding." }
+        bindService()
+        unregisterStartupBroadcast()
+    }
     
     override fun onStateChanged(source: LifecycleOwner, event: Lifecycle.Event) {
         when (event) {
             Lifecycle.Event.ON_CREATE -> {
-                val bindResult = context.bindService(
-                    Intent(context, AniTorrentService::class.java), this, Context.BIND_ABOVE_CLIENT
-                )
-                if (!bindResult) logger.error { "Failed to bind AniTorrentService." }
+                lifecycleActive = true
+                bindService()
             }
 
             Lifecycle.Event.ON_DESTROY -> {
+                lifecycleActive = false
                 try {
                     context.unbindService(this)
                 } catch (ex: IllegalArgumentException) {
@@ -83,6 +99,31 @@ class TorrentServiceConnection(
             binder = CompletableDeferred()
         }
         connected.value = false
+
+        // app activity 还存在时必须重启 service
+        if (lifecycleActive) {
+            ContextCompat.registerReceiver(
+                context,
+                restartBroadcast,
+                IntentFilter(AniTorrentService.INTENT_STARTUP),
+                ContextCompat.RECEIVER_NOT_EXPORTED,
+            )
+
+            logger.debug { "AniTorrentService is disconnected while app is running, restarting." }
+            onRequiredRestartService()
+        }
+    }
+
+    private fun bindService(): Boolean {
+        val bindResult = context.bindService(
+            Intent(context, AniTorrentService::class.java), this, Context.BIND_ABOVE_CLIENT,
+        )
+        if (!bindResult) logger.error { "Failed to bind AniTorrentService." }
+        return bindResult
+    }
+
+    private fun unregisterStartupBroadcast() {
+        context.unregisterReceiver(restartBroadcast)
     }
 
     suspend fun awaitBinder(): IRemoteAniTorrentEngine {

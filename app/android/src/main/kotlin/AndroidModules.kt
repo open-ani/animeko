@@ -85,8 +85,13 @@ fun getAndroidModules(
         ).apply { createChannels() }
     }
     single<BrowserNavigator> { AndroidBrowserNavigator() }
-    
-    single<TorrentServiceConnection> { TorrentServiceConnection(get()) }
+
+    single<TorrentServiceConnection> {
+        TorrentServiceConnection(
+            get(),
+            onRequiredRestartService = { AniApplication.instance.startAniTorrentService() },
+        )
+    }
     
     single<TorrentManager> {
         val context = androidContext()

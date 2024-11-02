@@ -10,17 +10,23 @@
 package me.him188.ani.app.domain.torrent.service
 
 import android.content.Intent
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
+import android.os.Process
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import kotlinx.io.files.Path
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
 import me.him188.ani.app.data.models.preference.ProxySettings
@@ -29,6 +35,7 @@ import me.him188.ani.app.domain.torrent.engines.AnitorrentEngine
 import me.him188.ani.app.domain.torrent.service.proxy.TorrentEngineProxy
 import me.him188.ani.app.torrent.anitorrent.AnitorrentDownloaderFactory
 import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
+import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.coroutines.sampleWithInitial
 import me.him188.ani.utils.io.inSystem
 import me.him188.ani.utils.logging.info
@@ -100,6 +107,10 @@ class AniTorrentService : LifecycleService(), CoroutineScope {
 
         notification.parseNotificationStrategyFromIntent(intent)
         notification.createNotification(this)
+
+        // 启动完成的广播
+        sendBroadcast(Intent(INTENT_STARTUP))
+        
         return START_STICKY
     }
     
@@ -114,5 +125,27 @@ class AniTorrentService : LifecycleService(), CoroutineScope {
         super.onUnbind(intent)
         logger.info { "client unbind anitorrent." }
         return true
+    }
+
+    override fun onDestroy() {
+        val engine = kotlin.runCatching { anitorrent.getCompleted() }.getOrNull() ?: return
+        runBlocking(Dispatchers.IO_) {
+            val downloader = engine.getDownloader()
+            val sessions = downloader.openSessions.value
+
+            withTimeout(3000L) {
+                sessions.forEach { (_, session) -> session.close() }
+            }
+            downloader.close()
+        }
+        // cancel lifecycle scope
+        this.cancel()
+        super.onDestroy()
+        // force kill process
+        Process.killProcess(Process.myPid())
+    }
+
+    companion object {
+        const val INTENT_STARTUP = "me.him188.ani.android.ANI_TORRENT_SERVICE_STARTUP"
     }
 }
