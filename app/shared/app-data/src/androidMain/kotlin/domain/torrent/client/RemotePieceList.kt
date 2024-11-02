@@ -24,15 +24,15 @@ import kotlin.coroutines.resume
 
 @RequiresApi(Build.VERSION_CODES.O_MR1)
 class RemotePieceList(
-    private val remote: IRemotePieceList,
+    getRemote: () -> IRemotePieceList,
 ) : PieceList(
-    remote.immutableSizeArray,
-    remote.immutableDataOffsetArray,
-    remote.immutableInitialPieceIndex
-) {
+    getRemote().immutableSizeArray,
+    getRemote().immutableDataOffsetArray,
+    getRemote().immutableInitialPieceIndex,
+), RemoteCall<IRemotePieceList> by RetryRemoteCall(getRemote) {
     private val logger = logger<RemotePieceList>()
-    
-    private val pieceStateSharedMem by lazy { remote.pieceStateArrayMemRegion }
+
+    private val pieceStateSharedMem by lazy { call { pieceStateArrayMemRegion } }
     private val pieceStateBuf by lazy { pieceStateSharedMem.mapReadOnly() }
 
     override var Piece.state: PieceState
@@ -53,30 +53,32 @@ class RemotePieceList(
             suspendCancellableCoroutine { cont ->
                 logger.info { "Awaiting state remote piece $pieceIndex to ${PieceState.FINISHED}." }
                 // remote 必须保证 register observer 调用后一定可以监听到新的 state
-                disposableHandle = remote.registerPieceStateObserver(
-                    pieceIndex,
-                    object : IPieceStateObserver.Stub() {
-                        override fun onUpdate() {
-                            val newState = state
-                            if (newState == PieceState.FINISHED) {
-                                cont.resume(newState)
+                disposableHandle = call {
+                    registerPieceStateObserver(
+                        pieceIndex,
+                        object : IPieceStateObserver.Stub() {
+                            override fun onUpdate() {
+                                val newState = state
+                                if (newState == PieceState.FINISHED) {
+                                    cont.resume(newState)
+                                }
                             }
-                        }
-                    },
-                )
+                        },
+                    )
+                }
                 // 注册 listener 之后如果 state 是 ready 了，下面就监听不到 ready state 了
                 if (state == PieceState.FINISHED) cont.resume(state)
             }
         } finally {
             logger.info { "Got state of remote piece $pieceIndex: $state." }
-            disposableHandle?.dispose()
+            disposableHandle?.callOnceOrNull { dispose() }
         }
         
         check(state == readyState) { "Remote state of piece $this is changed from READY to $state" }
     }
     
     fun dispose() {
-        remote.dispose()
+        call { dispose() }
     }
     
     companion object {

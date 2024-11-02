@@ -17,22 +17,11 @@ import me.him188.ani.app.torrent.api.files.TorrentFileEntry
 
 @RequiresApi(Build.VERSION_CODES.O_MR1)
 class RemoteTorrentFileEntryList(
-    private val remote: IRemoteTorrentFileEntryList
-): AbstractList<TorrentFileEntry>() {
-    private val cachedMap: MutableMap<Int, IRemoteTorrentFileEntry> = mutableMapOf()
-
-    override val size: Int by lazy { remote.size }
+    getRemote: () -> IRemoteTorrentFileEntryList
+) : AbstractList<TorrentFileEntry>(), RemoteCall<IRemoteTorrentFileEntryList> by RetryRemoteCall(getRemote) {
+    override val size: Int get() = call { size }
 
     override fun get(index: Int): TorrentFileEntry {
-        // 一个 torrent 的文件列表不会变化, 重复获取也不会有问题, 不需要注意线程安全问题
-        val cached = cachedMap[index]
-        return if (cached != null) {
-            RemoteTorrentFileEntry(cached)
-        } else {
-            val fetched = remote.get(index)
-            cachedMap[index] = fetched
-
-            RemoteTorrentFileEntry(fetched)
-        }
+        return RemoteTorrentFileEntry { call { get(index) } }
     }
 }

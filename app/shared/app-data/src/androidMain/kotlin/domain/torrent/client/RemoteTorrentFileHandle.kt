@@ -21,27 +21,28 @@ import me.him188.ani.utils.coroutines.IO_
 
 @RequiresApi(Build.VERSION_CODES.O_MR1)
 class RemoteTorrentFileHandle(
-    private val remote: IRemoteTorrentFileHandle
-) : TorrentFileHandle {
-    override val entry: TorrentFileEntry by lazy { RemoteTorrentFileEntry(remote.torrentFileEntry) }
+    getRemote: () -> IRemoteTorrentFileHandle
+) : TorrentFileHandle, RemoteCall<IRemoteTorrentFileHandle> by RetryRemoteCall(getRemote) {
+    override val entry: TorrentFileEntry
+        get() = RemoteTorrentFileEntry { call { torrentFileEntry } }
     
     override fun resume(priority: FilePriority) {
-        remote.resume(priority.ordinal)
+        call { resume(priority.ordinal) }
     }
 
     override fun pause() {
-        remote.pause()
+        call { pause() }
     }
 
     override suspend fun close() {
         withContext(Dispatchers.IO_) {
-            remote.close()
+            call { close() }
         }
     }
 
     override suspend fun closeAndDelete() {
         withContext(Dispatchers.IO_) {
-            remote.closeAndDelete()
+            call { closeAndDelete() }
         }
     }
 }

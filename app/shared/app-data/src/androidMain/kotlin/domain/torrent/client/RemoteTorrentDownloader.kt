@@ -33,24 +33,30 @@ import kotlin.coroutines.CoroutineContext
 
 @RequiresApi(Build.VERSION_CODES.O_MR1)
 class RemoteTorrentDownloader(
-    private val remote: IRemoteTorrentDownloader
-) : TorrentDownloader {
+    getRemote: () -> IRemoteTorrentDownloader
+) : TorrentDownloader, RemoteCall<IRemoteTorrentDownloader> by RetryRemoteCall(getRemote) {
     override val totalStats: Flow<TorrentDownloader.Stats>
         get() = callbackFlow {
-            val disposable = remote.getTotalStatus(object : ITorrentDownloaderStatsCallback.Stub() {
-                override fun onEmit(stat: PTorrentDownloaderStats?) {
-                    if (stat != null) trySend(stat.toStats())
-                }
-            })
-            
-            awaitClose { disposable.dispose() }
+            val disposable = call {
+                getTotalStatus(
+                    object : ITorrentDownloaderStatsCallback.Stub() {
+                        override fun onEmit(stat: PTorrentDownloaderStats?) {
+                            if (stat != null) trySend(stat.toStats())
+                        }
+                    },
+                )
+            }
+
+            awaitClose {
+                disposable.callOnceOrNull { dispose() }
+            }
         }
 
-    override val vendor: TorrentLibInfo = remote.vendor.toTorrentLibInfo()
+    override val vendor: TorrentLibInfo get() = call { vendor.toTorrentLibInfo() }
 
     override suspend fun fetchTorrent(uri: String, timeoutSeconds: Int): EncodedTorrentInfo {
         return withContext(Dispatchers.IO_) {
-            val result = remote.fetchTorrent(uri, timeoutSeconds)
+            val result = call { fetchTorrent(uri, timeoutSeconds) }
             result.toEncodedTorrentInfo()
         }
     }
@@ -61,21 +67,22 @@ class RemoteTorrentDownloader(
         overrideSaveDir: SystemPath?
     ): TorrentSession {
         return withContext(Dispatchers.IO_) {
-            val result = remote.startDownload(PEncodedTorrentInfo(data.data), overrideSaveDir?.absolutePath)
-            RemoteTorrentSession(result)
+            RemoteTorrentSession {
+                call { startDownload(PEncodedTorrentInfo(data.data), overrideSaveDir?.absolutePath) }
+            }
         }
     }
 
     override fun getSaveDirForTorrent(data: EncodedTorrentInfo): SystemPath {
-        val remotePath = remote.getSaveDirForTorrent(PEncodedTorrentInfo(data.data))
+        val remotePath = call { getSaveDirForTorrent(PEncodedTorrentInfo(data.data)) }
         return Path(remotePath).inSystem
     }
 
     override fun listSaves(): List<SystemPath> {
-        return remote.listSaves().map { Path(it).inSystem }
+        return call { listSaves() }.map { Path(it).inSystem }
     }
 
     override fun close() {
-        return remote.close()
+        return call { close() }
     }
 }

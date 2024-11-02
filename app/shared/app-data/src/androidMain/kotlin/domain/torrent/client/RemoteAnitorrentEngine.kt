@@ -13,8 +13,15 @@ import android.os.Build
 import androidx.annotation.RequiresApi
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
 import me.him188.ani.app.data.models.preference.ProxySettings
@@ -30,8 +37,10 @@ import me.him188.ani.app.torrent.anitorrent.AnitorrentLibraryLoader
 import me.him188.ani.app.torrent.api.TorrentDownloader
 import me.him188.ani.datasources.api.source.MediaSourceLocation
 import me.him188.ani.utils.coroutines.childScope
+import me.him188.ani.utils.coroutines.onReplacement
 import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.io.absolutePath
+import me.him188.ani.utils.logging.logger
 import kotlin.coroutines.CoroutineContext
 
 @RequiresApi(Build.VERSION_CODES.O_MR1)
@@ -61,28 +70,62 @@ class RemoteAnitorrentEngine(
     init {
         // transfer from app to service.
         childScope.launch {
-            proxySettingsFlow.collect {
-                val serialized = json.encodeToString(ProxySettings.serializer(), it)
-                getBinderOrFail().proxySettingsCollector.collect(PProxySettings(serialized))
-            }
+            val configFlow = proxySettingsFlow.stateIn(this)
+            connection.connected
+                .filter { it }
+                .map {
+                    val proxySettingsCollector = getBinderOrFail().proxySettingsCollector
+                    launch {
+                        configFlow.collect {
+                            val serialized = json.encodeToString(ProxySettings.serializer(), it)
+                            proxySettingsCollector.collect(PProxySettings(serialized))
+                        }
+                    }
+                }
+                .onReplacement { it.cancel() }
+                .collect()
+            
         }
         childScope.launch {
-            peerFilterConfig.collect {
-                val serialized = json.encodeToString(TorrentPeerConfig.serializer(), it)
-                getBinderOrFail().torrentPeerConfigCollector.collect(PTorrentPeerConfig(serialized))
-            }
-        }
-        childScope.launch {
-            anitorrentConfigFlow.collect {
-                val serialized = json.encodeToString(AnitorrentConfig.serializer(), it)
-                getBinderOrFail().anitorrentConfigCollector.collect(PAnitorrentConfig(serialized))
-            }
-        }
-        childScope.launch { 
-            getBinderOrFail().setSaveDir(saveDir.absolutePath)
-        }
+            val configFlow = peerFilterConfig.stateIn(this)
+            connection.connected
+                .filter { it }
+                .map {
+                    val torrentPeerConfigCollector = getBinderOrFail().torrentPeerConfigCollector
+                    launch {
+                        configFlow.collect {
+                            val serialized = json.encodeToString(TorrentPeerConfig.serializer(), it)
+                            torrentPeerConfigCollector.collect(PTorrentPeerConfig(serialized))
+                        }
+                    }
+                }
+                .onReplacement { it.cancel() }
+                .collect()
 
-        AnitorrentLibraryLoader.loadLibraries()
+        }
+        childScope.launch {
+            val configFlow = anitorrentConfigFlow.stateIn(this)
+            connection.connected
+                .filter { it }
+                .map {
+                    val anitorrentConfigCollector = getBinderOrFail().anitorrentConfigCollector
+                    launch {
+                        configFlow.collect {
+                            val serialized = json.encodeToString(AnitorrentConfig.serializer(), it)
+                            anitorrentConfigCollector.collect(PAnitorrentConfig(serialized))
+                        }
+                    }
+                }
+                .onReplacement { it.cancel() }
+                .collect()
+
+        }
+        childScope.launch {
+            connection.connected
+                .filter { it }
+                .onEach { getBinderOrFail().setSaveDir(saveDir.absolutePath) }
+                .collect()
+        }
     }
 
     override suspend fun testConnection(): Boolean {
@@ -90,7 +133,9 @@ class RemoteAnitorrentEngine(
     }
     
     override suspend fun getDownloader(): TorrentDownloader {
-        return RemoteTorrentDownloader(getBinderOrFail().downlaoder)
+        return RemoteTorrentDownloader {
+            runBlocking { getBinderOrFail() }.downlaoder
+        }
     }
 
     private suspend fun getBinderOrFail(): IRemoteAniTorrentEngine {

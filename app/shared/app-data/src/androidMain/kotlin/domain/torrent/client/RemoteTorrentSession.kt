@@ -26,40 +26,46 @@ import me.him188.ani.utils.coroutines.IO_
 
 @RequiresApi(Build.VERSION_CODES.O_MR1)
 class RemoteTorrentSession(
-    private val remote: IRemoteTorrentSession
-) : TorrentSession {
+    getRemote: () -> IRemoteTorrentSession
+) : TorrentSession, RemoteCall<IRemoteTorrentSession> by RetryRemoteCall(getRemote) {
     override val sessionStats: Flow<TorrentSession.Stats?>
         get() = callbackFlow {
-            val disposable = remote.getSessionStats(object : ITorrentSessionStatsCallback.Stub() {
-                override fun onEmit(stat: PTorrentSessionStats?) {
-                    if (stat != null) trySend(stat.toStats())
-                }
-            })
+            val disposable = call {
+                getSessionStats(
+                    object : ITorrentSessionStatsCallback.Stub() {
+                        override fun onEmit(stat: PTorrentSessionStats?) {
+                            if (stat != null) trySend(stat.toStats())
+                        }
+                    },
+                )
+            }
 
-            awaitClose { disposable.dispose() }
+            awaitClose {
+                disposable.callOnceOrNull { dispose() }
+            }
         }
 
     override suspend fun getName(): String {
-        return withContext(Dispatchers.IO_) { remote.name }
+        return withContext(Dispatchers.IO_) { call { name } }
     }
 
     override suspend fun getFiles(): List<TorrentFileEntry> {
-        return withContext(Dispatchers.IO_) { RemoteTorrentFileEntryList(remote.files) }
+        return withContext(Dispatchers.IO_) { RemoteTorrentFileEntryList { call { files } } }
     }
 
     override fun getPeers(): List<PeerInfo> {
-        return remote.peers.asList()
+        return call { peers }.asList()
     }
 
     override suspend fun close() {
         withContext(Dispatchers.IO_) {
-            remote.close()
+            call { close() }
         }
     }
 
     override suspend fun closeIfNotInUse() {
         withContext(Dispatchers.IO_) {
-            remote.closeIfNotInUse()
+            call { closeIfNotInUse() }
         }
     }
 }

@@ -33,45 +33,49 @@ import java.io.RandomAccessFile
 
 @RequiresApi(Build.VERSION_CODES.O_MR1)
 class RemoteTorrentFileEntry(
-    private val remote: IRemoteTorrentFileEntry
-) : TorrentFileEntry {
+    getRemote: () -> IRemoteTorrentFileEntry
+) : TorrentFileEntry, RemoteCall<IRemoteTorrentFileEntry> by RetryRemoteCall(getRemote) {
     override val fileStats: Flow<TorrentFileEntry.Stats>
         get() = callbackFlow {
-            val disposable = remote.getFileStats(object : ITorrentFileEntryStatsCallback.Stub() {
-                override fun onEmit(stat: PTorrentFileEntryStats?) {
-                    if (stat != null) trySend(stat.toStats())
-                }
-            })
+            val disposable = call {
+                getFileStats(
+                    object : ITorrentFileEntryStatsCallback.Stub() {
+                        override fun onEmit(stat: PTorrentFileEntryStats?) {
+                            if (stat != null) trySend(stat.toStats())
+                        }
+                    },
+                )
+            }
 
-            awaitClose { disposable.dispose() }
+            awaitClose { disposable.callOnceOrNull { dispose() } }
         }
 
-    override val length: Long by lazy { remote.length }
+    override val length: Long get() = call { length }
 
-    override val pathInTorrent: String by lazy { remote.pathInTorrent }
+    override val pathInTorrent: String get() = call { pathInTorrent }
 
-    override val pieces: PieceList by lazy { RemotePieceList(remote.pieces) }
+    override val pieces: PieceList = RemotePieceList { call { pieces } }
 
-    override val supportsStreaming: Boolean by lazy { remote.supportsStreaming }
+    override val supportsStreaming: Boolean get() = call { supportsStreaming }
 
     override fun createHandle(): TorrentFileHandle {
-        return RemoteTorrentFileHandle(remote.createHandle())
+        return RemoteTorrentFileHandle { call { createHandle() } }
     }
 
     override suspend fun resolveFile(): SystemPath {
         return withContext(Dispatchers.IO_) {
-            val result = remote.resolveFile()
+            val result = call { resolveFile() }
             Path(result).inSystem
         }
     }
 
     override fun resolveFileMaybeEmptyOrNull(): SystemPath? {
-        val result = remote.resolveFileMaybeEmptyOrNull()
+        val result = call { resolveFileMaybeEmptyOrNull() }
         return if (result != null) Path(result).inSystem else null
     }
 
     override suspend fun createInput(): SeekableInput {
-        val remoteInput = remote.torrentInputParams
+        val remoteInput = call { torrentInputParams }
 
         val file = Path(remoteInput.file).inSystem
         
@@ -83,7 +87,7 @@ class RemoteTorrentFileEntry(
             logicalStartOffset = remoteInput.logicalStartOffset,
             onWait = {
                 withContext(Dispatchers.IO_) {
-                    remote.torrentInputOnWait(it.pieceIndex)
+                    call { torrentInputOnWait(it.pieceIndex) }
                 }
             },
             bufferSize = remoteInput.bufferSize,
