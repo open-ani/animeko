@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.domain.torrent.service
 
+import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -32,7 +33,7 @@ import me.him188.ani.utils.logging.warn
 class TorrentServiceConnection(
     private val context: Context,
     private val onRequiredRestartService: () -> ComponentName?,
-): LifecycleEventObserver, ServiceConnection {
+) : LifecycleEventObserver, ServiceConnection, BroadcastReceiver() {
     private val logger = logger<TorrentServiceConnection>()
 
     private var binder: CompletableDeferred<IRemoteAniTorrentEngine> = CompletableDeferred()
@@ -40,19 +41,7 @@ class TorrentServiceConnection(
 
     private val lock = SynchronizedObject()
     private var lifecycleActive = false
-
-    /**
-     * [AniTorrentService] 启动完成时发送广播, 随后 app 应该绑定服务获取接口
-     *
-     * 首次启动 [AniTorrentService] 完成不在此绑定接口, 由 [onStateChanged] 中的 [Lifecycle.Event.ON_CREATE] 触发绑定.
-     *
-     * [onServiceDisconnected] 断开连接后将会注册此广播接收 [AniTorrentService] 启动完成事件.
-     */
-    private val restartBroadcast = ServiceRestartBroadcast { _, _ ->
-        logger.debug { "AniTorrentService is restarted, rebinding." }
-        bindService()
-        unregisterStartupBroadcast()
-    }
+    private val restartServiceIntentFilter = IntentFilter(AniTorrentService.INTENT_STARTUP)
     
     override fun onStateChanged(source: LifecycleOwner, event: Lifecycle.Event) {
         when (event) {
@@ -104,8 +93,8 @@ class TorrentServiceConnection(
         if (lifecycleActive) {
             ContextCompat.registerReceiver(
                 context,
-                restartBroadcast,
-                IntentFilter(AniTorrentService.INTENT_STARTUP),
+                this,
+                restartServiceIntentFilter,
                 ContextCompat.RECEIVER_NOT_EXPORTED,
             )
 
@@ -114,16 +103,25 @@ class TorrentServiceConnection(
         }
     }
 
+    /**
+     * [AniTorrentService] 启动完成时发送广播, 随后 app 应该绑定服务获取接口
+     *
+     * 首次启动 [AniTorrentService] 完成不在此绑定接口, 由 [onStateChanged] 中的 [Lifecycle.Event.ON_CREATE] 触发绑定.
+     *
+     * [onServiceDisconnected] 断开连接后将会注册此广播接收 [AniTorrentService] 启动完成事件.
+     */
+    override fun onReceive(context: Context?, intent: Intent?) {
+        logger.debug { "AniTorrentService is restarted, rebinding." }
+        bindService()
+        this.context.unregisterReceiver(this)
+    }
+
     private fun bindService(): Boolean {
         val bindResult = context.bindService(
             Intent(context, AniTorrentService::class.java), this, Context.BIND_ABOVE_CLIENT,
         )
         if (!bindResult) logger.error { "Failed to bind AniTorrentService." }
         return bindResult
-    }
-
-    private fun unregisterStartupBroadcast() {
-        context.unregisterReceiver(restartBroadcast)
     }
 
     suspend fun awaitBinder(): IRemoteAniTorrentEngine {
