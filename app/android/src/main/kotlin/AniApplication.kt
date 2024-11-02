@@ -104,8 +104,7 @@ class AniApplication : Application() {
             Log.e("AniApplication", "Failed to delete old logs", it)
         }
 
-        
-        if (processName().endsWith(AniTorrentService::class.simpleName!!)) {
+        if (processName().contains("torrent_service")) {
             // In service process, we don't need any dependency which is use in app process.
             return
         }
