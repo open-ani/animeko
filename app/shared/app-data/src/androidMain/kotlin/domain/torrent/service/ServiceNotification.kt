@@ -49,13 +49,14 @@ class ServiceNotification(
                 .also { notificationService.createNotificationChannel(it) }
     }
 
-    fun parseNotificationStrategyFromIntent(intent: Intent?): NotificationAppearance {
+    fun parseNotificationStrategyFromIntent(intent: Intent?) {
         val name = intent.getStringOrDefault("app_name") {
             defaultNotificationAppearance.name
         }
-        val titleIdle = intent.getStringOrDefault("app_service_title_text_idle") {
+        // TODO
+        val titleIdle = "BT 下载服务正在运行"/*intent.getStringOrDefault("app_service_title_text_idle") {
             defaultNotificationAppearance.titleIdle
-        }
+        }*/
         val titleWorking = intent.getStringOrDefault("app_service_title_text_working") {
             defaultNotificationAppearance.titleWorking
         }
@@ -74,7 +75,7 @@ class ServiceNotification(
             intent?.getParcelableExtra<Intent>("open_activity_intent")
         }
 
-        return NotificationAppearance(
+        notificationAppearance = NotificationAppearance(
             name = name,
             titleIdle = titleIdle,
             titleWorking = titleWorking,
@@ -164,7 +165,7 @@ class ServiceNotification(
 
         private val defaultNotificationAppearance = NotificationAppearance(
             name = "Animeko BT 引擎服务",
-            titleIdle = "没有下载任务",
+            titleIdle = "BT 下载服务正在运行",
             titleWorking = "正在下载 %1\$d 个资源",
             content = "下载：%1\$s，上传：%2\$s",
             stopActionText = "停止",
