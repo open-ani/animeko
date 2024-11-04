@@ -736,7 +736,7 @@ fun VideoGestureHost(
                                 if (totalDurationMillis == 0L) return@run
                                 val offsetRatio =
                                     (currentPositionMillis + seekerState.deltaSeconds.times(1000)).toFloat() / totalDurationMillis
-                                previewPositionRatio(offsetRatio)
+                                previewPositionRatio(offsetRatio.coerceIn(0f, 1f))
                             }
                         }
                     }
