@@ -110,6 +110,7 @@ import me.him188.ani.app.videoplayer.ui.top.PlayerTopBar
 import me.him188.ani.danmaku.ui.DanmakuHost
 import me.him188.ani.danmaku.ui.DanmakuHostState
 import me.him188.ani.utils.platform.annotations.TestOnly
+import me.him188.ani.utils.platform.currentPlatform
 import me.him188.ani.utils.platform.isDesktop
 import me.him188.ani.utils.platform.isMobile
 import kotlin.time.Duration.Companion.seconds
@@ -207,7 +208,7 @@ internal fun EpisodeVideoImpl(
                     IconButton({ sideSheetState = SideSheetState.SETTINGS }, Modifier.testTag(TAG_SHOW_SETTINGS)) {
                         Icon(Icons.Rounded.Settings, contentDescription = "设置")
                     }
-                    if (expanded) {
+                    if (expanded && currentPlatform().isDesktop()) {
                         IconButton({ onToggleSidebar(!sidebarCollapsed) }, Modifier.testTag(TAG_COLLAPSE_SIDEBAR)) {
                             if (sidebarCollapsed) {
                                 Icon(AniIcons.RightPanelOpen, contentDescription = "展开侧边栏")
