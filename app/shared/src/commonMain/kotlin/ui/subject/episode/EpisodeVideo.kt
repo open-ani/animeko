@@ -64,6 +64,9 @@ import me.him188.ani.app.ui.foundation.LocalIsPreviewing
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.TextWithBorder
 import me.him188.ani.app.ui.foundation.effects.cursorVisibility
+import me.him188.ani.app.ui.foundation.icons.AniIcons
+import me.him188.ani.app.ui.foundation.icons.RightPanelClose
+import me.him188.ani.app.ui.foundation.icons.RightPanelOpen
 import me.him188.ani.app.ui.foundation.rememberDebugSettingsViewModel
 import me.him188.ani.app.ui.settings.danmaku.DanmakuRegexFilterState
 import me.him188.ani.app.ui.subject.episode.danmaku.DanmakuEditor
@@ -116,6 +119,7 @@ internal const val TAG_EPISODE_VIDEO_TOP_BAR = "EpisodeVideoTopBar"
 internal const val TAG_DANMAKU_SETTINGS_SHEET = "DanmakuSettingsSheet"
 internal const val TAG_SHOW_MEDIA_SELECTOR = "ShowMediaSelector"
 internal const val TAG_SHOW_SETTINGS = "ShowSettings"
+internal const val TAG_COLLAPSE_SIDEBAR = "collapseSidebar"
 
 internal const val TAG_MEDIA_SELECTOR_SHEET = "MediaSelectorSheet"
 internal const val TAG_EPISODE_SELECTOR_SHEET = "EpisodeSelectorSheet"
@@ -142,6 +146,8 @@ internal fun EpisodeVideoImpl(
     configProvider: () -> VideoScaffoldConfig,
     onClickScreenshot: () -> Unit,
     detachedProgressSlider: @Composable () -> Unit,
+    sidebarCollapsed: Boolean,
+    onToggleSidebar: (isCollapsed: Boolean) -> Unit,
     progressSliderState: MediaProgressSliderState,
     mediaSelectorPresentation: MediaSelectorPresentation,
     mediaSourceResultsPresentation: MediaSourceResultsPresentation,
@@ -200,6 +206,15 @@ internal fun EpisodeVideoImpl(
                     }
                     IconButton({ sideSheetState = SideSheetState.SETTINGS }, Modifier.testTag(TAG_SHOW_SETTINGS)) {
                         Icon(Icons.Rounded.Settings, contentDescription = "设置")
+                    }
+                    if (expanded) {
+                        IconButton({ onToggleSidebar(!sidebarCollapsed) }, Modifier.testTag(TAG_COLLAPSE_SIDEBAR)) {
+                            if (sidebarCollapsed) {
+                                Icon(AniIcons.RightPanelOpen, contentDescription = "展开侧边栏")
+                            } else {
+                                Icon(AniIcons.RightPanelClose, contentDescription = "折叠侧边栏")
+                            }
+                        }
                     }
                 },
                 windowInsets = contentWindowInsets,
