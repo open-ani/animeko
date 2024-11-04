@@ -45,18 +45,9 @@ object ScreenUtils {
             }
 
             is Platform.Windows -> {
-                // windows 的 dimension 是没有经过缩放的
-                // Get screen dimensions
-                val screenWidth = dimension.width
-                val screenHeight = dimension.height
+                // windows 的 dimension 是经过缩放的
 
-                // Convert screen dimensions to dp
-                // See ui-desktop-1.6.10-sources.jar!/desktopMain/androidx/compose/ui/window/LayoutConfiguration.desktop.kt:45
-                val density = getScreenDensity()
-                val screenWidthDp = density.run { screenWidth.toDp() }
-                val screenHeightDp = density.run { screenHeight.toDp() }
-
-                return DpSize(screenWidthDp, screenHeightDp)
+                DpSize(dimension.width.dp, dimension.height.dp)
             }
         }
     }
