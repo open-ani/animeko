@@ -441,7 +441,7 @@ class VlcjVideoPlayerState(parentCoroutineContext: CoroutineContext) : PlayerSta
     }
 
     private fun reloadSubtitleTracks() {
-        subtitleTracks.candidates.value = player.subpictures().trackDescriptions()
+        val newSubtitleTracks = player.subpictures().trackDescriptions()
             .filterNot { it.id() == -1 } // "Disable"
             .map {
                 SubtitleTrack(
@@ -451,7 +451,11 @@ class VlcjVideoPlayerState(parentCoroutineContext: CoroutineContext) : PlayerSta
                     listOf(Label(null, it.description())),
                 )
             }
-        subtitleTracks.current.value = subtitleTracks.candidates.value.firstOrNull()
+        // 新的字幕轨道和原来不同时才会更改，同时将 current 设置为新字幕轨道列表的第一个
+        if (subtitleTracks.candidates.value != newSubtitleTracks) {
+            subtitleTracks.candidates.value = newSubtitleTracks
+            subtitleTracks.current.value = newSubtitleTracks.firstOrNull()
+        }
     }
 
     private fun reloadAudioTracks() {
