@@ -263,7 +263,7 @@ private fun EpisodeSceneTabletVeryWide(
                 },
             )
 
-            if (vm.isFullscreen || vm.sidebarCollapsed) {
+            if (vm.isFullscreen || !vm.sidebarVisible) {
                 return@Row
             }
 
@@ -683,9 +683,9 @@ private fun EpisodeVideo(
                 enabled = false,
             )
         },
-        sidebarCollapsed = vm.sidebarCollapsed,
+        sidebarVisible = vm.sidebarVisible,
         onToggleSidebar = {
-            vm.sidebarCollapsed = it
+            vm.sidebarVisible = it
         },
         progressSliderState = progressSliderState,
         mediaSelectorPresentation = vm.mediaSelectorPresentation,

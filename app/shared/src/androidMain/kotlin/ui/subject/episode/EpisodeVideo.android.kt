@@ -120,7 +120,7 @@ private fun PreviewVideoScaffoldImpl(
                 enabled = false,
             )
         },
-        sidebarCollapsed = true,
+        sidebarVisible = true,
         onToggleSidebar = {},
         progressSliderState = progressSliderState,
         mediaSelectorPresentation = rememberTestMediaSelectorPresentation(),
