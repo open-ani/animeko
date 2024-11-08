@@ -174,6 +174,22 @@ internal fun SelectorConfigurationPane(
                     },
                     colors = listItemColors,
                 )
+                ListItem(
+                    headlineContent = { Text("去除特殊字符") },
+                    Modifier
+                        .padding(top = (verticalSpacing - 8.dp).coerceAtLeast(0.dp))
+                        .clickable(enabled = state.enableEdit) {
+                            state.searchRemoveSpecial = !state.searchRemoveSpecial
+                        },
+                    supportingContent = { Text("去除特殊字符以及 \"电影\" 等字样，提升搜索成功率") },
+                    trailingContent = {
+                        Switch(
+                            state.searchRemoveSpecial, { state.searchRemoveSpecial = it },
+                            enabled = state.enableEdit,
+                        )
+                    },
+                    colors = listItemColors,
+                )
             }
 
             SelectorSubjectFormatSelectionButtonRow(

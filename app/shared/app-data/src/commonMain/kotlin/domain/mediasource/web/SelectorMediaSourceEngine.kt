@@ -96,9 +96,18 @@ abstract class SelectorMediaSourceEngine {
         searchUrl: String,
         subjectName: String,
         useOnlyFirstWord: Boolean,
+        removeSpecial: Boolean,
     ): ApiResponse<SearchSubjectResult> {
+        val finalName = if (removeSpecial) {
+            subjectName.removePrefix("电影")
+                .removePrefix("剧场版")
+                .removePrefix("OVA")
+                .trim()
+        } else {
+            subjectName
+        }
         val encodedUrl = MediaSourceEngineHelpers.encodeUrlSegment(
-            if (useOnlyFirstWord) getFirstWord(subjectName) else subjectName,
+            if (useOnlyFirstWord) getFirstWord(finalName) else finalName,
         )
 
         val finalUrl = Url(

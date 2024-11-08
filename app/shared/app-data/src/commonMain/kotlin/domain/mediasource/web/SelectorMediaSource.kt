@@ -153,6 +153,7 @@ class SelectorMediaSource(
             searchConfig.searchUrl,
             subjectName = query.subjectName,
             useOnlyFirstWord = searchConfig.searchUseOnlyFirstWord,
+            removeSpecial = searchConfig.searchRemoveSpecial,
         ).map { (_, document) ->
             document ?: return@map emptyList()
 

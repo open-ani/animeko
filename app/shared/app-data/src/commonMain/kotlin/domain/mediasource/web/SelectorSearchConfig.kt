@@ -31,6 +31,7 @@ data class SelectorSearchConfig(
     // Phase 1, search
     val searchUrl: String = "", // required
     val searchUseOnlyFirstWord: Boolean = true,
+    val searchRemoveSpecial: Boolean = true,
     val rawBaseUrl: String = "", // if empty, guess
     // Phase 2, for search result, select subjects
     val subjectFormatId: SelectorFormatId = SelectorSubjectFormatA.id,

@@ -70,6 +70,12 @@ class SelectorConfigState(
         SelectorMediaSourceArguments.Default.searchConfig.searchUseOnlyFirstWord,
     )
 
+    var searchRemoveSpecial by argumentsStorage.prop(
+        { it.searchConfig.searchRemoveSpecial },
+        { copy(searchConfig = searchConfig.copy(searchRemoveSpecial = it)) },
+        SelectorMediaSourceArguments.Default.searchConfig.searchRemoveSpecial,
+    )
+
     var rawBaseUrl by argumentsStorage.prop(
         { it.searchConfig.rawBaseUrl },
         { copy(searchConfig = searchConfig.copy(rawBaseUrl = it)) },
