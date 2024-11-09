@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.desktop
 
-import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import me.him188.ani.utils.platform.Platform
@@ -17,14 +16,6 @@ import java.awt.Dimension
 import java.awt.GraphicsEnvironment
 
 object ScreenUtils {
-
-    private fun getScreenDensity(): Density {
-        return Density(
-            GraphicsEnvironment.getLocalGraphicsEnvironment()
-                .defaultScreenDevice.defaultConfiguration.defaultTransform.scaleX.toFloat(),
-            fontScale = 1f,
-        )
-    }
 
     /**
      * 获取经过缩放后的, 实际可用的屏幕大小. 将窗口设置为这个大小即可占满整个屏幕
