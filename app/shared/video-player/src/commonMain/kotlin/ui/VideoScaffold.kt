@@ -193,10 +193,11 @@ fun VideoScaffold(
                                                 //点击 bottom bar 里的按钮时 请求 always on
                                                 alwaysOnRequester.request()
                                             }
-                                            val releaseEvent = awaitPointerEvent()
-                                            if (releaseEvent.changes.all { !it.pressed }) {
-                                                alwaysOnRequester.cancelRequest()
+                                            var releaseEvent = awaitPointerEvent()
+                                            while (releaseEvent.changes.any { it.pressed }) {
+                                                releaseEvent = awaitPointerEvent()
                                             }
+                                            alwaysOnRequester.cancelRequest()
                                         }
                                     }
                                     .fillMaxWidth()
