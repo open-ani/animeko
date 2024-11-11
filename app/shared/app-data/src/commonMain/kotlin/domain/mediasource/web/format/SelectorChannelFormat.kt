@@ -48,6 +48,9 @@ sealed class SelectorChannelFormat<in Config : SelectorFormatConfig>(override va
         const val DEFAULT_MATCH_EPISODE_SORT_FROM_NAME = """第\s*(?<ep>.+)\s*[话集]"""
 
         fun isPossiblyMovie(title: String): Boolean {
+            // https://github.com/open-ani/animeko/pull/1171#issuecomment-2466115293
+            if (title == "正片" || title == "高清版") return true
+
             return ("简" in title || "繁" in title)
                     && ("2160P" in title || "1440P" in title || "2K" in title || "4K" in title || "1080P" in title || "720P" in title)
         }
