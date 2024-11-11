@@ -10,6 +10,11 @@
 package me.him188.ani.app.domain.mediasource
 
 import me.him188.ani.datasources.api.topic.contains
+import me.him188.ani.utils.platform.deleteInfix
+import me.him188.ani.utils.platform.deleteMatches
+import me.him188.ani.utils.platform.deletePrefix
+import me.him188.ani.utils.platform.replaceMatches
+import me.him188.ani.utils.platform.trimSB
 
 /**
  * 常用的过滤器
@@ -71,22 +76,19 @@ object MediaListFilters {
     private val whitespaceRegex = Regex(""" 	\s+""")
 
     fun removeSpecials(string: String, removeWhitespace: Boolean): String {
-        return string.removePrefix("电影")
-            .removePrefix("剧场版")
-            .removeInside("剧场版")
-            .removePrefix("OVA")
-            .replace(specialCharRegex, "")
-            .replace(allNumbersRegex) { numberMappings.getValue(it.value) }
-            .let { if (removeWhitespace) it.replace(whitespaceRegex, "") else it }
-            .trim()
-    }
-
-    private fun String.removeInside(string: String): String {
-        val index = this.indexOf(string)
-        return if (index != -1 && index != 0 && index != this.length - string.length) {
-            this.removeRange(index, index + string.length)
-        } else {
-            this
-        }
+        return StringBuilder(string).apply {
+            deletePrefix("电影")
+            deleteInfix("电影")
+            deletePrefix("剧场版")
+            deleteInfix("剧场版")
+            deletePrefix("OVA")
+            deleteInfix("OVA")
+            deleteMatches(specialCharRegex)
+            replaceMatches(allNumbersRegex) { numberMappings.getValue(it.value) }
+            if (removeWhitespace) {
+                deleteMatches(whitespaceRegex)
+            }
+            trimSB()
+        }.toString()
     }
 }
