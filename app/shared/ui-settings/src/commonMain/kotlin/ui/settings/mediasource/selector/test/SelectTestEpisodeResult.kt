@@ -67,14 +67,21 @@ class SelectorTestEpisodePresentation(
             return SelectorTestEpisodePresentation(
                 channel = info.channel,
                 name = info.name,
-                episodeSort = info.episodeSort,
+                episodeSort = info.episodeSortOrEp,
                 playUrl = info.playUrl,
                 tags = buildMatchTags {
                     if (config.filterByEpisodeSort) {
-                        if (info.episodeSort == null) {
+                        if (info.episodeSortOrEp == null) {
                             emit("缺失 EP", isMissing = true)
                         } else {
-                            emit("EP: ${info.episodeSort}", isMatch = info.episodeSort == searchQuery.episodeSort)
+                            val actual = info.episodeSortOrEp
+                            val expectedEp = searchQuery.episodeEp
+                            val expectedSort = searchQuery.episodeSort
+                            emit(
+                                "EP: ${info.episodeSortOrEp}",
+                                isMatch = expectedSort == actual
+                                        || (expectedEp != null && expectedEp == actual),
+                            )
                         }
                     }
 

@@ -19,7 +19,7 @@ import me.him188.ani.datasources.api.topic.contains
 object MediaListFilters {
     val ContainsSubjectName = BasicMediaListFilter { media ->
         subjectNamesWithoutSpecial.any { subjectName ->
-            removeSpecials(removeSpecials(media.originalTitle))
+            removeSpecials(media.originalTitle, removeWhitespace = true)
                 .contains(subjectName, ignoreCase = true)
         }
     }
@@ -37,7 +37,7 @@ object MediaListFilters {
         val name = episodeNameWithoutSpecial
         checkNotNull(name)
         if (name.isBlank()) return@BasicMediaListFilter false
-        removeSpecials(media.originalTitle)
+        removeSpecials(media.originalTitle, removeWhitespace = true)
             .contains(name, ignoreCase = true)
     }
 
@@ -67,15 +67,17 @@ object MediaListFilters {
         put("一", "1")
     }
     private val allNumbersRegex = numberMappings.keys.joinToString("|").toRegex()
-    private val specialCharRegex = Regex("""[ 	~!@#$%^&*()_+{}\[\]\\|;':",.<>/?【】：～「」]""")
+    private val specialCharRegex = Regex("""[~!@#$%^&*()_+{}\[\]\\|;':",.<>/?【】：～「」]""")
+    private val whitespaceRegex = Regex(""" 	\s+""")
 
-    fun removeSpecials(string: String): String {
+    fun removeSpecials(string: String, removeWhitespace: Boolean): String {
         return string.removePrefix("电影")
             .removePrefix("剧场版")
             .removeInside("剧场版")
             .removePrefix("OVA")
             .replace(specialCharRegex, "")
             .replace(allNumbersRegex) { numberMappings.getValue(it.value) }
+            .let { if (removeWhitespace) it.replace(whitespaceRegex, "") else it }
             .trim()
     }
 

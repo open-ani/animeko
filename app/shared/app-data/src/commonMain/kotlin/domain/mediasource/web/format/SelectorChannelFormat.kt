@@ -47,12 +47,21 @@ sealed class SelectorChannelFormat<in Config : SelectorFormatConfig>(override va
         @Language("regexp")
         const val DEFAULT_MATCH_EPISODE_SORT_FROM_NAME = """第\s*(?<ep>.+)\s*[话集]"""
 
-        fun isPossiblyMovie(title: String): Boolean {
+        private fun isPossiblyMovie(title: String): Boolean {
             // https://github.com/open-ani/animeko/pull/1171#issuecomment-2466115293
             if (title == "正片" || title == "高清版") return true
 
-            return ("简" in title || "繁" in title)
-                    && ("2160P" in title || "1440P" in title || "2K" in title || "4K" in title || "1080P" in title || "720P" in title)
+            return "2160P" in title || "1440P" in title || "2K" in title || "4K" in title || "1080P" in title || "720P" in title
+        }
+
+        fun convertSpecialEpisodes(name: String, raw: String?): EpisodeSort {
+            val rawEp = raw?.let { EpisodeSort(it) }
+                ?: EpisodeSort(name)
+            return if ((rawEp !is EpisodeSort.Normal) && isPossiblyMovie(name)) {
+                EpisodeSort(1) // 电影总是 01
+            } else {
+                rawEp
+            }
         }
     }
 }
@@ -143,9 +152,10 @@ data object SelectorChannelFormatIndexGrouped :
                     WebSearchEpisodeInfo(
                         channel = channelName,
                         name = text,
-                        episodeSort = matchEpisodeSortFromNameRegex.findGroupOrFullText(text, "ep")
-                            ?.let { EpisodeSort(it) }
-                            ?: EpisodeSort(text),
+                        episodeSortOrEp = convertSpecialEpisodes(
+                            text,
+                            raw = matchEpisodeSortFromNameRegex.findGroupOrFullText(text, "ep"),
+                        ),
                         playUrl = SelectorHelpers.computeAbsoluteUrl(baseUrl, href),
                     )
                 }
@@ -249,9 +259,10 @@ data object SelectorChannelFormatNoChannel :
                 WebSearchEpisodeInfo(
                     channel = null,
                     name = text,
-                    episodeSort = regex.findGroupOrFullText(text, groupName = "ep")
-                        ?.let { EpisodeSort(it) }
-                        ?: EpisodeSort(text),
+                    episodeSortOrEp = convertSpecialEpisodes(
+                        text,
+                        raw = regex.findGroupOrFullText(text, "ep"),
+                    ),
                     playUrl = SelectorHelpers.computeAbsoluteUrl(baseUrl, href),
                 )
             },

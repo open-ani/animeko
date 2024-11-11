@@ -25,12 +25,12 @@ open class MediaListFilterContext(
 ) {
     val subjectNamesWithoutSpecial: Set<String> by lazy {
         subjectNames.mapTo(HashSet(subjectNames.size)) {
-            MediaListFilters.removeSpecials(it)
+            MediaListFilters.removeSpecials(it, removeWhitespace = true)
         }
     }
     val episodeNameWithoutSpecial: String? by lazy {
         episodeName?.let {
-            MediaListFilters.removeSpecials(it)
+            MediaListFilters.removeSpecials(it, removeWhitespace = true)
         }
     }
 

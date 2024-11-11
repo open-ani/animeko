@@ -36,8 +36,9 @@ data class WebSearchEpisodeInfo(
     val name: String,
     /**
      * 解析成功的 [EpisodeSort], 未解析成功则为 `null`.
+     * 可能表示 sort, 也可能是 ep.
      */
-    val episodeSort: EpisodeSort?,
+    val episodeSortOrEp: EpisodeSort?,
     /**
      * 播放地址
      */
