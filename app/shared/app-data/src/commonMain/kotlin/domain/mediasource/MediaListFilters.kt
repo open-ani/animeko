@@ -70,7 +70,21 @@ object MediaListFilters {
     private val specialCharRegex = Regex("""[ 	~!@#$%^&*()_+{}\[\]\\|;':",.<>/?【】：～「」]""")
 
     fun removeSpecials(string: String): String {
-        return string.replace(specialCharRegex, "")
+        return string.removePrefix("电影")
+            .removePrefix("剧场版")
+            .removeInside("剧场版")
+            .removePrefix("OVA")
+            .replace(specialCharRegex, "")
             .replace(allNumbersRegex) { numberMappings.getValue(it.value) }
+            .trim()
+    }
+
+    private fun String.removeInside(string: String): String {
+        val index = this.indexOf(string)
+        return if (index != -1 && index != 0 && index != this.length - string.length) {
+            this.removeRange(index, index + string.length)
+        } else {
+            this
+        }
     }
 }

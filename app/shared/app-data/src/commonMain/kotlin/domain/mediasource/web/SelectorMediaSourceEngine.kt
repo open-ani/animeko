@@ -99,10 +99,7 @@ abstract class SelectorMediaSourceEngine {
         removeSpecial: Boolean,
     ): ApiResponse<SearchSubjectResult> {
         val finalName = if (removeSpecial) {
-            subjectName.removePrefix("电影")
-                .removePrefix("剧场版")
-                .removePrefix("OVA")
-                .trim()
+            MediaListFilters.removeSpecials(subjectName)
         } else {
             subjectName
         }
