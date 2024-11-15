@@ -9,7 +9,7 @@
 
 package me.him188.ani.app.domain.torrent.service.proxy
 
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.torrent.IRemoteTorrentFileEntry
 import me.him188.ani.app.domain.torrent.IRemoteTorrentFileHandle
 import me.him188.ani.app.domain.torrent.client.ConnectivityAware
@@ -38,10 +38,14 @@ class TorrentFileHandleProxy(
     }
 
     override fun close() {
-        runBlocking { delegate.close() }
+        scope.launch {
+            delegate.close()
+        }
     }
 
     override fun closeAndDelete() {
-        runBlocking { delegate.closeAndDelete() }
+        scope.launch {
+            delegate.closeAndDelete()
+        }
     }
 }

@@ -11,6 +11,7 @@ package me.him188.ani.app.domain.torrent.client
 
 import android.os.Build
 import androidx.annotation.RequiresApi
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.domain.torrent.IRemoteTorrentFileHandle
@@ -21,13 +22,14 @@ import me.him188.ani.utils.coroutines.IO_
 
 @RequiresApi(Build.VERSION_CODES.O_MR1)
 class RemoteTorrentFileHandle(
+    private val scope: CoroutineScope,
     connectivityAware: ConnectivityAware,
     getRemote: () -> IRemoteTorrentFileHandle
 ) : TorrentFileHandle,
     RemoteCall<IRemoteTorrentFileHandle> by RetryRemoteCall(getRemote),
     ConnectivityAware by connectivityAware {
     override val entry: TorrentFileEntry
-        get() = RemoteTorrentFileEntry(this) { call { torrentFileEntry } }
+        get() = RemoteTorrentFileEntry(scope, this) { call { torrentFileEntry } }
     
     override fun resume(priority: FilePriority) {
         call { resume(priority.ordinal) }

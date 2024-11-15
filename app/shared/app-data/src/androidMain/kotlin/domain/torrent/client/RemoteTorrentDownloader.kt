@@ -11,22 +11,25 @@ package me.him188.ani.app.domain.torrent.client
 
 import android.os.Build
 import androidx.annotation.RequiresApi
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.withContext
 import kotlinx.io.files.Path
 import me.him188.ani.app.domain.torrent.IDisposableHandle
 import me.him188.ani.app.domain.torrent.IRemoteTorrentDownloader
+import me.him188.ani.app.domain.torrent.IRemoteTorrentSession
 import me.him188.ani.app.domain.torrent.callback.ITorrentDownloaderStatsCallback
+import me.him188.ani.app.domain.torrent.cont.ContTorrentDownloaderFetchTorrent
+import me.him188.ani.app.domain.torrent.cont.ContTorrentDownloaderStartDownload
+import me.him188.ani.app.domain.torrent.parcel.PEncodedTorrentInfo
 import me.him188.ani.app.domain.torrent.parcel.PTorrentDownloaderStats
+import me.him188.ani.app.domain.torrent.parcel.RemoteContinuationException
 import me.him188.ani.app.domain.torrent.parcel.toParceled
 import me.him188.ani.app.torrent.api.TorrentDownloader
 import me.him188.ani.app.torrent.api.TorrentLibInfo
 import me.him188.ani.app.torrent.api.TorrentSession
 import me.him188.ani.app.torrent.api.files.EncodedTorrentInfo
-import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.io.absolutePath
 import me.him188.ani.utils.io.inSystem
@@ -34,6 +37,7 @@ import kotlin.coroutines.CoroutineContext
 
 @RequiresApi(Build.VERSION_CODES.O_MR1)
 class RemoteTorrentDownloader(
+    private val scope: CoroutineScope,
     connectivityAware: ConnectivityAware,
     getRemote: () -> IRemoteTorrentDownloader
 ) : TorrentDownloader,
@@ -62,22 +66,41 @@ class RemoteTorrentDownloader(
 
     override val vendor: TorrentLibInfo get() = call { vendor.toTorrentLibInfo() }
 
-    override suspend fun fetchTorrent(uri: String, timeoutSeconds: Int): EncodedTorrentInfo {
-        return withContext(Dispatchers.IO_) {
-            val result = call { fetchTorrent(uri, timeoutSeconds) }
-            result.toEncodedTorrentInfo()
-        }
-    }
+    override suspend fun fetchTorrent(uri: String, timeoutSeconds: Int): EncodedTorrentInfo =
+        callSuspendCancellable(
+            transact = { resolve, reject ->
+                fetchTorrent(
+                    uri, timeoutSeconds,
+                    object : ContTorrentDownloaderFetchTorrent.Stub() {
+                        override fun resume(value: PEncodedTorrentInfo?) = resolve(value)
+                        override fun resumeWithException(exception: RemoteContinuationException?) = reject(exception)
+                    },
+                )
+            },
+            convert = { it.toEncodedTorrentInfo() },
+        )
 
     override suspend fun startDownload(
         data: EncodedTorrentInfo,
         parentCoroutineContext: CoroutineContext,
         overrideSaveDir: SystemPath?
     ): TorrentSession {
-        return withContext(Dispatchers.IO_) {
-            RemoteTorrentSession(this@RemoteTorrentDownloader) {
-                call { startDownload(data.toParceled(), overrideSaveDir?.absolutePath) }
-            }
+        return RemoteTorrentSession(scope, this@RemoteTorrentDownloader) {
+            callSuspendCancellableAsFuture(
+                scope = scope,
+                transact = { resolve, reject ->
+                    startDownload(
+                        data.toParceled(),
+                        overrideSaveDir?.absolutePath,
+                        object : ContTorrentDownloaderStartDownload.Stub() {
+                            override fun resume(value: IRemoteTorrentSession?) = resolve(value)
+                            override fun resumeWithException(exception: RemoteContinuationException?) =
+                                reject(exception)
+                        },
+                    )
+                },
+                convert = { it },
+            ).get()
         }
     }
 

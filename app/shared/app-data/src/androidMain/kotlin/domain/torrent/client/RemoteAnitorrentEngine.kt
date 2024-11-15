@@ -98,7 +98,7 @@ class RemoteAnitorrentEngine(
     }
     
     override suspend fun getDownloader(): TorrentDownloader {
-        return RemoteTorrentDownloader(connectivityAware) {
+        return RemoteTorrentDownloader(childScope, connectivityAware) {
             runBlocking { getBinderOrFail() }.downlaoder
         }
     }

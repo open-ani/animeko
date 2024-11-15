@@ -12,8 +12,21 @@ package me.him188.ani.app.domain.torrent.client
 import android.os.DeadObjectException
 import android.os.IInterface
 import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.future.asDeferred
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
+import me.him188.ani.app.domain.torrent.IDisposableHandle
+import me.him188.ani.app.domain.torrent.parcel.RemoteContinuationException
+import me.him188.ani.utils.coroutines.CancellationException
+import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
+import java.util.concurrent.CompletableFuture
+import kotlin.coroutines.CoroutineContext
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 /**
  * Wrapper for remote call
@@ -72,4 +85,97 @@ class RetryRemoteCall<I : IInterface>(
             null
         }
     }
+}
+
+/**
+ * Wrapper for call which takes a continuation-like argument and returns [IDisposableHandle],
+ * which means this is a asynchronous RPC call.
+ *
+ * [IDisposableHandle] takes responsibility to pass cancellation to server.
+ */
+suspend inline fun <I : IInterface, T, P> RemoteCall<I>.callSuspendCancellable(
+    crossinline transact: I.(
+        resolve: (P?) -> Unit,
+        reject: (RemoteContinuationException?) -> Unit
+    ) -> IDisposableHandle?,
+    crossinline convert: (P) -> T,
+): T = suspendCancellableCoroutine { cont ->
+    val disposable = call {
+        transact(
+            { value ->
+                if (value == null) {
+                    cont.resumeWithException(CancellationException("Remote resume a null value."))
+                } else {
+                    cont.resume(convert(value))
+                }
+            },
+            { exception ->
+                cont.resumeWithException(
+                    exception?.smartCast() ?: Exception("Remote resume a null exception."),
+                )
+            },
+        )
+    }
+
+    if (disposable != null) {
+        cont.invokeOnCancellation { disposable.callOnceOrNull { dispose() } }
+    } else {
+        cont.resumeWithException(CancellationException("Remote disposable is null."))
+    }
+}
+
+/**
+ * Wrapper for call which takes a continuation-like argument and returns [IDisposableHandle],
+ * which means this is a asynchronous RPC call.
+ *
+ * Returns [CompletableFuture] to get the result.
+ *
+ * Cancellation of [scope] will also cancel the future.
+ */
+inline fun <I : IInterface, T, P> RemoteCall<I>.callSuspendCancellableAsFuture(
+    scope: CoroutineScope,
+    coroutineContext: CoroutineContext = Dispatchers.IO_,
+    crossinline transact: I.(
+        resolve: (P?) -> Unit,
+        reject: (RemoteContinuationException?) -> Unit
+    ) -> IDisposableHandle?,
+    crossinline convert: (P) -> T,
+): CompletableFuture<T> {
+    val completableFuture = CompletableFuture<T>()
+
+    scope.launch(coroutineContext) {
+        val disposable = call {
+            transact(
+                { value ->
+                    if (completableFuture.isDone) return@transact
+                    if (value == null) {
+                        completableFuture.completeExceptionally(CancellationException("Remote resume a null value."))
+                    } else {
+                        completableFuture.complete(convert(value))
+                    }
+                },
+                { exception ->
+                    if (completableFuture.isDone) return@transact
+                    completableFuture.completeExceptionally(
+                        exception?.smartCast() ?: Exception("Remote resume a null exception."),
+                    )
+                },
+            )
+        }
+
+        if (disposable == null) {
+            completableFuture.completeExceptionally(CancellationException("Remote disposable is null."))
+        } else {
+            completableFuture.handle { _, _ ->
+                // We don't care about the result. Just dispose service.
+                disposable.callOnceOrNull { dispose() }
+            }
+        }
+
+        // Cancellation of current CoroutineScope causes cancelling 
+        // the Deferred which will cancel the CompletableFuture.
+        completableFuture.asDeferred().await()
+    }
+
+    return completableFuture
 }

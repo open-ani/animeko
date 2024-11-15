@@ -11,6 +11,7 @@ package me.him188.ani.app.domain.torrent.client
 
 import android.os.Build
 import androidx.annotation.RequiresApi
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -20,7 +21,11 @@ import kotlinx.io.files.Path
 import me.him188.ani.app.domain.torrent.IDisposableHandle
 import me.him188.ani.app.domain.torrent.IRemoteTorrentFileEntry
 import me.him188.ani.app.domain.torrent.callback.ITorrentFileEntryStatsCallback
+import me.him188.ani.app.domain.torrent.cont.ContTorrentFileEntryGetInputParams
+import me.him188.ani.app.domain.torrent.cont.ContTorrentFileEntryResolveFile
 import me.him188.ani.app.domain.torrent.parcel.PTorrentFileEntryStats
+import me.him188.ani.app.domain.torrent.parcel.PTorrentInputParameter
+import me.him188.ani.app.domain.torrent.parcel.RemoteContinuationException
 import me.him188.ani.app.torrent.api.files.TorrentFileEntry
 import me.him188.ani.app.torrent.api.files.TorrentFileHandle
 import me.him188.ani.app.torrent.api.pieces.PieceList
@@ -34,6 +39,7 @@ import java.io.RandomAccessFile
 
 @RequiresApi(Build.VERSION_CODES.O_MR1)
 class RemoteTorrentFileEntry(
+    private val scope: CoroutineScope,
     connectivityAware: ConnectivityAware,
     getRemote: () -> IRemoteTorrentFileEntry
 ) : TorrentFileEntry,
@@ -69,39 +75,52 @@ class RemoteTorrentFileEntry(
     override val supportsStreaming: Boolean get() = call { supportsStreaming }
 
     override fun createHandle(): TorrentFileHandle {
-        return RemoteTorrentFileHandle(this) { call { createHandle() } }
+        return RemoteTorrentFileHandle(scope, this) { call { createHandle() } }
     }
 
-    override suspend fun resolveFile(): SystemPath {
-        return withContext(Dispatchers.IO_) {
-            val result = call { resolveFile() }
-            Path(result).inSystem
-        }
-    }
+    override suspend fun resolveFile(): SystemPath =
+        callSuspendCancellable(
+            transact = { resolve, reject ->
+                resolveFile(
+                    object : ContTorrentFileEntryResolveFile.Stub() {
+                        override fun resume(value: String?) = resolve(value)
+                        override fun resumeWithException(exception: RemoteContinuationException?) = reject(exception)
+                    },
+                )
+            },
+            convert = { result -> Path(result).inSystem },
+        )
 
     override fun resolveFileMaybeEmptyOrNull(): SystemPath? {
         val result = call { resolveFileMaybeEmptyOrNull() }
         return if (result != null) Path(result).inSystem else null
     }
 
-    override suspend fun createInput(): SeekableInput {
-        val remoteInput = call { torrentInputParams }
+    override suspend fun createInput(): SeekableInput =
+        callSuspendCancellable(
+            transact = { resolve, reject ->
+                getTorrentInputParams(
+                    object : ContTorrentFileEntryGetInputParams.Stub() {
+                        override fun resume(value: PTorrentInputParameter?) = resolve(value)
+                        override fun resumeWithException(exception: RemoteContinuationException?) = reject(exception)
+                    },
+                )
+            },
+            convert = { remoteInput ->
+                val file = Path(remoteInput.file).inSystem
 
-        val file = Path(remoteInput.file).inSystem
-        
-        return TorrentInput(
-            file = withContext(Dispatchers.IO_) {
-                RandomAccessFile(file.toFile(), "r")
+                TorrentInput(
+                    file = RandomAccessFile(file.toFile(), "r"),
+                    pieces = pieces,
+                    logicalStartOffset = remoteInput.logicalStartOffset,
+                    onWait = {
+                        withContext(Dispatchers.IO_) {
+                            call { torrentInputOnWait(it.pieceIndex) }
+                        }
+                    },
+                    bufferSize = remoteInput.bufferSize,
+                    size = remoteInput.size,
+                )
             },
-            pieces = pieces,
-            logicalStartOffset = remoteInput.logicalStartOffset,
-            onWait = {
-                withContext(Dispatchers.IO_) {
-                    call { torrentInputOnWait(it.pieceIndex) }
-                }
-            },
-            bufferSize = remoteInput.bufferSize,
-            size = remoteInput.size,
         )
-    }
 }

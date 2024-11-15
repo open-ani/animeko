@@ -11,15 +11,19 @@ package me.him188.ani.app.domain.torrent.client
 
 import android.os.Build
 import androidx.annotation.RequiresApi
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.domain.torrent.IDisposableHandle
+import me.him188.ani.app.domain.torrent.IRemoteTorrentFileEntryList
 import me.him188.ani.app.domain.torrent.IRemoteTorrentSession
 import me.him188.ani.app.domain.torrent.callback.ITorrentSessionStatsCallback
+import me.him188.ani.app.domain.torrent.cont.ContTorrentSessionGetFiles
 import me.him188.ani.app.domain.torrent.parcel.PTorrentSessionStats
+import me.him188.ani.app.domain.torrent.parcel.RemoteContinuationException
 import me.him188.ani.app.torrent.api.TorrentSession
 import me.him188.ani.app.torrent.api.files.TorrentFileEntry
 import me.him188.ani.app.torrent.api.peer.PeerInfo
@@ -27,6 +31,7 @@ import me.him188.ani.utils.coroutines.IO_
 
 @RequiresApi(Build.VERSION_CODES.O_MR1)
 class RemoteTorrentSession(
+    private val scope: CoroutineScope,
     connectivityAware: ConnectivityAware,
     getRemote: () -> IRemoteTorrentSession
 ) : TorrentSession,
@@ -58,8 +63,20 @@ class RemoteTorrentSession(
     }
 
     override suspend fun getFiles(): List<TorrentFileEntry> {
-        return withContext(Dispatchers.IO_) {
-            RemoteTorrentFileEntryList(this@RemoteTorrentSession) { call { files } }
+        return RemoteTorrentFileEntryList(scope, this@RemoteTorrentSession) {
+            callSuspendCancellableAsFuture(
+                scope = scope,
+                transact = { resolve, reject ->
+                    getFiles(
+                        object : ContTorrentSessionGetFiles.Stub() {
+                            override fun resume(value: IRemoteTorrentFileEntryList?) = resolve(value)
+                            override fun resumeWithException(exception: RemoteContinuationException?) =
+                                reject(exception)
+                        },
+                    )
+                },
+                convert = { it },
+            ).get()
         }
     }
 
