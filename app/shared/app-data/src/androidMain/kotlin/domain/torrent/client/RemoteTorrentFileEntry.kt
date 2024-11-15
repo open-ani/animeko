@@ -77,17 +77,14 @@ class RemoteTorrentFileEntry(
     }
 
     override suspend fun resolveFile(): SystemPath =
-        callSuspendCancellable(
-            transact = { resolve, reject ->
-                resolveFile(
-                    object : ContTorrentFileEntryResolveFile.Stub() {
-                        override fun resume(value: String?) = resolve(value)
-                        override fun resumeWithException(exception: RemoteContinuationException?) = reject(exception)
-                    },
-                )
-            },
-            convert = { result -> Path(result).inSystem },
-        )
+        callSuspendCancellable { resolve, reject ->
+            resolveFile(
+                object : ContTorrentFileEntryResolveFile.Stub() {
+                    override fun resume(value: String?) = resolve(value?.let { Path(it).inSystem })
+                    override fun resumeWithException(exception: RemoteContinuationException?) = reject(exception)
+                },
+            )
+        }
 
     override fun resolveFileMaybeEmptyOrNull(): SystemPath? {
         val result = call { resolveFileMaybeEmptyOrNull() }
@@ -95,30 +92,31 @@ class RemoteTorrentFileEntry(
     }
 
     override suspend fun createInput(): SeekableInput =
-        callSuspendCancellable(
-            transact = { resolve, reject ->
-                getTorrentInputParams(
-                    object : ContTorrentFileEntryGetInputParams.Stub() {
-                        override fun resume(value: PTorrentInputParameter?) = resolve(value)
-                        override fun resumeWithException(exception: RemoteContinuationException?) = reject(exception)
-                    },
-                )
-            },
-            convert = { remoteInput ->
-                val file = Path(remoteInput.file).inSystem
-
-                TorrentInput(
-                    file = RandomAccessFile(file.toFile(), "r"),
-                    pieces = pieces,
-                    logicalStartOffset = remoteInput.logicalStartOffset,
-                    onWait = {
-                        withContext(Dispatchers.IO_) {
-                            call { torrentInputOnWait(it.pieceIndex) }
+        callSuspendCancellable { resolve, reject ->
+            getTorrentInputParams(
+                object : ContTorrentFileEntryGetInputParams.Stub() {
+                    override fun resume(value: PTorrentInputParameter?) {
+                        if (value == null) {
+                            resolve(null)
+                            return
                         }
-                    },
-                    bufferSize = remoteInput.bufferSize,
-                    size = remoteInput.size,
-                )
-            },
-        )
+
+                        TorrentInput(
+                            file = RandomAccessFile(Path(value.file).inSystem.toFile(), "r"),
+                            pieces = this@RemoteTorrentFileEntry.pieces,
+                            logicalStartOffset = value.logicalStartOffset,
+                            onWait = {
+                                withContext(Dispatchers.IO_) {
+                                    call { torrentInputOnWait(it.pieceIndex) }
+                                }
+                            },
+                            bufferSize = value.bufferSize,
+                            size = value.size,
+                        ).also { resolve(it) }
+                    }
+
+                    override fun resumeWithException(exception: RemoteContinuationException?) = reject(exception)
+                },
+            )
+        }
 }

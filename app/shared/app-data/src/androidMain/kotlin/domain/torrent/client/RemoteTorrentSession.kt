@@ -62,18 +62,15 @@ class RemoteTorrentSession(
 
     override suspend fun getFiles(): List<TorrentFileEntry> {
         return RemoteTorrentFileEntryList(this@RemoteTorrentSession) {
-            callSuspendCancellableAsFuture(
-                transact = { resolve, reject ->
-                    getFiles(
-                        object : ContTorrentSessionGetFiles.Stub() {
-                            override fun resume(value: IRemoteTorrentFileEntryList?) = resolve(value)
-                            override fun resumeWithException(exception: RemoteContinuationException?) =
-                                reject(exception)
-                        },
-                    )
-                },
-                convert = { it },
-            ).get()
+            callSuspendCancellableAsFuture { resolve, reject ->
+                getFiles(
+                    object : ContTorrentSessionGetFiles.Stub() {
+                        override fun resume(value: IRemoteTorrentFileEntryList?) = resolve(value)
+                        override fun resumeWithException(exception: RemoteContinuationException?) =
+                            reject(exception)
+                    },
+                )
+            }.get()
         }
     }
 

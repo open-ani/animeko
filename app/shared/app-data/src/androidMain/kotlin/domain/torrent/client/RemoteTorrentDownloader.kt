@@ -65,18 +65,15 @@ class RemoteTorrentDownloader(
     override val vendor: TorrentLibInfo get() = call { vendor.toTorrentLibInfo() }
 
     override suspend fun fetchTorrent(uri: String, timeoutSeconds: Int): EncodedTorrentInfo =
-        callSuspendCancellable(
-            transact = { resolve, reject ->
-                fetchTorrent(
-                    uri, timeoutSeconds,
-                    object : ContTorrentDownloaderFetchTorrent.Stub() {
-                        override fun resume(value: PEncodedTorrentInfo?) = resolve(value)
-                        override fun resumeWithException(exception: RemoteContinuationException?) = reject(exception)
-                    },
-                )
-            },
-            convert = { it.toEncodedTorrentInfo() },
-        )
+        callSuspendCancellable { resolve, reject ->
+            fetchTorrent(
+                uri, timeoutSeconds,
+                object : ContTorrentDownloaderFetchTorrent.Stub() {
+                    override fun resume(value: PEncodedTorrentInfo?) = resolve(value?.toEncodedTorrentInfo())
+                    override fun resumeWithException(exception: RemoteContinuationException?) = reject(exception)
+                },
+            )
+        }
 
     override suspend fun startDownload(
         data: EncodedTorrentInfo,
@@ -84,20 +81,17 @@ class RemoteTorrentDownloader(
         overrideSaveDir: SystemPath?
     ): TorrentSession {
         return RemoteTorrentSession(this@RemoteTorrentDownloader) {
-            callSuspendCancellableAsFuture(
-                transact = { resolve, reject ->
-                    startDownload(
-                        data.toParceled(),
-                        overrideSaveDir?.absolutePath,
-                        object : ContTorrentDownloaderStartDownload.Stub() {
-                            override fun resume(value: IRemoteTorrentSession?) = resolve(value)
-                            override fun resumeWithException(exception: RemoteContinuationException?) =
-                                reject(exception)
-                        },
-                    )
-                },
-                convert = { it },
-            ).get()
+            callSuspendCancellableAsFuture { resolve, reject ->
+                startDownload(
+                    data.toParceled(),
+                    overrideSaveDir?.absolutePath,
+                    object : ContTorrentDownloaderStartDownload.Stub() {
+                        override fun resume(value: IRemoteTorrentSession?) = resolve(value)
+                        override fun resumeWithException(exception: RemoteContinuationException?) =
+                            reject(exception)
+                    },
+                )
+            }.get()
         }
     }
 

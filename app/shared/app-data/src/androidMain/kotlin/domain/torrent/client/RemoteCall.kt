@@ -87,12 +87,11 @@ class RetryRemoteCall<I : IInterface>(
  *
  * [IDisposableHandle] takes responsibility to pass cancellation to server.
  */
-suspend inline fun <I : IInterface, T, P> RemoteCall<I>.callSuspendCancellable(
+suspend inline fun <I : IInterface, T> RemoteCall<I>.callSuspendCancellable(
     crossinline transact: I.(
-        resolve: (P?) -> Unit,
+        resolve: (T?) -> Unit,
         reject: (RemoteContinuationException?) -> Unit
     ) -> IDisposableHandle?,
-    crossinline convert: (P) -> T,
 ): T = suspendCancellableCoroutine { cont ->
     val disposable = call {
         transact(
@@ -100,7 +99,7 @@ suspend inline fun <I : IInterface, T, P> RemoteCall<I>.callSuspendCancellable(
                 if (value == null) {
                     cont.resumeWithException(CancellationException("Remote resume a null value."))
                 } else {
-                    cont.resume(convert(value))
+                    cont.resume(value)
                 }
             },
             { exception ->
@@ -123,15 +122,12 @@ suspend inline fun <I : IInterface, T, P> RemoteCall<I>.callSuspendCancellable(
  * which means this is a asynchronous RPC call.
  *
  * Returns [CompletableFuture] to get the result.
- *
- * Cancellation of [scope] will also cancel the future.
  */
-inline fun <I : IInterface, T, P> RemoteCall<I>.callSuspendCancellableAsFuture(
+inline fun <I : IInterface, T> RemoteCall<I>.callSuspendCancellableAsFuture(
     crossinline transact: I.(
-        resolve: (P?) -> Unit,
+        resolve: (T?) -> Unit,
         reject: (RemoteContinuationException?) -> Unit
-    ) -> IDisposableHandle?,
-    crossinline convert: (P) -> T,
+    ) -> IDisposableHandle?
 ): CompletableFuture<T> {
     val completableFuture = CompletableFuture<T>()
 
@@ -142,7 +138,7 @@ inline fun <I : IInterface, T, P> RemoteCall<I>.callSuspendCancellableAsFuture(
                 if (value == null) {
                     completableFuture.completeExceptionally(CancellationException("Remote resume a null value."))
                 } else {
-                    completableFuture.complete(convert(value))
+                    completableFuture.complete(value)
                 }
             },
             { exception ->
