@@ -19,7 +19,7 @@ import me.him188.ani.app.domain.torrent.IDisposableHandle
 import me.him188.ani.app.domain.torrent.IRemotePieceList
 import me.him188.ani.app.domain.torrent.IRemoteTorrentFileEntry
 import me.him188.ani.app.domain.torrent.IRemoteTorrentFileHandle
-import me.him188.ani.app.domain.torrent.ITorrentFileEntryStatsCallback
+import me.him188.ani.app.domain.torrent.callback.ITorrentFileEntryStatsCallback
 import me.him188.ani.app.domain.torrent.client.ConnectivityAware
 import me.him188.ani.app.domain.torrent.parcel.PTorrentFileEntryStats
 import me.him188.ani.app.domain.torrent.parcel.PTorrentInputParameter

@@ -1,7 +1,7 @@
 // IRemoteTorrentFileEntry.aidl
 package me.him188.ani.app.domain.torrent;
 
-import me.him188.ani.app.domain.torrent.ITorrentFileEntryStatsCallback;
+import me.him188.ani.app.domain.torrent.callback.ITorrentFileEntryStatsCallback;
 import me.him188.ani.app.domain.torrent.IRemotePieceList;
 import me.him188.ani.app.domain.torrent.IRemoteTorrentFileHandle;
 import me.him188.ani.app.domain.torrent.IDisposableHandle;

@@ -1,5 +1,5 @@
 // ITorrentFileEntryStatsCallback.aidl
-package me.him188.ani.app.domain.torrent;
+package me.him188.ani.app.domain.torrent.callback;
 
 import me.him188.ani.app.domain.torrent.parcel.PTorrentFileEntryStats;
 

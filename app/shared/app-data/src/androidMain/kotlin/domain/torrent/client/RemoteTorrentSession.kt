@@ -18,7 +18,7 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.domain.torrent.IDisposableHandle
 import me.him188.ani.app.domain.torrent.IRemoteTorrentSession
-import me.him188.ani.app.domain.torrent.ITorrentSessionStatsCallback
+import me.him188.ani.app.domain.torrent.callback.ITorrentSessionStatsCallback
 import me.him188.ani.app.domain.torrent.parcel.PTorrentSessionStats
 import me.him188.ani.app.torrent.api.TorrentSession
 import me.him188.ani.app.torrent.api.files.TorrentFileEntry

@@ -19,7 +19,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.io.files.Path
 import me.him188.ani.app.domain.torrent.IDisposableHandle
 import me.him188.ani.app.domain.torrent.IRemoteTorrentDownloader
-import me.him188.ani.app.domain.torrent.ITorrentDownloaderStatsCallback
+import me.him188.ani.app.domain.torrent.callback.ITorrentDownloaderStatsCallback
 import me.him188.ani.app.domain.torrent.parcel.PTorrentDownloaderStats
 import me.him188.ani.app.domain.torrent.parcel.toParceled
 import me.him188.ani.app.torrent.api.TorrentDownloader

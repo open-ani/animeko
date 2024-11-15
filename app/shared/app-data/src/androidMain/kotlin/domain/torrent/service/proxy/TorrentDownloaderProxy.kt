@@ -20,7 +20,7 @@ import kotlinx.io.files.Path
 import me.him188.ani.app.domain.torrent.IDisposableHandle
 import me.him188.ani.app.domain.torrent.IRemoteTorrentDownloader
 import me.him188.ani.app.domain.torrent.IRemoteTorrentSession
-import me.him188.ani.app.domain.torrent.ITorrentDownloaderStatsCallback
+import me.him188.ani.app.domain.torrent.callback.ITorrentDownloaderStatsCallback
 import me.him188.ani.app.domain.torrent.client.ConnectivityAware
 import me.him188.ani.app.domain.torrent.parcel.PEncodedTorrentInfo
 import me.him188.ani.app.domain.torrent.parcel.PTorrentDownloaderStats
