@@ -103,10 +103,14 @@ class TorrentSessionProxy(
     }
 
     override fun close() {
-        return runBlocking { delegate.close() }
+        scope.launch {
+            delegate.close()
+        }
     }
 
     override fun closeIfNotInUse() {
-        return runBlocking { delegate.closeIfNotInUse() }
+        scope.launch {
+            delegate.closeIfNotInUse()
+        }
     }
 }

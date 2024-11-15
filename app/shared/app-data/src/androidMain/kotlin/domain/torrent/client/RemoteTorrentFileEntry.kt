@@ -11,7 +11,6 @@ package me.him188.ani.app.domain.torrent.client
 
 import android.os.Build
 import androidx.annotation.RequiresApi
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -39,7 +38,6 @@ import java.io.RandomAccessFile
 
 @RequiresApi(Build.VERSION_CODES.O_MR1)
 class RemoteTorrentFileEntry(
-    private val scope: CoroutineScope,
     connectivityAware: ConnectivityAware,
     getRemote: () -> IRemoteTorrentFileEntry
 ) : TorrentFileEntry,
@@ -75,7 +73,7 @@ class RemoteTorrentFileEntry(
     override val supportsStreaming: Boolean get() = call { supportsStreaming }
 
     override fun createHandle(): TorrentFileHandle {
-        return RemoteTorrentFileHandle(scope, this) { call { createHandle() } }
+        return RemoteTorrentFileHandle(this) { call { createHandle() } }
     }
 
     override suspend fun resolveFile(): SystemPath =

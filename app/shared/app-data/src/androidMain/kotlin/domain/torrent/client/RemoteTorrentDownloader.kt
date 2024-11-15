@@ -11,7 +11,6 @@ package me.him188.ani.app.domain.torrent.client
 
 import android.os.Build
 import androidx.annotation.RequiresApi
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -37,7 +36,6 @@ import kotlin.coroutines.CoroutineContext
 
 @RequiresApi(Build.VERSION_CODES.O_MR1)
 class RemoteTorrentDownloader(
-    private val scope: CoroutineScope,
     connectivityAware: ConnectivityAware,
     getRemote: () -> IRemoteTorrentDownloader
 ) : TorrentDownloader,
@@ -85,9 +83,8 @@ class RemoteTorrentDownloader(
         parentCoroutineContext: CoroutineContext,
         overrideSaveDir: SystemPath?
     ): TorrentSession {
-        return RemoteTorrentSession(scope, this@RemoteTorrentDownloader) {
+        return RemoteTorrentSession(this@RemoteTorrentDownloader) {
             callSuspendCancellableAsFuture(
-                scope = scope,
                 transact = { resolve, reject ->
                     startDownload(
                         data.toParceled(),
