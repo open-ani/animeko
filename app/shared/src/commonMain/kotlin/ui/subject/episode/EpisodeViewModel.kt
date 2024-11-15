@@ -636,6 +636,7 @@ private class EpisodeViewModelImpl(
         // 退出播放页前保存播放进度
         savePlayProgress()
         playerState.stop()
+        mediaSelector.unselect()
     }
 
     private val selfUserId = danmakuManager.selfId

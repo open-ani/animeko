@@ -68,7 +68,7 @@ uploaded.
 |------------------|---------------------------------------------------------------------------------|
 | Windows          | [主线][cf-win-x64] / [备线][ghproxy-win-x64] / [GitHub][github-win-x64]             |
 | macOS (M 系列芯片)   | [主线][cf-mac-aarch64] / [备线][ghproxy-mac-aarch64] / [GitHub][github-mac-aarch64] |
-| macOS (Intel 芯片) | 不再支持                                                                            |
+| macOS (Intel 芯片) | 不再支持. 如有需要, 请发起 issue                                                           |
 
 ### 适用于 Android 手机和平板
 

@@ -38,20 +38,20 @@ class PieceListProxy(
     private val pieceStatesRwBuf = pieceStateSharedMem.mapReadWrite()
     
     private val pieceStateSubscriber: PieceListSubscriptions.Subscription
-    
+
     init {
         require(delegate is PieceSubscribable) { "Delegate $delegate is not PieceSubscribable" }
-        with(delegate) {
-            delegate.forEach { piece ->
-                pieceStatesRwBuf.put(piece.indexInList, piece.state.ordinal.toByte())
-            }
+        delegate.forEach { piece ->
+            pieceStatesRwBuf.put(piece.indexInList, piece.state.ordinal.toByte())
+        }
 
-            // subscribe changes to shared memory
-            pieceStateSubscriber = (this as PieceSubscribable)
-                .subscribePieceState(Piece.Invalid) { piece, state ->
+        // subscribe changes to shared memory
+        pieceStateSubscriber = (delegate as PieceSubscribable)
+            .subscribePieceState(Piece.Invalid) { piece, state ->
+                with(delegate) {
                     pieceStatesRwBuf.put(piece.indexInList, state.ordinal.toByte())
                 }
-        }
+            }
     }
     
     override fun getImmutableSizeArray(): LongArray {
