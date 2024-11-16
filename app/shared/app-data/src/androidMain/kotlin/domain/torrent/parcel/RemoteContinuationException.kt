@@ -15,6 +15,9 @@ import me.him188.ani.utils.coroutines.CancellationException
 import java.io.OutputStream
 import java.io.PrintStream
 
+/**
+ * Exception which can be parceled and transact in async remote call.
+ */
 @Suppress("MemberVisibilityCanBePrivate", "CanBeParameter")
 @Parcelize
 class RemoteContinuationException(

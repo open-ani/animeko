@@ -11,6 +11,7 @@ package me.him188.ani.app.domain.torrent.client
 
 import android.os.DeadObjectException
 import android.os.IInterface
+import android.os.RemoteException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
@@ -21,7 +22,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import me.him188.ani.app.domain.torrent.IDisposableHandle
 import me.him188.ani.app.domain.torrent.parcel.RemoteContinuationException
-import me.him188.ani.utils.coroutines.CancellationException
 import me.him188.ani.utils.coroutines.update
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
@@ -99,7 +99,7 @@ suspend inline fun <I : IInterface, T : Any> RemoteCall<I>.callSuspendCancellabl
             object : RemoteContinuation<T> {
                 override fun resume(value: T?) {
                     if (value == null) {
-                        cont.resumeWithException(CancellationException("Remote resume a null value."))
+                        cont.resumeWithException(RemoteException("Remote resume a null value."))
                     } else {
                         cont.resume(value)
                     }
@@ -107,7 +107,7 @@ suspend inline fun <I : IInterface, T : Any> RemoteCall<I>.callSuspendCancellabl
 
                 override fun resumeWithException(e: RemoteContinuationException?) {
                     cont.resumeWithException(
-                        e?.smartCast() ?: Exception("Remote resume a null exception."),
+                        e?.smartCast() ?: RemoteException("Remote resume a null exception."),
                     )
                 }
             },
@@ -122,7 +122,7 @@ suspend inline fun <I : IInterface, T : Any> RemoteCall<I>.callSuspendCancellabl
             }
         }
     } else {
-        cont.resumeWithException(CancellationException("Remote disposable is null."))
+        cont.resumeWithException(RemoteException("Remote disposable is null."))
     }
 }
 
