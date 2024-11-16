@@ -63,18 +63,21 @@ class TorrentDownloadController(
     private val footerSize: Long = headerSize,
     private val possibleFooterSize: Long = headerSize,
 ) : SynchronizedObject() {
-    private val totalSize: Long = pieces.sumOf { it.size }
+    private val totalPieceSize: Long = pieces.sumOf { it.size }
+    private val pieceOffsetStart = with(pieces) { pieces.first().dataStartOffset }
 
-    private val footerPieces = pieces.dropWhile { it.dataLastOffset < totalSize - footerSize }
-    private val possibleFooterRange = pieces.dropWhile { it.dataLastOffset < totalSize - possibleFooterSize }
+    private val footerPieces = pieces.dropWhile { it.dataLastOffset < pieceOffsetStart + totalPieceSize - footerSize }
+    private val possibleFooterRange = pieces
+        .dropWhile { it.dataLastOffset < pieceOffsetStart + totalPieceSize - possibleFooterSize }
         .let {
             if (it.isEmpty()) IntRange.EMPTY
             else it.first().pieceIndex..it.last().pieceIndex
         }
 
-    private val lastIndex = pieces.pieceIndexOfFirst { it.dataLastOffset >= totalSize - footerSize } - 1
+    private val lastIndex = pieces
+        .pieceIndexOfFirst { it.dataLastOffset >= pieceOffsetStart + totalPieceSize - footerSize } - 1
 
-    private var currentWindowStart = 0
+    private var currentWindowStart = pieces.initialPieceIndex
 
     // inclusive
     private var currentWindowEnd = (currentWindowStart + windowSize - 1).coerceAtMost(lastIndex)
@@ -88,7 +91,7 @@ class TorrentDownloadController(
     }
 
     fun onTorrentResumed() = synchronized(this) {
-        onSeek(0)
+        onSeek(pieces.initialPieceIndex)
     }
 
     fun onSeek(pieceIndex: Int) = synchronized(this) {
