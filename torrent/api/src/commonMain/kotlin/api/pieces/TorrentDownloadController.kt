@@ -139,7 +139,7 @@ class TorrentDownloadController(
         downloadingPieces = (nextStartIndex..nextEndIndex).toMutableList()
         currentWindowStart = downloadingPieces.firstOrNull() ?: -1
         currentWindowEnd = downloadingPieces.lastOrNull() ?: -1
-        if (pieceIndex <= 1) {
+        if (pieceIndex <= pieces.initialPieceIndex + 1) {
             // 正在下载第 0-1 个 piece, 说明我们刚刚开始下载视频, 需要额外请求尾部元数据
             addFooterPieces()
         }
