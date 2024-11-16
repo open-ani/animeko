@@ -10,6 +10,7 @@
 package me.him188.ani.app.domain.torrent.client
 
 import android.os.Build
+import android.os.DeadObjectException
 import androidx.annotation.RequiresApi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -40,11 +41,9 @@ import java.io.RandomAccessFile
 @RequiresApi(Build.VERSION_CODES.O_MR1)
 class RemoteTorrentFileEntry(
     private val fetchRemoteScope: CoroutineScope,
-    connectivityAware: ConnectivityAware,
-    getRemote: suspend () -> IRemoteTorrentFileEntry
-) : TorrentFileEntry,
-    RemoteCall<IRemoteTorrentFileEntry> by RetryRemoteCall(fetchRemoteScope, getRemote),
-    ConnectivityAware by connectivityAware {
+    private val remote: RemoteCall<IRemoteTorrentFileEntry>,
+    private val connectivityAware: ConnectivityAware
+) : TorrentFileEntry {
     override val fileStats: Flow<TorrentFileEntry.Stats> = callbackFlow {
         var disposable: IDisposableHandle? = null
         val callback = object : ITorrentFileEntryStatsCallback.Stub() {
@@ -54,32 +53,42 @@ class RemoteTorrentFileEntry(
         }
 
         // todo: not thread-safe
-        disposable = call { getFileStats(callback) }
-        val transform = registerStateTransform(false, true) {
-            disposable?.callOnceOrNull { dispose() }
-            disposable = call { getFileStats(callback) }
+        disposable = remote.call { getFileStats(callback) }
+        val transform = connectivityAware.registerStateTransform(false, true) {
+            try {
+                disposable?.dispose()
+            } catch (_: DeadObjectException) {
+            }
+            disposable = remote.call { getFileStats(callback) }
         }
 
         awaitClose {
-            disposable?.callOnceOrNull { dispose() }
-            unregister(transform)
+            try {
+                disposable?.dispose()
+            } catch (_: DeadObjectException) {
+            }
+            connectivityAware.unregister(transform)
         }
     }
 
-    override val length: Long get() = call { length }
+    override val length: Long get() = remote.call { length }
 
-    override val pathInTorrent: String get() = call { pathInTorrent }
+    override val pathInTorrent: String get() = remote.call { pathInTorrent }
 
-    override val pieces: PieceList get() = RemotePieceList(this, call { pieces })
+    override val pieces: PieceList get() = RemotePieceList(connectivityAware, remote.call { pieces })
 
-    override val supportsStreaming: Boolean get() = call { supportsStreaming }
+    override val supportsStreaming: Boolean get() = remote.call { supportsStreaming }
 
     override fun createHandle(): TorrentFileHandle {
-        return RemoteTorrentFileHandle(fetchRemoteScope, this) { call { createHandle() } }
+        return RemoteTorrentFileHandle(
+            fetchRemoteScope,
+            RetryRemoteCall(fetchRemoteScope) { remote.call { createHandle() } },
+            connectivityAware,
+        )
     }
 
     override suspend fun resolveFile(): SystemPath =
-        callSuspendCancellable { resolve, reject ->
+        remote.callSuspendCancellable { resolve, reject ->
             resolveFile(
                 object : ContTorrentFileEntryResolveFile.Stub() {
                     override fun resume(value: String?) = resolve(value?.let { Path(it).inSystem })
@@ -89,12 +98,12 @@ class RemoteTorrentFileEntry(
         }
 
     override fun resolveFileMaybeEmptyOrNull(): SystemPath? {
-        val result = call { resolveFileMaybeEmptyOrNull() }
+        val result = remote.call { resolveFileMaybeEmptyOrNull() }
         return if (result != null) Path(result).inSystem else null
     }
 
     override suspend fun createInput(): SeekableInput =
-        callSuspendCancellable { resolve, reject ->
+        remote.callSuspendCancellable { resolve, reject ->
             getTorrentInputParams(
                 object : ContTorrentFileEntryGetInputParams.Stub() {
                     override fun resume(value: PTorrentInputParameter?) {
@@ -109,7 +118,7 @@ class RemoteTorrentFileEntry(
                             logicalStartOffset = value.logicalStartOffset,
                             onWait = {
                                 withContext(Dispatchers.IO_) {
-                                    call { torrentInputOnWait(it.pieceIndex) }
+                                    remote.call { torrentInputOnWait(it.pieceIndex) }
                                 }
                             },
                             bufferSize = value.bufferSize,

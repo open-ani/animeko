@@ -25,15 +25,12 @@ import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
-import kotlin.random.Random
 
 /**
  * Wrapper for remote call
  */
 interface RemoteCall<I : IInterface> {
     fun <R : Any?> call(block: I.() -> R): R
-
-    fun <T : IInterface, R> T.callOnceOrNull(block: T.() -> R): R?
 }
 
 /**
@@ -59,14 +56,10 @@ class RetryRemoteCall<I : IInterface>(
 
     override fun <R : Any?> call(block: I.() -> R): R {
         var retryCount = 0
-
-        val random = Random.Default
-        val call1 = random.nextInt()
         
         while (true) {
             // remote 为 null 时所有的 call 都要阻塞, 直到第一个 setRemote
             // 其他在等待的 call 返回第一个 setRemote 的值
-            val call2 = Random.Default.nextInt()
             val currentRemote = remote.value ?: runBlocking {
                 synchronized(lock) { setRemote() }.await()
             }
@@ -86,14 +79,6 @@ class RetryRemoteCall<I : IInterface>(
                     remote.value = null
                 }
             }
-        }
-    }
-
-    override fun <T : IInterface, R> T.callOnceOrNull(block: T.() -> R): R? {
-        return try {
-            block(this)
-        } catch (doe: DeadObjectException) {
-            null
         }
     }
 }
@@ -128,7 +113,12 @@ suspend inline fun <I : IInterface, T> RemoteCall<I>.callSuspendCancellable(
     }
 
     if (disposable != null) {
-        cont.invokeOnCancellation { disposable.callOnceOrNull { dispose() } }
+        cont.invokeOnCancellation {
+            try {
+                disposable.dispose()
+            } catch (_: DeadObjectException) {
+            }
+        }
     } else {
         cont.resumeWithException(CancellationException("Remote disposable is null."))
     }

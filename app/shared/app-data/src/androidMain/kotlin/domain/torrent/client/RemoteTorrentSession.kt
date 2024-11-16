@@ -10,6 +10,7 @@
 package me.him188.ani.app.domain.torrent.client
 
 import android.os.Build
+import android.os.DeadObjectException
 import androidx.annotation.RequiresApi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -32,11 +33,9 @@ import me.him188.ani.utils.coroutines.IO_
 @RequiresApi(Build.VERSION_CODES.O_MR1)
 class RemoteTorrentSession(
     private val fetchRemoteScope: CoroutineScope,
-    connectivityAware: ConnectivityAware,
-    getRemote: suspend () -> IRemoteTorrentSession
-) : TorrentSession,
-    RemoteCall<IRemoteTorrentSession> by RetryRemoteCall(fetchRemoteScope, getRemote),
-    ConnectivityAware by connectivityAware {
+    private val remote: RemoteCall<IRemoteTorrentSession>,
+    private val connectivityAware: ConnectivityAware
+) : TorrentSession {
     override val sessionStats: Flow<TorrentSession.Stats?> = callbackFlow {
         var disposable: IDisposableHandle? = null
         val callback = object : ITorrentSessionStatsCallback.Stub() {
@@ -46,49 +45,59 @@ class RemoteTorrentSession(
         }
 
         // todo: not thread-safe
-        disposable = call { getSessionStats(callback) }
-        val transform = registerStateTransform(false, true) {
-            disposable?.callOnceOrNull { dispose() }
-            disposable = call { getSessionStats(callback) }
+        disposable = remote.call { getSessionStats(callback) }
+        val transform = connectivityAware.registerStateTransform(false, true) {
+            try {
+                disposable?.dispose()
+            } catch (_: DeadObjectException) {
+            }
+            disposable = remote.call { getSessionStats(callback) }
         }
 
         awaitClose {
-            disposable?.callOnceOrNull { dispose() }
-            unregister(transform)
+            try {
+                disposable?.dispose()
+            } catch (_: DeadObjectException) {
+            }
+            connectivityAware.unregister(transform)
         }
     }
 
     override suspend fun getName(): String {
-        return withContext(Dispatchers.IO_) { call { name } }
+        return withContext(Dispatchers.IO_) { remote.call { name } }
     }
 
     override suspend fun getFiles(): List<TorrentFileEntry> {
-        return RemoteTorrentFileEntryList(fetchRemoteScope, this@RemoteTorrentSession) {
-            callSuspendCancellable { resolve, reject ->
-                getFiles(
-                    object : ContTorrentSessionGetFiles.Stub() {
-                        override fun resume(value: IRemoteTorrentFileEntryList?) = resolve(value)
-                        override fun resumeWithException(exception: RemoteContinuationException?) =
-                            reject(exception)
-                    },
-                )
-            }
-        }
+        return RemoteTorrentFileEntryList(
+            fetchRemoteScope,
+            RetryRemoteCall(fetchRemoteScope) {
+                remote.callSuspendCancellable { resolve, reject ->
+                    getFiles(
+                        object : ContTorrentSessionGetFiles.Stub() {
+                            override fun resume(value: IRemoteTorrentFileEntryList?) = resolve(value)
+                            override fun resumeWithException(exception: RemoteContinuationException?) =
+                                reject(exception)
+                        },
+                    )
+                }
+            },
+            connectivityAware,
+        )
     }
 
     override fun getPeers(): List<PeerInfo> {
-        return call { peers }.asList()
+        return remote.call { peers }.asList()
     }
 
     override suspend fun close() {
         withContext(Dispatchers.IO_) {
-            call { close() }
+            remote.call { close() }
         }
     }
 
     override suspend fun closeIfNotInUse() {
         withContext(Dispatchers.IO_) {
-            call { closeIfNotInUse() }
+            remote.call { closeIfNotInUse() }
         }
     }
 }

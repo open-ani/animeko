@@ -23,31 +23,33 @@ import me.him188.ani.utils.coroutines.IO_
 @RequiresApi(Build.VERSION_CODES.O_MR1)
 class RemoteTorrentFileHandle(
     private val fetchRemoteScope: CoroutineScope,
-    connectivityAware: ConnectivityAware,
-    getRemote: suspend () -> IRemoteTorrentFileHandle
-) : TorrentFileHandle,
-    RemoteCall<IRemoteTorrentFileHandle> by RetryRemoteCall(fetchRemoteScope, getRemote),
-    ConnectivityAware by connectivityAware {
+    private val remote: RemoteCall<IRemoteTorrentFileHandle>,
+    private val connectivityAware: ConnectivityAware
+) : TorrentFileHandle {
     override val entry: TorrentFileEntry
-        get() = RemoteTorrentFileEntry(fetchRemoteScope, this) { call { torrentFileEntry } }
+        get() = RemoteTorrentFileEntry(
+            fetchRemoteScope,
+            RetryRemoteCall(fetchRemoteScope) { remote.call { torrentFileEntry } },
+            connectivityAware,
+        )
     
     override fun resume(priority: FilePriority) {
-        call { resume(priority.ordinal) }
+        remote.call { resume(priority.ordinal) }
     }
 
     override fun pause() {
-        call { pause() }
+        remote.call { pause() }
     }
 
     override suspend fun close() {
         withContext(Dispatchers.IO_) {
-            call { close() }
+            remote.call { close() }
         }
     }
 
     override suspend fun closeAndDelete() {
         withContext(Dispatchers.IO_) {
-            call { closeAndDelete() }
+            remote.call { closeAndDelete() }
         }
     }
 }
