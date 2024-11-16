@@ -74,8 +74,7 @@ class TorrentDownloadController(
             else it.first().pieceIndex..it.last().pieceIndex
         }
 
-    private val lastIndex = pieces
-        .pieceIndexOfFirst { it.dataLastOffset >= pieceOffsetStart + totalPieceSize - footerSize } - 1
+    private val lastIndex = pieces.last().pieceIndex
 
     private var currentWindowStart = pieces.initialPieceIndex
 
