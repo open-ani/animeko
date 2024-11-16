@@ -88,11 +88,16 @@ class RemoteTorrentFileEntry(
     }
 
     override suspend fun resolveFile(): SystemPath =
-        remote.callSuspendCancellable { resolve, reject ->
+        remote.callSuspendCancellable { cont ->
             resolveFile(
                 object : ContTorrentFileEntryResolveFile.Stub() {
-                    override fun resume(value: String?) = resolve(value?.let { Path(it).inSystem })
-                    override fun resumeWithException(exception: RemoteContinuationException?) = reject(exception)
+                    override fun resume(value: String?) {
+                        cont.resume(value?.let { Path(it).inSystem })
+                    }
+
+                    override fun resumeWithException(exception: RemoteContinuationException?) {
+                        cont.resumeWithException(exception)
+                    }
                 },
             )
         }
@@ -103,12 +108,12 @@ class RemoteTorrentFileEntry(
     }
 
     override suspend fun createInput(): SeekableInput =
-        remote.callSuspendCancellable { resolve, reject ->
+        remote.callSuspendCancellable { cont ->
             getTorrentInputParams(
                 object : ContTorrentFileEntryGetInputParams.Stub() {
                     override fun resume(value: PTorrentInputParameter?) {
                         if (value == null) {
-                            resolve(null)
+                            cont.resume(null)
                             return
                         }
 
@@ -123,10 +128,12 @@ class RemoteTorrentFileEntry(
                             },
                             bufferSize = value.bufferSize,
                             size = value.size,
-                        ).also { resolve(it) }
+                        ).also { cont.resume(it) }
                     }
 
-                    override fun resumeWithException(exception: RemoteContinuationException?) = reject(exception)
+                    override fun resumeWithException(exception: RemoteContinuationException?) {
+                        cont.resumeWithException(exception)
+                    }
                 },
             )
         }

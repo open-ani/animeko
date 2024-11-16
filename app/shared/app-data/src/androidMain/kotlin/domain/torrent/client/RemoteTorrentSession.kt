@@ -71,12 +71,16 @@ class RemoteTorrentSession(
         return RemoteTorrentFileEntryList(
             fetchRemoteScope,
             RetryRemoteCall(fetchRemoteScope) {
-                remote.callSuspendCancellable { resolve, reject ->
+                remote.callSuspendCancellable { cont ->
                     getFiles(
                         object : ContTorrentSessionGetFiles.Stub() {
-                            override fun resume(value: IRemoteTorrentFileEntryList?) = resolve(value)
-                            override fun resumeWithException(exception: RemoteContinuationException?) =
-                                reject(exception)
+                            override fun resume(value: IRemoteTorrentFileEntryList?) {
+                                cont.resume(value)
+                            }
+
+                            override fun resumeWithException(exception: RemoteContinuationException?) {
+                                cont.resumeWithException(exception)
+                            }
                         },
                     )
                 }

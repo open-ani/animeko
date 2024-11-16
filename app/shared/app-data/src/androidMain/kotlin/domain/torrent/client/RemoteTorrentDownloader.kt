@@ -72,12 +72,17 @@ class RemoteTorrentDownloader(
     override val vendor: TorrentLibInfo get() = remote.call { vendor.toTorrentLibInfo() }
 
     override suspend fun fetchTorrent(uri: String, timeoutSeconds: Int): EncodedTorrentInfo =
-        remote.callSuspendCancellable { resolve, reject ->
+        remote.callSuspendCancellable { cont ->
             fetchTorrent(
                 uri, timeoutSeconds,
                 object : ContTorrentDownloaderFetchTorrent.Stub() {
-                    override fun resume(value: PEncodedTorrentInfo?) = resolve(value?.toEncodedTorrentInfo())
-                    override fun resumeWithException(exception: RemoteContinuationException?) = reject(exception)
+                    override fun resume(value: PEncodedTorrentInfo?) {
+                        cont.resume(value?.toEncodedTorrentInfo())
+                    }
+
+                    override fun resumeWithException(exception: RemoteContinuationException?) {
+                        cont.resumeWithException(exception)
+                    }
                 },
             )
         }
@@ -90,14 +95,18 @@ class RemoteTorrentDownloader(
         return RemoteTorrentSession(
             fetchRemoteScope,
             RetryRemoteCall(fetchRemoteScope) {
-                remote.callSuspendCancellable { resolve, reject ->
+                remote.callSuspendCancellable { cont ->
                     startDownload(
                         data.toParceled(),
                         overrideSaveDir?.absolutePath,
                         object : ContTorrentDownloaderStartDownload.Stub() {
-                            override fun resume(value: IRemoteTorrentSession?) = resolve(value)
-                            override fun resumeWithException(exception: RemoteContinuationException?) =
-                                reject(exception)
+                            override fun resume(value: IRemoteTorrentSession?) {
+                                cont.resume(value)
+                            }
+
+                            override fun resumeWithException(exception: RemoteContinuationException?) {
+                                cont.resumeWithException(exception)
+                            }
                         },
                     )
                 }

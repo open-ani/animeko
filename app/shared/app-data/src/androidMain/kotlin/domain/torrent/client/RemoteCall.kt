@@ -91,25 +91,25 @@ class RetryRemoteCall<I : IInterface>(
  *
  * [IDisposableHandle] takes responsibility to pass cancellation to server.
  */
-suspend inline fun <I : IInterface, T> RemoteCall<I>.callSuspendCancellable(
-    crossinline transact: I.(
-        resolve: (T?) -> Unit,
-        reject: (RemoteContinuationException?) -> Unit
-    ) -> IDisposableHandle?,
+suspend inline fun <I : IInterface, T : Any> RemoteCall<I>.callSuspendCancellable(
+    crossinline transact: I.(RemoteContinuation<T>) -> IDisposableHandle?,
 ): T = suspendCancellableCoroutine { cont ->
     val disposable = call {
         transact(
-            { value ->
-                if (value == null) {
-                    cont.resumeWithException(CancellationException("Remote resume a null value."))
-                } else {
-                    cont.resume(value)
+            object : RemoteContinuation<T> {
+                override fun resume(value: T?) {
+                    if (value == null) {
+                        cont.resumeWithException(CancellationException("Remote resume a null value."))
+                    } else {
+                        cont.resume(value)
+                    }
                 }
-            },
-            { exception ->
-                cont.resumeWithException(
-                    exception?.smartCast() ?: Exception("Remote resume a null exception."),
-                )
+
+                override fun resumeWithException(e: RemoteContinuationException?) {
+                    cont.resumeWithException(
+                        e?.smartCast() ?: Exception("Remote resume a null exception."),
+                    )
+                }
             },
         )
     }
@@ -124,4 +124,9 @@ suspend inline fun <I : IInterface, T> RemoteCall<I>.callSuspendCancellable(
     } else {
         cont.resumeWithException(CancellationException("Remote disposable is null."))
     }
+}
+
+interface RemoteContinuation<T> {
+    fun resume(value: T?)
+    fun resumeWithException(e: RemoteContinuationException?)
 }
