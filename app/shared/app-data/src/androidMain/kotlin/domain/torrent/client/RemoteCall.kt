@@ -22,6 +22,7 @@ import kotlinx.coroutines.sync.withLock
 import me.him188.ani.app.domain.torrent.IDisposableHandle
 import me.him188.ani.app.domain.torrent.parcel.RemoteContinuationException
 import me.him188.ani.utils.coroutines.CancellationException
+import me.him188.ani.utils.coroutines.update
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
 import kotlin.coroutines.resume
@@ -51,7 +52,7 @@ class RetryRemoteCall<I : IInterface>(
         if (currentRemote != null) return@async currentRemote
 
         val newRemote = getRemote()
-        while (!remote.compareAndSet(null, newRemote));
+        remote.update { newRemote }
         newRemote
     }
 
