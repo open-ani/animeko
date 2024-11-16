@@ -11,13 +11,14 @@ package me.him188.ani.app.domain.torrent.client
 
 import android.os.DeadObjectException
 import android.os.IInterface
-import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import me.him188.ani.app.domain.torrent.IDisposableHandle
 import me.him188.ani.app.domain.torrent.parcel.RemoteContinuationException
 import me.him188.ani.utils.coroutines.CancellationException
@@ -43,7 +44,7 @@ class RetryRemoteCall<I : IInterface>(
     private val logger = logger(this::class)
 
     private val remote: MutableStateFlow<I?> = MutableStateFlow(null)
-    private val lock = SynchronizedObject()
+    private val lock = Mutex()
 
     private fun setRemote(): Deferred<I> = scope.async {
         val currentRemote = remote.value
@@ -61,7 +62,7 @@ class RetryRemoteCall<I : IInterface>(
             // remote 为 null 时所有的 call 都要阻塞, 直到第一个 setRemote
             // 其他在等待的 call 返回第一个 setRemote 的值
             val currentRemote = remote.value ?: runBlocking {
-                synchronized(lock) { setRemote() }.await()
+                lock.withLock { setRemote().await() }
             }
 
             try {
