@@ -107,7 +107,7 @@ class RemoteAnitorrentEngine(
     override suspend fun getDownloader(): TorrentDownloader {
         return RemoteTorrentDownloader(
             fetchRemoteScope,
-            RetryRemoteCall(fetchRemoteScope) { getBinderOrFail().downlaoder },
+            RetryRemoteObject(fetchRemoteScope) { getBinderOrFail().downlaoder },
             connectivityAware,
         )
     }
@@ -127,7 +127,7 @@ class RemoteAnitorrentEngine(
         crossinline transact: I.(String) -> Unit
     ) = scope.launch {
         val stateFlow = settingsFlow.stateIn(this)
-        val remoteCall = RetryRemoteCall(fetchRemoteScope) { getBinder() }
+        val remoteCall = RetryRemoteObject(fetchRemoteScope) { getBinder() }
 
         connection.connected
             .filter { it }

@@ -18,7 +18,7 @@ import me.him188.ani.app.torrent.api.files.TorrentFileEntry
 @RequiresApi(Build.VERSION_CODES.O_MR1)
 class RemoteTorrentFileEntryList(
     private val fetchRemoteScope: CoroutineScope,
-    private val remote: RemoteCall<IRemoteTorrentFileEntryList>,
+    private val remote: RemoteObject<IRemoteTorrentFileEntryList>,
     private val connectivityAware: ConnectivityAware
 ) : AbstractList<TorrentFileEntry>() {
     override val size: Int get() = remote.call { size }
@@ -26,7 +26,7 @@ class RemoteTorrentFileEntryList(
     override fun get(index: Int): TorrentFileEntry {
         return RemoteTorrentFileEntry(
             fetchRemoteScope,
-            RetryRemoteCall(fetchRemoteScope) { remote.call { get(index) } },
+            RetryRemoteObject(fetchRemoteScope) { remote.call { get(index) } },
             connectivityAware,
         )
     }

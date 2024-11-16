@@ -23,13 +23,13 @@ import me.him188.ani.utils.coroutines.IO_
 @RequiresApi(Build.VERSION_CODES.O_MR1)
 class RemoteTorrentFileHandle(
     private val fetchRemoteScope: CoroutineScope,
-    private val remote: RemoteCall<IRemoteTorrentFileHandle>,
+    private val remote: RemoteObject<IRemoteTorrentFileHandle>,
     private val connectivityAware: ConnectivityAware
 ) : TorrentFileHandle {
     override val entry: TorrentFileEntry
         get() = RemoteTorrentFileEntry(
             fetchRemoteScope,
-            RetryRemoteCall(fetchRemoteScope) { remote.call { torrentFileEntry } },
+            RetryRemoteObject(fetchRemoteScope) { remote.call { torrentFileEntry } },
             connectivityAware,
         )
     

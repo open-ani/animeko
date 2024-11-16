@@ -31,17 +31,17 @@ import kotlin.coroutines.resumeWithException
 /**
  * Wrapper for remote call
  */
-interface RemoteCall<I : IInterface> {
+interface RemoteObject<I : IInterface> {
     fun <R : Any?> call(block: I.() -> R): R
 }
 
 /**
  * Impl for remote call safely with retry mechanism.
  */
-class RetryRemoteCall<I : IInterface>(
+class RetryRemoteObject<I : IInterface>(
     private val scope: CoroutineScope,
     private val getRemote: suspend () -> I
-) : RemoteCall<I> {
+) : RemoteObject<I> {
     private val logger = logger(this::class)
 
     private val remote: MutableStateFlow<I?> = MutableStateFlow(null)
@@ -91,7 +91,7 @@ class RetryRemoteCall<I : IInterface>(
  *
  * [IDisposableHandle] takes responsibility to pass cancellation to server.
  */
-suspend inline fun <I : IInterface, T : Any> RemoteCall<I>.callSuspendCancellable(
+suspend inline fun <I : IInterface, T : Any> RemoteObject<I>.callSuspendCancellable(
     crossinline transact: I.(RemoteContinuation<T>) -> IDisposableHandle?,
 ): T = suspendCancellableCoroutine { cont ->
     val disposable = call {

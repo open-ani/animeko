@@ -33,7 +33,7 @@ import me.him188.ani.utils.coroutines.IO_
 @RequiresApi(Build.VERSION_CODES.O_MR1)
 class RemoteTorrentSession(
     private val fetchRemoteScope: CoroutineScope,
-    private val remote: RemoteCall<IRemoteTorrentSession>,
+    private val remote: RemoteObject<IRemoteTorrentSession>,
     private val connectivityAware: ConnectivityAware
 ) : TorrentSession {
     override val sessionStats: Flow<TorrentSession.Stats?> = callbackFlow {
@@ -70,7 +70,7 @@ class RemoteTorrentSession(
     override suspend fun getFiles(): List<TorrentFileEntry> {
         return RemoteTorrentFileEntryList(
             fetchRemoteScope,
-            RetryRemoteCall(fetchRemoteScope) {
+            RetryRemoteObject(fetchRemoteScope) {
                 remote.callSuspendCancellable { cont ->
                     getFiles(
                         object : ContTorrentSessionGetFiles.Stub() {

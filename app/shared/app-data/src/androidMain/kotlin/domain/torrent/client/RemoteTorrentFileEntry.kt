@@ -41,7 +41,7 @@ import java.io.RandomAccessFile
 @RequiresApi(Build.VERSION_CODES.O_MR1)
 class RemoteTorrentFileEntry(
     private val fetchRemoteScope: CoroutineScope,
-    private val remote: RemoteCall<IRemoteTorrentFileEntry>,
+    private val remote: RemoteObject<IRemoteTorrentFileEntry>,
     private val connectivityAware: ConnectivityAware
 ) : TorrentFileEntry {
     override val fileStats: Flow<TorrentFileEntry.Stats> = callbackFlow {
@@ -82,7 +82,7 @@ class RemoteTorrentFileEntry(
     override fun createHandle(): TorrentFileHandle {
         return RemoteTorrentFileHandle(
             fetchRemoteScope,
-            RetryRemoteCall(fetchRemoteScope) { remote.call { createHandle() } },
+            RetryRemoteObject(fetchRemoteScope) { remote.call { createHandle() } },
             connectivityAware,
         )
     }

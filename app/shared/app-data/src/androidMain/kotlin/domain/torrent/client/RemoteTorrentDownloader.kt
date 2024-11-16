@@ -39,7 +39,7 @@ import kotlin.coroutines.CoroutineContext
 @RequiresApi(Build.VERSION_CODES.O_MR1)
 class RemoteTorrentDownloader(
     private val fetchRemoteScope: CoroutineScope,
-    private val remote: RemoteCall<IRemoteTorrentDownloader>,
+    private val remote: RemoteObject<IRemoteTorrentDownloader>,
     private val connectivityAware: ConnectivityAware
 ) : TorrentDownloader {
     override val totalStats: Flow<TorrentDownloader.Stats> = callbackFlow {
@@ -94,7 +94,7 @@ class RemoteTorrentDownloader(
     ): TorrentSession {
         return RemoteTorrentSession(
             fetchRemoteScope,
-            RetryRemoteCall(fetchRemoteScope) {
+            RetryRemoteObject(fetchRemoteScope) {
                 remote.callSuspendCancellable { cont ->
                     startDownload(
                         data.toParceled(),
