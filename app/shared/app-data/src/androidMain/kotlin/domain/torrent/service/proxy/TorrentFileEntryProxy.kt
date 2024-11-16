@@ -36,15 +36,15 @@ import kotlin.coroutines.CoroutineContext
 
 class TorrentFileEntryProxy(
     private val delegate: TorrentFileEntry,
-    connectivityAware: ConnectivityAware,
+    private val connectivityAware: ConnectivityAware,
     context: CoroutineContext
-) : IRemoteTorrentFileEntry.Stub(), ConnectivityAware by connectivityAware {
+) : IRemoteTorrentFileEntry.Stub() {
     private val scope = context.childScope()
     
     override fun getFileStats(flow: ITorrentFileEntryStatsCallback?): IDisposableHandle {
         val job = scope.launch(Dispatchers.IO_) {
             delegate.fileStats.collect {
-                if (!isConnected) return@collect
+                if (!connectivityAware.isConnected) return@collect
                 
                 try {
                     flow?.onEmit(PTorrentFileEntryStats(it.downloadedBytes, it.downloadProgress))
@@ -75,7 +75,7 @@ class TorrentFileEntryProxy(
     }
 
     override fun createHandle(): IRemoteTorrentFileHandle {
-        return TorrentFileHandleProxy(delegate.createHandle(), this, scope.coroutineContext)
+        return TorrentFileHandleProxy(delegate.createHandle(), connectivityAware, scope.coroutineContext)
     }
 
     override fun resolveFile(cont: ContTorrentFileEntryResolveFile?): IDisposableHandle? {
@@ -83,12 +83,12 @@ class TorrentFileEntryProxy(
 
         val job = scope.launch(
             CoroutineExceptionHandler { _, throwable ->
-                if (!isConnected) return@CoroutineExceptionHandler
+                if (!connectivityAware.isConnected) return@CoroutineExceptionHandler
                 cont.resumeWithException(throwable.toRemoteContinuationException())
             } + Dispatchers.IO_,
         ) {
             val result = delegate.resolveFile().absolutePath
-            if (!isConnected) return@launch
+            if (!connectivityAware.isConnected) return@launch
             cont.resume(result)
         }
 
@@ -109,12 +109,12 @@ class TorrentFileEntryProxy(
 
         val job = scope.launch(
             CoroutineExceptionHandler { _, throwable ->
-                if (!isConnected) return@CoroutineExceptionHandler
+                if (!connectivityAware.isConnected) return@CoroutineExceptionHandler
                 cont.resumeWithException(throwable.toRemoteContinuationException())
             } + Dispatchers.IO_,
         ) {
             val result = delegate.createTorrentInputParameters()
-            if (!isConnected) return@launch
+            if (!connectivityAware.isConnected) return@launch
             cont.resume(
                 PTorrentInputParameter(
                     file = result.file.absolutePath,

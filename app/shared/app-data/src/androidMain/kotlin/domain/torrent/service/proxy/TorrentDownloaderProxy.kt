@@ -39,16 +39,16 @@ import kotlin.coroutines.CoroutineContext
 
 class TorrentDownloaderProxy(
     private val delegate: TorrentDownloader,
-    connectivityAware: ConnectivityAware,
+    private val connectivityAware: ConnectivityAware,
     context: CoroutineContext,
-) : IRemoteTorrentDownloader.Stub(), ConnectivityAware by connectivityAware {
+) : IRemoteTorrentDownloader.Stub() {
     private val logger = logger<TorrentDownloaderProxy>()
     private val scope = context.childScope()
     
     override fun getTotalStatus(flow: ITorrentDownloaderStatsCallback?): IDisposableHandle {
         val job = scope.launch(Dispatchers.IO_) {
             delegate.totalStats.collect {
-                if (!isConnected) return@collect
+                if (!connectivityAware.isConnected) return@collect
                 
                 try {
                     flow?.onEmit(
@@ -91,12 +91,12 @@ class TorrentDownloaderProxy(
 
         val job = scope.launch(
             CoroutineExceptionHandler { _, throwable ->
-                if (!isConnected) return@CoroutineExceptionHandler
+                if (!connectivityAware.isConnected) return@CoroutineExceptionHandler
                 cont.resumeWithException(throwable.toRemoteContinuationException())
             } + Dispatchers.IO_,
         ) {
             val result = delegate.fetchTorrent(uri, timeoutSeconds)
-            if (!isConnected) return@launch
+            if (!connectivityAware.isConnected) return@launch
             cont.resume(result.toParceled())
         }
 
@@ -114,7 +114,7 @@ class TorrentDownloaderProxy(
 
         val job = scope.launch(
             CoroutineExceptionHandler { _, throwable ->
-                if (!isConnected) return@CoroutineExceptionHandler
+                if (!connectivityAware.isConnected) return@CoroutineExceptionHandler
                 cont.resumeWithException(throwable.toRemoteContinuationException())
             } + Dispatchers.IO_,
         ) {
@@ -122,8 +122,8 @@ class TorrentDownloaderProxy(
                 withContext(Dispatchers.IO_) { data.toEncodedTorrentInfo() },
                 overrideSaveDir = overrideSaveDir?.run { Path(this).inSystem },
             )
-            if (!isConnected) return@launch
-            cont.resume(TorrentSessionProxy(result, this@TorrentDownloaderProxy, scope.coroutineContext))
+            if (!connectivityAware.isConnected) return@launch
+            cont.resume(TorrentSessionProxy(result, connectivityAware, scope.coroutineContext))
         }
 
         return DisposableHandleProxy { job.cancel() }

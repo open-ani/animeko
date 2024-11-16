@@ -31,16 +31,16 @@ import kotlin.coroutines.CoroutineContext
 
 class TorrentSessionProxy(
     private val delegate: TorrentSession,
-    connectivityAware: ConnectivityAware,
+    private val connectivityAware: ConnectivityAware,
     context: CoroutineContext
-) : IRemoteTorrentSession.Stub(), ConnectivityAware by connectivityAware {
+) : IRemoteTorrentSession.Stub() {
     private val scope = context.childScope()
     private val logger = logger<TorrentSessionProxy>()
     
     override fun getSessionStats(flow: ITorrentSessionStatsCallback?): IDisposableHandle {
         val job = scope.launch(Dispatchers.IO_) { 
             delegate.sessionStats.collect {
-                if (!isConnected) return@collect
+                if (!connectivityAware.isConnected) return@collect
                 if (it == null) return@collect
 
                 try {
@@ -72,14 +72,14 @@ class TorrentSessionProxy(
 
         val job = scope.launch(
             CoroutineExceptionHandler { _, throwable ->
-                if (!isConnected) return@CoroutineExceptionHandler
+                if (!connectivityAware.isConnected) return@CoroutineExceptionHandler
                 cont.resumeWithException(throwable.toRemoteContinuationException())
             } + Dispatchers.IO_,
         ) {
             val result = delegate.getFiles()
-            if (!isConnected) return@launch
+            if (!connectivityAware.isConnected) return@launch
             cont.resume(
-                TorrentFileEntryListProxy(result, this@TorrentSessionProxy, scope.coroutineContext),
+                TorrentFileEntryListProxy(result, connectivityAware, scope.coroutineContext),
             )
         }
 

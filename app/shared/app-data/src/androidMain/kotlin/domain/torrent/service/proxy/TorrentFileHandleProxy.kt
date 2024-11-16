@@ -20,13 +20,13 @@ import kotlin.coroutines.CoroutineContext
 
 class TorrentFileHandleProxy(
     private val delegate: TorrentFileHandle,
-    connectivityAware: ConnectivityAware,
+    private val connectivityAware: ConnectivityAware,
     context: CoroutineContext
-) : IRemoteTorrentFileHandle.Stub(), ConnectivityAware by connectivityAware {
+) : IRemoteTorrentFileHandle.Stub() {
     private val scope = context.childScope()
 
     override fun getTorrentFileEntry(): IRemoteTorrentFileEntry {
-        return TorrentFileEntryProxy(delegate.entry, this, scope.coroutineContext)
+        return TorrentFileEntryProxy(delegate.entry, connectivityAware, scope.coroutineContext)
     }
 
     override fun resume(priorityEnum: Int) {
