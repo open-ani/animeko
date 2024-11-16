@@ -12,15 +12,20 @@ package me.him188.ani.app.domain.torrent.client
 import android.os.DeadObjectException
 import android.os.IInterface
 import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
 import me.him188.ani.app.domain.torrent.IDisposableHandle
 import me.him188.ani.app.domain.torrent.parcel.RemoteContinuationException
 import me.him188.ani.utils.coroutines.CancellationException
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
-import java.util.concurrent.CompletableFuture
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
+import kotlin.random.Random
 
 /**
  * Wrapper for remote call
@@ -35,28 +40,36 @@ interface RemoteCall<I : IInterface> {
  * Impl for remote call safely with retry mechanism.
  */
 class RetryRemoteCall<I : IInterface>(
-    private val getRemote: () -> I
+    private val scope: CoroutineScope,
+    private val getRemote: suspend () -> I
 ) : RemoteCall<I> {
     private val logger = logger(this::class)
 
-    private var remote: I? = null
+    private val remote: MutableStateFlow<I?> = MutableStateFlow(null)
     private val lock = SynchronizedObject()
 
-    private fun setRemote(): I = synchronized(lock) {
-        val currentRemote = remote
-        if (currentRemote != null) return@synchronized currentRemote
+    private fun setRemote(): Deferred<I> = scope.async {
+        val currentRemote = remote.value
+        if (currentRemote != null) return@async currentRemote
 
         val newRemote = getRemote()
-        remote = newRemote
-
+        while (!remote.compareAndSet(null, newRemote));
         newRemote
     }
 
     override fun <R : Any?> call(block: I.() -> R): R {
         var retryCount = 0
 
+        val random = Random.Default
+        val call1 = random.nextInt()
+        
         while (true) {
-            val currentRemote = remote.let { it ?: setRemote() }
+            // remote 为 null 时所有的 call 都要阻塞, 直到第一个 setRemote
+            // 其他在等待的 call 返回第一个 setRemote 的值
+            val call2 = Random.Default.nextInt()
+            val currentRemote = remote.value ?: runBlocking {
+                synchronized(lock) { setRemote() }.await()
+            }
 
             try {
                 return block(currentRemote)
@@ -67,7 +80,11 @@ class RetryRemoteCall<I : IInterface>(
                 logger.warn(Exception("Show stacktrace")) {
                     "Remote interface $currentRemote is dead, attempt to fetch new remote. retryCount = $retryCount"
                 }
-                remote = null
+
+                if (!remote.compareAndSet(currentRemote, null)) {
+                    logger.warn(IllegalStateException("Failed to invalidate current remote interface because it is changed. Before: $currentRemote, After: ${remote.value}."))
+                    remote.value = null
+                }
             }
         }
     }
@@ -115,49 +132,4 @@ suspend inline fun <I : IInterface, T> RemoteCall<I>.callSuspendCancellable(
     } else {
         cont.resumeWithException(CancellationException("Remote disposable is null."))
     }
-}
-
-/**
- * Wrapper for call which takes a continuation-like argument and returns [IDisposableHandle],
- * which means this is a asynchronous RPC call.
- *
- * Returns [CompletableFuture] to get the result.
- */
-inline fun <I : IInterface, T> RemoteCall<I>.callSuspendCancellableAsFuture(
-    crossinline transact: I.(
-        resolve: (T?) -> Unit,
-        reject: (RemoteContinuationException?) -> Unit
-    ) -> IDisposableHandle?
-): CompletableFuture<T> {
-    val completableFuture = CompletableFuture<T>()
-
-    val disposable = call {
-        transact(
-            { value ->
-                if (completableFuture.isDone) return@transact
-                if (value == null) {
-                    completableFuture.completeExceptionally(CancellationException("Remote resume a null value."))
-                } else {
-                    completableFuture.complete(value)
-                }
-            },
-            { exception ->
-                if (completableFuture.isDone) return@transact
-                completableFuture.completeExceptionally(
-                    exception?.smartCast() ?: Exception("Remote resume a null exception."),
-                )
-            },
-        )
-    }
-
-    if (disposable == null) {
-        completableFuture.completeExceptionally(CancellationException("Remote disposable is null."))
-    } else {
-        completableFuture.handle { _, _ ->
-            // We don't care about the result. Just dispose service.
-            disposable.callOnceOrNull { dispose() }
-        }
-    }
-
-    return completableFuture
 }

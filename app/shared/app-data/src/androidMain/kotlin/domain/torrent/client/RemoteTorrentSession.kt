@@ -11,6 +11,7 @@ package me.him188.ani.app.domain.torrent.client
 
 import android.os.Build
 import androidx.annotation.RequiresApi
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -30,10 +31,11 @@ import me.him188.ani.utils.coroutines.IO_
 
 @RequiresApi(Build.VERSION_CODES.O_MR1)
 class RemoteTorrentSession(
+    private val fetchRemoteScope: CoroutineScope,
     connectivityAware: ConnectivityAware,
-    getRemote: () -> IRemoteTorrentSession
+    getRemote: suspend () -> IRemoteTorrentSession
 ) : TorrentSession,
-    RemoteCall<IRemoteTorrentSession> by RetryRemoteCall(getRemote),
+    RemoteCall<IRemoteTorrentSession> by RetryRemoteCall(fetchRemoteScope, getRemote),
     ConnectivityAware by connectivityAware {
     override val sessionStats: Flow<TorrentSession.Stats?> = callbackFlow {
         var disposable: IDisposableHandle? = null
@@ -61,8 +63,8 @@ class RemoteTorrentSession(
     }
 
     override suspend fun getFiles(): List<TorrentFileEntry> {
-        return RemoteTorrentFileEntryList(this@RemoteTorrentSession) {
-            callSuspendCancellableAsFuture { resolve, reject ->
+        return RemoteTorrentFileEntryList(fetchRemoteScope, this@RemoteTorrentSession) {
+            callSuspendCancellable { resolve, reject ->
                 getFiles(
                     object : ContTorrentSessionGetFiles.Stub() {
                         override fun resume(value: IRemoteTorrentFileEntryList?) = resolve(value)
@@ -70,7 +72,7 @@ class RemoteTorrentSession(
                             reject(exception)
                     },
                 )
-            }.get()
+            }
         }
     }
 

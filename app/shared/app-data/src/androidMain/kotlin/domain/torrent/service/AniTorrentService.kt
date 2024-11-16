@@ -51,9 +51,8 @@ import kotlin.coroutines.CoroutineContext
 
 class AniTorrentService : LifecycleService(), CoroutineScope {
     private val logger = logger(this::class)
-    override val coroutineContext: CoroutineContext
-        get() = lifecycleScope.coroutineContext +
-                CoroutineName("AniTorrentService") +
+    override val coroutineContext: CoroutineContext =
+        Dispatchers.Default + CoroutineName("AniTorrentService") + 
                 SupervisorJob(lifecycleScope.coroutineContext[Job])
     
     // config flow for constructing torrent engine.
