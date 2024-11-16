@@ -48,12 +48,15 @@ class RetryRemoteObject<I : IInterface>(
     private val lock = Mutex()
 
     private fun setRemote(): Deferred<I> = scope.async {
-        val currentRemote = remote.value
-        if (currentRemote != null) return@async currentRemote
+        remote.value?.let { return@async it }
 
-        val newRemote = getRemote()
-        remote.update { newRemote }
-        newRemote
+        lock.withLock {
+            remote.value?.let { return@async it }
+
+            val newRemote = getRemote()
+            remote.update { newRemote }
+            newRemote
+        }
     }
 
     override fun <R : Any?> call(block: I.() -> R): R {
@@ -63,7 +66,7 @@ class RetryRemoteObject<I : IInterface>(
             // remote 为 null 时所有的 call 都要阻塞, 直到第一个 setRemote
             // 其他在等待的 call 返回第一个 setRemote 的值
             val currentRemote = remote.value ?: runBlocking {
-                lock.withLock { setRemote().await() }
+                setRemote().await()
             }
 
             try {
