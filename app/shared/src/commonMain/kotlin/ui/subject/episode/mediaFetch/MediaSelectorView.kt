@@ -115,7 +115,7 @@ fun MediaSelectorView(
                     }
                 }
                 Column(
-                    Modifier.animateItem().background(stickyHeaderBackgroundColor).padding(bottom = 12.dp)
+                    Modifier.background(stickyHeaderBackgroundColor).padding(bottom = 12.dp)
                         .fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
