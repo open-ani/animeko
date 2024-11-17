@@ -107,15 +107,15 @@ class TorrentDownloadController(
     }
 
     /**
-     * 找接下来最近的还未完成的 piece, 如果没有, 返回 null
+     * 找接下来最近的还未完成的 piece, 如果没有, 返回 -1
      */
-    private fun findNextDownloadingPiece(startIndex: Int): Int? {
+    private fun findNextDownloadingPiece(startIndex: Int): Int {
         for (index in startIndex..lastIndex) {
             if (with(pieces) { pieces.getByPieceIndex(index).state } != PieceState.FINISHED) {
                 return index
             }
         }
-        return null
+        return -1
     }
 
     fun onPieceDownloaded(pieceIndex: Int) = synchronized(this) {
@@ -124,7 +124,7 @@ class TorrentDownloadController(
         }
 
         val newWindowEnd = findNextDownloadingPiece(currentWindowEnd + 1)
-        if (newWindowEnd != null && newWindowEnd != currentWindowEnd) {
+        if (newWindowEnd != -1 && newWindowEnd != currentWindowEnd) {
             downloadingPieces.add(newWindowEnd)
             currentWindowEnd = newWindowEnd
         }
@@ -137,13 +137,16 @@ class TorrentDownloadController(
      */
     private fun fillWindow(pieceIndex: Int) {
         // 如果 pieceIndex 以后的 piece 都完成了, 那就没有 piece 要填充到 window 了
-        currentWindowStart = findNextDownloadingPiece(pieceIndex) ?: return
-        currentWindowEnd = currentWindowStart
+        val next = findNextDownloadingPiece(pieceIndex)
+        if (next == -1) return
+
+        currentWindowStart = next
+        currentWindowEnd = next
 
         downloadingPieces.add(currentWindowStart)
         for (i in 0..<windowSize - 1) {
             val next = findNextDownloadingPiece(currentWindowEnd + 1)
-            if (next != null) {
+            if (next != -1) {
                 downloadingPieces.add(next)
                 currentWindowEnd = next
             } else {
@@ -152,10 +155,7 @@ class TorrentDownloadController(
             }
         }
 
-        if (pieceIndex <= pieces.initialPieceIndex + 1) {
-            // 正在下载第 0-1 个 piece, 说明我们刚刚开始下载视频, 需要额外请求尾部元数据
-            addFooterPieces()
-        }
+        addFooterPieces()
     }
 
     private fun addFooterPieces() {
