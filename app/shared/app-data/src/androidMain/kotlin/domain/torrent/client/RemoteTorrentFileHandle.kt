@@ -11,7 +11,6 @@ package me.him188.ani.app.domain.torrent.client
 
 import android.os.Build
 import androidx.annotation.RequiresApi
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.domain.torrent.IRemoteTorrentFileHandle
@@ -22,34 +21,31 @@ import me.him188.ani.utils.coroutines.IO_
 
 @RequiresApi(Build.VERSION_CODES.O_MR1)
 class RemoteTorrentFileHandle(
-    private val fetchRemoteScope: CoroutineScope,
-    private val remote: RemoteObject<IRemoteTorrentFileHandle>,
-    private val connectivityAware: ConnectivityAware
-) : TorrentFileHandle {
+    connectivityAware: ConnectivityAware,
+    getRemote: () -> IRemoteTorrentFileHandle
+) : TorrentFileHandle,
+    RemoteCall<IRemoteTorrentFileHandle> by RetryRemoteCall(getRemote),
+    ConnectivityAware by connectivityAware {
     override val entry: TorrentFileEntry
-        get() = RemoteTorrentFileEntry(
-            fetchRemoteScope,
-            RetryRemoteObject(fetchRemoteScope) { remote.call { torrentFileEntry } },
-            connectivityAware,
-        )
+        get() = RemoteTorrentFileEntry(this) { call { torrentFileEntry } }
     
     override fun resume(priority: FilePriority) {
-        remote.call { resume(priority.ordinal) }
+        call { resume(priority.ordinal) }
     }
 
     override fun pause() {
-        remote.call { pause() }
+        call { pause() }
     }
 
     override suspend fun close() {
         withContext(Dispatchers.IO_) {
-            remote.call { close() }
+            call { close() }
         }
     }
 
     override suspend fun closeAndDelete() {
         withContext(Dispatchers.IO_) {
-            remote.call { closeAndDelete() }
+            call { closeAndDelete() }
         }
     }
 }

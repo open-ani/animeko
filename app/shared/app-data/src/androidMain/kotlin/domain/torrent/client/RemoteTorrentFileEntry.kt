@@ -10,9 +10,7 @@
 package me.him188.ani.app.domain.torrent.client
 
 import android.os.Build
-import android.os.DeadObjectException
 import androidx.annotation.RequiresApi
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -21,12 +19,8 @@ import kotlinx.coroutines.withContext
 import kotlinx.io.files.Path
 import me.him188.ani.app.domain.torrent.IDisposableHandle
 import me.him188.ani.app.domain.torrent.IRemoteTorrentFileEntry
-import me.him188.ani.app.domain.torrent.callback.ITorrentFileEntryStatsCallback
-import me.him188.ani.app.domain.torrent.cont.ContTorrentFileEntryGetInputParams
-import me.him188.ani.app.domain.torrent.cont.ContTorrentFileEntryResolveFile
+import me.him188.ani.app.domain.torrent.ITorrentFileEntryStatsCallback
 import me.him188.ani.app.domain.torrent.parcel.PTorrentFileEntryStats
-import me.him188.ani.app.domain.torrent.parcel.PTorrentInputParameter
-import me.him188.ani.app.domain.torrent.parcel.RemoteContinuationException
 import me.him188.ani.app.torrent.api.files.TorrentFileEntry
 import me.him188.ani.app.torrent.api.files.TorrentFileHandle
 import me.him188.ani.app.torrent.api.pieces.PieceList
@@ -40,10 +34,11 @@ import java.io.RandomAccessFile
 
 @RequiresApi(Build.VERSION_CODES.O_MR1)
 class RemoteTorrentFileEntry(
-    private val fetchRemoteScope: CoroutineScope,
-    private val remote: RemoteObject<IRemoteTorrentFileEntry>,
-    private val connectivityAware: ConnectivityAware
-) : TorrentFileEntry {
+    connectivityAware: ConnectivityAware,
+    getRemote: () -> IRemoteTorrentFileEntry
+) : TorrentFileEntry,
+    RemoteCall<IRemoteTorrentFileEntry> by RetryRemoteCall(getRemote),
+    ConnectivityAware by connectivityAware {
     override val fileStats: Flow<TorrentFileEntry.Stats> = callbackFlow {
         var disposable: IDisposableHandle? = null
         val callback = object : ITorrentFileEntryStatsCallback.Stub() {
@@ -53,88 +48,60 @@ class RemoteTorrentFileEntry(
         }
 
         // todo: not thread-safe
-        disposable = remote.call { getFileStats(callback) }
-        val transform = connectivityAware.registerStateTransform(false, true) {
-            try {
-                disposable?.dispose()
-            } catch (_: DeadObjectException) {
-            }
-            disposable = remote.call { getFileStats(callback) }
+        disposable = call { getFileStats(callback) }
+        val transform = registerStateTransform(false, true) {
+            disposable?.callOnceOrNull { dispose() }
+            disposable = call { getFileStats(callback) }
         }
 
         awaitClose {
-            try {
-                disposable?.dispose()
-            } catch (_: DeadObjectException) {
-            }
-            connectivityAware.unregister(transform)
+            disposable?.callOnceOrNull { dispose() }
+            unregister(transform)
         }
     }
 
-    override val length: Long get() = remote.call { length }
+    override val length: Long get() = call { length }
 
-    override val pathInTorrent: String get() = remote.call { pathInTorrent }
+    override val pathInTorrent: String get() = call { pathInTorrent }
 
-    override val pieces: PieceList get() = RemotePieceList(connectivityAware, remote.call { pieces })
+    override val pieces: PieceList get() = RemotePieceList(this, call { pieces })
 
-    override val supportsStreaming: Boolean get() = remote.call { supportsStreaming }
+    override val supportsStreaming: Boolean get() = call { supportsStreaming }
 
     override fun createHandle(): TorrentFileHandle {
-        return RemoteTorrentFileHandle(
-            fetchRemoteScope,
-            RetryRemoteObject(fetchRemoteScope) { remote.call { createHandle() } },
-            connectivityAware,
-        )
+        return RemoteTorrentFileHandle(this) { call { createHandle() } }
     }
 
-    override suspend fun resolveFile(): SystemPath =
-        remote.callSuspendCancellable { cont ->
-            resolveFile(
-                object : ContTorrentFileEntryResolveFile.Stub() {
-                    override fun resume(value: String?) {
-                        cont.resume(value?.let { Path(it).inSystem })
-                    }
-
-                    override fun resumeWithException(exception: RemoteContinuationException?) {
-                        cont.resumeWithException(exception)
-                    }
-                },
-            )
+    override suspend fun resolveFile(): SystemPath {
+        return withContext(Dispatchers.IO_) {
+            val result = call { resolveFile() }
+            Path(result).inSystem
         }
+    }
 
     override fun resolveFileMaybeEmptyOrNull(): SystemPath? {
-        val result = remote.call { resolveFileMaybeEmptyOrNull() }
+        val result = call { resolveFileMaybeEmptyOrNull() }
         return if (result != null) Path(result).inSystem else null
     }
 
-    override suspend fun createInput(): SeekableInput =
-        remote.callSuspendCancellable { cont ->
-            getTorrentInputParams(
-                object : ContTorrentFileEntryGetInputParams.Stub() {
-                    override fun resume(value: PTorrentInputParameter?) {
-                        if (value == null) {
-                            cont.resume(null)
-                            return
-                        }
+    override suspend fun createInput(): SeekableInput {
+        val remoteInput = call { torrentInputParams }
 
-                        TorrentInput(
-                            file = RandomAccessFile(Path(value.file).inSystem.toFile(), "r"),
-                            pieces = this@RemoteTorrentFileEntry.pieces,
-                            logicalStartOffset = value.logicalStartOffset,
-                            onWait = {
-                                withContext(Dispatchers.IO_) {
-                                    remote.call { torrentInputOnWait(it.pieceIndex) }
-                                }
-                            },
-                            bufferSize = value.bufferSize,
-                            size = value.size,
-                        ).also { cont.resume(it) }
-                    }
-
-                    override fun resumeWithException(exception: RemoteContinuationException?) {
-                        cont.resumeWithException(exception)
-                    }
-                },
-            )
-        }
+        val file = Path(remoteInput.file).inSystem
+        
+        return TorrentInput(
+            file = withContext(Dispatchers.IO_) {
+                RandomAccessFile(file.toFile(), "r")
+            },
+            pieces = pieces,
+            logicalStartOffset = remoteInput.logicalStartOffset,
+            onWait = {
+                withContext(Dispatchers.IO_) {
+                    call { torrentInputOnWait(it.pieceIndex) }
+                }
+            },
+            bufferSize = remoteInput.bufferSize,
+            size = remoteInput.size,
+        )
+    }
 }

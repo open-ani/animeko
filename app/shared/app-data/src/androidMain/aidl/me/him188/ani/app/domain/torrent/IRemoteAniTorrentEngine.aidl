@@ -2,9 +2,9 @@
 package me.him188.ani.app.domain.torrent;
 
 import me.him188.ani.app.domain.torrent.IRemoteTorrentDownloader;
-import me.him188.ani.app.domain.torrent.collector.IAnitorrentConfigCollector;
-import me.him188.ani.app.domain.torrent.collector.IProxySettingsCollector;
-import me.him188.ani.app.domain.torrent.collector.ITorrentPeerConfigCollector;
+import me.him188.ani.app.domain.torrent.IAnitorrentConfigCollector;
+import me.him188.ani.app.domain.torrent.IProxySettingsCollector;
+import me.him188.ani.app.domain.torrent.ITorrentPeerConfigCollector;
 
 // Declare any non-default types here with import statements
 

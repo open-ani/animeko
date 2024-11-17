@@ -10,21 +10,16 @@
 package me.him188.ani.app.domain.torrent.client
 
 import android.os.Build
-import android.os.DeadObjectException
 import androidx.annotation.RequiresApi
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.domain.torrent.IDisposableHandle
-import me.him188.ani.app.domain.torrent.IRemoteTorrentFileEntryList
 import me.him188.ani.app.domain.torrent.IRemoteTorrentSession
-import me.him188.ani.app.domain.torrent.callback.ITorrentSessionStatsCallback
-import me.him188.ani.app.domain.torrent.cont.ContTorrentSessionGetFiles
+import me.him188.ani.app.domain.torrent.ITorrentSessionStatsCallback
 import me.him188.ani.app.domain.torrent.parcel.PTorrentSessionStats
-import me.him188.ani.app.domain.torrent.parcel.RemoteContinuationException
 import me.him188.ani.app.torrent.api.TorrentSession
 import me.him188.ani.app.torrent.api.files.TorrentFileEntry
 import me.him188.ani.app.torrent.api.peer.PeerInfo
@@ -32,10 +27,11 @@ import me.him188.ani.utils.coroutines.IO_
 
 @RequiresApi(Build.VERSION_CODES.O_MR1)
 class RemoteTorrentSession(
-    private val fetchRemoteScope: CoroutineScope,
-    private val remote: RemoteObject<IRemoteTorrentSession>,
-    private val connectivityAware: ConnectivityAware
-) : TorrentSession {
+    connectivityAware: ConnectivityAware,
+    getRemote: () -> IRemoteTorrentSession
+) : TorrentSession,
+    RemoteCall<IRemoteTorrentSession> by RetryRemoteCall(getRemote),
+    ConnectivityAware by connectivityAware {
     override val sessionStats: Flow<TorrentSession.Stats?> = callbackFlow {
         var disposable: IDisposableHandle? = null
         val callback = object : ITorrentSessionStatsCallback.Stub() {
@@ -45,63 +41,41 @@ class RemoteTorrentSession(
         }
 
         // todo: not thread-safe
-        disposable = remote.call { getSessionStats(callback) }
-        val transform = connectivityAware.registerStateTransform(false, true) {
-            try {
-                disposable?.dispose()
-            } catch (_: DeadObjectException) {
-            }
-            disposable = remote.call { getSessionStats(callback) }
+        disposable = call { getSessionStats(callback) }
+        val transform = registerStateTransform(false, true) {
+            disposable?.callOnceOrNull { dispose() }
+            disposable = call { getSessionStats(callback) }
         }
 
         awaitClose {
-            try {
-                disposable?.dispose()
-            } catch (_: DeadObjectException) {
-            }
-            connectivityAware.unregister(transform)
+            disposable?.callOnceOrNull { dispose() }
+            unregister(transform)
         }
     }
 
     override suspend fun getName(): String {
-        return withContext(Dispatchers.IO_) { remote.call { name } }
+        return withContext(Dispatchers.IO_) { call { name } }
     }
 
     override suspend fun getFiles(): List<TorrentFileEntry> {
-        return RemoteTorrentFileEntryList(
-            fetchRemoteScope,
-            RetryRemoteObject(fetchRemoteScope) {
-                remote.callSuspendCancellable { cont ->
-                    getFiles(
-                        object : ContTorrentSessionGetFiles.Stub() {
-                            override fun resume(value: IRemoteTorrentFileEntryList?) {
-                                cont.resume(value)
-                            }
-
-                            override fun resumeWithException(exception: RemoteContinuationException?) {
-                                cont.resumeWithException(exception)
-                            }
-                        },
-                    )
-                }
-            },
-            connectivityAware,
-        )
+        return withContext(Dispatchers.IO_) {
+            RemoteTorrentFileEntryList(this@RemoteTorrentSession) { call { files } }
+        }
     }
 
     override fun getPeers(): List<PeerInfo> {
-        return remote.call { peers }.asList()
+        return call { peers }.asList()
     }
 
     override suspend fun close() {
         withContext(Dispatchers.IO_) {
-            remote.call { close() }
+            call { close() }
         }
     }
 
     override suspend fun closeIfNotInUse() {
         withContext(Dispatchers.IO_) {
-            remote.call { closeIfNotInUse() }
+            call { closeIfNotInUse() }
         }
     }
 }

@@ -12,8 +12,6 @@ package me.him188.ani.app.domain.torrent.client
 import android.os.Build
 import android.os.IInterface
 import androidx.annotation.RequiresApi
-import kotlinx.coroutines.CoroutineName
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
@@ -22,6 +20,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
 import me.him188.ani.app.data.models.preference.ProxySettings
@@ -35,7 +34,6 @@ import me.him188.ani.app.domain.torrent.parcel.PTorrentPeerConfig
 import me.him188.ani.app.domain.torrent.service.TorrentServiceConnection
 import me.him188.ani.app.torrent.api.TorrentDownloader
 import me.him188.ani.datasources.api.source.MediaSourceLocation
-import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.coroutines.onReplacement
 import me.him188.ani.utils.io.SystemPath
@@ -52,13 +50,8 @@ class RemoteAnitorrentEngine(
     saveDir: SystemPath,
     parentCoroutineContext: CoroutineContext,
 ) : TorrentEngine {
+    private val childScope = parentCoroutineContext.childScope()
     private val logger = logger<RemoteAnitorrentEngine>()
-
-    private val scope = parentCoroutineContext.childScope()
-    private val fetchRemoteScope = parentCoroutineContext.childScope(
-        CoroutineName("RemoteAnitorrentEngineFetchRemote") + Dispatchers.IO_,
-    )
-    
     private val connectivityAware = DefaultConnectivityAware(
         parentCoroutineContext.childScope(),
         connection.connected,
@@ -105,11 +98,9 @@ class RemoteAnitorrentEngine(
     }
     
     override suspend fun getDownloader(): TorrentDownloader {
-        return RemoteTorrentDownloader(
-            fetchRemoteScope,
-            RetryRemoteObject(fetchRemoteScope) { getBinderOrFail().downlaoder },
-            connectivityAware,
-        )
+        return RemoteTorrentDownloader(connectivityAware) {
+            runBlocking { getBinderOrFail() }.downlaoder
+        }
     }
 
     private suspend fun getBinderOrFail(): IRemoteAniTorrentEngine {
@@ -117,17 +108,16 @@ class RemoteAnitorrentEngine(
     }
 
     override fun close() {
-        scope.cancel()
-        fetchRemoteScope.cancel()
+        childScope.cancel()
     }
 
     private inline fun <I : IInterface> collectSettingsToRemote(
         settingsFlow: Flow<String>,
         noinline getBinder: suspend () -> I,
         crossinline transact: I.(String) -> Unit
-    ) = scope.launch {
+    ) = childScope.launch {
         val stateFlow = settingsFlow.stateIn(this)
-        val remoteCall = RetryRemoteObject(fetchRemoteScope) { getBinder() }
+        val remoteCall = RetryRemoteCall { runBlocking { getBinder() } }
 
         connection.connected
             .filter { it }

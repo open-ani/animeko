@@ -12,20 +12,17 @@ package me.him188.ani.app.domain.torrent.service.proxy
 import android.os.Build
 import android.os.DeadObjectException
 import androidx.annotation.RequiresApi
-import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import me.him188.ani.app.domain.torrent.IDisposableHandle
 import me.him188.ani.app.domain.torrent.IRemotePieceList
 import me.him188.ani.app.domain.torrent.IRemoteTorrentFileEntry
 import me.him188.ani.app.domain.torrent.IRemoteTorrentFileHandle
-import me.him188.ani.app.domain.torrent.callback.ITorrentFileEntryStatsCallback
+import me.him188.ani.app.domain.torrent.ITorrentFileEntryStatsCallback
 import me.him188.ani.app.domain.torrent.client.ConnectivityAware
-import me.him188.ani.app.domain.torrent.cont.ContTorrentFileEntryGetInputParams
-import me.him188.ani.app.domain.torrent.cont.ContTorrentFileEntryResolveFile
 import me.him188.ani.app.domain.torrent.parcel.PTorrentFileEntryStats
 import me.him188.ani.app.domain.torrent.parcel.PTorrentInputParameter
-import me.him188.ani.app.domain.torrent.parcel.toRemoteContinuationException
 import me.him188.ani.app.torrent.anitorrent.session.AnitorrentDownloadSession
 import me.him188.ani.app.torrent.api.files.TorrentFileEntry
 import me.him188.ani.utils.coroutines.CancellationException
@@ -36,15 +33,15 @@ import kotlin.coroutines.CoroutineContext
 
 class TorrentFileEntryProxy(
     private val delegate: TorrentFileEntry,
-    private val connectivityAware: ConnectivityAware,
+    connectivityAware: ConnectivityAware,
     context: CoroutineContext
-) : IRemoteTorrentFileEntry.Stub() {
+) : IRemoteTorrentFileEntry.Stub(), ConnectivityAware by connectivityAware {
     private val scope = context.childScope()
     
     override fun getFileStats(flow: ITorrentFileEntryStatsCallback?): IDisposableHandle {
         val job = scope.launch(Dispatchers.IO_) {
             delegate.fileStats.collect {
-                if (!connectivityAware.isConnected) return@collect
+                if (!isConnected) return@collect
                 
                 try {
                     flow?.onEmit(PTorrentFileEntryStats(it.downloadedBytes, it.downloadProgress))
@@ -75,57 +72,29 @@ class TorrentFileEntryProxy(
     }
 
     override fun createHandle(): IRemoteTorrentFileHandle {
-        return TorrentFileHandleProxy(delegate.createHandle(), connectivityAware, scope.coroutineContext)
+        return TorrentFileHandleProxy(delegate.createHandle(), this, scope.coroutineContext)
     }
 
-    override fun resolveFile(cont: ContTorrentFileEntryResolveFile?): IDisposableHandle? {
-        if (cont == null) return null
-
-        val job = scope.launch(
-            CoroutineExceptionHandler { _, throwable ->
-                if (!connectivityAware.isConnected) return@CoroutineExceptionHandler
-                cont.resumeWithException(throwable.toRemoteContinuationException())
-            } + Dispatchers.IO_,
-        ) {
-            val result = delegate.resolveFile().absolutePath
-            if (!connectivityAware.isConnected) return@launch
-            cont.resume(result)
-        }
-
-        return DisposableHandleProxy { job.cancel() }
+    override fun resolveFile(): String {
+        return runBlocking { delegate.resolveFile().absolutePath }
     }
 
     override fun resolveFileMaybeEmptyOrNull(): String? {
         return delegate.resolveFileMaybeEmptyOrNull()?.absolutePath
     }
 
-    override fun getTorrentInputParams(cont: ContTorrentFileEntryGetInputParams?): IDisposableHandle? {
-        if (cont == null) return null
-        if (delegate !is AnitorrentDownloadSession.AnitorrentEntry) {
-            val exception = IllegalStateException("Expected delegate instance is AnitorrentEntry, actual $delegate")
-            cont.resumeWithException(exception.toRemoteContinuationException())
-            throw exception
+    override fun getTorrentInputParams(): PTorrentInputParameter? {
+        check(delegate is AnitorrentDownloadSession.AnitorrentEntry) {
+            "Expected delegate instance is AnitorrentEntry, actual $delegate"
         }
+        val torrentInputParameters = runBlocking { delegate.createTorrentInputParameters() }
 
-        val job = scope.launch(
-            CoroutineExceptionHandler { _, throwable ->
-                if (!connectivityAware.isConnected) return@CoroutineExceptionHandler
-                cont.resumeWithException(throwable.toRemoteContinuationException())
-            } + Dispatchers.IO_,
-        ) {
-            val result = delegate.createTorrentInputParameters()
-            if (!connectivityAware.isConnected) return@launch
-            cont.resume(
-                PTorrentInputParameter(
-                    file = result.file.absolutePath,
-                    logicalStartOffset = result.logicalStartOffset,
-                    bufferSize = result.bufferSize,
-                    size = result.size,
-                ),
-            )
-        }
-
-        return DisposableHandleProxy { job.cancel() }
+        return PTorrentInputParameter(
+            file = torrentInputParameters.file.absolutePath,
+            logicalStartOffset = torrentInputParameters.logicalStartOffset,
+            bufferSize = torrentInputParameters.bufferSize,
+            size = torrentInputParameters.size,
+        )
     }
 
     override fun torrentInputOnWait(pieceIndex: Int) {

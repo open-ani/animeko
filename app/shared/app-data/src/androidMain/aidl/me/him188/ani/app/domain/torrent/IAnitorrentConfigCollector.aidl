@@ -1,5 +1,5 @@
 // IAnitorrentConfigCollector.aidl
-package me.him188.ani.app.domain.torrent.collector;
+package me.him188.ani.app.domain.torrent;
 
 import me.him188.ani.app.domain.torrent.parcel.PAnitorrentConfig;
 

@@ -24,12 +24,12 @@ import kotlinx.serialization.json.Json
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
 import me.him188.ani.app.data.models.preference.ProxySettings
 import me.him188.ani.app.data.models.preference.TorrentPeerConfig
+import me.him188.ani.app.domain.torrent.IAnitorrentConfigCollector
+import me.him188.ani.app.domain.torrent.IProxySettingsCollector
 import me.him188.ani.app.domain.torrent.IRemoteAniTorrentEngine
 import me.him188.ani.app.domain.torrent.IRemoteTorrentDownloader
+import me.him188.ani.app.domain.torrent.ITorrentPeerConfigCollector
 import me.him188.ani.app.domain.torrent.client.DefaultConnectivityAware
-import me.him188.ani.app.domain.torrent.collector.IAnitorrentConfigCollector
-import me.him188.ani.app.domain.torrent.collector.IProxySettingsCollector
-import me.him188.ani.app.domain.torrent.collector.ITorrentPeerConfigCollector
 import me.him188.ani.app.domain.torrent.engines.AnitorrentEngine
 import me.him188.ani.app.domain.torrent.parcel.PAnitorrentConfig
 import me.him188.ani.app.domain.torrent.parcel.PProxySettings
