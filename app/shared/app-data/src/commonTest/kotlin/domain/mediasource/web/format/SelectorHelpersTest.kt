@@ -18,7 +18,7 @@ import kotlin.test.assertEquals
  * @see SelectorHelpers.computeAbsoluteUrl
  */
 @TestContainer
-class ComputeAbsoluteUrlTest {
+class SelectorHelpersTest {
     @TestFactory
     fun computeAbsoluteUrlTest() = runDynamicTests {
         fun case(
@@ -68,17 +68,17 @@ class ComputeAbsoluteUrlTest {
         )
 
         case(
-            "http://localhost/",
+            "/",
             "", "",
         )
 
         case(
-            "http://localhost/test",
+            "/test",
             "", "/test",
         )
 
         case(
-            "http://localhost/test",
+            "/test",
             "", "test",
         )
     }

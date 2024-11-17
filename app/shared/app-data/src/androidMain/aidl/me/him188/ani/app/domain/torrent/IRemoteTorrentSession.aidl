@@ -1,7 +1,8 @@
 // IRemoteTorrentSession.aidl
 package me.him188.ani.app.domain.torrent;
 
-import me.him188.ani.app.domain.torrent.ITorrentSessionStatsCallback;
+import me.him188.ani.app.domain.torrent.callback.ITorrentSessionStatsCallback;
+import me.him188.ani.app.domain.torrent.cont.ContTorrentSessionGetFiles;
 import me.him188.ani.app.domain.torrent.IRemoteTorrentFileEntryList;
 import me.him188.ani.app.domain.torrent.parcel.PPeerInfo;
 import me.him188.ani.app.domain.torrent.IDisposableHandle;
@@ -13,7 +14,7 @@ interface IRemoteTorrentSession {
     
     String getName();
     
-    IRemoteTorrentFileEntryList getFiles();
+    IDisposableHandle getFiles(in ContTorrentSessionGetFiles cont);
     
     PPeerInfo[] getPeers();
     

@@ -12,20 +12,22 @@ package me.him188.ani.app.domain.torrent.service.proxy
 import android.os.Build
 import android.os.DeadObjectException
 import androidx.annotation.RequiresApi
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.io.files.Path
 import me.him188.ani.app.domain.torrent.IDisposableHandle
 import me.him188.ani.app.domain.torrent.IRemoteTorrentDownloader
-import me.him188.ani.app.domain.torrent.IRemoteTorrentSession
-import me.him188.ani.app.domain.torrent.ITorrentDownloaderStatsCallback
+import me.him188.ani.app.domain.torrent.callback.ITorrentDownloaderStatsCallback
 import me.him188.ani.app.domain.torrent.client.ConnectivityAware
+import me.him188.ani.app.domain.torrent.cont.ContTorrentDownloaderFetchTorrent
+import me.him188.ani.app.domain.torrent.cont.ContTorrentDownloaderStartDownload
 import me.him188.ani.app.domain.torrent.parcel.PEncodedTorrentInfo
 import me.him188.ani.app.domain.torrent.parcel.PTorrentDownloaderStats
 import me.him188.ani.app.domain.torrent.parcel.PTorrentLibInfo
 import me.him188.ani.app.domain.torrent.parcel.toParceled
+import me.him188.ani.app.domain.torrent.parcel.toRemoteContinuationException
 import me.him188.ani.app.torrent.api.TorrentDownloader
 import me.him188.ani.utils.coroutines.CancellationException
 import me.him188.ani.utils.coroutines.IO_
@@ -37,16 +39,16 @@ import kotlin.coroutines.CoroutineContext
 
 class TorrentDownloaderProxy(
     private val delegate: TorrentDownloader,
-    connectivityAware: ConnectivityAware,
+    private val connectivityAware: ConnectivityAware,
     context: CoroutineContext,
-) : IRemoteTorrentDownloader.Stub(), ConnectivityAware by connectivityAware {
+) : IRemoteTorrentDownloader.Stub() {
     private val logger = logger<TorrentDownloaderProxy>()
     private val scope = context.childScope()
     
     override fun getTotalStatus(flow: ITorrentDownloaderStatsCallback?): IDisposableHandle {
         val job = scope.launch(Dispatchers.IO_) {
             delegate.totalStats.collect {
-                if (!isConnected) return@collect
+                if (!connectivityAware.isConnected) return@collect
                 
                 try {
                     flow?.onEmit(
@@ -79,24 +81,52 @@ class TorrentDownloaderProxy(
     }
 
     @RequiresApi(Build.VERSION_CODES.O_MR1)
-    override fun fetchTorrent(uri: String?, timeoutSeconds: Int): PEncodedTorrentInfo? {
+    override fun fetchTorrent(
+        uri: String?,
+        timeoutSeconds: Int,
+        cont: ContTorrentDownloaderFetchTorrent?
+    ): IDisposableHandle? {
         if (uri == null) return null
-        
-        val fetched = runBlocking { delegate.fetchTorrent(uri, timeoutSeconds) }
-        return fetched.toParceled()
+        if (cont == null) return null
+
+        val job = scope.launch(
+            CoroutineExceptionHandler { _, throwable ->
+                if (!connectivityAware.isConnected) return@CoroutineExceptionHandler
+                cont.resumeWithException(throwable.toRemoteContinuationException())
+            } + Dispatchers.IO_,
+        ) {
+            val result = delegate.fetchTorrent(uri, timeoutSeconds)
+            if (!connectivityAware.isConnected) return@launch
+            cont.resume(result.toParceled())
+        }
+
+        return DisposableHandleProxy { job.cancel() }
     }
 
     @RequiresApi(Build.VERSION_CODES.O_MR1)
-    override fun startDownload(data: PEncodedTorrentInfo?, overrideSaveDir: String?): IRemoteTorrentSession? {
+    override fun startDownload(
+        data: PEncodedTorrentInfo?,
+        overrideSaveDir: String?,
+        cont: ContTorrentDownloaderStartDownload?
+    ): IDisposableHandle? {
         if (data == null) return null
-        
-        val session = runBlocking { 
-            delegate.startDownload(
+        if (cont == null) return null
+
+        val job = scope.launch(
+            CoroutineExceptionHandler { _, throwable ->
+                if (!connectivityAware.isConnected) return@CoroutineExceptionHandler
+                cont.resumeWithException(throwable.toRemoteContinuationException())
+            } + Dispatchers.IO_,
+        ) {
+            val result = delegate.startDownload(
                 withContext(Dispatchers.IO_) { data.toEncodedTorrentInfo() },
                 overrideSaveDir = overrideSaveDir?.run { Path(this).inSystem },
-            ) 
+            )
+            if (!connectivityAware.isConnected) return@launch
+            cont.resume(TorrentSessionProxy(result, connectivityAware, scope.coroutineContext))
         }
-        return TorrentSessionProxy(session, this, scope.coroutineContext)
+
+        return DisposableHandleProxy { job.cancel() }
     }
 
     @RequiresApi(Build.VERSION_CODES.O_MR1)

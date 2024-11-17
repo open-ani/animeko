@@ -10,16 +10,18 @@
 package me.him188.ani.app.domain.torrent.service.proxy
 
 import android.os.DeadObjectException
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import me.him188.ani.app.domain.torrent.IDisposableHandle
-import me.him188.ani.app.domain.torrent.IRemoteTorrentFileEntryList
 import me.him188.ani.app.domain.torrent.IRemoteTorrentSession
-import me.him188.ani.app.domain.torrent.ITorrentSessionStatsCallback
+import me.him188.ani.app.domain.torrent.callback.ITorrentSessionStatsCallback
 import me.him188.ani.app.domain.torrent.client.ConnectivityAware
+import me.him188.ani.app.domain.torrent.cont.ContTorrentSessionGetFiles
 import me.him188.ani.app.domain.torrent.parcel.PPeerInfo
 import me.him188.ani.app.domain.torrent.parcel.PTorrentSessionStats
+import me.him188.ani.app.domain.torrent.parcel.toRemoteContinuationException
 import me.him188.ani.app.torrent.api.TorrentSession
 import me.him188.ani.utils.coroutines.CancellationException
 import me.him188.ani.utils.coroutines.IO_
@@ -29,16 +31,16 @@ import kotlin.coroutines.CoroutineContext
 
 class TorrentSessionProxy(
     private val delegate: TorrentSession,
-    connectivityAware: ConnectivityAware,
+    private val connectivityAware: ConnectivityAware,
     context: CoroutineContext
-) : IRemoteTorrentSession.Stub(), ConnectivityAware by connectivityAware {
+) : IRemoteTorrentSession.Stub() {
     private val scope = context.childScope()
     private val logger = logger<TorrentSessionProxy>()
     
     override fun getSessionStats(flow: ITorrentSessionStatsCallback?): IDisposableHandle {
         val job = scope.launch(Dispatchers.IO_) { 
             delegate.sessionStats.collect {
-                if (!isConnected) return@collect
+                if (!connectivityAware.isConnected) return@collect
                 if (it == null) return@collect
 
                 try {
@@ -65,35 +67,50 @@ class TorrentSessionProxy(
         return runBlocking { delegate.getName() }
     }
 
-    override fun getFiles(): IRemoteTorrentFileEntryList {
-        val list = runBlocking { delegate.getFiles() }
+    override fun getFiles(cont: ContTorrentSessionGetFiles?): IDisposableHandle? {
+        if (cont == null) return null
 
-        return TorrentFileEntryListProxy(list, this, scope.coroutineContext)
+        val job = scope.launch(
+            CoroutineExceptionHandler { _, throwable ->
+                if (!connectivityAware.isConnected) return@CoroutineExceptionHandler
+                cont.resumeWithException(throwable.toRemoteContinuationException())
+            } + Dispatchers.IO_,
+        ) {
+            val result = delegate.getFiles()
+            if (!connectivityAware.isConnected) return@launch
+            cont.resume(
+                TorrentFileEntryListProxy(result, connectivityAware, scope.coroutineContext),
+            )
+        }
+
+        return DisposableHandleProxy { job.cancel() }
     }
 
     override fun getPeers(): Array<PPeerInfo> {
-        return runBlocking { 
-            delegate.getPeers().map { 
-                PPeerInfo(
-                    it.handle,
-                    it.id,
-                    it.client,
-                    it.ipAddr,
-                    it.ipPort,
-                    it.progress,
-                    it.totalDownload.inBytes,
-                    it.totalUpload.inBytes,
-                    it.flags
-                ) 
-            }.toTypedArray()
-        }
+        return delegate.getPeers().map {
+            PPeerInfo(
+                it.handle,
+                it.id,
+                it.client,
+                it.ipAddr,
+                it.ipPort,
+                it.progress,
+                it.totalDownload.inBytes,
+                it.totalUpload.inBytes,
+                it.flags,
+            )
+        }.toTypedArray()
     }
 
     override fun close() {
-        return runBlocking { delegate.close() }
+        scope.launch {
+            delegate.close()
+        }
     }
 
     override fun closeIfNotInUse() {
-        return runBlocking { delegate.closeIfNotInUse() }
+        scope.launch {
+            delegate.closeIfNotInUse()
+        }
     }
 }
