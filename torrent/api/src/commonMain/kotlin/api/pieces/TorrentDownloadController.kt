@@ -11,6 +11,7 @@ package me.him188.ani.app.torrent.api.pieces
 
 import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
+import kotlin.math.min
 
 /**
  * Torrent 下载优先级控制器.
@@ -66,52 +67,108 @@ class TorrentDownloadController(
     private val totalPieceSize: Long = pieces.sumOf { it.size }
     private val pieceOffsetStart = with(pieces) { pieces.first().dataStartOffset }
 
-    private val footerPieces = pieces.dropWhile { it.dataLastOffset < pieceOffsetStart + totalPieceSize - footerSize }
-    private val possibleFooterRange = pieces
-        .dropWhile { it.dataLastOffset < pieceOffsetStart + totalPieceSize - possibleFooterSize }
-        .let {
-            if (it.isEmpty()) IntRange.EMPTY
-            else it.first().pieceIndex..it.last().pieceIndex
-        }
-
-    private val lastIndex = pieces.last().pieceIndex
-
-    private var currentWindowStart = pieces.initialPieceIndex
-
-    // inclusive
-    private var currentWindowEnd = (currentWindowStart + windowSize - 1).coerceAtMost(lastIndex)
-
-    private var downloadingPieces: MutableList<Int> =
-        (currentWindowStart until (currentWindowStart + windowSize).coerceAtMost(lastIndex)).toMutableList()
-
-
-    fun isDownloading(pieceIndex: Int): Boolean = synchronized(this) {
-        return downloadingPieces.contains(pieceIndex)
+    init {
+        println()
     }
 
-    fun onTorrentResumed() = synchronized(this) {
-        onSeek(pieces.initialPieceIndex)
-    }
-
-    fun onSeek(pieceIndex: Int) = synchronized(this) {
-        if (pieceIndex in possibleFooterRange) {
-            // seek 到 footer 附近, 不重置 piece priority
-            if (pieceIndex !in downloadingPieces) {
-                downloadingPieces.add(0, pieceIndex)
+    // 获取 head piece 数量和 tail piece 数量
+    private val headPieceCount =
+        pieces.pieceIndexOfFirst { it.dataLastOffset >= pieceOffsetStart + headerSize }.let { index ->
+            // 如果 index == -1 说明未找到说明所有 piece 的 dataOffset 都小于 headerSize
+            // 那就让所有的 piece 都成为 highest piece
+            if (index == -1) pieces.sizes.size else {
+                index - pieces.initialPieceIndex + 1
             }
-            return
         }
-        downloadingPieces.clear()
-        fillWindow(pieceIndex)
-        priorities.downloadOnly(downloadingPieces, possibleFooterRange)
+    private val footerPieceCount = pieces.sizes.size -
+            pieces.pieceIndexOfLast { it.dataStartOffset <= pieceOffsetStart + totalPieceSize - footerSize } +
+            pieces.initialPieceIndex
+    // private val possibleFooterPieceCount = pieces.sizes.size -
+    //         pieces.pieceIndexOfLast { it.dataStartOffset <= pieceOffsetStart + totalPieceSize - possibleFooterSize } +
+    //         pieces.initialPieceIndex
+
+    private val pieceList = pieces.asSequence().toList()
+
+    /**
+     * 头尾 metadata 的 pieceIndex, 下载完后移除对应 index, 传递给 [priorities].
+     * metadata piece 的顺序和数量是固定的. 不需要额外的 list 来存储当前需要下载的 piece.
+     */
+    private val highPieces = pieceList
+        .getHeadAndFooterPieces(headPieceCount, footerPieceCount)
+        .toMutableList()
+
+    /**
+     * 其他 piece 的 pieceIndex, 使用 [downloadingNormalPieces] 维护下载窗口
+     */
+    private val normalPieces: List<Int> = pieceList
+        .drop(headPieceCount)
+        .dropLast(footerPieceCount)
+        .map { it.pieceIndex }
+
+    private val bodyPieceIndexRange by lazy { normalPieces.run { first()..last() } }
+
+    /**
+     * 正在下载的 normal pieces.
+     */
+    private val downloadingNormalPieces = normalPieces.take(windowSize).toMutableList()
+
+    /**
+     * [normalPieces] 中的窗口索引. 注意是 [normalPieces] 的 index 不是 pieceIndex
+     */
+    private var currentWindowStartIndex = 0
+
+    // 有可能 normalPriorityPieces 的数量比 windowSize 小
+    private var currentWindowEndIndex = min(normalPieces.size, windowSize) - 1
+
+    /**
+     * 返回此 pieceIndex 在 [normalPieces] 中对应 piece 的列表索引.
+     * 接收者必须是 [normalPieces] 中的 Piece 的 pieceIndex.
+     */
+    private val Int.indexInNormalPieceList: Int
+        get() {
+            require(this in bodyPieceIndexRange)
+            return this - normalPieces.first()
+        }
+
+    /**
+     * 是否所有 normal piece 都下载完了, 如果都下载完了就不再处理
+     */
+    private var allNormalPieceDownloaded = false
+    
+    fun isDownloading(pieceIndex: Int): Boolean = synchronized(this) {
+        return downloadingNormalPieces.contains(pieceIndex) ||
+                highPieces.contains(pieceIndex)
+    }
+
+    fun resume() = synchronized(this) {
+        if (normalPieces.isEmpty()) {
+            priorities.downloadOnly(highPieces, emptyList())
+            return@synchronized
+        }
+        seekTo(normalPieces.first())
+    }
+
+    fun seekTo(pieceIndex: Int) = synchronized(this) {
+        if (normalPieces.isEmpty()) {
+            priorities.downloadOnly(highPieces, emptyList())
+            return@synchronized
+        }
+        
+        val coercedBodyPieceIndex = pieceIndex.coerceIn(bodyPieceIndexRange)
+        downloadingNormalPieces.clear()
+        fillNormalPieceWindow(coercedBodyPieceIndex.indexInNormalPieceList)
+        priorities.downloadOnly(highPieces, downloadingNormalPieces)
     }
 
     /**
-     * 找接下来最近的还未完成的 piece, 如果没有, 返回 -1
+     * 在 [normalPieces] 中找从 [pieceIndex] 接下来最近的还未完成的 piece
+     *
+     * @return [normalPieces] 的 index, 如果没有返回 -1
      */
-    private fun findNextDownloadingPiece(startIndex: Int): Int {
-        for (index in startIndex..lastIndex) {
-            if (with(pieces) { pieces.getByPieceIndex(index).state } != PieceState.FINISHED) {
+    private fun findNextDownloadingNormalPiece(indexInList: Int): Int {
+        val list = normalPieces
+        for (index in (indexInList..list.lastIndex)) {
+            if (with(pieces) { pieces.getByPieceIndex(list[index]).state } != PieceState.FINISHED) {
                 return index
             }
         }
@@ -119,49 +176,105 @@ class TorrentDownloadController(
     }
 
     fun onPieceDownloaded(pieceIndex: Int) = synchronized(this) {
-        if (!downloadingPieces.remove(pieceIndex)) {
+        // 完成了首尾 metadata 的 piece, 不移动窗口
+        if (highPieces.remove(pieceIndex)) {
+            priorities.downloadOnly(highPieces, downloadingNormalPieces)
+            return@synchronized
+        }
+        // 完成了窗口之外的 piece, 不移动窗口
+        if (!downloadingNormalPieces.remove(pieceIndex)) {
             return
         }
 
-        val newWindowEnd = findNextDownloadingPiece(currentWindowEnd + 1)
-        if (newWindowEnd != -1 && newWindowEnd != currentWindowEnd) {
-            downloadingPieces.add(newWindowEnd)
-            currentWindowEnd = newWindowEnd
+        // 所有 normal piece 都下载完了, 不再处理 window
+        if (allNormalPieceDownloaded) {
+            return@synchronized
         }
-        priorities.downloadOnly(downloadingPieces, possibleFooterRange)
+
+        if (pieceIndex.indexInNormalPieceList == currentWindowStartIndex) {
+            // 移动 window start
+            currentWindowStartIndex = findNextDownloadingNormalPiece(currentWindowStartIndex + 1)
+
+            if (currentWindowStartIndex == -1) {
+                // 往后再找不到需要下载的 piece 了, 说明已经全部下完了
+                allNormalPieceDownloaded = true
+                return@synchronized
+            }
+        }
+
+
+        val newWindowEnd = findNextDownloadingNormalPiece(currentWindowEndIndex + 1)
+
+        if (newWindowEnd != -1) {
+            downloadingNormalPieces.addIfNotExist(normalPieces[newWindowEnd])
+            currentWindowEndIndex = newWindowEnd
+        } else {
+            // 如果找不到了, 那说明 currentWidowEnd 到最后的 normal piece 已经下载完了
+            // 此时有两种情况
+            //   1) 所有的 normal piece 都下载完了
+            //   2) 前面没下完，seek 到后面, 后面的下完了
+            // 从 initialPieceIndex 开始寻找下一个没 finish 的, 返回 -1 了, 那就是全都下完了
+
+            val nextFromStart = findNextDownloadingNormalPiece(0)
+            if (nextFromStart == -1) {
+                // 标记全下完了, 不再尝试 fill window
+                allNormalPieceDownloaded = true
+            } else {
+                // 继续填充前面没下完的 normal piece
+                fillNormalPieceWindow(nextFromStart) // 不用 coerceIn, findNextDownloadingNormalPiece 保证
+            }
+        }
+
+        priorities.downloadOnly(highPieces, downloadingNormalPieces)
     }
 
     /**
      * seek 到 pieceIndex 不一定会重构从 pieceIndex 开始的 window
      * 要从 pieceIndex 开始找接下来 window 大小个未完成的 piece 构成 window
      */
-    private fun fillWindow(pieceIndex: Int) {
+    private fun fillNormalPieceWindow(listIndex: Int) {
         // 如果 pieceIndex 以后的 piece 都完成了, 那就没有 piece 要填充到 window 了
-        val next = findNextDownloadingPiece(pieceIndex)
-        if (next == -1) return
+        val nextIndex = findNextDownloadingNormalPiece(listIndex)
+        if (nextIndex == -1) return
 
-        currentWindowStart = next
-        currentWindowEnd = next
+        currentWindowStartIndex = nextIndex
+        currentWindowEndIndex = nextIndex
 
-        downloadingPieces.add(currentWindowStart)
-        for (i in 0..<windowSize - 1) {
-            val next = findNextDownloadingPiece(currentWindowEnd + 1)
+        downloadingNormalPieces.addIfNotExist(normalPieces[currentWindowStartIndex])
+        for (i in 0..<(windowSize - downloadingNormalPieces.size)) {
+            val next = findNextDownloadingNormalPiece(currentWindowEndIndex + 1)
             if (next != -1) {
-                downloadingPieces.add(next)
-                currentWindowEnd = next
+                downloadingNormalPieces.addIfNotExist(normalPieces[next])
+                currentWindowEndIndex = next
             } else {
                 // findNext 没找到, 说明所有的 piece 都下完了
                 break
             }
         }
-
-        addFooterPieces()
     }
 
-    private fun addFooterPieces() {
-        for (footerPiece in footerPieces) {
-            if (with(pieces) { footerPiece.state } != PieceState.FINISHED) {
-                downloadingPieces.addIfNotExist(with(pieces) { footerPiece.pieceIndex })
+    /**
+     * 返回首尾元数据 piece index, 靠近边缘的排在前面.
+     * 例如 如果 piece index 从 `0 - 99`, 返回 `0, 99, 1, 98, 2, 97, 3, 96, 95 ...`
+     */
+    private fun List<Piece>.getHeadAndFooterPieces(headN: Int, tailN: Int): List<Int> {
+        require(headN <= size) { "headN should be smaller than piece list size" }
+        require(tailN <= size) { "tailN should be smaller than piece list size" }
+        val list = this
+
+        var headIndex = 0
+        var tailIndex = 0
+
+        return buildList {
+            while (headIndex < headN || tailIndex < tailN) {
+                if (headIndex < headN) {
+                    add(list[headIndex].pieceIndex)
+                    headIndex += 1
+                }
+                if (tailIndex < tailN) {
+                    add(list[list.size - 1 - tailIndex].pieceIndex)
+                    tailIndex += 1
+                }
             }
         }
     }
@@ -177,7 +290,22 @@ private fun <E> MutableList<E>.addIfNotExist(pieceIndex: E) {
 interface PiecePriorities {
     /**
      * 设置仅下载指定的 pieces.
-     * @param possibleFooterRange 作为参考的视频尾部元数据 piece index range
+     *
+     * 总体的下载优先级是按照先 [highPriorityPieces] 后 [normalPriorityPieces] 排序的.
+     *
+     * @param highPriorityPieces 高优先级的 piece, 需要考虑最先下载.
+     *  通常是视频的首尾 metadata piece, 需要下完首尾 piece 才能边下边播.
+     *
+     *  按照元素顺序决定优先级, 例如 首尾 piece 是 `0 1 2 3 97 98 99`.
+     *  那建议将按照头尾两侧的顺序排序. 例如 `[0, 99, 1, 98, 2, 97, 3]` 保证最靠近边缘的最先下载.
+     *
+     * @param normalPriorityPieces 正常优先级的 piece.
+     *  通常是不包含首尾的 piece.
+     *
+     *  按照元素顺序决定优先级, 建议按照 piece 顺序排序. 例如 `[15, 16, 17, 18, 19, ...]`
      */
-    fun downloadOnly(pieceIndexes: List<Int>, possibleFooterRange: IntRange)
+    fun downloadOnly(
+        highPriorityPieces: List<Int>,
+        normalPriorityPieces: List<Int>,
+    )
 }

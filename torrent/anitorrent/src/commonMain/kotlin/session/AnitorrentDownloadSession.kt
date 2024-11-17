@@ -67,7 +67,6 @@ import me.him188.ani.utils.platform.annotations.TestOnly
 import me.him188.ani.utils.platform.currentTimeMillis
 import kotlin.concurrent.Volatile
 import kotlin.coroutines.CoroutineContext
-import kotlin.jvm.JvmField
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
@@ -193,7 +192,7 @@ class AnitorrentDownloadSession(
             }
 
             override fun resumeImpl(priority: FilePriority) {
-                controller.onTorrentResumed()
+                controller.resume()
                 handle.resume()
             }
 
@@ -259,7 +258,7 @@ class AnitorrentDownloadSession(
                 if (!controller.isDownloading(requested.pieceIndex)) {
                     logger.info { "[TorrentDownloadControl] $torrentId: Resetting deadlines to download ${requested.pieceIndex}" }
                     handle.clearPieceDeadlines()
-                    controller.onSeek(requested.pieceIndex) // will request further pieces
+                    controller.seekTo(requested.pieceIndex) // will request further pieces
                 } else {
                     logger.info { "[TorrentDownloadControl] $torrentId: Requested piece ${requested.pieceIndex} is already downloading" }
                     return
@@ -557,34 +556,40 @@ class AnitorrentDownloadSession(
 
     private fun createPiecePriorities(): PiecePriorities {
         return object : PiecePriorities {
-            //            private val priorities = Array(torrentFile().numPieces()) { Priority.IGNORE }
-            override fun downloadOnly(pieceIndexes: List<Int>, possibleFooterRange: IntRange) {
-                if (pieceIndexes.isEmpty()) {
+            private val baseDeadline = -5000
+            private val highestDeadline = -10000
+
+            override fun downloadOnly(highPriorityPieces: List<Int>, normalPriorityPieces: List<Int>) {
+                if (highPriorityPieces.isEmpty() && normalPriorityPieces.isEmpty()) {
                     return
                 }
+
                 if (enablePieceLogs || (currentTimeMillis() - startupTime).milliseconds > 5.seconds) {
                     enablePieceLogs = true
-                    logger.debug { "[$handleId][TorrentDownloadControl] Prioritizing pieces: $pieceIndexes" }
+                    logger.debug { "[$handleId][TorrentDownloadControl] Prioritizing pieces: ${highPriorityPieces + normalPriorityPieces}" }
                 }
-                val smallestIndex = pieceIndexes.minBy { it }
 
-                // 超高优先下载第一个 piece, 防止它一直请求后面的 (因为一旦有 piece 完成, window 就会往后变大)
-                handle.setPieceDeadline(pieceIndexes.first(), -10000)
+                if (highPriorityPieces.isNotEmpty()) {
+                    // 以 deadline = 5000 为分界点,  
+                    // highPriorityPieces 的 deadline < 5000, normalPriorityPieces 的 deadline > 5000
 
-                for (i in 1 until pieceIndexes.size) {
-                    val pieceIndex = pieceIndexes[i]
-                    handle.setPieceDeadline(
-                        pieceIndex,
-                        // 低于现在可以让 libtorrent 更急
-                        -5000 + if (pieceIndex in possibleFooterRange) {
-                            // 对于视频尾部元数据, 同样需要给予较高的优先级
-                            val lastFooter = possibleFooterRange.last()
-                            (lastFooter - pieceIndex) * 700
-                        } else {
-                            // 最高优先级下载第一个. 第一个有可能会是 seek 之后的.
-                            (pieceIndex - smallestIndex) * 700
-                        },
-                    )
+                    // 让 high priority 的 piece 均匀分布在 highestDeadline 到 baseDeadline 之间, 
+                    // 第一个 piece 的 deadline 一定是 highestDeadline
+                    val highPriorityStep = (baseDeadline - highestDeadline) / highPriorityPieces.size
+                    highPriorityPieces.asReversed().forEachIndexed { index, pieceIndex ->
+                        handle.setPieceDeadline(pieceIndex, baseDeadline - (index + 1) * highPriorityStep)
+                    }
+
+                    // 让 normal priority 的 piece 根据等差数列分布到 baseDeadline 到 IntMax
+                    normalPriorityPieces.forEachIndexed { index, pieceIndex ->
+                        handle.setPieceDeadline(pieceIndex, baseDeadline + (index + 1) * 700)
+                    }
+                } else {
+                    // 既然 highPriorityPieces 已经全部下载完了, 那我们的 normal priority 也可以成为 high priority
+                    val highPriorityStep = (baseDeadline - highestDeadline) / normalPriorityPieces.size
+                    normalPriorityPieces.asReversed().forEachIndexed { index, pieceIndex ->
+                        handle.setPieceDeadline(pieceIndex, baseDeadline - (index + 1) * highPriorityStep)
+                    }
                 }
             }
         }
