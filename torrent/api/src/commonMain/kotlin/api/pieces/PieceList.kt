@@ -15,6 +15,7 @@ import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.suspendCancellableCoroutine
 import me.him188.ani.app.torrent.api.pieces.PieceListSubscriptions.Subscription
+import kotlin.jvm.JvmField
 
 /**
  * 高性能 [Piece] 集合. 每个 [PieceList] 一定包含连续的 [Piece.pieceIndex]. 可能为空.
