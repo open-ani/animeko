@@ -74,7 +74,11 @@ class TorrentDownloadController(
             else it.first().pieceIndex..it.last().pieceIndex
         }
 
-    private val lastIndex = pieces.last().pieceIndex
+    private val lastIndex = try {
+        pieces.last().pieceIndex
+    } catch (ex: NoSuchElementException) {
+        -1
+    }
 
     private var currentWindowStart = pieces.initialPieceIndex
 
@@ -90,10 +94,12 @@ class TorrentDownloadController(
     }
 
     fun onTorrentResumed() = synchronized(this) {
+        if (currentWindowEnd == -1) return@synchronized
         onSeek(pieces.initialPieceIndex)
     }
 
     fun onSeek(pieceIndex: Int) = synchronized(this) {
+        if (currentWindowEnd == -1) return@synchronized
         if (pieceIndex in possibleFooterRange) {
             // seek 到 footer 附近, 不重置 piece priority
             if (pieceIndex !in downloadingPieces) {
@@ -119,6 +125,7 @@ class TorrentDownloadController(
     }
 
     fun onPieceDownloaded(pieceIndex: Int) = synchronized(this) {
+        if (currentWindowEnd == -1) return@synchronized
         if (!downloadingPieces.remove(pieceIndex)) {
             return
         }
