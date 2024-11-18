@@ -88,6 +88,9 @@ import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.features.StreamType
 import me.him188.ani.app.platform.features.getComponentAccessors
 import me.him188.ani.app.tools.rememberUiMonoTasker
+import me.him188.ani.app.ui.comment.CommentContext
+import me.him188.ani.app.ui.comment.CommentEditorState
+import me.him188.ani.app.ui.comment.CommentState
 import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.ImageViewer
 import me.him188.ani.app.ui.foundation.LocalImageViewerHandler
@@ -99,6 +102,7 @@ import me.him188.ani.app.ui.foundation.effects.OnLifecycleEvent
 import me.him188.ani.app.ui.foundation.effects.ScreenOnEffect
 import me.him188.ani.app.ui.foundation.effects.ScreenRotationEffect
 import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
+import me.him188.ani.app.ui.foundation.layout.compareTo
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBarPadding
 import me.him188.ani.app.ui.foundation.layout.setRequestFullScreen
@@ -109,9 +113,6 @@ import me.him188.ani.app.ui.foundation.rememberImageViewerHandler
 import me.him188.ani.app.ui.foundation.theme.weaken
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.richtext.RichTextDefaults
-import me.him188.ani.app.ui.subject.components.comment.CommentContext
-import me.him188.ani.app.ui.subject.components.comment.CommentEditorState
-import me.him188.ani.app.ui.subject.components.comment.CommentState
 import me.him188.ani.app.ui.subject.episode.comments.EpisodeCommentColumn
 import me.him188.ani.app.ui.subject.episode.comments.EpisodeEditCommentSheet
 import me.him188.ani.app.ui.subject.episode.danmaku.DanmakuEditor
@@ -202,7 +203,7 @@ private fun EpisodeSceneContent(
 
     BoxWithConstraints(modifier) {
         val showExpandedUI =
-            currentWindowAdaptiveInfo1().windowSizeClass.windowWidthSizeClass != WindowWidthSizeClass.COMPACT
+            currentWindowAdaptiveInfo1().windowSizeClass.windowWidthSizeClass >= WindowWidthSizeClass.EXPANDED
         CompositionLocalProvider(LocalImageViewerHandler provides imageViewer) {
             when {
                 showExpandedUI -> EpisodeSceneTabletVeryWide(vm, Modifier.fillMaxSize(), windowInsets)

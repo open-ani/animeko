@@ -66,6 +66,12 @@ import me.him188.ani.app.domain.media.selector.eventHandling
 import me.him188.ani.app.domain.session.AuthState
 import me.him188.ani.app.platform.Context
 import me.him188.ani.app.ui.comment.BangumiCommentSticker
+import me.him188.ani.app.ui.comment.CommentContext
+import me.him188.ani.app.ui.comment.CommentEditorState
+import me.him188.ani.app.ui.comment.CommentLoader
+import me.him188.ani.app.ui.comment.CommentMapperContext
+import me.him188.ani.app.ui.comment.CommentState
+import me.him188.ani.app.ui.comment.EditCommentSticker
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.foundation.AuthState
 import me.him188.ani.app.ui.foundation.HasBackgroundScope
@@ -74,12 +80,6 @@ import me.him188.ani.app.ui.foundation.launchInMain
 import me.him188.ani.app.ui.settings.danmaku.DanmakuRegexFilterState
 import me.him188.ani.app.ui.subject.AiringLabelState
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeState
-import me.him188.ani.app.ui.subject.components.comment.CommentContext
-import me.him188.ani.app.ui.subject.components.comment.CommentEditorState
-import me.him188.ani.app.ui.subject.components.comment.CommentLoader
-import me.him188.ani.app.ui.subject.components.comment.CommentMapperContext
-import me.him188.ani.app.ui.subject.components.comment.CommentState
-import me.him188.ani.app.ui.subject.components.comment.EditCommentSticker
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateFactory
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateLoader
 import me.him188.ani.app.ui.subject.episode.details.EpisodeCarouselState
@@ -111,6 +111,7 @@ import me.him188.ani.datasources.api.source.MediaFetchRequest
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
 import me.him188.ani.utils.coroutines.cancellableCoroutineScope
+import me.him188.ani.utils.coroutines.flows.flowOfEmptyList
 import me.him188.ani.utils.coroutines.retryWithBackoffDelay
 import me.him188.ani.utils.coroutines.sampleWithInitial
 import me.him188.ani.utils.logging.info
@@ -452,6 +453,9 @@ private class EpisodeViewModelImpl(
 
     override val episodeCarouselState: EpisodeCarouselState = kotlin.run {
         val episodeCacheStatusListState by episodeCollectionsFlow.flatMapLatest { list ->
+            if (list.isEmpty()) {
+                return@flatMapLatest flowOfEmptyList()
+            }
             combine(
                 list.map { collection ->
                     mediaCacheManager.cacheStatusForEpisode(subjectId, collection.episodeId).map {

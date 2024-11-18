@@ -9,7 +9,7 @@
 
 package me.him188.ani.app.domain.torrent.service.proxy
 
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.torrent.IRemoteTorrentFileEntry
 import me.him188.ani.app.domain.torrent.IRemoteTorrentFileHandle
 import me.him188.ani.app.domain.torrent.client.ConnectivityAware
@@ -20,13 +20,13 @@ import kotlin.coroutines.CoroutineContext
 
 class TorrentFileHandleProxy(
     private val delegate: TorrentFileHandle,
-    connectivityAware: ConnectivityAware,
+    private val connectivityAware: ConnectivityAware,
     context: CoroutineContext
-) : IRemoteTorrentFileHandle.Stub(), ConnectivityAware by connectivityAware {
+) : IRemoteTorrentFileHandle.Stub() {
     private val scope = context.childScope()
 
     override fun getTorrentFileEntry(): IRemoteTorrentFileEntry {
-        return TorrentFileEntryProxy(delegate.entry, this, scope.coroutineContext)
+        return TorrentFileEntryProxy(delegate.entry, connectivityAware, scope.coroutineContext)
     }
 
     override fun resume(priorityEnum: Int) {
@@ -38,10 +38,14 @@ class TorrentFileHandleProxy(
     }
 
     override fun close() {
-        runBlocking { delegate.close() }
+        scope.launch {
+            delegate.close()
+        }
     }
 
     override fun closeAndDelete() {
-        runBlocking { delegate.closeAndDelete() }
+        scope.launch {
+            delegate.closeAndDelete()
+        }
     }
 }

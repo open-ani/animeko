@@ -1,7 +1,9 @@
 // IRemoteTorrentDownloader.aidl
 package me.him188.ani.app.domain.torrent;
 
-import me.him188.ani.app.domain.torrent.ITorrentDownloaderStatsCallback;
+import me.him188.ani.app.domain.torrent.callback.ITorrentDownloaderStatsCallback;
+import me.him188.ani.app.domain.torrent.cont.ContTorrentDownloaderFetchTorrent;
+import me.him188.ani.app.domain.torrent.cont.ContTorrentDownloaderStartDownload;
 import me.him188.ani.app.domain.torrent.IRemoteTorrentSession;
 import me.him188.ani.app.domain.torrent.IDisposableHandle;
 import me.him188.ani.app.domain.torrent.parcel.PTorrentLibInfo;
@@ -14,9 +16,9 @@ interface IRemoteTorrentDownloader {
     
     PTorrentLibInfo getVendor();
     
-    PEncodedTorrentInfo fetchTorrent(in String uri, int timeoutSeconds);
+    IDisposableHandle fetchTorrent(in String uri, int timeoutSeconds, in ContTorrentDownloaderFetchTorrent cont);
     
-    IRemoteTorrentSession startDownload(in PEncodedTorrentInfo data, in String overrideSaveDir);
+    IDisposableHandle startDownload(in PEncodedTorrentInfo data, in String overrideSaveDir, in ContTorrentDownloaderStartDownload cont);
     
     String getSaveDirForTorrent(in PEncodedTorrentInfo data);
     

@@ -17,11 +17,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Preview
+import me.him188.ani.app.ui.comment.UIRichText
+import me.him188.ani.app.ui.comment.generateUiComment
+import me.him188.ani.app.ui.comment.rememberTestCommentState
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.richtext.UIRichElement
-import me.him188.ani.app.ui.subject.components.comment.UIRichText
-import me.him188.ani.app.ui.subject.components.comment.generateUiComment
-import me.him188.ani.app.ui.subject.components.comment.rememberTestCommentState
 import me.him188.ani.utils.platform.annotations.TestOnly
 
 @Preview

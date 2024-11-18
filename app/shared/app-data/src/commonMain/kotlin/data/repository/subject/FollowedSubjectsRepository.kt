@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
@@ -87,6 +88,9 @@ class FollowedSubjectsRepository(
                 ),
             ).flatMapLatest { subjectCollectionInfoList ->
                 // 对于每个条目, 获取其最新的集数信息
+                if (subjectCollectionInfoList.isEmpty()) { // `combine(emptyList)` does not emit
+                    return@flatMapLatest flowOf(emptyList())
+                }
                 combine<List<EpisodeCollectionInfo>, List<FollowedSubjectInfo>>(
                     subjectCollectionInfoList.map { info ->
                         episodeCollectionRepository.subjectEpisodeCollectionInfosFlow(info.subjectId)

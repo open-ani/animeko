@@ -123,36 +123,38 @@ class DanmakuManagerImpl(
         request: DanmakuSearchRequest,
     ): CombinedDanmakuFetchResult {
         logger.info { "Search for danmaku with filename='${request.filename}'" }
-        val results = combine(
-            providers.first().map { provider ->
-                flow {
-                    emit(
-                        withTimeout(60.seconds) {
-                            provider.fetch(request = request)
-                        },
-                    )
-                }.retry(1) {
-                    if (it is CancellationException && !currentCoroutineContext().isActive) {
-                        // collector was cancelled
-                        return@retry false
-                    }
-                    logger.error(it) { "Failed to fetch danmaku from provider '${provider.id}'" }
-                    true
-                }.catch {
-                    emit(
-                        DanmakuFetchResult(
-                            DanmakuMatchInfo(
-                                provider.id,
-                                0,
-                                DanmakuMatchMethod.NoMatch,
-                            ),
-                            list = emptySequence(),
-                        ),
-                    )// 忽略错误, 否则一个源炸了会导致所有弹幕都不发射了
-                    // 必须要 emit 一个, 否则下面 .first 会出错
+        val flows = providers.first().map { provider ->
+            flow {
+                emit(
+                    withTimeout(60.seconds) {
+                        provider.fetch(request = request)
+                    },
+                )
+            }.retry(1) {
+                if (it is CancellationException && !currentCoroutineContext().isActive) {
+                    // collector was cancelled
+                    return@retry false
                 }
-            },
-        ) {
+                logger.error(it) { "Failed to fetch danmaku from provider '${provider.id}'" }
+                true
+            }.catch {
+                emit(
+                    DanmakuFetchResult(
+                        DanmakuMatchInfo(
+                            provider.id,
+                            0,
+                            DanmakuMatchMethod.NoMatch,
+                        ),
+                        list = emptySequence(),
+                    ),
+                )// 忽略错误, 否则一个源炸了会导致所有弹幕都不发射了
+                // 必须要 emit 一个, 否则下面 .first 会出错
+            }
+        }
+        if (flows.isEmpty()) {
+            return CombinedDanmakuFetchResult(emptyList(), emptySequence())
+        }
+        val results = combine(flows) {
             it.toList()
         }.first()
         return CombinedDanmakuFetchResult(

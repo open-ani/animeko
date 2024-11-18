@@ -23,17 +23,17 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.tools.formatDateTime
+import me.him188.ani.app.ui.comment.Comment
+import me.him188.ani.app.ui.comment.CommentColumn
+import me.him188.ani.app.ui.comment.CommentDefaults
+import me.him188.ani.app.ui.comment.CommentState
+import me.him188.ani.app.ui.comment.EditCommentBottomStubPanel
+import me.him188.ani.app.ui.comment.UIComment
 import me.him188.ani.app.ui.foundation.LocalImageViewerHandler
 import me.him188.ani.app.ui.foundation.LocalIsPreviewing
 import me.him188.ani.app.ui.foundation.isInDebugMode
 import me.him188.ani.app.ui.foundation.layout.ConnectedScrollState
 import me.him188.ani.app.ui.richtext.RichText
-import me.him188.ani.app.ui.subject.components.comment.Comment
-import me.him188.ani.app.ui.subject.components.comment.CommentColumn
-import me.him188.ani.app.ui.subject.components.comment.CommentDefaults
-import me.him188.ani.app.ui.subject.components.comment.CommentState
-import me.him188.ani.app.ui.subject.components.comment.EditCommentBottomStubPanel
-import me.him188.ani.app.ui.subject.components.comment.UIComment
 
 @Composable
 fun EpisodeCommentColumn(

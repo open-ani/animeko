@@ -24,7 +24,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
@@ -444,44 +443,41 @@ private fun WindowStateRecorder(
     update: (SavedWindowState) -> Unit,
 ) {
     // 记录窗口大小
-    val density = LocalDensity.current
-    DisposableEffect(density) {
-        with(density) {
-            if (saved != null) {
-                val savedWindowState = WindowState(
-                    position = WindowPosition(
-                        x = saved.x.toDp(),
-                        y = saved.y.toDp(),
-                    ),
-                    size = DpSize(
-                        width = saved.width.toDp(),
-                        height = saved.height.toDp(),
-                    ),
-                )
-                //保存的窗口尺寸和大小全都合规时，才使用，否则使用默认设置
-                val minimumSize = DpSize(800.dp, 600.dp)
-                val screenSize = ScreenUtils.getScreenSize()
-                if (
-                    (savedWindowState.size.width > minimumSize.width || savedWindowState.size.height > minimumSize.height)
-                    && savedWindowState.position.x < screenSize.width && savedWindowState.position.y < screenSize.height
-                ) {
-                    windowState.apply {
-                        position = savedWindowState.position
-                        size = savedWindowState.size
-                    }
+    DisposableEffect(Unit) {
+        if (saved != null) {
+            val savedWindowState = WindowState(
+                position = WindowPosition(
+                    x = saved.x,
+                    y = saved.y,
+                ),
+                size = DpSize(
+                    width = saved.width,
+                    height = saved.height,
+                ),
+            )
+            //保存的窗口尺寸和大小全都合规时，才使用，否则使用默认设置
+            val minimumSize = DpSize(800.dp, 600.dp)
+            val screenSize = ScreenUtils.getScreenSize()
+            if (
+                (savedWindowState.size.width > minimumSize.width || savedWindowState.size.height > minimumSize.height)
+                && savedWindowState.position.x < screenSize.width && savedWindowState.position.y < screenSize.height
+            ) {
+                windowState.apply {
+                    position = savedWindowState.position
+                    size = savedWindowState.size
                 }
             }
+        }
 
-            onDispose {
-                update(
-                    SavedWindowState(
-                        x = windowState.position.x.toPx(),
-                        y = windowState.position.y.toPx(),
-                        width = windowState.size.width.toPx(),
-                        height = windowState.size.height.toPx(),
-                    ),
-                )
-            }
+        onDispose {
+            update(
+                SavedWindowState(
+                    x = windowState.position.x,
+                    y = windowState.position.y,
+                    width = windowState.size.width,
+                    height = windowState.size.height,
+                ),
+            )
         }
     }
 }

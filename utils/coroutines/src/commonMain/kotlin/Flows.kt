@@ -14,7 +14,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.runningFold
 import kotlin.coroutines.CoroutineContext
@@ -25,8 +24,6 @@ fun <T> Flow<T>.runningList(): Flow<List<T>> {
         acc + value
     }
 }
-
-fun combineOr(vararg flows: Flow<Boolean>): Flow<Boolean> = combine(*flows) { flows -> flows.any { it } }
 
 fun <T, R> Flow<T>.runningFoldNoInitialEmit(
     initial: R,

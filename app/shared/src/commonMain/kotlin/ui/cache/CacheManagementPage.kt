@@ -76,6 +76,7 @@ import me.him188.ani.datasources.api.subjectIdInt
 import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
 import me.him188.ani.datasources.api.unwrapCached
+import me.him188.ani.utils.coroutines.flows.flowOfEmptyList
 import me.him188.ani.utils.coroutines.sampleWithInitial
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -98,6 +99,9 @@ class CacheManagementViewModel(
             list.map { it.stats }.sum()
         }.sampleWithInitial(1.seconds).produceState(MediaStats.Unspecified),
         groups = cacheManager.enabledStorages.flatMapLatest { storages ->
+            if (storages.isEmpty()) {
+                return@flatMapLatest flowOfEmptyList()
+            }
             combine(storages.map { it.listFlow }) { it.asSequence().flatten().toList() }
                 .transformLatest { allCaches ->
                     supervisorScope {

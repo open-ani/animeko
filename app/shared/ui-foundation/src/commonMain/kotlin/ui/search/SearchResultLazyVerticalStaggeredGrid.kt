@@ -249,8 +249,6 @@ fun SearchProblemCard(
                     colors = listItemColors,
                 )
             }
-
-            null -> {}
         }
     }
 

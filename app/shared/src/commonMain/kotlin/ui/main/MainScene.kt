@@ -71,6 +71,8 @@ import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.subject.collection.CollectionPage
 import me.him188.ani.app.ui.subject.collection.UserCollectionsViewModel
 import me.him188.ani.app.ui.subject.details.SubjectDetailsPage
+import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateLoader
+import me.him188.ani.app.ui.update.TextButtonUpdateLogo
 import me.him188.ani.utils.platform.isAndroid
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -78,6 +80,7 @@ import kotlin.coroutines.cancellation.CancellationException
 @Composable
 fun MainScene(
     page: MainScenePage,
+    subjectDetailsStateLoader: SubjectDetailsStateLoader,
     modifier: Modifier = Modifier,
     onNavigateToPage: (MainScenePage) -> Unit,
     navigationLayoutType: NavigationSuiteType = AniNavigationSuiteDefaults.calculateLayoutType(
@@ -92,12 +95,13 @@ fun MainScene(
         }
     }
 
-    MainSceneContent(page, onNavigateToPage, modifier, navigationLayoutType)
+    MainSceneContent(page, subjectDetailsStateLoader, onNavigateToPage, modifier, navigationLayoutType)
 }
 
 @Composable
 private fun MainSceneContent(
     page: MainScenePage,
+    subjectDetailsStateLoader: SubjectDetailsStateLoader,
     onNavigateToPage: (MainScenePage) -> Unit,
     modifier: Modifier = Modifier,
     navigationLayoutType: NavigationSuiteType = AniNavigationSuiteDefaults.calculateLayoutType(
@@ -164,7 +168,7 @@ private fun MainSceneContent(
                 when (page) {
                     MainScenePage.Exploration -> {
                         ExplorationPage(
-                            viewModel { ExplorationPageViewModel() }.explorationPageState,
+                            viewModel { ExplorationPageViewModel(subjectDetailsStateLoader) }.explorationPageState,
                             onSearch = { onNavigateToPage(MainScenePage.Search) },
                             onClickSettings = { navigator.navigateSettings() },
                             modifier.fillMaxSize(),
@@ -181,6 +185,9 @@ private fun MainSceneContent(
                             Modifier.fillMaxSize(),
                             enableAnimation = vm.myCollectionsSettings.enableListAnimation1,
                             lazyGridState = vm.lazyGridState,
+                            actions = {
+                                TextButtonUpdateLogo()
+                            },
                         )
                     }
 

@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.map
 import me.him188.ani.app.data.models.episode.EpisodeProgressInfo
 import me.him188.ani.app.data.repository.Repository
 import me.him188.ani.app.domain.media.cache.MediaCacheManager
+import me.him188.ani.utils.coroutines.flows.flowOfEmptyList
 import kotlin.coroutines.CoroutineContext
 
 class EpisodeProgressRepository(
@@ -27,6 +28,9 @@ class EpisodeProgressRepository(
 ) : Repository {
     fun subjectEpisodeProgressesInfoFlow(subjectId: Int): Flow<List<EpisodeProgressInfo>> {
         return episodeCollectionRepository.subjectEpisodeCollectionInfosFlow(subjectId).flatMapLatest { list ->
+            if (list.isEmpty()) {
+                return@flatMapLatest flowOfEmptyList()
+            }
             combine(
                 list.map { info ->
                     cacheManager.cacheStatusForEpisode(subjectId, episodeId = info.episodeInfo.episodeId)

@@ -69,6 +69,7 @@ kotlin {
         api(projects.app.shared.videoPlayer.torrentSource)
         api(projects.app.shared.uiSettings)
         api(projects.app.shared.uiExploration)
+        api(projects.app.shared.uiSubject)
         api(projects.app.shared.uiAdaptive)
 
         // Compose

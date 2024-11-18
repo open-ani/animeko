@@ -29,6 +29,8 @@ private fun PreviewTrendingSubjectsCarousel() = ProvideFoundationCompositionLoca
 private fun PreviewTrendingSubjectsCarouselImpl() {
     TrendingSubjectsCarousel(
         items = rememberTestLazyPagingItems(TestTrendingSubjectInfos),
+        loadingItem = { null },
+        subjectDetailsProblem = { null },
         {},
     )
 }

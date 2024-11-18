@@ -24,6 +24,8 @@ import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPrev
 import me.him188.ani.app.ui.foundation.preview.PreviewSizeClasses
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.search.createTestPager
+import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateLoader
+import me.him188.ani.app.ui.subject.details.state.TestSubjectDetailsStateFactory
 import me.him188.ani.utils.platform.annotations.TestOnly
 
 @Composable
@@ -34,12 +36,16 @@ internal fun PreviewExplorationPage() {
         val scope = rememberCoroutineScope()
         val trendingSubjectInfoPager = createTestPager(TestTrendingSubjectInfos).collectAsLazyPagingItemsWithLifecycle()
         ExplorationPage(
-            remember {
+            remember(scope) {
                 ExplorationPageState(
                     authState = createTestAuthState(scope),
                     selfInfoState = stateOf(TestUserInfo),
                     trendingSubjectInfoPager,
                     followedSubjectsPager = createTestPager(TestFollowedSubjectInfos),
+                    subjectDetailsStateLoader = SubjectDetailsStateLoader(
+                        TestSubjectDetailsStateFactory(),
+                        scope,
+                    ),
                 )
             },
             {},

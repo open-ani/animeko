@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.shareIn
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
+import me.him188.ani.utils.coroutines.flows.flowOfEmptyList
 import kotlin.coroutines.CoroutineContext
 
 /**
@@ -53,6 +54,9 @@ class FilteredMediaSourceResults(
             }
 
             // 收集它们的 size
+            if (candidates.isEmpty()) {
+                return@flatMapLatest flowOfEmptyList()
+            }
             combine(candidates.map { sizes -> sizes.resultsIfEnabled.map { it.size } }) { sizes ->
                 // 按照结果数量从大到小, 把禁用的放在最后.
                 candidates.sortedWith(

@@ -26,6 +26,7 @@ import me.him188.ani.datasources.api.MediaCacheMetadata
 import me.him188.ani.datasources.api.source.MediaSource
 import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
+import me.him188.ani.datasources.api.topic.flowOfFileSizeZero
 
 /**
  * 表示一个媒体缓存的存储空间, 例如一个本地目录.
@@ -59,7 +60,7 @@ interface MediaCacheStorage : AutoCloseable {
      *
      * Note that to retrieve [Media] (more specifically, [CachedMedia]) from the cache storage, you might want to use [cacheMediaSource].
      */
-    val listFlow: Flow<List<_root_ide_package_.me.him188.ani.app.domain.media.cache.MediaCache>>
+    val listFlow: Flow<List<MediaCache>>
 
     /**
      * 重新加载那些上次 APP 运行时保存在本地的缓存.
@@ -79,19 +80,24 @@ interface MediaCacheStorage : AutoCloseable {
      *
      * @param metadata The request to fetch the media.
      */
-    suspend fun cache(media: Media, metadata: MediaCacheMetadata, resume: Boolean = true): _root_ide_package_.me.him188.ani.app.domain.media.cache.MediaCache
+    suspend fun cache(
+        media: Media,
+        metadata: MediaCacheMetadata,
+        resume: Boolean = true
+    ): MediaCache
 
     /**
      * Delete the cache if it exists.
      * @return `true` if a cache was deleted, `false` if there wasn't such a cache.
      */
-    suspend fun delete(cache: _root_ide_package_.me.him188.ani.app.domain.media.cache.MediaCache): Boolean = deleteFirst { it == cache }
+    suspend fun delete(cache: MediaCache): Boolean =
+        deleteFirst { it == cache }
 
     /**
      * Delete the cache if it exists.
      * @return `true` if a cache was deleted, `false` if there wasn't such a cache.
      */
-    suspend fun deleteFirst(predicate: (_root_ide_package_.me.him188.ani.app.domain.media.cache.MediaCache) -> Boolean): Boolean
+    suspend fun deleteFirst(predicate: (MediaCache) -> Boolean): Boolean
 }
 
 /**
@@ -99,6 +105,9 @@ interface MediaCacheStorage : AutoCloseable {
  */
 val MediaCacheStorage.totalSize: Flow<FileSize>
     get() = listFlow.flatMapLatest { caches ->
+        if (caches.isEmpty()) {
+            return@flatMapLatest flowOfFileSizeZero
+        }
         combine(caches.map { cache -> cache.fileStats.map { it.totalSize } }) { sizes ->
             sizes.sumOf { it.inBytes }.bytes
         }
@@ -110,24 +119,31 @@ val MediaCacheStorage.totalSize: Flow<FileSize>
 val MediaCacheStorage.count: Flow<Int>
     get() = listFlow.map { it.size }
 
-suspend inline fun MediaCacheStorage.contains(cache: _root_ide_package_.me.him188.ani.app.domain.media.cache.MediaCache): Boolean = listFlow.first().any { it === cache }
+suspend inline fun MediaCacheStorage.contains(cache: MediaCache): Boolean =
+    listFlow.first().any { it === cache }
 
 class TestMediaCacheStorage : MediaCacheStorage {
     override val mediaSourceId: String
         get() = MediaCacheManager.LOCAL_FS_MEDIA_SOURCE_ID
     override val cacheMediaSource: MediaSource
         get() = throw UnsupportedOperationException()
-    override val listFlow: MutableStateFlow<List<_root_ide_package_.me.him188.ani.app.domain.media.cache.MediaCache>> = MutableStateFlow(listOf())
+    override val listFlow: MutableStateFlow<List<MediaCache>> =
+        MutableStateFlow(listOf())
+
     override suspend fun restorePersistedCaches() {
     }
 
     override val stats: Flow<MediaStats> = flowOf(MediaStats.Unspecified)
 
-    override suspend fun cache(media: Media, metadata: MediaCacheMetadata, resume: Boolean): _root_ide_package_.me.him188.ani.app.domain.media.cache.MediaCache {
+    override suspend fun cache(
+        media: Media,
+        metadata: MediaCacheMetadata,
+        resume: Boolean
+    ): MediaCache {
         throw UnsupportedOperationException()
     }
 
-    override suspend fun delete(cache: _root_ide_package_.me.him188.ani.app.domain.media.cache.MediaCache): Boolean {
+    override suspend fun delete(cache: MediaCache): Boolean {
         if (listFlow.first().any { it == cache }) {
             listFlow.value = listFlow.first().filter { it != cache }
             return true
@@ -135,7 +151,7 @@ class TestMediaCacheStorage : MediaCacheStorage {
         return false
     }
 
-    override suspend fun deleteFirst(predicate: (_root_ide_package_.me.him188.ani.app.domain.media.cache.MediaCache) -> Boolean): Boolean {
+    override suspend fun deleteFirst(predicate: (MediaCache) -> Boolean): Boolean {
         val list = listFlow.first()
         val cache = list.firstOrNull(predicate) ?: return false
         listFlow.value = list.filter { it != cache }

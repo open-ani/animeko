@@ -18,13 +18,13 @@ import kotlin.coroutines.CoroutineContext
 
 class TorrentFileEntryListProxy(
     val delegate: List<TorrentFileEntry>,
-    connectivityAware: ConnectivityAware,
+    private val connectivityAware: ConnectivityAware,
     context: CoroutineContext
-) : IRemoteTorrentFileEntryList.Stub(), ConnectivityAware by connectivityAware {
+) : IRemoteTorrentFileEntryList.Stub() {
     private val scope = context.childScope()
     
     override fun get(index: Int): IRemoteTorrentFileEntry {
-        return TorrentFileEntryProxy(delegate[index], this, scope.coroutineContext)
+        return TorrentFileEntryProxy(delegate[index], connectivityAware, scope.coroutineContext)
     }
 
     override fun getSize(): Int {

@@ -155,7 +155,12 @@ abstract class PieceList(
             initialPieceIndex: Int = 0,
         ): MutablePieceList {
             if (totalSize % pieceSize == 0L) {
-                return create((totalSize / pieceSize).toInt(), initialDataOffset, getPieceSize = { pieceSize })
+                return create(
+                    (totalSize / pieceSize).toInt(),
+                    initialDataOffset,
+                    initialPieceIndex,
+                    getPieceSize = { pieceSize },
+                )
             }
 
             val numPieces = (totalSize / pieceSize).toInt() + 1

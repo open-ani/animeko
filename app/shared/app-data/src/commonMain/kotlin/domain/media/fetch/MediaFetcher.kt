@@ -54,6 +54,7 @@ import me.him188.ani.datasources.api.source.MediaSourceInfo
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.source.toStringMultiline
 import me.him188.ani.utils.coroutines.cancellableCoroutineScope
+import me.him188.ani.utils.coroutines.flows.flowOfEmptyList
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
@@ -156,7 +157,7 @@ class MediaSourceMediaFetcher(
         private val config: MediaFetcherConfig,
         val disabled: Boolean,
         pagedSources: Flow<SizedSource<MediaMatch>>,
-        flowContext: CoroutineContext, 
+        flowContext: CoroutineContext,
     ) : MediaSourceFetchResult, SynchronizedObject() {
         /**
          * 为了确保线程安全, 对 [state] 的写入必须谨慎.
@@ -323,7 +324,10 @@ class MediaSourceMediaFetcher(
             )
         }
 
-        override val cumulativeResults: Flow<List<Media>> =
+        override val cumulativeResults: Flow<List<Media>> = kotlin.run {
+            if (mediaSourceResults.isEmpty()) {
+                return@run flowOfEmptyList()
+            }
             combine(mediaSourceResults.map { it.results }) { lists ->
                 lists.asSequence().flatten().toList()
             }.map { list ->
@@ -353,6 +357,7 @@ class MediaSourceMediaFetcher(
                     if (it == null)
                         logger.error { "cumulativeResults is completed normally, however it shouldn't" }
                 }
+        }
 
         override val hasCompleted = if (mediaSourceResults.isEmpty()) {
             flowOf(CompletedConditions.AllCompleted)

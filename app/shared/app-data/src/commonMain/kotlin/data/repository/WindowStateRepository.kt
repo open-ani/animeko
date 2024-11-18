@@ -9,9 +9,14 @@
 
 package me.him188.ani.app.data.repository
 
+import androidx.compose.ui.unit.Dp
 import androidx.datastore.core.DataStore
 import kotlinx.coroutines.flow.Flow
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 
 interface WindowStateRepository : Repository {
     val flow: Flow<SavedWindowState?>
@@ -20,11 +25,21 @@ interface WindowStateRepository : Repository {
 
 @Serializable
 data class SavedWindowState(
-    val x: Float,
-    val y: Float,
-    val width: Float,
-    val height: Float,
+    val x: @Serializable(DpSerializer::class) Dp, // dp
+    val y: @Serializable(DpSerializer::class) Dp, // dp
+    val width: @Serializable(DpSerializer::class) Dp, // dp
+    val height: @Serializable(DpSerializer::class) Dp, // dp
 )
+
+private object DpSerializer : KSerializer<Dp> {
+    override val descriptor = Float.serializer().descriptor
+
+    override fun serialize(encoder: Encoder, value: Dp) {
+        encoder.encodeFloat(value.value)
+    }
+
+    override fun deserialize(decoder: Decoder): Dp = Dp(decoder.decodeFloat())
+}
 
 class WindowStateRepositoryImpl(
     private val store: DataStore<SavedWindowState?>,

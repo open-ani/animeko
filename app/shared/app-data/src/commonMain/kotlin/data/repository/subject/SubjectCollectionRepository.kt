@@ -69,6 +69,7 @@ import me.him188.ani.datasources.bangumi.models.BangumiUserSubjectCollectionModi
 import me.him188.ani.datasources.bangumi.processing.toCollectionType
 import me.him188.ani.datasources.bangumi.processing.toSubjectCollectionType
 import me.him188.ani.utils.coroutines.IO_
+import me.him188.ani.utils.coroutines.flows.flowOfEmptyList
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.platform.currentTimeMillis
 import kotlin.coroutines.CoroutineContext
@@ -200,6 +201,9 @@ class SubjectCollectionRepositoryImpl(
         types: List<UnifiedCollectionType>?, // null for all
     ): Flow<List<SubjectCollectionInfo>> = subjectCollectionDao.filterMostRecentUpdated(types, limit)
         .flatMapLatest { list ->
+            if (list.isEmpty()) {
+                return@flatMapLatest flowOfEmptyList()
+            }
             combine(
                 list.map { entity ->
                     episodeCollectionRepository.subjectEpisodeCollectionInfosFlow(entity.subjectId)
@@ -508,8 +512,8 @@ internal fun BatchSubjectDetails.toEntity(
             nsfw = nsfw,
             imageLarge = imageLarge,
             totalEpisodes =
-            @Suppress("DEPRECATION")
-            totalEpisodes,
+                @Suppress("DEPRECATION")
+                totalEpisodes,
             airDate = airDate,
             tags = tags,
             aliases = aliases,

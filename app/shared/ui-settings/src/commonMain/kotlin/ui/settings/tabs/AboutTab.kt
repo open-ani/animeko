@@ -90,6 +90,9 @@ class AboutTabViewModel : AbstractViewModel(), KoinComponent {
                 storage.listFlow
             }.onStart { emit(emptyList()) }
         }
+        if (mediaCacheListFromStorages.isEmpty()) {
+            return@run flowOf(0)
+        }
         combine(mediaCacheListFromStorages) { lists ->
             lists.asSequence().flatten().count { it.isValid() }
         }

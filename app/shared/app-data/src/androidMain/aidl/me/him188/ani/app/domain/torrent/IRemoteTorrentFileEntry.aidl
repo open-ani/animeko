@@ -1,7 +1,9 @@
 // IRemoteTorrentFileEntry.aidl
 package me.him188.ani.app.domain.torrent;
 
-import me.him188.ani.app.domain.torrent.ITorrentFileEntryStatsCallback;
+import me.him188.ani.app.domain.torrent.callback.ITorrentFileEntryStatsCallback;
+import me.him188.ani.app.domain.torrent.cont.ContTorrentFileEntryGetInputParams;
+import me.him188.ani.app.domain.torrent.cont.ContTorrentFileEntryResolveFile;
 import me.him188.ani.app.domain.torrent.IRemotePieceList;
 import me.him188.ani.app.domain.torrent.IRemoteTorrentFileHandle;
 import me.him188.ani.app.domain.torrent.IDisposableHandle;
@@ -22,11 +24,11 @@ interface IRemoteTorrentFileEntry {
 	
 	IRemoteTorrentFileHandle createHandle();
 	
-	String resolveFile();
+	IDisposableHandle resolveFile(in ContTorrentFileEntryResolveFile cont);
 	
 	String resolveFileMaybeEmptyOrNull();
 	
-	PTorrentInputParameter getTorrentInputParams();
+	IDisposableHandle getTorrentInputParams(in ContTorrentFileEntryGetInputParams cont);
 	
 	void torrentInputOnWait(int pieceIndex);
 }

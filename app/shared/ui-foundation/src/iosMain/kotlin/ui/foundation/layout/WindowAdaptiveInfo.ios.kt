@@ -7,6 +7,8 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
+@file:Suppress("NOTHING_TO_INLINE")
+
 package me.him188.ani.app.ui.foundation.layout
 
 import androidx.compose.material3.adaptive.WindowAdaptiveInfo

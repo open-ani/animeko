@@ -24,6 +24,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 import me.him188.ani.app.domain.media.cache.storage.MediaCacheStorage
 import me.him188.ani.app.ui.foundation.HasBackgroundScope
+import me.him188.ani.utils.coroutines.flows.flowOfEmptyList
 
 abstract class MediaCacheManager(
     val storagesIncludingDisabled: List<MediaCacheStorage>,
@@ -36,8 +37,11 @@ abstract class MediaCacheManager(
         }
     }
 
-    private val cacheListFlow: Flow<List<_root_ide_package_.me.him188.ani.app.domain.media.cache.MediaCache>> by lazy {
-        combine(storagesIncludingDisabled.map { it.listFlow }) {
+    private val cacheListFlow: Flow<List<MediaCache>> by lazy {
+        val flows = storagesIncludingDisabled.map { it.listFlow }
+        if (flows.isEmpty()) {
+            flowOfEmptyList()
+        } else combine(flows) {
             it.asSequence().flatten().toList()
         }
     }
@@ -45,7 +49,7 @@ abstract class MediaCacheManager(
     @Stable
     fun listCacheForSubject(
         subjectId: Int,
-    ): Flow<List<_root_ide_package_.me.him188.ani.app.domain.media.cache.MediaCache>> {
+    ): Flow<List<MediaCache>> {
         val subjectIdString = subjectId.toString()
         return cacheListFlow.map { list ->
             list.filter { cache ->
@@ -65,8 +69,8 @@ abstract class MediaCacheManager(
         val subjectIdString = subjectId.toString()
         val episodeIdString = episodeId.toString()
         return cacheListFlow.transformLatest { list ->
-            var hasAnyCached: _root_ide_package_.me.him188.ani.app.domain.media.cache.MediaCache? = null
-            var hasAnyCaching: _root_ide_package_.me.him188.ani.app.domain.media.cache.MediaCache? = null
+            var hasAnyCached: MediaCache? = null
+            var hasAnyCaching: MediaCache? = null
 
             for (mediaCache in list) {
                 if (mediaCache.metadata.subjectId == subjectIdString && mediaCache.metadata.episodeId == episodeIdString) {
@@ -94,7 +98,7 @@ abstract class MediaCacheManager(
         }.flowOn(Dispatchers.Default)
     }
 
-    suspend fun deleteCache(cache: _root_ide_package_.me.him188.ani.app.domain.media.cache.MediaCache): Boolean {
+    suspend fun deleteCache(cache: MediaCache): Boolean {
         for (storage in enabledStorages.first()) {
             if (storage.delete(cache)) {
                 return true
@@ -103,7 +107,7 @@ abstract class MediaCacheManager(
         return false
     }
 
-    suspend fun deleteFirstCache(filter: (_root_ide_package_.me.him188.ani.app.domain.media.cache.MediaCache) -> Boolean): Boolean {
+    suspend fun deleteFirstCache(filter: (MediaCache) -> Boolean): Boolean {
         for (storage in enabledStorages.first()) {
             if (storage.deleteFirst(filter)) {
                 return true
