@@ -177,18 +177,18 @@ class TorrentDownloadController(
 
     fun onPieceDownloaded(pieceIndex: Int) = synchronized(this) {
         // 完成了首尾 metadata 的 piece, 不移动窗口
-        if (highPieces.remove(pieceIndex)) {
+        if (highPieces.isNotEmpty() && highPieces.remove(pieceIndex)) {
             priorities.downloadOnly(highPieces, downloadingNormalPieces)
             return@synchronized
         }
-        // 完成了窗口之外的 piece, 不移动窗口
-        if (!downloadingNormalPieces.remove(pieceIndex)) {
-            return
-        }
-
         // 所有 normal piece 都下载完了, 不再处理 window
         if (allNormalPieceDownloaded) {
             return@synchronized
+        }
+        
+        // 完成了窗口之外的 piece, 不移动窗口
+        if (!downloadingNormalPieces.remove(pieceIndex)) {
+            return
         }
 
         if (pieceIndex.indexInNormalPieceList == currentWindowStartIndex) {
