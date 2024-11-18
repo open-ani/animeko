@@ -57,7 +57,9 @@ class AniAppViewModel : AbstractViewModel(), KoinComponent {
      * TODO: 当用户从条目页返回时, state 应当被清除
      *  但目前保留着也不会有很大浪费
      */
-    val subjectDetailsStateLoader = SubjectDetailsStateLoader(subjectDetailsStateFactory, backgroundScope)
+    val subjectDetailsStateLoader by lazy {
+        SubjectDetailsStateLoader(subjectDetailsStateFactory, backgroundScope)
+    }
 }
 
 @Composable
