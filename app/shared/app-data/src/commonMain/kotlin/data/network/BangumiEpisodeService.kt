@@ -130,8 +130,17 @@ class EpisodeRepositoryImpl(
     private fun getEpisodesBySubjectId(subjectId: Int, type: BangumiEpType?): Flow<BangumiEpisode> {
         val episodes = PageBasedPagedSource { page ->
             withContext(ioDispatcher) {
-                client.getApi().getEpisodes(subjectId, type, offset = page * 100, limit = 100).body().run {
-                    Paged(this.total ?: 0, !this.data.isNullOrEmpty(), this.data.orEmpty())
+                try {
+                    client.getApi().getEpisodes(subjectId, type, offset = page * 100, limit = 100).body().run {
+                        Paged(this.total ?: 0, !this.data.isNullOrEmpty(), this.data.orEmpty())
+                    }
+                } catch (e: ClientRequestException) {
+                    if (e.response.status == HttpStatusCode.BadRequest
+                        || e.response.status == HttpStatusCode.NotFound
+                    ) {
+                        return@withContext Paged.empty()
+                    }
+                    throw e
                 }
             }
         }
@@ -154,23 +163,36 @@ class EpisodeRepositoryImpl(
         } catch (e: ClientRequestException) {
             if (e.response.status == HttpStatusCode.NotFound
                 || e.response.status == HttpStatusCode.Unauthorized
+                || e.response.status == HttpStatusCode.BadRequest // #1031
             ) {
                 return null
             }
             throw e
         }
 
+        if (firstPage.data.isNullOrEmpty()) {
+            return null
+        }
+
         val episodes = PageBasedPagedSource { page ->
             val resp = if (page == 0) {
                 firstPage
             } else {
-                withContext(ioDispatcher) {
-                    client.getApi().getUserSubjectEpisodeCollection(
-                        subjectId,
-                        episodeType = type,
-                        offset = page * 100,
-                        limit = 100,
-                    ).body()
+                try {
+                    withContext(ioDispatcher) {
+                        client.getApi().getUserSubjectEpisodeCollection(
+                            subjectId,
+                            episodeType = type,
+                            offset = page * 100,
+                            limit = 100,
+                        ).body()
+                    }
+                } catch (e: ClientRequestException) {
+                    if (e.response.status == HttpStatusCode.BadRequest // #1031
+                    ) {
+                        return@PageBasedPagedSource Paged.empty()
+                    }
+                    throw e
                 }
             }
             Paged.processPagedResponse(resp.total, 100, resp.data)
