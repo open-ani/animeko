@@ -68,6 +68,8 @@ import me.him188.ani.app.navigation.NavRoutes
 import me.him188.ani.app.platform.AniBuildConfigDesktop
 import me.him188.ani.app.platform.AniCefApp
 import me.him188.ani.app.platform.AppStartupTasks
+import me.him188.ani.app.platform.AppTerminator
+import me.him188.ani.app.platform.DefaultAppTerminator
 import me.him188.ani.app.platform.DesktopContext
 import me.him188.ani.app.platform.ExtraWindowProperties
 import me.him188.ani.app.platform.GrantedPermissionManager
@@ -244,6 +246,7 @@ object AniDesktop {
                     single<PermissionManager> { GrantedPermissionManager }
                     single<NotifManager> { NoopNotifManager }
                     single<WindowStateRepository> { WindowStateRepositoryImpl(context.dataStores.savedWindowStateStore) }
+                    single<AppTerminator> { DefaultAppTerminator }
                 },
             )
         }.startCommonKoinModule(coroutineScope)

@@ -10,9 +10,12 @@
 package me.him188.ani.android
 
 import android.content.Intent
+import android.os.Handler
+import android.os.Looper
 import android.widget.Toast
 import androidx.core.app.NotificationManagerCompat
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -35,10 +38,15 @@ import me.him188.ani.app.domain.torrent.TorrentEngine
 import me.him188.ani.app.domain.torrent.TorrentEngineFactory
 import me.him188.ani.app.domain.torrent.TorrentManager
 import me.him188.ani.app.domain.torrent.client.RemoteAnitorrentEngine
+import me.him188.ani.app.domain.torrent.service.AniTorrentService
 import me.him188.ani.app.domain.torrent.service.TorrentServiceConnection
 import me.him188.ani.app.navigation.BrowserNavigator
 import me.him188.ani.app.platform.AndroidPermissionManager
+import me.him188.ani.app.platform.AppTerminator
+import me.him188.ani.app.platform.BaseComponentActivity
+import me.him188.ani.app.platform.ContextMP
 import me.him188.ani.app.platform.PermissionManager
+import me.him188.ani.app.platform.findActivity
 import me.him188.ani.app.platform.notification.AndroidNotifManager
 import me.him188.ani.app.platform.notification.NotifManager
 import me.him188.ani.app.tools.update.AndroidUpdateInstaller
@@ -59,6 +67,7 @@ import org.koin.dsl.module
 import java.io.File
 import kotlin.concurrent.thread
 import kotlin.coroutines.CoroutineContext
+import kotlin.system.exitProcess
 
 fun getAndroidModules(
     defaultTorrentCacheDir: File,
@@ -205,4 +214,19 @@ fun getAndroidModules(
         )
     }
     single<UpdateInstaller> { AndroidUpdateInstaller() }
+
+    single<AppTerminator> {
+        object : AppTerminator {
+            override fun exitApp(context: ContextMP, status: Int): Nothing {
+                runBlocking(Dispatchers.Main.immediate) {
+                    (context.findActivity() as? BaseComponentActivity)?.finishAffinity()
+                    context.startService(
+                        Intent(context, AniTorrentService::class.java)
+                            .apply { putExtra("stopService", true) },
+                    )
+                    exitProcess(status)
+                }
+            }
+        }
+    }
 }

@@ -29,6 +29,7 @@ import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.cache.engine.TorrentMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.storage.DirectoryMediaCacheStorage
 import me.him188.ani.app.domain.media.cache.storage.DirectoryMediaCacheStorage.MediaCacheSave
+import me.him188.ani.app.platform.AppTerminator
 import me.him188.ani.app.platform.ContextMP
 import me.him188.ani.app.platform.PermissionManager
 import me.him188.ani.app.platform.findActivity
@@ -59,6 +60,7 @@ class AndroidTorrentCacheViewModel(
     private val permissionManager: PermissionManager,
 ) : AbstractViewModel(), KoinComponent {
     private val cacheManager: MediaCacheManager by inject()
+    private val appTerminator: AppTerminator by inject()
 
     private val defaultTorrentCacheDir by lazy {
         context.filesDir.resolve(DEFAULT_TORRENT_CACHE_DIR_NAME).absolutePath
@@ -289,8 +291,7 @@ class AndroidTorrentCacheViewModel(
     }
 
     fun exitApp(): Nothing {
-        context.findActivity()?.finishAffinity()
-        exitProcess(0)
+        appTerminator.exitApp(context, 0)
     }
 
     /**
