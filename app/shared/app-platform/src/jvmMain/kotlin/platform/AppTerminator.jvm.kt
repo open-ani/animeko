@@ -9,16 +9,15 @@
 
 package me.him188.ani.app.platform
 
-/**
- * 用于终止 app 运行
- *
- * 通常在 UI 尝试关闭 App 时使用.
- *
- * * Desktop 只需要 exitProcess.
- * * Android 需要 exitProcess 的同时关闭 torrent 服务.
- */
-interface AppTerminator {
-    fun exitApp(context: ContextMP, status: Int): Nothing
-}
+import kotlin.system.exitProcess
 
-expect val DefaultAppTerminator: AppTerminator
+actual val DefaultAppTerminator: AppTerminator get() = NativeAppTerminator
+
+/**
+ * Default app terminator which invokes [exitProcess] to exit process.
+ */
+private object NativeAppTerminator : AppTerminator {
+    override fun exitApp(context: ContextMP, status: Int): Nothing {
+        exitProcess(status)
+    }
+}
