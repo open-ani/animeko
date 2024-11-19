@@ -10,7 +10,6 @@
 package me.him188.ani.android
 
 import android.content.Intent
-import android.os.Build
 import android.widget.Toast
 import androidx.core.app.NotificationManagerCompat
 import kotlinx.coroutines.CoroutineScope
@@ -63,6 +62,7 @@ import kotlin.coroutines.CoroutineContext
 
 fun getAndroidModules(
     defaultTorrentCacheDir: File,
+    torrentServiceConnection: TorrentServiceConnection,
     coroutineScope: CoroutineScope,
 ) = module {
     single<PermissionManager> {
@@ -86,12 +86,7 @@ fun getAndroidModules(
     }
     single<BrowserNavigator> { AndroidBrowserNavigator() }
 
-    single<TorrentServiceConnection> {
-        TorrentServiceConnection(
-            get(),
-            onRequiredRestartService = { AniApplication.instance.startAniTorrentService() },
-        )
-    }
+    single<TorrentServiceConnection> { torrentServiceConnection }
     
     single<TorrentManager> {
         val context = androidContext()
@@ -173,7 +168,7 @@ fun getAndroidModules(
             get(),
             get(),
             baseSaveDir = { Path(cacheDir).inSystem },
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            if (AniApplication.FEATURE_USE_TORRENT_SERVICE) {
                 object : TorrentEngineFactory {
                     override fun createTorrentEngine(
                         parentCoroutineContext: CoroutineContext,

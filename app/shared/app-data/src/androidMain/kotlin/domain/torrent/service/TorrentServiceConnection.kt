@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.domain.torrent.service
 
+import android.app.ForegroundServiceStartNotAllowedException
 import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
@@ -86,6 +87,16 @@ class TorrentServiceConnection(
     private var shouldRestartServiceImmediately = false
     private val restartServiceIntentFilter = IntentFilter(AniTorrentService.INTENT_STARTUP)
 
+    /**
+     * 在 [AniApplication][me.him188.ani.android.AniApplication] 启动时设置, 该方法设定了服务是否正常随着 app 的启动而启动.
+     *
+     * 因为 app 可能会在后台启动 (例如息屏的时候使用 adb am 指令), 此时启动前台服务会抛出 [ForegroundServiceStartNotAllowedException].
+     * 如果出现了这种情况, 需要延迟启动服务到 Activity 出现时, 也就是 [ON_START][Lifecycle.Event.ON_START].
+     *
+     * @see setStartServiceResultWhileAppStartup
+     */
+    var startServiceResultWhileAppStartup = false
+
     private val acquireWakeLockIntent by lazy {
         Intent(context, AniTorrentService::class.java).apply {
             putExtra("acquireWakeLock", 1.minutes.inWholeMilliseconds)
@@ -95,17 +106,21 @@ class TorrentServiceConnection(
     override fun onStateChanged(source: LifecycleOwner, event: Lifecycle.Event) {
         when (event) {
             Lifecycle.Event.ON_CREATE -> {
-                // 立即获取 bind 结果, 并更新 connected 状态
-                // 如果在 ON_START 时 onServiceConnected 还没有回调
-                // 那 ON_START 会尝试重启 service
-                connected.value = bindService()
+                if (startServiceResultWhileAppStartup) {
+                    bindService()
+                    // 服务启动成功了，一定可以连接
+                    // 因为 onServiceConnected 如果在 Lifecycle.Event.ON_START 之后调用, 会尝试重新连接
+                    connected.value = true
+                }
             }
 
             Lifecycle.Event.ON_START -> {
                 shouldRestartServiceImmediately = true
                 // 如果 app 在后台时断开了 service 连接, 需要在切回前台时重新启动
                 if (!connected.value) {
-                    logger.debug { "AniTorrentService is disconnected while app is switching to foreground, restarting." }
+                    logger.debug {
+                        "AniTorrentService is not started or stopped while app is switching to foreground, restarting."
+                    }
                     restartService()
                 }
             }
@@ -151,6 +166,7 @@ class TorrentServiceConnection(
     override fun onServiceDisconnected(name: ComponentName?) {
         logger.debug { "AniTorrentService is disconnected, name = $name" }
         synchronized(lock) {
+            binder.cancel()
             binder = CompletableDeferred()
         }
         connected.value = false
