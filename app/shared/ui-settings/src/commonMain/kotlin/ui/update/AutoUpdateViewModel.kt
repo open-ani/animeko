@@ -212,8 +212,16 @@ class NewVersion(
 class Changelog(
     val version: String,
     val publishedAt: String,
-    val changes: String
-)
+    changes: String
+) {
+    val changes = changes.lineSequence()
+        .filterNot {
+            it.startsWith("**Full Changelog**: ", ignoreCase = true)
+                    || it.startsWith("Full Changelog:", ignoreCase = true)
+        }
+        .joinToString("\n")
+        .trim()
+}
 
 @TestOnly
 val TestNewVersion

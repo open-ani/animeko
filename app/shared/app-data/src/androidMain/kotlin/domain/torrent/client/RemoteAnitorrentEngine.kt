@@ -16,7 +16,7 @@ import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -37,7 +37,6 @@ import me.him188.ani.app.torrent.api.TorrentDownloader
 import me.him188.ani.datasources.api.source.MediaSourceLocation
 import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.coroutines.childScope
-import me.him188.ani.utils.coroutines.onReplacement
 import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.io.absolutePath
 import me.him188.ani.utils.logging.logger
@@ -129,16 +128,10 @@ class RemoteAnitorrentEngine(
         val stateFlow = settingsFlow.stateIn(this)
         val remoteCall = RetryRemoteObject(fetchRemoteScope) { getBinder() }
 
-        connection.connected
-            .filter { it }
-            .map {
-                launch {
-                    stateFlow.collect {
-                        remoteCall.call { transact(it) }
-                    }
-                }
+        connection.connected.filter { it }.collectLatest {
+            stateFlow.collect {
+                remoteCall.call { transact(it) }
             }
-            .onReplacement { it.cancel() }
-            .collect()
+        }
     }
 }

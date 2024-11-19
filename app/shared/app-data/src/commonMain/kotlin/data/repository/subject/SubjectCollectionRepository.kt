@@ -238,7 +238,13 @@ class SubjectCollectionRepositoryImpl(
                 entity.toSubjectCollectionInfo(
                     episodes = episodesOfAnyType
                         .asSequence()
-                        .filter { it.episodeType == epType }
+                        .let { sequence ->
+                            if (epType == null) {
+                                sequence
+                            } else {
+                                sequence.filter { it.episodeType == epType }
+                            }
+                        }
                         .map { it.toEpisodeCollectionInfo() }
                         .toList(),
                     currentDate = date,

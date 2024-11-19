@@ -7,19 +7,18 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.app.platform.features
+package me.him188.ani.app.platform
 
-import me.him188.ani.app.platform.Context
-
-interface AudioManager {
-    /**
-     * @return 0..1
-     */
-    fun getVolume(streamType: StreamType): Float
-
-    fun setVolume(streamType: StreamType, levelPercentage: Float)
+/**
+ * 用于终止 app 运行
+ *
+ * 通常在 UI 尝试关闭 App 时使用.
+ *
+ * * Desktop 只需要 exitProcess.
+ * * Android 需要 exitProcess 的同时关闭 torrent 服务.
+ */
+interface AppTerminator {
+    fun exitApp(context: ContextMP, status: Int): Nothing
 }
 
-enum class StreamType {
-    MUSIC,
-}
+expect val DefaultAppTerminator: AppTerminator

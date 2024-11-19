@@ -7,19 +7,14 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.app.platform.features
+package me.him188.ani.app.platform
 
-import me.him188.ani.app.platform.Context
+import kotlin.system.exitProcess
 
-interface AudioManager {
-    /**
-     * @return 0..1
-     */
-    fun getVolume(streamType: StreamType): Float
+actual val DefaultAppTerminator: AppTerminator get() = JvmAppTerminator
 
-    fun setVolume(streamType: StreamType, levelPercentage: Float)
-}
-
-enum class StreamType {
-    MUSIC,
+private object JvmAppTerminator : AppTerminator {
+    override fun exitApp(context: ContextMP, status: Int): Nothing {
+        exitProcess(status)
+    }
 }

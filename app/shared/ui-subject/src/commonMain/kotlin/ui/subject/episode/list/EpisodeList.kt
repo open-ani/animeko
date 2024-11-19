@@ -123,6 +123,7 @@ fun EpisodeListDialog(
 
                     Row(
                         Modifier.clipToBounds()
+                            .weight(1f, fill = false)
                             .heightIn(max = 360.dp)
                             .padding(top = 16.dp)
                             .verticalScroll(rememberScrollState()),
