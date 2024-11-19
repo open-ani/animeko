@@ -298,3 +298,10 @@ jobs:
           AWS_BASEURL: ${{ secrets.AWS_BASEURL }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
           AWS_BUCKET: ${{ secrets.AWS_BUCKET }}
+
+      - if: always() # steps.packageReleaseDistributionForCurrentOS.conclusion == 'failure'
+        name: Upload compose logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: compose-logs-release-${{ matrix.os }}-${{ matrix.arch }}
+          path: app/desktop/build/compose/logs
