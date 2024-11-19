@@ -12,4 +12,5 @@ data class IkarosEpisodeMeta(
     val description: String,
     @SerialName("air_time") val airTime: String?,
     val sequence: Int,
+    val group: IkarosEpisodeGroup,
 )
