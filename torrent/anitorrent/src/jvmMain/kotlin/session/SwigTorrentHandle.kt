@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.app.torrent.anitorrent.session
 
 import me.him188.ani.app.torrent.anitorrent.HandleId
@@ -29,10 +38,25 @@ class SwigTorrentHandle(
         native.set_file_priority(index, priority.toLibtorrentValue())
     }
 
-    override fun getState(): TorrentHandleState {
+    override fun getState(): TorrentHandleState? {
         val state = native._state
         if (state == -1) {
-            error("Failed to get state, native returned -1 (session is invalid)")
+            // 当关闭 session 时, 还会 set 文件优先级为 IGNORE, 导致 libtorrent 认为任务已经完成, 触发 [onTorrentFinished]. 
+            // 但是此时 session 已经关闭, 调用 native get session 就会出错.
+            // 示例日志:
+            /*
+2024-11-20 22:47:38,170 [DEBUG] AnitorrentDownloadSession: [5768824][TorrentDownloadControl] Prioritizing pieces: [5, 6, 8, 9, 10, 11, 12, 14, 15, 16, 17, 18, 19, 20, 21, 22, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42]
+2024-11-20 22:47:40,486 [INFO ] EpisodePlayHistoryRepository: save or update play progress EpisodeHistory(episodeId=1353857, positionMillis=6355)
+2024-11-20 22:47:40,488 [INFO ] VlcjVideoPlayerState: clearVideoSource: Cleaning up player
+2024-11-20 22:47:40,488 [INFO ] AnitorrentEntry: [5768824] Close handle [Up to 21°C] Re：從零開始的異世界生活 第三季 - 08 (Baha 1920x1080 AVC AAC MP4) [CE8CEA36].mp4, remove priority request
+2024-11-20 22:47:40,488 [INFO ] AnitorrentEntry: [5768824] Set file priority to IGNORE: [Up to 21°C] Re：從零開始的異世界生活 第三季 - 08 (Baha 1920x1080 AVC AAC MP4) [CE8CEA36].mp4
+2024-11-20 22:47:40,488 [DEBUG] SeekableInputCallbackMedia: Closing CallbackMedia me.him188.ani.app.videoplayer.io.SeekableInputCallbackMedia@17ac9432
+2024-11-20 22:47:40,489 [INFO ] AnitorrentDownloadSession: [5768824] closing
+2024-11-20 22:47:41,028 [INFO ] AnitorrentDownloadSession: [5768824] onTorrentFinished
+             */
+            // 所以返回 null 表示 session 已经关闭
+            return null
+//            error("Failed to get state, native returned -1 (session is invalid)")
         }
         return TorrentHandleState.entries[state]
     }

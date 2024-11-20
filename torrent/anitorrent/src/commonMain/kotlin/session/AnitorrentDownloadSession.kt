@@ -396,19 +396,20 @@ class AnitorrentDownloadSession(
         force: Boolean,
     ): Boolean = synchronized(reloadFilesLock) {
         val handleIsValid = handle.isValid
-        val metadataReady = handle.getState().isMetadataReady()
+        val state = handle.getState()
+        val metadataReady = state?.isMetadataReady() == true
         if (actualTorrentInfo.isActive && handleIsValid && metadataReady) {
             logger.info { "[$handleId] reloadFiles" }
             val info = handle.reloadFile() // split to multiple lines for debugging
             if (info.fileCount == 0 && !force) {
-                logger.debug { "[$handleId] reloadFiles fileCount is 0, actualTorrentInfo=$actualTorrentInfo handleIsValid=$handleIsValid, metadataReady=$metadataReady" }
+                logger.debug { "[$handleId] reloadFiles fileCount is 0, actualTorrentInfo=$actualTorrentInfo handleIsValid=$handleIsValid, state=$state, metadataReady=$metadataReady" }
                 return false
             }
             initializeTorrentInfo(info)
             shouldTryLoadFiles.complete(false) // cancel coroutine
             return true
         } else {
-            logger.debug { "[$handleId] reloadFiles condition not met, actualTorrentInfo=$actualTorrentInfo handleIsValid=$handleIsValid, metadataReady=$metadataReady" }
+            logger.debug { "[$handleId] reloadFiles condition not met, actualTorrentInfo=$actualTorrentInfo handleIsValid=$handleIsValid, state=$state, metadataReady=$metadataReady" }
             return false
         }
     }

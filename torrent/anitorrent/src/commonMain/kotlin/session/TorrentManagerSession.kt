@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.app.torrent.anitorrent.session
 
 import kotlinx.io.files.Path
@@ -35,7 +44,10 @@ interface TorrentHandle {
     fun resume()
     fun setFilePriority(index: Int, priority: FilePriority)
 
-    fun getState(): TorrentHandleState
+    /**
+     * @return 当前状态, `null` if session is closed
+     */
+    fun getState(): TorrentHandleState?
     fun reloadFile(): TorrentDescriptor
 
     fun getPeers(): List<PeerInfo>
