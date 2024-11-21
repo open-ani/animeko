@@ -44,6 +44,7 @@ import me.him188.ani.app.data.models.subject.subjectInfo
 import me.him188.ani.app.data.models.trending.TrendingSubjectInfo
 import me.him188.ani.app.domain.session.AuthState
 import me.him188.ani.app.navigation.LocalNavigator
+import me.him188.ani.app.navigation.SubjectDetailPreload
 import me.him188.ani.app.ui.adaptive.AniTopAppBar
 import me.him188.ani.app.ui.adaptive.AniTopAppBarDefaults
 import me.him188.ani.app.ui.adaptive.NavTitleHeader
@@ -137,8 +138,11 @@ fun ExplorationPage(
                 onClick = {
                     navigator.navigateSubjectDetails(
                         subjectId = it.bangumiId,
-                        subjectNameCN = it.nameCn,
-                        subjectCoverUrl = it.imageLarge,
+                        preload = SubjectDetailPreload(
+                            id = it.bangumiId,
+                            name = it.nameCn,
+                            coverUrl = it.imageLarge,
+                        ),
                     )
                 },
                 contentPadding = PaddingValues(horizontal = horizontalPadding, vertical = 8.dp),
@@ -155,9 +159,12 @@ fun ExplorationPage(
                 onClick = {
                     navigator.navigateSubjectDetails(
                         subjectId = it.subjectInfo.subjectId,
-                        subjectName = it.subjectInfo.name,
-                        subjectNameCN = it.subjectInfo.nameCn,
-                        subjectCoverUrl = it.subjectInfo.imageLarge,
+                        preload = SubjectDetailPreload(
+                            it.subjectInfo.subjectId,
+                            it.subjectInfo.name,
+                            it.subjectInfo.nameCn,
+                            it.subjectInfo.imageLarge,
+                        ),
                     )
                 },
                 onPlay = {

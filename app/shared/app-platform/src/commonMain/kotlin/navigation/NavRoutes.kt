@@ -16,7 +16,12 @@ import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.TravelExplore
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
+import androidx.core.bundle.Bundle
+import androidx.navigation.NavType
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.serializer
 
 @Serializable
 sealed class NavRoutes {
@@ -51,9 +56,7 @@ sealed class NavRoutes {
     @Serializable
     data class SubjectDetail(
         val subjectId: Int,
-        val subjectName: String = "",
-        val subjectNameCN: String = "",
-        val subjectCoverUrl: String = "",
+        val preload: SubjectDetailPreload? = null,
     ) : NavRoutes()
 
     @Serializable
@@ -84,6 +87,18 @@ sealed class NavRoutes {
         val cacheId: String,
     ) : NavRoutes()
 
+}
+
+@Serializable
+data class SubjectDetailPreload(
+    val id: Int,
+    val name: String = "",
+    val nameCN: String = "",
+    val coverUrl: String = "",
+) {
+    companion object {
+        val NavType = SerializableNavType(serializer())
+    }
 }
 
 @Serializable

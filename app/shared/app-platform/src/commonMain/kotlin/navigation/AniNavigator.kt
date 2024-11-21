@@ -61,11 +61,9 @@ interface AniNavigator {
 
     fun navigateSubjectDetails(
         subjectId: Int,
-        subjectName: String = "",
-        subjectNameCN: String = "",
-        subjectCoverUrl: String = ""
+        preload: SubjectDetailPreload? = null
     ) {
-        navigator.navigate(NavRoutes.SubjectDetail(subjectId, subjectName, subjectNameCN, subjectCoverUrl))
+        navigator.navigate(NavRoutes.SubjectDetail(subjectId, preload))
     }
 
     fun navigateSubjectCaches(subjectId: Int) {

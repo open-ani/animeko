@@ -44,6 +44,7 @@ import me.him188.ani.app.navigation.MainScenePage
 import me.him188.ani.app.navigation.NavRoutes
 import me.him188.ani.app.navigation.OverrideNavigation
 import me.him188.ani.app.navigation.SettingsTab
+import me.him188.ani.app.navigation.SubjectDetailPreload
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.ui.adaptive.navigation.AniNavigationSuiteDefaults
 import me.him188.ani.app.ui.cache.CacheManagementPage
@@ -199,18 +200,16 @@ private fun AniAppContentImpl(
                 exitTransition = exitTransition,
                 popEnterTransition = popEnterTransition,
                 popExitTransition = popExitTransition,
-            ) { backStackEntry ->
+                typeMap = mapOf(
+                    typeOf<SubjectDetailPreload?>() to SubjectDetailPreload.NavType,
+                ),
+
+                ) { backStackEntry ->
                 val details = backStackEntry.toRoute<NavRoutes.SubjectDetail>()
                 val vm = viewModel<SubjectDetailsViewModel>(key = details.subjectId.toString()) {
-                    val preloadSubjectInfo = if (details.subjectName.isEmpty() &&
-                        details.subjectNameCN.isEmpty() &&
-                        details.subjectCoverUrl.isEmpty()
-                    ) null else SubjectInfo.createMinimal(
-                        details.subjectId,
-                        details.subjectName,
-                        details.subjectCoverUrl,
-                        details.subjectNameCN,
-                    )
+                    val preloadSubjectInfo = details.preload?.run {
+                        SubjectInfo.createMinimal(id, name, coverUrl, nameCN)
+                    }
                     SubjectDetailsViewModel(details.subjectId, preloadSubjectInfo)
                 }
                 CompositionLocalProvider(
