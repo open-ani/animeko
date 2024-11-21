@@ -70,6 +70,8 @@ import me.him188.ani.app.ui.subject.rating.EditableRatingState
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
+import me.him188.ani.utils.logging.info
+import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.platform.annotations.TestOnly
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -124,11 +126,11 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
 
             subjectDetailsStateFlow(
                 null,
-                subjectCollectionRepository.subjectCollectionFlow(subjectId).stateIn(this),
+                subjectCollectionRepository.subjectCollectionFlow(subjectId),
                 subjectProgressStateFactory,
                 authState,
-            ).collect { emit(it) }
-            awaitCancellation()
+                preloadSubjectInfo,
+            ).collect { e -> emit(e) }
         }
     }
 
@@ -169,7 +171,7 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
      */
     private fun CoroutineScope.subjectDetailsStateFlow(
         subjectInfoFlow: Flow<SubjectInfo>?,
-        subjectCollectionInfoFlow: SharedFlow<SubjectCollectionInfo>?,
+        subjectCollectionInfoFlow: Flow<SubjectCollectionInfo>?,
         subjectProgressStateFactory: SubjectProgressStateFactory,
         authState: AuthState,
         preloadSubjectInfo: SubjectInfo? = null,
@@ -183,13 +185,14 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
         }
         coroutineScope {
             if (subjectCollectionInfoFlow != null) {
-                subjectCollectionInfoFlow.collectLatest { subjectCollection ->
+                val stated = subjectCollectionInfoFlow.stateIn(this)
+                stated.collectLatest { subjectCollection ->
                     // only emit actual state when subjectCollectionInfoFlow has value
                     send(
                         createImpl(
                             subjectCollection.subjectInfo,
-                            subjectCollectionInfoFlow,
-                            subjectCollectionInfoFlow.map { it.collectionType }.stateIn(this),
+                            stated,
+                            stated.map { it.collectionType }.stateIn(this),
                             subjectProgressStateFactory,
                             authState,
                         ),
