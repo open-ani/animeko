@@ -10,6 +10,7 @@
 package me.him188.ani.app.ui.subject.details
 
 import androidx.compose.runtime.Stable
+import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateFactory
@@ -21,13 +22,14 @@ import org.koin.core.component.inject
 @Stable
 class SubjectDetailsViewModel(
     subjectId: Int,
+    preloadSubjectInfo: SubjectInfo? = null
 ) : AbstractViewModel(), KoinComponent {
     private val factory: SubjectDetailsStateFactory by inject()
 
     val stateLoader = SubjectDetailsStateLoader(factory, backgroundScope)
 
     init {
-        stateLoader.load(subjectId)
+        stateLoader.load(subjectId, preloadSubjectInfo)
     }
 }
 

@@ -119,6 +119,29 @@ data class SubjectInfo(
             collectionStats = SubjectCollectionStats.Zero,
             completeDate = PackedDate.Invalid,
         )
+
+        /**
+         * 创建一个最小可以显示 subject 大概信息的 subject.
+         * 仅包含[封面图][SubjectInfo.imageLarge]和[名称][SubjectInfo.name].
+         */
+        fun createMinimal(subjectId: Int, name: String, image: String, nameCn: String = ""): SubjectInfo {
+            return SubjectInfo(
+                subjectId = subjectId,
+                subjectType = SubjectType.ANIME,
+                name = name,
+                nameCn = nameCn,
+                summary = "",
+                nsfw = false,
+                imageLarge = image,
+                totalEpisodes = 0,
+                airDate = PackedDate.Invalid,
+                tags = emptyList(),
+                aliases = emptyList(),
+                ratingInfo = RatingInfo.Empty,
+                collectionStats = SubjectCollectionStats.Zero,
+                completeDate = PackedDate.Invalid,
+            )
+        }
     }
 }
 

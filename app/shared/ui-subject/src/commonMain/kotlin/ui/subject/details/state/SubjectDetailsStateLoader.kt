@@ -21,6 +21,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.withContext
+import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.ui.search.SearchProblem
 import me.him188.ani.utils.coroutines.childScope
@@ -41,7 +42,8 @@ class SubjectDetailsStateLoader(
     val isLoading get() = tasker.isRunning
 
     fun load(
-        subjectId: Int
+        subjectId: Int,
+        preloadSubjectInfo: SubjectInfo? = null
     ): Job {
         if (subjectDetailsStateFlow?.value?.info?.subjectId == subjectId) {
             // 已经加载完成了
@@ -56,7 +58,7 @@ class SubjectDetailsStateLoader(
             val flowScope = backgroundScope.childScope()
             runningFlowScope = flowScope
             val resp = try {
-                subjectDetailsStateFactory.create(subjectId).stateIn(flowScope)
+                subjectDetailsStateFactory.create(subjectId, preloadSubjectInfo).stateIn(flowScope)
             } catch (e: CancellationException) {
                 flowScope.cancel()
                 throw e

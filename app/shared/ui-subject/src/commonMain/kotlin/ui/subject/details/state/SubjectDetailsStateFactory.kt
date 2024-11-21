@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.firstOrNull
@@ -36,6 +37,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.preference.EpisodeListProgressTheme
+import me.him188.ani.app.data.models.subject.RatingInfo
 import me.him188.ani.app.data.models.subject.RelatedCharacterInfo
 import me.him188.ani.app.data.models.subject.SelfRatingInfo
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
@@ -74,7 +76,15 @@ import org.koin.core.component.inject
 interface SubjectDetailsStateFactory {
     fun create(subjectInfoFlow: Flow<SubjectInfo>): Flow<SubjectDetailsState>
     fun create(subjectInfo: SubjectInfo): Flow<SubjectDetailsState>
-    fun create(subjectId: Int): Flow<SubjectDetailsState>
+
+    /**
+     * @param preloadSubjectInfo 通常是仅仅包含少量信息的预加载的 subject 信息.
+     *        例如从探索页导航到详情页时, subject 名字和封面图时已知的, 可以作为预加载信息以第一时间显示一些东西.
+     */
+    fun create(
+        subjectId: Int,
+        preloadSubjectInfo: SubjectInfo? = null
+    ): Flow<SubjectDetailsState>
     fun create(subjectCollectionInfo: SubjectCollectionInfo, scope: CoroutineScope): SubjectDetailsState
 }
 
@@ -97,67 +107,26 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
             val authState = createAuthState()
             val subjectProgressStateFactory = createSubjectProgressStateFactory()
 
-
-            subjectInfoFlow.transformLatest { subjectInfo ->
-                coroutineScope {
-                    val subjectCollectionFlow = subjectCollectionRepository.subjectCollectionFlow(subjectInfo.subjectId)
-                        .shareIn(this, started = SharingStarted.Eagerly, replay = 1)
-
-                    emit(
-                        createImpl(
-                            subjectInfo,
-                            subjectCollectionFlow,
-                            subjectCollectionFlow.map { it.collectionType }.stateIn(this),
-                            subjectProgressStateFactory,
-                            authState,
-                        ),
-                    )
-                    awaitCancellation()
-                }
-            }
-            awaitCancellation()
+            subjectDetailsStateFlow(subjectInfoFlow, null, subjectProgressStateFactory, authState)
+                .collect { emit(it) }
         }
     }
 
-    override fun create(
-        subjectInfo: SubjectInfo,
-    ): Flow<SubjectDetailsState> = flow {
-        coroutineScope {
-            val authState = createAuthState()
-            val subjectProgressStateFactory = createSubjectProgressStateFactory()
-            val subjectCollectionFlow = subjectCollectionRepository.subjectCollectionFlow(subjectInfo.subjectId)
-                .shareIn(this, started = SharingStarted.Eagerly, replay = 1)
-
-            emit(
-                createImpl(
-                    subjectInfo,
-                    subjectCollectionFlow,
-                    subjectCollectionFlow.map { it.collectionType }.stateIn(this),
-                    subjectProgressStateFactory,
-                    authState,
-                ),
-            )
-            awaitCancellation()
-        }
+    override fun create(subjectInfo: SubjectInfo): Flow<SubjectDetailsState> {
+        return create(flowOf(subjectInfo))
     }
 
-    override fun create(subjectId: Int): Flow<SubjectDetailsState> = flow {
+    override fun create(subjectId: Int, preloadSubjectInfo: SubjectInfo?): Flow<SubjectDetailsState> = flow {
         coroutineScope {
             val authState = createAuthState()
             val subjectProgressStateFactory = createSubjectProgressStateFactory()
 
-            val subjectCollectionInfoFlow = subjectCollectionRepository.subjectCollectionFlow(subjectId)
-                .stateIn(this)
-            emit(
-                createImpl(
-                    subjectCollectionInfoFlow.value.subjectInfo,
-                    subjectCollectionInfoFlow,
-                    subjectCollectionInfoFlow.map { it.collectionType }.stateIn(this),
-                    subjectProgressStateFactory,
-                    authState,
-                ),
-            )
-            awaitCancellation()
+            subjectDetailsStateFlow(
+                null,
+                subjectCollectionRepository.subjectCollectionFlow(subjectId).stateIn(this),
+                subjectProgressStateFactory,
+                authState,
+            ).collect { emit(it) }
         }
     }
 
@@ -187,6 +156,65 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
     private fun createSubjectProgressStateFactory() = SubjectProgressStateFactory(
         episodeProgressRepository,
     )
+
+    /**
+     * 根据 [subjectInfoFlow] 或 [subjectCollectionInfoFlow] 创建 [SubjectDetailsState] flow.
+     *
+     * [subjectInfoFlow] 和 [subjectCollectionInfoFlow] 只需要传递其中一个即可创建.
+     * 如果同时传递, 则优先使用 [subjectCollectionInfoFlow], 因为 [SubjectCollectionInfo] 包含了 [SubjectInfo].
+     *
+     * @param preloadSubjectInfo 预加载的条目信息, 将最先展示.
+     */
+    private fun CoroutineScope.subjectDetailsStateFlow(
+        subjectInfoFlow: Flow<SubjectInfo>?,
+        subjectCollectionInfoFlow: SharedFlow<SubjectCollectionInfo>?,
+        subjectProgressStateFactory: SubjectProgressStateFactory,
+        authState: AuthState,
+        preloadSubjectInfo: SubjectInfo? = null,
+    ): Flow<SubjectDetailsState> = flow {
+        require(subjectInfoFlow != null || subjectCollectionInfoFlow != null) {
+            "Both subjectCollectionInfoFlow and subjectInfoFlow are null."
+        }
+        // emit preload subject info if present.
+        if (preloadSubjectInfo != null) {
+            emit(createEmptyWithSubjectInfo(preloadSubjectInfo, authState))
+        }
+        coroutineScope {
+            if (subjectCollectionInfoFlow != null) {
+                subjectCollectionInfoFlow.collectLatest { subjectCollection ->
+                    // only emit actual state when subjectCollectionInfoFlow has value
+                    emit(
+                        createImpl(
+                            subjectCollection.subjectInfo,
+                            subjectCollectionInfoFlow,
+                            subjectCollectionInfoFlow.map { it.collectionType }.stateIn(this),
+                            subjectProgressStateFactory,
+                            authState,
+                        ),
+                    )
+                }
+            } else if (subjectInfoFlow != null) {
+                subjectInfoFlow.collectLatest { subjectInfo ->
+                    val subjectCollectionFlow = subjectCollectionRepository
+                        .subjectCollectionFlow(subjectInfo.subjectId)
+                        .shareIn(this, started = SharingStarted.Eagerly, replay = 1)
+
+                    emit(
+                        createImpl(
+                            subjectInfo,
+                            subjectCollectionFlow,
+                            subjectCollectionFlow.map { it.collectionType }.stateIn(this),
+                            subjectProgressStateFactory,
+                            authState,
+                        ),
+                    )
+                }
+            } else {
+                error("unreachable")
+            }
+        }
+    }
+    
 
     private fun CoroutineScope.createImpl(
         subjectInfo: SubjectInfo,
@@ -370,6 +398,63 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
         )
         return state
     }
+
+    private fun CoroutineScope.createEmptyWithSubjectInfo(
+        subjectInfo: SubjectInfo,
+        authState: AuthState
+    ): SubjectDetailsState {
+        return SubjectDetailsState(
+            info = subjectInfo,
+            selfCollectionTypeState = stateOf(UnifiedCollectionType.NOT_COLLECTED),
+            airingLabelState = AiringLabelState(
+                airingInfoState = stateOf(null),
+                progressInfoState = stateOf(null),
+            ),
+            staffPager = emptyFlow(),
+            exposedStaffPager = emptyFlow(),
+            totalStaffCountState = stateOf(null),
+            charactersPager = emptyFlow(),
+            exposedCharactersPager = emptyFlow(),
+            totalCharactersCountState = stateOf(null),
+            relatedSubjectsPager = emptyFlow(),
+            episodeListState = EpisodeListState(
+                subjectId = stateOf(subjectInfo.subjectId),
+                theme = stateOf(EpisodeListProgressTheme.Default),
+                episodeProgressInfoList = stateOf(emptyList()),
+                onSetEpisodeWatched = { _, _, _ -> },
+                backgroundScope = this,
+            ),
+            authState = authState,
+            editableSubjectCollectionTypeState = EditableSubjectCollectionTypeState(
+                selfCollectionType = stateOf(UnifiedCollectionType.NOT_COLLECTED),
+                hasAnyUnwatched = { true },
+                onSetSelfCollectionType = { },
+                onSetAllEpisodesWatched = { },
+                backgroundScope = this,
+            ),
+            editableRatingState = EditableRatingState(
+                ratingInfo = stateOf(RatingInfo.Empty),
+                selfRatingInfo = stateOf(SelfRatingInfo.Empty),
+                enableEdit = stateOf(false),
+                isCollected = { false },
+                onRate = { },
+                backgroundScope = this,
+            ),
+            subjectProgressState = SubjectProgressState(
+                info = stateOf(null),
+                episodeProgressInfos = stateOf(emptyList()),
+            ),
+            subjectCommentState = CommentState(
+                sourceVersion = stateOf(null),
+                list = stateOf(emptyList()),
+                hasMore = stateOf(false),
+                onReload = { },
+                onLoadMore = { },
+                onSubmitCommentReaction = { _, _ -> },
+                backgroundScope = this,
+            ),
+        )
+    }
 }
 
 @TestOnly
@@ -439,7 +524,7 @@ class TestSubjectDetailsStateFactory : SubjectDetailsStateFactory {
         return emptyFlow()
     }
 
-    override fun create(subjectId: Int): Flow<SubjectDetailsState> {
+    override fun create(subjectId: Int, preloadSubjectInfo: SubjectInfo?): Flow<SubjectDetailsState> {
         return emptyFlow()
     }
 
