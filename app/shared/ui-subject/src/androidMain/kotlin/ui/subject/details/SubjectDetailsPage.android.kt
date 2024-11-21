@@ -66,30 +66,35 @@ internal fun PreviewSubjectDetails() = ProvideFoundationCompositionLocalsForPrev
             )
         },
         connectedScrollState = connectedScrollState,
-        detailsTab = {
-            SubjectDetailsDefaults.DetailsTab(
-                info = TestSubjectInfo,
-                staff = rememberTestLazyPagingItems(TestSubjectStaffInfo),
-                exposedStaff = rememberTestLazyPagingItems(TestSubjectStaffInfo.take(6)),
-                totalStaffCount = TestSubjectStaffInfo.size,
-                characters = rememberTestLazyPagingItems(TestSubjectCharacterList),
-                exposedCharacters = rememberTestLazyPagingItems(TestSubjectCharacterList.take(6)),
-                totalCharactersCount = TestSubjectCharacterList.size,
-                relatedSubjects = rememberTestLazyPagingItems(TestRelatedSubjects),
-                Modifier.nestedScroll(connectedScrollState.nestedScrollConnection),
-            )
-        },
-        commentsTab = {
-            val lazyListState = rememberLazyListState()
+    ) { paddingValues ->
+        SubjectDetailsContentPager(
+            paddingValues,
+            connectedScrollState,
+            detailsTab = {
+                SubjectDetailsDefaults.DetailsTab(
+                    info = TestSubjectInfo,
+                    staff = rememberTestLazyPagingItems(TestSubjectStaffInfo),
+                    exposedStaff = rememberTestLazyPagingItems(TestSubjectStaffInfo.take(6)),
+                    totalStaffCount = TestSubjectStaffInfo.size,
+                    characters = rememberTestLazyPagingItems(TestSubjectCharacterList),
+                    exposedCharacters = rememberTestLazyPagingItems(TestSubjectCharacterList.take(6)),
+                    totalCharactersCount = TestSubjectCharacterList.size,
+                    relatedSubjects = rememberTestLazyPagingItems(TestRelatedSubjects),
+                    Modifier.nestedScroll(connectedScrollState.nestedScrollConnection),
+                )
+            },
+            commentsTab = {
+                val lazyListState = rememberLazyListState()
 
-            SubjectDetailsDefaults.SubjectCommentColumn(
-                state = rememberTestCommentState(commentList = generateUiComment(10)),
-                onClickUrl = { },
-                onClickImage = {},
-                connectedScrollState = connectedScrollState,
-                lazyListState = lazyListState,
-            )
-        },
-        discussionsTab = {},
-    )
+                SubjectDetailsDefaults.SubjectCommentColumn(
+                    state = rememberTestCommentState(commentList = generateUiComment(10)),
+                    onClickUrl = { },
+                    onClickImage = {},
+                    connectedScrollState = connectedScrollState,
+                    lazyListState = lazyListState,
+                )
+            },
+            discussionsTab = {},
+        )
+    }
 }

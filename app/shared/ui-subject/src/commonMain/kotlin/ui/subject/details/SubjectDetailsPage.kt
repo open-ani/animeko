@@ -10,8 +10,6 @@
 package me.him188.ani.app.ui.subject.details
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.AnimatedVisibilityScope
-import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -175,54 +173,59 @@ fun SubjectDetailsPage(
             )
         },
         connectedScrollState = connectedScrollState,
-        detailsTab = { contentPadding ->
-            SubjectDetailsDefaults.DetailsTab(
-                info = state.info,
-                staff = state.staffPager.collectAsLazyPagingItemsWithLifecycle(),
-                exposedStaff = state.exposedStaffPager.collectAsLazyPagingItemsWithLifecycle(),
-                totalStaffCount = state.totalStaffCountState.value,
-                characters = state.charactersPager.collectAsLazyPagingItemsWithLifecycle(),
-                exposedCharacters = state.exposedCharactersPager.collectAsLazyPagingItemsWithLifecycle(),
-                totalCharactersCount = state.totalCharactersCountState.value,
-                relatedSubjects = state.relatedSubjectsPager.collectAsLazyPagingItemsWithLifecycle(),
-                Modifier
-                    .nestedScrollWorkaround(state.detailsTabLazyListState, connectedScrollState)
-                    .nestedScroll(connectedScrollState.nestedScrollConnection),
-                state.detailsTabLazyListState,
-                contentPadding = contentPadding,
-            )
-        },
-        commentsTab = { contentPadding ->
-            SubjectDetailsDefaults.SubjectCommentColumn(
-                state = state.subjectCommentState,
-                onClickUrl = {
-                    RichTextDefaults.checkSanityAndOpen(it, browserNavigator, toaster)
-                },
-                onClickImage = { imageViewer.viewImage(it) },
-                connectedScrollState,
-                Modifier.fillMaxSize(),
-                lazyListState = state.commentTabLazyListState,
-                contentPadding = contentPadding,
-            )
-        },
-        discussionsTab = {
-            LazyColumn(
-                Modifier.fillMaxSize()
-                    // TODO: Add nestedScrollWorkaround when we implement this tab
-                    .nestedScroll(connectedScrollState.nestedScrollConnection),
-            ) {
-                item {
-                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        Text("即将上线, 敬请期待", Modifier.padding(16.dp))
-                    }
-                }
-            }
-        },
         modifier,
         showTopBar = showTopBar,
         showBlurredBackground = showBlurredBackground,
         windowInsets = windowInsets,
-    )
+    ) { scaffoldPadding ->
+        SubjectDetailsContentPager(
+            scaffoldPadding,
+            connectedScrollState,
+            detailsTab = { contentPadding ->
+                SubjectDetailsDefaults.DetailsTab(
+                    info = state.info,
+                    staff = state.staffPager.collectAsLazyPagingItemsWithLifecycle(),
+                    exposedStaff = state.exposedStaffPager.collectAsLazyPagingItemsWithLifecycle(),
+                    totalStaffCount = state.totalStaffCountState.value,
+                    characters = state.charactersPager.collectAsLazyPagingItemsWithLifecycle(),
+                    exposedCharacters = state.exposedCharactersPager.collectAsLazyPagingItemsWithLifecycle(),
+                    totalCharactersCount = state.totalCharactersCountState.value,
+                    relatedSubjects = state.relatedSubjectsPager.collectAsLazyPagingItemsWithLifecycle(),
+                    Modifier
+                        .nestedScrollWorkaround(state.detailsTabLazyListState, connectedScrollState)
+                        .nestedScroll(connectedScrollState.nestedScrollConnection),
+                    state.detailsTabLazyListState,
+                    contentPadding = contentPadding,
+                )
+            },
+            commentsTab = { contentPadding ->
+                SubjectDetailsDefaults.SubjectCommentColumn(
+                    state = state.subjectCommentState,
+                    onClickUrl = {
+                        RichTextDefaults.checkSanityAndOpen(it, browserNavigator, toaster)
+                    },
+                    onClickImage = { imageViewer.viewImage(it) },
+                    connectedScrollState,
+                    Modifier.fillMaxSize(),
+                    lazyListState = state.commentTabLazyListState,
+                    contentPadding = contentPadding,
+                )
+            },
+            discussionsTab = {
+                LazyColumn(
+                    Modifier.fillMaxSize()
+                        // TODO: Add nestedScrollWorkaround when we implement this tab
+                        .nestedScroll(connectedScrollState.nestedScrollConnection),
+                ) {
+                    item {
+                        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                            Text("即将上线, 敬请期待", Modifier.padding(16.dp))
+                        }
+                    }
+                }
+            },
+        )
+    }
 
     ImageViewer(imageViewer) { imageViewer.clear() }
 }
@@ -246,15 +249,12 @@ fun SubjectDetailsPageLayout(
     rating: @Composable () -> Unit,
     selectEpisodeButton: @Composable BoxScope.() -> Unit,
     connectedScrollState: ConnectedScrollState,
-    detailsTab: @Composable (contentPadding: PaddingValues) -> Unit,
-    commentsTab: @Composable (contentPadding: PaddingValues) -> Unit,
-    discussionsTab: @Composable (contentPadding: PaddingValues) -> Unit,
     modifier: Modifier = Modifier,
     showTopBar: Boolean = true,
     showBlurredBackground: Boolean = true,
     windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
+    content: @Composable (contentPadding: PaddingValues) -> Unit,
 ) {
-    val scope = rememberCoroutineScope()
     val backgroundColor = AniThemeDefaults.pageContentBackgroundColor
     val stickyTopBarColor = AniThemeDefaults.navigationContainerColor
 
@@ -312,8 +312,6 @@ fun SubjectDetailsPageLayout(
 
         // 在背景之上显示的封面和标题等信息
         val headerContentPadding = scaffoldPadding.only(PaddingValuesSides.Horizontal + PaddingValuesSides.Top)
-        // 从 tab row 开始的区域
-        val remainingContentPadding = scaffoldPadding.only(PaddingValuesSides.Horizontal + PaddingValuesSides.Bottom)
 
         Box(
             Modifier.fillMaxSize(),
@@ -353,64 +351,83 @@ fun SubjectDetailsPageLayout(
                         )
                     }
                 }
-                val pagerState = rememberPagerState(
-                    initialPage = SubjectDetailsTab.DETAILS.ordinal,
-                    pageCount = { 3 },
+
+                content(scaffoldPadding)
+            }
+        }
+    }
+}
+
+@Composable
+fun SubjectDetailsContentPager(
+    scaffoldPadding: PaddingValues,
+    connectedScrollState: ConnectedScrollState,
+    detailsTab: @Composable (contentPadding: PaddingValues) -> Unit,
+    commentsTab: @Composable (contentPadding: PaddingValues) -> Unit,
+    discussionsTab: @Composable (contentPadding: PaddingValues) -> Unit,
+) {
+    val backgroundColor = AniThemeDefaults.pageContentBackgroundColor
+    val stickyTopBarColor = AniThemeDefaults.navigationContainerColor
+
+    val scope = rememberCoroutineScope()
+    val pagerState = rememberPagerState(
+        initialPage = SubjectDetailsTab.DETAILS.ordinal,
+        pageCount = { 3 },
+    )
+
+    // 从 tab row 开始的区域
+    val remainingContentPadding = scaffoldPadding.only(PaddingValuesSides.Horizontal + PaddingValuesSides.Bottom)
+
+    // Pager with TabRow
+    Column(
+        Modifier
+            .fillMaxHeight()
+            .padding(remainingContentPadding)
+            .consumeWindowInsets(remainingContentPadding),
+    ) {
+        val tabContainerColor by animateColorAsState(
+            if (connectedScrollState.isScrolledTop) stickyTopBarColor else backgroundColor,
+            tween(),
+        )
+        ScrollableTabRow(
+            selectedTabIndex = pagerState.currentPage,
+            indicator = @Composable { tabPositions ->
+                TabRowDefaults.PrimaryIndicator(
+                    Modifier.pagerTabIndicatorOffset(pagerState, tabPositions),
                 )
+            },
+            containerColor = tabContainerColor,
+            contentColor = TabRowDefaults.secondaryContentColor,
+            divider = {},
+            modifier = Modifier,
+        ) {
+            SubjectDetailsTab.entries.forEachIndexed { index, tabId ->
+                Tab(
+                    selected = pagerState.currentPage == index,
+                    onClick = {
+                        scope.launch { pagerState.animateScrollToPage(index) }
+                    },
+                    text = {
+                        Text(text = renderSubjectDetailsTab(tabId))
+                    },
+                )
+            }
+        }
 
-                // Pager with TabRow
-                Column(
-                    Modifier
-                        .fillMaxHeight()
-                        .padding(remainingContentPadding)
-                        .consumeWindowInsets(remainingContentPadding),
-                ) {
-                    val tabContainerColor by animateColorAsState(
-                        if (connectedScrollState.isScrolledTop) stickyTopBarColor else backgroundColor,
-                        tween(),
-                    )
-                    ScrollableTabRow(
-                        selectedTabIndex = pagerState.currentPage,
-                        indicator = @Composable { tabPositions ->
-                            TabRowDefaults.PrimaryIndicator(
-                                Modifier.pagerTabIndicatorOffset(pagerState, tabPositions),
-                            )
-                        },
-                        containerColor = tabContainerColor,
-                        contentColor = TabRowDefaults.secondaryContentColor,
-                        divider = {},
-                        modifier = Modifier,
-                    ) {
-                        SubjectDetailsTab.entries.forEachIndexed { index, tabId ->
-                            Tab(
-                                selected = pagerState.currentPage == index,
-                                onClick = {
-                                    scope.launch { pagerState.animateScrollToPage(index) }
-                                },
-                                text = {
-                                    Text(text = renderSubjectDetailsTab(tabId))
-                                },
-                            )
-                        }
-                    }
-
-                    HorizontalPager(
-                        state = pagerState,
-                        Modifier.fillMaxHeight(),
-                        userScrollEnabled = LocalPlatform.current.isMobile(),
-                        verticalAlignment = Alignment.Top,
-                    ) { index ->
-                        val type = SubjectDetailsTab.entries[index]
-                        Column(Modifier.padding()) {
-                            val paddingValues =
-                                PaddingValues(bottom = currentWindowAdaptiveInfo1().windowSizeClass.paneVerticalPadding)
-                            when (type) {
-                                SubjectDetailsTab.DETAILS -> detailsTab(paddingValues)
-                                SubjectDetailsTab.COMMENTS -> commentsTab(paddingValues)
-                                SubjectDetailsTab.DISCUSSIONS -> discussionsTab(paddingValues)
-                            }
-                        }
-                    }
+        HorizontalPager(
+            state = pagerState,
+            Modifier.fillMaxHeight(),
+            userScrollEnabled = LocalPlatform.current.isMobile(),
+            verticalAlignment = Alignment.Top,
+        ) { index ->
+            val type = SubjectDetailsTab.entries[index]
+            Column(Modifier.padding()) {
+                val paddingValues =
+                    PaddingValues(bottom = currentWindowAdaptiveInfo1().windowSizeClass.paneVerticalPadding)
+                when (type) {
+                    SubjectDetailsTab.DETAILS -> detailsTab(paddingValues)
+                    SubjectDetailsTab.COMMENTS -> commentsTab(paddingValues)
+                    SubjectDetailsTab.DISCUSSIONS -> discussionsTab(paddingValues)
                 }
             }
         }
