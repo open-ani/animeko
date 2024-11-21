@@ -45,9 +45,15 @@ sealed class NavRoutes {
         val tab: SettingsTab? = null,
     ) : NavRoutes()
 
+    /**
+     * 用 [subjectName], [subjectNameCN] and [subjectCoverUrl] 创建预加载 SubjectInfo.
+     */
     @Serializable
     data class SubjectDetail(
         val subjectId: Int,
+        val subjectName: String = "",
+        val subjectNameCN: String = "",
+        val subjectCoverUrl: String = "",
     ) : NavRoutes()
 
     @Serializable

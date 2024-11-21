@@ -127,6 +127,7 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
                 subjectProgressStateFactory,
                 authState,
             ).collect { emit(it) }
+            awaitCancellation()
         }
     }
 

@@ -135,7 +135,11 @@ fun ExplorationPage(
             TrendingSubjectsCarousel(
                 state.trendingSubjectInfoPager,
                 onClick = {
-                    navigator.navigateSubjectDetails(it.bangumiId)
+                    navigator.navigateSubjectDetails(
+                        subjectId = it.bangumiId,
+                        subjectNameCN = it.nameCn,
+                        subjectCoverUrl = it.imageLarge,
+                    )
                 },
                 contentPadding = PaddingValues(horizontal = horizontalPadding, vertical = 8.dp),
                 carouselState = state.trendingSubjectsCarouselState,
@@ -149,7 +153,12 @@ fun ExplorationPage(
             FollowedSubjectsLazyRow(
                 followedSubjectsPager,
                 onClick = {
-                    navigator.navigateSubjectDetails(it.subjectInfo.subjectId)
+                    navigator.navigateSubjectDetails(
+                        subjectId = it.subjectInfo.subjectId,
+                        subjectName = it.subjectInfo.name,
+                        subjectNameCN = it.subjectInfo.nameCn,
+                        subjectCoverUrl = it.subjectInfo.imageLarge,
+                    )
                 },
                 onPlay = {
                     it.subjectProgressInfo.nextEpisodeIdToPlay?.let { it1 ->

@@ -35,6 +35,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.domain.mediasource.rss.RssMediaSource
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSource
 import me.him188.ani.app.navigation.AniNavigator
@@ -201,7 +202,16 @@ private fun AniAppContentImpl(
             ) { backStackEntry ->
                 val details = backStackEntry.toRoute<NavRoutes.SubjectDetail>()
                 val vm = viewModel<SubjectDetailsViewModel>(key = details.subjectId.toString()) {
-                    SubjectDetailsViewModel(details.subjectId)
+                    val preloadSubjectInfo = if (details.subjectName.isEmpty() &&
+                        details.subjectNameCN.isEmpty() &&
+                        details.subjectCoverUrl.isEmpty()
+                    ) null else SubjectInfo.createMinimal(
+                        details.subjectId,
+                        details.subjectName,
+                        details.subjectNameCN,
+                        details.subjectCoverUrl,
+                    )
+                    SubjectDetailsViewModel(details.subjectId, preloadSubjectInfo)
                 }
                 CompositionLocalProvider(
                     LocalSharedTransitionScopeProvider provides SharedTransitionScopeProvider(
