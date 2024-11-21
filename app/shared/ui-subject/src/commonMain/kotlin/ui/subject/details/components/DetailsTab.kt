@@ -63,8 +63,10 @@ import me.him188.ani.app.data.models.subject.nameCn
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.ui.foundation.Tag
 import me.him188.ani.app.ui.foundation.avatar.AvatarImage
+import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBarPadding
+import me.him188.ani.app.ui.foundation.layout.paneHorizontalPadding
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
 
 
@@ -93,7 +95,7 @@ fun SubjectDetailsDefaults.DetailsTab(
     relatedSubjects: LazyPagingItems<RelatedSubjectInfo>,
     modifier: Modifier = Modifier,
     state: LazyListState = rememberLazyListState(),
-    horizontalPadding: Dp = 16.dp,
+    horizontalPadding: Dp = currentWindowAdaptiveInfo1().windowSizeClass.paneHorizontalPadding,
     contentPadding: PaddingValues = PaddingValues(0.dp),
 ) {
     LazyColumn(

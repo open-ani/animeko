@@ -51,6 +51,7 @@ import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
@@ -359,6 +360,7 @@ fun SubjectDetailsPageLayout(
                             .padding(headerContentPadding)
                             .consumeWindowInsets(headerContentPadding),
                     ) {
+                        val windowSizeClass = currentWindowAdaptiveInfo1().windowSizeClass
                         SubjectDetailsHeader(
                             state.info,
                             state.coverImageUrl,
@@ -370,8 +372,8 @@ fun SubjectDetailsPageLayout(
                             Modifier
                                 .connectedScrollTarget(connectedScrollState)
                                 .fillMaxWidth()
-                                .ifThen(!showTopBar) { padding(top = 16.dp) }
-                                .padding(horizontal = 16.dp),
+                                .ifThen(!showTopBar) { padding(top = windowSizeClass.paneVerticalPadding) }
+                                .padding(horizontal = windowSizeClass.paneHorizontalPadding),
                         )
                     }
                 }
