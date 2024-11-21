@@ -12,8 +12,8 @@ package me.him188.ani.app.data.models.subject
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import me.him188.ani.app.data.models.episode.EpisodeInfo
-import me.him188.ani.app.data.models.episode.isKnownCompleted
-import me.him188.ani.app.data.models.episode.isKnownOnAir
+import me.him188.ani.app.domain.episode.EpisodeCompletionContext.isKnownCompleted
+import me.him188.ani.app.domain.episode.EpisodeCompletionContext.isKnownOnAir
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.ifInvalid
@@ -113,14 +113,16 @@ data class SubjectAiringInfo(
         fun computeFromEpisodeList(
             list: List<EpisodeInfo>,
             airDate: PackedDate,
+            recurrence: SubjectRecurrence?,
         ): SubjectAiringInfo {
             // See test SubjectAiringInfoTest
             // Change with care!
+
             val kind = when {
                 list.isEmpty() -> SubjectAiringKind.UPCOMING
-                list.all { it.isKnownCompleted } -> SubjectAiringKind.COMPLETED
-                list.all { it.isKnownOnAir } -> SubjectAiringKind.UPCOMING
-                list.any { it.isKnownCompleted } -> SubjectAiringKind.ON_AIR
+                list.all { it.isKnownCompleted(recurrence) } -> SubjectAiringKind.COMPLETED
+                list.all { it.isKnownOnAir(recurrence) } -> SubjectAiringKind.UPCOMING
+                list.any { it.isKnownCompleted(recurrence) } -> SubjectAiringKind.ON_AIR
                 airDate.isValid -> when {
                     airDate <= PackedDate.now() -> SubjectAiringKind.COMPLETED
                     PackedDate.now() - airDate > 10 * 30 * 365.days -> SubjectAiringKind.COMPLETED // 播出 10 年后判定为完结, 一些老番缺失信息
@@ -134,10 +136,14 @@ data class SubjectAiringInfo(
                 mainEpisodeCount = list.size,
                 airDate = airDate.ifInvalid { list.firstOrNull()?.airDate ?: PackedDate.Invalid },
                 firstSort = list.firstOrNull()?.sort,
-                latestEp = list.lastOrNull { it.isKnownCompleted }?.sort,
-                latestSort = list.lastOrNull { it.isKnownCompleted }?.sort,
-                upcomingSort = if (kind == SubjectAiringKind.COMPLETED) null else list.firstOrNull { it.isKnownOnAir }?.sort
-                    ?: list.firstOrNull { it.airDate.isInvalid }?.sort,
+                latestEp = list.lastOrNull { it.isKnownCompleted(recurrence) }?.sort,
+                latestSort = list.lastOrNull { it.isKnownCompleted(recurrence) }?.sort,
+                upcomingSort = if (kind == SubjectAiringKind.COMPLETED) {
+                    null
+                } else {
+                    list.firstOrNull { it.isKnownOnAir(recurrence) }?.sort
+                        ?: list.firstOrNull { it.airDate.isInvalid }?.sort
+                },
             )
         }
 

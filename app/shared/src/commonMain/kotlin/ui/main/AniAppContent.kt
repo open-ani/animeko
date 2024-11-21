@@ -50,6 +50,8 @@ import me.him188.ani.app.ui.cache.CacheManagementViewModel
 import me.him188.ani.app.ui.cache.details.MediaCacheDetailsPage
 import me.him188.ani.app.ui.cache.details.MediaCacheDetailsPageViewModel
 import me.him188.ani.app.ui.cache.details.MediaDetailsLazyGrid
+import me.him188.ani.app.ui.foundation.layout.LocalSharedTransitionScopeProvider
+import me.him188.ani.app.ui.foundation.layout.SharedTransitionScopeProvider
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
 import me.him188.ani.app.ui.foundation.theme.LocalNavigationMotionScheme
@@ -111,8 +113,6 @@ private fun AniAppContentImpl(
         .add(WindowInsets.desktopTitleBar()) // Compose 目前不支持这个所以我们要自己加上
     val navMotionScheme by rememberUpdatedState(NavigationMotionScheme.current)
 
-    val appViewModel = viewModel<AniAppViewModel> { AniAppViewModel() }
-
     SharedTransitionLayout {
         NavHost(navController, startDestination = initialRoute, modifier) {
             val enterTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition? =
@@ -157,12 +157,17 @@ private fun AniAppContentImpl(
                         }
                     },
                 ) {
-                    MainScene(
-                        page = currentPage,
-                        subjectDetailsStateLoader = appViewModel.subjectDetailsStateLoader,
-                        onNavigateToPage = { currentPage = it },
-                        navigationLayoutType = navigationLayoutType,
-                    )
+                    CompositionLocalProvider(
+                        LocalSharedTransitionScopeProvider provides SharedTransitionScopeProvider(
+                            this@SharedTransitionLayout, this,
+                        ),
+                    ) {
+                        MainScene(
+                            page = currentPage,
+                            onNavigateToPage = { currentPage = it },
+                            navigationLayoutType = navigationLayoutType,
+                        )
+                    }
                 }
             }
             composable<NavRoutes.BangumiOAuth>(
@@ -195,16 +200,20 @@ private fun AniAppContentImpl(
                 popExitTransition = popExitTransition,
             ) { backStackEntry ->
                 val details = backStackEntry.toRoute<NavRoutes.SubjectDetail>()
-                val vm = viewModel<SubjectDetailsViewModel>(key = appViewModel.subjectDetailsStateLoader.toString()) {
-                    SubjectDetailsViewModel(stateLoader = appViewModel.subjectDetailsStateLoader)
+                val vm = viewModel<SubjectDetailsViewModel>(key = details.subjectId.toString()) {
+                    SubjectDetailsViewModel(details.subjectId)
                 }
-                vm.stateLoader.load(details.subjectId)
-                SubjectDetailsPage(
-                    vm,
-                    onPlay = { aniNavigator.navigateEpisodeDetails(details.subjectId, it) },
-                    animatedVisibilityScope = this,
-                    windowInsets = windowInsets,
-                )
+                CompositionLocalProvider(
+                    LocalSharedTransitionScopeProvider provides SharedTransitionScopeProvider(
+                        this@SharedTransitionLayout, this,
+                    ),
+                ) {
+                    SubjectDetailsPage(
+                        vm,
+                        onPlay = { aniNavigator.navigateEpisodeDetails(details.subjectId, it) },
+                        windowInsets = windowInsets,
+                    )
+                }
             }
             composable<NavRoutes.EpisodeDetail>(
                 enterTransition = enterTransition,

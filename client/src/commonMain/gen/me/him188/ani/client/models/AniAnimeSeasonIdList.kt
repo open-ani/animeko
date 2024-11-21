@@ -29,9 +29,9 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
+ * 
  *
- *
- * @param list
+ * @param list 
  */
 @Serializable
 

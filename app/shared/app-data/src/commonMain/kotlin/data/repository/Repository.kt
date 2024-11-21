@@ -11,6 +11,15 @@ package me.him188.ani.app.data.repository
 
 import androidx.paging.PagingConfig
 import androidx.paging.PagingSource
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.shareIn
+import me.him188.ani.utils.logging.logger
+import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.cancellation.CancellationException
 
 /**
@@ -20,7 +29,23 @@ import kotlin.coroutines.cancellation.CancellationException
  * - 所有访问数据的接口都只会抛出 [RepositoryException], 用于向调用方传递已知的情况, 例如网络连接失败.
  *   其他异常属于 bug.
  */
-interface Repository {
+abstract class Repository(
+    protected val defaultDispatcher: CoroutineContext = Dispatchers.Default,
+) {
+    protected val logger = logger(this::class)
+
+    private val sharingScope = CoroutineScope(defaultDispatcher)
+
+    protected fun <T> Flow<T>.cachedWithTransparentException() = this
+        .map { Result.success(it) }
+        .catch { Result.failure<T>(it) } // 封装异常以传递给下游
+        .shareIn(
+            sharingScope, started = SharingStarted.WhileSubscribed(), replay = 1,
+        ) // WhileSubscribed 使用调用方的生命周期. 停止 collect 时也会停止查询. SharedFlow 同时会相当于一个 mutex.
+        .map {
+            it.getOrThrow() // 透明异常. 上游的异常传递给下游
+        }
+
     companion object {
         val defaultPagingConfig = PagingConfig(
             pageSize = 30,

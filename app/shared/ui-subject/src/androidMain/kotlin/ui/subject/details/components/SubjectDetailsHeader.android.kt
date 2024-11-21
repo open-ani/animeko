@@ -20,7 +20,6 @@ import me.him188.ani.app.data.models.subject.SubjectAiringKind
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
 import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview
-import me.him188.ani.app.ui.foundation.layout.DummySharedTransitionLayout
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.subject.AiringLabelState
 import me.him188.ani.app.ui.subject.TestSubjectAiringInfo
@@ -117,32 +116,29 @@ fun PreviewSubjectDetailsHeader(
     progressInfo: SubjectProgressInfo,
     subjectInfo: SubjectInfo = TestSubjectInfo,
 ) = ProvideFoundationCompositionLocalsForPreview {
-    DummySharedTransitionLayout {
-        SubjectDetailsHeader(
-            subjectInfo,
-            TestCoverImage,
-            airingLabelState = remember {
-                AiringLabelState(stateOf(airingInfo), stateOf(progressInfo))
-            },
-            collectionData = {
-                SubjectDetailsDefaults.CollectionData(
-                    collectionStats = subjectInfo.collectionStats,
-                )
-            },
-            collectionAction = {
-                EditableSubjectCollectionTypeButton(
-                    rememberTestEditableSubjectCollectionTypeState(),
-                )
-            },
-            selectEpisodeButton = {
-                SubjectDetailsDefaults.SelectEpisodeButtons(rememberTestSubjectProgressState(), {}, {})
-            },
-            rating = {
-                EditableRating(
-                    state = rememberTestEditableRatingState(),
-                )
-            },
-            animatedVisibilityScope,
-        )
-    }
+    SubjectDetailsHeader(
+        subjectInfo,
+        TestCoverImage,
+        airingLabelState = remember {
+            AiringLabelState(stateOf(airingInfo), stateOf(progressInfo))
+        },
+        collectionData = {
+            SubjectDetailsDefaults.CollectionData(
+                collectionStats = subjectInfo.collectionStats,
+            )
+        },
+        collectionAction = {
+            EditableSubjectCollectionTypeButton(
+                rememberTestEditableSubjectCollectionTypeState(),
+            )
+        },
+        selectEpisodeButton = {
+            SubjectDetailsDefaults.SelectEpisodeButtons(rememberTestSubjectProgressState(), {}, {})
+        },
+        rating = {
+            EditableRating(
+                state = rememberTestEditableRatingState(),
+            )
+        },
+    )
 }

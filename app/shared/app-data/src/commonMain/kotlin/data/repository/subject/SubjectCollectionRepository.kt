@@ -42,6 +42,7 @@ import me.him188.ani.app.data.models.subject.SubjectCollectionCounts
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
+import me.him188.ani.app.data.models.subject.SubjectRecurrence
 import me.him188.ani.app.data.network.BangumiEpisodeService
 import me.him188.ani.app.data.network.BangumiSubjectService
 import me.him188.ani.app.data.network.BatchSubjectCollection
@@ -55,8 +56,8 @@ import me.him188.ani.app.data.persistent.database.dao.SubjectRelationsDao
 import me.him188.ani.app.data.persistent.database.dao.deleteAll
 import me.him188.ani.app.data.persistent.database.dao.filterMostRecentUpdated
 import me.him188.ani.app.data.repository.Repository
-import me.him188.ani.app.data.repository.Repository.Companion.defaultPagingConfig
 import me.him188.ani.app.data.repository.RepositoryException
+import me.him188.ani.app.data.repository.episode.AnimeScheduleRepository
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.episode.toEntity
 import me.him188.ani.app.data.repository.episode.toEpisodeCollectionInfo
@@ -68,7 +69,6 @@ import me.him188.ani.datasources.bangumi.apis.DefaultApi
 import me.him188.ani.datasources.bangumi.models.BangumiUserSubjectCollectionModifyPayload
 import me.him188.ani.datasources.bangumi.processing.toCollectionType
 import me.him188.ani.datasources.bangumi.processing.toSubjectCollectionType
-import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.coroutines.flows.flowOfEmptyList
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.platform.currentTimeMillis
@@ -83,15 +83,17 @@ typealias BangumiSubjectApi = DefaultApi
  *
  * [SubjectInfo], [SubjectCollectionInfo], [SubjectCollectionCounts]
  */
-sealed interface SubjectCollectionRepository : Repository {
+sealed class SubjectCollectionRepository(
+    defaultDispatcher: CoroutineContext = Dispatchers.Default
+) : Repository(defaultDispatcher) {
     /**
      * 获取条目收藏统计信息 cold [Flow]. Flow 将会 emit 至少一个值, 失败时 emit `null`.
      */
-    fun subjectCollectionCountsFlow(): Flow<SubjectCollectionCounts?>
+    abstract fun subjectCollectionCountsFlow(): Flow<SubjectCollectionCounts?>
 
-    fun subjectCollectionFlow(subjectId: Int): Flow<SubjectCollectionInfo>
+    abstract fun subjectCollectionFlow(subjectId: Int): Flow<SubjectCollectionInfo>
 
-    fun subjectCollectionsPager(
+    abstract fun subjectCollectionsPager(
         query: CollectionsFilterQuery = CollectionsFilterQuery.Empty,
         pagingConfig: PagingConfig = defaultPagingConfig,
     ): Flow<PagingData<SubjectCollectionInfo>>
@@ -99,7 +101,7 @@ sealed interface SubjectCollectionRepository : Repository {
     /**
      * 更新根据服务器上记录的最近有修改的条目收藏. 也就是用户最近操作过的条目收藏.
      */
-    suspend fun updateRecentlyUpdatedSubjectCollections(
+    abstract suspend fun updateRecentlyUpdatedSubjectCollections(
         limit: Int,
         type: UnifiedCollectionType?,
         offset: Int = 0,
@@ -108,7 +110,7 @@ sealed interface SubjectCollectionRepository : Repository {
     /**
      * 获取最近更新的条目收藏 cold [Flow].
      */
-    fun mostRecentlyUpdatedSubjectCollectionsFlow(
+    abstract fun mostRecentlyUpdatedSubjectCollectionsFlow(
         limit: Int,
         types: List<UnifiedCollectionType>? = null, // null for all
     ): Flow<List<SubjectCollectionInfo>>
@@ -118,7 +120,7 @@ sealed interface SubjectCollectionRepository : Repository {
      * @param comment set empty to remove
      * @param tags set empty to remove
      */
-    suspend fun updateRating(
+    abstract suspend fun updateRating(
         subjectId: Int,
         score: Int? = null,
         comment: String? = null,
@@ -126,7 +128,7 @@ sealed interface SubjectCollectionRepository : Repository {
         isPrivate: Boolean? = null,
     )
 
-    suspend fun setSubjectCollectionTypeOrDelete(
+    abstract suspend fun setSubjectCollectionTypeOrDelete(
         subjectId: Int,
         type: UnifiedCollectionType?,
     )
@@ -138,12 +140,13 @@ class SubjectCollectionRepositoryImpl(
     private val subjectCollectionDao: SubjectCollectionDao,
     private val subjectRelationsDao: SubjectRelationsDao,
     private val episodeCollectionRepository: EpisodeCollectionRepository,
+    private val animeScheduleRepository: AnimeScheduleRepository,
     private val bangumiEpisodeService: BangumiEpisodeService,
     private val episodeCollectionDao: EpisodeCollectionDao,
     private val getCurrentDate: () -> PackedDate = { PackedDate.now() },
     private val enableAllEpisodeTypes: Flow<Boolean>,
-    private val defaultDispatcher: CoroutineContext = Dispatchers.IO_,
-) : SubjectCollectionRepository {
+    defaultDispatcher: CoroutineContext = Dispatchers.Default,
+) : SubjectCollectionRepository(defaultDispatcher) {
     private val epTypeFilter get() = enableAllEpisodeTypes.map { if (it) null else MainStory }
 
     override fun subjectCollectionCountsFlow(): Flow<SubjectCollectionCounts?> {
@@ -177,19 +180,27 @@ class SubjectCollectionRepositoryImpl(
             .onEach {
                 // 如果没有缓存, 则 fetch 然后插入 subject 缓存
                 if (it == null) {
-                    val (batch, collection) = bangumiSubjectService.getSubjectCollection(subjectId)
-                    val entity = batch.toEntity(
-                        collection?.type.toCollectionType(),
-                        selfRatingInfo = collection?.toSelfRatingInfo() ?: SelfRatingInfo.Empty,
-                        lastUpdated = collection?.updatedAt?.toEpochMilliseconds() ?: 0,
-                        lastFetched = currentTimeMillis(),
-                    )
-                    subjectCollectionDao.upsert(entity) // 插入后, `subjectCollectionDao.findById(subjectId)` 会重新 emit
+                    coroutineScope {
+                        val subjectCollectionDeferred = async { bangumiSubjectService.getSubjectCollection(subjectId) }
+                        val recurrenceDeferred = async { animeScheduleRepository.getSubjectRecurrence(subjectId) }
+
+                        val (batch, collection) = subjectCollectionDeferred.await()
+                        val entity = batch.toEntity(
+                            collection?.type.toCollectionType(),
+                            selfRatingInfo = collection?.toSelfRatingInfo() ?: SelfRatingInfo.Empty,
+                            lastUpdated = collection?.updatedAt?.toEpochMilliseconds() ?: 0,
+                            lastFetched = currentTimeMillis(),
+                            recurrence = recurrenceDeferred.await(),
+                        )
+                        subjectCollectionDao.upsert(entity) // 插入后, `subjectCollectionDao.findById(subjectId)` 会重新 emit
+                    }
                 }
             }
             .filterNotNull()
             // 有 subject 缓存后才能从 episodeCollectionRepository fetch episodes
-            .combine(episodeCollectionRepository.subjectEpisodeCollectionInfosFlow(subjectId)) { entity, episodes ->
+            .combine(
+                episodeCollectionRepository.subjectEpisodeCollectionInfosFlow(subjectId),
+            ) { entity, episodes ->
                 entity.toSubjectCollectionInfo(
                     episodes = episodes,
                     currentDate = getCurrentDate(),
@@ -206,13 +217,12 @@ class SubjectCollectionRepositoryImpl(
             }
             combine(
                 list.map { entity ->
-                    episodeCollectionRepository.subjectEpisodeCollectionInfosFlow(entity.subjectId)
-                        .map { episodes ->
-                            entity.toSubjectCollectionInfo(
-                                episodes = episodes,
-                                currentDate = getCurrentDate(),
-                            )
-                        }
+                    episodeCollectionRepository.subjectEpisodeCollectionInfosFlow(entity.subjectId).map { episodes ->
+                        entity.toSubjectCollectionInfo(
+                            episodes = episodes,
+                            currentDate = getCurrentDate(),
+                        )
+                    }
                 },
             ) {
                 it.toList()
@@ -295,13 +305,26 @@ class SubjectCollectionRepositoryImpl(
         )
 
         // 提前'批量'查询剧集收藏状态, 防止在收藏页显示结果时一个一个查导致太慢
-        val episodes = batchGetSubjectEpisodes(items)
+        val episodes: List<EpisodeCollectionEntity>
+        val recurrences: List<SubjectRecurrence?>
+        coroutineScope {
+            // 并行加载
+            val episodesDeferred = async { batchGetSubjectEpisodes(items) }
+            val recurrencesDeferred =
+                async { animeScheduleRepository.batchGetSubjectRecurrence(items.map { it.batchSubjectDetails.subjectInfo.subjectId }) }
+            episodes = episodesDeferred.await()
+            recurrences = recurrencesDeferred.await()
+        }
 
         onFetched(items)
 
         // 批量插入条目信息
         val lastFetched = currentTimeMillis()
-        subjectCollectionDao.upsert(items.map { it.toEntity(lastFetched) })
+        subjectCollectionDao.upsert(
+            items.mapIndexed { index, batchSubjectCollection ->
+                batchSubjectCollection.toEntity(lastFetched, recurrences[index])
+            },
+        )
 
         // 必须先插入好条目信息, 否则插入 episode 会 foreign key constraint failed
         episodeCollectionDao.upsert(episodes)
@@ -493,8 +516,11 @@ private fun SubjectCollectionEntity.toSubjectCollectionInfo(
         airingInfo = SubjectAiringInfo.computeFromEpisodeList(
             episodes.map { it.episodeInfo },
             airDate,
+            recurrence,
         ),
-        progressInfo = SubjectProgressInfo.compute(subjectInfo, episodes, currentDate),
+        progressInfo = SubjectProgressInfo.compute(subjectInfo, episodes, currentDate, recurrence),
+//        isOnAir = ,
+        recurrence = recurrence,
         cachedStaffUpdated = cachedStaffUpdated,
         cachedCharactersUpdated = cachedCharactersUpdated,
         lastUpdated = lastUpdated,
@@ -505,6 +531,7 @@ private fun SubjectCollectionEntity.toSubjectCollectionInfo(
 internal fun BatchSubjectDetails.toEntity(
     collectionType: UnifiedCollectionType,
     selfRatingInfo: SelfRatingInfo,
+    recurrence: SubjectRecurrence?,
     lastUpdated: Long,
     lastFetched: Long,
 ): SubjectCollectionEntity =
@@ -528,6 +555,7 @@ internal fun BatchSubjectDetails.toEntity(
             completeDate = completeDate,
             selfRatingInfo = selfRatingInfo,
             collectionType = collectionType,
+            recurrence = recurrence,
             lastUpdated = lastUpdated,
             lastFetched = lastFetched,
             cachedStaffUpdated = 0,
@@ -537,6 +565,7 @@ internal fun BatchSubjectDetails.toEntity(
 
 internal fun BatchSubjectCollection.toEntity(
     lastFetched: Long,
+    recurrence: SubjectRecurrence?,
 ): SubjectCollectionEntity {
     val subject = batchSubjectDetails
     return subject.toEntity(
@@ -544,6 +573,7 @@ internal fun BatchSubjectCollection.toEntity(
         collection.toSelfRatingInfo(),
         lastUpdated = collection?.updatedAt?.toEpochMilliseconds() ?: 0,
         lastFetched = lastFetched,
+        recurrence = recurrence,
     )
 }
 

@@ -26,7 +26,9 @@ import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
@@ -55,6 +57,7 @@ import me.him188.ani.app.videoplayer.ui.state.SubtitleTrack
 import me.him188.ani.app.videoplayer.ui.state.SupportsAudio
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
+import me.him188.ani.utils.logging.trace
 import uk.co.caprica.vlcj.factory.MediaPlayerFactory
 import uk.co.caprica.vlcj.factory.discovery.NativeDiscovery
 import uk.co.caprica.vlcj.media.Media
@@ -173,18 +176,24 @@ class VlcjVideoPlayerState(parentCoroutineContext: CoroutineContext) : PlayerSta
         }
 
         val data = source.open()
+
+        val awaitContext = SupervisorJob(backgroundScope.coroutineContext[Job])
         val input = data.createInput()
         return VlcjData(
             source,
             data,
             setPlay = {
-                val new = SeekableInputCallbackMedia(input)
+                val new = SeekableInputCallbackMedia(input) { awaitContext.cancel() }
                 player.controls().stop()
                 player.media().play(new)
                 lastMedia = new
             },
             releaseResource = {
+                logger.trace { "VLC ReleaseResource: begin" }
+                awaitContext.cancel()
+                logger.trace { "VLC ReleaseResource: close input" }
                 input.close()
+                logger.trace { "VLC ReleaseResource: close VideoData" }
                 backgroundScope.launch(NonCancellable) {
                     data.close()
                 }
@@ -193,8 +202,13 @@ class VlcjVideoPlayerState(parentCoroutineContext: CoroutineContext) : PlayerSta
     }
 
     override fun closeImpl() {
-        player.release()
+        lastMedia?.onClose() // 在调用 VLC 之前停止阻塞线程
         lastMedia = null
+        backgroundScope.launch(NonCancellable) {
+            logger.trace { "VLC closeImpl: release player" }
+            player.release()
+            logger.trace { "VLC closeImpl: release player" }
+        }
     }
 
     private var lastMedia: SeekableInputCallbackMedia? = null // keep referenced so won't be gc'ed
@@ -208,6 +222,7 @@ class VlcjVideoPlayerState(parentCoroutineContext: CoroutineContext) : PlayerSta
     }
 
     override suspend fun cleanupPlayer() {
+        lastMedia?.onClose() // 在调用 VLC 之前停止阻塞线程
         player.submit {
             player.controls().stop()
         }
@@ -225,11 +240,15 @@ class VlcjVideoPlayerState(parentCoroutineContext: CoroutineContext) : PlayerSta
     override val isBuffering: MutableStateFlow<Boolean> = MutableStateFlow(false)
 
     override fun pause() {
-        player.controls().pause()
+        player.submit {
+            player.controls().pause()
+        }
     }
 
     override fun resume() {
-        player.controls().play()
+        player.submit {
+            player.controls().play()
+        }
     }
 
     override val playbackSpeed: MutableStateFlow<Float> = MutableStateFlow(1.0f)
@@ -481,13 +500,17 @@ class VlcjVideoPlayerState(parentCoroutineContext: CoroutineContext) : PlayerSta
     }
 
     override fun setPlaybackSpeed(speed: Float) {
-        player.controls().setRate(speed)
+        player.submit {
+            player.controls().setRate(speed)
+        }
         playbackSpeed.value = speed
     }
 
     override fun seekTo(positionMillis: Long) {
         currentPositionMillis.value = positionMillis
-        player.controls().setTime(positionMillis)
+        player.submit {
+            player.controls().setTime(positionMillis)
+        }
         surface.allowedDrawFrames.value = 2 // 多渲染一帧, 防止 race 问题π
     }
 

@@ -32,22 +32,22 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.combineTransform
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.take
-import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 import me.him188.ani.app.data.models.episode.displayName
-import me.him188.ani.app.data.models.episode.isKnownCompleted
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
 import me.him188.ani.app.data.models.subject.nameCnOrName
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.media.EpisodePreferencesRepository
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
+import me.him188.ani.app.domain.episode.EpisodeCompletionContext.isKnownCompleted
 import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.cache.requester.CacheRequestStage
 import me.him188.ani.app.domain.media.cache.requester.EpisodeCacheRequest
@@ -110,40 +110,41 @@ class SubjectCacheViewModelImpl(
             .retryWithBackoffDelay()
             .shareInBackground()
 
-    private val episodesFlow = episodeCollectionsFlow.take(1).transformLatest { episodes ->
-        supervisorScope {
-            // 每个 episode 都为一个 flow, 然后合并
-            emit(
-                episodes.map { episodeCollection ->
-                    val episode = episodeCollection.episodeInfo
+    private val episodesFlow =
+        episodeCollectionsFlow.take(1).combineTransform(subjectInfoFlow) { episodes, subjectInfo ->
+            supervisorScope {
+                // 每个 episode 都为一个 flow, 然后合并
+                emit(
+                    episodes.map { episodeCollection ->
+                        val episode = episodeCollection.episodeInfo
 
-                    val cacheStatusFlow = cacheManager.cacheStatusForEpisode(subjectId, episode.episodeId)
+                        val cacheStatusFlow = cacheManager.cacheStatusForEpisode(subjectId, episode.episodeId)
 
-                    val cacheRequester = EpisodeCacheRequester(
-                        mediaSourceManager.mediaFetcher,
-                        MediaSelectorFactory.withKoin(),
-                        storagesLazy = cacheManager.enabledStorages,
-                    )
-                    EpisodeCacheState(
-                        episodeId = episode.episodeId,
-                        cacheRequester = cacheRequester,
-                        currentStageState = cacheRequester.stage.produceState(scope = this),
-                        infoState = stateOf(
-                            EpisodeCacheInfo(
-                                sort = episode.sort,
-                                ep = episode.ep,
-                                title = episode.displayName,
-                                watchStatus = episodeCollection.collectionType,
-                                hasPublished = episode.isKnownCompleted,
+                        val cacheRequester = EpisodeCacheRequester(
+                            mediaSourceManager.mediaFetcher,
+                            MediaSelectorFactory.withKoin(),
+                            storagesLazy = cacheManager.enabledStorages,
+                        )
+                        EpisodeCacheState(
+                            episodeId = episode.episodeId,
+                            cacheRequester = cacheRequester,
+                            currentStageState = cacheRequester.stage.produceState(scope = this),
+                            infoState = stateOf(
+                                EpisodeCacheInfo(
+                                    sort = episode.sort,
+                                    ep = episode.ep,
+                                    title = episode.displayName,
+                                    watchStatus = episodeCollection.collectionType,
+                                    hasPublished = episode.isKnownCompleted(subjectInfo.recurrence),
+                                ),
                             ),
-                        ),
-                        cacheStatusState = cacheStatusFlow.produceState(null, this),
-                        backgroundScope = this,
-                    )
-                },
-            )
-        }
-    }.shareInBackground()
+                            cacheStatusState = cacheStatusFlow.produceState(null, this),
+                            backgroundScope = this,
+                        )
+                    },
+                )
+            }
+        }.shareInBackground()
 
     /**
      * 单个条目的缓存管理页面的状态

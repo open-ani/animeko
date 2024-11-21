@@ -3,12 +3,13 @@ package me.him188.ani.datasources.ikaros
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
-import io.ktor.client.request.post
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.serialization.json.Json
 import me.him188.ani.datasources.api.DefaultMedia
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.EpisodeType
@@ -26,11 +27,13 @@ import me.him188.ani.datasources.api.topic.ResourceLocation
 import me.him188.ani.datasources.api.topic.titles.RawTitleParser
 import me.him188.ani.datasources.api.topic.titles.parse
 import me.him188.ani.datasources.ikaros.models.IkarosEpisodeGroup
-import me.him188.ani.datasources.ikaros.models.IkarosSubjectDetails
+import me.him188.ani.datasources.ikaros.models.IkarosEpisodeRecord
+import me.him188.ani.datasources.ikaros.models.IkarosSubjectSync
 import me.him188.ani.datasources.ikaros.models.IkarosVideoSubtitle
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.logger
 import models.IkarosAttachment
+import java.util.Collections
 
 class IkarosClient(
     private val baseUrl: String,
@@ -53,43 +56,22 @@ class IkarosClient(
     }
 
 
-    suspend fun postSubjectSyncBgmTv(bgmTvSubjectId: String): IkarosSubjectDetails? {
+    suspend fun getSubjectSyncsWithBgmTvSubjectId(bgmTvSubjectId: String): List<IkarosSubjectSync> {
         if (bgmTvSubjectId.isBlank() || bgmTvSubjectId.toInt() <= 0) {
-            return null
+            return Collections.emptyList()
         }
-        val url = "$baseUrl/api/v1alpha1/subject/sync/platform?platform=BGM_TV&platformId=$bgmTvSubjectId"
-        return client.post(url).body<IkarosSubjectDetails>()
+        val url = "$baseUrl/api/v1alpha1/subject/syncs/platform?platform=BGM_TV&platformId=$bgmTvSubjectId"
+        val responseText = client.get(url).bodyAsText();
+        return Json { ignoreUnknownKeys = true }.decodeFromString(responseText)
     }
 
-    private suspend fun getAttachmentById(attId: Long): IkarosAttachment? {
-        if (attId <= 0) return null;
-        val url = baseUrl.plus("/api/v1alpha1/attachment/").plus(attId);
-        return client.get(url).body<IkarosAttachment>();
-    }
-
-    private suspend fun getAttachmentVideoSubtitlesById(attId: Long): List<IkarosVideoSubtitle>? {
-        if (attId <= 0) return null;
-        val url = baseUrl.plus("/api/v1alpha1/attachment/relation/videoSubtitle/subtitles/").plus(attId);
-        return client.get(url).body<List<IkarosVideoSubtitle>>();
-    }
-
-    private fun getResUrl(url: String): String {
-        if (url.isEmpty()) {
-            return ""
-        }
-        if (url.startsWith("http://") || url.startsWith("https://")) {
-            return url
-        }
-        return baseUrl + url
-    }
-
-    suspend fun subjectDetails2SizedSource(
-        subjectDetails: IkarosSubjectDetails,
+    suspend fun episodeRecords2SizeSource(
+        subjectId: String,
+        episodeRecords: List<IkarosEpisodeRecord>,
         episodeSort: EpisodeSort
     ): SizedSource<MediaMatch> {
-        val episodes = subjectDetails.episodes
         val mediaMatchs = mutableListOf<MediaMatch>()
-        val epSortNumber = if (episodeSort.number == null) 1 else episodeSort.number
+        val epSortNumber = if (episodeSort.number == null) 1.0 else episodeSort.number!!.toDouble()
         val ikarosEpisodeGroup = if (episodeSort is EpisodeSort.Special) {
             when (episodeSort.type) {
                 EpisodeType.SP -> IkarosEpisodeGroup.SPECIAL_PROMOTION
@@ -104,18 +86,18 @@ class IkarosClient(
         } else {
             IkarosEpisodeGroup.MAIN
         }
-        val episode = episodes.find { ep ->
-            ep.sequence == epSortNumber && ikarosEpisodeGroup.name == ep.group
+        val episode = episodeRecords.find { epRecord ->
+            epRecord.episode.sequence == epSortNumber && ikarosEpisodeGroup.name == epRecord.episode.group.name
         }
         if (episode?.resources != null && episode.resources.isNotEmpty()) {
             for (epRes in episode.resources) {
-                val media = epRes?.let {
+                val media = epRes.let {
                     val attachment: IkarosAttachment? = getAttachmentById(epRes.attachmentId);
                     val parseResult = RawTitleParser.getDefault().parse(epRes.name);
                     DefaultMedia(
                         mediaId = epRes.attachmentId.toString(),
                         mediaSourceId = IkarosMediaSource.ID,
-                        originalUrl = baseUrl.plus("/console/#/subjects/subject/details/").plus(subjectDetails.id),
+                        originalUrl = baseUrl.plus("/console/#/subjects/subject/details/").plus(subjectId),
                         download = ResourceLocation.HttpStreamingFile(
                             uri = getResUrl(epRes.url),
                         ),
@@ -134,18 +116,47 @@ class IkarosClient(
                         extraFiles = fetchVideoAttSubtitles2ExtraFiles(epRes.attachmentId),
                     )
                 }
-                val mediaMatch = media?.let { MediaMatch(it, MatchKind.FUZZY) }
-                if (mediaMatch != null) {
-                    mediaMatchs.add(mediaMatch)
-                }
+                val mediaMatch = media.let { MediaMatch(it, MatchKind.FUZZY) }
+                mediaMatchs.add(mediaMatch)
             }
         }
 
         val sizedSource = IkarosSizeSource(
             totalSize = flowOf(mediaMatchs.size), finished = flowOf(true), results = mediaMatchs.asFlow(),
         )
+        return sizedSource;
+    }
 
-        return sizedSource
+    suspend fun getEpisodeRecordsWithId(subjectId: String): List<IkarosEpisodeRecord> {
+        if (subjectId.isBlank() || subjectId.toInt() <= 0) {
+            return Collections.emptyList();
+        }
+        val url = "$baseUrl/api/v1alpha1/episode/records/subjectId/$subjectId"
+        val responseText = client.get(url).bodyAsText();
+        return Json { ignoreUnknownKeys = true }.decodeFromString(responseText)
+    }
+
+    suspend fun getAttachmentById(attId: Long): IkarosAttachment? {
+        if (attId <= 0) return null;
+        val url = baseUrl.plus("/api/v1alpha1/attachment/").plus(attId)
+        return client.get(url).body<IkarosAttachment>();
+    }
+
+    suspend fun getAttachmentVideoSubtitlesById(attId: Long): List<IkarosVideoSubtitle>? {
+        if (attId <= 0) return null;
+        val url = baseUrl.plus("/api/v1alpha1/attachment/relation/videoSubtitle/subtitles/").plus(attId);
+        val responseText = client.get(url).bodyAsText();
+        return Json { ignoreUnknownKeys = true }.decodeFromString(responseText)
+    }
+
+    fun getResUrl(url: String): String {
+        if (url.isEmpty()) {
+            return ""
+        }
+        if (url.startsWith("http://") || url.startsWith("https://")) {
+            return url
+        }
+        return baseUrl + url
     }
 
     private suspend fun fetchVideoAttSubtitles2ExtraFiles(attachmentId: Long): MediaExtraFiles {

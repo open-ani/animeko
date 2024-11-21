@@ -26,6 +26,7 @@ package me.him188.ani.client.apis
 
 import me.him188.ani.client.models.AniAnimeSchedule
 import me.him188.ani.client.models.AniAnimeSeasonIdList
+import me.him188.ani.client.models.AniBatchGetSubjectRecurrenceResponse
 
 import me.him188.ani.client.infrastructure.*
 import io.ktor.client.HttpClient
@@ -68,7 +69,7 @@ open class ScheduleAniApi : ApiClient {
 
         val localVariableAuthNames = listOf<String>()
 
-        val localVariableBody =
+        val localVariableBody = 
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
@@ -100,7 +101,7 @@ open class ScheduleAniApi : ApiClient {
 
         val localVariableAuthNames = listOf<String>()
 
-        val localVariableBody =
+        val localVariableBody = 
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
@@ -109,6 +110,40 @@ open class ScheduleAniApi : ApiClient {
         val localVariableConfig = RequestConfig<kotlin.Any?>(
             RequestMethod.GET,
             "/v1/schedule/seasons",
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = false,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames,
+        ).wrap()
+    }
+
+
+    /**
+     * 查询一些条目的连载信息
+     * 查询一些条目的连载信息
+     * @param ids 需要查询的条目 ID 列表, 以英文逗号分隔. (optional)
+     * @return AniBatchGetSubjectRecurrenceResponse
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun getSubjectRecurrences(ids: kotlin.collections.List<kotlin.Int>? = null): HttpResponse<AniBatchGetSubjectRecurrenceResponse> {
+
+        val localVariableAuthNames = listOf<String>()
+
+        val localVariableBody = 
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        ids?.apply { localVariableQuery["ids"] = toMultiValue(this, "csv") }
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.GET,
+            "/v1/schedule/subjects",
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = false,

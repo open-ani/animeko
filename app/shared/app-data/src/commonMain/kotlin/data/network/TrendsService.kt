@@ -18,7 +18,6 @@ import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.trending.TrendingSubjectInfo
 import me.him188.ani.app.data.models.trending.TrendsInfo
 import me.him188.ani.app.data.repository.Repository
-import me.him188.ani.app.data.repository.Repository.Companion.defaultPagingConfig
 import me.him188.ani.app.data.repository.runWrappingExceptionAsLoadResult
 import me.him188.ani.app.tools.paging.SinglePagePagingSource
 import me.him188.ani.client.apis.TrendsAniApi
@@ -29,7 +28,7 @@ import kotlin.coroutines.CoroutineContext
 class TrendsRepository(
     apiLazy: Lazy<TrendsAniApi>,
     private val ioDispatcher: CoroutineContext = Dispatchers.IO_
-) : Repository {
+) : Repository() {
     private val api by apiLazy
 
     suspend fun getTrendsInfo(): TrendsInfo {

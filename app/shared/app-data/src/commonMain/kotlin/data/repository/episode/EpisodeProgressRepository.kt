@@ -24,8 +24,8 @@ import kotlin.coroutines.CoroutineContext
 class EpisodeProgressRepository(
     private val episodeCollectionRepository: EpisodeCollectionRepository,
     private val cacheManager: MediaCacheManager,
-    private val defaultDispatcher: CoroutineContext = Dispatchers.Default,
-) : Repository {
+    defaultDispatcher: CoroutineContext = Dispatchers.Default,
+) : Repository(defaultDispatcher) {
     fun subjectEpisodeProgressesInfoFlow(subjectId: Int): Flow<List<EpisodeProgressInfo>> {
         return episodeCollectionRepository.subjectEpisodeCollectionInfosFlow(subjectId).flatMapLatest { list ->
             if (list.isEmpty()) {

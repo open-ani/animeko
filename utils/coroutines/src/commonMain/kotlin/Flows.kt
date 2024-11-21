@@ -14,6 +14,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.runningFold
 import kotlin.coroutines.CoroutineContext
@@ -157,3 +158,10 @@ class OwnedCancellationException(val owner: Any) : CancellationException("Aborte
 fun OwnedCancellationException.checkOwner(owner: Any) {
     if (this.owner !== owner) throw this
 }
+
+
+fun <T1, T2, T3, R> Flow<T1>.combine(
+    flow1: Flow<T2>,
+    flow2: Flow<T3>,
+    transform: suspend (a: T1, b: T2, c: T3) -> R
+): Flow<R> = combine(this, flow1, flow2, transform)

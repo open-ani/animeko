@@ -22,11 +22,14 @@ import androidx.room.Transaction
 import androidx.room.TypeConverters
 import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
+import me.him188.ani.app.data.models.schedule.AnimeRecurrence
 import me.him188.ani.app.data.models.subject.RatingInfo
 import me.him188.ani.app.data.models.subject.SelfRatingInfo
 import me.him188.ani.app.data.models.subject.SubjectCollectionStats
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.Tag
+import me.him188.ani.app.data.persistent.database.converters.DurationConverter
+import me.him188.ani.app.data.persistent.database.converters.InstantConverter
 import me.him188.ani.app.data.persistent.database.converters.PackedDateConverter
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
@@ -41,7 +44,7 @@ import me.him188.ani.utils.platform.currentTimeMillis
         Index(value = ["lastUpdated"], unique = false, orders = [Index.Order.DESC]),
     ],
 )
-@TypeConverters(PackedDateConverter::class)
+@TypeConverters(PackedDateConverter::class, DurationConverter::class, InstantConverter::class)
 data class SubjectCollectionEntity(
     @PrimaryKey val subjectId: Int,
 
@@ -68,6 +71,12 @@ data class SubjectCollectionEntity(
     @Embedded(prefix = "self_rating_")
     val selfRatingInfo: SelfRatingInfo,
     val collectionType: UnifiedCollectionType,
+
+    /**
+     * @since 4.1.0-alpha01
+     */
+    @Embedded(prefix = "recurrence_")
+    val recurrence: AnimeRecurrence?,
 
     /**
      * 此条目最后被修改的时间 (如修改收藏状态). 与服务器同步.

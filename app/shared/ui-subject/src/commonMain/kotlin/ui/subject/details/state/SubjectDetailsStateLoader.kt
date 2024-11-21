@@ -15,8 +15,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -42,12 +42,12 @@ class SubjectDetailsStateLoader(
 
     fun load(
         subjectId: Int
-    ): Deferred<*> {
+    ): Job {
         if (subjectDetailsStateFlow?.value?.info?.subjectId == subjectId) {
             // 已经加载完成了
             return completedJob
         }
-        return tasker.async {
+        return tasker.launch {
             withContext(Dispatchers.Main) {
                 subjectDetailsStateProblem = null
                 subjectDetailsStateFlow = null
@@ -66,8 +66,7 @@ class SubjectDetailsStateLoader(
                     subjectDetailsStateProblem = SearchProblem.fromException(e)
                     subjectDetailsStateFlow = null
                 }
-                throw e
-                return@async
+                return@launch
             }
             withContext(Dispatchers.Main) {
                 subjectDetailsStateFlow = resp
@@ -89,7 +88,7 @@ class SubjectDetailsStateLoader(
         private set
 
     private companion object {
-        private val completedJob: Deferred<*> = CompletableDeferred(Unit)
+        private val completedJob: Job = CompletableDeferred(Unit)
     }
 }
 

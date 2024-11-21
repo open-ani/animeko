@@ -29,15 +29,15 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- *
+ * 
  *
  * @param aliases
  * @param bangumiId
  * @param name
  * @param begin
- * @param end
- * @param mikanId
- * @param recurrence
+ * @param end 
+ * @param mikanId 
+ * @param recurrence 
  */
 @Serializable
 

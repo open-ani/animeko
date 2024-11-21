@@ -43,6 +43,7 @@ import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
 import me.him188.ani.app.data.network.BangumiCommentService
+import me.him188.ani.app.data.repository.episode.AnimeScheduleRepository
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.media.EpisodePreferencesRepository
 import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepository
@@ -228,6 +229,7 @@ private class EpisodeViewModelImpl(
     private val playerStateFactory: PlayerStateFactory by inject()
     private val subjectCollectionRepository: SubjectCollectionRepository by inject()
     private val episodeCollectionRepository: EpisodeCollectionRepository by inject()
+    private val animeScheduleRepository: AnimeScheduleRepository by inject()
     private val mediaCacheManager: MediaCacheManager by inject()
     private val danmakuManager: DanmakuManager by inject()
     override val videoSourceResolver: VideoSourceResolver by inject()
@@ -426,8 +428,8 @@ private class EpisodeViewModelImpl(
         episodeId
             .flatMapLatest { episodeId ->
                 episodeCollectionRepository.episodeCollectionInfoFlow(subjectId, episodeId)
-            }.map {
-                it.toPresentation()
+            }.combine(subjectCollection) { collection, subject ->
+                collection.toPresentation(subject.recurrence)
             }
             .shareInBackground(SharingStarted.Eagerly)
 
@@ -444,7 +446,9 @@ private class EpisodeViewModelImpl(
             subjectInfo = subjectInfo.produceState(SubjectInfo.Empty),
             airingLabelState = AiringLabelState(
                 subjectCollection.map { it.airingInfo }.produceState(null),
-                subjectCollection.map { SubjectProgressInfo.compute(it.subjectInfo, it.episodes, getCurrentDate()) }
+                subjectCollection.map { it ->
+                    SubjectProgressInfo.compute(it.subjectInfo, it.episodes, getCurrentDate(), it.recurrence)
+                }
                     .produceState(null),
             ),
             subjectDetailsStateLoader = SubjectDetailsStateLoader(subjectDetailsStateFactory, backgroundScope),
@@ -530,7 +534,11 @@ private class EpisodeViewModelImpl(
     }
 
     override val episodeSelectorState: EpisodeSelectorState = EpisodeSelectorState(
-        itemsFlow = episodeCollectionsFlow.map { list -> list.map { it.toPresentation() } },
+        itemsFlow = episodeCollectionsFlow.combine(subjectCollection) { list, subject ->
+            list.map {
+                it.toPresentation(subject.recurrence)
+            }
+        },
         onSelect = {
             switchEpisode(it.episodeId)
         },

@@ -762,16 +762,24 @@
                     "value": {
                       "list": [ {
                         "year": 2024,
-                        "season": "WINTER",
+                        "season": "AUTUMN",
                         "id": "2024q4"
                       }, {
                         "year": 2024,
-                        "season": "AUTUMN",
+                        "season": "SUMMER",
                         "id": "2024q3"
                       }, {
                         "year": 2024,
-                        "season": "SUMMER",
+                        "season": "SPRING",
                         "id": "2024q2"
+                      }, {
+                        "year": 2024,
+                        "season": "WINTER",
+                        "id": "2024q1"
+                      }, {
+                        "year": 2023,
+                        "season": "AUTUMN",
+                        "id": "2023q4"
                       } ]
                     }
                   }
@@ -839,6 +847,62 @@
           },
           "400 Bad Request": {
             "description": "seasonId 格式有误",
+            "headers": { }
+          }
+        },
+        "deprecated": false
+      }
+    },
+    "/v1/schedule/subjects": {
+      "get": {
+        "tags": [ "Schedule" ],
+        "summary": "查询一些条目的连载信息",
+        "description": "查询一些条目的连载信息",
+        "operationId": "getSubjectRecurrences",
+        "parameters": [ {
+          "name": "ids",
+          "in": "query",
+          "description": "需要查询的条目 ID 列表, 以英文逗号分隔.",
+          "required": false,
+          "deprecated": false,
+          "allowEmptyValue": true,
+          "explode": false,
+          "allowReserved": true,
+          "schema": {
+            "title": "List<Int>",
+            "type": "array",
+            "items": {
+              "title": "Int",
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          "example": [ 404480, 123123123 ]
+        } ],
+        "responses": {
+          "200 OK": {
+            "description": "获取成功",
+            "headers": { },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchGetSubjectRecurrenceResponse"
+                },
+                "examples": {
+                  "example": {
+                    "value": {
+                      "recurrences": [ {
+                        "startTime": "2024-10-06T08:00:00Z",
+                        "intervalMillis": 604800000
+                      }, null ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400 Bad Request": {
+            "description": "body 内容格式有误",
             "headers": { }
           }
         },
@@ -1206,7 +1270,7 @@
       },
       "AnimeSeason": {
         "title": "AnimeSeason",
-        "enum": [ "SPRING", "SUMMER", "AUTUMN", "WINTER" ]
+        "enum": [ "WINTER", "SPRING", "SUMMER", "AUTUMN" ]
       },
       "AnimeSeasonIdList": {
         "title": "AnimeSeasonIdList",
@@ -1288,6 +1352,20 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/OnAirAnimeInfo"
+            }
+          }
+        }
+      },
+      "BatchGetSubjectRecurrenceResponse": {
+        "title": "BatchGetSubjectRecurrenceResponse",
+        "required": [ "recurrences" ],
+        "type": "object",
+        "properties": {
+          "recurrences": {
+            "title": "List<AnimeRecurrence>",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AnimeRecurrence"
             }
           }
         }

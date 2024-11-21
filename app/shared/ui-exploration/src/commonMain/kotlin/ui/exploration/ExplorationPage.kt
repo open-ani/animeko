@@ -31,18 +31,13 @@ import androidx.compose.material3.carousel.CarouselState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.paging.PagingData
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItemsWithLifecycle
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.UserInfo
 import me.him188.ani.app.data.models.subject.FollowedSubjectInfo
 import me.him188.ani.app.data.models.subject.subjectInfo
@@ -61,7 +56,6 @@ import me.him188.ani.app.ui.foundation.layout.paneHorizontalPadding
 import me.him188.ani.app.ui.foundation.session.SelfAvatar
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.search.isLoadingFirstPageOrRefreshing
-import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateLoader
 
 @Stable
 class ExplorationPageState(
@@ -69,7 +63,6 @@ class ExplorationPageState(
     selfInfoState: State<UserInfo?>,
     val trendingSubjectInfoPager: LazyPagingItems<TrendingSubjectInfo>,
     val followedSubjectsPager: Flow<PagingData<FollowedSubjectInfo>>,
-    val subjectDetailsStateLoader: SubjectDetailsStateLoader,
 ) {
     val selfInfo by selfInfoState
 
@@ -84,23 +77,6 @@ class ExplorationPageState(
     )
     val followedSubjectsLazyRowState = LazyListState()
 
-    var selectedTrendingSubject: TrendingSubjectInfo? by mutableStateOf(null)
-        private set
-    val loadingTrendingSubject by derivedStateOf {
-        if (subjectDetailsStateLoader.isLoading || subjectDetailsStateLoader.subjectDetailsStateProblem != null) {
-            selectedTrendingSubject
-        } else {
-            null
-        }
-    }
-
-    /**
-     * 提前加载条目详情页的状态. 此函数返回后则可以使用 [me.him188.ani.app.navigation.AniNavigator.navigateSubjectDetails] 来跳转到条目详情页.
-     */
-    suspend fun viewTrendingSubjectDetails(info: TrendingSubjectInfo): Boolean {
-        selectedTrendingSubject = info
-        return subjectDetailsStateLoader.load(info.bangumiId).runCatching { await() }.isSuccess
-    }
 
     val pageScrollState = ScrollState(0)
 }
@@ -113,7 +89,6 @@ fun ExplorationPage(
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
 ) {
-    val scope = rememberCoroutineScope()
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = AniThemeDefaults.pageContentBackgroundColor,
@@ -159,14 +134,8 @@ fun ExplorationPage(
 
             TrendingSubjectsCarousel(
                 state.trendingSubjectInfoPager,
-                loadingItem = { state.loadingTrendingSubject },
-                subjectDetailsProblem = { state.subjectDetailsStateLoader.subjectDetailsStateProblem },
                 onClick = {
-                    scope.launch {
-                        if (state.viewTrendingSubjectDetails(it)) {
-                            navigator.navigateSubjectDetails(it.bangumiId)
-                        }
-                    }
+                    navigator.navigateSubjectDetails(it.bangumiId)
                 },
                 contentPadding = PaddingValues(horizontal = horizontalPadding, vertical = 8.dp),
                 carouselState = state.trendingSubjectsCarouselState,

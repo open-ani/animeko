@@ -21,12 +21,13 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
-import me.him188.ani.app.data.models.episode.isKnownCompleted
 import me.him188.ani.app.data.models.preference.MediaCacheSettings
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
+import me.him188.ani.app.data.models.subject.SubjectRecurrence
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
+import me.him188.ani.app.domain.episode.EpisodeCompletionContext.isKnownCompleted
 import me.him188.ani.app.domain.media.cache.storage.MediaCacheStorage
 import me.him188.ani.app.domain.media.fetch.MediaFetcher
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
@@ -111,6 +112,7 @@ class DefaultMediaAutoCacheService(
         for (subject in collections) {
             val firstUnwatched = firstEpisodeToCache(
                 eps = epsNotCached(subject.subjectId),
+                recurrence = subject.recurrence,
                 hasAlreadyCached = {
                     cacheManager.cacheStatusForEpisode(subject.subjectId, it.episodeInfo.episodeId)
                         .firstOrNull() != EpisodeCacheStatus.NotCached
@@ -180,13 +182,14 @@ class DefaultMediaAutoCacheService(
         // public for testing
         fun firstEpisodeToCache(
             eps: List<EpisodeCollectionInfo>,
+            recurrence: SubjectRecurrence?,
             hasAlreadyCached: suspend (EpisodeCollectionInfo) -> Boolean,
             maxCount: Int = Int.MAX_VALUE,
         ): Flow<EpisodeCollectionInfo> {
             var cachedCount = 0
             return eps
                 .asSequence()
-                .takeWhile { it.episodeInfo.isKnownCompleted }
+                .takeWhile { it.episodeInfo.isKnownCompleted(recurrence) }
                 .dropWhile {
                     it.collectionType.isDoneOrDropped() // 已经看过的不考虑
                 }

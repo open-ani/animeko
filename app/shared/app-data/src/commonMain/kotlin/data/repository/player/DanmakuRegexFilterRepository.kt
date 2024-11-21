@@ -12,9 +12,8 @@ package me.him188.ani.app.data.repository.player
 import androidx.datastore.core.DataStore
 import kotlinx.coroutines.flow.Flow
 import me.him188.ani.app.data.models.danmaku.DanmakuRegexFilter
-import me.him188.ani.app.data.repository.Repository
 
-interface DanmakuRegexFilterRepository : Repository {
+interface DanmakuRegexFilterRepository {
 
     val flow: Flow<List<DanmakuRegexFilter>>
 

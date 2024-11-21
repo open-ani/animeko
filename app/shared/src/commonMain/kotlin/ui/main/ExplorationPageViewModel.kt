@@ -22,14 +22,11 @@ import me.him188.ani.app.domain.session.userInfo
 import me.him188.ani.app.ui.exploration.ExplorationPageState
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.foundation.AuthState
-import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateLoader
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
 @Stable
-class ExplorationPageViewModel(
-    val subjectDetailsStateLoader: SubjectDetailsStateLoader,
-) : AbstractViewModel(), KoinComponent {
+class ExplorationPageViewModel : AbstractViewModel(), KoinComponent {
     private val trendsRepository: TrendsRepository by inject()
     private val sessionManager: SessionManager by inject()
     private val followedSubjectsRepository: FollowedSubjectsRepository by inject()
@@ -57,6 +54,5 @@ class ExplorationPageViewModel(
 //            .onStart<List<FollowedSubjectInfo?>> {
 //                emit(arrayOfNulls<FollowedSubjectInfo>(10).toList())
 //            }
-        subjectDetailsStateLoader = subjectDetailsStateLoader,
     )
 }

@@ -127,7 +127,6 @@ fun SearchPage(
                         }
                     }
                 }, // collect only once
-                animatedVisibilityScope = animatedVisibilityScope,
                 state = state.gridState,
             )
         },
@@ -175,13 +174,12 @@ private suspend fun FocusRequester.requestFocusWithRetry() {
 }
 
 @Composable
-internal fun SharedTransitionScope.SearchPageResultColumn(
+internal fun SearchPageResultColumn(
     items: LazyPagingItems<SubjectPreviewItemInfo>,
     showSummary: () -> Boolean, // 可在还没发起任何搜索时不展示
     selectedItemIndex: () -> Int,
     onSelect: (index: Int) -> Unit,
     onPlay: (info: SubjectPreviewItemInfo) -> Unit,
-    animatedVisibilityScope: AnimatedVisibilityScope,
     modifier: Modifier = Modifier,
     state: LazyStaggeredGridState = rememberLazyStaggeredGridState()
 ) {

@@ -523,7 +523,6 @@ inline fun PieceList.binarySearch(
     toIndex: Int = count,
     comparator: PieceList.(Piece) -> Int,
 ): Int {
-    // TODO: check, this is written by Copilot
     var low = createPieceByListIndexUnsafe(fromIndex).pieceIndex
     var high = createPieceByListIndexUnsafe(toIndex - 1).pieceIndex
     while (low <= high) {

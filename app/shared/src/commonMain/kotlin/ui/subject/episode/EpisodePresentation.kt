@@ -14,8 +14,9 @@ import androidx.compose.runtime.Stable
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.episode.displayName
-import me.him188.ani.app.data.models.episode.isKnownCompleted
 import me.him188.ani.app.data.models.episode.renderEpisodeEp
+import me.him188.ani.app.data.models.subject.SubjectRecurrence
+import me.him188.ani.app.domain.episode.EpisodeCompletionContext.isKnownCompleted
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 
 /**
@@ -62,11 +63,13 @@ data class EpisodePresentation(
     }
 }
 
-fun EpisodeCollectionInfo.toPresentation() = EpisodePresentation(
+fun EpisodeCollectionInfo.toPresentation(
+    recurrence: SubjectRecurrence?,
+) = EpisodePresentation(
     episodeId = this.episodeInfo.episodeId,
     title = episodeInfo.displayName,
     ep = episodeInfo.renderEpisodeEp(),
     sort = episodeInfo.sort.toString(),
     collectionType = collectionType,
-    isKnownBroadcast = episodeInfo.isKnownCompleted,
+    isKnownBroadcast = episodeInfo.isKnownCompleted(recurrence),
 )

@@ -40,9 +40,11 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.milliseconds
 
-sealed interface SubjectRelationsRepository : Repository {
-    fun subjectRelatedPersonsFlow(subjectId: Int): Flow<List<RelatedPersonInfo>>
-    fun subjectRelatedCharactersFlow(subjectId: Int): Flow<List<RelatedCharacterInfo>>
+sealed class SubjectRelationsRepository(
+    defaultDispatcher: CoroutineContext = Dispatchers.Default
+) : Repository(defaultDispatcher) {
+    abstract fun subjectRelatedPersonsFlow(subjectId: Int): Flow<List<RelatedPersonInfo>>
+    abstract fun subjectRelatedCharactersFlow(subjectId: Int): Flow<List<RelatedCharacterInfo>>
 }
 
 class DefaultSubjectRelationsRepository(
@@ -50,10 +52,10 @@ class DefaultSubjectRelationsRepository(
     private val subjectRelationsDao: SubjectRelationsDao,
     private val bangumiSubjectService: BangumiSubjectService,
     private val subjectCollectionRepository: SubjectCollectionRepository,
-    private val defaultDispatcher: CoroutineContext = Dispatchers.Default,
+    defaultDispatcher: CoroutineContext = Dispatchers.Default,
     private val autoRefreshPeriod: Duration = 1.hours,
     private val cacheExpiry: Duration = 1.hours,
-) : SubjectRelationsRepository {
+) : SubjectRelationsRepository(defaultDispatcher) {
     override fun subjectRelatedPersonsFlow(subjectId: Int): Flow<List<RelatedPersonInfo>> {
         return subjectCollectionRepository.subjectCollectionFlow(subjectId)
             .autoRefresh()

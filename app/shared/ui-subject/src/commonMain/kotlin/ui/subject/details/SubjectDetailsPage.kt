@@ -97,10 +97,9 @@ import me.him188.ani.app.ui.subject.rating.EditableRating
 import me.him188.ani.utils.platform.isMobile
 
 @Composable
-fun SharedTransitionScope.SubjectDetailsPage(
+fun SubjectDetailsPage(
     vm: SubjectDetailsViewModel,
     onPlay: (episodeId: Int) -> Unit,
-    animatedVisibilityScope: AnimatedVisibilityScope,
     modifier: Modifier = Modifier,
     showTopBar: Boolean = true,
     showBlurredBackground: Boolean = true,
@@ -112,7 +111,6 @@ fun SharedTransitionScope.SubjectDetailsPage(
         SubjectDetailsPage(
             state,
             onPlay = onPlay,
-            animatedVisibilityScope,
             modifier,
             showTopBar,
             showBlurredBackground,
@@ -122,10 +120,9 @@ fun SharedTransitionScope.SubjectDetailsPage(
 }
 
 @Composable
-fun SharedTransitionScope.SubjectDetailsPage(
+fun SubjectDetailsPage(
     state: SubjectDetailsState,
     onPlay: (episodeId: Int) -> Unit,
-    animatedVisibilityScope: AnimatedVisibilityScope,
     modifier: Modifier = Modifier,
     showTopBar: Boolean = true,
     showBlurredBackground: Boolean = true,
@@ -221,7 +218,6 @@ fun SharedTransitionScope.SubjectDetailsPage(
                 }
             }
         },
-        animatedVisibilityScope,
         modifier,
         showTopBar = showTopBar,
         showBlurredBackground = showBlurredBackground,
@@ -243,7 +239,7 @@ enum class SubjectDetailsTab {
  * 一部番的详情页
  */
 @Composable
-fun SharedTransitionScope.SubjectDetailsPageLayout(
+fun SubjectDetailsPageLayout(
     state: SubjectDetailsState,
     collectionData: @Composable () -> Unit,
     collectionActions: @Composable () -> Unit,
@@ -253,7 +249,6 @@ fun SharedTransitionScope.SubjectDetailsPageLayout(
     detailsTab: @Composable (contentPadding: PaddingValues) -> Unit,
     commentsTab: @Composable (contentPadding: PaddingValues) -> Unit,
     discussionsTab: @Composable (contentPadding: PaddingValues) -> Unit,
-    animatedVisibilityScope: AnimatedVisibilityScope,
     modifier: Modifier = Modifier,
     showTopBar: Boolean = true,
     showBlurredBackground: Boolean = true,
@@ -350,7 +345,6 @@ fun SharedTransitionScope.SubjectDetailsPageLayout(
                             collectionAction = collectionActions,
                             selectEpisodeButton = selectEpisodeButton,
                             rating = rating,
-                            animatedVisibilityScope,
                             Modifier
                                 .connectedScrollTarget(connectedScrollState)
                                 .fillMaxWidth()

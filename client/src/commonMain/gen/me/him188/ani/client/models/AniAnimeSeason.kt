@@ -29,12 +29,15 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
+ * 
  *
- *
- * Values: SPRING,SUMMER,AUTUMN,WINTER
+ * Values: WINTER,SPRING,SUMMER,AUTUMN
  */
 @Serializable
 enum class AniAnimeSeason(val value: kotlin.String) {
+
+    @SerialName(value = "WINTER")
+    WINTER("WINTER"),
 
     @SerialName(value = "SPRING")
     SPRING("SPRING"),
@@ -43,10 +46,7 @@ enum class AniAnimeSeason(val value: kotlin.String) {
     SUMMER("SUMMER"),
 
     @SerialName(value = "AUTUMN")
-    AUTUMN("AUTUMN"),
-
-    @SerialName(value = "WINTER")
-    WINTER("WINTER");
+    AUTUMN("AUTUMN");
 
     /**
      * Override [toString()] to avoid using the enum variable name as the value, and instead use

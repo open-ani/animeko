@@ -16,7 +16,6 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import me.him188.ani.app.data.repository.Repository
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.utils.platform.currentTimeMillis
 import kotlin.time.Duration.Companion.hours
@@ -24,7 +23,7 @@ import kotlin.time.Duration.Companion.hours
 /**
  * Do not access directly. Use [SessionManager] instead.
  */
-interface TokenRepository : Repository {
+interface TokenRepository {
     val refreshToken: Flow<String?>
     suspend fun setRefreshToken(value: String)
 

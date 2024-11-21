@@ -4,6 +4,7 @@ import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.request.header
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
+import kotlinx.coroutines.flow.flowOf
 import me.him188.ani.datasources.api.paging.SizedSource
 import me.him188.ani.datasources.api.source.ConnectionStatus
 import me.him188.ani.datasources.api.source.FactoryId
@@ -68,6 +69,7 @@ class IkarosMediaSource(
         override val allowMultipleInstances: Boolean get() = true
         override fun create(mediaSourceId: String, config: MediaSourceConfig): MediaSource =
             IkarosMediaSource(mediaSourceId, config)
+
         override val info: MediaSourceInfo get() = INFO
     }
 
@@ -80,9 +82,25 @@ class IkarosMediaSource(
     }
 
     override suspend fun fetch(query: MediaFetchRequest): SizedSource<MediaMatch> {
-        val subjectId = checkNotNull(query.subjectId)
-        val episodeSort = checkNotNull(query.episodeSort)
-        val ikarosSubjectDetails = checkNotNull(client.postSubjectSyncBgmTv(subjectId))
-        return client.subjectDetails2SizedSource(ikarosSubjectDetails, episodeSort)
+        val emptySizeSource = IkarosSizeSource(
+            totalSize = flowOf(0), finished = flowOf(false), results = flowOf(),
+        )
+        try {
+            val bgmTvSubjectId = checkNotNull(query.subjectId)
+            val episodeSort = checkNotNull(query.episodeSort)
+            val subjectSyncs = client.getSubjectSyncsWithBgmTvSubjectId(bgmTvSubjectId)
+            if (subjectSyncs.isEmpty()) {
+                return emptySizeSource
+            }
+            val subjectId = subjectSyncs[0].subjectId
+            val episodeRecords = client.getEpisodeRecordsWithId(subjectId.toString())
+            if (episodeRecords.isEmpty()) {
+                return emptySizeSource
+            }
+            return client.episodeRecords2SizeSource(subjectId.toString(), episodeRecords, episodeSort)
+        } catch (exception: RuntimeException) {
+            logger.error("Request fail: ", exception);
+        }
+        return emptySizeSource
     }
 }

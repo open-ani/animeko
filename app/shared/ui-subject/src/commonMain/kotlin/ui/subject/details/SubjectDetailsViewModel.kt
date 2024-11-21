@@ -12,14 +12,24 @@ package me.him188.ani.app.ui.subject.details
 import androidx.compose.runtime.Stable
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.ui.foundation.AbstractViewModel
+import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateFactory
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateLoader
 import me.him188.ani.app.ui.subject.rating.RateRequest
 import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
 
 @Stable
 class SubjectDetailsViewModel(
-    val stateLoader: SubjectDetailsStateLoader,
-) : AbstractViewModel(), KoinComponent
+    subjectId: Int,
+) : AbstractViewModel(), KoinComponent {
+    private val factory: SubjectDetailsStateFactory by inject()
+
+    val stateLoader = SubjectDetailsStateLoader(factory, backgroundScope)
+
+    init {
+        stateLoader.load(subjectId)
+    }
+}
 
 suspend inline fun SubjectCollectionRepository.updateRating(subjectId: Int, request: RateRequest) {
     return this.updateRating(subjectId, request.score, request.comment, isPrivate = request.isPrivate)

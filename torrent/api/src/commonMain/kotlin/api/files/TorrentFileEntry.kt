@@ -37,6 +37,7 @@ import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import kotlin.concurrent.Volatile
 import kotlin.coroutines.CoroutineContext
+import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -119,8 +120,10 @@ interface TorrentFileEntry { // 实现提示, 无 test mock
 
     /**
      * Opens the downloaded file as a [SeekableInput].
+     *
+     * @param awaitCoroutineContext 当 [SeekableInput] 需要等待 piece 完成时, 会[切换][withContext]到的 [CoroutineContext].
      */
-    suspend fun createInput(): SeekableInput
+    suspend fun createInput(awaitCoroutineContext: CoroutineContext = EmptyCoroutineContext): SeekableInput
 }
 
 /**

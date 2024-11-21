@@ -17,16 +17,6 @@ import kotlinx.serialization.Serializable
 import me.him188.ani.app.data.models.player.EpisodeHistory
 import me.him188.ani.app.data.repository.Repository
 import me.him188.ani.utils.logging.info
-import me.him188.ani.utils.logging.logger
-
-interface EpisodePlayHistoryRepository : Repository {
-    val flow: Flow<List<EpisodeHistory>>
-
-    suspend fun clear()
-    suspend fun remove(episodeId: Int)
-    suspend fun saveOrUpdate(episodeId: Int, positionMillis: Long)
-    suspend fun getPositionMillisByEpisodeId(episodeId: Int): Long?
-}
 
 @Serializable
 data class EpisodeHistories(
@@ -37,24 +27,23 @@ data class EpisodeHistories(
     }
 }
 
-class EpisodePlayHistoryRepositoryImpl(
+class EpisodePlayHistoryRepository(
     private val dataStore: DataStore<EpisodeHistories>
-) : EpisodePlayHistoryRepository {
-    private val logger = logger(this::class)
-    override val flow: Flow<List<EpisodeHistory>> = dataStore.data.map { it.histories }
+) : Repository() {
+    val flow: Flow<List<EpisodeHistory>> = dataStore.data.map { it.histories }
 
-    override suspend fun clear() {
+    suspend fun clear() {
         dataStore.updateData { EpisodeHistories.Empty }
     }
 
-    override suspend fun remove(episodeId: Int) {
+    suspend fun remove(episodeId: Int) {
         dataStore.updateData { current ->
             logger.info { "remove play progress for episode $episodeId" }
             current.copy(histories = current.histories.filter { it.episodeId != episodeId })
         }
     }
 
-    override suspend fun saveOrUpdate(episodeId: Int, positionMillis: Long) {
+    suspend fun saveOrUpdate(episodeId: Int, positionMillis: Long) {
         val episodeHistory = EpisodeHistory(
             episodeId = episodeId,
             positionMillis = positionMillis,
@@ -78,7 +67,7 @@ class EpisodePlayHistoryRepositoryImpl(
         }
     }
 
-    override suspend fun getPositionMillisByEpisodeId(episodeId: Int): Long? {
+    suspend fun getPositionMillisByEpisodeId(episodeId: Int): Long? {
         return dataStore.data.map { current ->
             current.histories.find { it.episodeId == episodeId }?.positionMillis
         }.firstOrNull()?.also {

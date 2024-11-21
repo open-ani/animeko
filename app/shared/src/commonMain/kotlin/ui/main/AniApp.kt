@@ -35,8 +35,6 @@ import me.him188.ani.app.tools.TimeFormatter
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.ifThen
-import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateFactory
-import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateLoader
 import me.him188.ani.utils.platform.isMobile
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -45,21 +43,6 @@ import org.koin.core.component.inject
 class AniAppViewModel : AbstractViewModel(), KoinComponent {
     private val settings: SettingsRepository by inject()
     val themeSettings: ThemeSettings? by settings.uiSettings.flow.map { it.theme }.produceState(null)
-
-    private val subjectDetailsStateFactory: SubjectDetailsStateFactory by inject()
-
-    /**
-     * 用于加载条目详情页的内容.
-     *
-     * 可以 (并且强烈建议) 在调用 [me.him188.ani.app.navigation.AniNavigator.navigateSubjectDetails] 之前调用 [SubjectDetailsStateLoader.load]
-     * 来提前准备内容, 并且处理网络错误等. 还可以支持 lookahead 的动画, 例如 Container Transform.
-     *
-     * TODO: 当用户从条目页返回时, state 应当被清除
-     *  但目前保留着也不会有很大浪费
-     */
-    val subjectDetailsStateLoader by lazy {
-        SubjectDetailsStateLoader(subjectDetailsStateFactory, backgroundScope)
-    }
 }
 
 @Composable

@@ -112,7 +112,7 @@ fun BasicCarouselItem(
                 }
             }
         }
-        Box(Modifier.matchParentSize().clip(maskShape)) {
+        Box(Modifier.matchParentSize()) {
             overlay()
         }
     }

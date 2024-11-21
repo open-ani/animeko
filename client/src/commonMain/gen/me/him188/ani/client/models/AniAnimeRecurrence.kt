@@ -30,10 +30,10 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
+ * 
  *
- *
- * @param intervalMillis
- * @param startTime
+ * @param intervalMillis 
+ * @param startTime 
  */
 @Serializable
 

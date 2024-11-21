@@ -26,7 +26,6 @@ import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
 import me.him188.ani.app.data.repository.episode.EpisodeProgressRepository
 import me.him188.ani.app.domain.media.cache.EpisodeCacheStatus
-import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.tools.WeekFormatter
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.subject.renderEpAndSort
@@ -60,18 +59,20 @@ fun SubjectProgressStateFactory.rememberSubjectProgressState(
 ): SubjectProgressState {
     val subjectId: Int = subjectCollection.subjectId
     val subjectCollectionState by rememberUpdatedState(subjectCollection)
+    val episodeProgressInfoList = remember(subjectId) { episodeProgressInfoList(subjectId) }
+        .collectAsStateWithLifecycle(emptyList())
+
     val info = remember {
         derivedStateOf {
             SubjectProgressInfo.compute(
                 subjectCollectionState.subjectInfo,
                 subjectCollectionState.episodes,
                 getCurrentDate(),
+                recurrence = subjectCollection.recurrence,
             )
         }
     }
-    val episodeProgressInfoList = remember(subjectId) { episodeProgressInfoList(subjectId) }
-        .collectAsStateWithLifecycle(emptyList())
-    val navigator = LocalNavigator.current
+
     return remember(info, this, subjectId) {
         SubjectProgressState(
             info,

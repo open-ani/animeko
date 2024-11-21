@@ -29,11 +29,11 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
+ * 
  *
- *
- * @param id
- * @param season
- * @param year
+ * @param id 
+ * @param season 
+ * @param year 
  */
 @Serializable
 

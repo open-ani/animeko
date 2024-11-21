@@ -10,6 +10,7 @@
 package me.him188.ani.app.data.models.subject
 
 import androidx.compose.runtime.Immutable
+import kotlinx.datetime.Instant
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.datasources.api.EpisodeSort
@@ -17,6 +18,7 @@ import me.him188.ani.datasources.api.EpisodeType
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.platform.annotations.TestOnly
+import kotlin.time.Duration
 
 /**
  * 用户对一个条目的收藏情况
@@ -29,6 +31,14 @@ data class SubjectCollectionInfo(
     val episodes: List<EpisodeCollectionInfo>, // sorted by episode sort ascending
     val airingInfo: SubjectAiringInfo,
     val progressInfo: SubjectProgressInfo,
+//    /**
+//     * 是否正在连载中. 此信息从 ani 服务器获取, 独立于 bangumi, 可能获取失败. `null` 表示未知.
+//     */
+//    val isOnAir: Boolean?,
+    /**
+     * 连载周期. 仅对连载动画有效. `null` 表示此动画不是连载中, 或者因为各种原因获取失败.
+     */
+    val recurrence: SubjectRecurrence?,
     val cachedStaffUpdated: Long,
     val cachedCharactersUpdated: Long,
 
@@ -39,6 +49,11 @@ data class SubjectCollectionInfo(
 ) {
     val subjectId: Int get() = subjectInfo.subjectId
 }
+
+data class SubjectRecurrence(
+    val startTime: Instant,
+    val interval: Duration,
+)
 
 @TestOnly
 val TestSubjectCollections
@@ -128,8 +143,15 @@ private fun testSubjectCollection(
         airingInfo = SubjectAiringInfo.computeFromEpisodeList(
             episodes.map { it.episodeInfo },
             airDate = subjectInfo.airDate,
+            recurrence = null,
         ),
-        progressInfo = SubjectProgressInfo.compute(subjectInfo, episodes, PackedDate.now()),
+        progressInfo = SubjectProgressInfo.compute(
+            subjectInfo,
+            episodes,
+            PackedDate.now(),
+            recurrence = null,
+        ),
+        recurrence = null,
         cachedStaffUpdated = 0,
         cachedCharactersUpdated = 0,
         lastUpdated = 0,

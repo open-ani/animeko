@@ -13,7 +13,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.data.models.episode.EpisodeInfo
-import me.him188.ani.app.data.models.episode.isKnownCompleted
+import me.him188.ani.app.domain.episode.EpisodeCompletionContext.isKnownCompleted
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.ifInvalid
@@ -63,6 +63,7 @@ data class SubjectProgressInfo(
             subjectInfo: SubjectInfo,
             episodes: List<EpisodeCollectionInfo>,
             currentDate: PackedDate,
+            recurrence: SubjectRecurrence?,
         ): SubjectProgressInfo {
             return compute(
                 subjectStarted = currentDate > subjectInfo.airDate,
@@ -73,7 +74,7 @@ data class SubjectProgressInfo(
                         it.episodeInfo.ep,
                         it.episodeInfo.sort,
                         it.episodeInfo.airDate,
-                        it.episodeInfo.isKnownCompleted,
+                        it.episodeInfo.isKnownCompleted(recurrence),
                     )
                 },
                 subjectAirDate = subjectInfo.airDate,

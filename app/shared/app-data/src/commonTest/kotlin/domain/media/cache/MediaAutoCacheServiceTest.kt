@@ -52,6 +52,7 @@ class MediaAutoCacheServiceTest {
             hasAlreadyCached = {
                 false
             },
+            recurrence = null,
         ).toList()
 
         assertEquals(0, res.size)
@@ -69,6 +70,7 @@ class MediaAutoCacheServiceTest {
             hasAlreadyCached = {
                 false
             },
+            recurrence = null,
         ).toList()
 
         assertEquals(0, res.size)
@@ -86,6 +88,7 @@ class MediaAutoCacheServiceTest {
             hasAlreadyCached = {
                 true
             },
+            recurrence = null,
         ).toList()
 
         assertEquals(0, res.size)
@@ -103,6 +106,7 @@ class MediaAutoCacheServiceTest {
             hasAlreadyCached = {
                 false
             },
+            recurrence = null,
         ).toList()
 
         assertEquals(1, res.size)
@@ -132,6 +136,7 @@ class MediaAutoCacheServiceTest {
             hasAlreadyCached = {
                 false
             },
+            recurrence = null,
         ).toList()
 
         assertEquals(3, res.size)
@@ -163,6 +168,7 @@ class MediaAutoCacheServiceTest {
                 it.episodeInfo.episodeId <= 0
             },
             maxCount = 1,
+            recurrence = null,
         ).toList()
 
         assertEquals(0, res.size)
@@ -193,6 +199,7 @@ class MediaAutoCacheServiceTest {
                 it.episodeInfo.episodeId <= 1
             },
             maxCount = 3,
+            recurrence = null,
         ).toList()
 
         assertEquals(listOf(2), res.map { it.episodeInfo.episodeId })
@@ -223,6 +230,7 @@ class MediaAutoCacheServiceTest {
                 false
             },
             maxCount = 1,
+            recurrence = null,
         ).toList()
 
         assertEquals(listOf(0), res.map { it.episodeInfo.episodeId })

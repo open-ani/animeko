@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.app.videoplayer.torrent
 
 import kotlinx.coroutines.flow.Flow
@@ -8,6 +17,7 @@ import me.him188.ani.app.videoplayer.data.VideoData
 import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
 import me.him188.ani.utils.io.SeekableInput
+import kotlin.coroutines.CoroutineContext
 
 class TorrentVideoData(
     private val handle: TorrentFileHandle,
@@ -29,7 +39,8 @@ class TorrentVideoData(
     val pieces get() = handle.entry.pieces
     override val isCacheFinished get() = handle.entry.fileStats.map { it.isDownloadFinished }
 
-    override suspend fun createInput(): SeekableInput = entry.createInput()
+    override suspend fun createInput(coroutineContext: CoroutineContext): SeekableInput =
+        entry.createInput(coroutineContext)
 
     override suspend fun close() {
         handle.close()

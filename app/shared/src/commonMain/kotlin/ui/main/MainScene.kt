@@ -65,13 +65,13 @@ import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBarPadding
 import me.him188.ani.app.ui.foundation.layout.isAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.setRequestFullScreen
+import me.him188.ani.app.ui.foundation.layout.useSharedTransitionScope
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.subject.collection.CollectionPage
 import me.him188.ani.app.ui.subject.collection.UserCollectionsViewModel
 import me.him188.ani.app.ui.subject.details.SubjectDetailsPage
-import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateLoader
 import me.him188.ani.app.ui.update.TextButtonUpdateLogo
 import me.him188.ani.utils.platform.isAndroid
 import kotlin.coroutines.cancellation.CancellationException
@@ -80,7 +80,6 @@ import kotlin.coroutines.cancellation.CancellationException
 @Composable
 fun MainScene(
     page: MainScenePage,
-    subjectDetailsStateLoader: SubjectDetailsStateLoader,
     modifier: Modifier = Modifier,
     onNavigateToPage: (MainScenePage) -> Unit,
     navigationLayoutType: NavigationSuiteType = AniNavigationSuiteDefaults.calculateLayoutType(
@@ -95,13 +94,12 @@ fun MainScene(
         }
     }
 
-    MainSceneContent(page, subjectDetailsStateLoader, onNavigateToPage, modifier, navigationLayoutType)
+    MainSceneContent(page, onNavigateToPage, modifier, navigationLayoutType)
 }
 
 @Composable
 private fun MainSceneContent(
     page: MainScenePage,
-    subjectDetailsStateLoader: SubjectDetailsStateLoader,
     onNavigateToPage: (MainScenePage) -> Unit,
     modifier: Modifier = Modifier,
     navigationLayoutType: NavigationSuiteType = AniNavigationSuiteDefaults.calculateLayoutType(
@@ -168,7 +166,7 @@ private fun MainSceneContent(
                 when (page) {
                     MainScenePage.Exploration -> {
                         ExplorationPage(
-                            viewModel { ExplorationPageViewModel(subjectDetailsStateLoader) }.explorationPageState,
+                            viewModel { ExplorationPageViewModel() }.explorationPageState,
                             onSearch = { onNavigateToPage(MainScenePage.Search) },
                             onClickSettings = { navigator.navigateSettings() },
                             modifier.fillMaxSize(),
@@ -218,16 +216,17 @@ private fun MainSceneContent(
                                                 episodeId,
                                             )
                                         },
-                                        animatedVisibilityScope,
                                         Modifier.ifThen(listDetailLayoutParameters.isSinglePane) {
-                                            sharedElement(
-                                                rememberSharedContentState(
-                                                    SharedTransitionKeys.subjectBounds(
-                                                        state.info.subjectId,
+                                            useSharedTransitionScope { modifier, animatedVisibilityScope ->
+                                                modifier.sharedElement(
+                                                    rememberSharedContentState(
+                                                        SharedTransitionKeys.subjectBounds(
+                                                            state.info.subjectId,
+                                                        ),
                                                     ),
-                                                ),
-                                                animatedVisibilityScope,
-                                            )
+                                                    animatedVisibilityScope,
+                                                )
+                                            }
                                         },
                                     )
                                 }

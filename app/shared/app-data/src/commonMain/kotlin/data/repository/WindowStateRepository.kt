@@ -18,9 +18,9 @@ import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
-interface WindowStateRepository : Repository {
-    val flow: Flow<SavedWindowState?>
-    suspend fun update(states: SavedWindowState)
+sealed class WindowStateRepository : Repository() {
+    abstract val flow: Flow<SavedWindowState?>
+    abstract suspend fun update(states: SavedWindowState)
 }
 
 @Serializable
@@ -43,7 +43,7 @@ private object DpSerializer : KSerializer<Dp> {
 
 class WindowStateRepositoryImpl(
     private val store: DataStore<SavedWindowState?>,
-) : WindowStateRepository {
+) : WindowStateRepository() {
     override val flow: Flow<SavedWindowState?> = store.data
 
     override suspend fun update(states: SavedWindowState) {

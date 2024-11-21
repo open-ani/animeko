@@ -33,6 +33,7 @@ import androidx.compose.material3.adaptive.layout.PaneScaffoldDirective
 import androidx.compose.material3.adaptive.layout.ThreePaneScaffoldRole
 import androidx.compose.material3.adaptive.navigation.ThreePaneScaffoldNavigator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
@@ -46,6 +47,8 @@ import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.layout.ListDetailAnimatedPane
+import me.him188.ani.app.ui.foundation.layout.LocalSharedTransitionScopeProvider
+import me.him188.ani.app.ui.foundation.layout.SharedTransitionScopeProvider
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.paneHorizontalPadding
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
@@ -118,12 +121,10 @@ fun <T> AniListDetailPaneScaffold(
                 ListDetailAnimatedPane(Modifier.preferredWidth(listPanePreferredWidth), useSharedTransition) {
                     Column {
                         val scope =
-                            remember(threePaneScaffoldScope, this@SharedTransitionLayout, this@ListDetailAnimatedPane) {
-                                object : PaneScope, SharedTransitionScope by this@SharedTransitionLayout {
+                            remember(threePaneScaffoldScope, this@ListDetailAnimatedPane) {
+                                object : PaneScope {
                                     override val listDetailLayoutParameters: ListDetailLayoutParameters
                                         get() = layoutParametersState
-                                    override val animatedVisibilityScope: AnimatedVisibilityScope
-                                        get() = this@ListDetailAnimatedPane
                                     override val role: ThreePaneScaffoldRole
                                         get() = threePaneScaffoldScope.role
 
@@ -157,16 +158,23 @@ fun <T> AniListDetailPaneScaffold(
                                     }
                                 }
                             }
-                        if (listPaneTopAppBar == null) {
-                            listPaneContent(scope)
-                        } else {
-                            listPaneTopAppBar(scope)
-                            Column(
-                                Modifier.consumeWindowInsets(
-                                    contentWindowInsets.only(WindowInsetsSides.Top),
-                                ),
-                            ) {
+
+                        CompositionLocalProvider(
+                            LocalSharedTransitionScopeProvider provides SharedTransitionScopeProvider(
+                                this@SharedTransitionLayout, this@ListDetailAnimatedPane,
+                            ),
+                        ) {
+                            if (listPaneTopAppBar == null) {
                                 listPaneContent(scope)
+                            } else {
+                                listPaneTopAppBar(scope)
+                                Column(
+                                    Modifier.consumeWindowInsets(
+                                        contentWindowInsets.only(WindowInsetsSides.Top),
+                                    ),
+                                ) {
+                                    listPaneContent(scope)
+                                }
                             }
                         }
                     }
@@ -180,12 +188,10 @@ fun <T> AniListDetailPaneScaffold(
                         colors = layoutParameters.detailPaneColors,
                     ) {
                         val scope =
-                            remember(threePaneScaffoldScope, this@SharedTransitionLayout, this@ListDetailAnimatedPane) {
-                                object : PaneScope, SharedTransitionScope by this@SharedTransitionLayout {
+                            remember(threePaneScaffoldScope, this@ListDetailAnimatedPane) {
+                                object : PaneScope {
                                     override val listDetailLayoutParameters: ListDetailLayoutParameters
                                         get() = layoutParametersState
-                                    override val animatedVisibilityScope: AnimatedVisibilityScope
-                                        get() = this@ListDetailAnimatedPane
                                     override val role: ThreePaneScaffoldRole
                                         get() = threePaneScaffoldScope.role
 
@@ -229,7 +235,7 @@ fun <T> AniListDetailPaneScaffold(
 }
 
 @Stable
-interface PaneScope : SharedTransitionScope {
+interface PaneScope {
     /**
      * 获取当前的布局参数.
      *
@@ -237,12 +243,6 @@ interface PaneScope : SharedTransitionScope {
      */
     @Stable
     val listDetailLayoutParameters: ListDetailLayoutParameters
-
-    /**
-     * 用于 [Modifier.sharedElement].
-     */
-    @Stable
-    val animatedVisibilityScope: AnimatedVisibilityScope
 
     /**
      * @see ListDetailPaneScaffoldRole

@@ -33,9 +33,9 @@ import kotlinx.serialization.Serializable
  * 
  *
  * @param clientPlatforms
- * @param id
- * @param largeAvatar
- * @param lastLoginTime
+ * @param id 
+ * @param largeAvatar 
+ * @param lastLoginTime 
  * @param mediumAvatar 
  * @param nickname 
  * @param registerTime 

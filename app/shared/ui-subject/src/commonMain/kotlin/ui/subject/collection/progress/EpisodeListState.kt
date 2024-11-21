@@ -24,13 +24,13 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.episode.EpisodeProgressInfo
 import me.him188.ani.app.data.models.episode.EpisodeProgressItem
-import me.him188.ani.app.data.models.episode.isKnownOnAir
 import me.him188.ani.app.data.models.episode.renderEpisodeEp
 import me.him188.ani.app.data.models.preference.EpisodeListProgressTheme
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.episode.EpisodeProgressRepository
 import me.him188.ani.app.data.repository.episode.setEpisodeWatched
 import me.him188.ani.app.data.repository.user.SettingsRepository
+import me.him188.ani.app.domain.episode.EpisodeCompletionContext.isKnownOnAir
 import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
@@ -89,7 +89,7 @@ class EpisodeListState(
                 episodeId = it.episode.episodeId,
                 episodeSort = it.episode.renderEpisodeEp(),
                 collectionType = it.collectionType,
-                isOnAir = it.episode.isKnownOnAir,
+                isOnAir = it.episode.isKnownOnAir(null), // TODO: 最好用精确点, 但这个场景也不是特别重要
                 cacheStatus = it.cacheStatus,
             )
         }

@@ -38,8 +38,8 @@ import kotlin.coroutines.cancellation.CancellationException
 class SubjectSearchRepository(
     private val searchApi: Flow<BangumiSearchApi>,
     private val subjectService: BangumiSubjectService,
-    private val defaultDispatcher: CoroutineContext = Dispatchers.Default,
-) {
+    defaultDispatcher: CoroutineContext = Dispatchers.Default,
+) : Repository(defaultDispatcher) {
     fun searchSubjects(
         searchQuery: SubjectSearchQuery,
         useNewApi: suspend () -> Boolean = { false },

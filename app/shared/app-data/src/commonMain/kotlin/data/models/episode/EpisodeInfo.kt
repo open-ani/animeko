@@ -28,9 +28,9 @@ data class EpisodeInfo(
     val name: String = "",
     val nameCn: String = "",
     /**
-     * 上映日期
+     * 条目所在地区的上映日期. 通常来说是日本时区 (UTC+9)
      */
-    val airDate: PackedDate = PackedDate.Invalid, // TODO: 考虑剧集上映时间 
+    val airDate: PackedDate = PackedDate.Invalid,
     val comment: Int = 0,
 //    /** 维基人填写的原始时长 */
 //    val duration: String = "",
@@ -52,20 +52,6 @@ data class EpisodeInfo(
 
 @Stable
 val EpisodeInfo.displayName get() = nameCn.ifBlank { name }
-
-/**
- * 是否一定已经播出了
- */
-@Stable
-val EpisodeInfo.isKnownCompleted: Boolean
-    get() = airDate.isValid && airDate <= PackedDate.now() // TODO: consider time 
-
-/**
- * 是否一定还未播出
- */
-@Stable
-val EpisodeInfo.isKnownOnAir
-    get() = airDate.isValid && airDate > PackedDate.now() // TODO: consider time 
 
 @Stable
 fun EpisodeInfo.renderEpisodeEp() = sort.toString()

@@ -43,6 +43,7 @@ import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
 import me.him188.ani.app.data.network.BangumiCommentService
 import me.him188.ani.app.data.network.BangumiRelatedPeopleService
+import me.him188.ani.app.data.repository.episode.AnimeScheduleRepository
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.episode.EpisodeProgressRepository
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
@@ -85,6 +86,7 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
     private val subjectRelationsRepository: SubjectRelationsRepository by inject()
     private val settingsRepository: SettingsRepository by inject()
     private val bangumiCommentService: BangumiCommentService by inject()
+    private val animeScheduleRepository: AnimeScheduleRepository by inject()
 
     val sessionManager: SessionManager by inject()
 
@@ -258,8 +260,11 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
 
 
         val subjectProgressInfoState =
-            subjectCollectionFlow.map {
-                SubjectProgressInfo.compute(it.subjectInfo, it.episodes, PackedDate.now())
+            subjectCollectionFlow.map { info ->
+                SubjectProgressInfo.compute(
+                    info.subjectInfo, info.episodes, PackedDate.now(),
+                    recurrence = info.recurrence,
+                )
             }.produceState(null, this)
 
         val subjectProgressState = subjectProgressStateFactory.run {

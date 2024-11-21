@@ -37,6 +37,7 @@ import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.io.inSystem
 import me.him188.ani.utils.io.toFile
 import java.io.RandomAccessFile
+import kotlin.coroutines.CoroutineContext
 
 @RequiresApi(Build.VERSION_CODES.O_MR1)
 class RemoteTorrentFileEntry(
@@ -107,7 +108,7 @@ class RemoteTorrentFileEntry(
         return if (result != null) Path(result).inSystem else null
     }
 
-    override suspend fun createInput(): SeekableInput =
+    override suspend fun createInput(coroutineContext: CoroutineContext): SeekableInput =
         remote.callSuspendCancellable { cont ->
             getTorrentInputParams(
                 object : ContTorrentFileEntryGetInputParams.Stub() {
@@ -128,6 +129,7 @@ class RemoteTorrentFileEntry(
                             },
                             bufferSize = value.bufferSize,
                             size = value.size,
+                            awaitCoroutineContext = coroutineContext,
                         ).also { cont.resume(it) }
                     }
 

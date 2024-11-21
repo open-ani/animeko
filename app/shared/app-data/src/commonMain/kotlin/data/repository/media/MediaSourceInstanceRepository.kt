@@ -20,15 +20,15 @@ import me.him188.ani.datasources.api.source.MediaSourceConfig
 import me.him188.ani.datasources.mikan.MikanCNMediaSource
 import me.him188.ani.utils.platform.Uuid
 
-interface MediaSourceInstanceRepository : Repository {
-    val flow: Flow<List<MediaSourceSave>>
+sealed class MediaSourceInstanceRepository : Repository() {
+    abstract val flow: Flow<List<MediaSourceSave>>
 
-    suspend fun clear()
-    suspend fun remove(instanceId: String)
-    suspend fun add(mediaSourceSave: MediaSourceSave)
+    abstract suspend fun clear()
+    abstract suspend fun remove(instanceId: String)
+    abstract suspend fun add(mediaSourceSave: MediaSourceSave)
 
-    suspend fun updateSave(instanceId: String, config: MediaSourceSave.() -> MediaSourceSave): Boolean
-    suspend fun reorder(newOrder: List<String>)
+    abstract suspend fun updateSave(instanceId: String, config: MediaSourceSave.() -> MediaSourceSave): Boolean
+    abstract suspend fun reorder(newOrder: List<String>)
 }
 
 suspend inline fun MediaSourceInstanceRepository.updateConfig(instanceId: String, config: MediaSourceConfig): Boolean {
@@ -72,7 +72,7 @@ data class MediaSourceSaves(
 
 class MediaSourceInstanceRepositoryImpl(
     private val dataStore: DataStore<MediaSourceSaves>
-) : MediaSourceInstanceRepository {
+) : MediaSourceInstanceRepository() {
     override val flow: Flow<List<MediaSourceSave>> = dataStore.data.map { it.instances }
     override suspend fun clear() {
         dataStore.updateData { MediaSourceSaves.Empty }

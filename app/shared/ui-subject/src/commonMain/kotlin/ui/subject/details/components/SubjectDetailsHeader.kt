@@ -52,6 +52,7 @@ import me.him188.ani.app.ui.foundation.animation.SharedTransitionKeys
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.paddingIfNotEmpty
+import me.him188.ani.app.ui.foundation.layout.useSharedTransitionScope
 import me.him188.ani.app.ui.subject.AiringLabel
 import me.him188.ani.app.ui.subject.AiringLabelState
 import me.him188.ani.app.ui.subject.renderSubjectSeason
@@ -60,7 +61,7 @@ const val COVER_WIDTH_TO_HEIGHT_RATIO = 849 / 1200f
 
 // 图片和标题
 @Composable
-internal fun SharedTransitionScope.SubjectDetailsHeader(
+internal fun SubjectDetailsHeader(
     info: SubjectInfo,
     coverImageUrl: String?,
     airingLabelState: AiringLabelState,
@@ -68,7 +69,6 @@ internal fun SharedTransitionScope.SubjectDetailsHeader(
     collectionAction: @Composable () -> Unit,
     selectEpisodeButton: @Composable BoxScope.() -> Unit,
     rating: @Composable () -> Unit,
-    animatedVisibilityScope: AnimatedVisibilityScope,
     modifier: Modifier = Modifier,
 ) {
     if (currentWindowAdaptiveInfo1().isWidthAtLeastMedium) {
@@ -78,10 +78,12 @@ internal fun SharedTransitionScope.SubjectDetailsHeader(
             title = {
                 Text(
                     info.displayName,
-                    Modifier.sharedElement(
-                        rememberSharedContentState(SharedTransitionKeys.subjectTitle(info.subjectId)),
-                        animatedVisibilityScope,
-                    ),
+                    Modifier.useSharedTransitionScope { modifier, animatedVisibilityScope ->
+                        modifier.sharedElement(
+                            rememberSharedContentState(SharedTransitionKeys.subjectTitle(info.subjectId)),
+                            animatedVisibilityScope,
+                        )
+                    },
                 )
             },
             subtitle = {
@@ -100,7 +102,6 @@ internal fun SharedTransitionScope.SubjectDetailsHeader(
             collectionAction = collectionAction,
             selectEpisodeButton = selectEpisodeButton,
             rating = rating,
-            animatedVisibilityScope = animatedVisibilityScope,
             modifier = modifier,
         )
     } else {
@@ -110,10 +111,12 @@ internal fun SharedTransitionScope.SubjectDetailsHeader(
             title = {
                 Text(
                     info.displayName,
-                    Modifier.sharedElement(
-                        rememberSharedContentState(SharedTransitionKeys.subjectTitle(info.subjectId)),
-                        animatedVisibilityScope,
-                    ),
+                    Modifier.useSharedTransitionScope { modifier, animatedVisibilityScope ->
+                        modifier.sharedElement(
+                            rememberSharedContentState(SharedTransitionKeys.subjectTitle(info.subjectId)),
+                            animatedVisibilityScope,
+                        )
+                    },
                 )
             },
             subtitle = {
@@ -132,7 +135,6 @@ internal fun SharedTransitionScope.SubjectDetailsHeader(
             collectionAction = collectionAction,
             selectEpisodeButton = selectEpisodeButton,
             rating = rating,
-            animatedVisibilityScope,
             modifier = modifier,
         )
     }
@@ -141,7 +143,7 @@ internal fun SharedTransitionScope.SubjectDetailsHeader(
 
 // 适合手机, 窄
 @Composable
-fun SharedTransitionScope.SubjectDetailsHeaderCompact(
+fun SubjectDetailsHeaderCompact(
     subjectId: Int,
     coverImageUrl: String?,
     title: @Composable () -> Unit,
@@ -151,7 +153,6 @@ fun SharedTransitionScope.SubjectDetailsHeaderCompact(
     collectionAction: @Composable () -> Unit,
     selectEpisodeButton: @Composable BoxScope.() -> Unit,
     rating: @Composable () -> Unit,
-    animatedVisibilityScope: AnimatedVisibilityScope,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier) {
@@ -163,10 +164,12 @@ fun SharedTransitionScope.SubjectDetailsHeaderCompact(
                     coverImageUrl,
                     null,
                     Modifier
-                        .sharedElement(
-                            rememberSharedContentState(SharedTransitionKeys.subjectCoverImage(subjectId)),
-                            animatedVisibilityScope,
-                        )
+                        .useSharedTransitionScope { modifier, animatedVisibilityScope ->
+                            modifier.sharedElement(
+                                rememberSharedContentState(SharedTransitionKeys.subjectCoverImage(subjectId)),
+                                animatedVisibilityScope,
+                            )
+                        }
                         .width(imageWidth)
                         .height(imageWidth / COVER_WIDTH_TO_HEIGHT_RATIO),
                     contentScale = ContentScale.Crop,
@@ -234,7 +237,7 @@ fun SharedTransitionScope.SubjectDetailsHeaderCompact(
 }
 
 @Composable
-fun SharedTransitionScope.SubjectDetailsHeaderWide(
+fun SubjectDetailsHeaderWide(
     subjectId: Int,
     coverImageUrl: String?,
     title: @Composable () -> Unit,
@@ -244,7 +247,6 @@ fun SharedTransitionScope.SubjectDetailsHeaderWide(
     collectionAction: @Composable () -> Unit,
     selectEpisodeButton: @Composable BoxScope.() -> Unit,
     rating: @Composable () -> Unit,
-    animatedVisibilityScope: AnimatedVisibilityScope,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier) {
@@ -259,10 +261,12 @@ fun SharedTransitionScope.SubjectDetailsHeaderWide(
                     coverImageUrl,
                     null,
                     Modifier
-                        .sharedElement(
-                            rememberSharedContentState(SharedTransitionKeys.subjectCoverImage(subjectId)),
-                            animatedVisibilityScope,
-                        )
+                        .useSharedTransitionScope { modifier, animatedVisibilityScope ->
+                            modifier.sharedElement(
+                                rememberSharedContentState(SharedTransitionKeys.subjectCoverImage(subjectId)),
+                                animatedVisibilityScope,
+                            )
+                        }
                         .width(imageWidth)
                         .height(imageWidth / COVER_WIDTH_TO_HEIGHT_RATIO),
                     contentScale = ContentScale.Crop,

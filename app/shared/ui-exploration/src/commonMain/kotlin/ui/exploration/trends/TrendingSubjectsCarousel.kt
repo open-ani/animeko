@@ -35,8 +35,6 @@ import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.layout.CarouselItem
 import me.him188.ani.app.ui.foundation.layout.CarouselItemDefaults
 import me.him188.ani.app.ui.foundation.layout.minimumHairlineSize
-import me.him188.ani.app.ui.foundation.widgets.FastLinearProgressIndicator
-import me.him188.ani.app.ui.search.SearchProblem
 import me.him188.ani.app.ui.search.SearchProblemCard
 import me.him188.ani.app.ui.search.isLoadingFirstPageOrRefreshing
 import me.him188.ani.app.ui.search.rememberSearchProblemState
@@ -45,8 +43,6 @@ import me.him188.ani.utils.platform.annotations.TestOnly
 @Composable
 fun TrendingSubjectsCarousel(
     items: LazyPagingItems<TrendingSubjectInfo>,
-    loadingItem: () -> TrendingSubjectInfo?,
-    subjectDetailsProblem: () -> SearchProblem?,
     onClick: (TrendingSubjectInfo) -> Unit,
     contentPadding: PaddingValues = PaddingValues(0.dp),
     itemSpacing: Dp = 8.dp,
@@ -71,23 +67,6 @@ fun TrendingSubjectsCarousel(
             CarouselItem(
                 label = { CarouselItemDefaults.Text(item?.nameCn ?: "") },
                 Modifier.placeholder(item == null, shape = rememberMaskShape(CarouselItemDefaults.shape)),
-                overlay = {
-                    // 显示加载中或错误
-                    if (item != null && loadingItem() == item) {
-                        val problem = subjectDetailsProblem()
-                        if (problem == null) {
-                            // 加载中, 显示进度条
-                            FastLinearProgressIndicator(
-                                visible = true,
-                                Modifier.align(Alignment.BottomCenter),
-                                delayMillis = 300,
-                            )
-                        } else {
-                            // 显示错误
-                            SearchProblemCard(problem, onRetry = { onClick(item) })
-                        }
-                    }
-                },
             ) {
                 if (item != null) {
                     Surface({ onClick(item) }) {

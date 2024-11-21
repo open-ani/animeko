@@ -33,7 +33,7 @@ class SubjectAiringInfoTest {
 
     @Test
     fun `empty episode list is upcoming`() {
-        val info = SubjectAiringInfo.computeFromEpisodeList(emptyList(), PackedDate.Invalid)
+        val info = SubjectAiringInfo.computeFromEpisodeList(emptyList(), PackedDate.Invalid, null)
         assertEquals(SubjectAiringKind.UPCOMING, info.kind)
         assertEquals(0, info.mainEpisodeCount)
         assertEquals(PackedDate.Invalid, info.airDate)
@@ -47,7 +47,7 @@ class SubjectAiringInfoTest {
         val eps = listOf(
             ep(3, PackedDate(8888, 1, 8 + 7 * 2)),
         )
-        val info = SubjectAiringInfo.computeFromEpisodeList(eps, PackedDate.Invalid)
+        val info = SubjectAiringInfo.computeFromEpisodeList(eps, PackedDate.Invalid, null)
         assertEquals(SubjectAiringKind.UPCOMING, info.kind)
         assertEquals(1, info.mainEpisodeCount)
         assertEquals(PackedDate(8888, 1, 8 + 7 * 2), info.airDate)
@@ -63,7 +63,7 @@ class SubjectAiringInfoTest {
             ep(2, PackedDate(2023, 1, 8 + 7)),
             ep(3, PackedDate(2023, 1, 8 + 7 * 2)),
         )
-        val info = SubjectAiringInfo.computeFromEpisodeList(eps, PackedDate.Invalid)
+        val info = SubjectAiringInfo.computeFromEpisodeList(eps, PackedDate.Invalid, null)
         assertEquals(SubjectAiringKind.COMPLETED, info.kind)
         assertEquals(3, info.mainEpisodeCount)
         assertEquals(PackedDate(2023, 1, 8), info.airDate)
@@ -79,7 +79,7 @@ class SubjectAiringInfoTest {
             ep(2, PackedDate(2023, 1, 8 + 7)),
             ep(3, PackedDate(8888, 1, 8 + 7 * 2)),
         )
-        val info = SubjectAiringInfo.computeFromEpisodeList(eps, PackedDate.Invalid)
+        val info = SubjectAiringInfo.computeFromEpisodeList(eps, PackedDate.Invalid, null)
         assertEquals(SubjectAiringKind.ON_AIR, info.kind)
         assertEquals(3, info.mainEpisodeCount)
         assertEquals(PackedDate(2023, 1, 8), info.airDate)
@@ -93,7 +93,7 @@ class SubjectAiringInfoTest {
         val eps = listOf(
             ep(1, PackedDate.Invalid),
         )
-        val info = SubjectAiringInfo.computeFromEpisodeList(eps, PackedDate.Invalid)
+        val info = SubjectAiringInfo.computeFromEpisodeList(eps, PackedDate.Invalid, null)
         assertEquals(SubjectAiringKind.UPCOMING, info.kind)
         assertEquals(1, info.mainEpisodeCount)
         assertEquals(PackedDate.Invalid, info.airDate)
@@ -107,7 +107,7 @@ class SubjectAiringInfoTest {
         val eps = listOf(
             ep(1, PackedDate.Invalid),
         )
-        val info = SubjectAiringInfo.computeFromEpisodeList(eps, PackedDate(2023, 1, 1))
+        val info = SubjectAiringInfo.computeFromEpisodeList(eps, PackedDate(2023, 1, 1), null)
         assertEquals(SubjectAiringKind.COMPLETED, info.kind)
         assertEquals(1, info.mainEpisodeCount)
         assertEquals(PackedDate(2023, 1, 1), info.airDate)
@@ -121,7 +121,7 @@ class SubjectAiringInfoTest {
         val eps = listOf(
             ep(1, PackedDate.Invalid),
         )
-        val info = SubjectAiringInfo.computeFromEpisodeList(eps, PackedDate(2000, 1, 1))
+        val info = SubjectAiringInfo.computeFromEpisodeList(eps, PackedDate(2000, 1, 1), null)
         assertEquals(SubjectAiringKind.COMPLETED, info.kind)
         assertEquals(1, info.mainEpisodeCount)
         assertEquals(PackedDate(2000, 1, 1), info.airDate)
@@ -135,7 +135,7 @@ class SubjectAiringInfoTest {
         val eps = listOf(
             ep(1, PackedDate.Invalid),
         )
-        val info = SubjectAiringInfo.computeFromEpisodeList(eps, PackedDate(8888, 1, 1))
+        val info = SubjectAiringInfo.computeFromEpisodeList(eps, PackedDate(8888, 1, 1), null)
         assertEquals(SubjectAiringKind.UPCOMING, info.kind)
         assertEquals(1, info.mainEpisodeCount)
         assertEquals(PackedDate(8888, 1, 1), info.airDate)
@@ -150,7 +150,7 @@ class SubjectAiringInfoTest {
             ep(1, PackedDate(8888, 1, 8)),
             ep(2, PackedDate.Invalid),
         )
-        val info = SubjectAiringInfo.computeFromEpisodeList(eps, PackedDate.Invalid)
+        val info = SubjectAiringInfo.computeFromEpisodeList(eps, PackedDate.Invalid, null)
         assertEquals(SubjectAiringKind.UPCOMING, info.kind)
         assertEquals(2, info.mainEpisodeCount)
         assertEquals(PackedDate(8888, 1, 8), info.airDate)
@@ -165,7 +165,7 @@ class SubjectAiringInfoTest {
             ep(1, PackedDate(1000, 1, 8)),
             ep(2, PackedDate.Invalid),
         )
-        val info = SubjectAiringInfo.computeFromEpisodeList(eps, PackedDate.Invalid)
+        val info = SubjectAiringInfo.computeFromEpisodeList(eps, PackedDate.Invalid, null)
         assertEquals(SubjectAiringKind.ON_AIR, info.kind)
         assertEquals(2, info.mainEpisodeCount)
         assertEquals(PackedDate(1000, 1, 8), info.airDate)

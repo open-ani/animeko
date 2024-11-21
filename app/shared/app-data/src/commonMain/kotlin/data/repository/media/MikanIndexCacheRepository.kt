@@ -13,10 +13,9 @@ import androidx.datastore.core.DataStore
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.Serializable
-import me.him188.ani.app.data.repository.Repository
 import me.him188.ani.datasources.mikan.MikanIndexCacheProvider
 
-interface MikanIndexCacheRepository : Repository, MikanIndexCacheProvider {
+interface MikanIndexCacheRepository : MikanIndexCacheProvider {
     override suspend fun getMikanSubjectId(bangumiSubjectId: String): String?
     override suspend fun setMikanSubjectId(bangumiSubjectId: String, mikanSubjectId: String)
 }

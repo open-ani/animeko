@@ -18,7 +18,7 @@ import me.him188.ani.utils.platform.Uuid
 
 class MediaSourceSubscriptionRepository(
     private val dataStore: DataStore<MediaSourceSubscriptionsSaveData>,
-) : Repository {
+) : Repository() {
     val flow get() = dataStore.data.map { it.list }
 
     suspend fun add(subscription: MediaSourceSubscription) {

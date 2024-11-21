@@ -26,7 +26,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import me.him188.ani.app.data.repository.RepositoryNetworkException
 import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.layout.CarouselItemDefaults.Text
-import me.him188.ani.app.ui.foundation.layout.DummySharedTransitionLayout
 import me.him188.ani.app.ui.foundation.preview.PreviewSizeClasses
 import me.him188.ani.app.ui.search.PreviewSearchProblemCard
 import me.him188.ani.app.ui.search.TestSearchState
@@ -94,18 +93,15 @@ fun PreviewSearchPageError() = ProvideFoundationCompositionLocalsForPreview {
 @Composable
 @PreviewLightDark
 fun PreviewSearchPageResultColumn() = ProvideFoundationCompositionLocalsForPreview {
-    DummySharedTransitionLayout {
-        Surface(color = MaterialTheme.colorScheme.surfaceContainerLowest) {
-            val state = createTestFinishedSubjectSearchState()
-            SearchPageResultColumn(
-                items = state.collectItemsWithLifecycle(),
-                showSummary = { true },
-                selectedItemIndex = { 1 },
-                onSelect = {},
-                onPlay = {},
-                animatedVisibilityScope,
-            )
-        }
+    Surface(color = MaterialTheme.colorScheme.surfaceContainerLowest) {
+        val state = createTestFinishedSubjectSearchState()
+        SearchPageResultColumn(
+            items = state.collectItemsWithLifecycle(),
+            showSummary = { true },
+            selectedItemIndex = { 1 },
+            onSelect = {},
+            onPlay = {},
+        )
     }
 }
 

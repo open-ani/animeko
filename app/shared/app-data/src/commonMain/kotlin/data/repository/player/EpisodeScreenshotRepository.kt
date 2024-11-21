@@ -18,13 +18,13 @@ import me.him188.ani.app.data.models.runApiRequest
 import me.him188.ani.app.data.repository.Repository
 import me.him188.ani.utils.ktor.createDefaultHttpClient
 
-interface EpisodeScreenshotRepository : Repository {
-    suspend fun getScreenshots(magnetUri: String): ApiResponse<List<String>>
+sealed class EpisodeScreenshotRepository : Repository() {
+    abstract suspend fun getScreenshots(magnetUri: String): ApiResponse<List<String>>
 }
 
 // https://whatslink.info/
 // 这玩意虽然能跑但是限制阈值有点太低了, 估计实际使用的时候会很容易被限调用速度, 得考虑别的方案
-class WhatslinkEpisodeScreenshotRepository : EpisodeScreenshotRepository {
+class WhatslinkEpisodeScreenshotRepository : EpisodeScreenshotRepository() {
     private val client = createDefaultHttpClient {
         followRedirects = true
         expectSuccess = true

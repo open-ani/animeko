@@ -14,6 +14,7 @@ import me.him188.ani.app.torrent.api.pieces.Piece
 import me.him188.ani.app.torrent.api.pieces.PieceList
 import me.him188.ani.utils.io.SeekableInput
 import me.him188.ani.utils.io.SystemPath
+import kotlin.coroutines.CoroutineContext
 
 /**
  * @param pieces The corresponding pieces of the [file], must contain all bytes in the [file]. 不需要排序.
@@ -28,6 +29,7 @@ actual fun TorrentInput(
     onWait: suspend (Piece) -> Unit,
     bufferSize: Int,
     size: Long,
+    awaitCoroutineContext: CoroutineContext,
 ): SeekableInput {
     TODO("Not yet implemented")
 }
