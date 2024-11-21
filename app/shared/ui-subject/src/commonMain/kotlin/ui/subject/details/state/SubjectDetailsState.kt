@@ -52,6 +52,10 @@ class SubjectDetailsState(
     val editableRatingState: EditableRatingState,
     val subjectProgressState: SubjectProgressState,
     val subjectCommentState: CommentState,
+    /**
+     * 是否是预加载进入详情页, 预加载进入时应该只显示少量 [info].
+     */
+    val preload: Boolean,
 ) {
     val coverImageUrl get() = this.info.imageLarge
     private val selfCollectionTypeOrNull by selfCollectionTypeState

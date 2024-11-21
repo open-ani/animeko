@@ -16,7 +16,6 @@ import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,7 +34,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.preference.EpisodeListProgressTheme
 import me.him188.ani.app.data.models.subject.RatingInfo
@@ -70,8 +68,6 @@ import me.him188.ani.app.ui.subject.rating.EditableRatingState
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
-import me.him188.ani.utils.logging.info
-import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.platform.annotations.TestOnly
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -181,7 +177,7 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
         }
         // emit preload subject info if present.
         if (preloadSubjectInfo != null) {
-            send(createEmptyWithSubjectInfo(preloadSubjectInfo, authState))
+            send(createPreload(preloadSubjectInfo, authState))
         }
         coroutineScope {
             if (subjectCollectionInfoFlow != null) {
@@ -400,11 +396,12 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
             editableRatingState = editableRatingState,
             subjectProgressState = subjectProgressState,
             subjectCommentState = subjectCommentState,
+            preload = false,
         )
         return state
     }
 
-    private fun CoroutineScope.createEmptyWithSubjectInfo(
+    private fun CoroutineScope.createPreload(
         subjectInfo: SubjectInfo,
         authState: AuthState
     ): SubjectDetailsState {
@@ -458,6 +455,7 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
                 onSubmitCommentReaction = { _, _ -> },
                 backgroundScope = this,
             ),
+            preload = true,
         )
     }
 }

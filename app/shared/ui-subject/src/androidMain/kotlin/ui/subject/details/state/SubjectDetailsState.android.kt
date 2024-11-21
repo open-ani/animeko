@@ -61,5 +61,6 @@ fun createTestSubjectDetailsState(
         ),
         subjectProgressState = createTestSubjectProgressState(),
         subjectCommentState = createTestCommentState(backgroundScope),
+        preload = false,
     )
 }
