@@ -171,7 +171,8 @@ fun SubjectDetailsHeaderCompact(
                             )
                         }
                         .width(imageWidth)
-                        .height(imageWidth / COVER_WIDTH_TO_HEIGHT_RATIO),
+                        .height(imageWidth / COVER_WIDTH_TO_HEIGHT_RATIO)
+                        .clip(MaterialTheme.shapes.medium),
                     contentScale = ContentScale.Crop,
                     placeholder = if (currentAniBuildConfig.isDebug) remember { ColorPainter(Color.Gray) } else null,
                 )
@@ -268,7 +269,8 @@ fun SubjectDetailsHeaderWide(
                             )
                         }
                         .width(imageWidth)
-                        .height(imageWidth / COVER_WIDTH_TO_HEIGHT_RATIO),
+                        .height(imageWidth / COVER_WIDTH_TO_HEIGHT_RATIO)
+                        .clip(MaterialTheme.shapes.medium),
                     contentScale = ContentScale.Crop,
                     placeholder = if (currentAniBuildConfig.isDebug) remember { ColorPainter(Color.Gray) } else null,
                 )

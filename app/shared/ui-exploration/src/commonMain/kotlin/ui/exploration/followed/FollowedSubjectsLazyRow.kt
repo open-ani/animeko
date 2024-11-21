@@ -32,6 +32,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
@@ -47,11 +48,13 @@ import me.him188.ani.app.data.models.subject.hasNewEpisodeToPlay
 import me.him188.ani.app.data.models.subject.subjectInfo
 import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.AsyncImage
+import me.him188.ani.app.ui.foundation.animation.SharedTransitionKeys
 import me.him188.ani.app.ui.foundation.layout.BasicCarouselItem
 import me.him188.ani.app.ui.foundation.layout.CarouselItemDefaults
 import me.him188.ani.app.ui.foundation.layout.compareTo
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.minimumHairlineSize
+import me.him188.ani.app.ui.foundation.layout.useSharedTransitionScope
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.search.SearchProblemCard
 import me.him188.ani.app.ui.search.SearchProblemCardLayout
@@ -181,15 +184,22 @@ private fun FollowedSubjectItem(
         },
     ) {
         if (item != null) {
-            val image = @Composable {
+            Surface(onClick = { onClick() }) {
                 AsyncImage(
                     item.subjectInfo.imageLarge,
-                    modifier = Modifier.size(imageSize),
+                    modifier = Modifier
+                        .useSharedTransitionScope { modifier, animatedVisibilityScope ->
+                            modifier.sharedElement(
+                                rememberSharedContentState(SharedTransitionKeys.subjectCoverImage(item.subjectInfo.subjectId)),
+                                animatedVisibilityScope,
+                            )
+                        }
+                        .size(imageSize)
+                        .clip(shape),
                     contentDescription = item.subjectInfo.displayName,
                     contentScale = ContentScale.Crop,
                 )
             }
-            Surface({ onClick() }, content = image)
         } else {
             Box(Modifier.size(imageSize))
         }
