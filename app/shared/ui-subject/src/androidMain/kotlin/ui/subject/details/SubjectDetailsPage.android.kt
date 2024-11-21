@@ -98,3 +98,12 @@ internal fun PreviewSubjectDetails() = ProvideFoundationCompositionLocalsForPrev
         )
     }
 }
+
+@OptIn(TestOnly::class)
+@Preview
+@Preview(device = "spec:width=1280dp,height=800dp,dpi=240")
+@Composable
+internal fun PreviewPlaceholderSubjectDetails() = ProvideFoundationCompositionLocalsForPreview {
+    val state = createTestSubjectDetailsState(rememberCoroutineScope())
+    PlaceholderSubjectDetailsPageLayout(state = state)
+}
