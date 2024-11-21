@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filterNotNull
@@ -172,19 +173,19 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
         subjectProgressStateFactory: SubjectProgressStateFactory,
         authState: AuthState,
         preloadSubjectInfo: SubjectInfo? = null,
-    ): Flow<SubjectDetailsState> = flow {
+    ): Flow<SubjectDetailsState> = channelFlow {
         require(subjectInfoFlow != null || subjectCollectionInfoFlow != null) {
             "Both subjectCollectionInfoFlow and subjectInfoFlow are null."
         }
         // emit preload subject info if present.
         if (preloadSubjectInfo != null) {
-            emit(createEmptyWithSubjectInfo(preloadSubjectInfo, authState))
+            send(createEmptyWithSubjectInfo(preloadSubjectInfo, authState))
         }
         coroutineScope {
             if (subjectCollectionInfoFlow != null) {
                 subjectCollectionInfoFlow.collectLatest { subjectCollection ->
                     // only emit actual state when subjectCollectionInfoFlow has value
-                    emit(
+                    send(
                         createImpl(
                             subjectCollection.subjectInfo,
                             subjectCollectionInfoFlow,
@@ -200,7 +201,7 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
                         .subjectCollectionFlow(subjectInfo.subjectId)
                         .shareIn(this, started = SharingStarted.Eagerly, replay = 1)
 
-                    emit(
+                    send(
                         createImpl(
                             subjectInfo,
                             subjectCollectionFlow,
