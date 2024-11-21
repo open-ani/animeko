@@ -208,8 +208,8 @@ private fun AniAppContentImpl(
                     ) null else SubjectInfo.createMinimal(
                         details.subjectId,
                         details.subjectName,
-                        details.subjectNameCN,
                         details.subjectCoverUrl,
+                        details.subjectNameCN,
                     )
                     SubjectDetailsViewModel(details.subjectId, preloadSubjectInfo)
                 }
