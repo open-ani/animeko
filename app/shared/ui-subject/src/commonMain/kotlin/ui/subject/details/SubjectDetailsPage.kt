@@ -11,6 +11,7 @@ package me.him188.ani.app.ui.subject.details
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -146,111 +147,128 @@ fun SubjectDetailsPage(
     val toaster = LocalToaster.current
     val browserNavigator = LocalUriHandler.current
 
-    Crossfade(state.preload) { preload ->
-        if (preload) {
-            PlaceholderSubjectDetailsPageLayout(state, showTopBar, false, windowInsets)
-        } else {
-            var showSelectEpisode by rememberSaveable { mutableStateOf(false) }
-            if (showSelectEpisode) {
-                EpisodeListDialog(
-                    state.episodeListState,
-                    title = {
-                        Text(state.info.displayName)
-                    },
-                    onDismissRequest = { showSelectEpisode = false },
+    var showSelectEpisode by rememberSaveable { mutableStateOf(false) }
+    if (showSelectEpisode) {
+        EpisodeListDialog(
+            state.episodeListState,
+            title = {
+                Text(state.info.displayName)
+            },
+            onDismissRequest = { showSelectEpisode = false },
+        )
+    }
+    val connectedScrollState = rememberConnectedScrollState()
+
+    // image viewer
+    val imageViewer = rememberImageViewerHandler()
+    BackHandler(enabled = imageViewer.viewing.value) { imageViewer.clear() }
+
+    val preloadPlaceholderModifier = Modifier.placeholder(state.preload)
+    SubjectDetailsPageLayout(
+        state,
+        collectionData = {
+            SubjectDetailsDefaults.CollectionData(
+                collectionStats = state.info.collectionStats,
+                preloadPlaceholderModifier,
+            )
+        },
+        collectionActions = {
+            if (state.authState.isKnownExpired) {
+                val navigator = LocalNavigator.current
+                OutlinedButton(
+                    onClick = { state.authState.launchAuthorize(navigator) },
+                    modifier = preloadPlaceholderModifier,
+                ) {
+                    Text("登录后可收藏")
+                }
+            } else {
+                EditableSubjectCollectionTypeButton(
+                    state.editableSubjectCollectionTypeState,
+                    preloadPlaceholderModifier,
                 )
             }
-            val connectedScrollState = rememberConnectedScrollState()
+        },
+        rating = {
+            EditableRating(
+                state.editableRatingState,
+                preloadPlaceholderModifier,
+            )
+        },
+        selectEpisodeButton = {
+            SubjectDetailsDefaults.SelectEpisodeButtons(
+                state.subjectProgressState,
+                onShowEpisodeList = { showSelectEpisode = true },
+                onPlay = onPlay,
+                preloadPlaceholderModifier,
+            )
+        },
+        connectedScrollState = connectedScrollState,
+        modifier,
+        showTopBar = showTopBar,
+        showBlurredBackground = showBlurredBackground,
+        windowInsets = windowInsets,
+    ) { paddingValues ->
+        Box {
+            AnimatedVisibility(
+                visible = state.preload,
+                enter = EnterTransition.None,
+                exit = fadeOut(AniThemeDefaults.feedItemFadeOutSpec),
+            ) {
+                PlaceholderSubjectDetailsDetailTabLayout(paddingValues)
+            }
+            if (state.preload) return@SubjectDetailsPageLayout
 
-            // image viewer
-            val imageViewer = rememberImageViewerHandler()
-            BackHandler(enabled = imageViewer.viewing.value) { imageViewer.clear() }
-
-            SubjectDetailsPageLayout(
-                state,
-                collectionData = {
-                    SubjectDetailsDefaults.CollectionData(
-                        collectionStats = state.info.collectionStats,
+            SubjectDetailsContentPager(
+                paddingValues,
+                connectedScrollState,
+                detailsTab = { contentPadding ->
+                    SubjectDetailsDefaults.DetailsTab(
+                        info = state.info,
+                        staff = state.staffPager.collectAsLazyPagingItemsWithLifecycle(),
+                        exposedStaff = state.exposedStaffPager.collectAsLazyPagingItemsWithLifecycle(),
+                        totalStaffCount = state.totalStaffCountState.value,
+                        characters = state.charactersPager.collectAsLazyPagingItemsWithLifecycle(),
+                        exposedCharacters = state.exposedCharactersPager.collectAsLazyPagingItemsWithLifecycle(),
+                        totalCharactersCount = state.totalCharactersCountState.value,
+                        relatedSubjects = state.relatedSubjectsPager.collectAsLazyPagingItemsWithLifecycle(),
+                        Modifier
+                            .nestedScrollWorkaround(state.detailsTabLazyListState, connectedScrollState)
+                            .nestedScroll(connectedScrollState.nestedScrollConnection),
+                        state.detailsTabLazyListState,
+                        contentPadding = contentPadding,
                     )
                 },
-                collectionActions = {
-                    if (state.authState.isKnownExpired) {
-                        val navigator = LocalNavigator.current
-                        OutlinedButton({ state.authState.launchAuthorize(navigator) }) {
-                            Text("登录后可收藏")
-                        }
-                    } else {
-                        EditableSubjectCollectionTypeButton(state.editableSubjectCollectionTypeState)
-                    }
-                },
-                rating = {
-                    EditableRating(state.editableRatingState)
-                },
-                selectEpisodeButton = {
-                    SubjectDetailsDefaults.SelectEpisodeButtons(
-                        state.subjectProgressState,
-                        onShowEpisodeList = { showSelectEpisode = true },
-                        onPlay = onPlay,
+                commentsTab = { contentPadding ->
+                    SubjectDetailsDefaults.SubjectCommentColumn(
+                        state = state.subjectCommentState,
+                        onClickUrl = {
+                            RichTextDefaults.checkSanityAndOpen(it, browserNavigator, toaster)
+                        },
+                        onClickImage = { imageViewer.viewImage(it) },
+                        connectedScrollState,
+                        Modifier.fillMaxSize(),
+                        lazyListState = state.commentTabLazyListState,
+                        contentPadding = contentPadding,
                     )
                 },
-                connectedScrollState = connectedScrollState,
-                modifier,
-                showTopBar = showTopBar,
-                showBlurredBackground = showBlurredBackground,
-                windowInsets = windowInsets,
-            ) { paddingValues ->
-                SubjectDetailsContentPager(
-                    paddingValues,
-                    connectedScrollState,
-                    detailsTab = { contentPadding ->
-                        SubjectDetailsDefaults.DetailsTab(
-                            info = state.info,
-                            staff = state.staffPager.collectAsLazyPagingItemsWithLifecycle(),
-                            exposedStaff = state.exposedStaffPager.collectAsLazyPagingItemsWithLifecycle(),
-                            totalStaffCount = state.totalStaffCountState.value,
-                            characters = state.charactersPager.collectAsLazyPagingItemsWithLifecycle(),
-                            exposedCharacters = state.exposedCharactersPager.collectAsLazyPagingItemsWithLifecycle(),
-                            totalCharactersCount = state.totalCharactersCountState.value,
-                            relatedSubjects = state.relatedSubjectsPager.collectAsLazyPagingItemsWithLifecycle(),
-                            Modifier
-                                .nestedScrollWorkaround(state.detailsTabLazyListState, connectedScrollState)
-                                .nestedScroll(connectedScrollState.nestedScrollConnection),
-                            state.detailsTabLazyListState,
-                            contentPadding = contentPadding,
-                        )
-                    },
-                    commentsTab = { contentPadding ->
-                        SubjectDetailsDefaults.SubjectCommentColumn(
-                            state = state.subjectCommentState,
-                            onClickUrl = {
-                                RichTextDefaults.checkSanityAndOpen(it, browserNavigator, toaster)
-                            },
-                            onClickImage = { imageViewer.viewImage(it) },
-                            connectedScrollState,
-                            Modifier.fillMaxSize(),
-                            lazyListState = state.commentTabLazyListState,
-                            contentPadding = contentPadding,
-                        )
-                    },
-                    discussionsTab = {
-                        LazyColumn(
-                            Modifier.fillMaxSize()
-                                // TODO: Add nestedScrollWorkaround when we implement this tab
-                                .nestedScroll(connectedScrollState.nestedScrollConnection),
-                        ) {
-                            item {
-                                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                                    Text("即将上线, 敬请期待", Modifier.padding(16.dp))
-                                }
+                discussionsTab = {
+                    LazyColumn(
+                        Modifier.fillMaxSize()
+                            // TODO: Add nestedScrollWorkaround when we implement this tab
+                            .nestedScroll(connectedScrollState.nestedScrollConnection),
+                    ) {
+                        item {
+                            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                Text("即将上线, 敬请期待", Modifier.padding(16.dp))
                             }
                         }
-                    },
-                )
-            }
-
-            ImageViewer(imageViewer) { imageViewer.clear() }
+                    }
+                },
+            )
         }
     }
+
+    ImageViewer(imageViewer) { imageViewer.clear() }
 }
 
 @Immutable
@@ -461,162 +479,123 @@ fun SubjectDetailsContentPager(
  * 只显示少量内容的详情页布局
  */
 @Composable
-fun PlaceholderSubjectDetailsPageLayout(
-    state: SubjectDetailsState,
-    showTopBar: Boolean = true,
-    showBlurredBackground: Boolean = false,
-    windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
-) {
-    SubjectDetailsPageLayout(
-        state,
-        collectionData = {
-            SubjectDetailsDefaults.CollectionData(
-                state.info.collectionStats,
-                modifier = Modifier.placeholder(true),
-            )
-        },
-        collectionActions = {
-            EditableSubjectCollectionTypeButton(
-                state.editableSubjectCollectionTypeState,
-                modifier = Modifier.placeholder(true),
-            )
-        },
-        rating = {
-            EditableRating(
-                state.editableRatingState,
-                modifier = Modifier.placeholder(true),
-            )
-        },
-        selectEpisodeButton = {
-            SubjectDetailsDefaults.SelectEpisodeButtons(
-                state.subjectProgressState,
-                onShowEpisodeList = { },
-                onPlay = { },
-                modifier = Modifier.placeholder(true),
-            )
-        },
-        showTopBar = showTopBar,
-        showBlurredBackground = showBlurredBackground,
-        windowInsets = windowInsets,
-        connectedScrollState = rememberConnectedScrollState(),
-    ) { paddingValues ->
-        val density = LocalDensity.current
-        val windowSizeClass = currentWindowAdaptiveInfo1().windowSizeClass
+fun PlaceholderSubjectDetailsDetailTabLayout(paddingValues: PaddingValues) {
+    val density = LocalDensity.current
+    val windowSizeClass = currentWindowAdaptiveInfo1().windowSizeClass
 
-        Column(
+    Column(
+        Modifier
+            .fillMaxHeight()
+            .padding(paddingValues)
+            .consumeWindowInsets(paddingValues),
+    ) {
+        // tab row
+        Spacer(
             Modifier
-                .fillMaxHeight()
-                .padding(paddingValues)
-                .consumeWindowInsets(paddingValues),
-        ) {
-            // tab row
+                .padding(horizontal = windowSizeClass.paneHorizontalPadding)
+                .padding(top = 12.dp)
+                .fillMaxWidth()
+                .height(40.dp)
+                .placeholder(true),
+        )
+
+        Spacer(Modifier.fillMaxWidth().height(16.dp))
+
+        // 条目描述
+        val bodyMediumTextHeight = with(density) { MaterialTheme.typography.bodyMedium.lineHeight.toDp() }
+        val timesDot8TextHeight = (bodyMediumTextHeight.value * 0.8).dp
+        val timesDot8TextLinePadding = (bodyMediumTextHeight.value * 0.2).dp
+
+        repeat(5) {
             Spacer(
                 Modifier
                     .padding(horizontal = windowSizeClass.paneHorizontalPadding)
-                    .padding(top = 12.dp)
+                    .padding(bottom = timesDot8TextLinePadding)
                     .fillMaxWidth()
-                    .height(40.dp)
-                    .placeholder(true),
-            )
-
-            Spacer(Modifier.fillMaxWidth().height(16.dp))
-
-            // 条目描述
-            val bodyMediumTextHeight = with(density) { MaterialTheme.typography.bodyMedium.lineHeight.toDp() }
-            val timesDot8TextHeight = (bodyMediumTextHeight.value * 0.8).dp
-            val timesDot8TextLinePadding = (bodyMediumTextHeight.value * 0.2).dp
-
-            repeat(5) {
-                Spacer(
-                    Modifier
-                        .padding(horizontal = windowSizeClass.paneHorizontalPadding)
-                        .padding(bottom = timesDot8TextLinePadding)
-                        .fillMaxWidth()
-                        .height(timesDot8TextHeight)
-                        .placeholder(true, shape = RectangleShape),
-                )
-            }
-
-            Spacer(Modifier.fillMaxWidth().height(12.dp))
-
-            // 标签
-            val labelMediumTextHeight = with(density) { MaterialTheme.typography.labelMedium.lineHeight.toDp() }
-
-            FlowRow(
-                modifier = Modifier.padding(horizontal = windowSizeClass.paneHorizontalPadding),
-                verticalArrangement = Arrangement.Center,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                repeat(5) {
-                    Tag(
-                        Modifier
-                            .height(40.dp)
-                            .padding(vertical = 4.dp)
-                            .placeholder(true),
-                    ) {
-                        Spacer(
-                            Modifier
-                                .width(remember { (64..80).random().dp })
-                                .height(labelMediumTextHeight),
-                        )
-                    }
-                }
-            }
-
-            Spacer(Modifier.fillMaxWidth().height(20.dp))
-
-            Spacer(
-                Modifier
-                    .padding(horizontal = windowSizeClass.paneHorizontalPadding)
-                    .width(48.dp)
-                    .height(with(density) { MaterialTheme.typography.titleMedium.lineHeight.toDp() })
+                    .height(timesDot8TextHeight)
                     .placeholder(true, shape = RectangleShape),
             )
+        }
 
-            Spacer(Modifier.fillMaxWidth().height(20.dp))
+        Spacer(Modifier.fillMaxWidth().height(12.dp))
 
-            @Composable
-            fun PlaceholderPersonCard(modifier: Modifier = Modifier) {
-                Row(modifier) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
+        // 标签
+        val labelMediumTextHeight = with(density) { MaterialTheme.typography.labelMedium.lineHeight.toDp() }
+
+        FlowRow(
+            modifier = Modifier.padding(horizontal = windowSizeClass.paneHorizontalPadding),
+            verticalArrangement = Arrangement.Center,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            repeat(5) {
+                Tag(
+                    Modifier
+                        .height(40.dp)
+                        .padding(vertical = 4.dp)
+                        .placeholder(true),
+                ) {
+                    Spacer(
+                        Modifier
+                            .width(remember { (64..80).random().dp })
+                            .height(labelMediumTextHeight),
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.fillMaxWidth().height(20.dp))
+
+        Spacer(
+            Modifier
+                .padding(horizontal = windowSizeClass.paneHorizontalPadding)
+                .width(48.dp)
+                .height(with(density) { MaterialTheme.typography.titleMedium.lineHeight.toDp() })
+                .placeholder(true, shape = RectangleShape),
+        )
+
+        Spacer(Modifier.fillMaxWidth().height(20.dp))
+
+        @Composable
+        fun PlaceholderPersonCard(modifier: Modifier = Modifier) {
+            Row(modifier) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Spacer(
+                        Modifier
+                            .clip(MaterialTheme.shapes.small)
+                            .size(48.dp)
+                            .placeholder(true),
+                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Spacer(
                             Modifier
-                                .clip(MaterialTheme.shapes.small)
-                                .size(48.dp)
-                                .placeholder(true),
+                                .width(96.dp)
+                                .height(bodyMediumTextHeight)
+                                .placeholder(true, shape = RectangleShape),
                         )
-                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Spacer(
-                                Modifier
-                                    .width(96.dp)
-                                    .height(bodyMediumTextHeight)
-                                    .placeholder(true, shape = RectangleShape),
-                            )
-                            Spacer(
-                                Modifier
-                                    .width(96.dp)
-                                    .height(labelMediumTextHeight)
-                                    .placeholder(true, shape = RectangleShape),
-                            )
-                        }
+                        Spacer(
+                            Modifier
+                                .width(96.dp)
+                                .height(labelMediumTextHeight)
+                                .placeholder(true, shape = RectangleShape),
+                        )
                     }
                 }
             }
+        }
 
-            FlowRow(
-                modifier = Modifier
-                    .padding(horizontal = windowSizeClass.paneHorizontalPadding)
-                    .fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                maxItemsInEachRow = 2,
-            ) {
-                repeat(4) {
-                    PlaceholderPersonCard()
-                }
+        FlowRow(
+            modifier = Modifier
+                .padding(horizontal = windowSizeClass.paneHorizontalPadding)
+                .fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            maxItemsInEachRow = 2,
+        ) {
+            repeat(4) {
+                PlaceholderPersonCard()
             }
         }
     }

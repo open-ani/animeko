@@ -18,6 +18,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import me.him188.ani.app.data.models.subject.TestSubjectProgressInfos
 import me.him188.ani.app.ui.comment.generateUiComment
 import me.him188.ani.app.ui.comment.rememberTestCommentState
+import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.layout.rememberConnectedScrollState
 import me.him188.ani.app.ui.search.rememberTestLazyPagingItems
@@ -105,5 +106,37 @@ internal fun PreviewSubjectDetails() = ProvideFoundationCompositionLocalsForPrev
 @Composable
 internal fun PreviewPlaceholderSubjectDetails() = ProvideFoundationCompositionLocalsForPreview {
     val state = createTestSubjectDetailsState(rememberCoroutineScope())
-    PlaceholderSubjectDetailsPageLayout(state = state)
+    val connectedScrollState = rememberConnectedScrollState()
+    SubjectDetailsPageLayout(
+        state = state,
+        collectionData = {
+            SubjectDetailsDefaults.CollectionData(
+                collectionStats = state.info.collectionStats,
+                Modifier.placeholder(true),
+            )
+        },
+        collectionActions = {
+            EditableSubjectCollectionTypeButton(
+                rememberTestEditableSubjectCollectionTypeState(),
+                Modifier.placeholder(true),
+            )
+        },
+        rating = {
+            EditableRating(
+                state = rememberTestEditableRatingState(),
+                Modifier.placeholder(true),
+            )
+        },
+        selectEpisodeButton = {
+            SubjectDetailsDefaults.SelectEpisodeButtons(
+                rememberTestSubjectProgressState(info = TestSubjectProgressInfos.ContinueWatching2),
+                onShowEpisodeList = {},
+                onPlay = {},
+                Modifier.placeholder(true),
+            )
+        },
+        connectedScrollState = connectedScrollState,
+    ) { paddingValues ->
+        PlaceholderSubjectDetailsDetailTabLayout(paddingValues)
+    }
 }
