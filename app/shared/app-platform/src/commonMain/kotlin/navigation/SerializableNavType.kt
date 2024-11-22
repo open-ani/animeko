@@ -20,6 +20,7 @@ open class SerializableNavType<T : Any>(
 ) : NavType<T?>(isNullableAllowed) {
     override fun get(bundle: Bundle, key: String): T? {
         val value = bundle.getString(key) ?: return null
+        if (value == "null") return null
         return json.decodeFromString(serializer, value)
     }
 
