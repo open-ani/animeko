@@ -61,6 +61,7 @@ import me.him188.ani.app.data.models.subject.RelatedSubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.nameCn
 import me.him188.ani.app.navigation.LocalNavigator
+import me.him188.ani.app.navigation.SubjectDetailPreload
 import me.him188.ani.app.ui.foundation.Tag
 import me.him188.ani.app.ui.foundation.avatar.AvatarImage
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
@@ -182,7 +183,17 @@ fun SubjectDetailsDefaults.DetailsTab(
                 val navigator = LocalNavigator.current
                 RelatedSubjectsRow(
                     relatedSubjects,
-                    onClick = { navigator.navigateSubjectDetails(it.subjectId) },
+                    onClick = {
+                        navigator.navigateSubjectDetails(
+                            it.subjectId,
+                            preload = SubjectDetailPreload(
+                                id = it.subjectId,
+                                name = it.name ?: "",
+                                nameCN = it.nameCn,
+                                coverUrl = it.image ?: "",
+                            ),
+                        )
+                    },
                     Modifier.padding(horizontal = horizontalPadding),
                     horizontalSpacing = horizontalPadding,
                     verticalSpacing = horizontalPadding,

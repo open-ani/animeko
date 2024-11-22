@@ -16,12 +16,7 @@ import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.TravelExplore
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
-import androidx.core.bundle.Bundle
-import androidx.navigation.NavType
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.serializer
 
 @Serializable
 sealed class NavRoutes {
@@ -50,14 +45,9 @@ sealed class NavRoutes {
         val tab: SettingsTab? = null,
     ) : NavRoutes()
 
-    /**
-     * 用 [subjectName], [subjectNameCN] and [subjectCoverUrl] 创建预加载 SubjectInfo.
-     */
     @Serializable
     data class SubjectDetail(
         val subjectId: Int,
-        val sharedTransitionBoundKey: String? = null,
-        val sharedTransitionCoverKey: String? = null,
         val preload: SubjectDetailPreload? = null,
     ) : NavRoutes()
 

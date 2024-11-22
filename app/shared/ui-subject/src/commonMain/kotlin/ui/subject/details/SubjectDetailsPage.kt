@@ -127,19 +127,9 @@ fun SubjectDetailsPage(
         SubjectDetailsPage(
             state,
             onPlay = onPlay,
-            modifier.ifThen(vm.boundSharedTransitionKey != null) {
-                useSharedTransitionScope { m, animatedVisibilityScope ->
-                    m.sharedBounds(
-                        rememberSharedContentState(vm.boundSharedTransitionKey!!),
-                        animatedVisibilityScope,
-                        resizeMode = SharedTransitionScope.ResizeMode.RemeasureToBounds,
-                        clipInOverlayDuringTransition = OverlayClip(MaterialTheme.shapes.medium),
-                    ).skipToLookaheadSize()
-                }
-            },
+            modifier,
             showTopBar,
             showBlurredBackground && !state.preload,
-            vm.subjectCoverSharedTransitionKey,
             windowInsets,
         )
     }
@@ -152,7 +142,6 @@ fun SubjectDetailsPage(
     modifier: Modifier = Modifier,
     showTopBar: Boolean = true,
     showBlurredBackground: Boolean = true,
-    subjectCoverSharedTransitionKey: String? = null,
     windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
 ) {
     val toaster = LocalToaster.current
@@ -217,7 +206,6 @@ fun SubjectDetailsPage(
         modifier,
         showTopBar = showTopBar,
         showBlurredBackground = showBlurredBackground,
-        subjectCoverSharedTransitionKey = subjectCoverSharedTransitionKey,
         windowInsets = windowInsets,
     ) { paddingValues ->
         Box {
@@ -305,7 +293,6 @@ fun SubjectDetailsPageLayout(
     modifier: Modifier = Modifier,
     showTopBar: Boolean = true,
     showBlurredBackground: Boolean = true,
-    subjectCoverSharedTransitionKey: String? = null,
     windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
     content: @Composable (contentPadding: PaddingValues) -> Unit,
 ) {
@@ -405,7 +392,6 @@ fun SubjectDetailsPageLayout(
                                 .fillMaxWidth()
                                 .ifThen(!showTopBar) { padding(top = windowSizeClass.paneVerticalPadding) }
                                 .padding(horizontal = windowSizeClass.paneHorizontalPadding),
-                            subjectCoverSharedTransitionKey = subjectCoverSharedTransitionKey,
                         )
                     }
                 }

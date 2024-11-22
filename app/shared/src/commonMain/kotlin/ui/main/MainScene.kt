@@ -216,18 +216,6 @@ private fun MainSceneContent(
                                                 episodeId,
                                             )
                                         },
-                                        Modifier.ifThen(listDetailLayoutParameters.isSinglePane) {
-                                            useSharedTransitionScope { modifier, animatedVisibilityScope ->
-                                                modifier.sharedElement(
-                                                    rememberSharedContentState(
-                                                        SharedTransitionKeys.searchResultToSubjectDetailBound(
-                                                            state.info.subjectId,
-                                                        ),
-                                                    ),
-                                                    animatedVisibilityScope,
-                                                )
-                                            }
-                                        },
                                     )
                                 }
                             },

@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.ui.exploration
 
-import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -33,8 +32,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.paging.PagingData
@@ -53,7 +50,6 @@ import me.him188.ani.app.ui.adaptive.AniTopAppBarDefaults
 import me.him188.ani.app.ui.adaptive.NavTitleHeader
 import me.him188.ani.app.ui.exploration.followed.FollowedSubjectsLazyRow
 import me.him188.ani.app.ui.exploration.trends.TrendingSubjectsCarousel
-import me.him188.ani.app.ui.foundation.animation.SharedTransitionKeys
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.isAtLeastMedium
@@ -70,15 +66,6 @@ class ExplorationPageState(
     val followedSubjectsPager: Flow<PagingData<FollowedSubjectInfo>>,
 ) {
     val selfInfo by selfInfoState
-
-    /**
-     * 保存进入 SubjectDetailPage 时的 [SharedTransitionKeys]. 用于在从 SubjectDetailPage 返回时
-     * 配置正确的 [renderInSharedTransitionScopeOverlay] 和动画.
-     *
-     * 无论是否使用 shared transition, 从 ExplorationPage 导航到 SubjectDetailPage 前需要更新此属性,
-     * 否则从 SubjectDetailPage 返回会出现 overlay 动画错误.
-     */
-    var currentSharedTransitionKey: String? by mutableStateOf(null)
 
     val trendingSubjectsCarouselState = CarouselState(
         itemCount = {
@@ -149,8 +136,6 @@ fun ExplorationPage(
             TrendingSubjectsCarousel(
                 state.trendingSubjectInfoPager,
                 onClick = {
-                    state.currentSharedTransitionKey =
-                        SharedTransitionKeys.explorationTrendingSubjectToSubjectDetailCover(it.bangumiId)
                     navigator.navigateSubjectDetails(
                         subjectId = it.bangumiId,
                         preload = SubjectDetailPreload(
@@ -172,8 +157,6 @@ fun ExplorationPage(
             FollowedSubjectsLazyRow(
                 followedSubjectsPager,
                 onClick = {
-                    state.currentSharedTransitionKey =
-                        SharedTransitionKeys.explorationFollowedSubjectToSubjectDetailCover(it.subjectInfo.subjectId)
                     navigator.navigateSubjectDetails(
                         subjectId = it.subjectInfo.subjectId,
                         preload = SubjectDetailPreload(
@@ -182,10 +165,6 @@ fun ExplorationPage(
                             it.subjectInfo.nameCn,
                             it.subjectInfo.imageLarge,
                         ),
-                        sharedTransitionCoverKey = SharedTransitionKeys
-                            .explorationFollowedSubjectToSubjectDetailCover(it.subjectInfo.subjectId),
-                        sharedTransitionBoundKey = SharedTransitionKeys
-                            .explorationFollowedSubjectToSubjectDetailBound(it.subjectInfo.subjectId),
                     )
                 },
                 onPlay = {
@@ -198,7 +177,6 @@ fun ExplorationPage(
                 },
                 contentPadding = PaddingValues(horizontal = horizontalPadding, vertical = 8.dp),
                 lazyListState = state.followedSubjectsLazyRowState,
-                currentSharedTransitionKey = state.currentSharedTransitionKey,
             )
         }
     }

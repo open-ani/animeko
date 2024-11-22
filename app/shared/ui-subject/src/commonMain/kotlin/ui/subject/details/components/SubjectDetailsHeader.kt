@@ -48,12 +48,9 @@ import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.OutlinedTag
-import me.him188.ani.app.ui.foundation.animation.SharedTransitionKeys
-import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.paddingIfNotEmpty
-import me.him188.ani.app.ui.foundation.layout.useSharedTransitionScope
 import me.him188.ani.app.ui.subject.AiringLabel
 import me.him188.ani.app.ui.subject.AiringLabelState
 import me.him188.ani.app.ui.subject.renderSubjectSeason
@@ -71,7 +68,6 @@ internal fun SubjectDetailsHeader(
     selectEpisodeButton: @Composable BoxScope.() -> Unit,
     rating: @Composable () -> Unit,
     modifier: Modifier = Modifier,
-    subjectCoverSharedTransitionKey: String? = null,
 ) {
     if (currentWindowAdaptiveInfo1().isWidthAtLeastMedium) {
         SubjectDetailsHeaderWide(
@@ -105,28 +101,13 @@ internal fun SubjectDetailsHeader(
             selectEpisodeButton = selectEpisodeButton,
             rating = rating,
             modifier = modifier,
-            subjectCoverSharedTransitionKey = subjectCoverSharedTransitionKey,
         )
     } else {
         SubjectDetailsHeaderCompact(
             subjectId = info.subjectId,
             coverImageUrl = coverImageUrl,
-            title = {
-                Text(
-                    info.displayName,
-                    /*Modifier.useSharedTransitionScope { modifier, animatedVisibilityScope ->
-                        modifier.sharedElement(
-                            rememberSharedContentState(
-                                SharedTransitionKeys.ExplorationFollowedSubjectToSubjectDetailCover(info.subjectId)
-                            ),
-                            animatedVisibilityScope,
-                        )
-                    },*/
-                )
-            },
-            subtitle = {
-                Text(info.name)
-            },
+            title = { Text(info.displayName) },
+            subtitle = { Text(info.name) },
             seasonTags = {
                 OutlinedTag { Text(renderSubjectSeason(info.airDate)) }
                 AiringLabel(
@@ -141,7 +122,6 @@ internal fun SubjectDetailsHeader(
             selectEpisodeButton = selectEpisodeButton,
             rating = rating,
             modifier = modifier,
-            subjectCoverSharedTransitionKey = subjectCoverSharedTransitionKey,
         )
     }
 }
@@ -160,7 +140,6 @@ fun SubjectDetailsHeaderCompact(
     selectEpisodeButton: @Composable BoxScope.() -> Unit,
     rating: @Composable () -> Unit,
     modifier: Modifier = Modifier,
-    subjectCoverSharedTransitionKey: String? = null,
 ) {
     Column(modifier) {
         Row(Modifier.height(IntrinsicSize.Min), verticalAlignment = Alignment.Top) {
@@ -171,15 +150,6 @@ fun SubjectDetailsHeaderCompact(
                     coverImageUrl,
                     null,
                     Modifier
-                        .ifThen(subjectCoverSharedTransitionKey != null) {
-                            useSharedTransitionScope { modifier, animatedVisibilityScope ->
-                                modifier.sharedElement(
-                                    rememberSharedContentState(subjectCoverSharedTransitionKey!!),
-                                    animatedVisibilityScope,
-                                    clipInOverlayDuringTransition = OverlayClip(MaterialTheme.shapes.medium),
-                                )
-                            }
-                        }
                         .width(imageWidth)
                         .height(imageWidth / COVER_WIDTH_TO_HEIGHT_RATIO),
                     contentScale = ContentScale.Crop,
@@ -258,7 +228,6 @@ fun SubjectDetailsHeaderWide(
     selectEpisodeButton: @Composable BoxScope.() -> Unit,
     rating: @Composable () -> Unit,
     modifier: Modifier = Modifier,
-    subjectCoverSharedTransitionKey: String? = null,
 ) {
     Column(modifier) {
         Row(
@@ -272,15 +241,6 @@ fun SubjectDetailsHeaderWide(
                     coverImageUrl,
                     null,
                     Modifier
-                        .ifThen(subjectCoverSharedTransitionKey != null) {
-                            useSharedTransitionScope { modifier, animatedVisibilityScope ->
-                                modifier.sharedElement(
-                                    rememberSharedContentState(subjectCoverSharedTransitionKey!!),
-                                    animatedVisibilityScope,
-                                    clipInOverlayDuringTransition = OverlayClip(MaterialTheme.shapes.medium),
-                                )
-                            }
-                        }
                         .width(imageWidth)
                         .height(imageWidth / COVER_WIDTH_TO_HEIGHT_RATIO),
                     contentScale = ContentScale.Crop,

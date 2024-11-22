@@ -9,11 +9,6 @@
 
 package me.him188.ani.app.ui.exploration.followed
 
-import androidx.compose.animation.SharedTransitionScope
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideIn
-import androidx.compose.animation.slideOut
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -43,7 +38,6 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpSize
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemContentType
@@ -53,19 +47,14 @@ import androidx.window.core.layout.WindowWidthSizeClass
 import me.him188.ani.app.data.models.subject.FollowedSubjectInfo
 import me.him188.ani.app.data.models.subject.hasNewEpisodeToPlay
 import me.him188.ani.app.data.models.subject.subjectInfo
-import me.him188.ani.app.ui.exploration.ExplorationPageState
 import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.AsyncImage
-import me.him188.ani.app.ui.foundation.animation.SharedTransitionKeys
-import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.BasicCarouselItem
 import me.him188.ani.app.ui.foundation.layout.CarouselItemDefaults
 import me.him188.ani.app.ui.foundation.layout.compareTo
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.minimumHairlineSize
-import me.him188.ani.app.ui.foundation.layout.useSharedTransitionScope
 import me.him188.ani.app.ui.foundation.stateOf
-import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.search.SearchProblemCard
 import me.him188.ani.app.ui.search.SearchProblemCardLayout
 import me.him188.ani.app.ui.search.SearchProblemCardRole
@@ -78,6 +67,7 @@ import me.him188.ani.app.ui.subject.AiringLabelState
 @Composable
 fun FollowedSubjectsLazyRow(
     items: LazyPagingItems<FollowedSubjectInfo>, // null means placeholder
+//    items: List<FollowedSubjectInfo?>, // null means placeholder
     onClick: (FollowedSubjectInfo) -> Unit,
     onPlay: (FollowedSubjectInfo) -> Unit,
     modifier: Modifier = Modifier,
@@ -87,7 +77,6 @@ fun FollowedSubjectsLazyRow(
     lazyListState: LazyListState = rememberLazyListState(),
     contentPadding: PaddingValues = PaddingValues(0.dp),
     verticalAlignment: Alignment.Vertical = Alignment.Top,
-    currentSharedTransitionKey: String? = null,
 ) {
     LazyRow(
         modifier,
@@ -145,19 +134,6 @@ fun FollowedSubjectsLazyRow(
                 onPlay = { onPlay(item) },
                 layoutParameters.imageSize,
                 layoutParameters.shape,
-                Modifier.useSharedTransitionScope { m, animatedVisibilityScope ->
-                    m.sharedBounds(
-                        rememberSharedContentState(
-                            SharedTransitionKeys.explorationFollowedSubjectToSubjectDetailBound(
-                                item.subjectInfo.subjectId,
-                            ),
-                        ),
-                        animatedVisibilityScope,
-                        resizeMode = SharedTransitionScope.ResizeMode.RemeasureToBounds,
-                        clipInOverlayDuringTransition = OverlayClip(layoutParameters.shape),
-                    )
-                },
-                currentSharedTransitionKey = currentSharedTransitionKey,
             )
         }
     }
@@ -185,27 +161,10 @@ private fun FollowedSubjectItem(
     imageSize: DpSize,
     shape: Shape,
     modifier: Modifier = Modifier,
-    currentSharedTransitionKey: String? = null,
 ) {
     BasicCarouselItem(
         label = { CarouselItemDefaults.Text(item.subjectInfo.displayName) },
         modifier,
-        textOverlayModifier = Modifier.ifThen(
-            currentSharedTransitionKey ==
-                    SharedTransitionKeys.explorationFollowedSubjectToSubjectDetailCover(item.subjectInfo.subjectId),
-        ) {
-            useSharedTransitionScope { m, animatedVisibilityScope ->
-                with(animatedVisibilityScope) {
-                    m.renderInSharedTransitionScopeOverlay(zIndexInOverlay = 1.0f)
-                        .animateEnterExit(
-                            fadeIn(AniThemeDefaults.feedItemFadeInSpec) +
-                                    slideIn(AniThemeDefaults.feedItemPlacementSpec) { IntOffset(0, it.height) },
-                            fadeOut(AniThemeDefaults.feedItemFadeOutSpec) +
-                                    slideOut(AniThemeDefaults.feedItemPlacementSpec) { IntOffset.Zero },
-                        )
-                }
-            }
-        },
         supportingText = {
             val airingState = remember(item) {
                 AiringLabelState(
@@ -222,22 +181,7 @@ private fun FollowedSubjectItem(
             if (!item.subjectProgressInfo.hasNewEpisodeToPlay) return@BasicCarouselItem
             FilledTonalIconButton(
                 onClick = { onPlay() },
-                modifier = Modifier
-                    .ifThen(
-                        currentSharedTransitionKey ==
-                                SharedTransitionKeys.explorationFollowedSubjectToSubjectDetailCover(item.subjectInfo.subjectId),
-                    ) {
-                        useSharedTransitionScope { modifier, animatedVisibilityScope ->
-                            with(animatedVisibilityScope) {
-                                modifier.renderInSharedTransitionScopeOverlay(zIndexInOverlay = 1.0f)
-                                    .animateEnterExit(
-                                        fadeIn(AniThemeDefaults.feedItemFadeInSpec),
-                                        fadeOut(AniThemeDefaults.feedItemFadeOutSpec),
-                                    )
-                            }
-                        }
-                    }
-                    .align(Alignment.BottomEnd),
+                modifier = Modifier.align(Alignment.BottomEnd),
             ) {
                 Icon(Icons.Rounded.PlayArrow, null, Modifier.size(24.dp))
             }
@@ -246,19 +190,7 @@ private fun FollowedSubjectItem(
         Surface(onClick = { onClick() }) {
             AsyncImage(
                 item.subjectInfo.imageLarge,
-                modifier = Modifier
-                    .useSharedTransitionScope { modifier, animatedVisibilityScope ->
-                        modifier.sharedElement(
-                            rememberSharedContentState(
-                                SharedTransitionKeys.explorationFollowedSubjectToSubjectDetailCover(
-                                    item.subjectInfo.subjectId,
-                                ),
-                            ),
-                            animatedVisibilityScope,
-                            clipInOverlayDuringTransition = OverlayClip(shape),
-                        )
-                    }
-                    .size(imageSize),
+                modifier = Modifier.size(imageSize),
                 contentDescription = item.subjectInfo.displayName,
                 contentScale = ContentScale.Crop,
             )
