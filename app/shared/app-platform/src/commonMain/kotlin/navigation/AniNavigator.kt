@@ -18,7 +18,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.navigation.NavHostController
-import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.first
 import me.him188.ani.datasources.api.source.FactoryId
 
 /**
@@ -139,19 +141,23 @@ interface AniNavigator {
 fun AniNavigator(): AniNavigator = AniNavigatorImpl()
 
 private class AniNavigatorImpl : AniNavigator {
-    private val _navigator: CompletableDeferred<NavHostController> = CompletableDeferred()
+    private val _navigator: MutableSharedFlow<NavHostController> =
+        MutableSharedFlow(
+            replay = 1,
+            onBufferOverflow = BufferOverflow.DROP_OLDEST,
+        )
 
     override val navigator: NavHostController
-        get() = _navigator.getCompleted()
+        get() = _navigator.replayCache.firstOrNull() ?: error("Navigator is not yet set")
 
     override fun setNavController(controller: NavHostController) {
-        this._navigator.complete(controller)
+        this._navigator.tryEmit(controller)
     }
 
-    override fun isNavControllerReady(): Boolean = _navigator.isCompleted
+    override fun isNavControllerReady(): Boolean = _navigator.replayCache.isNotEmpty()
 
     override suspend fun awaitNavController(): NavHostController {
-        return _navigator.await()
+        return _navigator.first()
     }
 }
 
