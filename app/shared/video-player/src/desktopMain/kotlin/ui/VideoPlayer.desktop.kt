@@ -355,7 +355,7 @@ class VlcjVideoPlayerState(parentCoroutineContext: CoroutineContext) : PlayerSta
         backgroundScope.launch {
             var lastPosition = currentPositionMillis.value
             while (true) {
-                delay(1000)
+                delay(1500)
                 if (state.value == PlaybackState.PLAYING) {
                     isBuffering.value = lastPosition == currentPositionMillis.value
                     lastPosition = currentPositionMillis.value
