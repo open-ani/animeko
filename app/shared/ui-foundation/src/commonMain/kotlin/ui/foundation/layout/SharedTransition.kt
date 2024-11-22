@@ -10,12 +10,23 @@
 package me.him188.ani.app.ui.foundation.layout
 
 import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.animation.core.animateDp
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.foundation.shape.CornerBasedShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ProvidableCompositionLocal
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.dp
 
 val LocalSharedTransitionScopeProvider: ProvidableCompositionLocal<SharedTransitionScopeProvider?> =
     staticCompositionLocalOf { null }
@@ -39,6 +50,51 @@ fun SharedTransitionScopeProvider(
         override val animatedVisibilityScope: AnimatedVisibilityScope = animatedVisibilityScope
     }
 }
+
+/**
+ * supports only [CornerBasedShape]
+ */
+/*@Composable
+fun AnimatedVisibilityScope.rememberAnimatedClippedBound(target: Shape): Shape {
+    val density = LocalDensity.current
+    if (target !is CornerBasedShape) return target
+    
+    val topStartTargetState = target.topEnd.toPx(Size.Zero, density)
+    val topStart by transition.animateFloat { enterExit ->
+        when (enterExit) {
+            EnterExitState.PreEnter -> 0f
+            EnterExitState.Visible, EnterExitState.PostExit -> topStartTargetState
+        }
+    }
+    
+    val topEndTargetState = target.topEnd.toPx(Size.Zero, density)
+    val topEnd by transition.animateFloat { enterExit ->
+        when (enterExit) {
+            EnterExitState.PreEnter -> 0f
+            EnterExitState.Visible, EnterExitState.PostExit -> topEndTargetState
+        }
+    }
+    
+    val bottomStartTargetState = target.topStart.toPx(Size.Zero, density)
+    val bottomStart by transition.animateFloat { enterExit ->
+        when (enterExit) {
+            EnterExitState.PreEnter -> 0f
+            EnterExitState.Visible, EnterExitState.PostExit -> bottomStartTargetState
+        }
+    }
+    
+    val bottomEndTargetState = target.topStart.toPx(Size.Zero, density)
+    val bottomEnd by transition.animateFloat { enterExit ->
+        when (enterExit) {
+            EnterExitState.PreEnter -> 0f
+            EnterExitState.Visible, EnterExitState.PostExit -> bottomEndTargetState
+        }
+    }
+    
+    return remember(topStart, topEnd, bottomStart, bottomEnd) {
+        RoundedCornerShape(topStart, topEnd, bottomStart, bottomEnd)
+    }
+}*/
 
 /**
  * Helper function to use [SharedTransitionScopeProvider] or not depending on

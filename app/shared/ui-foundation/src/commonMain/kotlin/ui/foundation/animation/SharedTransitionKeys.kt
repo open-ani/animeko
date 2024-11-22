@@ -13,12 +13,18 @@ import androidx.compose.runtime.Stable
 
 @Stable
 object SharedTransitionKeys {
-    @Stable
-    fun subjectCoverImage(subjectId: Int) = "subject-cover-$subjectId"
+    fun explorationFollowedSubjectToSubjectDetailCover(subjectId: Int) =
+        "exploration-followed-subject-to-subject-detail-cover-$subjectId"
 
-    @Stable
-    fun subjectTitle(subjectId: Int) = "subject-title-$subjectId"
+    fun explorationFollowedSubjectToSubjectDetailBound(subjectId: Int) =
+        "exploration-followed-subject-to-subject-detail-$subjectId"
 
-    @Stable
-    fun subjectBounds(subjectId: Int) = "subject-bounds-$subjectId"
+    fun explorationTrendingSubjectToSubjectDetailCover(subjectId: Int) =
+        "exploration-trending-subject-to-subject-detail-cover-$subjectId"
+
+    fun explorationTrendingSubjectToSubjectDetailBound(subjectId: Int) =
+        "exploration-trending-subject-to-subject-detail-cover-$subjectId"
+
+    fun searchResultToSubjectDetailBound(subjectId: Int) =
+        "search-result-to-subject-detail-$subjectId"
 }

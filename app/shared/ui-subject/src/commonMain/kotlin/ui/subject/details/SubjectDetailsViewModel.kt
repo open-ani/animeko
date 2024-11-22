@@ -22,6 +22,8 @@ import org.koin.core.component.inject
 @Stable
 class SubjectDetailsViewModel(
     subjectId: Int,
+    val boundSharedTransitionKey: String? = null,
+    val subjectCoverSharedTransitionKey: String? = null,
     preloadSubjectInfo: SubjectInfo? = null
 ) : AbstractViewModel(), KoinComponent {
     private val factory: SubjectDetailsStateFactory by inject()

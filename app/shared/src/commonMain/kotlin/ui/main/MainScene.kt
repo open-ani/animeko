@@ -220,7 +220,7 @@ private fun MainSceneContent(
                                             useSharedTransitionScope { modifier, animatedVisibilityScope ->
                                                 modifier.sharedElement(
                                                     rememberSharedContentState(
-                                                        SharedTransitionKeys.subjectBounds(
+                                                        SharedTransitionKeys.searchResultToSubjectDetailBound(
                                                             state.info.subjectId,
                                                         ),
                                                     ),

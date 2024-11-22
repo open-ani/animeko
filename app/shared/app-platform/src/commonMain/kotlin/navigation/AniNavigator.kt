@@ -61,9 +61,13 @@ interface AniNavigator {
 
     fun navigateSubjectDetails(
         subjectId: Int,
+        sharedTransitionBoundKey: String? = null,
+        sharedTransitionCoverKey: String? = null,
         preload: SubjectDetailPreload? = null
     ) {
-        navigator.navigate(NavRoutes.SubjectDetail(subjectId, preload))
+        navigator.navigate(
+            NavRoutes.SubjectDetail(subjectId, sharedTransitionBoundKey, sharedTransitionCoverKey, preload),
+        )
     }
 
     fun navigateSubjectCaches(subjectId: Int) {

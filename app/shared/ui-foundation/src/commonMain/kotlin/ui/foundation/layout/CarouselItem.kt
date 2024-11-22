@@ -53,6 +53,7 @@ private val carouselBrush = Brush.verticalGradient(
 fun CarouselItemScope.CarouselItem(
     label: @Composable () -> Unit,
     modifier: Modifier = Modifier,
+    textOverlayModifier: Modifier = Modifier,
     supportingText: @Composable () -> Unit = {},
     overlay: @Composable BoxScope.() -> Unit = {},
     colors: CarouselItemColors = CarouselItemDefaults.colors(),
@@ -63,6 +64,7 @@ fun CarouselItemScope.CarouselItem(
     BasicCarouselItem(
         label,
         modifier,
+        textOverlayModifier,
         supportingText,
         overlay,
         colors,
@@ -81,6 +83,7 @@ fun CarouselItemScope.CarouselItem(
 fun BasicCarouselItem(
     label: @Composable () -> Unit,
     modifier: Modifier = Modifier,
+    textOverlayModifier: Modifier = Modifier,
     supportingText: @Composable () -> Unit = {},
     overlay: @Composable BoxScope.() -> Unit = {},
     colors: CarouselItemColors = CarouselItemDefaults.colors(),
@@ -91,7 +94,7 @@ fun BasicCarouselItem(
         Box(Modifier.clip(maskShape)) {
             image()
         }
-        Box(Modifier.matchParentSize().background(carouselBrush, maskShape)) {
+        Box(textOverlayModifier.matchParentSize().background(carouselBrush, maskShape)) {
             Column(
                 Modifier
                     .align(Alignment.BottomStart)

@@ -10,8 +10,8 @@
 package me.him188.ani.app.ui.subject.details
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.Crossfade
 import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -52,7 +52,6 @@ import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
@@ -92,6 +91,7 @@ import me.him188.ani.app.ui.foundation.layout.only
 import me.him188.ani.app.ui.foundation.layout.paneHorizontalPadding
 import me.him188.ani.app.ui.foundation.layout.paneVerticalPadding
 import me.him188.ani.app.ui.foundation.layout.rememberConnectedScrollState
+import me.him188.ani.app.ui.foundation.layout.useSharedTransitionScope
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.pagerTabIndicatorOffset
 import me.him188.ani.app.ui.foundation.rememberImageViewerHandler
@@ -127,9 +127,19 @@ fun SubjectDetailsPage(
         SubjectDetailsPage(
             state,
             onPlay = onPlay,
-            modifier,
+            modifier.ifThen(vm.boundSharedTransitionKey != null) {
+                useSharedTransitionScope { m, animatedVisibilityScope ->
+                    m.sharedBounds(
+                        rememberSharedContentState(vm.boundSharedTransitionKey!!),
+                        animatedVisibilityScope,
+                        resizeMode = SharedTransitionScope.ResizeMode.RemeasureToBounds,
+                        clipInOverlayDuringTransition = OverlayClip(MaterialTheme.shapes.medium),
+                    ).skipToLookaheadSize()
+                }
+            },
             showTopBar,
-            showBlurredBackground,
+            showBlurredBackground && !state.preload,
+            vm.subjectCoverSharedTransitionKey,
             windowInsets,
         )
     }
@@ -142,6 +152,7 @@ fun SubjectDetailsPage(
     modifier: Modifier = Modifier,
     showTopBar: Boolean = true,
     showBlurredBackground: Boolean = true,
+    subjectCoverSharedTransitionKey: String? = null,
     windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
 ) {
     val toaster = LocalToaster.current
@@ -206,6 +217,7 @@ fun SubjectDetailsPage(
         modifier,
         showTopBar = showTopBar,
         showBlurredBackground = showBlurredBackground,
+        subjectCoverSharedTransitionKey = subjectCoverSharedTransitionKey,
         windowInsets = windowInsets,
     ) { paddingValues ->
         Box {
@@ -293,6 +305,7 @@ fun SubjectDetailsPageLayout(
     modifier: Modifier = Modifier,
     showTopBar: Boolean = true,
     showBlurredBackground: Boolean = true,
+    subjectCoverSharedTransitionKey: String? = null,
     windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
     content: @Composable (contentPadding: PaddingValues) -> Unit,
 ) {
@@ -392,6 +405,7 @@ fun SubjectDetailsPageLayout(
                                 .fillMaxWidth()
                                 .ifThen(!showTopBar) { padding(top = windowSizeClass.paneVerticalPadding) }
                                 .padding(horizontal = windowSizeClass.paneHorizontalPadding),
+                            subjectCoverSharedTransitionKey = subjectCoverSharedTransitionKey,
                         )
                     }
                 }
@@ -476,7 +490,7 @@ fun SubjectDetailsContentPager(
 }
 
 /**
- * 只显示少量内容的详情页布局
+ * 加载展位页
  */
 @Composable
 fun PlaceholderSubjectDetailsDetailTabLayout(paddingValues: PaddingValues) {

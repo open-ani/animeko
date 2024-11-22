@@ -56,6 +56,8 @@ sealed class NavRoutes {
     @Serializable
     data class SubjectDetail(
         val subjectId: Int,
+        val sharedTransitionBoundKey: String? = null,
+        val sharedTransitionCoverKey: String? = null,
         val preload: SubjectDetailPreload? = null,
     ) : NavRoutes()
 

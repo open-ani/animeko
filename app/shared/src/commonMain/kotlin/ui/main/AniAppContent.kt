@@ -210,7 +210,12 @@ private fun AniAppContentImpl(
                     val preloadSubjectInfo = details.preload?.run {
                         SubjectInfo.createMinimal(id, name, coverUrl, nameCN)
                     }
-                    SubjectDetailsViewModel(details.subjectId, preloadSubjectInfo)
+                    SubjectDetailsViewModel(
+                        details.subjectId,
+                        details.sharedTransitionBoundKey,
+                        details.sharedTransitionCoverKey,
+                        preloadSubjectInfo,
+                    )
                 }
                 CompositionLocalProvider(
                     LocalSharedTransitionScopeProvider provides SharedTransitionScopeProvider(
