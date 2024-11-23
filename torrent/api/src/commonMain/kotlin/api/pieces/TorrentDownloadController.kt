@@ -67,10 +67,6 @@ class TorrentDownloadController(
     private val totalPieceSize: Long = pieces.sumOf { it.size }
     private val pieceOffsetStart = with(pieces) { pieces.first().dataStartOffset }
 
-    init {
-        println()
-    }
-
     // 获取 head piece 数量和 tail piece 数量
     private val headPieceCount =
         pieces.pieceIndexOfFirst { it.dataEndOffset >= pieceOffsetStart + headerSize }.let { index ->
