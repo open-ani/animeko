@@ -75,8 +75,29 @@ object MediaListFilters {
     private val specialCharRegex = Regex("""[~!@#$%^&*()_+{}\[\]\\|;':",.<>/?【】：～「」]""")
     private val whitespaceRegex = Regex(""" 	\s+""")
 
+
+    private data class KeepWords(
+        val originalWord: String,
+        val mask: String
+    )
+
+    /**
+     * 这些词在标题中将保证被原封不动保留
+     */
+    private val keepWords = listOf("Re：").mapIndexed { index, s ->
+        KeepWords(s, "\uE001$index") // \uE001 是一个不常用的字符
+    }
+
     fun removeSpecials(string: String, removeWhitespace: Boolean): String {
-        return StringBuilder(string).apply {
+        return StringBuilder(
+            string.let {
+                var result = it
+                keepWords.forEach { keepWord ->
+                    result = result.replace(keepWord.originalWord, keepWord.mask)
+                }
+                result
+            },
+        ).apply {
             deletePrefix("电影")
             deleteInfix("电影")
             deletePrefix("剧场版")
@@ -89,6 +110,12 @@ object MediaListFilters {
                 deleteMatches(whitespaceRegex)
             }
             trimSB()
-        }.toString()
+        }.toString().let {
+            var result = it
+            keepWords.forEach { keepWord ->
+                result = result.replace(keepWord.mask, keepWord.originalWord)
+            }
+            result
+        }
     }
 }
