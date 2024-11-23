@@ -73,7 +73,7 @@ class TorrentDownloadController(
 
     // 获取 head piece 数量和 tail piece 数量
     private val headPieceCount =
-        pieces.pieceIndexOfFirst { it.dataLastOffset >= pieceOffsetStart + headerSize }.let { index ->
+        pieces.pieceIndexOfFirst { it.dataEndOffset >= pieceOffsetStart + headerSize }.let { index ->
             // 如果 index == -1 说明未找到说明所有 piece 的 dataOffset 都小于 headerSize
             // 那就让所有的 piece 都成为 highest piece
             if (index == -1) pieces.sizes.size else {
@@ -87,23 +87,18 @@ class TorrentDownloadController(
     //         pieces.pieceIndexOfLast { it.dataStartOffset <= pieceOffsetStart + totalPieceSize - possibleFooterSize } +
     //         pieces.initialPieceIndex
 
-    private val pieceList = pieces.asSequence().toList()
-
     /**
      * 头尾 metadata 的 pieceIndex, 下载完后移除对应 index, 传递给 [priorities].
      * metadata piece 的顺序和数量是固定的. 不需要额外的 list 来存储当前需要下载的 piece.
      */
-    private val highPieces = pieceList
+    private val highPieces = pieces
         .getHeadAndFooterPieces(headPieceCount, footerPieceCount)
         .toMutableList()
 
     /**
      * 其他 piece 的 pieceIndex, 使用 [downloadingNormalPieces] 维护下载窗口
      */
-    private val normalPieces: List<Int> = pieceList
-        .drop(headPieceCount)
-        .dropLast(footerPieceCount)
-        .map { it.pieceIndex }
+    private val normalPieces: List<Int> = DelegateStrippedMetadataPieceList(pieces, headPieceCount, footerPieceCount)
 
     private val bodyPieceIndexRange by lazy { normalPieces.run { first()..last() } }
 
@@ -257,10 +252,10 @@ class TorrentDownloadController(
      * 返回首尾元数据 piece index, 靠近边缘的排在前面.
      * 例如 如果 piece index 从 `0 - 99`, 返回 `0, 99, 1, 98, 2, 97, 3, 96, 95 ...`
      */
-    private fun List<Piece>.getHeadAndFooterPieces(headN: Int, tailN: Int): List<Int> {
-        require(headN <= size) { "headN should be smaller than piece list size" }
-        require(tailN <= size) { "tailN should be smaller than piece list size" }
-        val list = this
+    private fun PieceList.getHeadAndFooterPieces(headN: Int, tailN: Int): List<Int> {
+        val pieceList = this
+        require(headN <= pieceList.sizes.size) { "headN should be smaller than piece list size" }
+        require(tailN <= pieceList.sizes.size) { "tailN should be smaller than piece list size" }
 
         var headIndex = 0
         var tailIndex = 0
@@ -268,15 +263,46 @@ class TorrentDownloadController(
         return buildList {
             while (headIndex < headN || tailIndex < tailN) {
                 if (headIndex < headN) {
-                    add(list[headIndex].pieceIndex)
+                    add(pieceList.initialPieceIndex + headIndex)
                     headIndex += 1
                 }
                 if (tailIndex < tailN) {
-                    add(list[list.size - 1 - tailIndex].pieceIndex)
+                    add(pieceList.initialPieceIndex + pieceList.sizes.size - 1 - tailIndex)
                     tailIndex += 1
                 }
             }
         }
+    }
+}
+
+/**
+ * Delegate list of pieceIndex without metadata pieces.
+ */
+private class DelegateStrippedMetadataPieceList(
+    private val delegate: PieceList,
+    private val headerCount: Int,
+    private val footerCount: Int,
+) : AbstractList<Int>() {
+    private val pieceCount = delegate.sizes.size
+
+    init {
+        require(headerCount <= pieceCount) { "headerCount should be smaller than piece list size" }
+        require(footerCount <= pieceCount) { "footerCount should be smaller than piece list size" }
+    }
+
+    override val size: Int = pieceCount - headerCount - footerCount
+
+    override fun get(index: Int): Int {
+        val targetIndex = headerCount + index
+        if (index >= size) {
+            throw IndexOutOfBoundsException(
+                "Accessing delegate[$index] which is a footer piece or out of bounds. stripped size = $size",
+            )
+        }
+        val result = delegate.first().pieceIndex + targetIndex
+
+        check(result >= delegate.initialPieceIndex && result < delegate.endPieceIndex)
+        return result
     }
 }
 
