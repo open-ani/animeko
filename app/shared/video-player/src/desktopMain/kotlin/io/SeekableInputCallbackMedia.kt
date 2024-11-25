@@ -52,6 +52,6 @@ class SeekableInputCallbackMedia(
 
     private companion object {
         private const val ENABLE_LOGS = false
-        val logger = logger<SeekableInputCallbackMedia>()
+        private val logger = logger<SeekableInputCallbackMedia>()
     }
 }

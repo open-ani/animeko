@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.danmaku.ui
 
 import androidx.compose.runtime.Stable
@@ -656,7 +665,7 @@ private fun <D : SizeSpecifiedDanmaku, DT, T : DanmakuTrack<D, DT>>
     when {
         size == count -> return
         // 清除 track 的同时要把 track 里的 danmaku 也要清除
-        count < size -> repeat(size - count) { removeLast().clearAll() }
+        count < size -> repeat(size - count) { removeLastOrNull()?.clearAll() }
         else -> addAll(List(count - size) { newInstance(size + it) })
     }
 }

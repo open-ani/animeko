@@ -92,7 +92,12 @@ abstract class AnitorrentTorrentDownloader<THandle : TorrentHandle, TAddInfo : T
 
     companion object {
         private const val FAST_RESUME_FILENAME = "fastresume"
-        val logger = logger<AnitorrentTorrentDownloader<*, *>>()
+
+        /**
+         * `internal` since used by [createAnitorrentTorrentDownloader]
+         */
+        @PublishedApi
+        internal val logger = logger<AnitorrentTorrentDownloader<*, *>>()
     }
 
     protected val scope = CoroutineScope(parentCoroutineContext + SupervisorJob(parentCoroutineContext[Job]))

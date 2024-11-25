@@ -23,34 +23,34 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 
 /**
- * @see SearchProblemCardRole.from
- * @see SearchProblem
+ * @see LoadErrorCardRole.from
+ * @see LoadError
  */
 @Stable
-sealed class SearchProblemCardRole {
+sealed class LoadErrorCardRole {
     @Composable
     internal abstract fun Container(
         modifier: Modifier = Modifier,
-        containerColor: Color = SearchDefaults.searchProblemContainerColor,
+        containerColor: Color = LoadErrorDefaults.containerColor,
         shape: Shape = MaterialTheme.shapes.large, // behave like Dialogs.
-        content: @Composable SearchProblemCardScope.() -> Unit,
+        content: @Composable LoadErrorCardScope.() -> Unit,
     )
 
     @Stable
-    data object Neural : SearchProblemCardRole() {
+    data object Neural : LoadErrorCardRole() {
         @Composable
         override fun Container(
             modifier: Modifier,
             containerColor: Color,
             shape: Shape,
-            content: @Composable SearchProblemCardScope.() -> Unit,
+            content: @Composable LoadErrorCardScope.() -> Unit,
         ) {
             val colors = CardDefaults.elevatedCardColors(
                 containerColor = containerColor,
             )
             val colorsState by rememberUpdatedState(colors)
             val scope = remember {
-                object : SearchProblemCardScope {
+                object : LoadErrorCardScope {
                     override val cardColors: CardColors @Composable get() = colorsState
                 }
             }
@@ -64,18 +64,18 @@ sealed class SearchProblemCardRole {
     }
 
     @Stable
-    data object Unimportant : SearchProblemCardRole() {
+    data object Unimportant : LoadErrorCardRole() {
         @Composable
         override fun Container(
             modifier: Modifier,
             containerColor: Color,
             shape: Shape,
-            content: @Composable SearchProblemCardScope.() -> Unit,
+            content: @Composable LoadErrorCardScope.() -> Unit,
         ) {
             val colors = CardDefaults.cardColors(containerColor = Color.Transparent)
             val colorsState by rememberUpdatedState(colors)
             val scope = remember {
-                object : SearchProblemCardScope {
+                object : LoadErrorCardScope {
                     override val cardColors: CardColors @Composable get() = colorsState
                 }
             }
@@ -90,13 +90,13 @@ sealed class SearchProblemCardRole {
     }
 
     @Stable
-    data object Important : SearchProblemCardRole() {
+    data object Important : LoadErrorCardRole() {
         @Composable
         override fun Container(
             modifier: Modifier,
             containerColor: Color,
             shape: Shape,
-            content: @Composable SearchProblemCardScope.() -> Unit,
+            content: @Composable LoadErrorCardScope.() -> Unit,
         ) {
             val colors = CardDefaults.elevatedCardColors(
                 containerColor = containerColor,
@@ -104,7 +104,7 @@ sealed class SearchProblemCardRole {
             )
             val colorsState by rememberUpdatedState(colors)
             val scope = remember {
-                object : SearchProblemCardScope {
+                object : LoadErrorCardScope {
                     override val cardColors: CardColors @Composable get() = colorsState
                 }
             }
@@ -118,13 +118,13 @@ sealed class SearchProblemCardRole {
     }
 
     @Stable
-    data object Suggestive : SearchProblemCardRole() {
+    data object Suggestive : LoadErrorCardRole() {
         @Composable
         override fun Container(
             modifier: Modifier,
             containerColor: Color,
             shape: Shape,
-            content: @Composable SearchProblemCardScope.() -> Unit,
+            content: @Composable LoadErrorCardScope.() -> Unit,
         ) {
             val colors = CardDefaults.elevatedCardColors(
                 containerColor = containerColor,
@@ -132,7 +132,7 @@ sealed class SearchProblemCardRole {
             )
             val colorsState by rememberUpdatedState(colors)
             val scope = remember {
-                object : SearchProblemCardScope {
+                object : LoadErrorCardScope {
                     override val cardColors: CardColors @Composable get() = colorsState
                 }
             }
@@ -146,22 +146,22 @@ sealed class SearchProblemCardRole {
     }
 
     companion object {
-        fun from(problem: SearchProblem): SearchProblemCardRole {
+        fun from(problem: LoadError): LoadErrorCardRole {
             return when (problem) {
                 // Important error
-                is SearchProblem.UnknownError,
-                SearchProblem.ServiceUnavailable,
-                SearchProblem.NetworkError,
+                is LoadError.UnknownError,
+                LoadError.ServiceUnavailable,
+                LoadError.NetworkError,
                     -> Important
 
                 // Suggestive message
-                SearchProblem.RequiresLogin -> Suggestive
+                LoadError.RequiresLogin -> Suggestive
 
                 // Neutral message
-                SearchProblem.RateLimited -> Neural
+                LoadError.RateLimited -> Neural
 
                 // Unimportant message
-                SearchProblem.NoResults -> Unimportant
+                LoadError.NoResults -> Unimportant
             }
         }
     }

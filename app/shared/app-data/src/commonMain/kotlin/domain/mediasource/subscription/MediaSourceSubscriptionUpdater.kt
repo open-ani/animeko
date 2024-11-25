@@ -171,8 +171,8 @@ class MediaSourceSubscriptionUpdater(
         }
     }
 
-    companion object {
-        val logger = logger<MediaSourceSubscriptionUpdater>()
+    private companion object {
+        private val logger = logger<MediaSourceSubscriptionUpdater>()
 
         fun calculateDiff(newArguments: List<NewArgument>, existing: List<ExistingArgument>): Diff {
             val removed = existing.filter { (save, local) ->

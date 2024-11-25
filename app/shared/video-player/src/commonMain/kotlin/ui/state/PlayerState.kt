@@ -170,6 +170,14 @@ interface PlayerState {
     @UiThread
     fun seekTo(positionMillis: Long)
 
+    /**
+     * 快进或快退一段时间. 正数为快进, 负数为快退.
+     */
+    @UiThread
+    fun skip(deltaMillis: Long) {
+        seekTo(currentPositionMillis.value + deltaMillis)
+    }
+
     val subtitleTracks: TrackGroup<SubtitleTrack>
 
     val audioTracks: TrackGroup<AudioTrack>

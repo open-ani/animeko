@@ -30,7 +30,7 @@ data class AnitorrentConfig(
      */
     val shareRatioLimit: Double = 1.1,
     /**
-     * 在计费网络限制上传速度为 1 KB/s
+     * 在计费网络限制上传速度为 10 KB/s
      * * Android 移动流量
      * * Windows 计费 Wi-Fi
      */

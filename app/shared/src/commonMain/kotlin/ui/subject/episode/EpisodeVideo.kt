@@ -65,6 +65,7 @@ import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.TextWithBorder
 import me.him188.ani.app.ui.foundation.effects.cursorVisibility
 import me.him188.ani.app.ui.foundation.icons.AniIcons
+import me.him188.ani.app.ui.foundation.icons.Forward85
 import me.him188.ani.app.ui.foundation.icons.RightPanelClose
 import me.him188.ani.app.ui.foundation.icons.RightPanelOpen
 import me.him188.ani.app.ui.foundation.rememberDebugSettingsViewModel
@@ -199,6 +200,9 @@ internal fun EpisodeVideoImpl(
                     null
                 },
                 actions = {
+                    IconButton({ playerState.skip(85000L) }) {
+                        Icon(AniIcons.Forward85, "跳过 85s")
+                    }
                     if (expanded) {
                         IconButton({ isMediaSelectorVisible = true }, Modifier.testTag(TAG_SHOW_MEDIA_SELECTOR)) {
                             Icon(Icons.Rounded.DisplaySettings, contentDescription = "数据源")
@@ -258,7 +262,7 @@ internal fun EpisodeVideoImpl(
         },
         gestureHost = {
             val swipeSeekerState = rememberSwipeSeekerState(constraints.maxWidth) {
-                playerState.seekTo(playerState.currentPositionMillis.value + it * 1000)
+                playerState.skip(it * 1000L)
             }
             val videoPropertiesState by playerState.videoProperties.collectAsState()
             val enableSwipeToSeek by remember {
@@ -534,6 +538,7 @@ fun EpisodeVideoDefaults.DanmakuEditor(
     val danmakuEditorRequester = rememberAlwaysOnRequester(videoControllerState, "danmakuEditor")
 
     val focusManager = LocalFocusManager.current
+
     /**
      * 是否设置了暂停
      */

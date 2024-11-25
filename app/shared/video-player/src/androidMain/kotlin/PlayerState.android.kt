@@ -242,7 +242,7 @@ internal class ExoPlayerState @UiThread constructor(
                             subtitleTracks.candidates.value = newSubtitleTracks
                             subtitleTracks.current.value = newSubtitleTracks.firstOrNull()
                         }
-                        
+
                         audioTracks.candidates.value =
                             tracks.groups.asSequence()
                                 .filter { it.type == C.TRACK_TYPE_AUDIO }
@@ -366,6 +366,7 @@ internal class ExoPlayerState @UiThread constructor(
     override val bufferedPercentage = MutableStateFlow(0)
 
     override fun seekTo(positionMillis: Long) {
+        currentPositionMillis.value = positionMillis
         player.seekTo(positionMillis)
     }
 

@@ -20,31 +20,31 @@ import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview
 
-class PreviewSearchProblemProvider : PreviewParameterProvider<SearchProblem?> {
-    override val values: Sequence<SearchProblem?>
+internal class LoadErrorProblemProvider : PreviewParameterProvider<LoadError?> {
+    override val values: Sequence<LoadError?>
         get() = sequenceOf(
             null,
-            SearchProblem.NoResults,
-            SearchProblem.RequiresLogin,
-            SearchProblem.NetworkError,
-            SearchProblem.ServiceUnavailable,
-            SearchProblem.UnknownError(IllegalStateException("test")),
+            LoadError.NoResults,
+            LoadError.RequiresLogin,
+            LoadError.NetworkError,
+            LoadError.ServiceUnavailable,
+            LoadError.UnknownError(IllegalStateException("test")),
         )
 }
 
 // See also PreviewSearchPage
 @Composable
 @PreviewLightDark
-fun PreviewSearchProblemCard(
-    @PreviewParameter(PreviewSearchProblemProvider::class)
-    problem: SearchProblem?
+private fun PreviewLoadErrorCard(
+    @PreviewParameter(LoadErrorProblemProvider::class)
+    problem: LoadError?
 ) = Impl(problem)
 
 @Composable
-private fun Impl(error: SearchProblem?) {
+private fun Impl(error: LoadError?) {
     ProvideFoundationCompositionLocalsForPreview {
         Surface(color = MaterialTheme.colorScheme.surfaceContainerLowest) {
-            SearchProblemCard(error, {}, Modifier.padding(all = 16.dp), {})
+            LoadErrorCard(error, {}, Modifier.padding(all = 16.dp), {})
         }
     }
 }

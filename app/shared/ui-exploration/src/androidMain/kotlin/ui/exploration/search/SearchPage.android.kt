@@ -27,7 +27,6 @@ import me.him188.ani.app.data.repository.RepositoryNetworkException
 import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.layout.CarouselItemDefaults.Text
 import me.him188.ani.app.ui.foundation.preview.PreviewSizeClasses
-import me.him188.ani.app.ui.search.PreviewSearchProblemCard
 import me.him188.ani.app.ui.search.TestSearchState
 import me.him188.ani.app.ui.search.collectItemsWithLifecycle
 import me.him188.ani.utils.platform.annotations.TestOnly
@@ -55,7 +54,7 @@ fun PreviewSearchPageEmptyResult() = ProvideFoundationCompositionLocalsForPrevie
 }
 
 /**
- * @see PreviewSearchProblemCard
+ * @sample me.him188.ani.app.ui.search.PreviewLoadErrorCard
  */
 @OptIn(TestOnly::class)
 @Composable

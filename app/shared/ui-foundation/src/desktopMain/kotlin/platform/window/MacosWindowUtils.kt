@@ -15,7 +15,10 @@ import androidx.compose.ui.window.WindowState
 import com.sun.jna.Library
 import com.sun.jna.Native
 import com.sun.jna.Platform
+import kotlinx.atomicfu.locks.ReentrantLock
+import kotlinx.atomicfu.locks.withLock
 import me.him188.ani.app.platform.PlatformWindow
+import me.him188.ani.utils.logging.logger
 
 internal class MacosWindowUtils : AwtWindowUtils() {
     @Suppress("FunctionName")
@@ -68,5 +71,39 @@ internal class MacosWindowUtils : AwtWindowUtils() {
                 CGDisplayHideCursor(0)
             }
         }
+    }
+
+
+    private val preventScreenSaverLock = ReentrantLock()
+
+    @Volatile
+    private var screenSaverProcess: Process? = null
+    override fun setPreventScreenSaver(prevent: Boolean) = preventScreenSaverLock.withLock {
+        if (prevent) {
+            if (screenSaverProcess == null) {
+                logger.info("Launching caffeinate to prevent screen saver")
+                try {
+                    screenSaverProcess = ProcessBuilder("caffeinate", "-d")
+                        .inheritIO()
+                        .start() // Note: this is blocking. We actually should not block here as it's called from the ui thread. But it's fine for now.
+                } catch (e: Exception) {
+                    logger.error("Failed to launch caffeinate, see cause", e)
+                }
+            } else {
+                return
+            }
+        } else {
+            logger.info("Stopping caffeinate")
+            try {
+                screenSaverProcess?.destroy()
+            } catch (e: Exception) {
+                logger.error("Failed to stop caffeinate, see cause", e)
+            }
+            screenSaverProcess = null
+        }
+    }
+
+    private companion object {
+        private val logger = logger<MacosWindowUtils>()
     }
 }

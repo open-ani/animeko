@@ -22,10 +22,12 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
@@ -82,6 +84,7 @@ fun MainScene(
     page: MainScenePage,
     modifier: Modifier = Modifier,
     onNavigateToPage: (MainScenePage) -> Unit,
+    onNavigateToSettings: () -> Unit,
     navigationLayoutType: NavigationSuiteType = AniNavigationSuiteDefaults.calculateLayoutType(
         currentWindowAdaptiveInfo1(),
     ),
@@ -94,13 +97,14 @@ fun MainScene(
         }
     }
 
-    MainSceneContent(page, onNavigateToPage, modifier, navigationLayoutType)
+    MainSceneContent(page, onNavigateToPage, onNavigateToSettings, modifier, navigationLayoutType)
 }
 
 @Composable
 private fun MainSceneContent(
     page: MainScenePage,
     onNavigateToPage: (MainScenePage) -> Unit,
+    onNavigateToSettings: () -> Unit,
     modifier: Modifier = Modifier,
     navigationLayoutType: NavigationSuiteType = AniNavigationSuiteDefaults.calculateLayoutType(
         currentWindowAdaptiveInfo1(),
@@ -128,6 +132,22 @@ private fun MainSceneContent(
                     ) {
                         Icon(Icons.Rounded.Search, "搜索")
                     }
+                },
+                navigationRailFooter = {
+                    NavigationRailItem(
+                        modifier = Modifier.padding(bottom = itemSpacing)
+                            .ifThen(currentWindowAdaptiveInfo1().windowSizeClass.windowHeightSizeClass.isAtLeastMedium) {
+                                // 移动端横屏不增加额外 padding
+                                padding(vertical = 16.dp)
+                            },
+                        selected = false,
+                        onClick = onNavigateToSettings,
+                        icon = { Icon(Icons.Rounded.Settings, null) },
+                        enabled = true,
+                        label = { Text("设置") },
+                        alwaysShowLabel = true,
+                        colors = itemColors,
+                    )
                 },
                 navigationRailItemSpacing = 8.dp,
             ) {
@@ -170,6 +190,9 @@ private fun MainSceneContent(
                             onSearch = { onNavigateToPage(MainScenePage.Search) },
                             onClickSettings = { navigator.navigateSettings() },
                             modifier.fillMaxSize(),
+                            actions = {
+                                TextButtonUpdateLogo()
+                            },
                         )
                     }
 

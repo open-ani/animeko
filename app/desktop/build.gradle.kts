@@ -170,7 +170,7 @@ afterEvaluate {
             }
         }
         Os.MacOS -> {
-            val createRuntimeImage = tasks.named("createRuntimeImage", AbstractJLinkTask::class) {
+            tasks.named("createRuntimeImage", AbstractJLinkTask::class) {
                 val dirsNames = listOf(
                     // From your (JBR's) Java Home to Packed Java Home 
                     "../Frameworks" to "lib/",

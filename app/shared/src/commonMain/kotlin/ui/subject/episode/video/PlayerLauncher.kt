@@ -61,7 +61,7 @@ class PlayerLauncher(
     parentCoroutineContext: CoroutineContext,
 ) : HasBackgroundScope by BackgroundScope(parentCoroutineContext) {
     private companion object {
-        val logger = logger<PlayerLauncher>()
+        private val logger = logger<PlayerLauncher>()
     }
 
     private val videoLoadingStateFlow: MutableStateFlow<VideoLoadingState> = MutableStateFlow(VideoLoadingState.Initial)

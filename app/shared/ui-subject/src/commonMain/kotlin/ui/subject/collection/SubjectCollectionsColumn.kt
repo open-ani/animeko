@@ -59,8 +59,8 @@ import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
-import me.him188.ani.app.ui.search.SearchProblem
-import me.him188.ani.app.ui.search.SearchProblemCard
+import me.him188.ani.app.ui.search.LoadError
+import me.him188.ani.app.ui.search.LoadErrorCard
 import me.him188.ani.app.ui.search.isLoadingNextPage
 import me.him188.ani.app.ui.subject.AiringLabel
 import me.him188.ani.app.ui.subject.AiringLabelState
@@ -96,8 +96,8 @@ fun SubjectCollectionsColumn(
 
         if (items.loadState.hasError) {
             item {
-                SearchProblemCard(
-                    SearchProblem.fromCombinedLoadStates(items.loadState),
+                LoadErrorCard(
+                    LoadError.fromCombinedLoadStates(items.loadState),
                     onRetry = { items.refresh() },
                     Modifier.padding(all = spacedBy / 2), // should not happen
                 )

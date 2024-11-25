@@ -224,6 +224,6 @@ class TorrentVideoSource(
     override fun toString(): String = "TorrentVideoSource(uri=$uri, episodeMetadata=${episodeMetadata})"
 
     companion object {
-        val logger = logger<TorrentVideoSource>()
+        private val logger = logger<TorrentVideoSource>()
     }
 }

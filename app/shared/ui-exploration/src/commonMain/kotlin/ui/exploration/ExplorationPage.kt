@@ -88,6 +88,7 @@ fun ExplorationPage(
     onSearch: () -> Unit,
     onClickSettings: () -> Unit,
     modifier: Modifier = Modifier,
+    actions: @Composable () -> Unit = {},
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
 ) {
     Scaffold(
@@ -103,6 +104,7 @@ fun ExplorationPage(
                             Icon(Icons.Rounded.Settings, "设置")
                         }
                     }
+                    actions()
                 },
                 avatar = { recommendedSize ->
                     SelfAvatar(state.authState, state.selfInfo, size = recommendedSize)

@@ -472,7 +472,7 @@ class SubjectCollectionRepositoryImpl(
     }
 
     private companion object {
-        val logger = logger<SubjectCollectionRepository>()
+        private val logger = logger<SubjectCollectionRepository>()
     }
 }
 

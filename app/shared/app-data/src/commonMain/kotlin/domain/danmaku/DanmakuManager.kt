@@ -114,7 +114,7 @@ class DanmakuManagerImpl(
     }.shareInBackground(started = SharingStarted.Lazily)
 
     private companion object {
-        val logger = logger<DanmakuManagerImpl>()
+        private val logger = logger<DanmakuManagerImpl>()
     }
 
     override val selfId: Flow<String?> = sender.flatMapLatest { it.selfId }

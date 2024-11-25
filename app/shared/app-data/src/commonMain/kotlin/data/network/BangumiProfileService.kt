@@ -13,7 +13,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.ApiResponse
 import me.him188.ani.app.data.models.UserInfo
+import me.him188.ani.app.data.models.flatMap
 import me.him188.ani.app.data.models.runApiRequest
+import me.him188.ani.app.data.models.unauthorized
 import me.him188.ani.datasources.bangumi.BangumiClient
 import me.him188.ani.datasources.bangumi.models.BangumiUser
 import me.him188.ani.utils.coroutines.IO_
@@ -37,7 +39,13 @@ internal class BangumiProfileServiceImpl(
     override suspend fun getSelfUserInfo(accessToken: String?): ApiResponse<UserInfo> {
         return runApiRequest {
             withContext(ioDispatcher) {
-                client.getSelfInfoByToken(accessToken).toUserInfo()
+                client.getSelfInfoByToken(accessToken)?.toUserInfo()
+            }
+        }.flatMap {
+            if (it == null) {
+                ApiResponse.unauthorized()
+            } else {
+                ApiResponse.success(it)
             }
         }
     }

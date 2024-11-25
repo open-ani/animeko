@@ -57,7 +57,7 @@ class DefaultTorrentManager(
             scope.coroutineContext + CoroutineName("AnitorrentEngine"),
             combine(anitorrentConfigFlow, isMeteredNetworkFlow) { config, isMetered ->
                 val isUploadLimited = isMetered && config.limitUploadOnMeteredNetwork
-                config.copy(uploadRateLimit = if (isUploadLimited) 1.kiloBytes else config.uploadRateLimit)
+                config.copy(uploadRateLimit = if (isUploadLimited) 10.kiloBytes else config.uploadRateLimit)
             },
             proxySettingsFlow,
             peerFilterConfig,

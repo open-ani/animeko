@@ -9,8 +9,6 @@
 
 package me.him188.ani.app.ui.exploration.search
 
-import androidx.compose.animation.AnimatedVisibilityScope
-import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.Arrangement
@@ -70,8 +68,8 @@ import me.him188.ani.app.ui.foundation.layout.paneVerticalPadding
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.widgets.TopAppBarGoBackButton
+import me.him188.ani.app.ui.search.LoadErrorCard
 import me.him188.ani.app.ui.search.SearchDefaults
-import me.him188.ani.app.ui.search.SearchProblemCard
 import me.him188.ani.app.ui.search.SearchResultLazyVerticalStaggeredGrid
 import me.him188.ani.app.ui.search.collectHasQueryAsState
 
@@ -190,7 +188,7 @@ internal fun SearchPageResultColumn(
     SearchResultLazyVerticalStaggeredGrid(
         items,
         problem = {
-            SearchProblemCard(
+            LoadErrorCard(
                 problem = it,
                 onRetry = { items.retry() },
                 modifier = Modifier.fillMaxWidth(), // noop

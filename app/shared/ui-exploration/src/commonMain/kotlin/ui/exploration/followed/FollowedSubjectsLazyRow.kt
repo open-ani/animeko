@@ -55,12 +55,12 @@ import me.him188.ani.app.ui.foundation.layout.compareTo
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.minimumHairlineSize
 import me.him188.ani.app.ui.foundation.stateOf
-import me.him188.ani.app.ui.search.SearchProblemCard
-import me.him188.ani.app.ui.search.SearchProblemCardLayout
-import me.him188.ani.app.ui.search.SearchProblemCardRole
+import me.him188.ani.app.ui.search.LoadErrorCard
+import me.him188.ani.app.ui.search.LoadErrorCardLayout
+import me.him188.ani.app.ui.search.LoadErrorCardRole
 import me.him188.ani.app.ui.search.isFinishedAndEmpty
 import me.him188.ani.app.ui.search.isLoadingFirstPage
-import me.him188.ani.app.ui.search.rememberSearchProblemState
+import me.him188.ani.app.ui.search.rememberLoadErrorState
 import me.him188.ani.app.ui.subject.AiringLabelState
 
 // https://www.figma.com/design/LET1n9mmDa6npDTIlUuJjU/Animeko?node-id=62-4581&node-type=frame&t=Evw0PwXZHXQNgEm3-0
@@ -101,8 +101,8 @@ fun FollowedSubjectsLazyRow(
             items.loadState.hasError -> {
                 item {
                     Box(Modifier.minimumHairlineSize()) {
-                        val problem by items.rememberSearchProblemState()
-                        SearchProblemCard(problem, { items.refresh() })
+                        val problem by items.rememberLoadErrorState()
+                        LoadErrorCard(problem, { items.refresh() })
                     }
                 }
             }
@@ -110,8 +110,8 @@ fun FollowedSubjectsLazyRow(
             items.isFinishedAndEmpty -> {
                 item {
                     Box(Modifier.minimumHairlineSize()) {
-                        SearchProblemCardLayout(
-                            SearchProblemCardRole.Unimportant,
+                        LoadErrorCardLayout(
+                            LoadErrorCardRole.Unimportant,
                         ) {
                             ListItem(
                                 headlineContent = { Text("将番剧收藏为 \"在看\" 后将在这里显示") },

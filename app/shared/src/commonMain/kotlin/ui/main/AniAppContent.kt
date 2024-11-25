@@ -167,6 +167,7 @@ private fun AniAppContentImpl(
                         MainScene(
                             page = currentPage,
                             onNavigateToPage = { currentPage = it },
+                            onNavigateToSettings = { aniNavigator.navigateSettings() },
                             navigationLayoutType = navigationLayoutType,
                         )
                     }

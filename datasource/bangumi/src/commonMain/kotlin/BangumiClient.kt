@@ -60,8 +60,10 @@ import me.him188.ani.datasources.bangumi.models.subjects.BangumiLegacySubject
 import me.him188.ani.datasources.bangumi.models.subjects.BangumiSubjectImageSize
 import me.him188.ani.datasources.bangumi.next.apis.SubjectBangumiNextApi
 import me.him188.ani.utils.ktor.ClientProxyConfig
+import me.him188.ani.utils.ktor.HttpTokenChecker
 import me.him188.ani.utils.ktor.proxy
 import me.him188.ani.utils.ktor.registerLogging
+import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.platform.collections.mapToIntArray
 import me.him188.ani.utils.serialization.toJsonArray
@@ -102,7 +104,7 @@ interface BangumiClient : Closeable {
         @SerialName("user_id") val userId: Int,
     )
 
-    suspend fun getSelfInfoByToken(accessToken: String?): BangumiUser
+    suspend fun getSelfInfoByToken(accessToken: String?): BangumiUser?
 
     suspend fun deleteSubjectCollection(
         subjectId: Int
@@ -148,7 +150,7 @@ class DelegateBangumiClient(
     override suspend fun executeGraphQL(actionName: String, query: String, variables: JsonObject?): JsonObject =
         client.first().executeGraphQL(actionName, query, variables)
 
-    override suspend fun getSelfInfoByToken(accessToken: String?): BangumiUser =
+    override suspend fun getSelfInfoByToken(accessToken: String?): BangumiUser? =
         client.first().getSelfInfoByToken(accessToken)
 
     override suspend fun deleteSubjectCollection(subjectId: Int) {
@@ -203,12 +205,26 @@ class BangumiClientImpl(
         return resp.body()
     }
 
-    override suspend fun getSelfInfoByToken(accessToken: String?): BangumiUser {
-        val resp = httpClient.get("$BANGUMI_API_HOST/v0/me") {
-            accessToken?.let { bearerAuth(it) }
+    override suspend fun getSelfInfoByToken(accessToken: String?): BangumiUser? {
+        if (accessToken == null) {
+            return null
         }
-
-        return resp.body<BangumiUser>()
+        if (!HttpTokenChecker.isValidToken(accessToken)) {
+            logger.error { "Invalid access token: $accessToken" }
+            return null
+        }
+        try {
+            val resp = httpClient.get("$BANGUMI_API_HOST/v0/me") {
+                bearerAuth(accessToken)
+            }
+            return resp.body<BangumiUser>()
+        } catch (e: IllegalStateException) {
+            val message = e.message ?: throw e
+            if (message.contains("Unexpected char") && message.contains("in Authorization value")) {
+                return null
+            }
+            throw e
+        }
     }
 
     override suspend fun deleteSubjectCollection(subjectId: Int) {

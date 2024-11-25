@@ -35,9 +35,9 @@ import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.layout.CarouselItem
 import me.him188.ani.app.ui.foundation.layout.CarouselItemDefaults
 import me.him188.ani.app.ui.foundation.layout.minimumHairlineSize
-import me.him188.ani.app.ui.search.SearchProblemCard
+import me.him188.ani.app.ui.search.LoadErrorCard
 import me.him188.ani.app.ui.search.isLoadingFirstPageOrRefreshing
-import me.him188.ani.app.ui.search.rememberSearchProblemState
+import me.him188.ani.app.ui.search.rememberLoadErrorState
 import me.him188.ani.utils.platform.annotations.TestOnly
 
 @Composable
@@ -86,8 +86,8 @@ fun TrendingSubjectsCarousel(
         if (items.loadState.hasError) {
             Box(Modifier.height(size.imageHeight).fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
                 Box(Modifier.minimumHairlineSize()) {
-                    val problem by items.rememberSearchProblemState()
-                    SearchProblemCard(
+                    val problem by items.rememberLoadErrorState()
+                    LoadErrorCard(
                         problem,
                         onRetry = {
                             items.refresh()
