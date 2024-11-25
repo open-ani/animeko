@@ -48,9 +48,7 @@ includeProject(":torrent:torrent-api", "torrent/api") // Torrent 系统 API
 includeProject(":torrent:anitorrent")
 includeProject(":torrent:anitorrent:anitorrent-native")
 
-// client
 includeProject(":app:shared")
-includeProject(":app:shared:paging-compose")
 includeProject(":app:shared:app-platform")
 includeProject(":app:shared:app-data")
 includeProject(":app:shared:ui-foundation")
@@ -62,9 +60,11 @@ includeProject(":app:shared:ui-comment")
 includeProject(":app:shared:video-player:video-player-api", "app/shared/video-player/api")
 includeProject(":app:shared:video-player:torrent-source")
 includeProject(":app:shared:video-player")
-includeProject(":app:shared:placeholder")
 includeProject(":app:shared:application")
-includeProject(":app:shared:image-viewer")
+
+includeProject(":app:shared:placeholder", "app/shared/thirdparty/placeholder")
+includeProject(":app:shared:paging-compose", "app/shared/thirdparty/paging-compose")
+includeProject(":app:shared:image-viewer", "app/shared/thirdparty/image-viewer")
 
 includeProject(":app:desktop", "app/desktop") // desktop JVM client for macOS, Windows, and Linux
 includeProject(":app:android", "app/android") // Android client
@@ -119,15 +119,15 @@ fun getMissingSubmoduleMessage(moduleName: String) = """
         2. 使用 Android Studio 的 New Project from Version Control 创建项目, 而不要使用命令行 clone
         3. 使用命令行时确保带上 recursive 选项: `git clone --recursive git@github.com:open-ani/ani.git`
         """.trimIndent()
-if (file("app/shared/reorderable").run { !exists() || listFiles().isNullOrEmpty() }) {
-    error(getMissingSubmoduleMessage("""app/shared/reorderable"""))
+if (file("app/shared/thirdparty/reorderable").run { !exists() || listFiles().isNullOrEmpty() }) {
+    error(getMissingSubmoduleMessage("""app/shared/thirdparty/reorderable"""))
 }
 
 if (file("torrent/anitorrent/anitorrent-native/libs/boost").run { !exists() || listFiles().isNullOrEmpty() }) {
     error(getMissingSubmoduleMessage("""torrent/anitorrent/anitorrent-native/libs/boost"""))
 }
 
-includeBuild("app/shared/reorderable") {
+includeBuild("app/shared/thirdparty/reorderable") {
     dependencySubstitution {
         substitute(module("org.burnoutcrew.composereorderable:reorderable")).using(project(":reorderable"))
     }
