@@ -32,7 +32,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -66,6 +65,7 @@ import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.TextWithBorder
 import me.him188.ani.app.ui.foundation.effects.cursorVisibility
 import me.him188.ani.app.ui.foundation.icons.AniIcons
+import me.him188.ani.app.ui.foundation.icons.Forward85
 import me.him188.ani.app.ui.foundation.icons.RightPanelClose
 import me.him188.ani.app.ui.foundation.icons.RightPanelOpen
 import me.him188.ani.app.ui.foundation.isInDebugMode
@@ -202,8 +202,8 @@ internal fun EpisodeVideoImpl(
                 },
                 actions = {
                     if (isInDebugMode()) {
-                        TextButton({ playerState.skip(85000L) }) {
-                            Text("跳过 85s")
+                        IconButton({ playerState.skip(85000L) }) {
+                            Icon(AniIcons.Forward85, "跳过 85s")
                         }
                     }
                     if (expanded) {
