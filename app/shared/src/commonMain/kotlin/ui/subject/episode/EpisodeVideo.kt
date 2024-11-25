@@ -68,7 +68,6 @@ import me.him188.ani.app.ui.foundation.icons.AniIcons
 import me.him188.ani.app.ui.foundation.icons.Forward85
 import me.him188.ani.app.ui.foundation.icons.RightPanelClose
 import me.him188.ani.app.ui.foundation.icons.RightPanelOpen
-import me.him188.ani.app.ui.foundation.isInDebugMode
 import me.him188.ani.app.ui.foundation.rememberDebugSettingsViewModel
 import me.him188.ani.app.ui.settings.danmaku.DanmakuRegexFilterState
 import me.him188.ani.app.ui.subject.episode.danmaku.DanmakuEditor
@@ -201,10 +200,8 @@ internal fun EpisodeVideoImpl(
                     null
                 },
                 actions = {
-                    if (isInDebugMode()) {
-                        IconButton({ playerState.skip(85000L) }) {
-                            Icon(AniIcons.Forward85, "跳过 85s")
-                        }
+                    IconButton({ playerState.skip(85000L) }) {
+                        Icon(AniIcons.Forward85, "跳过 85s")
                     }
                     if (expanded) {
                         IconButton({ isMediaSelectorVisible = true }, Modifier.testTag(TAG_SHOW_MEDIA_SELECTOR)) {
