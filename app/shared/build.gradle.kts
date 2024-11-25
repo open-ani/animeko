@@ -85,7 +85,7 @@ kotlin {
         api(libs.compose.navigation.runtime)
         api(libs.compose.material3.adaptive.navigation.suite)
         implementation(compose.components.resources)
-        implementation(libs.reorderable)
+        implementation(projects.app.shared.reorderable)
 
         // Data sources
         api(projects.datasource.datasourceApi)

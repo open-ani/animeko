@@ -23,7 +23,7 @@ kotlin {
         api(projects.app.shared.uiFoundation)
         api(projects.app.shared.uiAdaptive)
         implementation(compose.components.resources)
-        implementation(libs.reorderable)
+        implementation(projects.app.shared.reorderable)
     }
     sourceSets.commonTest.dependencies {
     }
