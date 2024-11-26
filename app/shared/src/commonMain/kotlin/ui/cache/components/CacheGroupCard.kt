@@ -224,11 +224,7 @@ fun CacheGroupCard(
                                 state.cardTitle,
                                 Modifier
                                     .ifThen(state.subjectId != null) {
-                                        clickable {
-                                            state.subjectId?.let {
-                                                navigator.navigateSubjectDetails(it)
-                                            }
-                                        }
+                                        clickable { state.subjectId?.let { navigator.navigateSubjectDetails(it) } }
                                     }
                                     .minimumInteractiveComponentSize()
                                     .animateContentSize(),
