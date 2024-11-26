@@ -21,10 +21,10 @@ import kotlinx.coroutines.test.TestScope
 import me.him188.ani.app.data.models.ApiFailure
 import me.him188.ani.app.data.models.ApiResponse
 import me.him188.ani.app.data.models.UserInfo
+import me.him188.ani.app.data.persistent.MemoryDataStore
 import me.him188.ani.app.data.repository.user.AccessTokenSession
 import me.him188.ani.app.data.repository.user.TokenRepositoryImpl
 import me.him188.ani.app.domain.media.fetch.AtomicInteger
-import me.him188.ani.app.tools.ldc.MemoryDataStore
 import me.him188.ani.app.ui.framework.runComposeStateTest
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext

@@ -407,10 +407,6 @@ private fun EpisodeSceneContentPhone(
         }
     }
 
-    LaunchedEffect(true) {
-        vm.episodeCommentState.reload()
-    }
-
     EpisodeSceneContentPhoneScaffold(
         videoOnly = vm.isFullscreen,
         commentCount = { vm.episodeCommentState.count },
@@ -744,7 +740,7 @@ private fun EpisodeCommentColumn(
         editCommentStubText = commentEditorState.content,
         onClickReply = {
             setShowEditCommentSheet(true)
-            commentEditorState.startEdit(CommentContext.Reply(it))
+            commentEditorState.startEdit(CommentContext.Reply(it.toInt()))
             pauseOnPlaying()
 
         },

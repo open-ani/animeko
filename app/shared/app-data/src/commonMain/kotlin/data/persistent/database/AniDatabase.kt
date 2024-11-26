@@ -23,6 +23,7 @@ import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.execSQL
 import me.him188.ani.app.data.persistent.database.dao.EpisodeCollectionDao
 import me.him188.ani.app.data.persistent.database.dao.EpisodeCollectionEntity
+import me.him188.ani.app.data.persistent.database.dao.EpisodeCommentDao
 import me.him188.ani.app.data.persistent.database.dao.SearchHistoryDao
 import me.him188.ani.app.data.persistent.database.dao.SearchHistoryEntity
 import me.him188.ani.app.data.persistent.database.dao.SearchTagDao
@@ -30,11 +31,14 @@ import me.him188.ani.app.data.persistent.database.dao.SearchTagEntity
 import me.him188.ani.app.data.persistent.database.dao.SubjectCollectionDao
 import me.him188.ani.app.data.persistent.database.dao.SubjectCollectionEntity
 import me.him188.ani.app.data.persistent.database.dao.SubjectRelationsDao
+import me.him188.ani.app.data.persistent.database.dao.SubjectReviewDao
 import me.him188.ani.app.data.persistent.database.entity.CharacterActorEntity
 import me.him188.ani.app.data.persistent.database.entity.CharacterEntity
+import me.him188.ani.app.data.persistent.database.entity.EpisodeCommentEntity
 import me.him188.ani.app.data.persistent.database.entity.PersonEntity
 import me.him188.ani.app.data.persistent.database.entity.SubjectCharacterRelationEntity
 import me.him188.ani.app.data.persistent.database.entity.SubjectPersonRelationEntity
+import me.him188.ani.app.data.persistent.database.entity.SubjectReviewEntity
 
 @Database(
     entities = [
@@ -49,8 +53,11 @@ import me.him188.ani.app.data.persistent.database.entity.SubjectPersonRelationEn
         CharacterEntity::class, // 4.0.0-alpha04
         SubjectCharacterRelationEntity::class, // 4.0.0-alpha04
         CharacterActorEntity::class, // 4.0.0-alpha04
+
+        SubjectReviewEntity::class,
+        EpisodeCommentEntity::class,
     ],
-    version = 10,
+    version = 11,
     autoMigrations = [
         AutoMigration(from = 1, to = 2, spec = Migrations.Migration_1_2::class),
         AutoMigration(from = 2, to = 3, spec = Migrations.Migration_2_3::class),
@@ -61,6 +68,7 @@ import me.him188.ani.app.data.persistent.database.entity.SubjectPersonRelationEn
         AutoMigration(from = 7, to = 8, spec = Migrations.Migration_7_8::class),
         AutoMigration(from = 8, to = 9, spec = Migrations.Migration_8_9::class),
         AutoMigration(from = 9, to = 10, spec = Migrations.Migration_9_10::class),
+        AutoMigration(from = 10, to = 11, spec = Migrations.Migration_10_11::class),
     ],
 )
 @ConstructedBy(AniDatabaseConstructor::class)
@@ -75,6 +83,16 @@ abstract class AniDatabase : RoomDatabase() {
      * @since 4.0.0-alpha04
      */
     abstract fun subjectRelations(): SubjectRelationsDao
+
+    /**
+     * @since 4.1.0-alpha02
+     */
+    abstract fun subjectReviews(): SubjectReviewDao
+
+    /**
+     * @since 4.1.0-alpha02
+     */
+    abstract fun episodeCommentDao(): EpisodeCommentDao
 }
 
 expect object AniDatabaseConstructor : RoomDatabaseConstructor<AniDatabase> {
@@ -182,6 +200,17 @@ internal object Migrations {
      * @since 4.1.0-alpha01
      */
     class Migration_9_10 : AutoMigrationSpec {
+        override fun onPostMigrate(connection: SQLiteConnection) {
+        }
+    }
+
+    /**
+     * Added [SubjectReviewEntity], [SubjectReviewDao],
+     * [EpisodeCommentDao], [EpisodeCommentEntity]
+     *
+     * @since 4.1.0-alpha02
+     */
+    class Migration_10_11 : AutoMigrationSpec {
         override fun onPostMigrate(connection: SQLiteConnection) {
         }
     }

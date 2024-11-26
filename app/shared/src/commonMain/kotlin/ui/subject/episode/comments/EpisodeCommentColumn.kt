@@ -39,7 +39,7 @@ import me.him188.ani.app.ui.richtext.RichText
 fun EpisodeCommentColumn(
     state: CommentState,
     editCommentStubText: TextFieldValue,
-    onClickReply: (commentId: Int) -> Unit,
+    onClickReply: (commentId: Long) -> Unit,
     onClickEditCommentStub: () -> Unit,
     onClickEditCommentStubEmoji: () -> Unit,
     onClickUrl: (url: String) -> Unit,
@@ -91,10 +91,10 @@ fun EpisodeComment(
     modifier: Modifier = Modifier
 ) {
     Comment(
-        avatar = { CommentDefaults.Avatar(comment.creator?.avatarUrl) },
+        avatar = { CommentDefaults.Avatar(comment.author?.avatarUrl) },
         primaryTitle = {
             Text(
-                text = comment.creator?.nickname ?: comment.creator?.id.toString(),
+                text = comment.author?.nickname ?: comment.author?.id.toString(),
                 textAlign = TextAlign.Center,
             )
         },

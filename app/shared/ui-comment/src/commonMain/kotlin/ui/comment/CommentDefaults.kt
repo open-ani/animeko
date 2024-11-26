@@ -206,7 +206,7 @@ object CommentDefaults {
             replies.forEach { reply ->
                 val prepended = remember(reply.content, primaryColor) {
                     reply.content.prependText(
-                        prependix = "${reply.creator?.nickname ?: reply.creator?.id.toString()}：",
+                        prependix = "${reply.author?.nickname ?: reply.author?.id.toString()}：",
                         color = primaryColor,
                     )
                 }

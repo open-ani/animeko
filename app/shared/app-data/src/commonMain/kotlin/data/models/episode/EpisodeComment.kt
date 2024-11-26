@@ -1,25 +1,36 @@
+/*
+ * Copyright (C) 2024 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.app.data.models.episode
 
 import me.him188.ani.app.data.models.UserInfo
 import me.him188.ani.datasources.bangumi.next.models.BangumiNextGetSubjectEpisodeComments200ResponseInner
 
 data class EpisodeComment(
-    val id: Int,
-    val createdAt: Int,
-    val content: String,
+    val commentId: Int,
     val episodeId: Int,
-    val state: Int,
-    val creator: UserInfo?,
+
+    /**
+     * Timestamp, millis
+     */
+    val createdAt: Long,
+    val content: String,
+    val author: UserInfo?,
     val replies: List<EpisodeComment> = listOf()
 )
 
 fun BangumiNextGetSubjectEpisodeComments200ResponseInner.toEpisodeComment() = EpisodeComment(
-    id = id,
-    createdAt = createdAt,
-    content = content,
+    commentId = id,
     episodeId = epID,
-    state = state,
-    creator = user?.let { u ->
+    createdAt = createdAt * 1000L,
+    content = content,
+    author = user?.let { u ->
         UserInfo(
             id = u.id,
             nickname = u.nickname,
@@ -29,12 +40,11 @@ fun BangumiNextGetSubjectEpisodeComments200ResponseInner.toEpisodeComment() = Ep
     },
     replies = replies.map { r ->
         EpisodeComment(
-            id = r.id,
-            createdAt = r.createdAt,
-            content = r.content,
+            commentId = r.id,
             episodeId = r.epID,
-            state = r.state,
-            creator = r.user?.let { u ->
+            createdAt = r.createdAt * 1000L,
+            content = r.content,
+            author = r.user?.let { u ->
                 UserInfo(
                     id = u.id,
                     nickname = u.nickname,

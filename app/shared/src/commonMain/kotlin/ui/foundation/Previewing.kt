@@ -23,6 +23,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import kotlinx.io.files.Path
+import me.him188.ani.app.data.persistent.MemoryDataStore
 import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepository
 import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepositoryImpl
 import me.him188.ani.app.data.repository.user.PreferencesRepositoryImpl
@@ -41,7 +42,6 @@ import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.NoopBrowserNavigator
 import me.him188.ani.app.platform.GrantedPermissionManager
 import me.him188.ani.app.platform.PermissionManager
-import me.him188.ani.app.tools.ldc.MemoryDataStore
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.Toaster
 import me.him188.ani.app.ui.main.AniApp

@@ -31,17 +31,14 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import androidx.paging.PagingData
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.Flow
 import me.him188.ani.app.data.models.UserInfo
 import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.ui.foundation.isInDebugMode
@@ -145,72 +142,16 @@ fun Comment(
  */
 @Stable
 class CommentState(
-    sourceVersion: State<Any?>,
-    list: State<List<UIComment>>,
-    hasMore: State<Boolean>,
-    private val onReload: suspend () -> Unit,
-    private val onLoadMore: suspend () -> Unit,
-    private val onSubmitCommentReaction: suspend (commentId: Int, reactionId: Int) -> Unit,
+    val list: Flow<PagingData<UIComment>>,
+    countState: State<Int?>,
+    private val onSubmitCommentReaction: suspend (commentId: Long, reactionId: Int) -> Unit,
     backgroundScope: CoroutineScope,
 ) {
-    private val currentSourceVersion: Any? by sourceVersion
-    private var lastSourceVersion: Any? = null
-
-    var sourceVersion: Any?
-        get() = currentSourceVersion
-        set(value) {
-            lastSourceVersion = value
-        }
-
-    val list: List<UIComment> by list
-
-    /**
-     * 至少 [onReload] 了一次
-     */
-    private var loadedOnce by mutableStateOf(false)
-    private var freshLoaded by mutableStateOf(false)
-    private val _hasMore by hasMore
-    val hasMore: Boolean by derivedStateOf {
-        if (!freshLoaded) return@derivedStateOf false
-        _hasMore
-    }
-
-    val count by derivedStateOf {
-        if (!loadedOnce) null else this.list.size
-    }
-
-    private val reloadTasker = MonoTasker(backgroundScope)
-    val isLoading get() = reloadTasker.isRunning
+    val count by countState
 
     private val reactionSubmitTasker = MonoTasker(backgroundScope)
 
-    fun sourceVersionEquals(): Boolean {
-        return lastSourceVersion == currentSourceVersion
-    }
-
-    /**
-     * 在 LaunchedEffect 中 reload，composition 退出就没必要继续加载
-     */
-    fun reload() {
-        reloadTasker.launch {
-            withContext(Dispatchers.Main) {
-                freshLoaded = false
-            }
-            onReload()
-            withContext(Dispatchers.Main) {
-                freshLoaded = true
-                loadedOnce = true
-            }
-        }
-    }
-
-    fun loadMore() {
-        reloadTasker.launch {
-            onLoadMore()
-        }
-    }
-
-    fun submitReaction(commentId: Int, reactionId: Int) {
+    fun submitReaction(commentId: Long, reactionId: Int) {
         reactionSubmitTasker.launch {
             onSubmitCommentReaction(commentId, reactionId)
         }
@@ -223,8 +164,8 @@ class UIRichText(val elements: List<UIRichElement>)
 
 @Immutable
 class UIComment(
-    val id: Int,
-    val creator: UserInfo?,
+    val id: Long,
+    val author: UserInfo?,
     val content: UIRichText,
     val createdAt: Long, // timestamp millis
     val reactions: List<UICommentReaction>,

@@ -46,6 +46,7 @@ import me.him188.ani.app.data.repository.RepositoryNetworkException
 import me.him188.ani.app.data.repository.RepositoryServiceUnavailableException
 import me.him188.ani.app.data.repository.RepositoryUsernameProvider
 import me.him188.ani.app.data.repository.episode.AnimeScheduleRepository
+import me.him188.ani.app.data.repository.episode.BangumiCommentRepository
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.episode.EpisodeProgressRepository
 import me.him188.ani.app.data.repository.media.EpisodePreferencesRepository
@@ -219,6 +220,13 @@ fun KoinApplication.getCommonKoinModule(getContext: () -> Context, coroutineScop
 
     single<BangumiRelatedPeopleService> { BangumiRelatedPeopleService(get()) }
     single<AnimeScheduleRepository> { AnimeScheduleRepository(get()) }
+    single<BangumiCommentRepository> {
+        BangumiCommentRepository(
+            get(),
+            database.episodeCommentDao(),
+            database.subjectReviews(),
+        )
+    }
     single<EpisodeCollectionRepository> {
         EpisodeCollectionRepository(
             subjectDao = database.subjectCollection(),

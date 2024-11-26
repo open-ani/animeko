@@ -15,6 +15,8 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.paging.cachedIn
+import androidx.paging.map
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -44,6 +46,7 @@ import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
 import me.him188.ani.app.data.network.BangumiCommentService
 import me.him188.ani.app.data.repository.episode.AnimeScheduleRepository
+import me.him188.ani.app.data.repository.episode.BangumiCommentRepository
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.media.EpisodePreferencesRepository
 import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepository
@@ -69,8 +72,8 @@ import me.him188.ani.app.platform.Context
 import me.him188.ani.app.ui.comment.BangumiCommentSticker
 import me.him188.ani.app.ui.comment.CommentContext
 import me.him188.ani.app.ui.comment.CommentEditorState
-import me.him188.ani.app.ui.comment.CommentLoader
 import me.him188.ani.app.ui.comment.CommentMapperContext
+import me.him188.ani.app.ui.comment.CommentMapperContext.parseToUIComment
 import me.him188.ani.app.ui.comment.CommentState
 import me.him188.ani.app.ui.comment.EditCommentSticker
 import me.him188.ani.app.ui.foundation.AbstractViewModel
@@ -78,6 +81,7 @@ import me.him188.ani.app.ui.foundation.AuthState
 import me.him188.ani.app.ui.foundation.HasBackgroundScope
 import me.him188.ani.app.ui.foundation.launchInBackground
 import me.him188.ani.app.ui.foundation.launchInMain
+import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.settings.danmaku.DanmakuRegexFilterState
 import me.him188.ani.app.ui.subject.AiringLabelState
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeState
@@ -238,6 +242,7 @@ private class EpisodeViewModelImpl(
     private val mediaSourceManager: MediaSourceManager by inject()
     private val episodePreferencesRepository: EpisodePreferencesRepository by inject()
     private val bangumiCommentService: BangumiCommentService by inject()
+    private val bangumiCommentRepository: BangumiCommentRepository by inject()
     private val episodePlayHistoryRepository: EpisodePlayHistoryRepository by inject()
 
     private val subjectCollection = subjectCollectionRepository.subjectCollectionFlow(subjectId)
@@ -592,18 +597,14 @@ private class EpisodeViewModelImpl(
         backgroundScope,
     )
 
-    private val episodeCommentLoader = CommentLoader.createForEpisode(
-        episodeId = episodeId,
-        coroutineContext = backgroundScope.coroutineContext,
-        episodeCommentSource = { bangumiCommentService.getSubjectEpisodeComments(it) },
-    )
-
     override val episodeCommentState: CommentState = CommentState(
-        sourceVersion = episodeCommentLoader.sourceVersion.produceState(null),
-        list = episodeCommentLoader.list.produceState(emptyList()),
-        hasMore = episodeCommentLoader.hasFinished.map { !it }.produceState(true),
-        onReload = { episodeCommentLoader.reload() },
-        onLoadMore = { episodeCommentLoader.loadMore() },
+        list = episodeId.flatMapLatest { episodeId ->
+            bangumiCommentRepository.subjectEpisodeCommentsPager(episodeId)
+                .map { page ->
+                    page.map { it.parseToUIComment() }
+                }
+        }.cachedIn(backgroundScope),
+        countState = stateOf(null),
         onSubmitCommentReaction = { _, _ -> },
         backgroundScope = backgroundScope,
     )
@@ -629,7 +630,7 @@ private class EpisodeViewModelImpl(
                 is CommentContext.Reply ->
                     bangumiCommentService.postEpisodeComment(episodeId.value, content, context.commentId)
 
-                is CommentContext.Subject -> {} // TODO: send subject comment
+                is CommentContext.SubjectReview -> {} // TODO: send subject comment
             }
         },
         backgroundScope = backgroundScope,

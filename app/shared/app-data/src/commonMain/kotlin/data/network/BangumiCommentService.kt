@@ -9,6 +9,9 @@
 
 package me.him188.ani.app.data.network
 
+import androidx.compose.ui.util.packInts
+import io.ktor.client.plugins.ClientRequestException
+import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.ApiResponse
@@ -16,23 +19,26 @@ import me.him188.ani.app.data.models.UserInfo
 import me.him188.ani.app.data.models.episode.EpisodeComment
 import me.him188.ani.app.data.models.episode.toEpisodeComment
 import me.him188.ani.app.data.models.runApiRequest
-import me.him188.ani.app.data.models.subject.SubjectComment
-import me.him188.ani.datasources.api.paging.PageBasedPagedSource
+import me.him188.ani.app.data.models.subject.SubjectReview
 import me.him188.ani.datasources.api.paging.Paged
-import me.him188.ani.datasources.api.paging.PagedSource
 import me.him188.ani.datasources.api.paging.processPagedResponse
 import me.him188.ani.datasources.bangumi.BangumiClient
 import me.him188.ani.datasources.bangumi.next.models.BangumiNextCreateSubjectEpCommentRequest
 import me.him188.ani.datasources.bangumi.next.models.BangumiNextGetSubjectEpisodeComments200ResponseInner
 import me.him188.ani.datasources.bangumi.next.models.BangumiNextSubjectInterestCommentListInner
 import me.him188.ani.utils.coroutines.IO_
-import me.him188.ani.utils.logging.logger
 import kotlin.coroutines.CoroutineContext
-import kotlin.coroutines.cancellation.CancellationException
 
 sealed interface BangumiCommentService {
-    fun getSubjectEpisodeComments(episodeId: Int): PagedSource<EpisodeComment>
-    fun getSubjectComments(subjectId: Int): PagedSource<SubjectComment>
+    /**
+     * @return `null` if [subjectId] is invalid
+     */
+    suspend fun getSubjectReviews(subjectId: Int, offset: Int, limit: Int): Paged<SubjectReview>?
+
+    /**
+     * @return `null` if [subjectId] is invalid
+     */
+    suspend fun getSubjectEpisodeComments(subjectId: Int): List<EpisodeComment>?
 
     // comment.id 会被忽略
     suspend fun postEpisodeComment(episodeId: Int, content: String, replyToCommentId: Int? = null): ApiResponse<Unit>
@@ -42,29 +48,20 @@ class BangumiBangumiCommentServiceImpl(
     private val client: BangumiClient,
     private val ioDispatcher: CoroutineContext = Dispatchers.IO_,
 ) : BangumiCommentService {
-    private val logger = logger(BangumiCommentService::class)
-
-    override fun getSubjectComments(subjectId: Int): PagedSource<SubjectComment> {
-        return PageBasedPagedSource { page ->
-            try {
-                withContext(ioDispatcher) {
-                    val response = client.getNextApi()
-                        .subjectComments(subjectId, 16, page * 16)
-                        .body()
-
-                    if (totalSize == null) {
-                        setTotalSize(response.total)
-                    }
-
-                    val list = response.list.map(BangumiNextSubjectInterestCommentListInner::toSubjectComment)
-                    Paged.processPagedResponse(total = response.total, pageSize = 16, data = list)
+    override suspend fun getSubjectReviews(subjectId: Int, offset: Int, limit: Int): Paged<SubjectReview>? {
+        return withContext(ioDispatcher) {
+            val response = try {
+                client.getNextApi()
+                    .subjectComments(subjectId, limit, offset)
+                    .body()
+            } catch (e: ClientRequestException) {
+                if (e.response.status == HttpStatusCode.NotFound || e.response.status == HttpStatusCode.BadRequest) {
+                    return@withContext null
                 }
-            } catch (e: CancellationException) {
                 throw e
-            } catch (e: Exception) {
-                logger.warn("Exception in getSubjectComments", e)
-                null
             }
+            val list = response.list.map { it.toSubjectReview(subjectId) }
+            Paged.processPagedResponse(total = response.total, pageSize = limit, data = list)
         }
     }
 
@@ -87,35 +84,28 @@ class BangumiBangumiCommentServiceImpl(
         }
     }
 
-    override fun getSubjectEpisodeComments(episodeId: Int): PagedSource<EpisodeComment> {
-        // 未来这个接口将会支持分页属性
-        return PageBasedPagedSource { page ->
-            try {
-                withContext(ioDispatcher) {
-                    if (page == 0) {
-                        val response = client.getNextApi()
-                            .getSubjectEpisodeComments(episodeId)
-                            .body()
-                            .map(BangumiNextGetSubjectEpisodeComments200ResponseInner::toEpisodeComment)
-
-                        setTotalSize(response.size)
-                        Paged.processPagedResponse(response.size, response.size, response)
-                    } else null
+    override suspend fun getSubjectEpisodeComments(subjectId: Int): List<EpisodeComment>? {
+        return withContext(ioDispatcher) {
+            val response = try {
+                client.getNextApi()
+                    .getSubjectEpisodeComments(subjectId)
+                    .body()
+                    .map(BangumiNextGetSubjectEpisodeComments200ResponseInner::toEpisodeComment)
+            } catch (e: ClientRequestException) {
+                if (e.response.status == HttpStatusCode.NotFound || e.response.status == HttpStatusCode.BadRequest) {
+                    return@withContext null
                 }
-            } catch (e: CancellationException) {
                 throw e
-            } catch (e: Exception) {
-                logger.warn("Exception in getSubjectEpisodeComments", e)
-                null
             }
+            response
         }
     }
 }
 
-private fun BangumiNextSubjectInterestCommentListInner.toSubjectComment() = SubjectComment(
-    id = 31 * comment.hashCode() + 31 * updatedAt + 31 * (user?.id ?: UserInfo.EMPTY.id),
+private fun BangumiNextSubjectInterestCommentListInner.toSubjectReview(subjectId: Int) = SubjectReview(
+    id = packInts(subjectId, user?.id ?: 0),
     content = comment,
-    updatedAt = updatedAt,
+    updatedAt = updatedAt * 1000L,
     rating = rate,
     creator = user?.let { u ->
         UserInfo(

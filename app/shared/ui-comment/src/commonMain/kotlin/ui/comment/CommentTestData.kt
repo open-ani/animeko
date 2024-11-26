@@ -10,12 +10,13 @@
 package me.him188.ani.app.ui.comment
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.CoroutineScope
 import me.him188.ani.app.data.models.UserInfo
+import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.richtext.UIRichElement
+import me.him188.ani.app.ui.search.createTestPager
 import me.him188.ani.utils.platform.annotations.TestOnly
 import me.him188.ani.utils.platform.currentTimeMillis
 import kotlin.random.Random
@@ -36,11 +37,8 @@ fun createTestCommentState(
     scope: CoroutineScope,
     commentList: List<UIComment> = generateUiComment(10),
 ) = CommentState(
-    sourceVersion = mutableStateOf(Any()),
-    list = mutableStateOf(commentList),
-    hasMore = mutableStateOf(false),
-    onReload = { },
-    onLoadMore = { },
+    list = createTestPager(commentList),
+    countState = stateOf(commentList.size),
     onSubmitCommentReaction = { _, _ -> },
     backgroundScope = scope,
 )
@@ -66,12 +64,12 @@ fun generateUiComment(
     repeat(size) { i ->
         add(
             UIComment(
-                id = i,
+                id = i.toLong(),
                 content = content,
                 createdAt = run {
                     currentTimeMillis() - (1..10000).random().minutes.inWholeMilliseconds
                 },
-                creator = UserInfo(
+                author = UserInfo(
                     id = (1..100).random(),
                     username = "",
                     nickname = "nickname him188 $i",

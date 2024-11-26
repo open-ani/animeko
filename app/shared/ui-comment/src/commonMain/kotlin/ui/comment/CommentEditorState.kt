@@ -138,7 +138,7 @@ sealed interface CommentContext {
     /**
      * 条目吐槽箱
      */
-    data class Subject(val subjectId: Int) : CommentContext
+    data class SubjectReview(val subjectId: Int) : CommentContext
 
     /**
      * 回复某个人的评论

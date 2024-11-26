@@ -72,14 +72,14 @@ fun SubjectComment(
     comment: UIComment,
     onClickUrl: (String) -> Unit,
     onClickImage: (String) -> Unit,
-    onClickReaction: (commentId: Int, reactionId: Int) -> Unit,
+    onClickReaction: (commentId: Long, reactionId: Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Comment(
-        avatar = { CommentDefaults.Avatar(comment.creator?.avatarUrl) },
+        avatar = { CommentDefaults.Avatar(comment.author?.avatarUrl) },
         primaryTitle = {
             Text(
-                text = comment.creator?.nickname ?: comment.creator?.id.toString(),
+                text = comment.author?.nickname ?: comment.author?.id.toString(),
                 textAlign = TextAlign.Center,
             )
         },

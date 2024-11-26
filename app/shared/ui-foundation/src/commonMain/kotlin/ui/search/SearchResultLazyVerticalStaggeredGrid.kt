@@ -12,6 +12,7 @@ package me.him188.ani.app.ui.search
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -57,6 +58,14 @@ fun <T : Any> SearchResultLazyVerticalStaggeredGrid(
     lazyStaggeredGridState: LazyStaggeredGridState = rememberLazyStaggeredGridState(),
     listItemColors: ListItemColors = ListItemDefaults.colors(containerColor = Color.Unspecified),
     horizontalArrangement: Arrangement.Horizontal = Arrangement.spacedBy(0.dp),
+    contentPadding: PaddingValues = PaddingValues(0.dp),
+    progressIndicator: @Composable (() -> Unit)? = {
+        FastLinearProgressIndicator(
+            items.isLoadingFirstPage || items.loadState.refresh is LoadState.Loading,
+            Modifier.zIndex(2f).fillMaxWidth().padding(vertical = 4.dp),
+            minimumDurationMillis = 300,
+        )
+    },
     content: LazyStaggeredGridScope.() -> Unit,
 ) {
     Box(modifier) {
@@ -80,6 +89,7 @@ fun <T : Any> SearchResultLazyVerticalStaggeredGrid(
                 Modifier.fillMaxWidth(),
                 lazyStaggeredGridState,
                 horizontalArrangement = horizontalArrangement,
+                contentPadding = contentPadding,
             ) {
                 // 用于保持刷新时在顶部
                 item(span = StaggeredGridItemSpan.FullLine) { Spacer(Modifier.height(Dp.Hairline)) } // 如果空白内容, 它可能会有 bug
@@ -101,11 +111,11 @@ fun <T : Any> SearchResultLazyVerticalStaggeredGrid(
             }
         }
 
-        FastLinearProgressIndicator(
-            items.isLoadingFirstPage || items.loadState.refresh is LoadState.Loading,
-            Modifier.zIndex(2f).align(Alignment.TopStart).fillMaxWidth().padding(vertical = 4.dp),
-            minimumDurationMillis = 300,
-        )
+        if (progressIndicator != null) {
+            Box(Modifier.align(Alignment.TopStart)) {
+                progressIndicator()
+            }
+        }
     }
 }
 

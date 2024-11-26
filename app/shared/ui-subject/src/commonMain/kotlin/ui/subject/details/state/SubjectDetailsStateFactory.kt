@@ -14,6 +14,7 @@ import androidx.paging.LoadState
 import androidx.paging.LoadStates
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
+import androidx.paging.map
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
@@ -28,7 +29,6 @@ import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
@@ -46,6 +46,7 @@ import me.him188.ani.app.data.models.subject.SubjectProgressInfo
 import me.him188.ani.app.data.network.BangumiCommentService
 import me.him188.ani.app.data.network.BangumiRelatedPeopleService
 import me.him188.ani.app.data.repository.episode.AnimeScheduleRepository
+import me.him188.ani.app.data.repository.episode.BangumiCommentRepository
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.episode.EpisodeProgressRepository
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
@@ -54,7 +55,7 @@ import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.session.AuthState
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.session.launchAuthorize
-import me.him188.ani.app.ui.comment.CommentLoader
+import me.him188.ani.app.ui.comment.CommentMapperContext.parseToUIComment
 import me.him188.ani.app.ui.comment.CommentState
 import me.him188.ani.app.ui.foundation.produceState
 import me.him188.ani.app.ui.foundation.stateOf
@@ -105,6 +106,7 @@ class DefaultSubjectDetailsStateFactory(
     private val subjectRelationsRepository: SubjectRelationsRepository by inject()
     private val settingsRepository: SettingsRepository by inject()
     private val bangumiCommentService: BangumiCommentService by inject()
+    private val bangumiCommentRepository: BangumiCommentRepository by inject()
     private val animeScheduleRepository: AnimeScheduleRepository by inject()
 
     val sessionManager: SessionManager by inject()
@@ -328,18 +330,14 @@ class DefaultSubjectDetailsStateFactory(
             )
         }
 
-        val subjectCommentLoader = CommentLoader.createForSubject(
-            subjectId = flowOf(subjectId),
-            coroutineContext = this.coroutineContext,
-            subjectCommentSource = { bangumiCommentService.getSubjectComments(it) },
-        )
+        val comments = bangumiCommentRepository.subjectCommentsPager(subjectId)
+            .cachedIn(this)
 
         val subjectCommentState = CommentState(
-            sourceVersion = subjectCommentLoader.sourceVersion.produceState(null, this),
-            list = subjectCommentLoader.list.produceState(emptyList(), this),
-            hasMore = subjectCommentLoader.hasFinished.map { !it }.produceState(true, this),
-            onReload = { subjectCommentLoader.reload() },
-            onLoadMore = { subjectCommentLoader.loadMore() },
+            list = comments.map { page ->
+                page.map { it.parseToUIComment() }
+            },
+            countState = stateOf(null),
             onSubmitCommentReaction = { _, _ -> },
             backgroundScope = this,
         )

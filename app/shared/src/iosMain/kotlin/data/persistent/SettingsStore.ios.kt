@@ -13,7 +13,6 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.mutablePreferencesOf
 import me.him188.ani.app.platform.Context
-import me.him188.ani.app.tools.ldc.MemoryDataStore
 import me.him188.ani.utils.io.SystemDocumentDir
 import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.io.createDirectories
