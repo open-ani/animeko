@@ -239,23 +239,15 @@ private fun MainSceneContent(
                                                 episodeId,
                                             )
                                         },
+                                        showBlurredBackground = !state.preload,
                                     )
                                 }
                             },
                             Modifier.fillMaxSize(),
                             onSelect = { index, item ->
                                 vm.searchPageState.selectedItemIndex = index
-                                scope.launch {
-                                    try {
-                                        vm.viewSubjectDetails(item.subjectId) // 加载完成后才切换, 否则 shared transition 会黑屏一小会
-                                        listDetailNavigator.navigateTo(ListDetailPaneScaffoldRole.Detail)
-                                    } catch (e: CancellationException) {
-                                        throw e
-                                    } catch (e: Exception) {
-                                        toaster.toast("加载失败: ${e.message}")
-                                        throw e
-                                    }
-                                }
+                                vm.viewSubjectDetails(item)
+                                listDetailNavigator.navigateTo(ListDetailPaneScaffoldRole.Detail)
                             },
                             navigator = listDetailNavigator,
                             contentWindowInsets = WindowInsets.safeDrawing, // 不包含 macos 标题栏, 因为左侧有 navigation rail

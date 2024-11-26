@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
@@ -72,8 +73,6 @@ import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
 import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.coroutines.update
-import me.him188.ani.utils.logging.info
-import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.platform.annotations.TestOnly
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -470,11 +469,8 @@ class DefaultSubjectDetailsStateFactory(
                 episodeProgressInfos = stateOf(emptyList()),
             ),
             subjectCommentState = CommentState(
-                sourceVersion = stateOf(null),
-                list = stateOf(emptyList()),
-                hasMore = stateOf(false),
-                onReload = { },
-                onLoadMore = { },
+                list = emptyFlow(),
+                countState = stateOf(null),
                 onSubmitCommentReaction = { _, _ -> },
                 backgroundScope = this,
             ),
