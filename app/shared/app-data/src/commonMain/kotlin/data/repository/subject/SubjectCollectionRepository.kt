@@ -21,6 +21,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
@@ -30,6 +31,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.retry
 import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.flow.transformLatest
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
@@ -98,6 +101,11 @@ sealed class SubjectCollectionRepository(
         pagingConfig: PagingConfig = defaultPagingConfig,
     ): Flow<PagingData<SubjectCollectionInfo>>
 
+    /**
+     * 获取本地所有缓存的 [SubjectCollectionInfo] 的 [subjectId][SubjectCollectionInfo.subjectId]
+     */
+    abstract fun cachedSubjectIds(): Flow<List<Int>>
+    
     /**
      * 更新根据服务器上记录的最近有修改的条目收藏. 也就是用户最近操作过的条目收藏.
      */
@@ -262,6 +270,10 @@ class SubjectCollectionRepositoryImpl(
             }
         }
     }.flowOn(defaultDispatcher)
+
+    override fun cachedSubjectIds(): Flow<List<Int>> {
+        return subjectCollectionDao.allSubjectIds().flowOn(defaultDispatcher)
+    }
 
     private val updateRecentlyUpdatedSubjectCollectionsMutex = Mutex()
     override suspend fun updateRecentlyUpdatedSubjectCollections(

@@ -34,6 +34,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.preference.EpisodeListProgressTheme
 import me.him188.ani.app.data.models.subject.RatingInfo
@@ -68,9 +69,14 @@ import me.him188.ani.app.ui.subject.rating.EditableRatingState
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
+import me.him188.ani.utils.coroutines.childScope
+import me.him188.ani.utils.coroutines.update
+import me.him188.ani.utils.logging.info
+import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.platform.annotations.TestOnly
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+import kotlin.coroutines.CoroutineContext
 
 interface SubjectDetailsStateFactory {
     fun create(subjectInfoFlow: Flow<SubjectInfo>): Flow<SubjectDetailsState>
@@ -87,7 +93,11 @@ interface SubjectDetailsStateFactory {
     fun create(subjectCollectionInfo: SubjectCollectionInfo, scope: CoroutineScope): SubjectDetailsState
 }
 
-class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinComponent {
+class DefaultSubjectDetailsStateFactory(
+    parentCoroutineContext: CoroutineContext
+) : SubjectDetailsStateFactory, KoinComponent {
+    private val childScope = parentCoroutineContext.childScope()
+    
     private val subjectCollectionRepository: SubjectCollectionRepository by inject()
     private val episodeProgressRepository: EpisodeProgressRepository by inject()
     private val episodeCollectionRepository: EpisodeCollectionRepository by inject()
@@ -98,6 +108,21 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
     private val animeScheduleRepository: AnimeScheduleRepository by inject()
 
     val sessionManager: SessionManager by inject()
+
+    /**
+     * 已经把条目详情信息缓存到本地数据库的条目 ID.
+     *
+     * 对于已经缓存过的条目, 创建 SubjectDetailsState flow 时不会 emit [预加载][SubjectDetailsState.preload] 条目.
+     */
+    private val cachedSubjectDetails: MutableStateFlow<List<Int>> = MutableStateFlow(emptyList())
+
+    init {
+        childScope.launch {
+            subjectCollectionRepository.cachedSubjectIds().collect { newList ->
+                cachedSubjectDetails.update { newList }
+            }
+        }
+    }
 
     override fun create(
         subjectInfoFlow: Flow<SubjectInfo>
@@ -175,8 +200,8 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
         require(subjectInfoFlow != null || subjectCollectionInfoFlow != null) {
             "Both subjectCollectionInfoFlow and subjectInfoFlow are null."
         }
-        // emit preload subject info if present.
-        if (preloadSubjectInfo != null) {
+        // emit preload subject info if present and not cached.
+        if (preloadSubjectInfo != null && !cachedSubjectDetails.value.contains(preloadSubjectInfo.subjectId)) {
             send(createPreload(preloadSubjectInfo, authState))
         }
         coroutineScope {

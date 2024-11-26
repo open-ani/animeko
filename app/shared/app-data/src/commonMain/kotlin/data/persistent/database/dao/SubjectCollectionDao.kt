@@ -178,6 +178,9 @@ interface SubjectCollectionDao {
     @Query("""SELECT * FROM subject_collection WHERE subjectId = :subjectId""")
     fun findById(subjectId: Int): Flow<SubjectCollectionEntity?>
 
+    @Query("""select subjectId from subject_collection""")
+    fun allSubjectIds(): Flow<List<Int>>
+
     @Query(
         """
         SELECT lastFetched FROM subject_collection 

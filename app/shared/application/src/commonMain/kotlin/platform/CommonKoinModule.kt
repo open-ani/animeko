@@ -360,7 +360,7 @@ fun KoinApplication.getCommonKoinModule(getContext: () -> Context, coroutineScop
     }
 
     single<MeteredNetworkDetector> { createMeteredNetworkDetector(getContext()) }
-    single<SubjectDetailsStateFactory> { DefaultSubjectDetailsStateFactory() }
+    single<SubjectDetailsStateFactory> { DefaultSubjectDetailsStateFactory(coroutineScope.coroutineContext) }
 }
 
 
