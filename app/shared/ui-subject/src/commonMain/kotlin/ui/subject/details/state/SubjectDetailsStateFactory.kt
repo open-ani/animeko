@@ -179,6 +179,25 @@ class DefaultSubjectDetailsStateFactory(
         coroutineScope {
             val authState = createAuthState()
 
+            /**
+             * 为什么有本地缓存时不 emit placeholder ?
+             * 1) [SubjectCollectionRepository.cachedValidSubjectIds] 获取的条目 ID 列表一定是有效的本地缓存列表,
+             *    这个列表内的条目信息能从本地缓存快速返回 (取决于硬盘速度), 这样就不用在进入的时候闪一下 placeholder 界面.
+             * 2) 既然能快速返回本地缓存, 若在显示 placeholder 界面并在进入界面的动画时获取到了本地缓存,
+             *    按照代码流程会 emit 缓存数据, 这会导致界面 remeasure 而使动画卡顿.
+             *
+             * 最主要的原因还是动画卡顿, 这可能是 compose 机能限制.
+             *
+             * 没有缓存的时候 emit placeholder, 如果用户在进入界面动画时获取到了网络数据也会导致动画卡顿.
+             * 但是大部分时候用户通常要花费大于进入界面动画的时间, 所以很小概率会卡动画.
+             *
+             * 总的来说, 目前的流程如下:
+             * 本地有缓存   : 花费一点时间 (取决于硬盘速度) 阻塞 UI 获取本地缓存, 然后直接显示缓存数据,
+             *              进入界面动画期间显示缓存数据, 不会导致界面 remeasure, 动画不会卡顿
+             * 本地没有缓存 : 直接显示 placeholder,
+             *              进入界面动画期间显示 placeholder, 不会导致界面 remeasure, 动画不会卡顿
+             *              如果在进入界面动画期间网络加载完成, 仍然会导致界面 remeasure, 从而导致动画卡顿, 无法避免.
+             */
             if (placeholder != null && !cachedSubjectDetails.value.contains(placeholder.subjectId)) {
                 emit(createPlaceholder(placeholder, authState))
             }
