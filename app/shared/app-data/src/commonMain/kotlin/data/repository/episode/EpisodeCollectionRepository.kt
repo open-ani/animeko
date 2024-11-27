@@ -91,11 +91,10 @@ class EpisodeCollectionRepository(
         allowCached: Boolean = true,
     ): Flow<List<EpisodeCollectionInfo>> = epTypeFilter.flatMapLatest { epType ->
         episodeCollectionDao.filterBySubjectId(subjectId, epType).transformLatest { cachedEpisodes ->
-            if (hasCache(allowCached, cachedEpisodes, subjectId)) {
-                // 有有效缓存先 emit 缓存
+            if (shouldUseCache(allowCached, cachedEpisodes, subjectId)) {
+                // 有有效缓存则直接返回
                 emit(cachedEpisodes.map { it.toEpisodeCollectionInfo() })
-                // 缓存没过期直接返回
-                if (!isCacheExpired(cachedEpisodes)) return@transformLatest
+                return@transformLatest
             }
 
             try {
@@ -125,7 +124,7 @@ class EpisodeCollectionRepository(
         }
     }.flowOn(defaultDispatcher)
 
-    private suspend fun hasCache(
+    private suspend fun shouldUseCache(
         allowCached: Boolean,
         cachedEpisodes: List<EpisodeCollectionEntity>,
         subjectId: Int,
@@ -145,14 +144,8 @@ class EpisodeCollectionRepository(
             return false
         }
 
-        return true
-    }
-
-    private fun isCacheExpired(
-        cachedEpisodes: List<EpisodeCollectionEntity>,
-    ): Boolean {
-        val lastUpdated = cachedEpisodes.maxOfOrNull { it.lastFetched } ?: return true
-        return (currentTimeMillis() - lastUpdated).milliseconds > cacheExpiry
+        val lastUpdated = cachedEpisodes.maxOf { it.lastFetched }
+        return (currentTimeMillis() - lastUpdated).milliseconds <= cacheExpiry
     }
 
     fun subjectEpisodeCollectionsPager(
