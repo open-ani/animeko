@@ -17,24 +17,23 @@ import androidx.paging.cachedIn
 import androidx.paging.map
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.channelFlow
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.preference.EpisodeListProgressTheme
@@ -132,27 +131,71 @@ class DefaultSubjectDetailsStateFactory(
             val authState = createAuthState()
             val subjectProgressStateFactory = createSubjectProgressStateFactory()
 
-            subjectDetailsStateFlow(subjectInfoFlow, null, subjectProgressStateFactory, authState)
-                .collect { emit(it) }
+
+            subjectInfoFlow.transformLatest { subjectInfo ->
+                coroutineScope {
+                    val subjectCollectionFlow = subjectCollectionRepository.subjectCollectionFlow(subjectInfo.subjectId)
+                        .shareIn(this, started = SharingStarted.Eagerly, replay = 1)
+
+                    emit(
+                        createImpl(
+                            subjectInfo,
+                            subjectCollectionFlow,
+                            subjectCollectionFlow.map { it.collectionType }.stateIn(this),
+                            subjectProgressStateFactory,
+                            authState,
+                        ),
+                    )
+                    awaitCancellation()
+                }
+            }
+            awaitCancellation()
         }
     }
 
-    override fun create(subjectInfo: SubjectInfo): Flow<SubjectDetailsState> {
-        return create(flowOf(subjectInfo))
+    override fun create(
+        subjectInfo: SubjectInfo,
+    ): Flow<SubjectDetailsState> = flow {
+        coroutineScope {
+            val authState = createAuthState()
+            val subjectProgressStateFactory = createSubjectProgressStateFactory()
+            val subjectCollectionFlow = subjectCollectionRepository.subjectCollectionFlow(subjectInfo.subjectId)
+                .shareIn(this, started = SharingStarted.Eagerly, replay = 1)
+
+            emit(
+                createImpl(
+                    subjectInfo,
+                    subjectCollectionFlow,
+                    subjectCollectionFlow.map { it.collectionType }.stateIn(this),
+                    subjectProgressStateFactory,
+                    authState,
+                ),
+            )
+            awaitCancellation()
+        }
     }
 
     override fun create(subjectId: Int, placeholder: SubjectInfo?): Flow<SubjectDetailsState> = flow {
         coroutineScope {
             val authState = createAuthState()
-            val subjectProgressStateFactory = createSubjectProgressStateFactory()
 
-            subjectDetailsStateFlow(
-                null,
-                subjectCollectionRepository.subjectCollectionFlow(subjectId),
-                subjectProgressStateFactory,
-                authState,
-                placeholder,
-            ).collect { e -> emit(e) }
+            if (placeholder != null && !cachedSubjectDetails.value.contains(placeholder.subjectId)) {
+                emit(createPlaceholder(placeholder, authState))
+            }
+            
+            val subjectProgressStateFactory = createSubjectProgressStateFactory()
+            val subjectCollectionInfoFlow = subjectCollectionRepository.subjectCollectionFlow(subjectId)
+                .stateIn(this)
+            emit(
+                createImpl(
+                    subjectCollectionInfoFlow.value.subjectInfo,
+                    subjectCollectionInfoFlow,
+                    subjectCollectionInfoFlow.map { it.collectionType }.stateIn(this),
+                    subjectProgressStateFactory,
+                    authState,
+                ),
+            )
+            awaitCancellation()
         }
     }
 
@@ -182,66 +225,6 @@ class DefaultSubjectDetailsStateFactory(
     private fun createSubjectProgressStateFactory() = SubjectProgressStateFactory(
         episodeProgressRepository,
     )
-
-    /**
-     * 根据 [subjectInfoFlow] 或 [subjectCollectionInfoFlow] 创建 [SubjectDetailsState] flow.
-     *
-     * [subjectInfoFlow] 和 [subjectCollectionInfoFlow] 只需要传递其中一个即可创建.
-     * 如果同时传递, 则优先使用 [subjectCollectionInfoFlow], 因为 [SubjectCollectionInfo] 包含了 [SubjectInfo].
-     *
-     * @param placeholder 预加载的条目信息, 将最先展示.
-     */
-    private fun CoroutineScope.subjectDetailsStateFlow(
-        subjectInfoFlow: Flow<SubjectInfo>?,
-        subjectCollectionInfoFlow: Flow<SubjectCollectionInfo>?,
-        subjectProgressStateFactory: SubjectProgressStateFactory,
-        authState: AuthState,
-        placeholder: SubjectInfo? = null,
-    ): Flow<SubjectDetailsState> = channelFlow {
-        require(subjectInfoFlow != null || subjectCollectionInfoFlow != null) {
-            "Both subjectCollectionInfoFlow and subjectInfoFlow are null."
-        }
-        // emit placeholder subject info if present and not cached.
-        if (placeholder != null && !cachedSubjectDetails.value.contains(placeholder.subjectId)) {
-            send(createPlaceholder(placeholder, authState))
-        }
-        coroutineScope {
-            if (subjectCollectionInfoFlow != null) {
-                val stated = subjectCollectionInfoFlow.stateIn(this)
-                stated.collectLatest { subjectCollection ->
-                    // only emit actual state when subjectCollectionInfoFlow has value
-                    send(
-                        createImpl(
-                            subjectCollection.subjectInfo,
-                            stated,
-                            stated.map { it.collectionType }.stateIn(this),
-                            subjectProgressStateFactory,
-                            authState,
-                        ),
-                    )
-                }
-            } else if (subjectInfoFlow != null) {
-                subjectInfoFlow.collectLatest { subjectInfo ->
-                    val subjectCollectionFlow = subjectCollectionRepository
-                        .subjectCollectionFlow(subjectInfo.subjectId)
-                        .shareIn(this, started = SharingStarted.Eagerly, replay = 1)
-
-                    send(
-                        createImpl(
-                            subjectInfo,
-                            subjectCollectionFlow,
-                            subjectCollectionFlow.map { it.collectionType }.stateIn(this),
-                            subjectProgressStateFactory,
-                            authState,
-                        ),
-                    )
-                }
-            } else {
-                error("unreachable")
-            }
-        }
-    }
-    
 
     private fun CoroutineScope.createImpl(
         subjectInfo: SubjectInfo,

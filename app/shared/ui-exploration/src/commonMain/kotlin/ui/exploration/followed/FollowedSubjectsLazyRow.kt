@@ -12,7 +12,6 @@ package me.him188.ani.app.ui.exploration.followed
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
@@ -33,7 +32,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
@@ -94,7 +92,13 @@ fun FollowedSubjectsLazyRow(
             items.isLoadingFirstPage -> {
                 // placeholders
                 items(8) {
-                    PlaceholderFollowedSubjectItem(layoutParameters.imageSize, layoutParameters.shape)
+                    FollowedSubjectItem(
+                        null,
+                        onClick = { },
+                        onPlay = { },
+                        layoutParameters.imageSize,
+                        layoutParameters.shape,
+                    )
                 }
             }
 
@@ -127,11 +131,11 @@ fun FollowedSubjectsLazyRow(
             key = items.itemKey { it.subjectInfo.subjectId },
             contentType = items.itemContentType { it.subjectProgressInfo.hasNewEpisodeToPlay },
         ) { index ->
-            val item = items[index] ?: return@items
+            val item = items[index]
             FollowedSubjectItem(
                 item,
-                onClick = { onClick(item) },
-                onPlay = { onPlay(item) },
+                onClick = { item?.let { onClick(it) } },
+                onPlay = { item?.let { onPlay(it) } },
                 layoutParameters.imageSize,
                 layoutParameters.shape,
             )
@@ -140,22 +144,8 @@ fun FollowedSubjectsLazyRow(
 }
 
 @Composable
-private fun PlaceholderFollowedSubjectItem(
-    imageSize: DpSize,
-    shape: Shape,
-    modifier: Modifier = Modifier,
-) {
-    Spacer(
-        modifier
-            .size(imageSize)
-            .clip(shape)
-            .placeholder(true),
-    )
-}
-
-@Composable
 private fun FollowedSubjectItem(
-    item: FollowedSubjectInfo,
+    item: FollowedSubjectInfo?, // null for placeholder
     onClick: () -> Unit,
     onPlay: () -> Unit,
     imageSize: DpSize,
@@ -163,37 +153,45 @@ private fun FollowedSubjectItem(
     modifier: Modifier = Modifier,
 ) {
     BasicCarouselItem(
-        label = { CarouselItemDefaults.Text(item.subjectInfo.displayName) },
-        modifier,
+        label = { CarouselItemDefaults.Text(item?.subjectInfo?.displayName ?: "") },
+        modifier.placeholder(item == null, shape = shape),
         supportingText = {
-            val airingState = remember(item) {
-                AiringLabelState(
-                    stateOf(item.subjectAiringInfo),
-                    stateOf(item.subjectProgressInfo),
-                )
-            }
-            airingState.progressText?.let {
-                Text(it, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (item != null) {
+                val airingState = remember(item) {
+                    AiringLabelState(
+                        stateOf(item.subjectAiringInfo),
+                        stateOf(item.subjectProgressInfo),
+                    )
+                }
+                airingState.progressText?.let {
+                    Text(it, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
             }
         },
         maskShape = shape,
         overlay = {
-            if (!item.subjectProgressInfo.hasNewEpisodeToPlay) return@BasicCarouselItem
-            FilledTonalIconButton(
-                onClick = { onPlay() },
-                modifier = Modifier.align(Alignment.BottomEnd),
-            ) {
-                Icon(Icons.Rounded.PlayArrow, null, Modifier.size(24.dp))
+            if (item?.subjectProgressInfo?.hasNewEpisodeToPlay == true) {
+                FilledTonalIconButton(
+                    onClick = { onPlay() },
+                    modifier = Modifier.align(Alignment.BottomEnd),
+                ) {
+                    Icon(Icons.Rounded.PlayArrow, null, Modifier.size(24.dp))
+                }
             }
         },
     ) {
-        Surface(onClick = { onClick() }) {
-            AsyncImage(
-                item.subjectInfo.imageLarge,
-                modifier = Modifier.size(imageSize),
-                contentDescription = item.subjectInfo.displayName,
-                contentScale = ContentScale.Crop,
-            )
+        if (item != null) {
+            val image = @Composable {
+                AsyncImage(
+                    item.subjectInfo.imageLarge,
+                    modifier = Modifier.size(imageSize),
+                    contentDescription = item.subjectInfo.displayName,
+                    contentScale = ContentScale.Crop,
+                )
+            }
+            Surface({ onClick() }, content = image)
+        } else {
+            Box(Modifier.size(imageSize))
         }
     }
 }
