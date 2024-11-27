@@ -36,7 +36,7 @@ Animeko 支持云同步观看记录 ([Bangumi][Bangumi])、多视频数据源、
 
 以下几点可以给你一个技术上的大概了解，不感兴趣的可以直接看[截图](#功能截图)。
 
-- [Kotlin 多平台][Kotlin Multiplatform]架构：编写 95% 的跨平台代码和仅 5% 的平台适配代码，支持 Windows、macOS、Android 和 iOS (计划)
+- [Kotlin 多平台][Kotlin Multiplatform]架构，支持 Windows、macOS、Android 和 iOS (计划)
 - 基于 Kotlin 多平台架构，使用新一代响应式 UI 框架 [Compose Multiplatform][Compose Multiplatform] 构建 UI
 - 内置专为 Animeko 打造的基于 [libtorrent][libtorrent] 的 BitTorrent 引擎, 优化边下边播的体验
 - 纯 Compose 的高性能弹幕引擎，公益弹幕服务器 + 网络弹幕源，支持编写自定义弹幕源
