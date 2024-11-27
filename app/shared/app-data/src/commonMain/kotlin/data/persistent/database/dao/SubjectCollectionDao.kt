@@ -34,6 +34,7 @@ import me.him188.ani.app.data.persistent.database.converters.PackedDateConverter
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.platform.currentTimeMillis
+import kotlin.time.Duration.Companion.hours
 
 /**
  * @see SubjectInfo
@@ -178,8 +179,16 @@ interface SubjectCollectionDao {
     @Query("""SELECT * FROM subject_collection WHERE subjectId = :subjectId""")
     fun findById(subjectId: Int): Flow<SubjectCollectionEntity?>
 
-    @Query("""select subjectId from subject_collection""")
-    fun allSubjectIds(): Flow<List<Int>>
+    @Query(
+        """
+        SELECT sc.subjectId FROM subject_collection sc WHERE NOT EXISTS (
+            SELECT ec.lastFetched FROM episode_collection ec 
+            WHERE (ec.subjectId = sc.subjectId) 
+                AND (CAST(unixepoch('now', 'subsecond') * 1000 AS int) - ec.lastFetched > :cacheExpiry)
+        )
+        """,
+    )
+    fun subjectIdsWithValidEpisodeCollection(cacheExpiry: Long = 1.hours.inWholeMilliseconds): Flow<List<Int>>
 
     @Query(
         """

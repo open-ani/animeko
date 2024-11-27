@@ -119,7 +119,7 @@ class DefaultSubjectDetailsStateFactory(
 
     init {
         childScope.launch {
-            subjectCollectionRepository.cachedSubjectIds().collect { newList ->
+            subjectCollectionRepository.cachedValidSubjectIds().collect { newList ->
                 cachedSubjectDetails.update { newList }
             }
         }
