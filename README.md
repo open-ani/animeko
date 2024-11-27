@@ -40,7 +40,7 @@ Animeko 支持云同步观看记录 ([Bangumi][Bangumi])、多视频数据源、
 - 基于 Kotlin 多平台架构，使用新一代响应式 UI 框架 [Compose Multiplatform][Compose Multiplatform] 构建 UI
 - 内置专为 Animeko 打造的基于 [libtorrent][libtorrent] 的 BitTorrent 引擎, 优化边下边播的体验
 - 高性能弹幕引擎，公益弹幕服务器 + 网络弹幕源
-- 适配 Compose 的多平台视频播放器，Android 底层为 [ExoPlayer][ExoPlayer]，Windows 和 macOS 底层为 [VLC][VLC]
+- 适配多平台的视频播放器，Android 底层为 [ExoPlayer][ExoPlayer]，PC 底层为 [VLC][VLC]
 - 多类型数据源适配，内置 [动漫花园][dmhy]， [Mikan]，拥有强大的自定义数据源编辑器
 
 ### 参与开发
