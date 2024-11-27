@@ -63,10 +63,10 @@ interface AniNavigator {
 
     fun navigateSubjectDetails(
         subjectId: Int,
-        preload: SubjectDetailPreload? = null
+        placeholder: SubjectDetailPlaceholder? = null
     ) {
         navigator.navigate(
-            NavRoutes.SubjectDetail(subjectId, preload),
+            NavRoutes.SubjectDetail(subjectId, placeholder),
         )
     }
 

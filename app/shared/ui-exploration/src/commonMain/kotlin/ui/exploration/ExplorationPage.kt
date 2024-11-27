@@ -44,7 +44,7 @@ import me.him188.ani.app.data.models.subject.subjectInfo
 import me.him188.ani.app.data.models.trending.TrendingSubjectInfo
 import me.him188.ani.app.domain.session.AuthState
 import me.him188.ani.app.navigation.LocalNavigator
-import me.him188.ani.app.navigation.SubjectDetailPreload
+import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.app.ui.adaptive.AniTopAppBar
 import me.him188.ani.app.ui.adaptive.AniTopAppBarDefaults
 import me.him188.ani.app.ui.adaptive.NavTitleHeader
@@ -140,7 +140,7 @@ fun ExplorationPage(
                 onClick = {
                     navigator.navigateSubjectDetails(
                         subjectId = it.bangumiId,
-                        preload = SubjectDetailPreload(
+                        placeholder = SubjectDetailPlaceholder(
                             id = it.bangumiId,
                             name = it.nameCn,
                             coverUrl = it.imageLarge,
@@ -161,7 +161,7 @@ fun ExplorationPage(
                 onClick = {
                     navigator.navigateSubjectDetails(
                         subjectId = it.subjectInfo.subjectId,
-                        preload = SubjectDetailPreload(
+                        placeholder = SubjectDetailPlaceholder(
                             it.subjectInfo.subjectId,
                             it.subjectInfo.name,
                             it.subjectInfo.nameCn,

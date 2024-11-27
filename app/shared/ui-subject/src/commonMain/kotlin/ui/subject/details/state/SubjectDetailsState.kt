@@ -53,9 +53,9 @@ class SubjectDetailsState(
     val subjectProgressState: SubjectProgressState,
     val subjectCommentState: CommentState,
     /**
-     * 是否是预加载进入详情页, 预加载进入时应该只显示少量 [info].
+     * 是否预先显示少量 [info].
      */
-    val preload: Boolean,
+    val showPlaceholder: Boolean,
 ) {
     val coverImageUrl get() = this.info.imageLarge
     private val selfCollectionTypeOrNull by selfCollectionTypeState

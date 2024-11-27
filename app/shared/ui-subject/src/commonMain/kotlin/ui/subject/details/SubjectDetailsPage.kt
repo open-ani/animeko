@@ -11,7 +11,6 @@ package me.him188.ani.app.ui.subject.details
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -91,7 +90,6 @@ import me.him188.ani.app.ui.foundation.layout.only
 import me.him188.ani.app.ui.foundation.layout.paneHorizontalPadding
 import me.him188.ani.app.ui.foundation.layout.paneVerticalPadding
 import me.him188.ani.app.ui.foundation.layout.rememberConnectedScrollState
-import me.him188.ani.app.ui.foundation.layout.useSharedTransitionScope
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.pagerTabIndicatorOffset
 import me.him188.ani.app.ui.foundation.rememberImageViewerHandler
@@ -129,7 +127,7 @@ fun SubjectDetailsPage(
             onPlay = onPlay,
             modifier,
             showTopBar,
-            showBlurredBackground && !state.preload,
+            showBlurredBackground && !state.showPlaceholder,
             windowInsets,
         )
     }
@@ -163,13 +161,13 @@ fun SubjectDetailsPage(
     val imageViewer = rememberImageViewerHandler()
     BackHandler(enabled = imageViewer.viewing.value) { imageViewer.clear() }
 
-    val preloadPlaceholderModifier = Modifier.placeholder(state.preload)
+    val placeholderModifier = Modifier.placeholder(state.showPlaceholder)
     SubjectDetailsPageLayout(
         state,
         collectionData = {
             SubjectDetailsDefaults.CollectionData(
                 collectionStats = state.info.collectionStats,
-                preloadPlaceholderModifier,
+                placeholderModifier,
             )
         },
         collectionActions = {
@@ -177,21 +175,21 @@ fun SubjectDetailsPage(
                 val navigator = LocalNavigator.current
                 OutlinedButton(
                     onClick = { state.authState.launchAuthorize(navigator) },
-                    modifier = preloadPlaceholderModifier,
+                    modifier = placeholderModifier,
                 ) {
                     Text("登录后可收藏")
                 }
             } else {
                 EditableSubjectCollectionTypeButton(
                     state.editableSubjectCollectionTypeState,
-                    preloadPlaceholderModifier,
+                    placeholderModifier,
                 )
             }
         },
         rating = {
             EditableRating(
                 state.editableRatingState,
-                preloadPlaceholderModifier,
+                placeholderModifier,
             )
         },
         selectEpisodeButton = {
@@ -199,7 +197,7 @@ fun SubjectDetailsPage(
                 state.subjectProgressState,
                 onShowEpisodeList = { showSelectEpisode = true },
                 onPlay = onPlay,
-                preloadPlaceholderModifier,
+                placeholderModifier,
             )
         },
         connectedScrollState = connectedScrollState,
@@ -210,13 +208,13 @@ fun SubjectDetailsPage(
     ) { paddingValues ->
         Box {
             AnimatedVisibility(
-                visible = state.preload,
+                visible = state.showPlaceholder,
                 enter = EnterTransition.None,
                 exit = fadeOut(AniThemeDefaults.feedItemFadeOutSpec),
             ) {
                 PlaceholderSubjectDetailsDetailTabLayout(paddingValues)
             }
-            if (state.preload) return@SubjectDetailsPageLayout
+            if (state.showPlaceholder) return@SubjectDetailsPageLayout
 
             SubjectDetailsContentPager(
                 paddingValues,

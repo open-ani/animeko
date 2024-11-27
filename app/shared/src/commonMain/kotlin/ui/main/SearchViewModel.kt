@@ -90,7 +90,7 @@ class SearchViewModel : AbstractViewModel(), KoinComponent {
         subjectDetailsStateLoader.clear()
         subjectDetailsStateLoader.load(
             previewItem.subjectId,
-            preloadSubjectInfo = SubjectInfo.createMinimal(
+            placeholder = SubjectInfo.createPlaceholder(
                 previewItem.subjectId,
                 previewItem.title,
                 previewItem.imageUrl,

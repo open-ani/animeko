@@ -83,12 +83,12 @@ interface SubjectDetailsStateFactory {
     fun create(subjectInfo: SubjectInfo): Flow<SubjectDetailsState>
 
     /**
-     * @param preloadSubjectInfo 通常是仅仅包含少量信息的预加载的 subject 信息.
+     * @param placeholder 通常是仅仅包含少量信息的预加载的 subject 信息.
      *        例如从探索页导航到详情页时, subject 名字和封面图时已知的, 可以作为预加载信息以第一时间显示一些东西.
      */
     fun create(
         subjectId: Int,
-        preloadSubjectInfo: SubjectInfo? = null
+        placeholder: SubjectInfo? = null
     ): Flow<SubjectDetailsState>
     fun create(subjectCollectionInfo: SubjectCollectionInfo, scope: CoroutineScope): SubjectDetailsState
 }
@@ -113,7 +113,7 @@ class DefaultSubjectDetailsStateFactory(
     /**
      * 已经把条目详情信息缓存到本地数据库的条目 ID.
      *
-     * 对于已经缓存过的条目, 创建 SubjectDetailsState flow 时不会 emit [预加载][SubjectDetailsState.preload] 条目.
+     * 对于已经缓存过的条目, 创建 SubjectDetailsState flow 时不会 emit [预加载][SubjectDetailsState.showPlaceholder] 条目.
      */
     private val cachedSubjectDetails: MutableStateFlow<List<Int>> = MutableStateFlow(emptyList())
 
@@ -141,7 +141,7 @@ class DefaultSubjectDetailsStateFactory(
         return create(flowOf(subjectInfo))
     }
 
-    override fun create(subjectId: Int, preloadSubjectInfo: SubjectInfo?): Flow<SubjectDetailsState> = flow {
+    override fun create(subjectId: Int, placeholder: SubjectInfo?): Flow<SubjectDetailsState> = flow {
         coroutineScope {
             val authState = createAuthState()
             val subjectProgressStateFactory = createSubjectProgressStateFactory()
@@ -151,7 +151,7 @@ class DefaultSubjectDetailsStateFactory(
                 subjectCollectionRepository.subjectCollectionFlow(subjectId),
                 subjectProgressStateFactory,
                 authState,
-                preloadSubjectInfo,
+                placeholder,
             ).collect { e -> emit(e) }
         }
     }
@@ -189,21 +189,21 @@ class DefaultSubjectDetailsStateFactory(
      * [subjectInfoFlow] 和 [subjectCollectionInfoFlow] 只需要传递其中一个即可创建.
      * 如果同时传递, 则优先使用 [subjectCollectionInfoFlow], 因为 [SubjectCollectionInfo] 包含了 [SubjectInfo].
      *
-     * @param preloadSubjectInfo 预加载的条目信息, 将最先展示.
+     * @param placeholder 预加载的条目信息, 将最先展示.
      */
     private fun CoroutineScope.subjectDetailsStateFlow(
         subjectInfoFlow: Flow<SubjectInfo>?,
         subjectCollectionInfoFlow: Flow<SubjectCollectionInfo>?,
         subjectProgressStateFactory: SubjectProgressStateFactory,
         authState: AuthState,
-        preloadSubjectInfo: SubjectInfo? = null,
+        placeholder: SubjectInfo? = null,
     ): Flow<SubjectDetailsState> = channelFlow {
         require(subjectInfoFlow != null || subjectCollectionInfoFlow != null) {
             "Both subjectCollectionInfoFlow and subjectInfoFlow are null."
         }
-        // emit preload subject info if present and not cached.
-        if (preloadSubjectInfo != null && !cachedSubjectDetails.value.contains(preloadSubjectInfo.subjectId)) {
-            send(createPreload(preloadSubjectInfo, authState))
+        // emit placeholder subject info if present and not cached.
+        if (placeholder != null && !cachedSubjectDetails.value.contains(placeholder.subjectId)) {
+            send(createPlaceholder(placeholder, authState))
         }
         coroutineScope {
             if (subjectCollectionInfoFlow != null) {
@@ -418,12 +418,12 @@ class DefaultSubjectDetailsStateFactory(
             editableRatingState = editableRatingState,
             subjectProgressState = subjectProgressState,
             subjectCommentState = subjectCommentState,
-            preload = false,
+            showPlaceholder = false,
         )
         return state
     }
 
-    private fun CoroutineScope.createPreload(
+    private fun CoroutineScope.createPlaceholder(
         subjectInfo: SubjectInfo,
         authState: AuthState
     ): SubjectDetailsState {
@@ -474,7 +474,7 @@ class DefaultSubjectDetailsStateFactory(
                 onSubmitCommentReaction = { _, _ -> },
                 backgroundScope = this,
             ),
-            preload = true,
+            showPlaceholder = true,
         )
     }
 }
@@ -546,7 +546,7 @@ class TestSubjectDetailsStateFactory : SubjectDetailsStateFactory {
         return emptyFlow()
     }
 
-    override fun create(subjectId: Int, preloadSubjectInfo: SubjectInfo?): Flow<SubjectDetailsState> {
+    override fun create(subjectId: Int, placeholder: SubjectInfo?): Flow<SubjectDetailsState> {
         return emptyFlow()
     }
 

@@ -43,7 +43,7 @@ class SubjectDetailsStateLoader(
 
     fun load(
         subjectId: Int,
-        preloadSubjectInfo: SubjectInfo? = null
+        placeholder: SubjectInfo? = null
     ): Job {
         if (subjectDetailsStateFlow?.value?.info?.subjectId == subjectId) {
             // 已经加载完成了
@@ -58,7 +58,7 @@ class SubjectDetailsStateLoader(
             val flowScope = backgroundScope.childScope()
             runningFlowScope = flowScope
             val resp = try {
-                subjectDetailsStateFactory.create(subjectId, preloadSubjectInfo).stateIn(flowScope)
+                subjectDetailsStateFactory.create(subjectId, placeholder).stateIn(flowScope)
             } catch (e: CancellationException) {
                 flowScope.cancel()
                 throw e

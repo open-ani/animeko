@@ -22,14 +22,14 @@ import org.koin.core.component.inject
 @Stable
 class SubjectDetailsViewModel(
     subjectId: Int,
-    preloadSubjectInfo: SubjectInfo? = null
+    placeholder: SubjectInfo? = null
 ) : AbstractViewModel(), KoinComponent {
     private val factory: SubjectDetailsStateFactory by inject()
 
     val stateLoader = SubjectDetailsStateLoader(factory, backgroundScope)
 
     init {
-        stateLoader.load(subjectId, preloadSubjectInfo)
+        stateLoader.load(subjectId, placeholder)
     }
 }
 

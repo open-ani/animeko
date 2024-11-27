@@ -61,7 +61,7 @@ import me.him188.ani.app.data.models.subject.RelatedSubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.nameCn
 import me.him188.ani.app.navigation.LocalNavigator
-import me.him188.ani.app.navigation.SubjectDetailPreload
+import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.app.ui.foundation.Tag
 import me.him188.ani.app.ui.foundation.avatar.AvatarImage
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
@@ -186,7 +186,7 @@ fun SubjectDetailsDefaults.DetailsTab(
                     onClick = {
                         navigator.navigateSubjectDetails(
                             it.subjectId,
-                            preload = SubjectDetailPreload(
+                            placeholder = SubjectDetailPlaceholder(
                                 id = it.subjectId,
                                 name = it.name ?: "",
                                 nameCN = it.nameCn,

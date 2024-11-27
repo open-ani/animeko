@@ -48,7 +48,7 @@ sealed class NavRoutes {
     @Serializable
     data class SubjectDetail(
         val subjectId: Int,
-        val preload: SubjectDetailPreload? = null,
+        val placeholder: SubjectDetailPlaceholder? = null,
     ) : NavRoutes()
 
     @Serializable
@@ -82,7 +82,7 @@ sealed class NavRoutes {
 }
 
 @Serializable
-data class SubjectDetailPreload(
+data class SubjectDetailPlaceholder(
     val id: Int,
     val name: String = "",
     val nameCN: String = "",

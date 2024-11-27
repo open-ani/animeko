@@ -80,7 +80,7 @@ import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.data.repository.subject.CollectionsFilterQuery
 import me.him188.ani.app.domain.session.AuthState
 import me.him188.ani.app.navigation.LocalNavigator
-import me.him188.ani.app.navigation.SubjectDetailPreload
+import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.app.ui.adaptive.AniTopAppBar
 import me.him188.ani.app.ui.adaptive.AniTopAppBarDefaults
 import me.him188.ani.app.ui.foundation.LocalPlatform
@@ -418,7 +418,7 @@ private fun SubjectCollectionItem(
                     {
                         navigator.navigateSubjectDetails(
                             subjectCollection.subjectId,
-                            preload = SubjectDetailPreload(
+                            placeholder = SubjectDetailPlaceholder(
                                 id = subjectCollection.subjectId,
                                 name = subjectCollection.subjectInfo.name,
                                 nameCN = subjectCollection.subjectInfo.nameCn,
@@ -442,7 +442,7 @@ private fun SubjectCollectionItem(
         onClick = {
             navigator.navigateSubjectDetails(
                 subjectCollection.subjectId,
-                preload = SubjectDetailPreload(
+                placeholder = SubjectDetailPlaceholder(
                     id = subjectCollection.subjectId,
                     name = subjectCollection.subjectInfo.name,
                     nameCN = subjectCollection.subjectInfo.nameCn,

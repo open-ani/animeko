@@ -44,7 +44,7 @@ import me.him188.ani.app.navigation.MainScenePage
 import me.him188.ani.app.navigation.NavRoutes
 import me.him188.ani.app.navigation.OverrideNavigation
 import me.him188.ani.app.navigation.SettingsTab
-import me.him188.ani.app.navigation.SubjectDetailPreload
+import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.ui.adaptive.navigation.AniNavigationSuiteDefaults
 import me.him188.ani.app.ui.cache.CacheManagementPage
@@ -202,16 +202,16 @@ private fun AniAppContentImpl(
                 popEnterTransition = popEnterTransition,
                 popExitTransition = popExitTransition,
                 typeMap = mapOf(
-                    typeOf<SubjectDetailPreload?>() to SubjectDetailPreload.NavType,
+                    typeOf<SubjectDetailPlaceholder?>() to SubjectDetailPlaceholder.NavType,
                 ),
 
                 ) { backStackEntry ->
                 val details = backStackEntry.toRoute<NavRoutes.SubjectDetail>()
                 val vm = viewModel<SubjectDetailsViewModel>(key = details.subjectId.toString()) {
-                    val preloadSubjectInfo = details.preload?.run {
-                        SubjectInfo.createMinimal(id, name, coverUrl, nameCN)
+                    val placeholder = details.placeholder?.run {
+                        SubjectInfo.createPlaceholder(id, name, coverUrl, nameCN)
                     }
-                    SubjectDetailsViewModel(details.subjectId, preloadSubjectInfo)
+                    SubjectDetailsViewModel(details.subjectId, placeholder)
                 }
                 CompositionLocalProvider(
                     LocalSharedTransitionScopeProvider provides SharedTransitionScopeProvider(

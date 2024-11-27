@@ -124,7 +124,7 @@ data class SubjectInfo(
          * 创建一个最小可以显示 subject 大概信息的 subject.
          * 仅包含[封面图][SubjectInfo.imageLarge]和[名称][SubjectInfo.name].
          */
-        fun createMinimal(subjectId: Int, name: String, image: String, nameCn: String = ""): SubjectInfo {
+        fun createPlaceholder(subjectId: Int, name: String, image: String, nameCn: String = ""): SubjectInfo {
             return SubjectInfo(
                 subjectId = subjectId,
                 subjectType = SubjectType.ANIME,
