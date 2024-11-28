@@ -114,7 +114,7 @@ class TorrentServiceConnection(
                 }
             }
 
-            Lifecycle.Event.ON_START -> {
+            Lifecycle.Event.ON_RESUME -> {
                 shouldRestartServiceImmediately = true
                 // 如果 app 在后台时断开了 service 连接, 需要在切回前台时重新启动
                 if (!connected.value) {
@@ -125,7 +125,7 @@ class TorrentServiceConnection(
                 }
             }
 
-            Lifecycle.Event.ON_STOP -> {
+            Lifecycle.Event.ON_PAUSE -> {
                 shouldRestartServiceImmediately = false
                 // 请求 wake lock, 如果在 app 中息屏可以保证 service 正常跑 10 分钟.
                 context.startService(acquireWakeLockIntent)
