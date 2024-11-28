@@ -166,6 +166,12 @@ class AniTorrentService : LifecycleService(), CoroutineScope {
         return true
     }
 
+    override fun onTimeout(startId: Int) {
+        super.onTimeout(startId)
+        logger.info { "Time limit for running torrent service is already exhausted, stopping." }
+        stopSelf()
+    }
+
     /**
      * 在 app 被从最近任务界面划掉时重启服务
      *

@@ -16,6 +16,7 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!--    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"-->
     <!--            tools:ignore="ScopedStorage" />-->
@@ -85,7 +86,7 @@
                 android:name="me.him188.ani.app.domain.torrent.service.AniTorrentService"
                 android:description="@string/service_torrent_engine_description"
                 android:enabled="true"
-                android:foregroundServiceType="dataSync"
+                android:foregroundServiceType="dataSync|mediaPlayback"
                 android:process=":torrent_service"
                 android:exported="false" />
     </application>
