@@ -82,6 +82,7 @@ import me.him188.ani.app.ui.settings.framework.components.TextButtonItem
 import me.him188.ani.app.ui.settings.framework.components.TextItem
 import me.him188.ani.app.ui.settings.framework.rememberSorterState
 import me.him188.ani.app.ui.settings.rendering.MediaSourceIcon
+import me.him188.ani.app.ui.settings.rendering.MediaSourceIcons
 import me.him188.ani.datasources.api.source.parameter.isEmpty
 import me.him188.ani.utils.platform.isMobile
 import org.burnoutcrew.reorderable.ReorderableItem
@@ -410,10 +411,22 @@ internal fun SettingsScope.MediaSourceItem(
             } else {
                 item.info.displayName
             }
-            Text(
-                name,
-                Modifier.ifThen(!isEnabled) { alpha(DISABLED_ALPHA) },
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                item.instance.source.apply {
+                    Icon(
+                        imageVector = MediaSourceIcons.location(this.location, this.kind),
+                        contentDescription = this.info.description,
+                        modifier = Modifier.size(20.dp).ifThen(!isEnabled) { alpha(DISABLED_ALPHA) },
+                    )
+                }
+                Text(
+                    name,
+                    Modifier.ifThen(!isEnabled) { alpha(DISABLED_ALPHA) },
+                )
+            }
         },
     )
 }
