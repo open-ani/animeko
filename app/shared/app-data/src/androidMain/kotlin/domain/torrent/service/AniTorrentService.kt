@@ -13,6 +13,7 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
 import android.os.Process
@@ -48,6 +49,9 @@ import me.him188.ani.utils.io.inSystem
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import kotlin.coroutines.CoroutineContext
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.hours
+import kotlin.time.Duration.Companion.minutes
 
 class AniTorrentService : LifecycleService(), CoroutineScope {
     private val logger = logger(this::class)
@@ -79,7 +83,17 @@ class AniTorrentService : LifecycleService(), CoroutineScope {
         )
     }
 
-    private val notification = ServiceNotification(this)
+    // 在通知 action 和自停止使用
+    private val stopServiceIntent: PendingIntent by lazy {
+        PendingIntent.getService(
+            this, 0,
+            Intent(this, this::class.java).apply { putExtra(INTENT_STOP_SERVICE, true) },
+            PendingIntent.FLAG_IMMUTABLE,
+        )
+    }
+    private var scheduledAutoStop: Boolean = false
+
+    private val notification = ServiceNotification(this) { stopServiceIntent }
     private val alarmService: AlarmManager by lazy { getSystemService(Context.ALARM_SERVICE) as AlarmManager }
     private val wakeLock: PowerManager.WakeLock by lazy {
         (getSystemService(Context.POWER_SERVICE) as PowerManager)
@@ -118,16 +132,26 @@ class AniTorrentService : LifecycleService(), CoroutineScope {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.getBooleanExtra("stopService", false) == true) {
+        if (intent?.getBooleanExtra(INTENT_STOP_SERVICE, false) == true) {
             stopSelf()
             return super.onStartCommand(intent, flags, startId)
         }
         
         // acquire wake lock when app is stopped.
-        val acquireWakeLock = intent?.getLongExtra("acquireWakeLock", -1L) ?: -1L
+        val acquireWakeLock = intent?.getLongExtra(INTENT_ACQUIRE_WAKELOCK, -1L) ?: -1L
         if (acquireWakeLock != -1L) {
             wakeLock.acquire(acquireWakeLock)
             logger.info { "client acquired wake lock with ${acquireWakeLock / 1000} seconds." }
+            return super.onStartCommand(intent, flags, startId)
+        }
+
+        if (intent?.getBooleanExtra(INTENT_SCHEDULE_AUTO_STOP_ALARM, false) == true) {
+            scheduleAutoStopServiceAlarm(6.hours - 2.minutes)
+            return super.onStartCommand(intent, flags, startId)
+        }
+
+        if (intent?.getBooleanExtra(INTENT_CLEAR_AUTO_STOP_ALARM, false) == true) {
+            clearAutoStopServiceAlarm()
             return super.onStartCommand(intent, flags, startId)
         }
 
@@ -220,7 +244,40 @@ class AniTorrentService : LifecycleService(), CoroutineScope {
         Process.killProcess(Process.myPid())
     }
 
+    /**
+     * Android 15 以后, 应用进入后台后的 6 小时之内必须停止服务
+     */
+    private fun scheduleAutoStopServiceAlarm(stopUntil: Duration) {
+        if (!FEATURE_AUTO_STOP) return
+        if (scheduledAutoStop) return
+
+        alarmService.set(
+            AlarmManager.ELAPSED_REALTIME_WAKEUP,
+            SystemClock.elapsedRealtime() + stopUntil.inWholeMilliseconds,
+            stopServiceIntent,
+        )
+        scheduledAutoStop = true
+
+        logger.info { "scheduled auto stop service. Service will stop after $stopUntil." }
+    }
+
+    private fun clearAutoStopServiceAlarm() {
+        if (!FEATURE_AUTO_STOP) return
+        if (!scheduledAutoStop) return
+
+        alarmService.cancel(stopServiceIntent)
+        scheduledAutoStop = false
+
+        logger.info { "cancelled schedule of auto stop service." }
+    }
+
     companion object {
+        private val FEATURE_AUTO_STOP = Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM
         const val INTENT_STARTUP = "me.him188.ani.android.ANI_TORRENT_SERVICE_STARTUP"
+
+        const val INTENT_STOP_SERVICE = "stopService"
+        const val INTENT_ACQUIRE_WAKELOCK = "acquireWakeLock"
+        const val INTENT_SCHEDULE_AUTO_STOP_ALARM = "scheduleAutoStopAlarm"
+        const val INTENT_CLEAR_AUTO_STOP_ALARM = "clearAutoStopAlarm"
     }
 }

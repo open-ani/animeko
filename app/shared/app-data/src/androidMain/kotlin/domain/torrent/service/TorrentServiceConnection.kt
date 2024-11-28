@@ -99,7 +99,19 @@ class TorrentServiceConnection(
 
     private val acquireWakeLockIntent by lazy {
         Intent(context, AniTorrentService::class.java).apply {
-            putExtra("acquireWakeLock", 1.minutes.inWholeMilliseconds)
+            putExtra(AniTorrentService.INTENT_ACQUIRE_WAKELOCK, 1.minutes.inWholeMilliseconds)
+        }
+    }
+
+    // Android 15 以后需要在 APP 切换后台后 6h 内停止任何 dataSync FGS.
+    private val scheduleAutoStopAlarmIntent by lazy {
+        Intent(context, AniTorrentService::class.java).apply {
+            putExtra(AniTorrentService.INTENT_SCHEDULE_AUTO_STOP_ALARM, true)
+        }
+    }
+    private val clearAutoStopAlarmIntent by lazy {
+        Intent(context, AniTorrentService::class.java).apply {
+            putExtra(AniTorrentService.INTENT_CLEAR_AUTO_STOP_ALARM, true)
         }
     }
     
@@ -122,6 +134,8 @@ class TorrentServiceConnection(
                         "AniTorrentService is not started or stopped while app is switching to foreground, restarting."
                     }
                     restartService()
+                } else {
+                    context.startService(clearAutoStopAlarmIntent)
                 }
             }
 
@@ -129,6 +143,7 @@ class TorrentServiceConnection(
                 shouldRestartServiceImmediately = false
                 // 请求 wake lock, 如果在 app 中息屏可以保证 service 正常跑 10 分钟.
                 context.startService(acquireWakeLockIntent)
+                context.startService(scheduleAutoStopAlarmIntent)
             }
 
             Lifecycle.Event.ON_DESTROY -> {

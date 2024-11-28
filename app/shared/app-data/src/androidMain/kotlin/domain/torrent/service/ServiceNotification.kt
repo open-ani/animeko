@@ -26,20 +26,14 @@ import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
 
 class ServiceNotification(
-    private val context: Context
+    private val context: Context,
+    private val getStopServiceIntent: () -> PendingIntent
 ) {
     private val notificationService by lazy { context.getSystemService(NOTIFICATION_SERVICE) as NotificationManager }
 
     var notificationAppearance = defaultNotificationAppearance
         private set
     private var notificationOpenActivityIntent: Intent? = null
-    private val stopServiceIntent by lazy {
-        PendingIntent.getService(
-            context, 0,
-            Intent(context, AniTorrentService::class.java).apply { putExtra("stopService", true) },
-            PendingIntent.FLAG_IMMUTABLE,
-        )
-    }
 
     private val notificationChannel by lazy {
         notificationService.getNotificationChannel(NOTIFICATION_CHANNEL_ID)
@@ -150,7 +144,7 @@ class ServiceNotification(
                 Notification.Action.Builder(
                     notificationAppearance.icon,
                     notificationAppearance.stopActionText,
-                    stopServiceIntent,
+                    getStopServiceIntent(),
                 ).build(),
             )
             setTicker(notificationAppearance.name)
