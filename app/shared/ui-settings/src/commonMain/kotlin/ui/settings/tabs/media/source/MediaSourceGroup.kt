@@ -425,6 +425,7 @@ internal fun SettingsScope.MediaSourceItem(
                 Text(
                     name,
                     Modifier.ifThen(!isEnabled) { alpha(DISABLED_ALPHA) },
+                    textAlign = TextAlign.Center
                 )
             }
         },
