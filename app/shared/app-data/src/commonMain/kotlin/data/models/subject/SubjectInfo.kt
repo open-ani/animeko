@@ -12,6 +12,7 @@ package me.him188.ani.app.data.models.subject
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import me.him188.ani.app.domain.search.SubjectType
+import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.datasources.api.PackedDate
 
 /**
@@ -147,3 +148,7 @@ data class SubjectInfo(
 
 @Stable
 val SubjectInfo.nameCnOrName get() = nameCn.takeIf { it.isNotBlank() } ?: name
+
+fun SubjectInfo.toNavPlaceholder(): SubjectDetailPlaceholder {
+    return SubjectDetailPlaceholder(subjectId, name, nameCn, imageLarge)
+}

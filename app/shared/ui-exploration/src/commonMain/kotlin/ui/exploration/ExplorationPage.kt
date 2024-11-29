@@ -41,6 +41,7 @@ import kotlinx.coroutines.flow.Flow
 import me.him188.ani.app.data.models.UserInfo
 import me.him188.ani.app.data.models.subject.FollowedSubjectInfo
 import me.him188.ani.app.data.models.subject.subjectInfo
+import me.him188.ani.app.data.models.subject.toNavPlaceholder
 import me.him188.ani.app.data.models.trending.TrendingSubjectInfo
 import me.him188.ani.app.domain.session.AuthState
 import me.him188.ani.app.navigation.LocalNavigator
@@ -161,12 +162,7 @@ fun ExplorationPage(
                 onClick = {
                     navigator.navigateSubjectDetails(
                         subjectId = it.subjectInfo.subjectId,
-                        placeholder = SubjectDetailPlaceholder(
-                            it.subjectInfo.subjectId,
-                            it.subjectInfo.name,
-                            it.subjectInfo.nameCn,
-                            it.subjectInfo.imageLarge,
-                        ),
+                        placeholder = it.subjectInfo.toNavPlaceholder(),
                     )
                 },
                 onPlay = {

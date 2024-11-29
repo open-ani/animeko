@@ -41,63 +41,10 @@ import me.him188.ani.utils.platform.annotations.TestOnly
 @Composable
 internal fun PreviewSubjectDetails() = ProvideFoundationCompositionLocalsForPreview {
     val state = createTestSubjectDetailsState(rememberCoroutineScope())
-    val connectedScrollState = rememberConnectedScrollState()
-    SubjectDetailsPageLayout(
-        state = state,
-        collectionData = {
-            SubjectDetailsDefaults.CollectionData(
-                collectionStats = state.info.collectionStats,
-            )
-        },
-        collectionActions = {
-            EditableSubjectCollectionTypeButton(
-                rememberTestEditableSubjectCollectionTypeState(),
-            )
-        },
-        rating = {
-            EditableRating(
-                state = rememberTestEditableRatingState(),
-            )
-        },
-        selectEpisodeButton = {
-            SubjectDetailsDefaults.SelectEpisodeButtons(
-                rememberTestSubjectProgressState(info = TestSubjectProgressInfos.ContinueWatching2),
-                onShowEpisodeList = {},
-                onPlay = {},
-            )
-        },
-        connectedScrollState = connectedScrollState,
-    ) { paddingValues ->
-        SubjectDetailsContentPager(
-            paddingValues,
-            connectedScrollState,
-            detailsTab = {
-                SubjectDetailsDefaults.DetailsTab(
-                    info = TestSubjectInfo,
-                    staff = rememberTestLazyPagingItems(TestSubjectStaffInfo),
-                    exposedStaff = rememberTestLazyPagingItems(TestSubjectStaffInfo.take(6)),
-                    totalStaffCount = TestSubjectStaffInfo.size,
-                    characters = rememberTestLazyPagingItems(TestSubjectCharacterList),
-                    exposedCharacters = rememberTestLazyPagingItems(TestSubjectCharacterList.take(6)),
-                    totalCharactersCount = TestSubjectCharacterList.size,
-                    relatedSubjects = rememberTestLazyPagingItems(TestRelatedSubjects),
-                    Modifier.nestedScroll(connectedScrollState.nestedScrollConnection),
-                )
-            },
-            commentsTab = {
-                val lazyListState = rememberLazyListState()
-
-                SubjectDetailsDefaults.SubjectCommentColumn(
-                    state = rememberTestCommentState(commentList = generateUiComment(10)),
-                    onClickUrl = { },
-                    onClickImage = {},
-                    connectedScrollState = connectedScrollState,
-                    lazyListState = lazyListState,
-                )
-            },
-            discussionsTab = {},
-        )
-    }
+    SubjectDetailsPage(
+        state,
+        onPlay = { },
+    )
 }
 
 @OptIn(TestOnly::class)
@@ -105,38 +52,9 @@ internal fun PreviewSubjectDetails() = ProvideFoundationCompositionLocalsForPrev
 @Preview(device = "spec:width=1280dp,height=800dp,dpi=240")
 @Composable
 internal fun PreviewPlaceholderSubjectDetails() = ProvideFoundationCompositionLocalsForPreview {
-    val state = createTestSubjectDetailsState(rememberCoroutineScope())
-    val connectedScrollState = rememberConnectedScrollState()
-    SubjectDetailsPageLayout(
-        state = state,
-        collectionData = {
-            SubjectDetailsDefaults.CollectionData(
-                collectionStats = state.info.collectionStats,
-                Modifier.placeholder(true),
-            )
-        },
-        collectionActions = {
-            EditableSubjectCollectionTypeButton(
-                rememberTestEditableSubjectCollectionTypeState(),
-                Modifier.placeholder(true),
-            )
-        },
-        rating = {
-            EditableRating(
-                state = rememberTestEditableRatingState(),
-                Modifier.placeholder(true),
-            )
-        },
-        selectEpisodeButton = {
-            SubjectDetailsDefaults.SelectEpisodeButtons(
-                rememberTestSubjectProgressState(info = TestSubjectProgressInfos.ContinueWatching2),
-                onShowEpisodeList = {},
-                onPlay = {},
-                Modifier.placeholder(true),
-            )
-        },
-        connectedScrollState = connectedScrollState,
-    ) { paddingValues ->
-        PlaceholderSubjectDetailsDetailTabLayout(paddingValues)
-    }
+    val state = createTestSubjectDetailsState(rememberCoroutineScope(), true)
+    SubjectDetailsPage(
+        state,
+        onPlay = { },
+    )
 }

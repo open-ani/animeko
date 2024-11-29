@@ -212,7 +212,7 @@ fun SubjectDetailsPage(
                 enter = EnterTransition.None,
                 exit = fadeOut(AniThemeDefaults.feedItemFadeOutSpec),
             ) {
-                PlaceholderSubjectDetailsDetailTabLayout(paddingValues)
+                PlaceholderSubjectDetailsContentPager(paddingValues)
             }
             if (state.showPlaceholder) return@SubjectDetailsPageLayout
 
@@ -401,7 +401,7 @@ fun SubjectDetailsPageLayout(
 }
 
 @Composable
-fun SubjectDetailsContentPager(
+private fun SubjectDetailsContentPager(
     paddingValues: PaddingValues,
     connectedScrollState: ConnectedScrollState,
     detailsTab: @Composable (contentPadding: PaddingValues) -> Unit,
@@ -477,7 +477,7 @@ fun SubjectDetailsContentPager(
  * 加载展位页
  */
 @Composable
-fun PlaceholderSubjectDetailsDetailTabLayout(paddingValues: PaddingValues) {
+private fun PlaceholderSubjectDetailsContentPager(paddingValues: PaddingValues) {
     val density = LocalDensity.current
     val windowSizeClass = currentWindowAdaptiveInfo1().windowSizeClass
 
@@ -497,7 +497,7 @@ fun PlaceholderSubjectDetailsDetailTabLayout(paddingValues: PaddingValues) {
                 .placeholder(true),
         )
 
-        Spacer(Modifier.fillMaxWidth().height(16.dp))
+        Spacer(Modifier.height(16.dp))
 
         // 条目描述
         val bodyMediumTextHeight = with(density) { MaterialTheme.typography.bodyMedium.lineHeight.toDp() }
@@ -515,7 +515,7 @@ fun PlaceholderSubjectDetailsDetailTabLayout(paddingValues: PaddingValues) {
             )
         }
 
-        Spacer(Modifier.fillMaxWidth().height(12.dp))
+        Spacer(Modifier.height(12.dp))
 
         // 标签
         val labelMediumTextHeight = with(density) { MaterialTheme.typography.labelMedium.lineHeight.toDp() }

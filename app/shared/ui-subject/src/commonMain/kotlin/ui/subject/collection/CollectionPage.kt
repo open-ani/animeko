@@ -77,6 +77,7 @@ import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.UserInfo
 import me.him188.ani.app.data.models.subject.SubjectCollectionCounts
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
+import me.him188.ani.app.data.models.subject.toNavPlaceholder
 import me.him188.ani.app.data.repository.subject.CollectionsFilterQuery
 import me.him188.ani.app.domain.session.AuthState
 import me.him188.ani.app.navigation.LocalNavigator
@@ -418,12 +419,7 @@ private fun SubjectCollectionItem(
                     {
                         navigator.navigateSubjectDetails(
                             subjectCollection.subjectId,
-                            placeholder = SubjectDetailPlaceholder(
-                                id = subjectCollection.subjectId,
-                                name = subjectCollection.subjectInfo.name,
-                                nameCN = subjectCollection.subjectInfo.nameCn,
-                                coverUrl = subjectCollection.subjectInfo.imageLarge,
-                            ),
+                            placeholder = subjectCollection.subjectInfo.toNavPlaceholder(),
                         )
                     },
                 ) {
@@ -442,12 +438,7 @@ private fun SubjectCollectionItem(
         onClick = {
             navigator.navigateSubjectDetails(
                 subjectCollection.subjectId,
-                placeholder = SubjectDetailPlaceholder(
-                    id = subjectCollection.subjectId,
-                    name = subjectCollection.subjectInfo.name,
-                    nameCN = subjectCollection.subjectInfo.nameCn,
-                    coverUrl = subjectCollection.subjectInfo.imageLarge,
-                ),
+                placeholder = subjectCollection.subjectInfo.toNavPlaceholder(),
             )
         },
         onShowEpisodeList = {
