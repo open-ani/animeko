@@ -14,6 +14,7 @@ import android.content.Context
 import android.webkit.CookieManager
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
+import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.runtime.Composable
@@ -24,13 +25,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
-import me.him188.ani.app.domain.media.resolver.ResolutionFailures
-import me.him188.ani.app.domain.media.resolver.UnsupportedMediaException
-import me.him188.ani.app.domain.media.resolver.VideoSourceResolutionException
-import me.him188.ani.app.domain.media.resolver.VideoSourceResolver
-import me.him188.ani.app.domain.media.resolver.WebResource
-import me.him188.ani.app.domain.media.resolver.WebViewVideoExtractor
 import me.him188.ani.app.domain.media.resolver.WebViewVideoExtractor.Instruction
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.videoplayer.HttpStreamingVideoSource
@@ -216,6 +210,8 @@ class AndroidWebViewVideoExtractor : WebViewVideoExtractor {
             }
         }
         webView.settings.javaScriptEnabled = true
+        webView.settings.mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+        webView.settings.domStorageEnabled = true
         webView.webViewClient = object : WebViewClient() {
             override fun shouldInterceptRequest(
                 view: WebView,
