@@ -171,7 +171,8 @@ class SelectorMediaSource(
 
                 for (subjectInfo in subjects) {
                     val episodeDocument = doHttpGet(subjectInfo.fullUrl).getOrNull() ?: continue
-                    val episodes = selectEpisodes(episodeDocument, searchConfig)?.episodes ?: continue
+                    val episodes =
+                        selectEpisodes(episodeDocument, subjectInfo.fullUrl, searchConfig)?.episodes ?: continue
 
                     addAll(
                         selectMedia(

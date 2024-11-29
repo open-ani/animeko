@@ -17,6 +17,7 @@ import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.URLBuilder
 import io.ktor.http.Url
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -158,10 +159,12 @@ abstract class SelectorMediaSourceEngine {
     }
 
     /**
+     * @param subjectUrl episode 所属 (来自) 的条目的完整 URL.
      * @return `null` if config is invalid
      */
     fun selectEpisodes(
         subjectDetailsPage: Element,
+        subjectUrl: String,
         config: SelectorSearchConfig,
     ): SelectedChannelEpisodes? {
         val channelFormat = SelectorChannelFormat.findById(config.channelFormatId)
@@ -173,9 +176,17 @@ abstract class SelectorMediaSourceEngine {
         if (!formatConfig.isValid()) {
             return null
         }
+
+        val finalBaseUrl = kotlin.runCatching {
+            URLBuilder(subjectUrl).apply {
+                pathSegments = pathSegments.dropLast(1)
+            }.buildString()
+        }.getOrElse {
+            return null
+        }
         return channelFormat.select(
             subjectDetailsPage,
-            config.finalBaseUrl,
+            finalBaseUrl,
             formatConfig,
         )
     }
@@ -225,7 +236,7 @@ abstract class SelectorMediaSourceEngine {
                 publishedTime = 0L,
                 properties = MediaProperties(
                     subtitleLanguageIds = subtitleLanguages,
-                    resolution = "1080P",
+                    resolution = config.defaultResolution.id,
                     alliance = info.channel ?: mediaSourceId,
                     size = FileSize.Unspecified,
                     subtitleKind = SubtitleKind.EMBEDDED,

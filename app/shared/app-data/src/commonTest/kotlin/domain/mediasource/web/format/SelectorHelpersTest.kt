@@ -63,23 +63,43 @@ class SelectorHelpersTest {
         )
 
         case(
+            "https://example.com/relative/foo",
+            "https://example.com/test", "/relative/foo",
+        )
+
+        case(
+            "https://example.com/relative/foo",
+            "https://example.com/test/test", "/relative/foo",
+        )
+
+        case(
+            "https://example.com/relative/foo",
+            "https://example.com/test/test/", "/relative/foo",
+        )
+
+        case(
+            "https://example.com/relative/foo/",
+            "https://example.com/test/test/", "/relative/foo/",
+        )
+
+        case(
             "https://example.com/",
             "https://example.com/", "",
         )
 
-        case(
-            "/",
-            "", "",
-        )
-
-        case(
-            "/test",
-            "", "/test",
-        )
-
-        case(
-            "/test",
-            "", "test",
-        )
+//        case(
+//            "/",
+//            "", "",
+//        )
+//
+//        case(
+//            "/test",
+//            "", "/test",
+//        )
+//
+//        case(
+//            "/test",
+//            "", "test",
+//        )
     }
 }

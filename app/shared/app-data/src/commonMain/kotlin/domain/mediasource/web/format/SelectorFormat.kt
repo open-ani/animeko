@@ -10,6 +10,8 @@
 package me.him188.ani.app.domain.mediasource.web.format
 
 import androidx.compose.runtime.Immutable
+import io.ktor.http.URLBuilder
+import io.ktor.http.path
 import kotlinx.serialization.Serializable
 import kotlin.jvm.JvmInline
 
@@ -48,6 +50,7 @@ fun Regex.Companion.parseOrNull(regex: String): Regex? {
 
 object SelectorHelpers {
     fun computeAbsoluteUrl(baseUrl: String, relativeUrl: String): String {
+        require(baseUrl.isNotEmpty()) { "baseUrl must not be empty" }
         @Suppress("NAME_SHADOWING")
         var baseUrl = baseUrl
         if (baseUrl.endsWith('/')) {
@@ -55,7 +58,13 @@ object SelectorHelpers {
         }
         return when {
             relativeUrl.startsWith("http") -> relativeUrl
-            relativeUrl.startsWith('/') -> baseUrl + relativeUrl
+            relativeUrl.startsWith('/') -> {
+                URLBuilder(baseUrl).apply {
+                    pathSegments = emptyList()
+                    path(relativeUrl)
+                }.buildString()
+            }
+
             else -> "$baseUrl/$relativeUrl"
         }
     }

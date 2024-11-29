@@ -68,6 +68,7 @@ import me.him188.ani.app.ui.foundation.icons.AniIcons
 import me.him188.ani.app.ui.foundation.icons.Forward85
 import me.him188.ani.app.ui.foundation.icons.RightPanelClose
 import me.him188.ani.app.ui.foundation.icons.RightPanelOpen
+import me.him188.ani.app.ui.foundation.interaction.WindowDragArea
 import me.him188.ani.app.ui.foundation.rememberDebugSettingsViewModel
 import me.him188.ani.app.ui.settings.danmaku.DanmakuRegexFilterState
 import me.him188.ani.app.ui.subject.episode.danmaku.DanmakuEditor
@@ -192,37 +193,39 @@ internal fun EpisodeVideoImpl(
         controllerState = videoControllerState,
         gestureLocked = { isLocked },
         topBar = {
-            PlayerTopBar(
-                Modifier.testTag(TAG_EPISODE_VIDEO_TOP_BAR),
-                title = if (expanded) {
-                    { title() }
-                } else {
-                    null
-                },
-                actions = {
-                    IconButton({ playerState.skip(85000L) }) {
-                        Icon(AniIcons.Forward85, "跳过 85s")
-                    }
-                    if (expanded) {
-                        IconButton({ isMediaSelectorVisible = true }, Modifier.testTag(TAG_SHOW_MEDIA_SELECTOR)) {
-                            Icon(Icons.Rounded.DisplaySettings, contentDescription = "数据源")
+            WindowDragArea {
+                PlayerTopBar(
+                    Modifier.testTag(TAG_EPISODE_VIDEO_TOP_BAR),
+                    title = if (expanded) {
+                        { title() }
+                    } else {
+                        null
+                    },
+                    actions = {
+                        IconButton({ playerState.skip(85000L) }) {
+                            Icon(AniIcons.Forward85, "跳过 85s")
                         }
-                    }
-                    IconButton({ sideSheetState = SideSheetState.SETTINGS }, Modifier.testTag(TAG_SHOW_SETTINGS)) {
-                        Icon(Icons.Rounded.Settings, contentDescription = "设置")
-                    }
-                    if (expanded && LocalPlatform.current.isDesktop()) {
-                        IconButton({ onToggleSidebar(!sidebarVisible) }, Modifier.testTag(TAG_COLLAPSE_SIDEBAR)) {
-                            if (sidebarVisible) {
-                                Icon(AniIcons.RightPanelClose, contentDescription = "折叠侧边栏")
-                            } else {
-                                Icon(AniIcons.RightPanelOpen, contentDescription = "展开侧边栏")
+                        if (expanded) {
+                            IconButton({ isMediaSelectorVisible = true }, Modifier.testTag(TAG_SHOW_MEDIA_SELECTOR)) {
+                                Icon(Icons.Rounded.DisplaySettings, contentDescription = "数据源")
                             }
                         }
-                    }
-                },
-                windowInsets = contentWindowInsets,
-            )
+                        IconButton({ sideSheetState = SideSheetState.SETTINGS }, Modifier.testTag(TAG_SHOW_SETTINGS)) {
+                            Icon(Icons.Rounded.Settings, contentDescription = "设置")
+                        }
+                        if (expanded && LocalPlatform.current.isDesktop()) {
+                            IconButton({ onToggleSidebar(!sidebarVisible) }, Modifier.testTag(TAG_COLLAPSE_SIDEBAR)) {
+                                if (sidebarVisible) {
+                                    Icon(AniIcons.RightPanelClose, contentDescription = "折叠侧边栏")
+                                } else {
+                                    Icon(AniIcons.RightPanelOpen, contentDescription = "展开侧边栏")
+                                }
+                            }
+                        }
+                    },
+                    windowInsets = contentWindowInsets,
+                )
+            }
         },
         video = {
             if (LocalIsPreviewing.current) {

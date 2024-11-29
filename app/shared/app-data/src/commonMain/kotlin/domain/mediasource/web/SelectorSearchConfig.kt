@@ -23,6 +23,8 @@ import me.him188.ani.app.domain.mediasource.web.format.SelectorSubjectFormatA
 import me.him188.ani.app.domain.mediasource.web.format.SelectorSubjectFormatIndexed
 import me.him188.ani.app.domain.mediasource.web.format.SelectorSubjectFormatJsonPathIndexed
 import me.him188.ani.app.domain.mediasource.web.format.parseOrNull
+import me.him188.ani.datasources.api.MediaProperties
+import me.him188.ani.datasources.api.topic.Resolution
 import org.intellij.lang.annotations.Language
 
 @Immutable
@@ -59,6 +61,10 @@ data class SelectorSearchConfig(
 //    val selectNameFromEpisode: String = "",
 //    val selectPlayUrlFromEpisode: String = "",
 
+    /**
+     * @see MediaProperties.resolution
+     */
+    val defaultResolution: Resolution = Resolution.R1080P,
 
     // Search done. Now we should have Medias.
     val filterByEpisodeSort: Boolean = true,

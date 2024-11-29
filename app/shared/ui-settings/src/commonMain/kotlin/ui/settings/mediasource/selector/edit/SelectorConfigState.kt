@@ -275,6 +275,10 @@ class SelectorConfigState(
 
     // endregion
 
+    var defaultResolution by argumentsStorage.prop(
+        { it.searchConfig.defaultResolution }, { copy(searchConfig = searchConfig.copy(defaultResolution = it)) },
+        SelectorMediaSourceArguments.Default.searchConfig.defaultResolution,
+    )
     var filterByEpisodeSort by argumentsStorage.prop(
         { it.searchConfig.filterByEpisodeSort }, { copy(searchConfig = searchConfig.copy(filterByEpisodeSort = it)) },
         SelectorMediaSourceArguments.Default.searchConfig.filterByEpisodeSort,

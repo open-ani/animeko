@@ -51,6 +51,7 @@ import org.cef.network.CefCookieManager
 import org.cef.network.CefRequest
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * 用 WebView 加载网站, 拦截 WebView 加载资源, 用各数据源提供的 [WebVideoMatcher]
@@ -234,6 +235,8 @@ class CefVideoExtractor(
             }
 
             deferred.await()
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Throwable) {
             logger.error(e) { "Failed to get video url." }
             if (deferred.isActive) {

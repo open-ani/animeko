@@ -21,10 +21,10 @@ actual inline fun WindowDragArea(
     modifier: Modifier,
     crossinline content: @Composable () -> Unit
 ) {
-    val windowScope = LocalPlatformWindow.current.windowScope
     if (LocalPlatform.current is Platform.Windows) {
         content()
     } else {
+        val windowScope = LocalPlatformWindow.current.windowScope
         windowScope?.run {
             WindowDraggableArea(modifier) {
                 content()

@@ -83,32 +83,12 @@ interface BangumiClient : Closeable {
     }
      */
 
-    @Serializable
-    data class GetAccessTokenResponse(
-        @SerialName("expires_in") val expiresIn: Long,
-        @SerialName("user_id") val userId: Long,
-        @SerialName("access_token") val accessToken: String,
-        @SerialName("refresh_token") val refreshToken: String,
-    )
-
     /**
      * @param actionName 本次操作的调试名称. 用于在日志中记录. 方便在安卓等协程无法正确显示调用栈的地方定位问题
      */
     suspend fun executeGraphQL(actionName: String, query: String, variables: JsonObject? = null): JsonObject
 
-    @Serializable
-    data class GetTokenStatusResponse(
-        @SerialName("access_token") val accessToken: String,
-        @SerialName("client_id") val clientId: String,
-        @SerialName("expires") val expires: Long, // timestamp
-        @SerialName("user_id") val userId: Int,
-    )
-
     suspend fun getSelfInfoByToken(accessToken: String?): BangumiUser?
-
-    suspend fun deleteSubjectCollection(
-        subjectId: Int
-    )
 
     suspend fun testConnection(): ConnectionStatus
 
@@ -152,10 +132,6 @@ class DelegateBangumiClient(
 
     override suspend fun getSelfInfoByToken(accessToken: String?): BangumiUser? =
         client.first().getSelfInfoByToken(accessToken)
-
-    override suspend fun deleteSubjectCollection(subjectId: Int) {
-        client.first().deleteSubjectCollection(subjectId)
-    }
 
     override suspend fun testConnection(): ConnectionStatus {
         return client.first().testConnection()
@@ -225,10 +201,6 @@ class BangumiClientImpl(
             }
             throw e
         }
-    }
-
-    override suspend fun deleteSubjectCollection(subjectId: Int) {
-        // not implemented
     }
 
     override suspend fun testConnection(): ConnectionStatus {

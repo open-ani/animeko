@@ -184,9 +184,12 @@ class SelectorTestState(
             }
 
             else -> {
+                val subjectUrl = selectedSubject?.subjectDetailsPageUrl
+                    ?: return@derivedStateOf SelectorTestEpisodeListResult.InvalidConfig
+
                 subjectDetailsPageDocument.fold(
                     onSuccess = { document ->
-                        convertEpisodeResult(document, searchConfig, queryState)
+                        convertEpisodeResult(document, searchConfig, queryState, subjectUrl)
                     },
                     onFailure = {
                         SelectorTestEpisodeListResult.UnknownError(it)
@@ -213,13 +216,13 @@ class SelectorTestState(
         res: ApiResponse<Document?>,
         config: SelectorSearchConfig,
         query: SelectorSearchQuery,
+        subjectUrl: String,
     ): SelectorTestEpisodeListResult {
         return res.fold(
             onSuccess = { document ->
                 try {
                     document ?: return SelectorTestEpisodeListResult.Success(null, emptyList())
-
-                    val episodeList = engine.selectEpisodes(document, config)
+                    val episodeList = engine.selectEpisodes(document, subjectUrl, config)
                         ?: return SelectorTestEpisodeListResult.InvalidConfig
                     SelectorTestEpisodeListResult.Success(
                         episodeList.channels,

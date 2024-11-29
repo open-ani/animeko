@@ -24,6 +24,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
@@ -33,7 +35,12 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -54,6 +61,7 @@ import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.theme.EasingDurations
 import me.him188.ani.app.ui.settings.mediasource.rss.edit.MediaSourceHeadline
+import me.him188.ani.datasources.api.topic.Resolution
 
 @Composable
 internal fun SelectorConfigurationPane(
@@ -296,6 +304,36 @@ internal fun SelectorConfigurationPane(
                 textFieldShape = textFieldShape,
                 verticalSpacing = verticalSpacing,
             )
+
+            kotlin.run {
+                var showMenu by rememberSaveable { mutableStateOf(false) }
+                ListItem(
+                    headlineContent = { Text("标记分辨率") },
+                    Modifier.focusable(false).clickable(
+                        enabled = state.enableEdit,
+                    ) { showMenu = !showMenu },
+                    supportingContent = { Text("将此数据源的资源都标记为该分辨率。不影响查询，只在播放器中选择数据源时用做偏好和过滤选项。") },
+                    trailingContent = {
+                        TextButton(onClick = { showMenu = true }) {
+                            Text(state.defaultResolution.displayName)
+                        }
+                        if (showMenu) {
+                            DropdownMenu(showMenu, { showMenu = false }) {
+                                for (resolution in Resolution.entries.asReversed()) {
+                                    DropdownMenuItem(
+                                        text = { Text(resolution.displayName) },
+                                        onClick = {
+                                            state.defaultResolution = resolution
+                                            showMenu = false
+                                        },
+                                    )
+                                }
+                            }
+                        }
+                    },
+                    colors = listItemColors,
+                )
+            }
 
             Row(Modifier.padding(top = verticalSpacing, bottom = 12.dp)) {
                 ProvideTextStyleContentColor(
