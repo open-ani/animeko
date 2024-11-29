@@ -73,7 +73,7 @@ object MediaListFilters {
     }
     private val allNumbersRegex = numberMappings.keys.joinToString("|").toRegex()
     private val specialCharRegex = Regex("""[~!@#$%^&*()_+{}\[\]\\|;':",.<>/?【】：～「」]""")
-    private val whitespaceRegex = Regex(""" 	\s+""")
+    private val whitespaceRegex = Regex("""[ 	\s+]""")
 
 
     private data class KeepWords(
