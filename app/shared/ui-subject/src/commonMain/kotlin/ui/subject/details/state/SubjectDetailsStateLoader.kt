@@ -9,22 +9,19 @@
 
 package me.him188.ani.app.ui.subject.details.state
 
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.ui.search.LoadError
-import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.platform.annotations.TestOnly
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -36,59 +33,59 @@ class SubjectDetailsStateLoader(
     private val subjectDetailsStateFactory: SubjectDetailsStateFactory,
     private val backgroundScope: CoroutineScope,
 ) {
-    private var runningFlowScope: CoroutineScope? = null
     private val tasker = MonoTasker(backgroundScope)
 
-    val isLoading get() = tasker.isRunning
+    private val _result: MutableState<LoadState> = mutableStateOf(LoadState.Loading)
+    val result: State<LoadState> = _result
 
     fun load(
         subjectId: Int,
         placeholder: SubjectInfo? = null
     ): Job {
-        if (subjectDetailsStateFlow?.value?.info?.subjectId == subjectId) {
+        val curr = _result.value
+        if (curr is LoadState.Ok && curr.value.info.subjectId == subjectId) {
             // 已经加载完成了
             return completedJob
         }
         return tasker.launch {
-            withContext(Dispatchers.Main) {
-                subjectDetailsStateProblem = null
-                subjectDetailsStateFlow = null
-            }
-            runningFlowScope?.cancel()
-            val flowScope = backgroundScope.childScope()
-            runningFlowScope = flowScope
-            val resp = try {
-                subjectDetailsStateFactory.create(subjectId, placeholder).stateIn(flowScope)
+            withContext(Dispatchers.Main) { _result.value = LoadState.Loading }
+            try {
+                subjectDetailsStateFactory.create(subjectId, placeholder).collectLatest {
+                    withContext(Dispatchers.Main) { _result.value = LoadState.Ok(it) }
+                }
             } catch (e: CancellationException) {
-                flowScope.cancel()
                 throw e
             } catch (e: Exception) {
-                flowScope.cancel()
                 withContext(Dispatchers.Main) {
-                    subjectDetailsStateProblem = LoadError.fromException(e)
-                    subjectDetailsStateFlow = null
+                    _result.value = LoadState.Err(
+                        placeholder ?: SubjectInfo.createPlaceholder(subjectId, "", ""),
+                        LoadError.fromException(e),
+                    ) 
                 }
                 return@launch
-            }
-            withContext(Dispatchers.Main) {
-                subjectDetailsStateFlow = resp
             }
         }
     }
 
     fun clear() {
         tasker.cancel()
-        subjectDetailsStateProblem = null
-        runningFlowScope?.cancel()
-        runningFlowScope = null
-        subjectDetailsStateFlow = null
+        _result.value = LoadState.Loading
     }
 
-    var subjectDetailsStateProblem: LoadError? by mutableStateOf(null)
-        private set
-    var subjectDetailsStateFlow: StateFlow<SubjectDetailsState>? by mutableStateOf(null)
-        private set
+    fun reload(
+        subjectId: Int,
+        placeholder: SubjectInfo? = null
+    ) {
+        clear()
+        load(subjectId, placeholder)
+    }
 
+    sealed class LoadState {
+        data object Loading : LoadState()
+        class Ok(val value: SubjectDetailsState) : LoadState()
+        class Err(val placeholder: SubjectInfo, val error: LoadError) : LoadState()
+    }
+    
     private companion object {
         private val completedJob: Job = CompletableDeferred(Unit)
     }

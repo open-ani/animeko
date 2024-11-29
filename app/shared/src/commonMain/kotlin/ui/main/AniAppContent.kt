@@ -221,6 +221,7 @@ private fun AniAppContentImpl(
                     SubjectDetailsPage(
                         vm,
                         onPlay = { aniNavigator.navigateEpisodeDetails(details.subjectId, it) },
+                        onLoadErrorRetry = { vm.reload() },
                         windowInsets = windowInsets,
                     )
                 }

@@ -60,7 +60,6 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.him188.ani.app.data.models.episode.displayName
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.domain.session.AuthState
@@ -139,18 +138,18 @@ fun EpisodeDetails(
     }
 
     if (state.subjectId != 0) {
-        val subjectDetailsStateFlow = state.subjectDetailsStateLoader.subjectDetailsStateFlow
-        if (showSubjectDetails && subjectDetailsStateFlow != null) {
+        val subjectDetailsState by state.subjectDetailsStateLoader.result
+        if (showSubjectDetails) {
             ModalBottomSheet(
                 { showSubjectDetails = false },
                 sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = LocalPlatform.current.isDesktop()),
                 modifier = Modifier.desktopTitleBarPadding().statusBarsPadding(),
                 contentWindowInsets = { BottomSheetDefaults.windowInsets.add(WindowInsets.desktopTitleBar()) },
             ) {
-                val subjectDetailsState by subjectDetailsStateFlow.collectAsStateWithLifecycle()
                 SubjectDetailsPage(
                     subjectDetailsState,
                     onPlay = onSwitchEpisode,
+                    onLoadErrorRetry = { state.subjectDetailsStateLoader.reload(state.subjectId) },
                     showTopBar = false,
                     showBlurredBackground = false,
                 )

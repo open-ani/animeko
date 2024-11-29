@@ -70,9 +70,9 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.compose.collectAsLazyPagingItemsWithLifecycle
 import kotlinx.coroutines.launch
+import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.ImageViewer
@@ -97,15 +97,19 @@ import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.TopAppBarGoBackButton
 import me.him188.ani.app.ui.richtext.RichTextDefaults
+import me.him188.ani.app.ui.search.LoadError
+import me.him188.ani.app.ui.search.LoadErrorCard
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeButton
 import me.him188.ani.app.ui.subject.details.components.CollectionData
 import me.him188.ani.app.ui.subject.details.components.DetailsTab
+import me.him188.ani.app.ui.subject.details.components.SeasonTag
 import me.him188.ani.app.ui.subject.details.components.SelectEpisodeButtons
 import me.him188.ani.app.ui.subject.details.components.SubjectBlurredBackground
 import me.him188.ani.app.ui.subject.details.components.SubjectCommentColumn
 import me.him188.ani.app.ui.subject.details.components.SubjectDetailsDefaults
 import me.him188.ani.app.ui.subject.details.components.SubjectDetailsHeader
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsState
+import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateLoader
 import me.him188.ani.app.ui.subject.episode.list.EpisodeListDialog
 import me.him188.ani.app.ui.subject.rating.EditableRating
 import me.him188.ani.utils.platform.isMobile
@@ -114,27 +118,57 @@ import me.him188.ani.utils.platform.isMobile
 fun SubjectDetailsPage(
     vm: SubjectDetailsViewModel,
     onPlay: (episodeId: Int) -> Unit,
+    onLoadErrorRetry: () -> Unit,
     modifier: Modifier = Modifier,
     showTopBar: Boolean = true,
     showBlurredBackground: Boolean = true,
     windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
 ) {
-    val stateFlow = vm.stateLoader.subjectDetailsStateFlow
-    if (stateFlow != null) {
-        val state by stateFlow.collectAsStateWithLifecycle()
-        SubjectDetailsPage(
-            state,
-            onPlay = onPlay,
-            modifier,
-            showTopBar,
-            showBlurredBackground && !state.showPlaceholder,
-            windowInsets,
-        )
-    }
+    SubjectDetailsPage(
+        vm.result,
+        onPlay,
+        onLoadErrorRetry,
+        modifier,
+        showTopBar,
+        showBlurredBackground,
+        windowInsets,
+    )
 }
 
 @Composable
 fun SubjectDetailsPage(
+    state: SubjectDetailsStateLoader.LoadState,
+    onPlay: (episodeId: Int) -> Unit,
+    onLoadErrorRetry: () -> Unit,
+    modifier: Modifier = Modifier,
+    showTopBar: Boolean = true,
+    showBlurredBackground: Boolean = true,
+    windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
+) {
+    if (state is SubjectDetailsStateLoader.LoadState.Ok) {
+        SubjectDetailsPage(
+            state.value,
+            onPlay = onPlay,
+            modifier,
+            showTopBar,
+            showBlurredBackground && !state.value.showPlaceholder,
+            windowInsets,
+        )
+    } else if (state is SubjectDetailsStateLoader.LoadState.Err) {
+        ErrorSubjectDetailsPage(
+            state.placeholder,
+            error = state.error,
+            onRetry = onLoadErrorRetry,
+            modifier,
+            showTopBar,
+            windowInsets,
+        )
+    }
+    // TODO: SubjectDetailsStateLoader.LoadState.Loading
+}
+
+@Composable
+private fun SubjectDetailsPage(
     state: SubjectDetailsState,
     onPlay: (episodeId: Int) -> Unit,
     modifier: Modifier = Modifier,
@@ -163,7 +197,14 @@ fun SubjectDetailsPage(
 
     val placeholderModifier = Modifier.placeholder(state.showPlaceholder)
     SubjectDetailsPageLayout(
-        state,
+        state.info,
+        seasonTags = {
+            SubjectDetailsDefaults.SeasonTag(
+                airDate = state.info.airDate,
+                airingLabelState = state.airingLabelState,
+                placeholderModifier,
+            )
+        },
         collectionData = {
             SubjectDetailsDefaults.CollectionData(
                 collectionStats = state.info.collectionStats,
@@ -269,6 +310,40 @@ fun SubjectDetailsPage(
     ImageViewer(imageViewer) { imageViewer.clear() }
 }
 
+@Composable
+private fun ErrorSubjectDetailsPage(
+    placeholderSubjectInfo: SubjectInfo,
+    error: LoadError,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier,
+    showTopBar: Boolean = true,
+    windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
+) {
+    SubjectDetailsPageLayout(
+        info = placeholderSubjectInfo,
+        seasonTags = { },
+        collectionData = { },
+        collectionActions = { },
+        rating = { },
+        selectEpisodeButton = { },
+        connectedScrollState = rememberConnectedScrollState(),
+        modifier,
+        showTopBar,
+        showBlurredBackground = false,
+        windowInsets,
+    ) { paddingValues ->
+        LoadErrorCard(
+            problem = error,
+            onRetry = onRetry,
+            modifier = Modifier
+                .padding(paddingValues)
+                .consumeWindowInsets(paddingValues)
+                .padding(horizontal = currentWindowAdaptiveInfo1().windowSizeClass.paneHorizontalPadding)
+                .padding(top = 12.dp),
+        )
+    }
+}
+
 @Immutable
 enum class SubjectDetailsTab {
     DETAILS,
@@ -282,7 +357,8 @@ enum class SubjectDetailsTab {
  */
 @Composable
 fun SubjectDetailsPageLayout(
-    state: SubjectDetailsState,
+    info: SubjectInfo,
+    seasonTags: @Composable () -> Unit,
     collectionData: @Composable () -> Unit,
     collectionActions: @Composable () -> Unit,
     rating: @Composable () -> Unit,
@@ -299,7 +375,7 @@ fun SubjectDetailsPageLayout(
 
     val urlHandler = LocalUriHandler.current
     val onClickOpenExternal = {
-        urlHandler.openUri("https://bgm.tv/subject/${state.info.subjectId}")
+        urlHandler.openUri("https://bgm.tv/subject/${info.subjectId}")
     }
     Scaffold(
         topBar = {
@@ -324,7 +400,7 @@ fun SubjectDetailsPageLayout(
                             TopAppBar(
                                 title = {
                                     Text(
-                                        state.info.displayName,
+                                        info.displayName,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
                                     )
@@ -363,7 +439,7 @@ fun SubjectDetailsPageLayout(
                     // 虚化渐变背景, 需要绘制到 scaffoldPadding 以外区域
                     if (showBlurredBackground) {
                         SubjectBlurredBackground(
-                            coverImageUrl = state.coverImageUrl,
+                            coverImageUrl = info.imageLarge,
                             Modifier.matchParentSize(),
                             backgroundColor = backgroundColor,
                         )
@@ -378,9 +454,9 @@ fun SubjectDetailsPageLayout(
                     ) {
                         val windowSizeClass = currentWindowAdaptiveInfo1().windowSizeClass
                         SubjectDetailsHeader(
-                            state.info,
-                            state.coverImageUrl,
-                            airingLabelState = state.airingLabelState,
+                            info,
+                            info.imageLarge,
+                            seasonTags = seasonTags,
                             collectionData = collectionData,
                             collectionAction = collectionActions,
                             selectEpisodeButton = selectEpisodeButton,

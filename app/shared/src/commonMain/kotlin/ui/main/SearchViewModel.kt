@@ -83,8 +83,7 @@ class SearchViewModel : AbstractViewModel(), KoinComponent {
     )
 
     val subjectDetailsStateLoader = SubjectDetailsStateLoader(subjectDetailsStateFactory, backgroundScope)
-
-    val subjectDetailsStateFlow = subjectDetailsStateLoader.subjectDetailsStateFlow
+    private var currentPreviewingSubject: SubjectInfo? = null
 
     fun viewSubjectDetails(previewItem: SubjectPreviewItemInfo) {
         subjectDetailsStateLoader.clear()
@@ -95,8 +94,13 @@ class SearchViewModel : AbstractViewModel(), KoinComponent {
                 previewItem.title,
                 previewItem.imageUrl,
                 previewItem.title,
-            ),
+            ).also { currentPreviewingSubject = it },
         )
+    }
+
+    fun reloadCurrentSubjectDetails() {
+        val curr = currentPreviewingSubject ?: return
+        subjectDetailsStateLoader.reload(curr.subjectId, curr)
     }
 
     override fun onCleared() {
