@@ -24,7 +24,7 @@ import me.him188.ani.utils.platform.trimSB
 object MediaListFilters {
     val ContainsSubjectName = BasicMediaListFilter { media ->
         subjectNamesWithoutSpecial.any { subjectName ->
-            removeSpecials(media.originalTitle, removeWhitespace = true)
+            removeSpecials(media.originalTitle, removeWhitespace = true, replaceNumbers = true)
                 .contains(subjectName, ignoreCase = true)
         }
     }
@@ -39,10 +39,10 @@ object MediaListFilters {
     }
     val ContainsEpisodeName = BasicMediaListFilter { media ->
         episodeName ?: return@BasicMediaListFilter false
-        val name = episodeNameWithoutSpecial
+        val name = episodeNameForCompare
         checkNotNull(name)
         if (name.isBlank()) return@BasicMediaListFilter false
-        removeSpecials(media.originalTitle, removeWhitespace = true)
+        removeSpecials(media.originalTitle, removeWhitespace = true, replaceNumbers = true)
             .contains(name, ignoreCase = true)
     }
 
@@ -88,7 +88,15 @@ object MediaListFilters {
         KeepWords(s, "\uE001$index") // \uE001 是一个不常用的字符
     }
 
-    fun removeSpecials(string: String, removeWhitespace: Boolean): String {
+
+    /**
+     * @param replaceNumbers "三" -> "3"
+     */ // see tests.
+    fun removeSpecials(
+        string: String,
+        removeWhitespace: Boolean,
+        replaceNumbers: Boolean,
+    ): String {
         return StringBuilder(
             string.let {
                 var result = it
@@ -105,7 +113,9 @@ object MediaListFilters {
             deletePrefix("OVA")
             deleteInfix("OVA")
             deleteMatches(specialCharRegex)
-            replaceMatches(allNumbersRegex) { numberMappings.getValue(it.value) }
+            if (replaceNumbers) {
+                replaceMatches(allNumbersRegex) { numberMappings.getValue(it.value) }
+            }
             if (removeWhitespace) {
                 deleteMatches(whitespaceRegex)
             }

@@ -27,10 +27,10 @@ class MediaListFiltersTest {
     @TestFactory
     fun `removeSpecials numbers`() = runDynamicTests {
         add("超元气三姐妹") {
-            assertEquals("超元气3姐妹", removeSpecials("超元气三姐妹"))
+            assertEquals("超元气三姐妹", removeSpecials("超元气三姐妹"))
         }
         add("中二病也要谈恋爱") {
-            assertEquals("中2病也要谈恋爱！", removeSpecials("中二病也要谈恋爱！"))
+            assertEquals("中二病也要谈恋爱！", removeSpecials("中二病也要谈恋爱！"))
         }
     }
 
@@ -76,15 +76,17 @@ class MediaListFiltersTest {
     @TestFactory
     fun `removeSpecials seasons`() = runDynamicTests {
         add("second season") {
-            assertEquals("测试 第2季", removeSpecials("测试 第二季"))
+            assertEquals("测试 第二季", removeSpecials("测试 第二季"))
         }
     }
 
     private fun removeSpecials(
         string: String,
         removeWhitespace: Boolean = false,
+        replaceNumbers: Boolean = false,
     ) = MediaListFilters.removeSpecials(
         string,
         removeWhitespace = removeWhitespace,
+        replaceNumbers = replaceNumbers,
     )
 }
