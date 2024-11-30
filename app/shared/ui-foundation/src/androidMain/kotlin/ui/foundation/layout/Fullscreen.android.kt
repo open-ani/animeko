@@ -32,7 +32,7 @@ actual suspend fun Context.setRequestFullScreen(window: PlatformWindowMP, fullsc
     if (this is Activity) {
         if (fullscreen) {
             // go landscape
-            requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+            requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
 
             // keep screen on
             this.window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)

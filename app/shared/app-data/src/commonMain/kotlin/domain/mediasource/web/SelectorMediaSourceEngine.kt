@@ -99,7 +99,11 @@ abstract class SelectorMediaSourceEngine {
         removeSpecial: Boolean,
     ): ApiResponse<SearchSubjectResult> {
         val finalName = if (removeSpecial) {
-            MediaListFilters.removeSpecials(subjectName, removeWhitespace = false) // keep whitespace for getFirstWord
+            MediaListFilters.removeSpecials(
+                subjectName,
+                removeWhitespace = false,
+                replaceNumbers = false,
+            ) // keep whitespace for getFirstWord
         } else {
             subjectName
         }

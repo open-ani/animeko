@@ -14,6 +14,7 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -425,8 +426,8 @@ internal fun SettingsScope.MediaSourceItem(
                 }
                 Text(
                     name,
-                    Modifier.ifThen(!isEnabled) { alpha(DISABLED_ALPHA) },
-                    textAlign = TextAlign.Center
+                    Modifier.ifThen(!isEnabled) { alpha(DISABLED_ALPHA) }.basicMarquee(),
+                    textAlign = TextAlign.Center,
                 )
             }
         },
