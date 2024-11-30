@@ -52,7 +52,8 @@ const val COVER_WIDTH_TO_HEIGHT_RATIO = 849 / 1200f
 // 图片和标题
 @Composable
 internal fun SubjectDetailsHeader(
-    info: SubjectInfo,
+    subjectId: Int,
+    info: SubjectInfo?,
     coverImageUrl: String?,
     seasonTags: @Composable () -> Unit,
     collectionData: @Composable () -> Unit,
@@ -63,11 +64,11 @@ internal fun SubjectDetailsHeader(
 ) {
     if (currentWindowAdaptiveInfo1().isWidthAtLeastMedium) {
         SubjectDetailsHeaderWide(
-            subjectId = info.subjectId,
+            subjectId = subjectId,
             coverImageUrl = coverImageUrl,
             title = {
                 Text(
-                    info.displayName,
+                    info?.displayName ?: "",
                     /*Modifier.useSharedTransitionScope { modifier, animatedVisibilityScope ->
                         modifier.sharedElement(
                             rememberSharedContentState(SharedTransitionKeys.subjectTitle(info.subjectId)),
@@ -77,7 +78,7 @@ internal fun SubjectDetailsHeader(
                 )
             },
             subtitle = {
-                Text(info.name)
+                Text(info?.name ?: "")
             },
             seasonTags = {
                 seasonTags() 
@@ -90,10 +91,10 @@ internal fun SubjectDetailsHeader(
         )
     } else {
         SubjectDetailsHeaderCompact(
-            subjectId = info.subjectId,
+            subjectId = subjectId,
             coverImageUrl = coverImageUrl,
-            title = { Text(info.displayName) },
-            subtitle = { Text(info.name) },
+            title = { Text(info?.displayName ?: "") },
+            subtitle = { Text(info?.name ?: "") },
             seasonTags = { seasonTags() },
             collectionData = collectionData,
             collectionAction = collectionAction,

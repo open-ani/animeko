@@ -198,8 +198,8 @@ class DefaultSubjectDetailsStateFactory(
              *              进入界面动画期间显示 placeholder, 不会导致界面 remeasure, 动画不会卡顿
              *              如果在进入界面动画期间网络加载完成, 仍然会导致界面 remeasure, 从而导致动画卡顿, 无法避免.
              */
-            if (placeholder != null && !cachedSubjectDetails.value.contains(placeholder.subjectId)) {
-                emit(createPlaceholder(placeholder, authState))
+            if (!cachedSubjectDetails.value.contains(subjectId)) {
+                emit(createPlaceholder(subjectId, placeholder, authState))
             }
             
             val subjectProgressStateFactory = createSubjectProgressStateFactory()
@@ -374,6 +374,7 @@ class DefaultSubjectDetailsStateFactory(
             .stateIn(this, SharingStarted.Eagerly, null)
 
         val state = SubjectDetailsState(
+            subjectId = subjectInfo.subjectId,
             info = subjectInfo,
             selfCollectionTypeState = selfCollectionTypeStateFlow
                 .produceState(scope = this),
@@ -426,10 +427,12 @@ class DefaultSubjectDetailsStateFactory(
     }
 
     private fun CoroutineScope.createPlaceholder(
-        subjectInfo: SubjectInfo,
+        subjectId: Int,
+        subjectInfo: SubjectInfo?,
         authState: AuthState
     ): SubjectDetailsState {
         return SubjectDetailsState(
+            subjectId = subjectId,
             info = subjectInfo,
             selfCollectionTypeState = stateOf(UnifiedCollectionType.NOT_COLLECTED),
             airingLabelState = AiringLabelState(
@@ -444,7 +447,7 @@ class DefaultSubjectDetailsStateFactory(
             totalCharactersCountState = stateOf(null),
             relatedSubjectsPager = emptyFlow(),
             episodeListState = EpisodeListState(
-                subjectId = stateOf(subjectInfo.subjectId),
+                subjectId = stateOf(subjectId),
                 theme = stateOf(EpisodeListProgressTheme.Default),
                 episodeProgressInfoList = stateOf(emptyList()),
                 onSetEpisodeWatched = { _, _, _ -> },

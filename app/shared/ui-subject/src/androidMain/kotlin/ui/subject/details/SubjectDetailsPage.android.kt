@@ -55,7 +55,9 @@ internal fun PreviewPlaceholderSubjectDetails() = ProvideFoundationCompositionLo
 @Preview(device = "spec:width=1280dp,height=800dp,dpi=240")
 @Composable
 internal fun PreviewErrorSubjectDetails() = ProvideFoundationCompositionLocalsForPreview {
-    val state = remember { SubjectDetailsStateLoader.LoadState.Err(TestSubjectInfo, LoadError.NetworkError) }
+    val state = remember {
+        SubjectDetailsStateLoader.LoadState.Err(TestSubjectInfo.subjectId, TestSubjectInfo, LoadError.NetworkError)
+    }
     SubjectDetailsPage(
         state,
         onPlay = { },

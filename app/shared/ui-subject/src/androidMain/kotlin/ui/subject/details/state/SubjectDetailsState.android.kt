@@ -37,6 +37,7 @@ fun createTestSubjectDetailsState(
     val subjectCollectionInfo = TestSubjectCollections.first()
     val subjectInfo = subjectCollectionInfo.subjectInfo
     return SubjectDetailsState(
+        subjectId = TestSubjectInfo.subjectId,
         info = TestSubjectInfo,
         selfCollectionTypeState = stateOf(UnifiedCollectionType.WISH),
         airingLabelState = createTestAiringLabelState(),

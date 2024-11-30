@@ -72,6 +72,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.collectAsLazyPagingItemsWithLifecycle
 import kotlinx.coroutines.launch
+import me.him188.ani.app.data.models.subject.SubjectCollectionStats
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.ui.external.placeholder.placeholder
@@ -112,6 +113,7 @@ import me.him188.ani.app.ui.subject.details.state.SubjectDetailsState
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateLoader
 import me.him188.ani.app.ui.subject.episode.list.EpisodeListDialog
 import me.him188.ani.app.ui.subject.rating.EditableRating
+import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.utils.platform.isMobile
 
 @Composable
@@ -156,6 +158,7 @@ fun SubjectDetailsPage(
         )
 
         is SubjectDetailsStateLoader.LoadState.Err -> ErrorSubjectDetailsPage(
+            state.subjectId,
             state.placeholder,
             error = state.error,
             onRetry = onLoadErrorRetry,
@@ -188,7 +191,7 @@ private fun SubjectDetailsPage(
         EpisodeListDialog(
             state.episodeListState,
             title = {
-                Text(state.info.displayName)
+                Text(state.info?.displayName ?: "")
             },
             onDismissRequest = { showSelectEpisode = false },
         )
@@ -201,17 +204,18 @@ private fun SubjectDetailsPage(
 
     val placeholderModifier = Modifier.placeholder(state.showPlaceholder)
     SubjectDetailsPageLayout(
+        state.subjectId,
         state.info,
         seasonTags = {
             SubjectDetailsDefaults.SeasonTag(
-                airDate = state.info.airDate,
+                airDate = state.info?.airDate ?: PackedDate.Invalid,
                 airingLabelState = state.airingLabelState,
                 placeholderModifier,
             )
         },
         collectionData = {
             SubjectDetailsDefaults.CollectionData(
-                collectionStats = state.info.collectionStats,
+                collectionStats = state.info?.collectionStats ?: SubjectCollectionStats.Zero,
                 placeholderModifier,
             )
         },
@@ -265,6 +269,7 @@ private fun SubjectDetailsPage(
                 paddingValues,
                 connectedScrollState,
                 detailsTab = { contentPadding ->
+                    if (state.info == null) return@SubjectDetailsContentPager
                     SubjectDetailsDefaults.DetailsTab(
                         info = state.info,
                         staff = state.staffPager.collectAsLazyPagingItemsWithLifecycle(),
@@ -316,7 +321,8 @@ private fun SubjectDetailsPage(
 
 @Composable
 private fun ErrorSubjectDetailsPage(
-    placeholderSubjectInfo: SubjectInfo,
+    subjectId: Int,
+    placeholderSubjectInfo: SubjectInfo?,
     error: LoadError,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
@@ -324,6 +330,7 @@ private fun ErrorSubjectDetailsPage(
     windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
 ) {
     SubjectDetailsPageLayout(
+        subjectId = subjectId,
         info = placeholderSubjectInfo,
         seasonTags = { },
         collectionData = { },
@@ -358,10 +365,13 @@ enum class SubjectDetailsTab {
 
 /**
  * 一部番的详情页
+ *
+ * @param info `null` 表示正在加载中
  */
 @Composable
 fun SubjectDetailsPageLayout(
-    info: SubjectInfo,
+    subjectId: Int,
+    info: SubjectInfo?,
     seasonTags: @Composable () -> Unit,
     collectionData: @Composable () -> Unit,
     collectionActions: @Composable () -> Unit,
@@ -379,7 +389,7 @@ fun SubjectDetailsPageLayout(
 
     val urlHandler = LocalUriHandler.current
     val onClickOpenExternal = {
-        urlHandler.openUri("https://bgm.tv/subject/${info.subjectId}")
+        urlHandler.openUri("https://bgm.tv/subject/$subjectId")
     }
     Scaffold(
         topBar = {
@@ -404,7 +414,7 @@ fun SubjectDetailsPageLayout(
                             TopAppBar(
                                 title = {
                                     Text(
-                                        info.displayName,
+                                        info?.displayName ?: "",
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
                                     )
@@ -443,7 +453,7 @@ fun SubjectDetailsPageLayout(
                     // 虚化渐变背景, 需要绘制到 scaffoldPadding 以外区域
                     if (showBlurredBackground) {
                         SubjectBlurredBackground(
-                            coverImageUrl = info.imageLarge,
+                            coverImageUrl = info?.imageLarge,
                             Modifier.matchParentSize(),
                             backgroundColor = backgroundColor,
                         )
@@ -458,8 +468,9 @@ fun SubjectDetailsPageLayout(
                     ) {
                         val windowSizeClass = currentWindowAdaptiveInfo1().windowSizeClass
                         SubjectDetailsHeader(
+                            subjectId,
                             info,
-                            info.imageLarge,
+                            info?.imageLarge,
                             seasonTags = seasonTags,
                             collectionData = collectionData,
                             collectionAction = collectionActions,

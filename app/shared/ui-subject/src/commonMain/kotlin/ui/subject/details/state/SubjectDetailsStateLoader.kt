@@ -43,7 +43,7 @@ class SubjectDetailsStateLoader(
         placeholder: SubjectInfo? = null
     ): Job {
         val curr = _result.value
-        if (curr is LoadState.Ok && curr.value.info.subjectId == subjectId) {
+        if (curr is LoadState.Ok && curr.value.info?.subjectId == subjectId) {
             // 已经加载完成了
             return completedJob
         }
@@ -57,10 +57,7 @@ class SubjectDetailsStateLoader(
                 throw e
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    _result.value = LoadState.Err(
-                        placeholder ?: SubjectInfo.createPlaceholder(subjectId, "", ""),
-                        LoadError.fromException(e),
-                    ) 
+                    _result.value = LoadState.Err(subjectId, placeholder, LoadError.fromException(e)) 
                 }
                 return@launch
             }
@@ -83,7 +80,7 @@ class SubjectDetailsStateLoader(
     sealed class LoadState {
         data object Loading : LoadState()
         class Ok(val value: SubjectDetailsState) : LoadState()
-        class Err(val placeholder: SubjectInfo, val error: LoadError) : LoadState()
+        class Err(val subjectId: Int, val placeholder: SubjectInfo?, val error: LoadError) : LoadState()
     }
     
     private companion object {

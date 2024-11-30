@@ -117,6 +117,7 @@ fun PreviewSubjectDetailsHeader(
     subjectInfo: SubjectInfo = TestSubjectInfo,
 ) = ProvideFoundationCompositionLocalsForPreview {
     SubjectDetailsHeader(
+        subjectInfo.subjectId,
         subjectInfo,
         TestCoverImage,
         seasonTags = {

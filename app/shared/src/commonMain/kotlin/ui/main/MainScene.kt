@@ -227,7 +227,7 @@ private fun MainSceneContent(
                                     onPlay = { episodeId ->
                                         val curr = result
                                         if (curr is SubjectDetailsStateLoader.LoadState.Ok) {
-                                            navigator.navigateEpisodeDetails(curr.value.info.subjectId, episodeId)
+                                            navigator.navigateEpisodeDetails(curr.value.subjectId, episodeId)
                                         }
                                     },
                                     onLoadErrorRetry = { vm.reloadCurrentSubjectDetails() },
