@@ -76,7 +76,7 @@ class AniApplication : Application() {
 
         val defaultUEH = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { t, e ->
-            logger<AniApplication>().error(e) { "!!!ANI FINAL EXCEPTION!!!" }
+            logger<AniApplication>().error(e) { "!!!ANI FATAL EXCEPTION!!!" }
             Thread.sleep(500)
             defaultUEH?.uncaughtException(t, e)
         }
