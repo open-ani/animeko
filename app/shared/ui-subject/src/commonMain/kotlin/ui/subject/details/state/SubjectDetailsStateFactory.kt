@@ -9,6 +9,9 @@
 
 package me.him188.ani.app.ui.subject.details.state
 
+import androidx.collection.IntList
+import androidx.collection.MutableIntList
+import androidx.collection.intListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.paging.LoadState
 import androidx.paging.LoadStates
@@ -117,12 +120,16 @@ class DefaultSubjectDetailsStateFactory(
      *
      * @see [create]
      */
-    private val cachedSubjectDetails: MutableStateFlow<List<Int>> = MutableStateFlow(emptyList())
+    private val cachedSubjectDetails: MutableStateFlow<IntList> = MutableStateFlow(intListOf())
 
     init {
         childScope.launch {
             subjectCollectionRepository.cachedValidSubjectIds().collect { newList ->
-                cachedSubjectDetails.update { newList }
+                cachedSubjectDetails.update {
+                    MutableIntList(newList.size).apply {
+                        newList.forEach { e -> add(e) }
+                    }
+                }
             }
         }
     }
