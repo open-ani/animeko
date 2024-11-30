@@ -145,8 +145,8 @@ fun SubjectDetailsPage(
     showBlurredBackground: Boolean = true,
     windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
 ) {
-    if (state is SubjectDetailsStateLoader.LoadState.Ok) {
-        SubjectDetailsPage(
+    when (state) {
+        is SubjectDetailsStateLoader.LoadState.Ok -> SubjectDetailsPage(
             state.value,
             onPlay = onPlay,
             modifier,
@@ -154,8 +154,8 @@ fun SubjectDetailsPage(
             showBlurredBackground && !state.value.showPlaceholder,
             windowInsets,
         )
-    } else if (state is SubjectDetailsStateLoader.LoadState.Err) {
-        ErrorSubjectDetailsPage(
+
+        is SubjectDetailsStateLoader.LoadState.Err -> ErrorSubjectDetailsPage(
             state.placeholder,
             error = state.error,
             onRetry = onLoadErrorRetry,
@@ -163,8 +163,12 @@ fun SubjectDetailsPage(
             showTopBar,
             windowInsets,
         )
+
+        SubjectDetailsStateLoader.LoadState.Loading -> {
+            // 不需要处理 Loading, 它的职能已在 Ok 时 SubjectDetailsState.showPlaceholder == true 实现.
+            // 此处的处理方式和 SubjectDetailsStateLoader 的逻辑有强绑定关系.
+        }
     }
-    // TODO: SubjectDetailsStateLoader.LoadState.Loading
 }
 
 @Composable
