@@ -22,6 +22,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import me.him188.ani.app.platform.Context
 import me.him188.ani.app.platform.LocalContext
 
@@ -119,42 +120,20 @@ private fun isInFullscreenMode(context: Context): Boolean {
 
 actual fun Context.setSystemBarVisible(visible: Boolean) {
     if (this !is Activity) return
+    val controllerCompat = WindowInsetsControllerCompat(this.window, this.window.decorView)
     if (visible) {
         // show bars
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            this.window.insetsController?.show(
-                WindowInsets.Type.statusBars().or(WindowInsets.Type.navigationBars()),
-            )
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                this.window.insetsController?.systemBarsBehavior =
-                    android.view.WindowInsetsController.BEHAVIOR_DEFAULT
-            }
-        } else {
-            val decorView = this.window.decorView
-            @Suppress("DEPRECATION")
-            decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_IMMERSIVE
+        controllerCompat.show(WindowInsetsCompat.Type.statusBars().or(WindowInsetsCompat.Type.navigationBars()))
+        controllerCompat.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
             @Suppress("DEPRECATION")
             this.window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_FULLSCREEN)
         }
     } else {
         // hide bars
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            this.window.insetsController?.hide(
-                WindowInsets.Type.statusBars().or(WindowInsets.Type.navigationBars()),
-            )
-            this.window.insetsController?.systemBarsBehavior =
-                BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-        } else {
-            val decorView = this.window.decorView
-            @Suppress("DEPRECATION")
-            decorView.systemUiVisibility =
-                (View.SYSTEM_UI_FLAG_IMMERSIVE // Set the content to appear under the system bars so that the
-                        // content doesn't resize when the system bars hide and show.
-                        or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                        or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                        or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN // Hide the nav bar and status bar
-                        or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                        or View.SYSTEM_UI_FLAG_FULLSCREEN)
+        controllerCompat.hide(WindowInsetsCompat.Type.statusBars().or(WindowInsetsCompat.Type.navigationBars()))
+        controllerCompat.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
             @Suppress("DEPRECATION")
             this.window.addFlags(android.view.WindowManager.LayoutParams.FLAG_FULLSCREEN)
         }
