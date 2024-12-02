@@ -10,7 +10,6 @@
 package me.him188.ani.android.activity
 
 import android.content.Intent
-import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.SystemBarStyle
@@ -111,9 +110,7 @@ class MainActivity : AniComponentActivity() {
         )
 
         // 允许画到 system bars
-        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.R) { // fix #1268
-            WindowCompat.setDecorFitsSystemWindows(window, false)
-        }
+        WindowCompat.setDecorFitsSystemWindows(window, false)
 
         val toaster = object : Toaster {
             override fun toast(text: String) {
