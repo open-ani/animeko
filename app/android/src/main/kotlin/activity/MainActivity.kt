@@ -111,7 +111,7 @@ class MainActivity : AniComponentActivity() {
         )
 
         // 允许画到 system bars
-        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.R) {
+        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.R) { // fix #1268
             WindowCompat.setDecorFitsSystemWindows(window, false)
         }
 
