@@ -35,7 +35,7 @@ class MediaSourceSubscriptionUpdater(
     private val subscriptions: MediaSourceSubscriptionRepository,
     private val mediaSourceManager: MediaSourceManager,
     private val codecManager: MediaSourceCodecManager,
-    private val requestSubscription: suspend (MediaSourceSubscription) -> ApiResponse<SubscriptionUpdateData>,
+    private val requester: MediaSourceSubscriptionRequester,
 ) {
     /**
      * @param force to ignore lastUpdated time
@@ -107,7 +107,7 @@ class MediaSourceSubscriptionUpdater(
 
     @Throws(UpdateSubscriptionException::class, CancellationException::class)
     private suspend fun updateSubscription(subscription: MediaSourceSubscription): Int {
-        val updateData = requestSubscription(subscription).valueOrElse {
+        val updateData = requester.request(subscription).valueOrElse {
             throw RequestFailureException(it)
         }
 

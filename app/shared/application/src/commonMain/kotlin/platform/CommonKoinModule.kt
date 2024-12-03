@@ -10,8 +10,6 @@
 package me.him188.ani.app.platform
 
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
-import io.ktor.client.request.get
-import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -25,9 +23,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import me.him188.ani.app.data.models.map
 import me.him188.ani.app.data.models.preference.configIfEnabledOrNull
-import me.him188.ani.app.data.models.runApiRequest
 import me.him188.ani.app.data.network.AnimeScheduleService
 import me.him188.ani.app.data.network.BangumiBangumiCommentServiceImpl
 import me.him188.ani.app.data.network.BangumiCommentService
@@ -86,8 +82,8 @@ import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.fetch.MediaSourceManagerImpl
 import me.him188.ani.app.domain.media.fetch.toClientProxyConfig
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceCodecManager
+import me.him188.ani.app.domain.mediasource.subscription.MediaSourceSubscriptionRequester
 import me.him188.ani.app.domain.mediasource.subscription.MediaSourceSubscriptionUpdater
-import me.him188.ani.app.domain.mediasource.subscription.SubscriptionUpdateData
 import me.him188.ani.app.domain.session.AniAuthClient
 import me.him188.ani.app.domain.session.BangumiSessionManager
 import me.him188.ani.app.domain.session.OpaqueSession
@@ -323,6 +319,7 @@ fun KoinApplication.getCommonKoinModule(getContext: () -> Context, coroutineScop
             createDefaultHttpClient {
                 userAgent(getAniUserAgent())
                 proxy(proxySettings.configIfEnabledOrNull?.toClientProxyConfig())
+                expectSuccess = true
             }.apply {
                 registerLogging(logger<MediaSourceSubscriptionUpdater>())
             }
@@ -333,14 +330,7 @@ fun KoinApplication.getCommonKoinModule(getContext: () -> Context, coroutineScop
             get<MediaSourceSubscriptionRepository>(),
             get<MediaSourceManager>(),
             get<MediaSourceCodecManager>(),
-            requestSubscription = {
-                client.first().runApiRequest { get(it.url) }.map { response ->
-                    MediaSourceCodecManager.Companion.json.decodeFromString(
-                        SubscriptionUpdateData.serializer(),
-                        response.bodyAsText(),
-                    )
-                }
-            },
+            requester = MediaSourceSubscriptionRequester(client),
         )
     }
 

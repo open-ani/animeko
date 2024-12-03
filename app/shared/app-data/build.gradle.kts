@@ -29,6 +29,7 @@ kotlin {
         implementation(projects.utils.intellijAnnotations)
         api(projects.app.shared.videoPlayer.videoPlayerApi)
         api(projects.app.shared.videoPlayer.torrentSource)
+        implementation(libs.kotlinx.serialization.json.io)
         api(libs.kotlinx.coroutines.core)
         api(libs.kotlinx.serialization.core)
         implementation(libs.kotlinx.serialization.protobuf)
@@ -75,7 +76,6 @@ kotlin {
     }
     sourceSets.nativeMain.dependencies {
         implementation(libs.stately.common) // fixes koin bug
-        implementation(libs.kotlinx.serialization.json.io)
     }
 }
 
