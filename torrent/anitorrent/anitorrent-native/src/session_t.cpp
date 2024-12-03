@@ -126,7 +126,7 @@ static void apply_settings_to_pack(libtorrent::settings_pack &s, const session_s
     s.set_str(settings_pack::user_agent, settings.user_agent);
     s.set_str(settings_pack::peer_fingerprint, settings.peer_fingerprint);
     s.set_str(settings_pack::handshake_client_version, settings.handshake_client_version);
-    s.set_int(settings_pack::alert_queue_size, 10000);
+    s.set_int(settings_pack::alert_queue_size, 100000);
 
     // seeding
     s.set_int(settings_pack::max_allowed_in_request_queue, 100);
