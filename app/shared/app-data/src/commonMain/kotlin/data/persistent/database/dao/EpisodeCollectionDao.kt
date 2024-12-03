@@ -94,7 +94,7 @@ interface EpisodeCollectionDao {
         SELECT * FROM episode_collection
         WHERE subjectId = :subjectId
         AND (episodeType = :episodeType)
-        ORDER BY sort ASC
+        ORDER BY sortNumber ASC, sort ASC
         """,
     )
     fun filterBySubjectId(
