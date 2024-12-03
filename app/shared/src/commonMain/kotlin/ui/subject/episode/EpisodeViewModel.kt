@@ -49,6 +49,7 @@ import me.him188.ani.app.data.repository.episode.AnimeScheduleRepository
 import me.him188.ani.app.data.repository.episode.BangumiCommentRepository
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.media.EpisodePreferencesRepository
+import me.him188.ani.app.data.repository.media.SelectorMediaSourceEpisodeCacheRepository
 import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepository
 import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepository
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
@@ -244,7 +245,8 @@ private class EpisodeViewModelImpl(
     private val bangumiCommentService: BangumiCommentService by inject()
     private val bangumiCommentRepository: BangumiCommentRepository by inject()
     private val episodePlayHistoryRepository: EpisodePlayHistoryRepository by inject()
-
+    private val selectorMediaSourceEpisodeCacheRepository: SelectorMediaSourceEpisodeCacheRepository by inject()
+    
     private val subjectCollection = subjectCollectionRepository.subjectCollectionFlow(subjectId)
     private val subjectInfo = subjectCollection.map { it.subjectInfo }
     private val episodeCollection = episodeId.transformLatest { episodeId ->
@@ -646,6 +648,9 @@ private class EpisodeViewModelImpl(
     )
 
     override fun stopPlaying() {
+        launchInBackground {
+            selectorMediaSourceEpisodeCacheRepository.clearCache()
+        }
         // 退出播放页前保存播放进度
         savePlayProgress()
         playerState.stop()

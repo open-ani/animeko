@@ -29,6 +29,7 @@ import me.him188.ani.app.data.models.preference.ProxyConfig
 import me.him188.ani.app.data.models.preference.configIfEnabledOrNull
 import me.him188.ani.app.data.repository.media.MediaSourceInstanceRepository
 import me.him188.ani.app.data.repository.media.MikanIndexCacheRepository
+import me.him188.ani.app.data.repository.media.SelectorMediaSourceEpisodeCacheRepository
 import me.him188.ani.app.data.repository.media.updateConfig
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.media.cache.MediaCacheManager.Companion.LOCAL_FS_MEDIA_SOURCE_ID
@@ -185,6 +186,7 @@ class MediaSourceManagerImpl(
     private val proxyConfig = settingsRepository.proxySettings.flow
     private val mikanIndexCacheRepository: MikanIndexCacheRepository by inject()
     private val instances: MediaSourceInstanceRepository by inject()
+    private val selectorMediaSourceEpisodeCacheRepository: SelectorMediaSourceEpisodeCacheRepository by inject()
 
     private val scope = CoroutineScope(
         CoroutineExceptionHandler { _, throwable ->
@@ -197,7 +199,7 @@ class MediaSourceManagerImpl(
         add(MikanMediaSource.Factory()) // Kotlin bug, MPP 加载不了 resources
         add(MikanCNMediaSource.Factory())
         add(RssMediaSource.Factory())
-        add(SelectorMediaSource.Factory())
+        add(SelectorMediaSource.Factory(selectorMediaSourceEpisodeCacheRepository))
     }.toList()
 
     private val additionalSources by lazy {
