@@ -10,6 +10,7 @@
 package me.him188.ani.app.domain.mediasource.subscription
 
 import kotlinx.serialization.Serializable
+import me.him188.ani.app.data.models.ApiFailure
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
 
@@ -26,6 +27,7 @@ data class MediaSourceSubscription(
     @Serializable
     class UpdateError(
         val message: String?,
+        val failure: ApiFailure? = null, // serialization compatibility
     )
 
     @Serializable

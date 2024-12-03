@@ -11,8 +11,12 @@ package me.him188.ani.app.domain.mediasource.subscription
 
 import kotlinx.coroutines.flow.first
 import me.him188.ani.app.data.models.ApiFailure
-import me.him188.ani.app.data.models.ApiResponse
-import me.him188.ani.app.data.models.valueOrElse
+import me.him188.ani.app.data.repository.RepositoryAuthorizationException
+import me.him188.ani.app.data.repository.RepositoryException
+import me.him188.ani.app.data.repository.RepositoryNetworkException
+import me.him188.ani.app.data.repository.RepositoryRateLimitedException
+import me.him188.ani.app.data.repository.RepositoryServiceUnavailableException
+import me.him188.ani.app.data.repository.RepositoryUnknownException
 import me.him188.ani.app.data.repository.media.MediaSourceSubscriptionRepository
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.fetch.updateMediaSourceArguments
@@ -59,33 +63,47 @@ class MediaSourceSubscriptionUpdater(
 
             logger.info { "Updating subscription: ${subscription.url}" }
 
-            kotlin.runCatching {
-                updateSubscription(subscription)
-            }.fold(
-                onSuccess = { count ->
-                    this.subscriptions.update(subscription.subscriptionId) { old ->
-                        old.copy(
-                            lastUpdated = MediaSourceSubscription.LastUpdated(
-                                currentTimeMillis,
-                                mediaSourceCount = count,
-                                error = null,
-                            ),
+            suspend fun setResult(count: Int?, error: UpdateError? = null) {
+                this.subscriptions.update(subscription.subscriptionId) { old ->
+                    old.copy(
+                        lastUpdated = MediaSourceSubscription.LastUpdated(
+                            currentTimeMillis,
+                            mediaSourceCount = count,
+                            error = error,
+                        ),
+                    )
+                }
+            }
+
+            try {
+                val count = updateSubscription(subscription)
+                setResult(count)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: RepositoryException) {
+                when (e) {
+                    is RepositoryAuthorizationException ->
+                        setResult(null, UpdateError(e.toString(), ApiFailure.Unauthorized))
+
+                    is RepositoryNetworkException ->
+                        setResult(null, UpdateError(e.toString(), ApiFailure.NetworkError))
+
+                    is RepositoryRateLimitedException ->
+                        setResult(
+                            null,
+                            UpdateError("请求过于频繁", null), // TODO: 2024/12/3 use ApiFailure.RateLimited
                         )
-                    }
-                },
-                onFailure = { error ->
-                    logger.error(error) { "Failed to update subscription ${subscription.url}" }
-                    this.subscriptions.update(subscription.subscriptionId) { old ->
-                        old.copy(
-                            lastUpdated = MediaSourceSubscription.LastUpdated(
-                                currentTimeMillis,
-                                mediaSourceCount = null,
-                                error = UpdateError(error.toString()),
-                            ),
-                        )
-                    }
-                },
-            )
+
+                    is RepositoryServiceUnavailableException ->
+                        setResult(null, UpdateError(e.toString(), ApiFailure.ServiceUnavailable))
+
+                    is RepositoryUnknownException ->
+                        setResult(null, UpdateError(e.toString(), null))
+                }
+            } catch (e: Exception) {
+                logger.error(e) { "Failed to update subscription ${subscription.url}" }
+                setResult(null, UpdateError(e.toString(), null))
+            }
         }
 
         return subscriptions.minOf { subscription -> subscription.updatePeriod }
@@ -105,12 +123,9 @@ class MediaSourceSubscriptionUpdater(
 
     }
 
-    @Throws(UpdateSubscriptionException::class, CancellationException::class)
+    @Throws(RepositoryException::class, CancellationException::class)
     private suspend fun updateSubscription(subscription: MediaSourceSubscription): Int {
-        val updateData = requester.request(subscription).valueOrElse {
-            throw RequestFailureException(it)
-        }
-
+        val updateData = requester.request(subscription)
         val newArguments = updateData.exportedMediaSourceDataList.mediaSources.mapNotNull {
             runCatching {
                 NewArgument(it, codecManager.decode(it))
@@ -193,6 +208,3 @@ class MediaSourceSubscriptionUpdater(
         }
     }
 }
-
-sealed class UpdateSubscriptionException(override val message: String?) : Exception()
-class RequestFailureException(apiFailure: ApiFailure) : UpdateSubscriptionException("Request failed: $apiFailure")

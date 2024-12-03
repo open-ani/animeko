@@ -10,21 +10,22 @@
 package me.him188.ani.app.domain.mediasource.subscription
 
 import io.ktor.client.HttpClient
+import io.ktor.client.plugins.ClientRequestException
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsChannel
-import io.ktor.utils.io.CancellationException
+import io.ktor.http.HttpStatusCode.Companion.UnprocessableEntity
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.json.io.decodeFromSource
 import me.him188.ani.app.data.models.ApiResponse
-import me.him188.ani.app.data.models.map
-import me.him188.ani.app.data.models.runApiRequest
+import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceCodecManager
 import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.utils.coroutines.withExceptionCollector
 import me.him188.ani.utils.ktor.toSource
+import kotlin.coroutines.cancellation.CancellationException
 
 class MediaSourceSubscriptionRequester(
     private val client: Flow<HttpClient>
@@ -32,9 +33,10 @@ class MediaSourceSubscriptionRequester(
     /**
      * 执行网络请求, 下载新订阅数据. 遇到错误时将会返回 [ApiResponse.failure]
      */
+    @Throws(RepositoryException::class, CancellationException::class)
     suspend fun request(
         subscription: MediaSourceSubscription,
-    ): ApiResponse<SubscriptionUpdateData> {
+    ): SubscriptionUpdateData {
         val clientInstance = client.first()
 
         suspend fun HttpResponse.decode() = bodyAsChannel().toSource().use {
@@ -47,7 +49,7 @@ class MediaSourceSubscriptionRequester(
         withExceptionCollector {
             // 首先直连
             try {
-                return ApiResponse.success(clientInstance.get(subscription.url).decode())
+                return clientInstance.get(subscription.url).decode()
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -55,12 +57,16 @@ class MediaSourceSubscriptionRequester(
             }
 
             // 失败则尝试代理服务
-            return runApiRequest {
+            return try {
                 clientInstance.get(currentAniBuildConfig.aniAuthServerUrl + "/v1/subs/proxy") {
                     parameter("url", subscription.url)
+                }.decode()
+            } catch (e: ClientRequestException) {
+                if (e.response.status == UnprocessableEntity) {
+                    // not in whitelist
+                    throwLast() // ignore this exception, throw the previous one
                 }
-            }.map {
-                it.decode()
+                throw e
             }
         }
     }

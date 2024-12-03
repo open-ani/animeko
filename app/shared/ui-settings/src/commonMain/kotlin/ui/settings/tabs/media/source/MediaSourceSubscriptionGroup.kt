@@ -51,6 +51,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import me.him188.ani.app.data.models.ApiFailure
 import me.him188.ani.app.domain.mediasource.subscription.MediaSourceSubscription
 import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.tools.formatDateTime
@@ -299,9 +300,10 @@ private fun SettingsScope.SubscriptionItem(
 private fun formatLastUpdated(lastUpdated: MediaSourceSubscription.LastUpdated?): String {
     if (lastUpdated == null) return "还未更新"
     val mediaSourceCount = lastUpdated.mediaSourceCount
+    val error = lastUpdated.error
     return when {
-        lastUpdated.error != null || mediaSourceCount == null -> {
-            "${formatDateTime(lastUpdated.timeMillis)}更新失败：${lastUpdated.error?.message}"
+        error != null || mediaSourceCount == null -> {
+            "${formatDateTime(lastUpdated.timeMillis)}更新失败：${formatError(error)}"
         }
 
         else -> {
@@ -313,4 +315,14 @@ private fun formatLastUpdated(lastUpdated: MediaSourceSubscription.LastUpdated?)
 //        MediaSourceSubscription.UpdateError.INVALID_CONFIG -> "${formatDateTime(lastUpdated.timeMillis)}因远程配置有误更新失败"
 //        null -> "${formatDateTime(lastUpdated.timeMillis)}更新成功"
 //    }
+}
+
+private fun formatError(error: MediaSourceSubscription.UpdateError?): String {
+    if (error == null) return "未知错误"
+    val failre = error.failure ?: return error.message ?: "未知错误"
+    return when (failre) {
+        ApiFailure.NetworkError -> "网络错误，请检查网络连接"
+        ApiFailure.ServiceUnavailable -> "服务暂不可用，请稍后重试"
+        ApiFailure.Unauthorized -> "服务禁止访问，请联系服务提供商"
+    }
 }
