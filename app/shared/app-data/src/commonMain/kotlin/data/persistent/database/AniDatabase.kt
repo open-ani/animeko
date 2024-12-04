@@ -239,6 +239,11 @@ internal object Migrations {
         }
     }
 
+    /**
+     * Added [WebSearchSubjectInfoEntity], [WebSearchEpisodeInfoEntity],
+     * [WebSearchSubjectInfoDao], [WebSearchEpisodeInfoDao]
+     * @since 4.1.0-alpha03
+     */
     class Migration_12_13 : AutoMigrationSpec {
         override fun onPostMigrate(connection: SQLiteConnection) {
         }
