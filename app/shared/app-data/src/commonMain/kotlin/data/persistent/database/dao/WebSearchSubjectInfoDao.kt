@@ -13,9 +13,6 @@ import androidx.room.Dao
 import androidx.room.Embedded
 import androidx.room.Entity
 import androidx.room.Index
-import androidx.room.Insert
-import androidx.room.OnConflictStrategy
-import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.Relation
 import androidx.room.Transaction
@@ -26,6 +23,7 @@ import androidx.room.Upsert
     indices = [
         Index(value = ["mediaSourceId", "subjectName"], unique = true),
     ],
+    primaryKeys = ["mediaSourceId", "subjectName"],
 )
 data class WebSearchSubjectInfoEntity(
     val mediaSourceId: String,
@@ -34,14 +32,13 @@ data class WebSearchSubjectInfoEntity(
     val name: String,
     val fullUrl: String,
     val partialUrl: String,
-    @PrimaryKey(autoGenerate = true) val subjectId: Long = 0,
 )
 
 @Dao
 interface WebSearchSubjectInfoDao {
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insert(item: WebSearchSubjectInfoEntity): Long
+    @Upsert
+    suspend fun upsert(item: WebSearchSubjectInfoEntity)
 
     @Upsert
     @Transaction
@@ -79,8 +76,8 @@ data class WebSearchSubjectInfoAndEpisodes(
     val subjectInfo: WebSearchSubjectInfoEntity,
     @Relation(
         entity = WebSearchEpisodeInfoEntity::class,
-        parentColumn = "subjectId",
-        entityColumn = "subjectId",
+        parentColumn = "mediaSourceId",
+        entityColumn = "mediaSourceId",
     )
     val episodeInfos: List<WebSearchEpisodeInfoEntity>,
 ) 

@@ -30,8 +30,8 @@ class SelectorMediaSourceEpisodeCacheRepository(
         episodeInfos: List<WebSearchEpisodeInfo>
     ) {
         val subjectInfoEntity = subjectInfo.toEntity(mediaSourceId, subjectName)
-        val subjectId = webSubjectInfoDao.insert(subjectInfoEntity)
-        webEpisodeInfoDao.upsert(episodeInfos.map { it.toEntity(subjectId) })
+        webSubjectInfoDao.upsert(subjectInfoEntity)
+        webEpisodeInfoDao.upsert(episodeInfos.map { it.toEntity(mediaSourceId, subjectName) })
     }
 
     suspend fun clearSubjectAndEpisodeCache() = withContext(defaultDispatcher) {
@@ -79,13 +79,14 @@ fun WebSearchSubjectInfoEntity.toWebSearchSubjectInfo(): WebSearchSubjectInfo {
     )
 }
 
-fun WebSearchEpisodeInfo.toEntity(subjectId: Long): WebSearchEpisodeInfoEntity {
+fun WebSearchEpisodeInfo.toEntity(mediaSourceId: String, subjectName: String): WebSearchEpisodeInfoEntity {
     return WebSearchEpisodeInfoEntity(
-        subjectId = subjectId,
         channel = channel,
         name = name,
         episodeSortOrEp = episodeSortOrEp,
         playUrl = playUrl,
+        mediaSourceId = mediaSourceId,
+        subjectName = subjectName,
     )
 }
 

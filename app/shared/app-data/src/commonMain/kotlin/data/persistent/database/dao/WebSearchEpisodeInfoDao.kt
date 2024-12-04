@@ -12,6 +12,7 @@ package me.him188.ani.app.data.persistent.database.dao
 import androidx.room.Dao
 import androidx.room.Entity
 import androidx.room.ForeignKey
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.Transaction
@@ -20,11 +21,14 @@ import me.him188.ani.datasources.api.EpisodeSort
 
 @Entity(
     tableName = "web_search_episode_info",
+    indices = [
+        Index(value = ["mediaSourceId", "subjectName"]),
+    ],
     foreignKeys = [
         ForeignKey(
             entity = WebSearchSubjectInfoEntity::class,
-            parentColumns = ["subjectId"],
-            childColumns = ["subjectId"],
+            parentColumns = ["mediaSourceId", "subjectName"],
+            childColumns = ["mediaSourceId", "subjectName"],
             onDelete = ForeignKey.CASCADE,
         ),
     ],
@@ -35,7 +39,8 @@ data class WebSearchEpisodeInfoEntity(
     val name: String,
     val episodeSortOrEp: EpisodeSort?,
     val playUrl: String,
-    val subjectId: Long
+    val mediaSourceId: String,
+    val subjectName: String,
 )
 
 @Dao
@@ -46,16 +51,6 @@ interface WebSearchEpisodeInfoDao {
     @Upsert
     @Transaction
     suspend fun upsert(item: List<WebSearchEpisodeInfoEntity>)
-
-    @Query(
-        """
-        SELECT * FROM web_search_episode_info
-        WHERE subjectId = :subjectId
-        """,
-    )
-    suspend fun filterBySubjectId(
-        subjectId: Int,
-    ): List<WebSearchEpisodeInfoEntity>
 
     @Query(
         """
