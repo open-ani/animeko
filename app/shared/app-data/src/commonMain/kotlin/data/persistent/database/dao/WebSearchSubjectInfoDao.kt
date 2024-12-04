@@ -14,7 +14,7 @@ import androidx.room.Embedded
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.Insert
-import androidx.room.OnConflictStrategy.Companion.IGNORE
+import androidx.room.OnConflictStrategy
 import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.Relation
@@ -40,7 +40,7 @@ data class WebSearchSubjectInfoEntity(
 @Dao
 interface WebSearchSubjectInfoDao {
 
-    @Insert(onConflict = IGNORE)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(item: WebSearchSubjectInfoEntity): Long
 
     @Upsert

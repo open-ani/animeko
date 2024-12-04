@@ -30,7 +30,7 @@ import me.him188.ani.datasources.api.EpisodeSort
     ],
 )
 data class WebSearchEpisodeInfoEntity(
-    @PrimaryKey(autoGenerate = true) val episodeId: Int = 0,
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val channel: String?,
     val name: String,
     val episodeSortOrEp: EpisodeSort?,

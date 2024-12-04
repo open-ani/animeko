@@ -359,8 +359,8 @@ fun KoinApplication.getCommonKoinModule(getContext: () -> Context, coroutineScop
     }
     single<SelectorMediaSourceEpisodeCacheRepository> {
         SelectorMediaSourceEpisodeCacheRepository(
-            subjectInfoDao = database.webSearchSubjectInfoDao(),
-            episodeInfoDao = database.webSearchEpisodeInfoDao(),
+            webSubjectInfoDao = database.webSearchSubjectInfoDao(),
+            webEpisodeInfoDao = database.webSearchEpisodeInfoDao(),
         )
     }
     

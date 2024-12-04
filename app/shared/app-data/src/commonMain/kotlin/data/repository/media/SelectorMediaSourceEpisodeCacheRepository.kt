@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.data.repository.media
 
+import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.persistent.database.dao.WebSearchEpisodeInfoDao
 import me.him188.ani.app.data.persistent.database.dao.WebSearchEpisodeInfoEntity
 import me.him188.ani.app.data.persistent.database.dao.WebSearchSubjectInfoDao
@@ -19,8 +20,8 @@ import me.him188.ani.app.domain.mediasource.web.WebSearchSubjectInfo
 
 
 class SelectorMediaSourceEpisodeCacheRepository(
-    private val subjectInfoDao: WebSearchSubjectInfoDao,
-    private val episodeInfoDao: WebSearchEpisodeInfoDao,
+    private val webSubjectInfoDao: WebSearchSubjectInfoDao,
+    private val webEpisodeInfoDao: WebSearchEpisodeInfoDao,
 ) : Repository() {
     suspend fun addCache(
         mediaSourceId: String,
@@ -29,19 +30,19 @@ class SelectorMediaSourceEpisodeCacheRepository(
         episodeInfos: List<WebSearchEpisodeInfo>
     ) {
         val subjectInfoEntity = subjectInfo.toEntity(mediaSourceId, subjectName)
-        val subjectId = subjectInfoDao.insert(subjectInfoEntity)
-        episodeInfoDao.upsert(episodeInfos.map { it.toEntity(subjectId) })
+        val subjectId = webSubjectInfoDao.insert(subjectInfoEntity)
+        webEpisodeInfoDao.upsert(episodeInfos.map { it.toEntity(subjectId) })
     }
 
-    suspend fun clearCache() {
-        subjectInfoDao.clearCache()
-        subjectInfoDao.resetAutoIncrement()
-        episodeInfoDao.resetAutoIncrement()
+    suspend fun clearSubjectAndEpisodeCache() = withContext(defaultDispatcher) {
+        webSubjectInfoDao.clearCache()
+        webSubjectInfoDao.resetAutoIncrement()
+        webEpisodeInfoDao.resetAutoIncrement()
     }
 
     suspend fun getCache(mediaSourceId: String, subjectName: String): List<WebSearchCache> {
         val webSearchSubjectInfoAndEpisodes =
-            subjectInfoDao.filterByMediaSourceIdAndSubjectName(mediaSourceId, subjectName)
+            webSubjectInfoDao.filterByMediaSourceIdAndSubjectName(mediaSourceId, subjectName)
         return webSearchSubjectInfoAndEpisodes.map { info ->
             WebSearchCache(
                 subjectInfo = info.subjectInfo.toWebSearchSubjectInfo(),

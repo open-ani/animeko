@@ -649,7 +649,7 @@ private class EpisodeViewModelImpl(
 
     override fun stopPlaying() {
         launchInBackground {
-            selectorMediaSourceEpisodeCacheRepository.clearCache()
+            selectorMediaSourceEpisodeCacheRepository.clearSubjectAndEpisodeCache()
         }
         // 退出播放页前保存播放进度
         savePlayProgress()
