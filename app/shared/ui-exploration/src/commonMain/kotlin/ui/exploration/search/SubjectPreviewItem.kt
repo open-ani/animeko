@@ -38,6 +38,7 @@ class SubjectPreviewItemInfo(
     val staff: String?,
     val actors: String?,
     val rating: RatingInfo,
+    val nsfw: Boolean
 ) {
     companion object {
         fun compute(
@@ -121,6 +122,7 @@ class SubjectPreviewItemInfo(
                 staff,
                 actors,
                 rating = subjectInfo.ratingInfo,
+                nsfw = subjectInfo.nsfw,
             )
         }
     }
@@ -143,6 +145,7 @@ internal val TestSubjectPreviewItemInfos
                 count = RatingCounts.Zero,
                 score = "6.7",
             ),
+            nsfw = false,
         ),
         SubjectPreviewItemInfo(
             subjectId = 2,
@@ -157,6 +160,7 @@ internal val TestSubjectPreviewItemInfos
                 count = RatingCounts.Zero,
                 score = "6.7",
             ),
+            nsfw = true,
         ),
     )
 

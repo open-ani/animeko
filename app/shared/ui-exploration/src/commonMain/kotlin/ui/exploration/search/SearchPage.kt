@@ -40,6 +40,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.BlurredEdgeTreatment
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.layout.onSizeChanged
@@ -53,6 +55,7 @@ import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import me.him188.ani.app.data.models.preference.NSFWMode
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.ui.adaptive.AniListDetailPaneScaffold
 import me.him188.ani.app.ui.adaptive.AniTopAppBar
@@ -126,6 +129,7 @@ fun SearchPage(
                     }
                 }, // collect only once
                 state = state.gridState,
+                blurEnabled = state.nsfwModeState.value == NSFWMode.BLUR,
             )
         },
         detailContent = {
@@ -178,6 +182,7 @@ internal fun SearchPageResultColumn(
     selectedItemIndex: () -> Int,
     onSelect: (index: Int) -> Unit,
     onPlay: (info: SubjectPreviewItemInfo) -> Unit,
+    blurEnabled: Boolean,
     modifier: Modifier = Modifier,
     state: LazyStaggeredGridState = rememberLazyStaggeredGridState()
 ) {
@@ -259,6 +264,9 @@ internal fun SearchPageResultColumn(
                     image = {
                         SubjectItemDefaults.Image(
                             info.imageUrl,
+                            modifier = Modifier.ifThen(blurEnabled && info.nsfw) {
+                                blur(4.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded)
+                            },
 //                            Modifier.sharedElement(
 //                                rememberSharedContentState(SharedTransitionKeys.subjectCoverImage(subjectId = info.subjectId)),
 //                                animatedVisibilityScope,

@@ -11,11 +11,15 @@ package me.him188.ani.app.ui.main
 
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.mutableStateOf
+import androidx.paging.cachedIn
+import androidx.paging.filter
 import androidx.paging.map
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import me.him188.ani.app.data.models.preference.NSFWMode
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.subject.SubjectSearchHistoryRepository
@@ -41,6 +45,8 @@ class SearchViewModel : AbstractViewModel(), KoinComponent {
     private val subjectDetailsStateFactory: SubjectDetailsStateFactory by inject()
     private val settingsRepository: SettingsRepository by inject()
 
+    private val nsfwSettingFlow = settingsRepository.uiSettings.flow.map { it.searchSettings.nsfwMode }
+
     private val queryState = mutableStateOf("")
 
     val searchPageState: SearchPageState = SearchPageState(
@@ -55,24 +61,30 @@ class SearchViewModel : AbstractViewModel(), KoinComponent {
         queryState = queryState,
         searchState = PagingSearchState(
             createPager = {
-                subjectSearchRepository.searchSubjects(
-                    SubjectSearchQuery(keyword = queryState.value),
-                    useNewApi = {
-                        settingsRepository.uiSettings.flow.map { it.searchSettings.enableNewSearchSubjectApi }
-                            .first()
-                    },
-                ).map { data ->
-                    data.map {
-                        SubjectPreviewItemInfo.compute(
-                            it.subjectInfo,
-                            it.mainEpisodeCount,
-                            it.lightSubjectRelations.lightRelatedPersonInfoList,
-                            it.lightSubjectRelations.lightRelatedCharacterInfoList,
-                        )
-                    }
+                combine(
+                    nsfwSettingFlow,
+                    subjectSearchRepository.searchSubjects(
+                        SubjectSearchQuery(keyword = queryState.value),
+                        useNewApi = {
+                            settingsRepository.uiSettings.flow.map { it.searchSettings.enableNewSearchSubjectApi }
+                                .first()
+                        },
+                    ).map { data ->
+                        data.map {
+                            SubjectPreviewItemInfo.compute(
+                                it.subjectInfo,
+                                it.mainEpisodeCount,
+                                it.lightSubjectRelations.lightRelatedPersonInfoList,
+                                it.lightSubjectRelations.lightRelatedCharacterInfoList,
+                            )
+                        }
+                    }.cachedIn(backgroundScope),
+                ) { nsfwMode, subjects ->
+                    subjects.filter { if (nsfwMode == NSFWMode.HIDE) !it.nsfw else true }
                 }.flowOn(Dispatchers.Default)
             },
         ),
+        nsfwModeState = nsfwSettingFlow.produceState(NSFWMode.DISPLAY),
         backgroundScope = backgroundScope,
         onStartSearch = { query ->
             subjectDetailsStateLoader.clear()
