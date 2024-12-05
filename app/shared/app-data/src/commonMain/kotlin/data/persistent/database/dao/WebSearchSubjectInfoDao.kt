@@ -19,7 +19,7 @@ import androidx.room.Transaction
 import androidx.room.Upsert
 
 @Entity(
-    tableName = "web_search_subject_info",
+    tableName = "web_search_subject",
     indices = [
         Index(value = ["mediaSourceId", "subjectName"], unique = true),
     ],
@@ -46,7 +46,7 @@ interface WebSearchSubjectInfoDao {
 
     @Query(
         """
-        SELECT * FROM web_search_subject_info
+        SELECT * FROM web_search_subject
         WHERE mediaSourceId = :mediaSourceId and subjectName = :subjectName
         """,
     )
@@ -58,14 +58,14 @@ interface WebSearchSubjectInfoDao {
 
     @Query(
         """
-        DELETE FROM web_search_subject_info
+        DELETE FROM web_search_subject
         """,
     )
-    suspend fun clearCache()
+    suspend fun deleteAll()
 
     @Query(
         """
-        UPDATE sqlite_sequence SET seq = 0 WHERE name ='web_search_subject_info'    
+        UPDATE sqlite_sequence SET seq = 0 WHERE name ='web_search_subject'    
         """,
     )
     suspend fun resetAutoIncrement()
@@ -73,12 +73,12 @@ interface WebSearchSubjectInfoDao {
 
 data class WebSearchSubjectInfoAndEpisodes(
     @Embedded
-    val subjectInfo: WebSearchSubjectInfoEntity,
+    val webSubjectInfo: WebSearchSubjectInfoEntity,
     @Relation(
         entity = WebSearchEpisodeInfoEntity::class,
         parentColumn = "mediaSourceId",
         entityColumn = "mediaSourceId",
     )
-    val episodeInfos: List<WebSearchEpisodeInfoEntity>,
+    val webEpisodeInfos: List<WebSearchEpisodeInfoEntity>,
 ) 
 

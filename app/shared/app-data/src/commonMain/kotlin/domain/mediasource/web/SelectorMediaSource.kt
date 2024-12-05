@@ -160,11 +160,11 @@ class SelectorMediaSource(
             return@withContext ApiResponse.success(
                 cache.flatMap { webSearchInfo ->
                     selectMedia(
-                        webSearchInfo.episodeInfos.asSequence(),
+                        webSearchInfo.webEpisodeInfos.asSequence(),
                         searchConfig,
                         query,
                         mediaSourceId,
-                        subjectName = webSearchInfo.subjectInfo.name,
+                        subjectName = webSearchInfo.webSubjectInfo.name,
                     ).filteredList
                 },
             )

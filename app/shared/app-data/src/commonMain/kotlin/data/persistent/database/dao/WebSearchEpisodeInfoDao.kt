@@ -20,7 +20,7 @@ import androidx.room.Upsert
 import me.him188.ani.datasources.api.EpisodeSort
 
 @Entity(
-    tableName = "web_search_episode_info",
+    tableName = "web_search_episode",
     indices = [
         Index(value = ["mediaSourceId", "subjectName"]),
     ],
@@ -54,7 +54,7 @@ interface WebSearchEpisodeInfoDao {
 
     @Query(
         """
-        UPDATE sqlite_sequence SET seq = 0 WHERE name ='web_search_episode_info'    
+        UPDATE sqlite_sequence SET seq = 0 WHERE name ='web_search_episode'    
         """,
     )
     suspend fun resetAutoIncrement()

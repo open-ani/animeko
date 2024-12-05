@@ -35,7 +35,7 @@ class SelectorMediaSourceEpisodeCacheRepository(
     }
 
     suspend fun clearSubjectAndEpisodeCache() = withContext(defaultDispatcher) {
-        webSubjectInfoDao.clearCache()
+        webSubjectInfoDao.deleteAll()
         webSubjectInfoDao.resetAutoIncrement()
         webEpisodeInfoDao.resetAutoIncrement()
     }
@@ -45,16 +45,16 @@ class SelectorMediaSourceEpisodeCacheRepository(
             webSubjectInfoDao.filterByMediaSourceIdAndSubjectName(mediaSourceId, subjectName)
         return webSearchSubjectInfoAndEpisodes.map { info ->
             WebSearchCache(
-                subjectInfo = info.subjectInfo.toWebSearchSubjectInfo(),
-                episodeInfos = info.episodeInfos.map { it.toWebSearchEpisodeInfo() },
+                webSubjectInfo = info.webSubjectInfo.toWebSearchSubjectInfo(),
+                webEpisodeInfos = info.webEpisodeInfos.map { it.toWebSearchEpisodeInfo() },
             )
         }
     }
 }
 
 data class WebSearchCache(
-    val subjectInfo: WebSearchSubjectInfo,
-    val episodeInfos: List<WebSearchEpisodeInfo>
+    val webSubjectInfo: WebSearchSubjectInfo,
+    val webEpisodeInfos: List<WebSearchEpisodeInfo>
 )
 
 
