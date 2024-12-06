@@ -16,6 +16,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.paging.compose.collectAsLazyPagingItemsWithLifecycle
+import me.him188.ani.app.data.models.preference.NSFWMode
 import me.him188.ani.app.data.models.subject.TestFollowedSubjectInfos
 import me.him188.ani.app.domain.session.TestUserInfo
 import me.him188.ani.app.domain.session.createTestAuthState
@@ -38,6 +39,7 @@ internal fun PreviewExplorationPage() {
                 ExplorationPageState(
                     authState = createTestAuthState(scope),
                     selfInfoState = stateOf(TestUserInfo),
+                    stateOf(NSFWMode.DISPLAY),
                     trendingSubjectInfoPager,
                     followedSubjectsPager = createTestPager(TestFollowedSubjectInfos),
                 )

@@ -32,6 +32,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.BlurredEdgeTreatment
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
@@ -47,6 +49,7 @@ import me.him188.ani.app.data.models.subject.hasNewEpisodeToPlay
 import me.him188.ani.app.data.models.subject.subjectInfo
 import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.AsyncImage
+import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.BasicCarouselItem
 import me.him188.ani.app.ui.foundation.layout.CarouselItemDefaults
 import me.him188.ani.app.ui.foundation.layout.compareTo
@@ -66,6 +69,7 @@ import me.him188.ani.app.ui.subject.AiringLabelState
 fun FollowedSubjectsLazyRow(
     items: LazyPagingItems<FollowedSubjectInfo>, // null means placeholder
 //    items: List<FollowedSubjectInfo?>, // null means placeholder
+    blurEnabled: Boolean,
     onClick: (FollowedSubjectInfo) -> Unit,
     onPlay: (FollowedSubjectInfo) -> Unit,
     modifier: Modifier = Modifier,
@@ -94,6 +98,7 @@ fun FollowedSubjectsLazyRow(
                 items(8) {
                     FollowedSubjectItem(
                         null,
+                        blurEnabled = false,
                         onClick = { },
                         onPlay = { },
                         layoutParameters.imageSize,
@@ -134,6 +139,7 @@ fun FollowedSubjectsLazyRow(
             val item = items[index]
             FollowedSubjectItem(
                 item,
+                blurEnabled,
                 onClick = { item?.let { onClick(it) } },
                 onPlay = { item?.let { onPlay(it) } },
                 layoutParameters.imageSize,
@@ -146,6 +152,7 @@ fun FollowedSubjectsLazyRow(
 @Composable
 private fun FollowedSubjectItem(
     item: FollowedSubjectInfo?, // null for placeholder
+    blurEnabled: Boolean,
     onClick: () -> Unit,
     onPlay: () -> Unit,
     imageSize: DpSize,
@@ -184,7 +191,9 @@ private fun FollowedSubjectItem(
             val image = @Composable {
                 AsyncImage(
                     item.subjectInfo.imageLarge,
-                    modifier = Modifier.size(imageSize),
+                    modifier = Modifier.ifThen(blurEnabled && item.subjectInfo.nsfw) {
+                        blur(4.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded)
+                    }.size(imageSize),
                     contentDescription = item.subjectInfo.displayName,
                     contentScale = ContentScale.Crop,
                 )
