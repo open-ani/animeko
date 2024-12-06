@@ -22,6 +22,7 @@ import androidx.room.Upsert
     tableName = "web_search_subject",
     indices = [
         Index(value = ["mediaSourceId", "subjectName"], unique = true),
+        Index(value = ["mediaSourceId"]),
     ],
     primaryKeys = ["mediaSourceId", "subjectName"],
 )
@@ -62,13 +63,6 @@ interface WebSearchSubjectInfoDao {
         """,
     )
     suspend fun deleteAll()
-
-    @Query(
-        """
-        UPDATE sqlite_sequence SET seq = 0 WHERE name ='web_search_subject'    
-        """,
-    )
-    suspend fun resetAutoIncrement()
 }
 
 data class WebSearchSubjectInfoAndEpisodes(

@@ -23,6 +23,7 @@ import me.him188.ani.datasources.api.EpisodeSort
     tableName = "web_search_episode",
     indices = [
         Index(value = ["mediaSourceId", "subjectName"]),
+        Index(value = ["mediaSourceId"]),
     ],
     foreignKeys = [
         ForeignKey(

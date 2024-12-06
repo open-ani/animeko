@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.data.repository.media
 
-import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.persistent.database.dao.WebSearchEpisodeInfoDao
 import me.him188.ani.app.data.persistent.database.dao.WebSearchEpisodeInfoEntity
 import me.him188.ani.app.data.persistent.database.dao.WebSearchSubjectInfoDao
@@ -34,9 +33,8 @@ class SelectorMediaSourceEpisodeCacheRepository(
         webEpisodeInfoDao.upsert(episodeInfos.map { it.toEntity(mediaSourceId, subjectName) })
     }
 
-    suspend fun clearSubjectAndEpisodeCache() = withContext(defaultDispatcher) {
+    suspend fun clearSubjectAndEpisodeCache() {
         webSubjectInfoDao.deleteAll()
-        webSubjectInfoDao.resetAutoIncrement()
         webEpisodeInfoDao.resetAutoIncrement()
     }
 
