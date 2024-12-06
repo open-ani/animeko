@@ -80,7 +80,8 @@ class SearchViewModel : AbstractViewModel(), KoinComponent {
                         }
                     }.cachedIn(backgroundScope),
                 ) { nsfwMode, subjects ->
-                    subjects.filter { if (nsfwMode == NSFWMode.HIDE) !it.nsfw else true }
+                    if (nsfwMode != NSFWMode.HIDE) return@combine subjects
+                    subjects.filter { !it.nsfw }
                 }.flowOn(Dispatchers.Default)
             },
         ),
