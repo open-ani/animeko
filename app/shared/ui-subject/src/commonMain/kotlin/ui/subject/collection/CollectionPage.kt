@@ -75,13 +75,13 @@ import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.UserInfo
+import me.him188.ani.app.data.models.preference.NSFWMode
 import me.him188.ani.app.data.models.subject.SubjectCollectionCounts
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.data.models.subject.toNavPlaceholder
 import me.him188.ani.app.data.repository.subject.CollectionsFilterQuery
 import me.him188.ani.app.domain.session.AuthState
 import me.him188.ani.app.navigation.LocalNavigator
-import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.app.ui.adaptive.AniTopAppBar
 import me.him188.ani.app.ui.adaptive.AniTopAppBarDefaults
 import me.him188.ani.app.ui.foundation.LocalPlatform
@@ -125,6 +125,7 @@ class UserCollectionsState(
     val episodeListStateFactory: EpisodeListStateFactory,
     val subjectProgressStateFactory: SubjectProgressStateFactory,
     val createEditableSubjectCollectionTypeState: (subjectCollection: SubjectCollectionInfo) -> EditableSubjectCollectionTypeState,
+    val nsfwModeState: State<NSFWMode>,
     defaultQuery: CollectionsFilterQuery = CollectionsFilterQuery(
         type = UnifiedCollectionType.DOING,
     ),
@@ -254,6 +255,7 @@ fun CollectionPage(
                                 state.episodeListStateFactory,
                                 state.subjectProgressStateFactory,
                                 state.createEditableSubjectCollectionTypeState(collection),
+                                blurEnabled = state.nsfwModeState.value == NSFWMode.BLUR,
                             )
                         },
                         enableAnimation = enableAnimation,
@@ -397,6 +399,7 @@ private fun SubjectCollectionItem(
     episodeListStateFactory: EpisodeListStateFactory,
     subjectProgressStateFactory: SubjectProgressStateFactory,
     editableSubjectCollectionTypeState: EditableSubjectCollectionTypeState,
+    blurEnabled: Boolean,
     type: UnifiedCollectionType = subjectCollection.collectionType,
     modifier: Modifier = Modifier,
 ) {
@@ -468,6 +471,7 @@ private fun SubjectCollectionItem(
             }
         },
         colors = AniThemeDefaults.primaryCardColors(),
+        blurEnabled = blurEnabled,
         modifier = modifier,
     )
 }

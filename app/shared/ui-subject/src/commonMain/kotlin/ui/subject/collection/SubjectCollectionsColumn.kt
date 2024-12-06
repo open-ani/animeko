@@ -44,6 +44,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.BlurredEdgeTreatment
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
@@ -153,6 +155,7 @@ fun SubjectCollectionItem(
     onClick: () -> Unit,
     onShowEpisodeList: () -> Unit,
     playButton: @Composable () -> Unit,
+    blurEnabled: Boolean,
     modifier: Modifier = Modifier,
     height: Dp = 148.dp,
     shape: RoundedCornerShape = RoundedCornerShape(8.dp),
@@ -169,6 +172,9 @@ fun SubjectCollectionItem(
                 item.subjectInfo.imageLarge,
                 contentDescription = null,
                 modifier = Modifier
+                    .ifThen(blurEnabled && item.subjectInfo.nsfw) {
+                        blur(4.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded)
+                    }
                     .height(height).width(height * COVER_WIDTH_TO_HEIGHT_RATIO),
                 contentScale = ContentScale.Crop,
             )

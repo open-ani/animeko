@@ -18,6 +18,7 @@ import me.him188.ani.datasources.api.EpisodeType
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.platform.annotations.TestOnly
+import kotlin.random.Random
 import kotlin.time.Duration
 
 /**
@@ -134,6 +135,7 @@ private fun testSubjectCollection(
         subjectId = id,
         nameCn = "中文条目名称",
         name = "Subject Name",
+        nsfw = Random.nextBoolean(),
     )
     return SubjectCollectionInfo(
         collectionType = collectionType,
