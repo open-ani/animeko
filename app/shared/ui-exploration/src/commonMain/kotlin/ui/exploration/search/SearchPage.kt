@@ -69,6 +69,7 @@ import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.paneHorizontalPadding
 import me.him188.ani.app.ui.foundation.layout.paneVerticalPadding
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
+import me.him188.ani.app.ui.foundation.text.NSFWText
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.widgets.TopAppBarGoBackButton
 import me.him188.ani.app.ui.search.LoadErrorCard
@@ -262,16 +263,22 @@ internal fun SearchPageResultColumn(
                         .bringIntoViewRequester(requester)
                         .padding(vertical = currentWindowAdaptiveInfo1().windowSizeClass.paneVerticalPadding / 2),
                     image = {
-                        SubjectItemDefaults.Image(
-                            info.imageUrl,
-                            modifier = Modifier.ifThen(blurEnabled && info.nsfw) {
-                                blur(4.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded)
-                            },
+                        Box {
+                            val nsfwMaskEnabled = blurEnabled && info.nsfw
+                            SubjectItemDefaults.Image(
+                                info.imageUrl,
+                                modifier = Modifier.ifThen(nsfwMaskEnabled) {
+                                    blur(4.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded)
+                                },
 //                            Modifier.sharedElement(
 //                                rememberSharedContentState(SharedTransitionKeys.subjectCoverImage(subjectId = info.subjectId)),
 //                                animatedVisibilityScope,
 //                            ),
-                        )
+                            )
+                            if (nsfwMaskEnabled) {
+                                NSFWText()
+                            }
+                        }
                     },
                     title = { maxLines ->
                         Text(

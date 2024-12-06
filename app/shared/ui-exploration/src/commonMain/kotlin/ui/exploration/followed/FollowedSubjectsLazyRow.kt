@@ -56,6 +56,7 @@ import me.him188.ani.app.ui.foundation.layout.compareTo
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.minimumHairlineSize
 import me.him188.ani.app.ui.foundation.stateOf
+import me.him188.ani.app.ui.foundation.text.NSFWText
 import me.him188.ani.app.ui.search.LoadErrorCard
 import me.him188.ani.app.ui.search.LoadErrorCardLayout
 import me.him188.ani.app.ui.search.LoadErrorCardRole
@@ -189,14 +190,20 @@ private fun FollowedSubjectItem(
     ) {
         if (item != null) {
             val image = @Composable {
-                AsyncImage(
-                    item.subjectInfo.imageLarge,
-                    modifier = Modifier.ifThen(blurEnabled && item.subjectInfo.nsfw) {
-                        blur(4.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded)
-                    }.size(imageSize),
-                    contentDescription = item.subjectInfo.displayName,
-                    contentScale = ContentScale.Crop,
-                )
+                Box {
+                    val nsfwMaskEnabled = blurEnabled && item.subjectInfo.nsfw
+                    AsyncImage(
+                        item.subjectInfo.imageLarge,
+                        modifier = Modifier.ifThen(nsfwMaskEnabled) {
+                            blur(4.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded)
+                        }.size(imageSize),
+                        contentDescription = item.subjectInfo.displayName,
+                        contentScale = ContentScale.Crop,
+                    )
+                    if (nsfwMaskEnabled) {
+                        NSFWText()
+                    }
+                }
             }
             Surface({ onClick() }, content = image)
         } else {

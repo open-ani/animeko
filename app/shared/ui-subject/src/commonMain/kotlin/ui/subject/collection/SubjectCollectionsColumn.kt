@@ -60,6 +60,7 @@ import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.stateOf
+import me.him188.ani.app.ui.foundation.text.NSFWText
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.search.LoadError
 import me.him188.ani.app.ui.search.LoadErrorCard
@@ -168,16 +169,22 @@ fun SubjectCollectionItem(
         colors = colors,
     ) {
         Row(Modifier.weight(1f, fill = false)) {
-            AsyncImage(
-                item.subjectInfo.imageLarge,
-                contentDescription = null,
-                modifier = Modifier
-                    .ifThen(blurEnabled && item.subjectInfo.nsfw) {
-                        blur(4.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded)
-                    }
-                    .height(height).width(height * COVER_WIDTH_TO_HEIGHT_RATIO),
-                contentScale = ContentScale.Crop,
-            )
+            Box {
+                val nsfwMaskEnabled = blurEnabled && item.subjectInfo.nsfw
+                AsyncImage(
+                    item.subjectInfo.imageLarge,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .ifThen(nsfwMaskEnabled) {
+                            blur(4.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded)
+                        }
+                        .height(height).width(height * COVER_WIDTH_TO_HEIGHT_RATIO),
+                    contentScale = ContentScale.Crop,
+                )
+                if (nsfwMaskEnabled) {
+                    NSFWText()
+                }
+            }
 
             Box(Modifier.weight(1f)) {
                 SubjectCollectionItemContent(
