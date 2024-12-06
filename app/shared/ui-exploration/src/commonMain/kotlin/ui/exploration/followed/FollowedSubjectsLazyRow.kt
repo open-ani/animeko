@@ -32,8 +32,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.BlurredEdgeTreatment
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
@@ -49,14 +47,14 @@ import me.him188.ani.app.data.models.subject.hasNewEpisodeToPlay
 import me.him188.ani.app.data.models.subject.subjectInfo
 import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.AsyncImage
-import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.BasicCarouselItem
 import me.him188.ani.app.ui.foundation.layout.CarouselItemDefaults
 import me.him188.ani.app.ui.foundation.layout.compareTo
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.minimumHairlineSize
 import me.him188.ani.app.ui.foundation.stateOf
-import me.him188.ani.app.ui.foundation.text.NSFWText
+import me.him188.ani.app.ui.foundation.widgets.NSFWMask
+import me.him188.ani.app.ui.foundation.widgets.NSFWMaskState
 import me.him188.ani.app.ui.search.LoadErrorCard
 import me.him188.ani.app.ui.search.LoadErrorCardLayout
 import me.him188.ani.app.ui.search.LoadErrorCardRole
@@ -160,54 +158,49 @@ private fun FollowedSubjectItem(
     shape: Shape,
     modifier: Modifier = Modifier,
 ) {
-    BasicCarouselItem(
-        label = { CarouselItemDefaults.Text(item?.subjectInfo?.displayName ?: "") },
-        modifier.placeholder(item == null, shape = shape),
-        supportingText = {
+    val state = remember { NSFWMaskState(item?.subjectInfo?.nsfw ?: false, blurEnabled) }
+    NSFWMask(state, contentModifier = modifier) { contentModifier ->
+        BasicCarouselItem(
+            label = { CarouselItemDefaults.Text(item?.subjectInfo?.displayName ?: "") },
+            contentModifier.placeholder(item == null, shape = shape),
+            supportingText = {
+                if (item != null) {
+                    val airingState = remember(item) {
+                        AiringLabelState(
+                            stateOf(item.subjectAiringInfo),
+                            stateOf(item.subjectProgressInfo),
+                        )
+                    }
+                    airingState.progressText?.let {
+                        Text(it, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                }
+            },
+            maskShape = shape,
+            overlay = {
+                if (item?.subjectProgressInfo?.hasNewEpisodeToPlay == true) {
+                    FilledTonalIconButton(
+                        onClick = { onPlay() },
+                        modifier = Modifier.align(Alignment.BottomEnd),
+                    ) {
+                        Icon(Icons.Rounded.PlayArrow, null, Modifier.size(24.dp))
+                    }
+                }
+            },
+        ) {
             if (item != null) {
-                val airingState = remember(item) {
-                    AiringLabelState(
-                        stateOf(item.subjectAiringInfo),
-                        stateOf(item.subjectProgressInfo),
-                    )
-                }
-                airingState.progressText?.let {
-                    Text(it, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-            }
-        },
-        maskShape = shape,
-        overlay = {
-            if (item?.subjectProgressInfo?.hasNewEpisodeToPlay == true) {
-                FilledTonalIconButton(
-                    onClick = { onPlay() },
-                    modifier = Modifier.align(Alignment.BottomEnd),
-                ) {
-                    Icon(Icons.Rounded.PlayArrow, null, Modifier.size(24.dp))
-                }
-            }
-        },
-    ) {
-        if (item != null) {
-            val image = @Composable {
-                Box {
-                    val nsfwMaskEnabled = blurEnabled && item.subjectInfo.nsfw
+                val image = @Composable {
                     AsyncImage(
                         item.subjectInfo.imageLarge,
-                        modifier = Modifier.ifThen(nsfwMaskEnabled) {
-                            blur(4.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded)
-                        }.size(imageSize),
+                        modifier = Modifier.size(imageSize),
                         contentDescription = item.subjectInfo.displayName,
                         contentScale = ContentScale.Crop,
                     )
-                    if (nsfwMaskEnabled) {
-                        NSFWText()
-                    }
                 }
+                Surface({ onClick() }, content = image)
+            } else {
+                Box(Modifier.size(imageSize))
             }
-            Surface({ onClick() }, content = image)
-        } else {
-            Box(Modifier.size(imageSize))
         }
     }
 }

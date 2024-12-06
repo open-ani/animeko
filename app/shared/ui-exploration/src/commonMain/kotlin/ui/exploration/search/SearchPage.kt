@@ -40,8 +40,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.BlurredEdgeTreatment
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.layout.onSizeChanged
@@ -69,8 +67,9 @@ import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.paneHorizontalPadding
 import me.him188.ani.app.ui.foundation.layout.paneVerticalPadding
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
-import me.him188.ani.app.ui.foundation.text.NSFWText
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
+import me.him188.ani.app.ui.foundation.widgets.NSFWMask
+import me.him188.ani.app.ui.foundation.widgets.NSFWMaskState
 import me.him188.ani.app.ui.foundation.widgets.TopAppBarGoBackButton
 import me.him188.ani.app.ui.search.LoadErrorCard
 import me.him188.ani.app.ui.search.SearchDefaults
@@ -244,53 +243,47 @@ internal fun SearchPageResultColumn(
                     }
                 }
 
-                SubjectPreviewItem(
-                    selected = index == selectedItemIndex(),
-                    onClick = { onSelect(index) },
-                    onPlay = { onPlay(info) },
-                    info = info,
-                    Modifier
+                val nsfwMaskState = NSFWMaskState(info.nsfw, blurEnabled)
+                NSFWMask(state = nsfwMaskState) { contentModifier ->
+                    SubjectPreviewItem(
+                        selected = index == selectedItemIndex(),
+                        onClick = { onSelect(index) },
+                        onPlay = { onPlay(info) },
+                        info = info,
+                        contentModifier
 //                        .sharedElement(
 //                            rememberSharedContentState(SharedTransitionKeys.subjectBounds(info.subjectId)),
 //                            animatedVisibilityScope,
 //                        )
-                        .animateItem(
-                            fadeInSpec = AniThemeDefaults.feedItemFadeInSpec,
-                            placementSpec = AniThemeDefaults.feedItemPlacementSpec,
-                            fadeOutSpec = AniThemeDefaults.feedItemFadeOutSpec,
-                        )
-                        .fillMaxWidth()
-                        .bringIntoViewRequester(requester)
-                        .padding(vertical = currentWindowAdaptiveInfo1().windowSizeClass.paneVerticalPadding / 2),
-                    image = {
-                        Box {
-                            val nsfwMaskEnabled = blurEnabled && info.nsfw
+                            .animateItem(
+                                fadeInSpec = AniThemeDefaults.feedItemFadeInSpec,
+                                placementSpec = AniThemeDefaults.feedItemPlacementSpec,
+                                fadeOutSpec = AniThemeDefaults.feedItemFadeOutSpec,
+                            )
+                            .fillMaxWidth()
+                            .bringIntoViewRequester(requester)
+                            .padding(vertical = currentWindowAdaptiveInfo1().windowSizeClass.paneVerticalPadding / 2),
+                        image = {
                             SubjectItemDefaults.Image(
                                 info.imageUrl,
-                                modifier = Modifier.ifThen(nsfwMaskEnabled) {
-                                    blur(4.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded)
-                                },
 //                            Modifier.sharedElement(
 //                                rememberSharedContentState(SharedTransitionKeys.subjectCoverImage(subjectId = info.subjectId)),
 //                                animatedVisibilityScope,
 //                            ),
                             )
-                            if (nsfwMaskEnabled) {
-                                NSFWText()
-                            }
-                        }
-                    },
-                    title = { maxLines ->
-                        Text(
-                            info.title,
+                        },
+                        title = { maxLines ->
+                            Text(
+                                info.title,
 //                            Modifier.sharedElement(
 //                                rememberSharedContentState(SharedTransitionKeys.subjectTitle(subjectId = info.subjectId)),
 //                                animatedVisibilityScope,
 //                            ),
-                            maxLines = maxLines,
-                        )
-                    },
-                )
+                                maxLines = maxLines,
+                            )
+                        },
+                    )
+                }
             } else {
                 Box(Modifier.size(Dp.Hairline))
                 // placeholder

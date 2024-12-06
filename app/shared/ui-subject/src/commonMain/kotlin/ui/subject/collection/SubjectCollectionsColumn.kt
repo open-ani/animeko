@@ -44,8 +44,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.BlurredEdgeTreatment
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
@@ -60,8 +58,9 @@ import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.stateOf
-import me.him188.ani.app.ui.foundation.text.NSFWText
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
+import me.him188.ani.app.ui.foundation.widgets.NSFWMask
+import me.him188.ani.app.ui.foundation.widgets.NSFWMaskState
 import me.him188.ani.app.ui.search.LoadError
 import me.him188.ani.app.ui.search.LoadErrorCard
 import me.him188.ani.app.ui.search.isLoadingNextPage
@@ -162,38 +161,33 @@ fun SubjectCollectionItem(
     shape: RoundedCornerShape = RoundedCornerShape(8.dp),
     colors: CardColors = CardDefaults.cardColors(),
 ) {
-    Card(
-        onClick,
-        modifier.clip(shape).fillMaxWidth().height(height),
-        shape = shape,
-        colors = colors,
-    ) {
-        Row(Modifier.weight(1f, fill = false)) {
-            Box {
-                val nsfwMaskEnabled = blurEnabled && item.subjectInfo.nsfw
+    val nsfwMaskState = remember { NSFWMaskState(item.subjectInfo.nsfw, blurEnabled) }
+    NSFWMask(state = nsfwMaskState, contentModifier = modifier) { contentModifier ->
+
+        Card(
+            onClick,
+            contentModifier.clip(shape).fillMaxWidth().height(height),
+            shape = shape,
+            colors = colors,
+        ) {
+            Row(Modifier.weight(1f, fill = false)) {
                 AsyncImage(
                     item.subjectInfo.imageLarge,
                     contentDescription = null,
                     modifier = Modifier
-                        .ifThen(nsfwMaskEnabled) {
-                            blur(4.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded)
-                        }
                         .height(height).width(height * COVER_WIDTH_TO_HEIGHT_RATIO),
                     contentScale = ContentScale.Crop,
                 )
-                if (nsfwMaskEnabled) {
-                    NSFWText()
-                }
-            }
 
-            Box(Modifier.weight(1f)) {
-                SubjectCollectionItemContent(
-                    item = item,
-                    editableSubjectCollectionTypeState = editableSubjectCollectionTypeState,
-                    onShowEpisodeList = onShowEpisodeList,
-                    playButton = playButton,
-                    Modifier.padding(start = 12.dp).fillMaxSize(),
-                )
+                Box(Modifier.weight(1f)) {
+                    SubjectCollectionItemContent(
+                        item = item,
+                        editableSubjectCollectionTypeState = editableSubjectCollectionTypeState,
+                        onShowEpisodeList = onShowEpisodeList,
+                        playButton = playButton,
+                        Modifier.padding(start = 12.dp).fillMaxSize(),
+                    )
+                }
             }
         }
     }
