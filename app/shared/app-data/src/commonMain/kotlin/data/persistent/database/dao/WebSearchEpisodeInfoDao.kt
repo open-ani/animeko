@@ -14,7 +14,6 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
-import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Upsert
 import me.him188.ani.datasources.api.EpisodeSort
@@ -22,26 +21,25 @@ import me.him188.ani.datasources.api.EpisodeSort
 @Entity(
     tableName = "web_search_episode",
     indices = [
-        Index(value = ["mediaSourceId", "subjectName"]),
-        Index(value = ["mediaSourceId"]),
+        Index(value = ["parentId"]),
+        Index(value = ["channel", "name", "parentId"], unique = true),
     ],
     foreignKeys = [
         ForeignKey(
             entity = WebSearchSubjectInfoEntity::class,
-            parentColumns = ["mediaSourceId", "subjectName"],
-            childColumns = ["mediaSourceId", "subjectName"],
+            parentColumns = ["id"],
+            childColumns = ["parentId"],
             onDelete = ForeignKey.CASCADE,
         ),
     ],
 )
 data class WebSearchEpisodeInfoEntity(
-    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val channel: String?,
     val name: String,
     val episodeSortOrEp: EpisodeSort?,
     val playUrl: String,
-    val mediaSourceId: String,
-    val subjectName: String,
+    val parentId: Long,
 )
 
 @Dao
@@ -52,11 +50,4 @@ interface WebSearchEpisodeInfoDao {
     @Upsert
     @Transaction
     suspend fun upsert(item: List<WebSearchEpisodeInfoEntity>)
-
-    @Query(
-        """
-        UPDATE sqlite_sequence SET seq = 0 WHERE name ='web_search_episode'    
-        """,
-    )
-    suspend fun resetAutoIncrement()
 }

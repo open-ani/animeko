@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.data.repository.media
 
+import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.persistent.database.dao.WebSearchEpisodeInfoDao
 import me.him188.ani.app.data.persistent.database.dao.WebSearchEpisodeInfoEntity
 import me.him188.ani.app.data.persistent.database.dao.WebSearchSubjectInfoDao
@@ -27,15 +28,14 @@ class SelectorMediaSourceEpisodeCacheRepository(
         subjectName: String,
         subjectInfo: WebSearchSubjectInfo,
         episodeInfos: List<WebSearchEpisodeInfo>
-    ) {
+    ) = withContext(defaultDispatcher) {
         val subjectInfoEntity = subjectInfo.toEntity(mediaSourceId, subjectName)
-        webSubjectInfoDao.upsert(subjectInfoEntity)
-        webEpisodeInfoDao.upsert(episodeInfos.map { it.toEntity(mediaSourceId, subjectName) })
+        val parentId = webSubjectInfoDao.insert(subjectInfoEntity)
+        webEpisodeInfoDao.upsert(episodeInfos.map { it.toEntity(parentId) })
     }
 
     suspend fun clearSubjectAndEpisodeCache() {
         webSubjectInfoDao.deleteAll()
-        webEpisodeInfoDao.resetAutoIncrement()
     }
 
     suspend fun getCache(mediaSourceId: String, subjectName: String): List<WebSearchCache> {
@@ -77,14 +77,13 @@ fun WebSearchSubjectInfoEntity.toWebSearchSubjectInfo(): WebSearchSubjectInfo {
     )
 }
 
-fun WebSearchEpisodeInfo.toEntity(mediaSourceId: String, subjectName: String): WebSearchEpisodeInfoEntity {
+fun WebSearchEpisodeInfo.toEntity(parentId: Long): WebSearchEpisodeInfoEntity {
     return WebSearchEpisodeInfoEntity(
         channel = channel,
         name = name,
         episodeSortOrEp = episodeSortOrEp,
         playUrl = playUrl,
-        mediaSourceId = mediaSourceId,
-        subjectName = subjectName,
+        parentId = parentId,
     )
 }
 
