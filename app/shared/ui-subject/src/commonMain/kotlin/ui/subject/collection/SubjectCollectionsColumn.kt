@@ -59,8 +59,6 @@ import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
-import me.him188.ani.app.ui.foundation.widgets.NSFWMask
-import me.him188.ani.app.ui.foundation.widgets.NSFWMaskState
 import me.him188.ani.app.ui.search.LoadError
 import me.him188.ani.app.ui.search.LoadErrorCard
 import me.him188.ani.app.ui.search.isLoadingNextPage
@@ -155,39 +153,34 @@ fun SubjectCollectionItem(
     onClick: () -> Unit,
     onShowEpisodeList: () -> Unit,
     playButton: @Composable () -> Unit,
-    blurEnabled: Boolean,
     modifier: Modifier = Modifier,
     height: Dp = 148.dp,
     shape: RoundedCornerShape = RoundedCornerShape(8.dp),
     colors: CardColors = CardDefaults.cardColors(),
 ) {
-    val nsfwMaskState = remember { NSFWMaskState(item.subjectInfo.nsfw, blurEnabled) }
-    NSFWMask(state = nsfwMaskState, contentModifier = modifier) { contentModifier ->
+    Card(
+        onClick,
+        modifier.clip(shape).fillMaxWidth().height(height),
+        shape = shape,
+        colors = colors,
+    ) {
+        Row(Modifier.weight(1f, fill = false)) {
+            AsyncImage(
+                item.subjectInfo.imageLarge,
+                contentDescription = null,
+                modifier = Modifier
+                    .height(height).width(height * COVER_WIDTH_TO_HEIGHT_RATIO),
+                contentScale = ContentScale.Crop,
+            )
 
-        Card(
-            onClick,
-            contentModifier.clip(shape).fillMaxWidth().height(height),
-            shape = shape,
-            colors = colors,
-        ) {
-            Row(Modifier.weight(1f, fill = false)) {
-                AsyncImage(
-                    item.subjectInfo.imageLarge,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .height(height).width(height * COVER_WIDTH_TO_HEIGHT_RATIO),
-                    contentScale = ContentScale.Crop,
+            Box(Modifier.weight(1f)) {
+                SubjectCollectionItemContent(
+                    item = item,
+                    editableSubjectCollectionTypeState = editableSubjectCollectionTypeState,
+                    onShowEpisodeList = onShowEpisodeList,
+                    playButton = playButton,
+                    Modifier.padding(start = 12.dp).fillMaxSize(),
                 )
-
-                Box(Modifier.weight(1f)) {
-                    SubjectCollectionItemContent(
-                        item = item,
-                        editableSubjectCollectionTypeState = editableSubjectCollectionTypeState,
-                        onShowEpisodeList = onShowEpisodeList,
-                        playButton = playButton,
-                        Modifier.padding(start = 12.dp).fillMaxSize(),
-                    )
-                }
             }
         }
     }

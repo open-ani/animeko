@@ -93,6 +93,8 @@ import me.him188.ani.app.ui.foundation.session.SelfAvatar
 import me.him188.ani.app.ui.foundation.session.SessionTipsArea
 import me.him188.ani.app.ui.foundation.session.SessionTipsIcon
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
+import me.him188.ani.app.ui.foundation.widgets.NSFWMask
+import me.him188.ani.app.ui.foundation.widgets.NSFWMaskState
 import me.him188.ani.app.ui.foundation.widgets.PullToRefreshBox
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeState
 import me.him188.ani.app.ui.subject.collection.progress.EpisodeListStateFactory
@@ -250,13 +252,21 @@ fun CollectionPage(
                     SubjectCollectionsColumn(
                         items,
                         item = { collection ->
-                            SubjectCollectionItem(
-                                collection,
-                                state.episodeListStateFactory,
-                                state.subjectProgressStateFactory,
-                                state.createEditableSubjectCollectionTypeState(collection),
-                                blurEnabled = state.nsfwModeState.value == NSFWMode.BLUR,
-                            )
+                            val nsfwModeState = remember {
+                                NSFWMaskState(
+                                    collection.subjectInfo.nsfw,
+                                    state.nsfwModeState.value == NSFWMode.BLUR,
+                                )
+                            }
+                            NSFWMask(nsfwModeState) { contentModifier ->
+                                SubjectCollectionItem(
+                                    collection,
+                                    state.episodeListStateFactory,
+                                    state.subjectProgressStateFactory,
+                                    state.createEditableSubjectCollectionTypeState(collection),
+                                    modifier = contentModifier,
+                                )
+                            }
                         },
                         enableAnimation = enableAnimation,
                         gridState = lazyGridState,
@@ -399,7 +409,6 @@ private fun SubjectCollectionItem(
     episodeListStateFactory: EpisodeListStateFactory,
     subjectProgressStateFactory: SubjectProgressStateFactory,
     editableSubjectCollectionTypeState: EditableSubjectCollectionTypeState,
-    blurEnabled: Boolean,
     type: UnifiedCollectionType = subjectCollection.collectionType,
     modifier: Modifier = Modifier,
 ) {
@@ -471,7 +480,6 @@ private fun SubjectCollectionItem(
             }
         },
         colors = AniThemeDefaults.primaryCardColors(),
-        blurEnabled = blurEnabled,
         modifier = modifier,
     )
 }

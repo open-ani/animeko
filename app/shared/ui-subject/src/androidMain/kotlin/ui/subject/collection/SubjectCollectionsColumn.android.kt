@@ -91,7 +91,6 @@ private fun TestSubjectCollectionItem(it: SubjectCollectionInfo) {
                 {},
             )
         },
-        blurEnabled = true,
     )
 }
 
