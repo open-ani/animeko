@@ -19,7 +19,6 @@ import me.him188.ani.app.data.repository.SavedWindowState
 import me.him188.ani.app.data.repository.media.MediaSourceSaves
 import me.him188.ani.app.data.repository.media.MediaSourceSubscriptionsSaveData
 import me.him188.ani.app.data.repository.media.MikanIndexes
-import me.him188.ani.app.data.repository.player.EpisodeHistories
 import me.him188.ani.utils.io.SystemPath
 
 // 一个对象, 可都写到 common 里, 不用每个 store 都 expect/actual
@@ -51,17 +50,6 @@ abstract class PlatformDataStoreManager {
             produceFile = { resolveDataStoreFile("mediaSourceSubscription") },
             corruptionHandler = ReplaceFileCorruptionHandler {
                 MediaSourceSubscriptionsSaveData.Default
-            },
-        )
-    }
-
-    val episodeHistoryStore by lazy {
-        DataStoreFactory.create(
-            serializer = EpisodeHistories.serializer()
-                .asDataStoreSerializer({ EpisodeHistories.Empty }),
-            produceFile = { resolveDataStoreFile("episodeHistories") },
-            corruptionHandler = ReplaceFileCorruptionHandler {
-                EpisodeHistories.Empty
             },
         )
     }

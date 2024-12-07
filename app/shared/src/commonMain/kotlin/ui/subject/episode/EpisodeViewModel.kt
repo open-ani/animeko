@@ -369,27 +369,6 @@ private class EpisodeViewModelImpl(
     override val playerState: PlayerState =
         playerStateFactory.create(context, backgroundScope.coroutineContext)
 
-    /**
-     * 保存播放进度的入口有4个：退出播放页，切换剧集，同集切换数据源，暂停播放
-     * 其中 切换剧集 和 同集切换数据源 虽然都是切换数据源，但它们并不能合并成一个入口，
-     * 因为 切换数据源 是依赖 PlayerLauncher collect mediaSelector.selected 实现的，
-     * 它会在 mediaSelector.unselect() 任意时间后发现 selected 已经改变，导致 episodeId 可能已经改变，从而将当前集的播放进度保存到新的剧集中
-     */
-    private fun savePlayProgress() {
-        if (playerState.state.value == PlaybackState.FINISHED) return
-        val positionMillis = playerState.currentPositionMillis.value
-        val epId = episodeId.value
-        val durationMillis = playerState.videoProperties.value?.durationMillis.let {
-            if (it == null) return@let 0L
-            return@let max(0, it - 1000) // 最后一秒不会保存进度
-        }
-        if (positionMillis in 0..<durationMillis) {
-            launchInBackground {
-                episodePlayHistoryRepository.saveOrUpdate(epId, positionMillis)
-            }
-        }
-    }
-
     private val playerLauncher: PlayerLauncher = PlayerLauncher(
         mediaSelector, videoSourceResolver, playerState, mediaSourceInfoProvider,
         episodeInfo,
@@ -530,7 +509,6 @@ private class EpisodeViewModelImpl(
     override val commentLazyListState: LazyListState = LazyListState()
 
     fun switchEpisode(episodeId: Int) {
-        savePlayProgress()
         episodeDetailsState.showEpisodes = false // 选择后关闭弹窗
         mediaSelector.unselect() // 否则不会自动选择
         playerState.stop()
@@ -646,8 +624,6 @@ private class EpisodeViewModelImpl(
     )
 
     override fun stopPlaying() {
-        // 退出播放页前保存播放进度
-        savePlayProgress()
         playerState.stop()
         mediaSelector.unselect()
     }
@@ -767,9 +743,16 @@ private class EpisodeViewModelImpl(
         }
 
         launchInBackground {
-            mediaSelector.events.onBeforeSelect.collect {
-                // 切换 数据源 前保存播放进度
-                savePlayProgress()
+            playerState.currentPositionMillis.sampleWithInitial(1000).collect { positionMillis ->
+                if (playerState.state.value != PlaybackState.PLAYING) return@collect
+                val epId = episodeId.value
+                val durationMillis = playerState.videoProperties.value?.durationMillis.let {
+                    if (it == null) return@let 0L
+                    return@let max(0, it - 1000) // 最后一秒不会保存进度
+                }
+                if (positionMillis in 0..<durationMillis && positionMillis != 0L) {
+                    episodePlayHistoryRepository.saveOrUpdate(epId, positionMillis)
+                }
             }
         }
         launchInBackground {
@@ -785,8 +768,6 @@ private class EpisodeViewModelImpl(
                             }
                         }
                     }
-
-                    PlaybackState.PAUSED -> savePlayProgress()
 
                     PlaybackState.FINISHED ->
                         episodePlayHistoryRepository.remove(episodeId.value)
