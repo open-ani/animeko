@@ -248,7 +248,7 @@ fun KoinApplication.getCommonKoinModule(getContext: () -> Context, coroutineScop
         MediaSourceSubscriptionRepository(getContext().dataStores.mediaSourceSubscriptionStore)
     }
     single<EpisodePlayHistoryRepository> {
-        EpisodePlayHistoryRepository(getContext().dataStores.episodeHistoryStore)
+        EpisodePlayHistoryRepository(database.episodePlayHistoryDao())
     }
     single<BangumiProfileService> { BangumiProfileService() }
     single<AnimeScheduleService> { AnimeScheduleService(lazy { get<AniAuthClient>().scheduleApi }) }

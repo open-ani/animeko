@@ -9,69 +9,32 @@
 
 package me.him188.ani.app.data.repository.player
 
-import androidx.datastore.core.DataStore
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.flow.map
-import kotlinx.serialization.Serializable
-import me.him188.ani.app.data.models.player.EpisodeHistory
+import me.him188.ani.app.data.persistent.database.dao.EpisodePlayHistoryDao
+import me.him188.ani.app.data.persistent.database.dao.EpisodePlayHistoryEntity
 import me.him188.ani.app.data.repository.Repository
 import me.him188.ani.utils.logging.info
 
-@Serializable
-data class EpisodeHistories(
-    val histories: List<EpisodeHistory> = emptyList(),
-) {
-    companion object {
-        val Empty = EpisodeHistories(emptyList())
-    }
-}
 
 class EpisodePlayHistoryRepository(
-    private val dataStore: DataStore<EpisodeHistories>
+    private val playHistoryDao: EpisodePlayHistoryDao
 ) : Repository() {
-    val flow: Flow<List<EpisodeHistory>> = dataStore.data.map { it.histories }
-
-    suspend fun clear() {
-        dataStore.updateData { EpisodeHistories.Empty }
-    }
 
     suspend fun remove(episodeId: Int) {
-        dataStore.updateData { current ->
-            logger.info { "remove play progress for episode $episodeId" }
-            current.copy(histories = current.histories.filter { it.episodeId != episodeId })
-        }
+        logger.info { "remove play progress for episode $episodeId" }
+        playHistoryDao.deleteByEpisodeId(episodeId)
     }
 
     suspend fun saveOrUpdate(episodeId: Int, positionMillis: Long) {
-        val episodeHistory = EpisodeHistory(
+        val playHistoryEntity = EpisodePlayHistoryEntity(
             episodeId = episodeId,
             positionMillis = positionMillis,
         )
-        logger.info { "save or update play progress $episodeHistory" }
-        dataStore.updateData { current ->
-            val history = current.histories.find { it.episodeId == episodeId }
-            return@updateData if (history == null) {
-                current.copy(histories = current.histories + episodeHistory)
-            } else {
-                current.copy(
-                    histories = current.histories.map { save ->
-                        if (save.episodeId == episodeHistory.episodeId) {
-                            episodeHistory
-                        } else {
-                            save
-                        }
-                    },
-                )
-            }
-        }
+        playHistoryDao.upsert(playHistoryEntity)
     }
 
     suspend fun getPositionMillisByEpisodeId(episodeId: Int): Long? {
-        return dataStore.data.map { current ->
-            current.histories.find { it.episodeId == episodeId }?.positionMillis
-        }.firstOrNull()?.also {
-            logger.info { "load play progress for episode $episodeId: positionMillis=$it" }
-        }
+        val positionMillis = playHistoryDao.findByEpisodeId(episodeId)?.positionMillis
+        logger.info { "load play progress for episode $episodeId: positionMillis=$positionMillis" }
+        return positionMillis
     }
 }

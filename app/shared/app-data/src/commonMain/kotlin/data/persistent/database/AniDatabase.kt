@@ -24,6 +24,8 @@ import androidx.sqlite.execSQL
 import me.him188.ani.app.data.persistent.database.dao.EpisodeCollectionDao
 import me.him188.ani.app.data.persistent.database.dao.EpisodeCollectionEntity
 import me.him188.ani.app.data.persistent.database.dao.EpisodeCommentDao
+import me.him188.ani.app.data.persistent.database.dao.EpisodePlayHistoryDao
+import me.him188.ani.app.data.persistent.database.dao.EpisodePlayHistoryEntity
 import me.him188.ani.app.data.persistent.database.dao.SearchHistoryDao
 import me.him188.ani.app.data.persistent.database.dao.SearchHistoryEntity
 import me.him188.ani.app.data.persistent.database.dao.SearchTagDao
@@ -56,8 +58,10 @@ import me.him188.ani.app.data.persistent.database.entity.SubjectReviewEntity
 
         SubjectReviewEntity::class,
         EpisodeCommentEntity::class,
+
+        EpisodePlayHistoryEntity::class,
     ],
-    version = 12,
+    version = 13,
     autoMigrations = [
         AutoMigration(from = 1, to = 2, spec = Migrations.Migration_1_2::class),
         AutoMigration(from = 2, to = 3, spec = Migrations.Migration_2_3::class),
@@ -70,6 +74,7 @@ import me.him188.ani.app.data.persistent.database.entity.SubjectReviewEntity
         AutoMigration(from = 9, to = 10, spec = Migrations.Migration_9_10::class),
         AutoMigration(from = 10, to = 11, spec = Migrations.Migration_10_11::class),
         AutoMigration(from = 11, to = 12, spec = Migrations.Migration_11_12::class),
+        AutoMigration(from = 12, to = 13, spec = Migrations.Migration_12_13::class),
     ],
 )
 @ConstructedBy(AniDatabaseConstructor::class)
@@ -94,6 +99,11 @@ abstract class AniDatabase : RoomDatabase() {
      * @since 4.1.0-alpha02
      */
     abstract fun episodeCommentDao(): EpisodeCommentDao
+
+    /**
+     * @since 4.1.0-alpha03
+     */
+    abstract fun episodePlayHistoryDao(): EpisodePlayHistoryDao
 }
 
 expect object AniDatabaseConstructor : RoomDatabaseConstructor<AniDatabase> {
@@ -221,6 +231,15 @@ internal object Migrations {
      * @since 4.1.0-alpha02
      */
     class Migration_11_12 : AutoMigrationSpec {
+        override fun onPostMigrate(connection: SQLiteConnection) {
+        }
+    }
+
+    /**
+     * Added [EpisodePlayHistoryEntity], [EpisodePlayHistoryDao]
+     * @since 4.1.0-alpha03
+     */
+    class Migration_12_13 : AutoMigrationSpec {
         override fun onPostMigrate(connection: SQLiteConnection) {
         }
     }
