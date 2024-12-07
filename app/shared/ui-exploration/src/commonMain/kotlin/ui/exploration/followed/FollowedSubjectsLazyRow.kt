@@ -97,7 +97,6 @@ fun FollowedSubjectsLazyRow(
                 items(8) {
                     FollowedSubjectItem(
                         null,
-                        blurEnabled = false,
                         onClick = { },
                         onPlay = { },
                         layoutParameters.imageSize,
@@ -136,14 +135,17 @@ fun FollowedSubjectsLazyRow(
             contentType = items.itemContentType { it.subjectProgressInfo.hasNewEpisodeToPlay },
         ) { index ->
             val item = items[index]
-            FollowedSubjectItem(
-                item,
-                blurEnabled,
-                onClick = { item?.let { onClick(it) } },
-                onPlay = { item?.let { onPlay(it) } },
-                layoutParameters.imageSize,
-                layoutParameters.shape,
-            )
+            val nsfwMaskState = remember { NSFWMaskState(item?.subjectInfo?.nsfw ?: false, blurEnabled) }
+            NSFWMask(nsfwMaskState) { contentModifier ->
+                FollowedSubjectItem(
+                    item,
+                    onClick = { item?.let { onClick(it) } },
+                    onPlay = { item?.let { onPlay(it) } },
+                    layoutParameters.imageSize,
+                    layoutParameters.shape,
+                    contentModifier,
+                )
+            }
         }
     }
 }
@@ -151,56 +153,52 @@ fun FollowedSubjectsLazyRow(
 @Composable
 private fun FollowedSubjectItem(
     item: FollowedSubjectInfo?, // null for placeholder
-    blurEnabled: Boolean,
     onClick: () -> Unit,
     onPlay: () -> Unit,
     imageSize: DpSize,
     shape: Shape,
     modifier: Modifier = Modifier,
 ) {
-    val state = remember { NSFWMaskState(item?.subjectInfo?.nsfw ?: false, blurEnabled) }
-    NSFWMask(state, contentModifier = modifier) { contentModifier ->
-        BasicCarouselItem(
-            label = { CarouselItemDefaults.Text(item?.subjectInfo?.displayName ?: "") },
-            contentModifier.placeholder(item == null, shape = shape),
-            supportingText = {
-                if (item != null) {
-                    val airingState = remember(item) {
-                        AiringLabelState(
-                            stateOf(item.subjectAiringInfo),
-                            stateOf(item.subjectProgressInfo),
-                        )
-                    }
-                    airingState.progressText?.let {
-                        Text(it, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
-                }
-            },
-            maskShape = shape,
-            overlay = {
-                if (item?.subjectProgressInfo?.hasNewEpisodeToPlay == true) {
-                    FilledTonalIconButton(
-                        onClick = { onPlay() },
-                        modifier = Modifier.align(Alignment.BottomEnd),
-                    ) {
-                        Icon(Icons.Rounded.PlayArrow, null, Modifier.size(24.dp))
-                    }
-                }
-            },
-        ) {
+    BasicCarouselItem(
+        label = { CarouselItemDefaults.Text(item?.subjectInfo?.displayName ?: "") },
+        modifier.placeholder(item == null, shape = shape),
+        supportingText = {
             if (item != null) {
-                val image = @Composable {
-                    AsyncImage(
-                        item.subjectInfo.imageLarge,
-                        modifier = Modifier.size(imageSize),
-                        contentDescription = item.subjectInfo.displayName,
-                        contentScale = ContentScale.Crop,
+                val airingState = remember(item) {
+                    AiringLabelState(
+                        stateOf(item.subjectAiringInfo),
+                        stateOf(item.subjectProgressInfo),
                     )
                 }
-                Surface({ onClick() }, content = image)
-            } else {
-                Box(Modifier.size(imageSize))
+                airingState.progressText?.let {
+                    Text(it, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
             }
+        },
+        maskShape = shape,
+        overlay = {
+            if (item?.subjectProgressInfo?.hasNewEpisodeToPlay == true) {
+                FilledTonalIconButton(
+                    onClick = { onPlay() },
+                    modifier = Modifier.align(Alignment.BottomEnd),
+                ) {
+                    Icon(Icons.Rounded.PlayArrow, null, Modifier.size(24.dp))
+                }
+            }
+        },
+    ) {
+        if (item != null) {
+            val image = @Composable {
+                AsyncImage(
+                    item.subjectInfo.imageLarge,
+                    modifier = Modifier.size(imageSize),
+                    contentDescription = item.subjectInfo.displayName,
+                    contentScale = ContentScale.Crop,
+                )
+            }
+            Surface({ onClick() }, content = image)
+        } else {
+            Box(Modifier.size(imageSize))
         }
     }
 }
