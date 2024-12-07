@@ -244,13 +244,13 @@ internal fun SearchPageResultColumn(
                 }
 
                 val nsfwMaskState = NSFWMaskState(info.nsfw, blurEnabled)
-                NSFWMask(state = nsfwMaskState) { contentModifier ->
+                NSFWMask(state = nsfwMaskState) {
                     SubjectPreviewItem(
                         selected = index == selectedItemIndex(),
                         onClick = { onSelect(index) },
                         onPlay = { onPlay(info) },
                         info = info,
-                        contentModifier
+                        Modifier
 //                        .sharedElement(
 //                            rememberSharedContentState(SharedTransitionKeys.subjectBounds(info.subjectId)),
 //                            animatedVisibilityScope,

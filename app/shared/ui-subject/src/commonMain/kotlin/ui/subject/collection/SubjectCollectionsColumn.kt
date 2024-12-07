@@ -59,6 +59,8 @@ import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
+import me.him188.ani.app.ui.foundation.widgets.LocalNSFWMaskState
+import me.him188.ani.app.ui.foundation.widgets.nsfwBlur
 import me.him188.ani.app.ui.search.LoadError
 import me.him188.ani.app.ui.search.LoadErrorCard
 import me.him188.ani.app.ui.search.isLoadingNextPage
@@ -160,7 +162,7 @@ fun SubjectCollectionItem(
 ) {
     Card(
         onClick,
-        modifier.clip(shape).fillMaxWidth().height(height),
+        modifier.clip(shape).nsfwBlur(LocalNSFWMaskState.current).fillMaxWidth().height(height),
         shape = shape,
         colors = colors,
     ) {

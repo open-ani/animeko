@@ -258,13 +258,12 @@ fun CollectionPage(
                                     state.nsfwModeState.value == NSFWMode.BLUR,
                                 )
                             }
-                            NSFWMask(nsfwModeState) { contentModifier ->
+                            NSFWMask(nsfwModeState) { 
                                 SubjectCollectionItem(
                                     collection,
                                     state.episodeListStateFactory,
                                     state.subjectProgressStateFactory,
                                     state.createEditableSubjectCollectionTypeState(collection),
-                                    modifier = contentModifier,
                                 )
                             }
                         },

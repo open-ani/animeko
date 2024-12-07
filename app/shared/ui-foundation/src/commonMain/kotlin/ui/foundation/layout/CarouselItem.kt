@@ -33,6 +33,8 @@ import androidx.compose.ui.unit.dp
 import androidx.window.core.layout.WindowWidthSizeClass
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
 import me.him188.ani.app.ui.foundation.theme.aniDarkColorTheme
+import me.him188.ani.app.ui.foundation.widgets.LocalNSFWMaskState
+import me.him188.ani.app.ui.foundation.widgets.nsfwBlur
 
 @Stable
 private val carouselBrush = Brush.verticalGradient(
@@ -87,8 +89,8 @@ fun BasicCarouselItem(
     maskShape: Shape = RectangleShape,
     image: @Composable () -> Unit,
 ) {
-    Box(modifier) {
-        Box(Modifier.clip(maskShape)) {
+    Box(modifier.clip(maskShape).nsfwBlur(LocalNSFWMaskState.current)) {
+        Box {
             image()
         }
         Box(Modifier.matchParentSize().background(carouselBrush, maskShape)) {

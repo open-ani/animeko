@@ -19,6 +19,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -29,23 +31,22 @@ import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
+import me.him188.ani.app.ui.foundation.ifThen
 
 @Composable
 fun NSFWMask(
     state: NSFWMaskState,
     modifier: Modifier = Modifier,
-    contentModifier: Modifier = Modifier,
-    content: @Composable (contentModifier: Modifier) -> Unit
+    content: @Composable () -> Unit
 ) {
     if (state.maskEnabled) {
         Box(
             modifier = modifier,
             contentAlignment = Alignment.Center,
         ) {
-            content(
-                contentModifier.blur(radius = 12.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded)
-                    .graphicsLayer(alpha = 0.6f),
-            )
+            CompositionLocalProvider(LocalNSFWMaskState provides state) {
+                content()
+            }
             Box(
                 Modifier.matchParentSize().clickable(interactionSource = null, indication = null, onClick = {}),
             ) // 阻止传播点击事件
@@ -60,8 +61,13 @@ fun NSFWMask(
             }
         }
     } else {
-        content(contentModifier)
+        content()
     }
+}
+
+@Composable
+fun Modifier.nsfwBlur(state: NSFWMaskState) = this then Modifier.ifThen(state.maskEnabled) {
+    blur(radius = 12.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded).graphicsLayer(alpha = 0.6f)
 }
 
 class NSFWMaskState(
@@ -77,4 +83,9 @@ class NSFWMaskState(
         enabled = !enabled
     }
 
+    companion object {
+        val Default = NSFWMaskState(initEnabled = false, blurEnabled = false)
+    }
 }
+
+var LocalNSFWMaskState = compositionLocalOf { NSFWMaskState.Default }
