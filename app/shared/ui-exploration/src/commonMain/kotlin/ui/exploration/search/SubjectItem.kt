@@ -49,8 +49,6 @@ import androidx.window.core.layout.WindowWidthSizeClass
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.layout.compareTo
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
-import me.him188.ani.app.ui.foundation.widgets.LocalNSFWMaskState
-import me.him188.ani.app.ui.foundation.widgets.nsfwBlur
 
 /**
  * Design: [SubjectItem on Figma](https://www.figma.com/design/LET1n9mmDa6npDTIlUuJjU/Main?node-id=101-877&t=gmFJS6LFQudIIXfK-4)
@@ -79,7 +77,6 @@ fun SubjectItemLayout(
         onClick,
         modifier
             .clip(shape)
-            .nsfwBlur(LocalNSFWMaskState.current)
             .height(IntrinsicSize.Min)
             .defaultMinSize(minWidth = layout.minWidth)
             .width(IntrinsicSize.Min),
@@ -241,6 +238,12 @@ class SubjectItemLayoutParameters(
                 return MEDIUM
             }
             return COMPACT
+        }
+
+        @Composable
+        @Stable
+        fun calculateShape(windowSizeClass: WindowSizeClass): Shape {
+            return calculate(windowSizeClass).shape
         }
     }
 }

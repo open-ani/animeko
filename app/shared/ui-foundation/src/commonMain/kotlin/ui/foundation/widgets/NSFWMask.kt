@@ -20,8 +20,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -30,6 +28,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.ifThen
@@ -38,6 +39,7 @@ import me.him188.ani.app.ui.foundation.ifThen
 fun NSFWMask(
     state: NSFWMaskState,
     modifier: Modifier = Modifier,
+    shape: Shape = RectangleShape,
     content: @Composable () -> Unit
 ) {
     if (state.maskEnabled) {
@@ -45,7 +47,7 @@ fun NSFWMask(
             modifier = modifier,
             contentAlignment = Alignment.Center,
         ) {
-            CompositionLocalProvider(LocalNSFWMaskState provides state) {
+            Box(Modifier.clip(shape).nsfwBlur(state)) {
                 content()
             }
             Box(
@@ -68,7 +70,7 @@ fun NSFWMask(
 }
 
 @Composable
-fun Modifier.nsfwBlur(state: NSFWMaskState) = this then Modifier.ifThen(state.maskEnabled) {
+private fun Modifier.nsfwBlur(state: NSFWMaskState) = this then Modifier.ifThen(state.maskEnabled) {
     blur(radius = 12.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded).graphicsLayer(alpha = 0.6f)
 }
 
@@ -89,5 +91,3 @@ class NSFWMaskState(
         val Default = NSFWMaskState(initEnabled = false, blurEnabled = false)
     }
 }
-
-var LocalNSFWMaskState = compositionLocalOf { NSFWMaskState.Default }

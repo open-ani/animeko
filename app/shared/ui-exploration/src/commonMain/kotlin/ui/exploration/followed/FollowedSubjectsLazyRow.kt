@@ -136,7 +136,7 @@ fun FollowedSubjectsLazyRow(
         ) { index ->
             val item = items[index]
             val nsfwMaskState = remember { NSFWMaskState(item?.subjectInfo?.nsfw ?: false, blurEnabled) }
-            NSFWMask(nsfwMaskState) { 
+            NSFWMask(nsfwMaskState, shape = layoutParameters.shape) { 
                 FollowedSubjectItem(
                     item,
                     onClick = { item?.let { onClick(it) } },
