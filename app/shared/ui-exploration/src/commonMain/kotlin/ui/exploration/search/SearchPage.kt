@@ -37,6 +37,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
@@ -53,6 +54,7 @@ import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import me.him188.ani.app.data.models.preference.NSFWMode
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.ui.adaptive.AniListDetailPaneScaffold
 import me.him188.ani.app.ui.adaptive.AniTopAppBar
@@ -67,6 +69,8 @@ import me.him188.ani.app.ui.foundation.layout.paneHorizontalPadding
 import me.him188.ani.app.ui.foundation.layout.paneVerticalPadding
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
+import me.him188.ani.app.ui.foundation.widgets.NSFWMask
+import me.him188.ani.app.ui.foundation.widgets.NSFWMaskState
 import me.him188.ani.app.ui.foundation.widgets.TopAppBarGoBackButton
 import me.him188.ani.app.ui.search.LoadErrorCard
 import me.him188.ani.app.ui.search.SearchDefaults
@@ -126,6 +130,7 @@ fun SearchPage(
                     }
                 }, // collect only once
                 state = state.gridState,
+                blurEnabled = state.nsfwModeState.value == NSFWMode.BLUR,
             )
         },
         detailContent = {
@@ -178,12 +183,15 @@ internal fun SearchPageResultColumn(
     selectedItemIndex: () -> Int,
     onSelect: (index: Int) -> Unit,
     onPlay: (info: SubjectPreviewItemInfo) -> Unit,
+    blurEnabled: Boolean,
     modifier: Modifier = Modifier,
     state: LazyStaggeredGridState = rememberLazyStaggeredGridState()
 ) {
     var height by remember { mutableIntStateOf(0) }
-
     val bringIntoViewRequesters = remember { mutableStateMapOf<Int, BringIntoViewRequester>() }
+    val nsfwBlurShape by rememberUpdatedState(
+        SubjectItemLayoutParameters.calculateShape(currentWindowAdaptiveInfo1().windowSizeClass),
+    )
 
     SearchResultLazyVerticalStaggeredGrid(
         items,
@@ -238,44 +246,47 @@ internal fun SearchPageResultColumn(
                     }
                 }
 
-                SubjectPreviewItem(
-                    selected = index == selectedItemIndex(),
-                    onClick = { onSelect(index) },
-                    onPlay = { onPlay(info) },
-                    info = info,
-                    Modifier
+                val nsfwMaskState = NSFWMaskState(info.nsfw, blurEnabled)
+                NSFWMask(state = nsfwMaskState, shape = nsfwBlurShape) {
+                    SubjectPreviewItem(
+                        selected = index == selectedItemIndex(),
+                        onClick = { onSelect(index) },
+                        onPlay = { onPlay(info) },
+                        info = info,
+                        Modifier
 //                        .sharedElement(
 //                            rememberSharedContentState(SharedTransitionKeys.subjectBounds(info.subjectId)),
 //                            animatedVisibilityScope,
 //                        )
-                        .animateItem(
-                            fadeInSpec = AniThemeDefaults.feedItemFadeInSpec,
-                            placementSpec = AniThemeDefaults.feedItemPlacementSpec,
-                            fadeOutSpec = AniThemeDefaults.feedItemFadeOutSpec,
-                        )
-                        .fillMaxWidth()
-                        .bringIntoViewRequester(requester)
-                        .padding(vertical = currentWindowAdaptiveInfo1().windowSizeClass.paneVerticalPadding / 2),
-                    image = {
-                        SubjectItemDefaults.Image(
-                            info.imageUrl,
+                            .animateItem(
+                                fadeInSpec = AniThemeDefaults.feedItemFadeInSpec,
+                                placementSpec = AniThemeDefaults.feedItemPlacementSpec,
+                                fadeOutSpec = AniThemeDefaults.feedItemFadeOutSpec,
+                            )
+                            .fillMaxWidth()
+                            .bringIntoViewRequester(requester)
+                            .padding(vertical = currentWindowAdaptiveInfo1().windowSizeClass.paneVerticalPadding / 2),
+                        image = {
+                            SubjectItemDefaults.Image(
+                                info.imageUrl,
 //                            Modifier.sharedElement(
 //                                rememberSharedContentState(SharedTransitionKeys.subjectCoverImage(subjectId = info.subjectId)),
 //                                animatedVisibilityScope,
 //                            ),
-                        )
-                    },
-                    title = { maxLines ->
-                        Text(
-                            info.title,
+                            )
+                        },
+                        title = { maxLines ->
+                            Text(
+                                info.title,
 //                            Modifier.sharedElement(
 //                                rememberSharedContentState(SharedTransitionKeys.subjectTitle(subjectId = info.subjectId)),
 //                                animatedVisibilityScope,
 //                            ),
-                            maxLines = maxLines,
-                        )
-                    },
-                )
+                                maxLines = maxLines,
+                            )
+                        },
+                    )
+                }
             } else {
                 Box(Modifier.size(Dp.Hairline))
                 // placeholder

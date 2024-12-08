@@ -36,6 +36,7 @@ import me.him188.ani.app.data.models.danmaku.DanmakuFilterConfig
 import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.data.models.preference.EpisodeListProgressTheme
 import me.him188.ani.app.data.models.preference.FullscreenSwitchMode
+import me.him188.ani.app.data.models.preference.NSFWMode
 import me.him188.ani.app.data.models.preference.UISettings
 import me.him188.ani.app.data.models.preference.UpdateSettings
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
@@ -188,6 +189,25 @@ fun SettingsScope.AppearanceGroup(
                 },
                 title = { Text("使用新版条目查询接口") },
                 description = { Text("实验性接口，可能会缺失部分条目，谨慎启用") },
+            )
+            DropdownItem(
+                selected = { uiSettings.searchSettings.nsfwMode },
+                values = { NSFWMode.entries },
+                itemText = {
+                    when (it) {
+                        NSFWMode.HIDE -> Text("隐藏")
+                        NSFWMode.BLUR -> Text("模糊")
+                        NSFWMode.DISPLAY -> Text("显示")
+                    }
+                },
+                onSelect = {
+                    state.update(
+                        uiSettings.copy(
+                            searchSettings = uiSettings.searchSettings.copy(nsfwMode = it),
+                        ),
+                    )
+                },
+                title = { Text("管理 NSFW 内容") },
             )
         }
 

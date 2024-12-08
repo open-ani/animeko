@@ -75,13 +75,13 @@ import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.UserInfo
+import me.him188.ani.app.data.models.preference.NSFWMode
 import me.him188.ani.app.data.models.subject.SubjectCollectionCounts
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.data.models.subject.toNavPlaceholder
 import me.him188.ani.app.data.repository.subject.CollectionsFilterQuery
 import me.him188.ani.app.domain.session.AuthState
 import me.him188.ani.app.navigation.LocalNavigator
-import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.app.ui.adaptive.AniTopAppBar
 import me.him188.ani.app.ui.adaptive.AniTopAppBarDefaults
 import me.him188.ani.app.ui.foundation.LocalPlatform
@@ -93,6 +93,8 @@ import me.him188.ani.app.ui.foundation.session.SelfAvatar
 import me.him188.ani.app.ui.foundation.session.SessionTipsArea
 import me.him188.ani.app.ui.foundation.session.SessionTipsIcon
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
+import me.him188.ani.app.ui.foundation.widgets.NSFWMask
+import me.him188.ani.app.ui.foundation.widgets.NSFWMaskState
 import me.him188.ani.app.ui.foundation.widgets.PullToRefreshBox
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeState
 import me.him188.ani.app.ui.subject.collection.progress.EpisodeListStateFactory
@@ -125,6 +127,7 @@ class UserCollectionsState(
     val episodeListStateFactory: EpisodeListStateFactory,
     val subjectProgressStateFactory: SubjectProgressStateFactory,
     val createEditableSubjectCollectionTypeState: (subjectCollection: SubjectCollectionInfo) -> EditableSubjectCollectionTypeState,
+    val nsfwModeState: State<NSFWMode>,
     defaultQuery: CollectionsFilterQuery = CollectionsFilterQuery(
         type = UnifiedCollectionType.DOING,
     ),
@@ -249,12 +252,21 @@ fun CollectionPage(
                     SubjectCollectionsColumn(
                         items,
                         item = { collection ->
-                            SubjectCollectionItem(
-                                collection,
-                                state.episodeListStateFactory,
-                                state.subjectProgressStateFactory,
-                                state.createEditableSubjectCollectionTypeState(collection),
-                            )
+                            val nsfwModeState = remember {
+                                NSFWMaskState(
+                                    collection.subjectInfo.nsfw,
+                                    state.nsfwModeState.value == NSFWMode.BLUR,
+                                )
+                            }
+                            /* TODO: use SubjectCollectionItemDefaults */
+                            NSFWMask(nsfwModeState, shape = MaterialTheme.shapes.small) { 
+                                SubjectCollectionItem(
+                                    collection,
+                                    state.episodeListStateFactory,
+                                    state.subjectProgressStateFactory,
+                                    state.createEditableSubjectCollectionTypeState(collection),
+                                )
+                            }
                         },
                         enableAnimation = enableAnimation,
                         gridState = lazyGridState,

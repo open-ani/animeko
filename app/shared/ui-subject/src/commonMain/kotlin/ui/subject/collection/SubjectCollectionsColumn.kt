@@ -28,7 +28,6 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material3.Card
@@ -45,6 +44,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -154,8 +154,8 @@ fun SubjectCollectionItem(
     onShowEpisodeList: () -> Unit,
     playButton: @Composable () -> Unit,
     modifier: Modifier = Modifier,
-    height: Dp = 148.dp,
-    shape: RoundedCornerShape = RoundedCornerShape(8.dp),
+    height: Dp = 148.dp, // TODO: extract to SubjectCollectionItemDefaults
+    shape: Shape = MaterialTheme.shapes.small, // TODO: extract to SubjectCollectionItemDefaults
     colors: CardColors = CardDefaults.cardColors(),
 ) {
     Card(
