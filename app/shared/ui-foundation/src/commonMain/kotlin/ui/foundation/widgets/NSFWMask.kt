@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.ui.foundation.widgets
 
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -53,8 +54,9 @@ fun NSFWMask(
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
+                modifier = Modifier.matchParentSize(),
             ) {
-                Text("此内容不适合展示")
+                Text("此内容不适合展示", modifier = Modifier.basicMarquee())
                 IconButton({ state.toggle() }) {
                     Icon(Icons.Rounded.RemoveRedEye, contentDescription = "临时展示")
                 }
