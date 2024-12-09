@@ -246,7 +246,7 @@ internal fun SearchPageResultColumn(
                     }
                 }
 
-                val nsfwMaskState = NSFWMaskState(info.nsfw, blurEnabled)
+                val nsfwMaskState = remember { NSFWMaskState(info.nsfw, blurEnabled) }
                 NSFWMask(state = nsfwMaskState, shape = nsfwBlurShape) {
                     SubjectPreviewItem(
                         selected = index == selectedItemIndex(),
