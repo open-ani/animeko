@@ -87,8 +87,8 @@ fun BasicCarouselItem(
     maskShape: Shape = RectangleShape,
     image: @Composable () -> Unit,
 ) {
-    Box(modifier.clip(maskShape)) {
-        Box {
+    Box(modifier) {
+        Box(Modifier.clip(maskShape)) {
             image()
         }
         Box(Modifier.matchParentSize().background(carouselBrush, maskShape)) {

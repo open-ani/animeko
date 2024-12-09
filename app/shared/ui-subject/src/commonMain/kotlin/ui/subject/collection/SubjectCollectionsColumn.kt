@@ -154,8 +154,8 @@ fun SubjectCollectionItem(
     onShowEpisodeList: () -> Unit,
     playButton: @Composable () -> Unit,
     modifier: Modifier = Modifier,
-    height: Dp = 148.dp, // TODO: extract to SubjectCollectionItemDefaults
-    shape: Shape = MaterialTheme.shapes.small, // TODO: extract to SubjectCollectionItemDefaults
+    height: Dp = SubjectCollectionItemDefaults.height,
+    shape: Shape = SubjectCollectionItemDefaults.shape, 
     colors: CardColors = CardDefaults.cardColors(),
 ) {
     Card(
@@ -184,6 +184,13 @@ fun SubjectCollectionItem(
             }
         }
     }
+}
+
+object SubjectCollectionItemDefaults {
+    val height: Dp get() = 148.dp
+    val shape: Shape
+        @Composable
+        get() = MaterialTheme.shapes.small
 }
 
 /**

@@ -258,8 +258,7 @@ fun CollectionPage(
                                     state.nsfwModeState.value == NSFWMode.BLUR,
                                 )
                             }
-                            /* TODO: use SubjectCollectionItemDefaults */
-                            NSFWMask(nsfwModeState, shape = MaterialTheme.shapes.small) { 
+                            NSFWMask(nsfwModeState, shape = SubjectCollectionItemDefaults.shape) { 
                                 SubjectCollectionItem(
                                     collection,
                                     state.episodeListStateFactory,

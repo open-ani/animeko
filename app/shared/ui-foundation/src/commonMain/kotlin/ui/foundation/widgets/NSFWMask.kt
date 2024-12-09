@@ -9,11 +9,11 @@
 
 package me.him188.ani.app.ui.foundation.widgets
 
-import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.offset
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.RemoveRedEye
 import androidx.compose.material3.Icon
@@ -27,13 +27,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.BlurredEdgeTreatment
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import me.him188.ani.app.ui.foundation.ifThen
+import me.him188.ani.app.ui.foundation.effects.blurEffect
 
 @Composable
 fun NSFWMask(
@@ -47,7 +47,11 @@ fun NSFWMask(
             modifier = modifier,
             contentAlignment = Alignment.Center,
         ) {
-            Box(Modifier.clip(shape).nsfwBlur(state)) {
+            Box(
+                Modifier.clip(shape)
+                    .blurEffect(radius = 12.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded)
+                    .graphicsLayer(alpha = 0.6f),
+            ) {
                 content()
             }
             Box(
@@ -56,9 +60,9 @@ fun NSFWMask(
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
-                modifier = Modifier.matchParentSize(),
+                modifier = Modifier.matchParentSize().offset(y = 10.dp),
             ) {
-                Text("此内容不适合展示", modifier = Modifier.basicMarquee())
+                Text("此内容不适合展示", textAlign = TextAlign.Center)
                 IconButton({ state.toggle() }) {
                     Icon(Icons.Rounded.RemoveRedEye, contentDescription = "临时展示")
                 }
@@ -67,11 +71,6 @@ fun NSFWMask(
     } else {
         content()
     }
-}
-
-@Composable
-private fun Modifier.nsfwBlur(state: NSFWMaskState) = this then Modifier.ifThen(state.maskEnabled) {
-    blur(radius = 12.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded).graphicsLayer(alpha = 0.6f)
 }
 
 class NSFWMaskState(
