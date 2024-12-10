@@ -100,6 +100,7 @@ fun PreviewSearchPageResultColumn() = ProvideFoundationCompositionLocalsForPrevi
             selectedItemIndex = { 1 },
             onSelect = {},
             onPlay = {},
+            blurEnabled = true,
         )
     }
 }

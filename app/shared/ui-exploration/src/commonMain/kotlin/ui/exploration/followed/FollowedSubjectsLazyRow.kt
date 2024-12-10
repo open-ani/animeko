@@ -53,6 +53,8 @@ import me.him188.ani.app.ui.foundation.layout.compareTo
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.minimumHairlineSize
 import me.him188.ani.app.ui.foundation.stateOf
+import me.him188.ani.app.ui.foundation.widgets.NSFWMask
+import me.him188.ani.app.ui.foundation.widgets.NSFWMaskState
 import me.him188.ani.app.ui.search.LoadErrorCard
 import me.him188.ani.app.ui.search.LoadErrorCardLayout
 import me.him188.ani.app.ui.search.LoadErrorCardRole
@@ -66,6 +68,7 @@ import me.him188.ani.app.ui.subject.AiringLabelState
 fun FollowedSubjectsLazyRow(
     items: LazyPagingItems<FollowedSubjectInfo>, // null means placeholder
 //    items: List<FollowedSubjectInfo?>, // null means placeholder
+    blurEnabled: Boolean,
     onClick: (FollowedSubjectInfo) -> Unit,
     onPlay: (FollowedSubjectInfo) -> Unit,
     modifier: Modifier = Modifier,
@@ -132,13 +135,16 @@ fun FollowedSubjectsLazyRow(
             contentType = items.itemContentType { it.subjectProgressInfo.hasNewEpisodeToPlay },
         ) { index ->
             val item = items[index]
-            FollowedSubjectItem(
-                item,
-                onClick = { item?.let { onClick(it) } },
-                onPlay = { item?.let { onPlay(it) } },
-                layoutParameters.imageSize,
-                layoutParameters.shape,
-            )
+            val nsfwMaskState = remember { NSFWMaskState(item?.subjectInfo?.nsfw ?: false, blurEnabled) }
+            NSFWMask(nsfwMaskState, shape = layoutParameters.shape) { 
+                FollowedSubjectItem(
+                    item,
+                    onClick = { item?.let { onClick(it) } },
+                    onPlay = { item?.let { onPlay(it) } },
+                    layoutParameters.imageSize,
+                    layoutParameters.shape,
+                )
+            }
         }
     }
 }
