@@ -67,9 +67,14 @@ data class MyCollectionsSettings(
 }
 
 @Serializable
+enum class NSFWMode {
+    HIDE, BLUR, DISPLAY,
+}
+@Serializable
 @Immutable
 data class SearchSettings(
     val enableNewSearchSubjectApi: Boolean = false,
+    val nsfwMode: NSFWMode = NSFWMode.HIDE,
 ) {
     companion object {
         @Stable

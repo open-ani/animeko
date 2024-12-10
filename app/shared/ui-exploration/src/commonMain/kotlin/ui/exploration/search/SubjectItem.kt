@@ -239,6 +239,12 @@ class SubjectItemLayoutParameters(
             }
             return COMPACT
         }
+
+        @Composable
+        @Stable
+        fun calculateShape(windowSizeClass: WindowSizeClass): Shape {
+            return calculate(windowSizeClass).shape
+        }
     }
 }
 
