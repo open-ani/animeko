@@ -23,10 +23,10 @@ import androidx.compose.ui.unit.Dp
 actual fun Modifier.blurEffect(
     radius: Dp,
     edgeTreatment: BlurredEdgeTreatment
-): Modifier {
-    return this then if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        blur(radius, edgeTreatment)
-    } else {
-        background(MaterialTheme.colorScheme.inverseOnSurface).graphicsLayer(alpha = 0f)
-    }
+): Modifier = this then if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+    Modifier.blur(radius, edgeTreatment)
+} else {
+    Modifier
+        .background(MaterialTheme.colorScheme.inverseOnSurface)
+        .graphicsLayer(alpha = 0f)
 }

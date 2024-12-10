@@ -19,6 +19,4 @@ import androidx.compose.ui.unit.Dp
 actual fun Modifier.blurEffect(
     radius: Dp,
     edgeTreatment: BlurredEdgeTreatment
-): Modifier {
-    return this then blur(radius, edgeTreatment)
-}
+): Modifier = this then blur(radius, edgeTreatment)
