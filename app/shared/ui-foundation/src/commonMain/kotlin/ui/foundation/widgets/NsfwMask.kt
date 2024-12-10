@@ -36,13 +36,13 @@ import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.effects.blurEffect
 
 @Composable
-fun NSFWMask(
-    state: NSFWMaskState,
+fun NsfwMask(
+    state: NsfwMaskState,
     modifier: Modifier = Modifier,
     shape: Shape = RectangleShape,
     content: @Composable () -> Unit
 ) {
-    if (state.maskEnabled) {
+    if (state.enabled) {
         Box(
             modifier = modifier,
             contentAlignment = Alignment.Center,
@@ -73,20 +73,17 @@ fun NSFWMask(
     }
 }
 
-class NSFWMaskState(
-    initEnabled: Boolean,
-    val blurEnabled: Boolean,
+class NsfwMaskState(
+    nsfw: Boolean,
+    val blurred: Boolean,
 ) {
-    var enabled by mutableStateOf(initEnabled)
+    private var _enabled by mutableStateOf(nsfw)
 
-    val maskEnabled by derivedStateOf {
-        blurEnabled && enabled
+    val enabled by derivedStateOf {
+        blurred && _enabled
     }
+    
     fun toggle() {
-        enabled = !enabled
-    }
-
-    companion object {
-        val Default = NSFWMaskState(initEnabled = false, blurEnabled = false)
+        _enabled = !_enabled
     }
 }

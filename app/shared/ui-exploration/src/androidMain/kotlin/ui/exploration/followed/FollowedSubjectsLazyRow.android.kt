@@ -26,7 +26,7 @@ fun PreviewFollowedSubjectsLazyRow() = ProvideFoundationCompositionLocalsForPrev
     Surface(color = MaterialTheme.colorScheme.surfaceContainerLowest) {
         FollowedSubjectsLazyRow(
             items = rememberTestLazyPagingItems(TestFollowedSubjectInfos),
-            blurEnabled = true,
+            blurred = true,
             onClick = {},
             onPlay = {},
         )

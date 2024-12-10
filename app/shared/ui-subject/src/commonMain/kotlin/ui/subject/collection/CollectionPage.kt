@@ -93,8 +93,8 @@ import me.him188.ani.app.ui.foundation.session.SelfAvatar
 import me.him188.ani.app.ui.foundation.session.SessionTipsArea
 import me.him188.ani.app.ui.foundation.session.SessionTipsIcon
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
-import me.him188.ani.app.ui.foundation.widgets.NSFWMask
-import me.him188.ani.app.ui.foundation.widgets.NSFWMaskState
+import me.him188.ani.app.ui.foundation.widgets.NsfwMask
+import me.him188.ani.app.ui.foundation.widgets.NsfwMaskState
 import me.him188.ani.app.ui.foundation.widgets.PullToRefreshBox
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeState
 import me.him188.ani.app.ui.subject.collection.progress.EpisodeListStateFactory
@@ -253,12 +253,12 @@ fun CollectionPage(
                         items,
                         item = { collection ->
                             val nsfwModeState = remember {
-                                NSFWMaskState(
+                                NsfwMaskState(
                                     collection.subjectInfo.nsfw,
                                     state.nsfwModeState.value == NSFWMode.BLUR,
                                 )
                             }
-                            NSFWMask(nsfwModeState, shape = SubjectCollectionItemDefaults.shape) { 
+                            NsfwMask(nsfwModeState, shape = SubjectCollectionItemDefaults.shape) { 
                                 SubjectCollectionItem(
                                     collection,
                                     state.episodeListStateFactory,

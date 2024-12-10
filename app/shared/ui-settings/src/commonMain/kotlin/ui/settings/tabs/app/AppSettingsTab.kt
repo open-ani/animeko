@@ -207,7 +207,7 @@ fun SettingsScope.AppearanceGroup(
                         ),
                     )
                 },
-                title = { Text("管理 NSFW 内容") },
+                title = { Text("NSFW 内容") },
             )
         }
 
