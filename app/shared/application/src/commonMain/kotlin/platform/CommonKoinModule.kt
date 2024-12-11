@@ -125,8 +125,6 @@ private val Scope.database get() = get<AniDatabase>()
 private val Scope.settingsRepository get() = get<SettingsRepository>()
 
 fun KoinApplication.getCommonKoinModule(getContext: () -> Context, coroutineScope: CoroutineScope) = module {
-    val client = 
-    
     // Repositories
     single<AniAuthClient> { AniAuthClient() }
     single<TokenRepository> { TokenRepositoryImpl(getContext().dataStores.tokenStore) }
