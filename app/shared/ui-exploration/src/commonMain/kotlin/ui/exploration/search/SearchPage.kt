@@ -53,7 +53,7 @@ import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import me.him188.ani.app.data.models.preference.NSFWMode
+import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.ui.adaptive.AniListDetailPaneScaffold
 import me.him188.ani.app.ui.adaptive.AniTopAppBar
@@ -129,7 +129,7 @@ fun SearchPage(
                     }
                 }, // collect only once
                 state = state.gridState,
-                blurred = state.nsfwModeState.value == NSFWMode.BLUR,
+                blurred = state.nsfwModeState.value == NsfwMode.BLUR,
             )
         },
         detailContent = {

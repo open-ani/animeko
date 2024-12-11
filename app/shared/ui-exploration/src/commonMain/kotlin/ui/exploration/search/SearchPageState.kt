@@ -21,7 +21,7 @@ import androidx.paging.PagingData
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
-import me.him188.ani.app.data.models.preference.NSFWMode
+import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.search.PagingSearchState
@@ -36,7 +36,7 @@ class SearchPageState(
     suggestionsState: State<List<String>>,
     val onRequestPlay: suspend (SubjectPreviewItemInfo) -> EpisodeTarget?,
     val searchState: SearchState<SubjectPreviewItemInfo>,
-    val nsfwModeState: State<NSFWMode>,
+    val nsfwModeState: State<NsfwMode>,
     backgroundScope: CoroutineScope,
     queryState: MutableState<String> = mutableStateOf(""),
     private val onStartSearch: (String) -> Unit = {},
@@ -92,7 +92,7 @@ fun createTestSearchPageState(
         queryState = mutableStateOf(""),
         searchState = searchState,
         backgroundScope = backgroundScope,
-        nsfwModeState = stateOf(NSFWMode.HIDE),
+        nsfwModeState = stateOf(NsfwMode.HIDE),
     )
 }
 

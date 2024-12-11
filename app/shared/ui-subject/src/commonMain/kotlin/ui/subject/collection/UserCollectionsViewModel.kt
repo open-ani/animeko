@@ -21,7 +21,7 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import me.him188.ani.app.data.models.preference.MyCollectionsSettings
-import me.him188.ani.app.data.models.preference.NSFWMode
+import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.data.repository.episode.AnimeScheduleRepository
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
@@ -84,7 +84,7 @@ class UserCollectionsViewModel : AbstractViewModel(), KoinComponent {
         collectionCountsState = subjectCollectionRepository.subjectCollectionCountsFlow().produceState(null),
         episodeListStateFactory,
         subjectProgressStateFactory,
-        nsfwModeState = nsfwSettingFlow.produceState(NSFWMode.HIDE),
+        nsfwModeState = nsfwSettingFlow.produceState(NsfwMode.HIDE),
         createEditableSubjectCollectionTypeState = {
             createEditableSubjectCollectionTypeState(it)
         },
@@ -95,7 +95,7 @@ class UserCollectionsViewModel : AbstractViewModel(), KoinComponent {
         nsfwSettingFlow,
         state.currentPagerFlow.cachedIn(backgroundScope),
     ) { nsfwMode, pagingData ->
-        if (nsfwMode != NSFWMode.HIDE) return@combine pagingData
+        if (nsfwMode != NsfwMode.HIDE) return@combine pagingData
         pagingData.filter { !it.subjectInfo.nsfw }
     }.launchAsLazyPagingItemsIn(backgroundScope)
 

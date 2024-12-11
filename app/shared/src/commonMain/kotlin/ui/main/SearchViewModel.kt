@@ -19,7 +19,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
-import me.him188.ani.app.data.models.preference.NSFWMode
+import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.subject.SubjectSearchHistoryRepository
@@ -80,12 +80,12 @@ class SearchViewModel : AbstractViewModel(), KoinComponent {
                         }
                     }.cachedIn(backgroundScope),
                 ) { nsfwMode, subjects ->
-                    if (nsfwMode != NSFWMode.HIDE) return@combine subjects
+                    if (nsfwMode != NsfwMode.HIDE) return@combine subjects
                     subjects.filter { !it.nsfw }
                 }.flowOn(Dispatchers.Default)
             },
         ),
-        nsfwModeState = nsfwSettingFlow.produceState(NSFWMode.DISPLAY),
+        nsfwModeState = nsfwSettingFlow.produceState(NsfwMode.DISPLAY),
         backgroundScope = backgroundScope,
         onStartSearch = { query ->
             subjectDetailsStateLoader.clear()

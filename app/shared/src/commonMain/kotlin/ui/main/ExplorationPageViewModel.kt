@@ -16,7 +16,7 @@ import androidx.paging.filter
 import androidx.paging.flatMap
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
-import me.him188.ani.app.data.models.preference.NSFWMode
+import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.models.subject.subjectInfo
 import me.him188.ani.app.data.network.TrendsRepository
 import me.him188.ani.app.data.repository.subject.FollowedSubjectsRepository
@@ -46,7 +46,7 @@ class ExplorationPageViewModel : AbstractViewModel(), KoinComponent {
     val explorationPageState: ExplorationPageState = ExplorationPageState(
         authState,
         selfInfoState,
-        nsfwSettingFlow.produceState(NSFWMode.HIDE),
+        nsfwSettingFlow.produceState(NsfwMode.HIDE),
         trendingSubjectInfoPager = trendsRepository.trendsInfoPager()
             .map { pagingData ->
                 pagingData.flatMap { it.subjects }
@@ -63,7 +63,7 @@ class ExplorationPageViewModel : AbstractViewModel(), KoinComponent {
             settingsRepository.uiSettings.flow.map { it.searchSettings.nsfwMode },
             followedSubjectsRepository.followedSubjectsPager().cachedIn(backgroundScope),
         ) { nsfwMode, subjects ->
-            if (nsfwMode != NSFWMode.HIDE) return@combine subjects
+            if (nsfwMode != NsfwMode.HIDE) return@combine subjects
             subjects.filter { !it.subjectInfo.nsfw }
         },
 //            .onStart<List<FollowedSubjectInfo?>> {

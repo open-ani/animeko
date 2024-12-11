@@ -36,7 +36,7 @@ import me.him188.ani.app.data.models.danmaku.DanmakuFilterConfig
 import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.data.models.preference.EpisodeListProgressTheme
 import me.him188.ani.app.data.models.preference.FullscreenSwitchMode
-import me.him188.ani.app.data.models.preference.NSFWMode
+import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.models.preference.UISettings
 import me.him188.ani.app.data.models.preference.UpdateSettings
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
@@ -192,12 +192,12 @@ fun SettingsScope.AppearanceGroup(
             )
             DropdownItem(
                 selected = { uiSettings.searchSettings.nsfwMode },
-                values = { NSFWMode.entries },
+                values = { NsfwMode.entries },
                 itemText = {
                     when (it) {
-                        NSFWMode.HIDE -> Text("隐藏")
-                        NSFWMode.BLUR -> Text("模糊")
-                        NSFWMode.DISPLAY -> Text("显示")
+                        NsfwMode.HIDE -> Text("隐藏")
+                        NsfwMode.BLUR -> Text("模糊")
+                        NsfwMode.DISPLAY -> Text("显示")
                     }
                 },
                 onSelect = {

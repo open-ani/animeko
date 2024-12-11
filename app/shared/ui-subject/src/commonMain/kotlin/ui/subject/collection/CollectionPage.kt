@@ -75,7 +75,7 @@ import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.UserInfo
-import me.him188.ani.app.data.models.preference.NSFWMode
+import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.models.subject.SubjectCollectionCounts
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.data.models.subject.toNavPlaceholder
@@ -127,7 +127,7 @@ class UserCollectionsState(
     val episodeListStateFactory: EpisodeListStateFactory,
     val subjectProgressStateFactory: SubjectProgressStateFactory,
     val createEditableSubjectCollectionTypeState: (subjectCollection: SubjectCollectionInfo) -> EditableSubjectCollectionTypeState,
-    val nsfwModeState: State<NSFWMode>,
+    val nsfwModeState: State<NsfwMode>,
     defaultQuery: CollectionsFilterQuery = CollectionsFilterQuery(
         type = UnifiedCollectionType.DOING,
     ),
@@ -255,7 +255,7 @@ fun CollectionPage(
                             val nsfwModeState = remember {
                                 NsfwMaskState(
                                     collection.subjectInfo.nsfw,
-                                    state.nsfwModeState.value == NSFWMode.BLUR,
+                                    state.nsfwModeState.value == NsfwMode.BLUR,
                                 )
                             }
                             NsfwMask(nsfwModeState, shape = SubjectCollectionItemDefaults.shape) { 
