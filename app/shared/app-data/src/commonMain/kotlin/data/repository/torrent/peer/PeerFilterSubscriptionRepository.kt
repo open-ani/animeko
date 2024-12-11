@@ -12,8 +12,6 @@ package me.him188.ani.app.data.repository.torrent.peer
 import androidx.datastore.core.DataStore
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
-import io.ktor.client.statement.HttpResponse
-import io.ktor.client.statement.bodyAsChannel
 import io.ktor.client.statement.bodyAsText
 import kotlinx.collections.immutable.PersistentMap
 import kotlinx.collections.immutable.persistentMapOf
@@ -22,14 +20,12 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.io.decodeFromSource
 import me.him188.ani.app.domain.torrent.peer.PeerFilterRule
 import me.him188.ani.app.domain.torrent.peer.PeerFilterSubscription
-import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.coroutines.update
 import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.io.bufferedSource
@@ -38,21 +34,16 @@ import me.him188.ani.utils.io.delete
 import me.him188.ani.utils.io.exists
 import me.him188.ani.utils.io.resolve
 import me.him188.ani.utils.io.writeText
-import me.him188.ani.utils.ktor.toSource
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
-import me.him188.ani.utils.platform.currentTimeMillis
-import kotlin.coroutines.CoroutineContext
 
 class PeerFilterSubscriptionRepository(
     private val dataStore: DataStore<PeerFilterSubscriptionsSaveData>,
     private val ruleSaveDir: SystemPath,
-    private val httpClient: Flow<HttpClient>,
-    parentCoroutineContext: CoroutineContext
+    private val httpClient: Flow<HttpClient>
 ) {
     private val logger = logger<PeerFilterSubscriptionRepository>()
-    val childScope = parentCoroutineContext.childScope()
 
     private val json = Json {
         ignoreUnknownKeys = true
@@ -68,6 +59,10 @@ class PeerFilterSubscriptionRepository(
 
     suspend fun resolveAll() {
         dataStore.data.first().list.forEach { resolve(it.subscriptionId) }
+    }
+
+    suspend fun updateAll() {
+        dataStore.data.first().list.forEach { update(it.subscriptionId) }
     }
 
     /**
@@ -91,23 +86,35 @@ class PeerFilterSubscriptionRepository(
     /**
      * 解析此订阅规则, 若没有则会从订阅链接获取, 如果启用了会加载到内存
      */
-    private fun resolve(subscriptionId: String) = childScope.launch {
+    private suspend fun resolve(subscriptionId: String) {
         val sub = dataStore.data.first().list.firstOrNull { it.subscriptionId == subscriptionId }
         if (sub == null) {
             logger.warn { "Peer filter subscription $subscriptionId is not found." }
-            return@launch
+            return
         }
 
         val savedPath = ruleSaveDir.resolve("${subscriptionId}.json")
         if (!savedPath.exists()) {
             update(subscriptionId)
-            return@launch
+            return
         }
 
         try {
             val decoded = withContext(Dispatchers.IO) {
                 json.decodeFromSource(PeerFilterRule.serializer(), savedPath.bufferedSource())
             }
+            updateLoadResult(
+                sub.subscriptionId,
+                PeerFilterSubscription.LastLoaded(
+                    ruleStat = PeerFilterSubscription.RuleStat(
+                        ipRuleCount = decoded.blockedIpPattern.size,
+                        idRuleCount = decoded.blockedIdRegex.size,
+                        clientRuleCount = decoded.blockedClientRegex.size,
+                    ),
+                    error = null,
+                ),
+            )
+            
             if (sub.enabled) {
                 loadedSubRules.update { put(sub.subscriptionId, decoded) }
             }
@@ -118,7 +125,6 @@ class PeerFilterSubscriptionRepository(
             updateLoadResult(
                 sub.subscriptionId,
                 PeerFilterSubscription.LastLoaded(
-                    timestamp = currentTimeMillis(),
                     ruleStat = null,
                     error = e.toString(),
                 ),
@@ -129,27 +135,26 @@ class PeerFilterSubscriptionRepository(
     /**
      * 从订阅链接更新
      */
-    fun update(subscriptionId: String) = childScope.launch {
+    suspend fun update(subscriptionId: String) {
         val sub = dataStore.data.first().list.firstOrNull { it.subscriptionId == subscriptionId }
         if (sub == null) {
             logger.warn { "Peer filter subscription $subscriptionId is not found." }
-            return@launch
+            return
         }
 
         try {
             val resp = httpClient.first().get(sub.url)
 
             val respText = resp.bodyAsText()
-            ruleSaveDir.resolve("$${subscriptionId}.json").writeText(respText)
+            ruleSaveDir.resolve("${subscriptionId}.json").writeText(respText)
 
             if (sub.enabled) {
-                val decoded = resp.decode()
+                val decoded = json.decodeFromString(PeerFilterRule.serializer(), respText)
                 loadedSubRules.update { put(sub.subscriptionId, decoded) }
 
                 updateLoadResult(
                     sub.subscriptionId,
                     PeerFilterSubscription.LastLoaded(
-                        timestamp = currentTimeMillis(),
                         ruleStat = PeerFilterSubscription.RuleStat(
                             ipRuleCount = decoded.blockedIpPattern.size,
                             idRuleCount = decoded.blockedIdRegex.size,
@@ -164,8 +169,7 @@ class PeerFilterSubscriptionRepository(
             updateLoadResult(
                 sub.subscriptionId,
                 PeerFilterSubscription.LastLoaded(
-                    timestamp = currentTimeMillis(),
-                    ruleStat = null,
+                    ruleStat = sub.lastLoaded?.ruleStat,
                     error = e.toString(),
                 ),
             )
@@ -196,11 +200,6 @@ class PeerFilterSubscriptionRepository(
         return found
     }
 
-    private suspend fun HttpResponse.decode() = bodyAsChannel().toSource().use {
-        // 应该不用管理版本
-        json.decodeFromSource(PeerFilterRule.serializer(), it)
-    }
-
     init {
         ruleSaveDir.createDirectories()
     }
@@ -215,7 +214,7 @@ data class PeerFilterSubscriptionsSaveData(
         val Default = PeerFilterSubscriptionsSaveData(
             listOf(
                 PeerFilterSubscription(
-                    subscriptionId = "ani.builtin.peerfilter.rule",
+                    subscriptionId = PeerFilterSubscription.BUILTIN_SUBSCRIPTION_ID,
                     url = "", // TODO: creamy cake
                     enabled = true,
                     lastLoaded = null,

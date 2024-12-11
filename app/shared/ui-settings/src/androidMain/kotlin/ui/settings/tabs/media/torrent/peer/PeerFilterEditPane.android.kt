@@ -13,7 +13,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.tooling.preview.Preview
+import kotlinx.coroutines.flow.MutableStateFlow
 import me.him188.ani.app.data.models.preference.TorrentPeerConfig
+import me.him188.ani.app.ui.foundation.rememberBackgroundScope
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.settings.mediasource.rss.SaveableStorage
 
@@ -21,8 +23,15 @@ import me.him188.ani.app.ui.settings.mediasource.rss.SaveableStorage
 @Composable
 fun PreviewPeerFilterEditPane() {
     val config = remember { mutableStateOf(TorrentPeerConfig.Default) }
+    val scope = rememberBackgroundScope()
     val state = remember {
-        PeerFilterSettingsState(SaveableStorage(config, { config.value = it }, stateOf(false)))
+        PeerFilterSettingsState(
+            MutableStateFlow(emptyList()),
+            SaveableStorage(config, { config.value = it }, stateOf(false)),
+            scope.backgroundScope,
+            { },
+            { _, _ -> },
+        )
     }
     PeerFilterEditPane(
         state = state,

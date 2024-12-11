@@ -271,7 +271,6 @@ fun KoinApplication.getCommonKoinModule(getContext: () -> Context, coroutineScop
             dataStore = getContext().dataStores.peerFilterSubscriptionStore,
             ruleSaveDir = getContext().files.dataDir.resolve("peerfilter-subs"),
             httpClient = client,
-            parentCoroutineContext = coroutineScope.coroutineContext,
         )
     }
     single<BangumiProfileService> { BangumiProfileService() }
@@ -422,6 +421,11 @@ fun KoinApplication.startCommonKoinModule(coroutineScope: CoroutineScope): KoinA
                 manager.remove(instanceId = instance.instanceId)
             }
         }
+    }
+
+    coroutineScope.launch {
+        val peerFilterRepo = koin.get<PeerFilterSubscriptionRepository>()
+        peerFilterRepo.resolveAll()
     }
 
     return this

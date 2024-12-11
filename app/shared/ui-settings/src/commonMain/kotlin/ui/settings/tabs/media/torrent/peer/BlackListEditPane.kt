@@ -7,11 +7,10 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.app.ui.settings.tabs.media.torrent.peer.blocklist
+package me.him188.ani.app.ui.settings.tabs.media.torrent.peer
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -19,16 +18,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.rounded.ArrowOutward
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -41,21 +36,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.IconButton
-import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.components.TextItem
 
 
 @Composable
-fun BlockListEditPane(
-    blockedIpList: List<String>,
+fun BlackListEditPane(
+    ipBlackList: List<String>,
     showTitle: Boolean,
     onAdd: (List<String>) -> Unit,
     onRemove: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val listItemColors = ListItemDefaults.colors(containerColor = Color.Transparent)
-    var showAddBlockedIpDialog by rememberSaveable { mutableStateOf(false) }
+    var showAddBlackIpDialog by rememberSaveable { mutableStateOf(false) }
 
     SettingsTab(modifier) {
         AnimatedVisibility(visible = showTitle) {
@@ -69,7 +63,7 @@ fun BlockListEditPane(
             title = { if (!showTitle) Text("添加黑名单 IP 地址") },
             action = {
                 if (showTitle) {
-                    OutlinedButton({ showAddBlockedIpDialog = true }) {
+                    OutlinedButton({ showAddBlackIpDialog = true }) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -81,7 +75,7 @@ fun BlockListEditPane(
                 } else {
                     IconButton(
                         {
-                            showAddBlockedIpDialog = true
+                            showAddBlackIpDialog = true
                         },
                     ) {
                         Icon(Icons.Default.Add, contentDescription = "添加黑名单 IP 地址")
@@ -94,7 +88,7 @@ fun BlockListEditPane(
             modifier = Modifier.fillMaxSize(),
             contentPadding = WindowInsets.ime.asPaddingValues(),
         ) {
-            items(items = blockedIpList, key = { it }) { item ->
+            items(items = ipBlackList, key = { it }) { item ->
                 ListItem(
                     headlineContent = { Text(item) },
                     trailingContent = {
@@ -109,10 +103,10 @@ fun BlockListEditPane(
         }
     }
 
-    if (showAddBlockedIpDialog) {
+    if (showAddBlackIpDialog) {
         AddBlockedIPDialog(
             onAdd = onAdd,
-            onDismiss = { showAddBlockedIpDialog = false }
+            onDismiss = { showAddBlackIpDialog = false },
         )
     }
 }

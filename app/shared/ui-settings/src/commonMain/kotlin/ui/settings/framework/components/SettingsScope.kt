@@ -75,6 +75,9 @@ abstract class SettingsScope {
     companion object {
         @Stable
         val itemHorizontalPadding = 16.dp
+
+        @Stable
+        val itemExtraHorizontalPadding = 8.dp
     }
 
     @Stable

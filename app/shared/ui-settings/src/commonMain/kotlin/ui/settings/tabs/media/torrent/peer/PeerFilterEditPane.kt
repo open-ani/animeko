@@ -9,28 +9,38 @@
 
 package me.him188.ani.app.ui.settings.tabs.media.torrent.peer
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowOutward
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import me.him188.ani.app.domain.torrent.peer.PeerFilterSubscription
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
+import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.richtext.RichText
 import me.him188.ani.app.ui.richtext.rememberBBCodeRichTextState
 import me.him188.ani.app.ui.settings.SettingsTab
@@ -72,14 +82,80 @@ private fun RuleEditItem(
 }
 
 @Composable
+private fun renderLastLoaded(lastLoaded: PeerFilterSubscription.LastLoaded?): String {
+    val stat = lastLoaded?.ruleStat
+    val error = lastLoaded?.error
+
+    if (lastLoaded == null || (stat == null && error == null)) {
+        return "未更新，启用以更新"
+    }
+
+    return buildString {
+        if (stat != null) {
+            append("包含 ${stat.ipRuleCount} 个 IP 过滤项，${stat.idRuleCount} 个 ID 过滤项和 ${stat.clientRuleCount} 个客户端过滤项")
+        }
+
+        if (error != null) {
+            if (stat == null) {
+                append("加载错误：$error")
+            } else {
+                appendLine()
+                append("更新错误：$error")
+            }
+        }
+    }
+}
+
+@Composable
 fun PeerFilterEditPane(
     state: PeerFilterSettingsState,
     showIpBlockingItem: Boolean,
     onClickIpBlockSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val list by state.subscriptions.collectAsStateWithLifecycle()
+    
     SettingsTab(modifier.verticalScroll(rememberScrollState())) {
-        Group({ Text("过滤规则") }) {
+        Group(
+            title = { Text("过滤规则订阅") },
+            actions = {
+                AnimatedContent(
+                    state.updatingSubs,
+                    transitionSpec = AniThemeDefaults.standardAnimatedContentTransition,
+                    contentAlignment = Alignment.CenterEnd,
+                ) {
+                    if (it) {
+                        CircularProgressIndicator(Modifier.size(24.dp))
+                    } else {
+                        IconButton({ state.updateSubs() }) {
+                            Icon(Icons.Rounded.Refresh, contentDescription = "刷新全部")
+                        }
+                    }
+                }
+            },
+        ) {
+            val builtInSub = list.firstOrNull()
+            val onCheckedChange by rememberUpdatedState { it: Boolean ->
+                if (builtInSub != null) state.toggleSub(builtInSub.subscriptionId, it)
+            }
+
+            SwitchItem(
+                onClick = { onCheckedChange(!(builtInSub?.enabled ?: false)) },
+                title = { Text("使用内置过滤规则") },
+                description = { Text(renderLastLoaded(list.firstOrNull()?.lastLoaded)) },
+            ) {
+                Switch(
+                    builtInSub?.enabled ?: false,
+                    onCheckedChange = onCheckedChange,
+                    enabled = builtInSub != null,
+                )
+            }
+        }
+
+        Group(
+            title = { Text("本地过滤规则") },
+            description = { Text("除通过订阅过滤规则外，还可以手动添加过滤规则") },
+        ) {
             SwitchItem(
                 title = { Text("过滤 IP 地址") },
                 checked = state.ipFilterEnabled,

@@ -30,8 +30,11 @@ data class PeerFilterSubscription(
 
     @Serializable
     data class LastLoaded(
-        val timestamp: Long,
         val ruleStat: RuleStat?,
         val error: String?
     )
+
+    companion object {
+        const val BUILTIN_SUBSCRIPTION_ID = "ani.builtin.peerfilter.rule"
+    }
 }

@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.app.ui.settings.tabs.media.torrent.peer.blocklist
+package me.him188.ani.app.ui.settings.tabs.media.torrent.peer
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row

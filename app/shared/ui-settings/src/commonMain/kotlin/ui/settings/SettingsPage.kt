@@ -143,7 +143,11 @@ fun SettingsPage(
         },
         tabContent = { currentTab ->
             val tabModifier = Modifier
-            Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 8.dp)) {
+            Column(
+                Modifier
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = SettingsScope.itemExtraHorizontalPadding),
+            ) {
                 when (currentTab) {
                     SettingsTab.ABOUT -> AboutTab({ vm.debugTriggerState.triggerDebugMode() }, tabModifier)
                     SettingsTab.DEBUG -> DebugTab(
