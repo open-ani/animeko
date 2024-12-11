@@ -20,6 +20,7 @@ import me.him188.ani.app.data.repository.media.MediaSourceSaves
 import me.him188.ani.app.data.repository.media.MediaSourceSubscriptionsSaveData
 import me.him188.ani.app.data.repository.media.MikanIndexes
 import me.him188.ani.app.data.repository.player.EpisodeHistories
+import me.him188.ani.app.data.repository.torrent.peer.PeerFilterSubscriptionsSaveData
 import me.him188.ani.utils.io.SystemPath
 
 // 一个对象, 可都写到 common 里, 不用每个 store 都 expect/actual
@@ -84,6 +85,17 @@ abstract class PlatformDataStoreManager {
             produceFile = { resolveDataStoreFile("windowState") },
             corruptionHandler = ReplaceFileCorruptionHandler {
                 null
+            },
+        )
+    }
+
+    val peerFilterSubscriptionStore by lazy {
+        DataStoreFactory.create(
+            serializer = PeerFilterSubscriptionsSaveData.serializer()
+                .asDataStoreSerializer({ PeerFilterSubscriptionsSaveData.Default }),
+            produceFile = { resolveDataStoreFile("peerFilterSubscription") },
+            corruptionHandler = ReplaceFileCorruptionHandler {
+                PeerFilterSubscriptionsSaveData.Default
             },
         )
     }

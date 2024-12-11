@@ -35,8 +35,8 @@ import kotlinx.coroutines.withTimeout
 import kotlinx.io.files.Path
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
 import me.him188.ani.app.data.models.preference.ProxySettings
-import me.him188.ani.app.data.models.preference.TorrentPeerConfig
 import me.him188.ani.app.domain.torrent.engines.AnitorrentEngine
+import me.him188.ani.app.domain.torrent.peer.PeerFilterSettings
 import me.him188.ani.app.domain.torrent.service.proxy.TorrentEngineProxy
 import me.him188.ani.app.platform.createMeteredNetworkDetector
 import me.him188.ani.app.torrent.anitorrent.AnitorrentDownloaderFactory
@@ -58,7 +58,7 @@ class AniTorrentService : LifecycleService(), CoroutineScope {
     // config flow for constructing torrent engine.
     private val saveDirDeferred: CompletableDeferred<String> = CompletableDeferred()
     private val proxySettings: MutableSharedFlow<ProxySettings> = MutableSharedFlow(1)
-    private val torrentPeerConfig: MutableSharedFlow<TorrentPeerConfig> = MutableSharedFlow(1)
+    private val torrentPeerConfig: MutableSharedFlow<PeerFilterSettings> = MutableSharedFlow(1)
     private val anitorrentConfig: MutableSharedFlow<AnitorrentConfig> = MutableSharedFlow(1)
 
     // detect metered network state.

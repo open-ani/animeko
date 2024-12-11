@@ -27,7 +27,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.preference.MediaSourceProxySettings
-import me.him188.ani.app.data.models.preference.TorrentPeerConfig
+import me.him188.ani.app.domain.torrent.peer.PeerFilterSettings
 import me.him188.ani.app.torrent.api.TorrentDownloader
 import me.him188.ani.app.torrent.api.peer.PeerFilter
 import me.him188.ani.app.torrent.api.peer.PeerInfo
@@ -95,7 +95,7 @@ abstract class AbstractTorrentEngine<Downloader : TorrentDownloader, Config : An
     final override val type: TorrentEngineType,
     protected val config: Flow<Config>,
     protected val proxySettings: Flow<MediaSourceProxySettings>,
-    protected val peerFilterSettings: Flow<TorrentPeerConfig>,
+    protected val peerFilterSettings: Flow<PeerFilterSettings>,
     parentCoroutineContext: CoroutineContext,
 ) : TorrentEngine {
     protected val logger = logger<AbstractTorrentEngine<*, *>>()
@@ -177,21 +177,16 @@ abstract class AbstractTorrentEngine<Downloader : TorrentDownloader, Config : An
 }
 
 
-private fun createPeerFilter(config: TorrentPeerConfig): PeerFilter {
+private fun createPeerFilter(config: PeerFilterSettings): PeerFilter {
     return object : PeerFilter {
         private val correspondingFilters = buildList {
-            add(PeerIpBlackListFilter(config.ipBlackList))
-            if (config.enableIdFilter && config.blockInvalidId) {
+            if (config.blockInvalidId) {
                 add(PeerInvalidIdFilter)
             }
-            if (config.enableIdFilter) {
-                addAll(config.idRegexFilters.map(::PeerIdFilter))
-            }
-            if (config.enableClientFilter) {
-                addAll(config.clientRegexFilters.map(::PeerClientFilter))
-            }
-            if (config.enableIpFilter) {
-                addAll(config.ipFilters.map(::PeerIpFilter))
+            config.rules.forEach { rule ->
+                addAll(rule.blockedIpPattern.map(::PeerIpFilter))
+                addAll(rule.blockedIdRegex.map(::PeerIdFilter))
+                addAll(rule.blockedClientRegex.map(::PeerClientFilter))
             }
         }
 

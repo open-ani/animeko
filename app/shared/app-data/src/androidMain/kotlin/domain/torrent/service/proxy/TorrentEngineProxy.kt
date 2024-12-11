@@ -9,6 +9,8 @@
 
 package me.him188.ani.app.domain.torrent.service.proxy
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -23,7 +25,6 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
 import me.him188.ani.app.data.models.preference.ProxySettings
-import me.him188.ani.app.data.models.preference.TorrentPeerConfig
 import me.him188.ani.app.domain.torrent.IRemoteAniTorrentEngine
 import me.him188.ani.app.domain.torrent.IRemoteTorrentDownloader
 import me.him188.ani.app.domain.torrent.client.DefaultConnectivityAware
@@ -33,7 +34,8 @@ import me.him188.ani.app.domain.torrent.collector.ITorrentPeerConfigCollector
 import me.him188.ani.app.domain.torrent.engines.AnitorrentEngine
 import me.him188.ani.app.domain.torrent.parcel.PAnitorrentConfig
 import me.him188.ani.app.domain.torrent.parcel.PProxySettings
-import me.him188.ani.app.domain.torrent.parcel.PTorrentPeerConfig
+import me.him188.ani.app.domain.torrent.parcel.PTorrentPeerFilterSettings
+import me.him188.ani.app.domain.torrent.peer.PeerFilterSettings
 import me.him188.ani.app.torrent.api.TorrentDownloader
 import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.logging.info
@@ -43,7 +45,7 @@ import kotlin.coroutines.CoroutineContext
 class TorrentEngineProxy(
     private val saveDirDeferred: CompletableDeferred<String>,
     private val proxySettings: MutableSharedFlow<ProxySettings>,
-    private val torrentPeerConfig: MutableSharedFlow<TorrentPeerConfig>,
+    private val peerFilterSettings: MutableSharedFlow<PeerFilterSettings>,
     private val anitorrentConfig: MutableSharedFlow<AnitorrentConfig>,
     private val anitorrent: CompletableDeferred<AnitorrentEngine>,
     isClientBound: StateFlow<Boolean>,
@@ -94,13 +96,12 @@ class TorrentEngineProxy(
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.O_MR1)
     override fun getTorrentPeerConfigCollector(): ITorrentPeerConfigCollector {
         return object : ITorrentPeerConfigCollector.Stub() {
-            override fun collect(config: PTorrentPeerConfig?) {
+            override fun collect(config: PTorrentPeerFilterSettings?) {
                 logger.info { "received client TorrentPeerConfig: $config" }
-                if (config != null) torrentPeerConfig.tryEmit(
-                    json.decodeFromString(TorrentPeerConfig.serializer(), config.serializedJson),
-                )
+                if (config != null) peerFilterSettings.tryEmit(config.toPeerFilterSettings())
             }
         }
     }

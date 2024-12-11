@@ -40,29 +40,29 @@ class PeerFilterSettingsState(
         }
     
     var ipFilterEnabled by storage.prop({ it.enableIpFilter }, { copy(enableIpFilter = it) }, false)
-    var ipFilters by storage.prop(
-        get = { it.ipFilters.joinToString("\n") }, 
-        copy = { copy(ipFilters = it.split('\n')) }, 
-        default = ""
+    var ipFiltersPattern by storage.prop(
+        { it.localRule.blockedIpPattern },
+        { copy(localRule = localRule.copy(blockedIpPattern = it)) },
+        emptyList(),
     )
     
     var idFilterEnabled by storage.prop(
         get = { it.enableIdFilter },
-        copy = { copy(enableIdFilter = it) }, 
-        default = false
+        copy = { copy(enableIdFilter = it) },
+        default = false,
     )
-    var idFilters by storage.prop(
-        get = { it.idRegexFilters.joinToString("\n") },
-        copy = { copy(idRegexFilters = it.split('\n')) },
-        default = ""
+    var idFiltersRegex by storage.prop(
+        { it.localRule.blockedIdRegex },
+        { copy(localRule = localRule.copy(blockedIdRegex = it)) },
+        emptyList(),
     )
     var blockInvalidId by storage.prop({ it.blockInvalidId }, { copy(blockInvalidId = it) }, false)
     
     var clientFilterEnabled by storage.prop({ it.enableClientFilter }, { copy(enableClientFilter = it) }, false)
-    var clientFilters by storage.prop(
-        get = { it.clientRegexFilters.joinToString("\n") },
-        copy = { copy(clientRegexFilters = it.split('\n')) },
-        default = ""
+    var clientFiltersRegex by storage.prop(
+        { it.localRule.blockedClientRegex },
+        { copy(localRule = localRule.copy(blockedClientRegex = it)) },
+        emptyList(),
     )
     
     fun addBlockedIp(list: List<String>) {

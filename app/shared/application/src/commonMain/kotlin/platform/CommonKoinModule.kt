@@ -66,6 +66,7 @@ import me.him188.ani.app.data.repository.subject.SubjectRelationsRepository
 import me.him188.ani.app.data.repository.subject.SubjectSearchHistoryRepository
 import me.him188.ani.app.data.repository.subject.SubjectSearchHistoryRepositoryImpl
 import me.him188.ani.app.data.repository.subject.SubjectSearchRepository
+import me.him188.ani.app.data.repository.torrent.peer.PeerFilterSubscriptionRepository
 import me.him188.ani.app.data.repository.user.PreferencesRepositoryImpl
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.data.repository.user.TokenRepository
@@ -124,6 +125,8 @@ private val Scope.database get() = get<AniDatabase>()
 private val Scope.settingsRepository get() = get<SettingsRepository>()
 
 fun KoinApplication.getCommonKoinModule(getContext: () -> Context, coroutineScope: CoroutineScope) = module {
+    val client = 
+    
     // Repositories
     single<AniAuthClient> { AniAuthClient() }
     single<TokenRepository> { TokenRepositoryImpl(getContext().dataStores.tokenStore) }
@@ -250,6 +253,28 @@ fun KoinApplication.getCommonKoinModule(getContext: () -> Context, coroutineScop
     }
     single<EpisodePlayHistoryRepository> {
         EpisodePlayHistoryRepository(getContext().dataStores.episodeHistoryStore)
+    }
+    single<PeerFilterSubscriptionRepository> {
+        val settings = get<SettingsRepository>()
+        // TODO: extract client?
+        val client = settings.proxySettings.flow.map { it.default }.map { proxySettings ->
+            createDefaultHttpClient {
+                userAgent(getAniUserAgent())
+                proxy(proxySettings.configIfEnabledOrNull?.toClientProxyConfig())
+                expectSuccess = true
+            }.apply {
+                registerLogging(logger<MediaSourceSubscriptionUpdater>())
+            }
+        }.onReplacement {
+            it.close()
+        }.shareIn(coroutineScope, started = SharingStarted.Lazily, replay = 1)
+
+        PeerFilterSubscriptionRepository(
+            dataStore = getContext().dataStores.peerFilterSubscriptionStore,
+            ruleSaveDir = getContext().files.dataDir.resolve("peerfilter-subs"),
+            httpClient = client,
+            parentCoroutineContext = coroutineScope.coroutineContext,
+        )
     }
     single<BangumiProfileService> { BangumiProfileService() }
     single<AnimeScheduleService> { AnimeScheduleService(lazy { get<AniAuthClient>().scheduleApi }) }

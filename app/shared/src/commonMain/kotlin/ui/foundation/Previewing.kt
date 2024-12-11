@@ -91,6 +91,7 @@ fun ProvideCompositionLocalsForPreview(
                             coroutineScope.coroutineContext,
                             get(),
                             get(),
+                            get(),
                             baseSaveDir = { Path("preview-cache").inSystem },
                         )
                     }
