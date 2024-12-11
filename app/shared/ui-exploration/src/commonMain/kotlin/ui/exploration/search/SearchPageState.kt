@@ -92,7 +92,7 @@ fun createTestSearchPageState(
         queryState = mutableStateOf(""),
         searchState = searchState,
         backgroundScope = backgroundScope,
-        nsfwModeState = stateOf(NSFWMode.DISPLAY),
+        nsfwModeState = stateOf(NSFWMode.HIDE),
     )
 }
 

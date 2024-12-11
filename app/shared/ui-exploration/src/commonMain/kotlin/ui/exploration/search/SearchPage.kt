@@ -37,7 +37,6 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
@@ -189,9 +188,7 @@ internal fun SearchPageResultColumn(
 ) {
     var height by remember { mutableIntStateOf(0) }
     val bringIntoViewRequesters = remember { mutableStateMapOf<Int, BringIntoViewRequester>() }
-    val nsfwBlurShape by rememberUpdatedState(
-        SubjectItemLayoutParameters.calculateShape(currentWindowAdaptiveInfo1().windowSizeClass),
-    )
+    val nsfwBlurShape = SubjectItemLayoutParameters.calculate(currentWindowAdaptiveInfo1().windowSizeClass).shape
 
     SearchResultLazyVerticalStaggeredGrid(
         items,

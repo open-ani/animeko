@@ -13,7 +13,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.RemoveRedEye
 import androidx.compose.material3.Icon
@@ -28,7 +29,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.style.TextAlign
@@ -39,14 +39,14 @@ import me.him188.ani.app.ui.foundation.effects.blurEffect
 fun NsfwMask(
     state: NsfwMaskState,
     modifier: Modifier = Modifier,
-    shape: Shape = RectangleShape,
+    shape: Shape,
     content: @Composable () -> Unit
 ) {
-    if (state.enabled) {
-        Box(
-            modifier = modifier,
-            contentAlignment = Alignment.Center,
-        ) {
+    Box(
+        modifier = modifier,
+        contentAlignment = Alignment.Center,
+    ) {
+        if (state.enabled) {
             Box(
                 Modifier.clip(shape)
                     .blurEffect(radius = 12.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded)
@@ -60,22 +60,22 @@ fun NsfwMask(
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
-                modifier = Modifier.matchParentSize().offset(y = 10.dp),
+                modifier = Modifier.matchParentSize().defaultMinSize(minHeight = 30.dp).padding(top = 10.dp),
             ) {
                 Text("此内容不适合展示", textAlign = TextAlign.Center)
                 IconButton({ state.toggle() }) {
                     Icon(Icons.Rounded.RemoveRedEye, contentDescription = "临时展示")
                 }
             }
+        } else {
+            content()
         }
-    } else {
-        content()
     }
 }
 
 class NsfwMaskState(
     nsfw: Boolean,
-    val blurred: Boolean,
+    private val blurred: Boolean,
 ) {
     private var _enabled by mutableStateOf(nsfw)
 

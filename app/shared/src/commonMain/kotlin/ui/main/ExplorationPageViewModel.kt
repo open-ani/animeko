@@ -46,7 +46,7 @@ class ExplorationPageViewModel : AbstractViewModel(), KoinComponent {
     val explorationPageState: ExplorationPageState = ExplorationPageState(
         authState,
         selfInfoState,
-        nsfwSettingFlow.produceState(NSFWMode.DISPLAY),
+        nsfwSettingFlow.produceState(NSFWMode.HIDE),
         trendingSubjectInfoPager = trendsRepository.trendsInfoPager()
             .map { pagingData ->
                 pagingData.flatMap { it.subjects }

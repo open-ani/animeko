@@ -84,7 +84,7 @@ class UserCollectionsViewModel : AbstractViewModel(), KoinComponent {
         collectionCountsState = subjectCollectionRepository.subjectCollectionCountsFlow().produceState(null),
         episodeListStateFactory,
         subjectProgressStateFactory,
-        nsfwModeState = nsfwSettingFlow.produceState(NSFWMode.DISPLAY),
+        nsfwModeState = nsfwSettingFlow.produceState(NSFWMode.HIDE),
         createEditableSubjectCollectionTypeState = {
             createEditableSubjectCollectionTypeState(it)
         },
