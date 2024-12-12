@@ -19,8 +19,8 @@ jobs:
         # https://docs.github.com/en/actions/using-github-hosted-runners/using-github-hosted-runners/about-github-hosted-runners
         os:
           - windows # 16 GB
-          - ubuntu-20.04 # 16 GB
-          - macos-13 # x86_64, 14 GB
+          # - ubuntu-20.04 # 16 GB
+          # - macos-13 # x86_64, 14 GB
           # - macos-14 # aarch64, 7 GB
         include:
           # matrix properties can be booleans. Check for plain true and false.
