@@ -85,6 +85,7 @@ jobs:
       gradleArgs: >-
         --scan
         "--no-configuration-cache"
+        org.gradle.daemon.idletimeout=60000
         ${{ matrix.gradleArgs }} 
         ${{ matrix.anitorrent == true && '"-Dani.enable.anitorrent=true"' || '' }}
         ${{ matrix.anitorrent == true && '"-DCMAKE_BUILD_TYPE=Release"' || '' }}
