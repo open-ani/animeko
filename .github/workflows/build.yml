@@ -36,7 +36,7 @@ jobs:
             run_tests: true
             assemble: true
             uploadDesktopInstallers: true
-            gradleArgs: '"-Dorg.gradle.jvmargs=-Xmx6g" "-Dfile.encoding=UTF-8" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Porg.gradle.parallel=true"'
+            gradleArgs: '"-Dorg.gradle.jvmargs=-Xmx6g" "-Dfile.encoding=UTF-8" "-Dkotlin.daemon.jvm.options=-Xmx6g" --parallel'
           - os: ubuntu-20.04
             runs-on: ubuntu-20.04
             name: Ubuntu x86_64 (Compile only)
