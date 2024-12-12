@@ -85,7 +85,7 @@ jobs:
       gradleArgs: >-
         --scan
         "--no-configuration-cache"
-        org.gradle.daemon.idletimeout=60000
+        "-Porg.gradle.daemon.idletimeout=60000"
         "-Pkotlin.native.ignoreDisabledTargets=true"
         ${{ matrix.gradleArgs }} 
         ${{ matrix.anitorrent == true && '"-Dani.enable.anitorrent=true"' || '' }}
