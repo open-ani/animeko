@@ -96,26 +96,23 @@ class BangumiCommentRepository(
     private inner class SubjectReviewRemoteMediator<T : Any>(
         private val subjectId: Int,
     ) : RemoteMediator<Int, T>() {
-        private var lastCount = 0
-        
         override suspend fun initialize(): InitializeAction = InitializeAction.LAUNCH_INITIAL_REFRESH
 
         override suspend fun load(
             loadType: LoadType,
             state: PagingState<Int, T>,
         ): MediatorResult = withContext(defaultDispatcher) {
-            if (loadType == LoadType.PREPEND) {
-                return@withContext MediatorResult.Success(endOfPaginationReached = true)
+            val offset = when (loadType) {
+                LoadType.REFRESH -> 0
+                LoadType.PREPEND -> return@withContext MediatorResult.Success(endOfPaginationReached = true)
+                LoadType.APPEND -> state.pages.size * state.config.pageSize
             }
 
             try {
-                val subjectReviews = commentService.getSubjectReviews(subjectId, lastCount, state.config.pageSize)
+                val subjectReviews = commentService.getSubjectReviews(subjectId, offset, state.config.pageSize)
                     ?: return@withContext MediatorResult.Success(endOfPaginationReached = true)
 
-                val parsed = subjectReviews.page.mapNotNull { it.toEntity(subjectId) }
-
-                lastCount += parsed.size
-                subjectReviewDao.upsert(parsed)
+                subjectReviewDao.upsert(subjectReviews.page.mapNotNull { it.toEntity(subjectId) })
 
                 MediatorResult.Success(endOfPaginationReached = !subjectReviews.hasMore)
             } catch (e: Exception) {
