@@ -12,20 +12,21 @@ on:
 jobs:
   build:
     name: "${{ matrix.name }}"
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.runs-on }}
     strategy:
       fail-fast: false
       matrix:
         # https://docs.github.com/en/actions/using-github-hosted-runners/using-github-hosted-runners/about-github-hosted-runners
         os:
-          - windows-2019 # 16 GB
+          - windows # 16 GB
           - ubuntu-20.04 # 16 GB
           - macos-13 # x86_64, 14 GB
           # - macos-14 # aarch64, 7 GB
         include:
           # matrix properties can be booleans. Check for plain true and false.
-          - os: windows-2019
-            name: Windows x86_64
+          - os: windows
+            runs-on: [ self-hosted, Windows, X64 ]
+            name: Windows x64
             uploadApk: true
             arch: x64
             anitorrent: true
@@ -36,6 +37,7 @@ jobs:
             uploadDesktopInstallers: true
             gradleArgs: '"-Dorg.gradle.jvmargs=-Xmx4096m" "-Dfile.encoding=UTF-8" "-Dkotlin.daemon.jvm.options=-Xmx4096M"'
           - os: ubuntu-20.04
+            runs-on: ubuntu-20.04
             name: Ubuntu x86_64 (Compile only)
             uploadApk: false
             arch: x64
@@ -47,6 +49,7 @@ jobs:
             uploadDesktopInstallers: false
             gradleArgs: '-Dorg.gradle.jvmargs=-Xmx4096m -Dfile.encoding=UTF-8 -Dkotlin.daemon.jvm.options=-Xmx4096M'
           - os: macos-13
+            runs-on: macos-13
             name: macOS x86_64
             uploadApk: false
             arch: x64
