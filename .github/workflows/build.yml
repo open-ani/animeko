@@ -26,7 +26,8 @@ jobs:
           # matrix properties can be booleans. Check for plain true and false.
           - os: windows
             runs-on: [ self-hosted, Windows, X64 ]
-            name: Windows x64
+            dont-install-native-deps: true
+            name: Windows x86_64
             uploadApk: true
             arch: x64
             anitorrent: true
@@ -142,7 +143,7 @@ jobs:
         name: Install Native Dependencies
         run: chmod +x ./ci-helper/install-deps-macos-ci.sh && ./ci-helper/install-deps-macos-ci.sh
 
-      - if: ${{ env.isWindows == 'true' }}
+      - if: ${{ env.isWindows == 'true' && matrix.dont-install-native-deps != true }}
         name: Setup vcpkg cache
         uses: actions/github-script@v7
         with:
@@ -150,7 +151,7 @@ jobs:
             core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
             core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
 
-      - if: ${{ env.isWindows == 'true' }}
+      - if: ${{ env.isWindows == 'true' && matrix.dont-install-native-deps != true }}
         name: Install Native Dependencies
         run: ./ci-helper/install-deps-windows.cmd
         env:
