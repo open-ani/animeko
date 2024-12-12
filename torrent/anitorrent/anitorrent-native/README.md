@@ -19,7 +19,7 @@ SWIG 生成 JNI 接口供 Kotlin 对接.
 `-Dani.enable.anitorrent=true` 传递, 或在 `local.properties`
 中添加一行 `ani.enable.anitorrent=true`.
 
-### A. macOS (CMake + Clang)
+### A. macOS (CMake + AppleClang)
 
 macOS 构建操作很简单.
 
@@ -49,57 +49,66 @@ macOS 构建操作很简单.
 
 Windows 上构建 native 代码是*比较有挑战性*的. 使用 Visual Studio 工具链可以减轻麻烦.
 
-1. 安装 Visual Studio (不是 Visual Studio Code). 确保以下组件勾选:
+1. 右键开始菜单, 打开 Powershell **管理员模式**, 执行: `Set-ExecutionPolicy Bypass -Scope Process`.
+   执行完成后, 窗口不要关闭, 以便后续继续使用.
+2. 安装 [Chocolatey](https://chocolatey.org/install). 以下为 Chocolatey 官方的 Powershell
+   一键安装命令:
+   ```powershell
+   Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+   ```
+3. 安装 Visual Studio (不是 Visual Studio Code). 确保以下组件勾选:
     - 使用 C++ 的桌面开发
     - 通用 Windows 平台开发
     - 用于 Windows 的 C++ CMake 工具
    - Windows 11 SDK
     - MSVC v___ - VS 2022 C++ x64/x86 生成工具
-2. 安装 [Vcpkg](https://github.com/microsoft/vcpkg):
+
+   安装完成后, 无需启动 VS, 可以直接进行下一步.
+4. 安装 [Vcpkg](https://github.com/microsoft/vcpkg).
+   建议安装到 C 盘的 `C:/vcpkg` 目录下. 可以使用 Powershell 直接执行以下命令:
     ```powershell
+   cd C:\
    git clone https://github.com/microsoft/vcpkg.git
    cd vcpkg
    .\bootstrap-vcpkg.bat
     ```
-3. 安装 [Chocolatey](https://chocolatey.org/install), 以下为示例 CMD 命令, 不一定可用:
-   ```shell
-   @powershell -NoProfile -ExecutionPolicy Bypass -Command "[System.Net.WebRequest]::DefaultWebProxy.Credentials = [System.Net.CredentialCache]::DefaultCredentials; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))" && SET PATH="%PATH%;%ALLUSERSPROFILE%\chocolatey\bin"
-   ```
-4. 确保 `vcpkg` 和 `choco` 可以直接在命令行使用, 否则尝试重启系统
-5. 安装 SWIG 和 CMake:
+5. 将 `vcpkg` 的路径添加到系统环境变量 `Path` 中.
+6. 重启系统. 重启后, 打开 Powershell **管理员模式**, 确保 `vcpkg` 命令可用. 如果不可用, 说明环境变量配置有误.
+7. 在 Powershell 管理员中, 安装 SWIG 和 CMake:
    ```shell
    choco install swig -y
    choco install cmake -y
    ```
-6. 执行安装脚本 [/ci-helper/install-deps-windows.cmd](../../ci-helper/install-deps-windows.cmd).
+8. 执行安装脚本 [/ci-helper/install-deps-windows.cmd](../../../ci-helper/install-deps-windows.cmd).
    不要跳过任何一步.
-7. 如果你系统没有安装任意种类的大于 17 版本的 JDK (且在 PATH 可见), 可以通过 choco 安装:
+9. 如果你系统没有正确安装任意种类的大于 17 版本的 JDK (且在环境变量 `JAVA_HOME` 可见), 可以通过
+   choco 安装:
    ```shell
    choco install openjdk
    ```
    否则后续构建会找不到 JNI.
-8. 获取 `CMAKE_TOOLCHAIN_FILE`:
-   ```shell
-   vcpkg integrate install
-   ```
-   该命令将会输出:
-   ```text
-   Applied user-wide integration for this vcpkg root.
-   CMake projects should use: "-DCMAKE_TOOLCHAIN_FILE=D:/vcpkg/scripts/buildsystems/vcpkg.cmake"All MSBuild C++ projects can now #include any installed libraries. Linking will be handled automatically. Installing new libraries will make them instantly available.
-   ```
-   复制其中的 `CMAKE_TOOLCHAIN_FILE=D:/vcpkg/scripts/buildsystems/vcpkg.cmake`, (注意去除 `-D`),
-   添加到 `local.properties` 中.
-9. 你最终的 `local.properties` 至少包含以下几行:
-   ```properties
-   ani.enable.anitorrent=true
-   CMAKE_TOOLCHAIN_FILE=D:/vcpkg/scripts/buildsystems/vcpkg.cmake
+10. 获取 `CMAKE_TOOLCHAIN_FILE`:
+    ```shell
+    vcpkg integrate install
+    ```
+    该命令将会输出:
+    ```text
+    Applied user-wide integration for this vcpkg root.
+    CMake projects should use: "-DCMAKE_TOOLCHAIN_FILE=D:/vcpkg/scripts/buildsystems/vcpkg.cmake"All MSBuild C++ projects can now #include any installed libraries. Linking will be handled automatically. Installing new libraries will make them instantly available.
+    ```
+    复制其中的 `CMAKE_TOOLCHAIN_FILE=D:/vcpkg/scripts/buildsystems/vcpkg.cmake`, (注意去除 `-D`),
+    添加到 `local.properties` 中.
+11. 你最终的 `local.properties` 至少包含以下几行:
+    ```properties
+    ani.enable.anitorrent=true
+    CMAKE_TOOLCHAIN_FILE=D:/vcpkg/scripts/buildsystems/vcpkg.cmake
    
-   # 如果提示找不到 CMake, 就添加以下一行手动指定位置
-   CMAKE=C\:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\bin\\cmake.exe
-   # 也有可能是以下位置：
-   CMAKE=C\:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\bin\\cmake.exe
-   ```
-10. 完成. 现在可以运行 `./gradlew :app:desktop:runDistributable` 测试, 或者在 IDE 右上角选择 "Run
+    # 如果提示找不到 CMake, 就添加以下一行手动指定位置
+    CMAKE=C\:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\bin\\cmake.exe
+    # 也有可能是以下位置：
+    CMAKE=C\:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\bin\\cmake.exe
+    ```
+12. 完成. 现在可以运行 `./gradlew :app:desktop:runDistributable` 测试, 或者在 IDE 右上角选择 "Run
     Desktop" 配置.
 
 ### C. Windows (自定义工具链)
