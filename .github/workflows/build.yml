@@ -229,7 +229,8 @@ jobs:
       #        run: ./gradlew buildCMakeRelWithDebInfo ${{ env.gradleArgs }}
 
       - name: Compile Kotlin
-        run: ./gradlew |
+        run: > 
+          ./gradlew 
           compileKotlin
           compileCommonMainKotlinMetadata
           compileDebugKotlinAndroid
