@@ -218,7 +218,9 @@ jobs:
 
       - name: Build Anitorrent for Android
         if: ${{ matrix.anitorrent }}
-        run: ./gradlew buildCMakeDebug buildCMakeRelWithDebInfo ${{ env.gradleArgs }}
+        # 对于 macos 等机器, 上面已经构建好 anitorrent for desktop 了, 所以 `buildAnitorrent` 会没有作用. 
+        # 对于 windows 机器, 这个可以节约时间, 因为 windows 构建是单线程.
+        run: ./gradlew :torrent:anitorrent:anitorrent-native:buildAnitorrent buildCMakeDebug buildCMakeRelWithDebInfo ${{ env.gradleArgs }}
       
       #      - name: Build Anitorrent for Android Debug
       #        if: ${{ matrix.anitorrent }}
