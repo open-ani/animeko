@@ -216,13 +216,17 @@ jobs:
         if: ${{ matrix.anitorrent && matrix.anitorrent_separate_build }}
         run: ./gradlew :torrent:anitorrent:build :torrent:anitorrent:anitorrent-native:buildAnitorrent ${{ env.gradleArgs }}
 
-      - name: Build Anitorrent for Android Debug
+      - name: Build Anitorrent for Android
         if: ${{ matrix.anitorrent }}
-        run: ./gradlew buildCMakeDebug ${{ env.gradleArgs }}
-
-      - name: Build Anitorrent for Android Release
-        if: ${{ matrix.anitorrent }}
-        run: ./gradlew buildCMakeRelWithDebInfo ${{ env.gradleArgs }}
+        run: ./gradlew buildCMakeDebug buildCMakeRelWithDebInfo ${{ env.gradleArgs }}
+      
+      #      - name: Build Anitorrent for Android Debug
+      #        if: ${{ matrix.anitorrent }}
+      #        run: ./gradlew buildCMakeDebug ${{ env.gradleArgs }}
+      #
+      #      - name: Build Anitorrent for Android Release
+      #        if: ${{ matrix.anitorrent }}
+      #        run: ./gradlew buildCMakeRelWithDebInfo ${{ env.gradleArgs }}
 
       - name: Compile Kotlin
         run: ./gradlew compileKotlin ${{ env.gradleArgs }}
