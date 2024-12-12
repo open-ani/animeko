@@ -24,7 +24,7 @@ actual fun Modifier.cursorVisibility(visible: Boolean): Modifier {
     } else {
         (blankCursor?.let {
             pointerHoverIcon(PointerIcon(it))
-        } ?: Modifier)
+        } ?: this)
             .testTag(TAG_CURSOR_VISIBILITY_EFFECT_INVISIBLE)
     }
 }
