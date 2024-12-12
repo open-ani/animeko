@@ -229,7 +229,15 @@ jobs:
       #        run: ./gradlew buildCMakeRelWithDebInfo ${{ env.gradleArgs }}
 
       - name: Compile Kotlin
-        run: ./gradlew compileKotlin ${{ env.gradleArgs }}
+        run: ./gradlew |
+          compileKotlin
+          compileCommonMainKotlinMetadata
+          compileDebugKotlinAndroid
+          compileReleaseKotlinAndroid
+          compileJvmMainKotlinMetadata
+          compileKotlinDesktop
+          compileKotlinMetadata
+          ${{ env.gradleArgs }}
 
       - name: Assemble
         if: ${{ matrix.assemble }}
