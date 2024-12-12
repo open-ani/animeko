@@ -26,6 +26,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.io.decodeFromSource
 import me.him188.ani.app.domain.torrent.peer.PeerFilterRule
 import me.him188.ani.app.domain.torrent.peer.PeerFilterSubscription
+import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.utils.coroutines.update
 import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.io.bufferedSource
@@ -215,7 +216,8 @@ data class PeerFilterSubscriptionsSaveData(
             listOf(
                 PeerFilterSubscription(
                     subscriptionId = PeerFilterSubscription.BUILTIN_SUBSCRIPTION_ID,
-                    url = "", // TODO: creamy cake
+                    url = currentAniBuildConfig.aniAuthServerUrl +
+                            "/v1/subs/proxy?url=https://sub.creamycake.org/v1/pfrules.json",
                     enabled = true,
                     lastLoaded = null,
                 ),
