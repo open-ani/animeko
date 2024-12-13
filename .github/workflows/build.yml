@@ -73,6 +73,7 @@ jobs:
           - os: macos-arm64
             runs-on: [ self-hosted, macOS, ARM64 ]
             self-hosted: true
+            dont-install-native-deps: true
             name: macOS AArch64
             uploadApk: false
             arch: aarch64
