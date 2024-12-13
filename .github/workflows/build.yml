@@ -21,11 +21,13 @@ jobs:
           - windows # 16 GB
           - ubuntu-20.04 # 16 GB
           - macos-13 # x86_64, 14 GB
+          - macos-arm64
           # - macos-14 # aarch64, 7 GB
         include:
           # matrix properties can be booleans. Check for plain true and false.
           - os: windows
             runs-on: [ self-hosted, Windows, X64 ]
+            self-hosted: true
             dont-install-native-deps: true
             name: Windows x86_64
             uploadApk: true
@@ -39,6 +41,7 @@ jobs:
             gradleArgs: '"-Dorg.gradle.jvmargs=-Xmx6g" "-Dfile.encoding=UTF-8" "-Dkotlin.daemon.jvm.options=-Xmx6g" --parallel'
           - os: ubuntu-20.04
             runs-on: ubuntu-20.04
+            self-hosted: false
             name: Ubuntu x86_64 (Compile only)
             uploadApk: false
             arch: x64
@@ -51,6 +54,7 @@ jobs:
             gradleArgs: '-Dorg.gradle.jvmargs=-Xmx4096m -Dfile.encoding=UTF-8 -Dkotlin.daemon.jvm.options=-Xmx4096M'
           - os: macos-13
             runs-on: macos-13
+            self-hosted: false
             name: macOS x86_64
             uploadApk: false
             arch: x64
@@ -66,21 +70,22 @@ jobs:
               -Dkotlin.daemon.jvm.options=-Xmx4g
               -Pani.build.framework=false
               -Pani.android.abis=arm64-v8a
-            # - os: macos-14
-            #   name: macOS aarch64
-            #   uploadApk: false
-            #   arch: aarch64
-            #   anitorrent: true
-            #   anitorrent_separate_build: true
-            #   compose_resource_triple: macos-arm64
-            #   run_tests: false
-            #   gradleArgs: >-
-            #     -Dorg.gradle.jvmargs=-Xmx4g
-            #     -Dfile.encoding=UTF-8
-            #     -Dkotlin.daemon.jvm.options=-Xmx3g
-            #     -Pani.build.framework=false
-            #     -Pani.android.abis=arm64-v8a
-            # 这台机器硬盘小, 不要构建其他安卓架构
+          - os: macos-arm64
+            runs-on: [ self-hosted, macOS, ARM64 ]
+            self-hosted: true
+            name: macOS AArch64
+            uploadApk: false
+            arch: aarch64
+            anitorrent: true
+            anitorrent_separate_build: true
+            compose_resource_triple: macos-arm64
+            run_tests: false
+            gradleArgs: >-
+              -Dorg.gradle.jvmargs=-Xmx6g
+              -Dfile.encoding=UTF-8
+              -Dkotlin.daemon.jvm.options=-Xmx4g
+              -Pani.build.framework=false
+              -Pani.android.abis=arm64-v8a
     env:
       gradleArgs: >-
         --scan
@@ -104,7 +109,7 @@ jobs:
         with:
           submodules: 'recursive'
 
-      - if: ${{ startsWith(matrix.os, 'macos') }}
+      - if: ${{ startsWith(matrix.os, 'macos') && matrix.self-hosted != true }}
         name: Free space
         run: chmod +x ./ci-helper/free-space-macos.sh && ./ci-helper/free-space-macos.sh
         continue-on-error: true
@@ -141,7 +146,7 @@ jobs:
 
       - run: echo "jvm.toolchain.version=21" >> local.properties
 
-      - if: ${{ env.isMac == 'true' }}
+      - if: ${{ env.isMac == 'true' && matrix.dont-install-native-deps != true }}
         name: Install Native Dependencies
         run: chmod +x ./ci-helper/install-deps-macos-ci.sh && ./ci-helper/install-deps-macos-ci.sh
 
