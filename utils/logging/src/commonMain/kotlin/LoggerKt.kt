@@ -8,6 +8,7 @@
  */
 
 @file:JvmName("LoggerKt")
+@file:Suppress("EXTENSION_SHADOWED_BY_MEMBER", "KotlinRedundantDiagnosticSuppress")
 
 package me.him188.ani.utils.logging
 

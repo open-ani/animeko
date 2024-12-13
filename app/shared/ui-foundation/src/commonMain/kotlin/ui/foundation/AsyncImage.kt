@@ -23,8 +23,6 @@ import coil3.Image
 import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.compose.AsyncImagePainter
-import coil3.compose.DefaultModelEqualityDelegate
-import coil3.compose.EqualityDelegate
 import coil3.memory.MemoryCache
 import coil3.network.ktor2.KtorNetworkFetcherFactory
 import coil3.request.CachePolicy
@@ -63,7 +61,6 @@ fun AsyncImage(
     colorFilter: ColorFilter? = null,
     filterQuality: FilterQuality = defaultFilterQuality,
     clipToBounds: Boolean = true,
-    modelEqualityDelegate: EqualityDelegate = DefaultModelEqualityDelegate,
 ) {
     return coil3.compose.AsyncImage(
         model = model,
@@ -82,7 +79,6 @@ fun AsyncImage(
         colorFilter = colorFilter,
         filterQuality = filterQuality,
         clipToBounds = clipToBounds,
-        modelEqualityDelegate = modelEqualityDelegate,
     )
 }
 
@@ -105,7 +101,6 @@ fun AsyncImage(
     colorFilter: ColorFilter? = null,
     filterQuality: FilterQuality = defaultFilterQuality,
     clipToBounds: Boolean = true,
-    modelEqualityDelegate: EqualityDelegate = DefaultModelEqualityDelegate,
 ) {
     return coil3.compose.AsyncImage(
         model = model,
@@ -124,7 +119,6 @@ fun AsyncImage(
         colorFilter = colorFilter,
         filterQuality = filterQuality,
         clipToBounds = clipToBounds,
-        modelEqualityDelegate = modelEqualityDelegate,
     )
 }
 
@@ -142,7 +136,6 @@ fun AsyncImage(
     colorFilter: ColorFilter? = null,
     filterQuality: FilterQuality = defaultFilterQuality,
     clipToBounds: Boolean = true,
-    modelEqualityDelegate: EqualityDelegate = DefaultModelEqualityDelegate,
 ) {
     return coil3.compose.AsyncImage(
         model = model,
@@ -157,7 +150,6 @@ fun AsyncImage(
         colorFilter = colorFilter,
         filterQuality = filterQuality,
         clipToBounds = clipToBounds,
-        modelEqualityDelegate = modelEqualityDelegate,
     )
 }
 
@@ -186,12 +178,14 @@ fun getDefaultImageLoader(
             add(SvgDecoder.Factory())
 
             add(
-                KtorNetworkFetcherFactory {
-                    createDefaultHttpClient {
-                        userAgent(getAniUserAgent())
-                        proxy(proxyConfig?.toClientProxyConfig())
-                    }
-                },
+                KtorNetworkFetcherFactory(
+                    httpClient = {
+                        createDefaultHttpClient {
+                            userAgent(getAniUserAgent())
+                            proxy(proxyConfig?.toClientProxyConfig())
+                        }
+                    },
+                ),
             )
         }
 
