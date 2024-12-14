@@ -425,7 +425,7 @@ fun KoinApplication.startCommonKoinModule(coroutineScope: CoroutineScope): KoinA
 
     coroutineScope.launch {
         val peerFilterRepo = koin.get<PeerFilterSubscriptionRepository>()
-        peerFilterRepo.resolveAll()
+        peerFilterRepo.loadOrUpdateAll()
     }
 
     return this

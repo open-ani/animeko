@@ -37,6 +37,7 @@ import me.him188.ani.utils.io.writeText
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
+import kotlin.coroutines.cancellation.CancellationException
 
 class PeerFilterSubscriptionRepository(
     private val dataStore: DataStore<PeerFilterSubscriptionsSaveData>,
@@ -57,8 +58,8 @@ class PeerFilterSubscriptionRepository(
     val presentationFlow get() = dataStore.data.map { it.list }
     val rulesFlow: Flow<List<PeerFilterRule>> get() = loadedSubRules.map { it.values.toList() } // to list 不会消耗太多时间
 
-    suspend fun resolveAll() {
-        dataStore.data.first().list.forEach { resolve(it.subscriptionId) }
+    suspend fun loadOrUpdateAll() {
+        dataStore.data.first().list.forEach { loadOrUpdate(it.subscriptionId) }
     }
 
     suspend fun updateAll() {
@@ -70,7 +71,7 @@ class PeerFilterSubscriptionRepository(
      */
     suspend fun enable(subscriptionId: String) {
         if (updatePref(subscriptionId) { it.copy(enabled = true) }) {
-            resolve(subscriptionId)
+            loadOrUpdate(subscriptionId)
         }
     }
 
@@ -86,14 +87,14 @@ class PeerFilterSubscriptionRepository(
     /**
      * 解析此订阅规则, 若没有则会从订阅链接获取, 如果启用了会加载到内存
      */
-    private suspend fun resolve(subscriptionId: String) {
+    private suspend fun loadOrUpdate(subscriptionId: String) {
         val sub = dataStore.data.first().list.firstOrNull { it.subscriptionId == subscriptionId }
         if (sub == null) {
             logger.warn { "Peer filter subscription $subscriptionId is not found." }
             return
         }
 
-        val savedPath = ruleSaveDir.resolve("${subscriptionId}.json")
+        val savedPath = resolveSaveFile(subscriptionId)
         if (!savedPath.exists()) {
             update(subscriptionId)
             return
@@ -101,34 +102,15 @@ class PeerFilterSubscriptionRepository(
 
         try {
             val decoded = withContext(Dispatchers.IO) {
-                json.decodeFromSource(PeerFilterRule.serializer(), savedPath.bufferedSource())
+                savedPath.bufferedSource().use { src -> json.decodeFromSource(PeerFilterRule.serializer(), src) }
             }
-            updateLoadResult(
-                sub.subscriptionId,
-                PeerFilterSubscription.LastLoaded(
-                    ruleStat = PeerFilterSubscription.RuleStat(
-                        ipRuleCount = decoded.blockedIpPattern.size,
-                        idRuleCount = decoded.blockedIdRegex.size,
-                        clientRuleCount = decoded.blockedClientRegex.size,
-                    ),
-                    error = null,
-                ),
-            )
-            
-            if (sub.enabled) {
-                loadedSubRules.update { put(sub.subscriptionId, decoded) }
-            }
-        } catch (e: Exception) {
-            logger.error(e) { "Failed to resolve peer filter subscription $subscriptionId, deleting file" }
 
+            if (sub.enabled) loadedSubRules.update { put(sub.subscriptionId, decoded) }
+            sub.updateSuccessResult(decoded)
+        } catch (e: Exception) {
             withContext(Dispatchers.IO) { savedPath.delete() }
-            updateLoadResult(
-                sub.subscriptionId,
-                PeerFilterSubscription.LastLoaded(
-                    ruleStat = null,
-                    error = e.toString(),
-                ),
-            )
+            sub.updateFailResult(e, false)
+            logger.error(e) { "Failed to resolve peer filter subscription $subscriptionId, deleting file" }
         }
     }
 
@@ -148,34 +130,47 @@ class PeerFilterSubscriptionRepository(
             val resp = httpClient.first().get(url)
 
             val respText = resp.bodyAsText()
-            ruleSaveDir.resolve("${subscriptionId}.json").writeText(respText)
+            resolveSaveFile(subscriptionId).writeText(respText)
 
             if (sub.enabled) {
                 val decoded = json.decodeFromString(PeerFilterRule.serializer(), respText)
                 loadedSubRules.update { put(sub.subscriptionId, decoded) }
-
-                updateLoadResult(
-                    sub.subscriptionId,
-                    PeerFilterSubscription.LastLoaded(
-                        ruleStat = PeerFilterSubscription.RuleStat(
-                            ipRuleCount = decoded.blockedIpPattern.size,
-                            idRuleCount = decoded.blockedIdRegex.size,
-                            clientRuleCount = decoded.blockedClientRegex.size,
-                        ),
-                        error = null,
-                    ),
-                )
+                sub.updateSuccessResult(decoded)
             }
         } catch (e: Exception) {
-            logger.error(e) { "Failed to update peer filter subscription $subscriptionId" }
-            updateLoadResult(
-                sub.subscriptionId,
-                PeerFilterSubscription.LastLoaded(
-                    ruleStat = sub.lastLoaded?.ruleStat,
-                    error = e.toString(),
-                ),
-            )
+            sub.updateFailResult(e, true)
+            if (e !is CancellationException) {
+                logger.error(e) { "Failed to update peer filter subscription $subscriptionId" }
+            }
         }
+    }
+
+    private fun resolveSaveFile(subscriptionId: String): SystemPath {
+        return ruleSaveDir.resolve("${subscriptionId}.json")
+    }
+
+    private suspend fun PeerFilterSubscription.updateSuccessResult(rule: PeerFilterRule) {
+        updateLoadResult(
+            subscriptionId,
+            PeerFilterSubscription.LastLoaded(
+                ruleStat = PeerFilterSubscription.RuleStat(
+                    ipRuleCount = rule.blockedIpPattern.size,
+                    idRuleCount = rule.blockedIdRegex.size,
+                    clientRuleCount = rule.blockedClientRegex.size,
+                ),
+                error = null,
+            ),
+        )
+    }
+
+    private suspend fun PeerFilterSubscription.updateFailResult(e: Exception, keepLastStat: Boolean) {
+        updateLoadResult(
+            subscriptionId,
+            PeerFilterSubscription.LastLoaded(
+                ruleStat = if (keepLastStat) lastLoaded?.ruleStat else null,
+                error = e.toString(),
+            ),
+        )
     }
 
     private suspend fun updateLoadResult(
