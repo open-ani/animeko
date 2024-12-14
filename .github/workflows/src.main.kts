@@ -529,14 +529,15 @@ fun JobBuilder<*>.freeSpace() {
 fun JobBuilder<*>.installJbr21() {
     // For mac
     val jbrLocationExpr = expr { runner.temp } + "/jbr21.tar.gz"
+    val macCondition = expr { matrix.isMacOSAArch64 and !matrix.selfHosted } // self hosted 机器已经有了
     run(
         name = "Get JBR 21 for macOS AArch64",
-        `if` = expr { matrix.isMacOSAArch64 },
+        `if` = macCondition,
         command = shell($$"""wget https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz -O $$jbrLocationExpr"""),
     )
     uses(
         name = "Setup JBR 21 for macOS AArch64",
-        `if` = expr { matrix.isMacOSAArch64 },
+        `if` = macCondition,
         action = SetupJava_Untyped(
             distribution_Untyped = "jdkfile",
             javaVersion_Untyped = "11",
