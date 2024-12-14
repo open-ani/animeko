@@ -109,13 +109,13 @@ jobs:
         if: '${{ ((matrix.os == ''macos'')) && (!(matrix.selfHosted)) }}'
       - id: 'step-2'
         name: 'Get JBR 21 for macOS AArch64'
-        run: 'curl https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz -o ${{ runner.temp }}/jbr21.tar.gz'
+        run: 'curl https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz -o ${{ runner.temp }}/jbr21.tar.gz && file ${{ runner.temp }}/jbr21.tar.gz'
         if: '${{ ((matrix.os == ''macos'')) && ((matrix.arch == ''aarch64'')) }}'
       - id: 'step-3'
         name: 'Setup JBR 21 for macOS AArch64'
         uses: 'gmitch215/setup-java@6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d'
         with:
-          java-version: '11'
+          java-version: '21'
           distribution: 'jdkfile'
           jdkFile: '${{ runner.temp }}/jbr21.tar.gz'
         env:

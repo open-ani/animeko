@@ -532,14 +532,14 @@ fun JobBuilder<*>.installJbr21() {
     run(
         name = "Get JBR 21 for macOS AArch64",
         `if` = expr { matrix.isMacOSAArch64 },
-        command = shell($$"""curl https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz -o $$jbrLocationExpr"""),
+        command = shell($$"""curl https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz -o $$jbrLocationExpr && file $$jbrLocationExpr"""),
     )
     uses(
         name = "Setup JBR 21 for macOS AArch64",
         `if` = expr { matrix.isMacOSAArch64 },
         action = SetupJava_Untyped(
             distribution_Untyped = "jdkfile",
-            javaVersion_Untyped = "11",
+            javaVersion_Untyped = "21",
             jdkFile_Untyped = jbrLocationExpr,
         ),
         env = mapOf("GITHUB_TOKEN" to expr { secrets.GITHUB_TOKEN }),
