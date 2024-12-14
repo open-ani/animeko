@@ -197,7 +197,7 @@ class MatrixInstance(
         add(quote("-Dfile.encoding=UTF-8"))
 
         if (buildAnitorrent) {
-            add(quote("-Dani.enable.buildAnitorrent=true"))
+            add(quote("-Dani.enable.anitorrent=true"))
             add(quote("-DCMAKE_BUILD_TYPE=Release"))
         }
 
@@ -728,16 +728,16 @@ fun JobBuilder<*>.uploadAnitorrent() {
         name = "Upload Anitorrent CMakeCache.txt",
         `if` = expr { matrix.buildAnitorrent },
         action = UploadArtifact(
-            name = $"buildAnitorrent-cmake-cache-${expr { matrix.os }}-${expr { matrix.arch }}",
-            path_Untyped = "torrent/buildAnitorrent/build-ci/CMakeCache.txt",
+            name = $"anitorrent-cmake-cache-${expr { matrix.os }}-${expr { matrix.arch }}",
+            path_Untyped = "torrent/anitorrent/build-ci/CMakeCache.txt",
         ),
     )
     uses(
         name = $"Upload Anitorrent ${expr { matrix.composeResourceTriple }}",
         `if` = expr { matrix.buildAnitorrent },
         action = UploadArtifact(
-            name = $"buildAnitorrent-${expr { matrix.composeResourceTriple }}",
-            path_Untyped = "app/desktop/appResources/${expr { matrix.composeResourceTriple }}/buildAnitorrent",
+            name = $"anitorrent-${expr { matrix.composeResourceTriple }}",
+            path_Untyped = "app/desktop/appResources/${expr { matrix.composeResourceTriple }}/anitorrent",
         ),
     )
 }
