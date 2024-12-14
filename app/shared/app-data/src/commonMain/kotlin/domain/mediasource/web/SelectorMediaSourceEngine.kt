@@ -25,8 +25,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonPrimitive
-import me.him188.ani.app.data.models.ApiResponse
-import me.him188.ani.app.data.models.runApiRequest
+import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.domain.mediasource.MediaListFilter
 import me.him188.ani.app.domain.mediasource.MediaListFilterContext
 import me.him188.ani.app.domain.mediasource.MediaListFilters
@@ -38,6 +37,7 @@ import me.him188.ani.app.domain.mediasource.web.format.SelectorFormatConfig
 import me.him188.ani.app.domain.mediasource.web.format.SelectorSubjectFormat
 import me.him188.ani.datasources.api.DefaultMedia
 import me.him188.ani.datasources.api.EpisodeSort
+import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.MediaProperties
 import me.him188.ani.datasources.api.SubtitleKind
 import me.him188.ani.datasources.api.matcher.WebVideo
@@ -54,6 +54,7 @@ import me.him188.ani.utils.xml.Document
 import me.him188.ani.utils.xml.Element
 import me.him188.ani.utils.xml.Html
 import kotlin.coroutines.CoroutineContext
+import kotlin.coroutines.cancellation.CancellationException
 
 data class SelectorSearchQuery(
     val subjectName: String,
@@ -71,12 +72,15 @@ fun SelectorSearchQuery.toFilterContext() = MediaListFilterContext(
 )
 
 /**
+ * 基于 CSS Selector 解析页面的数据源引擎.
+ *
  * 解析流程:
  *
- * [SelectorMediaSourceEngine.searchSubjects]
- * -> [SelectorMediaSourceEngine.selectSubjects]
- * -> [SelectorMediaSourceEngine.searchEpisodes]
- * -> [SelectorMediaSourceEngine.selectEpisodes]
+ * 1. 搜索条目列表: [SelectorMediaSourceEngine.searchSubjects]
+ * 2. 解析条目页面: [SelectorMediaSourceEngine.selectSubjects]
+ * 3. 搜索一个条目的剧集列表 [SelectorMediaSourceEngine.searchEpisodes]
+ * 4. 解析剧集列表页面 [SelectorMediaSourceEngine.selectEpisodes]
+ * 5. 将剧集信息转换为 [Media]: [SelectorMediaSourceEngine.selectMedia]
  */
 abstract class SelectorMediaSourceEngine {
     companion object {
@@ -96,12 +100,16 @@ abstract class SelectorMediaSourceEngine {
         override fun toString(): String = "SearchSubjectResult(url=$url, document=${document.toString().length}...)"
     }
 
+    /**
+     * 根据给定信息搜索条目列表.
+     */
+    @Throws(RepositoryException::class, CancellationException::class)
     suspend fun searchSubjects(
         searchUrl: String,
         subjectName: String,
         useOnlyFirstWord: Boolean,
         removeSpecial: Boolean,
-    ): ApiResponse<SearchSubjectResult> {
+    ): SearchSubjectResult {
         val finalName = if (removeSpecial) {
             MediaListFilters.removeSpecials(
                 subjectName,
@@ -127,11 +135,14 @@ abstract class SelectorMediaSourceEngine {
         return string.substringBefore(' ').ifBlank { string }
     }
 
+    @Throws(RepositoryException::class, CancellationException::class)
     protected abstract suspend fun searchImpl(
         finalUrl: Url,
-    ): ApiResponse<SearchSubjectResult>
+    ): SearchSubjectResult
 
     /**
+     * 解析条目搜索结果. 返回该页面的所有条目.
+     *
      * @return `null` if config is invalid
      */
     open fun selectSubjects(
@@ -155,12 +166,12 @@ abstract class SelectorMediaSourceEngine {
 
     suspend fun searchEpisodes(
         subjectDetailsPageUrl: String,
-    ): ApiResponse<Document?> = try {
+    ): Document? = try {
         doHttpGet(subjectDetailsPageUrl)
     } catch (e: ClientRequestException) {
         e.response.status.let {
             if (it == HttpStatusCode.NotFound) {
-                return ApiResponse.success(null)
+                return null
             }
             throw e
         }
@@ -325,7 +336,8 @@ abstract class SelectorMediaSourceEngine {
         )
     }
 
-    protected abstract suspend fun doHttpGet(uri: String): ApiResponse<Document>
+    @Throws(RepositoryException::class, CancellationException::class)
+    protected abstract suspend fun doHttpGet(uri: String): Document
 }
 
 // TODO: require MediaListFilterContext when context parameters
@@ -358,8 +370,8 @@ class DefaultSelectorMediaSourceEngine(
 ) : SelectorMediaSourceEngine() {
     override suspend fun searchImpl(
         finalUrl: Url,
-    ): ApiResponse<SearchSubjectResult> = withContext(ioDispatcher) {
-        runApiRequest {
+    ): SearchSubjectResult = withContext(ioDispatcher) {
+        try {
             val document = try {
                 client.first().get(finalUrl) {
                     accept(ContentType.Text.Html)
@@ -369,7 +381,7 @@ class DefaultSelectorMediaSourceEngine(
             } catch (e: ClientRequestException) {
                 if (e.response.status == HttpStatusCode.NotFound) {
                     // 404 Not Found
-                    return@runApiRequest SearchSubjectResult(
+                    return@withContext SearchSubjectResult(
                         finalUrl,
                         document = null,
                     )
@@ -381,17 +393,22 @@ class DefaultSelectorMediaSourceEngine(
                 finalUrl,
                 document,
             )
+        } catch (e: Exception) {
+            throw RepositoryException.wrapOrThrowCancellation(e)
         }
     }
 
 
-    public override suspend fun doHttpGet(uri: String): ApiResponse<Document> = withContext(ioDispatcher) {
-        runApiRequest {
+    @Throws(RepositoryException::class, CancellationException::class)
+    public override suspend fun doHttpGet(uri: String): Document = withContext(ioDispatcher) {
+        try {
             client.first().get(uri) {
                 accept(ContentType.Text.Html)
             }.let { resp ->
                 parseResp(resp)
             }
+        } catch (e: Exception) {
+            throw RepositoryException.wrapOrThrowCancellation(e)
         }
     }
 

@@ -10,7 +10,7 @@
 package me.him188.ani.app.ui.settings.mediasource.selector.test
 
 import androidx.compose.runtime.Immutable
-import me.him188.ani.app.data.models.ApiFailure
+import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.domain.mediasource.web.SelectorSearchConfig
 import me.him188.ani.app.domain.mediasource.web.SelectorSearchQuery
 import me.him188.ani.app.domain.mediasource.web.WebSearchEpisodeInfo
@@ -34,7 +34,7 @@ sealed class SelectorTestEpisodeListResult : RefreshResult {
 
     @Immutable
     data class ApiError(
-        override val reason: ApiFailure
+        override val exception: RepositoryException
     ) : SelectorTestEpisodeListResult(), RefreshResult.ApiError
 
     @Immutable

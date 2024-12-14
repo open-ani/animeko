@@ -20,7 +20,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.serialization.Serializable
-import me.him188.ani.app.data.models.fold
+import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.domain.mediasource.rss.RssMediaSourceEngine
 import me.him188.ani.app.domain.mediasource.rss.RssSearchConfig
 import me.him188.ani.app.domain.mediasource.rss.RssSearchQuery
@@ -80,7 +80,7 @@ class RssTestPaneState(
     ///////////////////////////////////////////////////////////////////////////
     // Testing
     ///////////////////////////////////////////////////////////////////////////
-    private val testDataState = derivedStateOf {
+    val testDataState = derivedStateOf {
         val finalKeyword = searchKeyword.ifEmpty { searchKeywordPlaceholder }
         val searchUrl = searchConfigState.value
         RssTestData(
@@ -90,9 +90,8 @@ class RssTestPaneState(
         )
     }
 
-    val searcher = BackgroundSearcher(
+    val searcher = BackgroundSearcher<RssTestData, RssTestResult>(
         backgroundScope,
-        testDataState,
         search = { testData ->
             val query = RssSearchQuery(
                 subjectName = testData.keyword,
@@ -113,24 +112,21 @@ class RssTestPaneState(
         testData: RssTestData,
         query: RssSearchQuery,
     ): RssTestResult {
-        try {
-            val res = engine.search(
-                testData.searchConfig, query, testData.page,
-                mediaSourceId = "test",
-            )
-
-            return res.fold(
-                onSuccess = { result ->
-                    convertResult(result)
-                },
-                onKnownFailure = {
-                    RssTestResult.ApiError(it)
-                },
+        return try {
+            convertResult(
+                engine.search(
+                    testData.searchConfig, query, testData.page,
+                    mediaSourceId = "test",
+                ),
             )
         } catch (e: CancellationException) {
             throw e
-        } catch (e: Throwable) {
-            return RssTestResult.UnknownError(e)
+        } catch (e: Exception) {
+            if (e is RepositoryException) {
+                RssTestResult.ApiError(e)
+            } else {
+                RssTestResult.UnknownError(e)
+            }
         }
     }
 

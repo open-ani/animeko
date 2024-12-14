@@ -40,6 +40,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -69,6 +70,9 @@ fun SharedTransitionScope.SelectorTestPane(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(0.dp),
 ) {
+    val presentation by state.presentation.collectAsStateWithLifecycle(
+        SelectorTestPresentation.Placeholder,
+    )
     val verticalSpacing = currentWindowAdaptiveInfo1().windowSizeClass.cardVerticalPadding
     LazyVerticalGrid(
         columns = GridCells.Adaptive(300.dp),
@@ -93,21 +97,21 @@ fun SharedTransitionScope.SelectorTestPane(
 
                 RefreshIndicatedHeadlineRow(
                     headline = { Text(SelectorConfigurationDefaults.STEP_NAME_1) },
-                    onRefresh = { state.subjectSearcher.restartCurrentSearch() },
-                    result = state.subjectSearchSelectResult,
+                    onRefresh = { state.restartCurrentSubjectSearch() },
+                    result = presentation.subjectSearchResult,
                     Modifier.padding(top = verticalSpacing),
                 )
 
                 Box(Modifier.height(12.dp), contentAlignment = Alignment.Center) {
                     FastLinearProgressIndicator(
-                        state.subjectSearcher.isSearching.collectAsStateWithLifecycle().value,
+                        presentation.isSearchingSubject,
                         delayMillis = 0,
                         minimumDurationMillis = 300,
                     )
                 }
 
                 AnimatedContent(
-                    state.subjectSearchSelectResult,
+                    presentation.subjectSearchResult,
                     transitionSpec = AniThemeDefaults.standardAnimatedContentTransition,
                 ) { result ->
                     if (result is SelectorTestSearchSubjectResult.Success) {
@@ -115,7 +119,7 @@ fun SharedTransitionScope.SelectorTestPane(
                             items = result.subjects,
                             state.selectedSubjectIndex,
                             onSelect = { index, _ ->
-                                state.selectedSubjectIndex = index
+                                state.selectSubjectIndex(index)
                             },
                             modifier = Modifier.padding(top = verticalSpacing - 8.dp),
                         )
@@ -124,18 +128,18 @@ fun SharedTransitionScope.SelectorTestPane(
             }
         }
 
-        val selectedSubject = state.selectedSubject
+        val selectedSubject = presentation.selectedSubject
         if (selectedSubject != null) {
             item(span = { GridItemSpan(maxLineSpan) }) {
                 Column {
                     RefreshIndicatedHeadlineRow(
                         headline = { Text(SelectorConfigurationDefaults.STEP_NAME_2) },
-                        onRefresh = { state.episodeListSearcher.restartCurrentSearch() },
-                        result = state.episodeListSearchSelectResult,
+                        onRefresh = { state.restartCurrentEpisodeSearch() },
+                        result = presentation.episodeListSearchResult,
                         Modifier.padding(top = verticalSpacing),
                     )
 
-                    val url = state.selectedSubject?.subjectDetailsPageUrl ?: ""
+                    val url = selectedSubject.subjectDetailsPageUrl
                     val clipboard = LocalClipboardManager.current
                     val toaster = LocalToaster.current
                     Row(
@@ -167,7 +171,7 @@ fun SharedTransitionScope.SelectorTestPane(
 
                     Box(Modifier.height(4.dp), contentAlignment = Alignment.Center) {
                         FastLinearProgressIndicator(
-                            state.episodeListSearcher.isSearching.collectAsStateWithLifecycle().value,
+                            presentation.isSearchingEpisode,
                             delayMillis = 0,
                             minimumDurationMillis = 300,
                         )
@@ -175,7 +179,7 @@ fun SharedTransitionScope.SelectorTestPane(
                 }
             }
 
-            val result = state.episodeListSearchSelectResult
+            val result = presentation.episodeListSearchResult
             if (result is SelectorTestEpisodeListResult.Success) {
                 if (result.channels != null) {
                     item(span = { GridItemSpan(maxLineSpan) }) {
@@ -206,7 +210,7 @@ fun SharedTransitionScope.SelectorTestPane(
                 }
 
                 items(
-                    state.filteredEpisodes ?: emptyList(),
+                    presentation.filteredEpisodes ?: emptyList(),
                     key = { it.id.toString() },
                     contentType = { 1 },
                 ) { episode ->

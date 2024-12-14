@@ -21,8 +21,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.tooling.preview.Preview
 import io.ktor.http.Url
-import me.him188.ani.app.data.models.ApiResponse
-import me.him188.ani.app.data.models.networkError
+import kotlinx.io.IOException
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSourceEngine
 import me.him188.ani.app.domain.mediasource.web.SelectorSearchConfig
 import me.him188.ani.app.domain.mediasource.web.WebSearchSubjectInfo
@@ -45,9 +44,9 @@ fun PreviewSelectorTestPane() = ProvideFoundationCompositionLocalsForPreview {
                         SelectorTestState(
                             searchConfigState = mutableStateOf(SelectorSearchConfig.Empty),
                             engine = TestSelectorMediaSourceEngine(),
-                            scope,
+                            backgroundScope = scope,
                         ).apply {
-                            subjectSearcher.restartCurrentSearch()
+                            restartCurrentSubjectSearch()
                         }
                     },
                     {},
@@ -63,12 +62,10 @@ fun PreviewSelectorTestPane() = ProvideFoundationCompositionLocalsForPreview {
 class TestSelectorMediaSourceEngine : SelectorMediaSourceEngine() {
     override suspend fun searchImpl(
         finalUrl: Url
-    ): ApiResponse<SearchSubjectResult> {
-        return ApiResponse.success(
-            SearchSubjectResult(
-                Url("https://example.com"),
-                null,
-            ),
+    ): SearchSubjectResult {
+        return SearchSubjectResult(
+            Url("https://example.com"),
+            null,
         )
     }
 
@@ -81,7 +78,7 @@ class TestSelectorMediaSourceEngine : SelectorMediaSourceEngine() {
         )
     }
 
-    override suspend fun doHttpGet(uri: String): ApiResponse<Document> {
-        return ApiResponse.networkError()
+    override suspend fun doHttpGet(uri: String): Document {
+        throw IOException("Dummy")
     }
 }

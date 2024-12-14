@@ -63,6 +63,7 @@ import me.him188.ani.app.ui.settings.mediasource.DropdownMenuImport
 import me.him188.ani.app.ui.settings.mediasource.ExportMediaSourceState
 import me.him188.ani.app.ui.settings.mediasource.ImportMediaSourceState
 import me.him188.ani.app.ui.settings.mediasource.MediaSourceConfigurationDefaults
+import me.him188.ani.app.ui.settings.mediasource.observeTestDataChanges
 import me.him188.ani.app.ui.settings.mediasource.rss.SaveableStorage
 import me.him188.ani.app.ui.settings.mediasource.selector.edit.SelectorConfigState
 import me.him188.ani.app.ui.settings.mediasource.selector.edit.SelectorConfigurationPane
@@ -222,13 +223,10 @@ fun EditSelectorMediaSourcePage(
 
         // 在外面启动, 避免在切换页面后重新启动导致刷新
         LaunchedEffect(state) {
-            state.testState.subjectSearcher.observeChangeLoop()
+            state.episodeState.searcher.observeTestDataChanges(state.episodeState.searcherTestDataState)
         }
         LaunchedEffect(state) {
-            state.testState.episodeListSearcher.observeChangeLoop()
-        }
-        LaunchedEffect(state) {
-            state.episodeState.searcher.observeChangeLoop()
+            state.testState.observeChanges()
         }
 
         ListDetailPaneScaffold(

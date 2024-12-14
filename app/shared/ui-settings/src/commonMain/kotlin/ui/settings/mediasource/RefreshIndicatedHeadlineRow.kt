@@ -38,7 +38,12 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
-import me.him188.ani.app.data.models.ApiFailure
+import me.him188.ani.app.data.repository.RepositoryAuthorizationException
+import me.him188.ani.app.data.repository.RepositoryException
+import me.him188.ani.app.data.repository.RepositoryNetworkException
+import me.him188.ani.app.data.repository.RepositoryRateLimitedException
+import me.him188.ani.app.data.repository.RepositoryServiceUnavailableException
+import me.him188.ani.app.data.repository.RepositoryUnknownException
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 
 /**
@@ -61,7 +66,7 @@ interface RefreshResult {
      * 一个已知类型的 API 错误
      */
     interface ApiError : Failed {
-        val reason: ApiFailure
+        val exception: RepositoryException
     }
 
     /**
@@ -147,10 +152,12 @@ object RefreshIndicationDefaults {
             Text(
                 when (result) {
                     is RefreshResult.ApiError -> {
-                        when (result.reason) {
-                            ApiFailure.NetworkError -> "网络错误"
-                            ApiFailure.ServiceUnavailable -> "服务器错误"
-                            ApiFailure.Unauthorized -> "未授权"
+                        when (result.exception) {
+                            is RepositoryAuthorizationException -> "未授权"
+                            is RepositoryNetworkException -> "网络错误"
+                            is RepositoryRateLimitedException -> "请求过快"
+                            is RepositoryServiceUnavailableException -> "服务器错误"
+                            is RepositoryUnknownException -> "未知错误: ${result.exception}"
                         }
                     }
 
