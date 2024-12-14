@@ -19,6 +19,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
@@ -55,7 +56,7 @@ class PeerFilterSubscriptionRepository(
     private val loadedSubRules: MutableStateFlow<PersistentMap<String, PeerFilterRule>> =
         MutableStateFlow(persistentMapOf())
 
-    val presentationFlow get() = dataStore.data.map { it.list }
+    val presentationFlow get() = dataStore.data.flowOn(Dispatchers.Default).map { it.list }
     val rulesFlow: Flow<List<PeerFilterRule>> get() = loadedSubRules.map { it.values.toList() } // to list 不会消耗太多时间
 
     suspend fun loadOrUpdateAll() {
