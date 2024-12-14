@@ -32,7 +32,7 @@ import kotlin.coroutines.cancellation.CancellationException
 @Stable
 class SelectorTestState(
     searchConfigState: State<SelectorSearchConfig?>,
-    private val engine: SelectorMediaSourceEngine,
+    engine: SelectorMediaSourceEngine,
     backgroundScope: CoroutineScope,
 ) : AbstractMediaSourceTestState() {
     // null for invalid config
@@ -88,27 +88,11 @@ class SelectorTestState(
                 searchConfig?.searchRemoveSpecial,
             )
         },
-        search = { (url, searchKeyword, useOnlyFirstWord, removeSpecial) ->
+        search = { data ->
             // 不清除 selectedSubjectIndex
-
             launchRequestInBackground {
-                if (url == null || url.isBlank() || searchKeyword.isBlank() || useOnlyFirstWord == null || removeSpecial == null) {
-                    null
-                } else {
-                    try {
-                        val res = engine.searchSubjects(
-                            searchUrl = url,
-                            searchKeyword,
-                            useOnlyFirstWord = useOnlyFirstWord,
-                            removeSpecial = removeSpecial,
-                        )
-                        Result.success(res)
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (e: Throwable) {
-                        Result.failure(e)
-                    }
-                }
+                val (url, searchKeyword, useOnlyFirstWord, removeSpecial) = data
+                backgroundTasks.searchSubject(url, searchKeyword, useOnlyFirstWord, removeSpecial)
             }
         },
     )
@@ -129,7 +113,7 @@ class SelectorTestState(
             else -> {
                 res.fold(
                     onSuccess = {
-                        selectSubjectResult(it, config, query)
+                        backgroundTasks.selectSubjectResult(it, config, query)
                     },
                     onFailure = {
                         SelectorTestSearchSubjectResult.UnknownError(it)
@@ -147,21 +131,7 @@ class SelectorTestState(
         derivedStateOf { selectedSubject?.subjectDetailsPageUrl },
         search = { subjectDetailsPageUrl ->
             launchRequestInBackground {
-                if (subjectDetailsPageUrl == null) {
-                    null
-                } else {
-                    try {
-                        Result.success(
-                            engine.searchEpisodes(
-                                subjectDetailsPageUrl,
-                            ),
-                        )
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (e: Throwable) {
-                        Result.failure(e)
-                    }
-                }
+                backgroundTasks.searchEpisodes(subjectDetailsPageUrl)
             }
         },
     )
@@ -189,7 +159,7 @@ class SelectorTestState(
 
                 subjectDetailsPageDocument.fold(
                     onSuccess = { document ->
-                        convertEpisodeResult(document, searchConfig, queryState, subjectUrl)
+                        backgroundTasks.convertEpisodeResult(document, searchConfig, queryState, subjectUrl)
                     },
                     onFailure = {
                         SelectorTestEpisodeListResult.UnknownError(it)
@@ -212,66 +182,117 @@ class SelectorTestState(
         }
     }
 
-    private fun convertEpisodeResult(
-        res: ApiResponse<Document?>,
-        config: SelectorSearchConfig,
-        query: SelectorSearchQuery,
-        subjectUrl: String,
-    ): SelectorTestEpisodeListResult {
-        return res.fold(
-            onSuccess = { document ->
+    private val backgroundTasks = BackgroundTasks(engine)
+
+    // 在这里面不能访问 UI states, 必须传入.
+    private class BackgroundTasks(
+        private val engine: SelectorMediaSourceEngine,
+    ) {
+        suspend fun searchEpisodes(subjectDetailsPageUrl: String?): Result<ApiResponse<Document?>>? {
+            return if (subjectDetailsPageUrl == null) {
+                null
+            } else {
                 try {
-                    document ?: return SelectorTestEpisodeListResult.Success(null, emptyList())
-                    val episodeList = engine.selectEpisodes(document, subjectUrl, config)
-                        ?: return SelectorTestEpisodeListResult.InvalidConfig
-                    SelectorTestEpisodeListResult.Success(
-                        episodeList.channels,
-                        episodeList.episodes
-                            .fastDistinctBy { it.playUrl }
-                            .map {
-                                SelectorTestEpisodePresentation.compute(it, query, document, config)
-                            },
-                    )
+                    Result.success(engine.searchEpisodes(subjectDetailsPageUrl))
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Throwable) {
-                    SelectorTestEpisodeListResult.UnknownError(e)
+                    Result.failure(e)
                 }
-            },
-            onKnownFailure = { reason ->
-                SelectorTestEpisodeListResult.ApiError(reason)
-            },
-        )
-    }
+            }
+        }
 
-    private fun selectSubjectResult(
-        res: ApiResponse<SelectorMediaSourceEngine.SearchSubjectResult>,
-        searchConfig: SelectorSearchConfig,
-        query: SelectorSearchQuery,
-    ): SelectorTestSearchSubjectResult {
-        return res.fold(
-            onSuccess = { data ->
-                val document = data.document
+        suspend fun searchSubject(
+            url: String?,
+            searchKeyword: String,
+            useOnlyFirstWord: Boolean?,
+            removeSpecial: Boolean?
+        ) =
+            if (url.isNullOrBlank() || searchKeyword.isBlank() || useOnlyFirstWord == null || removeSpecial == null) {
+                null
+            } else {
+                try {
+                    val res = engine.searchSubjects(
+                        searchUrl = url,
+                        searchKeyword,
+                        useOnlyFirstWord = useOnlyFirstWord,
+                        removeSpecial = removeSpecial,
+                    )
+                    Result.success(res)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Throwable) {
+                    Result.failure(e)
+                }
+            }
 
-                val originalList = if (document == null) {
-                    emptyList()
-                } else {
-                    engine.selectSubjects(document, searchConfig).let {
-                        if (it == null) {
-                            return SelectorTestSearchSubjectResult.InvalidConfig
-                        }
-                        it
+
+        fun convertEpisodeResult(
+            res: ApiResponse<Document?>,
+            config: SelectorSearchConfig,
+            query: SelectorSearchQuery,
+            subjectUrl: String,
+        ): SelectorTestEpisodeListResult {
+            return res.fold(
+                onSuccess = { document ->
+                    try {
+                        document ?: return SelectorTestEpisodeListResult.Success(null, emptyList())
+                        val episodeList = engine.selectEpisodes(document, subjectUrl, config)
+                            ?: return SelectorTestEpisodeListResult.InvalidConfig
+                        SelectorTestEpisodeListResult.Success(
+                            episodeList.channels,
+                            episodeList.episodes
+                                .fastDistinctBy { it.playUrl }
+                                .map {
+                                    SelectorTestEpisodePresentation.compute(it, query, document, config)
+                                },
+                        )
+                    } catch (e: Throwable) {
+                        SelectorTestEpisodeListResult.UnknownError(e)
                     }
-                }
+                },
+                onKnownFailure = { reason ->
+                    SelectorTestEpisodeListResult.ApiError(reason)
+                },
+            )
+        }
 
-                SelectorTestSearchSubjectResult.Success(
-                    data.url.toString(),
-                    originalList.map {
-                        SelectorTestSubjectPresentation.compute(it, query, document, searchConfig.filterBySubjectName)
-                    },
-                )
-            },
-            onKnownFailure = { reason ->
-                SelectorTestSearchSubjectResult.ApiError(reason)
-            },
-        )
+        fun selectSubjectResult(
+            res: ApiResponse<SelectorMediaSourceEngine.SearchSubjectResult>,
+            searchConfig: SelectorSearchConfig,
+            query: SelectorSearchQuery,
+        ): SelectorTestSearchSubjectResult {
+            return res.fold(
+                onSuccess = { data ->
+                    val document = data.document
+
+                    val originalList = if (document == null) {
+                        emptyList()
+                    } else {
+                        engine.selectSubjects(document, searchConfig).let {
+                            if (it == null) {
+                                return SelectorTestSearchSubjectResult.InvalidConfig
+                            }
+                            it
+                        }
+                    }
+
+                    SelectorTestSearchSubjectResult.Success(
+                        data.url.toString(),
+                        originalList.map {
+                            SelectorTestSubjectPresentation.compute(
+                                it,
+                                query,
+                                document,
+                                searchConfig.filterBySubjectName,
+                            )
+                        },
+                    )
+                },
+                onKnownFailure = { reason ->
+                    SelectorTestSearchSubjectResult.ApiError(reason)
+                },
+            )
+        }
     }
 }

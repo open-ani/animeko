@@ -15,6 +15,7 @@ import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runCurrent
@@ -126,8 +127,8 @@ class EpisodeCacheStateTest {
         assertEquals(CacheRequestStage.Idle, state.currentStage)
         assertIs<EpisodeCacheStatus.Cached>(state.cacheStatus)
         assertEquals(true, state.canCache)
-        assertEquals(false, state.actionTasker.isRunning)
-        assertEquals(false, state.showProgressIndicator)
+        assertEquals(false, state.actionTasker.isRunning.first())
+        assertEquals(false, state.showProgressIndicator.first())
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -183,7 +184,7 @@ class EpisodeCacheStateTest {
     @Test
     fun `showProgressIndicator is initially false`() = runComposeStateTest {
         val state = createEpisodeCacheState()
-        assertEquals(false, state.showProgressIndicator)
+        assertEquals(false, state.showProgressIndicator.first())
     }
 
     @Test
@@ -195,12 +196,12 @@ class EpisodeCacheStateTest {
         }
         takeSnapshot()
 
-        assertEquals(true, state.showProgressIndicator)
+        assertEquals(true, state.showProgressIndicator.first())
         deferred.complete(Unit)
         state.actionTasker.join()
 
         takeSnapshot()
-        assertEquals(false, state.showProgressIndicator)
+        assertEquals(false, state.showProgressIndicator.first())
     }
 
     @Test
@@ -210,7 +211,7 @@ class EpisodeCacheStateTest {
             .request(EpisodeCacheRequest(SubjectInfo.Empty, EpisodeInfo(1, EpisodeType.MainStory)))
 
         takeSnapshot()
-        assertEquals(true, state.showProgressIndicator)
+        assertEquals(true, state.showProgressIndicator.first())
     }
 
     @Test
@@ -234,7 +235,7 @@ class EpisodeCacheStateTest {
 
         takeSnapshot()
 
-        assertEquals(false, state.showProgressIndicator)
+        assertEquals(false, state.showProgressIndicator.first())
     }
 
     ///////////////////////////////////////////////////////////////////////////

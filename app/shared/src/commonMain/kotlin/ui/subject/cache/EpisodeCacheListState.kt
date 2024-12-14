@@ -29,10 +29,10 @@ interface EpisodeCacheListState {
      */
     val episodes: List<EpisodeCacheState>
 
-    /**
-     * 是否有任何一个剧集正在进行缓存操作. 当剧集列表仍然在加载时, 该值总是为 `false`.
-     */
-    val anyEpisodeActionRunning: Boolean
+//    /**
+//     * 是否有任何一个剧集正在进行缓存操作. 当剧集列表仍然在加载时, 该值总是为 `false`.
+//     */
+//    val anyEpisodeActionRunning: Boolean
 
 
     /**
@@ -102,9 +102,9 @@ class EpisodeCacheListStateImpl(
 ) : EpisodeCacheListState {
     override val episodes: List<EpisodeCacheState> by episodes
 
-    override val anyEpisodeActionRunning: Boolean by derivedStateOf {
-        this.episodes.any { it.actionTasker.isRunning }
-    }
+//    override val anyEpisodeActionRunning: Boolean by derivedStateOf {
+//        this.episodes.any { it.actionTasker.isRunning }
+//    }
 
     override val currentEpisode: EpisodeCacheState? by currentEpisode
     override val currentSelectMediaTask: SelectMediaTask? by derivedStateOf {
@@ -178,7 +178,7 @@ class EpisodeCacheListStateImpl(
 
     override fun requestCache(episode: EpisodeCacheState, autoSelectCached: Boolean) {
         // 当已经有任务时, 忽略请求
-        if (episode.actionTasker.isRunning) return
+        if (episode.actionTasker.isRunning.value) return
         episode.actionTasker.launch {
             // TODO: 处理错误 
             onRequestCache(episode, autoSelectCached)?.let {
@@ -205,7 +205,7 @@ class EpisodeCacheListStateImpl(
     }
 
     override fun deleteCache(episode: EpisodeCacheState) {
-        if (episode.actionTasker.isRunning) return
+        if (episode.actionTasker.isRunning.value) return
         episode.actionTasker.launch {
             try {
                 onDeleteCache(episode)

@@ -169,7 +169,7 @@ val SessionManager.userInfoAsApiResponse
 @OpaqueSession
 val SessionManager.verifiedAccessToken: Flow<String?>
     get() = state.map {
-        (it as? SessionStatus.Verified)?.accessTokenMaybeUnverified
+        (it as? SessionStatus.Verified)?.accessToken
     }
 
 /**

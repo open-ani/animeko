@@ -49,6 +49,7 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.ApiFailure
@@ -86,7 +87,7 @@ class MediaSourceSubscriptionGroupState(
 
     @JvmName("setEditingUrl1")
     fun setEditingUrl(url: String) {
-        if (isAddInProgress) {
+        if (isAddInProgress.value) {
             return
         }
         editingUrl = url
@@ -134,7 +135,7 @@ internal fun SettingsScope.MediaSourceSubscriptionGroup(
             }
 
             AnimatedContent(
-                state.isUpdateAllInProgress,
+                state.isUpdateAllInProgress.collectAsStateWithLifecycle().value,
                 transitionSpec = AniThemeDefaults.standardAnimatedContentTransition,
                 contentAlignment = Alignment.CenterEnd,
             ) {
@@ -161,11 +162,12 @@ internal fun SettingsScope.MediaSourceSubscriptionGroup(
                 showAddDialog = false
                 state.addNew(state.editingUrl)
             }
+            val isAddInProgressState = state.isAddInProgress.collectAsStateWithLifecycle()
             AlertDialog(
                 { showAddDialog = false },
                 confirmButton = {
                     AnimatedContent(
-                        state.isAddInProgress,
+                        isAddInProgressState.value,
                         transitionSpec = AniThemeDefaults.standardAnimatedContentTransition,
                         contentAlignment = Alignment.BottomEnd,
                     ) {
@@ -192,7 +194,7 @@ internal fun SettingsScope.MediaSourceSubscriptionGroup(
                         onValueChange = { state.setEditingUrl(it) },
                         Modifier.focusRequester(textFieldFocus),
                         isError = state.editingUrlIsError,
-                        enabled = !(state.isAddInProgress),
+                        enabled = !isAddInProgressState.value,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                         keyboardActions = KeyboardActions(onDone = { confirmAdd() }),
                         label = { Text("URL (HTTP)") },
@@ -243,6 +245,7 @@ private fun SettingsScope.SubscriptionItem(
                     },
                 )
 
+                val enableActions = !state.isExportInProgress.collectAsStateWithLifecycle().value
                 DropdownMenuItem(
                     leadingIcon = { Icon(Icons.Rounded.Share, null) },
                     text = { Text("全部导出到剪贴板") },
@@ -254,7 +257,7 @@ private fun SettingsScope.SubscriptionItem(
                             toaster.toast("已复制")
                         }
                     },
-                    enabled = !state.isExportInProgress,
+                    enabled = enableActions,
                 )
 
                 DropdownMenuItem(
@@ -264,7 +267,7 @@ private fun SettingsScope.SubscriptionItem(
                         showDropdown = false
                         showConfirmDelete = true
                     },
-                    enabled = !state.isExportInProgress,
+                    enabled = enableActions,
                 )
             }
         },

@@ -10,10 +10,10 @@
 package me.him188.ani.app.ui.settings.mediasource.selector
 
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableStateOf
 import io.ktor.client.plugins.BrowserUserAgent
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -40,6 +40,7 @@ import me.him188.ani.app.domain.mediasource.web.SelectorMediaSourceArguments
 import me.him188.ani.app.platform.Context
 import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.ui.foundation.AbstractViewModel
+import me.him188.ani.app.ui.foundation.produceState
 import me.him188.ani.app.ui.settings.mediasource.rss.SaveableStorage
 import me.him188.ani.datasources.api.source.HttpMediaSource
 import me.him188.ani.datasources.api.source.createHttpClient
@@ -101,7 +102,7 @@ class EditSelectorMediaSourceViewModel(
                                 )
                             }
                         },
-                        isSavingState = derivedStateOf { saveTasker.isRunning },
+                        isSavingFlow = saveTasker.isRunning,
                     ),
                     allowEditState = allowEdit,
                     engine = DefaultSelectorMediaSourceEngine(client),
@@ -111,13 +112,14 @@ class EditSelectorMediaSourceViewModel(
                         settingsRepository.videoResolverSettings.flow.distinctUntilChanged(),
                     ) { proxySettings, videoResolverSettings ->
                         WebViewVideoExtractor(proxySettings, videoResolverSettings)
-                    }.produceState(null),
+                    }.produceState(null, this),
                     codecManager = get<MediaSourceCodecManager>(),
                     backgroundScope = this,
                     context,
                     flowDispatcher = Dispatchers.Default,
                 ),
             )
+            awaitCancellation()
         }
     }.flowOn(Dispatchers.Default)
 

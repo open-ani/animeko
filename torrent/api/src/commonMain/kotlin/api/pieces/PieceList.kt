@@ -96,6 +96,7 @@ abstract class PieceList(
      * 不会检查是否越界.
      */
     @OptIn(RawPieceConstructor::class)
+    @Suppress("NOTHING_TO_INLINE", "KotlinRedundantDiagnosticSuppress")
     // inline is needed to help compiler vectorization
     inline fun createPieceByListIndexUnsafe(listIndex: Int): Piece =
         Piece(initialPieceIndex + listIndex)

@@ -66,6 +66,7 @@ import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.LoadState
 import androidx.paging.LoadStates
 import androidx.paging.PagingData
@@ -81,7 +82,6 @@ import me.him188.ani.app.data.models.subject.toNavPlaceholder
 import me.him188.ani.app.data.repository.subject.CollectionsFilterQuery
 import me.him188.ani.app.domain.session.AuthState
 import me.him188.ani.app.navigation.LocalNavigator
-import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.app.ui.adaptive.AniTopAppBar
 import me.him188.ani.app.ui.adaptive.AniTopAppBarDefaults
 import me.him188.ani.app.ui.foundation.LocalPlatform
@@ -451,7 +451,7 @@ private fun SubjectCollectionItem(
                         {
                             editableSubjectCollectionTypeState.setSelfCollectionType(UnifiedCollectionType.DONE)
                         },
-                        enabled = !editableSubjectCollectionTypeState.isSetSelfCollectionTypeWorking,
+                        enabled = !editableSubjectCollectionTypeState.isSetSelfCollectionTypeWorking.collectAsStateWithLifecycle().value,
                     ) {
                         Text("移至\"看过\"", Modifier.requiredWidth(IntrinsicSize.Max), softWrap = false)
                     }

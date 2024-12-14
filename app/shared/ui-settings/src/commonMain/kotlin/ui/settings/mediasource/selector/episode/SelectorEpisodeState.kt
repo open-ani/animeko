@@ -94,12 +94,12 @@ class SelectorEpisodeState(
                             }
                         }
                     }
+                    SelectorEpisodeResult.Success(flow)
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
                     SelectorEpisodeResult.UnknownError(e)
                 }
-                SelectorEpisodeResult.Success(flow)
             }
         }
 

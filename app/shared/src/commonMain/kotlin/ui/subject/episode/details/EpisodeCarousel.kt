@@ -35,6 +35,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.CoroutineScope
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.domain.media.cache.EpisodeCacheStatus
@@ -160,7 +161,7 @@ fun EpisodeCarousel(
                                 onMarkAsDone = {
                                     state.setCollectionType(collection, UnifiedCollectionType.DONE)
                                 },
-                                enabled = !state.isSettingCollectionType,
+                                enabled = !state.isSettingCollectionType.collectAsStateWithLifecycle().value,
                             )
                         },
                         mediaSelected = true,

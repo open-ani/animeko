@@ -186,6 +186,8 @@ class TorrentVideoSource(
 
     @Throws(VideoSourceOpenException::class, CancellationException::class)
     override suspend fun open(): TorrentVideoData {
+        // 注意, 这个函数须支持 cancellation. 它会在任意时刻被取消.
+
         logger.info {
             "TorrentVideoSource '${episodeMetadata.title}' opening a VideoData"
         }

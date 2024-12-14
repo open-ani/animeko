@@ -80,7 +80,7 @@ class EditSelectorMediaSourcePageState(
     allowEditState: State<Boolean>,
     engine: SelectorMediaSourceEngine,
     webViewVideoExtractor: State<WebViewVideoExtractor?>,
-    private val codecManager: MediaSourceCodecManager,
+    codecManager: MediaSourceCodecManager,
     backgroundScope: CoroutineScope,
     context: Context,
     flowDispatcher: CoroutineContext = Dispatchers.Default,

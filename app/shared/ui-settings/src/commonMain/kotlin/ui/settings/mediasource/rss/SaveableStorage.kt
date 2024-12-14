@@ -12,6 +12,8 @@ package me.him188.ani.app.ui.settings.mediasource.rss
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import me.him188.ani.app.domain.mediasource.rss.RssMediaSourceArguments
 import me.him188.ani.utils.platform.annotations.TestOnly
 import kotlin.properties.ReadWriteProperty
@@ -44,10 +46,9 @@ class SaveableStorage<Container : Any>(
     /**
      * 是否正在保存中. 可用于 UI 阻止用户退出页面.
      */
-    val isSavingState: State<Boolean>,
+    val isSavingFlow: Flow<Boolean>,
 ) {
     val container by containerState
-    val isSaving by isSavingState
 
     /**
      * 获取引用 [Container] 的一个属性并支持修改这个属性.
@@ -108,6 +109,6 @@ fun <T : Any> createTestSaveableStorage(
     return SaveableStorage(
         containerState = containerState,
         onSave = { containerState.value = it },
-        isSavingState = mutableStateOf(isSaving),
+        isSavingFlow = MutableStateFlow(isSaving),
     )
 }

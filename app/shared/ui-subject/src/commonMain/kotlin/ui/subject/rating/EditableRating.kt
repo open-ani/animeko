@@ -15,13 +15,13 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.CoroutineScope
 import me.him188.ani.app.data.models.subject.RatingInfo
 import me.him188.ani.app.data.models.subject.SelfRatingInfo
@@ -46,9 +46,7 @@ class EditableRatingState(
 ) {
     val ratingInfo by ratingInfo
     val selfRatingInfo by selfRatingInfo
-    private val enableEdit by enableEdit
-
-    val clickEnabled by derivedStateOf { this.enableEdit && !isUpdatingRating }
+    val enableEdit by enableEdit
 
     var showRatingRequiresCollectionDialog by mutableStateOf(false)
 
@@ -102,6 +100,7 @@ fun EditableRating(
         )
     }
 
+    val isUpdatingRating = state.isUpdatingRating.collectAsStateWithLifecycle()
     if (state.showRatingDialog) {
         val selfRatingInfo = state.selfRatingInfo
         RatingEditorDialog(
@@ -116,14 +115,14 @@ fun EditableRating(
                 state.cancelEdit()
             },
             onRate = { state.updateRating(it) },
-            isLoading = state.isUpdatingRating,
+            isLoading = isUpdatingRating.value,
         )
     }
     Rating(
         rating = state.ratingInfo,
         selfRatingScore = state.selfRatingInfo.score,
         onClick = { state.requestEdit() },
-        clickEnabled = state.clickEnabled,
+        clickEnabled = state.enableEdit && !isUpdatingRating.value,
         modifier = modifier,
     )
 }

@@ -2,14 +2,14 @@
 gluegen-rt = "2.5.0"
 jna = "5.13.0" # 不要轻易改这个版本, 它可能导致 VLC 兼容性问题
 jsonpathkt-kotlinx = "3.0.2"
-kotlin = "2.0.21"
+kotlin = "2.1.0"
 # kotlinx
-coroutines = "1.9.0-RC.2" # https://github.com/Kotlin/kotlinx.coroutines/releases
-serialization = "1.7.1" # https://github.com/Kotlin/kotlinx.serialization/releases
+coroutines = "1.9.0" # https://github.com/Kotlin/kotlinx.coroutines/releases
+serialization = "1.7.3" # https://github.com/Kotlin/kotlinx.serialization/releases
 datetime = "0.6.1" # https://github.com/Kotlin/kotlinx-datetime/releases
-atomicfu = "0.25.0" # https://github.com/Kotlin/kotlinx-atomicfu/releases
-kotlinx-io = "0.5.3" # https://github.com/Kotlin/kotlinx-io/releases
-kotlinx-collections-immutable = "0.3.7" # https://github.com/Kotlin/kotlinx.collections.immutable
+atomicfu = "0.26.1" # https://github.com/Kotlin/kotlinx-atomicfu/releases
+kotlinx-io = "0.6.0" # https://github.com/Kotlin/kotlinx-io/releases
+kotlinx-collections-immutable = "0.3.8" # https://github.com/Kotlin/kotlinx.collections.immutable/releases
 #
 ksoup = "0.1.4"
 filekit = "0.8.1" # https://github.com/vinceglb/FileKit/releases
@@ -20,25 +20,24 @@ playwright = "1.44.0"
 reorderable = "0.9.6" # 这个没用了, 我们 composite build fork
 ktor = "2.3.12"
 koin = "3.5.6" # https://github.com/InsertKoinIO/koin/releases
-slf4j = "2.0.13"
+slf4j = "2.0.16"
 jsoup = "1.18.1" # https://github.com/jhy/jsoup/releases 
 android-gradle-plugin = "8.5.2"
 datastore = "1.1.1" # https://developer.android.com/jetpack/androidx/releases/datastore
-coil = "3.0.0-alpha10" # https://github.com/coil-kt/coil/releases
-mongodb-driver-kotlin-coroutine = "4.10.1"
-logback = "1.4.14"
-ksp = "2.0.21-1.0.26" # https://github.com/google/ksp/releases
-room = "2.7.0-alpha11" # https://developer.android.com/jetpack/androidx/releases/room#declaring_dependencies
+coil = "3.0.4" # https://github.com/coil-kt/coil/releases
+logback = "1.5.8"
+ksp = "2.1.0-1.0.29" # https://github.com/google/ksp/releases
+room = "2.7.0-alpha12" # https://developer.android.com/jetpack/androidx/releases/room#declaring_dependencies
 snakeyaml = "2.2"
-sqlite = "2.5.0-alpha10"
+sqlite = "2.5.0-alpha12"
 constraintlayout-compose = "0.4.0"
-antlr-kotlin = "1.0.0-RC4"
+antlr-kotlin = "1.0.0"
 oshai-kotlin-logging = "7.0.0" # Only for native. On JVM we use slf4j directly.
 ipaddress-parser = "5.5.1"
-androidx-annotation = "1.8.2"
+androidx-annotation = "1.9.1"
 androidx-media3 = "1.4.1"
-androidx-lifecycle = "2.8.6"
-paging = "3.3.2"
+androidx-lifecycle = "2.8.7"
+paging = "3.3.5" # https://developer.android.com/jetpack/androidx/releases/paging
 
 mockito = "5.12.0"
 mockito-kotlin = "5.4.0"
@@ -47,15 +46,15 @@ mockito-kotlin = "5.4.0"
 aws = "2.25.49"
 
 # Compose
-compose-material3 = "1.3.0"
-# https://androidx.tech/artifacts/compose.material/material-android/
-jetpack-compose = "1.7.3"
+# https://developer.android.com/jetpack/androidx/releases/compose-material3
+compose-material3 = "1.3.1"
+jetpack-compose = "1.7.6"
 # https://github.com/JetBrains/compose-multiplatform/releases
 # https://www.jetbrains.com/help/kotlin-multiplatform-dev/compose-compatibility-and-versioning.html#use-a-developer-version-of-compose-multiplatform-compiler
-compose-multiplatform = "1.7.0-rc01"
-compose-lifecycle = "2.8.2"
+compose-multiplatform = "1.7.1"
+compose-lifecycle = "2.8.4"
 compose-navigation = "2.8.0-alpha10"
-compose-material3-adaptive = "1.0.0-rc01"
+compose-material3-adaptive = "1.0.1"
 
 # https://maven.pkg.jetbrains.space/public/p/compose/dev/org/jetbrains/compose/compiler/compiler/
 #compose-multiplatform-compiler = "1.5.11-kt-2.0.0-RC1" # used by buildscript, don't remove
@@ -222,9 +221,6 @@ androidx-annotation = { module = "androidx.annotation:annotation", version.ref =
 # compose-runtime-livedata = { module = "androidx.compose.runtime:runtime-livedata", version.ref = "jetpackCompose" }
 
 stately-common = { module = "co.touchlab:stately-common", version.ref = "stately-common" }
-
-# MongoDB
-mongodb-driver-kotlin-coroutine = { module = "org.mongodb:mongodb-driver-kotlin-coroutine", version.ref = "mongodb-driver-kotlin-coroutine" }
 
 #javafx-controls = { module = "org.openjfx:javafx-controls", version = "17.0.11", classifier = "mac" }
 #javafx-graphics = { module = "org.openjfx:javafx-graphics", version = "17.0.11", classifier = "mac" }

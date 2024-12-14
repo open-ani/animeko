@@ -10,63 +10,54 @@
 package me.him188.ani.app.data.repository.subject
 
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.persistent.database.dao.SearchHistoryDao
 import me.him188.ani.app.data.persistent.database.dao.SearchHistoryEntity
 import me.him188.ani.app.data.persistent.database.dao.SearchTagDao
-import me.him188.ani.app.data.persistent.database.dao.SearchTagEntity
+import me.him188.ani.app.data.repository.Repository
 import org.koin.core.component.KoinComponent
 
-interface SubjectSearchHistoryRepository {
-    suspend fun addHistory(content: String)
-    fun getHistoryFlow(): Flow<List<String>>
-    suspend fun deleteHistoryBySeq(seq: Int)
-
-    suspend fun addTag(tag: SearchTagEntity)
-    fun getTagFlow(): Flow<List<String>>
-    suspend fun deleteTagByName(content: String)
-    suspend fun increaseCountByName(content: String)
-    suspend fun deleteTagById(id: Int)
-    suspend fun increaseCountById(id: Int)
-}
-
-class SubjectSearchHistoryRepositoryImpl(
+class SubjectSearchHistoryRepository(
     private val searchHistory: SearchHistoryDao,
     private val searchTag: SearchTagDao,
-) : SubjectSearchHistoryRepository, KoinComponent {
-    override suspend fun addHistory(content: String) {
+) : Repository(), KoinComponent {
+    suspend fun addHistory(content: String) = withContext(defaultDispatcher) {
         searchHistory.insert(SearchHistoryEntity(content = content))
     }
 
-    override fun getHistoryFlow(): Flow<List<String>> {
+    suspend fun removeHistory(content: String) = withContext(defaultDispatcher) {
+        searchHistory.deleteByContent(content)
+    }
+
+    fun getHistoryFlow(): Flow<List<String>> {
         return searchHistory.all().map { list -> list.map { it.content } }
+            .flowOn(defaultDispatcher)
     }
 
-    override suspend fun deleteHistoryBySeq(seq: Int) {
-        searchHistory.deleteBySequence(seq)
-    }
-
-    override suspend fun addTag(tag: SearchTagEntity) {
-        searchTag.insert(tag)
-    }
-
-    override fun getTagFlow(): Flow<List<String>> {
-        return searchTag.getFlow().map { list -> list.map { it.content } }
-    }
-
-    override suspend fun deleteTagByName(content: String) {
-        searchTag.deleteByName(content)
-    }
-
-    override suspend fun increaseCountByName(content: String) {
-        searchTag.increaseCountByName(content)
-    }
-
-    override suspend fun deleteTagById(id: Int) {
-        searchTag.deleteById(id)
-    }
-
-    override suspend fun increaseCountById(id: Int) {
-        searchTag.increaseCountById(id)
-    }
+//    suspend fun addTag(tag: SearchTagEntity) {
+//        searchTag.insert(tag)
+//    }
+//
+//    fun getTagFlow(): Flow<List<String>> {
+//        return searchTag.getFlow().map { list -> list.map { it.content } }
+//            .flowOn(defaultDispatcher)
+//    }
+//
+//    suspend fun deleteTagByName(content: String) {
+//        searchTag.deleteByName(content)
+//    }
+//
+//    suspend fun increaseCountByName(content: String) {
+//        searchTag.increaseCountByName(content)
+//    }
+//
+//    suspend fun deleteTagById(id: Int) {
+//        searchTag.deleteById(id)
+//    }
+//
+//    suspend fun increaseCountById(id: Int) {
+//        searchTag.increaseCountById(id)
+//    }
 }

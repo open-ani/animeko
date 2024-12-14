@@ -16,6 +16,7 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import me.him188.ani.app.domain.media.cache.EpisodeCacheStatus
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngine
@@ -75,7 +76,11 @@ class EpisodeCacheState(
     val actionTasker = MonoTasker(backgroundScope)
 
     val showProgressIndicator by derivedStateOf {
-        actionTasker.isRunning || currentStageState.value is CacheRequestStage.Working
+        if (currentStageState.value is CacheRequestStage.Working) {
+            MutableStateFlow(true)
+        } else {
+            actionTasker.isRunning
+        }
     }
 }
 

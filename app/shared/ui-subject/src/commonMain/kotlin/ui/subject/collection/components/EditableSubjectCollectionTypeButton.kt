@@ -30,6 +30,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -91,7 +92,7 @@ fun EditableSubjectCollectionTypeButton(
         onEdit = {
             state.setSelfCollectionType(it)
         },
-        enabled = !state.isSetSelfCollectionTypeWorking,
+        enabled = !state.isSetSelfCollectionTypeWorking.collectAsStateWithLifecycle().value,
         modifier = modifier,
     )
 }
@@ -111,7 +112,7 @@ fun EditableSubjectCollectionTypeDialogsHost(
     if (state.showSetAllEpisodesDoneDialog) {
         SetAllEpisodeDoneDialog(
             onDismissRequest = { state.showSetAllEpisodesDoneDialog = false },
-            isWorking = state.isSetAllEpisodesWatchedWorking,
+            isWorking = state.isSetAllEpisodesWatchedWorking.collectAsStateWithLifecycle().value,
             onConfirm = {
                 state.setAllEpisodesWatched()
                 state.showSetAllEpisodesDoneDialog = false

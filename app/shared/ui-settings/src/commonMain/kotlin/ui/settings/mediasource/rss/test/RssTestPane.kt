@@ -34,6 +34,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.him188.ani.app.tools.rememberUiMonoTasker
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.interaction.nestedScrollWorkaround
@@ -83,7 +84,11 @@ fun RssTestPane(
 //                LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = 4.dp))
 //            }
 
-                FastLinearProgressIndicator(state.searcher.isSearching, delayMillis = 0, minimumDurationMillis = 300)
+                FastLinearProgressIndicator(
+                    state.searcher.isSearching.collectAsStateWithLifecycle().value,
+                    delayMillis = 0,
+                    minimumDurationMillis = 300,
+                )
             }
         }
         val tabs = RssTestPaneTab.entries

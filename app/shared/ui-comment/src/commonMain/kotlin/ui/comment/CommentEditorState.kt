@@ -42,8 +42,8 @@ class CommentEditorState(
 
     var currentSendTarget: CommentContext? by mutableStateOf(null)
         private set
-    val sending: Boolean get() = sendTasker.isRunning
-    
+    val sending get() = sendTasker.isRunning
+
     val content get() = editor.textField
     var previewing by mutableStateOf(false)
         private set
@@ -52,7 +52,7 @@ class CommentEditorState(
 
     var editExpanded: Boolean by mutableStateOf(initialEditExpanded)
     val expandButtonState by derivedStateOf { if (!showExpandEditCommentButton) null else editExpanded }
-    
+
     var showStickerPanel: Boolean by mutableStateOf(false)
         private set
     val stickers by stickers

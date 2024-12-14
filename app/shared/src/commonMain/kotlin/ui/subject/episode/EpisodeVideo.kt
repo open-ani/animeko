@@ -546,11 +546,12 @@ fun EpisodeVideoDefaults.DanmakuEditor(
      * 是否设置了暂停
      */
     var didSetPaused by rememberSaveable { mutableStateOf(false) }
+    val isSending = videoDanmakuState.isSending.collectAsStateWithLifecycle()
     Row(modifier = modifier) {
         DanmakuEditor(
             text = videoDanmakuState.danmakuEditorText,
             onTextChange = { videoDanmakuState.danmakuEditorText = it },
-            isSending = videoDanmakuState.isSending,
+            isSending = { isSending.value },
             placeholderText = danmakuTextPlaceholder,
             onSend = { text ->
                 videoDanmakuState.danmakuEditorText = ""

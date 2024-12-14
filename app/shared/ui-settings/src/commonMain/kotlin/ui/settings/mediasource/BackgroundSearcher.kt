@@ -149,6 +149,7 @@ abstract class BackgroundSearcher<TestData, TestResult>(
     @UiThread
     protected abstract fun RestartSearchScope<TestResult>.restartSearchImpl(testData: TestData): RestartSearchScope.OK
 
+    @UiThread
     fun restartCurrentSearch() {
         restartSearch(testDataState.value)
     }

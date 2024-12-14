@@ -62,6 +62,9 @@ import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.episode.toEntity
 import me.him188.ani.app.data.repository.episode.toEpisodeCollectionInfo
 import me.him188.ani.app.domain.search.SubjectType
+import me.him188.ani.app.domain.session.OpaqueSession
+import me.him188.ani.app.domain.session.SessionManager
+import me.him188.ani.app.domain.session.verifiedAccessToken
 import me.him188.ani.datasources.api.EpisodeType.MainStory
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
@@ -102,7 +105,7 @@ sealed class SubjectCollectionRepository(
      * 获取本地所有缓存的 [SubjectCollectionInfo] 的 [subjectId][SubjectCollectionInfo.subjectId]
      */
     abstract fun cachedValidSubjectIds(): Flow<List<Int>>
-    
+
     /**
      * 更新根据服务器上记录的最近有修改的条目收藏. 也就是用户最近操作过的条目收藏.
      */
@@ -148,14 +151,20 @@ class SubjectCollectionRepositoryImpl(
     private val animeScheduleRepository: AnimeScheduleRepository,
     private val bangumiEpisodeService: BangumiEpisodeService,
     private val episodeCollectionDao: EpisodeCollectionDao,
+    private val sessionManager: SessionManager,
     private val getCurrentDate: () -> PackedDate = { PackedDate.now() },
     private val enableAllEpisodeTypes: Flow<Boolean>,
     defaultDispatcher: CoroutineContext = Dispatchers.Default,
 ) : SubjectCollectionRepository(defaultDispatcher) {
+    @OptIn(OpaqueSession::class)
+    private fun <T> Flow<T>.restartOnNewLogin(): Flow<T> =
+        sessionManager.verifiedAccessToken.flatMapLatest { this }
+
     private val epTypeFilter get() = enableAllEpisodeTypes.map { if (it) null else MainStory }
 
     override fun subjectCollectionCountsFlow(): Flow<SubjectCollectionCounts?> {
         return (bangumiSubjectService.subjectCollectionCountsFlow() as Flow<SubjectCollectionCounts?>)
+            .restartOnNewLogin()
             .retry(2)
             .catch {
                 logger.error("Failed to get subject collection counts", it)
@@ -182,6 +191,7 @@ class SubjectCollectionRepositoryImpl(
 
     override fun subjectCollectionFlow(subjectId: Int): Flow<SubjectCollectionInfo> =
         subjectCollectionDao.findById(subjectId)
+            .restartOnNewLogin()
             .onEach {
                 // 如果没有缓存, 则 fetch 然后插入 subject 缓存
                 if (it == null) {
@@ -216,6 +226,7 @@ class SubjectCollectionRepositoryImpl(
         limit: Int,
         types: List<UnifiedCollectionType>?, // null for all
     ): Flow<List<SubjectCollectionInfo>> = subjectCollectionDao.filterMostRecentUpdated(types, limit)
+        .restartOnNewLogin()
         .flatMapLatest { list ->
             if (list.isEmpty()) {
                 return@flatMapLatest flowOfEmptyList()
@@ -238,7 +249,7 @@ class SubjectCollectionRepositoryImpl(
     override fun subjectCollectionsPager(
         query: CollectionsFilterQuery,
         pagingConfig: PagingConfig,
-    ): Flow<PagingData<SubjectCollectionInfo>> = epTypeFilter.flatMapLatest { epType ->
+    ): Flow<PagingData<SubjectCollectionInfo>> = epTypeFilter.restartOnNewLogin().flatMapLatest { epType ->
         Pager(
             config = pagingConfig,
             initialKey = 0,

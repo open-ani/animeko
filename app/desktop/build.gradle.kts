@@ -12,7 +12,6 @@ import com.android.utils.osArchitecture
 import com.google.gson.Gson
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.compose.desktop.application.tasks.AbstractJLinkTask
-import org.jetbrains.kotlin.cli.common.isWindows
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
 import java.util.UUID
 
@@ -169,6 +168,7 @@ afterEvaluate {
                 }
             }
         }
+
         Os.MacOS -> {
             tasks.named("createRuntimeImage", AbstractJLinkTask::class) {
                 val dirsNames = listOf(
@@ -287,6 +287,8 @@ val createDependencyManifest = tasks.register("createDependencyManifest") {
 
     val anitorrentBuildDir = anitorrentBuildDir
 
+    val os = getOs()
+    inputs.property("os", os)
     doLast {
         fun parseCMakeCache(cmakeCache: File): Map<String, String> {
             return cmakeCache.readText().lines().filterNot { it.startsWith("#") }.mapNotNull {
@@ -310,7 +312,7 @@ val createDependencyManifest = tasks.register("createDependencyManifest") {
                 put("OPENSSL_SSL_LIBRARY", File(it))
             }
 
-            if (isWindows) {
+            if (os == Os.Windows) {
                 // LIB_EAY_RELEASE:FILEPATH=C:/vcpkg/installed/x64-windows/lib/libcrypto.lib
                 // SSL_EAY_RELEASE:FILEPATH=C:/vcpkg/installed/x64-windows/lib/libssl.lib
                 fun findDll(libFile: File): List<File> {

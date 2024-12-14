@@ -12,19 +12,23 @@ on:
 jobs:
   build:
     name: "${{ matrix.name }}"
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.runs-on }}
     strategy:
       fail-fast: false
       matrix:
         # https://docs.github.com/en/actions/using-github-hosted-runners/using-github-hosted-runners/about-github-hosted-runners
         os:
-          - windows-2019 # 16 GB
+          - windows # 16 GB
           - ubuntu-20.04 # 16 GB
           - macos-13 # x86_64, 14 GB
+          - macos-arm64
           # - macos-14 # aarch64, 7 GB
         include:
           # matrix properties can be booleans. Check for plain true and false.
-          - os: windows-2019
+          - os: windows
+            runs-on: [ self-hosted, Windows, X64 ]
+            self-hosted: true
+            dont-install-native-deps: true
             name: Windows x86_64
             uploadApk: true
             arch: x64
@@ -34,8 +38,10 @@ jobs:
             run_tests: true
             assemble: true
             uploadDesktopInstallers: true
-            gradleArgs: '"-Dorg.gradle.jvmargs=-Xmx4096m" "-Dfile.encoding=UTF-8" "-Dkotlin.daemon.jvm.options=-Xmx4096M"'
+            gradleArgs: '"-Dorg.gradle.jvmargs=-Xmx6g" "-Dfile.encoding=UTF-8" "-Dkotlin.daemon.jvm.options=-Xmx6g" --parallel'
           - os: ubuntu-20.04
+            runs-on: ubuntu-20.04
+            self-hosted: false
             name: Ubuntu x86_64 (Compile only)
             uploadApk: false
             arch: x64
@@ -47,6 +53,8 @@ jobs:
             uploadDesktopInstallers: false
             gradleArgs: '-Dorg.gradle.jvmargs=-Xmx4096m -Dfile.encoding=UTF-8 -Dkotlin.daemon.jvm.options=-Xmx4096M'
           - os: macos-13
+            runs-on: macos-13
+            self-hosted: false
             name: macOS x86_64
             uploadApk: false
             arch: x64
@@ -62,25 +70,29 @@ jobs:
               -Dkotlin.daemon.jvm.options=-Xmx4g
               -Pani.build.framework=false
               -Pani.android.abis=arm64-v8a
-            # - os: macos-14
-            #   name: macOS aarch64
-            #   uploadApk: false
-            #   arch: aarch64
-            #   anitorrent: true
-            #   anitorrent_separate_build: true
-            #   compose_resource_triple: macos-arm64
-            #   run_tests: false
-            #   gradleArgs: >-
-            #     -Dorg.gradle.jvmargs=-Xmx4g
-            #     -Dfile.encoding=UTF-8
-            #     -Dkotlin.daemon.jvm.options=-Xmx3g
-            #     -Pani.build.framework=false
-            #     -Pani.android.abis=arm64-v8a
-            # 这台机器硬盘小, 不要构建其他安卓架构
+          - os: macos-arm64
+            runs-on: [ self-hosted, macOS, ARM64 ]
+            self-hosted: true
+            dont-install-native-deps: true
+            name: macOS AArch64
+            uploadApk: false
+            arch: aarch64
+            anitorrent: true
+            anitorrent_separate_build: true
+            compose_resource_triple: macos-arm64
+            run_tests: false
+            gradleArgs: >-
+              -Dorg.gradle.jvmargs=-Xmx6g
+              -Dfile.encoding=UTF-8
+              -Dkotlin.daemon.jvm.options=-Xmx4g
+              -Pani.build.framework=false
+              -Pani.android.abis=arm64-v8a
     env:
       gradleArgs: >-
         --scan
         "--no-configuration-cache"
+        "-Porg.gradle.daemon.idletimeout=60000"
+        "-Pkotlin.native.ignoreDisabledTargets=true"
         ${{ matrix.gradleArgs }} 
         ${{ matrix.anitorrent == true && '"-Dani.enable.anitorrent=true"' || '' }}
         ${{ matrix.anitorrent == true && '"-DCMAKE_BUILD_TYPE=Release"' || '' }}
@@ -98,7 +110,7 @@ jobs:
         with:
           submodules: 'recursive'
 
-      - if: ${{ startsWith(matrix.os, 'macos') }}
+      - if: ${{ startsWith(matrix.os, 'macos') && matrix.self-hosted != true }}
         name: Free space
         run: chmod +x ./ci-helper/free-space-macos.sh && ./ci-helper/free-space-macos.sh
         continue-on-error: true
@@ -135,11 +147,11 @@ jobs:
 
       - run: echo "jvm.toolchain.version=21" >> local.properties
 
-      - if: ${{ env.isMac == 'true' }}
+      - if: ${{ env.isMac == 'true' && matrix.dont-install-native-deps != true }}
         name: Install Native Dependencies
         run: chmod +x ./ci-helper/install-deps-macos-ci.sh && ./ci-helper/install-deps-macos-ci.sh
 
-      - if: ${{ env.isWindows == 'true' }}
+      - if: ${{ env.isWindows == 'true' && matrix.dont-install-native-deps != true }}
         name: Setup vcpkg cache
         uses: actions/github-script@v7
         with:
@@ -147,7 +159,7 @@ jobs:
             core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
             core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
 
-      - if: ${{ env.isWindows == 'true' }}
+      - if: ${{ env.isWindows == 'true' && matrix.dont-install-native-deps != true }}
         name: Install Native Dependencies
         run: ./ci-helper/install-deps-windows.cmd
         env:
@@ -167,7 +179,7 @@ jobs:
         with:
           max_attempts: 3
           timeout_minutes: 60
-          command: ./gradlew clean ${{ env.gradleArgs }}
+          command: ./gradlew ${{ env.gradleArgs }}
 
       - name: Update version name
         run: ./gradlew updateDevVersionNameFromGit ${{ env.gradleArgs }}
@@ -210,16 +222,31 @@ jobs:
         if: ${{ matrix.anitorrent && matrix.anitorrent_separate_build }}
         run: ./gradlew :torrent:anitorrent:build :torrent:anitorrent:anitorrent-native:buildAnitorrent ${{ env.gradleArgs }}
 
-      - name: Build Anitorrent for Android Debug
+      - name: Build Anitorrent for Android
         if: ${{ matrix.anitorrent }}
-        run: ./gradlew buildCMakeDebug ${{ env.gradleArgs }}
-
-      - name: Build Anitorrent for Android Release
-        if: ${{ matrix.anitorrent }}
-        run: ./gradlew buildCMakeRelWithDebInfo ${{ env.gradleArgs }}
+        # 对于 macos 等机器, 上面已经构建好 anitorrent for desktop 了, 所以 `buildAnitorrent` 会没有作用. 
+        # 对于 windows 机器, 这个可以节约时间, 因为 windows 构建是单线程.
+        run: ./gradlew :torrent:anitorrent:anitorrent-native:buildAnitorrent buildCMakeDebug buildCMakeRelWithDebInfo ${{ env.gradleArgs }}
+      
+      #      - name: Build Anitorrent for Android Debug
+      #        if: ${{ matrix.anitorrent }}
+      #        run: ./gradlew buildCMakeDebug ${{ env.gradleArgs }}
+      #
+      #      - name: Build Anitorrent for Android Release
+      #        if: ${{ matrix.anitorrent }}
+      #        run: ./gradlew buildCMakeRelWithDebInfo ${{ env.gradleArgs }}
 
       - name: Compile Kotlin
-        run: ./gradlew compileKotlin ${{ env.gradleArgs }}
+        run: > 
+          ./gradlew 
+          compileKotlin
+          compileCommonMainKotlinMetadata
+          compileDebugKotlinAndroid
+          compileReleaseKotlinAndroid
+          compileJvmMainKotlinMetadata
+          compileKotlinDesktop
+          compileKotlinMetadata
+          ${{ env.gradleArgs }}
 
       - name: Assemble
         if: ${{ matrix.assemble }}

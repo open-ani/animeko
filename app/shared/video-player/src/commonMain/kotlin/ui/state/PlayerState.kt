@@ -324,6 +324,7 @@ abstract class AbstractPlayerState<D : AbstractPlayerState.Data>(
             startPlayer(opened)
             logger.info { "Player is now initialized with media and will play when ready" }
         } catch (e: CancellationException) {
+            opened.releaseResource()
             throw e
         } catch (e: Throwable) {
             logger.error(e) { "Player failed to initialize" }

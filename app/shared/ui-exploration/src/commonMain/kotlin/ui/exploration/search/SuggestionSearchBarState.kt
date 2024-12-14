@@ -36,6 +36,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.ui.adaptive.AdaptiveSearchBar
 import me.him188.ani.app.ui.foundation.interaction.onEnterKeyEvent
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
@@ -48,8 +52,10 @@ class SuggestionSearchBarState<T : Any>(
     historyState: State<List<String>>, // must be distinct
     suggestionsState: State<List<String>>, // must be distinct
     private val searchState: SearchState<T>,
+    private val onRemoveHistory: suspend (text: String) -> Unit,
     queryState: MutableState<String> = mutableStateOf(""),
     private val onStartSearch: (query: String) -> Unit = {},
+    backgroundScope: CoroutineScope,
 ) {
     var query by queryState
     var expanded by mutableStateOf(false)
@@ -71,6 +77,20 @@ class SuggestionSearchBarState<T : Any>(
         searchState.startSearch()
         expanded = false
         onStartSearch(query)
+    }
+
+    private val removeHistoryTasker = MonoTasker(backgroundScope)
+    var removingHistory: String? by mutableStateOf(null)
+        private set
+
+    fun removeHistory(text: String) {
+        removingHistory = text
+        removeHistoryTasker.launch {
+            onRemoveHistory(text)
+            withContext(Dispatchers.Main) {
+                removingHistory = text
+            }
+        }
     }
 }
 
@@ -109,13 +129,13 @@ fun <T : Any> SuggestionSearchBar(
                 placeholder = placeholder,
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                 trailingIcon =
-                if (state.query.isNotEmpty() || state.expanded) {
-                    {
-                        IconButton({ state.clear() }) {
-                            Icon(Icons.Default.Close, contentDescription = null)
+                    if (state.query.isNotEmpty() || state.expanded) {
+                        {
+                            IconButton({ state.clear() }) {
+                                Icon(Icons.Default.Close, contentDescription = null)
+                            }
                         }
-                    }
-                } else null,
+                    } else null,
             )
         },
         expanded = state.expanded,
@@ -132,19 +152,26 @@ fun <T : Any> SuggestionSearchBar(
             transitionSpec = AniThemeDefaults.standardAnimatedContentTransition,
         ) { values ->
             LazyColumn {
-                items(values, key = { it }, contentType = { 1 }) {
+                items(values, key = { it }, contentType = { 1 }) { text ->
                     ListItem(
                         leadingContent = if (state.previewType == SuggestionSearchPreviewType.HISTORY) {
                             { Icon(Icons.Default.History, contentDescription = null) }
                         } else {
                             null
                         },
-                        headlineContent = { Text(it) },
-                        modifier = Modifier.clickable {
-                            state.query = it
+                        headlineContent = { Text(text) },
+                        modifier = Modifier.animateItem().clickable {
+                            state.query = text
                             state.startSearch()
                         },
                         colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                        trailingContent = if (state.previewType == SuggestionSearchPreviewType.HISTORY) {
+                            {
+                                IconButton({ state.removeHistory(text) }, enabled = state.removingHistory != text) {
+                                    Icon(Icons.Default.Close, contentDescription = "删除 $text")
+                                }
+                            }
+                        } else null,
                     )
                 }
             }

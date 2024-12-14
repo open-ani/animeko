@@ -60,6 +60,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.him188.ani.app.data.models.episode.displayName
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.domain.session.AuthState
@@ -248,7 +249,7 @@ fun EpisodeDetails(
                                             UnifiedCollectionType.DONE,
                                         )
                                     },
-                                    enabled = !episodeCarouselState.isSettingCollectionType,
+                                    enabled = !episodeCarouselState.isSettingCollectionType.collectAsStateWithLifecycle().value,
                                 )
                             }
                         },

@@ -291,8 +291,8 @@ fun SettingsScope.EpisodeCacheItem(
 
             CompositionLocalProvider(LocalContentColor provides colorByWatchStatus) {
                 EpisodeCacheActionIcon(
-                    isLoadingIndefinitely = !isRequestHidden && episode.showProgressIndicator,
-                    hasActionRunning = episode.actionTasker.isRunning,
+                    isLoadingIndefinitely = !isRequestHidden && episode.showProgressIndicator.collectAsStateWithLifecycle().value,
+                    hasActionRunning = episode.actionTasker.isRunning.collectAsStateWithLifecycle().value,
                     cacheStatus = episode.cacheStatus,
                     canCache = episode.canCache,
                     onClick = onClick,

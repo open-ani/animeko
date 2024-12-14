@@ -47,6 +47,7 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.him188.ani.app.ui.foundation.layout.cardHorizontalPadding
 import me.him188.ani.app.ui.foundation.layout.cardVerticalPadding
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
@@ -99,7 +100,7 @@ fun SharedTransitionScope.SelectorTestPane(
 
                 Box(Modifier.height(12.dp), contentAlignment = Alignment.Center) {
                     FastLinearProgressIndicator(
-                        state.subjectSearcher.isSearching,
+                        state.subjectSearcher.isSearching.collectAsStateWithLifecycle().value,
                         delayMillis = 0,
                         minimumDurationMillis = 300,
                     )
@@ -166,7 +167,7 @@ fun SharedTransitionScope.SelectorTestPane(
 
                     Box(Modifier.height(4.dp), contentAlignment = Alignment.Center) {
                         FastLinearProgressIndicator(
-                            state.episodeListSearcher.isSearching,
+                            state.episodeListSearcher.isSearching.collectAsStateWithLifecycle().value,
                             delayMillis = 0,
                             minimumDurationMillis = 300,
                         )

@@ -60,6 +60,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.CoroutineScope
 import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.tools.Progress
@@ -314,8 +315,9 @@ fun CacheEpisodeItem(
             val showPrimaryAction = currentWindowAdaptiveInfo1().isWidthAtLeastMedium
             Row(horizontalArrangement = Arrangement.aligned(Alignment.End)) {
                 // 当前状态下的推荐操作
+                val isActionInProgress = state.isActionInProgress.collectAsStateWithLifecycle()
                 AnimatedVisibility(showPrimaryAction) {
-                    if (state.isActionInProgress) {
+                    if (isActionInProgress.value) {
                         IconButton(
                             onClick = {
                                 // no-op
