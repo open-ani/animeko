@@ -10,6 +10,7 @@
 package me.him188.ani.app.domain.torrent.peer
 
 import kotlinx.serialization.Serializable
+import me.him188.ani.app.platform.currentAniBuildConfig
 
 /**
  * Peer 过滤订阅信息
@@ -36,5 +37,7 @@ data class PeerFilterSubscription(
 
     companion object {
         const val BUILTIN_SUBSCRIPTION_ID = "ani.builtin.peerfilter.rule"
+        val builtinSubscriptionUrl = currentAniBuildConfig.aniAuthServerUrl +
+                "/v1/subs/proxy?url=https://sub.creamycake.org/v1/pfrules.json"
     }
 }
