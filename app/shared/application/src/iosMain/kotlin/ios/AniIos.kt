@@ -187,7 +187,8 @@ fun getIosModules(
     single<TorrentManager> {
         DefaultTorrentManager.create(
             coroutineScope.coroutineContext,
-            get(),
+            settingsRepository = get(),
+            subscriptionRepository = get()
             meteredNetworkDetector = get(),
             baseSaveDir = { defaultTorrentCacheDir },
         )
