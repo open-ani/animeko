@@ -23,9 +23,9 @@ class PEncodedTorrentInfo(
     val length: Int
 ) : Parcelable {
     fun toEncodedTorrentInfo(): EncodedTorrentInfo {
-        val buffer = dataMem.mapReadOnly()
-        val data = ByteArray(length).apply { buffer.get(this) }
-        dataMem.close()
+        val data = dataMem.use { mem ->
+            ByteArray(length).apply { mem.mapReadOnly().get(this) }
+        }
         return EncodedTorrentInfo.createRaw(data)
     }
 }

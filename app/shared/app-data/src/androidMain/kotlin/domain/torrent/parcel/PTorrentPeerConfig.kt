@@ -28,9 +28,9 @@ class PTorrentPeerFilterSettings(
     }
 
     fun toPeerFilterSettings(): PeerFilterSettings {
-        val buffer = serializedDataMem.mapReadOnly()
-        val data = ByteArray(length).apply { buffer.get(this) }
-        serializedDataMem.close()
+        val data = serializedDataMem.use { mem ->
+            ByteArray(length).apply { mem.mapReadOnly().get(this) }
+        }
         return protobuf.decodeFromByteArray(PeerFilterSettings.serializer(), data)
     }
 
