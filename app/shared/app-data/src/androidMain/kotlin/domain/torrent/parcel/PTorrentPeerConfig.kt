@@ -46,7 +46,3 @@ fun PeerFilterSettings.toParceled(): PTorrentPeerFilterSettings {
     dataMem.mapReadWrite().apply { put(encoded, 0, encoded.size) }
     return PTorrentPeerFilterSettings(dataMem, encoded.size)
 }
-
-@Suppress("unused")
-private fun dummy() {
-}
