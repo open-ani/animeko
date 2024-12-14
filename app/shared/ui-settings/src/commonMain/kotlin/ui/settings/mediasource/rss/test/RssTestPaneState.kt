@@ -24,6 +24,7 @@ import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.domain.mediasource.rss.RssMediaSourceEngine
 import me.him188.ani.app.domain.mediasource.rss.RssSearchConfig
 import me.him188.ani.app.domain.mediasource.rss.RssSearchQuery
+import me.him188.ani.app.domain.mediasource.test.rss.RssItemInfo
 import me.him188.ani.app.ui.settings.mediasource.AbstractMediaSourceTestState
 import me.him188.ani.app.ui.settings.mediasource.BackgroundSearcher
 import me.him188.ani.app.ui.settings.mediasource.rss.EditRssMediaSourceState
@@ -38,7 +39,7 @@ import kotlin.coroutines.cancellation.CancellationException
  * @see EditRssMediaSourceState
  * @see RssTestResult
  * @see RssTestData
- * @see RssItemPresentation.compute
+ * @see RssItemInfo.compute
  */
 @Stable
 class RssTestPaneState(
@@ -73,7 +74,7 @@ class RssTestPaneState(
         viewingItem = RssViewingItem.ViewingMedia(media)
     }
 
-    fun viewDetails(rssItem: RssItemPresentation) {
+    fun viewDetails(rssItem: RssItemInfo) {
         viewingItem = RssViewingItem.ViewingRssItem(rssItem)
     }
 
@@ -140,7 +141,7 @@ class RssTestPaneState(
             encodedUrl.toString(),
             channel,
             channel.items.map {
-                RssItemPresentation.compute(it, searchConfigState.value, query)
+                RssItemInfo.compute(it, searchConfigState.value, query)
             },
             matchedMediaList,
             origin = document,

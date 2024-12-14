@@ -43,9 +43,10 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
+import me.him188.ani.app.domain.mediasource.test.rss.RssItemInfo
 import me.him188.ani.app.tools.formatDateTime
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
-import me.him188.ani.app.ui.settings.mediasource.rss.test.RssItemPresentation
+import me.him188.ani.app.ui.settings.mediasource.rss.test.subtitleLanguageRendered
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.topic.isSingleEpisode
 
@@ -100,7 +101,7 @@ fun RssDetailPane(
 
 @Composable
 private fun RssItemDetailColumn(
-    item: RssItemPresentation,
+    item: RssItemInfo,
     modifier: Modifier = Modifier,
 ) {
     val browser = LocalUriHandler.current

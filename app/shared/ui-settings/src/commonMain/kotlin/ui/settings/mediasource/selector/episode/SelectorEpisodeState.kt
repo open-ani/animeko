@@ -20,12 +20,12 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withTimeoutOrNull
 import me.him188.ani.app.domain.media.resolver.WebViewVideoExtractor
+import me.him188.ani.app.domain.mediasource.test.web.SelectorTestEpisodePresentation
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSourceEngine
 import me.him188.ani.app.domain.mediasource.web.SelectorSearchConfig
 import me.him188.ani.app.platform.Context
 import me.him188.ani.app.ui.settings.mediasource.BackgroundSearcher
 import me.him188.ani.app.ui.settings.mediasource.launchCollectedInBackground
-import me.him188.ani.app.ui.settings.mediasource.selector.test.SelectorTestEpisodePresentation
 import me.him188.ani.datasources.api.matcher.WebVideo
 import me.him188.ani.datasources.api.matcher.WebViewConfig
 import me.him188.ani.datasources.api.matcher.videoOrNull

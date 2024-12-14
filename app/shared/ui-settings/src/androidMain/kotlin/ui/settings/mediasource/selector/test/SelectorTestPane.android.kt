@@ -22,6 +22,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.tooling.preview.Preview
 import io.ktor.http.Url
 import kotlinx.io.IOException
+import me.him188.ani.app.domain.mediasource.test.web.SelectorMediaSourceTester
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSourceEngine
 import me.him188.ani.app.domain.mediasource.web.SelectorSearchConfig
 import me.him188.ani.app.domain.mediasource.web.WebSearchSubjectInfo
@@ -43,7 +44,7 @@ fun PreviewSelectorTestPane() = ProvideFoundationCompositionLocalsForPreview {
                     remember {
                         SelectorTestState(
                             searchConfigState = mutableStateOf(SelectorSearchConfig.Empty),
-                            engine = TestSelectorMediaSourceEngine(),
+                            tester = SelectorMediaSourceTester(TestSelectorMediaSourceEngine()),
                             backgroundScope = scope,
                         ).apply {
                             restartCurrentSubjectSearch()

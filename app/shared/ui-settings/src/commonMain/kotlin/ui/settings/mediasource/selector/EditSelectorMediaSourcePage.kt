@@ -46,6 +46,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import me.him188.ani.app.domain.media.resolver.WebViewVideoExtractor
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceCodecManager
+import me.him188.ani.app.domain.mediasource.test.web.SelectorMediaSourceTester
+import me.him188.ani.app.domain.mediasource.test.web.SelectorTestEpisodePresentation
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSourceArguments
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSourceEngine
 import me.him188.ani.app.platform.Context
@@ -72,7 +74,6 @@ import me.him188.ani.app.ui.settings.mediasource.selector.episode.SelectorEpisod
 import me.him188.ani.app.ui.settings.mediasource.selector.episode.SelectorEpisodePaneRoutes
 import me.him188.ani.app.ui.settings.mediasource.selector.episode.SelectorEpisodeState
 import me.him188.ani.app.ui.settings.mediasource.selector.episode.SelectorTestAndEpisodePane
-import me.him188.ani.app.ui.settings.mediasource.selector.test.SelectorTestEpisodePresentation
 import me.him188.ani.app.ui.settings.mediasource.selector.test.SelectorTestState
 import kotlin.coroutines.CoroutineContext
 
@@ -92,7 +93,7 @@ class EditSelectorMediaSourcePageState(
     )
 
     internal val testState: SelectorTestState =
-        SelectorTestState(configurationState.searchConfigState, engine, backgroundScope)
+        SelectorTestState(configurationState.searchConfigState, SelectorMediaSourceTester(engine), backgroundScope)
 
     private val viewingItemState = mutableStateOf<SelectorTestEpisodePresentation?>(null)
 

@@ -7,16 +7,16 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.app.ui.settings.mediasource.selector.test
+package me.him188.ani.app.domain.mediasource.test.web
 
 import androidx.compose.runtime.Immutable
 import me.him188.ani.app.data.repository.RepositoryException
+import me.him188.ani.app.domain.mediasource.test.MatchTag
+import me.him188.ani.app.domain.mediasource.test.RefreshResult
+import me.him188.ani.app.domain.mediasource.test.buildMatchTags
 import me.him188.ani.app.domain.mediasource.web.SelectorSearchConfig
 import me.him188.ani.app.domain.mediasource.web.SelectorSearchQuery
 import me.him188.ani.app.domain.mediasource.web.WebSearchEpisodeInfo
-import me.him188.ani.app.ui.settings.mediasource.RefreshResult
-import me.him188.ani.app.ui.settings.mediasource.rss.test.MatchTag
-import me.him188.ani.app.ui.settings.mediasource.rss.test.buildMatchTags
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.utils.platform.Uuid
 import me.him188.ani.utils.xml.Element

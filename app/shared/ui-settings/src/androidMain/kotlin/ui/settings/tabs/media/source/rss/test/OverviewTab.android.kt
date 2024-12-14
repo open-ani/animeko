@@ -19,13 +19,13 @@ import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import me.him188.ani.app.domain.media.TestMediaList
+import me.him188.ani.app.domain.mediasource.test.rss.RssItemInfo
 import me.him188.ani.app.domain.rss.RssChannel
 import me.him188.ani.app.domain.rss.RssEnclosure
 import me.him188.ani.app.domain.rss.RssItem
 import me.him188.ani.app.ui.foundation.preview.PreviewTabletLightDark
 import me.him188.ani.app.ui.settings.mediasource.rss.test.MatchTag
 import me.him188.ani.app.ui.settings.mediasource.rss.test.OverviewTab
-import me.him188.ani.app.ui.settings.mediasource.rss.test.RssItemPresentation
 import me.him188.ani.app.ui.settings.mediasource.rss.test.RssTestPaneDefaults
 import me.him188.ani.app.ui.settings.mediasource.rss.test.RssTestResult
 import me.him188.ani.datasources.api.topic.titles.ParsedTopicTitle
@@ -63,9 +63,9 @@ internal val TestRssItems
     )
 
 @TestOnly
-internal val TestRssItemPresentations
+internal val TestRssItemInfos
     get() = listOf(
-        RssItemPresentation(
+        RssItemInfo(
             RssItem(
                 title = "Title",
                 description = "Description",
@@ -80,7 +80,7 @@ internal val TestRssItemPresentations
                 MatchTag("1080P"),
             ),
         ),
-        RssItemPresentation(
+        RssItemInfo(
             RssItem(
                 title = "Title",
                 description = "Description",
@@ -108,7 +108,7 @@ private fun PreviewOverviewTab() {
                 RssTestResult.Success(
                     "https://example.com",
                     TestRssChannel,
-                    TestRssItemPresentations,
+                    TestRssItemInfos,
                     TestMediaList,
                     null,
                 )

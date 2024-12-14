@@ -49,6 +49,9 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import me.him188.ani.app.domain.mediasource.test.web.SelectorTestEpisodeListResult
+import me.him188.ani.app.domain.mediasource.test.web.SelectorTestEpisodePresentation
+import me.him188.ani.app.domain.mediasource.test.web.SelectorTestSearchSubjectResult
 import me.him188.ani.app.ui.foundation.layout.cardHorizontalPadding
 import me.him188.ani.app.ui.foundation.layout.cardVerticalPadding
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
@@ -181,7 +184,8 @@ fun SharedTransitionScope.SelectorTestPane(
 
             val result = presentation.episodeListSearchResult
             if (result is SelectorTestEpisodeListResult.Success) {
-                if (result.channels != null) {
+                val channels = result.channels
+                if (channels != null) {
                     item(span = { GridItemSpan(maxLineSpan) }) {
                         Row(
                             Modifier
@@ -190,12 +194,12 @@ fun SharedTransitionScope.SelectorTestPane(
                             horizontalArrangement = Arrangement.spacedBy(16.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Text("${result.channels.size} 线路")
+                            Text("${channels.size} 线路")
                             LazyRow(
                                 Modifier,
                                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                             ) {
-                                items(result.channels) {
+                                items(channels) {
                                     FilterChip(
                                         selected = state.filterByChannel == it,
                                         onClick = {

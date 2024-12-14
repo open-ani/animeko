@@ -12,7 +12,7 @@ package me.him188.ani.app.ui.settings.mediasource.selector.episode
 import kotlinx.collections.immutable.PersistentList
 import kotlinx.coroutines.flow.StateFlow
 import me.him188.ani.app.data.repository.RepositoryException
-import me.him188.ani.app.ui.settings.mediasource.RefreshResult
+import me.him188.ani.app.domain.mediasource.test.RefreshResult
 
 sealed class SelectorEpisodeResult : RefreshResult {
     data class InProgress(

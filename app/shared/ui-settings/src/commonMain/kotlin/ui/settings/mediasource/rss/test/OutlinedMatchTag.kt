@@ -19,41 +19,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Modifier
+import me.him188.ani.app.domain.mediasource.test.MatchTag
 import me.him188.ani.app.ui.foundation.OutlinedTag
-
-@Immutable
-class MatchTag(
-    val value: String,
-    /**
-     * 该标签表示一个缺失的项目. 例如缺失 EP.
-     */
-    val isMissing: Boolean = false,
-    /**
-     * 该标签是否匹配了用户的搜索条件.
-     * - `true`: 满足了一个条件. UI 显示为紫色的 check
-     * - `false`: 不满足条件. UI 显示为红色的 close
-     * - `null`: 这不是一个搜索条件. UI 不会特别高亮此标签.
-     */
-    val isMatch: Boolean? = null,
-)
-
-class MatchTagsBuilder
-@PublishedApi
-internal constructor() {
-    private val list = mutableListOf<MatchTag>()
-
-    fun emit(value: String, isMissing: Boolean = false, isMatch: Boolean? = null) {
-        list.add(MatchTag(value, isMissing, isMatch))
-    }
-
-    @PublishedApi
-    internal fun build(): List<MatchTag> = list
-}
-
-inline fun buildMatchTags(builder: MatchTagsBuilder.() -> Unit): List<MatchTag> =
-    MatchTagsBuilder().apply(builder).build()
 
 @Composable
 fun OutlinedMatchTag(
