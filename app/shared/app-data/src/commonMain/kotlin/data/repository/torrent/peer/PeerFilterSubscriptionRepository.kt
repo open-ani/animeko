@@ -27,6 +27,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.io.decodeFromSource
 import me.him188.ani.app.domain.torrent.peer.PeerFilterRule
 import me.him188.ani.app.domain.torrent.peer.PeerFilterSubscription
+import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.coroutines.update
 import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.io.bufferedSource
@@ -96,20 +97,20 @@ class PeerFilterSubscriptionRepository(
         }
 
         val savedPath = resolveSaveFile(subscriptionId)
-        if (!savedPath.exists()) {
+        if (!withContext(Dispatchers.IO_) { savedPath.exists() }) {
             update(subscriptionId)
             return
         }
 
         try {
-            val decoded = withContext(Dispatchers.IO) {
+            val decoded = withContext(Dispatchers.IO_) {
                 savedPath.bufferedSource().use { src -> json.decodeFromSource(PeerFilterRule.serializer(), src) }
             }
 
             if (sub.enabled) loadedSubRules.update { put(sub.subscriptionId, decoded) }
             sub.updateSuccessResult(decoded)
         } catch (e: Exception) {
-            withContext(Dispatchers.IO) { savedPath.delete() }
+            withContext(Dispatchers.IO_) { savedPath.delete() }
             sub.updateFailResult(e, false)
             logger.error(e) { "Failed to resolve peer filter subscription $subscriptionId, deleting file" }
         }
