@@ -15,4 +15,8 @@ import kotlinx.serialization.Serializable
 data class PeerFilterSettings(
     val rules: List<PeerFilterRule>,
     val blockInvalidId: Boolean
-)
+) {
+    companion object {
+        val Empty = PeerFilterSettings(emptyList(), false)
+    }
+}
