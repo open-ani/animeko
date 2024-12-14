@@ -631,8 +631,8 @@ fun JobBuilder<*>.buildAnitorrent() {
         name = "Build Anitorrent for Desktop",
         `if` = expr { matrix.buildAnitorrent and matrix.buildAnitorrentSeparately },
         tasks = [
-            ":torrent:buildAnitorrent:build",
-            ":torrent:buildAnitorrent:buildAnitorrent-native:buildAnitorrent",
+            ":torrent:anitorrent:build",
+            ":torrent:anitorrent:anitorrent-native:buildAnitorrent",
         ],
     )
 
@@ -640,7 +640,7 @@ fun JobBuilder<*>.buildAnitorrent() {
         name = "Build Anitorrent for Android",
         `if` = expr { matrix.buildAnitorrent },
         tasks = [
-            ":torrent:buildAnitorrent:buildAnitorrent-native:buildAnitorrent",
+            ":torrent:anitorrent:anitorrent-native:buildAnitorrent",
             "buildCMakeDebug",
             "buildCMakeRelWithDebInfo",
         ],
