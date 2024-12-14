@@ -549,7 +549,7 @@ fun JobBuilder<*>.installJbr21() {
     // For Windows + Ubuntu
     uses(
         name = "Setup JBR 21 for other OS",
-        `if` = expr { !matrix.isMacOS },
+        `if` = expr { !matrix.isMacOSAArch64 },
         action = SetupJava_Untyped(
             distribution_Untyped = "jetbrains",
             javaVersion_Untyped = "21",
