@@ -605,7 +605,6 @@ fun JobBuilder<*>.setupGradle() {
     )
     uses(
         name = "Clean and download dependencies",
-        `if` = expr { matrix.runTests },
         action = Retry_Untyped(
             maxAttempts_Untyped = "3",
             timeoutMinutes_Untyped = "60",
