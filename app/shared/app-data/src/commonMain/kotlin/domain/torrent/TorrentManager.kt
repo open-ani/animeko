@@ -102,7 +102,7 @@ class DefaultTorrentManager(
                 meteredNetworkDetector.isMeteredNetworkFlow.distinctUntilChanged(),
                 combine(settingsRepository.torrentPeerConfig.flow, subscriptionRepository.rulesFlow) { config, rules ->
                     PeerFilterSettings(
-                        rules.toMutableList().apply { add(config.createRuleWithEnabled()) },
+                        rules + config.createRuleWithEnabled(),
                         config.blockInvalidId,
                     )
                 },
