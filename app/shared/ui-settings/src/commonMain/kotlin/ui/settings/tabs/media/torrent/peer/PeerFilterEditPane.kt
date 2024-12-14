@@ -119,8 +119,9 @@ fun PeerFilterEditPane(
         Group(
             title = { Text("过滤规则订阅") },
             actions = {
+                val updatingSubs by state.updatingSubs.collectAsStateWithLifecycle(false)
                 AnimatedContent(
-                    state.updatingSubs,
+                    updatingSubs,
                     transitionSpec = AniThemeDefaults.standardAnimatedContentTransition,
                     contentAlignment = Alignment.CenterEnd,
                 ) {

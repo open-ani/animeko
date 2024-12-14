@@ -47,7 +47,7 @@ class PeerFilterSettingsViewModel : AbstractViewModel(), KoinComponent {
         storage = SaveableStorage(
             localConfig,
             onSave = { update(it) },
-            isSavingState = updateTasker.isRunning,
+            isSavingFlow = updateTasker.isRunning,
         ),
         backgroundScope,
         updateSubscriptions = { subscriptionRepo.updateAll() },
