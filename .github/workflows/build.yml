@@ -30,20 +30,7 @@ jobs:
             composeResourceTriple: 'windows-x64'
             extraGradleArgs:
               - '-Pani.android.abis=x86_64'
-            gradleArgs:
-              - '"--scan"'
-              - '"--no-configuration-cache"'
-              - '"-Porg.gradle.daemon.idletimeout=60000"'
-              - '"-Pkotlin.native.ignoreDisabledTargets=true"'
-              - '"-Dfile.encoding=UTF-8"'
-              - '"-Dani.enable.buildAnitorrent=true"'
-              - '"-DCMAKE_BUILD_TYPE=Release"'
-              - '"-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake"'
-              - '"-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include"'
-              - '"-Dorg.gradle.jvmargs=-Xmx6g"'
-              - '"-Dkotlin.daemon.jvm.options=-Xmx6g"'
-              - '"--parallel"'
-              - '"-Pani.android.abis=x86_64"'
+            gradleArgs: '"--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dani.enable.buildAnitorrent=true" "-DCMAKE_BUILD_TYPE=Release" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "--parallel" "-Pani.android.abis=x86_64"'
             id: 'windows'
             installNativeDeps: false
             name: 'Windows x86_64'
@@ -62,14 +49,7 @@ jobs:
             buildIosFramework: false
             composeResourceTriple: 'linux-x64'
             extraGradleArgs: [ ]
-            gradleArgs:
-              - '"--scan"'
-              - '"--no-configuration-cache"'
-              - '"-Porg.gradle.daemon.idletimeout=60000"'
-              - '"-Pkotlin.native.ignoreDisabledTargets=true"'
-              - '"-Dfile.encoding=UTF-8"'
-              - '"-Dorg.gradle.jvmargs=-Xmx4g"'
-              - '"-Dkotlin.daemon.jvm.options=-Xmx4g"'
+            gradleArgs: '"--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g"'
             id: 'ubuntu-x64'
             installNativeDeps: true
             name: 'Ubuntu x86_64 (Compile only)'
@@ -86,16 +66,7 @@ jobs:
             buildIosFramework: false
             composeResourceTriple: 'macos-x64'
             extraGradleArgs: [ ]
-            gradleArgs:
-              - '"--scan"'
-              - '"--no-configuration-cache"'
-              - '"-Porg.gradle.daemon.idletimeout=60000"'
-              - '"-Pkotlin.native.ignoreDisabledTargets=true"'
-              - '"-Dfile.encoding=UTF-8"'
-              - '"-Dani.enable.buildAnitorrent=true"'
-              - '"-DCMAKE_BUILD_TYPE=Release"'
-              - '"-Dorg.gradle.jvmargs=-Xmx4g"'
-              - '"-Dkotlin.daemon.jvm.options=-Xmx4g"'
+            gradleArgs: '"--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dani.enable.buildAnitorrent=true" "-DCMAKE_BUILD_TYPE=Release" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g"'
             id: 'macos-x64'
             installNativeDeps: true
             name: 'macOS x86_64'
@@ -113,18 +84,7 @@ jobs:
             composeResourceTriple: 'macos-arm64'
             extraGradleArgs:
               - '-Pani.android.abis=arm64-v8a'
-            gradleArgs:
-              - '"--scan"'
-              - '"--no-configuration-cache"'
-              - '"-Porg.gradle.daemon.idletimeout=60000"'
-              - '"-Pkotlin.native.ignoreDisabledTargets=true"'
-              - '"-Dfile.encoding=UTF-8"'
-              - '"-Dani.enable.buildAnitorrent=true"'
-              - '"-DCMAKE_BUILD_TYPE=Release"'
-              - '"-Dorg.gradle.jvmargs=-Xmx6g"'
-              - '"-Dkotlin.daemon.jvm.options=-Xmx4g"'
-              - '"--parallel"'
-              - '"-Pani.android.abis=arm64-v8a"'
+            gradleArgs: '"--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dani.enable.buildAnitorrent=true" "-DCMAKE_BUILD_TYPE=Release" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=arm64-v8a"'
             id: 'macos-aarch64'
             installNativeDeps: false
             name: 'macOS AArch64'

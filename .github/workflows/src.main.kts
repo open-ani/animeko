@@ -216,7 +216,7 @@ class MatrixInstance(
         extraGradleArgs.forEach {
             add(quote(it))
         }
-    }
+    }.joinToString(" ")
 
     init {
         require(os in listOf(OS.WINDOWS, OS.UBUNTU, OS.MACOS)) { "Unsupported OS: $os" }
