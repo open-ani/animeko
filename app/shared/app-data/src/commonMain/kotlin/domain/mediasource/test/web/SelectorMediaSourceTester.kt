@@ -12,12 +12,7 @@ package me.him188.ani.app.domain.mediasource.test.web
 import androidx.compose.ui.util.fastDistinctBy
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.mapLatest
-import kotlinx.coroutines.flow.shareIn
+import kotlinx.coroutines.flow.*
 import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSourceEngine
 import me.him188.ani.app.domain.mediasource.web.SelectorSearchConfig
@@ -131,7 +126,8 @@ class SelectorMediaSourceTester(
                     subjectDetailsPageUrl to searchEpisodes(subjectDetailsPageUrl)
                 }
             }
-        }.shareIn(scope, sharingStarted, replay = 1)
+        }.restartable(episodeSearchLifecycle)
+        .shareIn(scope, sharingStarted, replay = 1)
         .distinctUntilChanged()
 
     /**
@@ -158,7 +154,7 @@ class SelectorMediaSourceTester(
                 )
             }
         }
-    }.restartable(episodeSearchLifecycle)
+    }
         .shareIn(scope, sharingStarted, replay = 1)
         .distinctUntilChanged()
 
@@ -188,7 +184,7 @@ class SelectorMediaSourceTester(
 
     private fun createSelectorSearchQuery(
         query: SubjectQuery,
-        episodeQuery: EpisodeQuery
+        episodeQuery: EpisodeQuery,
     ) = SelectorSearchQuery(
         subjectName = query.searchKeyword,
         episodeSort = episodeQuery.sort,
@@ -211,7 +207,7 @@ class SelectorMediaSourceTester(
         url: String?,
         searchKeyword: String,
         useOnlyFirstWord: Boolean?,
-        removeSpecial: Boolean?
+        removeSpecial: Boolean?,
     ) =
         if (url.isNullOrBlank() || searchKeyword.isBlank() || useOnlyFirstWord == null || removeSpecial == null) {
             null
