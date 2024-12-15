@@ -41,8 +41,8 @@ dependencies {
 }
 
 val archs = buildList {
-    val abis = getProperty("ani.android.abis").trim()
-    if (abis.isNotEmpty()) {
+    val abis = getPropertyOrNull("ani.android.abis")?.trim()
+    if (!abis.isNullOrEmpty()) {
         addAll(abis.split(",").map { it.trim() })
     } else {
         add("arm64-v8a")
