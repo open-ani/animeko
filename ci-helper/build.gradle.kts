@@ -1,24 +1,16 @@
 /*
- * Ani
- * Copyright (C) 2022-2024 Him188
+ * Copyright (C) 2024 OpenAni and contributors.
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
 @file:Suppress("UnstableApiUsage")
 
 import io.ktor.client.HttpClient
+import io.ktor.client.plugins.ClientRequestException
 import io.ktor.client.request.header
 import io.ktor.client.request.parameter
 import io.ktor.client.request.post
@@ -317,21 +309,32 @@ open class ReleaseEnvironment {
             HttpClient {
                 expectSuccess = true
             }.use { client ->
-                client.post("https://uploads.github.com/repos/$repository/releases/$releaseId/assets") {
-                    header("Authorization", "Bearer $token")
-                    header("Accept", "application/vnd.github+json")
-                    parameter("name", name)
-                    contentType(ContentType.parse(contentType))
-                    setBody(
-                        object : OutgoingContent.ReadChannelContent() {
-                            override val contentType: ContentType get() = ContentType.parse(contentType)
-                            override val contentLength: Long = file.length()
-                            override fun readFrom(): ByteReadChannel {
-                                return file.readChannel()
-                            }
+                try {
 
-                        },
-                    )
+                    client.post("https://uploads.github.com/repos/$repository/releases/$releaseId/assets") {
+                        header("Authorization", "Bearer $token")
+                        header("Accept", "application/vnd.github+json")
+                        parameter("name", name)
+
+                        contentType(ContentType.parse(contentType))
+                        setBody(
+                            object : OutgoingContent.ReadChannelContent() {
+                                override val contentType: ContentType get() = ContentType.parse(contentType)
+                                override val contentLength: Long = file.length()
+                                override fun readFrom(): ByteReadChannel {
+                                    return file.readChannel()
+                                }
+
+                            },
+                        )
+                    }
+                } catch (e: ClientRequestException) {
+//                    > Client request(POST https://uploads.github.com/repos/open-ani/animeko/releases/190838274/assets?name=ani-4.0.0-typesafe-actions-5-arm64-v8a.apk) invalid: 422 . Text: "{"message":"Validation Failed","request_id":"973A:1F88D9:CCBFD5:D954BA:675F47E0","documentation_url":"https://docs.github.com/rest","errors":[{"resource":"ReleaseAsset","code":"already_exists","field":"name"}]}"
+
+                    if (e.response.status.value == 422) {
+                        println("Asset already exists: $name")
+                        return@runBlocking
+                    }
                 }
                 if (getProperty("UPLOAD_TO_S3") == "true") {
 //                    val bucket = getProperty("AWS_BUCKET")
