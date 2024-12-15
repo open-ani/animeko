@@ -79,6 +79,7 @@ class SelectorMediaSourceTester(
                 )
             }
         }
+        .restartable(subjectSearchLifecycle)
         .shareIn(scope, sharingStarted, replay = 1)
         .distinctUntilChanged()
 
@@ -98,7 +99,7 @@ class SelectorMediaSourceTester(
             apiResponse, searchConfig,
             createSelectorSearchQuery(query, episodeQuery),
         )
-    }.restartable(subjectSearchLifecycle)
+    }
         .shareIn(scope, sharingStarted, replay = 1)
         .distinctUntilChanged()
 
