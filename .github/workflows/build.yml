@@ -111,7 +111,7 @@ jobs:
         name: 'Resolve JBR location'
         run: |-
           # Expand jbrLocationExpr
-          jbr_location_expr=$(eval echo ${{ matrix.selfHosted && '$HOME/Downloads' || runner.temp }}/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz)
+          jbr_location_expr=$(eval echo ${{ runner.tool_cache }}/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz)
           echo "jbrLocation=$jbr_location_expr" >> $GITHUB_OUTPUT
         if: '${{ ((matrix.os == ''macos'')) && ((matrix.arch == ''aarch64'')) }}'
       - id: 'step-3'

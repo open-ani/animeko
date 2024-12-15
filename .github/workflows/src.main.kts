@@ -540,7 +540,7 @@ fun JobBuilder<*>.installJbr21() {
         command = shell(
             $$"""
             # Expand jbrLocationExpr
-            jbr_location_expr=$(eval echo $${expr { $$"""$${matrix.selfHosted} && '$HOME/Downloads' || runner.temp""" } + "/" + jbrFilename})
+            jbr_location_expr=$(eval echo $${expr { runner.tool_cache } + "/" + jbrFilename})
             echo "jbrLocation=$jbr_location_expr" >> $GITHUB_OUTPUT
             """.trimIndent()
         ),
