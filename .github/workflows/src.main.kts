@@ -528,12 +528,31 @@ fun JobBuilder<*>.freeSpace() {
 
 fun JobBuilder<*>.installJbr21() {
     // For mac
-    val jbrLocationExpr = expr { runner.temp } + "/jbr21.tar.gz"
+    val jbrLocationExpr = "~/Downloads/jbr21.tar.gz"
     run(
         name = "Get JBR 21 for macOS AArch64",
         `if` = expr { matrix.isMacOSAArch64 },
-        command = shell($$"""wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz -O $$jbrLocationExpr && file $$jbrLocationExpr"""),
+        command = shell(
+            $$"""
+        checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz.checksum"
+        expected_checksum=$(wget -q -O - $checksum_url)
+        file_checksum=""
+        if [ -f $$jbrLocationExpr ]; then
+            file_checksum=$(shasum -a 256 $$jbrLocationExpr | awk '{print $1}')
+        fi
+        if [ "$file_checksum" != "$expected_checksum" ]; then
+            wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz -O $$jbrLocationExpr
+            file_checksum=$(shasum -a 256 $$jbrLocationExpr | awk '{print $1}')
+        fi
+        if [ "$file_checksum" != "$expected_checksum" ]; then
+            echo "Checksum verification failed!" >&2
+            exit 1
+        fi
+        file $$jbrLocationExpr
+    """
+        ),
     )
+
     uses(
         name = "Setup JBR 21 for macOS AArch64",
         `if` = expr { matrix.isMacOSAArch64 },
