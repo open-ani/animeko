@@ -532,7 +532,7 @@ fun JobBuilder<*>.installJbr21() {
     run(
         name = "Get JBR 21 for macOS AArch64",
         `if` = expr { matrix.isMacOSAArch64 },
-        command = shell($$"""wget https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz -O $$jbrLocationExpr && file $$jbrLocationExpr"""),
+        command = shell($$"""wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz -O $$jbrLocationExpr && file $$jbrLocationExpr"""),
     )
     uses(
         name = "Setup JBR 21 for macOS AArch64",
