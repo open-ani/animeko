@@ -394,17 +394,17 @@ workflow(
         val createRelease = uses(
             name = "Create Release",
             action = ActionGhRelease(
-                tagName = gitTag.tagExpr,
-                name = gitTag.tagVersionExpr,
+                tagName = expr { gitTag.tagExpr },
+                name = expr { gitTag.tagVersionExpr },
                 body = expr { releaseNotes.outputs["result"] },
                 draft = true,
-                prerelease_Untyped = expr { contains(gitTag.tagExpr, "-") },
+                prerelease_Untyped = expr { contains(gitTag.tagExpr, "'-'") },
             ),
             env = mapOf("GITHUB_TOKEN" to expr { secrets.GITHUB_TOKEN }),
         )
 
-        jobOutputs.uploadUrl = expr { createRelease.outputs.uploadUrl }
-        jobOutputs.id = expr { createRelease.outputs.id }
+        jobOutputs.uploadUrl = createRelease.outputs.uploadUrl
+        jobOutputs.id = createRelease.outputs.id
     }
 
     job(
@@ -490,8 +490,8 @@ fun JobBuilder<*>.getGitTag(): GitTag {
     )
 
     return GitTag(
-        tagExpr = expr { tag.outputs.tag },
-        tagVersionExpr = expr { tagVersion.outputs["substring"] },
+        tagExpr = tag.outputs.tag,
+        tagVersionExpr = tagVersion.outputs["substring"],
     )
 }
 
@@ -870,7 +870,7 @@ class CIHelper(
             name = "Generate QR code for APK (GitHub)",
             `if` = expr { matrix.uploadApk },
             action = Qrcode_Untyped(
-                text_Untyped = """https://github.com/Him188/ani/releases/download/${gitTag.tagExpr}/ani-${gitTag.tagVersionExpr}-universal.apk""",
+                text_Untyped = """https://github.com/Him188/ani/releases/download/${expr { gitTag.tagExpr }}/ani-${expr { gitTag.tagVersionExpr }}-universal.apk""",
                 path_Untyped = "apk-qrcode-github.png",
             ),
         )
@@ -878,7 +878,7 @@ class CIHelper(
             name = "Generate QR code for APK (Cloudflare)",
             `if` = expr { matrix.uploadApk },
             action = Qrcode_Untyped(
-                text_Untyped = """https://d.myani.org/${gitTag.tagExpr}/ani-${gitTag.tagVersionExpr}-universal.apk""",
+                text_Untyped = """https://d.myani.org/${expr { gitTag.tagExpr }}/ani-${expr { gitTag.tagVersionExpr }}-universal.apk""",
                 path_Untyped = "apk-qrcode-cloudflare.png",
             ),
         )

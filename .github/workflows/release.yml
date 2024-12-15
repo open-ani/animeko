@@ -12,8 +12,8 @@ jobs:
     name: 'Create Release'
     runs-on: 'ubuntu-latest'
     outputs:
-      uploadUrl: '${{ {{ steps.step-4.outputs.upload_url }} }}'
-      id: '${{ {{ steps.step-4.outputs.id }} }}'
+      uploadUrl: '${{ steps.step-4.outputs.upload_url }}'
+      id: '${{ steps.step-4.outputs.id }}'
     steps:
       - id: 'step-0'
         uses: 'actions/checkout@v4'
@@ -37,8 +37,8 @@ jobs:
           
           modified_content="$file_content"
           # Replace 'string_to_find' with 'string_to_replace_with' in the content
-          modified_content="${modified_content//\$GIT_TAG/${{ {{ steps.step-1.outputs.tag }} }}}"
-          modified_content="${modified_content//\$TAG_VERSION/${{ {{ steps.step-2.outputs.substring }} }}}"
+          modified_content="${modified_content//\$GIT_TAG/${{ steps.step-1.outputs.tag }}}"
+          modified_content="${modified_content//\$TAG_VERSION/${{ steps.step-2.outputs.substring }}}"
           
           # Output the result as a step output
           echo "result<<EOF" >> $GITHUB_OUTPUT
@@ -52,7 +52,7 @@ jobs:
           name: '${{ steps.step-2.outputs.substring }}'
           tag_name: '${{ steps.step-1.outputs.tag }}'
           draft: 'true'
-          prerelease: '${{ contains(${{ steps.step-1.outputs.tag }}, -) }}'
+          prerelease: '${{ contains(steps.step-1.outputs.tag, ''-'') }}'
         env:
           GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
   release:
@@ -87,7 +87,7 @@ jobs:
               - 'Windows'
               - 'X64'
             selfHosted: true
-            uploadApk: true
+            uploadApk: false
             uploadDesktopInstallers: true
           - arch: 'x64'
             buildAnitorrent: false
@@ -141,7 +141,7 @@ jobs:
               - 'macOS'
               - 'ARM64'
             selfHosted: true
-            uploadApk: false
+            uploadApk: true
             uploadDesktopInstallers: true
     steps:
       - id: 'step-0'
@@ -260,7 +260,7 @@ jobs:
           GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
           GITHUB_REPOSITORY: '${{ secrets.GITHUB_REPOSITORY }}'
           CI_RELEASE_ID: '${{ needs.create-release.outputs.id }}'
-          CI_TAG: '${{ {{ steps.step-1.outputs.tag }} }}'
+          CI_TAG: '${{ steps.step-1.outputs.tag }}'
         run: './gradlew updateReleaseVersionNameFromGit ${{ matrix.gradleArgs }}'
       - id: 'step-16'
         name: 'Prepare signing key'
@@ -295,6 +295,7 @@ jobs:
         with:
           name: 'ani-android-debug'
           path: 'app/android/build/outputs/apk/debug/android-debug.apk'
+        if: '${{ matrix.uploadApk }}'
       - id: 'step-23'
         name: 'Build Android Release APK'
         env:
@@ -338,7 +339,7 @@ jobs:
           GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
           GITHUB_REPOSITORY: '${{ secrets.GITHUB_REPOSITORY }}'
           CI_RELEASE_ID: '${{ needs.create-release.outputs.id }}'
-          CI_TAG: '${{ steps.step-1.outputs.tag }}'
+          CI_TAG: 'steps.step-1.outputs.tag'
           UPLOAD_TO_S3: 'true'
           AWS_ACCESS_KEY_ID: '${{ secrets.AWS_ACCESS_KEY_ID }}'
           AWS_SECRET_ACCESS_KEY: '${{ secrets.AWS_SECRET_ACCESS_KEY }}'
@@ -367,7 +368,7 @@ jobs:
           GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
           GITHUB_REPOSITORY: '${{ secrets.GITHUB_REPOSITORY }}'
           CI_RELEASE_ID: '${{ needs.create-release.outputs.id }}'
-          CI_TAG: '${{ steps.step-1.outputs.tag }}'
+          CI_TAG: 'steps.step-1.outputs.tag'
           UPLOAD_TO_S3: 'true'
           AWS_ACCESS_KEY_ID: '${{ secrets.AWS_ACCESS_KEY_ID }}'
           AWS_SECRET_ACCESS_KEY: '${{ secrets.AWS_SECRET_ACCESS_KEY }}'
@@ -382,7 +383,7 @@ jobs:
           GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
           GITHUB_REPOSITORY: '${{ secrets.GITHUB_REPOSITORY }}'
           CI_RELEASE_ID: '${{ needs.create-release.outputs.id }}'
-          CI_TAG: '${{ steps.step-1.outputs.tag }}'
+          CI_TAG: 'steps.step-1.outputs.tag'
           UPLOAD_TO_S3: 'true'
           AWS_ACCESS_KEY_ID: '${{ secrets.AWS_ACCESS_KEY_ID }}'
           AWS_SECRET_ACCESS_KEY: '${{ secrets.AWS_SECRET_ACCESS_KEY }}'

@@ -41,7 +41,7 @@ jobs:
               - 'Windows'
               - 'X64'
             selfHosted: true
-            uploadApk: true
+            uploadApk: false
             uploadDesktopInstallers: true
           - arch: 'x64'
             buildAnitorrent: false
@@ -95,7 +95,7 @@ jobs:
               - 'macOS'
               - 'ARM64'
             selfHosted: true
-            uploadApk: false
+            uploadApk: true
             uploadDesktopInstallers: true
     steps:
       - id: 'step-0'
@@ -235,6 +235,7 @@ jobs:
         with:
           name: 'ani-android-debug'
           path: 'app/android/build/outputs/apk/debug/android-debug.apk'
+        if: '${{ matrix.uploadApk }}'
       - id: 'step-21'
         name: 'Build Android Release APK'
         env:
