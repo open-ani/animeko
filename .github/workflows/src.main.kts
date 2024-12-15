@@ -453,7 +453,7 @@ workflow(
 
         with(
             CIHelper(
-                releaseIdExpr = expr { createRelease.outputs.id },
+                releaseIdExpr = createRelease.outputs.id,
                 gitTag,
             ),
         ) {
@@ -847,8 +847,8 @@ class CIHelper(
     private val ciHelperSecrets: Map<String, String> = mapOf(
         "GITHUB_TOKEN" to expr { secrets.GITHUB_TOKEN },
         "GITHUB_REPOSITORY" to expr { secrets.GITHUB_REPOSITORY },
-        "CI_RELEASE_ID" to releaseIdExpr,
-        "CI_TAG" to gitTag.tagExpr,
+        "CI_RELEASE_ID" to expr { releaseIdExpr },
+        "CI_TAG" to expr { gitTag.tagExpr },
         "UPLOAD_TO_S3" to "true",
         "AWS_ACCESS_KEY_ID" to expr { secrets.AWS_ACCESS_KEY_ID },
         "AWS_SECRET_ACCESS_KEY" to expr { secrets.AWS_SECRET_ACCESS_KEY },
