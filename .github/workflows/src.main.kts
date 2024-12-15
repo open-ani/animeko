@@ -528,7 +528,7 @@ fun JobBuilder<*>.freeSpace() {
 
 fun JobBuilder<*>.installJbr21() {
     // For mac
-    val jbrLocationExpr = "~/Downloads/jbr21.tar.gz"
+    val jbrLocationExpr = "~/Downloads/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz"
     run(
         name = "Get JBR 21 for macOS AArch64",
         `if` = expr { matrix.isMacOSAArch64 },
