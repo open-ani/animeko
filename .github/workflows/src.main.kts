@@ -528,7 +528,14 @@ fun JobBuilder<*>.freeSpace() {
 
 fun JobBuilder<*>.installJbr21() {
     // For mac
-    val jbrLocationExpr = "~/Downloads/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz"
+    val jbrUrl = "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz"
+    val jbrChecksumUrl =
+        "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz.checksum"
+
+    val jbrFilename = jbrUrl.substringAfterLast('/')
+
+    val jbrLocationExpr =
+        expr { $$"""$${matrix.selfHosted} ? '$HOME/Downloads/$$jbrFilename' : (runner.temp + '/jbrsdk.tar.gz')""" }
 
     run(
         name = "Get JBR 21 for macOS AArch64",
@@ -538,7 +545,7 @@ fun JobBuilder<*>.installJbr21() {
         # Expand jbrLocationExpr if it contains ~
         jbr_location_expr=$(eval echo $$jbrLocationExpr)
 
-        checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz.checksum"
+        checksum_url="$$jbrChecksumUrl"
         checksum_file="checksum.tmp"
         wget -q -O $checksum_file $checksum_url
 
@@ -550,7 +557,7 @@ fun JobBuilder<*>.installJbr21() {
         fi
         
         if [ "$file_checksum" != "$expected_checksum" ]; then
-            wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz -O "$jbr_location_expr"
+            wget -q --tries=3 $$jbrUrl -O "$jbr_location_expr"
             file_checksum=$(shasum -a 512 "$jbr_location_expr" | awk '{print $1}')
         fi
         
