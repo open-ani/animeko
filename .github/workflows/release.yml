@@ -410,3 +410,8 @@ jobs:
           name: 'compose-logs-${{ matrix.os }}-${{ matrix.arch }}'
           path: 'app/desktop/build/compose/logs'
         if: '${{ matrix.uploadDesktopInstallers }}'
+      - id: 'step-37'
+        name: 'Cleanup temp files'
+        continue-on-error: true
+        run: 'find /private/var/folders/sv -type f -name "debugInfo.knd*.tmp" -exec rm {} + -print 2>/dev/null | wc -l'
+        if: '${{ (matrix.selfHosted) && (((matrix.os == ''macos'')) && ((matrix.arch == ''aarch64''))) }}'

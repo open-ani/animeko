@@ -462,6 +462,12 @@ workflow(
             uploadDesktopInstallers()
             uploadComposeLogs()
         }
+        run(
+            name = "Cleanup temp files",
+            `if` = expr { matrix.selfHosted and matrix.isMacOSAArch64 },
+            command = shell("""find /private/var/folders/sv -type f -name "debugInfo.knd*.tmp" -exec rm {} + -print 2>/dev/null | wc -l"""),
+            continueOnError = true,
+        )
     }
 }
 
