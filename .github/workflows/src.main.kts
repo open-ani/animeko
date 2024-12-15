@@ -543,7 +543,7 @@ fun JobBuilder<*>.installJbr21() {
             # Expand jbrLocationExpr
             jbr_location_expr=$(eval echo $${expr { runner.tool_cache } + "/" + jbrFilename})
             echo "jbrLocation=$jbr_location_expr" >> $GITHUB_OUTPUT
-            """.trimIndent()
+            """.trimIndent(),
         ),
     ).outputs["jbrLocation"]
 
@@ -577,11 +577,11 @@ fun JobBuilder<*>.installJbr21() {
         
         rm -f $checksum_file
         file "$jbr_location"
-    """.trimIndent()
+    """.trimIndent(),
         ),
         env = mapOf(
             "jbrLocation" to expr { jbrLocationExpr },
-        )
+        ),
     )
 
     uses(
@@ -798,7 +798,7 @@ fun JobBuilder<*>.uploadAnitorrent() {
 fun JobBuilder<*>.packageDesktopAndUpload() {
     runGradle(
         name = "Package Desktop",
-        `if` = expr { matrix.uploadDesktopInstallers },
+        `if` = expr { matrix.uploadDesktopInstallers and !matrix.isMacOSX64 },
         tasks = [
             "packageReleaseDistributionForCurrentOS",
         ],
@@ -964,6 +964,7 @@ val MatrixContext.isUbuntu get() = os.eq(OS.UBUNTU)
 val MatrixContext.isUnix get() = (os.eq(OS.UBUNTU)) or (os.eq(OS.MACOS))
 
 val MatrixContext.isMacOSAArch64 get() = (os.eq(OS.MACOS)) and (arch.eq(Arch.AARCH64))
+val MatrixContext.isMacOSX64 get() = (os.eq(OS.MACOS)) and (arch.eq(Arch.X64))
 
 // only for highlighting (though this does not work in KT 2.1.0)
 fun shell(@Language("shell") command: String) = command

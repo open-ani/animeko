@@ -323,7 +323,7 @@ jobs:
       - id: 'step-32'
         name: 'Package Desktop'
         run: './gradlew packageReleaseDistributionForCurrentOS ${{ matrix.gradleArgs }}'
-        if: '${{ matrix.uploadDesktopInstallers }}'
+        if: '${{ (matrix.uploadDesktopInstallers) && (!(((matrix.os == ''macos'')) && ((matrix.arch == ''x64'')))) }}'
       - id: 'step-33'
         name: 'Upload compose logs'
         uses: 'actions/upload-artifact@v4'
