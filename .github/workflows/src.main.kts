@@ -535,7 +535,7 @@ fun JobBuilder<*>.installJbr21() {
     val jbrFilename = jbrUrl.substringAfterLast('/')
 
     val jbrLocationExpr =
-        expr { $$"""$${matrix.selfHosted} ? '$HOME/Downloads/$$jbrFilename' : (runner.temp + '/jbrsdk.tar.gz')""" }
+        expr { $$"""$${matrix.selfHosted} && '$HOME/Downloads/$$jbrFilename' || (runner.temp + '/jbrsdk.tar.gz')""" }
 
     run(
         name = "Get JBR 21 for macOS AArch64",
