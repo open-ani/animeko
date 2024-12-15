@@ -536,6 +536,7 @@ fun JobBuilder<*>.installJbr21() {
 
     val jbrLocationExpr = run(
         name = "Resolve JBR location",
+        `if` = expr { matrix.isMacOSAArch64 },
         command = shell(
             $$"""
             # Expand jbrLocationExpr
