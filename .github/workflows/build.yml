@@ -235,6 +235,7 @@ jobs:
         with:
           name: 'ani-android-arm64-v8a-debug'
           path: 'app/android/build/outputs/apk/debug/android-arm64-v8a-debug.apk'
+          overwrite: 'true'
         if: '${{ matrix.uploadApk }}'
       - id: 'step-21'
         name: 'Upload Android Debug APK'
@@ -242,6 +243,7 @@ jobs:
         with:
           name: 'ani-android-x86_64-debug'
           path: 'app/android/build/outputs/apk/debug/android-x86_64-debug.apk'
+          overwrite: 'true'
         if: '${{ matrix.uploadApk }}'
       - id: 'step-22'
         name: 'Upload Android Debug APK'
@@ -249,6 +251,7 @@ jobs:
         with:
           name: 'ani-android-armeabi-v7a-debug'
           path: 'app/android/build/outputs/apk/debug/android-armeabi-v7a-debug.apk'
+          overwrite: 'true'
         if: '${{ matrix.uploadApk }}'
       - id: 'step-23'
         name: 'Upload Android Debug APK'
@@ -256,6 +259,7 @@ jobs:
         with:
           name: 'ani-android-universal-debug'
           path: 'app/android/build/outputs/apk/debug/android-universal-debug.apk'
+          overwrite: 'true'
         if: '${{ matrix.uploadApk }}'
       - id: 'step-24'
         name: 'Build Android Release APK'
