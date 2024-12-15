@@ -531,13 +531,8 @@ fun JobBuilder<*>.installJbr21() {
     val jbrLocationExpr = expr { runner.temp } + "/jbr21.tar.gz"
     run(
         name = "Get JBR 21 for macOS AArch64",
-        `if` = expr { matrix.isMacOSAArch64 and matrix.selfHosted },
-        command = shell($$"""curl -x http://127.0.0.1:7890 -o $$jbrLocationExpr  https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz && file $$jbrLocationExpr"""),
-    )
-    run(
-        name = "Get JBR 21 for macOS AArch64",
-        `if` = expr { matrix.isMacOSAArch64 and !matrix.selfHosted },
-        command = shell($$"""curl -o $$jbrLocationExpr https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz && file $$jbrLocationExpr"""),
+        `if` = expr { matrix.isMacOSAArch64 },
+        command = shell($$"""wget https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz -O $$jbrLocationExpr && file $$jbrLocationExpr"""),
     )
     uses(
         name = "Setup JBR 21 for macOS AArch64",
