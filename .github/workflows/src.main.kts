@@ -540,8 +540,8 @@ fun JobBuilder<*>.installJbr21() {
             $$"""
             # Expand jbrLocationExpr
             jbr_location_expr=$(eval echo $${expr { $$"""$${matrix.selfHosted} && '$HOME/Downloads' || runner.temp""" } + "/" + jbrFilename})
-            echo "::set-output name=jbrLocation::$jbr_location_expr"
-            """.trimMargin()
+            echo "jbrLocation=$jbr_location_expr" >> $GITHUB_OUTPUT
+            """.trimIndent()
         ),
     ).outputs["jbrLocation"]
 
@@ -558,13 +558,13 @@ fun JobBuilder<*>.installJbr21() {
         expected_checksum=$(awk '{print $1}' $checksum_file)
         file_checksum=""
         
-        if [ -f "$jbr_location_expr" ]; then
+        if [ -f "$jbr_location" ]; then
             file_checksum=$(shasum -a 512 "$jbr_location" | awk '{print $1}')
         fi
         
         if [ "$file_checksum" != "$expected_checksum" ]; then
-            wget -q --tries=3 $$jbrUrl -O "$jbr_location_expr"
-            file_checksum=$(shasum -a 512 "$jbr_location_expr" | awk '{print $1}')
+            wget -q --tries=3 $$jbrUrl -O "$jbr_location"
+            file_checksum=$(shasum -a 512 "$jbr_location" | awk '{print $1}')
         fi
         
         if [ "$file_checksum" != "$expected_checksum" ]; then
@@ -574,7 +574,7 @@ fun JobBuilder<*>.installJbr21() {
         fi
         
         rm -f $checksum_file
-        file "$jbr_location_expr"
+        file "$jbr_location"
     """.trimIndent()
         ),
         env = mapOf(
