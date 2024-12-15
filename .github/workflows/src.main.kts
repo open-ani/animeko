@@ -759,6 +759,7 @@ fun JobBuilder<*>.buildAndroidApk(prepareSigningKey: ActionStep<Base64ToFile_Unt
             action = UploadArtifact(
                 name = "ani-android-${arch}-release",
                 path_Untyped = "app/android/build/outputs/apk/release/android-${arch}-release.apk",
+                overwrite = true,
             ),
         )
     }

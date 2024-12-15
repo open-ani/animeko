@@ -318,6 +318,7 @@ jobs:
         with:
           name: 'ani-android-arm64-v8a-release'
           path: 'app/android/build/outputs/apk/release/android-arm64-v8a-release.apk'
+          overwrite: 'true'
         if: '${{ matrix.uploadApk }}'
       - id: 'step-28'
         name: 'Upload Android Release APK x86_64'
@@ -325,6 +326,7 @@ jobs:
         with:
           name: 'ani-android-x86_64-release'
           path: 'app/android/build/outputs/apk/release/android-x86_64-release.apk'
+          overwrite: 'true'
         if: '${{ matrix.uploadApk }}'
       - id: 'step-29'
         name: 'Upload Android Release APK armeabi-v7a'
@@ -332,6 +334,7 @@ jobs:
         with:
           name: 'ani-android-armeabi-v7a-release'
           path: 'app/android/build/outputs/apk/release/android-armeabi-v7a-release.apk'
+          overwrite: 'true'
         if: '${{ matrix.uploadApk }}'
       - id: 'step-30'
         name: 'Upload Android Release APK universal'
@@ -339,6 +342,7 @@ jobs:
         with:
           name: 'ani-android-universal-release'
           path: 'app/android/build/outputs/apk/release/android-universal-release.apk'
+          overwrite: 'true'
         if: '${{ matrix.uploadApk }}'
       - id: 'step-31'
         name: 'Upload Android APK'
