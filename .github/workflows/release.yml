@@ -103,7 +103,7 @@ jobs:
             runsOn:
               - 'macos-13'
             selfHosted: false
-            uploadApk: false
+            uploadApk: true
             uploadDesktopInstallers: true
           - arch: 'aarch64'
             buildAnitorrent: true
@@ -275,10 +275,31 @@ jobs:
         name: 'Upload Android Debug APK'
         uses: 'actions/upload-artifact@v4'
         with:
-          name: 'ani-android-debug'
-          path: 'app/android/build/outputs/apk/debug/android-debug.apk'
+          name: 'ani-android-arm64-v8a-debug'
+          path: 'app/android/build/outputs/apk/debug/android-arm64-v8a-debug.apk'
         if: '${{ matrix.uploadApk }}'
       - id: 'step-23'
+        name: 'Upload Android Debug APK'
+        uses: 'actions/upload-artifact@v4'
+        with:
+          name: 'ani-android-x86_64-debug'
+          path: 'app/android/build/outputs/apk/debug/android-x86_64-debug.apk'
+        if: '${{ matrix.uploadApk }}'
+      - id: 'step-24'
+        name: 'Upload Android Debug APK'
+        uses: 'actions/upload-artifact@v4'
+        with:
+          name: 'ani-android-armeabi-v7a-debug'
+          path: 'app/android/build/outputs/apk/debug/android-armeabi-v7a-debug.apk'
+        if: '${{ matrix.uploadApk }}'
+      - id: 'step-25'
+        name: 'Upload Android Debug APK'
+        uses: 'actions/upload-artifact@v4'
+        with:
+          name: 'ani-android-universal-debug'
+          path: 'app/android/build/outputs/apk/debug/android-universal-debug.apk'
+        if: '${{ matrix.uploadApk }}'
+      - id: 'step-26'
         name: 'Build Android Release APK'
         env:
           signing_release_storeFileFromRoot: '${{ steps.step-16.outputs.filePath }}'
@@ -287,35 +308,35 @@ jobs:
           signing_release_keyPassword: '${{ secrets.SIGNING_RELEASE_KEYPASSWORD }}'
         run: './gradlew assembleRelease ${{ matrix.gradleArgs }}'
         if: '${{ (github.event_name != ''pull_request'' && github.repository == ''open-ani/animeko'' ) && (matrix.uploadApk) }}'
-      - id: 'step-24'
+      - id: 'step-27'
         name: 'Upload Android Release APK arm64-v8a'
         uses: 'actions/upload-artifact@v4'
         with:
           name: 'ani-android-arm64-v8a-release'
           path: 'app/android/build/outputs/apk/release/android-arm64-v8a-release.apk'
         if: '${{ matrix.uploadApk }}'
-      - id: 'step-25'
+      - id: 'step-28'
         name: 'Upload Android Release APK x86_64'
         uses: 'actions/upload-artifact@v4'
         with:
           name: 'ani-android-x86_64-release'
           path: 'app/android/build/outputs/apk/release/android-x86_64-release.apk'
         if: '${{ matrix.uploadApk }}'
-      - id: 'step-26'
+      - id: 'step-29'
         name: 'Upload Android Release APK armeabi-v7a'
         uses: 'actions/upload-artifact@v4'
         with:
           name: 'ani-android-armeabi-v7a-release'
           path: 'app/android/build/outputs/apk/release/android-armeabi-v7a-release.apk'
         if: '${{ matrix.uploadApk }}'
-      - id: 'step-27'
+      - id: 'step-30'
         name: 'Upload Android Release APK universal'
         uses: 'actions/upload-artifact@v4'
         with:
           name: 'ani-android-universal-release'
           path: 'app/android/build/outputs/apk/release/android-universal-release.apk'
         if: '${{ matrix.uploadApk }}'
-      - id: 'step-28'
+      - id: 'step-31'
         name: 'Upload Android APK'
         env:
           GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
@@ -330,21 +351,21 @@ jobs:
           AWS_BUCKET: '${{ secrets.AWS_BUCKET }}'
         run: './gradlew :ci-helper:uploadAndroidApk ${{ matrix.gradleArgs }}'
         if: '${{ matrix.uploadApk }}'
-      - id: 'step-29'
+      - id: 'step-32'
         name: 'Generate QR code for APK (GitHub)'
         uses: 'snow-actions/qrcode@v1.0.0'
         with:
           text: 'https://github.com/Him188/ani/releases/download/${{ steps.step-1.outputs.tag }}/ani-${{ steps.step-2.outputs.substring }}-universal.apk'
           path: 'apk-qrcode-github.png'
         if: '${{ matrix.uploadApk }}'
-      - id: 'step-30'
+      - id: 'step-33'
         name: 'Generate QR code for APK (Cloudflare)'
         uses: 'snow-actions/qrcode@v1.0.0'
         with:
           text: 'https://d.myani.org/${{ steps.step-1.outputs.tag }}/ani-${{ steps.step-2.outputs.substring }}-universal.apk'
           path: 'apk-qrcode-cloudflare.png'
         if: '${{ matrix.uploadApk }}'
-      - id: 'step-31'
+      - id: 'step-34'
         name: 'Upload QR code'
         env:
           GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
@@ -359,7 +380,7 @@ jobs:
           AWS_BUCKET: '${{ secrets.AWS_BUCKET }}'
         run: './gradlew :ci-helper:uploadAndroidApkQR ${{ matrix.gradleArgs }}'
         if: '${{ matrix.uploadApk }}'
-      - id: 'step-32'
+      - id: 'step-35'
         name: 'Upload Desktop Installers'
         env:
           GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
@@ -374,7 +395,7 @@ jobs:
           AWS_BUCKET: '${{ secrets.AWS_BUCKET }}'
         run: './gradlew :ci-helper:uploadDesktopInstallers ${{ matrix.gradleArgs }}'
         if: '${{ matrix.uploadDesktopInstallers }}'
-      - id: 'step-33'
+      - id: 'step-36'
         name: 'Upload compose logs'
         uses: 'actions/upload-artifact@v4'
         with:

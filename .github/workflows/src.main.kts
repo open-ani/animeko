@@ -268,7 +268,7 @@ val matrixInstances = listOf(
         os = OS.MACOS,
         arch = Arch.X64,
         selfHosted = false,
-        uploadApk = false,
+        uploadApk = true, // all ABIs
         buildAnitorrent = true,
         buildAnitorrentSeparately = true,
         composeResourceTriple = "macos-x64",
@@ -285,7 +285,7 @@ val matrixInstances = listOf(
         os = OS.MACOS,
         arch = Arch.AARCH64,
         selfHosted = true,
-        uploadApk = true,
+        uploadApk = true, // upload arm64-v8a once finished
         buildAnitorrent = true,
         buildAnitorrentSeparately = true,
         composeResourceTriple = "macos-arm64",
@@ -726,14 +726,16 @@ fun JobBuilder<*>.buildAndroidApk(prepareSigningKey: ActionStep<Base64ToFile_Unt
         ],
     )
 
-    uses(
-        name = "Upload Android Debug APK",
-        `if` = expr { matrix.uploadApk },
-        action = UploadArtifact(
-            name = "ani-android-debug",
-            path_Untyped = "app/android/build/outputs/apk/debug/android-debug.apk",
-        ),
-    )
+    for (arch in AndroidArch.entriesWithUniversal) {
+        uses(
+            name = "Upload Android Debug APK",
+            `if` = expr { matrix.uploadApk },
+            action = UploadArtifact(
+                name = "ani-android-${arch}-debug",
+                path_Untyped = "app/android/build/outputs/apk/debug/android-${arch}-debug.apk",
+            ),
+        )
+    }
 
     runGradle(
         name = "Build Android Release APK",
