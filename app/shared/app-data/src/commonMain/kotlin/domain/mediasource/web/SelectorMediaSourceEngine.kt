@@ -56,6 +56,9 @@ import me.him188.ani.utils.xml.Html
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.cancellation.CancellationException
 
+/**
+ * For [SelectorMediaSourceEngine.selectMedia]
+ */
 data class SelectorSearchQuery(
     val subjectName: String,
     val allSubjectNames: Set<String>,

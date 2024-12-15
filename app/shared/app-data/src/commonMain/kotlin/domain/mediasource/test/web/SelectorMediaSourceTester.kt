@@ -84,21 +84,27 @@ class SelectorMediaSourceTester(
         .distinctUntilChanged()
 
     /**
+     * 用于传递给 [engine], 以便筛选条目.
+     * @see subjectSelectionResultFlow
+     */
+    private val selectorSearchQueryFlow =
+        combine(subjectQueryFlow, episodeQueryFlow) { query, episodeQuery ->
+            if (query == null || episodeQuery == null) return@combine null
+            createSelectorSearchQuery(query, episodeQuery)
+        }.distinctUntilChanged() // required, 否则在修改无关配置时也会触发重新搜索
+
+    /**
      * 解析好的搜索结果.
      */
     val subjectSelectionResultFlow = combine(
         subjectSearchResultFlow,
         selectorSearchConfigFlow,
-        subjectQueryFlow,
-        episodeQueryFlow,
-    ) { apiResponse, searchConfig, query, episodeQuery ->
+        selectorSearchQueryFlow,
+    ) { apiResponse, searchConfig, query ->
         if (apiResponse == null) return@combine null
-        if (searchConfig == null || query == null || episodeQuery == null) return@combine SelectorTestSearchSubjectResult.InvalidConfig
+        if (searchConfig == null || query == null) return@combine SelectorTestSearchSubjectResult.InvalidConfig
 
-        selectSubjectResult(
-            apiResponse, searchConfig,
-            createSelectorSearchQuery(query, episodeQuery),
-        )
+        selectSubjectResult(apiResponse, searchConfig, query)
     }
         .shareIn(scope, sharingStarted, replay = 1)
         .distinctUntilChanged()
@@ -118,8 +124,11 @@ class SelectorMediaSourceTester(
      * 用于查询条目的剧集列表, 每当选择新的条目时, 会重新搜索. 但不会筛选. 筛选在 [episodeListSelectionResultFlow].
      */
     private val episodeListSearchResultFlow = selectedSubjectFlow
-        .mapLatest { subject ->
-            val subjectDetailsPageUrl = subject?.subjectDetailsPageUrl
+        .mapLatest {
+            it?.subjectDetailsPageUrl
+        }
+        .distinctUntilChanged()
+        .mapLatest { subjectDetailsPageUrl ->
             if (subjectDetailsPageUrl == null) {
                 null
             } else {
