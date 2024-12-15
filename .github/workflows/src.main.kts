@@ -535,23 +535,33 @@ fun JobBuilder<*>.installJbr21() {
         command = shell(
             $$"""
         checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz.checksum"
-        expected_checksum=$(wget -q -O - $checksum_url)
+        checksum_file="checksum.tmp"
+        wget -q -O $checksum_file $checksum_url
+
+        expected_checksum=$(awk '{print $1}' $checksum_file)
         file_checksum=""
+        
         if [ -f $$jbrLocationExpr ]; then
-            file_checksum=$(shasum -a 256 $$jbrLocationExpr | awk '{print $1}')
+            file_checksum=$(shasum -a 512 $$jbrLocationExpr | awk '{print $1}')
         fi
+        
         if [ "$file_checksum" != "$expected_checksum" ]; then
             wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz -O $$jbrLocationExpr
-            file_checksum=$(shasum -a 256 $$jbrLocationExpr | awk '{print $1}')
+            file_checksum=$(shasum -a 512 $$jbrLocationExpr | awk '{print $1}')
         fi
+        
         if [ "$file_checksum" != "$expected_checksum" ]; then
             echo "Checksum verification failed!" >&2
+            rm -f $checksum_file
             exit 1
         fi
+        
+        rm -f $checksum_file
         file $$jbrLocationExpr
     """
         ),
     )
+
 
     uses(
         name = "Setup JBR 21 for macOS AArch64",
