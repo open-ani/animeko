@@ -727,6 +727,7 @@ fun JobBuilder<*>.buildAndroidApk(prepareSigningKey: ActionStep<Base64ToFile_Unt
 
     uses(
         name = "Upload Android Debug APK",
+        `if` = expr { matrix.uploadApk },
         action = UploadArtifact(
             name = "ani-android-debug",
             path_Untyped = "app/android/build/outputs/apk/debug/android-debug.apk",
