@@ -111,7 +111,7 @@ jobs:
         name: 'Get JBR 21 for macOS AArch64'
         run: |-
           # Expand jbrLocationExpr if it contains ~
-          jbr_location_expr=$(eval echo ${{ matrix.selfHosted && '$HOME/Downloads/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz' || (runner.temp + '/jbrsdk.tar.gz') }})
+          jbr_location_expr=$(eval echo ${{ matrix.selfHosted && '$HOME/Downloads' || runner.temp }}/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz)
           
           checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz.checksum"
           checksum_file="checksum.tmp"
@@ -144,7 +144,7 @@ jobs:
         with:
           java-version: '21'
           distribution: 'jdkfile'
-          jdkFile: '${{ matrix.selfHosted && ''$HOME/Downloads/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz'' || (runner.temp + ''/jbrsdk.tar.gz'') }}'
+          jdkFile: '${{ matrix.selfHosted && ''$HOME/Downloads'' || runner.temp }}/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz'
         env:
           GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
         if: '${{ ((matrix.os == ''macos'')) && ((matrix.arch == ''aarch64'')) }}'
