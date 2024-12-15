@@ -534,17 +534,23 @@ fun JobBuilder<*>.installJbr21() {
 
     val jbrFilename = jbrUrl.substringAfterLast('/')
 
-    val jbrLocationExpr =
-        expr { $$"""$${matrix.selfHosted} && '$HOME/Downloads' || runner.temp""" } + "/" + jbrFilename
+    val jbrLocationExpr = run(
+        name = "Resolve JBR location",
+        command = shell(
+            $$"""
+            # Expand jbrLocationExpr
+            jbr_location_expr=$(eval echo $${expr { $$"""$${matrix.selfHosted} && '$HOME/Downloads' || runner.temp""" } + "/" + jbrFilename})
+            echo "::set-output name=jbrLocation::$jbr_location_expr"
+            """.trimMargin()
+        ),
+    ).outputs["jbrLocation"]
 
     run(
         name = "Get JBR 21 for macOS AArch64",
         `if` = expr { matrix.isMacOSAArch64 },
         command = shell(
             $$"""
-        # Expand jbrLocationExpr if it contains ~
-        jbr_location_expr=$(eval echo $$jbrLocationExpr)
-
+        jbr_location="$jbrLocation"
         checksum_url="$$jbrChecksumUrl"
         checksum_file="checksum.tmp"
         wget -q -O $checksum_file $checksum_url
@@ -553,7 +559,7 @@ fun JobBuilder<*>.installJbr21() {
         file_checksum=""
         
         if [ -f "$jbr_location_expr" ]; then
-            file_checksum=$(shasum -a 512 "$jbr_location_expr" | awk '{print $1}')
+            file_checksum=$(shasum -a 512 "$jbr_location" | awk '{print $1}')
         fi
         
         if [ "$file_checksum" != "$expected_checksum" ]; then
@@ -571,6 +577,9 @@ fun JobBuilder<*>.installJbr21() {
         file "$jbr_location_expr"
     """.trimIndent()
         ),
+        env = mapOf(
+            "jbrLocation" to expr { jbrLocationExpr },
+        )
     )
 
     uses(
@@ -579,7 +588,7 @@ fun JobBuilder<*>.installJbr21() {
         action = SetupJava_Untyped(
             distribution_Untyped = "jdkfile",
             javaVersion_Untyped = "21",
-            jdkFile_Untyped = jbrLocationExpr,
+            jdkFile_Untyped = expr { jbrLocationExpr },
         ),
         env = mapOf("GITHUB_TOKEN" to expr { secrets.GITHUB_TOKEN }),
     )
