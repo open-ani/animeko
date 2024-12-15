@@ -407,6 +407,7 @@ workflow(
         jobOutputs.id = createRelease.outputs.id
     }
 
+    val matrixInstancesForRelease = matrixInstances.filterNot { it.os == OS.UBUNTU }
     job(
         id = "release",
         name = expr { matrix.name },
@@ -416,8 +417,8 @@ workflow(
             "strategy" to mapOf(
                 "fail-fast" to false,
                 "matrix" to mapOf(
-                    "id" to matrixInstances.map { it.id },
-                    "include" to matrixInstances.map { it.toMatrixIncludeMap() },
+                    "id" to matrixInstancesForRelease.map { it.id },
+                    "include" to matrixInstancesForRelease.map { it.toMatrixIncludeMap() },
                 ),
             ),
         ),

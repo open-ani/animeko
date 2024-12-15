@@ -65,7 +65,6 @@ jobs:
       matrix:
         id:
           - 'windows'
-          - 'ubuntu-x64'
           - 'macos-x64'
           - 'macos-aarch64'
         include:
@@ -89,23 +88,6 @@ jobs:
             selfHosted: true
             uploadApk: false
             uploadDesktopInstallers: true
-          - arch: 'x64'
-            buildAnitorrent: false
-            buildAnitorrentSeparately: false
-            buildIosFramework: false
-            composeResourceTriple: 'linux-x64'
-            extraGradleArgs: [ ]
-            gradleArgs: '"--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g"'
-            id: 'ubuntu-x64'
-            installNativeDeps: true
-            name: 'Ubuntu x86_64 (Compile only)'
-            os: 'ubuntu'
-            runTests: false
-            runsOn:
-              - 'ubuntu-20.04'
-            selfHosted: false
-            uploadApk: false
-            uploadDesktopInstallers: false
           - arch: 'x64'
             buildAnitorrent: true
             buildAnitorrentSeparately: true
