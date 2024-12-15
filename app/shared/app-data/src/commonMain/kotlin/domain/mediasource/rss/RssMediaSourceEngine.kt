@@ -20,8 +20,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
 import kotlinx.serialization.Serializable
-import me.him188.ani.app.data.models.ApiResponse
-import me.him188.ani.app.data.models.runApiRequest
+import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.domain.mediasource.MediaListFilters
 import me.him188.ani.app.domain.mediasource.MediaSourceEngineHelpers
 import me.him188.ani.app.domain.mediasource.asCandidate
@@ -42,6 +41,7 @@ import me.him188.ani.datasources.api.topic.titles.parse
 import me.him188.ani.utils.ktor.toSource
 import me.him188.ani.utils.xml.Document
 import me.him188.ani.utils.xml.Xml
+import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * 一个共享接口同时用于 [RssMediaSource] 编辑时的测试.
@@ -63,12 +63,13 @@ abstract class RssMediaSourceEngine {
     /**
      * 搜索并使用 [searchConfig] 过滤.
      */
+    @Throws(RepositoryException::class, CancellationException::class)
     suspend fun search(
         searchConfig: RssSearchConfig,
         query: RssSearchQuery,
         page: Int?,
         mediaSourceId: String,
-    ): ApiResponse<Result> {
+    ): Result {
         val encodedUrl = MediaSourceEngineHelpers.encodeUrlSegment(query.subjectName)
 
         val finalUrl = Url(
@@ -80,13 +81,14 @@ abstract class RssMediaSourceEngine {
         return searchImpl(finalUrl, searchConfig, query, page, mediaSourceId)
     }
 
+    @Throws(RepositoryException::class, CancellationException::class)
     protected abstract suspend fun searchImpl(
         finalUrl: Url,
         config: RssSearchConfig,
         query: RssSearchQuery,
         page: Int?,
         mediaSourceId: String,
-    ): ApiResponse<Result>
+    ): Result
 
     protected companion object {
         fun convertItemToMedia(
@@ -165,50 +167,55 @@ class DefaultRssMediaSourceEngine(
     private val client: Flow<HttpClient>,
     private val parser: RssParser = RssParser(includeOrigin = false),
 ) : RssMediaSourceEngine() {
+    @Throws(RepositoryException::class, CancellationException::class)
     override suspend fun searchImpl(
         finalUrl: Url,
         config: RssSearchConfig,
         query: RssSearchQuery,
         page: Int?,
         mediaSourceId: String
-    ): ApiResponse<Result> = runApiRequest {
-        val document = try {
-            client.first().get(finalUrl).let { resp ->
-                Xml.parse(resp.bodyAsChannel().toSource())
+    ): Result {
+        return try {
+            val document = try {
+                client.first().get(finalUrl).let { resp ->
+                    Xml.parse(resp.bodyAsChannel().toSource())
+                }
+            } catch (e: ClientRequestException) {
+                if (e.response.status == HttpStatusCode.NotFound) {
+                    // 404 Not Found
+                    return Result(
+                        finalUrl,
+                        query,
+                        document = null,
+                        channel = null,
+                        matchedMediaList = null,
+                    )
+                }
+                throw e
             }
-        } catch (e: ClientRequestException) {
-            if (e.response.status == HttpStatusCode.NotFound) {
-                // 404 Not Found
-                return@runApiRequest Result(
-                    finalUrl,
-                    query,
-                    document = null,
-                    channel = null,
-                    matchedMediaList = null,
-                )
+
+            val channel = parser.parse(document)
+
+            val filters = config.createFilters()
+
+            val items = with(query.toFilterContext()) {
+                channel.items.mapNotNull { rssItem ->
+                    convertItemToMedia(rssItem, mediaSourceId)
+                        ?.takeIf { media ->
+                            filters.applyOn(media.asCandidate())
+                        }
+                }
             }
-            throw e
+
+            Result(
+                finalUrl,
+                query,
+                document,
+                channel,
+                items,
+            )
+        } catch (e: Exception) {
+            throw RepositoryException.wrapOrThrowCancellation(e)
         }
-
-        val channel = parser.parse(document)
-
-        val filters = config.createFilters()
-
-        val items = with(query.toFilterContext()) {
-            channel.items.mapNotNull { rssItem ->
-                convertItemToMedia(rssItem, mediaSourceId)
-                    ?.takeIf { media ->
-                        filters.applyOn(media.asCandidate())
-                    }
-            }
-        }
-
-        Result(
-            finalUrl,
-            query,
-            document,
-            channel,
-            items,
-        )
     }
 }

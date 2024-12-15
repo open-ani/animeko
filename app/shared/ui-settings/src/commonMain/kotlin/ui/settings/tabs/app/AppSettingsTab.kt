@@ -496,6 +496,7 @@ fun SettingsScope.PlayerGroup(
                     videoScaffoldConfig.update(config.copy(autoSkipOpEd = it))
                 },
                 title = { Text("自动跳过 OP 和 ED") },
+                description = { Text("只对 BT 数据源的部分资源有效") },
             )
         }
     }

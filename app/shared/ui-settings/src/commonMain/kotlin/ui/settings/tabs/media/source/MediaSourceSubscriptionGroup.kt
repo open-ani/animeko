@@ -105,6 +105,7 @@ class MediaSourceSubscriptionGroupState(
                     url = string,
                 ),
             )
+            updateAll()
         }
     }
 

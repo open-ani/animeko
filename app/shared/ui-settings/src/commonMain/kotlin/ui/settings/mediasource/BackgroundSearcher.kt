@@ -14,22 +14,17 @@ package me.him188.ani.app.ui.settings.mediasource
 import androidx.annotation.UiThread
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
 import kotlinx.collections.immutable.PersistentList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.withContext
 import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.ui.settings.mediasource.BackgroundSearcher.RestartSearchScope
 import kotlin.coroutines.cancellation.CancellationException
@@ -48,23 +43,23 @@ abstract class BackgroundSearcher<TestData, TestResult>(
     /**
      * 当前的测试数据. 测试数据的变工
      */
-    protected abstract val testDataState: State<TestData>
+    private val testDataFlow: MutableStateFlow<TestData?> = MutableStateFlow(null)
 
-    var searchResult: TestResult? by mutableStateOf(null)
-        internal set
+    private val _searchResultFlow: MutableStateFlow<TestResult?> = MutableStateFlow(null)
+    val searchResultFlow: StateFlow<TestResult?> = _searchResultFlow.asStateFlow()
 
     private val searchTasker = MonoTasker(backgroundScope)
 
     /**
      * 是否有查询正在后台进行中. 也差不多就是 [restartSearchImpl] 是否正在执行.
      */
-    val isSearching by searchTasker::isRunning
+    val isSearching get() = searchTasker.isRunning
 
     interface RestartSearchScope<TestResult> {
         /**
          * 一个没有作用的接口, 用来确保让 [restartSearchScopeImpl] 的实现调用 [launchRequestInBackground]
          */
-        interface OK
+        abstract class OK internal constructor()
 
         /**
          * 立即完成, 而不启动后台协程.
@@ -80,30 +75,9 @@ abstract class BackgroundSearcher<TestData, TestResult>(
         fun launchRequestInBackground(request: suspend () -> TestResult): OK
     }
 
-    /**
-     * 在 UI 调用, 当测试数据变化时重新搜索
-     */
-    suspend fun observeChangeLoop() {
-        try {
-            withContext(Dispatchers.Main.immediate) {
-                while (true) {
-                    snapshotFlow { testDataState.value }
-                        .distinctUntilChanged()
-                        .debounce(0.5.seconds)
-                        .collect {
-                            restartSearch(it)
-                        }
-                }
-            }
-        } catch (e: CancellationException) {
-            searchTasker.cancel(kotlinx.coroutines.CancellationException("observeChangeLoop cancelled", e))
-            throw e
-        }
-    }
-
-    private val restartSearchScopeImpl = object : RestartSearchScope<TestResult>, RestartSearchScope.OK {
+    private val restartSearchScopeImpl = object : RestartSearchScope<TestResult>, RestartSearchScope.OK() {
         override fun complete(result: TestResult): RestartSearchScope.OK {
-            searchResult = result
+            _searchResultFlow.value = result
             return this
         }
 
@@ -111,9 +85,7 @@ abstract class BackgroundSearcher<TestData, TestResult>(
             searchTasker.launch {
                 // background scope
                 val res = request()
-                withContext(Dispatchers.Main) {
-                    searchResult = res
-                }
+                _searchResultFlow.value = res
             }
             return this
         }
@@ -123,9 +95,14 @@ abstract class BackgroundSearcher<TestData, TestResult>(
      * 清空
      */
     @UiThread
-    protected fun restartSearch(testData: TestData) {
-        searchResult = null // ui scope
+    fun restartSearch(testData: TestData) {
+        _searchResultFlow.value = null // ui scope
         restartSearchScopeImpl.restartSearchImpl(testData)
+    }
+
+    @UiThread
+    fun cancelSearch() {
+        searchTasker.cancel()
     }
 
     /**
@@ -151,24 +128,38 @@ abstract class BackgroundSearcher<TestData, TestResult>(
 
     @UiThread
     fun restartCurrentSearch() {
-        restartSearch(testDataState.value)
+        testDataFlow.value?.let {
+            restartSearch(it)
+        }
+    }
+}
+
+@UiThread
+suspend fun <TestData, TestResult> BackgroundSearcher<TestData, TestResult>.observeTestDataChanges(testDataState: State<TestData>) {
+    try {
+        snapshotFlow { testDataState.value }
+            .distinctUntilChanged()
+            .debounce(0.5.seconds)
+            .collect {
+                restartSearch(it)
+            }
+    } catch (e: CancellationException) {
+        cancelSearch()
+        throw e
     }
 }
 
 /**
- * @see testDataState 当前的测试数据
  * @see search 当测试数据变化时重新搜索调用
  */
 fun <TestData, TestResult> BackgroundSearcher(
     backgroundScope: CoroutineScope,
-    testDataState: State<TestData>,
     @UiThread search: RestartSearchScope<TestResult>.(testData: TestData) -> RestartSearchScope.OK,
-) = DefaultBackgroundSearcher(backgroundScope, testDataState, search)
+) = DefaultBackgroundSearcher(backgroundScope, search)
 
 @Stable
 class DefaultBackgroundSearcher<TestData, TestResult>(
     backgroundScope: CoroutineScope,
-    override val testDataState: State<TestData>,
     val restartSearchImpl: RestartSearchScope<TestResult>.(testData: TestData) -> RestartSearchScope.OK,
 ) : BackgroundSearcher<TestData, TestResult>(backgroundScope) {
     override fun RestartSearchScope<TestResult>.restartSearchImpl(testData: TestData): RestartSearchScope.OK =

@@ -125,6 +125,7 @@ class MediaSourceSubscriptionUpdater(
 
     @Throws(RepositoryException::class, CancellationException::class)
     private suspend fun updateSubscription(subscription: MediaSourceSubscription): Int {
+        // 下载新订阅列表
         val updateData = requester.request(subscription)
         val newArguments = updateData.exportedMediaSourceDataList.mediaSources.mapNotNull {
             runCatching {
@@ -132,14 +133,17 @@ class MediaSourceSubscriptionUpdater(
             }.getOrNull()
         }
 
+        // 获取现有的
         val existing = mediaSourceManager.getListBySubscriptionId(subscriptionId = subscription.subscriptionId)
             .map { save ->
                 ExistingArgument(save, deserializeArgumentsOrNull(save))
             }
 
+        // 计算差异
         val diff = calculateDiff(newArguments, existing)
         logger.info { "updateSubscription diff: $diff" }
 
+        // 解决差异
         for ((save, _) in diff.removed) {
             mediaSourceManager.removeInstance(save.instanceId)
         }
@@ -161,6 +165,19 @@ class MediaSourceSubscriptionUpdater(
             if (!mediaSourceManager.updateMediaSourceArguments(existing.save.instanceId, new.data.arguments)) {
                 logger.error { "Failed to update existing save ${existing.save.instanceId}" }
             }
+        }
+
+        // 更新排序, 让本地的排序跟远程一致
+        kotlin.run {
+            val localList = mediaSourceManager.getListBySubscriptionId(subscription.subscriptionId)
+            val sorted = localList
+                // 按照远程的顺序排序
+                .sortedBy { save ->
+                    // factory id 都是 `web-selector`, 没法比较
+                    updateData.exportedMediaSourceDataList.mediaSources.indexOfFirst { save.config.serializedArguments == it.arguments }
+                }
+                .map { it.instanceId }
+            mediaSourceManager.partiallyReorderInstances(sorted)
         }
 
         return updateData.exportedMediaSourceDataList.mediaSources.size

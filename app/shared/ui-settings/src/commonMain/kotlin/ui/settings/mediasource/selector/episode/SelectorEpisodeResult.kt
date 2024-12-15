@@ -11,8 +11,8 @@ package me.him188.ani.app.ui.settings.mediasource.selector.episode
 
 import kotlinx.collections.immutable.PersistentList
 import kotlinx.coroutines.flow.StateFlow
-import me.him188.ani.app.data.models.ApiFailure
-import me.him188.ani.app.ui.settings.mediasource.RefreshResult
+import me.him188.ani.app.data.repository.RepositoryException
+import me.him188.ani.app.domain.mediasource.test.RefreshResult
 
 sealed class SelectorEpisodeResult : RefreshResult {
     data class InProgress(
@@ -24,7 +24,7 @@ sealed class SelectorEpisodeResult : RefreshResult {
     ) : SelectorEpisodeResult(), RefreshResult.Success
 
     object InvalidConfig : SelectorEpisodeResult(), RefreshResult.InvalidConfig
-    data class ApiError(override val reason: ApiFailure) : SelectorEpisodeResult(), RefreshResult.ApiError
+    data class ApiError(override val exception: RepositoryException) : SelectorEpisodeResult(), RefreshResult.ApiError
     data class UnknownError(override val exception: Throwable) : SelectorEpisodeResult(), RefreshResult.UnknownError
 }
 

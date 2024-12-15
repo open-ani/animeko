@@ -25,12 +25,14 @@ import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.TopAppBarGoBackButton
@@ -47,6 +49,7 @@ object SelectorEpisodePaneDefaults {
         windowInsets: WindowInsets = WindowInsets(0.dp),
     ) {
         val onRefresh = { state.searcher.restartCurrentSearch() }
+        val searchResult by state.searcher.searchResultFlow.collectAsStateWithLifecycle()
         TopAppBar(
             navigationIcon = {
                 TopAppBarGoBackButton()
@@ -61,7 +64,7 @@ object SelectorEpisodePaneDefaults {
                         onClick = onRefresh,
                     )
                     RefreshIndicationDefaults.RefreshResultTextButton(
-                        result = state.searcher.searchResult,
+                        result = searchResult,
                         onRefresh = onRefresh,
                     )
                 }

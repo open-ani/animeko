@@ -148,8 +148,9 @@ internal fun SettingsScope.MediaSourceGroup(
     val sorter = rememberSorterState<MediaSourcePresentation>(
         onComplete = { list -> state.reorderMediaSources(newOrder = list.map { it.instanceId }) },
     )
+
     Group(
-        title = { Text("数据源管理") },
+        title = { Text("数据源列表 (${state.mediaSources.size})") },
         description = { Text("在播放时，禁用的数据源不会自动查询，但可手动点击临时启用") },
         actions = {
             AnimatedVisibility(

@@ -27,34 +27,30 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import me.him188.ani.app.domain.mediasource.MediaListFilter
-import me.him188.ani.app.domain.mediasource.MediaListFilters
-import me.him188.ani.app.domain.mediasource.rss.RssSearchConfig
-import me.him188.ani.app.domain.mediasource.rss.RssSearchQuery
-import me.him188.ani.app.domain.mediasource.rss.toFilterContext
+import me.him188.ani.app.domain.mediasource.test.rss.RssItemInfo
 import me.him188.ani.app.tools.formatDateTime
-import me.him188.ani.app.domain.rss.RssItem
-import me.him188.ani.app.domain.rss.guessResourceLocation
 import me.him188.ani.app.ui.foundation.OutlinedTag
 import me.him188.ani.app.ui.media.MediaDetailsRenderer
-import me.him188.ani.datasources.api.topic.EpisodeRange
-import me.him188.ani.datasources.api.topic.ResourceLocation
-import me.him188.ani.datasources.api.topic.titles.ParsedTopicTitle
-import me.him188.ani.datasources.api.topic.titles.RawTitleParser
-import me.him188.ani.datasources.api.topic.titles.parse
+
+@Stable
+val RssItemInfo.subtitleLanguageRendered: String
+    get() = MediaDetailsRenderer.renderSubtitleLanguages(
+        parsed.subtitleKind,
+        parsed.subtitleLanguages.map { it.displayName },
+    )
 
 @Composable
 @Suppress("UnusedReceiverParameter")
 fun RssTestPaneDefaults.RssInfoTab(
-    items: List<RssItemPresentation>,
-    onViewDetails: (item: RssItemPresentation) -> Unit,
-    selectedItemProvider: () -> RssItemPresentation?,
+    items: List<RssItemInfo>,
+    onViewDetails: (item: RssItemInfo) -> Unit,
+    selectedItemProvider: () -> RssItemInfo?,
     modifier: Modifier = Modifier,
     lazyStaggeredGridState: LazyStaggeredGridState = rememberLazyStaggeredGridState(),
 ) {
@@ -81,105 +77,9 @@ fun RssTestPaneDefaults.RssInfoTab(
     }
 }
 
-@Immutable
-class RssItemPresentation(
-    val rss: RssItem,
-    val parsed: ParsedTopicTitle,
-    val tags: List<MatchTag>,
-) {
-    val subtitleLanguageRendered: String = MediaDetailsRenderer.renderSubtitleLanguages(
-        parsed.subtitleKind,
-        parsed.subtitleLanguages.map { it.displayName },
-    )
-
-    companion object {
-        fun compute(
-            rss: RssItem,
-            config: RssSearchConfig,
-            query: RssSearchQuery,
-        ): RssItemPresentation {
-            val parsed = RawTitleParser.getDefault().parse(rss.title)
-            val tags = computeTags(rss, parsed, query, config)
-            return RssItemPresentation(rss, parsed, tags)
-        }
-
-        /**
-         * 计算出用于标记该资源与 [RssSearchQuery] 的匹配情况的 tags. 例如标题成功匹配、缺失 EP 等.
-         */
-        private fun computeTags(
-            rss: RssItem,
-            title: ParsedTopicTitle,
-            query: RssSearchQuery,
-            config: RssSearchConfig,
-        ): List<MatchTag> = buildMatchTags {
-            with(query.toFilterContext()) {
-                val candidate = rss.asCandidate(title)
-
-                if (config.filterByEpisodeSort) {
-                    val episodeRange = title.episodeRange
-                    if (episodeRange == null) {
-                        // 期望使用 EP 过滤但是没有 EP 信息, 属于为缺失
-                        emit("EP", isMissing = true)
-                    } else {
-                        emit(
-                            episodeRange.toString(),
-                            isMatch = MediaListFilters.ContainsAnyEpisodeInfo.applyOn(candidate),
-                        )
-                    }
-                } else {
-                    // 不需要用 EP 过滤也展示 EP 信息
-                    title.episodeRange?.let {
-                        emit(it.toString())
-                    }
-                }
-
-                if (config.filterBySubjectName) {
-                    emit(
-                        "标题",
-                        isMatch = MediaListFilters.ContainsSubjectName.applyOn(candidate),
-                    )
-                }
-            }
-
-            val resourceLocation = rss.guessResourceLocation()
-            when (resourceLocation) {
-                is ResourceLocation.HttpStreamingFile -> emit("Streaming")
-                is ResourceLocation.HttpTorrentFile -> emit("Torrent")
-                is ResourceLocation.LocalFile -> emit("Local")
-                is ResourceLocation.MagnetLink -> emit("Magnet")
-                is ResourceLocation.WebVideo -> emit("WEB")
-                null -> emit("Download", isMissing = true)
-            }
-
-            // 以下为普通 tags
-
-            if (title.subtitleLanguages.isEmpty()) {
-                emit("Subtitle", isMissing = true)
-            } else {
-                for (subtitleLanguage in title.subtitleLanguages) {
-                    emit(subtitleLanguage.displayName)
-                }
-            }
-
-            title.resolution?.displayName?.let(::emit)
-
-            title.subtitleKind?.let {
-                emit(MediaDetailsRenderer.renderSubtitleKind(it) + "字幕")
-            }
-        }
-    }
-}
-
-private fun RssItem.asCandidate(parsed: ParsedTopicTitle): MediaListFilter.Candidate {
-    return object : MediaListFilter.Candidate {
-        override val originalTitle: String get() = title
-        override val episodeRange: EpisodeRange? get() = parsed.episodeRange
-    }
-}
-
 @Composable
 fun RssTestResultRssItem(
-    item: RssItemPresentation,
+    item: RssItemInfo,
     isSelected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,

@@ -125,6 +125,11 @@ interface MediaSourceManager { // available by inject
     suspend fun getListBySubscriptionId(subscriptionId: String): List<MediaSourceSave>
 
     /**
+     * @see MediaSourceInstanceRepository.partiallyReorder
+     */
+    suspend fun partiallyReorderInstances(instanceIds: List<String>)
+
+    /**
      * deprecated.
      */
     suspend fun updateConfig(instanceId: String, config: MediaSourceConfig): Boolean
@@ -280,6 +285,10 @@ class MediaSourceManagerImpl(
         return instances.flow.first().filter { save ->
             save.config.subscriptionId == subscriptionId
         }
+    }
+
+    override suspend fun partiallyReorderInstances(instanceIds: List<String>) {
+        return instances.partiallyReorder(instanceIds)
     }
 
     override suspend fun updateConfig(instanceId: String, config: MediaSourceConfig): Boolean {

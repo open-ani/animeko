@@ -11,10 +11,13 @@ package me.him188.ani.utils.coroutines.flows
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 
+/**
+ * @see Flow.restartable
+ */
 class FlowRestarter {
     internal val id = MutableStateFlow(0)
 
@@ -26,25 +29,46 @@ class FlowRestarter {
     }
 }
 
+/**
+ * 使 flow 可以被重启. 等价于:
+ *
+ * ```
+ * private val id = MutableStateFlow(0) // FlowRestarter.restart 相当于 id.value++
+ *
+ * val result = id.flatMapLatest { _ ->
+ *    upstream.map { ... }...
+ *    // 重启时, 会重新执行上面的 map, filter 等操作
+ * }
+ * ```
+ */
 fun <T> Flow<T>.restartable(restarter: FlowRestarter): Flow<T> = restarter.id.flatMapLatest { this }
 
 
+/**
+ * Flow 是否正在运行中的监听器.
+ * @see withRunning
+ */
 class FlowRunning {
     @Suppress("PropertyName")
     @PublishedApi
-    internal val _isRunning: MutableStateFlow<Boolean> = MutableStateFlow(false)
-
-    val isRunning = _isRunning.asStateFlow()
+    internal val _isRunning: MutableStateFlow<Int> = MutableStateFlow<Int>(0)
 
     /**
-     * 将 [isr] 执行 [block], 并在执行完毕后将 [isRunning] 设置为 false.
+     * 是否有至少一个 [withRunning] 正在运行.
+     */
+    val isRunning = _isRunning.map { it > 0 }
+
+    /**
+     * 执行 [block], 并在执行期间将 [isRunning] 设置为 `true`, 执行完毕后设置为 `false`.
+     *
+     * 此函数线程是线程安全的. 多个线程/协程同时调用 [withRunning], [isRunning] 将保持为 `true`, 直到它们全部结束运行.
      */
     inline fun <R> withRunning(block: () -> R): R {
-        _isRunning.value = true
+        _isRunning.update { it + 1 }
         try {
             return block()
         } finally {
-            _isRunning.value = false
+            _isRunning.update { it - 1 }
         }
     }
 }

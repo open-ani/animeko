@@ -183,7 +183,7 @@ class SettingsViewModel : AbstractSettingsViewModel(), KoinComponent {
     val mediaSourceGroupState = MediaSourceGroupState(
         mediaSourceLoader.mediaSourcesFlow.produceState(emptyList()),
         mediaSourceLoader.availableMediaSourceTemplates.produceState(emptyList()),
-        onReorder = { mediaSourceInstanceRepository.reorder(it) },
+        onReorder = { mediaSourceInstanceRepository.partiallyReorder(it) },
         backgroundScope,
     )
 
