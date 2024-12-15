@@ -803,14 +803,14 @@ fun JobBuilder<*>.packageDesktopAndUpload() {
 
     uploadComposeLogs()
 
-    uses(
-        name = "Upload macOS portable",
-        `if` = expr { matrix.uploadDesktopInstallers and matrix.isMacOS },
-        action = UploadArtifact(
-            name = "ani-macos-portable-${expr { matrix.arch }}",
-            path_Untyped = "app/desktop/build/compose/binaries/main-release/app/Ani.app",
-        ),
-    )
+//    uses(
+//        name = "Upload macOS portable",
+//        `if` = expr { matrix.uploadDesktopInstallers and matrix.isMacOS },
+//        action = UploadArtifact(
+//            name = "ani-macos-portable-${expr { matrix.arch }}",
+//            path_Untyped = "app/desktop/build/compose/binaries/main-release/app/Ani.app",
+//        ),
+//    )
     uses(
         name = "Upload macOS dmg",
         `if` = expr { matrix.uploadDesktopInstallers and matrix.isMacOS },

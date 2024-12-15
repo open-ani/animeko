@@ -307,20 +307,13 @@ jobs:
           path: 'app/desktop/build/compose/logs'
         if: '${{ matrix.uploadDesktopInstallers }}'
       - id: 'step-31'
-        name: 'Upload macOS portable'
-        uses: 'actions/upload-artifact@v4'
-        with:
-          name: 'ani-macos-portable-${{ matrix.arch }}'
-          path: 'app/desktop/build/compose/binaries/main-release/app/Ani.app'
-        if: '${{ (matrix.uploadDesktopInstallers) && ((matrix.os == ''macos'')) }}'
-      - id: 'step-32'
         name: 'Upload macOS dmg'
         uses: 'actions/upload-artifact@v4'
         with:
           name: 'ani-macos-dmg-${{ matrix.arch }}'
           path: 'app/desktop/build/compose/binaries/main-release/dmg/Ani-*.dmg'
         if: '${{ (matrix.uploadDesktopInstallers) && ((matrix.os == ''macos'')) }}'
-      - id: 'step-33'
+      - id: 'step-32'
         name: 'Upload Windows packages'
         uses: 'actions/upload-artifact@v4'
         with:
