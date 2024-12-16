@@ -560,7 +560,7 @@ class DefaultMediaSelector(
     override suspend fun trySelectFromMediaSources(mediaSourceOrder: List<String>): Media? {
         if (mediaSourceOrder.isEmpty()) return null
 
-        val candidates = filteredCandidates.first()
+        val candidates = mediaList.first()
         if (candidates.isEmpty()) return null
 
         val selected = mediaSourceOrder.firstNotNullOfOrNull { mediaSourceId ->

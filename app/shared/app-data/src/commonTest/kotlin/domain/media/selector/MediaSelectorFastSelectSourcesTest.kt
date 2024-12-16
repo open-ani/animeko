@@ -386,4 +386,33 @@ class MediaSelectorFastSelectSourcesTest {
         val selected = selectedDeferred.await()
         assertEquals(target, selected)
     }
+
+    @Test
+    fun `uses unfiltered list`() = runTest {
+        val test = MediaSelectorTestBuilder()
+        test.savedUserPreference.value = test.savedUserPreference.value.copy(
+            subtitleLanguageId = "dummy", // filters out all
+        )
+        test.delayedMediaSource("1", enabled = false)
+        val source2 = test.delayedMediaSource("2")
+        val (_, session, selector) = test.create()
+
+        lateinit var target: Media
+
+        val selectedDeferred = async(start = CoroutineStart.UNDISPATCHED) {
+            selector.autoSelect.fastSelectSources(
+                session,
+                listOf("1", "2"),
+                flowOf(MediaSourceKind.WEB),
+            )
+        }
+
+        source2.complete(
+            listOf(
+                test.createMedia("2", MediaSourceKind.WEB).also { target = it },
+            ),
+        )
+        val selected = selectedDeferred.await()
+        assertEquals(target, selected)
+    }
 }
