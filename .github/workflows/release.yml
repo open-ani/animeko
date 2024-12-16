@@ -402,7 +402,7 @@ jobs:
           AWS_REGION: '${{ secrets.AWS_REGION }}'
           AWS_BUCKET: '${{ secrets.AWS_BUCKET }}'
         run: './gradlew :ci-helper:uploadDesktopInstallers ${{ matrix.gradleArgs }}'
-        if: '${{ matrix.uploadDesktopInstallers }}'
+        if: '${{ (matrix.uploadDesktopInstallers) && (!(((matrix.os == ''macos'')) && ((matrix.arch == ''x64'')))) }}'
       - id: 'step-36'
         name: 'Upload compose logs'
         uses: 'actions/upload-artifact@v4'

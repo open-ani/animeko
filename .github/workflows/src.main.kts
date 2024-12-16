@@ -904,7 +904,7 @@ class CIHelper(
     fun JobBuilder<*>.uploadDesktopInstallers() {
         runGradle(
             name = "Upload Desktop Installers",
-            `if` = expr { matrix.uploadDesktopInstallers },
+            `if` = expr { matrix.uploadDesktopInstallers and (!matrix.isMacOSX64) },
             tasks = [":ci-helper:uploadDesktopInstallers"],
             env = ciHelperSecrets,
         )
