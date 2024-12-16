@@ -114,6 +114,7 @@ import me.him188.ani.danmaku.api.DanmakuPresentation
 import me.him188.ani.danmaku.ui.DanmakuConfig
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.source.MediaFetchRequest
+import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
 import me.him188.ani.utils.coroutines.cancellableCoroutineScope
@@ -326,7 +327,9 @@ private class EpisodeViewModelImpl(
                     mediaFetchSession.collectLatest { session ->
                         val result = fastSelectSources(
                             session,
-                            mediaSourceManager.allInstances.first().map { it.mediaSourceId },
+                            mediaSourceManager.allInstances.first() // no need to subscribe to changes
+                                .filter { it.source.kind == MediaSourceKind.WEB }
+                                .map { it.mediaSourceId },
                             preferKind = settingsRepository.mediaSelectorSettings.flow.map { it.preferKind },
                         )
                         logger.info { "fastSelectSources result: $result" }
