@@ -197,6 +197,7 @@ androidx-media = { module = "androidx.media:media", version = "1.7.0" }
 androidx-lifecycle-runtime-ktx = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version.ref = "androidx-lifecycle" }
 androidx-lifecycle-service = { module = "androidx.lifecycle:lifecycle-service", version.ref = "androidx-lifecycle" }
 androidx-lifecycle-process = { module = "androidx.lifecycle:lifecycle-process", version.ref = "androidx-lifecycle" }
+androidx-collection = { module = "androidx.collection:collection", version = "1.4.5" }
 
 #androidx-navigation-compose = { module = "androidx.navigation:navigation-compose", version = "2.7.6" }
 slf4j-android = { module = "uk.uuid.slf4j:slf4j-android", version = "2.0.7-0" }

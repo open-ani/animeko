@@ -22,9 +22,9 @@ import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import io.ktor.http.Url
+import io.ktor.utils.io.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
-import me.him188.ani.app.data.models.ApiResponse
-import me.him188.ani.app.data.models.runApiRequest
+import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.domain.mediasource.codec.createTestMediaSourceCodecManager
 import me.him188.ani.app.domain.mediasource.rss.RssMediaSourceArguments
 import me.him188.ani.app.domain.mediasource.rss.RssMediaSourceEngine
@@ -62,14 +62,15 @@ internal object TestRssMediaSourceEngine : RssMediaSourceEngine() {
         )
     }
 
+    @Throws(RepositoryException::class, CancellationException::class)
     override suspend fun searchImpl(
         finalUrl: Url,
         config: RssSearchConfig,
         query: RssSearchQuery,
         page: Int?,
         mediaSourceId: String
-    ): ApiResponse<Result> {
-        return runApiRequest {
+    ): Result {
+        return try {
             val channel = RssParser.parse(parsed, includeOrigin = true)
 
             Result(
@@ -79,6 +80,8 @@ internal object TestRssMediaSourceEngine : RssMediaSourceEngine() {
                 channel,
                 channel.items.mapNotNull { convertItemToMedia(it, mediaSourceId) },
             )
+        } catch (e: Exception) {
+            throw RepositoryException.wrapOrThrowCancellation(e)
         }
     }
 }

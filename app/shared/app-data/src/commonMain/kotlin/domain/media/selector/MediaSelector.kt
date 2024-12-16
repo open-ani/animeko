@@ -76,7 +76,7 @@ interface MediaSelector {
      *
      * 该操作优先级高于任何其他的选择. 即会覆盖 [trySelectDefault] 和 [trySelectCached] 的结果.
      *
-     * 重复 [select] 同一个 [Media] 时, 本函数立即返回 `true`, 不会做重复广播事件等.
+     * 重复 [select] 同一个 [Media] 时, 本函数立即返回 `false`, 不会做重复广播事件等.
      *
      * @return 当成功将 [selected] 更新为 [candidate] 时返回 `true`. 当 [selected] 已经是 [candidate] 时返回 `false`.
      */

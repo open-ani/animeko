@@ -46,6 +46,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import me.him188.ani.app.domain.media.resolver.WebViewVideoExtractor
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceCodecManager
+import me.him188.ani.app.domain.mediasource.test.web.SelectorMediaSourceTester
+import me.him188.ani.app.domain.mediasource.test.web.SelectorTestEpisodePresentation
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSourceArguments
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSourceEngine
 import me.him188.ani.app.platform.Context
@@ -63,6 +65,7 @@ import me.him188.ani.app.ui.settings.mediasource.DropdownMenuImport
 import me.him188.ani.app.ui.settings.mediasource.ExportMediaSourceState
 import me.him188.ani.app.ui.settings.mediasource.ImportMediaSourceState
 import me.him188.ani.app.ui.settings.mediasource.MediaSourceConfigurationDefaults
+import me.him188.ani.app.ui.settings.mediasource.observeTestDataChanges
 import me.him188.ani.app.ui.settings.mediasource.rss.SaveableStorage
 import me.him188.ani.app.ui.settings.mediasource.selector.edit.SelectorConfigState
 import me.him188.ani.app.ui.settings.mediasource.selector.edit.SelectorConfigurationPane
@@ -71,7 +74,6 @@ import me.him188.ani.app.ui.settings.mediasource.selector.episode.SelectorEpisod
 import me.him188.ani.app.ui.settings.mediasource.selector.episode.SelectorEpisodePaneRoutes
 import me.him188.ani.app.ui.settings.mediasource.selector.episode.SelectorEpisodeState
 import me.him188.ani.app.ui.settings.mediasource.selector.episode.SelectorTestAndEpisodePane
-import me.him188.ani.app.ui.settings.mediasource.selector.test.SelectorTestEpisodePresentation
 import me.him188.ani.app.ui.settings.mediasource.selector.test.SelectorTestState
 import kotlin.coroutines.CoroutineContext
 
@@ -91,7 +93,7 @@ class EditSelectorMediaSourcePageState(
     )
 
     internal val testState: SelectorTestState =
-        SelectorTestState(configurationState.searchConfigState, engine, backgroundScope)
+        SelectorTestState(configurationState.searchConfigState, SelectorMediaSourceTester(engine), backgroundScope)
 
     private val viewingItemState = mutableStateOf<SelectorTestEpisodePresentation?>(null)
 
@@ -222,13 +224,10 @@ fun EditSelectorMediaSourcePage(
 
         // 在外面启动, 避免在切换页面后重新启动导致刷新
         LaunchedEffect(state) {
-            state.testState.subjectSearcher.observeChangeLoop()
+            state.episodeState.searcher.observeTestDataChanges(state.episodeState.searcherTestDataState)
         }
         LaunchedEffect(state) {
-            state.testState.episodeListSearcher.observeChangeLoop()
-        }
-        LaunchedEffect(state) {
-            state.episodeState.searcher.observeChangeLoop()
+            state.testState.observeChanges()
         }
 
         ListDetailPaneScaffold(

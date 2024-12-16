@@ -7,18 +7,18 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.app.ui.settings.mediasource.selector.test
+package me.him188.ani.app.domain.mediasource.test.web
 
 import androidx.compose.runtime.Immutable
-import me.him188.ani.app.data.models.ApiFailure
+import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.domain.mediasource.MediaListFilters
+import me.him188.ani.app.domain.mediasource.test.MatchTag
+import me.him188.ani.app.domain.mediasource.test.RefreshResult
+import me.him188.ani.app.domain.mediasource.test.buildMatchTags
 import me.him188.ani.app.domain.mediasource.web.SelectorSearchQuery
 import me.him188.ani.app.domain.mediasource.web.WebSearchSubjectInfo
 import me.him188.ani.app.domain.mediasource.web.asCandidate
 import me.him188.ani.app.domain.mediasource.web.toFilterContext
-import me.him188.ani.app.ui.settings.mediasource.RefreshResult
-import me.him188.ani.app.ui.settings.mediasource.rss.test.MatchTag
-import me.him188.ani.app.ui.settings.mediasource.rss.test.buildMatchTags
 import me.him188.ani.utils.xml.Element
 
 // For UI
@@ -32,7 +32,7 @@ sealed class SelectorTestSearchSubjectResult : RefreshResult {
 
     @Immutable
     data class ApiError(
-        override val reason: ApiFailure,
+        override val exception: RepositoryException,
     ) : SelectorTestSearchSubjectResult(), RefreshResult.ApiError
 
     @Immutable

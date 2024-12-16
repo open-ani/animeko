@@ -15,9 +15,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.shareIn
+import me.him188.ani.utils.coroutines.flows.shareTransparentlyIn
 import me.him188.ani.utils.logging.thisLogger
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.cancellation.CancellationException
@@ -36,15 +34,10 @@ abstract class Repository(
 
     private val sharingScope = CoroutineScope(defaultDispatcher)
 
-    protected fun <T> Flow<T>.cachedWithTransparentException() = this
-        .map { Result.success(it) }
-        .catch { Result.failure<T>(it) } // 封装异常以传递给下游
-        .shareIn(
-            sharingScope, started = SharingStarted.WhileSubscribed(), replay = 1,
-        ) // WhileSubscribed 使用调用方的生命周期. 停止 collect 时也会停止查询. SharedFlow 同时会相当于一个 mutex.
-        .map {
-            it.getOrThrow() // 透明异常. 上游的异常传递给下游
-        }
+    protected fun <T> Flow<T>.cachedWithTransparentException(): Flow<T> {
+        // WhileSubscribed 使用调用方的生命周期. 停止 collect 时也会停止查询. SharedFlow 同时会相当于一个 mutex.
+        return shareTransparentlyIn(sharingScope, started = SharingStarted.WhileSubscribed(), replay = 1)
+    }
 
     companion object {
         val defaultPagingConfig = PagingConfig(

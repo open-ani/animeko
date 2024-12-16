@@ -17,9 +17,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import me.him188.ani.app.data.models.ApiFailure
-import me.him188.ani.app.data.models.ApiResponse
 import me.him188.ani.app.data.models.fold
-import me.him188.ani.app.data.models.map
 import me.him188.ani.app.data.models.runApiRequest
 import me.him188.ani.app.data.repository.media.SelectorMediaSourceEpisodeCacheRepository
 import me.him188.ani.app.domain.mediasource.codec.DefaultMediaSourceCodec
@@ -154,28 +152,26 @@ class SelectorMediaSource(
         searchConfig: SelectorSearchConfig,
         query: SelectorSearchQuery,
         mediaSourceId: String,
-    ): ApiResponse<List<DefaultMedia>> = withContext(Dispatchers.Default) {
+    ): List<DefaultMedia> = withContext(Dispatchers.Default) {
         val cache = repository.getCache(mediaSourceId, query.subjectName)
         if (cache.isNotEmpty()) {
-            return@withContext ApiResponse.success(
-                cache.flatMap { webSearchInfo ->
-                    selectMedia(
-                        webSearchInfo.webEpisodeInfos.asSequence(),
-                        searchConfig,
-                        query,
-                        mediaSourceId,
-                        subjectName = webSearchInfo.webSubjectInfo.name,
-                    ).filteredList
-                },
-            )
+            return@withContext cache.flatMap { webSearchInfo ->
+                selectMedia(
+                    webSearchInfo.webEpisodeInfos.asSequence(),
+                    searchConfig,
+                    query,
+                    mediaSourceId,
+                    subjectName = webSearchInfo.webSubjectInfo.name,
+                ).filteredList
+            }
         }
         searchSubjects(
             searchConfig.searchUrl,
             subjectName = query.subjectName,
             useOnlyFirstWord = searchConfig.searchUseOnlyFirstWord,
             removeSpecial = searchConfig.searchRemoveSpecial,
-        ).map { (_, document) ->
-            document ?: return@map emptyList()
+        ).let { (_, document) ->
+            document ?: return@let emptyList()
 
             buildList {
                 val subjects = selectSubjects(document, searchConfig)
@@ -190,7 +186,7 @@ class SelectorMediaSource(
                     }
 
                 for (subjectInfo in subjects) {
-                    val episodeDocument = doHttpGet(subjectInfo.fullUrl).getOrNull() ?: continue
+                    val episodeDocument = kotlin.runCatching { doHttpGet(subjectInfo.fullUrl) }.getOrNull() ?: continue
                     val episodes =
                         selectEpisodes(episodeDocument, subjectInfo.fullUrl, searchConfig)?.episodes ?: continue
                     repository.addCache(mediaSourceId, query.subjectName, subjectInfo, episodes)
@@ -222,7 +218,7 @@ class SelectorMediaSource(
                             episodeName = query.episodeName,
                         ),
                         mediaSourceId,
-                    ).getOrThrow().asFlow()
+                    ).asFlow()
                 }.map {
                     MediaMatch(it, MatchKind.FUZZY)
                 }

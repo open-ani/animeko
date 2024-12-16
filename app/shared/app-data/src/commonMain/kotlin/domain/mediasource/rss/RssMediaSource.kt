@@ -145,7 +145,6 @@ class RssMediaSource(
             if (!usePaging && page != 0) return@PageBasedPagedSource null
 
             val result = engine.search(searchConfig, query, page, mediaSourceId)
-                .getOrThrow()
 
             // 404 Not Found
             val channel = result.channel ?: return@PageBasedPagedSource null

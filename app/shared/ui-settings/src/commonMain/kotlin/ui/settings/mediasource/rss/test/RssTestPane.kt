@@ -28,6 +28,7 @@ import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -53,6 +54,7 @@ fun RssTestPane(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(0.dp),
 ) {
+    val searchResult by state.searcher.searchResultFlow.collectAsStateWithLifecycle()
     Column(
         modifier
             .padding(contentPadding),
@@ -71,7 +73,7 @@ fun RssTestPane(
             RefreshIndicatedHeadlineRow(
                 headline = { Text("查询结果") },
                 onRefresh = { state.searcher.restartCurrentSearch() },
-                result = state.searcher.searchResult,
+                result = searchResult,
                 Modifier.padding(top = 20.dp),
             )
 
@@ -115,7 +117,7 @@ fun RssTestPane(
             }
         }
 
-        Crossfade(state.searcher.searchResult, Modifier.padding(top = 20.dp)) { result ->
+        Crossfade(searchResult, Modifier.padding(top = 20.dp)) { result ->
 
             HorizontalPager(
                 pagerState,
