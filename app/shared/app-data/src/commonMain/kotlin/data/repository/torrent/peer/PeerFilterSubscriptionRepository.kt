@@ -25,6 +25,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.io.decodeFromSource
+import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.domain.torrent.peer.PeerFilterRule
 import me.him188.ani.app.domain.torrent.peer.PeerFilterSubscription
 import me.him188.ani.utils.coroutines.IO_
@@ -39,7 +40,6 @@ import me.him188.ani.utils.io.writeText
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
-import kotlin.coroutines.cancellation.CancellationException
 
 class PeerFilterSubscriptionRepository(
     private val dataStore: DataStore<PeerFilterSubscriptionsSaveData>,
@@ -112,7 +112,9 @@ class PeerFilterSubscriptionRepository(
         } catch (e: Exception) {
             withContext(Dispatchers.IO_) { savedPath.delete() }
             sub.updateFailResult(e, false)
-            logger.error(e) { "Failed to resolve peer filter subscription $subscriptionId, deleting file" }
+            logger.error(RepositoryException.wrapOrThrowCancellation(e)) {
+                "Failed to resolve peer filter subscription $subscriptionId, deleting file"
+            }
         }
     }
 
@@ -141,8 +143,8 @@ class PeerFilterSubscriptionRepository(
             }
         } catch (e: Exception) {
             sub.updateFailResult(e, true)
-            if (e !is CancellationException) {
-                logger.error(e) { "Failed to update peer filter subscription $subscriptionId" }
+            logger.error(RepositoryException.wrapOrThrowCancellation(e)) {
+                "Failed to update peer filter subscription $subscriptionId"
             }
         }
     }
