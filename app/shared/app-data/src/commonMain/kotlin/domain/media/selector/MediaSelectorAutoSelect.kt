@@ -18,7 +18,7 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.flow.transformWhile
 import kotlinx.coroutines.launch
@@ -99,8 +99,8 @@ value class MediaSelectorAutoSelect(
                 fastSources
                     .map { source ->
                         source.state
-                            .onEach {
-                                println("source: ${source.mediaSourceId}, state: $it")
+                            .onStart {
+                                emit(MediaSourceFetchState.Idle) // 保证至少 emit 一个值
                             }
                             .transformWhile {
                                 emit(it)
