@@ -104,6 +104,10 @@ open class TestMediaSelector(
         throw UnsupportedOperationException()
     }
 
+    override suspend fun trySelectFromMediaSources(mediaSourceOrder: List<String>): Media? {
+        throw UnsupportedOperationException()
+    }
+
     override suspend fun trySelectCached(): Media? {
         throw UnsupportedOperationException()
     }

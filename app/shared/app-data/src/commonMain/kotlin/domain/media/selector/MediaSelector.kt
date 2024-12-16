@@ -94,6 +94,15 @@ interface MediaSelector {
     suspend fun trySelectDefault(): Media?
 
     /**
+     * 根据提供的顺序 [mediaSourceOrder], 尝试选择 WEB 类型的数据源.
+     *
+     * 这会忽略一切用户偏好设置, 只根据数据源顺序选择. 将会选择在 list 中 index 越小的数据源.
+     *
+     * @return 成功选择的 [Media] , 若没有满足需求的 [Media] 或用户已经手动选择了一个则返回 `null`
+     */
+    suspend fun trySelectFromMediaSources(mediaSourceOrder: List<String>): Media?
+
+    /**
      * 尝试选择缓存 ([MediaSourceKind.LocalCache]) 作为默认选择, 如果没有缓存则不做任何事情
      * @return 成功选择的缓存, 若没有缓存或用户已经手动选择了一个则返回 `null`
      * @see autoSelect
@@ -546,6 +555,18 @@ class DefaultMediaSelector(
         selectImpl(candidates)?.let { return it }
 
         return selectAny(candidates)
+    }
+
+    override suspend fun trySelectFromMediaSources(mediaSourceOrder: List<String>): Media? {
+        if (mediaSourceOrder.isEmpty()) return null
+
+        val candidates = filteredCandidates.first()
+        if (candidates.isEmpty()) return null
+
+        val selected = mediaSourceOrder.firstNotNullOfOrNull { mediaSourceId ->
+            candidates.fastFirstOrNull { it.mediaSourceId == mediaSourceId }
+        }
+        return selected?.let { selectDefault(it) }
     }
 
     override suspend fun trySelectCached(): Media? {

@@ -9,14 +9,22 @@
 
 package me.him188.ani.app.domain.media.selector
 
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.takeWhile
-import me.him188.ani.app.domain.media.fetch.awaitCompletion
+import kotlinx.coroutines.flow.transformWhile
+import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
+import me.him188.ani.app.domain.media.fetch.MediaSourceFetchState
+import me.him188.ani.app.domain.media.fetch.awaitCompletion
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import kotlin.concurrent.Volatile
@@ -54,6 +62,84 @@ value class MediaSelectorAutoSelect(
             return selected
         }
         return null
+    }
+
+    /**
+     * 按数据源排序, 当高优先级的数据源查询完成后立即自动选择它.
+     *
+     * 返回成功选择的 [Media] 对象. 当用户已经手动选择过一个别的 [Media], 或者没有可选的 [Media] 时返回 `null`.
+     *
+     * @param fastMediaSourceIdOrder 所有允许这样快速选择的数据源列表. index 越小, 优先级越高.
+     */ // #1323
+    suspend fun fastSelectSources(
+        mediaFetchSession: MediaFetchSession,
+        fastMediaSourceIdOrder: List<String>,
+        preferKind: Flow<MediaSourceKind?>,
+    ): Media? {
+        if (preferKind.first() != MediaSourceKind.WEB) {
+            return null // 只处理 WEB 类型
+        }
+        if (fastMediaSourceIdOrder.isEmpty()) {
+            return null
+        }
+
+        return coroutineScope {
+            // 开一个协程开始查询, 因为查询是 lazy 的, 不查询下面的 state 就不会更新
+            val job =
+                launch(start = CoroutineStart.UNDISPATCHED) { mediaFetchSession.cumulativeResults.collect() }
+
+            val fastSources = mediaFetchSession.mediaSourceResults
+                .filter { it.mediaSourceId in fastMediaSourceIdOrder }
+                .sortedBy { fastMediaSourceIdOrder.indexOf(it.mediaSourceId) }
+
+            var index = 0 // invariant: fastSources 里序号 index 之前的数据源都已经查询完成. index 是第一个未完成的数据源.
+
+            combine(
+                // 每个 source 的 state
+                fastSources
+                    .map { source ->
+                        source.state
+                            .onEach {
+                                println("source: ${source.mediaSourceId}, state: $it")
+                            }
+                            .transformWhile {
+                                emit(it)
+                                // 完成后就不再 collect, 让这个 flow 能 complete
+                                it !is MediaSourceFetchState.Completed
+                                        && it !is MediaSourceFetchState.Disabled
+                            }
+                    },
+            ) { states ->
+                // 注意, 此时可能有多个 source 同时完成 (状态同时变成 Completed). 所以需要遍历检验所有在此刻完成的 sources.
+
+                // 我们只需要从 index 开始按顺序考虑所有已经完成了的 source, 遇到第一个未完成的就停止. 
+                // 对于那些位于这个未完成的 source 之后的 source, 即使它们完成了, 我们也不应该选择它们, 所以不用考虑.
+                while (index < states.size) {
+                    when (states[index]) {
+                        is MediaSourceFetchState.Completed,
+                        is MediaSourceFetchState.Disabled -> {
+                            val selected: Media? = mediaSelector.trySelectFromMediaSources(
+                                fastSources.subList(0, index + 1).map { it.mediaSourceId },
+                            )
+
+                            if (selected != null) {
+                                // selected one
+                                return@combine selected // 'returns' to `firstOrNull`
+                            }
+                            index++
+                            continue // 继续判断下一个 source 是否完成了
+                        }
+
+                        else -> {
+                            break // 找到了一个未完成的 source, 不再继续判断
+                        }
+                    }
+                }
+                null
+            }.filterNotNull()
+                .firstOrNull()
+                .also { job.cancel() }
+        }
     }
 
     /**

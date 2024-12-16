@@ -246,7 +246,7 @@ private class EpisodeViewModelImpl(
     private val bangumiCommentRepository: BangumiCommentRepository by inject()
     private val episodePlayHistoryRepository: EpisodePlayHistoryRepository by inject()
     private val selectorMediaSourceEpisodeCacheRepository: SelectorMediaSourceEpisodeCacheRepository by inject()
-    
+
     private val subjectCollection = subjectCollectionRepository.subjectCollectionFlow(subjectId)
     private val subjectInfo = subjectCollection.map { it.subjectInfo }
     private val episodeCollection = episodeId.transformLatest { episodeId ->
@@ -320,6 +320,16 @@ private class EpisodeViewModelImpl(
                             it,
                             settingsRepository.mediaSelectorSettings.flow.map { it.preferKind },
                         )
+                    }
+                }
+                launchInBackground {
+                    mediaFetchSession.collectLatest { session ->
+                        val result = fastSelectSources(
+                            session,
+                            mediaSourceManager.allInstances.first().map { it.mediaSourceId },
+                            preferKind = settingsRepository.mediaSelectorSettings.flow.map { it.preferKind },
+                        )
+                        logger.info { "fastSelectSources result: $result" }
                     }
                 }
                 launchInBackground {
