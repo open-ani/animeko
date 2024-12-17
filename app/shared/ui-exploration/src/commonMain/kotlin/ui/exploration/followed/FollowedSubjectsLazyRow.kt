@@ -29,7 +29,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Shape
@@ -42,6 +45,7 @@ import androidx.paging.compose.itemContentType
 import androidx.paging.compose.itemKey
 import androidx.window.core.layout.WindowHeightSizeClass
 import androidx.window.core.layout.WindowWidthSizeClass
+import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.models.subject.FollowedSubjectInfo
 import me.him188.ani.app.data.models.subject.hasNewEpisodeToPlay
 import me.him188.ani.app.data.models.subject.subjectInfo
@@ -54,7 +58,6 @@ import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.minimumHairlineSize
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.foundation.widgets.NsfwMask
-import me.him188.ani.app.ui.foundation.widgets.NsfwMaskState
 import me.him188.ani.app.ui.search.LoadErrorCard
 import me.him188.ani.app.ui.search.LoadErrorCardLayout
 import me.him188.ani.app.ui.search.LoadErrorCardRole
@@ -68,7 +71,6 @@ import me.him188.ani.app.ui.subject.AiringLabelState
 fun FollowedSubjectsLazyRow(
     items: LazyPagingItems<FollowedSubjectInfo>, // null means placeholder
 //    items: List<FollowedSubjectInfo?>, // null means placeholder
-    blurred: Boolean,
     onClick: (FollowedSubjectInfo) -> Unit,
     onPlay: (FollowedSubjectInfo) -> Unit,
     modifier: Modifier = Modifier,
@@ -135,8 +137,17 @@ fun FollowedSubjectsLazyRow(
             contentType = items.itemContentType { it.subjectProgressInfo.hasNewEpisodeToPlay },
         ) { index ->
             val item = items[index]
-            val nsfwMaskState = remember { NsfwMaskState(item?.subjectInfo?.nsfw ?: false, blurred) }
-            NsfwMask(nsfwMaskState, shape = layoutParameters.shape) { 
+            var subjectNsfwType: NsfwMode by rememberSaveable(item) {
+                mutableStateOf(
+                    item?.nsfwMode ?: NsfwMode.DISPLAY, // null 表示 placeholder, 不应该 blur
+                )
+            }
+
+            NsfwMask(
+                subjectNsfwType,
+                onTemporarilyDisplay = { subjectNsfwType = NsfwMode.DISPLAY },
+                shape = layoutParameters.shape,
+            ) {
                 FollowedSubjectItem(
                     item,
                     onClick = { item?.let { onClick(it) } },

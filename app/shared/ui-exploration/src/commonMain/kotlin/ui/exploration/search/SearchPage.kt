@@ -35,8 +35,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
@@ -69,7 +71,6 @@ import me.him188.ani.app.ui.foundation.layout.paneVerticalPadding
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.widgets.NsfwMask
-import me.him188.ani.app.ui.foundation.widgets.NsfwMaskState
 import me.him188.ani.app.ui.foundation.widgets.TopAppBarGoBackButton
 import me.him188.ani.app.ui.search.LoadErrorCard
 import me.him188.ani.app.ui.search.SearchDefaults
@@ -128,8 +129,6 @@ fun SearchPage(
                         }
                     }
                 }, // collect only once
-                state = state.gridState,
-                blurred = state.nsfwModeState.value == NsfwMode.BLUR,
             )
         },
         detailContent = {
@@ -182,7 +181,6 @@ internal fun SearchPageResultColumn(
     selectedItemIndex: () -> Int,
     onSelect: (index: Int) -> Unit,
     onPlay: (info: SubjectPreviewItemInfo) -> Unit,
-    blurred: Boolean,
     modifier: Modifier = Modifier,
     state: LazyStaggeredGridState = rememberLazyStaggeredGridState()
 ) {
@@ -243,8 +241,14 @@ internal fun SearchPageResultColumn(
                     }
                 }
 
-                val nsfwMaskState = remember { NsfwMaskState(info.nsfw, blurred) }
-                NsfwMask(state = nsfwMaskState, shape = nsfwBlurShape) {
+                var nsfwMaskState: NsfwMode by rememberSaveable(info) {
+                    mutableStateOf(info.nsfwMode)
+                }
+                NsfwMask(
+                    mode = nsfwMaskState,
+                    onTemporarilyDisplay = { nsfwMaskState = NsfwMode.DISPLAY },
+                    shape = nsfwBlurShape,
+                ) {
                     SubjectPreviewItem(
                         selected = index == selectedItemIndex(),
                         onClick = { onSelect(index) },

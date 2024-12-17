@@ -39,7 +39,6 @@ import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItemsWithLifecycle
 import kotlinx.coroutines.flow.Flow
 import me.him188.ani.app.data.models.UserInfo
-import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.models.subject.FollowedSubjectInfo
 import me.him188.ani.app.data.models.subject.subjectInfo
 import me.him188.ani.app.data.models.subject.toNavPlaceholder
@@ -64,7 +63,6 @@ import me.him188.ani.app.ui.search.isLoadingFirstPageOrRefreshing
 class ExplorationPageState(
     val authState: AuthState,
     selfInfoState: State<UserInfo?>,
-    val nsfwModeState: State<NsfwMode>,
     val trendingSubjectInfoPager: LazyPagingItems<TrendingSubjectInfo>,
     val followedSubjectsPager: Flow<PagingData<FollowedSubjectInfo>>,
 ) {
@@ -161,7 +159,6 @@ fun ExplorationPage(
             val followedSubjectsPager = state.followedSubjectsPager.collectAsLazyPagingItemsWithLifecycle()
             FollowedSubjectsLazyRow(
                 followedSubjectsPager,
-                state.nsfwModeState.value == NsfwMode.BLUR,
                 onClick = {
                     navigator.navigateSubjectDetails(
                         subjectId = it.subjectInfo.subjectId,

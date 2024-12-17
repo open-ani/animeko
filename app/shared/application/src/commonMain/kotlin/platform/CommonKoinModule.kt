@@ -175,6 +175,7 @@ fun KoinApplication.getCommonKoinModule(getContext: () -> Context, coroutineScop
             animeScheduleRepository = get(),
             bangumiEpisodeService = get(),
             episodeCollectionDao = database.episodeCollection(),
+            nsfwModeSettingsFlow = settingsRepository.uiSettings.flow.map { it.searchSettings.nsfwMode },
             enableAllEpisodeTypes = settingsRepository.debugSettings.flow.map { it.showAllEpisodes },
         )
     }
@@ -183,6 +184,7 @@ fun KoinApplication.getCommonKoinModule(getContext: () -> Context, coroutineScop
             subjectCollectionRepository = get(),
             animeScheduleRepository = get(),
             episodeCollectionRepository = get(),
+            settingsRepository = get(),
         )
     }
     single<SubjectSearchRepository> {

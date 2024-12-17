@@ -12,14 +12,10 @@ package me.him188.ani.app.ui.main
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.mutableStateOf
 import androidx.paging.cachedIn
-import androidx.paging.filter
 import androidx.paging.map
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
-import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.subject.SubjectSearchHistoryRepository
@@ -61,31 +57,27 @@ class SearchViewModel : AbstractViewModel(), KoinComponent {
         queryState = queryState,
         searchState = PagingSearchState(
             createPager = {
-                combine(
-                    nsfwSettingFlow,
-                    subjectSearchRepository.searchSubjects(
-                        SubjectSearchQuery(keyword = queryState.value),
-                        useNewApi = {
-                            settingsRepository.uiSettings.flow.map { it.searchSettings.enableNewSearchSubjectApi }
-                                .first()
-                        },
-                    ).map { data ->
-                        data.map {
-                            SubjectPreviewItemInfo.compute(
-                                it.subjectInfo,
-                                it.mainEpisodeCount,
-                                it.lightSubjectRelations.lightRelatedPersonInfoList,
-                                it.lightSubjectRelations.lightRelatedCharacterInfoList,
-                            )
-                        }
-                    }.cachedIn(backgroundScope),
-                ) { nsfwMode, subjects ->
-                    if (nsfwMode != NsfwMode.HIDE) return@combine subjects
-                    subjects.filter { !it.nsfw }
-                }.flowOn(Dispatchers.Default)
+                // 搜索总是会包含 NSFW
+                subjectSearchRepository.searchSubjects(
+                    SubjectSearchQuery(keyword = queryState.value),
+                    useNewApi = {
+                        settingsRepository.uiSettings.flow.map { it.searchSettings.enableNewSearchSubjectApi }.first()
+                    },
+                ).combine(nsfwSettingFlow) { data, nsfwMode ->
+                    // 当 settings 变更时, 会重新计算所有的 SubjectPreviewItemInfo 以更新其显示状态, 但不会重新搜索.
+                    data.map { subject ->
+                        SubjectPreviewItemInfo.compute(
+                            subject.subjectInfo,
+                            subject.mainEpisodeCount,
+                            nsfwMode,
+                            subject.lightSubjectRelations.lightRelatedPersonInfoList,
+                            subject.lightSubjectRelations.lightRelatedCharacterInfoList,
+                        )
+                    }
+                    // 我们必须保证 data 的数量和 map 后的数量一致, 否则会导致 Pager 搜索下一页时使用的 offset 有误.
+                }.cachedIn(backgroundScope)
             },
         ),
-        nsfwModeState = nsfwSettingFlow.produceState(NsfwMode.DISPLAY),
         backgroundScope = backgroundScope,
         onStartSearch = { query ->
             subjectDetailsStateLoader.clear()

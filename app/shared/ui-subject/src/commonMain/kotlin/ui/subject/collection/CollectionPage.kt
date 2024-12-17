@@ -94,7 +94,6 @@ import me.him188.ani.app.ui.foundation.session.SessionTipsArea
 import me.him188.ani.app.ui.foundation.session.SessionTipsIcon
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.widgets.NsfwMask
-import me.him188.ani.app.ui.foundation.widgets.NsfwMaskState
 import me.him188.ani.app.ui.foundation.widgets.PullToRefreshBox
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeState
 import me.him188.ani.app.ui.subject.collection.progress.EpisodeListStateFactory
@@ -127,7 +126,6 @@ class UserCollectionsState(
     val episodeListStateFactory: EpisodeListStateFactory,
     val subjectProgressStateFactory: SubjectProgressStateFactory,
     val createEditableSubjectCollectionTypeState: (subjectCollection: SubjectCollectionInfo) -> EditableSubjectCollectionTypeState,
-    val nsfwModeState: State<NsfwMode>,
     defaultQuery: CollectionsFilterQuery = CollectionsFilterQuery(
         type = UnifiedCollectionType.DOING,
     ),
@@ -252,13 +250,12 @@ fun CollectionPage(
                     SubjectCollectionsColumn(
                         items,
                         item = { collection ->
-                            val nsfwModeState = remember {
-                                NsfwMaskState(
-                                    collection.subjectInfo.nsfw,
-                                    state.nsfwModeState.value == NsfwMode.BLUR,
-                                )
-                            }
-                            NsfwMask(nsfwModeState, shape = SubjectCollectionItemDefaults.shape) { 
+                            var nsfwModeState: NsfwMode by rememberSaveable { mutableStateOf(collection.nsfwMode) }
+                            NsfwMask(
+                                nsfwModeState,
+                                onTemporarilyDisplay = { nsfwModeState = NsfwMode.DISPLAY },
+                                shape = SubjectCollectionItemDefaults.shape,
+                            ) {
                                 SubjectCollectionItem(
                                     collection,
                                     state.episodeListStateFactory,
