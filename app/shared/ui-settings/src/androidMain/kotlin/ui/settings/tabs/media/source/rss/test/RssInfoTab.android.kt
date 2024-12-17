@@ -22,8 +22,8 @@ import me.him188.ani.utils.platform.annotations.TestOnly
 @PreviewTabletLightDark
 fun PreviewRssInfoTab() {
     RssTestPaneDefaults.RssInfoTab(
-        items = TestRssItemPresentations,
+        items = TestRssItemInfos,
         onViewDetails = { },
-        selectedItemProvider = { TestRssItemPresentations[1] },
+        selectedItemProvider = { TestRssItemInfos[1] },
     )
 }

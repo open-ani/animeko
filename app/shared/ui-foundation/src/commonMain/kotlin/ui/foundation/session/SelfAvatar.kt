@@ -35,6 +35,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.UserInfo
@@ -132,11 +133,12 @@ private fun SelfAvatarMenus(
 
     val logoutTasker = rememberUiMonoTasker()
     var showLogoutConfirmation by rememberSaveable { mutableStateOf(false) }
+    val running by logoutTasker.isRunning.collectAsStateWithLifecycle()
     DropdownMenuItem(
         text = { Text("退出登录", color = MaterialTheme.colorScheme.error) },
         leadingIcon = { Icon(Icons.AutoMirrored.Rounded.Logout, null) },
         onClick = { showLogoutConfirmation = true },
-        enabled = !logoutTasker.isRunning,
+        enabled = !running,
     )
     if (showLogoutConfirmation) {
         AlertDialog(

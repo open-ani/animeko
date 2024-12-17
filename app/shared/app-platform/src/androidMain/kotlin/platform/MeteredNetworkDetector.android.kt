@@ -58,6 +58,7 @@ private class AndroidMeteredNetworkDetector(
         //     .build()
         // connectivityManager.registerNetworkCallback(networkRequest, networkCallback)
 
+        @Suppress("DEPRECATION")
         context.registerReceiver(this, IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION))
         // Emit the first value
         flow.value = getCurrentIsMetered()

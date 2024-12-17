@@ -10,9 +10,10 @@
 package me.him188.ani.app.ui.settings.mediasource.rss.test
 
 import androidx.compose.runtime.Immutable
-import me.him188.ani.app.data.models.ApiFailure
+import me.him188.ani.app.data.repository.RepositoryException
+import me.him188.ani.app.domain.mediasource.test.RefreshResult
+import me.him188.ani.app.domain.mediasource.test.rss.RssItemInfo
 import me.him188.ani.app.domain.rss.RssChannel
-import me.him188.ani.app.ui.settings.mediasource.RefreshResult
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.utils.xml.Element
 
@@ -25,7 +26,7 @@ sealed class RssTestResult : RefreshResult { // for ui
     data class Success(
         val encodedUrl: String,
         val channel: RssChannel,
-        val rssItems: List<RssItemPresentation>,
+        val rssItems: List<RssItemInfo>,
         val mediaList: List<Media>,
         val origin: Element?,
     ) : RssTestResult(), RefreshResult.Success {
@@ -36,7 +37,7 @@ sealed class RssTestResult : RefreshResult { // for ui
 
     @Immutable
     data class ApiError(
-        override val reason: ApiFailure,
+        override val exception: RepositoryException,
     ) : Failed(), RefreshResult.ApiError
 
     @Immutable

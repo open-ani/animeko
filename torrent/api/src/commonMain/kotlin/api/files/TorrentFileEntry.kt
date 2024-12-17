@@ -34,7 +34,7 @@ import me.him188.ani.utils.io.isRegularFile
 import me.him188.ani.utils.io.length
 import me.him188.ani.utils.io.resolve
 import me.him188.ani.utils.logging.info
-import me.him188.ani.utils.logging.logger
+import me.him188.ani.utils.logging.thisLogger
 import kotlin.concurrent.Volatile
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
@@ -155,7 +155,7 @@ abstract class AbstractTorrentFileEntry(
     parentCoroutineContext: CoroutineContext,
 ) : TorrentFileEntry {
     protected val scope = CoroutineScope(parentCoroutineContext + SupervisorJob(parentCoroutineContext[Job]))
-    protected val logger = logger(this::class)
+    protected val logger = thisLogger()
 
     abstract inner class AbstractTorrentFileHandle : TorrentFileHandle, SynchronizedObject() {
         @Volatile

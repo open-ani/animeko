@@ -19,10 +19,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.State
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -30,47 +27,103 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import me.him188.ani.app.tools.MonoTasker
+import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.platform.annotations.TestOnly
 
 @Stable
 class EditableSubjectCollectionTypeState(
-    selfCollectionType: State<UnifiedCollectionType>,
+    selfCollectionTypeFlow: Flow<UnifiedCollectionType>,
     private val hasAnyUnwatched: suspend () -> Boolean,
     private val onSetSelfCollectionType: suspend (UnifiedCollectionType) -> Unit,
     private val onSetAllEpisodesWatched: suspend () -> Unit,
     private val backgroundScope: CoroutineScope,
 ) {
-    val selfCollectionType by selfCollectionType
-    val isCollected by derivedStateOf {
-        this.selfCollectionType != UnifiedCollectionType.NOT_COLLECTED
+    data class Presentation(
+        val selfCollectionType: UnifiedCollectionType,
+        val isSetSelfCollectionTypeWorking: Boolean,
+        val isSetAllEpisodesWatchedWorking: Boolean,
+        val showSetAllEpisodesDoneDialog: Boolean,
+        val isPlaceholder: Boolean = false,
+    ) {
+        companion object {
+            val Placeholder = Presentation(
+                UnifiedCollectionType.WISH,
+                false,
+                false,
+                false,
+                isPlaceholder = true,
+            )
+        }
     }
 
-    var showSetAllEpisodesDoneDialog by mutableStateOf(false)
+    /**
+     * 是否显示 "将所有剧集标记为看过" 对话框
+     */
+    private val showSetAllEpisodesDoneDialogFlow = MutableStateFlow(false)
+
+    /**
+     * 是否显示下拉菜单, 选择需要修改为的状态
+     */
     var showDropdown by mutableStateOf(false)
 
+    /**
+     * [setSelfCollectionType] 的后台任务
+     */
     private val setSelfCollectionTypeTasker = MonoTasker(backgroundScope)
-    val isSetSelfCollectionTypeWorking get() = setSelfCollectionTypeTasker.isRunning
+
+    /**
+     * [setAllEpisodesWatched] 的后台任务
+     */
+    private val setAllEpisodesWatchedTasker = MonoTasker(backgroundScope)
+
+    /**
+     * 待 UI 显示的数据
+     */
+    val presentationFlow: StateFlow<Presentation> =
+        combine(
+            selfCollectionTypeFlow,
+            setSelfCollectionTypeTasker.isRunning,
+            showSetAllEpisodesDoneDialogFlow,
+            setAllEpisodesWatchedTasker.isRunning,
+        ) { type, setSelfCollectionTypeTaskerWorking, showSetAllEpisodesDoneDialog, setAllEpisodesWatchedWorking ->
+            Presentation(
+                selfCollectionType = type,
+                isSetSelfCollectionTypeWorking = setSelfCollectionTypeTaskerWorking,
+                isSetAllEpisodesWatchedWorking = setAllEpisodesWatchedWorking,
+                showSetAllEpisodesDoneDialog = showSetAllEpisodesDoneDialog,
+            )
+        }.stateIn(
+            backgroundScope,
+            SharingStarted.WhileSubscribed(5000),
+            initialValue = Presentation.Placeholder,
+        )
 
     fun setSelfCollectionType(new: UnifiedCollectionType) {
         setSelfCollectionTypeTasker.launch {
             onSetSelfCollectionType(new)
             if (new == UnifiedCollectionType.DONE && hasAnyUnwatched()) {
-                withContext(Dispatchers.Main) { showSetAllEpisodesDoneDialog = true }
+                showSetAllEpisodesDoneDialogFlow.value = true
             }
         }
     }
 
-    private val setAllEpisodesWatchedTasker = MonoTasker(backgroundScope)
-    val isSetAllEpisodesWatchedWorking get() = setAllEpisodesWatchedTasker.isRunning
-
     fun setAllEpisodesWatched() {
         backgroundScope.launch { onSetAllEpisodesWatched() }
+    }
+
+    fun dismissSetAllEpisodesDoneDialog() {
+        showSetAllEpisodesDoneDialogFlow.value = false
     }
 }
 
@@ -86,13 +139,16 @@ fun EditableSubjectCollectionTypeButton(
     // 同时设置所有剧集为看过
     EditableSubjectCollectionTypeDialogsHost(state)
 
+    val presentation by state.presentationFlow
+        .collectAsStateWithLifecycle()
+
     SubjectCollectionTypeButton(
-        state.selfCollectionType,
+        presentation.selfCollectionType,
         onEdit = {
             state.setSelfCollectionType(it)
         },
-        enabled = !state.isSetSelfCollectionTypeWorking,
-        modifier = modifier,
+        enabled = !presentation.isSetSelfCollectionTypeWorking,
+        modifier = modifier.placeholder(presentation.isPlaceholder),
     )
 }
 
@@ -108,13 +164,14 @@ fun EditableSubjectCollectionTypeDialogsHost(
     state: EditableSubjectCollectionTypeState,
 ) {
     // 同时设置所有剧集为看过
-    if (state.showSetAllEpisodesDoneDialog) {
+    val presentation by state.presentationFlow.collectAsStateWithLifecycle()
+    if (presentation.showSetAllEpisodesDoneDialog) {
         SetAllEpisodeDoneDialog(
-            onDismissRequest = { state.showSetAllEpisodesDoneDialog = false },
-            isWorking = state.isSetAllEpisodesWatchedWorking,
+            onDismissRequest = { state.dismissSetAllEpisodesDoneDialog() },
+            isWorking = presentation.isSetAllEpisodesWatchedWorking,
             onConfirm = {
                 state.setAllEpisodesWatched()
-                state.showSetAllEpisodesDoneDialog = false
+                state.dismissSetAllEpisodesDoneDialog()
             },
         )
     }
@@ -148,7 +205,7 @@ private fun SetAllEpisodeDoneDialog(
 fun rememberTestEditableSubjectCollectionTypeState(type: UnifiedCollectionType = UnifiedCollectionType.WISH): EditableSubjectCollectionTypeState {
     val backgroundScope = rememberCoroutineScope()
     val selfCollectionType = remember {
-        mutableStateOf(type)
+        MutableStateFlow(type)
     }
     return remember {
         createTestEditableSubjectCollectionTypeState(selfCollectionType, backgroundScope)
@@ -157,7 +214,7 @@ fun rememberTestEditableSubjectCollectionTypeState(type: UnifiedCollectionType =
 
 @TestOnly
 fun createTestEditableSubjectCollectionTypeState(
-    selfCollectionType: MutableState<UnifiedCollectionType>,
+    selfCollectionType: MutableStateFlow<UnifiedCollectionType>,
     backgroundScope: CoroutineScope
 ) = EditableSubjectCollectionTypeState(
     selfCollectionType,

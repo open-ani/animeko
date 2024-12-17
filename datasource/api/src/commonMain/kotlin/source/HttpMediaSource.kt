@@ -23,7 +23,7 @@ import io.ktor.serialization.ContentConverter
 import io.ktor.utils.io.core.Closeable
 import me.him188.ani.utils.ktor.createDefaultHttpClient
 import me.him188.ani.utils.ktor.registerLogging
-import me.him188.ani.utils.logging.logger
+import me.him188.ani.utils.logging.thisLogger
 
 fun Closeable.asAutoCloseable() = AutoCloseable { close() }
 
@@ -36,7 +36,7 @@ abstract class HttpMediaSource : MediaSource {
     /**
      * `public` because used by both [useHttpClient] and inheritors from other modules.
      */
-    val logger = logger(this::class)
+    val logger = thisLogger()
 
     fun addCloseable(closeable: AutoCloseable) {
         closeables.add(closeable)

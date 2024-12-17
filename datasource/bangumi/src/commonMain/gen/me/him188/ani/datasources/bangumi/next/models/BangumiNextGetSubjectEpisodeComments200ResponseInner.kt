@@ -50,7 +50,7 @@ data class BangumiNextGetSubjectEpisodeComments200ResponseInner(
 
     @SerialName(value = "state") @Required val state: kotlin.Int,
 
-    @SerialName(value = "user") @Required val user: BangumiNextGetSubjectEpisodeComments200ResponseInnerAllOfUser?,
+    @SerialName(value = "user") @Required val user: BangumiNextSlimUser,
 
     @SerialName(value = "replies") @Required val replies: kotlin.collections.List<BangumiNextBaseEpisodeComment>
 

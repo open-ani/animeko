@@ -167,7 +167,7 @@ fun SelectorEpisodePaneContent(
     Column(modifier) {
         Box(Modifier.height(4.dp), contentAlignment = Alignment.Center) {
             FastLinearProgressIndicator(
-                state.isSearchingInProgress,
+                state.isSearchingInProgress.collectAsStateWithLifecycle().value,
                 delayMillis = 0,
                 minimumDurationMillis = 300,
             )

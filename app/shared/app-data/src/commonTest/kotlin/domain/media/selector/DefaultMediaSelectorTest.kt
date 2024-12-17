@@ -14,8 +14,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.yield
-import me.him188.ani.app.data.models.preference.MediaSelectorSettings
 import me.him188.ani.app.data.models.preference.MediaPreference
+import me.him188.ani.app.data.models.preference.MediaSelectorSettings
 import me.him188.ani.datasources.api.DefaultMedia
 import me.him188.ani.datasources.api.MediaExtraFiles
 import me.him188.ani.datasources.api.Subtitle
@@ -590,6 +590,63 @@ class DefaultMediaSelectorTest : AbstractDefaultMediaSelectorTest() {
         )
         assertEquals(5, selector.filteredCandidates.first().size)
         assertEquals(target, selector.trySelectDefault())
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    // trySelectFromMediaSources
+    ///////////////////////////////////////////////////////////////////////////
+    /**
+     * 注意, [me.him188.ani.app.domain.media.selector.MediaSelector.trySelectFromMediaSources] 也在 [MediaSelectorFastSelectSourcesTest] 中测试.
+     */
+    @Suppress("unused")
+    private val _doc1 = Unit
+
+    @Test
+    fun `trySelectFromMediaSources order source count smaller than actual count`() = runTest {
+        val target: DefaultMedia
+        mediaSelectorContext.value = createMediaSelectorContextFromEmpty(false)
+        mediaSelectorSettings.value = MediaSelectorSettings.Default.copy()
+        savedUserPreference.value = MediaPreference.Empty
+        savedDefaultPreference.value = MediaPreference.Empty // 啥都不要, 就一定会 fallback 成选第一个
+        addMedia(
+            media(sourceId = "1", episodeRange = EpisodeRange.single("1")),
+            media(sourceId = "2", episodeRange = EpisodeRange.season(1)).also { target = it },
+            media(sourceId = "3", episodeRange = EpisodeRange.single("2")),
+            media(sourceId = "4", episodeRange = EpisodeRange.single("3")),
+            media(sourceId = "5", episodeRange = EpisodeRange.single("4")),
+        )
+        assertEquals(5, selector.filteredCandidates.first().size)
+        assertEquals(target, selector.trySelectFromMediaSources(listOf("2")))
+    }
+
+    @Test
+    fun `trySelectFromMediaSources order source count greater than actual count`() = runTest {
+        val target: DefaultMedia
+        mediaSelectorContext.value = createMediaSelectorContextFromEmpty(false)
+        mediaSelectorSettings.value = MediaSelectorSettings.Default.copy()
+        savedUserPreference.value = MediaPreference.Empty
+        savedDefaultPreference.value = MediaPreference.Empty // 啥都不要, 就一定会 fallback 成选第一个
+        addMedia(
+            media(sourceId = "0", episodeRange = EpisodeRange.single("1")),
+            media(sourceId = "2", episodeRange = EpisodeRange.season(1)).also { target = it },
+        )
+        assertEquals(2, selector.filteredCandidates.first().size)
+        assertEquals(target, selector.trySelectFromMediaSources(listOf("1", "2", "3")))
+    }
+
+    @Test
+    fun `trySelectFromMediaSources order source no intersection with actual count`() = runTest {
+        val target: DefaultMedia
+        mediaSelectorContext.value = createMediaSelectorContextFromEmpty(false)
+        mediaSelectorSettings.value = MediaSelectorSettings.Default.copy()
+        savedUserPreference.value = MediaPreference.Empty
+        savedDefaultPreference.value = MediaPreference.Empty // 啥都不要, 就一定会 fallback 成选第一个
+        addMedia(
+            media(sourceId = "0", episodeRange = EpisodeRange.single("1")),
+            media(sourceId = "4", episodeRange = EpisodeRange.season(1)).also { target = it },
+        )
+        assertEquals(2, selector.filteredCandidates.first().size)
+        assertEquals(null, selector.trySelectFromMediaSources(listOf("1", "2", "3")))
     }
 
     ///////////////////////////////////////////////////////////////////////////

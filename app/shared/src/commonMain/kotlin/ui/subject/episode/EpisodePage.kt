@@ -105,6 +105,7 @@ import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
 import me.him188.ani.app.ui.foundation.layout.compareTo
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBarPadding
+import me.him188.ani.app.ui.foundation.layout.isSystemInFullscreen
 import me.him188.ani.app.ui.foundation.layout.setRequestFullScreen
 import me.him188.ani.app.ui.foundation.layout.setSystemBarVisible
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
@@ -206,7 +207,9 @@ private fun EpisodeSceneContent(
             currentWindowAdaptiveInfo1().windowSizeClass.windowWidthSizeClass >= WindowWidthSizeClass.EXPANDED
         CompositionLocalProvider(LocalImageViewerHandler provides imageViewer) {
             when {
-                showExpandedUI -> EpisodeSceneTabletVeryWide(vm, Modifier.fillMaxSize(), windowInsets)
+                showExpandedUI || isSystemInFullscreen() ->
+                    EpisodeSceneTabletVeryWide(vm, Modifier.fillMaxSize(), windowInsets)
+
                 else -> EpisodeSceneContentPhone(vm, Modifier.fillMaxSize(), windowInsets)
             }
         }
@@ -508,10 +511,11 @@ private fun DetachedDanmakuEditorLayout(
 ) {
     Column(modifier.padding(all = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text("发送弹幕", style = MaterialTheme.typography.titleMedium)
+        val isSending = videoDanmakuState.isSending.collectAsStateWithLifecycle()
         DanmakuEditor(
             text = videoDanmakuState.danmakuEditorText,
             onTextChange = { videoDanmakuState.danmakuEditorText = it },
-            isSending = videoDanmakuState.isSending,
+            isSending = { isSending.value },
             placeholderText = remember { randomDanmakuPlaceholder() },
             onSend = onSend,
             Modifier.fillMaxWidth().focusRequester(focusRequester),

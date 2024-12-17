@@ -103,7 +103,7 @@ class AutoUpdateViewModel : AbstractViewModel(), KoinComponent {
 
     // 一小时内只会检查一次
     fun startAutomaticCheckLatestVersion() {
-        if (autoCheckTasker.isRunning) {
+        if (autoCheckTasker.isRunning.value) {
             return
         } else {
             if (currentTimeMillis() - lastCheckTime < 1000 * 60 * 60 * 1) {

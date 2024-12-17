@@ -25,13 +25,13 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
 import me.him188.ani.app.data.models.preference.ProxySettings
-import me.him188.ani.app.data.models.preference.TorrentPeerConfig
 import me.him188.ani.app.domain.torrent.IRemoteAniTorrentEngine
 import me.him188.ani.app.domain.torrent.TorrentEngine
 import me.him188.ani.app.domain.torrent.TorrentEngineType
 import me.him188.ani.app.domain.torrent.parcel.PAnitorrentConfig
 import me.him188.ani.app.domain.torrent.parcel.PProxySettings
-import me.him188.ani.app.domain.torrent.parcel.PTorrentPeerConfig
+import me.him188.ani.app.domain.torrent.parcel.toParceled
+import me.him188.ani.app.domain.torrent.peer.PeerFilterSettings
 import me.him188.ani.app.domain.torrent.service.TorrentServiceConnection
 import me.him188.ani.app.torrent.api.TorrentDownloader
 import me.him188.ani.datasources.api.source.MediaSourceLocation
@@ -47,7 +47,7 @@ class RemoteAnitorrentEngine(
     private val connection: TorrentServiceConnection,
     anitorrentConfigFlow: Flow<AnitorrentConfig>,
     proxySettingsFlow: Flow<ProxySettings>,
-    peerFilterConfig: Flow<TorrentPeerConfig>,
+    peerFilterConfig: Flow<PeerFilterSettings>,
     saveDir: SystemPath,
     parentCoroutineContext: CoroutineContext,
 ) : TorrentEngine {
@@ -83,9 +83,9 @@ class RemoteAnitorrentEngine(
             transact = { collect(PProxySettings(it)) },
         )
         collectSettingsToRemote(
-            settingsFlow = peerFilterConfig.map { json.encodeToString(TorrentPeerConfig.serializer(), it) },
+            settingsFlow = peerFilterConfig.map { it.toParceled() },
             getBinder = { getBinderOrFail().torrentPeerConfigCollector },
-            transact = { collect(PTorrentPeerConfig(it)) },
+            transact = { collect(it) },
         )
         collectSettingsToRemote(
             settingsFlow = anitorrentConfigFlow.map { json.encodeToString(AnitorrentConfig.serializer(), it) },
@@ -120,10 +120,10 @@ class RemoteAnitorrentEngine(
         fetchRemoteScope.cancel()
     }
 
-    private inline fun <I : IInterface> collectSettingsToRemote(
-        settingsFlow: Flow<String>,
+    private inline fun <I : IInterface, T> collectSettingsToRemote(
+        settingsFlow: Flow<T>,
         noinline getBinder: suspend () -> I,
-        crossinline transact: I.(String) -> Unit
+        crossinline transact: I.(T) -> Unit
     ) = scope.launch {
         val stateFlow = settingsFlow.stateIn(this)
         val remoteCall = RetryRemoteObject(fetchRemoteScope) { getBinder() }

@@ -20,10 +20,10 @@ import kotlinx.coroutines.flow.map
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
 import me.him188.ani.app.data.models.preference.MediaSourceProxySettings
 import me.him188.ani.app.data.models.preference.ProxySettings
-import me.him188.ani.app.data.models.preference.TorrentPeerConfig
 import me.him188.ani.app.domain.media.fetch.toClientProxyConfig
 import me.him188.ani.app.domain.torrent.AbstractTorrentEngine
 import me.him188.ani.app.domain.torrent.TorrentEngineType
+import me.him188.ani.app.domain.torrent.peer.PeerFilterSettings
 import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.platform.getAniUserAgent
 import me.him188.ani.app.platform.versionCode
@@ -45,7 +45,7 @@ import kotlin.coroutines.CoroutineContext
 class AnitorrentEngine(
     config: Flow<AnitorrentConfig>,
     proxySettings: Flow<ProxySettings>,
-    peerFilterSettings: Flow<TorrentPeerConfig>,
+    peerFilterSettings: Flow<PeerFilterSettings>,
     private val saveDir: SystemPath,
     parentCoroutineContext: CoroutineContext,
     private val anitorrentFactory: TorrentDownloaderFactory = AnitorrentDownloaderFactory()

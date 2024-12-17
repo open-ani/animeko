@@ -23,6 +23,7 @@ import androidx.compose.runtime.setValue
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import me.him188.ani.app.platform.Context
 import me.him188.ani.app.platform.LocalContext
 
@@ -126,12 +127,14 @@ actual fun Context.setSystemBarVisible(visible: Boolean) {
     
     if (visible) {
         insetsController.show(bitmask)
+        insetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
         if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q) {
             @Suppress("DEPRECATION")
             window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_FULLSCREEN)
         }
     } else {
         insetsController.hide(bitmask)
+        insetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q) {
             @Suppress("DEPRECATION")
             window.addFlags(android.view.WindowManager.LayoutParams.FLAG_FULLSCREEN)

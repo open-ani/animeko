@@ -63,6 +63,9 @@ import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.episode.toEntity
 import me.him188.ani.app.data.repository.episode.toEpisodeCollectionInfo
 import me.him188.ani.app.domain.search.SubjectType
+import me.him188.ani.app.domain.session.OpaqueSession
+import me.him188.ani.app.domain.session.SessionManager
+import me.him188.ani.app.domain.session.verifiedAccessToken
 import me.him188.ani.datasources.api.EpisodeType.MainStory
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
@@ -150,15 +153,21 @@ class SubjectCollectionRepositoryImpl(
     private val animeScheduleRepository: AnimeScheduleRepository,
     private val bangumiEpisodeService: BangumiEpisodeService,
     private val episodeCollectionDao: EpisodeCollectionDao,
+    private val sessionManager: SessionManager,
     private val nsfwModeSettingsFlow: Flow<NsfwMode>,
     private val getCurrentDate: () -> PackedDate = { PackedDate.now() },
     private val enableAllEpisodeTypes: Flow<Boolean>,
     defaultDispatcher: CoroutineContext = Dispatchers.Default,
 ) : SubjectCollectionRepository(defaultDispatcher) {
+    @OptIn(OpaqueSession::class)
+    private fun <T> Flow<T>.restartOnNewLogin(): Flow<T> =
+        sessionManager.verifiedAccessToken.flatMapLatest { this }
+
     private val epTypeFilter get() = enableAllEpisodeTypes.map { if (it) null else MainStory }
 
     override fun subjectCollectionCountsFlow(): Flow<SubjectCollectionCounts?> {
         return (bangumiSubjectService.subjectCollectionCountsFlow() as Flow<SubjectCollectionCounts?>)
+            .restartOnNewLogin()
             .retry(2)
             .catch {
                 logger.error("Failed to get subject collection counts", it)
@@ -185,6 +194,7 @@ class SubjectCollectionRepositoryImpl(
 
     override fun subjectCollectionFlow(subjectId: Int): Flow<SubjectCollectionInfo> =
         subjectCollectionDao.findById(subjectId)
+            .restartOnNewLogin()
             .onEach {
                 // 如果没有缓存, 则 fetch 然后插入 subject 缓存
                 if (it == null) {
@@ -221,6 +231,7 @@ class SubjectCollectionRepositoryImpl(
         limit: Int,
         types: List<UnifiedCollectionType>?, // null for all
     ): Flow<List<SubjectCollectionInfo>> = subjectCollectionDao.filterMostRecentUpdated(types, limit)
+        .restartOnNewLogin()
         .combine(nsfwModeSettingsFlow) { list, nsfwModeSettings ->
             list to nsfwModeSettings
         }
@@ -250,7 +261,7 @@ class SubjectCollectionRepositoryImpl(
     ): Flow<PagingData<SubjectCollectionInfo>> =
         combine(epTypeFilter, nsfwModeSettingsFlow) { epType, nsfwModeSettings ->
             epType to nsfwModeSettings
-        }.flatMapLatest { (epType, nsfwModeSettings) ->
+        }.restartOnNewLogin().flatMapLatest { (epType, nsfwModeSettings) ->
             Pager(
                 config = pagingConfig,
                 initialKey = 0,

@@ -42,7 +42,7 @@ class RetryRemoteObject<I : IInterface>(
     private val scope: CoroutineScope,
     private val getRemote: suspend () -> I
 ) : RemoteObject<I> {
-    private val logger = logger(this::class)
+    private val logger = logger<RetryRemoteObject<*>>()
 
     private val remote: MutableStateFlow<I?> = MutableStateFlow(null)
     private val lock = Mutex()

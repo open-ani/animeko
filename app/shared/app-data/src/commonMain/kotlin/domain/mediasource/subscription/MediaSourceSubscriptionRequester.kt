@@ -19,7 +19,6 @@ import io.ktor.http.HttpStatusCode.Companion.UnprocessableEntity
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.json.io.decodeFromSource
-import me.him188.ani.app.data.models.ApiResponse
 import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceCodecManager
 import me.him188.ani.app.platform.currentAniBuildConfig
@@ -27,14 +26,21 @@ import me.him188.ani.utils.coroutines.withExceptionCollector
 import me.him188.ani.utils.ktor.toSource
 import kotlin.coroutines.cancellation.CancellationException
 
-class MediaSourceSubscriptionRequester(
-    private val client: Flow<HttpClient>
-) {
-    /**
-     * 执行网络请求, 下载新订阅数据. 遇到错误时将会返回 [ApiResponse.failure]
-     */
+fun interface MediaSourceSubscriptionRequester {
     @Throws(RepositoryException::class, CancellationException::class)
     suspend fun request(
+        subscription: MediaSourceSubscription,
+    ): SubscriptionUpdateData
+}
+
+class MediaSourceSubscriptionRequesterImpl(
+    private val client: Flow<HttpClient>
+) : MediaSourceSubscriptionRequester {
+    /**
+     * 执行网络请求, 下载新订阅数据.
+     */
+    @Throws(RepositoryException::class, CancellationException::class)
+    override suspend fun request(
         subscription: MediaSourceSubscription,
     ): SubscriptionUpdateData {
         val clientInstance = client.first()

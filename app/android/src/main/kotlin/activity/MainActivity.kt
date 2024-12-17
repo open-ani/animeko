@@ -55,7 +55,7 @@ class MainActivity : AniComponentActivity() {
     private val sessionManager: SessionManager by inject()
     private val meteredNetworkDetector: MeteredNetworkDetector by inject()
 
-    private val logger = logger(MainActivity::class)
+    private val logger = logger<MainActivity>()
 
     private val aniNavigator = AniNavigator()
 

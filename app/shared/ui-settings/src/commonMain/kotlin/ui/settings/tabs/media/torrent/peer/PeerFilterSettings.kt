@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -47,7 +48,6 @@ import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.widgets.TopAppBarGoBackButton
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
-import me.him188.ani.app.ui.settings.tabs.media.torrent.peer.blocklist.BlockListEditPane
 
 @Composable
 fun PeerFilterSettingsPage(
@@ -72,8 +72,12 @@ fun PeerFilterSettingsPage(
                     showIpBlockingItem = listDetailLayoutParameters.isSinglePane,
                     onClickIpBlockSettings = { navigator.navigateTo(ThreePaneScaffoldRole.Primary) },
                     modifier = Modifier
-                        .paneContentPadding()
-                        .paneWindowInsetsPadding(),
+                        .paneContentPadding(
+                            extraStart = -SettingsScope.itemHorizontalPadding,
+                            extraEnd = -SettingsScope.itemHorizontalPadding,
+                        )
+                        .paneWindowInsetsPadding()
+                        .padding(horizontal = SettingsScope.itemExtraHorizontalPadding),
                 )
             },
             detailPane = {
@@ -89,15 +93,16 @@ fun PeerFilterSettingsPage(
                 }
 
                 Box(Modifier.consumeWindowInsets(paneContentWindowInsets.only(WindowInsetsSides.Top))) {
-                    BlockListEditPane(
-                        blockedIpList = filteredList,
+                    BlackListEditPane(
+                        ipBlackList = filteredList,
                         showTitle = !listDetailLayoutParameters.isSinglePane,
                         modifier = Modifier
                             .paneContentPadding(
                                 extraStart = -SettingsScope.itemHorizontalPadding,
                                 extraEnd = -SettingsScope.itemHorizontalPadding,
                             )
-                            .paneWindowInsetsPadding(),
+                            .paneWindowInsetsPadding()
+                            .padding(horizontal = SettingsScope.itemExtraHorizontalPadding),
                         onAdd = { state.addBlockedIp(it) },
                         onRemove = { state.removeBlockedIp(it) },
                     )

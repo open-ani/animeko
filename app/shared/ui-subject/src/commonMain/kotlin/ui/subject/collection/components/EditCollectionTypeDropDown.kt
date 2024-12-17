@@ -20,6 +20,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 
 
@@ -28,8 +29,9 @@ fun EditCollectionTypeDropDown(
     state: EditableSubjectCollectionTypeState,
     modifier: Modifier = Modifier,
 ) {
+    val presentation by state.presentationFlow.collectAsStateWithLifecycle()
     EditCollectionTypeDropDown(
-        currentType = state.selfCollectionType,
+        currentType = presentation.selfCollectionType,
         expanded = state.showDropdown,
         onDismissRequest = { state.showDropdown = false },
         onClick = {

@@ -31,17 +31,24 @@ import me.him188.ani.datasources.bangumi.next.infrastructure.RequestMethod
 import me.him188.ani.datasources.bangumi.next.infrastructure.map
 import me.him188.ani.datasources.bangumi.next.infrastructure.wrap
 import me.him188.ani.datasources.bangumi.next.models.BangumiNextBasicReply
-import me.him188.ani.datasources.bangumi.next.models.BangumiNextCreateNewSubjectTopic200Response
 import me.him188.ani.datasources.bangumi.next.models.BangumiNextCreateSubjectEpCommentRequest
 import me.him188.ani.datasources.bangumi.next.models.BangumiNextCreateSubjectReplyRequest
+import me.him188.ani.datasources.bangumi.next.models.BangumiNextCreateSubjectTopic200Response
+import me.him188.ani.datasources.bangumi.next.models.BangumiNextCreateSubjectTopicRequest
 import me.him188.ani.datasources.bangumi.next.models.BangumiNextEditSubjectEpCommentRequest
 import me.him188.ani.datasources.bangumi.next.models.BangumiNextEditSubjectPostRequest
+import me.him188.ani.datasources.bangumi.next.models.BangumiNextGetSubjectCharacters200Response
+import me.him188.ani.datasources.bangumi.next.models.BangumiNextGetSubjectComments200Response
 import me.him188.ani.datasources.bangumi.next.models.BangumiNextGetSubjectEpisodeComments200ResponseInner
-import me.him188.ani.datasources.bangumi.next.models.BangumiNextGetSubjectTopicsBySubjectId200Response
+import me.him188.ani.datasources.bangumi.next.models.BangumiNextGetSubjectEpisodes200Response
+import me.him188.ani.datasources.bangumi.next.models.BangumiNextGetSubjectRecs200Response
+import me.him188.ani.datasources.bangumi.next.models.BangumiNextGetSubjectRelations200Response
+import me.him188.ani.datasources.bangumi.next.models.BangumiNextGetSubjectStaffs200Response
+import me.him188.ani.datasources.bangumi.next.models.BangumiNextGetSubjectTopics200Response
 import me.him188.ani.datasources.bangumi.next.models.BangumiNextGroupReply
-import me.him188.ani.datasources.bangumi.next.models.BangumiNextSubjectInterestComment
-import me.him188.ani.datasources.bangumi.next.models.BangumiNextTopicCreation
+import me.him188.ani.datasources.bangumi.next.models.BangumiNextSubject
 import me.him188.ani.datasources.bangumi.next.models.BangumiNextTopicDetail
+import me.him188.ani.datasources.bangumi.next.models.BangumiNextUpdateSubjectTopicRequest
 
 open class SubjectBangumiNextApi : ApiClient {
 
@@ -61,42 +68,6 @@ open class SubjectBangumiNextApi : ApiClient {
         baseUrl: String,
         httpClient: HttpClient
     ) : super(baseUrl = baseUrl, httpClient = httpClient)
-
-    /**
-     * 创建条目讨论版
-     * 需要 [turnstile](https://developers.cloudflare.com/turnstile/get-started/client-side-rendering/)  next.bgm.tv 域名对应的 site-key 为 &#x60;0x4AAAAAAABkMYinukE8nzYS&#x60;  dev.bgm38.com 域名使用测试用的 site-key &#x60;1x00000000000000000000AA&#x60;
-     * @param subjectID
-     * @param bangumiNextTopicCreation  (optional)
-     * @return BangumiNextCreateNewSubjectTopic200Response
-     */
-    @Suppress("UNCHECKED_CAST")
-    open suspend fun createNewSubjectTopic(
-        subjectID: kotlin.Int,
-        bangumiNextTopicCreation: BangumiNextTopicCreation? = null
-    ): HttpResponse<BangumiNextCreateNewSubjectTopic200Response> {
-
-        val localVariableAuthNames = listOf<String>()
-
-        val localVariableBody = bangumiNextTopicCreation
-
-        val localVariableQuery = mutableMapOf<String, List<String>>()
-        val localVariableHeaders = mutableMapOf<String, String>()
-
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
-            RequestMethod.POST,
-            "/p1/subjects/{subjectID}/topics".replace("{" + "subjectID" + "}", "$subjectID"),
-            query = localVariableQuery,
-            headers = localVariableHeaders,
-            requiresAuthentication = false,
-        )
-
-        return jsonRequest(
-            localVariableConfig,
-            localVariableBody,
-            localVariableAuthNames,
-        ).wrap()
-    }
-
 
     /**
      * 创建条目的剧集吐槽
@@ -134,11 +105,12 @@ open class SubjectBangumiNextApi : ApiClient {
     }
 
 
+
     /**
      * 创建条目讨论版回复
      * 需要 [turnstile](https://developers.cloudflare.com/turnstile/get-started/client-side-rendering/)  next.bgm.tv 域名对应的 site-key 为 &#x60;0x4AAAAAAABkMYinukE8nzYS&#x60;  dev.bgm38.com 域名使用测试用的 site-key &#x60;1x00000000000000000000AA&#x60;
      * @param topicID
-     * @param bangumiNextCreateSubjectReplyRequest
+     * @param bangumiNextCreateSubjectReplyRequest 
      * @return BangumiNextBasicReply
      */
     @Suppress("UNCHECKED_CAST")
@@ -171,9 +143,46 @@ open class SubjectBangumiNextApi : ApiClient {
 
 
     /**
+     * 创建条目讨论
+     *
+     * @param subjectID
+     * @param bangumiNextCreateSubjectTopicRequest
+     * @return BangumiNextCreateSubjectTopic200Response
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun createSubjectTopic(
+        subjectID: kotlin.Int,
+        bangumiNextCreateSubjectTopicRequest: BangumiNextCreateSubjectTopicRequest
+    ): HttpResponse<BangumiNextCreateSubjectTopic200Response> {
+
+        val localVariableAuthNames = listOf<String>()
+
+        val localVariableBody = bangumiNextCreateSubjectTopicRequest
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.POST,
+            "/p1/subjects/{subjectID}/topics".replace("{" + "subjectID" + "}", "$subjectID"),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = false,
+        )
+
+        return jsonRequest(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames,
+        ).wrap()
+    }
+
+
+
+    /**
      * 删除条目的剧集吐槽
      *
-     * @param commentID
+     * @param commentID 
      * @return kotlin.String
      */
     @Suppress("UNCHECKED_CAST")
@@ -181,7 +190,7 @@ open class SubjectBangumiNextApi : ApiClient {
 
         val localVariableAuthNames = listOf<String>()
 
-        val localVariableBody =
+        val localVariableBody = 
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
@@ -240,7 +249,7 @@ open class SubjectBangumiNextApi : ApiClient {
      * 编辑条目的剧集吐槽
      *
      * @param commentID
-     * @param bangumiNextEditSubjectEpCommentRequest
+     * @param bangumiNextEditSubjectEpCommentRequest 
      * @return kotlin.String
      */
     @Suppress("UNCHECKED_CAST")
@@ -275,7 +284,7 @@ open class SubjectBangumiNextApi : ApiClient {
 
     /**
      * 编辑自己创建的条目讨论版回复
-     *
+     * 
      * @param postID 
      * @param bangumiNextEditSubjectPostRequest 
      * @return kotlin.String
@@ -309,42 +318,125 @@ open class SubjectBangumiNextApi : ApiClient {
     }
 
 
-
     /**
-     * 编辑自己创建的条目讨论版
-     * 
-     * @param topicID 
-     * @param bangumiNextTopicCreation  (optional)
-     * @return kotlin.String
+     * 获取条目
+     *
+     * @param subjectID
+     * @return BangumiNextSubject
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun editSubjectTopic(
-        topicID: kotlin.Int,
-        bangumiNextTopicCreation: BangumiNextTopicCreation? = null
-    ): HttpResponse<kotlin.String> {
+    open suspend fun getSubject(subjectID: kotlin.Int): HttpResponse<BangumiNextSubject> {
 
         val localVariableAuthNames = listOf<String>()
 
-        val localVariableBody = bangumiNextTopicCreation
+        val localVariableBody =
+            io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
         val localVariableHeaders = mutableMapOf<String, String>()
 
         val localVariableConfig = RequestConfig<kotlin.Any?>(
-            RequestMethod.PUT,
-            "/p1/subjects/-/topics/{topicID}".replace("{" + "topicID" + "}", "$topicID"),
+            RequestMethod.GET,
+            "/p1/subjects/{subjectID}".replace("{" + "subjectID" + "}", "$subjectID"),
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = false,
         )
 
-        return jsonRequest(
+        return request(
             localVariableConfig,
             localVariableBody,
             localVariableAuthNames,
         ).wrap()
     }
 
+
+    /**
+     * 获取条目的角色
+     *
+     * @param subjectID
+     * @param type 角色出场类型: 主角，配角，客串 (optional)
+     * @param limit max 100 (optional, default to 20)
+     * @param offset min 0 (optional, default to 0)
+     * @return BangumiNextGetSubjectCharacters200Response
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun getSubjectCharacters(
+        subjectID: kotlin.Int,
+        type: kotlin.Int? = null,
+        limit: kotlin.Int? = 20,
+        offset: kotlin.Int? = 0
+    ): HttpResponse<BangumiNextGetSubjectCharacters200Response> {
+
+        val localVariableAuthNames = listOf<String>()
+
+        val localVariableBody =
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        type?.apply { localVariableQuery["type"] = listOf("$type") }
+        limit?.apply { localVariableQuery["limit"] = listOf("$limit") }
+        offset?.apply { localVariableQuery["offset"] = listOf("$offset") }
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.GET,
+            "/p1/subjects/{subjectID}/characters".replace("{" + "subjectID" + "}", "$subjectID"),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = false,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames,
+        ).wrap()
+    }
+
+
+    /**
+     * 获取条目的吐槽箱
+     *
+     * @param subjectID
+     * @param type 收藏类型 (optional)
+     * @param limit max 100 (optional, default to 20)
+     * @param offset min 0 (optional, default to 0)
+     * @return BangumiNextGetSubjectComments200Response
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun getSubjectComments(
+        subjectID: kotlin.Int,
+        type: Int? = null,
+        limit: kotlin.Int? = 20,
+        offset: kotlin.Int? = 0
+    ): HttpResponse<BangumiNextGetSubjectComments200Response> {
+
+        val localVariableAuthNames = listOf<String>()
+
+        val localVariableBody =
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        type?.apply { localVariableQuery["type"] = listOf("$type") }
+        limit?.apply { localVariableQuery["limit"] = listOf("$limit") }
+        offset?.apply { localVariableQuery["offset"] = listOf("$offset") }
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.GET,
+            "/p1/subjects/{subjectID}/comments".replace("{" + "subjectID" + "}", "$subjectID"),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = false,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames,
+        ).wrap()
+    }
 
 
     /**
@@ -394,6 +486,50 @@ open class SubjectBangumiNextApi : ApiClient {
     }
 
     /**
+     * 获取条目的剧集
+     *
+     * @param subjectID
+     * @param type 剧集类型 (optional)
+     * @param limit max 1000 (optional, default to 100)
+     * @param offset min 0 (optional, default to 0)
+     * @return BangumiNextGetSubjectEpisodes200Response
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun getSubjectEpisodes(
+        subjectID: kotlin.Int,
+        type: Int? = null,
+        limit: kotlin.Int? = 100,
+        offset: kotlin.Int? = 0
+    ): HttpResponse<BangumiNextGetSubjectEpisodes200Response> {
+
+        val localVariableAuthNames = listOf<String>()
+
+        val localVariableBody =
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        type?.apply { localVariableQuery["type"] = listOf("$type") }
+        limit?.apply { localVariableQuery["limit"] = listOf("$limit") }
+        offset?.apply { localVariableQuery["offset"] = listOf("$offset") }
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.GET,
+            "/p1/subjects/{subjectID}/episodes".replace("{" + "subjectID" + "}", "$subjectID"),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = false,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames,
+        ).wrap()
+    }
+
+
+    /**
      * 获取条目讨论版回复
      * 
      * @param postID 
@@ -427,17 +563,149 @@ open class SubjectBangumiNextApi : ApiClient {
 
 
     /**
-     * 获取帖子列表
+     * 获取条目的推荐
      *
-     * @param topicID 
-     * @return BangumiNextTopicDetail
+     * @param subjectID
+     * @param limit max 10 (optional, default to 10)
+     * @param offset min 0 (optional, default to 0)
+     * @return BangumiNextGetSubjectRecs200Response
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun getSubjectTopicDetail(topicID: kotlin.Int): HttpResponse<BangumiNextTopicDetail> {
+    open suspend fun getSubjectRecs(
+        subjectID: kotlin.Int,
+        limit: kotlin.Int? = 10,
+        offset: kotlin.Int? = 0
+    ): HttpResponse<BangumiNextGetSubjectRecs200Response> {
+
+        val localVariableAuthNames = listOf<String>()
+
+        val localVariableBody =
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        limit?.apply { localVariableQuery["limit"] = listOf("$limit") }
+        offset?.apply { localVariableQuery["offset"] = listOf("$offset") }
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.GET,
+            "/p1/subjects/{subjectID}/recs".replace("{" + "subjectID" + "}", "$subjectID"),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = false,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames,
+        ).wrap()
+    }
+
+
+    /**
+     * 获取条目的关联条目
+     *
+     * @param subjectID
+     * @param type 条目类型 (optional)
+     * @param offprint 是否单行本 (optional, default to false)
+     * @param limit max 100 (optional, default to 20)
+     * @param offset min 0 (optional, default to 0)
+     * @return BangumiNextGetSubjectRelations200Response
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun getSubjectRelations(
+        subjectID: kotlin.Int,
+        type: Int? = null,
+        offprint: kotlin.Boolean? = false,
+        limit: kotlin.Int? = 20,
+        offset: kotlin.Int? = 0
+    ): HttpResponse<BangumiNextGetSubjectRelations200Response> {
 
         val localVariableAuthNames = listOf<String>()
 
         val localVariableBody = 
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        type?.apply { localVariableQuery["type"] = listOf("$type") }
+        offprint?.apply { localVariableQuery["offprint"] = listOf("$offprint") }
+        limit?.apply { localVariableQuery["limit"] = listOf("$limit") }
+        offset?.apply { localVariableQuery["offset"] = listOf("$offset") }
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.GET,
+            "/p1/subjects/{subjectID}/relations".replace("{" + "subjectID" + "}", "$subjectID"),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = false,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames,
+        ).wrap()
+    }
+
+
+    /**
+     * 获取条目的制作人员
+     *
+     * @param subjectID
+     * @param position 人物职位: 监督，原案，脚本,.. (optional)
+     * @param limit max 100 (optional, default to 20)
+     * @param offset min 0 (optional, default to 0)
+     * @return BangumiNextGetSubjectStaffs200Response
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun getSubjectStaffs(
+        subjectID: kotlin.Int,
+        position: kotlin.Int? = null,
+        limit: kotlin.Int? = 20,
+        offset: kotlin.Int? = 0
+    ): HttpResponse<BangumiNextGetSubjectStaffs200Response> {
+
+        val localVariableAuthNames = listOf<String>()
+
+        val localVariableBody = 
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        position?.apply { localVariableQuery["position"] = listOf("$position") }
+        limit?.apply { localVariableQuery["limit"] = listOf("$limit") }
+        offset?.apply { localVariableQuery["offset"] = listOf("$offset") }
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.GET,
+            "/p1/subjects/{subjectID}/staffs".replace("{" + "subjectID" + "}", "$subjectID"),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = false,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames,
+        ).wrap()
+    }
+
+
+    /**
+     * 获取条目讨论
+     *
+     * @param topicID
+     * @return BangumiNextTopicDetail
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun getSubjectTopic(topicID: kotlin.Int): HttpResponse<BangumiNextTopicDetail> {
+
+        val localVariableAuthNames = listOf<String>()
+
+        val localVariableBody =
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
@@ -460,19 +728,19 @@ open class SubjectBangumiNextApi : ApiClient {
 
 
     /**
-     * 获取条目讨论版列表
-     * 
-     * @param subjectID 
-     * @param limit  (optional, default to 30)
-     * @param offset  (optional, default to 0)
-     * @return BangumiNextGetSubjectTopicsBySubjectId200Response
+     * 获取条目讨论版
+     *
+     * @param subjectID
+     * @param limit max 100 (optional, default to 20)
+     * @param offset min 0 (optional, default to 0)
+     * @return BangumiNextGetSubjectTopics200Response
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun getSubjectTopicsBySubjectId(
+    open suspend fun getSubjectTopics(
         subjectID: kotlin.Int,
-        limit: kotlin.Int? = 30,
+        limit: kotlin.Int? = 20,
         offset: kotlin.Int? = 0
-    ): HttpResponse<BangumiNextGetSubjectTopicsBySubjectId200Response> {
+    ): HttpResponse<BangumiNextGetSubjectTopics200Response> {
 
         val localVariableAuthNames = listOf<String>()
 
@@ -501,39 +769,33 @@ open class SubjectBangumiNextApi : ApiClient {
 
 
     /**
-     * 获取条目的吐槽箱
-     * 
-     * @param subjectID 
-     * @param limit  (optional, default to 20)
-     * @param offset  (optional, default to 0)
-     * @return BangumiNextSubjectInterestComment
+     * 编辑自己创建的条目讨论
+     *
+     * @param topicID
+     * @param bangumiNextUpdateSubjectTopicRequest
+     * @return void
      */
-    @Suppress("UNCHECKED_CAST")
-    open suspend fun subjectComments(
-        subjectID: kotlin.Int,
-        limit: kotlin.Int? = 20,
-        offset: kotlin.Int? = 0
-    ): HttpResponse<BangumiNextSubjectInterestComment> {
+    open suspend fun updateSubjectTopic(
+        topicID: kotlin.Int,
+        bangumiNextUpdateSubjectTopicRequest: BangumiNextUpdateSubjectTopicRequest
+    ): HttpResponse<Unit> {
 
         val localVariableAuthNames = listOf<String>()
 
-        val localVariableBody = 
-            io.ktor.client.utils.EmptyContent
+        val localVariableBody = bangumiNextUpdateSubjectTopicRequest
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
-        limit?.apply { localVariableQuery["limit"] = listOf("$limit") }
-        offset?.apply { localVariableQuery["offset"] = listOf("$offset") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
         val localVariableConfig = RequestConfig<kotlin.Any?>(
-            RequestMethod.GET,
-            "/p1/subjects/{subjectID}/comments".replace("{" + "subjectID" + "}", "$subjectID"),
+            RequestMethod.PUT,
+            "/p1/subjects/-/topics/{topicID}".replace("{" + "topicID" + "}", "$topicID"),
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = false,
         )
 
-        return request(
+        return jsonRequest(
             localVariableConfig,
             localVariableBody,
             localVariableAuthNames,

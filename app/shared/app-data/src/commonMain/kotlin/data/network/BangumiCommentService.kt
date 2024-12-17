@@ -25,7 +25,7 @@ import me.him188.ani.datasources.api.paging.processPagedResponse
 import me.him188.ani.datasources.bangumi.BangumiClient
 import me.him188.ani.datasources.bangumi.next.models.BangumiNextCreateSubjectEpCommentRequest
 import me.him188.ani.datasources.bangumi.next.models.BangumiNextGetSubjectEpisodeComments200ResponseInner
-import me.him188.ani.datasources.bangumi.next.models.BangumiNextSubjectInterestCommentListInner
+import me.him188.ani.datasources.bangumi.next.models.BangumiNextSubjectComment
 import me.him188.ani.utils.coroutines.IO_
 import kotlin.coroutines.CoroutineContext
 
@@ -52,7 +52,7 @@ class BangumiBangumiCommentServiceImpl(
         return withContext(ioDispatcher) {
             val response = try {
                 client.getNextApi()
-                    .subjectComments(subjectId, limit, offset)
+                    .getSubjectComments(subjectId, null, limit, offset)
                     .body()
             } catch (e: ClientRequestException) {
                 if (e.response.status == HttpStatusCode.NotFound || e.response.status == HttpStatusCode.BadRequest) {
@@ -60,7 +60,7 @@ class BangumiBangumiCommentServiceImpl(
                 }
                 throw e
             }
-            val list = response.list.map { it.toSubjectReview(subjectId) }
+            val list = response.data.map { it.toSubjectReview(subjectId) }
             Paged.processPagedResponse(total = response.total, pageSize = limit, data = list)
         }
     }
@@ -102,17 +102,15 @@ class BangumiBangumiCommentServiceImpl(
     }
 }
 
-private fun BangumiNextSubjectInterestCommentListInner.toSubjectReview(subjectId: Int) = SubjectReview(
-    id = packInts(subjectId, user?.id ?: 0),
+private fun BangumiNextSubjectComment.toSubjectReview(subjectId: Int) = SubjectReview(
+    id = packInts(subjectId, user.id ?: 0),
     content = comment,
     updatedAt = updatedAt * 1000L,
     rating = rate,
-    creator = user?.let { u ->
-        UserInfo(
-            id = u.id,
-            nickname = u.nickname,
-            username = null,
-            avatarUrl = u.avatar.medium,
-        ) // 没有username
-    },
+    creator = UserInfo(
+        id = user.id,
+        nickname = user.nickname,
+        username = null,
+        avatarUrl = user.avatar.medium,
+    ), // 没有username,
 )

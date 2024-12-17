@@ -66,6 +66,7 @@ import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.LoadState
 import androidx.paging.LoadStates
 import androidx.paging.PagingData
@@ -453,13 +454,15 @@ private fun SubjectCollectionItem(
             showEpisodeProgressDialog = true
         },
         playButton = {
+            val editableSubjectCollectionTypePresentation by editableSubjectCollectionTypeState.presentationFlow.collectAsStateWithLifecycle()
+
             if (type != UnifiedCollectionType.DONE) {
                 if (subjectProgressState.isDone) {
                     FilledTonalButton(
                         {
                             editableSubjectCollectionTypeState.setSelfCollectionType(UnifiedCollectionType.DONE)
                         },
-                        enabled = !editableSubjectCollectionTypeState.isSetSelfCollectionTypeWorking,
+                        enabled = !editableSubjectCollectionTypePresentation.isSetSelfCollectionTypeWorking,
                     ) {
                         Text("移至\"看过\"", Modifier.requiredWidth(IntrinsicSize.Max), softWrap = false)
                     }

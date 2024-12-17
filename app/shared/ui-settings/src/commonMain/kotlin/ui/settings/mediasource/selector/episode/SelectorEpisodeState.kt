@@ -15,16 +15,17 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withTimeoutOrNull
 import me.him188.ani.app.domain.media.resolver.WebViewVideoExtractor
+import me.him188.ani.app.domain.mediasource.test.web.SelectorTestEpisodePresentation
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSourceEngine
 import me.him188.ani.app.domain.mediasource.web.SelectorSearchConfig
 import me.him188.ani.app.platform.Context
 import me.him188.ani.app.ui.settings.mediasource.BackgroundSearcher
 import me.him188.ani.app.ui.settings.mediasource.launchCollectedInBackground
-import me.him188.ani.app.ui.settings.mediasource.selector.test.SelectorTestEpisodePresentation
 import me.him188.ani.datasources.api.matcher.WebVideo
 import me.him188.ani.datasources.api.matcher.WebViewConfig
 import me.him188.ani.datasources.api.matcher.videoOrNull
@@ -60,15 +61,16 @@ class SelectorEpisodeState(
     val episodeName: String by derivedStateOf { itemState.value?.name ?: "" }
     val episodeUrl: String by derivedStateOf { itemState.value?.playUrl ?: "" }
 
+    val searcherTestDataState = derivedStateOf {
+        Pair(itemState.value?.playUrl, webViewVideoExtractor.value)
+    }
+
     /**
      * 该页面的所有链接
      */
     val searcher =
-        BackgroundSearcher(
+        BackgroundSearcher<Pair<String?, WebViewVideoExtractor?>, SelectorEpisodeResult>(
             backgroundScope,
-            testDataState = derivedStateOf {
-                Pair(itemState.value?.playUrl, webViewVideoExtractor.value)
-            },
         ) { (episodeUrl, extractor) ->
             // Dot trigger re-fetch on config change.
             val config = matchVideoConfigState.value
@@ -94,12 +96,12 @@ class SelectorEpisodeState(
                             }
                         }
                     }
+                    SelectorEpisodeResult.Success(flow)
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
                     SelectorEpisodeResult.UnknownError(e)
                 }
-                SelectorEpisodeResult.Success(flow)
             }
         }
 
@@ -126,30 +128,32 @@ class SelectorEpisodeState(
     /**
      * 不断更新的匹配结果
      */
-    val rawMatchResults: Flow<List<MatchResult>> by derivedStateOf {
+    val rawMatchResults: Flow<List<MatchResult>> by derivedStateOf { // TODO: 2024/12/14 this is shit 
         val matchVideoConfig = matchVideoConfigState.value ?: return@derivedStateOf emptyFlow()
-        val searchResult = searcher.searchResult ?: return@derivedStateOf emptyFlow()
-        val flow = when (searchResult) {
-            is SelectorEpisodeResult.ApiError,
-            is SelectorEpisodeResult.UnknownError,
-            is SelectorEpisodeResult.InvalidConfig,
-                -> return@derivedStateOf emptyFlow()
+        searcher.searchResultFlow.flatMapLatest { searchResult ->
+            searchResult ?: return@flatMapLatest emptyFlow()
+            val flow = when (searchResult) {
+                is SelectorEpisodeResult.ApiError,
+                is SelectorEpisodeResult.UnknownError,
+                is SelectorEpisodeResult.InvalidConfig,
+                    -> return@flatMapLatest emptyFlow()
 
-            is SelectorEpisodeResult.InProgress -> searchResult.flow
-            is SelectorEpisodeResult.Success -> searchResult.flow
-        }
+                is SelectorEpisodeResult.InProgress -> searchResult.flow
+                is SelectorEpisodeResult.Success -> searchResult.flow
+            }
 
-        flow.map { list ->
-            list.asSequence()
-                .map { original ->
-                    MatchResult(original, engine.matchWebVideo(original.url, matchVideoConfig).videoOrNull)
-                }
-                .distinctBy { it.key } // O(n) extra space, O(1) time
-                .toMutableList() // single list instance construction
-                .apply {
-                    // sort in-place for better performance
-                    sortByDescending { it.isMatchedVideo() } // 优先展示匹配的
-                }
+            flow.map { list ->
+                list.asSequence()
+                    .map { original ->
+                        MatchResult(original, engine.matchWebVideo(original.url, matchVideoConfig).videoOrNull)
+                    }
+                    .distinctBy { it.key } // O(n) extra space, O(1) time
+                    .toMutableList() // single list instance construction
+                    .apply {
+                        // sort in-place for better performance
+                        sortByDescending { it.isMatchedVideo() } // 优先展示匹配的
+                    }
+            }
         }.flowOn(flowDispatcher) // possibly significant computation
     }
 

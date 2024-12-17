@@ -130,7 +130,7 @@ class RemoteBangumiSubjectService(
     private val usernameProvider: RepositoryUsernameProvider,
     private val ioDispatcher: CoroutineContext = Dispatchers.IO_,
 ) : BangumiSubjectService, KoinComponent {
-    private val logger = logger(this::class)
+    private val logger = logger<RemoteBangumiSubjectService>()
 
     override suspend fun getSubject(id: Int): BangumiSubject = withContext(ioDispatcher) {
         client.getApi().getSubjectById(id).body()

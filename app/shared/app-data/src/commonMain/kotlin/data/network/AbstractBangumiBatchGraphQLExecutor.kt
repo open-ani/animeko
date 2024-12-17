@@ -17,7 +17,7 @@ import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.serialization.getOrFail
 
 abstract class AbstractBangumiBatchGraphQLExecutor {
-    protected val logger = logger(this::class)
+    protected val logger = logger<AbstractBangumiBatchGraphQLExecutor>()
 
     /**
      * 返回对应每个 id

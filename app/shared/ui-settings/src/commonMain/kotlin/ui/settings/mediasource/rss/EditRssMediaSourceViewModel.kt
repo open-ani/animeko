@@ -10,7 +10,6 @@
 package me.him188.ani.app.ui.settings.mediasource.rss
 
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableStateOf
 import io.ktor.client.plugins.BrowserUserAgent
 import kotlinx.coroutines.Dispatchers
@@ -92,7 +91,7 @@ class EditRssMediaSourceViewModel(
                                 )
                             }
                         },
-                        isSavingState = derivedStateOf { saveTasker.isRunning },
+                        isSavingFlow = saveTasker.isRunning,
                     ),
                     allowEditState = allowEdit,
                     instanceId = instanceId,

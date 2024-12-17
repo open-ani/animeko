@@ -31,6 +31,7 @@ import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
@@ -92,6 +93,7 @@ interface SubjectDetailsStateFactory {
         subjectId: Int,
         placeholder: SubjectInfo? = null
     ): Flow<SubjectDetailsState>
+
     fun create(subjectCollectionInfo: SubjectCollectionInfo, scope: CoroutineScope): SubjectDetailsState
 }
 
@@ -99,7 +101,7 @@ class DefaultSubjectDetailsStateFactory(
     parentCoroutineContext: CoroutineContext
 ) : SubjectDetailsStateFactory, KoinComponent {
     private val childScope = parentCoroutineContext.childScope()
-    
+
     private val subjectCollectionRepository: SubjectCollectionRepository by inject()
     private val episodeProgressRepository: EpisodeProgressRepository by inject()
     private val episodeCollectionRepository: EpisodeCollectionRepository by inject()
@@ -212,7 +214,7 @@ class DefaultSubjectDetailsStateFactory(
             if (!cachedSubjectDetails.value.contains(subjectId)) {
                 emit(createPlaceholder(subjectId, placeholder, authState))
             }
-            
+
             val subjectProgressStateFactory = createSubjectProgressStateFactory()
             val subjectCollectionInfoFlow = subjectCollectionRepository.subjectCollectionFlow(subjectId)
                 .stateIn(this)
@@ -269,9 +271,8 @@ class DefaultSubjectDetailsStateFactory(
         val subjectId = subjectInfo.subjectId
         val subjectScope = this
         val editableSubjectCollectionTypeState = EditableSubjectCollectionTypeState(
-            selfCollectionType = subjectCollectionFlow
-                .map { it.collectionType }
-                .produceState(UnifiedCollectionType.NOT_COLLECTED, this),
+            selfCollectionTypeFlow = subjectCollectionFlow
+                .map { it.collectionType },
             hasAnyUnwatched = hasAnyUnwatched@{
                 val collections = episodeCollectionRepository.subjectEpisodeCollectionInfosFlow(subjectId)
                     .flowOn(Dispatchers.Default).firstOrNull() ?: return@hasAnyUnwatched true
@@ -467,7 +468,7 @@ class DefaultSubjectDetailsStateFactory(
             ),
             authState = authState,
             editableSubjectCollectionTypeState = EditableSubjectCollectionTypeState(
-                selfCollectionType = stateOf(UnifiedCollectionType.NOT_COLLECTED),
+                selfCollectionTypeFlow = flowOf(UnifiedCollectionType.NOT_COLLECTED),
                 hasAnyUnwatched = { true },
                 onSetSelfCollectionType = { },
                 onSetAllEpisodesWatched = { },

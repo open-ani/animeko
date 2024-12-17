@@ -76,7 +76,7 @@ interface MediaSelector {
      *
      * 该操作优先级高于任何其他的选择. 即会覆盖 [trySelectDefault] 和 [trySelectCached] 的结果.
      *
-     * 重复 [select] 同一个 [Media] 时, 本函数立即返回 `true`, 不会做重复广播事件等.
+     * 重复 [select] 同一个 [Media] 时, 本函数立即返回 `false`, 不会做重复广播事件等.
      *
      * @return 当成功将 [selected] 更新为 [candidate] 时返回 `true`. 当 [selected] 已经是 [candidate] 时返回 `false`.
      */
@@ -92,6 +92,15 @@ interface MediaSelector {
      * @see autoSelect
      */
     suspend fun trySelectDefault(): Media?
+
+    /**
+     * 根据提供的顺序 [mediaSourceOrder], 尝试选择 WEB 类型的数据源.
+     *
+     * 这会忽略一切用户偏好设置, 只根据数据源顺序选择. 将会选择在 list 中 index 越小的数据源.
+     *
+     * @return 成功选择的 [Media] , 若没有满足需求的 [Media] 或用户已经手动选择了一个则返回 `null`
+     */
+    suspend fun trySelectFromMediaSources(mediaSourceOrder: List<String>): Media?
 
     /**
      * 尝试选择缓存 ([MediaSourceKind.LocalCache]) 作为默认选择, 如果没有缓存则不做任何事情
@@ -546,6 +555,18 @@ class DefaultMediaSelector(
         selectImpl(candidates)?.let { return it }
 
         return selectAny(candidates)
+    }
+
+    override suspend fun trySelectFromMediaSources(mediaSourceOrder: List<String>): Media? {
+        if (mediaSourceOrder.isEmpty()) return null
+
+        val candidates = mediaList.first()
+        if (candidates.isEmpty()) return null
+
+        val selected = mediaSourceOrder.firstNotNullOfOrNull { mediaSourceId ->
+            candidates.fastFirstOrNull { it.mediaSourceId == mediaSourceId }
+        }
+        return selected?.let { selectDefault(it) }
     }
 
     override suspend fun trySelectCached(): Media? {

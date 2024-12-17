@@ -10,21 +10,34 @@
 package me.him188.ani.app.ui.settings.tabs.media.torrent.peer
 
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.transformLatest
 import me.him188.ani.app.data.models.preference.TorrentPeerConfig
+import me.him188.ani.app.domain.torrent.peer.PeerFilterSubscription
+import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.ui.settings.mediasource.rss.SaveableStorage
 
 @Stable
 class PeerFilterSettingsState(
-    storage: SaveableStorage<TorrentPeerConfig>
+    val subscriptions: StateFlow<List<PeerFilterSubscription>>,
+    storage: SaveableStorage<TorrentPeerConfig>,
+    backgroundScope: CoroutineScope,
+    private val updateSubscriptions: suspend () -> Unit,
+    private val toggleSubscription: (subscriptionId: String, enable: Boolean) -> Unit
 ) {
+    private val tasker = MonoTasker(backgroundScope)
+
+    val updatingSubs by derivedStateOf { tasker.isRunning }
+    
     var searchingBlockedIp by mutableStateOf(false)
         private set
     val searchBlockedIpQuery = MutableStateFlow("")
@@ -40,29 +53,29 @@ class PeerFilterSettingsState(
         }
     
     var ipFilterEnabled by storage.prop({ it.enableIpFilter }, { copy(enableIpFilter = it) }, false)
-    var ipFilters by storage.prop(
-        get = { it.ipFilters.joinToString("\n") }, 
-        copy = { copy(ipFilters = it.split('\n')) }, 
-        default = ""
+    var ipFiltersPattern by storage.prop(
+        { it.localRule.blockedIpPattern.joinToString("\n") },
+        { copy(localRule = localRule.copy(blockedIpPattern = it.split('\n'))) },
+        "",
     )
     
     var idFilterEnabled by storage.prop(
         get = { it.enableIdFilter },
-        copy = { copy(enableIdFilter = it) }, 
-        default = false
+        copy = { copy(enableIdFilter = it) },
+        default = false,
     )
-    var idFilters by storage.prop(
-        get = { it.idRegexFilters.joinToString("\n") },
-        copy = { copy(idRegexFilters = it.split('\n')) },
-        default = ""
+    var idFiltersRegex by storage.prop(
+        { it.localRule.blockedIdRegex.joinToString("\n") },
+        { copy(localRule = localRule.copy(blockedIdRegex = it.split('\n'))) },
+        "",
     )
     var blockInvalidId by storage.prop({ it.blockInvalidId }, { copy(blockInvalidId = it) }, false)
     
     var clientFilterEnabled by storage.prop({ it.enableClientFilter }, { copy(enableClientFilter = it) }, false)
-    var clientFilters by storage.prop(
-        get = { it.clientRegexFilters.joinToString("\n") },
-        copy = { copy(clientRegexFilters = it.split('\n')) },
-        default = ""
+    var clientFiltersRegex by storage.prop(
+        { it.localRule.blockedClientRegex.joinToString("\n") },
+        { copy(localRule = localRule.copy(blockedClientRegex = it.split('\n'))) },
+        "",
     )
     
     fun addBlockedIp(list: List<String>) {
@@ -89,5 +102,13 @@ class PeerFilterSettingsState(
     fun startSearchBlockedIp() {
         searchBlockedIpQuery.value = ""
         searchingBlockedIp = true
+    }
+
+    fun updateSubs() {
+        tasker.launch { this@PeerFilterSettingsState.updateSubscriptions() }
+    }
+
+    fun toggleSub(subscriptionId: String, enable: Boolean) {
+        toggleSubscription(subscriptionId, enable)
     }
 }

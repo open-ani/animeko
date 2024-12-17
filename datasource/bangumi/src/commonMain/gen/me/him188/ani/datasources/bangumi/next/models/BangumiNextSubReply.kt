@@ -36,7 +36,7 @@ data class BangumiNextSubReply(
 
     @SerialName(value = "createdAt") @Required val createdAt: kotlin.Int,
 
-    @SerialName(value = "creator") @Required val creator: BangumiNextUser,
+    @SerialName(value = "creator") @Required val creator: BangumiNextSlimUser,
 
     @SerialName(value = "id") @Required val id: kotlin.Int,
 

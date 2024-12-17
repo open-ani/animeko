@@ -30,14 +30,10 @@ import kotlinx.serialization.Serializable
  * @param nsfw
  * @param title
  * @param totalMembers
- * @param date
- * @param image
- * @param infobox
  * @param locked
- * @param platform
- * @param redirect
- * @param summary 
- * @param typeID 
+ * @param nameCN
+ * @param type
+ * @param images 
  */
 @Serializable
 
@@ -59,21 +55,13 @@ data class BangumiNextTopicDetailParent(
 
     @SerialName(value = "totalMembers") @Required val totalMembers: kotlin.Int,
 
-    @SerialName(value = "date") @Required val date: kotlin.String,
-
-    @SerialName(value = "image") @Required val image: kotlin.String,
-
-    @SerialName(value = "infobox") @Required val infobox: kotlin.String,
-
     @SerialName(value = "locked") @Required val locked: kotlin.Boolean,
 
-    @SerialName(value = "platform") @Required val platform: kotlin.Int,
+    @SerialName(value = "nameCN") @Required val nameCN: kotlin.String,
 
-    @SerialName(value = "redirect") @Required val redirect: kotlin.Int,
+    @SerialName(value = "type") @Required val type: Int,
 
-    @SerialName(value = "summary") @Required val summary: kotlin.String,
-
-    @SerialName(value = "typeID") @Required val typeID: kotlin.Int
+    @SerialName(value = "images") val images: BangumiNextSubjectImages? = null
 
 )
 

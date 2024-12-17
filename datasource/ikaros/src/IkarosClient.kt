@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.datasources.ikaros
 
 import io.ktor.client.HttpClient
@@ -41,6 +50,7 @@ class IkarosClient(
 ) {
     companion object {
         private val logger = logger<IkarosClient>()
+        private val json = Json { ignoreUnknownKeys = true }
     }
 
     suspend fun checkConnection(): HttpStatusCode {
@@ -61,8 +71,8 @@ class IkarosClient(
             return Collections.emptyList()
         }
         val url = "$baseUrl/api/v1alpha1/subject/syncs/platform?platform=BGM_TV&platformId=$bgmTvSubjectId"
-        val responseText = client.get(url).bodyAsText();
-        return Json { ignoreUnknownKeys = true }.decodeFromString(responseText)
+        val responseText = client.get(url).bodyAsText()
+        return json.decodeFromString(responseText)
     }
 
     suspend fun episodeRecords2SizeSource(
@@ -70,7 +80,7 @@ class IkarosClient(
         episodeRecords: List<IkarosEpisodeRecord>,
         episodeSort: EpisodeSort
     ): SizedSource<MediaMatch> {
-        val mediaMatchs = mutableListOf<MediaMatch>()
+        val mediaMatches = mutableListOf<MediaMatch>()
         val epSortNumber = if (episodeSort.number == null) 1.0 else episodeSort.number!!.toDouble()
         val ikarosEpisodeGroup = if (episodeSort is EpisodeSort.Special) {
             when (episodeSort.type) {
@@ -92,8 +102,8 @@ class IkarosClient(
         if (episode?.resources != null && episode.resources.isNotEmpty()) {
             for (epRes in episode.resources) {
                 val media = epRes.let {
-                    val attachment: IkarosAttachment? = getAttachmentById(epRes.attachmentId);
-                    val parseResult = RawTitleParser.getDefault().parse(epRes.name);
+                    val attachment: IkarosAttachment? = getAttachmentById(epRes.attachmentId)
+                    val parseResult = RawTitleParser.getDefault().parse(epRes.name)
                     DefaultMedia(
                         mediaId = epRes.attachmentId.toString(),
                         mediaSourceId = IkarosMediaSource.ID,
@@ -116,43 +126,44 @@ class IkarosClient(
                         extraFiles = fetchVideoAttSubtitles2ExtraFiles(epRes.attachmentId),
                     )
                 }
-                val mediaMatch = media.let { MediaMatch(it, MatchKind.FUZZY) }
-                mediaMatchs.add(mediaMatch)
+                val mediaMatch = MediaMatch(media, MatchKind.FUZZY)
+                mediaMatches.add(mediaMatch)
             }
         }
 
         val sizedSource = IkarosSizeSource(
-            totalSize = flowOf(mediaMatchs.size), finished = flowOf(true), results = mediaMatchs.asFlow(),
+            totalSize = flowOf(mediaMatches.size), finished = flowOf(true), results = mediaMatches.asFlow(),
         )
-        return sizedSource;
+        return sizedSource
     }
 
     suspend fun getEpisodeRecordsWithId(subjectId: String): List<IkarosEpisodeRecord> {
         if (subjectId.isBlank() || subjectId.toInt() <= 0) {
-            return Collections.emptyList();
+            return Collections.emptyList()
         }
         val url = "$baseUrl/api/v1alpha1/episode/records/subjectId/$subjectId"
-        val responseText = client.get(url).bodyAsText();
-        return Json { ignoreUnknownKeys = true }.decodeFromString(responseText)
+        val responseText = client.get(url).bodyAsText()
+        return json.decodeFromString(responseText)
     }
 
-    suspend fun getAttachmentById(attId: Long): IkarosAttachment? {
-        if (attId <= 0) return null;
+    private suspend fun getAttachmentById(attId: Long): IkarosAttachment? {
+        if (attId <= 0) return null
         val url = baseUrl.plus("/api/v1alpha1/attachment/").plus(attId)
-        return client.get(url).body<IkarosAttachment>();
+        return client.get(url).body<IkarosAttachment>()
     }
 
-    suspend fun getAttachmentVideoSubtitlesById(attId: Long): List<IkarosVideoSubtitle>? {
-        if (attId <= 0) return null;
-        val url = baseUrl.plus("/api/v1alpha1/attachment/relation/videoSubtitle/subtitles/").plus(attId);
-        val responseText = client.get(url).bodyAsText();
-        return Json { ignoreUnknownKeys = true }.decodeFromString(responseText)
+    private suspend fun getAttachmentVideoSubtitlesById(attId: Long): List<IkarosVideoSubtitle>? {
+        if (attId <= 0) return null
+        val url = baseUrl.plus("/api/v1alpha1/attachment/relation/videoSubtitle/subtitles/").plus(attId)
+        val responseText = client.get(url).bodyAsText()
+        return json.decodeFromString(responseText)
     }
 
-    fun getResUrl(url: String): String {
+    private fun getResUrl(url: String): String {
         if (url.isEmpty()) {
             return ""
         }
+        @Suppress("HttpUrlsUsage")
         if (url.startsWith("http://") || url.startsWith("https://")) {
             return url
         }
@@ -162,7 +173,7 @@ class IkarosClient(
     private suspend fun fetchVideoAttSubtitles2ExtraFiles(attachmentId: Long): MediaExtraFiles {
         if (attachmentId <= 0) return MediaExtraFiles()
         val attVideoSubtitleList = getAttachmentVideoSubtitlesById(attachmentId)
-        val subtitles: MutableList<Subtitle> = mutableListOf();
+        val subtitles: MutableList<Subtitle> = mutableListOf()
         if (!attVideoSubtitleList.isNullOrEmpty()) {
             for (ikVideoSubtitle in attVideoSubtitleList) {
                 // convert ikarosVideoSubtitle to ani subtitle
@@ -175,7 +186,7 @@ class IkarosClient(
                 )
             }
         }
-        return MediaExtraFiles(subtitles);
+        return MediaExtraFiles(subtitles)
     }
 }
 

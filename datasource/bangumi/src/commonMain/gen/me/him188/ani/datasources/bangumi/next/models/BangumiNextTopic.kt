@@ -23,10 +23,12 @@ import kotlinx.serialization.Serializable
  * 
  *
  * @param createdAt 发帖时间，unix time stamp in seconds
- * @param creator 
- * @param id topic id
+ * @param creator
+ * @param display
+ * @param id 
  * @param parentID 小组/条目ID
- * @param repliesCount 
+ * @param repliesCount
+ * @param state 
  * @param title 
  * @param updatedAt 最后回复时间，unix time stamp in seconds
  */
@@ -37,15 +39,18 @@ data class BangumiNextTopic(
     /* 发帖时间，unix time stamp in seconds */
     @SerialName(value = "createdAt") @Required val createdAt: kotlin.Int,
 
-    @SerialName(value = "creator") @Required val creator: BangumiNextUser,
+    @SerialName(value = "creator") @Required val creator: BangumiNextSlimUser,
 
-    /* topic id */
+    @SerialName(value = "display") @Required val display: kotlin.Int,
+
     @SerialName(value = "id") @Required val id: kotlin.Int,
 
     /* 小组/条目ID */
     @SerialName(value = "parentID") @Required val parentID: kotlin.Int,
 
     @SerialName(value = "repliesCount") @Required val repliesCount: kotlin.Int,
+
+    @SerialName(value = "state") @Required val state: kotlin.Int,
 
     @SerialName(value = "title") @Required val title: kotlin.String,
 

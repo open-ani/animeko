@@ -15,7 +15,7 @@ import me.him188.ani.app.domain.media.TestMediaList
 import me.him188.ani.app.ui.foundation.preview.PreviewTabletLightDark
 import me.him188.ani.app.ui.settings.mediasource.rss.detail.RssDetailPane
 import me.him188.ani.app.ui.settings.mediasource.rss.detail.RssViewingItem
-import me.him188.ani.app.ui.settings.tabs.media.source.rss.test.TestRssItemPresentations
+import me.him188.ani.app.ui.settings.tabs.media.source.rss.test.TestRssItemInfos
 import me.him188.ani.utils.platform.annotations.TestOnly
 
 @OptIn(TestOnly::class)
@@ -25,9 +25,9 @@ import me.him188.ani.utils.platform.annotations.TestOnly
 fun PreviewRssDetailPaneRssItemShowTopBar() {
     RssDetailPane(
         RssViewingItem.ViewingRssItem(
-            TestRssItemPresentations[0],
+            TestRssItemInfos[0],
         ),
-        mediaDetailsColumn = {}
+        mediaDetailsColumn = {},
     )
 }
 
@@ -38,9 +38,9 @@ fun PreviewRssDetailPaneRssItemShowTopBar() {
 fun PreviewRssDetailPaneRssItem() {
     RssDetailPane(
         RssViewingItem.ViewingRssItem(
-            TestRssItemPresentations[0],
+            TestRssItemInfos[0],
         ),
-        mediaDetailsColumn = {}
+        mediaDetailsColumn = {},
     )
 }
 

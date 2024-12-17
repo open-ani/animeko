@@ -27,7 +27,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.preference.MediaSourceProxySettings
-import me.him188.ani.app.data.models.preference.TorrentPeerConfig
+import me.him188.ani.app.domain.torrent.peer.PeerFilterSettings
 import me.him188.ani.app.torrent.api.TorrentDownloader
 import me.him188.ani.app.torrent.api.peer.PeerFilter
 import me.him188.ani.app.torrent.api.peer.PeerInfo
@@ -95,10 +95,10 @@ abstract class AbstractTorrentEngine<Downloader : TorrentDownloader, Config : An
     final override val type: TorrentEngineType,
     protected val config: Flow<Config>,
     protected val proxySettings: Flow<MediaSourceProxySettings>,
-    protected val peerFilterSettings: Flow<TorrentPeerConfig>,
+    protected val peerFilterSettings: Flow<PeerFilterSettings>,
     parentCoroutineContext: CoroutineContext,
 ) : TorrentEngine {
-    protected val logger = logger(this::class)
+    protected val logger = logger<AbstractTorrentEngine<*, *>>()
     protected val scope = parentCoroutineContext.childScope()
 
     // AbstractTorrentEngine 创建时会立刻获取 downloader 和 config，如果在 subclass 初始化完成之前获取可能会出现问题
@@ -111,7 +111,7 @@ abstract class AbstractTorrentEngine<Downloader : TorrentDownloader, Config : An
             //  而且在播放视频时, 关闭 downloader, 视频仍然会持有旧的 torrent session, 而旧的已经被关闭了, 视频就会一直显示缓冲中.
             //  目前没有必要在 proxySettings 变更时重新创建 downloader, 因为 downloader 不会使用代理.
             initialized.await()
-            
+
             newInstance(config, proxySettings.first()).also { downloader ->
                 scope.coroutineContext.job.invokeOnCompletion {
                     downloader.close()
@@ -151,7 +151,7 @@ abstract class AbstractTorrentEngine<Downloader : TorrentDownloader, Config : An
     protected abstract suspend fun newInstance(config: Config, proxySettings: MediaSourceProxySettings): Downloader
 
     protected abstract suspend fun Downloader.applyConfig(config: Config)
-    
+
     protected abstract suspend fun Downloader.applyPeerFilter(filter: PeerFilter)
 
     @CallSuper
@@ -177,21 +177,16 @@ abstract class AbstractTorrentEngine<Downloader : TorrentDownloader, Config : An
 }
 
 
-private fun createPeerFilter(config: TorrentPeerConfig): PeerFilter {
+private fun createPeerFilter(config: PeerFilterSettings): PeerFilter {
     return object : PeerFilter {
         private val correspondingFilters = buildList {
-            add(PeerIpBlackListFilter(config.ipBlackList))
-            if (config.enableIdFilter && config.blockInvalidId) {
+            if (config.blockInvalidId) {
                 add(PeerInvalidIdFilter)
             }
-            if (config.enableIdFilter) {
-                addAll(config.idRegexFilters.map(::PeerIdFilter))
-            }
-            if (config.enableClientFilter) {
-                addAll(config.clientRegexFilters.map(::PeerClientFilter))
-            }
-            if (config.enableIpFilter) {
-                addAll(config.ipFilters.map(::PeerIpFilter))
+            config.rules.forEach { rule ->
+                addAll(rule.blockedIpPattern.map(::PeerIpFilter))
+                addAll(rule.blockedIdRegex.map(::PeerIdFilter))
+                addAll(rule.blockedClientRegex.map(::PeerClientFilter))
             }
         }
 

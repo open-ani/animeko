@@ -175,7 +175,7 @@ class DefaultMediaAutoCacheService(
     private fun SubjectCollectionInfo.debugName() = subjectInfo.displayName
 
     companion object {
-        private val logger = logger(DefaultMediaAutoCacheService::class)
+        private val logger = logger<DefaultMediaAutoCacheService>()
 
         /**
          */

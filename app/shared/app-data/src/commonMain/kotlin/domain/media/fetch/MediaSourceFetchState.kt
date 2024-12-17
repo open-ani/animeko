@@ -25,13 +25,6 @@ sealed class MediaSourceFetchState {
 
     data object Working : MediaSourceFetchState()
 
-    /**
-     * 即将要 [Succeed], 还有一些清理工作正在进行
-     */
-    data class PendingSuccess(
-        override val id: Int, // restartCount
-    ) : Completed()
-
     sealed class Completed : MediaSourceFetchState() {
         internal abstract val id: Int // restartCount
     }

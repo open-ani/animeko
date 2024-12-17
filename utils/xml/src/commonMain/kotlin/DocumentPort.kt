@@ -257,6 +257,7 @@ expect abstract class Node {
      * @param attributeValue The attribute value.
      * @return this (for chaining)
      */
+    @Suppress("EXPECT_ACTUAL_MISMATCH") // nullability //             IrActualizationErrors.EXPECT_ACTUAL_MISMATCH,
     open fun attr(
         attributeKey: String,
         attributeValue: String?,

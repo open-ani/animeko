@@ -11,15 +11,17 @@ package me.him188.ani.app.ui.settings.tabs.media.torrent.peer
 
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableStateOf
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.preference.TorrentPeerConfig
+import me.him188.ani.app.data.repository.torrent.peer.PeerFilterSubscriptionRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
+import me.him188.ani.app.domain.torrent.peer.PeerFilterSubscription
 import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.foundation.launchInBackground
@@ -29,22 +31,35 @@ import org.koin.core.component.inject
 
 @Stable
 class PeerFilterSettingsViewModel : AbstractViewModel(), KoinComponent {
-    val settingsRepository: SettingsRepository by inject()
+    private val settingsRepository: SettingsRepository by inject()
+    private val subscriptionRepo: PeerFilterSubscriptionRepository by inject()
     
     private val peerFilterConfig = settingsRepository.torrentPeerConfig.flow
     private val updateTasker = MonoTasker(backgroundScope)
     private val localConfig: MutableState<TorrentPeerConfig?> = mutableStateOf(null)
+
+    private val builtInSubPresentation = subscriptionRepo.presentationFlow
+        .map { list -> list.filter { it.subscriptionId == PeerFilterSubscription.BUILTIN_SUBSCRIPTION_ID } }
+        .stateInBackground(initialValue = emptyList())
     
     val state = PeerFilterSettingsState(
+        subscriptions = builtInSubPresentation,
         storage = SaveableStorage(
             localConfig,
             onSave = { update(it) },
-            isSavingState = derivedStateOf { updateTasker.isRunning }
-        )
+            isSavingFlow = updateTasker.isRunning,
+        ),
+        backgroundScope,
+        updateSubscriptions = { subscriptionRepo.updateAll() },
+        toggleSubscription = { id, enable ->
+            launchInBackground {
+                if (enable) subscriptionRepo.enable(id) else subscriptionRepo.disable(id)
+            }
+        },
     )
-    
+
     init {
-        launchInBackground { 
+        launchInBackground {
             peerFilterConfig.distinctUntilChanged().collectLatest { config ->
                 withContext(Dispatchers.Main) {
                     localConfig.value = config
@@ -52,7 +67,7 @@ class PeerFilterSettingsViewModel : AbstractViewModel(), KoinComponent {
             }
         }
     }
-    
+
     private fun update(new: TorrentPeerConfig) {
         updateTasker.launch {
             localConfig.value = new

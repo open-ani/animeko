@@ -20,8 +20,9 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.tooling.preview.Preview
+import me.him188.ani.app.domain.mediasource.test.MatchTag
+import me.him188.ani.app.domain.mediasource.test.web.SelectorTestSubjectPresentation
 import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview
-import me.him188.ani.app.ui.settings.mediasource.rss.test.MatchTag
 import me.him188.ani.utils.platform.annotations.TestOnly
 import me.him188.ani.utils.xml.Element
 import kotlin.random.Random

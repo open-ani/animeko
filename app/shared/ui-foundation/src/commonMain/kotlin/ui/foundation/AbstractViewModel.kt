@@ -17,7 +17,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import me.him188.ani.utils.logging.error
-import me.him188.ani.utils.logging.logger
+import me.him188.ani.utils.logging.thisLogger
 import me.him188.ani.utils.logging.trace
 
 /**
@@ -27,7 +27,7 @@ import me.him188.ani.utils.logging.trace
  * 在构造 [AbstractViewModel] 时需要考虑其声明周期问题.
  */ // We can't use Android's Viewmodel because it's not available in Desktop platforms. 
 abstract class AbstractViewModel : RememberObserver, ViewModel(), HasBackgroundScope {
-    val logger by lazy { logger(this::class) }
+    val logger by lazy { thisLogger() }
 
     private var _backgroundScope = createBackgroundScope()
     override val backgroundScope: CoroutineScope

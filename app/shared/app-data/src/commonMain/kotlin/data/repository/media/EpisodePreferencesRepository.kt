@@ -38,7 +38,7 @@ class EpisodePreferencesRepositoryImpl(
     private val defaultMediaPreference: Flow<MediaPreference> = KoinPlatform.getKoin()
         .get<SettingsRepository>().defaultMediaPreference.flow
 ) : EpisodePreferencesRepository, KoinComponent {
-    private val logger = logger(this::class)
+    private val logger = logger<EpisodePreferencesRepositoryImpl>()
     private val json = Json {
         ignoreUnknownKeys = true
     }

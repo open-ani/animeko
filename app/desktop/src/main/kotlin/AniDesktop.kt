@@ -212,6 +212,7 @@ object AniDesktop {
                             coroutineScope.coroutineContext,
                             get(),
                             get(),
+                            get(),
                             baseSaveDir = {
                                 val saveDir = runBlocking {
                                     get<SettingsRepository>().mediaCacheSettings.flow.first().saveDir

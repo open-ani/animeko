@@ -40,7 +40,6 @@ class SelectorConfigState(
 ) {
     private val arguments by argumentsStorage.containerState
     val isLoading by derivedStateOf { arguments == null }
-    val isSaving by argumentsStorage.isSavingState
 
     val enableEdit by derivedStateOf {
         !isLoading && allowEditState.value

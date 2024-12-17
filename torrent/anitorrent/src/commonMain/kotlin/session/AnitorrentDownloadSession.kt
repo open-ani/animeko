@@ -61,7 +61,7 @@ import me.him188.ani.utils.io.deleteRecursively
 import me.him188.ani.utils.logging.debug
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
-import me.him188.ani.utils.logging.logger
+import me.him188.ani.utils.logging.thisLogger
 import me.him188.ani.utils.logging.warn
 import me.him188.ani.utils.platform.annotations.TestOnly
 import me.him188.ani.utils.platform.currentTimeMillis
@@ -83,7 +83,7 @@ class AnitorrentDownloadSession(
     parentCoroutineContext: CoroutineContext,
     dispatcher: CoroutineContext = Dispatchers.IO_,
 ) : TorrentSession, SynchronizedObject() {
-    internal val logger = logger(this::class)
+    internal val logger = thisLogger()
     val handleId get() = handle.id // 内存地址, 不可持久
 
     private val scope = CoroutineScope(

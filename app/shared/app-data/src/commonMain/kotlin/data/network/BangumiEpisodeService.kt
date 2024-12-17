@@ -93,7 +93,7 @@ class BangumiEpisodeServiceImpl(
     private val ioDispatcher: CoroutineContext = Dispatchers.IO_,
 ) : BangumiEpisodeService, KoinComponent {
     private val client by inject<BangumiClient>()
-    private val logger = logger(BangumiEpisodeServiceImpl::class)
+    private val logger = logger<BangumiEpisodeServiceImpl>()
 
     override suspend fun getEpisodeCollectionInfosBySubjectId(
         subjectId: Int,

@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import me.him188.ani.app.data.models.preference.MyCollectionsSettings
 import me.him188.ani.app.data.models.preference.NsfwMode
@@ -37,7 +38,6 @@ import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.foundation.AuthState
 import me.him188.ani.app.ui.foundation.launchInBackground
-import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeState
 import me.him188.ani.app.ui.subject.collection.progress.EpisodeListStateFactory
 import me.him188.ani.app.ui.subject.collection.progress.SubjectProgressStateFactory
@@ -101,7 +101,7 @@ class UserCollectionsViewModel : AbstractViewModel(), KoinComponent {
     private fun createEditableSubjectCollectionTypeState(collection: SubjectCollectionInfo): EditableSubjectCollectionTypeState =
         // 必须不能有后台持续任务
         EditableSubjectCollectionTypeState(
-            selfCollectionType = stateOf(collection.collectionType),
+            selfCollectionTypeFlow = flowOf(collection.collectionType),
             hasAnyUnwatched = hasAnyUnwatched@{
                 val collections =
                     episodeCollectionRepository.subjectEpisodeCollectionInfosFlow(collection.subjectId)

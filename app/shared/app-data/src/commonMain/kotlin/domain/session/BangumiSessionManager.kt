@@ -105,7 +105,7 @@ class BangumiSessionManager(
      */
     enableSharing: Boolean
 ) : SessionManager, HasBackgroundScope by BackgroundScope(parentCoroutineContext) {
-    private val logger = logger(SessionManager::class)
+    private val logger = logger<SessionManager>()
 
     private val refreshCounter = MutableStateFlow(0)
 

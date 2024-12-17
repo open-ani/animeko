@@ -1,6 +1,8 @@
-name: Build
+# This file was generated using Kotlin DSL (.github/workflows/src.main.kts).
+# If you want to modify the workflow, please change the Kotlin file and regenerate this YAML file.
+# Generated with https://github.com/typesafegithub/github-workflows-kt
 
-
+name: 'Build'
 on:
   push:
     paths-ignore:
@@ -8,324 +10,347 @@ on:
   pull_request:
     paths-ignore:
       - '**/*.md'
-
 jobs:
   build:
-    name: "${{ matrix.name }}"
-    runs-on: ${{ matrix.os }}
+    name: '${{ matrix.name }}'
+    runs-on: '${{ matrix.runsOn }}'
     strategy:
       fail-fast: false
       matrix:
-        # https://docs.github.com/en/actions/using-github-hosted-runners/using-github-hosted-runners/about-github-hosted-runners
-        os:
-          - windows-2019 # 16 GB
-          - ubuntu-20.04 # 16 GB
-          - macos-13 # x86_64, 14 GB
-          # - macos-14 # aarch64, 7 GB
+        id:
+          - 'windows'
+          - 'ubuntu-x64'
+          - 'macos-x64'
+          - 'macos-aarch64'
         include:
-          # matrix properties can be booleans. Check for plain true and false.
-          - os: windows-2019
-            name: Windows x86_64
-            uploadApk: true
-            arch: x64
-            anitorrent: true
-            anitorrent_separate_build: false # windows 单线程构建 anitorrent, 要一起跑节约时间
-            compose_resource_triple: windows-x64
-            run_tests: true
-            assemble: true
+          - arch: 'x64'
+            buildAnitorrent: true
+            buildAnitorrentSeparately: false
+            buildIosFramework: false
+            composeResourceTriple: 'windows-x64'
+            extraGradleArgs:
+              - '-Pani.android.abis=x86_64'
+            gradleArgs: '"--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dani.enable.anitorrent=true" "-DCMAKE_BUILD_TYPE=Release" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "--parallel" "-Pani.android.abis=x86_64"'
+            id: 'windows'
+            installNativeDeps: false
+            name: 'Windows x86_64'
+            os: 'windows'
+            runTests: true
+            runsOn:
+              - 'self-hosted'
+              - 'Windows'
+              - 'X64'
+            selfHosted: true
+            uploadApk: false
             uploadDesktopInstallers: true
-            gradleArgs: '"-Dorg.gradle.jvmargs=-Xmx4096m" "-Dfile.encoding=UTF-8" "-Dkotlin.daemon.jvm.options=-Xmx4096M"'
-          - os: ubuntu-20.04
-            name: Ubuntu x86_64 (Compile only)
+          - arch: 'x64'
+            buildAnitorrent: false
+            buildAnitorrentSeparately: false
+            buildIosFramework: false
+            composeResourceTriple: 'linux-x64'
+            extraGradleArgs: [ ]
+            gradleArgs: '"--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g"'
+            id: 'ubuntu-x64'
+            installNativeDeps: true
+            name: 'Ubuntu x86_64 (Compile only)'
+            os: 'ubuntu'
+            runTests: false
+            runsOn:
+              - 'ubuntu-20.04'
+            selfHosted: false
             uploadApk: false
-            arch: x64
-            anitorrent: false
-            anitorrent_separate_build: false
-            compose_resource_triple: linux-x64
-            run_tests: false # 只编译, 因为 test 不支持 linux
-            assemble: false
             uploadDesktopInstallers: false
-            gradleArgs: '-Dorg.gradle.jvmargs=-Xmx4096m -Dfile.encoding=UTF-8 -Dkotlin.daemon.jvm.options=-Xmx4096M'
-          - os: macos-13
-            name: macOS x86_64
-            uploadApk: false
-            arch: x64
-            anitorrent: true
-            anitorrent_separate_build: true # macOS native 构建快, 先构建 anitorrent, 再 assemble
-            compose_resource_triple: macos-x64
-            run_tests: true
-            assemble: true
-            uploadDesktopInstallers: false
-            gradleArgs: >-
-              -Dorg.gradle.jvmargs=-Xmx4g
-              -Dfile.encoding=UTF-8
-              -Dkotlin.daemon.jvm.options=-Xmx4g
-              -Pani.build.framework=false
-              -Pani.android.abis=arm64-v8a
-            # - os: macos-14
-            #   name: macOS aarch64
-            #   uploadApk: false
-            #   arch: aarch64
-            #   anitorrent: true
-            #   anitorrent_separate_build: true
-            #   compose_resource_triple: macos-arm64
-            #   run_tests: false
-            #   gradleArgs: >-
-            #     -Dorg.gradle.jvmargs=-Xmx4g
-            #     -Dfile.encoding=UTF-8
-            #     -Dkotlin.daemon.jvm.options=-Xmx3g
-            #     -Pani.build.framework=false
-            #     -Pani.android.abis=arm64-v8a
-            # 这台机器硬盘小, 不要构建其他安卓架构
-    env:
-      gradleArgs: >-
-        --scan
-        "--no-configuration-cache"
-        ${{ matrix.gradleArgs }} 
-        ${{ matrix.anitorrent == true && '"-Dani.enable.anitorrent=true"' || '' }}
-        ${{ matrix.anitorrent == true && '"-DCMAKE_BUILD_TYPE=Release"' || '' }}
-        ${{ startsWith(matrix.os, 'windows') && '"-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake"' || '' }}
-        ${{ startsWith(matrix.os, 'windows') && '"-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include"' || '' }}
-
-      # envs are strings, so check for 'true' or 'false'
-      isMac: ${{ startsWith(matrix.os, 'macos') }}
-      isWindows: ${{ startsWith(matrix.os, 'windows') }}
-      isUbuntu: ${{ startsWith(matrix.os, 'ubuntu') }}
-      isUnix: ${{ startsWith(matrix.os, 'macos') || startsWith(matrix.os, 'ubuntu') }}
-      doSigning: ${{ github.event_name != 'pull_request' && github.repository == 'open-ani/animeko' }} # fork 和 PR 不使用签名
+          - arch: 'x64'
+            buildAnitorrent: true
+            buildAnitorrentSeparately: true
+            buildIosFramework: false
+            composeResourceTriple: 'macos-x64'
+            extraGradleArgs: [ ]
+            gradleArgs: '"--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dani.enable.anitorrent=true" "-DCMAKE_BUILD_TYPE=Release" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g"'
+            id: 'macos-x64'
+            installNativeDeps: true
+            name: 'macOS x86_64'
+            os: 'macos'
+            runTests: true
+            runsOn:
+              - 'macos-13'
+            selfHosted: false
+            uploadApk: true
+            uploadDesktopInstallers: true
+          - arch: 'aarch64'
+            buildAnitorrent: true
+            buildAnitorrentSeparately: true
+            buildIosFramework: false
+            composeResourceTriple: 'macos-arm64'
+            extraGradleArgs:
+              - '-Pani.android.abis=arm64-v8a'
+            gradleArgs: '"--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dani.enable.anitorrent=true" "-DCMAKE_BUILD_TYPE=Release" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=arm64-v8a"'
+            id: 'macos-aarch64'
+            installNativeDeps: false
+            name: 'macOS AArch64'
+            os: 'macos'
+            runTests: true
+            runsOn:
+              - 'self-hosted'
+              - 'macOS'
+              - 'ARM64'
+            selfHosted: true
+            uploadApk: true
+            uploadDesktopInstallers: true
     steps:
-      - uses: actions/checkout@v4
+      - id: 'step-0'
+        uses: 'actions/checkout@v4'
         with:
           submodules: 'recursive'
-
-      - if: ${{ startsWith(matrix.os, 'macos') }}
-        name: Free space
-        run: chmod +x ./ci-helper/free-space-macos.sh && ./ci-helper/free-space-macos.sh
+      - id: 'step-1'
+        name: 'Free space for macOS'
         continue-on-error: true
-      
-      #      - uses: actions/setup-java@v4
-      #        with:
-      #          distribution: zulu
-      #          java-version: 17
-      #          architecture: ${{ matrix.arch }}
-
-      - name: Get JBR 21 for macOS AArch64
-        if: ${{ matrix.os == 'macos-14' }}
-        run: wget https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz -O $RUNNER_TEMP/jbr21.tar.gz
-        # jbrsdk_jcef-21.0.4-osx-aarch64-b613.2.tar.gz
-
-      - name: Setup JBR 21 for macOS AArch64
-        if: ${{ matrix.os == 'macos-14' }}
-        uses: gmitch215/setup-java@6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d
+        run: 'chmod +x ./ci-helper/free-space-macos.sh && ./ci-helper/free-space-macos.sh'
+        if: '${{ ((matrix.os == ''macos'')) && (!(matrix.selfHosted)) }}'
+      - id: 'step-2'
+        name: 'Resolve JBR location'
+        run: |-
+          # Expand jbrLocationExpr
+          jbr_location_expr=$(eval echo ${{ runner.tool_cache }}/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz)
+          echo "jbrLocation=$jbr_location_expr" >> $GITHUB_OUTPUT
+        if: '${{ ((matrix.os == ''macos'')) && ((matrix.arch == ''aarch64'')) }}'
+      - id: 'step-3'
+        name: 'Get JBR 21 for macOS AArch64'
+        env:
+          jbrLocation: '${{ steps.step-2.outputs.jbrLocation }}'
+        run: |-
+          jbr_location="$jbrLocation"
+          checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz.checksum"
+          checksum_file="checksum.tmp"
+          wget -q -O $checksum_file $checksum_url
+          
+          expected_checksum=$(awk '{print $1}' $checksum_file)
+          file_checksum=""
+          
+          if [ -f "$jbr_location" ]; then
+              file_checksum=$(shasum -a 512 "$jbr_location" | awk '{print $1}')
+          fi
+          
+          if [ "$file_checksum" != "$expected_checksum" ]; then
+              wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz -O "$jbr_location"
+              file_checksum=$(shasum -a 512 "$jbr_location" | awk '{print $1}')
+          fi
+          
+          if [ "$file_checksum" != "$expected_checksum" ]; then
+              echo "Checksum verification failed!" >&2
+              rm -f $checksum_file
+              exit 1
+          fi
+          
+          rm -f $checksum_file
+          file "$jbr_location"
+        if: '${{ ((matrix.os == ''macos'')) && ((matrix.arch == ''aarch64'')) }}'
+      - id: 'step-4'
+        name: 'Setup JBR 21 for macOS AArch64'
+        uses: 'gmitch215/setup-java@6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d'
         with:
+          java-version: '21'
           distribution: 'jdkfile'
-          java-version: 21.0.5
-          jdkFile: ${{ runner.temp }}/jbr21.tar.gz
+          jdkFile: '${{ steps.step-2.outputs.jbrLocation }}'
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Setup JBR 21 for other OS
-        if: ${{ matrix.os != 'macos-14' }}
-        uses: gmitch215/setup-java@6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d
+          GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
+        if: '${{ ((matrix.os == ''macos'')) && ((matrix.arch == ''aarch64'')) }}'
+      - id: 'step-5'
+        name: 'Setup JBR 21 for other OS'
+        uses: 'gmitch215/setup-java@6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d'
         with:
+          java-version: '21'
           distribution: 'jetbrains'
-          java-version: 21
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - run: echo "jvm.toolchain.version=21" >> local.properties
-
-      - if: ${{ env.isMac == 'true' }}
-        name: Install Native Dependencies
-        run: chmod +x ./ci-helper/install-deps-macos-ci.sh && ./ci-helper/install-deps-macos-ci.sh
-
-      - if: ${{ env.isWindows == 'true' }}
-        name: Setup vcpkg cache
-        uses: actions/github-script@v7
+          GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
+        if: '${{ !(((matrix.os == ''macos'')) && ((matrix.arch == ''aarch64''))) }}'
+      - id: 'step-6'
+        run: 'echo "jvm.toolchain.version=21" >> local.properties'
+      - id: 'step-7'
+        name: 'Setup vcpkg cache'
+        uses: 'actions/github-script@v7'
         with:
-          script: |
+          script: |-
             core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
             core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
-
-      - if: ${{ env.isWindows == 'true' }}
-        name: Install Native Dependencies
-        run: ./ci-helper/install-deps-windows.cmd
+        if: '${{ ((matrix.os == ''windows'')) && (matrix.installNativeDeps) }}'
+      - id: 'step-8'
+        name: 'Install Native Dependencies for Windows'
         env:
-          VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
+          VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
+        run: './ci-helper/install-deps-windows.cmd'
+        if: '${{ ((matrix.os == ''windows'')) && (matrix.installNativeDeps) }}'
+      - id: 'step-9'
+        name: 'Install Native Dependencies for MacOS'
+        run: 'chmod +x ./ci-helper/install-deps-macos-ci.sh && ./ci-helper/install-deps-macos-ci.sh'
+        if: '${{ ((matrix.os == ''macos'')) && (matrix.installNativeDeps) }}'
+      - id: 'step-10'
+        run: 'chmod -R 777 .'
+        if: '${{ ((matrix.os == ''ubuntu'')) || ((matrix.os == ''macos'')) }}'
+      - id: 'step-11'
+        name: 'Setup Gradle'
+        uses: 'gradle/actions/setup-gradle@v3'
         with:
-          cache-disabled: true # 缓存包含旧版本的, 太占位置了 
-
-      - if: ${{ env.isUnix == 'true' }}
-        run: chmod -R 777 *
-
-      - name: Clean and download dependencies
-        if: ${{ matrix.run_tests }}
-        uses: nick-fields/retry@v2
+          cache-disabled: 'true'
+      - id: 'step-12'
+        name: 'Clean and download dependencies'
+        uses: 'nick-fields/retry@v2'
         with:
-          max_attempts: 3
-          timeout_minutes: 60
-          command: ./gradlew clean ${{ env.gradleArgs }}
-
-      - name: Update version name
-        run: ./gradlew updateDevVersionNameFromGit ${{ env.gradleArgs }}
-      
-      #      - name: Cache Anitorrent for Android
-      #        if: ${{ matrix.anitorrent }}
-      #        id: cache-anitorrent-android
-      #        uses: actions/cache@v4
-      #        with:
-      #          path: |
-      #            app/android/.cxx
-      #            app/android/build
-      #          key: ${{ runner.os }}-anitorrent-android
-      #
-      #      - name: Cache Anitorrent for Desktop
-      #        if: ${{ matrix.anitorrent }}
-      #        id: cache-anitorrent-desktop
-      #        uses: actions/cache@v4
-      #        with:
-      #          path: |
-      #            torrent/anitorrent/anitorrent-native/build-ci/
-      #            torrent/anitorrent/anitorrent-native/build/
-      #          key: ${{ runner.os }}-anitorrent-desktop
-
-      # 备注: 这个可能已经不需要了, Compose 可能已经修复了这个 bug
-      - name: Explicitly generate Compose resources
-        run: ./gradlew generateComposeResClass ${{ env.gradleArgs }}
-
-      - if: ${{ matrix.uploadApk }}
-        name: Prepare signing key
-        id: android_signing_key
-        uses: timheuer/base64-to-file@v1.1
+          timeout_minutes: '60'
+          max_attempts: '3'
+          command: './gradlew ${{ matrix.gradleArgs }}'
+      - id: 'step-13'
+        name: 'Update dev version name'
+        run: './gradlew updateDevVersionNameFromGit ${{ matrix.gradleArgs }}'
+      - id: 'step-14'
+        name: 'Prepare signing key'
+        continue-on-error: true
+        uses: 'timheuer/base64-to-file@v1.1'
         with:
           fileName: 'android_signing_key'
           fileDir: './'
-          encodedString: ${{ secrets.SIGNING_RELEASE_STOREFILE }}
-        continue-on-error: true
-
-      - name: Build Anitorrent for Desktop
-        if: ${{ matrix.anitorrent && matrix.anitorrent_separate_build }}
-        run: ./gradlew :torrent:anitorrent:build :torrent:anitorrent:anitorrent-native:buildAnitorrent ${{ env.gradleArgs }}
-
-      - name: Build Anitorrent for Android Debug
-        if: ${{ matrix.anitorrent }}
-        run: ./gradlew buildCMakeDebug ${{ env.gradleArgs }}
-
-      - name: Build Anitorrent for Android Release
-        if: ${{ matrix.anitorrent }}
-        run: ./gradlew buildCMakeRelWithDebInfo ${{ env.gradleArgs }}
-
-      - name: Compile Kotlin
-        run: ./gradlew compileKotlin ${{ env.gradleArgs }}
-
-      - name: Assemble
-        if: ${{ matrix.assemble }}
-        run: ./gradlew assemble ${{ env.gradleArgs }}
-
-      - if: ${{ matrix.uploadApk }}
-        name: Build Android Debug APK
-        run: ./gradlew assembleDebug ${{ env.gradleArgs }}
-
-      - if: ${{ matrix.uploadApk }}
-        name: Upload Android Debug APK
-        uses: actions/upload-artifact@v4
+          encodedString: '${{ secrets.SIGNING_RELEASE_STOREFILE }}'
+        if: '${{ (github.event_name != ''pull_request'' && github.repository == ''open-ani/animeko'' ) && (matrix.uploadApk) }}'
+      - id: 'step-15'
+        name: 'Build Anitorrent for Desktop'
+        run: './gradlew :torrent:anitorrent:build :torrent:anitorrent:anitorrent-native:buildAnitorrent ${{ matrix.gradleArgs }}'
+        if: '${{ (matrix.buildAnitorrent) && (matrix.buildAnitorrentSeparately) }}'
+      - id: 'step-16'
+        name: 'Build Anitorrent for Android'
+        run: './gradlew :torrent:anitorrent:anitorrent-native:buildAnitorrent buildCMakeDebug buildCMakeRelWithDebInfo ${{ matrix.gradleArgs }}'
+        if: '${{ matrix.buildAnitorrent }}'
+      - id: 'step-17'
+        name: 'Explicitly generate Compose resources'
+        run: './gradlew updateDevVersionNameFromGit ${{ matrix.gradleArgs }}'
+      - id: 'step-18'
+        name: 'Compile Kotlin'
+        run: './gradlew compileKotlin compileCommonMainKotlinMetadata compileDebugKotlinAndroid compileReleaseKotlinAndroid compileJvmMainKotlinMetadata compileKotlinDesktop compileKotlinMetadata ${{ matrix.gradleArgs }}'
+      - id: 'step-19'
+        name: 'Build Android Debug APK'
+        run: './gradlew assembleDebug ${{ matrix.gradleArgs }}'
+        if: '${{ matrix.uploadApk }}'
+      - id: 'step-20'
+        name: 'Upload Android Debug APK'
+        uses: 'actions/upload-artifact@v4'
         with:
-          name: ani-android-debug
-          path: app/android/build/outputs/apk/debug/android-debug.apk
-
-
-      - if: ${{ matrix.uploadApk && env.doSigning == 'true' }}
-        name: Build Android Release APK
-        run: ./gradlew assembleRelease ${{ env.gradleArgs }}
+          name: 'ani-android-arm64-v8a-debug'
+          path: 'app/android/build/outputs/apk/debug/android-arm64-v8a-debug.apk'
+          overwrite: 'true'
+        if: '${{ matrix.uploadApk }}'
+      - id: 'step-21'
+        name: 'Upload Android Debug APK'
+        uses: 'actions/upload-artifact@v4'
+        with:
+          name: 'ani-android-x86_64-debug'
+          path: 'app/android/build/outputs/apk/debug/android-x86_64-debug.apk'
+          overwrite: 'true'
+        if: '${{ matrix.uploadApk }}'
+      - id: 'step-22'
+        name: 'Upload Android Debug APK'
+        uses: 'actions/upload-artifact@v4'
+        with:
+          name: 'ani-android-armeabi-v7a-debug'
+          path: 'app/android/build/outputs/apk/debug/android-armeabi-v7a-debug.apk'
+          overwrite: 'true'
+        if: '${{ matrix.uploadApk }}'
+      - id: 'step-23'
+        name: 'Upload Android Debug APK'
+        uses: 'actions/upload-artifact@v4'
+        with:
+          name: 'ani-android-universal-debug'
+          path: 'app/android/build/outputs/apk/debug/android-universal-debug.apk'
+          overwrite: 'true'
+        if: '${{ matrix.uploadApk }}'
+      - id: 'step-24'
+        name: 'Build Android Release APK'
         env:
-          "signing_release_storeFileFromRoot": ${{ steps.android_signing_key.outputs.filePath }}
-          "signing_release_storePassword": ${{ secrets.SIGNING_RELEASE_STOREPASSWORD }}
-          "signing_release_keyAlias": ${{ secrets.SIGNING_RELEASE_KEYALIAS }}
-          "signing_release_keyPassword": ${{ secrets.SIGNING_RELEASE_KEYPASSWORD }}
-
-      - if: ${{ matrix.uploadApk }}
-        name: Upload Android Release APK arm64-v8a
-        uses: actions/upload-artifact@v4
+          signing_release_storeFileFromRoot: '${{ steps.step-14.outputs.filePath }}'
+          signing_release_storePassword: '${{ secrets.SIGNING_RELEASE_STOREPASSWORD }}'
+          signing_release_keyAlias: '${{ secrets.SIGNING_RELEASE_KEYALIAS }}'
+          signing_release_keyPassword: '${{ secrets.SIGNING_RELEASE_KEYPASSWORD }}'
+        run: './gradlew assembleRelease ${{ matrix.gradleArgs }}'
+        if: '${{ (github.event_name != ''pull_request'' && github.repository == ''open-ani/animeko'' ) && (matrix.uploadApk) }}'
+      - id: 'step-25'
+        name: 'Upload Android Release APK arm64-v8a'
+        uses: 'actions/upload-artifact@v4'
         with:
-          name: ani-android-arm64-v8a-release
-          path: app/android/build/outputs/apk/release/android-arm64-v8a-release.apk
-
-      - if: ${{ matrix.uploadApk }}
-        name: Upload Android Release APK armeabi-v7a
-        uses: actions/upload-artifact@v4
+          name: 'ani-android-arm64-v8a-release'
+          path: 'app/android/build/outputs/apk/release/android-arm64-v8a-release.apk'
+          overwrite: 'true'
+        if: '${{ matrix.uploadApk }}'
+      - id: 'step-26'
+        name: 'Upload Android Release APK x86_64'
+        uses: 'actions/upload-artifact@v4'
         with:
-          name: ani-android-armeabi-v7a-release
-          path: app/android/build/outputs/apk/release/android-armeabi-v7a-release.apk
-
-      - if: ${{ matrix.uploadApk }}
-        name: Upload Android Release APK x86_64
-        uses: actions/upload-artifact@v4
+          name: 'ani-android-x86_64-release'
+          path: 'app/android/build/outputs/apk/release/android-x86_64-release.apk'
+          overwrite: 'true'
+        if: '${{ matrix.uploadApk }}'
+      - id: 'step-27'
+        name: 'Upload Android Release APK armeabi-v7a'
+        uses: 'actions/upload-artifact@v4'
         with:
-          name: ani-android-x86_64-release
-          path: app/android/build/outputs/apk/release/android-x86_64-release.apk
-
-      - if: ${{ matrix.uploadApk }}
-        name: Upload Android Release APK universal
-        uses: actions/upload-artifact@v4
+          name: 'ani-android-armeabi-v7a-release'
+          path: 'app/android/build/outputs/apk/release/android-armeabi-v7a-release.apk'
+          overwrite: 'true'
+        if: '${{ matrix.uploadApk }}'
+      - id: 'step-28'
+        name: 'Upload Android Release APK universal'
+        uses: 'actions/upload-artifact@v4'
         with:
-          name: ani-android-universal-release
-          path: app/android/build/outputs/apk/release/android-universal-release.apk
-
-      - name: Check
-        if: ${{ matrix.run_tests }}
-        uses: nick-fields/retry@v2
+          name: 'ani-android-universal-release'
+          path: 'app/android/build/outputs/apk/release/android-universal-release.apk'
+          overwrite: 'true'
+        if: '${{ matrix.uploadApk }}'
+      - id: 'step-29'
+        name: 'Check'
+        uses: 'nick-fields/retry@v2'
         with:
-          max_attempts: 2
-          timeout_minutes: 60
-          command: ./gradlew check ${{ env.gradleArgs }}
-
-      - if: ${{ matrix.anitorrent }}
-        name: Upload Anitorrent CMakeCache.txt
-        uses: actions/upload-artifact@v4
+          timeout_minutes: '60'
+          max_attempts: '2'
+          command: './gradlew check ${{ matrix.gradleArgs }}'
+        if: '${{ matrix.runTests }}'
+      - id: 'step-30'
+        name: 'Upload Anitorrent CMakeCache.txt'
+        uses: 'actions/upload-artifact@v4'
         with:
-          name: anitorrent-cmake-cache-${{ matrix.os }}-${{ matrix.arch }}
-          path: torrent/anitorrent/build-ci/CMakeCache.txt
-
-      - if: ${{ matrix.anitorrent }}
-        name: Upload Anitorrent ${{ matrix.compose_resource_triple }}
-        uses: actions/upload-artifact@v4
+          name: 'anitorrent-cmake-cache-${{ matrix.os }}-${{ matrix.arch }}'
+          path: 'torrent/anitorrent/build-ci/CMakeCache.txt'
+        if: '${{ matrix.buildAnitorrent }}'
+      - id: 'step-31'
+        name: 'Upload Anitorrent ${{ matrix.composeResourceTriple }}'
+        uses: 'actions/upload-artifact@v4'
         with:
-          name: anitorrent-${{ matrix.compose_resource_triple }}
-          path: app/desktop/appResources/${{ matrix.compose_resource_triple }}/anitorrent
-
-      - name: Package Desktop
-        if: ${{ matrix.uploadDesktopInstallers }}
-        run: ./gradlew packageReleaseDistributionForCurrentOS ${{ env.gradleArgs }}
-        id: packageReleaseDistributionForCurrentOS
-
-      # 只在打包错误时上传日志
-      - if: always() # steps.packageReleaseDistributionForCurrentOS.conclusion == 'failure'
-        name: Upload compose logs
-        uses: actions/upload-artifact@v4
+          name: 'anitorrent-${{ matrix.composeResourceTriple }}'
+          path: 'app/desktop/appResources/${{ matrix.composeResourceTriple }}/anitorrent'
+        if: '${{ matrix.buildAnitorrent }}'
+      - id: 'step-32'
+        name: 'Package Desktop'
+        run: './gradlew packageReleaseDistributionForCurrentOS ${{ matrix.gradleArgs }}'
+        if: '${{ (matrix.uploadDesktopInstallers) && (!(((matrix.os == ''macos'')) && ((matrix.arch == ''x64'')))) }}'
+      - id: 'step-33'
+        name: 'Upload compose logs'
+        uses: 'actions/upload-artifact@v4'
         with:
-          name: compose-logs-${{ matrix.os }}-${{ matrix.arch }}
-          path: app/desktop/build/compose/logs
-
-      - if: ${{ env.isMac == 'true' }}
-        name: Upload macOS app
-        uses: actions/upload-artifact@v4
+          name: 'compose-logs-${{ matrix.os }}-${{ matrix.arch }}'
+          path: 'app/desktop/build/compose/logs'
+        if: '${{ matrix.uploadDesktopInstallers }}'
+      - id: 'step-34'
+        name: 'Upload macOS dmg'
+        uses: 'actions/upload-artifact@v4'
         with:
-          name: ani-macos-portable-${{ matrix.arch }}
-          path: app/desktop/build/compose/binaries/main-release/app/Ani.app
-
-      - if: ${{ env.isMac == 'true' && matrix.arch != 'x64' }}
-        name: Upload macOS dmg
-        uses: actions/upload-artifact@v4
+          name: 'ani-macos-dmg-${{ matrix.arch }}'
+          path: 'app/desktop/build/compose/binaries/main-release/dmg/Ani-*.dmg'
+        if: '${{ (matrix.uploadDesktopInstallers) && ((matrix.os == ''macos'')) }}'
+      - id: 'step-35'
+        name: 'Upload Windows packages'
+        uses: 'actions/upload-artifact@v4'
         with:
-          name: ani-macos-dmg-${{ matrix.arch }}
-          path: app/desktop/build/compose/binaries/main-release/dmg/Ani-*.dmg
-
-      - if: ${{ env.isWindows == 'true' }}
-        name: Upload Windows packages
-        uses: actions/upload-artifact@v4
-        with:
-          name: ani-windows-portable
-          path: app/desktop/build/compose/binaries/main-release/app
+          name: 'ani-windows-portable'
+          path: 'app/desktop/build/compose/binaries/main-release/app'
+        if: '${{ (matrix.uploadDesktopInstallers) && ((matrix.os == ''windows'')) }}'
+      - id: 'step-36'
+        name: 'Cleanup temp files'
+        continue-on-error: true
+        run: 'chmod +x ./ci-helper/cleanup-temp-files-macos.sh && ./ci-helper/cleanup-temp-files-macos.sh'
+        if: '${{ (matrix.selfHosted) && (((matrix.os == ''macos'')) && ((matrix.arch == ''aarch64''))) }}'

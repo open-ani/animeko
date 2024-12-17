@@ -17,10 +17,9 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import me.him188.ani.app.data.models.ApiFailure
-import me.him188.ani.app.data.models.ApiResponse
 import me.him188.ani.app.data.models.fold
-import me.him188.ani.app.data.models.map
 import me.him188.ani.app.data.models.runApiRequest
+import me.him188.ani.app.data.repository.media.SelectorMediaSourceEpisodeCacheRepository
 import me.him188.ani.app.domain.mediasource.codec.DefaultMediaSourceCodec
 import me.him188.ani.app.domain.mediasource.codec.DontForgetToRegisterCodec
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceArguments
@@ -88,6 +87,7 @@ object SelectorMediaSourceCodec : DefaultMediaSourceCodec<SelectorMediaSourceArg
 class SelectorMediaSource(
     override val mediaSourceId: String,
     config: MediaSourceConfig,
+    val repository: SelectorMediaSourceEpisodeCacheRepository,
     override val kind: MediaSourceKind = MediaSourceKind.WEB,
 ) : HttpMediaSource(), WebVideoMatcherProvider {
     companion object {
@@ -104,7 +104,9 @@ class SelectorMediaSource(
 
     override val location: MediaSourceLocation get() = MediaSourceLocation.Online
 
-    class Factory : MediaSourceFactory {
+    class Factory(
+        val repository: SelectorMediaSourceEpisodeCacheRepository
+    ) : MediaSourceFactory {
         override val factoryId: FactoryId get() = FactoryId
 
         override val info: MediaSourceInfo = MediaSourceInfo(
@@ -115,7 +117,7 @@ class SelectorMediaSource(
 
         override val allowMultipleInstances: Boolean get() = true
         override fun create(mediaSourceId: String, config: MediaSourceConfig): MediaSource =
-            SelectorMediaSource(mediaSourceId, config)
+            SelectorMediaSource(mediaSourceId, config, repository)
     }
 
     override suspend fun checkConnection(): ConnectionStatus {
@@ -150,14 +152,26 @@ class SelectorMediaSource(
         searchConfig: SelectorSearchConfig,
         query: SelectorSearchQuery,
         mediaSourceId: String,
-    ): ApiResponse<List<DefaultMedia>> = withContext(Dispatchers.Default) {
+    ): List<DefaultMedia> = withContext(Dispatchers.Default) {
+        val cache = repository.getCache(mediaSourceId, query.subjectName)
+        if (cache.isNotEmpty()) {
+            return@withContext cache.flatMap { webSearchInfo ->
+                selectMedia(
+                    webSearchInfo.webEpisodeInfos.asSequence(),
+                    searchConfig,
+                    query,
+                    mediaSourceId,
+                    subjectName = webSearchInfo.webSubjectInfo.name,
+                ).filteredList
+            }
+        }
         searchSubjects(
             searchConfig.searchUrl,
             subjectName = query.subjectName,
             useOnlyFirstWord = searchConfig.searchUseOnlyFirstWord,
             removeSpecial = searchConfig.searchRemoveSpecial,
-        ).map { (_, document) ->
-            document ?: return@map emptyList()
+        ).let { (_, document) ->
+            document ?: return@let emptyList()
 
             buildList {
                 val subjects = selectSubjects(document, searchConfig)
@@ -172,10 +186,10 @@ class SelectorMediaSource(
                     }
 
                 for (subjectInfo in subjects) {
-                    val episodeDocument = doHttpGet(subjectInfo.fullUrl).getOrNull() ?: continue
+                    val episodeDocument = kotlin.runCatching { doHttpGet(subjectInfo.fullUrl) }.getOrNull() ?: continue
                     val episodes =
                         selectEpisodes(episodeDocument, subjectInfo.fullUrl, searchConfig)?.episodes ?: continue
-
+                    repository.addCache(mediaSourceId, query.subjectName, subjectInfo, episodes)
                     addAll(
                         selectMedia(
                             episodes.asSequence(),
@@ -204,7 +218,7 @@ class SelectorMediaSource(
                             episodeName = query.episodeName,
                         ),
                         mediaSourceId,
-                    ).getOrThrow().asFlow()
+                    ).asFlow()
                 }.map {
                     MediaMatch(it, MatchKind.FUZZY)
                 }

@@ -78,6 +78,9 @@ class SearchViewModel : AbstractViewModel(), KoinComponent {
                 }.cachedIn(backgroundScope)
             },
         ),
+        onRemoveHistory = {
+            searchHistoryRepository.removeHistory(it)
+        },
         backgroundScope = backgroundScope,
         onStartSearch = { query ->
             subjectDetailsStateLoader.clear()

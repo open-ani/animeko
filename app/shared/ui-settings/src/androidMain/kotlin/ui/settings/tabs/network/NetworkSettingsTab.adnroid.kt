@@ -132,6 +132,9 @@ fun createTestMediaSourceManager() = object : MediaSourceManager {
         return emptyList()
     }
 
+    override suspend fun partiallyReorderInstances(instanceIds: List<String>) {
+    }
+
     override suspend fun updateConfig(instanceId: String, config: MediaSourceConfig): Boolean {
         return false
     }

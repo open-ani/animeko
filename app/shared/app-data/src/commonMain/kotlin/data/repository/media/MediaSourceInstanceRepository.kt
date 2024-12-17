@@ -19,6 +19,7 @@ import me.him188.ani.datasources.api.source.FactoryId
 import me.him188.ani.datasources.api.source.MediaSourceConfig
 import me.him188.ani.datasources.mikan.MikanCNMediaSource
 import me.him188.ani.utils.platform.Uuid
+import me.him188.ani.utils.platform.collections.partiallyReorderBy
 
 sealed class MediaSourceInstanceRepository : Repository() {
     abstract val flow: Flow<List<MediaSourceSave>>
@@ -28,7 +29,11 @@ sealed class MediaSourceInstanceRepository : Repository() {
     abstract suspend fun add(mediaSourceSave: MediaSourceSave)
 
     abstract suspend fun updateSave(instanceId: String, config: MediaSourceSave.() -> MediaSourceSave): Boolean
-    abstract suspend fun reorder(newOrder: List<String>)
+
+    /**
+     * @see partiallyReorderBy
+     */
+    abstract suspend fun partiallyReorder(newOrderInstanceIds: List<String>)
 }
 
 suspend inline fun MediaSourceInstanceRepository.updateConfig(instanceId: String, config: MediaSourceConfig): Boolean {
@@ -114,13 +119,9 @@ class MediaSourceInstanceRepositoryImpl(
         return found
     }
 
-    override suspend fun reorder(newOrder: List<String>) {
+    override suspend fun partiallyReorder(newOrderInstanceIds: List<String>) {
         dataStore.updateData { current ->
-            val instances = current.instances.toMutableList()
-            val newInstances = newOrder.mapNotNull { instanceId ->
-                current.instances.find { it.instanceId == instanceId }
-            }
-            current.copy(instances = newInstances + instances.filter { it.instanceId !in newOrder })
+            current.copy(instances = current.instances.partiallyReorderBy({ it.instanceId }, newOrderInstanceIds))
         }
     }
 }

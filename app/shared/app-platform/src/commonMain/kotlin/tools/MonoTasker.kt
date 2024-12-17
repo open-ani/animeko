@@ -1,10 +1,18 @@
+/*
+ * Copyright (C) 2024 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.app.tools
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisallowComposableCalls
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -17,6 +25,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 import kotlin.coroutines.CoroutineContext
@@ -24,7 +34,7 @@ import kotlin.coroutines.EmptyCoroutineContext
 
 @Stable
 interface MonoTasker {
-    val isRunning: Boolean
+    val isRunning: StateFlow<Boolean>
 
     fun launch(
         context: CoroutineContext = EmptyCoroutineContext,
@@ -60,7 +70,7 @@ fun MonoTasker(
     var job: Job? = null
 
     private val _isRunning = MutableStateFlow(false)
-    override val isRunning: Boolean by _isRunning.produceState(false, scope)
+    override val isRunning: StateFlow<Boolean> = _isRunning.asStateFlow()
 
     override fun launch(
         context: CoroutineContext,

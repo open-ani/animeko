@@ -42,6 +42,7 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.max
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.interaction.isImeVisible
@@ -84,7 +85,7 @@ fun EditComment(
             EditCommentDefaults.ActionRow(
                 sendTarget = state.currentSendTarget,
                 previewing = state.previewing,
-                sending = state.sending,
+                sending = state.sending.collectAsStateWithLifecycle(false).value,
                 onClickBold = { state.wrapSelectionWith("[b][/b]", 3) },
                 onClickItalic = { state.wrapSelectionWith("[i][/i]", 3) },
                 onClickUnderlined = { state.wrapSelectionWith("[u][/u]", 3) },

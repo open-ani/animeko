@@ -65,6 +65,7 @@ import me.him188.ani.app.ui.settings.mediasource.DropdownMenuImport
 import me.him188.ani.app.ui.settings.mediasource.ExportMediaSourceState
 import me.him188.ani.app.ui.settings.mediasource.ImportMediaSourceState
 import me.him188.ani.app.ui.settings.mediasource.MediaSourceConfigurationDefaults
+import me.him188.ani.app.ui.settings.mediasource.observeTestDataChanges
 import me.him188.ani.app.ui.settings.mediasource.rss.detail.RssDetailPane
 import me.him188.ani.app.ui.settings.mediasource.rss.detail.SideSheetPane
 import me.him188.ani.app.ui.settings.mediasource.rss.edit.RssEditPane
@@ -86,7 +87,6 @@ class EditRssMediaSourceState(
 ) {
     private val arguments by argumentsStorage.containerState
     val isLoading by derivedStateOf { arguments == null }
-    val isSaving by argumentsStorage.isSavingState
 
     val enableEdit by derivedStateOf {
         !isLoading && allowEditState.value
@@ -162,7 +162,7 @@ fun EditRssMediaSourcePage(
     windowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
 ) {
     LaunchedEffect(Unit) {
-        testState.searcher.observeChangeLoop()
+        testState.searcher.observeTestDataChanges(testState.testDataState)
     }
 
     Scaffold(

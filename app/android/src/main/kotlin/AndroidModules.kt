@@ -10,8 +10,6 @@
 package me.him188.ani.android
 
 import android.content.Intent
-import android.os.Handler
-import android.os.Looper
 import android.widget.Toast
 import androidx.core.app.NotificationManagerCompat
 import kotlinx.coroutines.CoroutineScope
@@ -24,7 +22,6 @@ import me.him188.ani.android.activity.MainActivity
 import me.him188.ani.android.navigation.AndroidBrowserNavigator
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
 import me.him188.ani.app.data.models.preference.ProxySettings
-import me.him188.ani.app.data.models.preference.TorrentPeerConfig
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.resolver.AndroidWebVideoSourceResolver
@@ -38,6 +35,7 @@ import me.him188.ani.app.domain.torrent.TorrentEngine
 import me.him188.ani.app.domain.torrent.TorrentEngineFactory
 import me.him188.ani.app.domain.torrent.TorrentManager
 import me.him188.ani.app.domain.torrent.client.RemoteAnitorrentEngine
+import me.him188.ani.app.domain.torrent.peer.PeerFilterSettings
 import me.him188.ani.app.domain.torrent.service.AniTorrentService
 import me.him188.ani.app.domain.torrent.service.TorrentServiceConnection
 import me.him188.ani.app.navigation.BrowserNavigator
@@ -176,6 +174,7 @@ fun getAndroidModules(
             coroutineScope.coroutineContext,
             get(),
             get(),
+            get(),
             baseSaveDir = { Path(cacheDir).inSystem },
             if (AniApplication.FEATURE_USE_TORRENT_SERVICE) {
                 object : TorrentEngineFactory {
@@ -183,7 +182,7 @@ fun getAndroidModules(
                         parentCoroutineContext: CoroutineContext,
                         config: Flow<AnitorrentConfig>,
                         proxySettings: Flow<ProxySettings>,
-                        peerFilterSettings: Flow<TorrentPeerConfig>,
+                        peerFilterSettings: Flow<PeerFilterSettings>,
                         saveDir: SystemPath
                     ): TorrentEngine {
                         return RemoteAnitorrentEngine(

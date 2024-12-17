@@ -22,8 +22,8 @@ interface SearchHistoryDao {
     @Upsert
     suspend fun insert(item: SearchHistoryEntity)
 
-    @Query("delete from `search_history` where `sequence`=:sequence")
-    suspend fun deleteBySequence(sequence: Int)
+    @Query("delete from `search_history` where `content`=:content")
+    suspend fun deleteByContent(content: String)
 
     @Query("select * from `search_history` order by sequence desc")
     fun all(): Flow<List<SearchHistoryEntity>>

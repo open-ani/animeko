@@ -76,7 +76,7 @@ class AniDanmakuSenderImpl(
     private fun getBaseUrl() = AniBangumiSeverBaseUrls.getBaseUrl(config.useGlobal)
 
     companion object {
-        private val logger = logger(this::class)
+        private val logger = logger<AniDanmakuSenderImpl>()
     }
 
     private val client = createDefaultHttpClient {

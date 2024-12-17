@@ -64,7 +64,7 @@ import me.him188.ani.utils.ktor.HttpTokenChecker
 import me.him188.ani.utils.ktor.proxy
 import me.him188.ani.utils.ktor.registerLogging
 import me.him188.ani.utils.logging.error
-import me.him188.ani.utils.logging.logger
+import me.him188.ani.utils.logging.thisLogger
 import me.him188.ani.utils.platform.collections.mapToIntArray
 import me.him188.ani.utils.serialization.toJsonArray
 import kotlin.coroutines.CoroutineContext
@@ -156,7 +156,7 @@ class BangumiClientImpl(
 ) : BangumiClient {
     private val scope = CoroutineScope(parentCoroutineContext + SupervisorJob(parentCoroutineContext[Job]))
 
-    private val logger = logger(this::class)
+    private val logger = thisLogger()
 
     override suspend fun executeGraphQL(actionName: String, query: String, variables: JsonObject?): JsonObject {
         val resp = try {

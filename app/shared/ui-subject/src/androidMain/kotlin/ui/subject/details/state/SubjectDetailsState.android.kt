@@ -9,8 +9,8 @@
 
 package me.him188.ani.app.ui.subject.details.state
 
-import androidx.compose.runtime.mutableStateOf
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.MutableStateFlow
 import me.him188.ani.app.data.models.subject.TestSelfRatingInfo
 import me.him188.ani.app.data.models.subject.TestSubjectCollections
 import me.him188.ani.app.domain.session.createTestAuthState
@@ -51,7 +51,7 @@ fun createTestSubjectDetailsState(
         episodeListState = createTestEpisodeListState(subjectInfo.subjectId, backgroundScope),
         authState = createTestAuthState(backgroundScope),
         editableSubjectCollectionTypeState = createTestEditableSubjectCollectionTypeState(
-            mutableStateOf(
+            MutableStateFlow(
                 UnifiedCollectionType.WISH,
             ),
             backgroundScope,

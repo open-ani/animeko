@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.danmaku.api
 
 import io.ktor.client.HttpClientConfig
@@ -6,7 +15,7 @@ import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.utils.ktor.createDefaultHttpClient
 import me.him188.ani.utils.ktor.registerLogging
-import me.him188.ani.utils.logging.logger
+import me.him188.ani.utils.logging.thisLogger
 import kotlin.jvm.JvmStatic
 import kotlin.time.Duration
 
@@ -161,7 +170,7 @@ object DanmakuMatchers {
 abstract class AbstractDanmakuProvider(
     config: DanmakuProviderConfig,
 ) : DanmakuProvider {
-    protected val logger = logger(this::class)
+    protected val logger = thisLogger()
 
     protected val client = createDefaultHttpClient {
         applyDanmakuProviderConfig(config)

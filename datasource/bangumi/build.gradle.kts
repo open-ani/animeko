@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 import org.openapitools.generator.gradle.plugin.tasks.GenerateTask
 
 /*
@@ -100,6 +109,7 @@ val generateApiP1 = tasks.register("generateApiP1", GenerateTask::class) {
             "dateLibrary" to "kotlinx-datetime",
             "enumPropertyNaming" to "UPPERCASE",
             "omitGradleWrapper" to "true",
+            "generateOneOfAnyOfWrappers" to "true",
         ),
     )
     generateModelTests.set(false)
@@ -127,18 +137,40 @@ private fun stripP1Api(path: String): File {
     components.remove("securitySchemes")
     val keepSchemaKeys = listOf(
         "ErrorResponse",
-        "Topic",
-        "SubjectInterestComment",
-        "TopicCreation",
-        "TopicDetail",
-        "GroupReply",
-        "BaseEpisodeComment",
-        "Group",
-        "Subject",
-        "Reaction",
         "Reply",
-        "SubReply",
+        "Reaction",
+        "PersonImages",
         "BasicReply",
+        "Subject",
+        "TopicDetail",
+        "Group",
+        "GroupReply",
+        "BasicReply",
+        "Topic",
+        "BaseEpisodeComment",
+
+        "SlimSubject",
+        "SubjectComment",
+        "SlimUser",
+        "SubjectCharacter",
+        "Episode",
+        "SubjectRec",
+        "SubjectRelation",
+        "SubjectStaff",
+        "SubjectImages",
+        "Avatar",
+        "Infobox",
+        "SubjectAirtime",
+        "SubjectCollection",
+        "SubjectImages",
+        "SubjectPlatform",
+        "SubjectRating",
+        "SubjectTag",
+        "SlimCharacter",
+        "SlimPerson",
+        "SubjectRelationType",
+        "SubjectStaffPosition",
+        
     )
     val schemas = components["schemas"].cast<Map<String, *>>().toMutableMap()
     val keepSchemas = schemas.filter { (component, _) -> component in keepSchemaKeys }

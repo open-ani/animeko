@@ -34,6 +34,7 @@ class SearchPageState(
     suggestionsState: State<List<String>>,
     val onRequestPlay: suspend (SubjectPreviewItemInfo) -> EpisodeTarget?,
     val searchState: SearchState<SubjectPreviewItemInfo>,
+    private val onRemoveHistory: suspend (String) -> Unit,
     backgroundScope: CoroutineScope,
     queryState: MutableState<String> = mutableStateOf(""),
     private val onStartSearch: (String) -> Unit = {},
@@ -49,9 +50,11 @@ class SearchPageState(
         suggestionsState = suggestionsState,
         searchState = searchState,
         queryState = queryState,
+        onRemoveHistory = { onRemoveHistory(it) },
         onStartSearch = { query ->
             onStartSearch(query)
         },
+        backgroundScope = backgroundScope,
     )
     val gridState = LazyStaggeredGridState()
 
@@ -85,6 +88,9 @@ fun createTestSearchPageState(
         onRequestPlay = {
             delay(3000)
             SearchPageState.EpisodeTarget(1, 2)
+        },
+        onRemoveHistory = {
+
         },
         queryState = mutableStateOf(""),
         searchState = searchState,

@@ -9,14 +9,40 @@
 
 package me.him188.ani.app.domain.torrent.parcel
 
+import android.os.Build
 import android.os.Parcelable
+import android.os.SharedMemory
+import androidx.annotation.RequiresApi
 import kotlinx.parcelize.Parcelize
+import kotlinx.serialization.protobuf.ProtoBuf
+import me.him188.ani.app.domain.torrent.peer.PeerFilterSettings
 
+@RequiresApi(Build.VERSION_CODES.O_MR1)
 @Parcelize
-class PTorrentPeerConfig(
-    val serializedJson: String
+class PTorrentPeerFilterSettings(
+    val serializedDataMem: SharedMemory,
+    val length: Int
 ) : Parcelable {
     override fun toString(): String {
-        return serializedJson
+        return "PTorrentPeerFilterSettings(dataSize=$length)"
     }
+
+    fun toPeerFilterSettings(): PeerFilterSettings {
+        val data = serializedDataMem.use { mem ->
+            ByteArray(length).apply { mem.mapReadOnly().get(this) }
+        }
+        return protobuf.decodeFromByteArray(PeerFilterSettings.serializer(), data)
+    }
+
+    companion object {
+        val protobuf = ProtoBuf { }
+    }
+}
+
+@RequiresApi(Build.VERSION_CODES.O_MR1)
+fun PeerFilterSettings.toParceled(): PTorrentPeerFilterSettings {
+    val encoded = PTorrentPeerFilterSettings.protobuf.encodeToByteArray(PeerFilterSettings.serializer(), this)
+    val dataMem = SharedMemory.create("peer_filter_config${hashCode()}", encoded.size)
+    dataMem.mapReadWrite().apply { put(encoded, 0, encoded.size) }
+    return PTorrentPeerFilterSettings(dataMem, encoded.size)
 }

@@ -22,7 +22,7 @@ import java.io.File
 import kotlin.concurrent.Volatile
 
 object AnitorrentLibraryLoader : TorrentLibraryLoader {
-    private val logger = logger(AnitorrentLibraryLoader::class)
+    private val logger = logger<AnitorrentLibraryLoader>()
 
     @Volatile
     private var libraryLoaded = false

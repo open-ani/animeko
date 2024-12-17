@@ -32,31 +32,7 @@ components:
         state:
           type: integer
         user:
-          anyOf:
-            - properties:
-                avatar:
-                  properties:
-                    large:
-                      type: string
-                    medium:
-                      type: string
-                    small:
-                      type: string
-                  required:
-                    - small
-                    - medium
-                    - large
-                  type: object
-                id:
-                  type: integer
-                nickname:
-                  type: string
-              required:
-                - id
-                - nickname
-                - avatar
-              type: object
-            - type: 'null'
+          $ref: '#/components/schemas/SlimUser'
       required:
         - id
         - epID
@@ -72,7 +48,7 @@ components:
         createdAt:
           type: integer
         creator:
-          $ref: '#/components/schemas/User'
+          $ref: '#/components/schemas/SlimUser'
         id:
           type: integer
         state:
@@ -86,28 +62,119 @@ components:
         - text
         - state
       type: object
+    Character:
+      properties:
+        collects:
+          type: integer
+        comment:
+          type: integer
+        id:
+          type: integer
+        images:
+          $ref: '#/components/schemas/PersonImages'
+        infobox:
+          $ref: '#/components/schemas/Infobox'
+        lock:
+          type: boolean
+        name:
+          type: string
+        nameCN:
+          type: string
+        nsfw:
+          type: boolean
+        redirect:
+          type: integer
+        role:
+          type: integer
+        summary:
+          type: string
+      required:
+        - id
+        - name
+        - nameCN
+        - role
+        - infobox
+        - summary
+        - comment
+        - collects
+        - lock
+        - redirect
+        - nsfw
+      title: Character
+      type: object
+    CharacterRelation:
+      properties:
+        character:
+          $ref: '#/components/schemas/SlimCharacter'
+        relation:
+          description: '角色关系: 任职于,从属,聘用,嫁给...'
+          type: integer
+      required:
+        - character
+        - relation
+      type: object
+    CharacterSubject:
+      properties:
+        actors:
+          items:
+            $ref: '#/components/schemas/SlimPerson'
+          type: array
+        subject:
+          $ref: '#/components/schemas/SlimSubject'
+        type:
+          type: integer
+      required:
+        - subject
+        - actors
+        - type
+      type: object
+    CharacterSubjectRelation:
+      properties:
+        subject:
+          $ref: '#/components/schemas/SlimSubject'
+        type:
+          type: integer
+      required:
+        - subject
+        - type
+      type: object
+    CreateTopic:
+      example:
+        cf-turnstile-response: 10000000-aaaa-bbbb-cccc-000000000001
+        content: topic content
+        title: topic title
+      properties:
+        cf-turnstile-response:
+          description: >-
+            需要
+            [turnstile](https://developers.cloudflare.com/turnstile/get-started/client-side-rendering/)
+
+            next.bgm.tv 域名对应的 site-key 为 `0x4AAAAAAABkMYinukE8nzYS`
+
+            dev.bgm38.com 域名使用测试用的 site-key `1x00000000000000000000AA`
+          type: string
+        text:
+          description: bbcode
+          minLength: 1
+          type: string
+        title:
+          minLength: 1
+          type: string
+      required:
+        - title
+        - text
+        - cf-turnstile-response
+      type: object
     CurrentUser:
       allOf:
         - properties:
             avatar:
-              properties:
-                large:
-                  type: string
-                medium:
-                  examples:
-                    - sai
-                  type: string
-                small:
-                  type: string
-              required:
-                - small
-                - medium
-                - large
-              title: Avatar
-              type: object
+              $ref: '#/components/schemas/Avatar'
             id:
               examples:
                 - 1
+              type: integer
+            joinedAt:
               type: integer
             nickname:
               examples:
@@ -115,8 +182,6 @@ components:
               type: string
             sign:
               type: string
-            user_group:
-              type: integer
             username:
               examples:
                 - sai
@@ -127,8 +192,8 @@ components:
             - nickname
             - avatar
             - sign
-            - user_group
-          title: User
+            - joinedAt
+          title: SlimUser
           type: object
         - properties:
             permission:
@@ -141,6 +206,68 @@ components:
           required:
             - permission
           type: object
+      type: object
+    Episode:
+      properties:
+        airdate:
+          type: string
+        comment:
+          type: integer
+        desc:
+          type: string
+        disc:
+          type: integer
+        duration:
+          type: string
+        id:
+          type: integer
+        lock:
+          type: boolean
+        name:
+          type: string
+        nameCN:
+          type: string
+        sort:
+          type: number
+        subjectID:
+          type: integer
+        type:
+          anyOf:
+            - enum:
+                - 0
+              type: number
+            - enum:
+                - 1
+              type: number
+            - enum:
+                - 2
+              type: number
+            - enum:
+                - 3
+              type: number
+            - enum:
+                - 4
+              type: number
+            - enum:
+                - 5
+              type: number
+            - enum:
+                - 6
+              type: number
+      required:
+        - id
+        - subjectID
+        - sort
+        - type
+        - disc
+        - name
+        - nameCN
+        - duration
+        - airdate
+        - comment
+        - desc
+        - lock
+      title: Episode
       type: object
     EpisodeComments:
       allOf:
@@ -160,31 +287,7 @@ components:
             state:
               type: integer
             user:
-              anyOf:
-                - properties:
-                    avatar:
-                      properties:
-                        large:
-                          type: string
-                        medium:
-                          type: string
-                        small:
-                          type: string
-                      required:
-                        - small
-                        - medium
-                        - large
-                      type: object
-                    id:
-                      type: integer
-                    nickname:
-                      type: string
-                  required:
-                    - id
-                    - nickname
-                    - avatar
-                  type: object
-                - type: 'null'
+              $ref: '#/components/schemas/SlimUser'
           required:
             - id
             - epID
@@ -222,6 +325,8 @@ components:
           type: string
         nameCN:
           type: string
+        subjectID:
+          type: integer
         summary:
           type: string
         type:
@@ -249,6 +354,7 @@ components:
               type: number
       required:
         - id
+        - subjectID
         - name
         - nameCN
         - type
@@ -272,6 +378,23 @@ components:
         - error
         - message
         - statusCode
+      type: object
+    Friend:
+      properties:
+        createdAt:
+          type: integer
+        description:
+          type: string
+        grade:
+          type: integer
+        user:
+          $ref: '#/components/schemas/SlimUser'
+      required:
+        - user
+        - grade
+        - createdAt
+        - description
+      title: Friend
       type: object
     Group:
       properties:
@@ -300,24 +423,12 @@ components:
         - description
         - totalMembers
         - createdAt
+      title: Group
       type: object
     GroupMember:
       properties:
         avatar:
-          properties:
-            large:
-              type: string
-            medium:
-              example: sai
-              type: string
-            small:
-              type: string
-          required:
-            - small
-            - medium
-            - large
-          title: Avatar
-          type: object
+          $ref: '#/components/schemas/Avatar'
         id:
           type: integer
         joinedAt:
@@ -327,11 +438,12 @@ components:
         username:
           type: string
       required:
-        - avatar
         - id
         - nickname
         - username
+        - avatar
         - joinedAt
+      title: GroupMember
       type: object
     GroupProfile:
       properties:
@@ -362,7 +474,7 @@ components:
         createdAt:
           type: integer
         creator:
-          $ref: '#/components/schemas/User'
+          $ref: '#/components/schemas/SlimUser'
         id:
           type: integer
         state:
@@ -405,6 +517,104 @@ components:
         - commitMessage
         - createdAt
       type: object
+    Index:
+      properties:
+        collects:
+          type: integer
+        createdAt:
+          type: integer
+        creator:
+          $ref: '#/components/schemas/SlimUser'
+        desc:
+          type: string
+        id:
+          type: integer
+        replies:
+          type: integer
+        stats:
+          $ref: '#/components/schemas/IndexStats'
+        title:
+          type: string
+        total:
+          type: integer
+        type:
+          type: integer
+        updatedAt:
+          type: integer
+      required:
+        - id
+        - type
+        - title
+        - desc
+        - replies
+        - total
+        - collects
+        - stats
+        - createdAt
+        - updatedAt
+        - creator
+      title: Index
+      type: object
+    IndexStats:
+      additionalProperties:
+        type: integer
+      title: IndexStats
+      type: object
+    Infobox:
+      items:
+        properties:
+          key:
+            type: string
+          values:
+            items:
+              properties:
+                k:
+                  type: string
+                v:
+                  type: string
+              required:
+                - v
+              title: InfoboxValue
+              type: object
+            type: array
+        required:
+          - key
+          - values
+        title: InfoboxItem
+        type: object
+      title: Infobox
+      type: array
+    InfoboxItem:
+      properties:
+        key:
+          type: string
+        values:
+          items:
+            properties:
+              k:
+                type: string
+              v:
+                type: string
+            required:
+              - v
+            title: InfoboxValue
+            type: object
+          type: array
+      required:
+        - key
+        - values
+      title: InfoboxItem
+      type: object
+    InfoboxValue:
+      properties:
+        k:
+          type: string
+        v:
+          type: string
+      required:
+        - v
+      title: InfoboxValue
+      type: object
     LoginRequestBody:
       example:
         cf-turnstile-response: 10000000-aaaa-bbbb-cccc-000000000001
@@ -437,30 +647,17 @@ components:
         sender:
           properties:
             avatar:
-              properties:
-                large:
-                  type: string
-                medium:
-                  example: sai
-                  type: string
-                small:
-                  type: string
-              required:
-                - small
-                - medium
-                - large
-              title: Avatar
-              type: object
+              $ref: '#/components/schemas/Avatar'
             id:
               example: 1
+              type: integer
+            joinedAt:
               type: integer
             nickname:
               example: Sai🖖
               type: string
             sign:
               type: string
-            user_group:
-              type: integer
             username:
               example: sai
               type: string
@@ -470,8 +667,8 @@ components:
             - nickname
             - avatar
             - sign
-            - user_group
-          title: User
+            - joinedAt
+          title: SlimUser
           type: object
         title:
           type: string
@@ -499,6 +696,147 @@ components:
       required:
         - subjectWikiEdit
       type: object
+    Person:
+      properties:
+        career:
+          description: 职业
+          example: producer
+          items:
+            type: string
+          type: array
+        collects:
+          type: integer
+        comment:
+          type: integer
+        id:
+          type: integer
+        images:
+          $ref: '#/components/schemas/PersonImages'
+        infobox:
+          $ref: '#/components/schemas/Infobox'
+        lock:
+          type: boolean
+        name:
+          type: string
+        nameCN:
+          type: string
+        nsfw:
+          type: boolean
+        redirect:
+          type: integer
+        summary:
+          type: string
+        type:
+          type: integer
+      required:
+        - id
+        - name
+        - nameCN
+        - type
+        - infobox
+        - career
+        - summary
+        - comment
+        - collects
+        - lock
+        - redirect
+        - nsfw
+      title: Person
+      type: object
+    PersonCharacter:
+      properties:
+        character:
+          $ref: '#/components/schemas/SlimCharacter'
+        relations:
+          items:
+            $ref: '#/components/schemas/CharacterSubjectRelation'
+          type: array
+      required:
+        - character
+        - relations
+      type: object
+    PersonCollect:
+      properties:
+        createdAt:
+          type: integer
+        user:
+          $ref: '#/components/schemas/SlimUser'
+      required:
+        - user
+        - createdAt
+      type: object
+    PersonImages:
+      properties:
+        grid:
+          type: string
+        large:
+          type: string
+        medium:
+          type: string
+        small:
+          type: string
+      required:
+        - large
+        - medium
+        - small
+        - grid
+      title: PersonImages
+      type: object
+    PersonRelation:
+      properties:
+        person:
+          $ref: '#/components/schemas/SlimPerson'
+        relation:
+          description: '人物关系: 任职于,从属,聘用,嫁给...'
+          type: integer
+      required:
+        - person
+        - relation
+      type: object
+    PersonWikiInfo:
+      properties:
+        id:
+          type: integer
+        infobox:
+          type: string
+        name:
+          type: string
+        summary:
+          type: string
+        typeID:
+          anyOf:
+            - enum:
+                - 1
+              type: number
+            - enum:
+                - 2
+              type: number
+            - enum:
+                - 3
+              type: number
+            - enum:
+                - 4
+              type: number
+            - enum:
+                - 6
+              type: number
+      required:
+        - id
+        - name
+        - typeID
+        - infobox
+        - summary
+      type: object
+    PersonWork:
+      properties:
+        position:
+          $ref: '#/components/schemas/SubjectStaffPosition'
+        subject:
+          $ref: '#/components/schemas/SlimSubject'
+      required:
+        - subject
+        - position
+      type: object
     Reaction:
       properties:
         selected:
@@ -511,13 +849,44 @@ components:
         - selected
         - total
         - value
+      title: Reaction
+      type: object
+    RecentWikiChange:
+      properties:
+        persons:
+          items:
+            properties:
+              createdAt:
+                type: integer
+              id:
+                type: integer
+            required:
+              - id
+              - createdAt
+            type: object
+          type: array
+        subject:
+          items:
+            properties:
+              createdAt:
+                type: integer
+              id:
+                type: integer
+            required:
+              - id
+              - createdAt
+            type: object
+          type: array
+      required:
+        - subject
+        - persons
       type: object
     Reply:
       properties:
         createdAt:
           type: integer
         creator:
-          $ref: '#/components/schemas/User'
+          $ref: '#/components/schemas/SlimUser'
         id:
           type: integer
         isFriend:
@@ -543,13 +912,169 @@ components:
         - text
         - state
         - reactions
+      title: Reply
+      type: object
+    SlimCharacter:
+      properties:
+        comment:
+          type: integer
+        id:
+          type: integer
+        images:
+          $ref: '#/components/schemas/PersonImages'
+        lock:
+          type: boolean
+        name:
+          type: string
+        nameCN:
+          type: string
+        nsfw:
+          type: boolean
+        role:
+          type: integer
+      required:
+        - id
+        - name
+        - nameCN
+        - role
+        - comment
+        - lock
+        - nsfw
+      title: SlimCharacter
+      type: object
+    SlimIndex:
+      properties:
+        createdAt:
+          type: integer
+        id:
+          type: integer
+        title:
+          type: string
+        total:
+          type: integer
+        type:
+          type: integer
+      required:
+        - id
+        - type
+        - title
+        - total
+        - createdAt
+      title: SlimIndex
+      type: object
+    SlimPerson:
+      properties:
+        comment:
+          type: integer
+        id:
+          type: integer
+        images:
+          $ref: '#/components/schemas/PersonImages'
+        lock:
+          type: boolean
+        name:
+          type: string
+        nameCN:
+          type: string
+        nsfw:
+          type: boolean
+        type:
+          type: integer
+      required:
+        - id
+        - name
+        - nameCN
+        - type
+        - comment
+        - lock
+        - nsfw
+      title: SlimPerson
+      type: object
+    SlimSubject:
+      example:
+        id: 8
+        images:
+          common: https://lain.bgm.tv/pic/cover/c/c9/f0/8_wK0z3.jpg
+          grid: https://lain.bgm.tv/pic/cover/g/c9/f0/8_wK0z3.jpg
+          large: https://lain.bgm.tv/pic/cover/l/c9/f0/8_wK0z3.jpg
+          medium: https://lain.bgm.tv/pic/cover/m/c9/f0/8_wK0z3.jpg
+          small: https://lain.bgm.tv/pic/cover/s/c9/f0/8_wK0z3.jpg
+        locked: false
+        name: コードギアス 反逆のルルーシュR2
+        nameCN: Code Geass 反叛的鲁路修R2
+        nsfw: false
+        type: 2
+      properties:
+        id:
+          type: integer
+        images:
+          $ref: '#/components/schemas/SubjectImages'
+        locked:
+          type: boolean
+        name:
+          type: string
+        nameCN:
+          type: string
+        nsfw:
+          type: boolean
+        type:
+          anyOf:
+            - enum:
+                - 1
+              type: number
+            - enum:
+                - 2
+              type: number
+            - enum:
+                - 3
+              type: number
+            - enum:
+                - 4
+              type: number
+            - enum:
+                - 6
+              type: number
+      required:
+        - id
+        - name
+        - nameCN
+        - type
+        - locked
+        - nsfw
+      title: SlimSubject
+      type: object
+    SlimUser:
+      properties:
+        avatar:
+          $ref: '#/components/schemas/Avatar'
+        id:
+          example: 1
+          type: integer
+        joinedAt:
+          type: integer
+        nickname:
+          example: Sai🖖
+          type: string
+        sign:
+          type: string
+        username:
+          example: sai
+          type: string
+      required:
+        - id
+        - username
+        - nickname
+        - avatar
+        - sign
+        - joinedAt
+      title: SlimUser
       type: object
     SubReply:
       properties:
         createdAt:
           type: integer
         creator:
-          $ref: '#/components/schemas/User'
+          $ref: '#/components/schemas/SlimUser'
         id:
           type: integer
         isFriend:
@@ -570,43 +1095,252 @@ components:
         - text
         - state
         - reactions
+      title: SubReply
       type: object
     Subject:
+      example:
+        airtime:
+          date: '2008-04-06'
+          month: 4
+          weekday: 7
+          year: 2008
+        collection:
+          '1': 622
+          '2': 13216
+          '3': 147
+          '4': 224
+          '5': 115
+        eps: 25
+        id: 8
+        images:
+          common: https://lain.bgm.tv/pic/cover/c/c9/f0/8_wK0z3.jpg
+          grid: https://lain.bgm.tv/pic/cover/g/c9/f0/8_wK0z3.jpg
+          large: https://lain.bgm.tv/pic/cover/l/c9/f0/8_wK0z3.jpg
+          medium: https://lain.bgm.tv/pic/cover/m/c9/f0/8_wK0z3.jpg
+          small: https://lain.bgm.tv/pic/cover/s/c9/f0/8_wK0z3.jpg
+        infobox:
+          Copyright:
+            - v: （C）2006 SUNRISE inc./MBS
+          中文名:
+            - v: Code Geass 反叛的鲁路修R2
+          人物原案:
+            - v: CLAMP
+          人物设定:
+            - v: 木村貴宏
+          其他:
+            - v: ''
+          其他电视台:
+            - v: ''
+          别名:
+            - v: 叛逆的鲁路修R2
+            - v: 'Code Geass: Hangyaku no Lelouch R2'
+            - v: 叛逆的勒鲁什R2
+            - v: 叛逆的鲁鲁修R2
+            - v: コードギアス 反逆のルルーシュR2
+            - v: 'Code Geass: Lelouch of the Rebellion R2'
+            - v: 叛逆的勒路什R2
+          动画制作:
+            - v: サンライズ
+          官方网站:
+            - v: http://www.geass.jp/r2/
+          导演:
+            - v: 谷口悟朗
+          摄影监督:
+            - v: 大矢創太
+          播放电视台:
+            - v: 每日放送
+          播放结束:
+            - v: 2008年9月28日
+          放送开始:
+            - v: 2008年4月6日
+          放送星期:
+            - v: ''
+          系列构成:
+            - v: 大河内一楼
+          美术监督:
+            - v: 菱沼由典
+          色彩设计:
+            - v: 岩沢れい子
+          话数:
+            - v: '25'
+          音乐:
+            - v: 中川幸太郎、黒石ひとみ
+          音乐制作:
+            - v: AUDIO PLANNING U
+          音响监督:
+            - v: 浦上靖夫、井澤基
+        locked: false
+        metaTags: [ ]
+        name: コードギアス 反逆のルルーシュR2
+        nameCN: Code Geass 反叛的鲁路修R2
+        nsfw: false
+        platform:
+          alias: tv
+          enableHeader: true
+          id: 1
+          order: 0
+          type: TV
+          typeCN: TV
+          wikiTpl: TVAnime
+        rating:
+          count:
+            - 44
+            - 15
+            - 32
+            - 66
+            - 145
+            - 457
+            - 1472
+            - 3190
+            - 2640
+            - 1377
+          score: 8.19
+          total: 9438
+        redirect: 0
+        series: false
+        seriesEntry: 0
+        summary: >-
+          　　“东京决战”一年后，布里塔尼亚少年鲁路修在11区（原日本国）过着平凡的学生生活。但是，鲁路修与弟弟罗洛的一次出行，遇到了黑色骑士团的余党。在与少女C.C再次结成契约之后，尘封的记忆摆在了鲁路修的面前。
+        type: 2
+        volumes: 0
       properties:
-        date:
-          type: string
+        airtime:
+          $ref: '#/components/schemas/SubjectAirtime'
+        collection:
+          $ref: '#/components/schemas/SubjectCollection'
+        eps:
+          type: integer
         id:
           type: integer
-        image:
-          type: string
+        images:
+          $ref: '#/components/schemas/SubjectImages'
         infobox:
-          type: string
+          $ref: '#/components/schemas/Infobox'
         locked:
           type: boolean
+        metaTags:
+          items:
+            type: string
+          type: array
         name:
+          type: string
+        nameCN:
           type: string
         nsfw:
           type: boolean
         platform:
-          type: integer
+          $ref: '#/components/schemas/SubjectPlatform'
+        rating:
+          $ref: '#/components/schemas/SubjectRating'
         redirect:
+          type: integer
+        series:
+          type: boolean
+        seriesEntry:
           type: integer
         summary:
           type: string
-        typeID:
+        tags:
+          items:
+            $ref: '#/components/schemas/SubjectTag'
+          type: array
+        type:
+          anyOf:
+            - enum:
+                - 1
+              type: number
+            - enum:
+                - 2
+              type: number
+            - enum:
+                - 3
+              type: number
+            - enum:
+                - 4
+              type: number
+            - enum:
+                - 6
+              type: number
+        volumes:
           type: integer
       required:
+        - airtime
+        - collection
+        - eps
         - id
-        - name
-        - typeID
         - infobox
-        - platform
-        - summary
-        - nsfw
-        - date
-        - redirect
+        - metaTags
         - locked
-        - image
+        - name
+        - nameCN
+        - nsfw
+        - platform
+        - rating
+        - redirect
+        - series
+        - seriesEntry
+        - summary
+        - type
+        - volumes
+        - tags
+      title: Subject
+      type: object
+    SubjectAirtime:
+      properties:
+        date:
+          type: string
+        month:
+          type: integer
+        weekday:
+          type: integer
+        year:
+          type: integer
+      required:
+        - date
+        - month
+        - weekday
+        - year
+      title: SubjectAirtime
+      type: object
+    SubjectCharacter:
+      properties:
+        actors:
+          items:
+            $ref: '#/components/schemas/SlimPerson'
+          type: array
+        character:
+          $ref: '#/components/schemas/SlimCharacter'
+        order:
+          type: integer
+        type:
+          type: integer
+      required:
+        - character
+        - actors
+        - type
+        - order
+      type: object
+    SubjectCollection:
+      additionalProperties:
+        type: integer
+      title: SubjectCollection
+      type: object
+    SubjectComment:
+      properties:
+        comment:
+          type: string
+        rate:
+          type: integer
+        updatedAt:
+          type: integer
+        user:
+          $ref: '#/components/schemas/SlimUser'
+      required:
+        - user
+        - rate
+        - comment
+        - updatedAt
+      title: SubjectComment
       type: object
     SubjectEdit:
       example:
@@ -650,6 +1384,10 @@ components:
         infobox:
           minLength: 1
           type: string
+        metaTags:
+          items:
+            type: string
+          type: array
         name:
           minLength: 1
           type: string
@@ -664,76 +1402,204 @@ components:
         - infobox
         - platform
         - nsfw
+        - metaTags
         - summary
       type: object
-    SubjectInterestComment:
+    SubjectImages:
       properties:
-        list:
+        common:
+          type: string
+        grid:
+          type: string
+        large:
+          type: string
+        medium:
+          type: string
+        small:
+          type: string
+      required:
+        - large
+        - common
+        - medium
+        - small
+        - grid
+      title: SubjectImages
+      type: object
+    SubjectNew:
+      properties:
+        infobox:
+          minLength: 1
+          type: string
+        metaTags:
           items:
-            properties:
-              comment:
-                type: string
-              rate:
-                type: integer
-              updatedAt:
-                type: integer
-              user:
-                anyOf:
-                  - properties:
-                      avatar:
-                        properties:
-                          large:
-                            type: string
-                          medium:
-                            type: string
-                          small:
-                            type: string
-                        required:
-                          - small
-                          - medium
-                          - large
-                        type: object
-                      id:
-                        type: integer
-                      nickname:
-                        type: string
-                    required:
-                      - id
-                      - nickname
-                      - avatar
-                    type: object
-                  - type: 'null'
-            required:
-              - user
-              - rate
-              - comment
-              - updatedAt
-            type: object
+            type: string
           type: array
+        name:
+          minLength: 1
+          type: string
+        nsfw:
+          type: boolean
+        platform:
+          type: integer
+        summary:
+          type: string
+        type:
+          anyOf:
+            - enum:
+                - 1
+              type: number
+            - enum:
+                - 2
+              type: number
+            - enum:
+                - 3
+              type: number
+            - enum:
+                - 4
+              type: number
+            - enum:
+                - 6
+              type: number
+      required:
+        - name
+        - type
+        - platform
+        - infobox
+        - nsfw
+        - metaTags
+        - summary
+      type: object
+    SubjectPlatform:
+      properties:
+        alias:
+          type: string
+        enableHeader:
+          type: boolean
+        id:
+          type: integer
+        order:
+          type: integer
+        searchString:
+          type: string
+        sortKeys:
+          items:
+            type: string
+          type: array
+        type:
+          type: string
+        typeCN:
+          type: string
+        wikiTpl:
+          type: string
+      required:
+        - id
+        - type
+        - typeCN
+        - alias
+      title: SubjectPlatform
+      type: object
+    SubjectRating:
+      properties:
+        count:
+          items:
+            type: integer
+          type: array
+        rank:
+          type: integer
+        score:
+          type: number
         total:
           type: integer
       required:
+        - rank
+        - count
+        - score
         - total
-        - list
+      title: SubjectRating
       type: object
-    SubjectType:
-      anyOf:
-        - enum:
-            - 1
+    SubjectRec:
+      properties:
+        count:
+          type: integer
+        sim:
           type: number
-        - enum:
-            - 2
-          type: number
-        - enum:
-            - 3
-          type: number
-        - enum:
-            - 4
-          type: number
-        - enum:
-            - 6
-          type: number
-      title: SubjectType
+        subject:
+          $ref: '#/components/schemas/SlimSubject'
+      required:
+        - subject
+        - sim
+        - count
+      title: SubjectRec
+      type: object
+    SubjectRelation:
+      properties:
+        order:
+          type: integer
+        relation:
+          $ref: '#/components/schemas/SubjectRelationType'
+        subject:
+          $ref: '#/components/schemas/SlimSubject'
+      required:
+        - subject
+        - relation
+        - order
+      type: object
+    SubjectRelationType:
+      properties:
+        cn:
+          type: string
+        desc:
+          type: string
+        en:
+          type: string
+        id:
+          type: integer
+        jp:
+          type: string
+      required:
+        - id
+        - en
+        - cn
+        - jp
+        - desc
+      type: object
+    SubjectStaff:
+      properties:
+        person:
+          $ref: '#/components/schemas/SlimPerson'
+        position:
+          $ref: '#/components/schemas/SubjectStaffPosition'
+      required:
+        - person
+        - position
+      type: object
+    SubjectStaffPosition:
+      properties:
+        cn:
+          type: string
+        en:
+          type: string
+        id:
+          type: integer
+        jp:
+          type: string
+      required:
+        - id
+        - en
+        - cn
+        - jp
+      type: object
+    SubjectTag:
+      properties:
+        count:
+          type: integer
+        name:
+          type: string
+      required:
+        - name
+        - count
+      title: SubjectTag
+      type: object
     SubjectWikiInfo:
       properties:
         availablePlatform:
@@ -744,6 +1610,10 @@ components:
           type: integer
         infobox:
           type: string
+        metaTags:
+          items:
+            type: string
+          type: array
         name:
           type: string
         nsfw:
@@ -753,7 +1623,22 @@ components:
         summary:
           type: string
         typeID:
-          $ref: '#/components/schemas/SubjectType'
+          anyOf:
+            - enum:
+                - 1
+              type: number
+            - enum:
+                - 2
+              type: number
+            - enum:
+                - 3
+              type: number
+            - enum:
+                - 4
+              type: number
+            - enum:
+                - 6
+              type: number
       required:
         - id
         - name
@@ -761,6 +1646,7 @@ components:
         - infobox
         - platform
         - availablePlatform
+        - metaTags
         - summary
         - nsfw
       type: object
@@ -770,51 +1656,17 @@ components:
           description: 发帖时间，unix time stamp in seconds
           type: integer
         creator:
-          properties:
-            avatar:
-              properties:
-                large:
-                  type: string
-                medium:
-                  example: sai
-                  type: string
-                small:
-                  type: string
-              required:
-                - small
-                - medium
-                - large
-              title: Avatar
-              type: object
-            id:
-              example: 1
-              type: integer
-            nickname:
-              example: Sai🖖
-              type: string
-            sign:
-              type: string
-            user_group:
-              type: integer
-            username:
-              example: sai
-              type: string
-          required:
-            - id
-            - username
-            - nickname
-            - avatar
-            - sign
-            - user_group
-          title: User
-          type: object
+          $ref: '#/components/schemas/SlimUser'
+        display:
+          type: integer
         id:
-          description: topic id
           type: integer
         parentID:
           description: 小组/条目ID
           type: integer
         repliesCount:
+          type: integer
+        state:
           type: integer
         title:
           type: string
@@ -829,41 +1681,22 @@ components:
         - createdAt
         - updatedAt
         - repliesCount
+        - state
+        - display
       title: Topic
-      type: object
-    TopicCreation:
-      example:
-        cf-turnstile-response: 10000000-aaaa-bbbb-cccc-000000000001
-        content: topic content
-        title: topic title
-      properties:
-        cf-turnstile-response:
-          minLength: 1
-          type: string
-        text:
-          description: bbcode
-          minLength: 1
-          type: string
-        title:
-          minLength: 1
-          type: string
-      required:
-        - title
-        - text
-        - cf-turnstile-response
       type: object
     TopicDetail:
       properties:
         createdAt:
           type: integer
         creator:
-          $ref: '#/components/schemas/User'
+          $ref: '#/components/schemas/SlimUser'
         id:
           type: integer
         parent:
           anyOf:
             - $ref: '#/components/schemas/Group'
-            - $ref: '#/components/schemas/Subject'
+            - $ref: '#/components/schemas/SlimSubject'
         reactions:
           items:
             $ref: '#/components/schemas/Reaction'
@@ -888,33 +1721,55 @@ components:
         - createdAt
         - replies
         - reactions
+      title: TopicDetail
+      type: object
+    TrendingSubject:
+      properties:
+        count:
+          type: integer
+        subject:
+          $ref: '#/components/schemas/Subject'
+      required:
+        - subject
+        - count
+      type: object
+    UpdateTopic:
+      properties:
+        text:
+          description: bbcode
+          minLength: 1
+          type: string
+        title:
+          minLength: 1
+          type: string
+      required:
+        - title
+        - text
       type: object
     User:
       properties:
         avatar:
-          properties:
-            large:
-              type: string
-            medium:
-              example: sai
-              type: string
-            small:
-              type: string
-          required:
-            - small
-            - medium
-            - large
-          title: Avatar
-          type: object
+          $ref: '#/components/schemas/Avatar'
+        bio:
+          type: string
+        group:
+          type: integer
         id:
           example: 1
           type: integer
+        joinedAt:
+          type: integer
+        location:
+          type: string
         nickname:
           example: Sai🖖
           type: string
         sign:
           type: string
+        site:
+          type: string
         user_group:
+          description: deprecated, use group instead
           type: integer
         username:
           example: sai
@@ -924,9 +1779,249 @@ components:
         - username
         - nickname
         - avatar
-        - sign
+        - group
         - user_group
+        - joinedAt
+        - sign
+        - site
+        - location
+        - bio
       title: User
+      type: object
+    UserCharacterCollection:
+      properties:
+        character:
+          $ref: '#/components/schemas/Character'
+        createdAt:
+          type: integer
+      required:
+        - character
+        - createdAt
+      type: object
+    UserCollectionsCharacterSummary:
+      properties:
+        count:
+          type: integer
+        detail:
+          items:
+            $ref: '#/components/schemas/SlimCharacter'
+          type: array
+      required:
+        - count
+        - detail
+      type: object
+    UserCollectionsPersonSummary:
+      properties:
+        count:
+          type: integer
+        detail:
+          items:
+            $ref: '#/components/schemas/SlimPerson'
+          type: array
+      required:
+        - count
+        - detail
+      type: object
+    UserCollectionsSubjectSummary:
+      properties:
+        counts:
+          additionalProperties:
+            type: integer
+          example:
+            '1': 0
+            '2': 0
+            '3': 0
+            '4': 0
+            '5': 0
+          type: object
+        details:
+          additionalProperties:
+            items:
+              $ref: '#/components/schemas/SlimSubject'
+            type: array
+          example:
+            '1': [ ]
+            '2':
+              - id: 8
+                images:
+                  common: https://lain.bgm.tv/pic/cover/c/c9/f0/8_wK0z3.jpg
+                  grid: https://lain.bgm.tv/pic/cover/g/c9/f0/8_wK0z3.jpg
+                  large: https://lain.bgm.tv/pic/cover/l/c9/f0/8_wK0z3.jpg
+                  medium: https://lain.bgm.tv/pic/cover/m/c9/f0/8_wK0z3.jpg
+                  small: https://lain.bgm.tv/pic/cover/s/c9/f0/8_wK0z3.jpg
+                locked: false
+                name: コードギアス 反逆のルルーシュR2
+                nameCN: Code Geass 反叛的鲁路修R2
+                nsfw: false
+                type: 2
+            '3': [ ]
+            '4': [ ]
+            '5': [ ]
+          type: object
+      required:
+        - counts
+        - details
+      type: object
+    UserCollectionsSummary:
+      properties:
+        character:
+          $ref: '#/components/schemas/UserCollectionsCharacterSummary'
+        index:
+          $ref: '#/components/schemas/UserIndexesSummary'
+        person:
+          $ref: '#/components/schemas/UserCollectionsPersonSummary'
+        subject:
+          additionalProperties:
+            $ref: '#/components/schemas/UserCollectionsSubjectSummary'
+          example:
+            '1':
+              counts:
+                '1': 0
+                '2': 1
+                '3': 0
+                '4': 0
+                '5': 0
+              details:
+                '1': [ ]
+                '2':
+                  - id: 8
+                    images:
+                      common: https://lain.bgm.tv/pic/cover/c/c9/f0/8_wK0z3.jpg
+                      grid: https://lain.bgm.tv/pic/cover/g/c9/f0/8_wK0z3.jpg
+                      large: https://lain.bgm.tv/pic/cover/l/c9/f0/8_wK0z3.jpg
+                      medium: https://lain.bgm.tv/pic/cover/m/c9/f0/8_wK0z3.jpg
+                      small: https://lain.bgm.tv/pic/cover/s/c9/f0/8_wK0z3.jpg
+                    locked: false
+                    name: コードギアス 反逆のルルーシュR2
+                    nameCN: Code Geass 反叛的鲁路修R2
+                    nsfw: false
+                    type: 2
+                '3': [ ]
+                '4': [ ]
+                '5': [ ]
+          type: object
+      required:
+        - subject
+        - character
+        - person
+        - index
+      type: object
+    UserHomepage:
+      properties:
+        left:
+          items:
+            type: string
+          type: array
+        right:
+          items:
+            type: string
+          type: array
+      required:
+        - left
+        - right
+      title: UserHomepage
+      type: object
+    UserIndexCollection:
+      properties:
+        createdAt:
+          type: integer
+        index:
+          $ref: '#/components/schemas/Index'
+      required:
+        - index
+        - createdAt
+      type: object
+    UserIndexesSummary:
+      properties:
+        count:
+          type: integer
+        detail:
+          items:
+            $ref: '#/components/schemas/SlimIndex'
+          type: array
+      required:
+        - count
+        - detail
+      type: object
+    UserPersonCollection:
+      properties:
+        createdAt:
+          type: integer
+        person:
+          $ref: '#/components/schemas/Person'
+      required:
+        - person
+        - createdAt
+      type: object
+    UserSubjectCollection:
+      properties:
+        comment:
+          type: string
+        epStatus:
+          type: integer
+        private:
+          type: boolean
+        rate:
+          type: integer
+        subject:
+          $ref: '#/components/schemas/Subject'
+        tags:
+          items:
+            type: string
+          type: array
+        type:
+          anyOf:
+            - enum:
+                - 1
+              type: number
+            - enum:
+                - 2
+              type: number
+            - enum:
+                - 3
+              type: number
+            - enum:
+                - 4
+              type: number
+            - enum:
+                - 5
+              type: number
+        updatedAt:
+          type: integer
+        volStatus:
+          type: integer
+      required:
+        - subject
+        - rate
+        - type
+        - comment
+        - tags
+        - epStatus
+        - volStatus
+        - private
+        - updatedAt
+      type: object
+    UserSubjectEpisodeCollection:
+      properties:
+        episode:
+          $ref: '#/components/schemas/Episode'
+        type:
+          anyOf:
+            - enum:
+                - 0
+              type: number
+            - enum:
+                - 1
+              type: number
+            - enum:
+                - 2
+              type: number
+            - enum:
+                - 3
+              type: number
+      required:
+        - episode
+        - type
       type: object
     WikiPlatform:
       properties:
@@ -955,9 +2050,322 @@ info:
     关于订阅通知的 socket.io 相关的文档在
     <https://github.com/bangumi/GraphQL/blob/master/docs/socket.io.md>
   title: bangumi private api
-  version: 2024-08-23-3e4602f
+  version: 2024-12-03-12cb3c7
 openapi: 3.0.3
 paths:
+  /p1/blocklist:
+    get:
+      operationId: getBlocklist
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                properties:
+                  blocklist:
+                    items:
+                      type: integer
+                    type: array
+                required:
+                  - blocklist
+                type: object
+          description: Default Response
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+                description: 意料之外的服务器错误
+          description: 意料之外的服务器错误
+      security:
+        - CookiesSession: [ ]
+          HTTPBearer: [ ]
+      summary: 获取绝交用户列表
+      tags:
+        - user
+    post:
+      operationId: addToBlocklist
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                id:
+                  type: integer
+              required:
+                - id
+              type: object
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                properties:
+                  blocklist:
+                    items:
+                      type: integer
+                    type: array
+                required:
+                  - blocklist
+                type: object
+          description: Default Response
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+                description: 意料之外的服务器错误
+          description: 意料之外的服务器错误
+      security:
+        - CookiesSession: [ ]
+          HTTPBearer: [ ]
+      summary: 将用户添加到绝交列表
+      tags:
+        - user
+  /p1/blocklist/{id}:
+    delete:
+      operationId: removeFromBlocklist
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                properties:
+                  blocklist:
+                    items:
+                      type: integer
+                    type: array
+                required:
+                  - blocklist
+                type: object
+          description: Default Response
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+                description: 意料之外的服务器错误
+          description: 意料之外的服务器错误
+      security:
+        - CookiesSession: [ ]
+          HTTPBearer: [ ]
+      summary: 将用户从绝交列表移出
+      tags:
+        - user
+  /p1/characters/{characterID}:
+    get:
+      operationId: getCharacter
+      parameters:
+        - in: path
+          name: characterID
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Character'
+          description: Default Response
+        '404':
+          content:
+            application/json:
+              examples:
+                NOT_FOUND:
+                  value:
+                    code: NOT_FOUND
+                    error: Not Found
+                    message: character not found
+                    statusCode: 404
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: default error response type
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+                description: 意料之外的服务器错误
+          description: 意料之外的服务器错误
+      security:
+        - CookiesSession: [ ]
+          HTTPBearer: [ ]
+      summary: 获取角色
+      tags:
+        - character
+  /p1/characters/{characterID}/casts:
+    get:
+      operationId: getCharacterCasts
+      parameters:
+        - description: 条目类型
+          in: query
+          name: subjectType
+          required: false
+          schema:
+            anyOf:
+              - enum:
+                  - 1
+                type: number
+              - enum:
+                  - 2
+                type: number
+              - enum:
+                  - 3
+                type: number
+              - enum:
+                  - 4
+                type: number
+              - enum:
+                  - 6
+                type: number
+        - description: '角色出场类型: 主角，配角，客串'
+          in: query
+          name: type
+          required: false
+          schema:
+            type: integer
+        - description: max 100
+          in: query
+          name: limit
+          required: false
+          schema:
+            default: 20
+            maximum: 100
+            minimum: 1
+            type: integer
+        - description: min 0
+          in: query
+          name: offset
+          required: false
+          schema:
+            default: 0
+            minimum: 0
+            type: integer
+        - in: path
+          name: characterID
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    items:
+                      $ref: '#/components/schemas/CharacterSubject'
+                    type: array
+                  total:
+                    type: integer
+                required:
+                  - data
+                  - total
+                type: object
+          description: Default Response
+        '404':
+          content:
+            application/json:
+              examples:
+                NOT_FOUND:
+                  value:
+                    code: NOT_FOUND
+                    error: Not Found
+                    message: character not found
+                    statusCode: 404
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: default error response type
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+                description: 意料之外的服务器错误
+          description: 意料之外的服务器错误
+      security:
+        - CookiesSession: [ ]
+          HTTPBearer: [ ]
+      summary: 获取角色出演作品
+      tags:
+        - character
+  /p1/characters/{characterID}/collects:
+    get:
+      operationId: getCharacterCollects
+      parameters:
+        - description: max 100
+          in: query
+          name: limit
+          required: false
+          schema:
+            default: 20
+            maximum: 100
+            minimum: 1
+            type: integer
+        - description: min 0
+          in: query
+          name: offset
+          required: false
+          schema:
+            default: 0
+            minimum: 0
+            type: integer
+        - in: path
+          name: characterID
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    items:
+                      $ref: '#/components/schemas/PersonCollect'
+                    type: array
+                  total:
+                    type: integer
+                required:
+                  - data
+                  - total
+                type: object
+          description: Default Response
+        '404':
+          content:
+            application/json:
+              examples:
+                NOT_FOUND:
+                  value:
+                    code: NOT_FOUND
+                    error: Not Found
+                    message: character not found
+                    statusCode: 404
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: default error response type
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+                description: 意料之外的服务器错误
+          description: 意料之外的服务器错误
+      security:
+        - CookiesSession: [ ]
+          HTTPBearer: [ ]
+      summary: 获取角色的收藏用户
+      tags:
+        - character
   /p1/clear-notify:
     post:
       description: |-
@@ -1009,6 +2417,7 @@ paths:
           description: 意料之外的服务器错误
       security:
         - CookiesSession: [ ]
+          HTTPBearer: [ ]
       summary: 标记通知为已读
       tags:
         - user
@@ -1042,7 +2451,7 @@ paths:
                     statusCode: 401
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: Default Response
+          description: default error response type
         '404':
           content:
             application/json:
@@ -1055,7 +2464,7 @@ paths:
                     statusCode: 404
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: Default Response
+          description: default error response type
         '500':
           content:
             application/json:
@@ -1095,7 +2504,7 @@ paths:
                     statusCode: 404
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: Default Response
+          description: default error response type
         '500':
           content:
             application/json:
@@ -1150,7 +2559,7 @@ paths:
                     statusCode: 401
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: Default Response
+          description: default error response type
         '500':
           content:
             application/json:
@@ -1180,20 +2589,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/TopicDetail'
           description: Default Response
-        '404':
-          content:
-            application/json:
-              examples:
-                NotFoundError:
-                  value:
-                    code: NOT_FOUND
-                    error: Not Found
-                    message: topic not found
-                    statusCode: 404
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-                description: 小组不存在
-          description: 小组不存在
         '500':
           content:
             application/json:
@@ -1217,7 +2612,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TopicCreation'
+              $ref: '#/components/schemas/CreateTopic'
       responses:
         '200':
           content:
@@ -1231,7 +2626,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: Default Response
+          description: default error response type
         '401':
           content:
             application/json:
@@ -1244,7 +2639,7 @@ paths:
                     statusCode: 401
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: Default Response
+          description: default error response type
         '500':
           content:
             application/json:
@@ -1318,7 +2713,7 @@ paths:
                     statusCode: 401
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: Default Response
+          description: default error response type
         '500':
           content:
             application/json:
@@ -1386,20 +2781,6 @@ paths:
                   - total
                 type: object
           description: Default Response
-        '404':
-          content:
-            application/json:
-              examples:
-                NotFoundError:
-                  value:
-                    code: NOT_FOUND
-                    error: Not Found
-                    message: topic not found
-                    statusCode: 404
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-                description: 小组不存在
-          description: 小组不存在
         '500':
           content:
             application/json:
@@ -1441,20 +2822,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/GroupProfile'
           description: Default Response
-        '404':
-          content:
-            application/json:
-              examples:
-                NotFoundError:
-                  value:
-                    code: NOT_FOUND
-                    error: Not Found
-                    message: topic not found
-                    statusCode: 404
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-                description: 小组不存在
-          description: 小组不存在
         '500':
           content:
             application/json:
@@ -1542,7 +2909,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TopicCreation'
+              $ref: '#/components/schemas/CreateTopic'
       responses:
         '200':
           content:
@@ -1589,7 +2956,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/User'
+                $ref: '#/components/schemas/SlimUser'
           description: Default Response
           headers:
             Set-Cookie:
@@ -1684,9 +3051,7 @@ paths:
         '200':
           content:
             application/json:
-              schema:
-                properties: { }
-                type: object
+              schema: { }
           description: Default Response
         '401':
           content:
@@ -1731,7 +3096,7 @@ paths:
                 statusCode: 401
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: Default Response
+          description: default error response type
         '500':
           content:
             application/json:
@@ -1800,9 +3165,313 @@ paths:
           description: 意料之外的服务器错误
       security:
         - CookiesSession: [ ]
+          HTTPBearer: [ ]
       summary: 获取未读通知
       tags:
         - user
+  /p1/persons/{personID}:
+    get:
+      operationId: getPerson
+      parameters:
+        - in: path
+          name: personID
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Person'
+          description: Default Response
+        '404':
+          content:
+            application/json:
+              examples:
+                NOT_FOUND:
+                  value:
+                    code: NOT_FOUND
+                    error: Not Found
+                    message: person not found
+                    statusCode: 404
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: default error response type
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+                description: 意料之外的服务器错误
+          description: 意料之外的服务器错误
+      security:
+        - CookiesSession: [ ]
+          HTTPBearer: [ ]
+      summary: 获取人物
+      tags:
+        - person
+  /p1/persons/{personID}/casts:
+    get:
+      operationId: getPersonCasts
+      parameters:
+        - description: 条目类型
+          in: query
+          name: subjectType
+          required: false
+          schema:
+            anyOf:
+              - enum:
+                  - 1
+                type: number
+              - enum:
+                  - 2
+                type: number
+              - enum:
+                  - 3
+                type: number
+              - enum:
+                  - 4
+                type: number
+              - enum:
+                  - 6
+                type: number
+        - description: '角色出场类型: 主角，配角，客串'
+          in: query
+          name: type
+          required: false
+          schema:
+            type: integer
+        - description: max 100
+          in: query
+          name: limit
+          required: false
+          schema:
+            default: 20
+            maximum: 100
+            minimum: 1
+            type: integer
+        - description: min 0
+          in: query
+          name: offset
+          required: false
+          schema:
+            default: 0
+            minimum: 0
+            type: integer
+        - in: path
+          name: personID
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    items:
+                      $ref: '#/components/schemas/PersonCharacter'
+                    type: array
+                  total:
+                    type: integer
+                required:
+                  - data
+                  - total
+                type: object
+          description: Default Response
+        '404':
+          content:
+            application/json:
+              examples:
+                NOT_FOUND:
+                  value:
+                    code: NOT_FOUND
+                    error: Not Found
+                    message: person not found
+                    statusCode: 404
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: default error response type
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+                description: 意料之外的服务器错误
+          description: 意料之外的服务器错误
+      security:
+        - CookiesSession: [ ]
+          HTTPBearer: [ ]
+      summary: 获取人物的出演角色
+      tags:
+        - person
+  /p1/persons/{personID}/collects:
+    get:
+      operationId: getPersonCollects
+      parameters:
+        - description: max 100
+          in: query
+          name: limit
+          required: false
+          schema:
+            default: 20
+            maximum: 100
+            minimum: 1
+            type: integer
+        - description: min 0
+          in: query
+          name: offset
+          required: false
+          schema:
+            default: 0
+            minimum: 0
+            type: integer
+        - in: path
+          name: personID
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    items:
+                      $ref: '#/components/schemas/PersonCollect'
+                    type: array
+                  total:
+                    type: integer
+                required:
+                  - data
+                  - total
+                type: object
+          description: Default Response
+        '404':
+          content:
+            application/json:
+              examples:
+                NOT_FOUND:
+                  value:
+                    code: NOT_FOUND
+                    error: Not Found
+                    message: person not found
+                    statusCode: 404
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: default error response type
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+                description: 意料之外的服务器错误
+          description: 意料之外的服务器错误
+      security:
+        - CookiesSession: [ ]
+          HTTPBearer: [ ]
+      summary: 获取人物的收藏用户
+      tags:
+        - person
+  /p1/persons/{personID}/works:
+    get:
+      operationId: getPersonWorks
+      parameters:
+        - description: 条目类型
+          in: query
+          name: subjectType
+          required: false
+          schema:
+            anyOf:
+              - enum:
+                  - 1
+                type: number
+              - enum:
+                  - 2
+                type: number
+              - enum:
+                  - 3
+                type: number
+              - enum:
+                  - 4
+                type: number
+              - enum:
+                  - 6
+                type: number
+        - description: 职位
+          in: query
+          name: position
+          required: false
+          schema:
+            type: integer
+        - description: max 100
+          in: query
+          name: limit
+          required: false
+          schema:
+            default: 20
+            maximum: 100
+            minimum: 1
+            type: integer
+        - description: min 0
+          in: query
+          name: offset
+          required: false
+          schema:
+            default: 0
+            minimum: 0
+            type: integer
+        - in: path
+          name: personID
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    items:
+                      $ref: '#/components/schemas/PersonWork'
+                    type: array
+                  total:
+                    type: integer
+                required:
+                  - data
+                  - total
+                type: object
+          description: Default Response
+        '404':
+          content:
+            application/json:
+              examples:
+                NOT_FOUND:
+                  value:
+                    code: NOT_FOUND
+                    error: Not Found
+                    message: person not found
+                    statusCode: 404
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: default error response type
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+                description: 意料之外的服务器错误
+          description: 意料之外的服务器错误
+      security:
+        - CookiesSession: [ ]
+          HTTPBearer: [ ]
+      summary: 获取人物的参与作品
+      tags:
+        - person
   /p1/subjects/-/episode/-/comments/{commentID}:
     delete:
       operationId: deleteSubjectEpComment
@@ -1833,7 +3502,7 @@ paths:
                     statusCode: 401
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: Default Response
+          description: default error response type
         '404':
           content:
             application/json:
@@ -1846,7 +3515,7 @@ paths:
                     statusCode: 404
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: Default Response
+          description: default error response type
         '500':
           content:
             application/json:
@@ -1938,31 +3607,7 @@ paths:
                         state:
                           type: integer
                         user:
-                          anyOf:
-                            - properties:
-                                avatar:
-                                  properties:
-                                    large:
-                                      type: string
-                                    medium:
-                                      type: string
-                                    small:
-                                      type: string
-                                  required:
-                                    - small
-                                    - medium
-                                    - large
-                                  type: object
-                                id:
-                                  type: integer
-                                nickname:
-                                  type: string
-                              required:
-                                - id
-                                - nickname
-                                - avatar
-                              type: object
-                            - type: 'null'
+                          $ref: '#/components/schemas/SlimUser'
                       required:
                         - id
                         - epID
@@ -2093,7 +3738,7 @@ paths:
                     statusCode: 401
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: Default Response
+          description: default error response type
         '404':
           content:
             application/json:
@@ -2106,7 +3751,7 @@ paths:
                     statusCode: 404
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: Default Response
+          description: default error response type
         '500':
           content:
             application/json:
@@ -2148,7 +3793,7 @@ paths:
                     statusCode: 404
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: Default Response
+          description: default error response type
         '500':
           content:
             application/json:
@@ -2205,7 +3850,7 @@ paths:
                     statusCode: 401
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: Default Response
+          description: default error response type
         '500':
           content:
             application/json:
@@ -2221,9 +3866,9 @@ paths:
         - subject
   /p1/subjects/-/topics/{topicID}:
     get:
-      operationId: getSubjectTopicDetail
+      operationId: getSubjectTopic
       parameters:
-        - example: 1
+        - example: 371602
           in: path
           name: topicID
           required: true
@@ -2247,50 +3892,37 @@ paths:
       security:
         - CookiesSession: [ ]
           HTTPBearer: [ ]
-      summary: 获取帖子列表
+      summary: 获取条目讨论
       tags:
         - subject
     put:
-      operationId: editSubjectTopic
+      operationId: updateSubjectTopic
       parameters:
         - example: 371602
           in: path
           name: topicID
           required: true
           schema:
+            minimum: 0
             type: integer
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TopicCreation'
+              properties:
+                text:
+                  description: bbcode
+                  minLength: 1
+                  type: string
+                title:
+                  minLength: 1
+                  type: string
+              required:
+                - title
+                - text
+              type: object
+        required: true
       responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                properties: { }
-                type: object
-          description: Default Response
-        '400':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Default Response
-        '401':
-          content:
-            application/json:
-              examples:
-                NOT_ALLOWED:
-                  value:
-                    code: NOT_ALLOWED
-                    error: Unauthorized
-                    message: you don't have permission to edit a topic
-                    statusCode: 401
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Default Response
         '500':
           content:
             application/json:
@@ -2301,7 +3933,7 @@ paths:
       security:
         - CookiesSession: [ ]
           HTTPBearer: [ ]
-      summary: 编辑自己创建的条目讨论版
+      summary: 编辑自己创建的条目讨论
       tags:
         - subject
   /p1/subjects/-/topics/{topicID}/replies:
@@ -2375,7 +4007,7 @@ paths:
                     statusCode: 401
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: Default Response
+          description: default error response type
         '500':
           content:
             application/json:
@@ -2389,36 +4021,21 @@ paths:
       summary: 创建条目讨论版回复
       tags:
         - subject
-  /p1/subjects/{subjectID}/comments:
+  /p1/subjects/{subjectID}:
     get:
-      operationId: subjectComments
+      operationId: getSubject
       parameters:
-        - in: query
-          name: limit
-          required: false
-          schema:
-            default: 20
-            type: integer
-        - in: query
-          name: offset
-          required: false
-          schema:
-            default: 0
-            minimum: 0
-            type: integer
-        - example: 8
-          in: path
+        - in: path
           name: subjectID
           required: true
           schema:
-            minimum: 0
             type: integer
       responses:
         '200':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SubjectInterestComment'
+                $ref: '#/components/schemas/Subject'
           description: Default Response
         '500':
           content:
@@ -2427,31 +4044,461 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
                 description: 意料之外的服务器错误
           description: 意料之外的服务器错误
-      summary: 获取条目的吐槽箱
+      security:
+        - CookiesSession: [ ]
+          HTTPBearer: [ ]
+      summary: 获取条目
       tags:
         - subject
-  /p1/subjects/{subjectID}/topics:
+  /p1/subjects/{subjectID}/characters:
     get:
-      operationId: getSubjectTopicsBySubjectId
+      operationId: getSubjectCharacters
       parameters:
-        - in: query
+        - description: '角色出场类型: 主角，配角，客串'
+          in: query
+          name: type
+          required: false
+          schema:
+            type: integer
+        - description: max 100
+          in: query
           name: limit
           required: false
           schema:
-            default: 30
-            maximum: 40
+            default: 20
+            maximum: 100
+            minimum: 1
             type: integer
-        - in: query
+        - description: min 0
+          in: query
           name: offset
           required: false
           schema:
             default: 0
+            minimum: 0
             type: integer
         - in: path
           name: subjectID
           required: true
           schema:
-            exclusiveMinimum: 0
+            type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    items:
+                      $ref: '#/components/schemas/SubjectCharacter'
+                    type: array
+                  total:
+                    type: integer
+                required:
+                  - data
+                  - total
+                type: object
+          description: Default Response
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+                description: 意料之外的服务器错误
+          description: 意料之外的服务器错误
+      security:
+        - CookiesSession: [ ]
+          HTTPBearer: [ ]
+      summary: 获取条目的角色
+      tags:
+        - subject
+  /p1/subjects/{subjectID}/comments:
+    get:
+      operationId: getSubjectComments
+      parameters:
+        - description: 收藏类型
+          in: query
+          name: type
+          required: false
+          schema:
+            anyOf:
+              - enum:
+                  - 1
+                type: number
+              - enum:
+                  - 2
+                type: number
+              - enum:
+                  - 3
+                type: number
+              - enum:
+                  - 4
+                type: number
+              - enum:
+                  - 5
+                type: number
+        - description: max 100
+          in: query
+          name: limit
+          required: false
+          schema:
+            default: 20
+            maximum: 100
+            minimum: 1
+            type: integer
+        - description: min 0
+          in: query
+          name: offset
+          required: false
+          schema:
+            default: 0
+            minimum: 0
+            type: integer
+        - in: path
+          name: subjectID
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    items:
+                      $ref: '#/components/schemas/SubjectComment'
+                    type: array
+                  total:
+                    type: integer
+                required:
+                  - data
+                  - total
+                type: object
+          description: Default Response
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+                description: 意料之外的服务器错误
+          description: 意料之外的服务器错误
+      security:
+        - CookiesSession: [ ]
+          HTTPBearer: [ ]
+      summary: 获取条目的吐槽箱
+      tags:
+        - subject
+  /p1/subjects/{subjectID}/episodes:
+    get:
+      operationId: getSubjectEpisodes
+      parameters:
+        - description: 剧集类型
+          in: query
+          name: type
+          required: false
+          schema:
+            anyOf:
+              - enum:
+                  - 0
+                type: number
+              - enum:
+                  - 1
+                type: number
+              - enum:
+                  - 2
+                type: number
+              - enum:
+                  - 3
+                type: number
+              - enum:
+                  - 4
+                type: number
+              - enum:
+                  - 5
+                type: number
+              - enum:
+                  - 6
+                type: number
+        - description: max 1000
+          in: query
+          name: limit
+          required: false
+          schema:
+            default: 100
+            maximum: 1000
+            minimum: 1
+            type: integer
+        - description: min 0
+          in: query
+          name: offset
+          required: false
+          schema:
+            default: 0
+            minimum: 0
+            type: integer
+        - in: path
+          name: subjectID
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    items:
+                      $ref: '#/components/schemas/Episode'
+                    type: array
+                  total:
+                    type: integer
+                required:
+                  - data
+                  - total
+                type: object
+          description: Default Response
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+                description: 意料之外的服务器错误
+          description: 意料之外的服务器错误
+      security:
+        - CookiesSession: [ ]
+          HTTPBearer: [ ]
+      summary: 获取条目的剧集
+      tags:
+        - subject
+  /p1/subjects/{subjectID}/recs:
+    get:
+      operationId: getSubjectRecs
+      parameters:
+        - description: max 10
+          in: query
+          name: limit
+          required: false
+          schema:
+            default: 10
+            maximum: 10
+            minimum: 1
+            type: integer
+        - description: min 0
+          in: query
+          name: offset
+          required: false
+          schema:
+            default: 0
+            minimum: 0
+            type: integer
+        - in: path
+          name: subjectID
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    items:
+                      $ref: '#/components/schemas/SubjectRec'
+                    type: array
+                  total:
+                    type: integer
+                required:
+                  - data
+                  - total
+                type: object
+          description: Default Response
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+                description: 意料之外的服务器错误
+          description: 意料之外的服务器错误
+      security:
+        - CookiesSession: [ ]
+          HTTPBearer: [ ]
+      summary: 获取条目的推荐
+      tags:
+        - subject
+  /p1/subjects/{subjectID}/relations:
+    get:
+      operationId: getSubjectRelations
+      parameters:
+        - description: 条目类型
+          in: query
+          name: type
+          required: false
+          schema:
+            anyOf:
+              - enum:
+                  - 1
+                type: number
+              - enum:
+                  - 2
+                type: number
+              - enum:
+                  - 3
+                type: number
+              - enum:
+                  - 4
+                type: number
+              - enum:
+                  - 6
+                type: number
+        - description: 是否单行本
+          in: query
+          name: offprint
+          required: false
+          schema:
+            default: false
+            type: boolean
+        - description: max 100
+          in: query
+          name: limit
+          required: false
+          schema:
+            default: 20
+            maximum: 100
+            minimum: 1
+            type: integer
+        - description: min 0
+          in: query
+          name: offset
+          required: false
+          schema:
+            default: 0
+            minimum: 0
+            type: integer
+        - in: path
+          name: subjectID
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    items:
+                      $ref: '#/components/schemas/SubjectRelation'
+                    type: array
+                  total:
+                    type: integer
+                required:
+                  - data
+                  - total
+                type: object
+          description: Default Response
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+                description: 意料之外的服务器错误
+          description: 意料之外的服务器错误
+      security:
+        - CookiesSession: [ ]
+          HTTPBearer: [ ]
+      summary: 获取条目的关联条目
+      tags:
+        - subject
+  /p1/subjects/{subjectID}/staffs:
+    get:
+      operationId: getSubjectStaffs
+      parameters:
+        - description: '人物职位: 监督，原案，脚本,..'
+          in: query
+          name: position
+          required: false
+          schema:
+            type: integer
+        - description: max 100
+          in: query
+          name: limit
+          required: false
+          schema:
+            default: 20
+            maximum: 100
+            minimum: 1
+            type: integer
+        - description: min 0
+          in: query
+          name: offset
+          required: false
+          schema:
+            default: 0
+            minimum: 0
+            type: integer
+        - in: path
+          name: subjectID
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    items:
+                      $ref: '#/components/schemas/SubjectStaff'
+                    type: array
+                  total:
+                    type: integer
+                required:
+                  - data
+                  - total
+                type: object
+          description: Default Response
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+                description: 意料之外的服务器错误
+          description: 意料之外的服务器错误
+      security:
+        - CookiesSession: [ ]
+          HTTPBearer: [ ]
+      summary: 获取条目的制作人员
+      tags:
+        - subject
+  /p1/subjects/{subjectID}/topics:
+    get:
+      operationId: getSubjectTopics
+      parameters:
+        - description: max 100
+          in: query
+          name: limit
+          required: false
+          schema:
+            default: 20
+            maximum: 100
+            minimum: 1
+            type: integer
+        - description: min 0
+          in: query
+          name: offset
+          required: false
+          schema:
+            default: 0
+            minimum: 0
+            type: integer
+        - in: path
+          name: subjectID
+          required: true
+          schema:
             type: integer
       responses:
         '200':
@@ -2470,20 +4517,6 @@ paths:
                   - total
                 type: object
           description: Default Response
-        '404':
-          content:
-            application/json:
-              examples:
-                NotFoundError:
-                  value:
-                    code: NOT_FOUND
-                    error: Not Found
-                    message: topic not found
-                    statusCode: 404
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-                description: 条目不存在
-          description: 条目不存在
         '500':
           content:
             application/json:
@@ -2494,20 +4527,11 @@ paths:
       security:
         - CookiesSession: [ ]
           HTTPBearer: [ ]
-      summary: 获取条目讨论版列表
+      summary: 获取条目讨论版
       tags:
         - subject
     post:
-      description: >-
-        需要
-        [turnstile](https://developers.cloudflare.com/turnstile/get-started/client-side-rendering/)
-
-
-        next.bgm.tv 域名对应的 site-key 为 `0x4AAAAAAABkMYinukE8nzYS`
-
-
-        dev.bgm38.com 域名使用测试用的 site-key `1x00000000000000000000AA`
-      operationId: createNewSubjectTopic
+      operationId: createSubjectTopic
       parameters:
         - example: 114514
           in: path
@@ -2519,8 +4543,34 @@ paths:
       requestBody:
         content:
           application/json:
+            example:
+              cf-turnstile-response: 10000000-aaaa-bbbb-cccc-000000000001
+              content: topic content
+              title: topic title
             schema:
-              $ref: '#/components/schemas/TopicCreation'
+              properties:
+                cf-turnstile-response:
+                  description: >-
+                    需要
+                    [turnstile](https://developers.cloudflare.com/turnstile/get-started/client-side-rendering/)
+
+                    next.bgm.tv 域名对应的 site-key 为 `0x4AAAAAAABkMYinukE8nzYS`
+
+                    dev.bgm38.com 域名使用测试用的 site-key `1x00000000000000000000AA`
+                  type: string
+                text:
+                  description: bbcode
+                  minLength: 1
+                  type: string
+                title:
+                  minLength: 1
+                  type: string
+              required:
+                - title
+                - text
+                - cf-turnstile-response
+              type: object
+        required: true
       responses:
         '200':
           content:
@@ -2544,9 +4594,756 @@ paths:
       security:
         - CookiesSession: [ ]
           HTTPBearer: [ ]
-      summary: 创建条目讨论版
+      summary: 创建条目讨论
       tags:
         - subject
+  /p1/trending/subjects:
+    get:
+      operationId: getTrendingSubjects
+      parameters:
+        - description: 条目类型
+          in: query
+          name: type
+          required: true
+          schema:
+            anyOf:
+              - enum:
+                  - 1
+                type: number
+              - enum:
+                  - 2
+                type: number
+              - enum:
+                  - 3
+                type: number
+              - enum:
+                  - 4
+                type: number
+              - enum:
+                  - 6
+                type: number
+        - description: max 100
+          in: query
+          name: limit
+          required: false
+          schema:
+            default: 20
+            maximum: 100
+            minimum: 1
+            type: integer
+        - description: min 0
+          in: query
+          name: offset
+          required: false
+          schema:
+            default: 0
+            minimum: 0
+            type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    items:
+                      $ref: '#/components/schemas/TrendingSubject'
+                    type: array
+                  total:
+                    type: integer
+                required:
+                  - data
+                  - total
+                type: object
+          description: Default Response
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+                description: 意料之外的服务器错误
+          description: 意料之外的服务器错误
+      summary: 获取热门条目
+      tags:
+        - trending
+  /p1/turnstile:
+    get:
+      description: 为防止滥用，Redirect URI 为白名单机制，如需添加请提交 PR。
+      operationId: getTurnstileToken
+      parameters:
+        - in: query
+          name: theme
+          required: false
+          schema:
+            anyOf:
+              - enum:
+                  - dark
+                type: string
+              - enum:
+                  - light
+                type: string
+              - enum:
+                  - auto
+                type: string
+        - in: query
+          name: redirect_uri
+          required: true
+          schema:
+            type: string
+      responses:
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+                description: 意料之外的服务器错误
+          description: 意料之外的服务器错误
+      summary: 获取 Turnstile 令牌
+      tags:
+        - user
+  /p1/users/-/collections/subjects/-/episodes/{episodeID}:
+    get:
+      operationId: getUserSubjectCollectionEpisodeByEpisodeID
+      parameters:
+        - in: path
+          name: episodeID
+          required: true
+          schema:
+            minimum: 1
+            type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSubjectEpisodeCollection'
+          description: Default Response
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+                description: 意料之外的服务器错误
+          description: 意料之外的服务器错误
+      security:
+        - CookiesSession: [ ]
+          HTTPBearer: [ ]
+      summary: 获取用户单个条目的单个章节收藏
+      tags:
+        - user
+  /p1/users/-/collections/subjects/{subjectID}/episodes:
+    get:
+      operationId: getUserSubjectCollectionEpisodesBySubjectID
+      parameters:
+        - description: 剧集类型
+          in: query
+          name: type
+          required: false
+          schema:
+            anyOf:
+              - enum:
+                  - 0
+                type: number
+              - enum:
+                  - 1
+                type: number
+              - enum:
+                  - 2
+                type: number
+              - enum:
+                  - 3
+                type: number
+              - enum:
+                  - 4
+                type: number
+              - enum:
+                  - 5
+                type: number
+              - enum:
+                  - 6
+                type: number
+        - description: max 1000
+          in: query
+          name: limit
+          required: false
+          schema:
+            default: 100
+            maximum: 1000
+            minimum: 1
+            type: integer
+        - description: min 0
+          in: query
+          name: offset
+          required: false
+          schema:
+            default: 0
+            minimum: 0
+            type: integer
+        - in: path
+          name: subjectID
+          required: true
+          schema:
+            minimum: 1
+            type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    items:
+                      $ref: '#/components/schemas/UserSubjectEpisodeCollection'
+                    type: array
+                  total:
+                    type: integer
+                required:
+                  - data
+                  - total
+                type: object
+          description: Default Response
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+                description: 意料之外的服务器错误
+          description: 意料之外的服务器错误
+      security:
+        - CookiesSession: [ ]
+          HTTPBearer: [ ]
+      summary: 获取用户单个条目的章节收藏
+      tags:
+        - user
+  /p1/users/{username}:
+    get:
+      operationId: getUser
+      parameters:
+        - in: path
+          name: username
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: Default Response
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+                description: 意料之外的服务器错误
+          description: 意料之外的服务器错误
+      security:
+        - CookiesSession: [ ]
+          HTTPBearer: [ ]
+      summary: 获取用户信息
+      tags:
+        - user
+  /p1/users/{username}/collections/characters:
+    get:
+      operationId: getUserCharacterCollections
+      parameters:
+        - description: max 100
+          in: query
+          name: limit
+          required: false
+          schema:
+            default: 20
+            maximum: 100
+            minimum: 1
+            type: integer
+        - description: min 0
+          in: query
+          name: offset
+          required: false
+          schema:
+            default: 0
+            minimum: 0
+            type: integer
+        - in: path
+          name: username
+          required: true
+          schema:
+            minLength: 1
+            type: string
+      responses:
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+                description: 意料之外的服务器错误
+          description: 意料之外的服务器错误
+      security:
+        - CookiesSession: [ ]
+          HTTPBearer: [ ]
+      summary: 获取用户角色收藏
+      tags:
+        - user
+  /p1/users/{username}/collections/characters/{characterID}:
+    get:
+      operationId: getUserCharacterCollectionByCharacterID
+      parameters:
+        - in: path
+          name: username
+          required: true
+          schema:
+            minLength: 1
+            type: string
+        - in: path
+          name: characterID
+          required: true
+          schema:
+            minimum: 1
+            type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserCharacterCollection'
+          description: Default Response
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+                description: 意料之外的服务器错误
+          description: 意料之外的服务器错误
+      security:
+        - CookiesSession: [ ]
+          HTTPBearer: [ ]
+      summary: 获取用户单个角色收藏
+      tags:
+        - user
+  /p1/users/{username}/collections/indexes:
+    get:
+      operationId: getUserIndexCollections
+      parameters:
+        - description: max 100
+          in: query
+          name: limit
+          required: false
+          schema:
+            default: 20
+            maximum: 100
+            minimum: 1
+            type: integer
+        - description: min 0
+          in: query
+          name: offset
+          required: false
+          schema:
+            default: 0
+            minimum: 0
+            type: integer
+        - in: path
+          name: username
+          required: true
+          schema:
+            minLength: 1
+            type: string
+      responses:
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+                description: 意料之外的服务器错误
+          description: 意料之外的服务器错误
+      security:
+        - CookiesSession: [ ]
+          HTTPBearer: [ ]
+      summary: 获取用户目录收藏
+      tags:
+        - user
+  /p1/users/{username}/collections/indexes/{indexID}:
+    get:
+      operationId: getUserIndexCollectionByIndexID
+      parameters:
+        - in: path
+          name: username
+          required: true
+          schema:
+            minLength: 1
+            type: string
+        - in: path
+          name: indexID
+          required: true
+          schema:
+            minimum: 1
+            type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserIndexCollection'
+          description: Default Response
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+                description: 意料之外的服务器错误
+          description: 意料之外的服务器错误
+      security:
+        - CookiesSession: [ ]
+          HTTPBearer: [ ]
+      summary: 获取用户单个目录收藏
+      tags:
+        - user
+  /p1/users/{username}/collections/persons:
+    get:
+      operationId: getUserPersonCollections
+      parameters:
+        - description: max 100
+          in: query
+          name: limit
+          required: false
+          schema:
+            default: 20
+            maximum: 100
+            minimum: 1
+            type: integer
+        - description: min 0
+          in: query
+          name: offset
+          required: false
+          schema:
+            default: 0
+            minimum: 0
+            type: integer
+        - in: path
+          name: username
+          required: true
+          schema:
+            minLength: 1
+            type: string
+      responses:
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+                description: 意料之外的服务器错误
+          description: 意料之外的服务器错误
+      security:
+        - CookiesSession: [ ]
+          HTTPBearer: [ ]
+      summary: 获取用户人物收藏
+      tags:
+        - user
+  /p1/users/{username}/collections/persons/{personID}:
+    get:
+      operationId: getUserPersonCollectionByPersonID
+      parameters:
+        - in: path
+          name: username
+          required: true
+          schema:
+            minLength: 1
+            type: string
+        - in: path
+          name: personID
+          required: true
+          schema:
+            minimum: 1
+            type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPersonCollection'
+          description: Default Response
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+                description: 意料之外的服务器错误
+          description: 意料之外的服务器错误
+      security:
+        - CookiesSession: [ ]
+          HTTPBearer: [ ]
+      summary: 获取用户单个人物收藏
+      tags:
+        - user
+  /p1/users/{username}/collections/subjects:
+    get:
+      operationId: getUserSubjectCollections
+      parameters:
+        - description: 条目类型
+          in: query
+          name: subjectType
+          required: false
+          schema:
+            anyOf:
+              - enum:
+                  - 1
+                type: number
+              - enum:
+                  - 2
+                type: number
+              - enum:
+                  - 3
+                type: number
+              - enum:
+                  - 4
+                type: number
+              - enum:
+                  - 6
+                type: number
+        - description: 收藏类型
+          in: query
+          name: type
+          required: false
+          schema:
+            anyOf:
+              - enum:
+                  - 1
+                type: number
+              - enum:
+                  - 2
+                type: number
+              - enum:
+                  - 3
+                type: number
+              - enum:
+                  - 4
+                type: number
+              - enum:
+                  - 5
+                type: number
+        - description: 起始时间戳
+          in: query
+          name: since
+          required: false
+          schema:
+            minimum: 0
+            type: integer
+        - description: max 100
+          in: query
+          name: limit
+          required: false
+          schema:
+            default: 20
+            maximum: 100
+            minimum: 1
+            type: integer
+        - description: min 0
+          in: query
+          name: offset
+          required: false
+          schema:
+            default: 0
+            minimum: 0
+            type: integer
+        - in: path
+          name: username
+          required: true
+          schema:
+            minLength: 1
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    items:
+                      $ref: '#/components/schemas/UserSubjectCollection'
+                    type: array
+                  total:
+                    type: integer
+                required:
+                  - data
+                  - total
+                type: object
+          description: Default Response
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+                description: 意料之外的服务器错误
+          description: 意料之外的服务器错误
+      security:
+        - CookiesSession: [ ]
+          HTTPBearer: [ ]
+      summary: 获取用户条目收藏
+      tags:
+        - user
+  /p1/users/{username}/collections/subjects/{subjectID}:
+    get:
+      operationId: getUserSubjectCollectionBySubjectID
+      parameters:
+        - in: path
+          name: username
+          required: true
+          schema:
+            minLength: 1
+            type: string
+        - in: path
+          name: subjectID
+          required: true
+          schema:
+            minimum: 1
+            type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSubjectCollection'
+          description: Default Response
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+                description: 意料之外的服务器错误
+          description: 意料之外的服务器错误
+      security:
+        - CookiesSession: [ ]
+          HTTPBearer: [ ]
+      summary: 获取用户单个条目收藏
+      tags:
+        - user
+  /p1/users/{username}/collections/summary:
+    get:
+      operationId: getUserCollectionsSummary
+      parameters:
+        - in: path
+          name: username
+          required: true
+          schema:
+            minLength: 1
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserCollectionsSummary'
+          description: Default Response
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+                description: 意料之外的服务器错误
+          description: 意料之外的服务器错误
+      security:
+        - CookiesSession: [ ]
+          HTTPBearer: [ ]
+      summary: 获取用户收藏概览
+      tags:
+        - user
+  /p1/users/{username}/friends:
+    get:
+      operationId: getUserFriends
+      parameters:
+        - description: max 100
+          in: query
+          name: limit
+          required: false
+          schema:
+            default: 20
+            maximum: 100
+            minimum: 1
+            type: integer
+        - description: min 0
+          in: query
+          name: offset
+          required: false
+          schema:
+            default: 0
+            minimum: 0
+            type: integer
+        - in: path
+          name: username
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    items:
+                      $ref: '#/components/schemas/Friend'
+                    type: array
+                  total:
+                    type: integer
+                required:
+                  - data
+                  - total
+                type: object
+          description: Default Response
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+                description: 意料之外的服务器错误
+          description: 意料之外的服务器错误
+      security:
+        - CookiesSession: [ ]
+          HTTPBearer: [ ]
+      summary: 获取用户的好友列表
+      tags:
+        - user
+  /p1/users/{username}/indexes:
+    get:
+      operationId: getUserIndexes
+      parameters:
+        - description: max 100
+          in: query
+          name: limit
+          required: false
+          schema:
+            default: 20
+            maximum: 100
+            minimum: 1
+            type: integer
+        - description: min 0
+          in: query
+          name: offset
+          required: false
+          schema:
+            default: 0
+            minimum: 0
+            type: integer
+        - in: path
+          name: username
+          required: true
+          schema:
+            minLength: 1
+            type: string
+      responses:
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+                description: 意料之外的服务器错误
+          description: 意料之外的服务器错误
+      security:
+        - CookiesSession: [ ]
+          HTTPBearer: [ ]
+      summary: 获取用户创建的目录
+      tags:
+        - user
   /p1/wiki/ep/{episodeID}:
     get:
       operationId: getEpisodeWikiInfo
@@ -2569,6 +5366,7 @@ paths:
                 id: 1148124
                 name: キマリ×ト×ハジマリ
                 nameCN: 结末×与×开始
+                subjectID: 65536
                 summary: >-
                   ゴンとキルアはG.I.プレイヤー選考会にいよいよ挑戦する。審査を担当するツェズゲラから提示された合格の条件はただ一つ「練を見せる」こと。合格できる者は200人中32名という狭き門だが、ゴンとキルアはくぐり抜けることができるのか！？
                 type: 0
@@ -2587,7 +5385,7 @@ paths:
                     statusCode: 404
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: Default Response
+          description: default error response type
         '500':
           content:
             application/json:
@@ -2642,6 +5440,8 @@ paths:
                       type: string
                     nameCN:
                       type: string
+                    subjectID:
+                      type: integer
                     summary:
                       type: string
                     type:
@@ -2700,7 +5500,7 @@ paths:
                     statusCode: 404
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: Default Response
+          description: default error response type
         '500':
           content:
             application/json:
@@ -2710,6 +5510,322 @@ paths:
           description: 意料之外的服务器错误
       security:
         - CookiesSession: [ ]
+      tags:
+        - wiki
+  /p1/wiki/lock/subjects:
+    post:
+      operationId: lockSubject
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                reason:
+                  type: string
+                subjectID:
+                  example: 184017
+                  type: integer
+              required:
+                - subjectID
+                - reason
+              type: object
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                properties: { }
+                type: object
+          description: Default Response
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+                description: 意料之外的服务器错误
+          description: 意料之外的服务器错误
+      tags:
+        - wiki
+  /p1/wiki/persons/{personID}:
+    get:
+      description: 获取当前的 wiki 信息
+      operationId: getPersonWikiInfo
+      parameters:
+        - example: 1
+          in: path
+          name: personID
+          required: true
+          schema:
+            minimum: 0
+            type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonWikiInfo'
+          description: Default Response
+        '401':
+          content:
+            application/json:
+              examples:
+                INVALID_SYNTAX_ERROR:
+                  value:
+                    code: INVALID_SYNTAX_ERROR
+                    error: Bad Request
+                    message: '%s'
+                    statusCode: 400
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: default error response type
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+                description: 角色不存在
+          description: 角色不存在
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+                description: 意料之外的服务器错误
+          description: 意料之外的服务器错误
+      security:
+        - CookiesSession: [ ]
+          HTTPBearer: [ ]
+      tags:
+        - wiki
+    patch:
+      operationId: patchPersonInfo
+      parameters:
+        - example: 1
+          in: path
+          name: personID
+          required: true
+          schema:
+            minimum: 0
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              additionalProperties: false
+              properties:
+                commitMessage:
+                  minLength: 1
+                  type: string
+                expectedRevision:
+                  additionalProperties: false
+                  default: { }
+                  properties:
+                    infobox:
+                      minLength: 1
+                      type: string
+                    name:
+                      minLength: 1
+                      type: string
+                    summary:
+                      type: string
+                  type: object
+                person:
+                  additionalProperties: false
+                  properties:
+                    infobox:
+                      minLength: 1
+                      type: string
+                    name:
+                      minLength: 1
+                      type: string
+                    summary:
+                      type: string
+                  type: object
+              required:
+                - commitMessage
+                - expectedRevision
+                - person
+              type: object
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                properties: { }
+                type: object
+          description: Default Response
+        '400':
+          content:
+            application/json:
+              examples:
+                WIKI_CHANGED:
+                  value:
+                    code: WIKI_CHANGED
+                    error: Bad Request
+                    message: >-
+                      expected data doesn't match, name changed, expecting "1",
+                      currently "2"
+                    statusCode: 400
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: default error response type
+        '401':
+          content:
+            application/json:
+              examples:
+                INVALID_SYNTAX_ERROR:
+                  value:
+                    code: INVALID_SYNTAX_ERROR
+                    error: Bad Request
+                    message: '%s'
+                    statusCode: 400
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: default error response type
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+                description: 意料之外的服务器错误
+          description: 意料之外的服务器错误
+      security:
+        - CookiesSession: [ ]
+          HTTPBearer: [ ]
+      tags:
+        - wiki
+  /p1/wiki/recent:
+    get:
+      description: 获取最近两天的wiki更新
+      operationId: getRecentWiki
+      parameters:
+        - description: |-
+            unix time stamp, only return last update time >= since
+
+            only allow recent 2 days
+          in: path
+          name: since
+          required: true
+          schema:
+            default: 0
+            type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecentWikiChange'
+          description: Default Response
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: default error response type
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+                description: 意料之外的服务器错误
+          description: 意料之外的服务器错误
+      tags:
+        - wiki
+  /p1/wiki/subjects:
+    post:
+      description: 创建新条目
+      operationId: createNewSubject
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                infobox:
+                  minLength: 1
+                  type: string
+                metaTags:
+                  items:
+                    type: string
+                  type: array
+                name:
+                  minLength: 1
+                  type: string
+                nsfw:
+                  type: boolean
+                platform:
+                  type: integer
+                summary:
+                  type: string
+                type:
+                  anyOf:
+                    - enum:
+                        - 1
+                      type: number
+                    - enum:
+                        - 2
+                      type: number
+                    - enum:
+                        - 3
+                      type: number
+                    - enum:
+                        - 4
+                      type: number
+                    - enum:
+                        - 6
+                      type: number
+              required:
+                - name
+                - type
+                - platform
+                - infobox
+                - nsfw
+                - metaTags
+                - summary
+              type: object
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                properties:
+                  subjectID:
+                    type: number
+                required:
+                  - subjectID
+                type: object
+          description: Default Response
+        '400':
+          content:
+            application/json:
+              examples:
+                INVALID_SYNTAX_ERROR:
+                  value:
+                    code: INVALID_SYNTAX_ERROR
+                    error: Bad Request
+                    message: '%s'
+                    statusCode: 400
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: default error response type
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: default error response type
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+                description: 意料之外的服务器错误
+          description: 意料之外的服务器错误
+      security:
+        - CookiesSession: [ ]
+          HTTPBearer: [ ]
       tags:
         - wiki
   /p1/wiki/subjects/{subjectID}:
@@ -2743,7 +5859,7 @@ paths:
                     statusCode: 400
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: Default Response
+          description: default error response type
         '500':
           content:
             application/json:
@@ -2809,6 +5925,10 @@ paths:
                     infobox:
                       minLength: 1
                       type: string
+                    metaTags:
+                      items:
+                        type: string
+                      type: array
                     name:
                       minLength: 1
                       type: string
@@ -2859,6 +5979,10 @@ paths:
                     infobox:
                       minLength: 1
                       type: string
+                    metaTags:
+                      items:
+                        type: string
+                      type: array
                     name:
                       minLength: 1
                       type: string
@@ -2889,7 +6013,7 @@ paths:
                     statusCode: 400
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: Default Response
+          description: default error response type
         '500':
           content:
             application/json:
@@ -2965,6 +6089,10 @@ paths:
                     infobox:
                       minLength: 1
                       type: string
+                    metaTags:
+                      items:
+                        type: string
+                      type: array
                     name:
                       minLength: 1
                       type: string
@@ -2993,7 +6121,7 @@ paths:
                     statusCode: 400
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: Default Response
+          description: default error response type
         '500':
           content:
             application/json:
@@ -3027,30 +6155,17 @@ paths:
                         creator:
                           properties:
                             avatar:
-                              properties:
-                                large:
-                                  type: string
-                                medium:
-                                  example: sai
-                                  type: string
-                                small:
-                                  type: string
-                              required:
-                                - small
-                                - medium
-                                - large
-                              title: Avatar
-                              type: object
+                              $ref: '#/components/schemas/Avatar'
                             id:
                               example: 1
+                              type: integer
+                            joinedAt:
                               type: integer
                             nickname:
                               example: Sai🖖
                               type: string
                             sign:
                               type: string
-                            user_group:
-                              type: integer
                             username:
                               example: sai
                               type: string
@@ -3060,8 +6175,8 @@ paths:
                             - nickname
                             - avatar
                             - sign
-                            - user_group
-                          title: User
+                            - joinedAt
+                          title: SlimUser
                           type: object
                         id:
                           type: integer
@@ -3153,7 +6268,7 @@ paths:
                     statusCode: 400
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: Default Response
+          description: default error response type
         '401':
           content:
             application/json:
@@ -3166,7 +6281,7 @@ paths:
                     statusCode: 401
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: Default Response
+          description: default error response type
         '500':
           content:
             application/json:
@@ -3278,7 +6393,7 @@ paths:
                     statusCode: 400
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: Default Response
+          description: default error response type
         '500':
           content:
             application/json:
@@ -3288,5 +6403,40 @@ paths:
           description: 意料之外的服务器错误
       security:
         - CookiesSession: [ ]
+      tags:
+        - wiki
+  /p1/wiki/unlock/subjects:
+    post:
+      operationId: unlockSubject
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                reason:
+                  type: string
+                subjectID:
+                  example: 184017
+                  type: integer
+              required:
+                - subjectID
+                - reason
+              type: object
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                properties: { }
+                type: object
+          description: Default Response
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+                description: 意料之外的服务器错误
+          description: 意料之外的服务器错误
       tags:
         - wiki
