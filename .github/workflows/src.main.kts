@@ -45,9 +45,6 @@ import Secrets.SIGNING_RELEASE_KEYALIAS
 import Secrets.SIGNING_RELEASE_KEYPASSWORD
 import Secrets.SIGNING_RELEASE_STOREFILE
 import Secrets.SIGNING_RELEASE_STOREPASSWORD
-import Src_main.Arch
-import Src_main.MatrixContext
-import Src_main.OS
 import io.github.typesafegithub.workflows.actions.actions.Checkout
 import io.github.typesafegithub.workflows.actions.actions.GithubScript
 import io.github.typesafegithub.workflows.actions.actions.UploadArtifact
@@ -230,8 +227,8 @@ class MatrixInstance(
 
 val matrixInstances = listOf(
     MatrixInstance(
-        id = "windows",
-        name = "Windows x86_64",
+        id = "windows-self-hosted",
+        name = "Windows 10 x86_64",
         runsOn = listOf("self-hosted", "Windows", "X64"),
         os = OS.WINDOWS,
         arch = Arch.X64,
@@ -242,6 +239,25 @@ val matrixInstances = listOf(
         composeResourceTriple = "windows-x64",
         gradleHeap = "6g",
         kotlinCompilerHeap = "6g",
+        gradleParallel = true,
+        uploadDesktopInstallers = false, // 只有 win server 2019 构建的包才能正常使用 anitorrent
+        extraGradleArgs = listOf(
+            "-Pani.android.abis=x86_64",
+        ),
+    ),
+    MatrixInstance(
+        id = "windows-2019",
+        name = "Windows Server 2019 x86_64",
+        runsOn = listOf("windows-2019"),
+        os = OS.WINDOWS,
+        arch = Arch.X64,
+        selfHosted = false,
+        uploadApk = false,
+        buildAnitorrent = true,
+        buildAnitorrentSeparately = false, // windows 单线程构建 anitorrent, 要一起跑节约时间
+        composeResourceTriple = "windows-x64",
+        gradleHeap = "4g",
+        kotlinCompilerHeap = "4g",
         gradleParallel = true,
         extraGradleArgs = listOf(
             "-Pani.android.abis=x86_64",
@@ -702,12 +718,6 @@ fun JobBuilder<*>.buildAnitorrent() {
 }
 
 fun JobBuilder<*>.compileAndAssemble() {
-    // 备注: 这个可能已经不需要了, Compose 可能已经修复了这个 bug
-    runGradle(
-        name = "Explicitly generate Compose resources",
-        tasks = ["updateDevVersionNameFromGit"],
-    )
-
     runGradle(
         name = "Compile Kotlin",
         tasks = [
@@ -724,7 +734,7 @@ fun JobBuilder<*>.compileAndAssemble() {
 
 fun JobBuilder<*>.buildAndroidApk(prepareSigningKey: ActionStep<Base64ToFile_Untyped.Outputs>) {
     runGradle(
-        name = "Build Android Debug APK",
+        name = "Build Android Debug APKs",
         `if` = expr { matrix.uploadApk },
         tasks = [
             "assembleDebug",
@@ -733,7 +743,7 @@ fun JobBuilder<*>.buildAndroidApk(prepareSigningKey: ActionStep<Base64ToFile_Unt
 
     for (arch in AndroidArch.entriesWithUniversal) {
         uses(
-            name = "Upload Android Debug APK",
+            name = "Upload Android Debug APK $arch",
             `if` = expr { matrix.uploadApk },
             action = UploadArtifact(
                 name = "ani-android-${arch}-debug",
@@ -744,7 +754,7 @@ fun JobBuilder<*>.buildAndroidApk(prepareSigningKey: ActionStep<Base64ToFile_Unt
     }
 
     runGradle(
-        name = "Build Android Release APK",
+        name = "Build Android Release APKs",
         `if` = expr { github.isAnimekoRepository and matrix.uploadApk },
         tasks = [
             "assembleRelease",
@@ -789,6 +799,7 @@ fun JobBuilder<*>.uploadAnitorrent() {
         action = UploadArtifact(
             name = $"anitorrent-cmake-cache-${expr { matrix.os }}-${expr { matrix.arch }}",
             path_Untyped = "torrent/anitorrent/build-ci/CMakeCache.txt",
+            overwrite = true,
         ),
     )
     uses(
@@ -797,6 +808,7 @@ fun JobBuilder<*>.uploadAnitorrent() {
         action = UploadArtifact(
             name = $"anitorrent-${expr { matrix.composeResourceTriple }}",
             path_Untyped = "app/desktop/appResources/${expr { matrix.composeResourceTriple }}/anitorrent",
+            overwrite = true,
         ),
     )
 }
@@ -826,6 +838,7 @@ fun JobBuilder<*>.packageDesktopAndUpload() {
         action = UploadArtifact(
             name = "ani-macos-dmg-${expr { matrix.arch }}",
             path_Untyped = "app/desktop/build/compose/binaries/main-release/dmg/Ani-*.dmg",
+            overwrite = true,
         ),
     )
     uses(
@@ -834,6 +847,7 @@ fun JobBuilder<*>.packageDesktopAndUpload() {
         action = UploadArtifact(
             name = "ani-windows-portable",
             path_Untyped = "app/desktop/build/compose/binaries/main-release/app",
+            overwrite = true,
         ),
     )
 }
@@ -868,7 +882,7 @@ class CIHelper(
 
     fun JobBuilder<*>.uploadAndroidApkToCloud() {
         runGradle(
-            name = "Upload Android APK",
+            name = "π",
             `if` = expr { matrix.uploadApk },
             tasks = [":ci-helper:uploadAndroidApk"],
             env = ciHelperSecrets,

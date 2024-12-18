@@ -201,7 +201,7 @@ internal fun SettingsScope.MediaSelectionGroup(
                     itemText = {
                         Text(
                             when (it) {
-                                MediaSourceKind.WEB -> "在线"
+                                MediaSourceKind.WEB -> "在线 (推荐)"
                                 MediaSourceKind.BitTorrent -> "BT"
                                 null -> "无偏好"
                                 MediaSourceKind.LocalCache -> "" // not possible

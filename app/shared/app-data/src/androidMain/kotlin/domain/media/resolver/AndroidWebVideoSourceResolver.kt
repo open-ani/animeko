@@ -25,6 +25,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import me.him188.ani.app.domain.media.resolver.WebViewVideoExtractor.Instruction
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.videoplayer.HttpStreamingVideoSource
@@ -40,6 +41,7 @@ import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import java.io.ByteArrayInputStream
 import java.util.concurrent.ConcurrentSkipListSet
+import kotlin.time.Duration.Companion.seconds
 
 
 /**
@@ -106,7 +108,7 @@ class AndroidWebVideoSourceResolver(
                 is WebVideoMatcher.MatchResult.Matched -> Instruction.FoundResource
                 null -> Instruction.Continue
             }
-        }.let { resource ->
+        }?.let { resource ->
             allMatchers.firstNotNullOfOrNull { matcher ->
                 matcher.match(resource.url, context).videoOrNull
             }
@@ -126,7 +128,7 @@ class AndroidWebViewVideoExtractor : WebViewVideoExtractor {
         pageUrl: String,
         config: WebViewConfig,
         resourceMatcher: (String) -> Instruction,
-    ): WebResource {
+    ): WebResource? {
         // WebView requires same thread
 //        Executors.newSingleThreadExecutor().asCoroutineDispatcher().use { dispatcher ->
         return withContext(Dispatchers.Main) {
@@ -185,7 +187,9 @@ class AndroidWebViewVideoExtractor : WebViewVideoExtractor {
             //            }
 
             try {
-                deferred.await()
+                withTimeoutOrNull(15.seconds) {
+                    deferred.await()
+                }
             } catch (e: Throwable) {
                 if (deferred.isActive) {
                     deferred.cancel()

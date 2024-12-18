@@ -89,22 +89,33 @@ interface MediaSelector {
 
     /**
      * 尝试使用目前的偏好设置, 自动选择一个. 当已经有用户选择或默认选择时返回 `null`.
+     *
+     * @return 成功选择且已经记录的 [Media]. 返回 `null` 时表示没有选择.
      * @see autoSelect
      */
     suspend fun trySelectDefault(): Media?
 
     /**
-     * 根据提供的顺序 [mediaSourceOrder], 尝试选择 WEB 类型的数据源.
+     * 根据提供的顺序 [mediaSourceOrder], 尝试选择一个 media.
      *
      * 这会忽略一切用户偏好设置, 只根据数据源顺序选择. 将会选择在 list 中 index 越小的数据源.
      *
-     * @return 成功选择的 [Media] , 若没有满足需求的 [Media] 或用户已经手动选择了一个则返回 `null`
+     * @param overrideUserSelection 是否覆盖用户选择.
+     * 若为 `true`, 则会忽略用户目前的选择, 使用此函数的结果替换选择.
+     * 若为 `false`, 如果用户已经选择了一个 media, 则此函数不会做任何事情.
+     * @param blacklistMediaIds 黑名单, 这些 media 不会被选择. 如果遇到黑名单中的 media, 将会跳过.
+     *
+     * @return 成功选择且已经记录的 [Media]. 返回 `null` 时表示没有选择.
      */
-    suspend fun trySelectFromMediaSources(mediaSourceOrder: List<String>): Media?
+    suspend fun trySelectFromMediaSources(
+        mediaSourceOrder: List<String>,
+        overrideUserSelection: Boolean = false,
+        blacklistMediaIds: Set<String> = emptySet(),
+    ): Media?
 
     /**
      * 尝试选择缓存 ([MediaSourceKind.LocalCache]) 作为默认选择, 如果没有缓存则不做任何事情
-     * @return 成功选择的缓存, 若没有缓存或用户已经手动选择了一个则返回 `null`
+     * @return 成功选择且已经记录的缓存, 若没有缓存或用户已经手动选择了一个则返回 `null`
      * @see autoSelect
      */
     suspend fun trySelectCached(): Media?
@@ -349,19 +360,26 @@ class DefaultMediaSelector(
     override val events = MutableMediaSelectorEvents()
 
     override suspend fun select(candidate: Media): Boolean {
+        return selectImpl(candidate, updatePreference = true)
+    }
+
+    private suspend fun selectImpl(candidate: Media, updatePreference: Boolean): Boolean {
         events.onBeforeSelect.emit(SelectEvent(candidate, null))
         if (selected.value == candidate) return false
         selected.value = candidate
 
-        alliance.preferWithoutBroadcast(candidate.properties.alliance)
-        resolution.preferWithoutBroadcast(candidate.properties.resolution)
-        mediaSourceId.preferWithoutBroadcast(candidate.mediaSourceId)
-        candidate.properties.subtitleLanguageIds.singleOrNull()?.let {
-            subtitleLanguageId.preferWithoutBroadcast(it)
+        if (updatePreference) {
+            alliance.preferWithoutBroadcast(candidate.properties.alliance)
+            resolution.preferWithoutBroadcast(candidate.properties.resolution)
+            mediaSourceId.preferWithoutBroadcast(candidate.mediaSourceId)
+            candidate.properties.subtitleLanguageIds.singleOrNull()?.let {
+                subtitleLanguageId.preferWithoutBroadcast(it)
+            }
+
+            broadcastChangePreference()
         }
 
         // Publish events
-        broadcastChangePreference()
         events.onSelect.emit(SelectEvent(candidate, null))
         return true
     }
@@ -557,16 +575,27 @@ class DefaultMediaSelector(
         return selectAny(candidates)
     }
 
-    override suspend fun trySelectFromMediaSources(mediaSourceOrder: List<String>): Media? {
+    override suspend fun trySelectFromMediaSources(
+        mediaSourceOrder: List<String>,
+        overrideUserSelection: Boolean,
+        blacklistMediaIds: Set<String>
+    ): Media? {
         if (mediaSourceOrder.isEmpty()) return null
 
         val candidates = mediaList.first()
         if (candidates.isEmpty()) return null
 
         val selected = mediaSourceOrder.firstNotNullOfOrNull { mediaSourceId ->
-            candidates.fastFirstOrNull { it.mediaSourceId == mediaSourceId }
+            candidates.fastFirstOrNull { it.mediaSourceId == mediaSourceId && it.mediaId !in blacklistMediaIds }
         }
-        return selected?.let { selectDefault(it) }
+        return selected?.let {
+            if (overrideUserSelection) {
+                selectImpl(it, updatePreference = false)
+                it
+            } else {
+                selectDefault(it)
+            }
+        }
     }
 
     override suspend fun trySelectCached(): Media? {

@@ -16,7 +16,7 @@ if [[ -n "$TMPDIR" ]]; then
   TARGET_DIR="$TMPDIR"
 else
   TARGET_DIR="/private/var/folders/fv/b5h2b9f577q7z5j0r5n8n6g40000gp/T"
-  echo "env TMPDIR is not exist. Using $TARGET_DIR"
+  echo "env TMPDIR does not exist. Using $TARGET_DIR"
 fi
 
 # clear "debuginfo.knd1145141919810.tmp"

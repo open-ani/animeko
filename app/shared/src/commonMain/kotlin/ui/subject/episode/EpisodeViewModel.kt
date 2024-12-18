@@ -17,7 +17,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.paging.cachedIn
 import androidx.paging.map
+import kotlinx.collections.immutable.persistentHashSetOf
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -41,6 +43,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.episode.renderEpisodeEp
+import me.him188.ani.app.data.models.preference.MediaSelectorSettings
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
@@ -93,6 +96,7 @@ import me.him188.ani.app.ui.subject.episode.details.EpisodeDetailsState
 import me.him188.ani.app.ui.subject.episode.mediaFetch.MediaSelectorPresentation
 import me.him188.ani.app.ui.subject.episode.mediaFetch.MediaSourceInfoProvider
 import me.him188.ani.app.ui.subject.episode.mediaFetch.MediaSourceResultsPresentation
+import me.him188.ani.app.ui.subject.episode.statistics.VideoLoadingState
 import me.him188.ani.app.ui.subject.episode.statistics.VideoStatistics
 import me.him188.ani.app.ui.subject.episode.video.DanmakuLoaderImpl
 import me.him188.ani.app.ui.subject.episode.video.DanmakuStatistics
@@ -126,6 +130,7 @@ import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import kotlin.math.max
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 
 @Stable
@@ -312,6 +317,8 @@ private class EpisodeViewModelImpl(
             mediaFetchSession.flatMapLatest { it.cumulativeResults },
         )
         .apply {
+            val preferKindFlow = settingsRepository.mediaSelectorSettings.flow.map { it.preferKind }
+
             autoSelect.run {
 
                 launchInBackground {
@@ -319,18 +326,21 @@ private class EpisodeViewModelImpl(
                         awaitSwitchEpisodeCompleted()
                         awaitCompletedAndSelectDefault(
                             it,
-                            settingsRepository.mediaSelectorSettings.flow.map { it.preferKind },
+                            preferKindFlow,
                         )
                     }
                 }
                 launchInBackground {
+                    // 快速自动选择数据源. 当按数据源顺序排序, 当最高排序的数据源查询完成后立即自动选择. #1322
                     mediaFetchSession.collectLatest { session ->
                         val result = fastSelectSources(
                             session,
                             mediaSourceManager.allInstances.first() // no need to subscribe to changes
                                 .filter { it.source.kind == MediaSourceKind.WEB }
                                 .map { it.mediaSourceId },
-                            preferKind = settingsRepository.mediaSelectorSettings.flow.map { it.preferKind },
+                            preferKind = preferKindFlow,
+                            overrideUserSelection = false,
+                            blacklistMediaIds = emptySet(),
                         )
                         logger.info { "fastSelectSources result: $result" }
                     }
@@ -411,6 +421,53 @@ private class EpisodeViewModelImpl(
         mediaFetchSession.flatMapLatest { it.hasCompleted }.map { !it.allCompleted() },
         backgroundScope.coroutineContext,
     )
+
+    init { // after playerLauncher
+        launchInBackground {
+            // 播放失败时自动切换下一个 media.
+            // 即使是 BT 出错, 我们也会尝试切换到下一个 WEB 类型的数据源, 而不是继续尝试 BT.
+            settingsRepository.videoScaffoldConfig.flow.map { it.autoSwitchMediaOnPlayerError }
+                .collectLatest { autoSwitchMediaOnPlayerError ->
+                    if (!autoSwitchMediaOnPlayerError) {
+                        // 设置关闭, 不要自动切换
+                        return@collectLatest
+                    }
+
+                    mediaFetchSession.collectLatest { session ->
+                        var blacklistedMediaIds = persistentHashSetOf<String>()
+                        combine(
+                            playerLauncher.videoLoadingState, // 解析链接出错 (未匹配到链接)
+                            playerState.state, // 解析成功, 但播放器出错 (无法链接到链接, 例如链接错误)
+                        ) { videoLoadingState, playerState ->
+                            videoLoadingState is VideoLoadingState.Failed || playerState == PlaybackState.ERROR
+                        }.distinctUntilChanged()
+                            .collectLatest { isError ->
+                                if (isError) {
+                                    // 播放出错了
+                                    logger.info { "Player errored, automatically switching to next media" }
+
+                                    // 将当前播放的 mediaId 加入黑名单
+                                    mediaSelector.selected.value?.let {
+                                        blacklistedMediaIds = blacklistedMediaIds.add(it.mediaId) // thread-safe
+                                    }
+
+                                    delay(1.seconds) // 稍等让用户看到播放出错
+                                    val result = mediaSelector.autoSelect.fastSelectSources(
+                                        session,
+                                        mediaSourceManager.allInstances.first() // no need to subscribe to changes
+                                            .filter { it.source.kind == MediaSourceKind.WEB }
+                                            .map { it.mediaSourceId },
+                                        preferKind = settingsRepository.mediaSelectorSettings.flow.map<MediaSelectorSettings, MediaSourceKind?> { it.preferKind },
+                                        overrideUserSelection = true, // Note: 覆盖用户选择
+                                        blacklistMediaIds = blacklistedMediaIds,
+                                    )
+                                    logger.info { "Player errored, automatically switched to next media: $result" }
+                                } // else: cancel selection
+                            }
+                    }
+                }
+        }
+    }
 
     override val videoStatistics: VideoStatistics get() = playerLauncher.videoStatistics
 

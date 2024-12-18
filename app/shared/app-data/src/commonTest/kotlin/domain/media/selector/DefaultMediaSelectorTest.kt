@@ -602,6 +602,105 @@ class DefaultMediaSelectorTest : AbstractDefaultMediaSelectorTest() {
     private val _doc1 = Unit
 
     @Test
+    fun `trySelectFromMediaSources does not override user selection by default`() = runTest {
+        val userSelection: DefaultMedia
+        mediaSelectorContext.value = createMediaSelectorContextFromEmpty(false)
+        mediaSelectorSettings.value = MediaSelectorSettings.Default.copy()
+        savedUserPreference.value = MediaPreference.Empty
+        savedDefaultPreference.value = MediaPreference.Empty // 啥都不要, 就一定会 fallback 成选第一个
+        addMedia(
+            media(sourceId = "1", episodeRange = EpisodeRange.single("1")).also { userSelection = it },
+            media(sourceId = "2", episodeRange = EpisodeRange.season(1)),
+            media(sourceId = "3", episodeRange = EpisodeRange.single("2")),
+            media(sourceId = "4", episodeRange = EpisodeRange.single("3")),
+            media(sourceId = "5", episodeRange = EpisodeRange.single("4")),
+        )
+        selector.select(userSelection)
+        assertEquals(1, selector.filteredCandidates.first().size) // 因为会自动设置 preference
+        assertEquals(
+            null,
+            selector.trySelectFromMediaSources(
+                listOf("2"),
+                overrideUserSelection = false,
+            ),
+        )
+    }
+
+    @Test
+    fun `trySelectFromMediaSources can override user selection`() = runTest {
+        val userSelection: DefaultMedia
+        val target: DefaultMedia
+        mediaSelectorContext.value = createMediaSelectorContextFromEmpty(false)
+        mediaSelectorSettings.value = MediaSelectorSettings.Default.copy()
+        savedUserPreference.value = MediaPreference.Empty
+        savedDefaultPreference.value = MediaPreference.Empty // 啥都不要, 就一定会 fallback 成选第一个
+        addMedia(
+            media(sourceId = "1", episodeRange = EpisodeRange.single("1")).also { userSelection = it },
+            media(sourceId = "2", episodeRange = EpisodeRange.season(1)).also { target = it },
+            media(sourceId = "3", episodeRange = EpisodeRange.single("2")),
+            media(sourceId = "4", episodeRange = EpisodeRange.single("3")),
+            media(sourceId = "5", episodeRange = EpisodeRange.single("4")),
+        )
+        selector.select(userSelection)
+        assertEquals(1, selector.filteredCandidates.first().size)
+        assertEquals(
+            target,
+            selector.trySelectFromMediaSources(
+                listOf("2"),
+                overrideUserSelection = true,
+            ),
+        )
+    }
+
+    @Test
+    fun `trySelectFromMediaSources does not update preferences`() = runTest {
+        val userSelection: DefaultMedia
+        val target: DefaultMedia
+        mediaSelectorContext.value = createMediaSelectorContextFromEmpty(false)
+        mediaSelectorSettings.value = MediaSelectorSettings.Default.copy()
+        savedUserPreference.value = MediaPreference.Empty
+        savedDefaultPreference.value = MediaPreference.Empty // 啥都不要, 就一定会 fallback 成选第一个
+        addMedia(
+            media(sourceId = "1", episodeRange = EpisodeRange.single("1")).also { userSelection = it },
+            media(sourceId = "2", episodeRange = EpisodeRange.season(1)).also { target = it },
+            media(sourceId = "3", episodeRange = EpisodeRange.single("2")),
+            media(sourceId = "4", episodeRange = EpisodeRange.single("3")),
+            media(sourceId = "5", episodeRange = EpisodeRange.single("4")),
+        )
+        selector.select(userSelection)
+        assertEquals(1, selector.filteredCandidates.first().size)
+        assertEquals(
+            target,
+            selector.trySelectFromMediaSources(
+                listOf("2"),
+                overrideUserSelection = true,
+            ),
+        )
+        assertEquals(
+            OptionalPreference.prefer("1"),
+            selector.mediaSourceId.userSelected.first(),
+        )
+    }
+
+    @Test
+    fun `trySelectFromMediaSources does not select from blacklisted`() = runTest {
+        val target: DefaultMedia
+        mediaSelectorContext.value = createMediaSelectorContextFromEmpty(false)
+        mediaSelectorSettings.value = MediaSelectorSettings.Default.copy()
+        savedUserPreference.value = MediaPreference.Empty
+        savedDefaultPreference.value = MediaPreference.Empty // 啥都不要, 就一定会 fallback 成选第一个
+        addMedia(
+            media(sourceId = "1", episodeRange = EpisodeRange.single("1")),
+            media(sourceId = "2", episodeRange = EpisodeRange.season(1)).also { target = it },
+            media(sourceId = "3", episodeRange = EpisodeRange.single("2")),
+            media(sourceId = "4", episodeRange = EpisodeRange.single("3")),
+            media(sourceId = "5", episodeRange = EpisodeRange.single("4")),
+        )
+        assertEquals(5, selector.filteredCandidates.first().size)
+        assertEquals(null, selector.trySelectFromMediaSources(listOf("2"), blacklistMediaIds = setOf(target.mediaId)))
+    }
+
+    @Test
     fun `trySelectFromMediaSources order source count smaller than actual count`() = runTest {
         val target: DefaultMedia
         mediaSelectorContext.value = createMediaSelectorContextFromEmpty(false)

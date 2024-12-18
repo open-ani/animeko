@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.app.ui.subject.episode.mediaFetch
 
 import androidx.compose.foundation.clickable
@@ -31,6 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.him188.ani.app.ui.foundation.dialogs.PlatformPopupProperties
 import me.him188.ani.app.ui.media.renderSubtitleLanguage
 
@@ -43,33 +53,36 @@ private inline val maxWidth get() = 120.dp
  */
 @Composable
 fun MediaSelectorFilters(
-    resolution: MediaPreferenceItemPresentation<String>,
-    subtitleLanguageId: MediaPreferenceItemPresentation<String>,
-    alliance: MediaPreferenceItemPresentation<String>,
+    resolution: MediaPreferenceItemState<String>,
+    subtitleLanguageId: MediaPreferenceItemState<String>,
+    alliance: MediaPreferenceItemState<String>,
     modifier: Modifier = Modifier,
     singleLine: Boolean = false,
 ) {
     val content = @Composable {
+        val resolutionPresentation by resolution.presentationFlow.collectAsStateWithLifecycle()
         MediaSelectorFilterChip(
-            selected = resolution.finalSelected,
-            allValues = { resolution.available },
+            selected = resolutionPresentation.finalSelected,
+            allValues = { resolutionPresentation.available },
             onSelect = { resolution.prefer(it) },
             onDeselect = { resolution.removePreference() },
             name = { Text("分辨率") },
             Modifier.widthIn(min = minWidth, max = maxWidth),
         )
+        val subtitleLanguagePresentation by subtitleLanguageId.presentationFlow.collectAsStateWithLifecycle()
         MediaSelectorFilterChip(
-            selected = subtitleLanguageId.finalSelected,
-            allValues = { subtitleLanguageId.available },
+            selected = subtitleLanguagePresentation.finalSelected,
+            allValues = { subtitleLanguagePresentation.available },
             onSelect = { subtitleLanguageId.prefer(it) },
             onDeselect = { subtitleLanguageId.removePreference() },
             name = { Text("字幕") },
             Modifier.widthIn(min = minWidth, max = maxWidth),
             label = { MediaSelectorFilterChipText(renderSubtitleLanguage(it)) },
         )
+        val alliancePresentation by alliance.presentationFlow.collectAsStateWithLifecycle()
         MediaSelectorFilterChip(
-            selected = alliance.finalSelected,
-            allValues = { alliance.available },
+            selected = alliancePresentation.finalSelected,
+            allValues = { alliancePresentation.available },
             onSelect = { alliance.prefer(it) },
             onDeselect = { alliance.removePreference() },
             name = { Text("字幕组") },

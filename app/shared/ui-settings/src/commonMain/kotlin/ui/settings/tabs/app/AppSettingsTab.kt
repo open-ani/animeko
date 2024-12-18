@@ -519,6 +519,14 @@ fun SettingsScope.PlayerGroup(
                 description = { Text("只对 BT 数据源的部分资源有效") },
             )
         }
+        HorizontalDividerItem()
+        SwitchItem(
+            checked = config.autoSwitchMediaOnPlayerError,
+            onCheckedChange = {
+                videoScaffoldConfig.update(config.copy(autoSwitchMediaOnPlayerError = it))
+            },
+            title = { Text("播放失败时自动切换资源") },
+        )
     }
 }
 

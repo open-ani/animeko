@@ -163,16 +163,18 @@ class AniDanmakuSenderImpl(
     private val loginLock = Mutex()
     private suspend fun login(): Session = loginLock.withLock {
         session.value?.let { return it }
-        val bangumiToken = bangumiToken.first()
-            ?: throw AuthorizationFailureException(null)
-
         return suspend {
+            val bangumiToken = bangumiToken.first()
+                ?: throw AuthorizationFailureException(null)
+
             val token = authByBangumiToken(bangumiToken)
             val selfInfo = getUserInfo(token)
             val session = Session(token, selfInfo)
             this.session.value = session
             session
-        }.asFlow().retryWithBackoffDelay().first()
+        }.asFlow().retryWithBackoffDelay { e, _ ->
+            e !is AuthorizationFailureException
+        }.first()
     }
 
     init {

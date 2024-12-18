@@ -12,6 +12,8 @@ package me.him188.ani.app.ui.subject.episode.video
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
@@ -64,7 +66,9 @@ class PlayerLauncher(
         private val logger = logger<PlayerLauncher>()
     }
 
-    private val videoLoadingStateFlow: MutableStateFlow<VideoLoadingState> = MutableStateFlow(VideoLoadingState.Initial)
+    private val _videoLoadingStateFlow: MutableStateFlow<VideoLoadingState> =
+        MutableStateFlow(VideoLoadingState.Initial)
+    val videoLoadingState: StateFlow<VideoLoadingState> get() = _videoLoadingStateFlow.asStateFlow()
 
     val videoStatistics: VideoStatistics = VideoStatistics(
         playingMedia = mediaSelector.selected.produceState(),
@@ -73,12 +77,12 @@ class PlayerLauncher(
         }.produceState(null),
         playingFilename = playerState.videoData.map { it?.filename }.produceState(null),
         mediaSourceLoading = mediaSourceLoading.produceState(true),
-        videoLoadingState = videoLoadingStateFlow.produceState(VideoLoadingState.Initial),
+        videoLoadingState = _videoLoadingStateFlow.produceState(VideoLoadingState.Initial),
     )
 
     init {
         mediaSelector.selected.transformLatest { media ->
-            videoLoadingStateFlow.value = VideoLoadingState.Initial // 避免一直显示已取消 (.Cancelled)
+            _videoLoadingStateFlow.value = VideoLoadingState.Initial // 避免一直显示已取消 (.Cancelled)
             playerState.clearVideoSource() // 只要 media 换了就清空
             if (media == null) {
                 return@transformLatest
@@ -86,7 +90,7 @@ class PlayerLauncher(
 
             try {
                 val info = episodeInfo.filterNotNull().first()
-                videoLoadingStateFlow.value = VideoLoadingState.ResolvingSource
+                _videoLoadingStateFlow.value = VideoLoadingState.ResolvingSource
                 val source = videoSourceResolver.resolve(
                     media,
                     EpisodeMetadata(
@@ -95,16 +99,16 @@ class PlayerLauncher(
                         sort = info.sort,
                     ),
                 )
-                videoLoadingStateFlow.compareAndSet(
+                _videoLoadingStateFlow.compareAndSet(
                     VideoLoadingState.ResolvingSource,
                     VideoLoadingState.DecodingData(isBt = media.kind == MediaSourceKind.BitTorrent),
                 )
                 playerState.setVideoSource(source)
                 logger.info { "playerState.applySourceToPlayer with source = $source" }
-                videoLoadingStateFlow.value = VideoLoadingState.Succeed(isBt = source is TorrentVideoSource)
+                _videoLoadingStateFlow.value = VideoLoadingState.Succeed(isBt = source is TorrentVideoSource)
             } catch (e: UnsupportedMediaException) {
                 logger.error { IllegalStateException("Failed to resolve video source, unsupported media", e) }
-                videoLoadingStateFlow.value = VideoLoadingState.UnsupportedMedia
+                _videoLoadingStateFlow.value = VideoLoadingState.UnsupportedMedia
                 playerState.clearVideoSource()
             } catch (e: VideoSourceOpenException) { // during playerState.setVideoSource
                 logger.error {
@@ -113,7 +117,7 @@ class PlayerLauncher(
                         e,
                     )
                 }
-                videoLoadingStateFlow.value = when (e.reason) {
+                _videoLoadingStateFlow.value = when (e.reason) {
                     OpenFailures.NO_MATCHING_FILE -> VideoLoadingState.NoMatchingFile
                     OpenFailures.UNSUPPORTED_VIDEO_SOURCE -> VideoLoadingState.UnsupportedMedia
                     OpenFailures.ENGINE_DISABLED -> VideoLoadingState.UnsupportedMedia
@@ -126,7 +130,7 @@ class PlayerLauncher(
                         e,
                     )
                 }
-                videoLoadingStateFlow.value = when (e.reason) {
+                _videoLoadingStateFlow.value = when (e.reason) {
                     ResolutionFailures.FETCH_TIMEOUT -> VideoLoadingState.ResolutionTimedOut
                     ResolutionFailures.ENGINE_ERROR -> VideoLoadingState.UnknownError(e)
                     ResolutionFailures.NETWORK_ERROR -> VideoLoadingState.NetworkError
@@ -134,11 +138,11 @@ class PlayerLauncher(
                 }
                 playerState.clearVideoSource()
             } catch (e: CancellationException) { // 切换数据源
-                videoLoadingStateFlow.value = VideoLoadingState.Cancelled
+                _videoLoadingStateFlow.value = VideoLoadingState.Cancelled
                 throw e
             } catch (e: Throwable) {
                 logger.error { IllegalStateException("Failed to resolve video source with unknown error", e) }
-                videoLoadingStateFlow.value = VideoLoadingState.UnknownError(e)
+                _videoLoadingStateFlow.value = VideoLoadingState.UnknownError(e)
                 playerState.clearVideoSource()
                 emit(null)
             }

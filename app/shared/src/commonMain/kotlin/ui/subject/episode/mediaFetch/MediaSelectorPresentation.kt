@@ -21,9 +21,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateMap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.stateIn
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
 import me.him188.ani.app.domain.media.TestMediaList
@@ -74,10 +78,10 @@ interface MediaSelectorPresentation : AutoCloseable {
      */
     val mediaList: List<Media>
 
-    val alliance: MediaPreferenceItemPresentation<String>
-    val resolution: MediaPreferenceItemPresentation<String>
-    val subtitleLanguageId: MediaPreferenceItemPresentation<String>
-    val mediaSource: MediaPreferenceItemPresentation<String>
+    val alliance: MediaPreferenceItemState<String>
+    val resolution: MediaPreferenceItemState<String>
+    val subtitleLanguageId: MediaPreferenceItemState<String>
+    val mediaSource: MediaPreferenceItemState<String>
 
     /**
      * @see MediaSelector.filteredCandidates
@@ -105,32 +109,47 @@ interface MediaSelectorPresentation : AutoCloseable {
 }
 
 @Stable
-class MediaPreferenceItemPresentation<T : Any>(
+class MediaPreferenceItemState<T : Any>(
     @PublishedApi internal val item: MediaPreferenceItem<T>,
-    override val backgroundScope: CoroutineScope,
-) : HasBackgroundScope {
-    val available: List<T> by item.available.produceState(emptyList())
-    val finalSelected: T? by item.finalSelected.produceState(null)
+    backgroundScope: CoroutineScope,
+) {
+    data class Presentation<T : Any>(
+        val available: List<T>,
+        val finalSelected: T?,
+        val isWorking: Boolean,
+        val isPlaceholder: Boolean = false,
+    )
 
     private val tasker = MonoTasker(backgroundScope)
+
+    val presentationFlow = combine(
+        item.available,
+        item.finalSelected,
+        tasker.isRunning,
+    ) { available, finalSelected, isWorking ->
+        Presentation<T>(available, finalSelected, isWorking)
+    }.stateIn(
+        backgroundScope, started = SharingStarted.WhileSubscribed(5000),
+        Presentation<T>(emptyList(), null, isWorking = false, isPlaceholder = true),
+    )
 
     /**
      * 用户选择
      */
-    fun prefer(value: T) {
-        tasker.launch(start = CoroutineStart.UNDISPATCHED) { item.prefer(value) }
+    fun prefer(value: T): Job {
+        return tasker.launch(start = CoroutineStart.UNDISPATCHED) { item.prefer(value) }
     }
 
     /**
      * 删除已有的选择
      */
-    fun removePreference() {
-        tasker.launch(start = CoroutineStart.UNDISPATCHED) { item.removePreference() }
+    fun removePreference(): Job {
+        return tasker.launch(start = CoroutineStart.UNDISPATCHED) { item.removePreference() }
     }
 }
 
-fun <T : Any> MediaPreferenceItemPresentation<T>.preferOrRemove(value: T?) {
-    if (value == null || value == finalSelected) {
+fun <T : Any> MediaPreferenceItemState<T>.preferOrRemove(value: T?): Job {
+    return if (value == null || value == presentationFlow.value.finalSelected) {
         removePreference()
     } else {
         prefer(value)
@@ -169,14 +188,14 @@ internal class MediaSelectorPresentationImpl(
         mediaList.associateWith { BringIntoViewRequester() }
     }
 
-    override val alliance: MediaPreferenceItemPresentation<String> =
-        MediaPreferenceItemPresentation(mediaSelector.alliance, backgroundScope)
-    override val resolution: MediaPreferenceItemPresentation<String> =
-        MediaPreferenceItemPresentation(mediaSelector.resolution, backgroundScope)
-    override val subtitleLanguageId: MediaPreferenceItemPresentation<String> =
-        MediaPreferenceItemPresentation(mediaSelector.subtitleLanguageId, backgroundScope)
-    override val mediaSource: MediaPreferenceItemPresentation<String> =
-        MediaPreferenceItemPresentation(mediaSelector.mediaSourceId, backgroundScope)
+    override val alliance: MediaPreferenceItemState<String> =
+        MediaPreferenceItemState(mediaSelector.alliance, backgroundScope)
+    override val resolution: MediaPreferenceItemState<String> =
+        MediaPreferenceItemState(mediaSelector.resolution, backgroundScope)
+    override val subtitleLanguageId: MediaPreferenceItemState<String> =
+        MediaPreferenceItemState(mediaSelector.subtitleLanguageId, backgroundScope)
+    override val mediaSource: MediaPreferenceItemState<String> =
+        MediaPreferenceItemState(mediaSelector.mediaSourceId, backgroundScope)
     override val selected: Media? by mediaSelector.selected.produceState(null)
 
     override fun select(candidate: Media) {

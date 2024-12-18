@@ -75,6 +75,8 @@ value class MediaSelectorAutoSelect(
         mediaFetchSession: MediaFetchSession,
         fastMediaSourceIdOrder: List<String>,
         preferKind: Flow<MediaSourceKind?>,
+        overrideUserSelection: Boolean = false,
+        blacklistMediaIds: Set<String> = emptySet(),
     ): Media? {
         if (preferKind.first() != MediaSourceKind.WEB) {
             return null // 只处理 WEB 类型
@@ -120,6 +122,8 @@ value class MediaSelectorAutoSelect(
                         is MediaSourceFetchState.Disabled -> {
                             val selected: Media? = mediaSelector.trySelectFromMediaSources(
                                 fastSources.subList(0, index + 1).map { it.mediaSourceId },
+                                overrideUserSelection = overrideUserSelection,
+                                blacklistMediaIds = blacklistMediaIds,
                             )
 
                             if (selected != null) {

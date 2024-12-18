@@ -59,6 +59,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filterNotNull
 import me.him188.ani.app.tools.formatDateTime
@@ -238,18 +239,20 @@ internal fun MediaItem(
                         label = { Text(media.properties.size.toString()) },
                     )
                 }
+                val resolutionPresentation by state.resolution.presentationFlow.collectAsStateWithLifecycle()
                 InputChip(
                     false,
                     onClick = { state.resolution.preferOrRemove(media.properties.resolution) },
                     label = { Text(media.properties.resolution) },
-                    enabled = state.resolution.finalSelected != media.properties.resolution,
+                    enabled = resolutionPresentation.finalSelected != media.properties.resolution,
                 )
+                val subjectLanguageIdPresentation by state.subtitleLanguageId.presentationFlow.collectAsStateWithLifecycle()
                 media.properties.subtitleLanguageIds.map {
                     InputChip(
                         false,
                         onClick = { state.subtitleLanguageId.preferOrRemove(it) },
                         label = { Text(renderSubtitleLanguage(it)) },
-                        enabled = state.subtitleLanguageId.finalSelected != it,
+                        enabled = subjectLanguageIdPresentation.finalSelected != it,
                     )
                 }
             }

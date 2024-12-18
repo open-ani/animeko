@@ -64,7 +64,8 @@ jobs:
       fail-fast: false
       matrix:
         id:
-          - 'windows'
+          - 'windows-self-hosted'
+          - 'windows-2019'
           - 'macos-x64'
           - 'macos-aarch64'
         include:
@@ -76,9 +77,9 @@ jobs:
             extraGradleArgs:
               - '-Pani.android.abis=x86_64'
             gradleArgs: '"--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dani.enable.anitorrent=true" "-DCMAKE_BUILD_TYPE=Release" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "--parallel" "-Pani.android.abis=x86_64"'
-            id: 'windows'
+            id: 'windows-self-hosted'
             installNativeDeps: false
-            name: 'Windows x86_64'
+            name: 'Windows 10 x86_64'
             os: 'windows'
             runTests: true
             runsOn:
@@ -86,6 +87,24 @@ jobs:
               - 'Windows'
               - 'X64'
             selfHosted: true
+            uploadApk: false
+            uploadDesktopInstallers: false
+          - arch: 'x64'
+            buildAnitorrent: true
+            buildAnitorrentSeparately: false
+            buildIosFramework: false
+            composeResourceTriple: 'windows-x64'
+            extraGradleArgs:
+              - '-Pani.android.abis=x86_64'
+            gradleArgs: '"--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dani.enable.anitorrent=true" "-DCMAKE_BUILD_TYPE=Release" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=x86_64"'
+            id: 'windows-2019'
+            installNativeDeps: true
+            name: 'Windows Server 2019 x86_64'
+            os: 'windows'
+            runTests: true
+            runsOn:
+              - 'windows-2019'
+            selfHosted: false
             uploadApk: false
             uploadDesktopInstallers: true
           - arch: 'x64'
@@ -262,49 +281,46 @@ jobs:
         run: './gradlew :torrent:anitorrent:anitorrent-native:buildAnitorrent buildCMakeDebug buildCMakeRelWithDebInfo ${{ matrix.gradleArgs }}'
         if: '${{ matrix.buildAnitorrent }}'
       - id: 'step-19'
-        name: 'Explicitly generate Compose resources'
-        run: './gradlew updateDevVersionNameFromGit ${{ matrix.gradleArgs }}'
-      - id: 'step-20'
         name: 'Compile Kotlin'
         run: './gradlew compileKotlin compileCommonMainKotlinMetadata compileDebugKotlinAndroid compileReleaseKotlinAndroid compileJvmMainKotlinMetadata compileKotlinDesktop compileKotlinMetadata ${{ matrix.gradleArgs }}'
-      - id: 'step-21'
-        name: 'Build Android Debug APK'
+      - id: 'step-20'
+        name: 'Build Android Debug APKs'
         run: './gradlew assembleDebug ${{ matrix.gradleArgs }}'
         if: '${{ matrix.uploadApk }}'
-      - id: 'step-22'
-        name: 'Upload Android Debug APK'
+      - id: 'step-21'
+        name: 'Upload Android Debug APK arm64-v8a'
         uses: 'actions/upload-artifact@v4'
         with:
           name: 'ani-android-arm64-v8a-debug'
           path: 'app/android/build/outputs/apk/debug/android-arm64-v8a-debug.apk'
           overwrite: 'true'
         if: '${{ matrix.uploadApk }}'
-      - id: 'step-23'
-        name: 'Upload Android Debug APK'
+      - id: 'step-22'
+        name: 'Upload Android Debug APK x86_64'
         uses: 'actions/upload-artifact@v4'
         with:
           name: 'ani-android-x86_64-debug'
           path: 'app/android/build/outputs/apk/debug/android-x86_64-debug.apk'
           overwrite: 'true'
         if: '${{ matrix.uploadApk }}'
-      - id: 'step-24'
-        name: 'Upload Android Debug APK'
+      - id: 'step-23'
+        name: 'Upload Android Debug APK armeabi-v7a'
         uses: 'actions/upload-artifact@v4'
         with:
           name: 'ani-android-armeabi-v7a-debug'
           path: 'app/android/build/outputs/apk/debug/android-armeabi-v7a-debug.apk'
           overwrite: 'true'
         if: '${{ matrix.uploadApk }}'
-      - id: 'step-25'
-        name: 'Upload Android Debug APK'
+      - id: 'step-24'
+        name: 'Upload Android Debug APK universal'
         uses: 'actions/upload-artifact@v4'
         with:
           name: 'ani-android-universal-debug'
           path: 'app/android/build/outputs/apk/debug/android-universal-debug.apk'
           overwrite: 'true'
         if: '${{ matrix.uploadApk }}'
-      - id: 'step-26'
-        name: 'Build Android Release APK'
+      - id: 'step-25'
+        name: 'Build Android Release APKs'
         env:
           signing_release_storeFileFromRoot: '${{ steps.step-16.outputs.filePath }}'
           signing_release_storePassword: '${{ secrets.SIGNING_RELEASE_STOREPASSWORD }}'
@@ -312,7 +328,7 @@ jobs:
           signing_release_keyPassword: '${{ secrets.SIGNING_RELEASE_KEYPASSWORD }}'
         run: './gradlew assembleRelease ${{ matrix.gradleArgs }}'
         if: '${{ (github.event_name != ''pull_request'' && github.repository == ''open-ani/animeko'' ) && (matrix.uploadApk) }}'
-      - id: 'step-27'
+      - id: 'step-26'
         name: 'Upload Android Release APK arm64-v8a'
         uses: 'actions/upload-artifact@v4'
         with:
@@ -320,7 +336,7 @@ jobs:
           path: 'app/android/build/outputs/apk/release/android-arm64-v8a-release.apk'
           overwrite: 'true'
         if: '${{ matrix.uploadApk }}'
-      - id: 'step-28'
+      - id: 'step-27'
         name: 'Upload Android Release APK x86_64'
         uses: 'actions/upload-artifact@v4'
         with:
@@ -328,7 +344,7 @@ jobs:
           path: 'app/android/build/outputs/apk/release/android-x86_64-release.apk'
           overwrite: 'true'
         if: '${{ matrix.uploadApk }}'
-      - id: 'step-29'
+      - id: 'step-28'
         name: 'Upload Android Release APK armeabi-v7a'
         uses: 'actions/upload-artifact@v4'
         with:
@@ -336,7 +352,7 @@ jobs:
           path: 'app/android/build/outputs/apk/release/android-armeabi-v7a-release.apk'
           overwrite: 'true'
         if: '${{ matrix.uploadApk }}'
-      - id: 'step-30'
+      - id: 'step-29'
         name: 'Upload Android Release APK universal'
         uses: 'actions/upload-artifact@v4'
         with:
@@ -344,8 +360,8 @@ jobs:
           path: 'app/android/build/outputs/apk/release/android-universal-release.apk'
           overwrite: 'true'
         if: '${{ matrix.uploadApk }}'
-      - id: 'step-31'
-        name: 'Upload Android APK'
+      - id: 'step-30'
+        name: 'π'
         env:
           GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
           GITHUB_REPOSITORY: '${{ secrets.GITHUB_REPOSITORY }}'
@@ -359,21 +375,21 @@ jobs:
           AWS_BUCKET: '${{ secrets.AWS_BUCKET }}'
         run: './gradlew :ci-helper:uploadAndroidApk ${{ matrix.gradleArgs }}'
         if: '${{ matrix.uploadApk }}'
-      - id: 'step-32'
+      - id: 'step-31'
         name: 'Generate QR code for APK (GitHub)'
         uses: 'snow-actions/qrcode@v1.0.0'
         with:
           text: 'https://github.com/Him188/ani/releases/download/${{ steps.step-1.outputs.tag }}/ani-${{ steps.step-2.outputs.substring }}-universal.apk'
           path: 'apk-qrcode-github.png'
         if: '${{ matrix.uploadApk }}'
-      - id: 'step-33'
+      - id: 'step-32'
         name: 'Generate QR code for APK (Cloudflare)'
         uses: 'snow-actions/qrcode@v1.0.0'
         with:
           text: 'https://d.myani.org/${{ steps.step-1.outputs.tag }}/ani-${{ steps.step-2.outputs.substring }}-universal.apk'
           path: 'apk-qrcode-cloudflare.png'
         if: '${{ matrix.uploadApk }}'
-      - id: 'step-34'
+      - id: 'step-33'
         name: 'Upload QR code'
         env:
           GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
@@ -388,7 +404,7 @@ jobs:
           AWS_BUCKET: '${{ secrets.AWS_BUCKET }}'
         run: './gradlew :ci-helper:uploadAndroidApkQR ${{ matrix.gradleArgs }}'
         if: '${{ matrix.uploadApk }}'
-      - id: 'step-35'
+      - id: 'step-34'
         name: 'Upload Desktop Installers'
         env:
           GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
@@ -403,14 +419,14 @@ jobs:
           AWS_BUCKET: '${{ secrets.AWS_BUCKET }}'
         run: './gradlew :ci-helper:uploadDesktopInstallers ${{ matrix.gradleArgs }}'
         if: '${{ (matrix.uploadDesktopInstallers) && (!(((matrix.os == ''macos'')) && ((matrix.arch == ''x64'')))) }}'
-      - id: 'step-36'
+      - id: 'step-35'
         name: 'Upload compose logs'
         uses: 'actions/upload-artifact@v4'
         with:
           name: 'compose-logs-${{ matrix.os }}-${{ matrix.arch }}'
           path: 'app/desktop/build/compose/logs'
         if: '${{ matrix.uploadDesktopInstallers }}'
-      - id: 'step-37'
+      - id: 'step-36'
         name: 'Cleanup temp files'
         continue-on-error: true
         run: 'chmod +x ./ci-helper/cleanup-temp-files-macos.sh && ./ci-helper/cleanup-temp-files-macos.sh'

@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.app.data.models.preference
 
 import androidx.compose.runtime.Immutable
@@ -56,6 +65,10 @@ data class VideoScaffoldConfig(
      * 跳过 OP 和 ED
      */
     val autoSkipOpEd: Boolean = true,
+    /**
+     * 在播放器错误时自动切换视频源
+     */
+    val autoSwitchMediaOnPlayerError: Boolean = true,
     @Suppress("PropertyName") @Transient val _placeholder: Int = 0,
 ) {
     companion object {
