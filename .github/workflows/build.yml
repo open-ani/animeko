@@ -51,16 +51,14 @@ jobs:
             composeResourceTriple: 'windows-x64'
             extraGradleArgs:
               - '-Pani.android.abis=x86_64'
-            gradleArgs: '"--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dani.enable.anitorrent=true" "-DCMAKE_BUILD_TYPE=Release" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "--parallel" "-Pani.android.abis=x86_64"'
+            gradleArgs: '"--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dani.enable.anitorrent=true" "-DCMAKE_BUILD_TYPE=Release" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=x86_64"'
             id: 'windows-2019'
             installNativeDeps: true
             name: 'Windows Server 2019 x86_64'
             os: 'windows'
             runTests: true
             runsOn:
-              - 'self-hosted'
-              - 'Windows'
-              - 'X64'
+              - 'windows-2019'
             selfHosted: false
             uploadApk: false
             uploadDesktopInstallers: true
@@ -334,6 +332,7 @@ jobs:
         with:
           name: 'anitorrent-cmake-cache-${{ matrix.os }}-${{ matrix.arch }}'
           path: 'torrent/anitorrent/build-ci/CMakeCache.txt'
+          overwrite: 'true'
         if: '${{ matrix.buildAnitorrent }}'
       - id: 'step-30'
         name: 'Upload Anitorrent ${{ matrix.composeResourceTriple }}'
@@ -341,6 +340,7 @@ jobs:
         with:
           name: 'anitorrent-${{ matrix.composeResourceTriple }}'
           path: 'app/desktop/appResources/${{ matrix.composeResourceTriple }}/anitorrent'
+          overwrite: 'true'
         if: '${{ matrix.buildAnitorrent }}'
       - id: 'step-31'
         name: 'Package Desktop'
@@ -359,6 +359,7 @@ jobs:
         with:
           name: 'ani-macos-dmg-${{ matrix.arch }}'
           path: 'app/desktop/build/compose/binaries/main-release/dmg/Ani-*.dmg'
+          overwrite: 'true'
         if: '${{ (matrix.uploadDesktopInstallers) && ((matrix.os == ''macos'')) }}'
       - id: 'step-34'
         name: 'Upload Windows packages'
@@ -366,6 +367,7 @@ jobs:
         with:
           name: 'ani-windows-portable'
           path: 'app/desktop/build/compose/binaries/main-release/app'
+          overwrite: 'true'
         if: '${{ (matrix.uploadDesktopInstallers) && ((matrix.os == ''windows'')) }}'
       - id: 'step-35'
         name: 'Cleanup temp files'

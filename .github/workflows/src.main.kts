@@ -256,8 +256,8 @@ val matrixInstances = listOf(
         buildAnitorrent = true,
         buildAnitorrentSeparately = false, // windows 单线程构建 anitorrent, 要一起跑节约时间
         composeResourceTriple = "windows-x64",
-        gradleHeap = "6g",
-        kotlinCompilerHeap = "6g",
+        gradleHeap = "4g",
+        kotlinCompilerHeap = "4g",
         gradleParallel = true,
         extraGradleArgs = listOf(
             "-Pani.android.abis=x86_64",
@@ -799,6 +799,7 @@ fun JobBuilder<*>.uploadAnitorrent() {
         action = UploadArtifact(
             name = $"anitorrent-cmake-cache-${expr { matrix.os }}-${expr { matrix.arch }}",
             path_Untyped = "torrent/anitorrent/build-ci/CMakeCache.txt",
+            overwrite = true,
         ),
     )
     uses(
@@ -807,6 +808,7 @@ fun JobBuilder<*>.uploadAnitorrent() {
         action = UploadArtifact(
             name = $"anitorrent-${expr { matrix.composeResourceTriple }}",
             path_Untyped = "app/desktop/appResources/${expr { matrix.composeResourceTriple }}/anitorrent",
+            overwrite = true,
         ),
     )
 }
@@ -836,6 +838,7 @@ fun JobBuilder<*>.packageDesktopAndUpload() {
         action = UploadArtifact(
             name = "ani-macos-dmg-${expr { matrix.arch }}",
             path_Untyped = "app/desktop/build/compose/binaries/main-release/dmg/Ani-*.dmg",
+            overwrite = true,
         ),
     )
     uses(
@@ -844,6 +847,7 @@ fun JobBuilder<*>.packageDesktopAndUpload() {
         action = UploadArtifact(
             name = "ani-windows-portable",
             path_Untyped = "app/desktop/build/compose/binaries/main-release/app",
+            overwrite = true,
         ),
     )
 }
