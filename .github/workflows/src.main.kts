@@ -227,12 +227,31 @@ class MatrixInstance(
 
 val matrixInstances = listOf(
     MatrixInstance(
-        id = "windows",
-        name = "Windows x86_64",
+        id = "windows-self-hosted",
+        name = "Windows 10 x86_64",
         runsOn = listOf("self-hosted", "Windows", "X64"),
         os = OS.WINDOWS,
         arch = Arch.X64,
         selfHosted = true,
+        uploadApk = false,
+        buildAnitorrent = true,
+        buildAnitorrentSeparately = false, // windows 单线程构建 anitorrent, 要一起跑节约时间
+        composeResourceTriple = "windows-x64",
+        gradleHeap = "6g",
+        kotlinCompilerHeap = "6g",
+        gradleParallel = true,
+        uploadDesktopInstallers = false, // 只有 win server 2019 构建的包才能正常使用 anitorrent
+        extraGradleArgs = listOf(
+            "-Pani.android.abis=x86_64",
+        ),
+    ),
+    MatrixInstance(
+        id = "windows-2019",
+        name = "Windows Server 2019 x86_64",
+        runsOn = listOf("windows-2019"),
+        os = OS.WINDOWS,
+        arch = Arch.X64,
+        selfHosted = false,
         uploadApk = false,
         buildAnitorrent = true,
         buildAnitorrentSeparately = false, // windows 单线程构建 anitorrent, 要一起跑节约时间
