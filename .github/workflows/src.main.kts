@@ -427,7 +427,9 @@ workflow(
         jobOutputs.id = createRelease.outputs.id
     }
 
-    val matrixInstancesForRelease = matrixInstances.filterNot { it.os == OS.UBUNTU }
+    val matrixInstancesForRelease = matrixInstances.filterNot {
+        it.os == OS.UBUNTU || (it.os == OS.WINDOWS && it.selfHosted)
+    }
     job(
         id = "release",
         name = expr { matrix.name },
