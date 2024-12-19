@@ -76,6 +76,7 @@ import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.UserInfo
+import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.models.subject.SubjectCollectionCounts
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.data.models.subject.toNavPlaceholder
@@ -93,6 +94,7 @@ import me.him188.ani.app.ui.foundation.session.SelfAvatar
 import me.him188.ani.app.ui.foundation.session.SessionTipsArea
 import me.him188.ani.app.ui.foundation.session.SessionTipsIcon
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
+import me.him188.ani.app.ui.foundation.widgets.NsfwMask
 import me.him188.ani.app.ui.foundation.widgets.PullToRefreshBox
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeState
 import me.him188.ani.app.ui.subject.collection.progress.EpisodeListStateFactory
@@ -249,12 +251,19 @@ fun CollectionPage(
                     SubjectCollectionsColumn(
                         items,
                         item = { collection ->
-                            SubjectCollectionItem(
-                                collection,
-                                state.episodeListStateFactory,
-                                state.subjectProgressStateFactory,
-                                state.createEditableSubjectCollectionTypeState(collection),
-                            )
+                            var nsfwModeState: NsfwMode by rememberSaveable { mutableStateOf(collection.nsfwMode) }
+                            NsfwMask(
+                                nsfwModeState,
+                                onTemporarilyDisplay = { nsfwModeState = NsfwMode.DISPLAY },
+                                shape = SubjectCollectionItemDefaults.shape,
+                            ) {
+                                SubjectCollectionItem(
+                                    collection,
+                                    state.episodeListStateFactory,
+                                    state.subjectProgressStateFactory,
+                                    state.createEditableSubjectCollectionTypeState(collection),
+                                )
+                            }
                         },
                         enableAnimation = enableAnimation,
                         gridState = lazyGridState,

@@ -12,13 +12,17 @@ package me.him188.ani.app.ui.subject.collection
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.paging.cachedIn
 import androidx.paging.compose.launchAsLazyPagingItemsIn
+import androidx.paging.filter
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import me.him188.ani.app.data.models.preference.MyCollectionsSettings
+import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.data.repository.episode.AnimeScheduleRepository
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
@@ -71,6 +75,7 @@ class UserCollectionsViewModel : AbstractViewModel(), KoinComponent {
         .map { it.myCollections }
         .produceState(MyCollectionsSettings.Default)
 
+    private val nsfwSettingFlow = settingsRepository.uiSettings.flow.map { it.searchSettings.nsfwMode }
     @OptIn(OpaqueSession::class)
     val state = UserCollectionsState(
         startSearch = { subjectCollectionRepository.subjectCollectionsPager(it) },
@@ -85,7 +90,13 @@ class UserCollectionsViewModel : AbstractViewModel(), KoinComponent {
     )
 
     // 在 VM 生命周期, 否则会导致切换页面后需要重新加载并丢失滚动进度
-    val items = state.currentPagerFlow.launchAsLazyPagingItemsIn(backgroundScope)
+    val items = combine(
+        nsfwSettingFlow,
+        state.currentPagerFlow.cachedIn(backgroundScope),
+    ) { nsfwMode, pagingData ->
+        if (nsfwMode != NsfwMode.HIDE) return@combine pagingData
+        pagingData.filter { !it.subjectInfo.nsfw }
+    }.launchAsLazyPagingItemsIn(backgroundScope)
 
     private fun createEditableSubjectCollectionTypeState(collection: SubjectCollectionInfo): EditableSubjectCollectionTypeState =
         // 必须不能有后台持续任务

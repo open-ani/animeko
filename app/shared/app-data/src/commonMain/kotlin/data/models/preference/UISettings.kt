@@ -67,9 +67,28 @@ data class MyCollectionsSettings(
 }
 
 @Serializable
+enum class NsfwMode {
+    /**
+     * 从列表中完全隐藏 NSFW 内容
+     */
+    HIDE,
+
+    /**
+     * 显示一个遮罩
+     */
+    BLUR,
+
+    /**
+     * 不做任何隐藏操作, 像一个正常条目一样显示
+     */
+    DISPLAY,
+}
+
+@Serializable
 @Immutable
 data class SearchSettings(
     val enableNewSearchSubjectApi: Boolean = false,
+    val nsfwMode: NsfwMode = NsfwMode.HIDE,
 ) {
     companion object {
         @Stable

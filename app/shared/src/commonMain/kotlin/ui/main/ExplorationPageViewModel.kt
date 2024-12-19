@@ -12,10 +12,15 @@ package me.him188.ani.app.ui.main
 import androidx.compose.runtime.Stable
 import androidx.paging.cachedIn
 import androidx.paging.compose.launchAsLazyPagingItemsIn
+import androidx.paging.filter
 import androidx.paging.flatMap
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
+import me.him188.ani.app.data.models.preference.NsfwMode
+import me.him188.ani.app.data.models.subject.subjectInfo
 import me.him188.ani.app.data.network.TrendsRepository
 import me.him188.ani.app.data.repository.subject.FollowedSubjectsRepository
+import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.session.OpaqueSession
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.session.userInfo
@@ -30,11 +35,14 @@ class ExplorationPageViewModel : AbstractViewModel(), KoinComponent {
     private val trendsRepository: TrendsRepository by inject()
     private val sessionManager: SessionManager by inject()
     private val followedSubjectsRepository: FollowedSubjectsRepository by inject()
+    private val settingsRepository: SettingsRepository by inject()
     private val authState = AuthState()
 
     @OptIn(OpaqueSession::class)
     private val selfInfoState = sessionManager.userInfo.produceState(null)
 
+    private val nsfwSettingFlow = settingsRepository.uiSettings.flow.map { it.searchSettings.nsfwMode }
+    
     val explorationPageState: ExplorationPageState = ExplorationPageState(
         authState,
         selfInfoState,
@@ -50,7 +58,13 @@ class ExplorationPageViewModel : AbstractViewModel(), KoinComponent {
 //                .map { it.subjects }
 //                .produceState(null),
 //        ),
-        followedSubjectsPager = followedSubjectsRepository.followedSubjectsPager().cachedIn(backgroundScope),
+        followedSubjectsPager = combine(
+            settingsRepository.uiSettings.flow.map { it.searchSettings.nsfwMode },
+            followedSubjectsRepository.followedSubjectsPager().cachedIn(backgroundScope),
+        ) { nsfwMode, subjects ->
+            if (nsfwMode != NsfwMode.HIDE) return@combine subjects
+            subjects.filter { !it.subjectInfo.nsfw }
+        },
 //            .onStart<List<FollowedSubjectInfo?>> {
 //                emit(arrayOfNulls<FollowedSubjectInfo>(10).toList())
 //            }

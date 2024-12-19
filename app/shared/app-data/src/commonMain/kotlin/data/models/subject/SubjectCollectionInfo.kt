@@ -13,11 +13,13 @@ import androidx.compose.runtime.Immutable
 import kotlinx.datetime.Instant
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.data.models.episode.EpisodeInfo
+import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.EpisodeType
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.platform.annotations.TestOnly
+import kotlin.random.Random
 import kotlin.time.Duration
 
 /**
@@ -46,6 +48,7 @@ data class SubjectCollectionInfo(
      * 最后更新时间
      */
     val lastUpdated: Long,
+    val nsfwMode: NsfwMode,
 ) {
     val subjectId: Int get() = subjectInfo.subjectId
 }
@@ -129,11 +132,13 @@ private fun testSubjectCollection(
     id: Int,
     episodes: List<EpisodeCollectionInfo>,
     collectionType: UnifiedCollectionType,
+    nsfwMode: NsfwMode = NsfwMode.DISPLAY,
 ): SubjectCollectionInfo {
     val subjectInfo = SubjectInfo.Empty.copy(
         subjectId = id,
         nameCn = "中文条目名称",
         name = "Subject Name",
+        nsfw = Random.nextBoolean(),
     )
     return SubjectCollectionInfo(
         collectionType = collectionType,
@@ -155,5 +160,6 @@ private fun testSubjectCollection(
         cachedStaffUpdated = 0,
         cachedCharactersUpdated = 0,
         lastUpdated = 0,
+        nsfwMode = nsfwMode,
     )
 }

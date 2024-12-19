@@ -15,6 +15,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
+import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.models.subject.CanonicalTagKind
 import me.him188.ani.app.data.models.subject.RatingCounts
 import me.him188.ani.app.data.models.subject.RatingInfo
@@ -38,11 +39,20 @@ class SubjectPreviewItemInfo(
     val staff: String?,
     val actors: String?,
     val rating: RatingInfo,
+    val nsfw: Boolean,
+    /**
+     * 此条目的 NSFW 显示状态
+     */
+    val nsfwMode: NsfwMode,
 ) {
     companion object {
+        /**
+         * @param nsfwModeSettings 用户设置的 NSFW 显示模式
+         */
         fun compute(
             subjectInfo: SubjectInfo,
             mainEpisodeCount: Int,
+            nsfwModeSettings: NsfwMode,
             relatedPersonList: List<LightRelatedPersonInfo>?,
             characters: List<LightRelatedCharacterInfo>?,
             roleSet: RoleSet = RoleSet.Default,
@@ -121,6 +131,8 @@ class SubjectPreviewItemInfo(
                 staff,
                 actors,
                 rating = subjectInfo.ratingInfo,
+                nsfw = subjectInfo.nsfw,
+                nsfwMode = if (subjectInfo.nsfw) nsfwModeSettings else NsfwMode.DISPLAY,
             )
         }
     }
@@ -143,6 +155,8 @@ internal val TestSubjectPreviewItemInfos
                 count = RatingCounts.Zero,
                 score = "6.7",
             ),
+            nsfw = false,
+            nsfwMode = NsfwMode.DISPLAY,
         ),
         SubjectPreviewItemInfo(
             subjectId = 2,
@@ -157,6 +171,8 @@ internal val TestSubjectPreviewItemInfos
                 count = RatingCounts.Zero,
                 score = "6.7",
             ),
+            nsfw = true,
+            nsfwMode = NsfwMode.BLUR,
         ),
     )
 

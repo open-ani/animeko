@@ -40,6 +40,12 @@ class SubjectSearchRepository(
     private val subjectService: BangumiSubjectService,
     defaultDispatcher: CoroutineContext = Dispatchers.Default,
 ) : Repository(defaultDispatcher) {
+
+    /**
+     * 使用 [searchQuery] 搜索条目.
+     *
+     * 注意, 此方法返回的数据总是会包含 NSFW 条目. 调用方需要自行根据用户设置考虑过滤.
+     */
     fun searchSubjects(
         searchQuery: SubjectSearchQuery,
         useNewApi: suspend () -> Boolean = { false },
