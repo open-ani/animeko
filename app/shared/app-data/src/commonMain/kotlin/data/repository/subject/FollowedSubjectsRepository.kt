@@ -116,34 +116,33 @@ class FollowedSubjectsRepository(
     private fun getFollowedSubjectInfoFlows(
         subjectCollectionInfoList: List<SubjectCollectionInfo>,
         now: PackedDate,
-    ): Flow<List<FollowedSubjectInfo>> = nsfwModeSettingsFlow.flatMapLatest { nsfwMode ->
-        combine(
-            subjectCollectionInfoList.map { info ->
-                episodeCollectionRepository.subjectEpisodeCollectionInfosFlow(info.subjectId)
-            },
-        ) { array ->
-            subjectCollectionInfoList.asSequence()
-                .zip(array.asSequence()) { subjectCollectionInfo, episodes ->
-                    // 计算每个条目的播放进度
-                    FollowedSubjectInfo(
-                        subjectCollectionInfo,
-                        SubjectAiringInfo.computeFromEpisodeList(
-                            episodes.map { it.episodeInfo },
-                            subjectCollectionInfo.subjectInfo.airDate,
-                            subjectCollectionInfo.recurrence,
-                        ),
-                        SubjectProgressInfo.compute(
-                            subjectCollectionInfo.subjectInfo,
-                            episodes,
-                            now,
-                            subjectCollectionInfo.recurrence,
-                        ),
-                        nsfwMode =
-                            if (subjectCollectionInfo.subjectInfo.nsfw) nsfwMode
-                            else NsfwMode.DISPLAY,
-                    )
-                }.toList()
-        }
+    ): Flow<List<FollowedSubjectInfo>> = combine(
+        subjectCollectionInfoList.map { info ->
+            episodeCollectionRepository.subjectEpisodeCollectionInfosFlow(info.subjectId)
+        },
+    ) { array ->
+        array.toList()
+    }.combine(nsfwModeSettingsFlow) { epInfoLists, nsfwMode ->
+        subjectCollectionInfoList.asSequence().zip(epInfoLists.asSequence()) { subjectCollectionInfo, episodes ->
+            // 计算每个条目的播放进度
+            FollowedSubjectInfo(
+                subjectCollectionInfo,
+                SubjectAiringInfo.computeFromEpisodeList(
+                    episodes.map { it.episodeInfo },
+                    subjectCollectionInfo.subjectInfo.airDate,
+                    subjectCollectionInfo.recurrence,
+                ),
+                SubjectProgressInfo.compute(
+                    subjectCollectionInfo.subjectInfo,
+                    episodes,
+                    now,
+                    subjectCollectionInfo.recurrence,
+                ),
+                nsfwMode =
+                    if (subjectCollectionInfo.subjectInfo.nsfw) nsfwMode
+                    else NsfwMode.DISPLAY,
+            )
+        }.toList()
     }.flowOn(defaultDispatcher)
 
     fun followedSubjectsPager(
