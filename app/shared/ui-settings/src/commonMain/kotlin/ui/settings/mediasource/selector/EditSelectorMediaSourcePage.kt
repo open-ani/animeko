@@ -59,7 +59,7 @@ import me.him188.ani.app.ui.foundation.layout.materialWindowMarginPadding
 import me.him188.ani.app.ui.foundation.layout.rememberConnectedScrollState
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
-import me.him188.ani.app.ui.foundation.widgets.TopAppBarGoBackButton
+import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.app.ui.settings.mediasource.DropdownMenuExport
 import me.him188.ani.app.ui.settings.mediasource.DropdownMenuImport
 import me.him188.ani.app.ui.settings.mediasource.ExportMediaSourceState
@@ -147,10 +147,14 @@ fun EditSelectorMediaSourcePage(
     modifier: Modifier = Modifier,
     navigator: ThreePaneScaffoldNavigator<Nothing> = rememberListDetailPaneScaffoldNavigator(),
     windowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
+    navigationIcon: @Composable () -> Unit = {},
 ) {
     val state by vm.state.collectAsStateWithLifecycle(null)
     state?.let {
-        EditSelectorMediaSourcePage(it, modifier, navigator, windowInsets)
+        EditSelectorMediaSourcePage(
+            it, modifier, navigator, windowInsets,
+            navigationIcon,
+        )
     }
 }
 
@@ -160,6 +164,7 @@ fun EditSelectorMediaSourcePage(
     modifier: Modifier = Modifier,
     navigator: ThreePaneScaffoldNavigator<Nothing> = rememberListDetailPaneScaffoldNavigator(),
     windowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
+    navigationIcon: @Composable () -> Unit = {},
 ) {
     val episodePaneLayout = SelectorEpisodePaneLayout.calculate(navigator.scaffoldValue)
     val testConnectedScrollState = rememberConnectedScrollState()
@@ -167,11 +172,20 @@ fun EditSelectorMediaSourcePage(
         modifier,
         topBar = {
             WindowDragArea {
+                val myNavigationIcon = @Composable {
+                    if (navigator.canNavigateBack()) {
+                        BackNavigationIconButton({ navigator.navigateBack() })
+                    } else {
+                        navigationIcon()
+                    }
+                }
+
                 val viewingItem = state.viewingItem
                 if (viewingItem != null && episodePaneLayout.showTopBarInScaffold) {
                     SelectorEpisodePaneDefaults.TopAppBar(
                         state.episodeState,
                         windowInsets = windowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top),
+                        navigationIcon = myNavigationIcon,
                     )
                 } else {
                     TopAppBar(
@@ -182,7 +196,7 @@ fun EditSelectorMediaSourcePage(
                                 Text(state.configurationState.displayName)
                             }
                         },
-                        navigationIcon = { TopAppBarGoBackButton() },
+                        navigationIcon = myNavigationIcon,
                         actions = {
                             if (currentWindowAdaptiveInfo1().isWidthCompact && navigator.currentDestination?.pane != ListDetailPaneScaffoldRole.Detail) {
                                 TextButton({ navigator.navigateTo(ListDetailPaneScaffoldRole.Detail) }) {

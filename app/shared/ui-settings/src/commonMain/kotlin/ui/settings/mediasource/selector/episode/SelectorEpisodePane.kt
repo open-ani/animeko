@@ -64,6 +64,7 @@ import kotlinx.serialization.Serializable
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.paneHorizontalPadding
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
+import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.app.ui.foundation.widgets.FastLinearProgressIndicator
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.settings.mediasource.selector.EditSelectorMediaSourcePageState
@@ -95,10 +96,11 @@ fun SelectorTestAndEpisodePane(
                 )
             }
             composable<SelectorEpisodePaneRoutes.EPISODE> {
-                BackHandler {
+                val onBack: () -> Unit = {
                     state.stopViewing()
                     nestedNav.popBackStack(SelectorEpisodePaneRoutes.EPISODE, inclusive = true)
                 }
+                BackHandler(onBack = onBack)
                 val cardColors: CardColors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                 )
@@ -121,7 +123,12 @@ fun SelectorTestAndEpisodePane(
                             colors = cardColors,
                             shape = MaterialTheme.shapes.large,
                         ) {
-                            SelectorEpisodePaneDefaults.TopAppBar(state.episodeState)
+                            SelectorEpisodePaneDefaults.TopAppBar(
+                                state.episodeState,
+                                navigationIcon = {
+                                    BackNavigationIconButton({ onBack() })
+                                },
+                            )
                             content()
                         }
                     }

@@ -70,8 +70,8 @@ import me.him188.ani.app.ui.foundation.layout.paneHorizontalPadding
 import me.him188.ani.app.ui.foundation.layout.paneVerticalPadding
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
+import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.app.ui.foundation.widgets.NsfwMask
-import me.him188.ani.app.ui.foundation.widgets.TopAppBarGoBackButton
 import me.him188.ani.app.ui.search.LoadErrorCard
 import me.him188.ani.app.ui.search.SearchDefaults
 import me.him188.ani.app.ui.search.SearchResultLazyVerticalStaggeredGrid
@@ -86,6 +86,7 @@ fun SearchPage(
     focusSearchBarByDefault: Boolean = true,
     navigator: ThreePaneScaffoldNavigator<*> = rememberListDetailPaneScaffoldNavigator(),
     contentWindowInsets: WindowInsets = AniWindowInsets.forPageContent(),
+    navigationIcon: @Composable () -> Unit = {},
 ) {
     BackHandler(navigator.canNavigateBack()) {
         navigator.navigateBack()
@@ -143,6 +144,13 @@ fun SearchPage(
             }
         },
         modifier,
+        navigationIcon = {
+            if (navigator.canNavigateBack()) {
+                BackNavigationIconButton({ navigator.navigateBack() })
+            } else {
+                navigationIcon()
+            }
+        },
         contentWindowInsets = contentWindowInsets,
     )
 
@@ -313,6 +321,7 @@ internal fun SearchPageLayout(
     searchResultList: @Composable (PaneScope.() -> Unit),
     detailContent: @Composable (PaneScope.() -> Unit),
     modifier: Modifier = Modifier,
+    navigationIcon: @Composable () -> Unit = {},
     contentWindowInsets: WindowInsets = AniWindowInsets.forPageContent(),
     searchBarHeight: Dp = 64.dp,
 ) {
@@ -323,7 +332,11 @@ internal fun SearchPageLayout(
                 title = { Text("搜索") },
                 Modifier.fillMaxWidth(),
                 navigationIcon = {
-                    TopAppBarGoBackButton()
+                    if (navigator.canNavigateBack()) {
+                        BackNavigationIconButton({ navigator.navigateBack() })
+                    } else {
+                        navigationIcon()
+                    }
                 },
                 windowInsets = paneContentWindowInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
             )

@@ -65,6 +65,7 @@ import me.him188.ani.app.ui.foundation.layout.isAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.setRequestFullScreen
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
+import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.app.ui.subject.collection.CollectionPage
 import me.him188.ani.app.ui.subject.collection.UserCollectionsViewModel
 import me.him188.ani.app.ui.subject.details.SubjectDetailsPage
@@ -208,15 +209,16 @@ private fun MainSceneContent(
 
                     MainScenePage.CacheManagement -> CacheManagementPage(
                         viewModel { CacheManagementViewModel(navigator) },
-                        showBack = false,
+                        navigationIcon = { },
                         Modifier.fillMaxSize(),
                     )
 
                     MainScenePage.Search -> {
                         val vm = viewModel { SearchViewModel() }
-                        BackHandler(true) {
+                        val onBack = {
                             onNavigateToPage(MainScenePage.Exploration)
                         }
+                        BackHandler(true, onBack)
                         val listDetailNavigator = rememberListDetailPaneScaffoldNavigator()
                         SearchPage(
                             vm.searchPageState,
@@ -231,6 +233,16 @@ private fun MainSceneContent(
                                         }
                                     },
                                     onLoadErrorRetry = { vm.reloadCurrentSubjectDetails() },
+                                    navigationIcon = {
+                                        // 只有在单面板模式下才显示返回按钮
+                                        if (listDetailLayoutParameters.isSinglePane) {
+                                            BackNavigationIconButton(
+                                                {
+                                                    listDetailNavigator.navigateBack()
+                                                },
+                                            )
+                                        }
+                                    },
                                 )
                             },
                             Modifier.fillMaxSize(),
@@ -241,6 +253,9 @@ private fun MainSceneContent(
                             },
                             navigator = listDetailNavigator,
                             contentWindowInsets = WindowInsets.safeDrawing, // 不包含 macos 标题栏, 因为左侧有 navigation rail
+                            navigationIcon = {
+                                BackNavigationIconButton(onBack)
+                            },
                         )
                     }
                 }

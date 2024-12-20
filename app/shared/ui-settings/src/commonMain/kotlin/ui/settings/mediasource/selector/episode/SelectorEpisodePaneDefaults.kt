@@ -35,7 +35,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
-import me.him188.ani.app.ui.foundation.widgets.TopAppBarGoBackButton
 import me.him188.ani.app.ui.settings.mediasource.RefreshIndicationDefaults
 import me.him188.ani.app.ui.settings.mediasource.selector.edit.MatchVideoSection
 import me.him188.ani.app.ui.settings.mediasource.selector.edit.SelectorConfigState
@@ -47,13 +46,12 @@ object SelectorEpisodePaneDefaults {
         state: SelectorEpisodeState,
         modifier: Modifier = Modifier.Companion,
         windowInsets: WindowInsets = WindowInsets(0.dp),
+        navigationIcon: @Composable () -> Unit = {},
     ) {
         val onRefresh = { state.searcher.restartCurrentSearch() }
         val searchResult by state.searcher.searchResultFlow.collectAsStateWithLifecycle()
         TopAppBar(
-            navigationIcon = {
-                TopAppBarGoBackButton()
-            },
+            navigationIcon = navigationIcon,
             title = {
                 Row(
                     verticalAlignment = Alignment.Companion.CenterVertically,

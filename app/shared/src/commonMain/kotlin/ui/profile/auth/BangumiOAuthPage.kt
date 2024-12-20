@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.app.ui.profile.auth
 
 import androidx.compose.foundation.layout.Arrangement
@@ -27,6 +36,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
@@ -41,15 +51,14 @@ import me.him188.ani.app.navigation.BrowserNavigator
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.ui.foundation.feedback.ErrorDialogHost
-import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
-import me.him188.ani.app.ui.foundation.widgets.TopAppBarGoBackButton
 import me.him188.ani.app.ui.profile.BangumiOAuthViewModel
 import org.koin.mp.KoinPlatform
 
 @Composable
 fun BangumiOAuthScene(
     vm: BangumiOAuthViewModel,
+    navigationIcon: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
 ) {
@@ -59,9 +68,10 @@ fun BangumiOAuthScene(
             nav.popUntilNotAuth()
         }
     }
-    BackHandler {
-        vm.onCancel("BangumiOAuthScene BackHandler")
-        nav.popUntilNotAuth()
+    DisposableEffect(vm) {
+        onDispose {
+            vm.onCancel("BangumiOAuthScene disposed")
+        }
     }
     BangumiOAuthPage(
         vm,
@@ -70,6 +80,7 @@ fun BangumiOAuthScene(
         },
         modifier,
         windowInsets = windowInsets,
+        navigationIcon,
     )
 }
 
@@ -101,6 +112,7 @@ fun BangumiOAuthPage(
     onClickTokenAuth: () -> Unit,
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
+    navigationIcon: @Composable () -> Unit = {},
 ) {
     Scaffold(
         modifier
@@ -108,7 +120,7 @@ fun BangumiOAuthPage(
             .fillMaxSize(),
         topBar = {
             TopAppBar(
-                navigationIcon = { TopAppBarGoBackButton() },
+                navigationIcon = navigationIcon,
                 actions = {},
                 title = { Text(text = "Bangumi 授权") },
                 colors = AniThemeDefaults.topAppBarColors(),

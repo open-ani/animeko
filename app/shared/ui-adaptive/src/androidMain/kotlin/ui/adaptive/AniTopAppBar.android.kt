@@ -24,7 +24,7 @@ import me.him188.ani.app.domain.session.createTestAuthState
 import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.layout.Zero
 import me.him188.ani.app.ui.foundation.session.SelfAvatar
-import me.him188.ani.app.ui.foundation.widgets.TopAppBarGoBackButton
+import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.utils.platform.annotations.TestOnly
 
 
@@ -35,7 +35,7 @@ private fun PreviewAniTopAppBar() = ProvideFoundationCompositionLocalsForPreview
     val scope = rememberCoroutineScope()
     AniTopAppBar(
         title = { Text("MyTitle") },
-        navigationIcon = { TopAppBarGoBackButton() },
+        navigationIcon = { BackNavigationIconButton({}) },
         actions = {
             IconButton({}) {
                 Icon(Icons.Rounded.Settings, null)

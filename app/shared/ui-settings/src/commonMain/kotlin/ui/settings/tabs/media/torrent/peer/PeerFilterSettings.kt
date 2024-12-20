@@ -46,14 +46,15 @@ import me.him188.ani.app.ui.adaptive.AniTopAppBarDefaults
 import me.him188.ani.app.ui.foundation.IconButton
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
-import me.him188.ani.app.ui.foundation.widgets.TopAppBarGoBackButton
+import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 
 @Composable
 fun PeerFilterSettingsPage(
     state: PeerFilterSettingsState,
     modifier: Modifier = Modifier,
-    navigator: ThreePaneScaffoldNavigator<Nothing> = rememberListDetailPaneScaffoldNavigator()
+    navigator: ThreePaneScaffoldNavigator<Nothing> = rememberListDetailPaneScaffoldNavigator(),
+    navigationIcon: @Composable () -> Unit = {},
 ) {
     Surface(color = AniThemeDefaults.pageContentBackgroundColor) {
         AniListDetailPaneScaffold(
@@ -64,6 +65,13 @@ fun PeerFilterSettingsPage(
                     title = { AniTopAppBarDefaults.Title("Peer 过滤和屏蔽设置") },
                     state = state,
                     windowInsets = paneContentWindowInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
+                    navigationIcon = {
+                        if (navigator.canNavigateBack()) {
+                            BackNavigationIconButton({ navigator.navigateBack() })
+                        } else {
+                            navigationIcon()
+                        }
+                    },
                 )
             },
             listPaneContent = {
@@ -120,6 +128,7 @@ private fun SearchBlockedIpTopAppBar(
     state: PeerFilterSettingsState,
     title: @Composable () -> Unit,
     windowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
+    navigationIcon: @Composable () -> Unit = {},
 ) {
     BackHandler(enableSearch && state.searchingBlockedIp) {
         state.stopSearchBlockedIp()
@@ -129,7 +138,7 @@ private fun SearchBlockedIpTopAppBar(
         title = {
             if (enableSearch && state.searchingBlockedIp) SearchBlockedIp(state) else title()
         },
-        navigationIcon = { TopAppBarGoBackButton() },
+        navigationIcon = navigationIcon,
         avatar = {
             if (enableSearch && !state.searchingBlockedIp) {
                 IconButton({ state.startSearchBlockedIp() }) {

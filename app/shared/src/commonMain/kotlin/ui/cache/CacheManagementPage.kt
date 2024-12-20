@@ -69,7 +69,6 @@ import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.produceState
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
-import me.him188.ani.app.ui.foundation.widgets.TopAppBarGoBackButton
 import me.him188.ani.datasources.api.creationTimeOrNull
 import me.him188.ani.datasources.api.episodeIdInt
 import me.him188.ani.datasources.api.subjectIdInt
@@ -241,13 +240,13 @@ class CacheManagementState(
 @Composable
 fun CacheManagementPage(
     vm: CacheManagementViewModel,
-    showBack: Boolean,
+    navigationIcon: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     contentWindowInsets: WindowInsets = AniWindowInsets.forPageContent(),
 ) {
     CacheManagementPage(
         vm.state,
-        showBack = showBack,
+        navigationIcon = navigationIcon,
         modifier = modifier,
         lazyGridState = vm.lazyGridState,
         contentWindowInsets = contentWindowInsets,
@@ -258,7 +257,7 @@ fun CacheManagementPage(
 @Composable
 fun CacheManagementPage(
     state: CacheManagementState,
-    showBack: Boolean,
+    navigationIcon: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     lazyGridState: CacheGroupGridLayoutState = rememberLazyStaggeredGridState(),
     contentWindowInsets: WindowInsets = AniWindowInsets.forPageContent(),
@@ -269,11 +268,7 @@ fun CacheManagementPage(
         topBar = {
             AniTopAppBar(
                 title = { AniTopAppBarDefaults.Title("缓存管理") },
-                navigationIcon = {
-                    if (showBack) {
-                        TopAppBarGoBackButton()
-                    }
-                },
+                navigationIcon = navigationIcon,
                 colors = appBarColors,
                 windowInsets = AniWindowInsets.forTopAppBarWithoutDesktopTitle(),
             )

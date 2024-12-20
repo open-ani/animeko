@@ -18,20 +18,16 @@ import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import me.him188.ani.app.ui.foundation.navigation.LocalBackDispatcher
-
 
 @Composable
-fun TopAppBarGoBackButton() {
-    val handler = LocalBackDispatcher.current
-    TopAppBarGoBackButton {
-        handler.onBackPressed()
-    }
-}
-
-@Composable
-fun TopAppBarGoBackButton(goBack: () -> Unit) {
-    TopAppBarActionButton(goBack) {
+fun BackNavigationIconButton(
+    onNavigateBack: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    TopAppBarActionButton(
+        onNavigateBack,
+        modifier,
+    ) {
         Icon(
             Icons.AutoMirrored.Outlined.ArrowBack,
             null,
@@ -42,10 +38,12 @@ fun TopAppBarGoBackButton(goBack: () -> Unit) {
 @Composable
 fun TopAppBarActionButton(
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
     IconButton(
         onClick,
+        modifier,
 //        Modifier.offset(x = (-8).dp, y = (-8).dp).width(36.dp + 16.dp).height(36.dp + 16.dp)
     ) { // 让可点击区域大一点, 更方便
         Box(Modifier.size(24.dp)) {

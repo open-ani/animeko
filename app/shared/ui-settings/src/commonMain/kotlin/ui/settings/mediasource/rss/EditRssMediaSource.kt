@@ -59,7 +59,7 @@ import me.him188.ani.app.ui.foundation.layout.only
 import me.him188.ani.app.ui.foundation.layout.panePadding
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
-import me.him188.ani.app.ui.foundation.widgets.TopAppBarGoBackButton
+import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.app.ui.settings.mediasource.DropdownMenuExport
 import me.him188.ani.app.ui.settings.mediasource.DropdownMenuImport
 import me.him188.ani.app.ui.settings.mediasource.ExportMediaSourceState
@@ -146,9 +146,13 @@ fun EditRssMediaSourcePage(
     mediaDetailsColumn: @Composable (Media) -> Unit,
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
+    navigationIcon: @Composable () -> Unit,
 ) {
     viewModel.state.collectAsStateWithLifecycle(null).value?.let {
-        EditRssMediaSourcePage(it, viewModel.testState, mediaDetailsColumn, modifier, windowInsets = windowInsets)
+        EditRssMediaSourcePage(
+            it, viewModel.testState, mediaDetailsColumn, modifier, windowInsets = windowInsets,
+            navigationIcon = navigationIcon,
+        )
     }
 }
 
@@ -160,6 +164,7 @@ fun EditRssMediaSourcePage(
     modifier: Modifier = Modifier,
     navigator: ThreePaneScaffoldNavigator<Nothing> = rememberListDetailPaneScaffoldNavigator(),
     windowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
+    navigationIcon: @Composable () -> Unit = {},
 ) {
     LaunchedEffect(Unit) {
         testState.searcher.observeTestDataChanges(testState.testDataState)
@@ -184,7 +189,13 @@ fun EditRssMediaSourcePage(
                             }
                         }
                     },
-                    navigationIcon = { TopAppBarGoBackButton() },
+                    navigationIcon = {
+                        if (navigator.canNavigateBack()) {
+                            BackNavigationIconButton({ navigator.navigateBack() })
+                        } else {
+                            navigationIcon()
+                        }
+                    },
                     colors = AniThemeDefaults.topAppBarColors(),
                     windowInsets = windowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top),
                     actions = {

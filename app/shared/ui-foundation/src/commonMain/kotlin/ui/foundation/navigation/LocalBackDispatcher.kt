@@ -10,16 +10,11 @@
 package me.him188.ani.app.ui.foundation.navigation
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
-import me.him188.ani.app.navigation.LocalNavigator
+import androidx.compose.runtime.Stable
 
 fun interface BackDispatcher {
     /**
-     * Call the most recently registered [BackHandler], if any.
-     *
-     * If no [BackHandler] has been registered, this will call [AniNavigator.popBackStack].
+     * 调用此 [BackDispatcher], 也就是相当于调用最后一个注册并启用的 [BackHandler].
      */
     fun onBackPressed()
 }
@@ -28,21 +23,18 @@ fun interface BackDispatcher {
  * 可模拟点击返回键
  */
 object LocalBackDispatcher {
+    @Stable
+    private val NoopBackDispatcher = BackDispatcher {}
+    
     /**
-     * @see BackDispatcher
+     * 获取当前的 [BackDispatcher] 实例.
+     * 注意, 此功能不能用于返回上一页面, 会导致 #1343.
      */
     val current: BackDispatcher
         @Composable
-        get() {
-            val backPressed by rememberUpdatedState(LocalOnBackPressedDispatcherOwner.current)
-            val navigator by rememberUpdatedState(LocalNavigator.current)
-            return remember {
-                BackDispatcher {
-                    backPressed?.onBackPressedDispatcher?.onBackPressed()
-                        ?: kotlin.run {
-                            navigator.popBackStack()
-                        }
-                }
+        get() = LocalOnBackPressedDispatcherOwner.current?.let { owner ->
+            BackDispatcher {
+                owner.onBackPressedDispatcher.onBackPressed()
             }
-        }
+        } ?: NoopBackDispatcher
 }
