@@ -25,6 +25,7 @@ import me.him188.ani.app.ui.cache.components.CacheGroupCommonInfo
 import me.him188.ani.app.ui.cache.components.CacheGroupState
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.stateOf
+import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.FileSize.Companion.megaBytes
@@ -42,7 +43,7 @@ fun PreviewCacheManagementPage() {
                     stateOf(TestCacheGroupSates),
                 )
             },
-            showBack = true,
+            navigationIcon = { BackNavigationIconButton({ }) },
         )
     }
 }

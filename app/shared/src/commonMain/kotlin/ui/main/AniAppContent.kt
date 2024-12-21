@@ -58,6 +58,7 @@ import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
 import me.him188.ani.app.ui.foundation.theme.LocalNavigationMotionScheme
 import me.him188.ani.app.ui.foundation.theme.NavigationMotionScheme
+import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.app.ui.profile.BangumiOAuthViewModel
 import me.him188.ani.app.ui.profile.auth.BangumiOAuthScene
 import me.him188.ani.app.ui.profile.auth.BangumiTokenAuthPage
@@ -181,6 +182,13 @@ private fun AniAppContentImpl(
             ) {
                 BangumiOAuthScene(
                     viewModel { BangumiOAuthViewModel() },
+                    navigationIcon = {
+                        BackNavigationIconButton(
+                            {
+                                aniNavigator.popUntilNotAuth()
+                            },
+                        )
+                    },
                     windowInsets = windowInsets,
                 )
             }
@@ -194,6 +202,13 @@ private fun AniAppContentImpl(
                     viewModel { BangumiTokenAuthViewModel() },
                     Modifier.fillMaxSize(),
                     windowInsets,
+                    navigationIcon = {
+                        BackNavigationIconButton(
+                            {
+                                aniNavigator.popUntilNotAuth()
+                            },
+                        )
+                    },
                 )
             }
             composable<NavRoutes.SubjectDetail>(
@@ -223,6 +238,13 @@ private fun AniAppContentImpl(
                         onPlay = { aniNavigator.navigateEpisodeDetails(details.subjectId, it) },
                         onLoadErrorRetry = { vm.reload() },
                         windowInsets = windowInsets,
+                        navigationIcon = {
+                            BackNavigationIconButton(
+                                {
+                                    aniNavigator.popBackStack(details, inclusive = true)
+                                },
+                            )
+                        },
                     )
                 }
             }
@@ -262,7 +284,13 @@ private fun AniAppContentImpl(
                     },
                     Modifier.fillMaxSize(),
                     route.tab,
-                    showNavigationIcon = true,
+                    navigationIcon = {
+                        BackNavigationIconButton(
+                            {
+                                aniNavigator.popBackStack(route, inclusive = true)
+                            },
+                        )
+                    },
                 )
             }
             composable<NavRoutes.Caches>(
@@ -270,10 +298,17 @@ private fun AniAppContentImpl(
                 exitTransition = exitTransition,
                 popEnterTransition = popEnterTransition,
                 popExitTransition = popExitTransition,
-            ) {
+            ) { backStackEntry ->
+                val route = backStackEntry.toRoute<NavRoutes.Caches>()
                 CacheManagementPage(
                     viewModel { CacheManagementViewModel(aniNavigator) },
-                    showBack = true,
+                    navigationIcon = {
+                        BackNavigationIconButton(
+                            {
+                                aniNavigator.popBackStack(route, inclusive = true)
+                            },
+                        )
+                    },
                     Modifier.fillMaxSize(),
                 )
             }
@@ -286,6 +321,13 @@ private fun AniAppContentImpl(
                 val route = backStackEntry.toRoute<NavRoutes.CacheDetail>()
                 MediaCacheDetailsPage(
                     viewModel(key = route.toString()) { MediaCacheDetailsPageViewModel(route.cacheId) },
+                    navigationIcon = {
+                        BackNavigationIconButton(
+                            {
+                                aniNavigator.popBackStack(route, inclusive = true)
+                            },
+                        )
+                    },
                     Modifier.fillMaxSize(),
                     windowInsets = windowInsets,
                 )
@@ -299,7 +341,16 @@ private fun AniAppContentImpl(
                 val route = backStackEntry.toRoute<NavRoutes.SubjectCaches>()
                 // Don't use rememberViewModel to save memory
                 val vm = remember(route.subjectId) { SubjectCacheViewModelImpl(route.subjectId) }
-                SubjectCacheScene(vm, Modifier.fillMaxSize(), windowInsets)
+                SubjectCacheScene(
+                    vm, Modifier.fillMaxSize(), windowInsets,
+                    navigationIcon = {
+                        BackNavigationIconButton(
+                            {
+                                aniNavigator.popBackStack(route, inclusive = true)
+                            },
+                        )
+                    },
+                )
             }
             composable<NavRoutes.EditMediaSource>(
                 enterTransition = enterTransition,
@@ -325,6 +376,13 @@ private fun AniAppContentImpl(
                         },
                         Modifier,
                         windowInsets,
+                        navigationIcon = {
+                            BackNavigationIconButton(
+                                {
+                                    aniNavigator.popBackStack(route, inclusive = true)
+                                },
+                            )
+                        },
                     )
 
                     SelectorMediaSource.FactoryId -> {
@@ -335,6 +393,13 @@ private fun AniAppContentImpl(
                             },
                             Modifier,
                             windowInsets = windowInsets,
+                            navigationIcon = {
+                                BackNavigationIconButton(
+                                    {
+                                        aniNavigator.popBackStack(route, inclusive = true)
+                                    },
+                                )
+                            },
                         )
                     }
 

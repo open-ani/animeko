@@ -96,7 +96,6 @@ import me.him188.ani.app.ui.foundation.pagerTabIndicatorOffset
 import me.him188.ani.app.ui.foundation.rememberImageViewerHandler
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
-import me.him188.ani.app.ui.foundation.widgets.TopAppBarGoBackButton
 import me.him188.ani.app.ui.richtext.RichTextDefaults
 import me.him188.ani.app.ui.search.LoadError
 import me.him188.ani.app.ui.search.LoadErrorCard
@@ -125,6 +124,7 @@ fun SubjectDetailsPage(
     showTopBar: Boolean = true,
     showBlurredBackground: Boolean = true,
     windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
+    navigationIcon: @Composable () -> Unit = {},
 ) {
     SubjectDetailsPage(
         vm.result,
@@ -134,6 +134,7 @@ fun SubjectDetailsPage(
         showTopBar,
         showBlurredBackground,
         windowInsets,
+        navigationIcon,
     )
 }
 
@@ -146,6 +147,7 @@ fun SubjectDetailsPage(
     showTopBar: Boolean = true,
     showBlurredBackground: Boolean = true,
     windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
+    navigationIcon: @Composable () -> Unit = {},
 ) {
     when (state) {
         is SubjectDetailsStateLoader.LoadState.Ok -> SubjectDetailsPage(
@@ -155,6 +157,7 @@ fun SubjectDetailsPage(
             showTopBar,
             showBlurredBackground && !state.value.showPlaceholder,
             windowInsets,
+            navigationIcon,
         )
 
         is SubjectDetailsStateLoader.LoadState.Err -> ErrorSubjectDetailsPage(
@@ -165,6 +168,7 @@ fun SubjectDetailsPage(
             modifier,
             showTopBar,
             windowInsets,
+            navigationIcon,
         )
 
         SubjectDetailsStateLoader.LoadState.Loading -> {
@@ -182,6 +186,7 @@ private fun SubjectDetailsPage(
     showTopBar: Boolean = true,
     showBlurredBackground: Boolean = true,
     windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
+    navigationIcon: @Composable () -> Unit = {},
 ) {
     val toaster = LocalToaster.current
     val browserNavigator = LocalUriHandler.current
@@ -254,6 +259,7 @@ private fun SubjectDetailsPage(
         showTopBar = showTopBar,
         showBlurredBackground = showBlurredBackground,
         windowInsets = windowInsets,
+        navigationIcon = navigationIcon,
     ) { paddingValues ->
         Box {
             AnimatedVisibility(
@@ -328,6 +334,7 @@ private fun ErrorSubjectDetailsPage(
     modifier: Modifier = Modifier,
     showTopBar: Boolean = true,
     windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
+    navigationIcon: @Composable () -> Unit = {},
 ) {
     SubjectDetailsPageLayout(
         subjectId = subjectId,
@@ -342,6 +349,7 @@ private fun ErrorSubjectDetailsPage(
         showTopBar,
         showBlurredBackground = false,
         windowInsets,
+        navigationIcon,
     ) { paddingValues ->
         LoadErrorCard(
             problem = error,
@@ -382,6 +390,7 @@ fun SubjectDetailsPageLayout(
     showTopBar: Boolean = true,
     showBlurredBackground: Boolean = true,
     windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
+    navigationIcon: @Composable () -> Unit = {},
     content: @Composable (contentPadding: PaddingValues) -> Unit,
 ) {
     val backgroundColor = AniThemeDefaults.pageContentBackgroundColor
@@ -399,7 +408,7 @@ fun SubjectDetailsPageLayout(
                         // 透明背景的, 总是显示
                         TopAppBar(
                             title = {},
-                            navigationIcon = { TopAppBarGoBackButton() },
+                            navigationIcon = navigationIcon,
                             actions = {
                                 IconButton(onClickOpenExternal) {
                                     Icon(Icons.AutoMirrored.Outlined.OpenInNew, null)
@@ -419,7 +428,7 @@ fun SubjectDetailsPageLayout(
                                         overflow = TextOverflow.Ellipsis,
                                     )
                                 },
-                                navigationIcon = { TopAppBarGoBackButton() },
+                                navigationIcon = navigationIcon,
                                 actions = {
                                     IconButton(onClickOpenExternal) {
                                         Icon(Icons.AutoMirrored.Outlined.OpenInNew, null)

@@ -73,7 +73,7 @@ import me.him188.ani.app.ui.foundation.layout.cardVerticalPadding
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.paneVerticalPadding
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
-import me.him188.ani.app.ui.foundation.widgets.TopAppBarGoBackButton
+import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.rendering.P2p
 import me.him188.ani.app.ui.settings.tabs.AboutTab
@@ -102,8 +102,8 @@ fun SettingsPage(
     vm: SettingsViewModel,
     modifier: Modifier = Modifier,
     initialTab: SettingsTab? = null,
-    showNavigationIcon: Boolean = false,
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
+    navigationIcon: @Composable () -> Unit = {},
 ) {
     val navigator: ThreePaneScaffoldNavigator<SettingsTab> = rememberListDetailPaneScaffoldNavigator(
         initialDestinationHistory = buildList {
@@ -198,7 +198,7 @@ fun SettingsPage(
         },
         modifier,
         windowInsets,
-        showNavigationIcon = showNavigationIcon,
+        navigationIcon = navigationIcon,
         layoutParameters = layoutParameters,
     )
 }
@@ -212,7 +212,7 @@ internal fun SettingsPageLayout(
     contentWindowInsets: WindowInsets = AniWindowInsets.forPageContent(),
     containerColor: Color = AniThemeDefaults.pageContentBackgroundColor,
     layoutParameters: ListDetailLayoutParameters = ListDetailLayoutParameters.calculate(navigator.scaffoldDirective),
-    showNavigationIcon: Boolean = false,
+    navigationIcon: @Composable () -> Unit = {},
 ) = Surface(color = containerColor) {
     val layoutParametersState by rememberUpdatedState(layoutParameters)
 
@@ -246,8 +246,10 @@ internal fun SettingsPageLayout(
             AniTopAppBar(
                 title = { AniTopAppBarDefaults.Title("设置") },
                 navigationIcon = {
-                    if (showNavigationIcon) {
-                        TopAppBarGoBackButton()
+                    if (navigator.canNavigateBack()) {
+                        BackNavigationIconButton({ navigator.navigateBack() })
+                    } else {
+                        navigationIcon()
                     }
                 },
                 colors = AniThemeDefaults.transparentAppBarColors(),
@@ -306,9 +308,9 @@ internal fun SettingsPageLayout(
                             },
                             navigationIcon = {
                                 if (listDetailLayoutParameters.isSinglePane) {
-                                    TopAppBarGoBackButton {
-                                        navigator.navigateBack(BackNavigationBehavior.PopUntilScaffoldValueChange)
-                                    }
+                                    BackNavigationIconButton(
+                                        { navigator.navigateBack(BackNavigationBehavior.PopUntilScaffoldValueChange) },
+                                    )
                                 }
                             },
                             colors = AniThemeDefaults.transparentAppBarColors(),

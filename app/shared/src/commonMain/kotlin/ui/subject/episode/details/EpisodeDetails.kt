@@ -153,6 +153,7 @@ fun EpisodeDetails(
                     onLoadErrorRetry = { state.subjectDetailsStateLoader.reload(state.subjectId) },
                     showTopBar = false,
                     showBlurredBackground = false,
+                    navigationIcon = {},
                 )
             }
         }

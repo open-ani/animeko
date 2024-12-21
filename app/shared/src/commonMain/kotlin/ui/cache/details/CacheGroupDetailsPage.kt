@@ -45,7 +45,6 @@ import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.foundation.interaction.WindowDragArea
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
-import me.him188.ani.app.ui.foundation.widgets.TopAppBarGoBackButton
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.source.MediaSourceInfo
 import org.koin.core.component.KoinComponent
@@ -81,15 +80,15 @@ class MediaCacheDetailsPageViewModel(
 @Composable
 fun MediaCacheDetailsPage(
     vm: MediaCacheDetailsPageViewModel,
+    navigationIcon: @Composable () -> Unit,
     modifier: Modifier = Modifier,
-    allowBack: Boolean = true,
     windowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
 ) {
     MediaCacheDetailsPage(
         media = vm.media,
         sourceInfo = vm.sourceInfo,
+        navigationIcon = navigationIcon,
         modifier = modifier,
-        allowBack = allowBack,
         windowInsets = windowInsets,
     )
 }
@@ -98,8 +97,8 @@ fun MediaCacheDetailsPage(
 fun MediaCacheDetailsPage(
     media: Media?,
     sourceInfo: MediaSourceInfo?,
+    navigationIcon: @Composable () -> Unit,
     modifier: Modifier = Modifier,
-    allowBack: Boolean = true,
     windowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
 ) {
     Scaffold(
@@ -108,11 +107,7 @@ fun MediaCacheDetailsPage(
             WindowDragArea {
                 TopAppBar(
                     title = { Text("详情") },
-                    navigationIcon = {
-                        if (allowBack) {
-                            TopAppBarGoBackButton()
-                        }
-                    },
+                    navigationIcon = navigationIcon,
                     colors = AniThemeDefaults.topAppBarColors(),
                     windowInsets = windowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top),
                 )

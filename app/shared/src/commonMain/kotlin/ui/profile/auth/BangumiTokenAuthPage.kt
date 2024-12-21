@@ -29,6 +29,7 @@ import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -52,7 +53,6 @@ import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.foundation.launchInBackground
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
-import me.him188.ani.app.ui.foundation.widgets.TopAppBarGoBackButton
 import me.him188.ani.utils.platform.currentTimeMillis
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -77,11 +77,16 @@ fun BangumiTokenAuthPage(
     vm: BangumiTokenAuthViewModel,
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
+    navigationIcon: @Composable () -> Unit = {},
 ) {
     var token by rememberSaveable { mutableStateOf("") }
     val navigator = LocalNavigator.current
+    DisposableEffect(vm) {
+        onDispose {
+            vm.onCancel("BangumiTokenAuthPage BackHandler")
+        }
+    }
     BackHandler {
-        vm.onCancel("BangumiTokenAuthPage BackHandler")
         navigator.popUntilNotAuth()
     }
     Column(modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -90,9 +95,7 @@ fun BangumiTokenAuthPage(
             topBar = {
                 TopAppBar(
                     title = { Text("Bangumi 授权") },
-                    navigationIcon = {
-                        TopAppBarGoBackButton()
-                    },
+                    navigationIcon = navigationIcon,
                     colors = AniThemeDefaults.topAppBarColors(),
                     windowInsets = windowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top),
                 )

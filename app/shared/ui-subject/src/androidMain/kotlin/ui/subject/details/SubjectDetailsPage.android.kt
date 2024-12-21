@@ -14,6 +14,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.tooling.preview.Preview
 import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview
+import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.app.ui.search.LoadError
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateLoader
 import me.him188.ani.app.ui.subject.details.state.createTestSubjectDetailsState
@@ -30,6 +31,7 @@ internal fun PreviewSubjectDetails() = ProvideFoundationCompositionLocalsForPrev
         state,
         onPlay = { },
         onLoadErrorRetry = { },
+        navigationIcon = { BackNavigationIconButton({}) },
     )
 }
 
@@ -46,6 +48,7 @@ internal fun PreviewPlaceholderSubjectDetails() = ProvideFoundationCompositionLo
         state,
         onPlay = { },
         onLoadErrorRetry = { },
+        navigationIcon = { BackNavigationIconButton({}) },
     )
 }
 
@@ -62,5 +65,6 @@ internal fun PreviewErrorSubjectDetails() = ProvideFoundationCompositionLocalsFo
         state,
         onPlay = { },
         onLoadErrorRetry = { },
+        navigationIcon = { BackNavigationIconButton({}) },
     )
 }

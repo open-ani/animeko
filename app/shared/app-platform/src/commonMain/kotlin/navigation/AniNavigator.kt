@@ -45,6 +45,10 @@ interface AniNavigator {
         navigator.popBackStack()
     }
 
+    fun popBackStack(route: NavRoutes, inclusive: Boolean, saveState: Boolean = false) {
+        navigator.popBackStack(route, inclusive, saveState)
+    }
+
 //    fun popBackStack(
 //        route: String,
 //        inclusive: Boolean,
