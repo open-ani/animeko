@@ -1,19 +1,10 @@
 /*
- * Ani
- * Copyright (C) 2022-2024 Him188
+ * Copyright (C) 2024 OpenAni and contributors.
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
 plugins {
@@ -74,7 +65,9 @@ val patchGeneratedSwig = tasks.register("patchGeneratedSwig") {
         gen.walk().forEach {
             if (it.extension in listOf("cpp", "h", "java")) {
                 if (!it.readText().contains("@formatter"))
-                    it.writeText("//@formatter:off\n" + it.readText() + "\n//@formatter:on")
+                    it.writeText("//@formatter:off\n" + it.readText() +
+                            "\n// @formatter:on",
+                    )
             }
         }
     }
@@ -203,6 +196,167 @@ val buildAnitorrent = tasks.register("buildAnitorrent", Exec::class.java) {
     )
 }
 
+val copyNativeFiles by tasks.registering {
+    dependsOn(buildAnitorrent)
+    group = "anitorrent"
+    description = "Copy anitrorent native files and dependencies to build/native-files"
+
+    val cmakeCache = anitorrentBuildDir.resolve("CMakeCache.txt")
+    if (cmakeCache.exists()) {
+        inputs.file(cmakeCache)
+    }
+
+    val targetDir = layout.buildDirectory.dir("native-files")
+    outputs.dir(targetDir)
+
+    val buildType = getPropertyOrNull("CMAKE_BUILD_TYPE") ?: "Debug"
+    inputs.property("buildType", buildType)
+
+    val anitorrentBuildDir = anitorrentBuildDir
+
+    val os = getOs()
+    inputs.property("os", os)
+    doLast {
+        fun getAnitorrentNativeFiles(): List<File> {
+            return buildList {
+                when (getOs()) {
+                    Os.Windows -> {
+                        add(anitorrentBuildDir.resolve("$buildType/anitorrent.dll"))
+                        add(anitorrentBuildDir.resolve("_deps/libtorrent-build/$buildType/torrent-rasterbar.dll"))
+                    }
+
+                    Os.MacOS -> {
+                        add(anitorrentBuildDir.resolve("libanitorrent.dylib"))
+                        add(anitorrentBuildDir.resolve("_deps/libtorrent-build/libtorrent-rasterbar.2.0.10.dylib"))
+                    }
+
+                    Os.Unknown, Os.Linux -> {
+                        add(anitorrentBuildDir.resolve("libanitorrent.so"))
+                        add(anitorrentBuildDir.resolve("_deps/libtorrent-build/libtorrent-rasterbar.2.0.10.so"))
+                    }
+                }
+            }
+        }
+
+        fun parseCMakeCache(cmakeCache: File): Map<String, String> {
+            return cmakeCache.readText().lines().filterNot { it.startsWith("#") }.mapNotNull {
+                val parts = it.split("=", limit = 2)
+                if (parts.size != 2) return@mapNotNull null
+                parts[0].trim() to parts[1].trim()
+            }.toMap()
+        }
+
+        val map = parseCMakeCache(cmakeCache)
+
+        fun Map<String, String>.getOrFail(key: String): String {
+            return this[key] ?: error("Key $key not found in CMakeCache")
+        }
+
+        val dependencies = buildMap {
+            map["OPENSSL_CRYPTO_LIBRARY:FILEPATH"]?.let {
+                put("OPENSSL_CRYPTO_LIBRARY", File(it))
+            }
+            map["OPENSSL_SSL_LIBRARY:FILEPATH"]?.let {
+                put("OPENSSL_SSL_LIBRARY", File(it))
+            }
+
+            if (os == Os.Windows) {
+                // LIB_EAY_RELEASE:FILEPATH=C:/vcpkg/installed/x64-windows/lib/libcrypto.lib
+                // SSL_EAY_RELEASE:FILEPATH=C:/vcpkg/installed/x64-windows/lib/libssl.lib
+                fun findDll(libFile: File): List<File> {
+                    val matched = libFile.parentFile.parentFile.resolve("bin")
+                        .listFiles().orEmpty()
+                        .filter { it.extension == "dll" && it.nameWithoutExtension.startsWith(libFile.nameWithoutExtension) }
+                    return matched
+                }
+
+                fun findSystemDll(filename: String): File? {
+                    val systemDir = File("C:/Windows/System32")
+                    val systemDll = systemDir.resolve(filename)
+                    if (systemDll.exists()) {
+                        return systemDll
+                    }
+                    return null
+                }
+                findSystemDll("vcruntime140.dll")?.let {
+                    put("vcruntime140", it)
+                }
+                findSystemDll("vcruntime140_1.dll")?.let {
+                    put("vcruntime140_1", it)
+                }
+                findSystemDll("msvcp140.dll")?.let {
+                    put("MSVCP140", it)
+                }
+                map["LIB_EAY_RELEASE:FILEPATH"]?.let {
+                    findDll(File(it)).forEachIndexed { index, file ->
+                        put("LIB_EAY_RELEASE_${index}", file)
+                    }
+                }
+                map["SSL_EAY_RELEASE:FILEPATH"]?.let {
+                    findDll(File(it)).forEachIndexed { index, file ->
+                        put("SSL_EAY_RELEASE_${index}", file)
+                    }
+                }
+            }
+        }
+
+        (dependencies.values + getAnitorrentNativeFiles()).forEach {
+            val target = targetDir.get().file(it.name)
+            it.copyTo(target.asFile, overwrite = true)
+        }
+    }
+}
+
+sourceSets.main {
+    resources.srcDir(copyNativeFiles.map { it.outputs.files.singleFile })
+}
+
+tasks.compileKotlin {
+    dependsOn(copyNativeFiles)
+}
+
+//val nativesJar = tasks.register<Jar>("nativesJar") {
+//    archiveClassifier.set("natives")
+//
+//    // Make sure the copy is done first
+//    dependsOn(createDependencyManifest)
+//
+//    // Include everything from build/natives in the JAR
+//    from(createDependencyManifest.map { fileTree(it.outputs.files.singleFile) }) {
+//        // Optionally, put them under a "natives/" folder inside the JAR
+//        into("/")
+//    }
+//}
+//
+//artifacts {
+//    // "archives" is somewhat legacy, but still works for publishing or referencing
+//    add("archives", nativesJar) {
+//        builtBy(createDependencyManifest)
+//    }
+//}
+
+if (!enableAnitorrent) {
+    val readmeFile = anitorrentRootDir.resolve("README.md")
+    // IDE 会识别这个格式并给出明显提示
+    logger.warn("w:: Anitorrent 没有启用. PC 构建将不支持 BT 功能. Android 不受影响. 可阅读 $readmeFile 了解如何启用")
+}
+
+//configurations {
+//    create("nativeLibrary") {
+//        isCanBeConsumed = true
+//        isCanBeResolved = true
+//        if (enableAnitorrent) {
+//            outgoing {
+////                artifacts(createDependencyManifest.map { fileTree(it.outputs.files.singleFile) }) {
+////                    builtBy(createDependencyManifest)
+////                }
+//                artifacts {
+//                    add("nativeLibrary", nativesJar)
+//                }
+//            }
+//        }
+//    }
+//}
 
 idea {
     module {

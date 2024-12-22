@@ -7,13 +7,13 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-import com.android.utils.CpuArchitecture
-import com.android.utils.osArchitecture
-import com.google.gson.Gson
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.compose.desktop.application.tasks.AbstractJLinkTask
+import org.jetbrains.compose.desktop.application.tasks.AbstractJPackageTask
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
 import java.util.UUID
+import java.util.zip.ZipEntry
+import java.util.zip.ZipFile
 
 plugins {
     kotlin("jvm")
@@ -28,6 +28,18 @@ dependencies {
     implementation(projects.app.shared)
     implementation(projects.app.shared.uiFoundation)
     implementation(projects.app.shared.application)
+//    runtimeOnly(project(":torrent:anitorrent:anitorrent-native", "runtimeElements"))
+//    runtimeOnly(projects.torrent.anitorrent.anitorrentNative) {
+//        targetConfiguration = "nativeLibrary"
+//    }
+//    implementation(
+////        project(":torrent:anitorrent:anitorrent-native").dependencyProject.named("createDependencyManifest") .outputs.files
+//        provider {
+//            projects.torrent.anitorrent.anitorrentNative.dependencyProject.tasks.named("nativesJar")
+//                .map { files(it.outputs.files.singleFile) }.get()
+//        },
+//    )
+//    runtimeOnly(projects.torrent.anitorrent.anitorrentNative)
     implementation(compose.components.resources)
     implementation(libs.log4j.core)
     implementation(libs.vlcj)
@@ -225,192 +237,38 @@ tasks.withType(KotlinCompilationTask::class) {
 
 //kotlin.sourceSets.main.get().resources.srcDir(project(":common").projectDir.resolve("src/androidMain/res/raw"))
 
-val anitorrentRootDir = rootProject.projectDir.resolve("torrent/anitorrent/anitorrent-native")
-val anitorrentBuildDir = anitorrentRootDir.resolve("build-ci")
-
-val copyAnitorrentDylibToResources = tasks.register("copyAnitorrentDylibToResources", Copy::class.java) {
-    group = "anitorrent"
-    dependsOn(":torrent:anitorrent:anitorrent-native:buildAnitorrent")
-
-    val buildType = getPropertyOrNull("CMAKE_BUILD_TYPE") ?: "Debug"
-
-    val libRelative = "anitorrent/lib"
-
-    when (getOs()) {
-        Os.Windows -> {
-            from(anitorrentBuildDir.resolve("$buildType/anitorrent.dll"))
-            from(anitorrentBuildDir.resolve("_deps/libtorrent-build/$buildType/torrent-rasterbar.dll"))
-            into(projectDir.resolve("appResources/windows-x64").resolve(libRelative))
-        }
-
-        Os.MacOS -> {
-            from(anitorrentBuildDir.resolve("libanitorrent.dylib"))
-            from(anitorrentBuildDir.resolve("_deps/libtorrent-build/libtorrent-rasterbar.2.0.10.dylib"))
-            val isArm = when (osArchitecture) {
-                CpuArchitecture.X86 -> false
-                CpuArchitecture.X86_64 -> false
-                CpuArchitecture.ARM -> true
-                CpuArchitecture.X86_ON_ARM -> false
-                CpuArchitecture.UNKNOWN -> false
-            }
-            into(
-                projectDir.resolve(
-                    if (isArm) "appResources/macos-arm64"
-                    else "appResources/macos-x64",
-                ).resolve(libRelative),
-            )
-        }
-
-        Os.Unknown, Os.Linux -> {
-            from(anitorrentBuildDir.resolve("libanitorrent.so"))
-            from(anitorrentBuildDir.resolve("_deps/libtorrent-build/libtorrent-rasterbar.2.0.10.so"))
-            into(projectDir.resolve("appResources/linux-x64").resolve(libRelative))
-        }
-    }
-}
-
-// 复制 anitorrent cmake 构建出来的东西, 以及依赖的库到 appResources, 然后创建一个 anitorrent.deps.json 文件
-val createDependencyManifest = tasks.register("createDependencyManifest") {
-    dependsOn(":torrent:anitorrent:anitorrent-native:buildAnitorrent")
-    val cmakeCache = anitorrentBuildDir.resolve("CMakeCache.txt")
-    if (cmakeCache.exists()) {
-        inputs.file(cmakeCache)
-    }
-
-    val projectDir = projectDir
-    val depsFile = file("appResources/${getOsTriple()}/anitorrent/anitorrent.deps.json")
-    outputs.file(depsFile)
-    val targetDir = file("appResources/${getOsTriple()}/anitorrent/lib")
-    outputs.dir(targetDir)
-
-    val buildType = getPropertyOrNull("CMAKE_BUILD_TYPE") ?: "Debug"
-    inputs.property("buildType", buildType)
-
-    val anitorrentBuildDir = anitorrentBuildDir
-
-    val os = getOs()
-    inputs.property("os", os)
+tasks.withType(AbstractJPackageTask::class) {
     doLast {
-        fun parseCMakeCache(cmakeCache: File): Map<String, String> {
-            return cmakeCache.readText().lines().filterNot { it.startsWith("#") }.mapNotNull {
-                val parts = it.split("=", limit = 2)
-                if (parts.size != 2) return@mapNotNull null
-                parts[0].trim() to parts[1].trim()
-            }.toMap()
-        }
-
-        val map = parseCMakeCache(cmakeCache)
-
-        fun Map<String, String>.getOrFail(key: String): String {
-            return this[key] ?: error("Key $key not found in CMakeCache")
-        }
-
-        val libraries = buildMap {
-            map["OPENSSL_CRYPTO_LIBRARY:FILEPATH"]?.let {
-                put("OPENSSL_CRYPTO_LIBRARY", File(it))
-            }
-            map["OPENSSL_SSL_LIBRARY:FILEPATH"]?.let {
-                put("OPENSSL_SSL_LIBRARY", File(it))
-            }
-
-            if (os == Os.Windows) {
-                // LIB_EAY_RELEASE:FILEPATH=C:/vcpkg/installed/x64-windows/lib/libcrypto.lib
-                // SSL_EAY_RELEASE:FILEPATH=C:/vcpkg/installed/x64-windows/lib/libssl.lib
-                fun findDll(libFile: File): List<File> {
-                    val matched = libFile.parentFile.parentFile.resolve("bin")
-                        .listFiles().orEmpty()
-                        .filter { it.extension == "dll" && it.nameWithoutExtension.startsWith(libFile.nameWithoutExtension) }
-                    return matched
-                }
-
-                fun findSystemDll(filename: String): File? {
-                    val systemDir = File("C:/Windows/System32")
-                    val systemDll = systemDir.resolve(filename)
-                    if (systemDll.exists()) {
-                        return systemDll
-                    }
-                    return null
-                }
-                findSystemDll("vcruntime140.dll")?.let {
-                    put("vcruntime140", it)
-                }
-                findSystemDll("vcruntime140_1.dll")?.let {
-                    put("vcruntime140_1", it)
-                }
-                findSystemDll("msvcp140.dll")?.let {
-                    put("MSVCP140", it)
-                }
-                map["LIB_EAY_RELEASE:FILEPATH"]?.let {
-                    findDll(File(it)).forEachIndexed { index, file ->
-                        put("LIB_EAY_RELEASE_${index}", file)
-                    }
-                }
-                map["SSL_EAY_RELEASE:FILEPATH"]?.let {
-                    findDll(File(it)).forEachIndexed { index, file ->
-                        put("SSL_EAY_RELEASE_${index}", file)
+        fun unpackJar(jar: File, dest: File, filter: (ZipEntry) -> Boolean = { true }) {
+            val zip = ZipFile(jar)
+            zip.use {
+                zip.entries().asSequence().filter(filter).forEach { entry ->
+                    val file = dest.resolve(entry.name)
+                    if (entry.isDirectory) {
+                        file.mkdirs()
+                    } else {
+                        file.parentFile.mkdirs()
+                        zip.getInputStream(entry).use { input ->
+                            file.outputStream().use { output ->
+                                input.copyTo(output)
+                            }
+                        }
                     }
                 }
             }
-        }.toMutableMap()
-
-        when (getOs()) {
-            Os.Windows -> {
-                if (anitorrentBuildDir.resolve("_deps/libtorrent-build/$buildType/torrent-rasterbar.dll").exists()) {
-                    libraries["LIBTORRENT_RASTERBAR"] =
-                        anitorrentBuildDir.resolve("_deps/libtorrent-build/$buildType/torrent-rasterbar.dll")
-                    libraries["ANITORRENT"] = anitorrentBuildDir.resolve("$buildType/anitorrent.dll")
-                } else {
-                    libraries["LIBTORRENT_RASTERBAR"] =
-                        anitorrentBuildDir.resolve("_deps/libtorrent-build/torrent-rasterbar.dll")
-                    libraries["ANITORRENT"] = anitorrentBuildDir.resolve("anitorrent.dll")
-                }
-            }
-
-            Os.MacOS -> {
-                libraries["LIBTORRENT_RASTERBAR"] =
-                    anitorrentBuildDir.resolve("_deps/libtorrent-build/libtorrent-rasterbar.2.0.10.dylib")
-                libraries["ANITORRENT"] = anitorrentBuildDir.resolve("libanitorrent.dylib")
-            }
-
-            Os.Unknown, Os.Linux -> {
-                libraries["LIBTORRENT_RASTERBAR"] =
-                    anitorrentBuildDir.resolve("_deps/libtorrent-build/libtorrent-rasterbar.2.0.10.so")
-                libraries["ANITORRENT"] = anitorrentBuildDir.resolve("libanitorrent.so")
-            }
         }
 
+        val jarsToUnpack = listOf("anitorrent-native")
 
-        depsFile.writeText(Gson().toJson(libraries.mapValues { it.value.name }))
-
-        for (library in libraries.values) {
-            logger.info("Copying '$library' to '$targetDir'")
-            library.toPath().toRealPath().toFile().copyTo(
-                targetDir.resolve(projectDir.resolve(library).name),
-                overwrite = true,
-            )
+        destinationDir.get().asFile.walk().firstOrNull { file ->
+            jarsToUnpack.any { file.name.startsWith(it) && file.extension == "jar" }
+        }?.let { file ->
+            unpackJar(file, file.parentFile) {
+                it.name.endsWith("dylib") || it.name.endsWith("so") || it.name.endsWith("dll")
+            }
         }
     }
 }
-
-
-if (enableAnitorrent) {
-    tasks.named("processResources") {
-        dependsOn(copyAnitorrentDylibToResources, createDependencyManifest)
-    }
-
-//  Reason: Task ':app:desktop:prepareAppResources' uses this output of task ':app:desktop:copyAnitorrentCppWrapperToResources' without declaring an explicit or implicit dependency. This can lead to incorrect results being produced, depending on what order the tasks are executed.
-    afterEvaluate {
-        tasks.named("prepareAppResources") {
-            dependsOn(copyAnitorrentDylibToResources, createDependencyManifest)
-        }
-    }
-} else {
-    // file:///D:/Projects/animation-garden/app/desktop/build.gradle.kts:202:5:
-    val readmeFile = anitorrentRootDir.resolve("README.md")
-    // IDE 会识别这个格式并给出明显提示
-    logger.warn("w:: Anitorrent 没有启用. PC 构建将不支持 BT 功能. Android 不受影响. 可阅读 $readmeFile 了解如何启用")
-}
-
 
 idea {
     module {
