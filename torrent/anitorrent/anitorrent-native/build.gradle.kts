@@ -315,48 +315,11 @@ tasks.compileKotlin {
     dependsOn(copyNativeFiles)
 }
 
-//val nativesJar = tasks.register<Jar>("nativesJar") {
-//    archiveClassifier.set("natives")
-//
-//    // Make sure the copy is done first
-//    dependsOn(createDependencyManifest)
-//
-//    // Include everything from build/natives in the JAR
-//    from(createDependencyManifest.map { fileTree(it.outputs.files.singleFile) }) {
-//        // Optionally, put them under a "natives/" folder inside the JAR
-//        into("/")
-//    }
-//}
-//
-//artifacts {
-//    // "archives" is somewhat legacy, but still works for publishing or referencing
-//    add("archives", nativesJar) {
-//        builtBy(createDependencyManifest)
-//    }
-//}
-
 if (!enableAnitorrent) {
     val readmeFile = anitorrentRootDir.resolve("README.md")
     // IDE 会识别这个格式并给出明显提示
     logger.warn("w:: Anitorrent 没有启用. PC 构建将不支持 BT 功能. Android 不受影响. 可阅读 $readmeFile 了解如何启用")
 }
-
-//configurations {
-//    create("nativeLibrary") {
-//        isCanBeConsumed = true
-//        isCanBeResolved = true
-//        if (enableAnitorrent) {
-//            outgoing {
-////                artifacts(createDependencyManifest.map { fileTree(it.outputs.files.singleFile) }) {
-////                    builtBy(createDependencyManifest)
-////                }
-//                artifacts {
-//                    add("nativeLibrary", nativesJar)
-//                }
-//            }
-//        }
-//    }
-//}
 
 idea {
     module {

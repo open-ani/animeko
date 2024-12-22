@@ -28,18 +28,6 @@ dependencies {
     implementation(projects.app.shared)
     implementation(projects.app.shared.uiFoundation)
     implementation(projects.app.shared.application)
-//    runtimeOnly(project(":torrent:anitorrent:anitorrent-native", "runtimeElements"))
-//    runtimeOnly(projects.torrent.anitorrent.anitorrentNative) {
-//        targetConfiguration = "nativeLibrary"
-//    }
-//    implementation(
-////        project(":torrent:anitorrent:anitorrent-native").dependencyProject.named("createDependencyManifest") .outputs.files
-//        provider {
-//            projects.torrent.anitorrent.anitorrentNative.dependencyProject.tasks.named("nativesJar")
-//                .map { files(it.outputs.files.singleFile) }.get()
-//        },
-//    )
-//    runtimeOnly(projects.torrent.anitorrent.anitorrentNative)
     implementation(compose.components.resources)
     implementation(libs.log4j.core)
     implementation(libs.vlcj)
