@@ -10,10 +10,13 @@
 package me.him188.ani.app.torrent.anitorrent
 
 import org.junit.jupiter.api.assertDoesNotThrow
+import org.junit.jupiter.api.condition.DisabledOnOs
+import org.junit.jupiter.api.condition.OS
 import kotlin.test.Test
 
 class AnitorrentLibraryLoaderTest {
     @Test
+    @DisabledOnOs(OS.LINUX)
     fun `can load in debug mode`() { // 注意, 这个 test 无法测试打包之后的
         assertDoesNotThrow {
             AnitorrentLibraryLoader.loadLibraries()

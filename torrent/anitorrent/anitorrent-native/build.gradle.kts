@@ -307,12 +307,14 @@ val copyNativeFiles by tasks.registering {
     }
 }
 
-sourceSets.main {
-    resources.srcDir(copyNativeFiles.map { it.outputs.files.singleFile })
-}
+if (enableAnitorrent) {
+    sourceSets.main {
+        resources.srcDir(copyNativeFiles.map { it.outputs.files.singleFile })
+    }
 
-tasks.compileKotlin {
-    dependsOn(copyNativeFiles)
+    tasks.compileKotlin {
+        dependsOn(copyNativeFiles)
+    }
 }
 
 if (!enableAnitorrent) {
