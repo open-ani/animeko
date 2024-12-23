@@ -10,19 +10,25 @@
 package me.him188.ani.app.torrent.anitorrent
 
 import me.him188.ani.app.torrent.api.TorrentLibraryLoader
-import me.him188.ani.utils.logging.info
-import me.him188.ani.utils.logging.logger
+import me.him188.ani.utils.logging.*
 import me.him188.ani.utils.platform.Platform
 import me.him188.ani.utils.platform.currentPlatform
 import me.him188.ani.utils.platform.isAndroid
-import java.io.File
 import java.io.IOException
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.Paths
 import kotlin.concurrent.Volatile
+import kotlin.io.path.ExperimentalPathApi
+import kotlin.io.path.absolutePathString
+import kotlin.io.path.deleteRecursively
+import kotlin.io.path.outputStream
 import kotlin.math.absoluteValue
 import kotlin.random.Random
 
 object AnitorrentLibraryLoader : TorrentLibraryLoader {
     private val logger = logger<AnitorrentLibraryLoader>()
+    private val platform = currentPlatform()
 
     @Volatile
     private var libraryLoaded = false
@@ -38,10 +44,8 @@ object AnitorrentLibraryLoader : TorrentLibraryLoader {
 //    anitorrent.install_signal_handlers()
     }
 
-    @Suppress("UnsafeDynamicallyLoadedCode")
     @kotlin.jvm.Throws(IOException::class)
     private fun loadDependencies() {
-        val platform = currentPlatform()
         if (platform.isAndroid()) {
             System.loadLibrary("anitorrent")
             return
@@ -49,25 +53,55 @@ object AnitorrentLibraryLoader : TorrentLibraryLoader {
         logger.info { "Loading anitorrent library" }
         try {
             System.loadLibrary("anitorrent")
-            logger.info { "Loading anitorrent library: success (from system library path)" }
+            logger.info { "Loading anitorrent library: success (from java.library.path)" }
         } catch (e: UnsatisfiedLinkError) {
             // 可能是调试状态, 从 resources 加载
-            logger.info { "Failed to load anitorrent directly from native path, trying resources instead" }
-            val filename = when (platform as Platform.Desktop) {
-                is Platform.Linux -> "libanitorrent.so"
-                is Platform.Windows -> "anitorrent.dll"
-                is Platform.MacOS -> "libanitorrent.dylib"
+            logger.info { "Failed to load anitorrent directly from java.library.path, trying resources instead" }
+            val temp = getTempDirForPlatform()
+            logger.info { "Temp dir: ${temp.absolutePathString()}" }
+            if (platform is Platform.Windows) {
+                loadLibraryFromResources("torrent-rasterbar", temp)
             }
-            this::class.java.classLoader?.getResourceAsStream(filename)?.use {
-                val tempFile = File.createTempFile(Random.nextInt().absoluteValue.toString() + filename, null).apply {
-                    deleteOnExit()
-                }
-                tempFile.outputStream().use { output ->
-                    it.copyTo(output)
-                }
-                System.load(tempFile.absolutePath)
-            }
+            loadLibraryFromResources("anitorrent", temp)
             logger.info { "Loading anitorrent library: success (from resources)" }
+        }
+    }
+
+    @OptIn(ExperimentalPathApi::class)
+    private fun getTempDirForPlatform(): Path {
+        return if (platform is Platform.Windows) {
+            Paths.get(System.getProperty("user.dir"))
+        } else {
+            Files.createTempDirectory("libanitorrent${Random.nextInt().absoluteValue}").apply {
+                Runtime.getRuntime().addShutdownHook(
+                    Thread {
+                        try {
+                            deleteRecursively()
+                        } catch (e: IOException) {
+                            logger.error(e) { "Failed to delete temp directory $this" }
+                        }
+                    },
+                )
+            }
+        }
+    }
+
+    @Suppress("UnsafeDynamicallyLoadedCode")
+    private fun loadLibraryFromResources(
+        name: String,
+        tempDir: Path
+    ) {
+        val filename = when (platform as Platform.Desktop) {
+            is Platform.Linux -> "lib$name.so"
+            is Platform.Windows -> "$name.dll"
+            is Platform.MacOS -> "lib$name.dylib"
+        }
+        this::class.java.classLoader?.getResourceAsStream(filename)?.use {
+            val tempFile = tempDir.resolve(filename)
+            tempFile.outputStream().use { output ->
+                it.copyTo(output)
+            }
+            System.load(tempFile.absolutePathString())
         }
     }
 
