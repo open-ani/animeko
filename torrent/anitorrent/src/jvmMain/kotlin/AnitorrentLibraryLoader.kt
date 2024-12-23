@@ -60,8 +60,8 @@ object AnitorrentLibraryLoader : TorrentLibraryLoader {
             val temp = getTempDirForPlatform()
             logger.info { "Temp dir: ${temp.absolutePathString()}" }
             if (platform is Platform.Windows) {
-                loadLibraryFromResources("libssl-3-x64", temp)
-                loadLibraryFromResources("libcrypto-3-x64", temp)
+                extractLibraryFromResources("libssl-3-x64", temp)
+                extractLibraryFromResources("libcrypto-3-x64", temp)
                 loadLibraryFromResources("torrent-rasterbar", temp)
             }
             loadLibraryFromResources("anitorrent", temp)
@@ -89,10 +89,10 @@ object AnitorrentLibraryLoader : TorrentLibraryLoader {
     }
 
     @Suppress("UnsafeDynamicallyLoadedCode")
-    private fun loadLibraryFromResources(
+    private fun extractLibraryFromResources(
         name: String,
         tempDir: Path
-    ) {
+    ): Path? {
         val filename = when (platform as Platform.Desktop) {
             is Platform.Linux -> "lib$name.so"
             is Platform.Windows -> "$name.dll"
@@ -103,8 +103,19 @@ object AnitorrentLibraryLoader : TorrentLibraryLoader {
             tempFile.outputStream().use { output ->
                 it.copyTo(output)
             }
-            System.load(tempFile.absolutePathString())
+            return tempFile
         }
+        return null
+    }
+
+    @Suppress("UnsafeDynamicallyLoadedCode")
+    private fun loadLibraryFromResources(
+        name: String,
+        tempDir: Path
+    ) {
+        extractLibraryFromResources(name, tempDir)?.let {
+            System.load(it.absolutePathString())
+        } ?: throw UnsatisfiedLinkError("Failed to extract library $name from resources (possibly no such resource)")
     }
 
     @Synchronized
