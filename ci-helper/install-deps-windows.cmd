@@ -6,5 +6,6 @@ vcpkg install openssl:x64-windows boost-variant:x64-windows boost-system:x64-win
 @REM vcpkg install openssl:x64-windows boost:x64-windows
 
 choco install swig -y
+choco install openssl -y
 
 vcpkg integrate install

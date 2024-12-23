@@ -31,6 +31,7 @@ else ()
     if (WIN32)
         add_compile_definitions(TORRENT_DISABLE_ENCRYPTION=true)
         add_compile_definitions(TORRENT_USE_OPENSSL)
+        find_package(OpenSSL)
     endif ()
 
     if (WIN32)
