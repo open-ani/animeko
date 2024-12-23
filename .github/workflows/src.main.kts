@@ -816,7 +816,7 @@ fun JobBuilder<*>.gradleCheck() {
 fun JobBuilder<*>.uploadAnitorrent() {
     uses(
         name = "Upload Anitorrent CMakeCache.txt",
-        `if` = expr { matrix.buildAnitorrent },
+        `if` = expr { always() },
         action = UploadArtifact(
             name = $"anitorrent-cmake-cache-${expr { matrix.os }}-${expr { matrix.arch }}",
             path_Untyped = "torrent/anitorrent/build-ci/CMakeCache.txt",

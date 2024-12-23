@@ -338,7 +338,7 @@ jobs:
           name: 'anitorrent-cmake-cache-${{ matrix.os }}-${{ matrix.arch }}'
           path: 'torrent/anitorrent/build-ci/CMakeCache.txt'
           overwrite: 'true'
-        if: '${{ matrix.buildAnitorrent }}'
+        if: '${{ always() }}'
       - id: 'step-30'
         name: 'Upload Anitorrent ${{ matrix.composeResourceTriple }}'
         uses: 'actions/upload-artifact@v4'
