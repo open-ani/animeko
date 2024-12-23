@@ -49,7 +49,7 @@ object AnitorrentLibraryLoader : TorrentLibraryLoader {
         logger.info { "Loading anitorrent library" }
         try {
             System.loadLibrary("anitorrent")
-            logger.info { "Loading anitorrent library: success (from classpath)" }
+            logger.info { "Loading anitorrent library: success (from system library path)" }
         } catch (e: UnsatisfiedLinkError) {
             // 可能是调试状态, 从 resources 加载
             logger.info { "Failed to load anitorrent directly from native path, trying resources instead" }
@@ -58,7 +58,7 @@ object AnitorrentLibraryLoader : TorrentLibraryLoader {
                 is Platform.Windows -> "anitorrent.dll"
                 is Platform.MacOS -> "libanitorrent.dylib"
             }
-            this::class.java.classLoader.getResourceAsStream(filename)?.use {
+            this::class.java.classLoader?.getResourceAsStream(filename)?.use {
                 val tempFile = File.createTempFile(Random.nextInt().absoluteValue.toString() + filename, null).apply {
                     deleteOnExit()
                 }
