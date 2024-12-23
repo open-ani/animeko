@@ -105,4 +105,6 @@
 -keepattributes Annotation
 -keepattributes RuntimeVisibleAnnotations
 
+-keep @kotlinx.serialization.Serializable class * {*;} # Somehow kotlinx-serialization 官方的规则仍然会导致 Serializer not found, 所以干脆直接都 keep
+
 -verbose
