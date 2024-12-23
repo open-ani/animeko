@@ -818,17 +818,17 @@ fun JobBuilder<*>.uploadAnitorrent() {
         name = "Upload Anitorrent CMakeCache.txt",
         `if` = expr { always() },
         action = UploadArtifact(
-            name = $"anitorrent-cmake-cache-${expr { matrix.os }}-${expr { matrix.arch }}",
+            name = $"anitorrent-cmake-cache-${expr { matrix.id }}",
             path_Untyped = "torrent/anitorrent/build-ci/CMakeCache.txt",
             overwrite = true,
         ),
     )
     uses(
-        name = $"Upload Anitorrent ${expr { matrix.composeResourceTriple }}",
-        `if` = expr { matrix.buildAnitorrent },
+        name = $"Upload Anitorrent ${expr { matrix.id }}",
+        `if` = expr { always() },
         action = UploadArtifact(
-            name = $"anitorrent-${expr { matrix.composeResourceTriple }}",
-            path_Untyped = "app/desktop/appResources/${expr { matrix.composeResourceTriple }}/anitorrent",
+            name = $"anitorrent-${expr { matrix.id }}",
+            path_Untyped = "torrent/anitorrent/anitorrent-native/build",
             overwrite = true,
         ),
     )
