@@ -27,22 +27,24 @@ macOS 构建操作很简单.
    ```shell
    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
    ```
-2. 安装 Xcode Commandline Tools:
+2. 在 App Store 中安装 Xcode，并打开一次.
+3. 安装 Xcode Commandline Tools:
    ```sheel
    xcode-select --install
    ```
-3. 执行安装脚本 [/ci-helper/install-deps-macos.sh](../../ci-helper/install-deps-macos.sh).
-   这将会调用 brew 安装 CMake, Ninja, SWIG, Boost, OpenSSL. libtorrent 将会在构建 anitorrent 时现场构建.
-4. 如果你系统没有安装任意种类的大于 17 版本的 JDK, 可以通过 brew 安装:
+4. 执行安装脚本 [/ci-helper/install-deps-macos.sh](../../../ci-helper/install-deps-macos.sh).
+   这将会调用 brew 安装 CMake, Ninja, SWIG, Boost, OpenSSL 等依赖. libtorrent 将会在构建 anitorrent
+   时现场构建.
+5. 如果你系统没有安装任意种类的大于 17 版本的 JDK, 可以通过 brew 安装:
    ```shell
    brew install openjdk@17
    ```
    如果已经有了, 可以跳过
-5. 在项目根目录的 `local.properties` (没有就创建一个) 中添加一行:
+6. 在项目根目录的 `local.properties` (没有就创建一个) 中添加一行:
    ```properties
    ani.enable.anitorrent=true
    ```
-6. 完成. 现在可以运行 `./gradlew :app:desktop:runDistributable` 测试, 或者在 IDE 右上角选择 "Run
+7. 完成. 现在可以运行 `./gradlew :app:desktop:runDistributable` 测试, 或者在 IDE 右上角选择 "Run
    Desktop" 配置.
 
 ### B. Windows (Visual Studio 工具链)
