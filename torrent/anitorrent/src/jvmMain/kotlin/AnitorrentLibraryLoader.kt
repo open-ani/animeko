@@ -60,6 +60,8 @@ object AnitorrentLibraryLoader : TorrentLibraryLoader {
             val temp = getTempDirForPlatform()
             logger.info { "Temp dir: ${temp.absolutePathString()}" }
             if (platform is Platform.Windows) {
+                loadLibraryFromResources("libssl-3-x64", temp)
+                loadLibraryFromResources("libcrypto-3-x64", temp)
                 loadLibraryFromResources("torrent-rasterbar", temp)
             }
             loadLibraryFromResources("anitorrent", temp)
