@@ -91,10 +91,18 @@
 -dontwarn com.sun.jna.internal.**
 -dontwarn **
 
+-dontnote ** # the configuration keeps the entry point...
+
 -keep class me.him188.ani.app.data.persistent.database.AniDatabase_Impl # ClassNotFoundError
 -keep class androidx.compose.runtime.SnapshotStateKt__DerivedStateKt { *; } # VerifyError
 -keep class okio.Okio__JvmOkioKt { *; } # VerifyError
 -keep class okio.Okio__OkioKt { *; } # VerifyError
 -keep class okio.** # VerifyError
+-keep class kotlinx.serialization.json.** { *; } # SerializationException: Serializer for class 'JsonLiteral' is not found.
+
+-keep class kotlin.Metadata { *; }
+-keepattributes Kotlin
+-keepattributes Annotation
+-keepattributes RuntimeVisibleAnnotations
 
 -verbose

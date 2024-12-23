@@ -49,7 +49,11 @@ fun Project.sharedAndroidProguardRules(): Array<File> {
         dir.resolve("proguard-rules-keep-names.pro"),
     ).filter {
         it.exists()
-    }.toTypedArray()
+    }.toTypedArray().also {
+        check(it.isNotEmpty()) {
+            "No proguard rules found in $dir"
+        }
+    }
 }
 
 val testOptInAnnotations = arrayOf(
