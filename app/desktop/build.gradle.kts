@@ -144,37 +144,6 @@ compose.desktop {
                 this.configurationFiles.from(file("proguard-desktop.pro"))
             }
         }
-
-//        tasks.withType<AbstractProguardTask> {
-        // inputFiles 实际上会添加到 runtime 打包, 但应该会被 optimize 掉
-        // CMP 不提供以 -libraryjar 方式添加的方法, 所以只能这样了
-//            inputFiles.from(
-//                // 补上缺少的 compileOnly 依赖
-//                project.configurations.detachedConfiguration(
-//                    project.dependencies.create("com.google.code.findbugs:annotations:3.0.1"),
-//                    project.dependencies.create("com.google.code.findbugs:jsr305:3.0.1"),
-//                    project.dependencies.create("org.jspecify:jspecify:1.0.0"),
-//                    project.dependencies.create("org.osgi:org.osgi.core:6.0.0"),
-//                    project.dependencies.create("org.osgi:org.osgi.annotation.versioning:1.1.2"),
-//                    project.dependencies.create("com.lmax:disruptor:3.4.2"),
-//                    project.dependencies.create("com.fasterxml.jackson.core:jackson-annotations:2.12.0"),
-////                    project.dependencies.create("jakarta.jms:jakarta.jms-api:3.1.0"),
-//                    project.dependencies.create("org.junit.jupiter:junit-jupiter-api:5.11.4"),
-//                    project.dependencies.create("org.apache.commons:commons-csv:1.12.0"),
-//                    project.dependencies.create("com.fasterxml.jackson.core:jackson-databind:2.13.1"),
-//                    project.dependencies.create("org.apiguardian:apiguardian-api:1.1.2"), // log4j
-//                    project.dependencies.create("org.zeromq:jeromq:0.5.3"),
-//                    project.dependencies.create("org.ow2.asm:asm:9.7"),// com.google.common.truth.ActualValueInference$InferenceClassVisitor
-//                    project.dependencies.create("com.fasterxml.jackson.dataformat:jackson-dataformat-xml:2.13.1"), // log4j
-//                    project.dependencies.create("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.18.2"), // log4j
-//                    project.dependencies.create("org.fusesource.jansi:jansi:2.4.0"), // log4j
-//                    project.dependencies.create("org.jctools:jctools-core:4.0.1"), // log4j
-//                    project.dependencies.create("biz.aQute.bnd:biz.aQute.bnd.annotation:6.3.1"), // com.ctc.wstx.msv.W3CSchemaFactory:
-//                    project.dependencies.create("io.projectreactor.tools:blockhound:1.0.10.RELEASE"), // coroutines
-//                    project.dependencies.create("org.conscrypt:conscrypt-openjdk:2.5.2") // okhttp
-//                ),
-//            )
-//        }
     }
 }
 
