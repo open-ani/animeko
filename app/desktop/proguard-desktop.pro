@@ -1,4 +1,3 @@
--keep class kotlin.** { *; }
 -keep class org.jetbrains.skia.** { *; }
 -keep class org.jetbrains.skiko.** { *; }
 
@@ -48,8 +47,6 @@
 -dontwarn org.graalvm.compiler.core.aarch64.AArch64NodeMatchRules_MatchStatementSet*
 
 -dontnote com.sun.javafx.**
--dontnote **
--dontwarn **
 
 -keep class io.ktor.serialization.** { *; }
 -keep class org.slf4j.** { *; }
@@ -82,3 +79,22 @@
 
 -keep class io.ktor.** { *; } 
 -keep class kotlin.reflect.jvm.internal.** { *; } 
+
+
+# Access to compileOnly dependencies
+-dontwarn aQute.bnd.**
+-dontwarn okhttp3.internal.**
+-dontwarn org.apache.logging.log4j.**	
+-dontwarn reactor.blockhound.**
+-dontwarn com.ctc.wstx.**
+-dontwarn com.lmax.disruptor.**
+-dontwarn com.sun.jna.internal.**
+-dontwarn **
+
+-keep class me.him188.ani.app.data.persistent.database.AniDatabase_Impl # ClassNotFoundError
+-keep class androidx.compose.runtime.SnapshotStateKt__DerivedStateKt { *; } # VerifyError
+-keep class okio.Okio__JvmOkioKt { *; } # VerifyError
+-keep class okio.Okio__OkioKt { *; } # VerifyError
+-keep class okio.** # VerifyError
+
+-verbose
