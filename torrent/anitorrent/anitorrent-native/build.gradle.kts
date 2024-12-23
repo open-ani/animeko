@@ -219,10 +219,18 @@ val copyNativeFiles by tasks.registering {
     doLast {
         fun getAnitorrentNativeFiles(): List<File> {
             return buildList {
+                fun addIfExist(file: File) {
+                    if (file.exists()) {
+                        add(file)
+                    }
+                }
+                
                 when (getOs()) {
                     Os.Windows -> {
                         add(anitorrentBuildDir.resolve("$buildType/anitorrent.dll"))
                         add(anitorrentBuildDir.resolve("_deps/libtorrent-build/$buildType/torrent-rasterbar.dll"))
+                        addIfExist(anitorrentBuildDir.resolve("_deps/libtorrent-build/$buildType/libssl-3-x64.dll"))
+                        addIfExist(anitorrentBuildDir.resolve("_deps/libtorrent-build/$buildType/libcrypto-3-x64.dll"))
                     }
 
                     Os.MacOS -> {
