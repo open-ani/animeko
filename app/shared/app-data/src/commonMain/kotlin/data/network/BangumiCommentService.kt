@@ -41,7 +41,12 @@ sealed interface BangumiCommentService {
     suspend fun getSubjectEpisodeComments(subjectId: Int): List<EpisodeComment>?
 
     // comment.id 会被忽略
-    suspend fun postEpisodeComment(episodeId: Int, content: String, replyToCommentId: Int? = null): ApiResponse<Unit>
+    suspend fun postEpisodeComment(
+        episodeId: Int,
+        content: String,
+        cfTurnstileResponse: String,
+        replyToCommentId: Int? = null
+    ): ApiResponse<Unit>
 }
 
 class BangumiBangumiCommentServiceImpl(
@@ -68,6 +73,7 @@ class BangumiBangumiCommentServiceImpl(
     override suspend fun postEpisodeComment(
         episodeId: Int,
         content: String,
+        cfTurnstileResponse: String,
         replyToCommentId: Int?
     ): ApiResponse<Unit> {
         return runApiRequest {
@@ -75,7 +81,7 @@ class BangumiBangumiCommentServiceImpl(
                 client.getNextApi().createSubjectEpComment(
                     episodeId,
                     BangumiNextCreateSubjectEpCommentRequest(
-                        "XXXX.DUMMY.TOKEN.XXXX",
+                        cfTurnstileResponse,
                         content,
                         replyToCommentId,
                     ),

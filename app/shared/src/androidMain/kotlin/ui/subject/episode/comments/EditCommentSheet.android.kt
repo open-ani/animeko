@@ -22,6 +22,7 @@ import me.him188.ani.app.ui.comment.EditComment
 import me.him188.ani.app.ui.comment.EditCommentBottomStubPanel
 import me.him188.ani.app.ui.comment.EditCommentDefaults
 import me.him188.ani.app.ui.comment.EditCommentSticker
+import me.him188.ani.app.ui.comment.createPreviewTurnstileState
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.rememberBackgroundScope
 
@@ -50,6 +51,7 @@ fun PreviewEditComment() {
                     backgroundScope = scope.backgroundScope,
                 )
             },
+            turnstileState = remember { createPreviewTurnstileState() },
         )
     }
 }

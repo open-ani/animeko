@@ -342,6 +342,7 @@ private fun EpisodeSceneTabletVeryWide(
     if (showEditCommentSheet) {
         EpisodeEditCommentSheet(
             state = vm.commentEditorState,
+            turnstileState = vm.turnstileState,
             onDismiss = {
                 showEditCommentSheet = false
                 tryUnpause()
@@ -505,6 +506,7 @@ private fun EpisodeSceneContentPhone(
     if (showEditCommentSheet) {
         EpisodeEditCommentSheet(
             vm.commentEditorState,
+            vm.turnstileState,
             onDismiss = {
                 showEditCommentSheet = false
                 tryUnpause()

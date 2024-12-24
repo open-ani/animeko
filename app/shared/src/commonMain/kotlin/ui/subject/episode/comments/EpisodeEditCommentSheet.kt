@@ -22,6 +22,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.comment.CommentEditorState
 import me.him188.ani.app.ui.comment.EditComment
+import me.him188.ani.app.ui.comment.TurnstileState
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.interaction.rememberImeMaxHeight
 import me.him188.ani.app.ui.foundation.widgets.ModalBottomImeAwareSheet
@@ -30,6 +31,7 @@ import me.him188.ani.app.ui.foundation.widgets.rememberModalBottomImeAwareSheetS
 @Composable
 fun EpisodeEditCommentSheet(
     state: CommentEditorState,
+    turnstileState: TurnstileState,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -49,6 +51,7 @@ fun EpisodeEditCommentSheet(
     ) {
         EditComment(
             state = state,
+            turnstileState = turnstileState,
             modifier = modifier
                 .ifThen(state.editExpanded) { statusBarsPadding() }
                 .ifThen(!state.editExpanded) { padding(top = contentPadding) }

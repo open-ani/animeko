@@ -18,7 +18,9 @@ import androidx.compose.runtime.setValue
 import androidx.paging.cachedIn
 import androidx.paging.map
 import kotlinx.collections.immutable.persistentHashSetOf
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -44,7 +46,11 @@ import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transformLatest
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+import me.him188.ani.app.data.models.ApiFailure
+import me.him188.ani.app.data.models.ApiResponse
 import me.him188.ani.app.data.models.episode.renderEpisodeEp
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
@@ -83,6 +89,7 @@ import me.him188.ani.app.ui.comment.CommentMapperContext
 import me.him188.ani.app.ui.comment.CommentMapperContext.parseToUIComment
 import me.him188.ani.app.ui.comment.CommentState
 import me.him188.ani.app.ui.comment.EditCommentSticker
+import me.him188.ani.app.ui.comment.TurnstileState
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.foundation.AuthState
 import me.him188.ani.app.ui.foundation.HasBackgroundScope
@@ -125,6 +132,7 @@ import me.him188.ani.datasources.api.source.MediaFetchRequest
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
+import me.him188.ani.utils.coroutines.CancellationException
 import me.him188.ani.utils.coroutines.cancellableCoroutineScope
 import me.him188.ani.utils.coroutines.flows.flowOfEmptyList
 import me.him188.ani.utils.coroutines.retryWithBackoffDelay
@@ -217,6 +225,8 @@ abstract class EpisodeViewModel : AbstractViewModel(), HasBackgroundScope {
 
     abstract val episodeCommentState: CommentState
 
+    abstract val turnstileState: TurnstileState
+    
     abstract val commentEditorState: CommentEditorState
 
     abstract val playerSkipOpEdState: PlayerSkipOpEdState
@@ -721,6 +731,10 @@ private class EpisodeViewModelImpl(
         backgroundScope = backgroundScope,
     )
 
+    override val turnstileState = TurnstileState(
+        "https://next.bgm.tv/p1/turnstile?redirect_uri=${TurnstileState.CALLBACK_INTERCEPTION_PREFIX}",
+    )
+    
     override val commentEditorState: CommentEditorState = CommentEditorState(
         showExpandEditCommentButton = true,
         initialEditExpanded = false,
@@ -735,14 +749,57 @@ private class EpisodeViewModelImpl(
             }
         },
         onSend = { context, content ->
-            when (context) {
-                is CommentContext.Episode ->
-                    bangumiCommentService.postEpisodeComment(episodeId.value, content)
+            var turnstileResponse: CompletableDeferred<String>? = null
+            var triedCount = 0
 
-                is CommentContext.Reply ->
-                    bangumiCommentService.postEpisodeComment(episodeId.value, content, context.commentId)
+            coroutineScope {
+                val tokenCollectJob = launch {
+                    turnstileState.tokenFlow.collectLatest {
+                        turnstileResponse?.complete(it)
+                    }
+                }
 
-                is CommentContext.SubjectReview -> {} // TODO: send subject comment
+                launch {
+                    while (triedCount < 3) {
+                        withContext(Dispatchers.Main) { turnstileState.reload() }
+                        val turnstileToken = CompletableDeferred<String>()
+                            .also { turnstileResponse = it }
+                            .run { withTimeoutOrNull(10000L.milliseconds) { await() } }
+
+                        if (turnstileToken == null) {
+                            triedCount++
+                            continue
+                        }
+
+                        val response = when (context) {
+                            is CommentContext.Episode ->
+                                bangumiCommentService.postEpisodeComment(episodeId.value, content, turnstileToken)
+
+                            is CommentContext.Reply ->
+                                bangumiCommentService.postEpisodeComment(
+                                    episodeId.value,
+                                    content,
+                                    turnstileToken,
+                                    context.commentId,
+                                )
+
+                            is CommentContext.SubjectReview -> ApiResponse.success(Unit) // TODO: send subject comment
+                        }
+
+                        val error = response.failureOrNull()
+                        if (error == null) { // cancel all jobs in this scope to complete.
+                            tokenCollectJob.cancel()
+                            return@launch
+                        }
+                        if (error is ApiFailure.Unauthorized) {
+                            triedCount++
+                            continue
+                        } else {
+                            throw CancellationException("Sending command is cancelled, because API returned an error $error")
+                        }
+                    }
+                    throw CancellationException("Sending command is cancelled, because the maximum number of attempts is reached")
+                }
             }
         },
         backgroundScope = backgroundScope,

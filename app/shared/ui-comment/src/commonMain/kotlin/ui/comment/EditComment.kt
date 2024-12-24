@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -58,6 +59,7 @@ import me.him188.ani.app.ui.foundation.text.ProvideContentColor
 @Composable
 fun EditComment(
     state: CommentEditorState,
+    turnstileState: TurnstileState,
     modifier: Modifier = Modifier,
     focusRequester: FocusRequester = remember { FocusRequester() },
     stickerPanelHeight: Dp = EditCommentDefaults.MinStickerHeight.dp,
@@ -65,6 +67,7 @@ fun EditComment(
 ) {
     val scope = rememberCoroutineScope()
     val keyboard = LocalSoftwareKeyboardController.current
+    val sendingComment by state.sending.collectAsStateWithLifecycle(false)
 
     val imeVisible = isImeVisible()
     var previousImeVisible by remember { mutableStateOf(false) }
@@ -85,7 +88,7 @@ fun EditComment(
             EditCommentDefaults.ActionRow(
                 sendTarget = state.currentSendTarget,
                 previewing = state.previewing,
-                sending = state.sending.collectAsStateWithLifecycle(false).value,
+                sending = sendingComment,
                 onClickBold = { state.wrapSelectionWith("[b][/b]", 3) },
                 onClickItalic = { state.wrapSelectionWith("[i][/i]", 3) },
                 onClickUnderlined = { state.wrapSelectionWith("[u][/u]", 3) },
@@ -104,6 +107,7 @@ fun EditComment(
                 },
                 onSend = {
                     keyboard?.hide()
+                    state.toggleStickerPanelState(false)
                     scope.launch {
                         state.send()
                         onSendComplete()
@@ -122,6 +126,10 @@ fun EditComment(
                     },
                 )
             }
+        },
+        captcha = {
+            if (!sendingComment) return@EditCommentScaffold
+            Turnstile(turnstileState, Modifier.wrapContentSize())
         },
         expanded = state.expandButtonState,
         onClickExpand = { state.editExpanded = it },
@@ -166,6 +174,7 @@ fun EditComment(
  * @param onClickExpand 点击展开按钮时触发该点击事件.
  * @param title 评论编辑标题, 一般显示 正在为哪个对象发送评论. see [EditCommentDefaults.Title].
  * @param content 评论编辑框. see [EditCommentDefaults.CommentTextField].
+ * @param captcha 发送评论时的验证码交互.
  */
 @Composable
 fun EditCommentScaffold(
@@ -175,6 +184,7 @@ fun EditCommentScaffold(
     modifier: Modifier = Modifier,
     expanded: Boolean? = null,
     title: (@Composable () -> Unit)? = null,
+    captcha: @Composable () -> Unit = {},
     contentColor: Color = Color.Unspecified,
     content: @Composable ColumnScope.(previewing: Boolean) -> Unit,
 ) {
@@ -211,6 +221,9 @@ fun EditCommentScaffold(
             }
             
         }
+
+        captcha()
+        
         Column {
             actionRow()
         }
