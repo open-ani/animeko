@@ -59,13 +59,13 @@ import io.github.typesafegithub.workflows.actions.timheuer.Base64ToFile_Untyped
 import io.github.typesafegithub.workflows.domain.AbstractResult
 import io.github.typesafegithub.workflows.domain.ActionStep
 import io.github.typesafegithub.workflows.domain.CommandStep
+import io.github.typesafegithub.workflows.domain.Job
 import io.github.typesafegithub.workflows.domain.JobOutputs
 import io.github.typesafegithub.workflows.domain.RunnerType
 import io.github.typesafegithub.workflows.domain.Step
 import io.github.typesafegithub.workflows.domain.triggers.PullRequest
 import io.github.typesafegithub.workflows.domain.triggers.Push
 import io.github.typesafegithub.workflows.dsl.JobBuilder
-import io.github.typesafegithub.workflows.dsl.expressions.Contexts
 import io.github.typesafegithub.workflows.dsl.expressions.ExpressionContext
 import io.github.typesafegithub.workflows.dsl.expressions.contexts.GitHubContext
 import io.github.typesafegithub.workflows.dsl.expressions.contexts.SecretsContext
@@ -81,15 +81,26 @@ check(KotlinVersion.CURRENT.isAtLeast(2, 0, 0)) {
     "This script requires Kotlin 2.0.0 or later"
 }
 
-object OS {
-    const val WINDOWS = "windows"
-    const val UBUNTU = "ubuntu"
-    const val MACOS = "macos"
+enum class OS {
+    windows,
+    ubuntu,
+    macos;
+
+    companion object {
+        val WINDOWS get() = windows
+        val UBUNTU get() = ubuntu
+        val MACOS get() = macos
+    }
 }
 
-object Arch {
-    const val X64 = "x64"
-    const val AARCH64 = "aarch64"
+enum class Arch {
+    x64,
+    aarch64;
+
+    companion object {
+        val X64 get() = x64
+        val AARCH64 get() = aarch64
+    }
 }
 
 //enum class AndroidArch(
@@ -124,31 +135,31 @@ class MatrixInstance(
     /**
      * 用于 matrix 的 id
      */
-    val id: String,
+    val runner: Runner,
     /**
      * 显示的名字, 不能变更, 否则会导致 PR Rules 失效
      */
-    val name: String,
+    val name: String = runner.name,
     /**
      * GitHub Actions 的规范名称, e.g. `ubuntu-20.04`, `windows-2019`.
      */
-    val runsOn: List<String>,
+    val runsOn: Set<String> = runner.labels,
 
     /**
      * 只在脚本内部判断 OS 使用, 不影响 github 调度机器
      * @see OS
      */
-    val os: String,
+    val os: OS = runner.os,
     /**
      * 只在脚本内部判断 OS 使用, 不影响 github 调度机器
      * @see Arch
      */
-    val arch: String,
+    val arch: Arch = runner.arch,
 
     /**
      * `false` = GitHub Actions 的免费机器
      */
-    val selfHosted: Boolean,
+    val selfHosted: Boolean = runner is Runner.SelfHosted,
     /**
      * 有一台机器是 true 就行
      */
@@ -239,15 +250,111 @@ class MatrixInstance(
 @Suppress("PropertyName")
 val ANI_ANDROID_ABIS = "ani.android.abis"
 
+sealed class Runner(
+    val id: String,
+    val name: String,
+    val os: OS,
+    val arch: Arch,
+    // GitHub Actions labels, e.g. `windows-2019`, `macos-13`, `self-hosted`, `Windows`, `X64`
+    val labels: Set<String>,
+) {
+    // Intermediate sealed classes
+    sealed class GithubHosted(
+        id: String,
+        displayName: String,
+        os: OS,
+        arch: Arch,
+        labels: Set<String>
+    ) : Runner(id, displayName, os, arch, labels)
+
+    sealed class SelfHosted(
+        id: String,
+        displayName: String,
+        os: OS,
+        arch: Arch,
+        labels: Set<String>
+    ) : Runner(id, displayName, os, arch, labels)
+
+    // Objects under GithubHosted
+    object GithubWindowsServer2019 : GithubHosted(
+        id = "github-windows-2019",
+        displayName = "Windows Server 2019 x86_64 (GitHub)",
+        os = OS.WINDOWS,
+        arch = Arch.X64,
+        labels = setOf("windows-2019"),
+    )
+
+    object GithubWindowsServer2022 : GithubHosted(
+        id = "github-windows-2022",
+        displayName = "Windows Server 2022 x86_64 (GitHub)",
+        os = OS.WINDOWS,
+        arch = Arch.X64,
+        labels = setOf("windows-2022"),
+    )
+
+    object GithubMacOS13 : GithubHosted(
+        id = "github-macos-13",
+        displayName = "macOS 13 x86_64 (GitHub)",
+        os = OS.MACOS,
+        arch = Arch.X64,
+        labels = setOf("macos-13"),
+    )
+
+    object GithubMacOS14 : GithubHosted(
+        id = "github-macos-14",
+        displayName = "macOS 14 AArch64 (GitHub)",
+        os = OS.MACOS,
+        arch = Arch.AARCH64,
+        labels = setOf("macos-14"),
+    )
+
+    object GithubUbuntu2004 : GithubHosted(
+        id = "github-ubuntu-2004",
+        displayName = "Ubuntu 20.04 x86_64 (GitHub)",
+        os = OS.UBUNTU,
+        arch = Arch.X64,
+        labels = setOf("ubuntu-20.04"),
+    )
+
+    // Objects under SelfHosted
+    object SelfHostedWindows10 : SelfHosted(
+        id = "self-hosted-windows-10",
+        displayName = "Windows 10 x86_64 (Self-Hosted)",
+        os = OS.WINDOWS,
+        arch = Arch.X64,
+        labels = setOf("self-hosted", "Windows", "X64"),
+    )
+
+    object SelfHostedMacOS15 : SelfHosted(
+        id = "self-hosted-macos-15",
+        displayName = "macOS 15 AArch64 (Self-Hosted)",
+        os = OS.MACOS,
+        arch = Arch.AARCH64,
+        labels = setOf("self-hosted", "macOS", "ARM64"),
+    )
+
+//    companion object {
+//        val entries: List<Runner> = listOf(
+//            GithubWindowsServer2019,
+//            GithubWindowsServer2022,
+//            GithubMacOS13,
+//            GithubMacOS14,
+//            GithubUbuntu2004,
+//            SelfHostedWindows10,
+//            SelfHostedMacOS15,
+//        )
+//    }
+
+    override fun toString(): String = id
+}
+
+val Runner.isSelfHosted: Boolean
+    get() = this is Runner.SelfHosted
+
 // Machines for Build and Release
 val buildMatrixInstances = listOf(
     MatrixInstance(
-        id = "windows-self-hosted",
-        name = "Windows 10 x86_64",
-        runsOn = listOf("self-hosted", "Windows", "X64"),
-        os = OS.WINDOWS,
-        arch = Arch.X64,
-        selfHosted = true,
+        runner = Runner.SelfHostedWindows10,
         uploadApk = false,
         buildAnitorrent = true,
         buildAnitorrentSeparately = false, // windows 单线程构建 anitorrent, 要一起跑节约时间
@@ -262,12 +369,8 @@ val buildMatrixInstances = listOf(
         buildAllAndroidAbis = false,
     ),
     MatrixInstance(
-        id = "windows-2019",
+        runner = Runner.GithubWindowsServer2019,
         name = "Windows Server 2019 x86_64",
-        runsOn = listOf("windows-2019"),
-        os = OS.WINDOWS,
-        arch = Arch.X64,
-        selfHosted = false,
         uploadApk = false,
         buildAnitorrent = true,
         buildAnitorrentSeparately = false, // windows 单线程构建 anitorrent, 要一起跑节约时间
@@ -281,12 +384,8 @@ val buildMatrixInstances = listOf(
         buildAllAndroidAbis = false,
     ),
     MatrixInstance(
-        id = "ubuntu-x64",
+        runner = Runner.GithubUbuntu2004,
         name = "Ubuntu x86_64 (Compile only)",
-        runsOn = listOf("ubuntu-20.04"),
-        os = OS.UBUNTU,
-        arch = Arch.X64,
-        selfHosted = false,
         uploadApk = false,
         buildAnitorrent = false,
         buildAnitorrentSeparately = false,
@@ -299,12 +398,7 @@ val buildMatrixInstances = listOf(
         buildAllAndroidAbis = true,
     ),
     MatrixInstance(
-        id = "macos-x64",
-        name = "macOS x86_64",
-        runsOn = listOf("macos-13"),
-        os = OS.MACOS,
-        arch = Arch.X64,
-        selfHosted = false,
+        runner = Runner.GithubMacOS13,
         uploadApk = true, // all ABIs
         buildAnitorrent = true,
         buildAnitorrentSeparately = true,
@@ -316,12 +410,7 @@ val buildMatrixInstances = listOf(
         buildAllAndroidAbis = true,
     ),
     MatrixInstance(
-        id = "macos-aarch64",
-        name = "macOS AArch64",
-        runsOn = listOf("self-hosted", "macOS", "ARM64"),
-        os = OS.MACOS,
-        arch = Arch.AARCH64,
-        selfHosted = true,
+        runner = Runner.SelfHostedMacOS15,
         uploadApk = true, // upload arm64-v8a once finished
         buildAnitorrent = true,
         buildAnitorrentSeparately = true,
@@ -406,38 +495,44 @@ class BuildJobOutputs : JobOutputs() {
     var windowsX64PortableUrl by output()
 }
 
-val buildJobBody: JobBuilder<BuildJobOutputs>.() -> Unit = {
+fun getBuildJobBody(matrix: MatrixInstance): JobBuilder<BuildJobOutputs>.() -> Unit = {
     uses(action = Checkout(submodules_Untyped = "recursive"))
 
-    freeSpace()
-    installJbr21()
-    installNativeDeps()
-    chmod777()
-    setupGradle()
+    with(WithMatrix(matrix)) {
+        freeSpace()
+        installJbr21()
+        installNativeDeps()
+        chmod777()
+        setupGradle()
 
-    runGradle(
-        name = "Update dev version name",
-        tasks = ["updateDevVersionNameFromGit"],
-    )
+        runGradle(
+            name = "Update dev version name",
+            tasks = ["updateDevVersionNameFromGit"],
+        )
 
-    val prepareSigningKey = prepareSigningKey()
-    buildAnitorrent()
-    compileAndAssemble()
-    buildAndroidApk(prepareSigningKey)
-    gradleCheck()
-    uploadAnitorrent()
-    val packageOutputs = packageDesktopAndUpload()
-    jobOutputs.macosAarch64DmgSuccess = packageOutputs.macosAarch64DmgOutcome.eq(AbstractResult.Status.Success)
-    jobOutputs.macosAarch64DmgUrl = packageOutputs.macosAarch64DmgUrl
-    jobOutputs.windowsX64PortableSuccess = packageOutputs.windowsX64PortableOutcome.eq(AbstractResult.Status.Success)
-    jobOutputs.windowsX64PortableUrl = packageOutputs.windowsX64PortableUrl
-    cleanupTempFiles()
+        val prepareSigningKey = prepareSigningKey()
+        buildAnitorrent()
+        compileAndAssemble()
+        prepareSigningKey?.let {
+            buildAndroidApk(it)
+        }
+        gradleCheck()
+        uploadAnitorrent()
+        val packageOutputs = packageDesktopAndUpload()
+        jobOutputs.macosAarch64DmgSuccess =
+            packageOutputs.macosAarch64DmgOutcome?.eq(AbstractResult.Status.Success) ?: "false"
+        jobOutputs.macosAarch64DmgUrl = packageOutputs.macosAarch64DmgUrl.orEmpty()
+        jobOutputs.windowsX64PortableSuccess =
+            packageOutputs.windowsX64PortableOutcome?.eq(AbstractResult.Status.Success) ?: "false"
+        jobOutputs.windowsX64PortableUrl = packageOutputs.windowsX64PortableUrl.orEmpty()
+        cleanupTempFiles()
+    }
 }
 
 fun getVerifyJobBody(
     buildJobOutputs: BuildJobOutputs,
-    os: String,
-    arch: String
+    os: OS,
+    arch: Arch
 ): JobBuilder<JobOutputs.EMPTY>.() -> Unit = {
     uses(action = Checkout()) // not recursive
 
@@ -462,12 +557,11 @@ fun getVerifyJobBody(
             // macos aarch64
             kotlin.run {
                 run(
-                    name = $$"Download ani.dmg for $${expr { matrix.id }}",
+                    name = $$"Download ani.dmg",
                     command = shell(
                         // Include GITHUB_TOKEN
                         $$"""curl -H "Authorization: Bearer $GITHUB_TOKEN" -L "$${buildJobOutputs.macosAarch64DmgUrl}" -o ani.dmg""",
                     ),
-                    `if` = expr { matrix.isMacOS and matrix.isAArch64 },
                     env = mapOf(
                         "GITHUB_TOKEN" to expr { secrets.GITHUB_TOKEN },
                     ),
@@ -475,13 +569,14 @@ fun getVerifyJobBody(
 
                 tasksToExecute.forEach { task ->
                     run(
-                        name = $$"$${task.step} ($${expr { matrix.id }})",
-                        `if` = expr { matrix.isMacOS and matrix.isAArch64 },
+                        name = task.step,
                         command = shell($$"""./ci-helper/run-ani-test-macos-aarch64.sh ani.dmg $${task.name}"""),
                     )
                 }
             }
         }
+
+        else -> error("Unsupported OS and arch combination: $os $arch")
     }
 }
 
@@ -498,101 +593,58 @@ workflow(
     targetFileName = "build.yml",
     consistencyCheckJobConfig = ConsistencyCheckJobConfig.Disabled,
 ) {
-    val build = job(
-        id = "build",
-        name = """Build (${expr { matrix.name }})""",
-        runsOn = RunnerType.Custom(expr { matrix.runsOn }),
-        _customArguments = generateStrategy(buildMatrixInstances.filterNot { it.selfHosted }),
-        outputs = BuildJobOutputs(),
-        block = buildJobBody,
-    )
+    fun addVerifyJob(build: Job<BuildJobOutputs>, runner: Runner, ifExpr: String) {
+        job(
+            id = "verify_${runner.id}",
+            name = """Verify (${runner.name})""",
+            needs = listOf(build),
+            `if` = if (runner.isSelfHosted) {
+                expr { github.isAnimekoRepository and ifExpr }
+            } else {
+                expr { ifExpr }
+            },
+            runsOn = RunnerType.Labelled(runner.labels),
+            block = getVerifyJobBody(build.outputs, runner.os, runner.arch),
+        )
+    }
 
-    // Expanded at compile-time so that we set job-level `if` condition. 
-    // If a job is skipped, you will see a gray item on the GitHub Actions page. 
-    // If a step is skipped, you will still see green jobs.
-    job(
-        id = "verify_github-windows-2019",
-        name = """Verify (Windows Server 2019 x86_64 (GitHub))""",
-        needs = listOf(build),
-        `if` = expr { build.outputs.windowsX64PortableSuccess },
-        runsOn = RunnerType.Labelled("windows-2019"),
-        block = getVerifyJobBody(build.outputs, OS.WINDOWS, Arch.X64),
-    )
-    job(
-        id = "verify_github-windows-2022",
-        name = """Verify (Windows Server 2022 x86_64 (GitHub))""",
-        needs = listOf(build),
-        `if` = expr { build.outputs.windowsX64PortableSuccess },
-        runsOn = RunnerType.Labelled("windows-2022"),
-        block = getVerifyJobBody(build.outputs, OS.WINDOWS, Arch.X64),
-    )
+    // Expands job matrix at compile-time so that we set job-level `if` condition. 
+    val builds: List<Pair<MatrixInstance, Job<BuildJobOutputs>>> = buildMatrixInstances.map { matrix ->
+        matrix to job(
+            id = "build_${matrix.runner.id}",
+            name = """Build (${matrix.name})""",
+            runsOn = RunnerType.Labelled(matrix.runsOn),
+            `if` = if (matrix.selfHosted) {
+                expr { github.isAnimekoRepository }
+            } else {
+                null // always
+            },
+            outputs = BuildJobOutputs(),
+            block = getBuildJobBody(matrix),
+        )
+    }
 
-//    verifyMatrixInstancesGithub.forEach { machine ->
-//        job(
-//            id = "verify_${machine.id}",
-//            name = """Verify (${machine.name})""",
-//            needs = listOf(build),
-//            `if` = expr { build.outputs.macosAarch64DmgSuccess },
-//            runsOn = RunnerType.Labelled(machine.runsOn.toSet()),
-//            block = getVerifyJobBody(build.outputs),
-//        )
-//    }
+    builds[Runner.GithubWindowsServer2019].let { build ->
+        listOf(
+            Runner.GithubWindowsServer2019,
+            Runner.GithubWindowsServer2022,
+            Runner.SelfHostedWindows10,
+        ).forEach { runner ->
+            addVerifyJob(build, runner, build.outputs.windowsX64PortableSuccess)
+        }
+    }
+    builds[Runner.SelfHostedMacOS15].let { build ->
+        listOf(
+            Runner.SelfHostedMacOS15,
+            Runner.GithubMacOS14,
+        ).forEach { runner ->
+            addVerifyJob(build, runner, build.outputs.macosAarch64DmgSuccess)
+        }
+    }
+}
 
-    // below is self-hosted
-    val buildOnSelfHosted = job(
-        id = "build_self_hosted",
-        name = """Build (${expr { matrix.name }})""",
-        runsOn = RunnerType.Custom(expr { matrix.runsOn }),
-        `if` = expr { github.isAnimekoRepository },
-        _customArguments = generateStrategy(buildMatrixInstances.filter { it.selfHosted }),
-        outputs = BuildJobOutputs(),
-        block = buildJobBody,
-    )
-    job(
-        id = "verify_self_hosted-windows-10",
-        name = """Verify (Windows 10 x86_64 (Self-Hosted))""",
-        needs = listOf(buildOnSelfHosted),
-        `if` = expr { buildOnSelfHosted.outputs.windowsX64PortableSuccess },
-        runsOn = RunnerType.Labelled("self-hosted", "Windows", "X64"),
-        block = getVerifyJobBody(buildOnSelfHosted.outputs, OS.WINDOWS, Arch.X64),
-    )
-    job(
-        id = "verify_self_hosted-macos-15",
-        name = """Verify (macOS 15 AArch64 (Self-Hosted))""",
-        needs = listOf(buildOnSelfHosted),
-        `if` = expr { buildOnSelfHosted.outputs.macosAarch64DmgSuccess },
-        runsOn = RunnerType.Labelled("self-hosted", "macOS", "ARM64"),
-        block = getVerifyJobBody(buildOnSelfHosted.outputs, OS.MACOS, Arch.AARCH64),
-    )
-    job(
-        // AArch64 DMGs are built on self-hosted, so we can only verify them on self-hosted
-        id = "verify_github-macos-14",
-        name = """Verify (macOS 14 AArch64 (GitHub))""",
-        needs = listOf(buildOnSelfHosted),
-        `if` = expr { buildOnSelfHosted.outputs.macosAarch64DmgSuccess },
-        runsOn = RunnerType.Labelled("macos-14"),
-        block = getVerifyJobBody(buildOnSelfHosted.outputs, OS.MACOS, Arch.AARCH64),
-    )
-//    verifyMatrixInstancesGithub.forEach { machine ->
-//        job(
-//            id = "verify_self_hosted_${machine.id}",
-//            name = """Verify (${machine.name})""",
-//            needs = listOf(buildOnSelfHosted),
-//            `if` = expr { build.outputs.macosAarch64DmgSuccess },
-//            runsOn = RunnerType.Labelled(machine.runsOn.toSet()),
-//            block = getVerifyJobBody(build.outputs),
-//        )
-//    }
-
-//    job(
-//        id = "verify_self_hosted",
-//        name = """Verify (${expr { matrix.name }})""",
-//        needs = listOf(build, buildOnSelfHosted),
-//        `if` = expr { github.isAnimekoRepository },
-//        runsOn = RunnerType.Custom(expr { matrix.runsOn }),
-//        _customArguments = generateStrategy(buildMatrixInstances.filterNot { it.selfHosted }),
-//        block = getVerifyJobBody(buildOnSelfHosted.outputs),
-//    )
+operator fun List<Pair<MatrixInstance, Job<BuildJobOutputs>>>.get(runner: Runner): Job<BuildJobOutputs> {
+    return first { it.first.runner == runner }.second
 }
 
 workflow(
@@ -604,17 +656,20 @@ workflow(
     targetFileName = "build_pr.yml",
     consistencyCheckJobConfig = ConsistencyCheckJobConfig.Disabled,
 ) {
-    job(
-        id = "build",
-        name = expr { matrix.name },
-        runsOn = RunnerType.Custom(expr { matrix.runsOn }),
-        _customArguments = generateStrategy(buildMatrixInstances.filterNot { it.selfHosted }),
-        outputs = BuildJobOutputs(),
-        block = buildJobBody,
-    )
+    buildMatrixInstances.filterNot { it.selfHosted }.map { matrix ->
+        matrix to job(
+            id = "build_${matrix.runner.id}",
+            name = """Build (${matrix.name})""",
+            runsOn = RunnerType.Labelled(matrix.runsOn),
+            outputs = BuildJobOutputs(),
+            block = getBuildJobBody(matrix),
+        )
+    }
 
     // No self-hosted for security. Only direct pushes to the repository branches will trigger the self-hosted jobs.
     // Organization members always push to a branch to create a fork and that will trigger a `Push` event that runs on self-hosted.
+
+    // TODO verify
 }
 
 workflow(
@@ -681,65 +736,65 @@ workflow(
 
     val matrixInstancesForRelease = buildMatrixInstances.filterNot { it.os == OS.UBUNTU }
 
-    val jobBody: JobBuilder<JobOutputs.EMPTY>.() -> Unit = {
-        uses(action = Checkout(submodules_Untyped = "recursive"))
+    fun addJob(matrix: MatrixInstance) = with(WithMatrix(matrix)) {
+        val jobBody: JobBuilder<JobOutputs.EMPTY>.() -> Unit = {
+            uses(action = Checkout(submodules_Untyped = "recursive"))
 
-        val gitTag = getGitTag()
+            val gitTag = getGitTag()
 
-        freeSpace()
-        installJbr21()
-        installNativeDeps()
-        chmod777()
-        setupGradle()
+            freeSpace()
+            installJbr21()
+            installNativeDeps()
+            chmod777()
+            setupGradle()
 
-        runGradle(
-            name = "Update Release Version Name",
-            tasks = ["updateReleaseVersionNameFromGit"],
-            env = mapOf(
-                "GITHUB_TOKEN" to expr { secrets.GITHUB_TOKEN },
-                "GITHUB_REPOSITORY" to expr { secrets.GITHUB_REPOSITORY },
-                "CI_RELEASE_ID" to expr { createRelease.outputs.id },
-                "CI_TAG" to expr { gitTag.tagExpr },
-            ),
-        )
+            runGradle(
+                name = "Update Release Version Name",
+                tasks = ["updateReleaseVersionNameFromGit"],
+                env = mapOf(
+                    "GITHUB_TOKEN" to expr { secrets.GITHUB_TOKEN },
+                    "GITHUB_REPOSITORY" to expr { secrets.GITHUB_REPOSITORY },
+                    "CI_RELEASE_ID" to expr { createRelease.outputs.id },
+                    "CI_TAG" to expr { gitTag.tagExpr },
+                ),
+            )
 
-        val prepareSigningKey = prepareSigningKey()
-        buildAnitorrent()
-        compileAndAssemble()
+            val prepareSigningKey = prepareSigningKey()
+            buildAnitorrent()
+            compileAndAssemble()
 
-        buildAndroidApk(prepareSigningKey)
-        // No Check. We've already checked in build
+            prepareSigningKey?.let {
+                buildAndroidApk(it)
+            }
+            // No Check. We've already checked in build
 
-        with(
-            CIHelper(
-                releaseIdExpr = createRelease.outputs.id,
-                gitTag,
-            ),
-        ) {
-            uploadAndroidApkToCloud()
-            generateQRCodeAndUpload()
-            uploadDesktopInstallers()
-            uploadComposeLogs()
+            with(
+                CIHelper(
+                    releaseIdExpr = createRelease.outputs.id,
+                    gitTag,
+                ),
+            ) {
+                uploadAndroidApkToCloud()
+                generateQRCodeAndUpload()
+                uploadDesktopInstallers()
+                uploadComposeLogs()
+            }
+            cleanupTempFiles()
         }
-        cleanupTempFiles()
+
+        job(
+            id = "release_${matrix.runner.id}",
+            name = matrix.name,
+            needs = listOf(createRelease),
+            runsOn = RunnerType.Labelled(matrix.runsOn),
+            `if` = if (matrix.selfHosted) expr { github.isAnimekoRepository } else null, // Don't run on forks
+            block = jobBody,
+        )
     }
-    job(
-        id = "release",
-        name = expr { matrix.name },
-        needs = listOf(createRelease),
-        runsOn = RunnerType.Custom(expr { matrix.runsOn }),
-        _customArguments = generateStrategy(matrixInstancesForRelease.filterNot { it.selfHosted }),
-        block = jobBody,
-    )
-    job(
-        id = "release_self_hosted",
-        name = expr { matrix.name } + " (fork)",
-        needs = listOf(createRelease),
-        runsOn = RunnerType.Custom(expr { matrix.runsOn }),
-        `if` = expr { github.isAnimekoRepository }, // Don't run on forks
-        _customArguments = generateStrategy(matrixInstancesForRelease.filter { it.selfHosted }),
-        block = jobBody,
-    )
+
+    for (matrix in matrixInstancesForRelease) {
+        addJob(matrix)
+    }
 }
 
 data class GitTag(
@@ -773,62 +828,66 @@ fun JobBuilder<*>.getGitTag(): GitTag {
     )
 }
 
-fun JobBuilder<*>.runGradle(
-    name: String? = null,
-    `if`: String? = null,
-    @Language("shell", prefix = "./gradlew ") vararg tasks: String,
-    env: Map<String, String> = emptyMap(),
-): CommandStep = run(
-    name = name,
-    `if` = `if`,
-    command = shell(
-        buildString {
-            append("./gradlew ")
-            tasks.joinTo(this, " ")
-            append(' ')
-            append(expr { matrix.gradleArgs })
-        },
-    ),
-    env = env,
-)
-
-/**
- * GitHub Actions 上给的硬盘比较少, 我们删掉一些不必要的文件来腾出空间.
- */
-fun JobBuilder<*>.freeSpace() {
-    run(
-        name = "Free space for macOS",
-        `if` = expr { matrix.isMacOS and !matrix.selfHosted },
-        command = shell($$"""chmod +x ./ci-helper/free-space-macos.sh && ./ci-helper/free-space-macos.sh"""),
-        continueOnError = true,
-    )
-}
-
-fun JobBuilder<*>.installJbr21() {
-    // For mac
-    val jbrUrl = "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz"
-    val jbrChecksumUrl =
-        "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz.checksum"
-
-    val jbrFilename = jbrUrl.substringAfterLast('/')
-
-    val jbrLocationExpr = run(
-        name = "Resolve JBR location",
-        `if` = expr { matrix.isMacOSAArch64 },
+class WithMatrix(
+    val matrix: MatrixInstance
+) {
+    fun JobBuilder<*>.runGradle(
+        name: String? = null,
+        `if`: String? = null,
+        @Language("shell", prefix = "./gradlew ") vararg tasks: String,
+        env: Map<String, String> = emptyMap(),
+    ): CommandStep = run(
+        name = name,
+        `if` = `if`,
         command = shell(
-            $$"""
+            buildString {
+                append("./gradlew ")
+                tasks.joinTo(this, " ")
+                append(' ')
+                append(matrix.gradleArgs)
+            },
+        ),
+        env = env,
+    )
+
+    /**
+     * GitHub Actions 上给的硬盘比较少, 我们删掉一些不必要的文件来腾出空间.
+     */
+    fun JobBuilder<*>.freeSpace() {
+        if (matrix.isMacOS && !matrix.selfHosted) {
+            run(
+                name = "Free space for macOS",
+                command = shell($$"""chmod +x ./ci-helper/free-space-macos.sh && ./ci-helper/free-space-macos.sh"""),
+                continueOnError = true,
+            )
+        }
+    }
+
+    fun JobBuilder<*>.installJbr21() {
+        // For mac
+        val jbrUrl = "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz"
+        val jbrChecksumUrl =
+            "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz.checksum"
+
+        val jbrFilename = jbrUrl.substringAfterLast('/')
+
+        when (matrix.runner.os to matrix.runner.arch) {
+            OS.MACOS to Arch.AARCH64 -> {
+                val jbrLocationExpr = run(
+                    name = "Resolve JBR location",
+                    command = shell(
+                        $$"""
             # Expand jbrLocationExpr
             jbr_location_expr=$(eval echo $${expr { runner.tool_cache } + "/" + jbrFilename})
             echo "jbrLocation=$jbr_location_expr" >> $GITHUB_OUTPUT
             """.trimIndent(),
-        ),
-    ).outputs["jbrLocation"]
+                    ),
+                ).outputs["jbrLocation"]
 
-    run(
-        name = "Get JBR 21 for macOS AArch64",
-        `if` = expr { matrix.isMacOSAArch64 },
-        command = shell(
-            $$"""
+                run(
+                    name = "Get JBR 21 for macOS AArch64",
+                    command = shell(
+                        $$"""
         jbr_location="$jbrLocation"
         checksum_url="$$jbrChecksumUrl"
         checksum_file="checksum.tmp"
@@ -855,364 +914,395 @@ fun JobBuilder<*>.installJbr21() {
         rm -f $checksum_file
         file "$jbr_location"
     """.trimIndent(),
-        ),
-        env = mapOf(
-            "jbrLocation" to expr { jbrLocationExpr },
-        ),
-    )
+                    ),
+                    env = mapOf(
+                        "jbrLocation" to expr { jbrLocationExpr },
+                    ),
+                )
 
-    uses(
-        name = "Setup JBR 21 for macOS AArch64",
-        `if` = expr { matrix.isMacOSAArch64 },
-        action = SetupJava_Untyped(
-            distribution_Untyped = "jdkfile",
-            javaVersion_Untyped = "21",
-            jdkFile_Untyped = expr { jbrLocationExpr },
-        ),
-        env = mapOf("GITHUB_TOKEN" to expr { secrets.GITHUB_TOKEN }),
-    )
+                uses(
+                    name = "Setup JBR 21 for macOS AArch64",
+                    action = SetupJava_Untyped(
+                        distribution_Untyped = "jdkfile",
+                        javaVersion_Untyped = "21",
+                        jdkFile_Untyped = expr { jbrLocationExpr },
+                    ),
+                    env = mapOf("GITHUB_TOKEN" to expr { secrets.GITHUB_TOKEN }),
+                )
+            }
 
-    // For Windows + Ubuntu
-    uses(
-        name = "Setup JBR 21 for other OS",
-        `if` = expr { !matrix.isMacOSAArch64 },
-        action = SetupJava_Untyped(
-            distribution_Untyped = "jetbrains",
-            javaVersion_Untyped = "21",
-        ),
-        env = mapOf("GITHUB_TOKEN" to expr { secrets.GITHUB_TOKEN }),
-    )
+            else -> {
+                // For Windows + Ubuntu
+                uses(
+                    name = "Setup JBR 21 for other OS",
+                    action = SetupJava_Untyped(
+                        distribution_Untyped = "jetbrains",
+                        javaVersion_Untyped = "21",
+                    ),
+                    env = mapOf("GITHUB_TOKEN" to expr { secrets.GITHUB_TOKEN }),
+                )
+            }
+        }
 
-    run(
-        command = shell($$"""echo "jvm.toolchain.version=21" >> local.properties"""),
-    )
-}
+        run(
+            command = shell($$"""echo "jvm.toolchain.version=21" >> local.properties"""),
+        )
+    }
 
-fun JobBuilder<*>.installNativeDeps() {
-    // Windows
-    uses(
-        name = "Setup vcpkg cache",
-        `if` = expr { matrix.isWindows and matrix.installNativeDeps },
-        action = GithubScript(
-            script = """
+    fun JobBuilder<*>.installNativeDeps() {
+        // Windows
+        if (matrix.isWindows and matrix.installNativeDeps) {
+            uses(
+                name = "Setup vcpkg cache",
+                action = GithubScript(
+                    script = """
                 core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
                 core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
             """.trimIndent(),
-        ),
-    )
-    run(
-        name = "Install Native Dependencies for Windows",
-        `if` = expr { matrix.isWindows and matrix.installNativeDeps },
-        command = "./ci-helper/install-deps-windows.cmd",
-        env = mapOf("VCPKG_BINARY_SOURCES" to "clear;x-gha,readwrite"),
-    )
+                ),
+            )
+            run(
+                name = "Install Native Dependencies for Windows",
+                command = "./ci-helper/install-deps-windows.cmd",
+                env = mapOf("VCPKG_BINARY_SOURCES" to "clear;x-gha,readwrite"),
+            )
+        }
 
-    // MacOS
-    run(
-        name = "Install Native Dependencies for MacOS",
-        `if` = expr { matrix.isMacOS and matrix.installNativeDeps },
-        command = shell($$"""chmod +x ./ci-helper/install-deps-macos-ci.sh && ./ci-helper/install-deps-macos-ci.sh"""),
-    )
-}
+        if (matrix.isMacOS and matrix.installNativeDeps) {
+            // MacOS
+            run(
+                name = "Install Native Dependencies for MacOS",
+                command = shell($$"""chmod +x ./ci-helper/install-deps-macos-ci.sh && ./ci-helper/install-deps-macos-ci.sh"""),
+            )
+        }
+    }
 
-fun JobBuilder<*>.chmod777() {
-    run(
-        `if` = expr { matrix.isUnix },
-        command = "chmod -R 777 .",
-    )
-}
+    fun JobBuilder<*>.chmod777() {
+        if (matrix.isUnix) {
+            run(
+                command = "chmod -R 777 .",
+            )
+        }
+    }
 
-fun JobBuilder<*>.setupGradle() {
-    uses(
-        name = "Setup Gradle",
-        action = ActionsSetupGradle(
-            cacheDisabled = true,
-        ),
-    )
-    uses(
-        name = "Clean and download dependencies",
-        action = Retry_Untyped(
-            maxAttempts_Untyped = "3",
-            timeoutMinutes_Untyped = "60",
-            command_Untyped = """./gradlew """ + expr { matrix.gradleArgs },
-        ),
-    )
-}
-
-fun JobBuilder<*>.prepareSigningKey(): ActionStep<Base64ToFile_Untyped.Outputs> {
-    return uses(
-        name = "Prepare signing key",
-        `if` = expr { github.isAnimekoRepository and !github.isPullRequest and matrix.uploadApk },
-        action = Base64ToFile_Untyped(
-            fileName_Untyped = "android_signing_key",
-            fileDir_Untyped = "./",
-            encodedString_Untyped = expr { secrets.SIGNING_RELEASE_STOREFILE },
-        ),
-        continueOnError = true,
-    )
-}
-
-fun JobBuilder<*>.buildAnitorrent() {
-    runGradle(
-        name = "Build Anitorrent for Desktop",
-        `if` = expr { matrix.buildAnitorrent and matrix.buildAnitorrentSeparately },
-        tasks = [
-            ":torrent:anitorrent:build",
-            ":torrent:anitorrent:anitorrent-native:buildAnitorrent",
-        ],
-    )
-
-    runGradle(
-        name = "Build Anitorrent for Android",
-        `if` = expr { matrix.buildAnitorrent },
-        tasks = [
-            ":torrent:anitorrent:anitorrent-native:buildAnitorrent",
-            "buildCMakeDebug",
-            "buildCMakeRelWithDebInfo",
-        ],
-    )
-}
-
-fun JobBuilder<*>.compileAndAssemble() {
-    runGradle(
-        name = "Compile Kotlin",
-        tasks = [
-            "compileKotlin",
-            "compileCommonMainKotlinMetadata",
-            "compileDebugKotlinAndroid",
-            "compileReleaseKotlinAndroid",
-            "compileJvmMainKotlinMetadata",
-            "compileKotlinDesktop",
-            "compileKotlinMetadata",
-        ],
-    )
-}
-
-fun JobBuilder<*>.buildAndroidApk(prepareSigningKey: ActionStep<Base64ToFile_Untyped.Outputs>) {
-    runGradle(
-        name = "Build Android Debug APKs",
-        `if` = expr { matrix.uploadApk },
-        tasks = [
-            "assembleDebug",
-        ],
-    )
-
-    for (arch in AndroidArch.entriesWithUniversal) {
+    fun JobBuilder<*>.setupGradle() {
         uses(
-            name = "Upload Android Debug APK $arch",
-            `if` = if (arch == AndroidArch.UNIVERSAL) {
-                expr { matrix.uploadApk and matrix.buildAllAndroidAbis }
+            name = "Setup Gradle",
+            action = ActionsSetupGradle(
+                cacheDisabled = true,
+            ),
+        )
+        uses(
+            name = "Clean and download dependencies",
+            action = Retry_Untyped(
+                maxAttempts_Untyped = "3",
+                timeoutMinutes_Untyped = "60",
+                command_Untyped = """./gradlew """ + matrix.gradleArgs,
+            ),
+        )
+    }
+
+    /**
+     * Returns the action step if it's enabled, otherwise returns `null`.
+     */
+    fun JobBuilder<*>.prepareSigningKey(): ActionStep<Base64ToFile_Untyped.Outputs>? {
+        return if (matrix.uploadApk) {
+            uses(
+                name = "Prepare signing key",
+                `if` = expr { github.isAnimekoRepository and !github.isPullRequest },
+                action = Base64ToFile_Untyped(
+                    fileName_Untyped = "android_signing_key",
+                    fileDir_Untyped = "./",
+                    encodedString_Untyped = expr { secrets.SIGNING_RELEASE_STOREFILE },
+                ),
+                continueOnError = true,
+            )
+        } else {
+            null
+        }
+    }
+
+    fun JobBuilder<*>.buildAnitorrent() {
+        if (matrix.buildAnitorrent and matrix.buildAnitorrentSeparately) {
+            runGradle(
+                name = "Build Anitorrent for Desktop",
+                tasks = [
+                    ":torrent:anitorrent:build",
+                    ":torrent:anitorrent:anitorrent-native:buildAnitorrent",
+                ],
+            )
+        }
+
+        if (matrix.buildAnitorrent) {
+            runGradle(
+                name = "Build Anitorrent for Android",
+                tasks = [
+                    ":torrent:anitorrent:anitorrent-native:buildAnitorrent",
+                    "buildCMakeDebug",
+                    "buildCMakeRelWithDebInfo",
+                ],
+            )
+        }
+    }
+
+    fun JobBuilder<*>.compileAndAssemble() {
+        runGradle(
+            name = "Compile Kotlin",
+            tasks = [
+                "compileKotlin",
+                "compileCommonMainKotlinMetadata",
+                "compileDebugKotlinAndroid",
+                "compileReleaseKotlinAndroid",
+                "compileJvmMainKotlinMetadata",
+                "compileKotlinDesktop",
+                "compileKotlinMetadata",
+            ],
+        )
+    }
+
+    fun JobBuilder<*>.buildAndroidApk(prepareSigningKey: ActionStep<Base64ToFile_Untyped.Outputs>) {
+        if (matrix.uploadApk) {
+            runGradle(
+                name = "Build Android Debug APKs",
+                tasks = [
+                    "assembleDebug",
+                ],
+            )
+        }
+
+        for (arch in AndroidArch.entriesWithUniversal) {
+            val shouldUpload = if (arch == AndroidArch.UNIVERSAL) {
+                matrix.uploadApk and matrix.buildAllAndroidAbis
             } else {
-                expr { matrix.uploadApk }
-            },
+                matrix.uploadApk
+            }
+            if (shouldUpload) {
+                uses(
+                    name = "Upload Android Debug APK $arch",
+                    action = UploadArtifact(
+                        name = "ani-android-${arch}-debug",
+                        path_Untyped = "app/android/build/outputs/apk/debug/android-${arch}-debug.apk",
+                        overwrite = true,
+                    ),
+                )
+            }
+        }
+
+        if (matrix.uploadApk) {
+            runGradle(
+                name = "Build Android Release APKs",
+                `if` = expr { github.isAnimekoRepository and !github.isPullRequest },
+                tasks = [
+                    "assembleRelease",
+                ],
+                env = mapOf(
+                    "signing_release_storeFileFromRoot" to expr { prepareSigningKey.outputs.filePath },
+                    "signing_release_storePassword" to expr { secrets.SIGNING_RELEASE_STOREPASSWORD },
+                    "signing_release_keyAlias" to expr { secrets.SIGNING_RELEASE_KEYALIAS },
+                    "signing_release_keyPassword" to expr { secrets.SIGNING_RELEASE_KEYPASSWORD },
+                ),
+            )
+        }
+
+        for (arch in AndroidArch.entriesWithUniversal) {
+            val shouldUpload = if (arch == AndroidArch.UNIVERSAL) {
+                matrix.uploadApk and matrix.buildAllAndroidAbis
+            } else {
+                matrix.uploadApk
+            }
+            if (shouldUpload) {
+                uses(
+                    name = "Upload Android Release APK $arch",
+                    action = UploadArtifact(
+                        name = "ani-android-${arch}-release",
+                        path_Untyped = "app/android/build/outputs/apk/release/android-${arch}-release.apk",
+                        overwrite = true,
+                    ),
+                )
+            }
+        }
+    }
+
+    fun JobBuilder<*>.gradleCheck() {
+        if (matrix.runTests) {
+            uses(
+                name = "Check",
+                action = Retry_Untyped(
+                    maxAttempts_Untyped = "2",
+                    timeoutMinutes_Untyped = "60",
+                    command_Untyped = "./gradlew check " + matrix.gradleArgs,
+                ),
+            )
+        }
+    }
+
+    fun JobBuilder<*>.uploadAnitorrent() {
+        uses(
+            name = "Upload Anitorrent CMakeCache.txt",
+            `if` = expr { always() },
             action = UploadArtifact(
-                name = "ani-android-${arch}-debug",
-                path_Untyped = "app/android/build/outputs/apk/debug/android-${arch}-debug.apk",
+                name = $"anitorrent-cmake-cache-${matrix.runner.id}",
+                path_Untyped = "torrent/anitorrent/build-ci/CMakeCache.txt",
+                overwrite = true,
+            ),
+        )
+        uses(
+            name = $"Upload Anitorrent ${matrix.runner.id}",
+            `if` = expr { always() },
+            action = UploadArtifact(
+                name = $"anitorrent-${matrix.runner.id}",
+                path_Untyped = "torrent/anitorrent/anitorrent-native/build",
                 overwrite = true,
             ),
         )
     }
 
-    runGradle(
-        name = "Build Android Release APKs",
-        `if` = expr { github.isAnimekoRepository and !github.isPullRequest and matrix.uploadApk },
-        tasks = [
-            "assembleRelease",
-        ],
-        env = mapOf(
-            "signing_release_storeFileFromRoot" to expr { prepareSigningKey.outputs.filePath },
-            "signing_release_storePassword" to expr { secrets.SIGNING_RELEASE_STOREPASSWORD },
-            "signing_release_keyAlias" to expr { secrets.SIGNING_RELEASE_KEYALIAS },
-            "signing_release_keyPassword" to expr { secrets.SIGNING_RELEASE_KEYPASSWORD },
-        ),
-    )
-
-    for (arch in AndroidArch.entriesWithUniversal) {
-        uses(
-            name = "Upload Android Release APK $arch",
-            `if` = if (arch == AndroidArch.UNIVERSAL) {
-                expr { matrix.uploadApk and matrix.buildAllAndroidAbis }
-            } else {
-                expr { matrix.uploadApk }
-            },
-            action = UploadArtifact(
-                name = "ani-android-${arch}-release",
-                path_Untyped = "app/android/build/outputs/apk/release/android-${arch}-release.apk",
-                overwrite = true,
-            ),
-        )
+    class PackageDesktopAndUploadOutputs {
+        // null means not enabled on this machine
+        var macosAarch64DmgOutcome: Step<*>.Outcome? = null
+        var macosAarch64DmgUrl: String? = null
+        var windowsX64PortableOutcome: Step<*>.Outcome? = null
+        var windowsX64PortableUrl: String? = null
     }
-}
 
-fun JobBuilder<*>.gradleCheck() {
-    uses(
-        name = "Check",
-        `if` = expr { matrix.runTests },
-        action = Retry_Untyped(
-            maxAttempts_Untyped = "2",
-            timeoutMinutes_Untyped = "60",
-            command_Untyped = "./gradlew check " + expr { matrix.gradleArgs },
-        ),
-    )
-}
+    fun JobBuilder<*>.packageDesktopAndUpload(): PackageDesktopAndUploadOutputs {
+        if (matrix.uploadDesktopInstallers and !matrix.isMacOSX64) {
+            runGradle(
+                name = "Package Desktop",
+                tasks = [
+                    "packageReleaseDistributionForCurrentOS",
+                ],
+            )
+        }
 
-fun JobBuilder<*>.uploadAnitorrent() {
-    uses(
-        name = "Upload Anitorrent CMakeCache.txt",
-        `if` = expr { always() },
-        action = UploadArtifact(
-            name = $"anitorrent-cmake-cache-${expr { matrix.id }}",
-            path_Untyped = "torrent/anitorrent/build-ci/CMakeCache.txt",
-            overwrite = true,
-        ),
-    )
-    uses(
-        name = $"Upload Anitorrent ${expr { matrix.id }}",
-        `if` = expr { always() },
-        action = UploadArtifact(
-            name = $"anitorrent-${expr { matrix.id }}",
-            path_Untyped = "torrent/anitorrent/anitorrent-native/build",
-            overwrite = true,
-        ),
-    )
-}
-
-class PackageDesktopAndUploadOutputs {
-    lateinit var macosAarch64DmgOutcome: Step<*>.Outcome
-    lateinit var macosAarch64DmgUrl: String
-    lateinit var windowsX64PortableOutcome: Step<*>.Outcome
-    lateinit var windowsX64PortableUrl: String
-}
-
-fun JobBuilder<*>.packageDesktopAndUpload(): PackageDesktopAndUploadOutputs {
-    runGradle(
-        name = "Package Desktop",
-        `if` = expr { matrix.uploadDesktopInstallers and !matrix.isMacOSX64 },
-        tasks = [
-            "packageReleaseDistributionForCurrentOS",
-        ],
-    )
-
-    uploadComposeLogs()
+        uploadComposeLogs()
 
 //    uses(
 //        name = "Upload macOS portable",
-//        `if` = expr { matrix.uploadDesktopInstallers and matrix.isMacOS },
+//        `if` = matrix.uploadDesktopInstallers and matrix.isMacOS,
 //        action = UploadArtifact(
-//            name = "ani-macos-portable-${expr { matrix.arch }}",
+//            name = "ani-macos-portable-${matrix.arch}",
 //            path_Untyped = "app/desktop/build/compose/binaries/main-release/app/Ani.app",
 //        ),
 //    )
-    val macosAarch64Dmg = uses(
-        name = "Upload macOS dmg",
-        `if` = expr { matrix.uploadDesktopInstallers and matrix.isMacOS },
-        action = UploadArtifact(
-            name = "ani-macos-dmg-${expr { matrix.arch }}",
-            path_Untyped = "app/desktop/build/compose/binaries/main-release/dmg/Ani-*.dmg",
-            overwrite = true,
-        ),
-    )
+        return PackageDesktopAndUploadOutputs().apply {
+            if (matrix.uploadDesktopInstallers and matrix.isMacOS) {
+                val macosAarch64Dmg = uses(
+                    name = "Upload macOS dmg",
+                    action = UploadArtifact(
+                        name = "ani-macos-dmg-${matrix.arch}",
+                        path_Untyped = "app/desktop/build/compose/binaries/main-release/dmg/Ani-*.dmg",
+                        overwrite = true,
+                    ),
+                )
 
-    val windowsX64Portable = uses(
-        name = "Upload Windows packages",
-        `if` = expr { matrix.uploadDesktopInstallers and matrix.isWindows },
-        action = UploadArtifact(
-            name = "ani-windows-portable",
-            path_Untyped = "app/desktop/build/compose/binaries/main-release/app",
-            overwrite = true,
-        ),
-    )
+                this.macosAarch64DmgOutcome = macosAarch64Dmg.outcome
+                this.macosAarch64DmgUrl = macosAarch64Dmg.outputs.artifactUrl
+            }
 
-    return PackageDesktopAndUploadOutputs().apply {
-        this.macosAarch64DmgOutcome = macosAarch64Dmg.outcome
-        this.macosAarch64DmgUrl = macosAarch64Dmg.outputs.artifactUrl
-        this.windowsX64PortableOutcome = windowsX64Portable.outcome
-        this.windowsX64PortableUrl = windowsX64Portable.outputs.artifactUrl
-    }
-}
+            if (matrix.uploadDesktopInstallers and matrix.isWindows) {
+                val windowsX64Portable = uses(
+                    name = "Upload Windows packages",
+                    action = UploadArtifact(
+                        name = "ani-windows-portable",
+                        path_Untyped = "app/desktop/build/compose/binaries/main-release/app",
+                        overwrite = true,
+                    ),
+                )
 
-fun JobBuilder<*>.uploadComposeLogs() {
-    uses(
-        name = "Upload compose logs",
-        `if` = expr { matrix.uploadDesktopInstallers },
-        action = UploadArtifact(
-            name = "compose-logs-${expr { matrix.os }}-${expr { matrix.arch }}",
-            path_Untyped = "app/desktop/build/compose/logs",
-        ),
-    )
-}
-
-class CIHelper(
-    releaseIdExpr: String,
-    private val gitTag: GitTag,
-) {
-    private val ciHelperSecrets: Map<String, String> = mapOf(
-        "GITHUB_TOKEN" to expr { secrets.GITHUB_TOKEN },
-        "GITHUB_REPOSITORY" to expr { secrets.GITHUB_REPOSITORY },
-        "CI_RELEASE_ID" to expr { releaseIdExpr },
-        "CI_TAG" to expr { gitTag.tagExpr },
-        "UPLOAD_TO_S3" to "true",
-        "AWS_ACCESS_KEY_ID" to expr { secrets.AWS_ACCESS_KEY_ID },
-        "AWS_SECRET_ACCESS_KEY" to expr { secrets.AWS_SECRET_ACCESS_KEY },
-        "AWS_BASEURL" to expr { secrets.AWS_BASEURL },
-        "AWS_REGION" to expr { secrets.AWS_REGION },
-        "AWS_BUCKET" to expr { secrets.AWS_BUCKET },
-    )
-
-    fun JobBuilder<*>.uploadAndroidApkToCloud() {
-        runGradle(
-            name = "Upload Android APK for Release",
-            `if` = expr { matrix.uploadApk },
-            tasks = [":ci-helper:uploadAndroidApk"],
-            env = ciHelperSecrets,
-        )
+                this.windowsX64PortableOutcome = windowsX64Portable.outcome
+                this.windowsX64PortableUrl = windowsX64Portable.outputs.artifactUrl
+            }
+        }
     }
 
-    fun JobBuilder<*>.generateQRCodeAndUpload() {
-        val condition = expr { matrix.uploadApk and matrix.buildAllAndroidAbis }
-        uses(
-            name = "Generate QR code for APK (GitHub)",
-            `if` = condition,
-            action = Qrcode_Untyped(
-                text_Untyped = """https://github.com/Him188/ani/releases/download/${expr { gitTag.tagExpr }}/ani-${expr { gitTag.tagVersionExpr }}-universal.apk""",
-                path_Untyped = "apk-qrcode-github.png",
-            ),
-        )
-        uses(
-            name = "Generate QR code for APK (Cloudflare)",
-            `if` = condition,
-            action = Qrcode_Untyped(
-                text_Untyped = """https://d.myani.org/${expr { gitTag.tagExpr }}/ani-${expr { gitTag.tagVersionExpr }}-universal.apk""",
-                path_Untyped = "apk-qrcode-cloudflare.png",
-            ),
-        )
-        runGradle(
-            name = "Upload QR code",
-            `if` = condition,
-            tasks = [":ci-helper:uploadAndroidApkQR"],
-            env = ciHelperSecrets,
-        )
+    fun JobBuilder<*>.uploadComposeLogs() {
+        if (matrix.uploadDesktopInstallers) {
+            uses(
+                name = "Upload compose logs",
+                action = UploadArtifact(
+                    name = "compose-logs-${matrix.os}-${matrix.arch}",
+                    path_Untyped = "app/desktop/build/compose/logs",
+                ),
+            )
+        }
     }
 
-    fun JobBuilder<*>.uploadDesktopInstallers() {
-        runGradle(
-            name = "Upload Desktop Installers",
-            `if` = expr { matrix.uploadDesktopInstallers and (!matrix.isMacOSX64) },
-            tasks = [":ci-helper:uploadDesktopInstallers"],
-            env = ciHelperSecrets,
+    fun JobBuilder<*>.cleanupTempFiles() {
+        if (matrix.selfHosted and matrix.isMacOSAArch64) {
+            run(
+                name = "Cleanup temp files",
+                command = shell("""chmod +x ./ci-helper/cleanup-temp-files-macos.sh && ./ci-helper/cleanup-temp-files-macos.sh"""),
+                continueOnError = true,
+            )
+        }
+    }
+
+    inner class CIHelper(
+        releaseIdExpr: String,
+        private val gitTag: GitTag,
+    ) {
+        private val ciHelperSecrets: Map<String, String> = mapOf(
+            "GITHUB_TOKEN" to expr { secrets.GITHUB_TOKEN },
+            "GITHUB_REPOSITORY" to expr { secrets.GITHUB_REPOSITORY },
+            "CI_RELEASE_ID" to expr { releaseIdExpr },
+            "CI_TAG" to expr { gitTag.tagExpr },
+            "UPLOAD_TO_S3" to "true",
+            "AWS_ACCESS_KEY_ID" to expr { secrets.AWS_ACCESS_KEY_ID },
+            "AWS_SECRET_ACCESS_KEY" to expr { secrets.AWS_SECRET_ACCESS_KEY },
+            "AWS_BASEURL" to expr { secrets.AWS_BASEURL },
+            "AWS_REGION" to expr { secrets.AWS_REGION },
+            "AWS_BUCKET" to expr { secrets.AWS_BUCKET },
         )
+
+        fun JobBuilder<*>.uploadAndroidApkToCloud() {
+            if (matrix.uploadApk) {
+                runGradle(
+                    name = "Upload Android APK for Release",
+                    tasks = [":ci-helper:uploadAndroidApk"],
+                    env = ciHelperSecrets,
+                )
+            }
+        }
+
+        fun JobBuilder<*>.generateQRCodeAndUpload() {
+            if (matrix.uploadApk and matrix.buildAllAndroidAbis) {
+                uses(
+                    name = "Generate QR code for APK (GitHub)",
+                    `if` = condition,
+                    action = Qrcode_Untyped(
+                        text_Untyped = """https://github.com/Him188/ani/releases/download/${expr { gitTag.tagExpr }}/ani-${expr { gitTag.tagVersionExpr }}-universal.apk""",
+                        path_Untyped = "apk-qrcode-github.png",
+                    ),
+                )
+                uses(
+                    name = "Generate QR code for APK (Cloudflare)",
+                    `if` = condition,
+                    action = Qrcode_Untyped(
+                        text_Untyped = """https://d.myani.org/${expr { gitTag.tagExpr }}/ani-${expr { gitTag.tagVersionExpr }}-universal.apk""",
+                        path_Untyped = "apk-qrcode-cloudflare.png",
+                    ),
+                )
+                runGradle(
+                    name = "Upload QR code",
+                    `if` = condition,
+                    tasks = [":ci-helper:uploadAndroidApkQR"],
+                    env = ciHelperSecrets,
+                )
+            }
+        }
+
+        fun JobBuilder<*>.uploadDesktopInstallers() {
+            if (matrix.uploadDesktopInstallers and (!matrix.isMacOSX64)) {
+                runGradle(
+                    name = "Upload Desktop Installers",
+                    tasks = [":ci-helper:uploadDesktopInstallers"],
+                    env = ciHelperSecrets,
+                )
+            }
+        }
     }
 }
-
-fun JobBuilder<*>.cleanupTempFiles() {
-    run(
-        name = "Cleanup temp files",
-        `if` = expr { matrix.selfHosted and matrix.isMacOSAArch64 },
-        command = shell("""chmod +x ./ci-helper/cleanup-temp-files-macos.sh && ./ci-helper/cleanup-temp-files-macos.sh"""),
-        continueOnError = true,
-    )
-}
-
 
 /// ENV
 
@@ -1260,24 +1350,22 @@ object Secrets {
 
 /// EXTENSIONS
 
-val Contexts.matrix get() = MatrixContext
-
 val GitHubContext.isAnimekoRepository
     get() = """$repository == 'open-ani/animeko'"""
 
 val GitHubContext.isPullRequest
     get() = """$event_name == 'pull_request'"""
 
-val MatrixContext.isX64 get() = arch.eq(Arch.X64)
-val MatrixContext.isAArch64 get() = arch.eq(Arch.AARCH64)
+val MatrixInstance.isX64 get() = arch == Arch.X64
+val MatrixInstance.isAArch64 get() = arch == Arch.AARCH64
 
-val MatrixContext.isMacOS get() = os.eq(OS.MACOS)
-val MatrixContext.isWindows get() = os.eq(OS.WINDOWS)
-val MatrixContext.isUbuntu get() = os.eq(OS.UBUNTU)
-val MatrixContext.isUnix get() = (os.eq(OS.UBUNTU)) or (os.eq(OS.MACOS))
+val MatrixInstance.isMacOS get() = os == OS.MACOS
+val MatrixInstance.isWindows get() = os == OS.WINDOWS
+val MatrixInstance.isUbuntu get() = os == OS.UBUNTU
+val MatrixInstance.isUnix get() = (os == OS.UBUNTU) or (os == (OS.MACOS))
 
-val MatrixContext.isMacOSAArch64 get() = (os.eq(OS.MACOS)) and (arch.eq(Arch.AARCH64))
-val MatrixContext.isMacOSX64 get() = (os.eq(OS.MACOS)) and (arch.eq(Arch.X64))
+val MatrixInstance.isMacOSAArch64 get() = (os == OS.MACOS) and (arch == Arch.AARCH64)
+val MatrixInstance.isMacOSX64 get() = (os == OS.MACOS) and (arch == Arch.X64)
 
 // only for highlighting (though this does not work in KT 2.1.0)
 fun shell(@Language("shell") command: String) = command
@@ -1313,7 +1401,7 @@ fun generateStrategy(matrixInstances: List<MatrixInstance>) = mapOf(
     "strategy" to mapOf(
         "fail-fast" to false,
         "matrix" to mapOf(
-            "id" to matrixInstances.map { it.id },
+            "id" to matrixInstances.map { it.runner },
             "include" to matrixInstances.map { it.toMatrixIncludeMap() },
         ),
     ),

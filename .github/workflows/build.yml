@@ -8,77 +8,242 @@ on:
     paths-ignore:
       - '**/*.md'
 jobs:
-  build:
-    name: 'Build (${{ matrix.name }})'
-    runs-on: '${{ matrix.runsOn }}'
+  build_self-hosted-windows-10:
+    name: 'Build (Windows 10 x86_64 (Self-Hosted))'
+    runs-on:
+      - 'self-hosted'
+      - 'Windows'
+      - 'X64'
+    if: '${{ github.repository == ''open-ani/animeko'' }}'
     outputs:
-      macosAarch64DmgSuccess: '${{ steps.step-33.outcome == ''success'' }}'
-      macosAarch64DmgUrl: '${{ steps.step-33.outputs.artifact-url }}'
-      windowsX64PortableSuccess: '${{ steps.step-34.outcome == ''success'' }}'
-      windowsX64PortableUrl: '${{ steps.step-34.outputs.artifact-url }}'
-    strategy:
-      fail-fast: false
-      matrix:
-        id:
-          - 'windows-2019'
-          - 'ubuntu-x64'
-          - 'macos-x64'
-        include:
-          - arch: 'x64'
-            buildAllAndroidAbis: false
-            buildAnitorrent: true
-            buildAnitorrentSeparately: false
-            buildIosFramework: false
-            composeResourceTriple: 'windows-x64'
-            extraGradleArgs:
-              - '-Pani.android.abis=x86_64'
-            gradleArgs: '"--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dani.enable.anitorrent=true" "-DCMAKE_BUILD_TYPE=Release" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=x86_64"'
-            id: 'windows-2019'
-            installNativeDeps: true
-            name: 'Windows Server 2019 x86_64'
-            os: 'windows'
-            runTests: true
-            runsOn:
-              - 'windows-2019'
-            selfHosted: false
-            uploadApk: false
-            uploadDesktopInstallers: true
-          - arch: 'x64'
-            buildAllAndroidAbis: true
-            buildAnitorrent: false
-            buildAnitorrentSeparately: false
-            buildIosFramework: false
-            composeResourceTriple: 'linux-x64'
-            extraGradleArgs: [ ]
-            gradleArgs: '"--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g"'
-            id: 'ubuntu-x64'
-            installNativeDeps: true
-            name: 'Ubuntu x86_64 (Compile only)'
-            os: 'ubuntu'
-            runTests: false
-            runsOn:
-              - 'ubuntu-20.04'
-            selfHosted: false
-            uploadApk: false
-            uploadDesktopInstallers: false
-          - arch: 'x64'
-            buildAllAndroidAbis: true
-            buildAnitorrent: true
-            buildAnitorrentSeparately: true
-            buildIosFramework: false
-            composeResourceTriple: 'macos-x64'
-            extraGradleArgs: [ ]
-            gradleArgs: '"--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dani.enable.anitorrent=true" "-DCMAKE_BUILD_TYPE=Release" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g"'
-            id: 'macos-x64'
-            installNativeDeps: true
-            name: 'macOS x86_64'
-            os: 'macos'
-            runTests: true
-            runsOn:
-              - 'macos-13'
-            selfHosted: false
-            uploadApk: true
-            uploadDesktopInstallers: true
+      macosAarch64DmgSuccess: '${{ false }}'
+      macosAarch64DmgUrl: '${{  }}'
+      windowsX64PortableSuccess: '${{ false }}'
+      windowsX64PortableUrl: '${{  }}'
+    steps:
+      - id: 'step-0'
+        uses: 'actions/checkout@v4'
+        with:
+          submodules: 'recursive'
+      - id: 'step-1'
+        name: 'Setup JBR 21 for other OS'
+        uses: 'gmitch215/setup-java@6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d'
+        with:
+          java-version: '21'
+          distribution: 'jetbrains'
+        env:
+          GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
+      - id: 'step-2'
+        run: 'echo "jvm.toolchain.version=21" >> local.properties'
+      - id: 'step-3'
+        name: 'Setup Gradle'
+        uses: 'gradle/actions/setup-gradle@v3'
+        with:
+          cache-disabled: 'true'
+      - id: 'step-4'
+        name: 'Clean and download dependencies'
+        uses: 'nick-fields/retry@v2'
+        with:
+          timeout_minutes: '60'
+          max_attempts: '3'
+          command: './gradlew "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dani.enable.anitorrent=true" "-DCMAKE_BUILD_TYPE=Release" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "--parallel" "-Pani.android.abis=x86_64"'
+      - id: 'step-5'
+        name: 'Update dev version name'
+        run: './gradlew updateDevVersionNameFromGit "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dani.enable.anitorrent=true" "-DCMAKE_BUILD_TYPE=Release" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "--parallel" "-Pani.android.abis=x86_64"'
+      - id: 'step-6'
+        name: 'Build Anitorrent for Android'
+        run: './gradlew :torrent:anitorrent:anitorrent-native:buildAnitorrent buildCMakeDebug buildCMakeRelWithDebInfo "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dani.enable.anitorrent=true" "-DCMAKE_BUILD_TYPE=Release" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "--parallel" "-Pani.android.abis=x86_64"'
+      - id: 'step-7'
+        name: 'Compile Kotlin'
+        run: './gradlew compileKotlin compileCommonMainKotlinMetadata compileDebugKotlinAndroid compileReleaseKotlinAndroid compileJvmMainKotlinMetadata compileKotlinDesktop compileKotlinMetadata "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dani.enable.anitorrent=true" "-DCMAKE_BUILD_TYPE=Release" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "--parallel" "-Pani.android.abis=x86_64"'
+      - id: 'step-8'
+        name: 'Check'
+        uses: 'nick-fields/retry@v2'
+        with:
+          timeout_minutes: '60'
+          max_attempts: '2'
+          command: './gradlew check "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dani.enable.anitorrent=true" "-DCMAKE_BUILD_TYPE=Release" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "--parallel" "-Pani.android.abis=x86_64"'
+      - id: 'step-9'
+        name: 'Upload Anitorrent CMakeCache.txt'
+        uses: 'actions/upload-artifact@v4'
+        with:
+          name: 'anitorrent-cmake-cache-self-hosted-windows-10'
+          path: 'torrent/anitorrent/build-ci/CMakeCache.txt'
+          overwrite: 'true'
+        if: '${{ always() }}'
+      - id: 'step-10'
+        name: 'Upload Anitorrent self-hosted-windows-10'
+        uses: 'actions/upload-artifact@v4'
+        with:
+          name: 'anitorrent-self-hosted-windows-10'
+          path: 'torrent/anitorrent/anitorrent-native/build'
+          overwrite: 'true'
+        if: '${{ always() }}'
+  build_github-windows-2019:
+    name: 'Build (Windows Server 2019 x86_64)'
+    runs-on:
+      - 'windows-2019'
+    outputs:
+      macosAarch64DmgSuccess: '${{ false }}'
+      macosAarch64DmgUrl: '${{  }}'
+      windowsX64PortableSuccess: '${{ steps.step-15.outcome == ''success'' }}'
+      windowsX64PortableUrl: '${{ steps.step-15.outputs.artifact-url }}'
+    steps:
+      - id: 'step-0'
+        uses: 'actions/checkout@v4'
+        with:
+          submodules: 'recursive'
+      - id: 'step-1'
+        name: 'Setup JBR 21 for other OS'
+        uses: 'gmitch215/setup-java@6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d'
+        with:
+          java-version: '21'
+          distribution: 'jetbrains'
+        env:
+          GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
+      - id: 'step-2'
+        run: 'echo "jvm.toolchain.version=21" >> local.properties'
+      - id: 'step-3'
+        name: 'Setup vcpkg cache'
+        uses: 'actions/github-script@v7'
+        with:
+          script: |-
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+      - id: 'step-4'
+        name: 'Install Native Dependencies for Windows'
+        env:
+          VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
+        run: './ci-helper/install-deps-windows.cmd'
+      - id: 'step-5'
+        name: 'Setup Gradle'
+        uses: 'gradle/actions/setup-gradle@v3'
+        with:
+          cache-disabled: 'true'
+      - id: 'step-6'
+        name: 'Clean and download dependencies'
+        uses: 'nick-fields/retry@v2'
+        with:
+          timeout_minutes: '60'
+          max_attempts: '3'
+          command: './gradlew "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dani.enable.anitorrent=true" "-DCMAKE_BUILD_TYPE=Release" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=x86_64"'
+      - id: 'step-7'
+        name: 'Update dev version name'
+        run: './gradlew updateDevVersionNameFromGit "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dani.enable.anitorrent=true" "-DCMAKE_BUILD_TYPE=Release" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=x86_64"'
+      - id: 'step-8'
+        name: 'Build Anitorrent for Android'
+        run: './gradlew :torrent:anitorrent:anitorrent-native:buildAnitorrent buildCMakeDebug buildCMakeRelWithDebInfo "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dani.enable.anitorrent=true" "-DCMAKE_BUILD_TYPE=Release" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=x86_64"'
+      - id: 'step-9'
+        name: 'Compile Kotlin'
+        run: './gradlew compileKotlin compileCommonMainKotlinMetadata compileDebugKotlinAndroid compileReleaseKotlinAndroid compileJvmMainKotlinMetadata compileKotlinDesktop compileKotlinMetadata "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dani.enable.anitorrent=true" "-DCMAKE_BUILD_TYPE=Release" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=x86_64"'
+      - id: 'step-10'
+        name: 'Check'
+        uses: 'nick-fields/retry@v2'
+        with:
+          timeout_minutes: '60'
+          max_attempts: '2'
+          command: './gradlew check "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dani.enable.anitorrent=true" "-DCMAKE_BUILD_TYPE=Release" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=x86_64"'
+      - id: 'step-11'
+        name: 'Upload Anitorrent CMakeCache.txt'
+        uses: 'actions/upload-artifact@v4'
+        with:
+          name: 'anitorrent-cmake-cache-github-windows-2019'
+          path: 'torrent/anitorrent/build-ci/CMakeCache.txt'
+          overwrite: 'true'
+        if: '${{ always() }}'
+      - id: 'step-12'
+        name: 'Upload Anitorrent github-windows-2019'
+        uses: 'actions/upload-artifact@v4'
+        with:
+          name: 'anitorrent-github-windows-2019'
+          path: 'torrent/anitorrent/anitorrent-native/build'
+          overwrite: 'true'
+        if: '${{ always() }}'
+      - id: 'step-13'
+        name: 'Package Desktop'
+        run: './gradlew packageReleaseDistributionForCurrentOS "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dani.enable.anitorrent=true" "-DCMAKE_BUILD_TYPE=Release" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=x86_64"'
+      - id: 'step-14'
+        name: 'Upload compose logs'
+        uses: 'actions/upload-artifact@v4'
+        with:
+          name: 'compose-logs-windows-x64'
+          path: 'app/desktop/build/compose/logs'
+      - id: 'step-15'
+        name: 'Upload Windows packages'
+        uses: 'actions/upload-artifact@v4'
+        with:
+          name: 'ani-windows-portable'
+          path: 'app/desktop/build/compose/binaries/main-release/app'
+          overwrite: 'true'
+  build_github-ubuntu-2004:
+    name: 'Build (Ubuntu x86_64 (Compile only))'
+    runs-on:
+      - 'ubuntu-20.04'
+    outputs:
+      macosAarch64DmgSuccess: '${{ false }}'
+      macosAarch64DmgUrl: '${{  }}'
+      windowsX64PortableSuccess: '${{ false }}'
+      windowsX64PortableUrl: '${{  }}'
+    steps:
+      - id: 'step-0'
+        uses: 'actions/checkout@v4'
+        with:
+          submodules: 'recursive'
+      - id: 'step-1'
+        name: 'Setup JBR 21 for other OS'
+        uses: 'gmitch215/setup-java@6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d'
+        with:
+          java-version: '21'
+          distribution: 'jetbrains'
+        env:
+          GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
+      - id: 'step-2'
+        run: 'echo "jvm.toolchain.version=21" >> local.properties'
+      - id: 'step-3'
+        run: 'chmod -R 777 .'
+      - id: 'step-4'
+        name: 'Setup Gradle'
+        uses: 'gradle/actions/setup-gradle@v3'
+        with:
+          cache-disabled: 'true'
+      - id: 'step-5'
+        name: 'Clean and download dependencies'
+        uses: 'nick-fields/retry@v2'
+        with:
+          timeout_minutes: '60'
+          max_attempts: '3'
+          command: './gradlew "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g"'
+      - id: 'step-6'
+        name: 'Update dev version name'
+        run: './gradlew updateDevVersionNameFromGit "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g"'
+      - id: 'step-7'
+        name: 'Compile Kotlin'
+        run: './gradlew compileKotlin compileCommonMainKotlinMetadata compileDebugKotlinAndroid compileReleaseKotlinAndroid compileJvmMainKotlinMetadata compileKotlinDesktop compileKotlinMetadata "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g"'
+      - id: 'step-8'
+        name: 'Upload Anitorrent CMakeCache.txt'
+        uses: 'actions/upload-artifact@v4'
+        with:
+          name: 'anitorrent-cmake-cache-github-ubuntu-2004'
+          path: 'torrent/anitorrent/build-ci/CMakeCache.txt'
+          overwrite: 'true'
+        if: '${{ always() }}'
+      - id: 'step-9'
+        name: 'Upload Anitorrent github-ubuntu-2004'
+        uses: 'actions/upload-artifact@v4'
+        with:
+          name: 'anitorrent-github-ubuntu-2004'
+          path: 'torrent/anitorrent/anitorrent-native/build'
+          overwrite: 'true'
+        if: '${{ always() }}'
+  build_github-macos-13:
+    name: 'Build (macOS 13 x86_64 (GitHub))'
+    runs-on:
+      - 'macos-13'
+    outputs:
+      macosAarch64DmgSuccess: '${{ steps.step-27.outcome == ''success'' }}'
+      macosAarch64DmgUrl: '${{ steps.step-27.outputs.artifact-url }}'
+      windowsX64PortableSuccess: '${{ false }}'
+      windowsX64PortableUrl: '${{  }}'
     steps:
       - id: 'step-0'
         uses: 'actions/checkout@v4'
@@ -88,18 +253,185 @@ jobs:
         name: 'Free space for macOS'
         continue-on-error: true
         run: 'chmod +x ./ci-helper/free-space-macos.sh && ./ci-helper/free-space-macos.sh'
-        if: '${{ ((matrix.os == ''macos'')) && (!(matrix.selfHosted)) }}'
       - id: 'step-2'
+        name: 'Setup JBR 21 for other OS'
+        uses: 'gmitch215/setup-java@6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d'
+        with:
+          java-version: '21'
+          distribution: 'jetbrains'
+        env:
+          GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
+      - id: 'step-3'
+        run: 'echo "jvm.toolchain.version=21" >> local.properties'
+      - id: 'step-4'
+        name: 'Install Native Dependencies for MacOS'
+        run: 'chmod +x ./ci-helper/install-deps-macos-ci.sh && ./ci-helper/install-deps-macos-ci.sh'
+      - id: 'step-5'
+        run: 'chmod -R 777 .'
+      - id: 'step-6'
+        name: 'Setup Gradle'
+        uses: 'gradle/actions/setup-gradle@v3'
+        with:
+          cache-disabled: 'true'
+      - id: 'step-7'
+        name: 'Clean and download dependencies'
+        uses: 'nick-fields/retry@v2'
+        with:
+          timeout_minutes: '60'
+          max_attempts: '3'
+          command: './gradlew "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dani.enable.anitorrent=true" "-DCMAKE_BUILD_TYPE=Release" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g"'
+      - id: 'step-8'
+        name: 'Update dev version name'
+        run: './gradlew updateDevVersionNameFromGit "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dani.enable.anitorrent=true" "-DCMAKE_BUILD_TYPE=Release" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g"'
+      - id: 'step-9'
+        name: 'Prepare signing key'
+        continue-on-error: true
+        uses: 'timheuer/base64-to-file@v1.1'
+        with:
+          fileName: 'android_signing_key'
+          fileDir: './'
+          encodedString: '${{ secrets.SIGNING_RELEASE_STOREFILE }}'
+        if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
+      - id: 'step-10'
+        name: 'Build Anitorrent for Desktop'
+        run: './gradlew :torrent:anitorrent:build :torrent:anitorrent:anitorrent-native:buildAnitorrent "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dani.enable.anitorrent=true" "-DCMAKE_BUILD_TYPE=Release" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g"'
+      - id: 'step-11'
+        name: 'Build Anitorrent for Android'
+        run: './gradlew :torrent:anitorrent:anitorrent-native:buildAnitorrent buildCMakeDebug buildCMakeRelWithDebInfo "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dani.enable.anitorrent=true" "-DCMAKE_BUILD_TYPE=Release" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g"'
+      - id: 'step-12'
+        name: 'Compile Kotlin'
+        run: './gradlew compileKotlin compileCommonMainKotlinMetadata compileDebugKotlinAndroid compileReleaseKotlinAndroid compileJvmMainKotlinMetadata compileKotlinDesktop compileKotlinMetadata "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dani.enable.anitorrent=true" "-DCMAKE_BUILD_TYPE=Release" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g"'
+      - id: 'step-13'
+        name: 'Build Android Debug APKs'
+        run: './gradlew assembleDebug "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dani.enable.anitorrent=true" "-DCMAKE_BUILD_TYPE=Release" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g"'
+      - id: 'step-14'
+        name: 'Upload Android Debug APK arm64-v8a'
+        uses: 'actions/upload-artifact@v4'
+        with:
+          name: 'ani-android-arm64-v8a-debug'
+          path: 'app/android/build/outputs/apk/debug/android-arm64-v8a-debug.apk'
+          overwrite: 'true'
+      - id: 'step-15'
+        name: 'Upload Android Debug APK x86_64'
+        uses: 'actions/upload-artifact@v4'
+        with:
+          name: 'ani-android-x86_64-debug'
+          path: 'app/android/build/outputs/apk/debug/android-x86_64-debug.apk'
+          overwrite: 'true'
+      - id: 'step-16'
+        name: 'Upload Android Debug APK armeabi-v7a'
+        uses: 'actions/upload-artifact@v4'
+        with:
+          name: 'ani-android-armeabi-v7a-debug'
+          path: 'app/android/build/outputs/apk/debug/android-armeabi-v7a-debug.apk'
+          overwrite: 'true'
+      - id: 'step-17'
+        name: 'Upload Android Debug APK universal'
+        uses: 'actions/upload-artifact@v4'
+        with:
+          name: 'ani-android-universal-debug'
+          path: 'app/android/build/outputs/apk/debug/android-universal-debug.apk'
+          overwrite: 'true'
+      - id: 'step-18'
+        name: 'Build Android Release APKs'
+        env:
+          signing_release_storeFileFromRoot: '${{ steps.step-9.outputs.filePath }}'
+          signing_release_storePassword: '${{ secrets.SIGNING_RELEASE_STOREPASSWORD }}'
+          signing_release_keyAlias: '${{ secrets.SIGNING_RELEASE_KEYALIAS }}'
+          signing_release_keyPassword: '${{ secrets.SIGNING_RELEASE_KEYPASSWORD }}'
+        run: './gradlew assembleRelease "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dani.enable.anitorrent=true" "-DCMAKE_BUILD_TYPE=Release" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g"'
+        if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
+      - id: 'step-19'
+        name: 'Upload Android Release APK arm64-v8a'
+        uses: 'actions/upload-artifact@v4'
+        with:
+          name: 'ani-android-arm64-v8a-release'
+          path: 'app/android/build/outputs/apk/release/android-arm64-v8a-release.apk'
+          overwrite: 'true'
+      - id: 'step-20'
+        name: 'Upload Android Release APK x86_64'
+        uses: 'actions/upload-artifact@v4'
+        with:
+          name: 'ani-android-x86_64-release'
+          path: 'app/android/build/outputs/apk/release/android-x86_64-release.apk'
+          overwrite: 'true'
+      - id: 'step-21'
+        name: 'Upload Android Release APK armeabi-v7a'
+        uses: 'actions/upload-artifact@v4'
+        with:
+          name: 'ani-android-armeabi-v7a-release'
+          path: 'app/android/build/outputs/apk/release/android-armeabi-v7a-release.apk'
+          overwrite: 'true'
+      - id: 'step-22'
+        name: 'Upload Android Release APK universal'
+        uses: 'actions/upload-artifact@v4'
+        with:
+          name: 'ani-android-universal-release'
+          path: 'app/android/build/outputs/apk/release/android-universal-release.apk'
+          overwrite: 'true'
+      - id: 'step-23'
+        name: 'Check'
+        uses: 'nick-fields/retry@v2'
+        with:
+          timeout_minutes: '60'
+          max_attempts: '2'
+          command: './gradlew check "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dani.enable.anitorrent=true" "-DCMAKE_BUILD_TYPE=Release" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g"'
+      - id: 'step-24'
+        name: 'Upload Anitorrent CMakeCache.txt'
+        uses: 'actions/upload-artifact@v4'
+        with:
+          name: 'anitorrent-cmake-cache-github-macos-13'
+          path: 'torrent/anitorrent/build-ci/CMakeCache.txt'
+          overwrite: 'true'
+        if: '${{ always() }}'
+      - id: 'step-25'
+        name: 'Upload Anitorrent github-macos-13'
+        uses: 'actions/upload-artifact@v4'
+        with:
+          name: 'anitorrent-github-macos-13'
+          path: 'torrent/anitorrent/anitorrent-native/build'
+          overwrite: 'true'
+        if: '${{ always() }}'
+      - id: 'step-26'
+        name: 'Upload compose logs'
+        uses: 'actions/upload-artifact@v4'
+        with:
+          name: 'compose-logs-macos-x64'
+          path: 'app/desktop/build/compose/logs'
+      - id: 'step-27'
+        name: 'Upload macOS dmg'
+        uses: 'actions/upload-artifact@v4'
+        with:
+          name: 'ani-macos-dmg-x64'
+          path: 'app/desktop/build/compose/binaries/main-release/dmg/Ani-*.dmg'
+          overwrite: 'true'
+  build_self-hosted-macos-15:
+    name: 'Build (macOS 15 AArch64 (Self-Hosted))'
+    runs-on:
+      - 'self-hosted'
+      - 'macOS'
+      - 'ARM64'
+    if: '${{ github.repository == ''open-ani/animeko'' }}'
+    outputs:
+      macosAarch64DmgSuccess: '${{ steps.step-26.outcome == ''success'' }}'
+      macosAarch64DmgUrl: '${{ steps.step-26.outputs.artifact-url }}'
+      windowsX64PortableSuccess: '${{ false }}'
+      windowsX64PortableUrl: '${{  }}'
+    steps:
+      - id: 'step-0'
+        uses: 'actions/checkout@v4'
+        with:
+          submodules: 'recursive'
+      - id: 'step-1'
         name: 'Resolve JBR location'
         run: |-
           # Expand jbrLocationExpr
           jbr_location_expr=$(eval echo ${{ runner.tool_cache }}/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz)
           echo "jbrLocation=$jbr_location_expr" >> $GITHUB_OUTPUT
-        if: '${{ ((matrix.os == ''macos'')) && ((matrix.arch == ''aarch64'')) }}'
-      - id: 'step-3'
+      - id: 'step-2'
         name: 'Get JBR 21 for macOS AArch64'
         env:
-          jbrLocation: '${{ steps.step-2.outputs.jbrLocation }}'
+          jbrLocation: '${{ steps.step-1.outputs.jbrLocation }}'
         run: |-
           jbr_location="$jbrLocation"
           checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz.checksum"
@@ -126,65 +458,35 @@ jobs:
           
           rm -f $checksum_file
           file "$jbr_location"
-        if: '${{ ((matrix.os == ''macos'')) && ((matrix.arch == ''aarch64'')) }}'
-      - id: 'step-4'
+      - id: 'step-3'
         name: 'Setup JBR 21 for macOS AArch64'
         uses: 'gmitch215/setup-java@6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d'
         with:
           java-version: '21'
           distribution: 'jdkfile'
-          jdkFile: '${{ steps.step-2.outputs.jbrLocation }}'
+          jdkFile: '${{ steps.step-1.outputs.jbrLocation }}'
         env:
           GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
-        if: '${{ ((matrix.os == ''macos'')) && ((matrix.arch == ''aarch64'')) }}'
-      - id: 'step-5'
-        name: 'Setup JBR 21 for other OS'
-        uses: 'gmitch215/setup-java@6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d'
-        with:
-          java-version: '21'
-          distribution: 'jetbrains'
-        env:
-          GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
-        if: '${{ !(((matrix.os == ''macos'')) && ((matrix.arch == ''aarch64''))) }}'
-      - id: 'step-6'
+      - id: 'step-4'
         run: 'echo "jvm.toolchain.version=21" >> local.properties'
-      - id: 'step-7'
-        name: 'Setup vcpkg cache'
-        uses: 'actions/github-script@v7'
-        with:
-          script: |-
-            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
-            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
-        if: '${{ ((matrix.os == ''windows'')) && (matrix.installNativeDeps) }}'
-      - id: 'step-8'
-        name: 'Install Native Dependencies for Windows'
-        env:
-          VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
-        run: './ci-helper/install-deps-windows.cmd'
-        if: '${{ ((matrix.os == ''windows'')) && (matrix.installNativeDeps) }}'
-      - id: 'step-9'
-        name: 'Install Native Dependencies for MacOS'
-        run: 'chmod +x ./ci-helper/install-deps-macos-ci.sh && ./ci-helper/install-deps-macos-ci.sh'
-        if: '${{ ((matrix.os == ''macos'')) && (matrix.installNativeDeps) }}'
-      - id: 'step-10'
+      - id: 'step-5'
         run: 'chmod -R 777 .'
-        if: '${{ ((matrix.os == ''ubuntu'')) || ((matrix.os == ''macos'')) }}'
-      - id: 'step-11'
+      - id: 'step-6'
         name: 'Setup Gradle'
         uses: 'gradle/actions/setup-gradle@v3'
         with:
           cache-disabled: 'true'
-      - id: 'step-12'
+      - id: 'step-7'
         name: 'Clean and download dependencies'
         uses: 'nick-fields/retry@v2'
         with:
           timeout_minutes: '60'
           max_attempts: '3'
-          command: './gradlew ${{ matrix.gradleArgs }}'
-      - id: 'step-13'
+          command: './gradlew "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dani.enable.anitorrent=true" "-DCMAKE_BUILD_TYPE=Release" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=arm64-v8a"'
+      - id: 'step-8'
         name: 'Update dev version name'
-        run: './gradlew updateDevVersionNameFromGit ${{ matrix.gradleArgs }}'
-      - id: 'step-14'
+        run: './gradlew updateDevVersionNameFromGit "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dani.enable.anitorrent=true" "-DCMAKE_BUILD_TYPE=Release" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=arm64-v8a"'
+      - id: 'step-9'
         name: 'Prepare signing key'
         continue-on-error: true
         uses: 'timheuer/base64-to-file@v1.1'
@@ -192,158 +494,120 @@ jobs:
           fileName: 'android_signing_key'
           fileDir: './'
           encodedString: '${{ secrets.SIGNING_RELEASE_STOREFILE }}'
-        if: '${{ ((github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request''))) && (matrix.uploadApk) }}'
-      - id: 'step-15'
+        if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
+      - id: 'step-10'
         name: 'Build Anitorrent for Desktop'
-        run: './gradlew :torrent:anitorrent:build :torrent:anitorrent:anitorrent-native:buildAnitorrent ${{ matrix.gradleArgs }}'
-        if: '${{ (matrix.buildAnitorrent) && (matrix.buildAnitorrentSeparately) }}'
-      - id: 'step-16'
+        run: './gradlew :torrent:anitorrent:build :torrent:anitorrent:anitorrent-native:buildAnitorrent "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dani.enable.anitorrent=true" "-DCMAKE_BUILD_TYPE=Release" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=arm64-v8a"'
+      - id: 'step-11'
         name: 'Build Anitorrent for Android'
-        run: './gradlew :torrent:anitorrent:anitorrent-native:buildAnitorrent buildCMakeDebug buildCMakeRelWithDebInfo ${{ matrix.gradleArgs }}'
-        if: '${{ matrix.buildAnitorrent }}'
-      - id: 'step-17'
+        run: './gradlew :torrent:anitorrent:anitorrent-native:buildAnitorrent buildCMakeDebug buildCMakeRelWithDebInfo "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dani.enable.anitorrent=true" "-DCMAKE_BUILD_TYPE=Release" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=arm64-v8a"'
+      - id: 'step-12'
         name: 'Compile Kotlin'
-        run: './gradlew compileKotlin compileCommonMainKotlinMetadata compileDebugKotlinAndroid compileReleaseKotlinAndroid compileJvmMainKotlinMetadata compileKotlinDesktop compileKotlinMetadata ${{ matrix.gradleArgs }}'
-      - id: 'step-18'
+        run: './gradlew compileKotlin compileCommonMainKotlinMetadata compileDebugKotlinAndroid compileReleaseKotlinAndroid compileJvmMainKotlinMetadata compileKotlinDesktop compileKotlinMetadata "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dani.enable.anitorrent=true" "-DCMAKE_BUILD_TYPE=Release" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=arm64-v8a"'
+      - id: 'step-13'
         name: 'Build Android Debug APKs'
-        run: './gradlew assembleDebug ${{ matrix.gradleArgs }}'
-        if: '${{ matrix.uploadApk }}'
-      - id: 'step-19'
+        run: './gradlew assembleDebug "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dani.enable.anitorrent=true" "-DCMAKE_BUILD_TYPE=Release" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=arm64-v8a"'
+      - id: 'step-14'
         name: 'Upload Android Debug APK arm64-v8a'
         uses: 'actions/upload-artifact@v4'
         with:
           name: 'ani-android-arm64-v8a-debug'
           path: 'app/android/build/outputs/apk/debug/android-arm64-v8a-debug.apk'
           overwrite: 'true'
-        if: '${{ matrix.uploadApk }}'
-      - id: 'step-20'
+      - id: 'step-15'
         name: 'Upload Android Debug APK x86_64'
         uses: 'actions/upload-artifact@v4'
         with:
           name: 'ani-android-x86_64-debug'
           path: 'app/android/build/outputs/apk/debug/android-x86_64-debug.apk'
           overwrite: 'true'
-        if: '${{ matrix.uploadApk }}'
-      - id: 'step-21'
+      - id: 'step-16'
         name: 'Upload Android Debug APK armeabi-v7a'
         uses: 'actions/upload-artifact@v4'
         with:
           name: 'ani-android-armeabi-v7a-debug'
           path: 'app/android/build/outputs/apk/debug/android-armeabi-v7a-debug.apk'
           overwrite: 'true'
-        if: '${{ matrix.uploadApk }}'
-      - id: 'step-22'
-        name: 'Upload Android Debug APK universal'
-        uses: 'actions/upload-artifact@v4'
-        with:
-          name: 'ani-android-universal-debug'
-          path: 'app/android/build/outputs/apk/debug/android-universal-debug.apk'
-          overwrite: 'true'
-        if: '${{ (matrix.uploadApk) && (matrix.buildAllAndroidAbis) }}'
-      - id: 'step-23'
+      - id: 'step-17'
         name: 'Build Android Release APKs'
         env:
-          signing_release_storeFileFromRoot: '${{ steps.step-14.outputs.filePath }}'
+          signing_release_storeFileFromRoot: '${{ steps.step-9.outputs.filePath }}'
           signing_release_storePassword: '${{ secrets.SIGNING_RELEASE_STOREPASSWORD }}'
           signing_release_keyAlias: '${{ secrets.SIGNING_RELEASE_KEYALIAS }}'
           signing_release_keyPassword: '${{ secrets.SIGNING_RELEASE_KEYPASSWORD }}'
-        run: './gradlew assembleRelease ${{ matrix.gradleArgs }}'
-        if: '${{ ((github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request''))) && (matrix.uploadApk) }}'
-      - id: 'step-24'
+        run: './gradlew assembleRelease "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dani.enable.anitorrent=true" "-DCMAKE_BUILD_TYPE=Release" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=arm64-v8a"'
+        if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
+      - id: 'step-18'
         name: 'Upload Android Release APK arm64-v8a'
         uses: 'actions/upload-artifact@v4'
         with:
           name: 'ani-android-arm64-v8a-release'
           path: 'app/android/build/outputs/apk/release/android-arm64-v8a-release.apk'
           overwrite: 'true'
-        if: '${{ matrix.uploadApk }}'
-      - id: 'step-25'
+      - id: 'step-19'
         name: 'Upload Android Release APK x86_64'
         uses: 'actions/upload-artifact@v4'
         with:
           name: 'ani-android-x86_64-release'
           path: 'app/android/build/outputs/apk/release/android-x86_64-release.apk'
           overwrite: 'true'
-        if: '${{ matrix.uploadApk }}'
-      - id: 'step-26'
+      - id: 'step-20'
         name: 'Upload Android Release APK armeabi-v7a'
         uses: 'actions/upload-artifact@v4'
         with:
           name: 'ani-android-armeabi-v7a-release'
           path: 'app/android/build/outputs/apk/release/android-armeabi-v7a-release.apk'
           overwrite: 'true'
-        if: '${{ matrix.uploadApk }}'
-      - id: 'step-27'
-        name: 'Upload Android Release APK universal'
-        uses: 'actions/upload-artifact@v4'
-        with:
-          name: 'ani-android-universal-release'
-          path: 'app/android/build/outputs/apk/release/android-universal-release.apk'
-          overwrite: 'true'
-        if: '${{ (matrix.uploadApk) && (matrix.buildAllAndroidAbis) }}'
-      - id: 'step-28'
+      - id: 'step-21'
         name: 'Check'
         uses: 'nick-fields/retry@v2'
         with:
           timeout_minutes: '60'
           max_attempts: '2'
-          command: './gradlew check ${{ matrix.gradleArgs }}'
-        if: '${{ matrix.runTests }}'
-      - id: 'step-29'
+          command: './gradlew check "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dani.enable.anitorrent=true" "-DCMAKE_BUILD_TYPE=Release" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=arm64-v8a"'
+      - id: 'step-22'
         name: 'Upload Anitorrent CMakeCache.txt'
         uses: 'actions/upload-artifact@v4'
         with:
-          name: 'anitorrent-cmake-cache-${{ matrix.id }}'
+          name: 'anitorrent-cmake-cache-self-hosted-macos-15'
           path: 'torrent/anitorrent/build-ci/CMakeCache.txt'
           overwrite: 'true'
         if: '${{ always() }}'
-      - id: 'step-30'
-        name: 'Upload Anitorrent ${{ matrix.id }}'
+      - id: 'step-23'
+        name: 'Upload Anitorrent self-hosted-macos-15'
         uses: 'actions/upload-artifact@v4'
         with:
-          name: 'anitorrent-${{ matrix.id }}'
+          name: 'anitorrent-self-hosted-macos-15'
           path: 'torrent/anitorrent/anitorrent-native/build'
           overwrite: 'true'
         if: '${{ always() }}'
-      - id: 'step-31'
+      - id: 'step-24'
         name: 'Package Desktop'
-        run: './gradlew packageReleaseDistributionForCurrentOS ${{ matrix.gradleArgs }}'
-        if: '${{ (matrix.uploadDesktopInstallers) && (!(((matrix.os == ''macos'')) && ((matrix.arch == ''x64'')))) }}'
-      - id: 'step-32'
+        run: './gradlew packageReleaseDistributionForCurrentOS "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dani.enable.anitorrent=true" "-DCMAKE_BUILD_TYPE=Release" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=arm64-v8a"'
+      - id: 'step-25'
         name: 'Upload compose logs'
         uses: 'actions/upload-artifact@v4'
         with:
-          name: 'compose-logs-${{ matrix.os }}-${{ matrix.arch }}'
+          name: 'compose-logs-macos-aarch64'
           path: 'app/desktop/build/compose/logs'
-        if: '${{ matrix.uploadDesktopInstallers }}'
-      - id: 'step-33'
+      - id: 'step-26'
         name: 'Upload macOS dmg'
         uses: 'actions/upload-artifact@v4'
         with:
-          name: 'ani-macos-dmg-${{ matrix.arch }}'
+          name: 'ani-macos-dmg-aarch64'
           path: 'app/desktop/build/compose/binaries/main-release/dmg/Ani-*.dmg'
           overwrite: 'true'
-        if: '${{ (matrix.uploadDesktopInstallers) && ((matrix.os == ''macos'')) }}'
-      - id: 'step-34'
-        name: 'Upload Windows packages'
-        uses: 'actions/upload-artifact@v4'
-        with:
-          name: 'ani-windows-portable'
-          path: 'app/desktop/build/compose/binaries/main-release/app'
-          overwrite: 'true'
-        if: '${{ (matrix.uploadDesktopInstallers) && ((matrix.os == ''windows'')) }}'
-      - id: 'step-35'
+      - id: 'step-27'
         name: 'Cleanup temp files'
         continue-on-error: true
         run: 'chmod +x ./ci-helper/cleanup-temp-files-macos.sh && ./ci-helper/cleanup-temp-files-macos.sh'
-        if: '${{ (matrix.selfHosted) && (((matrix.os == ''macos'')) && ((matrix.arch == ''aarch64''))) }}'
   verify_github-windows-2019:
     name: 'Verify (Windows Server 2019 x86_64 (GitHub))'
     runs-on:
       - 'windows-2019'
     needs:
-      - 'build'
-    if: '${{ needs.build.outputs.windowsX64PortableSuccess }}'
+      - 'build_github-windows-2019'
+    if: '${{ needs.build_github-windows-2019.outputs.windowsX64PortableSuccess }}'
     steps:
       - id: 'step-0'
         uses: 'actions/checkout@v4'
@@ -352,378 +616,58 @@ jobs:
     runs-on:
       - 'windows-2022'
     needs:
-      - 'build'
-    if: '${{ needs.build.outputs.windowsX64PortableSuccess }}'
+      - 'build_github-windows-2019'
+    if: '${{ needs.build_github-windows-2019.outputs.windowsX64PortableSuccess }}'
     steps:
       - id: 'step-0'
         uses: 'actions/checkout@v4'
-  build_self_hosted:
-    name: 'Build (${{ matrix.name }})'
-    runs-on: '${{ matrix.runsOn }}'
-    if: '${{ github.repository == ''open-ani/animeko'' }}'
-    outputs:
-      macosAarch64DmgSuccess: '${{ steps.step-33.outcome == ''success'' }}'
-      macosAarch64DmgUrl: '${{ steps.step-33.outputs.artifact-url }}'
-      windowsX64PortableSuccess: '${{ steps.step-34.outcome == ''success'' }}'
-      windowsX64PortableUrl: '${{ steps.step-34.outputs.artifact-url }}'
-    strategy:
-      fail-fast: false
-      matrix:
-        id:
-          - 'windows-self-hosted'
-          - 'macos-aarch64'
-        include:
-          - arch: 'x64'
-            buildAllAndroidAbis: false
-            buildAnitorrent: true
-            buildAnitorrentSeparately: false
-            buildIosFramework: false
-            composeResourceTriple: 'windows-x64'
-            extraGradleArgs:
-              - '-Pani.android.abis=x86_64'
-            gradleArgs: '"--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dani.enable.anitorrent=true" "-DCMAKE_BUILD_TYPE=Release" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "--parallel" "-Pani.android.abis=x86_64"'
-            id: 'windows-self-hosted'
-            installNativeDeps: false
-            name: 'Windows 10 x86_64'
-            os: 'windows'
-            runTests: true
-            runsOn:
-              - 'self-hosted'
-              - 'Windows'
-              - 'X64'
-            selfHosted: true
-            uploadApk: false
-            uploadDesktopInstallers: false
-          - arch: 'aarch64'
-            buildAllAndroidAbis: false
-            buildAnitorrent: true
-            buildAnitorrentSeparately: true
-            buildIosFramework: false
-            composeResourceTriple: 'macos-arm64'
-            extraGradleArgs:
-              - '-Pani.android.abis=arm64-v8a'
-            gradleArgs: '"--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dani.enable.anitorrent=true" "-DCMAKE_BUILD_TYPE=Release" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=arm64-v8a"'
-            id: 'macos-aarch64'
-            installNativeDeps: false
-            name: 'macOS AArch64'
-            os: 'macos'
-            runTests: true
-            runsOn:
-              - 'self-hosted'
-              - 'macOS'
-              - 'ARM64'
-            selfHosted: true
-            uploadApk: true
-            uploadDesktopInstallers: true
-    steps:
-      - id: 'step-0'
-        uses: 'actions/checkout@v4'
-        with:
-          submodules: 'recursive'
-      - id: 'step-1'
-        name: 'Free space for macOS'
-        continue-on-error: true
-        run: 'chmod +x ./ci-helper/free-space-macos.sh && ./ci-helper/free-space-macos.sh'
-        if: '${{ ((matrix.os == ''macos'')) && (!(matrix.selfHosted)) }}'
-      - id: 'step-2'
-        name: 'Resolve JBR location'
-        run: |-
-          # Expand jbrLocationExpr
-          jbr_location_expr=$(eval echo ${{ runner.tool_cache }}/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz)
-          echo "jbrLocation=$jbr_location_expr" >> $GITHUB_OUTPUT
-        if: '${{ ((matrix.os == ''macos'')) && ((matrix.arch == ''aarch64'')) }}'
-      - id: 'step-3'
-        name: 'Get JBR 21 for macOS AArch64'
-        env:
-          jbrLocation: '${{ steps.step-2.outputs.jbrLocation }}'
-        run: |-
-          jbr_location="$jbrLocation"
-          checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz.checksum"
-          checksum_file="checksum.tmp"
-          wget -q -O $checksum_file $checksum_url
-          
-          expected_checksum=$(awk '{print $1}' $checksum_file)
-          file_checksum=""
-          
-          if [ -f "$jbr_location" ]; then
-              file_checksum=$(shasum -a 512 "$jbr_location" | awk '{print $1}')
-          fi
-          
-          if [ "$file_checksum" != "$expected_checksum" ]; then
-              wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz -O "$jbr_location"
-              file_checksum=$(shasum -a 512 "$jbr_location" | awk '{print $1}')
-          fi
-          
-          if [ "$file_checksum" != "$expected_checksum" ]; then
-              echo "Checksum verification failed!" >&2
-              rm -f $checksum_file
-              exit 1
-          fi
-          
-          rm -f $checksum_file
-          file "$jbr_location"
-        if: '${{ ((matrix.os == ''macos'')) && ((matrix.arch == ''aarch64'')) }}'
-      - id: 'step-4'
-        name: 'Setup JBR 21 for macOS AArch64'
-        uses: 'gmitch215/setup-java@6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d'
-        with:
-          java-version: '21'
-          distribution: 'jdkfile'
-          jdkFile: '${{ steps.step-2.outputs.jbrLocation }}'
-        env:
-          GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
-        if: '${{ ((matrix.os == ''macos'')) && ((matrix.arch == ''aarch64'')) }}'
-      - id: 'step-5'
-        name: 'Setup JBR 21 for other OS'
-        uses: 'gmitch215/setup-java@6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d'
-        with:
-          java-version: '21'
-          distribution: 'jetbrains'
-        env:
-          GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
-        if: '${{ !(((matrix.os == ''macos'')) && ((matrix.arch == ''aarch64''))) }}'
-      - id: 'step-6'
-        run: 'echo "jvm.toolchain.version=21" >> local.properties'
-      - id: 'step-7'
-        name: 'Setup vcpkg cache'
-        uses: 'actions/github-script@v7'
-        with:
-          script: |-
-            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
-            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
-        if: '${{ ((matrix.os == ''windows'')) && (matrix.installNativeDeps) }}'
-      - id: 'step-8'
-        name: 'Install Native Dependencies for Windows'
-        env:
-          VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
-        run: './ci-helper/install-deps-windows.cmd'
-        if: '${{ ((matrix.os == ''windows'')) && (matrix.installNativeDeps) }}'
-      - id: 'step-9'
-        name: 'Install Native Dependencies for MacOS'
-        run: 'chmod +x ./ci-helper/install-deps-macos-ci.sh && ./ci-helper/install-deps-macos-ci.sh'
-        if: '${{ ((matrix.os == ''macos'')) && (matrix.installNativeDeps) }}'
-      - id: 'step-10'
-        run: 'chmod -R 777 .'
-        if: '${{ ((matrix.os == ''ubuntu'')) || ((matrix.os == ''macos'')) }}'
-      - id: 'step-11'
-        name: 'Setup Gradle'
-        uses: 'gradle/actions/setup-gradle@v3'
-        with:
-          cache-disabled: 'true'
-      - id: 'step-12'
-        name: 'Clean and download dependencies'
-        uses: 'nick-fields/retry@v2'
-        with:
-          timeout_minutes: '60'
-          max_attempts: '3'
-          command: './gradlew ${{ matrix.gradleArgs }}'
-      - id: 'step-13'
-        name: 'Update dev version name'
-        run: './gradlew updateDevVersionNameFromGit ${{ matrix.gradleArgs }}'
-      - id: 'step-14'
-        name: 'Prepare signing key'
-        continue-on-error: true
-        uses: 'timheuer/base64-to-file@v1.1'
-        with:
-          fileName: 'android_signing_key'
-          fileDir: './'
-          encodedString: '${{ secrets.SIGNING_RELEASE_STOREFILE }}'
-        if: '${{ ((github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request''))) && (matrix.uploadApk) }}'
-      - id: 'step-15'
-        name: 'Build Anitorrent for Desktop'
-        run: './gradlew :torrent:anitorrent:build :torrent:anitorrent:anitorrent-native:buildAnitorrent ${{ matrix.gradleArgs }}'
-        if: '${{ (matrix.buildAnitorrent) && (matrix.buildAnitorrentSeparately) }}'
-      - id: 'step-16'
-        name: 'Build Anitorrent for Android'
-        run: './gradlew :torrent:anitorrent:anitorrent-native:buildAnitorrent buildCMakeDebug buildCMakeRelWithDebInfo ${{ matrix.gradleArgs }}'
-        if: '${{ matrix.buildAnitorrent }}'
-      - id: 'step-17'
-        name: 'Compile Kotlin'
-        run: './gradlew compileKotlin compileCommonMainKotlinMetadata compileDebugKotlinAndroid compileReleaseKotlinAndroid compileJvmMainKotlinMetadata compileKotlinDesktop compileKotlinMetadata ${{ matrix.gradleArgs }}'
-      - id: 'step-18'
-        name: 'Build Android Debug APKs'
-        run: './gradlew assembleDebug ${{ matrix.gradleArgs }}'
-        if: '${{ matrix.uploadApk }}'
-      - id: 'step-19'
-        name: 'Upload Android Debug APK arm64-v8a'
-        uses: 'actions/upload-artifact@v4'
-        with:
-          name: 'ani-android-arm64-v8a-debug'
-          path: 'app/android/build/outputs/apk/debug/android-arm64-v8a-debug.apk'
-          overwrite: 'true'
-        if: '${{ matrix.uploadApk }}'
-      - id: 'step-20'
-        name: 'Upload Android Debug APK x86_64'
-        uses: 'actions/upload-artifact@v4'
-        with:
-          name: 'ani-android-x86_64-debug'
-          path: 'app/android/build/outputs/apk/debug/android-x86_64-debug.apk'
-          overwrite: 'true'
-        if: '${{ matrix.uploadApk }}'
-      - id: 'step-21'
-        name: 'Upload Android Debug APK armeabi-v7a'
-        uses: 'actions/upload-artifact@v4'
-        with:
-          name: 'ani-android-armeabi-v7a-debug'
-          path: 'app/android/build/outputs/apk/debug/android-armeabi-v7a-debug.apk'
-          overwrite: 'true'
-        if: '${{ matrix.uploadApk }}'
-      - id: 'step-22'
-        name: 'Upload Android Debug APK universal'
-        uses: 'actions/upload-artifact@v4'
-        with:
-          name: 'ani-android-universal-debug'
-          path: 'app/android/build/outputs/apk/debug/android-universal-debug.apk'
-          overwrite: 'true'
-        if: '${{ (matrix.uploadApk) && (matrix.buildAllAndroidAbis) }}'
-      - id: 'step-23'
-        name: 'Build Android Release APKs'
-        env:
-          signing_release_storeFileFromRoot: '${{ steps.step-14.outputs.filePath }}'
-          signing_release_storePassword: '${{ secrets.SIGNING_RELEASE_STOREPASSWORD }}'
-          signing_release_keyAlias: '${{ secrets.SIGNING_RELEASE_KEYALIAS }}'
-          signing_release_keyPassword: '${{ secrets.SIGNING_RELEASE_KEYPASSWORD }}'
-        run: './gradlew assembleRelease ${{ matrix.gradleArgs }}'
-        if: '${{ ((github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request''))) && (matrix.uploadApk) }}'
-      - id: 'step-24'
-        name: 'Upload Android Release APK arm64-v8a'
-        uses: 'actions/upload-artifact@v4'
-        with:
-          name: 'ani-android-arm64-v8a-release'
-          path: 'app/android/build/outputs/apk/release/android-arm64-v8a-release.apk'
-          overwrite: 'true'
-        if: '${{ matrix.uploadApk }}'
-      - id: 'step-25'
-        name: 'Upload Android Release APK x86_64'
-        uses: 'actions/upload-artifact@v4'
-        with:
-          name: 'ani-android-x86_64-release'
-          path: 'app/android/build/outputs/apk/release/android-x86_64-release.apk'
-          overwrite: 'true'
-        if: '${{ matrix.uploadApk }}'
-      - id: 'step-26'
-        name: 'Upload Android Release APK armeabi-v7a'
-        uses: 'actions/upload-artifact@v4'
-        with:
-          name: 'ani-android-armeabi-v7a-release'
-          path: 'app/android/build/outputs/apk/release/android-armeabi-v7a-release.apk'
-          overwrite: 'true'
-        if: '${{ matrix.uploadApk }}'
-      - id: 'step-27'
-        name: 'Upload Android Release APK universal'
-        uses: 'actions/upload-artifact@v4'
-        with:
-          name: 'ani-android-universal-release'
-          path: 'app/android/build/outputs/apk/release/android-universal-release.apk'
-          overwrite: 'true'
-        if: '${{ (matrix.uploadApk) && (matrix.buildAllAndroidAbis) }}'
-      - id: 'step-28'
-        name: 'Check'
-        uses: 'nick-fields/retry@v2'
-        with:
-          timeout_minutes: '60'
-          max_attempts: '2'
-          command: './gradlew check ${{ matrix.gradleArgs }}'
-        if: '${{ matrix.runTests }}'
-      - id: 'step-29'
-        name: 'Upload Anitorrent CMakeCache.txt'
-        uses: 'actions/upload-artifact@v4'
-        with:
-          name: 'anitorrent-cmake-cache-${{ matrix.id }}'
-          path: 'torrent/anitorrent/build-ci/CMakeCache.txt'
-          overwrite: 'true'
-        if: '${{ always() }}'
-      - id: 'step-30'
-        name: 'Upload Anitorrent ${{ matrix.id }}'
-        uses: 'actions/upload-artifact@v4'
-        with:
-          name: 'anitorrent-${{ matrix.id }}'
-          path: 'torrent/anitorrent/anitorrent-native/build'
-          overwrite: 'true'
-        if: '${{ always() }}'
-      - id: 'step-31'
-        name: 'Package Desktop'
-        run: './gradlew packageReleaseDistributionForCurrentOS ${{ matrix.gradleArgs }}'
-        if: '${{ (matrix.uploadDesktopInstallers) && (!(((matrix.os == ''macos'')) && ((matrix.arch == ''x64'')))) }}'
-      - id: 'step-32'
-        name: 'Upload compose logs'
-        uses: 'actions/upload-artifact@v4'
-        with:
-          name: 'compose-logs-${{ matrix.os }}-${{ matrix.arch }}'
-          path: 'app/desktop/build/compose/logs'
-        if: '${{ matrix.uploadDesktopInstallers }}'
-      - id: 'step-33'
-        name: 'Upload macOS dmg'
-        uses: 'actions/upload-artifact@v4'
-        with:
-          name: 'ani-macos-dmg-${{ matrix.arch }}'
-          path: 'app/desktop/build/compose/binaries/main-release/dmg/Ani-*.dmg'
-          overwrite: 'true'
-        if: '${{ (matrix.uploadDesktopInstallers) && ((matrix.os == ''macos'')) }}'
-      - id: 'step-34'
-        name: 'Upload Windows packages'
-        uses: 'actions/upload-artifact@v4'
-        with:
-          name: 'ani-windows-portable'
-          path: 'app/desktop/build/compose/binaries/main-release/app'
-          overwrite: 'true'
-        if: '${{ (matrix.uploadDesktopInstallers) && ((matrix.os == ''windows'')) }}'
-      - id: 'step-35'
-        name: 'Cleanup temp files'
-        continue-on-error: true
-        run: 'chmod +x ./ci-helper/cleanup-temp-files-macos.sh && ./ci-helper/cleanup-temp-files-macos.sh'
-        if: '${{ (matrix.selfHosted) && (((matrix.os == ''macos'')) && ((matrix.arch == ''aarch64''))) }}'
-  verify_self_hosted-windows-10:
+  verify_self-hosted-windows-10:
     name: 'Verify (Windows 10 x86_64 (Self-Hosted))'
     runs-on:
       - 'self-hosted'
       - 'Windows'
       - 'X64'
     needs:
-      - 'build_self_hosted'
-    if: '${{ needs.build_self_hosted.outputs.windowsX64PortableSuccess }}'
+      - 'build_github-windows-2019'
+    if: '${{ (github.repository == ''open-ani/animeko'') && (needs.build_github-windows-2019.outputs.windowsX64PortableSuccess) }}'
     steps:
       - id: 'step-0'
         uses: 'actions/checkout@v4'
-  verify_self_hosted-macos-15:
+  verify_self-hosted-macos-15:
     name: 'Verify (macOS 15 AArch64 (Self-Hosted))'
     runs-on:
       - 'self-hosted'
       - 'macOS'
       - 'ARM64'
     needs:
-      - 'build_self_hosted'
-    if: '${{ needs.build_self_hosted.outputs.macosAarch64DmgSuccess }}'
+      - 'build_self-hosted-macos-15'
+    if: '${{ (github.repository == ''open-ani/animeko'') && (needs.build_self-hosted-macos-15.outputs.macosAarch64DmgSuccess) }}'
     steps:
       - id: 'step-0'
         uses: 'actions/checkout@v4'
       - id: 'step-1'
-        name: 'Download ani.dmg for ${{ matrix.id }}'
+        name: 'Download ani.dmg'
         env:
           GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
-        run: 'curl -H "Authorization: Bearer $GITHUB_TOKEN" -L "needs.build_self_hosted.outputs.macosAarch64DmgUrl" -o ani.dmg'
-        if: '${{ ((matrix.os == ''macos'')) && ((matrix.arch == ''aarch64'')) }}'
+        run: 'curl -H "Authorization: Bearer $GITHUB_TOKEN" -L "needs.build_self-hosted-macos-15.outputs.macosAarch64DmgUrl" -o ani.dmg'
       - id: 'step-2'
-        name: 'Check that Anitorrent can be loaded (${{ matrix.id }})'
+        name: 'Check that Anitorrent can be loaded'
         run: './ci-helper/run-ani-test-macos-aarch64.sh ani.dmg anitorrent-load-test'
-        if: '${{ ((matrix.os == ''macos'')) && ((matrix.arch == ''aarch64'')) }}'
   verify_github-macos-14:
     name: 'Verify (macOS 14 AArch64 (GitHub))'
     runs-on:
       - 'macos-14'
     needs:
-      - 'build_self_hosted'
-    if: '${{ needs.build_self_hosted.outputs.macosAarch64DmgSuccess }}'
+      - 'build_self-hosted-macos-15'
+    if: '${{ needs.build_self-hosted-macos-15.outputs.macosAarch64DmgSuccess }}'
     steps:
       - id: 'step-0'
         uses: 'actions/checkout@v4'
       - id: 'step-1'
-        name: 'Download ani.dmg for ${{ matrix.id }}'
+        name: 'Download ani.dmg'
         env:
           GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
-        run: 'curl -H "Authorization: Bearer $GITHUB_TOKEN" -L "needs.build_self_hosted.outputs.macosAarch64DmgUrl" -o ani.dmg'
-        if: '${{ ((matrix.os == ''macos'')) && ((matrix.arch == ''aarch64'')) }}'
+        run: 'curl -H "Authorization: Bearer $GITHUB_TOKEN" -L "needs.build_self-hosted-macos-15.outputs.macosAarch64DmgUrl" -o ani.dmg'
       - id: 'step-2'
-        name: 'Check that Anitorrent can be loaded (${{ matrix.id }})'
+        name: 'Check that Anitorrent can be loaded'
         run: './ci-helper/run-ani-test-macos-aarch64.sh ani.dmg anitorrent-load-test'
-        if: '${{ ((matrix.os == ''macos'')) && ((matrix.arch == ''aarch64'')) }}'
