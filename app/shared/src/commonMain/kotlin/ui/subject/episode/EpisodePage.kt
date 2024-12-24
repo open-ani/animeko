@@ -33,8 +33,8 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
+import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
@@ -325,7 +325,7 @@ private fun EpisodeSceneTabletVeryWide(
                             episodeId = vm.episodePresentation.episodeId,
                             setShowEditCommentSheet = { showEditCommentSheet = it },
                             pauseOnPlaying = pauseOnPlaying,
-                            lazyListState = vm.commentLazyListState,
+                            lazyStaggeredGridState = vm.commentLazyStaggeredGirdState,
                         )
                     }
                 }
@@ -344,7 +344,7 @@ private fun EpisodeSceneTabletVeryWide(
             },
             onSendComplete = { succeeded ->
                 if (succeeded) scope.launch {
-                    vm.commentLazyListState.scrollToItem(0)
+                    vm.commentLazyStaggeredGirdState.scrollToItem(0)
                 }
             },
         )
@@ -455,7 +455,7 @@ private fun EpisodeSceneContentPhone(
                 episodeId = vm.episodePresentation.episodeId,
                 setShowEditCommentSheet = { showEditCommentSheet = it },
                 pauseOnPlaying = pauseOnPlaying,
-                lazyListState = vm.commentLazyListState,
+                lazyStaggeredGridState = vm.commentLazyStaggeredGirdState,
             )
         },
         modifier.then(if (vm.isFullscreen) Modifier.fillMaxSize() else Modifier.navigationBarsPadding()),
@@ -516,7 +516,7 @@ private fun EpisodeSceneContentPhone(
             },
             onSendComplete = { succeeded ->
                 if (succeeded) scope.launch {
-                    vm.commentLazyListState.scrollToItem(0)
+                    vm.commentLazyStaggeredGirdState.scrollToItem(0)
                 }
             },
         )
@@ -755,7 +755,7 @@ private fun EpisodeCommentColumn(
     setShowEditCommentSheet: (Boolean) -> Unit,
     pauseOnPlaying: () -> Unit,
     modifier: Modifier = Modifier,
-    lazyListState: LazyListState = rememberLazyListState(),
+    lazyStaggeredGridState: LazyStaggeredGridState = rememberLazyStaggeredGridState(),
 ) {
     val toaster = LocalToaster.current
     val browserNavigator = LocalUriHandler.current
@@ -786,7 +786,7 @@ private fun EpisodeCommentColumn(
             RichTextDefaults.checkSanityAndOpen(it, browserNavigator, toaster)
         },
         modifier = modifier.fillMaxSize(),
-        lazyListState = lazyListState,
+        lazyStaggeredGridState = lazyStaggeredGridState,
     )
 }
 

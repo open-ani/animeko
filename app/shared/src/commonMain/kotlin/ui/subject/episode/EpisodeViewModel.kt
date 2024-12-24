@@ -10,7 +10,7 @@
 package me.him188.ani.app.ui.subject.episode
 
 import androidx.annotation.UiThread
-import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -172,7 +172,7 @@ abstract class EpisodeViewModel : AbstractViewModel(), HasBackgroundScope {
 
     abstract var sidebarVisible: Boolean
 
-    abstract val commentLazyListState: LazyListState
+    abstract val commentLazyStaggeredGirdState: LazyStaggeredGridState
 
     /**
      * 播放器内切换剧集
@@ -650,7 +650,7 @@ private class EpisodeViewModelImpl(
 
     override var isFullscreen: Boolean by mutableStateOf(initialIsFullscreen)
     override var sidebarVisible: Boolean by mutableStateOf(true)
-    override val commentLazyListState: LazyListState = LazyListState()
+    override val commentLazyStaggeredGirdState: LazyStaggeredGridState = LazyStaggeredGridState()
 
     fun switchEpisode(episodeId: Int) {
         savePlayProgress()

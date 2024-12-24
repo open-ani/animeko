@@ -10,6 +10,7 @@
 package me.him188.ani.app.ui.subject.details.state
 
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
@@ -64,5 +65,5 @@ class SubjectDetailsState(
     val selfCollected by derivedStateOf { this.selfCollectionType != UnifiedCollectionType.NOT_COLLECTED }
 
     val detailsTabLazyListState = LazyListState()
-    val commentTabLazyListState = LazyListState()
+    val commentTabLazyStaggeredGridState = LazyStaggeredGridState()
 }
