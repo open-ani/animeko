@@ -88,12 +88,12 @@ jobs:
       if: '${{ always() }}'
     - id: 'step-13'
       name: 'Package Desktop'
-      run: './gradlew packageReleaseDistributionForCurrentOS "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dani.enable.anitorrent=true" "-DCMAKE_BUILD_TYPE=Release" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=x86_64"'
+      run: './gradlew createReleaseDistributable "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dani.enable.anitorrent=true" "-DCMAKE_BUILD_TYPE=Release" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=x86_64"'
     - id: 'step-14'
       name: 'Upload compose logs'
       uses: 'actions/upload-artifact@v4'
       with:
-        name: 'compose-logs-windows-x64'
+        name: 'compose-logs-github-windows-2019'
         path: 'app/desktop/build/compose/logs'
     - id: 'step-15'
       name: 'Upload Windows packages'
@@ -161,9 +161,6 @@ jobs:
     name: 'Build (macOS 13 x86_64 (GitHub))'
     runs-on:
     - 'macos-13'
-    outputs:
-      macosAarch64DmgSuccess: '${{ steps.step-27.outcome == ''success'' }}'
-      macosAarch64DmgUrl: '${{ steps.step-27.outputs.artifact-url }}'
     steps:
     - id: 'step-0'
       uses: 'actions/checkout@v4'
@@ -312,16 +309,3 @@ jobs:
         path: 'torrent/anitorrent/anitorrent-native/build'
         overwrite: 'true'
       if: '${{ always() }}'
-    - id: 'step-26'
-      name: 'Upload compose logs'
-      uses: 'actions/upload-artifact@v4'
-      with:
-        name: 'compose-logs-macos-x64'
-        path: 'app/desktop/build/compose/logs'
-    - id: 'step-27'
-      name: 'Upload macOS dmg'
-      uses: 'actions/upload-artifact@v4'
-      with:
-        name: 'ani-macos-dmg-x64'
-        path: 'app/desktop/build/compose/binaries/main-release/dmg/Ani-*.dmg'
-        overwrite: 'true'

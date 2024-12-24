@@ -200,7 +200,7 @@ jobs:
       name: 'Upload compose logs'
       uses: 'actions/upload-artifact@v4'
       with:
-        name: 'compose-logs-windows-x64'
+        name: 'compose-logs-github-windows-2019'
         path: 'app/desktop/build/compose/logs'
   release_github-macos-13:
     name: 'macOS 13 x86_64 (GitHub)'
@@ -391,7 +391,7 @@ jobs:
       name: 'Upload compose logs'
       uses: 'actions/upload-artifact@v4'
       with:
-        name: 'compose-logs-macos-x64'
+        name: 'compose-logs-github-macos-13'
         path: 'app/desktop/build/compose/logs'
   release_self-hosted-macos-15:
     name: 'macOS 15 AArch64 (Self-Hosted)'
@@ -589,7 +589,7 @@ jobs:
       name: 'Upload compose logs'
       uses: 'actions/upload-artifact@v4'
       with:
-        name: 'compose-logs-macos-aarch64'
+        name: 'compose-logs-self-hosted-macos-15'
         path: 'app/desktop/build/compose/logs'
     - id: 'step-26'
       name: 'Cleanup temp files'

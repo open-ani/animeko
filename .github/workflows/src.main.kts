@@ -1172,27 +1172,35 @@ class WithMatrix(
     }
 
     fun JobBuilder<*>.packageDesktopAndUpload(): PackageDesktopAndUploadOutputs {
-        if (matrix.uploadDesktopInstallers and !matrix.isMacOSX64) {
+        if (matrix.isMacOSX64 // not supported
+            || !matrix.uploadDesktopInstallers // disabled
+        ) {
+
+            return PackageDesktopAndUploadOutputs()
+        }
+
+        if (matrix.isWindows) {
+            // Windows does not support installers
             runGradle(
                 name = "Package Desktop",
                 tasks = [
-                    "packageReleaseDistributionForCurrentOS",
+                    "createReleaseDistributable", // portable
+                ],
+            )
+        } else {
+            // macOS uses installers
+            runGradle(
+                name = "Package Desktop",
+                tasks = [
+                    "packageReleaseDistributionForCurrentOS", // dmg
                 ],
             )
         }
 
         uploadComposeLogs()
 
-//    uses(
-//        name = "Upload macOS portable",
-//        `if` = matrix.uploadDesktopInstallers and matrix.isMacOS,
-//        action = UploadArtifact(
-//            name = "ani-macos-portable-${matrix.arch}",
-//            path_Untyped = "app/desktop/build/compose/binaries/main-release/app/Ani.app",
-//        ),
-//    )
         return PackageDesktopAndUploadOutputs().apply {
-            if (matrix.uploadDesktopInstallers and matrix.isMacOS) {
+            if (matrix.isMacOS && matrix.isAArch64) {
                 val macosAarch64Dmg = uses(
                     name = "Upload macOS dmg",
                     action = UploadArtifact(
@@ -1206,7 +1214,18 @@ class WithMatrix(
                 this.macosAarch64DmgUrl = macosAarch64Dmg.outputs.artifactUrl
             }
 
-            if (matrix.uploadDesktopInstallers and matrix.isWindows) {
+            if (matrix.isMacOS && matrix.isX64) {
+                val macosX64Portable = uses(
+                    name = "Upload macOS dmg",
+                    action = UploadArtifact(
+                        name = "ani-macos-portable-${matrix.arch}",
+                        path_Untyped = "app/desktop/build/compose/binaries/main-release/app/Ani.app",
+                        overwrite = true,
+                    ),
+                )
+            }
+
+            if (matrix.isWindows) {
                 val windowsX64Portable = uses(
                     name = "Upload Windows packages",
                     action = UploadArtifact(
@@ -1227,7 +1246,7 @@ class WithMatrix(
             uses(
                 name = "Upload compose logs",
                 action = UploadArtifact(
-                    name = "compose-logs-${matrix.os}-${matrix.arch}",
+                    name = "compose-logs-${matrix.runner.id}",
                     path_Untyped = "app/desktop/build/compose/logs",
                 ),
             )
@@ -1402,13 +1421,3 @@ fun MatrixInstance.toMatrixIncludeMap(): Map<String, Any> {
         }
     }
 }
-
-fun generateStrategy(matrixInstances: List<MatrixInstance>) = mapOf(
-    "strategy" to mapOf(
-        "fail-fast" to false,
-        "matrix" to mapOf(
-            "id" to matrixInstances.map { it.runner },
-            "include" to matrixInstances.map { it.toMatrixIncludeMap() },
-        ),
-    ),
-)
