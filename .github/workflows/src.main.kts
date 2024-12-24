@@ -522,12 +522,12 @@ fun getBuildJobBody(matrix: MatrixInstance): JobBuilder<BuildJobOutputs>.() -> U
 
         packageOutputs.macosAarch64DmgOutcome?.let {
             jobOutputs.macosAarch64DmgSuccess = it.eq(AbstractResult.Status.Success)
-            jobOutputs.macosAarch64DmgUrl = packageOutputs.macosAarch64DmgUrl.orEmpty()
+            jobOutputs.macosAarch64DmgUrl = packageOutputs.macosAarch64DmgUrl!!
         }
 
         packageOutputs.windowsX64PortableOutcome?.let {
             jobOutputs.windowsX64PortableSuccess = it.eq(AbstractResult.Status.Success)
-            jobOutputs.windowsX64PortableUrl = packageOutputs.windowsX64PortableUrl.orEmpty()
+            jobOutputs.windowsX64PortableUrl = packageOutputs.windowsX64PortableUrl!!
         }
 
         cleanupTempFiles()
@@ -539,7 +539,7 @@ fun getVerifyJobBody(
     os: OS,
     arch: Arch
 ): JobBuilder<JobOutputs.EMPTY>.() -> Unit = {
-    uses(action = Checkout()) // not recursive
+    uses(action = Checkout(clean = false)) // not recursive
 
     class VerifyTask(
         val name: String,
@@ -569,14 +569,14 @@ fun getVerifyJobBody(
                     ),
                     env = mapOf(
                         "GITHUB_TOKEN" to expr { secrets.GITHUB_TOKEN },
-                        "URL" to buildJobOutputs.macosAarch64DmgUrl,
+                        "URL" to expr { buildJobOutputs.macosAarch64DmgUrl },
                     ),
                 )
 
                 tasksToExecute.forEach { task ->
                     run(
                         name = task.step,
-                        command = shell($$"""./ci-helper/run-ani-test-macos-aarch64.sh ani.dmg $${task.name}"""),
+                        command = shell($$""""$GITHUB_WORKSPACE/ci-helper/run-ani-test-macos-aarch64.sh" ani.dmg $${task.name}"""),
                     )
                 }
             }
