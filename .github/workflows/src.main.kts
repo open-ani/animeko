@@ -335,46 +335,47 @@ val matrixInstances = listOf(
     ),
 )
 
+
+val buildJobBody: JobBuilder<JobOutputs.EMPTY>.() -> Unit = {
+    uses(action = Checkout(submodules_Untyped = "recursive"))
+
+    freeSpace()
+    installJbr21()
+    installNativeDeps()
+    chmod777()
+    setupGradle()
+
+    runGradle(
+        name = "Update dev version name",
+        tasks = ["updateDevVersionNameFromGit"],
+    )
+
+    val prepareSigningKey = prepareSigningKey()
+    buildAnitorrent()
+    compileAndAssemble()
+    buildAndroidApk(prepareSigningKey)
+    gradleCheck()
+    uploadAnitorrent()
+    packageDesktopAndUpload()
+    cleanupTempFiles()
+}
+
+
 workflow(
     name = "Build",
     on = listOf(
         Push(pathsIgnore = listOf("**/*.md")),
-        PullRequest(pathsIgnore = listOf("**/*.md")),
     ),
     sourceFile = __FILE__,
     targetFileName = "build.yml",
     consistencyCheckJobConfig = ConsistencyCheckJobConfig.Disabled,
 ) {
-    val jobBody: JobBuilder<JobOutputs.EMPTY>.() -> Unit = {
-        uses(action = Checkout(submodules_Untyped = "recursive"))
-
-        freeSpace()
-        installJbr21()
-        installNativeDeps()
-        chmod777()
-        setupGradle()
-
-        runGradle(
-            name = "Update dev version name",
-            tasks = ["updateDevVersionNameFromGit"],
-        )
-
-        val prepareSigningKey = prepareSigningKey()
-        buildAnitorrent()
-        compileAndAssemble()
-        buildAndroidApk(prepareSigningKey)
-        gradleCheck()
-        uploadAnitorrent()
-        packageDesktopAndUpload()
-        cleanupTempFiles()
-    }
-
     job(
         id = "build",
         name = expr { matrix.name },
         runsOn = RunnerType.Custom(expr { matrix.runsOn }),
         _customArguments = generateStrategy(matrixInstances.filterNot { it.selfHosted }),
-        block = jobBody,
+        block = buildJobBody,
     )
 
     job(
@@ -383,8 +384,28 @@ workflow(
         runsOn = RunnerType.Custom(expr { matrix.runsOn }),
         `if` = expr { github.isAnimekoRepository and !github.isPullRequest },
         _customArguments = generateStrategy(matrixInstances.filter { it.selfHosted }),
-        block = jobBody,
+        block = buildJobBody,
     )
+}
+
+workflow(
+    name = "Build",
+    on = listOf(
+        PullRequest(pathsIgnore = listOf("**/*.md")),
+    ),
+    sourceFile = __FILE__,
+    targetFileName = "build_pr.yml",
+    consistencyCheckJobConfig = ConsistencyCheckJobConfig.Disabled,
+) {
+    job(
+        id = "build",
+        name = expr { matrix.name },
+        runsOn = RunnerType.Custom(expr { matrix.runsOn }),
+        _customArguments = generateStrategy(matrixInstances.filterNot { it.selfHosted }),
+        block = buildJobBody,
+    )
+    
+    // No self-hosted
 }
 
 workflow(
