@@ -14,7 +14,6 @@ jobs:
   build:
     name: '${{ matrix.name }}'
     runs-on: '${{ matrix.runsOn }}'
-    if: '${{ (github.event_name != ''pull_request'' && github.repository == ''open-ani/animeko'' ) || (!(matrix.selfHosted)) }}'
     strategy:
       fail-fast: false
       matrix:
