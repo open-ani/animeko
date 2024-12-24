@@ -766,7 +766,7 @@ private class EpisodeViewModelImpl(
                     withContext(Dispatchers.Main) { turnstileState.reload() }
                     val turnstileToken = CompletableDeferred<String>()
                         .also { turnstileResponse = it }
-                        .run { withTimeoutOrNull(10000L.milliseconds) { await() } }
+                        .run { withTimeoutOrNull(10.seconds) { await() } }
 
                     if (turnstileToken == null) {
                         triedCount++
