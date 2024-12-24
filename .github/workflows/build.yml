@@ -15,11 +15,6 @@ jobs:
       - 'Windows'
       - 'X64'
     if: '${{ github.repository == ''open-ani/animeko'' }}'
-    outputs:
-      macosAarch64DmgSuccess: '${{ false }}'
-      macosAarch64DmgUrl: '${{  }}'
-      windowsX64PortableSuccess: '${{ false }}'
-      windowsX64PortableUrl: '${{  }}'
     steps:
       - id: 'step-0'
         uses: 'actions/checkout@v4'
@@ -84,8 +79,6 @@ jobs:
     runs-on:
       - 'windows-2019'
     outputs:
-      macosAarch64DmgSuccess: '${{ false }}'
-      macosAarch64DmgUrl: '${{  }}'
       windowsX64PortableSuccess: '${{ steps.step-15.outcome == ''success'' }}'
       windowsX64PortableUrl: '${{ steps.step-15.outputs.artifact-url }}'
     steps:
@@ -179,11 +172,6 @@ jobs:
     name: 'Build (Ubuntu x86_64 (Compile only))'
     runs-on:
       - 'ubuntu-20.04'
-    outputs:
-      macosAarch64DmgSuccess: '${{ false }}'
-      macosAarch64DmgUrl: '${{  }}'
-      windowsX64PortableSuccess: '${{ false }}'
-      windowsX64PortableUrl: '${{  }}'
     steps:
       - id: 'step-0'
         uses: 'actions/checkout@v4'
@@ -242,8 +230,6 @@ jobs:
     outputs:
       macosAarch64DmgSuccess: '${{ steps.step-27.outcome == ''success'' }}'
       macosAarch64DmgUrl: '${{ steps.step-27.outputs.artifact-url }}'
-      windowsX64PortableSuccess: '${{ false }}'
-      windowsX64PortableUrl: '${{  }}'
     steps:
       - id: 'step-0'
         uses: 'actions/checkout@v4'
@@ -415,8 +401,6 @@ jobs:
     outputs:
       macosAarch64DmgSuccess: '${{ steps.step-26.outcome == ''success'' }}'
       macosAarch64DmgUrl: '${{ steps.step-26.outputs.artifact-url }}'
-      windowsX64PortableSuccess: '${{ false }}'
-      windowsX64PortableUrl: '${{  }}'
     steps:
       - id: 'step-0'
         uses: 'actions/checkout@v4'

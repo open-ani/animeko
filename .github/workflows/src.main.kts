@@ -519,12 +519,17 @@ fun getBuildJobBody(matrix: MatrixInstance): JobBuilder<BuildJobOutputs>.() -> U
         gradleCheck()
         uploadAnitorrent()
         val packageOutputs = packageDesktopAndUpload()
-        jobOutputs.macosAarch64DmgSuccess =
-            packageOutputs.macosAarch64DmgOutcome?.eq(AbstractResult.Status.Success) ?: "false"
-        jobOutputs.macosAarch64DmgUrl = packageOutputs.macosAarch64DmgUrl.orEmpty()
-        jobOutputs.windowsX64PortableSuccess =
-            packageOutputs.windowsX64PortableOutcome?.eq(AbstractResult.Status.Success) ?: "false"
-        jobOutputs.windowsX64PortableUrl = packageOutputs.windowsX64PortableUrl.orEmpty()
+
+        packageOutputs.macosAarch64DmgOutcome?.let {
+            jobOutputs.macosAarch64DmgSuccess = it.eq(AbstractResult.Status.Success)
+            jobOutputs.macosAarch64DmgUrl = packageOutputs.macosAarch64DmgUrl.orEmpty()
+        }
+
+        packageOutputs.windowsX64PortableOutcome?.let {
+            jobOutputs.windowsX64PortableSuccess = it.eq(AbstractResult.Status.Success)
+            jobOutputs.windowsX64PortableUrl = packageOutputs.windowsX64PortableUrl.orEmpty()
+        }
+
         cleanupTempFiles()
     }
 }
