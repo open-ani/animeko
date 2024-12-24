@@ -45,9 +45,6 @@ import Secrets.SIGNING_RELEASE_KEYALIAS
 import Secrets.SIGNING_RELEASE_KEYPASSWORD
 import Secrets.SIGNING_RELEASE_STOREFILE
 import Secrets.SIGNING_RELEASE_STOREPASSWORD
-import Src_main.Arch
-import Src_main.MatrixContext
-import Src_main.OS
 import io.github.typesafegithub.workflows.actions.actions.Checkout
 import io.github.typesafegithub.workflows.actions.actions.GithubScript
 import io.github.typesafegithub.workflows.actions.actions.UploadArtifact
@@ -333,7 +330,6 @@ val matrixInstances = listOf(
         buildAllAndroidAbis = false,
     ),
 )
-val matrixInstancesWithoutSelfHosted = matrixInstances.filterNot { it.selfHosted }
 
 workflow(
     name = "Build",
@@ -373,17 +369,16 @@ workflow(
         id = "build",
         name = expr { matrix.name },
         runsOn = RunnerType.Custom(expr { matrix.runsOn }),
-        `if` = expr { github.isAnimekoRepository and !github.isPullRequest },
-        _customArguments = generateStrategy(matrixInstances),
+        _customArguments = generateStrategy(matrixInstances.filterNot { it.selfHosted }),
         block = jobBody,
     )
 
     job(
-        id = "build_fork",
-        name = expr { matrix.name } + " (fork)",
+        id = "build_self_hosted",
+        name = expr { matrix.name },
         runsOn = RunnerType.Custom(expr { matrix.runsOn }),
-        `if` = expr { !(github.isAnimekoRepository and !github.isPullRequest) },
-        _customArguments = generateStrategy(matrixInstancesWithoutSelfHosted),
+        `if` = expr { github.isAnimekoRepository and !github.isPullRequest },
+        _customArguments = generateStrategy(matrixInstances.filter { it.selfHosted }),
         block = jobBody,
     )
 }
@@ -450,7 +445,6 @@ workflow(
     }
 
     val matrixInstancesForRelease = matrixInstances.filterNot { it.os == OS.UBUNTU }
-    val matrixInstancesForReleaseWithoutSelfHosted = matrixInstancesForRelease.filterNot { it.selfHosted }
 
     val jobBody: JobBuilder<JobOutputs.EMPTY>.() -> Unit = {
         uses(action = Checkout(submodules_Untyped = "recursive"))
@@ -499,17 +493,16 @@ workflow(
         name = expr { matrix.name },
         needs = listOf(createRelease),
         runsOn = RunnerType.Custom(expr { matrix.runsOn }),
-        `if` = expr { github.isAnimekoRepository },
-        _customArguments = generateStrategy(matrixInstancesForRelease),
+        _customArguments = generateStrategy(matrixInstancesForRelease.filterNot { it.selfHosted }),
         block = jobBody,
     )
     job(
-        id = "release_fork",
+        id = "release_self_hosted",
         name = expr { matrix.name } + " (fork)",
         needs = listOf(createRelease),
         runsOn = RunnerType.Custom(expr { matrix.runsOn }),
-        `if` = expr { !github.isAnimekoRepository },
-        _customArguments = generateStrategy(matrixInstancesForReleaseWithoutSelfHosted),
+        `if` = expr { github.isAnimekoRepository and !github.isPullRequest },
+        _customArguments = generateStrategy(matrixInstancesForRelease.filter { it.selfHosted }),
         block = jobBody,
     )
 }

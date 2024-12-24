@@ -14,38 +14,14 @@ jobs:
   build:
     name: '${{ matrix.name }}'
     runs-on: '${{ matrix.runsOn }}'
-    if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
     strategy:
       fail-fast: false
       matrix:
         id:
-          - 'windows-self-hosted'
           - 'windows-2019'
           - 'ubuntu-x64'
           - 'macos-x64'
-          - 'macos-aarch64'
         include:
-          - arch: 'x64'
-            buildAllAndroidAbis: false
-            buildAnitorrent: true
-            buildAnitorrentSeparately: false
-            buildIosFramework: false
-            composeResourceTriple: 'windows-x64'
-            extraGradleArgs:
-              - '-Pani.android.abis=x86_64'
-            gradleArgs: '"--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dani.enable.anitorrent=true" "-DCMAKE_BUILD_TYPE=Release" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "--parallel" "-Pani.android.abis=x86_64"'
-            id: 'windows-self-hosted'
-            installNativeDeps: false
-            name: 'Windows 10 x86_64'
-            os: 'windows'
-            runTests: true
-            runsOn:
-              - 'self-hosted'
-              - 'Windows'
-              - 'X64'
-            selfHosted: true
-            uploadApk: false
-            uploadDesktopInstallers: false
           - arch: 'x64'
             buildAllAndroidAbis: false
             buildAnitorrent: true
@@ -99,27 +75,6 @@ jobs:
             runsOn:
               - 'macos-13'
             selfHosted: false
-            uploadApk: true
-            uploadDesktopInstallers: true
-          - arch: 'aarch64'
-            buildAllAndroidAbis: false
-            buildAnitorrent: true
-            buildAnitorrentSeparately: true
-            buildIosFramework: false
-            composeResourceTriple: 'macos-arm64'
-            extraGradleArgs:
-              - '-Pani.android.abis=arm64-v8a'
-            gradleArgs: '"--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dani.enable.anitorrent=true" "-DCMAKE_BUILD_TYPE=Release" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=arm64-v8a"'
-            id: 'macos-aarch64'
-            installNativeDeps: false
-            name: 'macOS AArch64'
-            os: 'macos'
-            runTests: true
-            runsOn:
-              - 'self-hosted'
-              - 'macOS'
-              - 'ARM64'
-            selfHosted: true
             uploadApk: true
             uploadDesktopInstallers: true
     steps:
@@ -380,17 +335,16 @@ jobs:
         continue-on-error: true
         run: 'chmod +x ./ci-helper/cleanup-temp-files-macos.sh && ./ci-helper/cleanup-temp-files-macos.sh'
         if: '${{ (matrix.selfHosted) && (((matrix.os == ''macos'')) && ((matrix.arch == ''aarch64''))) }}'
-  build_fork:
+  build_self_hosted:
     name: '${{ matrix.name }}'
     runs-on: '${{ matrix.runsOn }}'
-    if: '${{ !((github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request''))) }}'
+    if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
     strategy:
       fail-fast: false
       matrix:
         id:
-          - 'windows-2019'
-          - 'ubuntu-x64'
-          - 'macos-x64'
+          - 'windows-self-hosted'
+          - 'macos-aarch64'
         include:
           - arch: 'x64'
             buildAllAndroidAbis: false
@@ -400,51 +354,38 @@ jobs:
             composeResourceTriple: 'windows-x64'
             extraGradleArgs:
               - '-Pani.android.abis=x86_64'
-            gradleArgs: '"--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dani.enable.anitorrent=true" "-DCMAKE_BUILD_TYPE=Release" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=x86_64"'
-            id: 'windows-2019'
-            installNativeDeps: true
-            name: 'Windows Server 2019 x86_64'
+            gradleArgs: '"--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dani.enable.anitorrent=true" "-DCMAKE_BUILD_TYPE=Release" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "--parallel" "-Pani.android.abis=x86_64"'
+            id: 'windows-self-hosted'
+            installNativeDeps: false
+            name: 'Windows 10 x86_64'
             os: 'windows'
             runTests: true
             runsOn:
-              - 'windows-2019'
-            selfHosted: false
-            uploadApk: false
-            uploadDesktopInstallers: true
-          - arch: 'x64'
-            buildAllAndroidAbis: true
-            buildAnitorrent: false
-            buildAnitorrentSeparately: false
-            buildIosFramework: false
-            composeResourceTriple: 'linux-x64'
-            extraGradleArgs: [ ]
-            gradleArgs: '"--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g"'
-            id: 'ubuntu-x64'
-            installNativeDeps: true
-            name: 'Ubuntu x86_64 (Compile only)'
-            os: 'ubuntu'
-            runTests: false
-            runsOn:
-              - 'ubuntu-20.04'
-            selfHosted: false
+              - 'self-hosted'
+              - 'Windows'
+              - 'X64'
+            selfHosted: true
             uploadApk: false
             uploadDesktopInstallers: false
-          - arch: 'x64'
-            buildAllAndroidAbis: true
+          - arch: 'aarch64'
+            buildAllAndroidAbis: false
             buildAnitorrent: true
             buildAnitorrentSeparately: true
             buildIosFramework: false
-            composeResourceTriple: 'macos-x64'
-            extraGradleArgs: [ ]
-            gradleArgs: '"--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dani.enable.anitorrent=true" "-DCMAKE_BUILD_TYPE=Release" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g"'
-            id: 'macos-x64'
-            installNativeDeps: true
-            name: 'macOS x86_64'
+            composeResourceTriple: 'macos-arm64'
+            extraGradleArgs:
+              - '-Pani.android.abis=arm64-v8a'
+            gradleArgs: '"--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dani.enable.anitorrent=true" "-DCMAKE_BUILD_TYPE=Release" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=arm64-v8a"'
+            id: 'macos-aarch64'
+            installNativeDeps: false
+            name: 'macOS AArch64'
             os: 'macos'
             runTests: true
             runsOn:
-              - 'macos-13'
-            selfHosted: false
+              - 'self-hosted'
+              - 'macOS'
+              - 'ARM64'
+            selfHosted: true
             uploadApk: true
             uploadDesktopInstallers: true
     steps:
