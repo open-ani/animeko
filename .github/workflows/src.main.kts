@@ -507,43 +507,40 @@ fun getVerifyJobBody(
 
     when (runner.os to runner.arch) {
         OS.WINDOWS to Arch.X64 -> {
-            // TODO
+
         }
 
         OS.MACOS to Arch.AARCH64 -> {
-            // macos aarch64
-            kotlin.run {
-                run(
-                    name = $$"Echo URL",
-                    command = shell(
-                        // Include GITHUB_TOKEN
-                        $$"""echo "$URL"""",
-                    ),
-                    env = mapOf(
-                        "GITHUB_TOKEN" to expr { secrets.GITHUB_TOKEN },
-                        "URL" to expr { buildJobOutputs.macosAarch64DmgUrl },
-                    ),
-                )
-                run(
-                    name = $$"Download ani.dmg",
-                    command = shell(
-                        // Include GITHUB_TOKEN
-                        $$"""
+            run(
+                name = $$"Echo URL",
+                command = shell(
+                    // Include GITHUB_TOKEN
+                    $$"""echo "$URL"""",
+                ),
+                env = mapOf(
+                    "GITHUB_TOKEN" to expr { secrets.GITHUB_TOKEN },
+                    "URL" to expr { buildJobOutputs.macosAarch64DmgUrl },
+                ),
+            )
+            run(
+                name = $$"Download ani.dmg",
+                command = shell(
+                    // Include GITHUB_TOKEN
+                    $$"""
                             wget -q --tries=3 --header="Authorization: Bearer $GITHUB_TOKEN" "$URL" -O "$ani.zip"
                             """.trimIndent(),
-                    ),
-                    env = mapOf(
-                        "GITHUB_TOKEN" to expr { secrets.GITHUB_TOKEN },
-                        "URL" to expr { buildJobOutputs.macosAarch64DmgUrl },
-                    ),
-                )
+                ),
+                env = mapOf(
+                    "GITHUB_TOKEN" to expr { secrets.GITHUB_TOKEN },
+                    "URL" to expr { buildJobOutputs.macosAarch64DmgUrl },
+                ),
+            )
 
-                tasksToExecute.forEach { task ->
-                    run(
-                        name = task.step,
-                        command = shell($$""""$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" ani.zip $${task.name}"""),
-                    )
-                }
+            tasksToExecute.forEach { task ->
+                run(
+                    name = task.step,
+                    command = shell($$""""$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" ani.zip $${task.name}"""),
+                )
             }
         }
 
