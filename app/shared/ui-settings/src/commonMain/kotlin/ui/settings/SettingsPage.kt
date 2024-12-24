@@ -387,7 +387,7 @@ private fun getName(tab: SettingsTab): String {
         SettingsTab.BT -> "BitTorrent"
         SettingsTab.CACHE -> "自动缓存"
         SettingsTab.STORAGE -> "存储空间"
-        SettingsTab.ABOUT -> "关于，反馈与日志"
+        SettingsTab.ABOUT -> "关于、反馈与日志"
         SettingsTab.DEBUG -> "调试"
     }
 }

@@ -36,7 +36,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
@@ -66,11 +65,6 @@ fun BangumiOAuthScene(
     if (!vm.needAuth) {
         SideEffect {
             nav.popUntilNotAuth()
-        }
-    }
-    DisposableEffect(vm) {
-        onDispose {
-            vm.onCancel("BangumiOAuthScene disposed")
         }
     }
     BangumiOAuthPage(

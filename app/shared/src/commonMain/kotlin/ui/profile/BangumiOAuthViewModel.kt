@@ -122,7 +122,12 @@ class BangumiOAuthViewModel : AbstractViewModel(), KoinComponent {
         requestIdFlow.value = Uuid.randomString()
     }
 
-    fun onCancel(reason: String?) {
+    private fun onCancel(reason: String?) {
         sessionManager.processingRequest.value?.cancel(reason)
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        onCancel("BangumiOAuthScene disposed")
     }
 }

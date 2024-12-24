@@ -35,7 +35,7 @@ expect fun <T> ReplaceFileCorruptionHandler(produceNewData: (CorruptionException
 fun <T> DataStoreFactory.create(
     serializer: KSerializer<T>,
     defaultValue: () -> T,
-    corruptionHandler: ReplaceFileCorruptionHandler<T>? = null,
+    corruptionHandler: ReplaceFileCorruptionHandler<T>?,
     migrations: List<DataMigration<T>> = listOf(),
     scope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob()),
     produceFile: () -> SystemPath
@@ -51,7 +51,7 @@ fun <T> DataStoreFactory.create(
 
 expect fun <T> DataStoreFactory.create(
     serializer: DataStoreSerializer<T>,
-    corruptionHandler: ReplaceFileCorruptionHandler<T>? = null,
+    corruptionHandler: ReplaceFileCorruptionHandler<T>?,
     migrations: List<DataMigration<T>> = listOf(),
     scope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob()),
     produceFile: () -> SystemPath

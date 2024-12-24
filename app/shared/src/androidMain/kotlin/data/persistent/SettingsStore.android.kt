@@ -1,19 +1,10 @@
 /*
- * Ani
- * Copyright (C) 2022-2024 Him188
+ * Copyright (C) 2024 OpenAni and contributors.
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
 package me.him188.ani.app.data.persistent
@@ -37,12 +28,21 @@ internal class PlatformDataStoreManagerAndroid(
         return context.applicationContext.dataStoreFile(name).toKtPath().inSystem
     }
 
-    private val Context.tokenStoreImpl by preferencesDataStore("tokens")
+    private val Context.tokenStoreImpl by preferencesDataStore(
+        "tokens",
+        corruptionHandler = replaceFileCorruptionHandlerForPreferences,
+    )
     override val tokenStore: DataStore<Preferences> get() = context.tokenStoreImpl
 
-    private val Context.preferencesStoreImpl by preferencesDataStore("preferences")
+    private val Context.preferencesStoreImpl by preferencesDataStore(
+        "preferences",
+        corruptionHandler = replaceFileCorruptionHandlerForPreferences,
+    )
     override val preferencesStore: DataStore<Preferences> get() = context.preferencesStoreImpl
 
-    private val Context.preferredAlliancesStoreImpl by preferencesDataStore("preferredAlliances")
+    private val Context.preferredAlliancesStoreImpl by preferencesDataStore(
+        "preferredAlliances",
+        corruptionHandler = replaceFileCorruptionHandlerForPreferences,
+    )
     override val preferredAllianceStore: DataStore<Preferences> get() = context.preferredAlliancesStoreImpl
 }

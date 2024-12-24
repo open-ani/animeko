@@ -199,7 +199,7 @@ class MediaSourceSubscriptionUpdater(
         val changed: List<Pair<ExistingArgument, NewArgument>>,
     ) {
         override fun toString(): String {
-            return "Diff(removed=${removed.joinToString()}"
+            return "Diff(removed=${removed.joinToString()})"
         }
     }
 

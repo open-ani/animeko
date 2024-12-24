@@ -151,10 +151,7 @@ object AniDesktop {
 
     @JvmStatic
     fun main(args: Array<String>) {
-        println("dataDir: file://${projectDirectories.dataDir.replace(" ", "%20")}")
-        println("cacheDir: file://${projectDirectories.cacheDir.replace(" ", "%20")}")
         val logsDir = File(projectDirectories.dataDir).resolve("logs").apply { mkdirs() }
-        println("logsDir: file://${logsDir.absolutePath.replace(" ", "%20")}")
 
         Log4j2Config.configureLogging(logsDir)
         kotlin.runCatching {
@@ -166,7 +163,11 @@ object AniDesktop {
         if (AniBuildConfigDesktop.isDebug) {
             logger.info { "Debug mode enabled" }
         }
-        logger.info { "Ani platform: ${currentPlatform().name}, version: ${currentAniBuildConfig.versionName}" }
+        logger.info { "Ani platform: ${currentPlatform()}, version: ${currentAniBuildConfig.versionName}" }
+
+        logger.info { "dataDir: file://${projectDirectories.dataDir.replace(" ", "%20")}" }
+        logger.info { "cacheDir: file://${projectDirectories.cacheDir.replace(" ", "%20")}" }
+        logger.info { "logsDir: file://${logsDir.absolutePath.replace(" ", "%20")}" }
 
         val defaultSize = DpSize(1301.dp, 855.dp)
         // Get the screen size as a Dimension object

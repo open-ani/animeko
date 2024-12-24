@@ -29,7 +29,6 @@ import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -70,6 +69,11 @@ class BangumiTokenAuthViewModel : AbstractViewModel(), KoinComponent {
     suspend fun authByToken(token: String) {
         sessionManager.setSession(AccessTokenSession(token, currentTimeMillis() + 365.days.inWholeMilliseconds))
     }
+
+    override fun onCleared() {
+        super.onCleared()
+        onCancel("BangumiTokenAuthPage BackHandler")
+    }
 }
 
 @Composable
@@ -81,11 +85,6 @@ fun BangumiTokenAuthPage(
 ) {
     var token by rememberSaveable { mutableStateOf("") }
     val navigator = LocalNavigator.current
-    DisposableEffect(vm) {
-        onDispose {
-            vm.onCancel("BangumiTokenAuthPage BackHandler")
-        }
-    }
     BackHandler {
         navigator.popUntilNotAuth()
     }

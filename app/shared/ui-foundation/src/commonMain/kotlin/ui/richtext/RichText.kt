@@ -15,6 +15,7 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
@@ -47,6 +48,7 @@ import androidx.compose.ui.platform.UriHandler
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
@@ -124,7 +126,7 @@ private fun rememberAnnotatedMaskState(
 
 @Stable
 object RichTextDefaults {
-    val StickerSize: Int = 24
+    val StickerSize: Int = 20
     val FontSize: Float = 16f
 
     @UiThread
@@ -223,12 +225,11 @@ object RichTextDefaults {
                             )
                         }
 
-                        val requestedColor = e.color.takeOrElse { contentColor }
                         val background by animateColorAsState(
                             when {
                                 maskState[index] == true -> {
-                                    requestedColor.copy(0.38f)
-                                        .compositeOver(colorScheme.surfaceDim)
+                                    colorScheme.onPrimaryContainer.copy(0.12f)
+                                        .compositeOver(colorScheme.surfaceContainerHigh)
                                 }
 
                                 e.code -> colorScheme.surfaceContainer
@@ -237,9 +238,10 @@ object RichTextDefaults {
                         )
                         val textColor by animateColorAsState(
                             if (maskState[index] == true) {
-                                requestedColor.copy(0.38f).compositeOver(colorScheme.surfaceDim)
+                                colorScheme.onPrimaryContainer.copy(0.12f)
+                                    .compositeOver(colorScheme.surfaceContainerHigh)
                             } else {
-                                requestedColor
+                                e.color.takeOrElse { contentColor }
                             },
                         )
 
@@ -286,7 +288,7 @@ object RichTextDefaults {
                                     androidx.compose.foundation.Image(
                                         painter = painterResource(sticker.resource),
                                         contentDescription = null,
-                                        modifier = Modifier.size(StickerSize.dp),
+                                        modifier = Modifier.size(StickerSize.dp).offset(y = 2.dp),
                                     )
                                 }
                             },
@@ -320,6 +322,7 @@ object RichTextDefaults {
             text = content,
             modifier = modifier,
             inlineContent = inlineStickerMap,
+            style = TextStyle.Default.copy(lineHeight = FontSize.sp * 1.5f),
             maxLines = maxLine ?: Int.MAX_VALUE,
             overflow = TextOverflow.Ellipsis,
             onClick = { textPos ->
@@ -388,10 +391,9 @@ object RichTextDefaults {
         onClickUrl: (String) -> Unit,
     ) {
         Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .then(modifier),
-            color = MaterialTheme.colorScheme.surface,
+            modifier = Modifier.fillMaxWidth().then(modifier),
+            color = MaterialTheme.colorScheme.surfaceContainer,
+            shape = MaterialTheme.shapes.extraSmall,
         ) {
             Column(modifier = Modifier.padding(8.dp)) {
                 CompositionLocalProvider(

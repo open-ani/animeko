@@ -55,7 +55,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.derivedStateOf
@@ -161,12 +160,6 @@ private fun EpisodeSceneContent(
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
 ) {
-    DisposableEffect(vm) {
-        onDispose {
-            vm.stopPlaying()
-        }
-    }
-
     // 处理当用户点击返回键时, 如果是全屏, 则退出全屏
     // 按返回退出全屏
     val context by rememberUpdatedState(LocalContext.current)

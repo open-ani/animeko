@@ -11,7 +11,9 @@ package me.him188.ani.app.data.persistent
 
 import androidx.datastore.core.DataStore
 import androidx.datastore.core.DataStoreFactory
+import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.mutablePreferencesOf
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.nullable
 import me.him188.ani.app.data.models.danmaku.DanmakuRegexFilter
@@ -105,5 +107,8 @@ abstract class PlatformDataStoreManager {
     abstract val preferredAllianceStore: DataStore<Preferences>
 
     abstract fun resolveDataStoreFile(name: String): SystemPath
+
+    protected val replaceFileCorruptionHandlerForPreferences: ReplaceFileCorruptionHandler<Preferences> =
+        ReplaceFileCorruptionHandler { mutablePreferencesOf() }
 }
 

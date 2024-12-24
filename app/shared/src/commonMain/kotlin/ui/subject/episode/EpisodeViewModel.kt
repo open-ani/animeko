@@ -999,4 +999,9 @@ private class EpisodeViewModelImpl(
         data,
         isSelf = selfId == data.senderId,
     )
+
+    override fun onCleared() {
+        super.onCleared()
+        stopPlaying()
+    }
 }

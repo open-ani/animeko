@@ -99,7 +99,7 @@ fun Comment(
                 }
                 rhsTitle()
             }
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
             SelectionContainer(
                 modifier = Modifier.padding(horizontal = horizontalPadding).fillMaxWidth(),
             ) {
