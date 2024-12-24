@@ -9,8 +9,13 @@ on:
       - '**/*.md'
 jobs:
   build:
-    name: '${{ matrix.name }}'
+    name: 'Build (${{ matrix.name }})'
     runs-on: '${{ matrix.runsOn }}'
+    outputs:
+      macosAarch64DmgSuccess: '${{ steps.step-33.outcome == ''success'' }}'
+      macosAarch64DmgUrl: '${{ steps.step-33.outputs.artifact-url }}'
+      windowsX64PortableSuccess: '${{ steps.step-34.outcome == ''success'' }}'
+      windowsX64PortableUrl: '${{ steps.step-34.outputs.artifact-url }}'
     strategy:
       fail-fast: false
       matrix:
@@ -332,10 +337,35 @@ jobs:
         continue-on-error: true
         run: 'chmod +x ./ci-helper/cleanup-temp-files-macos.sh && ./ci-helper/cleanup-temp-files-macos.sh'
         if: '${{ (matrix.selfHosted) && (((matrix.os == ''macos'')) && ((matrix.arch == ''aarch64''))) }}'
+  verify_github-windows-2019:
+    name: 'Verify (Windows Server 2019 x86_64 (GitHub))'
+    runs-on:
+      - 'windows-2019'
+    needs:
+      - 'build'
+    if: '${{ needs.build.outputs.windowsX64PortableSuccess }}'
+    steps:
+      - id: 'step-0'
+        uses: 'actions/checkout@v4'
+  verify_github-windows-2022:
+    name: 'Verify (Windows Server 2022 x86_64 (GitHub))'
+    runs-on:
+      - 'windows-2022'
+    needs:
+      - 'build'
+    if: '${{ needs.build.outputs.windowsX64PortableSuccess }}'
+    steps:
+      - id: 'step-0'
+        uses: 'actions/checkout@v4'
   build_self_hosted:
-    name: '${{ matrix.name }}'
+    name: 'Build (${{ matrix.name }})'
     runs-on: '${{ matrix.runsOn }}'
     if: '${{ github.repository == ''open-ani/animeko'' }}'
+    outputs:
+      macosAarch64DmgSuccess: '${{ steps.step-33.outcome == ''success'' }}'
+      macosAarch64DmgUrl: '${{ steps.step-33.outputs.artifact-url }}'
+      windowsX64PortableSuccess: '${{ steps.step-34.outcome == ''success'' }}'
+      windowsX64PortableUrl: '${{ steps.step-34.outputs.artifact-url }}'
     strategy:
       fail-fast: false
       matrix:
@@ -643,3 +673,57 @@ jobs:
         continue-on-error: true
         run: 'chmod +x ./ci-helper/cleanup-temp-files-macos.sh && ./ci-helper/cleanup-temp-files-macos.sh'
         if: '${{ (matrix.selfHosted) && (((matrix.os == ''macos'')) && ((matrix.arch == ''aarch64''))) }}'
+  verify_self_hosted-windows-10:
+    name: 'Verify (Windows 10 x86_64 (Self-Hosted))'
+    runs-on:
+      - 'self-hosted'
+      - 'Windows'
+      - 'X64'
+    needs:
+      - 'build_self_hosted'
+    if: '${{ needs.build_self_hosted.outputs.windowsX64PortableSuccess }}'
+    steps:
+      - id: 'step-0'
+        uses: 'actions/checkout@v4'
+  verify_self_hosted-macos-15:
+    name: 'Verify (macOS 15 AArch64 (Self-Hosted))'
+    runs-on:
+      - 'self-hosted'
+      - 'macOS'
+      - 'ARM64'
+    needs:
+      - 'build_self_hosted'
+    if: '${{ needs.build_self_hosted.outputs.macosAarch64DmgSuccess }}'
+    steps:
+      - id: 'step-0'
+        uses: 'actions/checkout@v4'
+      - id: 'step-1'
+        name: 'Download ani.dmg for ${{ matrix.id }}'
+        env:
+          GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
+        run: 'curl -H "Authorization: Bearer $GITHUB_TOKEN" -L "needs.build_self_hosted.outputs.macosAarch64DmgUrl" -o ani.dmg'
+        if: '${{ ((matrix.os == ''macos'')) && ((matrix.arch == ''aarch64'')) }}'
+      - id: 'step-2'
+        name: 'Check that Anitorrent can be loaded (${{ matrix.id }})'
+        run: './ci-helper/run-ani-test-macos-aarch64.sh ani.dmg anitorrent-load-test'
+        if: '${{ ((matrix.os == ''macos'')) && ((matrix.arch == ''aarch64'')) }}'
+  verify_github-macos-14:
+    name: 'Verify (macOS 14 AArch64 (GitHub))'
+    runs-on:
+      - 'macos-14'
+    needs:
+      - 'build_self_hosted'
+    if: '${{ needs.build_self_hosted.outputs.macosAarch64DmgSuccess }}'
+    steps:
+      - id: 'step-0'
+        uses: 'actions/checkout@v4'
+      - id: 'step-1'
+        name: 'Download ani.dmg for ${{ matrix.id }}'
+        env:
+          GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
+        run: 'curl -H "Authorization: Bearer $GITHUB_TOKEN" -L "needs.build_self_hosted.outputs.macosAarch64DmgUrl" -o ani.dmg'
+        if: '${{ ((matrix.os == ''macos'')) && ((matrix.arch == ''aarch64'')) }}'
+      - id: 'step-2'
+        name: 'Check that Anitorrent can be loaded (${{ matrix.id }})'
+        run: './ci-helper/run-ani-test-macos-aarch64.sh ani.dmg anitorrent-load-test'
+        if: '${{ ((matrix.os == ''macos'')) && ((matrix.arch == ''aarch64'')) }}'
