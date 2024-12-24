@@ -565,10 +565,11 @@ fun getVerifyJobBody(
                     name = $$"Download ani.dmg",
                     command = shell(
                         // Include GITHUB_TOKEN
-                        $$"""curl -H "Authorization: Bearer $GITHUB_TOKEN" -L "$${buildJobOutputs.macosAarch64DmgUrl}" -o ani.dmg""",
+                        $$"""curl -H "Authorization: Bearer $GITHUB_TOKEN" -L "$URL" -o ani.dmg""",
                     ),
                     env = mapOf(
                         "GITHUB_TOKEN" to expr { secrets.GITHUB_TOKEN },
+                        "URL" to buildJobOutputs.macosAarch64DmgUrl,
                     ),
                 )
 
