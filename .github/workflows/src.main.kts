@@ -507,27 +507,48 @@ fun getVerifyJobBody(
 
     when (runner.os to runner.arch) {
         OS.WINDOWS to Arch.X64 -> {
-
-        }
-
-        OS.MACOS to Arch.AARCH64 -> {
+            val myUrlExpr = expr { buildJobOutputs.macosAarch64DmgUrl }
             run(
                 name = $$"Echo URL",
+                command = shell($$"""echo "$URL""""),
+                env = mapOf("URL" to myUrlExpr),
+            )
+            
+            run(
+                name = $$"Download ani.zip",
                 command = shell(
                     // Include GITHUB_TOKEN
-                    $$"""echo "$URL"""",
+                    $$"""
+                            curl -s -H "Authorization: Bearer %GITHUB_TOKEN%" --retry 3 "%URL%" --output "ani.zip"
+                            """.trimIndent(),
                 ),
                 env = mapOf(
                     "GITHUB_TOKEN" to expr { secrets.GITHUB_TOKEN },
-                    "URL" to expr { buildJobOutputs.macosAarch64DmgUrl },
+                    "URL" to expr { buildJobOutputs.windowsX64PortableUrl },
                 ),
+            )
+            
+            tasksToExecute.forEach { task ->
+                run(
+                    name = task.step,
+                    command = shell($$""""$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-windows-x64.ps1" ani.zip $${task.name}"""),
+                )
+            }
+        }
+
+        OS.MACOS to Arch.AARCH64 -> {
+            val myUrlExpr = expr { buildJobOutputs.macosAarch64DmgUrl }
+            run(
+                name = $$"Echo URL",
+                command = shell($$"""echo "$URL""""),
+                env = mapOf("URL" to myUrlExpr),
             )
             run(
                 name = $$"Download ani.dmg",
                 command = shell(
                     // Include GITHUB_TOKEN
                     $$"""
-                            wget -q --tries=3 --header="Authorization: Bearer $GITHUB_TOKEN" "$URL" -O "$ani.zip"
+                            wget -q --tries=3 --header="Authorization: Bearer $GITHUB_TOKEN" "$URL" -O "ani.zip"
                             """.trimIndent(),
                 ),
                 env = mapOf(
