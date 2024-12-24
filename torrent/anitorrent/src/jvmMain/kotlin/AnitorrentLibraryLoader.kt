@@ -10,6 +10,7 @@
 package me.him188.ani.app.torrent.anitorrent
 
 import me.him188.ani.app.torrent.api.TorrentLibraryLoader
+import me.him188.ani.utils.coroutines.withExceptionCollector
 import me.him188.ani.utils.logging.*
 import me.him188.ani.utils.platform.Platform
 import me.him188.ani.utils.platform.currentPlatform
@@ -50,22 +51,58 @@ object AnitorrentLibraryLoader : TorrentLibraryLoader {
             System.loadLibrary("anitorrent")
             return
         }
+        val platform = platform as Platform.Desktop
         logger.info { "Loading anitorrent library" }
-        try {
-            System.loadLibrary("anitorrent")
-            logger.info { "Loading anitorrent library: success (from java.library.path)" }
-        } catch (e: UnsatisfiedLinkError) {
-            // 可能是调试状态, 从 resources 加载
-            logger.info { "Failed to load anitorrent directly from java.library.path, trying resources instead" }
-            val temp = getTempDirForPlatform()
-            logger.info { "Temp dir: ${temp.absolutePathString()}" }
-            if (platform is Platform.Windows) {
-                extractLibraryFromResources("libssl-3-x64", temp)
-                extractLibraryFromResources("libcrypto-3-x64", temp)
-                loadLibraryFromResources("torrent-rasterbar", temp)
+        logger.info { "java.library.path: ${System.getProperty("java.library.path")}" }
+        withExceptionCollector {
+            try {
+                System.loadLibrary("anitorrent")
+                logger.info { "Loading anitorrent library: success (from java.library.path)" }
+            } catch (e: UnsatisfiedLinkError) {
+                collect(e)
+
+                // 可能是调试状态, 从 resources 加载
+                logger.info { "Failed to load anitorrent directly from java.library.path, trying resources instead" }
+                val temp = getTempDirForPlatform()
+                logger.info { "Temp dir: ${temp.absolutePathString()}" }
+                when (platform) {
+                    is Platform.Windows -> {
+                        extractLibraryFromResources("libssl-3-x64", temp)?.let {
+                            logger.info { "Extract ssl: ${it.absolutePathString()}" }
+                        }
+                        extractLibraryFromResources("libcrypto-3-x64", temp)?.let {
+                            logger.info { "Extract crypto: ${it.absolutePathString()}" }
+                        }
+                        loadLibraryFromResources("torrent-rasterbar", temp)
+                    }
+
+                    is Platform.MacOS -> {
+                        extractLibraryFromResources("ssl", temp)?.let {
+                            logger.info { "Extract ssl: ${it.absolutePathString()}" }
+                        }
+                        extractLibraryFromResources("crypto", temp)?.let {
+                            logger.info { "Extract crypto: ${it.absolutePathString()}" }
+                        }
+                        extractLibraryFromResources("torrent-rasterbar.2.0.10", temp)?.let { target ->
+                            logger.info { "Extract crypto: ${target.absolutePathString()}" }
+                            Files.createSymbolicLink(
+                                target.resolveSibling("libtorrent-rasterbar.2.0.dylib"),
+                                target,
+                            )
+                            Files.createSymbolicLink(
+                                target.resolveSibling("libtorrent-rasterbar.dylib"),
+                                target,
+                            )
+                        }
+                    }
+
+                    is Platform.Linux -> {
+                        TODO("loadDependencies for Linux")
+                    }
+                }
+                loadLibraryFromResources("anitorrent", temp)
+                logger.info { "Loading anitorrent library: success (from resources)" }
             }
-            loadLibraryFromResources("anitorrent", temp)
-            logger.info { "Loading anitorrent library: success (from resources)" }
         }
     }
 
@@ -88,18 +125,24 @@ object AnitorrentLibraryLoader : TorrentLibraryLoader {
         }
     }
 
-    @Suppress("UnsafeDynamicallyLoadedCode")
-    private fun extractLibraryFromResources(
-        name: String,
-        tempDir: Path
-    ): Path? {
-        val filename = when (platform as Platform.Desktop) {
+
+    private fun makeDesktopPlatformName(name: String): String {
+        return when (platform as Platform.Desktop) {
             is Platform.Linux -> "lib$name.so"
             is Platform.Windows -> "$name.dll"
             is Platform.MacOS -> "lib$name.dylib"
         }
+    }
+
+    @Suppress("UnsafeDynamicallyLoadedCode")
+    private fun extractLibraryFromResources(
+        name: String,
+        tempDir: Path,
+        destinationName: String = name,
+    ): Path? {
+        val filename = makeDesktopPlatformName(name)
         this::class.java.classLoader?.getResourceAsStream(filename)?.use {
-            val tempFile = tempDir.resolve(filename)
+            val tempFile = tempDir.resolve(makeDesktopPlatformName(destinationName))
             tempFile.outputStream().use { output ->
                 it.copyTo(output)
             }
@@ -120,7 +163,7 @@ object AnitorrentLibraryLoader : TorrentLibraryLoader {
 
     @Synchronized
     @Throws(UnsatisfiedLinkError::class)
-    override fun loadLibraries() {
+    override fun loadLibraries() = synchronized(this) {
         if (libraryLoaded) return
 
         try {
