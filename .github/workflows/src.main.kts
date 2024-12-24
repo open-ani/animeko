@@ -330,7 +330,6 @@ val matrixInstances = listOf(
         buildAllAndroidAbis = false,
     ),
 )
-val matrixInstancesWithoutSelfHosted = matrixInstances.filterNot { it.selfHosted }
 
 workflow(
     name = "Build",
@@ -342,7 +341,20 @@ workflow(
     targetFileName = "build.yml",
     consistencyCheckJobConfig = ConsistencyCheckJobConfig.Disabled,
 ) {
-    val jobBody: JobBuilder<JobOutputs.EMPTY>.() -> Unit = {
+    job(
+        id = "build",
+        name = expr { matrix.name },
+        runsOn = RunnerType.Custom(expr { matrix.runsOn }),
+        _customArguments = mapOf(
+            "strategy" to mapOf(
+                "fail-fast" to false,
+                "matrix" to mapOf(
+                    "id" to matrixInstances.map { it.id },
+                    "include" to matrixInstances.map { it.toMatrixIncludeMap() },
+                ),
+            ),
+        ),
+    ) {
         uses(action = Checkout(submodules_Untyped = "recursive"))
 
         freeSpace()
@@ -365,24 +377,6 @@ workflow(
         packageDesktopAndUpload()
         cleanupTempFiles()
     }
-
-    job(
-        id = "build",
-        name = expr { matrix.name },
-        runsOn = RunnerType.Custom(expr { matrix.runsOn }),
-        `if` = expr { github.isAnimekoRepository and !github.isPullRequest },
-        _customArguments = generateStrategy(matrixInstances),
-        block = jobBody,
-    )
-
-    job(
-        id = "build_fork",
-        name = expr { matrix.name },
-        runsOn = RunnerType.Custom(expr { matrix.runsOn }),
-        `if` = expr { !(github.isAnimekoRepository and !github.isPullRequest) },
-        _customArguments = generateStrategy(matrixInstancesWithoutSelfHosted),
-        block = jobBody,
-    )
 }
 
 workflow(
@@ -447,9 +441,21 @@ workflow(
     }
 
     val matrixInstancesForRelease = matrixInstances.filterNot { it.os == OS.UBUNTU }
-    val matrixInstancesForReleaseWithoutSelfHosted = matrixInstancesForRelease.filterNot { it.selfHosted }
-
-    val jobBody: JobBuilder<JobOutputs.EMPTY>.() -> Unit = {
+    job(
+        id = "release",
+        name = expr { matrix.name },
+        needs = listOf(createRelease),
+        runsOn = RunnerType.Custom(expr { matrix.runsOn }),
+        _customArguments = mapOf(
+            "strategy" to mapOf(
+                "fail-fast" to false,
+                "matrix" to mapOf(
+                    "id" to matrixInstancesForRelease.map { it.id },
+                    "include" to matrixInstancesForRelease.map { it.toMatrixIncludeMap() },
+                ),
+            ),
+        ),
+    ) {
         uses(action = Checkout(submodules_Untyped = "recursive"))
 
         val gitTag = getGitTag()
@@ -491,24 +497,6 @@ workflow(
         }
         cleanupTempFiles()
     }
-    job(
-        id = "release",
-        name = expr { matrix.name },
-        needs = listOf(createRelease),
-        runsOn = RunnerType.Custom(expr { matrix.runsOn }),
-        `if` = expr { github.isAnimekoRepository },
-        _customArguments = generateStrategy(matrixInstancesForRelease),
-        block = jobBody,
-    )
-    job(
-        id = "release_fork",
-        name = expr { matrix.name },
-        needs = listOf(createRelease),
-        runsOn = RunnerType.Custom(expr { matrix.runsOn }),
-        `if` = expr { !github.isAnimekoRepository },
-        _customArguments = generateStrategy(matrixInstancesForReleaseWithoutSelfHosted),
-        block = jobBody,
-    )
 }
 
 data class GitTag(
@@ -711,7 +699,7 @@ fun JobBuilder<*>.setupGradle() {
 fun JobBuilder<*>.prepareSigningKey(): ActionStep<Base64ToFile_Untyped.Outputs> {
     return uses(
         name = "Prepare signing key",
-        `if` = expr { github.isAnimekoRepository and !github.isPullRequest and matrix.uploadApk },
+        `if` = expr { github.isAnimekoRepository and matrix.uploadApk },
         action = Base64ToFile_Untyped(
             fileName_Untyped = "android_signing_key",
             fileDir_Untyped = "./",
@@ -784,7 +772,7 @@ fun JobBuilder<*>.buildAndroidApk(prepareSigningKey: ActionStep<Base64ToFile_Unt
 
     runGradle(
         name = "Build Android Release APKs",
-        `if` = expr { github.isAnimekoRepository and !github.isPullRequest and matrix.uploadApk },
+        `if` = expr { github.isAnimekoRepository and matrix.uploadApk },
         tasks = [
             "assembleRelease",
         ],
@@ -1017,10 +1005,7 @@ object Secrets {
 val Contexts.matrix get() = MatrixContext
 
 val GitHubContext.isAnimekoRepository
-    get() = """$repository == 'open-ani/animeko'"""
-
-val GitHubContext.isPullRequest
-    get() = """$event_name == 'pull_request'"""
+    get() = $$"""$$event_name != 'pull_request' && $$repository == 'open-ani/animeko' """
 
 val MatrixContext.isX64 get() = arch.eq(Arch.X64)
 val MatrixContext.isAArch64 get() = arch.eq(Arch.AARCH64)
@@ -1062,13 +1047,3 @@ fun MatrixInstance.toMatrixIncludeMap(): Map<String, Any> {
         }
     }
 }
-
-fun generateStrategy(matrixInstances: List<MatrixInstance>) = mapOf(
-    "strategy" to mapOf(
-        "fail-fast" to false,
-        "matrix" to mapOf(
-            "id" to matrixInstances.map { it.id },
-            "include" to matrixInstances.map { it.toMatrixIncludeMap() },
-        ),
-    ),
-)
