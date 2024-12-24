@@ -576,7 +576,7 @@ fun getVerifyJobBody(
                 tasksToExecute.forEach { task ->
                     run(
                         name = task.step,
-                        command = shell($$""""$GITHUB_WORKSPACE/ci-helper/run-ani-test-macos-aarch64.sh" ani.dmg $${task.name}"""),
+                        command = shell($$""""$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" ani.dmg $${task.name}"""),
                     )
                 }
             }
