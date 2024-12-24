@@ -622,14 +622,20 @@ jobs:
       with:
         clean: 'false'
     - id: 'step-1'
+      name: 'Echo URL'
+      env:
+        GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
+        URL: '${{ needs.build_self-hosted-macos-15.outputs.macosAarch64DmgUrl }}'
+      run: 'echo "$URL"'
+    - id: 'step-2'
       name: 'Download ani.dmg'
       env:
         GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
         URL: '${{ needs.build_self-hosted-macos-15.outputs.macosAarch64DmgUrl }}'
-      run: 'curl -H "Authorization: Bearer $GITHUB_TOKEN" -L "$URL" -o ani.dmg'
-    - id: 'step-2'
+      run: 'wget -q --tries=3 --header="Authorization: Bearer $GITHUB_TOKEN" "$URL" -O "$ani.zip"'
+    - id: 'step-3'
       name: 'Check that Anitorrent can be loaded'
-      run: '"$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" ani.dmg anitorrent-load-test'
+      run: '"$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" ani.zip anitorrent-load-test'
   verify_github-macos-14:
     name: 'Verify (macOS 14 AArch64 (GitHub))'
     runs-on:
@@ -643,11 +649,17 @@ jobs:
       with:
         clean: 'false'
     - id: 'step-1'
+      name: 'Echo URL'
+      env:
+        GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
+        URL: '${{ needs.build_self-hosted-macos-15.outputs.macosAarch64DmgUrl }}'
+      run: 'echo "$URL"'
+    - id: 'step-2'
       name: 'Download ani.dmg'
       env:
         GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
         URL: '${{ needs.build_self-hosted-macos-15.outputs.macosAarch64DmgUrl }}'
-      run: 'curl -H "Authorization: Bearer $GITHUB_TOKEN" -L "$URL" -o ani.dmg'
-    - id: 'step-2'
+      run: 'wget -q --tries=3 --header="Authorization: Bearer $GITHUB_TOKEN" "$URL" -O "$ani.zip"'
+    - id: 'step-3'
       name: 'Check that Anitorrent can be loaded'
-      run: '"$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" ani.dmg anitorrent-load-test'
+      run: '"$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" ani.zip anitorrent-load-test'
