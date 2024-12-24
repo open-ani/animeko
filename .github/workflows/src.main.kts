@@ -45,6 +45,9 @@ import Secrets.SIGNING_RELEASE_KEYALIAS
 import Secrets.SIGNING_RELEASE_KEYPASSWORD
 import Secrets.SIGNING_RELEASE_STOREFILE
 import Secrets.SIGNING_RELEASE_STOREPASSWORD
+import Src_main.Arch
+import Src_main.MatrixContext
+import Src_main.OS
 import io.github.typesafegithub.workflows.actions.actions.Checkout
 import io.github.typesafegithub.workflows.actions.actions.GithubScript
 import io.github.typesafegithub.workflows.actions.actions.UploadArtifact
@@ -377,7 +380,7 @@ workflow(
 
     job(
         id = "build_fork",
-        name = expr { matrix.name },
+        name = expr { matrix.name } + " (fork)",
         runsOn = RunnerType.Custom(expr { matrix.runsOn }),
         `if` = expr { !(github.isAnimekoRepository and !github.isPullRequest) },
         _customArguments = generateStrategy(matrixInstancesWithoutSelfHosted),
@@ -502,7 +505,7 @@ workflow(
     )
     job(
         id = "release_fork",
-        name = expr { matrix.name },
+        name = expr { matrix.name } + " (fork)",
         needs = listOf(createRelease),
         runsOn = RunnerType.Custom(expr { matrix.runsOn }),
         `if` = expr { !github.isAnimekoRepository },
