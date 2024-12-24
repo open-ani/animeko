@@ -56,12 +56,10 @@ import io.github.typesafegithub.workflows.actions.nickfields.Retry_Untyped
 import io.github.typesafegithub.workflows.actions.snowactions.Qrcode_Untyped
 import io.github.typesafegithub.workflows.actions.softprops.ActionGhRelease
 import io.github.typesafegithub.workflows.actions.timheuer.Base64ToFile_Untyped
-import io.github.typesafegithub.workflows.domain.AbstractResult
 import io.github.typesafegithub.workflows.domain.ActionStep
 import io.github.typesafegithub.workflows.domain.CommandStep
 import io.github.typesafegithub.workflows.domain.JobOutputs
 import io.github.typesafegithub.workflows.domain.RunnerType
-import io.github.typesafegithub.workflows.domain.Step
 import io.github.typesafegithub.workflows.domain.triggers.PullRequest
 import io.github.typesafegithub.workflows.domain.triggers.Push
 import io.github.typesafegithub.workflows.dsl.JobBuilder
@@ -106,10 +104,11 @@ object AndroidArch {
     const val ARM64_V8A = "arm64-v8a"
     const val X86_64 = "x86_64"
     const val ARMEABI_V7A = "armeabi-v7a"
-    const val UNIVERSAL = "universal"
 
     val entriesWithoutUniversal = listOf(ARM64_V8A, X86_64, ARMEABI_V7A)
     val entriesWithUniversal = entriesWithoutUniversal + UNIVERSAL
+
+    const val UNIVERSAL = "universal"
 }
 
 // Build 和 Release 共享这个
@@ -239,8 +238,7 @@ class MatrixInstance(
 @Suppress("PropertyName")
 val ANI_ANDROID_ABIS = "ani.android.abis"
 
-// Machines for Build and Release
-val buildMatrixInstances = listOf(
+val matrixInstances = listOf(
     MatrixInstance(
         id = "windows-self-hosted",
         name = "Windows 10 x86_64",
@@ -337,76 +335,8 @@ val buildMatrixInstances = listOf(
     ),
 )
 
-class VerifyMatrixInstance(
-    val id: String,
-    val name: String,
-    val runsOn: List<String>,
-) {
-//    return MatrixInstance(
-//        id = id,
-//        name = name,
-//        runsOn = runsOn,
-//
-//        // The following arguments are not used.
-//        os = OS.WINDOWS,
-//        arch = Arch.X64,
-//        selfHosted = false,
-//        uploadApk = false,
-//        buildAnitorrent = true,
-//        buildAnitorrentSeparately = false,
-//        composeResourceTriple = "windows-x64",
-//        gradleHeap = "4g",
-//        kotlinCompilerHeap = "4g",
-//        gradleParallel = true,
-//        extraGradleArgs = listOf(),
-//        buildAllAndroidAbis = true,
-//    )
-}
 
-val verifyMatrixInstancesGithub = listOf(
-    VerifyMatrixInstance(
-        id = "github-windows-2019",
-        name = "Windows Server 2019 x86_64 (GitHub)",
-        runsOn = listOf("windows-2019"),
-    ),
-    VerifyMatrixInstance(
-        id = "github-windows-2022",
-        name = "Windows Server 2022 x86_64 (GitHub)",
-        runsOn = listOf("windows-2022"),
-    ),
-//    VerifyMatrixInstance(
-//        id = "github-macos-13",
-//        name = "macOS 13 x86_64 (GitHub)",
-//        runsOn = listOf("macos-13"),
-//    ),
-    VerifyMatrixInstance(
-        id = "github-macos-14",
-        name = "macOS 14 AArch64 (GitHub)",
-        runsOn = listOf("macos-14"),
-    ),
-)
-
-val verifyMatrixInstancesSelfHosted = listOf(
-    VerifyMatrixInstance(
-        id = "self-hosted-windows-10",
-        name = "Windows 10 x86_64 (Self-Hosted)",
-        runsOn = listOf("self-hosted", "Windows", "X64"),
-    ),
-    VerifyMatrixInstance(
-        id = "self-hosted-macos-15",
-        name = "macOS 15 AArch64 (Self-Hosted)",
-        runsOn = listOf("self-hosted", "macOS", "ARM64"),
-    ),
-)
-
-class BuildJobOutputs : JobOutputs() {
-    var macosAarch64DmgSuccess by output()
-    var macosAarch64DmgUrl by output()
-    var windowsX64PortableSuccess by output()
-    var windowsX64PortableUrl by output()
-}
-
-val buildJobBody: JobBuilder<BuildJobOutputs>.() -> Unit = {
+val buildJobBody: JobBuilder<JobOutputs.EMPTY>.() -> Unit = {
     uses(action = Checkout(submodules_Untyped = "recursive"))
 
     freeSpace()
@@ -426,63 +356,8 @@ val buildJobBody: JobBuilder<BuildJobOutputs>.() -> Unit = {
     buildAndroidApk(prepareSigningKey)
     gradleCheck()
     uploadAnitorrent()
-    val packageOutputs = packageDesktopAndUpload()
-    jobOutputs.macosAarch64DmgSuccess = packageOutputs.macosAarch64DmgOutcome.eq(AbstractResult.Status.Success)
-    jobOutputs.macosAarch64DmgUrl = packageOutputs.macosAarch64DmgUrl
-    jobOutputs.windowsX64PortableSuccess = packageOutputs.windowsX64PortableOutcome.eq(AbstractResult.Status.Success)
-    jobOutputs.windowsX64PortableUrl = packageOutputs.windowsX64PortableUrl
+    packageDesktopAndUpload()
     cleanupTempFiles()
-}
-
-fun getVerifyJobBody(
-    buildJobOutputs: BuildJobOutputs,
-    os: String,
-    arch: String
-): JobBuilder<JobOutputs.EMPTY>.() -> Unit = {
-    uses(action = Checkout()) // not recursive
-
-    class VerifyTask(
-        val name: String,
-        val step: String,
-    )
-
-    val tasksToExecute = listOf(
-        VerifyTask(
-            name = "anitorrent-load-test",
-            step = "Check that Anitorrent can be loaded",
-        ),
-    )
-
-    when (os to arch) {
-        OS.WINDOWS to Arch.X64 -> {
-            // TODO
-        }
-
-        OS.MACOS to Arch.AARCH64 -> {
-            // macos aarch64
-            kotlin.run {
-                run(
-                    name = $$"Download ani.dmg for $${expr { matrix.id }}",
-                    command = shell(
-                        // Include GITHUB_TOKEN
-                        $$"""curl -H "Authorization: Bearer $GITHUB_TOKEN" -L "$${buildJobOutputs.macosAarch64DmgUrl}" -o ani.dmg""",
-                    ),
-                    `if` = expr { matrix.isMacOS and matrix.isAArch64 },
-                    env = mapOf(
-                        "GITHUB_TOKEN" to expr { secrets.GITHUB_TOKEN },
-                    ),
-                )
-
-                tasksToExecute.forEach { task ->
-                    run(
-                        name = $$"$${task.step} ($${expr { matrix.id }})",
-                        `if` = expr { matrix.isMacOS and matrix.isAArch64 },
-                        command = shell($$"""./ci-helper/run-ani-test-macos-aarch64.sh ani.dmg $${task.name}"""),
-                    )
-                }
-            }
-        }
-    }
 }
 
 
@@ -498,101 +373,22 @@ workflow(
     targetFileName = "build.yml",
     consistencyCheckJobConfig = ConsistencyCheckJobConfig.Disabled,
 ) {
-    val build = job(
+    job(
         id = "build",
-        name = """Build (${expr { matrix.name }})""",
+        name = expr { matrix.name },
         runsOn = RunnerType.Custom(expr { matrix.runsOn }),
-        _customArguments = generateStrategy(buildMatrixInstances.filterNot { it.selfHosted }),
-        outputs = BuildJobOutputs(),
+        _customArguments = generateStrategy(matrixInstances.filterNot { it.selfHosted }),
         block = buildJobBody,
     )
 
-    // Expanded at compile-time so that we set job-level `if` condition. 
-    // If a job is skipped, you will see a gray item on the GitHub Actions page. 
-    // If a step is skipped, you will still see green jobs.
     job(
-        id = "verify_github-windows-2019",
-        name = """Verify (Windows Server 2019 x86_64 (GitHub))""",
-        needs = listOf(build),
-        `if` = expr { build.outputs.windowsX64PortableSuccess },
-        runsOn = RunnerType.Labelled("windows-2019"),
-        block = getVerifyJobBody(build.outputs, OS.WINDOWS, Arch.X64),
-    )
-    job(
-        id = "verify_github-windows-2022",
-        name = """Verify (Windows Server 2022 x86_64 (GitHub))""",
-        needs = listOf(build),
-        `if` = expr { build.outputs.windowsX64PortableSuccess },
-        runsOn = RunnerType.Labelled("windows-2022"),
-        block = getVerifyJobBody(build.outputs, OS.WINDOWS, Arch.X64),
-    )
-
-//    verifyMatrixInstancesGithub.forEach { machine ->
-//        job(
-//            id = "verify_${machine.id}",
-//            name = """Verify (${machine.name})""",
-//            needs = listOf(build),
-//            `if` = expr { build.outputs.macosAarch64DmgSuccess },
-//            runsOn = RunnerType.Labelled(machine.runsOn.toSet()),
-//            block = getVerifyJobBody(build.outputs),
-//        )
-//    }
-
-    // below is self-hosted
-    val buildOnSelfHosted = job(
         id = "build_self_hosted",
-        name = """Build (${expr { matrix.name }})""",
+        name = expr { matrix.name },
         runsOn = RunnerType.Custom(expr { matrix.runsOn }),
         `if` = expr { github.isAnimekoRepository },
-        _customArguments = generateStrategy(buildMatrixInstances.filter { it.selfHosted }),
-        outputs = BuildJobOutputs(),
+        _customArguments = generateStrategy(matrixInstances.filter { it.selfHosted }),
         block = buildJobBody,
     )
-    job(
-        id = "verify_self_hosted-windows-10",
-        name = """Verify (Windows 10 x86_64 (Self-Hosted))""",
-        needs = listOf(buildOnSelfHosted),
-        `if` = expr { buildOnSelfHosted.outputs.windowsX64PortableSuccess },
-        runsOn = RunnerType.Labelled("self-hosted", "Windows", "X64"),
-        block = getVerifyJobBody(buildOnSelfHosted.outputs, OS.WINDOWS, Arch.X64),
-    )
-    job(
-        id = "verify_self_hosted-macos-15",
-        name = """Verify (macOS 15 AArch64 (Self-Hosted))""",
-        needs = listOf(buildOnSelfHosted),
-        `if` = expr { buildOnSelfHosted.outputs.macosAarch64DmgSuccess },
-        runsOn = RunnerType.Labelled("self-hosted", "macOS", "ARM64"),
-        block = getVerifyJobBody(buildOnSelfHosted.outputs, OS.MACOS, Arch.AARCH64),
-    )
-    job(
-        // AArch64 DMGs are built on self-hosted, so we can only verify them on self-hosted
-        id = "verify_github-macos-14",
-        name = """Verify (macOS 14 AArch64 (GitHub))""",
-        needs = listOf(buildOnSelfHosted),
-        `if` = expr { buildOnSelfHosted.outputs.macosAarch64DmgSuccess },
-        runsOn = RunnerType.Labelled("macos-14"),
-        block = getVerifyJobBody(buildOnSelfHosted.outputs, OS.MACOS, Arch.AARCH64),
-    )
-//    verifyMatrixInstancesGithub.forEach { machine ->
-//        job(
-//            id = "verify_self_hosted_${machine.id}",
-//            name = """Verify (${machine.name})""",
-//            needs = listOf(buildOnSelfHosted),
-//            `if` = expr { build.outputs.macosAarch64DmgSuccess },
-//            runsOn = RunnerType.Labelled(machine.runsOn.toSet()),
-//            block = getVerifyJobBody(build.outputs),
-//        )
-//    }
-
-//    job(
-//        id = "verify_self_hosted",
-//        name = """Verify (${expr { matrix.name }})""",
-//        needs = listOf(build, buildOnSelfHosted),
-//        `if` = expr { github.isAnimekoRepository },
-//        runsOn = RunnerType.Custom(expr { matrix.runsOn }),
-//        _customArguments = generateStrategy(buildMatrixInstances.filterNot { it.selfHosted }),
-//        block = getVerifyJobBody(buildOnSelfHosted.outputs),
-//    )
 }
 
 workflow(
@@ -608,8 +404,7 @@ workflow(
         id = "build",
         name = expr { matrix.name },
         runsOn = RunnerType.Custom(expr { matrix.runsOn }),
-        _customArguments = generateStrategy(buildMatrixInstances.filterNot { it.selfHosted }),
-        outputs = BuildJobOutputs(),
+        _customArguments = generateStrategy(matrixInstances.filterNot { it.selfHosted }),
         block = buildJobBody,
     )
 
@@ -679,7 +474,7 @@ workflow(
         jobOutputs.id = createRelease.outputs.id
     }
 
-    val matrixInstancesForRelease = buildMatrixInstances.filterNot { it.os == OS.UBUNTU }
+    val matrixInstancesForRelease = matrixInstances.filterNot { it.os == OS.UBUNTU }
 
     val jobBody: JobBuilder<JobOutputs.EMPTY>.() -> Unit = {
         uses(action = Checkout(submodules_Untyped = "recursive"))
@@ -1077,14 +872,7 @@ fun JobBuilder<*>.uploadAnitorrent() {
     )
 }
 
-class PackageDesktopAndUploadOutputs {
-    lateinit var macosAarch64DmgOutcome: Step<*>.Outcome
-    lateinit var macosAarch64DmgUrl: String
-    lateinit var windowsX64PortableOutcome: Step<*>.Outcome
-    lateinit var windowsX64PortableUrl: String
-}
-
-fun JobBuilder<*>.packageDesktopAndUpload(): PackageDesktopAndUploadOutputs {
+fun JobBuilder<*>.packageDesktopAndUpload() {
     runGradle(
         name = "Package Desktop",
         `if` = expr { matrix.uploadDesktopInstallers and !matrix.isMacOSX64 },
@@ -1103,7 +891,7 @@ fun JobBuilder<*>.packageDesktopAndUpload(): PackageDesktopAndUploadOutputs {
 //            path_Untyped = "app/desktop/build/compose/binaries/main-release/app/Ani.app",
 //        ),
 //    )
-    val macosAarch64Dmg = uses(
+    uses(
         name = "Upload macOS dmg",
         `if` = expr { matrix.uploadDesktopInstallers and matrix.isMacOS },
         action = UploadArtifact(
@@ -1112,8 +900,7 @@ fun JobBuilder<*>.packageDesktopAndUpload(): PackageDesktopAndUploadOutputs {
             overwrite = true,
         ),
     )
-
-    val windowsX64Portable = uses(
+    uses(
         name = "Upload Windows packages",
         `if` = expr { matrix.uploadDesktopInstallers and matrix.isWindows },
         action = UploadArtifact(
@@ -1122,13 +909,6 @@ fun JobBuilder<*>.packageDesktopAndUpload(): PackageDesktopAndUploadOutputs {
             overwrite = true,
         ),
     )
-
-    return PackageDesktopAndUploadOutputs().apply {
-        this.macosAarch64DmgOutcome = macosAarch64Dmg.outcome
-        this.macosAarch64DmgUrl = macosAarch64Dmg.outputs.artifactUrl
-        this.windowsX64PortableOutcome = windowsX64Portable.outcome
-        this.windowsX64PortableUrl = windowsX64Portable.outputs.artifactUrl
-    }
 }
 
 fun JobBuilder<*>.uploadComposeLogs() {

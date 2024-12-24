@@ -11,11 +11,6 @@ jobs:
   build:
     name: '${{ matrix.name }}'
     runs-on: '${{ matrix.runsOn }}'
-    outputs:
-      macosAarch64DmgSuccess: '${{ steps.step-33.outcome == ''success'' }}'
-      macosAarch64DmgUrl: '${{ steps.step-33.outputs.artifact-url }}'
-      windowsX64PortableSuccess: '${{ steps.step-34.outcome == ''success'' }}'
-      windowsX64PortableUrl: '${{ steps.step-34.outputs.artifact-url }}'
     strategy:
       fail-fast: false
       matrix:

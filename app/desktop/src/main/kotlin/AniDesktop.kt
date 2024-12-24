@@ -88,7 +88,6 @@ import me.him188.ani.app.platform.startCommonKoinModule
 import me.him188.ani.app.platform.window.setTitleBarColor
 import me.him188.ani.app.tools.update.DesktopUpdateInstaller
 import me.him188.ani.app.tools.update.UpdateInstaller
-import me.him188.ani.app.torrent.anitorrent.AnitorrentLibraryLoader
 import me.him188.ani.app.ui.foundation.LocalImageLoader
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.LocalWindowState
@@ -122,7 +121,6 @@ import org.koin.core.context.startKoin
 import org.koin.dsl.module
 import org.koin.mp.KoinPlatform
 import java.io.File
-import kotlin.system.exitProcess
 import kotlin.time.measureTime
 
 
@@ -172,26 +170,6 @@ object AniDesktop {
         logger.info { "dataDir: file://${projectDirectories.dataDir.replace(" ", "%20")}" }
         logger.info { "cacheDir: file://${projectDirectories.cacheDir.replace(" ", "%20")}" }
         logger.info { "logsDir: file://${logsDir.absolutePath.replace(" ", "%20")}" }
-
-
-        // Startup ok, run test task if needed
-        System.getenv("ANIMEKO_DESKTOP_TEST_TASK")?.let { taskName ->
-            logger.info { "Running test task: $taskName" }
-
-            when (taskName) {
-                "anitorrent-load-test" -> {
-                    AnitorrentLibraryLoader.loadLibraries()
-                    exitProcess(0)
-                }
-
-                else -> {
-                    logger.error { "Unknown test task: $taskName" }
-                    exitProcess(1)
-                }
-            }
-        }
-
-
 
         val defaultSize = DpSize(1301.dp, 855.dp)
         // Get the screen size as a Dimension object
