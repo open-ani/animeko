@@ -217,14 +217,23 @@ val copyNativeFiles by tasks.registering {
     val os = getOs()
     inputs.property("os", os)
     doLast {
-        fun getAnitorrentNativeFiles(): List<File> {
+        class Dep(
+            val path: File,
+            val overrideName: String?
+        )
+
+        fun getAnitorrentNativeFiles(): List<Dep> {
             return buildList {
+                fun add(file: File) {
+                    add(Dep(file, null))
+                }
+
                 fun addIfExist(file: File) {
                     if (file.exists()) {
                         add(file)
                     }
                 }
-                
+
                 when (getOs()) {
                     Os.Windows -> {
                         add(anitorrentBuildDir.resolve("$buildType/anitorrent.dll"))
@@ -235,7 +244,12 @@ val copyNativeFiles by tasks.registering {
 
                     Os.MacOS -> {
                         add(anitorrentBuildDir.resolve("libanitorrent.dylib"))
-                        add(anitorrentBuildDir.resolve("_deps/libtorrent-build/libtorrent-rasterbar.2.0.10.dylib"))
+                        add(
+                            Dep(
+                                anitorrentBuildDir.resolve("_deps/libtorrent-build/libtorrent-rasterbar.2.0.10.dylib"),
+                                "libtorrent-rasterbar.2.0.dylib", // somehow 运行时实际上会 load 这个. see #1348
+                            ),
+                        )
                     }
 
                     Os.Unknown, Os.Linux -> {
@@ -308,9 +322,9 @@ val copyNativeFiles by tasks.registering {
             }
         }
 
-        (dependencies.values + getAnitorrentNativeFiles()).forEach {
-            val target = targetDir.get().file(it.name)
-            it.copyTo(target.asFile, overwrite = true)
+        (dependencies.values.map { Dep(it, null) } + getAnitorrentNativeFiles()).forEach {
+            val target = targetDir.get().file(it.overrideName ?: it.path.name)
+            it.path.copyTo(target.asFile, overwrite = true)
         }
     }
 }

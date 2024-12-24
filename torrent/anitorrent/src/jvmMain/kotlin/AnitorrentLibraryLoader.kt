@@ -20,12 +20,8 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 import kotlin.concurrent.Volatile
-import kotlin.io.path.ExperimentalPathApi
 import kotlin.io.path.absolutePathString
-import kotlin.io.path.deleteRecursively
 import kotlin.io.path.outputStream
-import kotlin.math.absoluteValue
-import kotlin.random.Random
 
 object AnitorrentLibraryLoader : TorrentLibraryLoader {
     private val logger = logger<AnitorrentLibraryLoader>()
@@ -83,10 +79,10 @@ object AnitorrentLibraryLoader : TorrentLibraryLoader {
                         extractLibraryFromResources("crypto", temp)?.let {
                             logger.info { "Extract crypto: ${it.absolutePathString()}" }
                         }
-                        extractLibraryFromResources("torrent-rasterbar.2.0.10", temp)?.let { target ->
+                        extractLibraryFromResources("torrent-rasterbar.2.0", temp)?.let { target ->
                             logger.info { "Extract crypto: ${target.absolutePathString()}" }
                             Files.createSymbolicLink(
-                                target.resolveSibling("libtorrent-rasterbar.2.0.dylib"),
+                                target.resolveSibling("libtorrent-rasterbar.2.0.10.dylib"),
                                 target,
                             )
                             Files.createSymbolicLink(
@@ -106,23 +102,23 @@ object AnitorrentLibraryLoader : TorrentLibraryLoader {
         }
     }
 
-    @OptIn(ExperimentalPathApi::class)
     private fun getTempDirForPlatform(): Path {
-        return if (platform is Platform.Windows) {
-            Paths.get(System.getProperty("user.dir"))
-        } else {
-            Files.createTempDirectory("libanitorrent${Random.nextInt().absoluteValue}").apply {
-                Runtime.getRuntime().addShutdownHook(
-                    Thread {
-                        try {
-                            deleteRecursively()
-                        } catch (e: IOException) {
-                            logger.error(e) { "Failed to delete temp directory $this" }
-                        }
-                    },
-                )
-            }
-        }
+        Paths.get(System.getProperty("user.dir")) // macos 也得输出到当前目录, 因为 link path 只包含一些系统路径和 .
+//        return if (platform is Platform.Windows) {
+//            Paths.get(System.getProperty("user.dir"))
+//        } else {
+//            Files.createTempDirectory("libanitorrent${Random.nextInt().absoluteValue}").apply {
+//                Runtime.getRuntime().addShutdownHook(
+//                    Thread {
+//                        try {
+//                            deleteRecursively()
+//                        } catch (e: IOException) {
+//                            logger.error(e) { "Failed to delete temp directory $this" }
+//                        }
+//                    },
+//                )
+//            }
+//        }
     }
 
 
