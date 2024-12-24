@@ -103,7 +103,7 @@ object AnitorrentLibraryLoader : TorrentLibraryLoader {
     }
 
     private fun getTempDirForPlatform(): Path {
-        Paths.get(System.getProperty("user.dir")) // macos 也得输出到当前目录, 因为 link path 只包含一些系统路径和 .
+        return Paths.get(System.getProperty("user.dir")) // macos 也得输出到当前目录, 因为 link path 只包含一些系统路径和 .
 //        return if (platform is Platform.Windows) {
 //            Paths.get(System.getProperty("user.dir"))
 //        } else {
