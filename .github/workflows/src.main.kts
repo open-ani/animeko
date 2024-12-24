@@ -507,7 +507,7 @@ fun getVerifyJobBody(
 
     when (runner.os to runner.arch) {
         OS.WINDOWS to Arch.X64 -> {
-            val myUrlExpr = expr { buildJobOutputs.macosAarch64DmgUrl }
+            val myUrlExpr = expr { buildJobOutputs.windowsX64PortableUrl }
             run(
                 name = $$"Echo URL",
                 command = shell($$"""echo "$URL""""),
@@ -524,7 +524,7 @@ fun getVerifyJobBody(
                 ),
                 env = mapOf(
                     "GITHUB_TOKEN" to expr { secrets.GITHUB_TOKEN },
-                    "URL" to expr { buildJobOutputs.windowsX64PortableUrl },
+                    "URL" to myUrlExpr,
                 ),
             )
             
@@ -553,7 +553,7 @@ fun getVerifyJobBody(
                 ),
                 env = mapOf(
                     "GITHUB_TOKEN" to expr { secrets.GITHUB_TOKEN },
-                    "URL" to expr { buildJobOutputs.macosAarch64DmgUrl },
+                    "URL" to myUrlExpr,
                 ),
             )
 
