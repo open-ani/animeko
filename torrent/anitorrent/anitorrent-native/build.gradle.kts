@@ -244,12 +244,6 @@ val copyNativeFiles by tasks.registering {
 
                     Os.MacOS -> {
                         add(anitorrentBuildDir.resolve("libanitorrent.dylib"))
-                        add(
-                            Dep(
-                                anitorrentBuildDir.resolve("_deps/libtorrent-build/libtorrent-rasterbar.2.0.10.dylib"),
-                                "libtorrent-rasterbar.2.0.dylib", // somehow 运行时实际上会 load 这个. see #1348
-                            ),
-                        )
                     }
 
                     Os.Unknown, Os.Linux -> {

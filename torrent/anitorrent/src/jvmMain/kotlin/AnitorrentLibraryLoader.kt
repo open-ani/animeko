@@ -16,7 +16,6 @@ import me.him188.ani.utils.platform.Platform
 import me.him188.ani.utils.platform.currentPlatform
 import me.him188.ani.utils.platform.isAndroid
 import java.io.IOException
-import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 import kotlin.concurrent.Volatile
@@ -73,23 +72,7 @@ object AnitorrentLibraryLoader : TorrentLibraryLoader {
                     }
 
                     is Platform.MacOS -> {
-                        extractLibraryFromResources("ssl", temp)?.let {
-                            logger.info { "Extract ssl: ${it.absolutePathString()}" }
-                        }
-                        extractLibraryFromResources("crypto", temp)?.let {
-                            logger.info { "Extract crypto: ${it.absolutePathString()}" }
-                        }
-                        extractLibraryFromResources("torrent-rasterbar.2.0", temp)?.let { target ->
-                            logger.info { "Extract crypto: ${target.absolutePathString()}" }
-                            Files.createSymbolicLink(
-                                target.resolveSibling("libtorrent-rasterbar.2.0.10.dylib"),
-                                target,
-                            )
-                            Files.createSymbolicLink(
-                                target.resolveSibling("libtorrent-rasterbar.dylib"),
-                                target,
-                            )
-                        }
+                        // noop
                     }
 
                     is Platform.Linux -> {
