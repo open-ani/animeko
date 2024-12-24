@@ -454,7 +454,7 @@ fun getVerifyJobBody(
     buildJobOutputs: BuildJobOutputs,
     runner: Runner,
 ): JobBuilder<JobOutputs.EMPTY>.() -> Unit = {
-    uses(action = Checkout(clean = false)) // not recursive
+    uses(action = Checkout()) // not recursive
 
     if (!runner.isSelfHosted) {
         // We must not destroy the self-hosted runner, 
