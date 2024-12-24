@@ -66,7 +66,6 @@ import io.github.typesafegithub.workflows.domain.Step
 import io.github.typesafegithub.workflows.domain.triggers.PullRequest
 import io.github.typesafegithub.workflows.domain.triggers.Push
 import io.github.typesafegithub.workflows.dsl.JobBuilder
-import io.github.typesafegithub.workflows.dsl.expressions.ExpressionContext
 import io.github.typesafegithub.workflows.dsl.expressions.contexts.GitHubContext
 import io.github.typesafegithub.workflows.dsl.expressions.contexts.SecretsContext
 import io.github.typesafegithub.workflows.dsl.expressions.expr
@@ -74,7 +73,6 @@ import io.github.typesafegithub.workflows.dsl.workflow
 import io.github.typesafegithub.workflows.yaml.ConsistencyCheckJobConfig
 import org.intellij.lang.annotations.Language
 import kotlin.reflect.KProperty1
-import kotlin.reflect.full.declaredMemberProperties
 import kotlin.reflect.full.memberProperties
 
 check(KotlinVersion.CURRENT.isAtLeast(2, 0, 0)) {
@@ -562,10 +560,23 @@ fun getVerifyJobBody(
             // macos aarch64
             kotlin.run {
                 run(
+                    name = $$"Echo URL",
+                    command = shell(
+                        // Include GITHUB_TOKEN
+                        $$"""echo "$URL"""",
+                    ),
+                    env = mapOf(
+                        "GITHUB_TOKEN" to expr { secrets.GITHUB_TOKEN },
+                        "URL" to expr { buildJobOutputs.macosAarch64DmgUrl },
+                    ),
+                )
+                run(
                     name = $$"Download ani.dmg",
                     command = shell(
                         // Include GITHUB_TOKEN
-                        $$"""curl -H "Authorization: Bearer $GITHUB_TOKEN" -L "$URL" -o ani.dmg""",
+                        $$"""
+                            wget -q --tries=3 --header="Authorization: Bearer $GITHUB_TOKEN" "$URL" -O "$ani.zip"
+                            """.trimIndent(),
                     ),
                     env = mapOf(
                         "GITHUB_TOKEN" to expr { secrets.GITHUB_TOKEN },
@@ -576,7 +587,7 @@ fun getVerifyJobBody(
                 tasksToExecute.forEach { task ->
                     run(
                         name = task.step,
-                        command = shell($$""""$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" ani.dmg $${task.name}"""),
+                        command = shell($$""""$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" ani.zip $${task.name}"""),
                     )
                 }
             }
