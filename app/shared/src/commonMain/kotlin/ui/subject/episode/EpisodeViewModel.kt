@@ -134,7 +134,9 @@ import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
 import me.him188.ani.utils.coroutines.CancellationException
 import me.him188.ani.utils.coroutines.cancellableCoroutineScope
+import me.him188.ani.utils.coroutines.flows.FlowRestarter
 import me.him188.ani.utils.coroutines.flows.flowOfEmptyList
+import me.him188.ani.utils.coroutines.flows.restartable
 import me.him188.ani.utils.coroutines.retryWithBackoffDelay
 import me.him188.ani.utils.coroutines.sampleWithInitial
 import me.him188.ani.utils.logging.info
@@ -719,13 +721,15 @@ private class EpisodeViewModelImpl(
         backgroundScope,
     )
 
+    private val commentStateRestarter = FlowRestarter()
     override val episodeCommentState: CommentState = CommentState(
-        list = episodeId.flatMapLatest { episodeId ->
-            bangumiCommentRepository.subjectEpisodeCommentsPager(episodeId)
-                .map { page ->
-                    page.map { it.parseToUIComment() }
-                }
-        }.cachedIn(backgroundScope),
+        list = episodeId
+            .restartable(commentStateRestarter)
+            .flatMapLatest { episodeId ->
+                bangumiCommentRepository.subjectEpisodeCommentsPager(episodeId)
+                    .map { page -> page.map { it.parseToUIComment() } }
+            }
+            .cachedIn(backgroundScope),
         countState = stateOf(null),
         onSubmitCommentReaction = { _, _ -> },
         backgroundScope = backgroundScope,
@@ -789,6 +793,9 @@ private class EpisodeViewModelImpl(
                         val error = response.failureOrNull()
                         if (error == null) { // cancel all jobs in this scope to complete.
                             tokenCollectJob.cancel()
+                            // 发送完了, 刷新一下
+                            commentStateRestarter.restart()
+                            withContext(Dispatchers.Main) { commentLazyListState.scrollToItem(0) }
                             return@launch
                         }
                         if (error is ApiFailure.Unauthorized) {

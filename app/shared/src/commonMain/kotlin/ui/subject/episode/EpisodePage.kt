@@ -455,6 +455,7 @@ private fun EpisodeSceneContentPhone(
                 episodeId = vm.episodePresentation.episodeId,
                 setShowEditCommentSheet = { showEditCommentSheet = it },
                 pauseOnPlaying = pauseOnPlaying,
+                lazyListState = vm.commentLazyListState,
             )
         },
         modifier.then(if (vm.isFullscreen) Modifier.fillMaxSize() else Modifier.navigationBarsPadding()),
