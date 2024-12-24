@@ -579,8 +579,6 @@ jobs:
     steps:
     - id: 'step-0'
       uses: 'actions/checkout@v4'
-      with:
-        clean: 'false'
     - id: 'step-1'
       name: 'Delete libraries from system'
       continue-on-error: true
@@ -611,8 +609,6 @@ jobs:
     steps:
     - id: 'step-0'
       uses: 'actions/checkout@v4'
-      with:
-        clean: 'false'
     - id: 'step-1'
       name: 'Delete libraries from system'
       continue-on-error: true
@@ -645,8 +641,6 @@ jobs:
     steps:
     - id: 'step-0'
       uses: 'actions/checkout@v4'
-      with:
-        clean: 'false'
     - id: 'step-1'
       name: 'Echo URL'
       env:
@@ -673,8 +667,6 @@ jobs:
     steps:
     - id: 'step-0'
       uses: 'actions/checkout@v4'
-      with:
-        clean: 'false'
     - id: 'step-1'
       name: 'Echo URL'
       env:
@@ -699,8 +691,6 @@ jobs:
     steps:
     - id: 'step-0'
       uses: 'actions/checkout@v4'
-      with:
-        clean: 'false'
     - id: 'step-1'
       name: 'Delete libraries from system'
       continue-on-error: true
