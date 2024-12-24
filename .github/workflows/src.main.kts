@@ -75,6 +75,10 @@ import kotlin.reflect.KProperty1
 import kotlin.reflect.full.declaredMemberProperties
 import kotlin.reflect.full.memberProperties
 
+check(KotlinVersion.CURRENT.isAtLeast(2, 0, 0)) {
+    "This script requires Kotlin 2.0.0 or later"
+}
+
 object OS {
     const val WINDOWS = "windows"
     const val UBUNTU = "ubuntu"
