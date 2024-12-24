@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.Stable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.awt.SwingPanel
 import androidx.compose.ui.graphics.Color
@@ -32,7 +31,6 @@ import org.cef.handler.CefResourceRequestHandlerAdapter
 import org.cef.network.CefRequest
 import java.awt.Component
 
-@Stable
 class DesktopTurnstileState(
     override val url: String,
 ) : TurnstileState {
