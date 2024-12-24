@@ -1331,33 +1331,6 @@ class WithMatrix(
 
 /// ENV
 
-object MatrixContext : ExpressionContext("matrix") {
-    val id by propertyToExprPath
-    val os by propertyToExprPath
-    val runsOn by propertyToExprPath
-    val selfHosted by propertyToExprPath
-    val installNativeDeps by propertyToExprPath
-    val name by propertyToExprPath
-    val uploadApk by propertyToExprPath
-    val arch by propertyToExprPath
-    val buildAnitorrent by propertyToExprPath
-    val buildAnitorrentSeparately by propertyToExprPath
-    val composeResourceTriple by propertyToExprPath
-    val runTests by propertyToExprPath
-    val uploadDesktopInstallers by propertyToExprPath
-    val buildAllAndroidAbis by propertyToExprPath
-    val gradleArgs by propertyToExprPath
-
-    init {
-        // check properties exists
-        val instanceProperties = MatrixInstance::class.memberProperties
-        val allowedNames = instanceProperties.map { it.name }
-        MatrixContext::class.declaredMemberProperties.forEach {
-            check(it.name in allowedNames) { "Property ${it.name} not found in MatrixInstance" }
-        }
-    }
-}
-
 object Secrets {
     val SecretsContext.GITHUB_REPOSITORY by SecretsContext.propertyToExprPath
     val SecretsContext.SIGNING_RELEASE_STOREFILE by SecretsContext.propertyToExprPath
