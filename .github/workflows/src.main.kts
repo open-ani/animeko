@@ -72,33 +72,20 @@ import io.github.typesafegithub.workflows.dsl.expressions.expr
 import io.github.typesafegithub.workflows.dsl.workflow
 import io.github.typesafegithub.workflows.yaml.ConsistencyCheckJobConfig
 import org.intellij.lang.annotations.Language
-import kotlin.reflect.KProperty1
-import kotlin.reflect.full.memberProperties
 
 check(KotlinVersion.CURRENT.isAtLeast(2, 0, 0)) {
     "This script requires Kotlin 2.0.0 or later"
 }
 
 enum class OS {
-    windows,
-    ubuntu,
-    macos;
-
-    companion object {
-        val WINDOWS get() = windows
-        val UBUNTU get() = ubuntu
-        val MACOS get() = macos
-    }
+    WINDOWS,
+    UBUNTU,
+    MACOS;
 }
 
 enum class Arch {
-    x64,
-    aarch64;
-
-    companion object {
-        val X64 get() = x64
-        val AARCH64 get() = aarch64
-    }
+    X64,
+    AARCH64;
 }
 
 //enum class AndroidArch(
@@ -122,11 +109,7 @@ object AndroidArch {
 }
 
 // Build 和 Release 共享这个
-/**
- * 一台机器的配置
- *
- * 如果改了, 也要改 [MatrixContext]
- */
+// Configuration for a Runner
 class MatrixInstance(
     // 定义属性为 val, 就会生成到 yml 的 `matrix` 里.
 
@@ -234,9 +217,6 @@ class MatrixInstance(
     }.joinToString(" ")
 
     init {
-        require(os in listOf(OS.WINDOWS, OS.UBUNTU, OS.MACOS)) { "Unsupported OS: $os" }
-        require(arch in listOf(Arch.X64, Arch.AARCH64)) { "Unsupported arch: $arch" }
-
         if (buildAllAndroidAbis) {
             require(!gradleArgs.contains(ANI_ANDROID_ABIS)) { "You must not set `-P${ANI_ANDROID_ABIS}` when you want to build all Android ABIs" }
         } else {
@@ -424,68 +404,6 @@ val buildMatrixInstances = listOf(
     ),
 )
 
-class VerifyMatrixInstance(
-    val id: String,
-    val name: String,
-    val runsOn: List<String>,
-) {
-//    return MatrixInstance(
-//        id = id,
-//        name = name,
-//        runsOn = runsOn,
-//
-//        // The following arguments are not used.
-//        os = OS.WINDOWS,
-//        arch = Arch.X64,
-//        selfHosted = false,
-//        uploadApk = false,
-//        buildAnitorrent = true,
-//        buildAnitorrentSeparately = false,
-//        composeResourceTriple = "windows-x64",
-//        gradleHeap = "4g",
-//        kotlinCompilerHeap = "4g",
-//        gradleParallel = true,
-//        extraGradleArgs = listOf(),
-//        buildAllAndroidAbis = true,
-//    )
-}
-
-val verifyMatrixInstancesGithub = listOf(
-    VerifyMatrixInstance(
-        id = "github-windows-2019",
-        name = "Windows Server 2019 x86_64 (GitHub)",
-        runsOn = listOf("windows-2019"),
-    ),
-    VerifyMatrixInstance(
-        id = "github-windows-2022",
-        name = "Windows Server 2022 x86_64 (GitHub)",
-        runsOn = listOf("windows-2022"),
-    ),
-//    VerifyMatrixInstance(
-//        id = "github-macos-13",
-//        name = "macOS 13 x86_64 (GitHub)",
-//        runsOn = listOf("macos-13"),
-//    ),
-    VerifyMatrixInstance(
-        id = "github-macos-14",
-        name = "macOS 14 AArch64 (GitHub)",
-        runsOn = listOf("macos-14"),
-    ),
-)
-
-val verifyMatrixInstancesSelfHosted = listOf(
-    VerifyMatrixInstance(
-        id = "self-hosted-windows-10",
-        name = "Windows 10 x86_64 (Self-Hosted)",
-        runsOn = listOf("self-hosted", "Windows", "X64"),
-    ),
-    VerifyMatrixInstance(
-        id = "self-hosted-macos-15",
-        name = "macOS 15 AArch64 (Self-Hosted)",
-        runsOn = listOf("self-hosted", "macOS", "ARM64"),
-    ),
-)
-
 class BuildJobOutputs : JobOutputs() {
     var macosAarch64DmgSuccess by output()
     var macosAarch64DmgUrl by output()
@@ -534,10 +452,46 @@ fun getBuildJobBody(matrix: MatrixInstance): JobBuilder<BuildJobOutputs>.() -> U
 
 fun getVerifyJobBody(
     buildJobOutputs: BuildJobOutputs,
-    os: OS,
-    arch: Arch
+    runner: Runner,
 ): JobBuilder<JobOutputs.EMPTY>.() -> Unit = {
     uses(action = Checkout(clean = false)) // not recursive
+
+    if (!runner.isSelfHosted) {
+        // We must not destroy the self-hosted runner, 
+        // but we are free to remove anything from the GitHub-hosted runners
+
+        when (runner.os) {
+            OS.MACOS -> {
+                run(
+                    name = "Delete libraries from system",
+                    command = shell(
+                        $$"""
+                        sudo rm -rf /usr/local/lib/libssl* || true
+                        sudo rm -rf /usr/local/lib/libcrypto* || true
+                        sudo rm -rf /opt/homebrew/lib/libssl* || true
+                        sudo rm -rf /opt/homebrew/lib/libcrypto* || true
+                    """.trimIndent(),
+                    ),
+                    continueOnError = true,
+                )
+            }
+
+            OS.WINDOWS -> {
+                run(
+                    name = "Delete libraries from system",
+                    command = shell(
+                        $$"""
+                        del /s /q C:\\vcpkg\\installed\\x64-windows\\lib\\libssl*
+                        del /s /q C:\\vcpkg\\installed\\x64-windows\\lib\\libcrypto*
+                    """.trimIndent(),
+                    ),
+                    continueOnError = true,
+                )
+            }
+
+            OS.UBUNTU -> {}
+        }
+    }
 
     class VerifyTask(
         val name: String,
@@ -551,7 +505,7 @@ fun getVerifyJobBody(
         ),
     )
 
-    when (os to arch) {
+    when (runner.os to runner.arch) {
         OS.WINDOWS to Arch.X64 -> {
             // TODO
         }
@@ -593,7 +547,7 @@ fun getVerifyJobBody(
             }
         }
 
-        else -> error("Unsupported OS and arch combination: $os $arch")
+        else -> error("Unsupported OS and arch combination: ${runner.os} ${runner.arch}")
     }
 }
 
@@ -621,7 +575,7 @@ workflow(
                 expr { ifExpr }
             },
             runsOn = RunnerType.Labelled(runner.labels),
-            block = getVerifyJobBody(build.outputs, runner.os, runner.arch),
+            block = getVerifyJobBody(build.outputs, runner),
         )
     }
 
@@ -641,7 +595,9 @@ workflow(
         )
     }
 
-    builds[Runner.GithubWindowsServer2019].let { build ->
+    builds.filter { (matrix, _) ->
+        matrix.runner.os == OS.WINDOWS && matrix.uploadDesktopInstallers
+    }.forEach { (_, build) ->
         listOf(
             Runner.GithubWindowsServer2019,
             Runner.GithubWindowsServer2022,
@@ -650,7 +606,11 @@ workflow(
             addVerifyJob(build, runner, build.outputs.windowsX64PortableSuccess)
         }
     }
-    builds[Runner.SelfHostedMacOS15].let { build ->
+
+    builds.filter { (matrix, _) ->
+        matrix.runner.os == OS.MACOS && matrix.runner.arch == Arch.AARCH64
+                && matrix.uploadDesktopInstallers
+    }.forEach { (_, build) ->
         listOf(
             Runner.SelfHostedMacOS15,
             Runner.GithubMacOS14,
@@ -1390,18 +1350,3 @@ fun String.neq(other: String) = "($this != '$other')"
 fun String.neq(other: Boolean) = "($this != $other)"
 
 operator fun String.not() = "!($this)"
-
-fun MatrixInstance.toMatrixIncludeMap(): Map<String, Any> {
-    @Suppress("UNCHECKED_CAST")
-    val memberProperties =
-        this::class.memberProperties as Collection<KProperty1<MatrixInstance, *>>
-
-    return buildMap {
-        for (property in memberProperties) {
-            val value = property.get(this@toMatrixIncludeMap)
-            if (value != null) {
-                put(property.name, value)
-            }
-        }
-    }
-}
