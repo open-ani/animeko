@@ -64,7 +64,6 @@ class DesktopTurnstileState(
                             request: CefRequest?,
                         ): Boolean {
                             val requestUrl = request?.url
-                            println("Request URL: $requestUrl")
                             if (requestUrl != null &&
                                 requestUrl.startsWith(TurnstileState.CALLBACK_INTERCEPTION_PREFIX)
                             ) {
