@@ -22,6 +22,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -416,6 +417,14 @@ private fun AniAppContentImpl(
                 PeerFilterSettingsPage(
                     viewModel.state,
                 )
+            }
+        }
+
+        LaunchedEffect(true) {
+            navController.currentBackStack.collect { list ->
+                if (list.isEmpty()) { // workaround for 快速点击左上角返回键会白屏.
+                    navController.navigate(initialRoute)
+                }
             }
         }
     }

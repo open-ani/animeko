@@ -21,11 +21,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.AddReaction
-import androidx.compose.material.icons.outlined.HeartBroken
 import androidx.compose.material.icons.outlined.ModeComment
-import androidx.compose.material.icons.outlined.MoreHoriz
-import androidx.compose.material.icons.outlined.Report
 import androidx.compose.material.icons.rounded.Face
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
@@ -155,7 +151,7 @@ object CommentDefaults {
                     iconSize = iconSize,
                 )
 
-                if (actionRowExpanded) {
+                /*if (actionRowExpanded) {
                     EditCommentDefaults.ActionButton(
                         imageVector = Icons.Outlined.AddReaction,
                         contentDescription = "添加表情",
@@ -187,7 +183,7 @@ object CommentDefaults {
                     onClick = { actionRowExpanded = true },
                     modifier = Modifier.size(height = size, width = size - expandableActionWidth),
                     hasIndication = false,
-                )
+                )*/
             }
         }
     }
@@ -202,31 +198,37 @@ object CommentDefaults {
     ) {
         val primaryColor = MaterialTheme.colorScheme.primary
 
-        Column(modifier = modifier) {
-            replies.forEach { reply ->
-                val prepended = remember(reply.content, primaryColor) {
-                    reply.content.prependText(
-                        prependix = "${reply.author?.nickname ?: reply.author?.id.toString()}：",
-                        color = primaryColor,
+        Surface(
+            color = MaterialTheme.colorScheme.surfaceContainer,
+            shape = MaterialTheme.shapes.extraSmall,
+            modifier = modifier,
+        ) {
+            Column {
+                replies.forEach { reply ->
+                    val prepended = remember(reply.content, primaryColor) {
+                        reply.content.prependText(
+                            prependix = "${reply.author?.nickname ?: reply.author?.id.toString()}：",
+                            color = primaryColor,
+                        )
+                    }
+                    RichText(
+                        elements = prepended.elements,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                        onClickUrl = onClickUrl,
                     )
                 }
-                RichText(
-                    elements = prepended.elements,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
-                    onClickUrl = onClickUrl,
-                )
-            }
-            if (hiddenReplyCount > 0) {
-                Text(
-                    text = "查看更多 $hiddenReplyCount 条回复>",
-                    color = primaryColor,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                        .clickable(onClick = onClickExpand),
-                )
+                if (hiddenReplyCount > 0) {
+                    Text(
+                        text = "查看更多 $hiddenReplyCount 条回复>",
+                        color = primaryColor,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                            .clickable(onClick = onClickExpand),
+                    )
+                }
             }
         }
     }

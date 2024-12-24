@@ -23,6 +23,8 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.InternalComposeUiApi
+import androidx.compose.ui.LocalSystemTheme
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
@@ -307,6 +309,8 @@ object AniDesktop {
             windowStateRepository.flow.firstOrNull()
         }
 
+        val systemThemeDetector = SystemThemeDetector()
+
         application {
             WindowStateRecorder(
                 windowState = windowState,
@@ -338,6 +342,8 @@ object AniDesktop {
                         "renderApi: " + this.window.renderApi
                     }
                 }
+
+                val systemTheme by systemThemeDetector.current.collectAsStateWithLifecycle()
                 CompositionLocalProvider(
                     LocalContext provides context,
                     LocalWindowState provides windowState,
@@ -348,6 +354,8 @@ object AniDesktop {
                         )
                     },
                     LocalOnBackPressedDispatcherOwner provides backPressedDispatcherOwner,
+                    @OptIn(InternalComposeUiApi::class)
+                    LocalSystemTheme provides systemTheme,
                 ) {
                     // This actually runs only once since app is never changed.
                     val windowImmersed = true
@@ -386,7 +394,6 @@ object AniDesktop {
     }
 
 }
-
 
 @Composable
 private fun FrameWindowScope.MainWindowContent(

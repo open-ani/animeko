@@ -31,6 +31,7 @@ dependencies {
     implementation(compose.components.resources)
     implementation(libs.log4j.core)
     implementation(libs.vlcj)
+    implementation(libs.jsystemthemedetector)
 }
 
 // workaround for compose limitation
