@@ -396,7 +396,7 @@ jobs:
     runs-on: '${{ matrix.runsOn }}'
     needs:
       - 'create-release'
-    if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
+    if: '${{ github.repository == ''open-ani/animeko'' }}'
     strategy:
       fail-fast: false
       matrix:

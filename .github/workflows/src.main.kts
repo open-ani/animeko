@@ -364,6 +364,9 @@ val buildJobBody: JobBuilder<JobOutputs.EMPTY>.() -> Unit = {
 workflow(
     name = "Build",
     on = listOf(
+        // Including: 
+        // - pushing directly to main
+        // - pushing to a branch that has an associated PR
         Push(pathsIgnore = listOf("**/*.md")),
     ),
     sourceFile = __FILE__,
@@ -382,7 +385,7 @@ workflow(
         id = "build_self_hosted",
         name = expr { matrix.name },
         runsOn = RunnerType.Custom(expr { matrix.runsOn }),
-        `if` = expr { github.isAnimekoRepository and !github.isPullRequest },
+        `if` = expr { github.isAnimekoRepository },
         _customArguments = generateStrategy(matrixInstances.filter { it.selfHosted }),
         block = buildJobBody,
     )
@@ -404,13 +407,15 @@ workflow(
         _customArguments = generateStrategy(matrixInstances.filterNot { it.selfHosted }),
         block = buildJobBody,
     )
-    
-    // No self-hosted
+
+    // No self-hosted for security. Only direct pushes to the repository branches will trigger the self-hosted jobs.
+    // Organization members always push to a branch to create a fork and that will trigger a `Push` event that runs on self-hosted.
 }
 
 workflow(
     name = "Release",
     on = listOf(
+        // Only commiter with write-access can trigger this
         Push(tags = listOf("v*")),
     ),
     sourceFile = __FILE__,
@@ -526,7 +531,7 @@ workflow(
         name = expr { matrix.name } + " (fork)",
         needs = listOf(createRelease),
         runsOn = RunnerType.Custom(expr { matrix.runsOn }),
-        `if` = expr { github.isAnimekoRepository and !github.isPullRequest },
+        `if` = expr { github.isAnimekoRepository }, // Don't run on forks
         _customArguments = generateStrategy(matrixInstancesForRelease.filter { it.selfHosted }),
         block = jobBody,
     )
