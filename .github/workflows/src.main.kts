@@ -345,6 +345,7 @@ workflow(
         id = "build",
         name = expr { matrix.name },
         runsOn = RunnerType.Custom(expr { matrix.runsOn }),
+        `if` = expr { github.isAnimekoRepositoryPush or !matrix.selfHosted },
         _customArguments = mapOf(
             "strategy" to mapOf(
                 "fail-fast" to false,
@@ -446,6 +447,7 @@ workflow(
         name = expr { matrix.name },
         needs = listOf(createRelease),
         runsOn = RunnerType.Custom(expr { matrix.runsOn }),
+        `if` = expr { github.isAnimekoRepositoryPush or !matrix.selfHosted },
         _customArguments = mapOf(
             "strategy" to mapOf(
                 "fail-fast" to false,
@@ -699,7 +701,7 @@ fun JobBuilder<*>.setupGradle() {
 fun JobBuilder<*>.prepareSigningKey(): ActionStep<Base64ToFile_Untyped.Outputs> {
     return uses(
         name = "Prepare signing key",
-        `if` = expr { github.isAnimekoRepository and matrix.uploadApk },
+        `if` = expr { github.isAnimekoRepositoryPush and matrix.uploadApk },
         action = Base64ToFile_Untyped(
             fileName_Untyped = "android_signing_key",
             fileDir_Untyped = "./",
@@ -772,7 +774,7 @@ fun JobBuilder<*>.buildAndroidApk(prepareSigningKey: ActionStep<Base64ToFile_Unt
 
     runGradle(
         name = "Build Android Release APKs",
-        `if` = expr { github.isAnimekoRepository and matrix.uploadApk },
+        `if` = expr { github.isAnimekoRepositoryPush and matrix.uploadApk },
         tasks = [
             "assembleRelease",
         ],
@@ -1004,7 +1006,7 @@ object Secrets {
 
 val Contexts.matrix get() = MatrixContext
 
-val GitHubContext.isAnimekoRepository
+val GitHubContext.isAnimekoRepositoryPush
     get() = $$"""$$event_name != 'pull_request' && $$repository == 'open-ani/animeko' """
 
 val MatrixContext.isX64 get() = arch.eq(Arch.X64)

@@ -60,6 +60,7 @@ jobs:
     runs-on: '${{ matrix.runsOn }}'
     needs:
       - 'create-release'
+    if: '${{ (github.event_name != ''pull_request'' && github.repository == ''open-ani/animeko'' ) || (!(matrix.selfHosted)) }}'
     strategy:
       fail-fast: false
       matrix:
