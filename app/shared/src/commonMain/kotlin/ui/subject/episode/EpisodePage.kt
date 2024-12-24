@@ -333,12 +333,19 @@ private fun EpisodeSceneTabletVeryWide(
         }
     }
     if (showEditCommentSheet) {
+        val scope = rememberCoroutineScope()
+        
         EpisodeEditCommentSheet(
             state = vm.commentEditorState,
             turnstileState = vm.turnstileState,
             onDismiss = {
                 showEditCommentSheet = false
                 tryUnpause()
+            },
+            onSendComplete = { succeeded ->
+                if (succeeded) scope.launch {
+                    vm.commentLazyListState.scrollToItem(0)
+                }
             },
         )
     }
@@ -498,12 +505,19 @@ private fun EpisodeSceneContentPhone(
     }
 
     if (showEditCommentSheet) {
+        val scope = rememberCoroutineScope()
+        
         EpisodeEditCommentSheet(
             vm.commentEditorState,
             vm.turnstileState,
             onDismiss = {
                 showEditCommentSheet = false
                 tryUnpause()
+            },
+            onSendComplete = { succeeded ->
+                if (succeeded) scope.launch {
+                    vm.commentLazyListState.scrollToItem(0)
+                }
             },
         )
     }

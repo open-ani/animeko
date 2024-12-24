@@ -31,7 +31,7 @@ class CommentEditorState(
     panelTitle: State<String?>,
     stickers: State<List<EditCommentSticker>>,
     private val richTextRenderer: suspend (String) -> UIRichText,
-    private val onSend: suspend (target: CommentContext, content: String) -> Unit,
+    private val onSend: suspend (target: CommentContext, content: String) -> Boolean,
     backgroundScope: CoroutineScope,
 ) {
     private val editor = CommentEditorTextState("")
@@ -103,19 +103,23 @@ class CommentEditorState(
         previewContent = rendered
     }
 
-    suspend fun send(context: CoroutineContext = Dispatchers.Default) {
+    /**
+     * @return `true` if comment was sent successfully
+     */
+    suspend fun send(
+        context: CoroutineContext = Dispatchers.Default
+    ): Boolean {
         val target = currentSendTarget
         val content = editor.textField.text
 
         editExpanded = false
 
-        sendTasker.launch(context) {
+        editor.override(TextFieldValue(""))
+
+        return sendTasker.async(context) {
             checkNotNull(target)
             onSend(target, content)
-        }
-        sendTasker.join()
-
-        editor.override(TextFieldValue(""))
+        }.await()
     }
 }
 

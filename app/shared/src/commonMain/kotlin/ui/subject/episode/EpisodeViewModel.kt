@@ -132,7 +132,6 @@ import me.him188.ani.datasources.api.source.MediaFetchRequest
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
-import me.him188.ani.utils.coroutines.CancellationException
 import me.him188.ani.utils.coroutines.cancellableCoroutineScope
 import me.him188.ani.utils.coroutines.flows.FlowRestarter
 import me.him188.ani.utils.coroutines.flows.flowOfEmptyList
@@ -763,50 +762,47 @@ private class EpisodeViewModelImpl(
                     }
                 }
 
-                launch {
-                    while (triedCount < 3) {
-                        withContext(Dispatchers.Main) { turnstileState.reload() }
-                        val turnstileToken = CompletableDeferred<String>()
-                            .also { turnstileResponse = it }
-                            .run { withTimeoutOrNull(10000L.milliseconds) { await() } }
+                while (triedCount < 3) {
+                    withContext(Dispatchers.Main) { turnstileState.reload() }
+                    val turnstileToken = CompletableDeferred<String>()
+                        .also { turnstileResponse = it }
+                        .run { withTimeoutOrNull(10000L.milliseconds) { await() } }
 
-                        if (turnstileToken == null) {
-                            triedCount++
-                            continue
-                        }
-
-                        val response = when (context) {
-                            is CommentContext.Episode ->
-                                bangumiCommentService.postEpisodeComment(episodeId.value, content, turnstileToken)
-
-                            is CommentContext.Reply ->
-                                bangumiCommentService.postEpisodeComment(
-                                    episodeId.value,
-                                    content,
-                                    turnstileToken,
-                                    context.commentId,
-                                )
-
-                            is CommentContext.SubjectReview -> ApiResponse.success(Unit) // TODO: send subject comment
-                        }
-
-                        val error = response.failureOrNull()
-                        if (error == null) { // cancel all jobs in this scope to complete.
-                            tokenCollectJob.cancel()
-                            // 发送完了, 刷新一下
-                            commentStateRestarter.restart()
-                            withContext(Dispatchers.Main) { commentLazyListState.scrollToItem(0) }
-                            return@launch
-                        }
-                        if (error is ApiFailure.Unauthorized) {
-                            triedCount++
-                            continue
-                        } else {
-                            throw CancellationException("Sending command is cancelled, because API returned an error $error")
-                        }
+                    if (turnstileToken == null) {
+                        triedCount++
+                        continue
                     }
-                    throw CancellationException("Sending command is cancelled, because the maximum number of attempts is reached")
+
+                    val response = when (context) {
+                        is CommentContext.Episode ->
+                            bangumiCommentService.postEpisodeComment(episodeId.value, content, turnstileToken)
+
+                        is CommentContext.Reply ->
+                            bangumiCommentService.postEpisodeComment(
+                                episodeId.value,
+                                content,
+                                turnstileToken,
+                                context.commentId,
+                            )
+
+                        is CommentContext.SubjectReview -> ApiResponse.success(Unit) // TODO: send subject comment
+                    }
+
+                    val error = response.failureOrNull()
+                    if (error == null) { // cancel all jobs in this scope to complete.
+                        tokenCollectJob.cancel()
+                        // 发送成功了, 刷新一下
+                        commentStateRestarter.restart()
+                        return@coroutineScope true
+                    }
+                    if (error is ApiFailure.Unauthorized) {
+                        triedCount++
+                        continue
+                    } else {
+                        return@coroutineScope false
+                    }
                 }
+                return@coroutineScope false
             }
         },
         backgroundScope = backgroundScope,

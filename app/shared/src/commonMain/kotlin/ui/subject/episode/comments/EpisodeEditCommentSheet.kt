@@ -33,6 +33,7 @@ fun EpisodeEditCommentSheet(
     state: CommentEditorState,
     turnstileState: TurnstileState,
     onDismiss: () -> Unit,
+    onSendComplete: (succeeded: Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val density = LocalDensity.current
@@ -58,7 +59,10 @@ fun EpisodeEditCommentSheet(
                 .padding(contentPadding),
             stickerPanelHeight = with(density) { imePresentMaxHeight.toDp() },
             focusRequester = focusRequester,
-            onSendComplete = { sheetState.close() },
+            onSendComplete = {
+                sheetState.close()
+                onSendComplete(it)
+            },
         )
     }
 }

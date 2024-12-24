@@ -42,7 +42,7 @@ fun PreviewEditComment() {
                             .map { EditCommentSticker(it, null) }
                             .toList(),
                     ),
-                    onSend = { _, _ -> },
+                    onSend = { _, _ -> true },
                     richTextRenderer = {
                         withContext(Dispatchers.Default) {
                             with(CommentMapperContext) { parseBBCode(it) }
