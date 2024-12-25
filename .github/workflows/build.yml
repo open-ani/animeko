@@ -80,7 +80,6 @@ jobs:
     - 'windows-2019'
     outputs:
       windowsX64PortableSuccess: '${{ steps.step-15.outcome == ''success'' }}'
-      windowsX64PortableUrl: '${{ steps.step-15.outputs.artifact-url }}'
     steps:
     - id: 'step-0'
       uses: 'actions/checkout@v4'
@@ -384,7 +383,6 @@ jobs:
     if: '${{ github.repository == ''open-ani/animeko'' }}'
     outputs:
       macosAarch64DmgSuccess: '${{ steps.step-26.outcome == ''success'' }}'
-      macosAarch64DmgUrl: '${{ steps.step-26.outputs.artifact-url }}'
     steps:
     - id: 'step-0'
       uses: 'actions/checkout@v4'
@@ -562,7 +560,7 @@ jobs:
       name: 'Upload macOS dmg'
       uses: 'actions/upload-artifact@v4'
       with:
-        name: 'ani-macos-dmg-AARCH64'
+        name: 'ani-macos-dmg-aarch64'
         path: 'app/desktop/build/compose/binaries/main-release/dmg/Ani-*.dmg'
         overwrite: 'true'
     - id: 'step-27'
@@ -586,19 +584,14 @@ jobs:
         del /s /q C:\\vcpkg\\installed\\x64-windows\\lib\\libssl*
         del /s /q C:\\vcpkg\\installed\\x64-windows\\lib\\libcrypto*
     - id: 'step-2'
-      name: 'Echo URL'
-      env:
-        URL: '${{ needs.build_github-windows-2019.outputs.windowsX64PortableUrl }}'
-      run: 'echo "$URL"'
+      name: 'Download Windows x64 Portable'
+      uses: 'actions/download-artifact@v4'
+      with:
+        name: 'ani-windows-portable'
+        path: '${{ github.workspace }}/ci-helper/verify'
     - id: 'step-3'
-      name: 'Download ani.zip'
-      env:
-        GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
-        URL: '${{ needs.build_github-windows-2019.outputs.windowsX64PortableUrl }}'
-      run: 'curl -s -H "Authorization: Bearer %GITHUB_TOKEN%" --retry 3 "%URL%" --output "ani.zip"'
-    - id: 'step-4'
       name: 'Check that Anitorrent can be loaded'
-      run: '"$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-windows-x64.ps1" ani.zip anitorrent-load-test'
+      run: '"${{ github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "${{ github.workspace }}/ci-helper/verify/" anitorrent-load-test'
   verify_github-windows-2022:
     name: 'Verify (Windows Server 2022 x86_64 (GitHub))'
     runs-on:
@@ -616,19 +609,14 @@ jobs:
         del /s /q C:\\vcpkg\\installed\\x64-windows\\lib\\libssl*
         del /s /q C:\\vcpkg\\installed\\x64-windows\\lib\\libcrypto*
     - id: 'step-2'
-      name: 'Echo URL'
-      env:
-        URL: '${{ needs.build_github-windows-2019.outputs.windowsX64PortableUrl }}'
-      run: 'echo "$URL"'
+      name: 'Download Windows x64 Portable'
+      uses: 'actions/download-artifact@v4'
+      with:
+        name: 'ani-windows-portable'
+        path: '${{ github.workspace }}/ci-helper/verify'
     - id: 'step-3'
-      name: 'Download ani.zip'
-      env:
-        GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
-        URL: '${{ needs.build_github-windows-2019.outputs.windowsX64PortableUrl }}'
-      run: 'curl -s -H "Authorization: Bearer %GITHUB_TOKEN%" --retry 3 "%URL%" --output "ani.zip"'
-    - id: 'step-4'
       name: 'Check that Anitorrent can be loaded'
-      run: '"$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-windows-x64.ps1" ani.zip anitorrent-load-test'
+      run: '"${{ github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "${{ github.workspace }}/ci-helper/verify/" anitorrent-load-test'
   verify_self-hosted-windows-10:
     name: 'Verify (Windows 10 x86_64 (Self-Hosted))'
     runs-on:
@@ -642,19 +630,14 @@ jobs:
     - id: 'step-0'
       uses: 'actions/checkout@v4'
     - id: 'step-1'
-      name: 'Echo URL'
-      env:
-        URL: '${{ needs.build_github-windows-2019.outputs.windowsX64PortableUrl }}'
-      run: 'echo "$URL"'
+      name: 'Download Windows x64 Portable'
+      uses: 'actions/download-artifact@v4'
+      with:
+        name: 'ani-windows-portable'
+        path: '${{ github.workspace }}/ci-helper/verify'
     - id: 'step-2'
-      name: 'Download ani.zip'
-      env:
-        GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
-        URL: '${{ needs.build_github-windows-2019.outputs.windowsX64PortableUrl }}'
-      run: 'curl -s -H "Authorization: Bearer %GITHUB_TOKEN%" --retry 3 "%URL%" --output "ani.zip"'
-    - id: 'step-3'
       name: 'Check that Anitorrent can be loaded'
-      run: '"$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-windows-x64.ps1" ani.zip anitorrent-load-test'
+      run: '"${{ github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "${{ github.workspace }}/ci-helper/verify/" anitorrent-load-test'
   verify_self-hosted-macos-15:
     name: 'Verify (macOS 15 AArch64 (Self-Hosted))'
     runs-on:
@@ -668,19 +651,13 @@ jobs:
     - id: 'step-0'
       uses: 'actions/checkout@v4'
     - id: 'step-1'
-      name: 'Echo URL'
-      env:
-        URL: '${{ needs.build_self-hosted-macos-15.outputs.macosAarch64DmgUrl }}'
-      run: 'echo "$URL"'
+      name: 'Download DMG'
+      uses: 'actions/download-artifact@v4'
+      with:
+        name: 'ani-macos-dmg-aarch64'
     - id: 'step-2'
-      name: 'Download ani.dmg'
-      env:
-        GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
-        URL: '${{ needs.build_self-hosted-macos-15.outputs.macosAarch64DmgUrl }}'
-      run: 'wget -q --tries=3 --header="Authorization: Bearer $GITHUB_TOKEN" "$URL" -O "ani.zip"'
-    - id: 'step-3'
       name: 'Check that Anitorrent can be loaded'
-      run: '"$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" ani.zip anitorrent-load-test'
+      run: '"$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" "$GITHUB_WORKSPACE"/*.dmg anitorrent-load-test'
   verify_github-macos-14:
     name: 'Verify (macOS 14 AArch64 (GitHub))'
     runs-on:
@@ -700,16 +677,10 @@ jobs:
         sudo rm -rf /opt/homebrew/lib/libssl* || true
         sudo rm -rf /opt/homebrew/lib/libcrypto* || true
     - id: 'step-2'
-      name: 'Echo URL'
-      env:
-        URL: '${{ needs.build_self-hosted-macos-15.outputs.macosAarch64DmgUrl }}'
-      run: 'echo "$URL"'
+      name: 'Download DMG'
+      uses: 'actions/download-artifact@v4'
+      with:
+        name: 'ani-macos-dmg-aarch64'
     - id: 'step-3'
-      name: 'Download ani.dmg'
-      env:
-        GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
-        URL: '${{ needs.build_self-hosted-macos-15.outputs.macosAarch64DmgUrl }}'
-      run: 'wget -q --tries=3 --header="Authorization: Bearer $GITHUB_TOKEN" "$URL" -O "ani.zip"'
-    - id: 'step-4'
       name: 'Check that Anitorrent can be loaded'
-      run: '"$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" ani.zip anitorrent-load-test'
+      run: '"$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" "$GITHUB_WORKSPACE"/*.dmg anitorrent-load-test'

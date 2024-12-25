@@ -27,6 +27,7 @@
 @file:DependsOn("nick-fields:retry:v2")
 @file:DependsOn("timheuer:base64-to-file:v1.1")
 @file:DependsOn("actions:upload-artifact:v4")
+@file:DependsOn("actions:download-artifact:v4")
 
 // Release
 @file:DependsOn("dawidd6:action-get-tag:v1")
@@ -46,6 +47,7 @@ import Secrets.SIGNING_RELEASE_KEYPASSWORD
 import Secrets.SIGNING_RELEASE_STOREFILE
 import Secrets.SIGNING_RELEASE_STOREPASSWORD
 import io.github.typesafegithub.workflows.actions.actions.Checkout
+import io.github.typesafegithub.workflows.actions.actions.DownloadArtifact
 import io.github.typesafegithub.workflows.actions.actions.GithubScript
 import io.github.typesafegithub.workflows.actions.actions.UploadArtifact
 import io.github.typesafegithub.workflows.actions.bhowell2.GithubSubstringAction_Untyped
@@ -81,11 +83,15 @@ enum class OS {
     WINDOWS,
     UBUNTU,
     MACOS;
+
+    override fun toString(): String = name.lowercase()
 }
 
 enum class Arch {
     X64,
     AARCH64;
+
+    override fun toString(): String = name.lowercase()
 }
 
 //enum class AndroidArch(
@@ -406,9 +412,7 @@ val buildMatrixInstances = listOf(
 
 class BuildJobOutputs : JobOutputs() {
     var macosAarch64DmgSuccess by output()
-    var macosAarch64DmgUrl by output()
     var windowsX64PortableSuccess by output()
-    var windowsX64PortableUrl by output()
 }
 
 fun getBuildJobBody(matrix: MatrixInstance): JobBuilder<BuildJobOutputs>.() -> Unit = {
@@ -438,16 +442,20 @@ fun getBuildJobBody(matrix: MatrixInstance): JobBuilder<BuildJobOutputs>.() -> U
 
         packageOutputs.macosAarch64DmgOutcome?.let {
             jobOutputs.macosAarch64DmgSuccess = it.eq(AbstractResult.Status.Success)
-            jobOutputs.macosAarch64DmgUrl = packageOutputs.macosAarch64DmgUrl!!
         }
 
         packageOutputs.windowsX64PortableOutcome?.let {
             jobOutputs.windowsX64PortableSuccess = it.eq(AbstractResult.Status.Success)
-            jobOutputs.windowsX64PortableUrl = packageOutputs.windowsX64PortableUrl!!
         }
 
         cleanupTempFiles()
     }
+}
+
+object ArtifactNames {
+    fun windowsPortable() = "ani-windows-portable"
+    fun macosDmg(arch: Arch) = "ani-macos-dmg-${arch}"
+    fun macosPortable(arch: Arch) = "ani-macos-portable-${arch}"
 }
 
 fun getVerifyJobBody(
@@ -507,60 +515,34 @@ fun getVerifyJobBody(
 
     when (runner.os to runner.arch) {
         OS.WINDOWS to Arch.X64 -> {
-            val myUrlExpr = expr { buildJobOutputs.windowsX64PortableUrl }
-            run(
-                name = $$"Echo URL",
-                command = shell($$"""echo "$URL""""),
-                env = mapOf("URL" to myUrlExpr),
-            )
-            
-            run(
-                name = $$"Download ani.zip",
-                command = shell(
-                    // Include GITHUB_TOKEN
-                    $$"""
-                            curl -s -H "Authorization: Bearer %GITHUB_TOKEN%" --retry 3 "%URL%" --output "ani.zip"
-                            """.trimIndent(),
-                ),
-                env = mapOf(
-                    "GITHUB_TOKEN" to expr { secrets.GITHUB_TOKEN },
-                    "URL" to myUrlExpr,
+            uses(
+                name = "Download Windows x64 Portable",
+                action = DownloadArtifact(
+                    name = ArtifactNames.windowsPortable(),
+                    path = "${expr { github.workspace }}/ci-helper/verify",
                 ),
             )
-            
             tasksToExecute.forEach { task ->
                 run(
                     name = task.step,
-                    command = shell($$""""$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-windows-x64.ps1" ani.zip $${task.name}"""),
+                    command = shell(
+                        $$"""
+                        "$${expr { github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "$${expr { github.workspace }}/ci-helper/verify/" $${task.name}
+                        """.trimIndent(),
+                    ),
                 )
             }
         }
 
         OS.MACOS to Arch.AARCH64 -> {
-            val myUrlExpr = expr { buildJobOutputs.macosAarch64DmgUrl }
-            run(
-                name = $$"Echo URL",
-                command = shell($$"""echo "$URL""""),
-                env = mapOf("URL" to myUrlExpr),
+            uses(
+                name = "Download DMG",
+                action = DownloadArtifact(name = ArtifactNames.macosDmg(Arch.AARCH64)),
             )
-            run(
-                name = $$"Download ani.dmg",
-                command = shell(
-                    // Include GITHUB_TOKEN
-                    $$"""
-                            wget -q --tries=3 --header="Authorization: Bearer $GITHUB_TOKEN" "$URL" -O "ani.zip"
-                            """.trimIndent(),
-                ),
-                env = mapOf(
-                    "GITHUB_TOKEN" to expr { secrets.GITHUB_TOKEN },
-                    "URL" to myUrlExpr,
-                ),
-            )
-
             tasksToExecute.forEach { task ->
                 run(
                     name = task.step,
-                    command = shell($$""""$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" ani.zip $${task.name}"""),
+                    command = shell($$""""$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" "$GITHUB_WORKSPACE"/*.dmg $${task.name}"""),
                 )
             }
         }
@@ -1155,9 +1137,7 @@ class WithMatrix(
     class PackageDesktopAndUploadOutputs {
         // null means not enabled on this machine
         var macosAarch64DmgOutcome: Step<*>.Outcome? = null
-        var macosAarch64DmgUrl: String? = null
         var windowsX64PortableOutcome: Step<*>.Outcome? = null
-        var windowsX64PortableUrl: String? = null
     }
 
     fun JobBuilder<*>.packageDesktopAndUpload(): PackageDesktopAndUploadOutputs {
@@ -1193,21 +1173,20 @@ class WithMatrix(
                 val macosAarch64Dmg = uses(
                     name = "Upload macOS dmg",
                     action = UploadArtifact(
-                        name = "ani-macos-dmg-${matrix.arch}",
+                        name = ArtifactNames.macosDmg(matrix.arch),
                         path_Untyped = "app/desktop/build/compose/binaries/main-release/dmg/Ani-*.dmg",
                         overwrite = true,
                     ),
                 )
 
                 this.macosAarch64DmgOutcome = macosAarch64Dmg.outcome
-                this.macosAarch64DmgUrl = macosAarch64Dmg.outputs.artifactUrl
             }
 
             if (matrix.isMacOS && matrix.isX64) {
                 val macosX64Portable = uses(
                     name = "Upload macOS dmg",
                     action = UploadArtifact(
-                        name = "ani-macos-portable-${matrix.arch}",
+                        name = ArtifactNames.macosPortable(matrix.arch),
                         path_Untyped = "app/desktop/build/compose/binaries/main-release/app/Ani.app",
                         overwrite = true,
                     ),
@@ -1218,14 +1197,13 @@ class WithMatrix(
                 val windowsX64Portable = uses(
                     name = "Upload Windows packages",
                     action = UploadArtifact(
-                        name = "ani-windows-portable",
+                        name = ArtifactNames.windowsPortable(),
                         path_Untyped = "app/desktop/build/compose/binaries/main-release/app",
                         overwrite = true,
                     ),
                 )
 
                 this.windowsX64PortableOutcome = windowsX64Portable.outcome
-                this.windowsX64PortableUrl = windowsX64Portable.outputs.artifactUrl
             }
         }
     }

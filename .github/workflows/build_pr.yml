@@ -14,7 +14,6 @@ jobs:
     - 'windows-2019'
     outputs:
       windowsX64PortableSuccess: '${{ steps.step-15.outcome == ''success'' }}'
-      windowsX64PortableUrl: '${{ steps.step-15.outputs.artifact-url }}'
     steps:
     - id: 'step-0'
       uses: 'actions/checkout@v4'
