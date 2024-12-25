@@ -528,9 +528,10 @@ fun getVerifyJobBody(
             tasksToExecute.forEach { task ->
                 run(
                     name = task.step,
+                    shell = Shell.PowerShell,
                     command = shell(
                         $$"""
-                        "$${expr { github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "$${expr { github.workspace }}/ci-helper/verify/" $${task.name}
+                        & "$${expr { github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "$${expr { github.workspace }}\ci-helper\verify" $${task.name}
                         """.trimIndent(),
                     ),
                 )
