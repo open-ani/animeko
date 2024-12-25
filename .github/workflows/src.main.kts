@@ -577,6 +577,7 @@ workflow(
         // - pushing directly to main
         // - pushing to a branch that has an associated PR
         Push(pathsIgnore = listOf("**/*.md")),
+        PullRequest(pathsIgnore = listOf("**/*.md")),
     ),
     sourceFile = __FILE__,
     targetFileName = "build.yml",
@@ -589,6 +590,8 @@ workflow(
             name = """Build (${matrix.name})""",
             runsOn = RunnerType.Labelled(matrix.runsOn),
             `if` = if (matrix.selfHosted) {
+                // For self-hosted runners, only run if it's our main repository (not a fork).
+                // For security concerns, all external contributors will need approval to run the workflow.
                 expr { github.isAnimekoRepository }
             } else {
                 null // always
@@ -625,54 +628,6 @@ workflow(
 
 operator fun List<Pair<MatrixInstance, Job<BuildJobOutputs>>>.get(runner: Runner): Job<BuildJobOutputs> {
     return first { it.first.runner == runner }.second
-}
-
-workflow(
-    name = "Build",
-    on = listOf(
-        PullRequest(pathsIgnore = listOf("**/*.md")),
-    ),
-    sourceFile = __FILE__,
-    targetFileName = "build_pr.yml",
-    consistencyCheckJobConfig = ConsistencyCheckJobConfig.Disabled,
-) {
-    val builds = buildMatrixInstances.filterNot { it.selfHosted }.map { matrix ->
-        matrix to job(
-            id = "build_${matrix.runner.id}",
-            name = """Build (${matrix.name})""",
-            runsOn = RunnerType.Labelled(matrix.runsOn),
-            outputs = BuildJobOutputs(),
-            block = getBuildJobBody(matrix),
-        )
-    }
-    
-
-    builds.filter { (matrix, _) ->
-        matrix.runner.os == OS.WINDOWS && matrix.uploadDesktopInstallers
-    }.forEach { (_, build) ->
-        listOf(
-            Runner.GithubWindowsServer2019,
-            Runner.GithubWindowsServer2022,
-//            Runner.SelfHostedWindows10,
-        ).forEach { runner ->
-            addVerifyJob(build, runner, build.outputs.windowsX64PortableSuccess)
-        }
-    }
-
-    builds.filter { (matrix, _) ->
-        matrix.runner.os == OS.MACOS && matrix.runner.arch == Arch.AARCH64
-                && matrix.uploadDesktopInstallers
-    }.forEach { (_, build) ->
-        listOf(
-//            Runner.SelfHostedMacOS15,
-            Runner.GithubMacOS14,
-        ).forEach { runner ->
-            addVerifyJob(build, runner, build.outputs.macosAarch64DmgSuccess)
-        }
-    }
-
-    // No self-hosted for security. Only direct pushes to the repository branches will trigger the self-hosted jobs.
-    // Organization members always push to a branch to create a fork and that will trigger a `Push` event that runs on self-hosted.
 }
 
 workflow(
