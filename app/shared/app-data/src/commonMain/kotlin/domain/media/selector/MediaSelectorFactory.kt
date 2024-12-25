@@ -62,7 +62,7 @@ interface MediaSelectorFactory {
                         episodeCollectionRepository.subjectCompletedFlow(subjectId),
                         mediaSourceManager.allInstances,
                         flowOf(subtitlePreferences),
-                        subjectRelationsRepository.subjectSequelSubjectNamesFlow(subjectId),
+                        subjectRelationsRepository.subjectSeriesInfoFlow(subjectId),
                     ),
                     mediaList,
                     savedUserPreference = episodePreferencesRepository.mediaPreferenceFlow(subjectId),

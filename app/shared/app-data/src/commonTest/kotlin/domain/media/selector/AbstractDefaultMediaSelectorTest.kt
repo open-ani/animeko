@@ -12,6 +12,7 @@ package me.him188.ani.app.domain.media.selector
 import kotlinx.coroutines.flow.MutableStateFlow
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
+import me.him188.ani.app.data.models.subject.SubjectSeriesInfo
 import me.him188.ani.app.domain.media.createTestDefaultMedia
 import me.him188.ani.datasources.api.DefaultMedia
 import me.him188.ani.datasources.api.EpisodeSort
@@ -89,18 +90,32 @@ sealed class AbstractDefaultMediaSelectorTest {
         const val SOURCE_DMHY = "dmhy"
         const val SOURCE_MIKAN = "mikan"
 
-        @Suppress("SameParameterValue")
+        @Suppress("SameParameterValue", "INVISIBLE_REFERENCE")
+        @kotlin.internal.LowPriorityInOverloadResolution
         fun createMediaSelectorContextFromEmpty(
             subjectCompleted: Boolean = false,
             mediaSourcePrecedence: List<String> = emptyList(),
             subtitleKindFilters: MediaSelectorSubtitlePreferences = MediaSelectorSubtitlePreferences.AllNormal,
             subjectSequelNames: Set<String> = emptySet(),
+        ) = createMediaSelectorContextFromEmpty(
+            subjectCompleted = subjectCompleted,
+            mediaSourcePrecedence = mediaSourcePrecedence,
+            subtitleKindFilters = subtitleKindFilters,
+            subjectSeriesInfo = SubjectSeriesInfo.Fallback.copy(sequelSubjectNames = subjectSequelNames),
+        )
+
+        @Suppress("SameParameterValue")
+        fun createMediaSelectorContextFromEmpty(
+            subjectCompleted: Boolean = false,
+            mediaSourcePrecedence: List<String> = emptyList(),
+            subtitleKindFilters: MediaSelectorSubtitlePreferences = MediaSelectorSubtitlePreferences.AllNormal,
+            subjectSeriesInfo: SubjectSeriesInfo = SubjectSeriesInfo.Fallback,
         ) =
             MediaSelectorContext(
                 subjectFinished = subjectCompleted,
                 mediaSourcePrecedence = mediaSourcePrecedence,
                 subtitlePreferences = subtitleKindFilters,
-                subjectSequelNames = subjectSequelNames,
+                subjectSeriesInfo = subjectSeriesInfo,
             )
     }
 

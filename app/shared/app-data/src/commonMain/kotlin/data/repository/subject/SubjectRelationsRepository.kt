@@ -19,12 +19,12 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onEach
 import me.him188.ani.app.data.models.subject.CharacterInfo
 import me.him188.ani.app.data.models.subject.PersonInfo
 import me.him188.ani.app.data.models.subject.RelatedCharacterInfo
 import me.him188.ani.app.data.models.subject.RelatedPersonInfo
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
+import me.him188.ani.app.data.models.subject.SubjectSeriesInfo
 import me.him188.ani.app.data.network.AniSubjectRelationIndexService
 import me.him188.ani.app.data.network.BangumiSubjectService
 import me.him188.ani.app.data.network.BatchSubjectRelations
@@ -39,7 +39,6 @@ import me.him188.ani.app.data.persistent.database.entity.SubjectCharacterRelatio
 import me.him188.ani.app.data.persistent.database.entity.SubjectPersonRelationEntity
 import me.him188.ani.app.data.repository.Repository
 import me.him188.ani.app.data.repository.RepositoryServiceUnavailableException
-import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.platform.collections.mapToIntArray
 import me.him188.ani.utils.platform.currentTimeMillis
 import kotlin.coroutines.CoroutineContext
@@ -63,7 +62,7 @@ sealed class SubjectRelationsRepository(
     /**
      * 获取指定条目的所有续集的名称列表, 包含正片和 SP 等特殊剧集, 并排除 [subjectId] 的名称. (仅包含 Anime 类型)
      */
-    abstract fun subjectSequelSubjectNamesFlow(subjectId: Int): Flow<Set<String>>
+    abstract fun subjectSeriesInfoFlow(subjectId: Int): Flow<SubjectSeriesInfo>
 
     abstract fun subjectRelatedPersonsFlow(subjectId: Int): Flow<List<RelatedPersonInfo>>
     abstract fun subjectRelatedCharactersFlow(subjectId: Int): Flow<List<RelatedCharacterInfo>>
@@ -83,7 +82,7 @@ class DefaultSubjectRelationsRepository(
         emit(
             kotlinx.coroutines.withTimeoutOrNull(10_000) {
                 // 这服务极快, 不会超时. 10 秒还没完, 只能是服务器重启了一下, 正在构造索引
-                aniSubjectRelationIndexService.getSubjectSequelSubjects(subjectId)
+                aniSubjectRelationIndexService.getSubjectRelationIndex(subjectId).sequelSubjects
             }
                 ?: throw RepositoryServiceUnavailableException("Failed to fetch subject sequel subjects for $subjectId due to timeout"),
         )
@@ -106,19 +105,43 @@ class DefaultSubjectRelationsRepository(
             }.flowOn(defaultDispatcher)
     }
 
-    override fun subjectSequelSubjectNamesFlow(subjectId: Int): Flow<Set<String>> {
-        return subjectSequelSubjectsFlow(subjectId)
-            .combine(subjectCollectionRepository.subjectCollectionFlow(subjectId)) { list, requestingSubject ->
-                list.flatMapTo(mutableSetOf()) { it.subjectInfo.allNames }.apply {
-                    removeAll { sequelName ->
-                        // 如果续集名称存在于当前名称中, 则删除, 否则可能导致过滤掉当前季度的条目
-                        requestingSubject.subjectInfo.allNames.any { it.contains(sequelName, ignoreCase = true) }
-                    }
-                }
-            }.onEach {
-                logger.info { "subjectSequelSubjectNamesFlow($subjectId): " + it.joinToString() }
-            }.flowOn(defaultDispatcher)
-    }
+    override fun subjectSeriesInfoFlow(subjectId: Int): Flow<SubjectSeriesInfo> = flow {
+        emit(
+            kotlinx.coroutines.withTimeoutOrNull(10_000) {
+                // 这服务极快, 不会超时. 10 秒还没完, 只能是服务器重启了一下, 正在构造索引
+                aniSubjectRelationIndexService.getSubjectRelationIndex(subjectId)
+            }
+                ?: throw RepositoryServiceUnavailableException("Failed to fetch subject sequel subjects for $subjectId due to timeout"),
+        )
+    }.combine(subjectCollectionRepository.subjectCollectionFlow(subjectId)) { relations, requestingSubject ->
+        combine(
+            (relations.sequelSubjects.toSet() + relations.seriesMainSubjectIds).map {
+                subjectCollectionRepository.subjectCollectionFlow(it)
+            },
+        ) { subjectCollectionInfos ->
+            SubjectSeriesInfo.compute(
+                requestingSubject = requestingSubject,
+                seriesSubjects = subjectCollectionInfos.filter { it.subjectId in relations.seriesMainSubjectIds },
+                sequelSubjects = subjectCollectionInfos.filter { it.subjectId in relations.sequelSubjects },
+            )
+        }
+    }.flatMapLatest {
+        it
+    }.flowOn(defaultDispatcher)
+
+//    override fun subjectSequelSubjectNamesFlow(subjectId: Int): Flow<Set<String>> {
+//        return subjectSequelSubjectsFlow(subjectId)
+//            .combine(subjectCollectionRepository.subjectCollectionFlow(subjectId)) { list, requestingSubject ->
+//                list.flatMapTo(mutableSetOf()) { it.subjectInfo.allNames }.apply {
+//                    removeAll { sequelName ->
+//                        // 如果续集名称存在于当前名称中, 则删除, 否则可能导致过滤掉当前季度的条目
+//                        requestingSubject.subjectInfo.allNames.any { it.contains(sequelName, ignoreCase = true) }
+//                    }
+//                }
+//            }.onEach {
+//                logger.info { "subjectSequelSubjectNamesFlow($subjectId): " + it.joinToString() }
+//            }.flowOn(defaultDispatcher)
+//    }
 
     override fun subjectRelatedPersonsFlow(subjectId: Int): Flow<List<RelatedPersonInfo>> {
         return subjectCollectionRepository.subjectCollectionFlow(subjectId)

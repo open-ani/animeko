@@ -93,7 +93,7 @@ class EpisodeCacheRequesterTest {
             subjectFinished = false,
             mediaSourcePrecedence = emptyList(),
             subtitlePreferences = MediaSelectorSubtitlePreferences.AllNormal,
-            subjectSequelNames = emptySet(),
+            subjectSeriesInfo = null,
         ),
     )
     private val storage = TestMediaCacheStorage()
