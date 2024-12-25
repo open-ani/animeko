@@ -63,6 +63,8 @@ import io.github.typesafegithub.workflows.domain.ActionStep
 import io.github.typesafegithub.workflows.domain.CommandStep
 import io.github.typesafegithub.workflows.domain.Job
 import io.github.typesafegithub.workflows.domain.JobOutputs
+import io.github.typesafegithub.workflows.domain.Mode
+import io.github.typesafegithub.workflows.domain.Permission
 import io.github.typesafegithub.workflows.domain.RunnerType
 import io.github.typesafegithub.workflows.domain.Shell
 import io.github.typesafegithub.workflows.domain.Step
@@ -583,6 +585,9 @@ fun WorkflowBuilder.addVerifyJob(build: Job<BuildJobOutputs>, runner: Runner, if
 
 workflow(
     name = "Build",
+    permissions = mapOf(
+        Permission.Actions to Mode.Write,
+    ),
     on = listOf(
         // Including: 
         // - pushing directly to main
@@ -644,6 +649,10 @@ operator fun List<Pair<MatrixInstance, Job<BuildJobOutputs>>>.get(runner: Runner
 
 workflow(
     name = "Release",
+    permissions = mapOf(
+        Permission.Actions to Mode.Write,
+        Permission.Contents to Mode.Write, // Releases
+    ),
     on = listOf(
         // Only commiter with write-access can trigger this
         Push(tags = listOf("v*")),

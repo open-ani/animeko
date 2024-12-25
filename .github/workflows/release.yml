@@ -7,6 +7,9 @@ on:
   push:
     tags:
     - 'v*'
+permissions:
+  actions: 'write'
+  contents: 'write'
 jobs:
   create-release:
     name: 'Create Release'
