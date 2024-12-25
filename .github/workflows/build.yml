@@ -10,8 +10,6 @@ on:
   pull_request:
     paths-ignore:
     - '**/*.md'
-permissions:
-  actions: 'write'
 jobs:
   build_self-hosted-windows-10:
     name: 'Build (Windows 10 x86_64 (Self-Hosted))'
@@ -19,6 +17,8 @@ jobs:
     - 'self-hosted'
     - 'Windows'
     - 'X64'
+    permissions:
+      actions: 'write'
     if: '${{ github.repository == ''open-ani/animeko'' }}'
     steps:
     - id: 'step-0'
@@ -83,6 +83,8 @@ jobs:
     name: 'Build (Windows Server 2019 x86_64)'
     runs-on:
     - 'windows-2019'
+    permissions:
+      actions: 'write'
     outputs:
       windowsX64PortableSuccess: '${{ steps.step-15.outcome == ''success'' }}'
     steps:
@@ -177,6 +179,8 @@ jobs:
     name: 'Build (Ubuntu x86_64 (Compile only))'
     runs-on:
     - 'ubuntu-20.04'
+    permissions:
+      actions: 'write'
     steps:
     - id: 'step-0'
       uses: 'actions/checkout@v4'
@@ -232,6 +236,8 @@ jobs:
     name: 'Build (macOS 13 x86_64 (GitHub))'
     runs-on:
     - 'macos-13'
+    permissions:
+      actions: 'write'
     steps:
     - id: 'step-0'
       uses: 'actions/checkout@v4'
@@ -386,6 +392,8 @@ jobs:
     - 'self-hosted'
     - 'macOS'
     - 'ARM64'
+    permissions:
+      actions: 'write'
     if: '${{ github.repository == ''open-ani/animeko'' }}'
     outputs:
       macosAarch64DmgSuccess: '${{ steps.step-26.outcome == ''success'' }}'
@@ -578,6 +586,8 @@ jobs:
     name: 'Verify (Windows Server 2019 x86_64 (GitHub))'
     runs-on:
     - 'windows-2019'
+    permissions:
+      actions: 'read'
     needs:
     - 'build_github-windows-2019'
     if: '${{ needs.build_github-windows-2019.outputs.windowsX64PortableSuccess }}'
@@ -605,6 +615,8 @@ jobs:
     name: 'Verify (Windows Server 2022 x86_64 (GitHub))'
     runs-on:
     - 'windows-2022'
+    permissions:
+      actions: 'read'
     needs:
     - 'build_github-windows-2019'
     if: '${{ needs.build_github-windows-2019.outputs.windowsX64PortableSuccess }}'
@@ -634,6 +646,8 @@ jobs:
     - 'self-hosted'
     - 'Windows'
     - 'X64'
+    permissions:
+      actions: 'read'
     needs:
     - 'build_github-windows-2019'
     if: '${{ (github.repository == ''open-ani/animeko'') && (needs.build_github-windows-2019.outputs.windowsX64PortableSuccess) }}'
@@ -656,6 +670,8 @@ jobs:
     - 'self-hosted'
     - 'macOS'
     - 'ARM64'
+    permissions:
+      actions: 'read'
     needs:
     - 'build_self-hosted-macos-15'
     if: '${{ (github.repository == ''open-ani/animeko'') && (needs.build_self-hosted-macos-15.outputs.macosAarch64DmgSuccess) }}'
@@ -674,6 +690,8 @@ jobs:
     name: 'Verify (macOS 14 AArch64 (GitHub))'
     runs-on:
     - 'macos-14'
+    permissions:
+      actions: 'read'
     needs:
     - 'build_self-hosted-macos-15'
     if: '${{ needs.build_self-hosted-macos-15.outputs.macosAarch64DmgSuccess }}'
@@ -700,6 +718,8 @@ jobs:
     name: 'Verify (macOS 15 AArch64 (GitHub))'
     runs-on:
     - 'macos-15'
+    permissions:
+      actions: 'read'
     needs:
     - 'build_self-hosted-macos-15'
     if: '${{ needs.build_self-hosted-macos-15.outputs.macosAarch64DmgSuccess }}'

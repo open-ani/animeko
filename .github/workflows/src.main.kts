@@ -578,6 +578,9 @@ fun WorkflowBuilder.addVerifyJob(build: Job<BuildJobOutputs>, runner: Runner, if
         } else {
             expr { ifExpr }
         },
+        permissions = mapOf(
+            Permission.Actions to Mode.Read, // Download artifacts
+        ),
         runsOn = RunnerType.Labelled(runner.labels),
         block = getVerifyJobBody(build.outputs, runner),
     )
@@ -585,9 +588,6 @@ fun WorkflowBuilder.addVerifyJob(build: Job<BuildJobOutputs>, runner: Runner, if
 
 workflow(
     name = "Build",
-    permissions = mapOf(
-        Permission.Actions to Mode.Write,
-    ),
     on = listOf(
         // Including: 
         // - pushing directly to main
@@ -605,6 +605,9 @@ workflow(
             id = "build_${matrix.runner.id}",
             name = """Build (${matrix.name})""",
             runsOn = RunnerType.Labelled(matrix.runsOn),
+            permissions = mapOf(
+                Permission.Actions to Mode.Write, // Upload artifacts
+            ),
             `if` = if (matrix.selfHosted) {
                 // For self-hosted runners, only run if it's our main repository (not a fork).
                 // For security concerns, all external contributors will need approval to run the workflow.
