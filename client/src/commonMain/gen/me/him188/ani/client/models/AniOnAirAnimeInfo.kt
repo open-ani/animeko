@@ -32,7 +32,7 @@ import kotlinx.serialization.Serializable
  * 
  *
  * @param aliases
- * @param bangumiId
+ * @param bangumiId 
  * @param name 
  * @param begin 
  * @param end 
