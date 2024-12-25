@@ -69,6 +69,7 @@ import io.github.typesafegithub.workflows.domain.Step
 import io.github.typesafegithub.workflows.domain.triggers.PullRequest
 import io.github.typesafegithub.workflows.domain.triggers.Push
 import io.github.typesafegithub.workflows.dsl.JobBuilder
+import io.github.typesafegithub.workflows.dsl.WorkflowBuilder
 import io.github.typesafegithub.workflows.dsl.expressions.contexts.GitHubContext
 import io.github.typesafegithub.workflows.dsl.expressions.contexts.SecretsContext
 import io.github.typesafegithub.workflows.dsl.expressions.expr
@@ -553,6 +554,20 @@ fun getVerifyJobBody(
     }
 }
 
+fun WorkflowBuilder.addVerifyJob(build: Job<BuildJobOutputs>, runner: Runner, ifExpr: String) {
+    job(
+        id = "verify_${runner.id}",
+        name = """Verify (${runner.name})""",
+        needs = listOf(build),
+        `if` = if (runner.isSelfHosted) {
+            expr { github.isAnimekoRepository and ifExpr }
+        } else {
+            expr { ifExpr }
+        },
+        runsOn = RunnerType.Labelled(runner.labels),
+        block = getVerifyJobBody(build.outputs, runner),
+    )
+}
 
 workflow(
     name = "Build",
@@ -566,21 +581,6 @@ workflow(
     targetFileName = "build.yml",
     consistencyCheckJobConfig = ConsistencyCheckJobConfig.Disabled,
 ) {
-    fun addVerifyJob(build: Job<BuildJobOutputs>, runner: Runner, ifExpr: String) {
-        job(
-            id = "verify_${runner.id}",
-            name = """Verify (${runner.name})""",
-            needs = listOf(build),
-            `if` = if (runner.isSelfHosted) {
-                expr { github.isAnimekoRepository and ifExpr }
-            } else {
-                expr { ifExpr }
-            },
-            runsOn = RunnerType.Labelled(runner.labels),
-            block = getVerifyJobBody(build.outputs, runner),
-        )
-    }
-
     // Expands job matrix at compile-time so that we set job-level `if` condition. 
     val builds: List<Pair<MatrixInstance, Job<BuildJobOutputs>>> = buildMatrixInstances.map { matrix ->
         matrix to job(
@@ -635,7 +635,7 @@ workflow(
     targetFileName = "build_pr.yml",
     consistencyCheckJobConfig = ConsistencyCheckJobConfig.Disabled,
 ) {
-    buildMatrixInstances.filterNot { it.selfHosted }.map { matrix ->
+    val builds = buildMatrixInstances.filterNot { it.selfHosted }.map { matrix ->
         matrix to job(
             id = "build_${matrix.runner.id}",
             name = """Build (${matrix.name})""",
@@ -644,11 +644,34 @@ workflow(
             block = getBuildJobBody(matrix),
         )
     }
+    
+
+    builds.filter { (matrix, _) ->
+        matrix.runner.os == OS.WINDOWS && matrix.uploadDesktopInstallers
+    }.forEach { (_, build) ->
+        listOf(
+            Runner.GithubWindowsServer2019,
+            Runner.GithubWindowsServer2022,
+//            Runner.SelfHostedWindows10,
+        ).forEach { runner ->
+            addVerifyJob(build, runner, build.outputs.windowsX64PortableSuccess)
+        }
+    }
+
+    builds.filter { (matrix, _) ->
+        matrix.runner.os == OS.MACOS && matrix.runner.arch == Arch.AARCH64
+                && matrix.uploadDesktopInstallers
+    }.forEach { (_, build) ->
+        listOf(
+//            Runner.SelfHostedMacOS15,
+            Runner.GithubMacOS14,
+        ).forEach { runner ->
+            addVerifyJob(build, runner, build.outputs.macosAarch64DmgSuccess)
+        }
+    }
 
     // No self-hosted for security. Only direct pushes to the repository branches will trigger the self-hosted jobs.
     // Organization members always push to a branch to create a fork and that will trigger a `Push` event that runs on self-hosted.
-
-    // TODO verify
 }
 
 workflow(
