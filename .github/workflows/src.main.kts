@@ -294,6 +294,14 @@ sealed class Runner(
         labels = setOf("macos-14"),
     )
 
+    object GithubMacOS15 : GithubHosted(
+        id = "github-macos-15",
+        displayName = "macOS 15 AArch64 (GitHub)",
+        os = OS.MACOS,
+        arch = Arch.AARCH64,
+        labels = setOf("macos-15"),
+    )
+
     object GithubUbuntu2004 : GithubHosted(
         id = "github-ubuntu-2004",
         displayName = "Ubuntu 20.04 x86_64 (GitHub)",
@@ -620,6 +628,7 @@ workflow(
         listOf(
             Runner.SelfHostedMacOS15,
             Runner.GithubMacOS14,
+            Runner.GithubMacOS15,
         ).forEach { runner ->
             addVerifyJob(build, runner, build.outputs.macosAarch64DmgSuccess)
         }
