@@ -308,3 +308,55 @@ jobs:
         path: 'torrent/anitorrent/anitorrent-native/build'
         overwrite: 'true'
       if: '${{ always() }}'
+  verify_github-windows-2019:
+    name: 'Verify (Windows Server 2019 x86_64 (GitHub))'
+    runs-on:
+    - 'windows-2019'
+    needs:
+    - 'build_github-windows-2019'
+    if: '${{ needs.build_github-windows-2019.outputs.windowsX64PortableSuccess }}'
+    steps:
+    - id: 'step-0'
+      uses: 'actions/checkout@v4'
+    - id: 'step-1'
+      name: 'Delete libraries from system'
+      continue-on-error: true
+      shell: 'powershell'
+      run: |-
+        Remove-Item -Path "C:\vcpkg\installed\x64-windows\lib\libssl*" -Recurse -Force -Verbose
+        Remove-Item -Path "C:\vcpkg\installed\x64-windows\lib\libcrypto*" -Recurse -Force -Verbose
+    - id: 'step-2'
+      name: 'Download Windows x64 Portable'
+      uses: 'actions/download-artifact@v4'
+      with:
+        name: 'ani-windows-portable'
+        path: '${{ github.workspace }}/ci-helper/verify'
+    - id: 'step-3'
+      name: 'Check that Anitorrent can be loaded'
+      run: '"${{ github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "${{ github.workspace }}/ci-helper/verify/" anitorrent-load-test'
+  verify_github-windows-2022:
+    name: 'Verify (Windows Server 2022 x86_64 (GitHub))'
+    runs-on:
+    - 'windows-2022'
+    needs:
+    - 'build_github-windows-2019'
+    if: '${{ needs.build_github-windows-2019.outputs.windowsX64PortableSuccess }}'
+    steps:
+    - id: 'step-0'
+      uses: 'actions/checkout@v4'
+    - id: 'step-1'
+      name: 'Delete libraries from system'
+      continue-on-error: true
+      shell: 'powershell'
+      run: |-
+        Remove-Item -Path "C:\vcpkg\installed\x64-windows\lib\libssl*" -Recurse -Force -Verbose
+        Remove-Item -Path "C:\vcpkg\installed\x64-windows\lib\libcrypto*" -Recurse -Force -Verbose
+    - id: 'step-2'
+      name: 'Download Windows x64 Portable'
+      uses: 'actions/download-artifact@v4'
+      with:
+        name: 'ani-windows-portable'
+        path: '${{ github.workspace }}/ci-helper/verify'
+    - id: 'step-3'
+      name: 'Check that Anitorrent can be loaded'
+      run: '"${{ github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "${{ github.workspace }}/ci-helper/verify/" anitorrent-load-test'

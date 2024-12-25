@@ -580,9 +580,10 @@ jobs:
     - id: 'step-1'
       name: 'Delete libraries from system'
       continue-on-error: true
+      shell: 'powershell'
       run: |-
-        del /s /q C:\\vcpkg\\installed\\x64-windows\\lib\\libssl*
-        del /s /q C:\\vcpkg\\installed\\x64-windows\\lib\\libcrypto*
+        Remove-Item -Path "C:\vcpkg\installed\x64-windows\lib\libssl*" -Recurse -Force -Verbose
+        Remove-Item -Path "C:\vcpkg\installed\x64-windows\lib\libcrypto*" -Recurse -Force -Verbose
     - id: 'step-2'
       name: 'Download Windows x64 Portable'
       uses: 'actions/download-artifact@v4'
@@ -605,9 +606,10 @@ jobs:
     - id: 'step-1'
       name: 'Delete libraries from system'
       continue-on-error: true
+      shell: 'powershell'
       run: |-
-        del /s /q C:\\vcpkg\\installed\\x64-windows\\lib\\libssl*
-        del /s /q C:\\vcpkg\\installed\\x64-windows\\lib\\libcrypto*
+        Remove-Item -Path "C:\vcpkg\installed\x64-windows\lib\libssl*" -Recurse -Force -Verbose
+        Remove-Item -Path "C:\vcpkg\installed\x64-windows\lib\libcrypto*" -Recurse -Force -Verbose
     - id: 'step-2'
       name: 'Download Windows x64 Portable'
       uses: 'actions/download-artifact@v4'
@@ -672,10 +674,10 @@ jobs:
       name: 'Delete libraries from system'
       continue-on-error: true
       run: |-
-        sudo rm -rf /usr/local/lib/libssl* || true
-        sudo rm -rf /usr/local/lib/libcrypto* || true
-        sudo rm -rf /opt/homebrew/lib/libssl* || true
-        sudo rm -rf /opt/homebrew/lib/libcrypto* || true
+        sudo rm -rfv /usr/local/lib/libssl* || true
+        sudo rm -rfv /usr/local/lib/libcrypto* || true
+        sudo rm -rfv /opt/homebrew/lib/libssl* || true
+        sudo rm -rfv /opt/homebrew/lib/libcrypto* || true
     - id: 'step-2'
       name: 'Download DMG'
       uses: 'actions/download-artifact@v4'
