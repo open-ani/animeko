@@ -7,6 +7,8 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
+
+
 buildscript {
     repositories {
         gradlePluginPortal()
