@@ -531,7 +531,7 @@ fun getVerifyJobBody(
                     shell = Shell.PowerShell,
                     command = shell(
                         $$"""
-                        & "$${expr { github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "$${expr { github.workspace }}\ci-helper\verify" $${task.name}
+                        powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$${expr { github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "$${expr { github.workspace }}\ci-helper\verify" "$${task.name}"
                         """.trimIndent(),
                     ),
                 )

@@ -333,7 +333,8 @@ jobs:
         path: '${{ github.workspace }}/ci-helper/verify'
     - id: 'step-3'
       name: 'Check that Anitorrent can be loaded'
-      run: '"${{ github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "${{ github.workspace }}/ci-helper/verify/" anitorrent-load-test'
+      shell: 'powershell'
+      run: 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${{ github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "${{ github.workspace }}\ci-helper\verify" "anitorrent-load-test"'
   verify_github-windows-2022:
     name: 'Verify (Windows Server 2022 x86_64 (GitHub))'
     runs-on:
@@ -359,4 +360,5 @@ jobs:
         path: '${{ github.workspace }}/ci-helper/verify'
     - id: 'step-3'
       name: 'Check that Anitorrent can be loaded'
-      run: '"${{ github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "${{ github.workspace }}/ci-helper/verify/" anitorrent-load-test'
+      shell: 'powershell'
+      run: 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${{ github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "${{ github.workspace }}\ci-helper\verify" "anitorrent-load-test"'
