@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.datasources.api
 
 import kotlinx.serialization.Serializable
@@ -199,6 +208,16 @@ class CachedMedia(
 @Serializable
 class MediaProperties private constructor(
     /**
+     * [Media] 所对应的条目的名称. 如果数据源支持, 则可提供此信息帮助后续 Media Selector 过滤.
+     * @since 4.2
+     */
+    val subjectName: String? = null,
+    /**
+     * [Media] 所对应的剧集的名称. 如果数据源支持, 则可提供此信息帮助后续 Media Selector 过滤.
+     * @since 4.2
+     */
+    val episodeName: String? = null,
+    /**
      * 该资源支持的字幕语言列表. 可以有多个.
      *
      * ## APP 行为细节
@@ -263,13 +282,15 @@ class MediaProperties private constructor(
 ) {
     constructor(
         // so that caller still need to provide all properties despite we have default values for compatibility
+        subjectName: String?,
+        episodeName: String?,
         subtitleLanguageIds: List<String>,
         resolution: String,
         alliance: String,
         size: FileSize,
         subtitleKind: SubtitleKind?,
     ) : this(
-        subtitleLanguageIds, resolution, alliance, size, subtitleKind,
+        subjectName, episodeName, subtitleLanguageIds, resolution, alliance, size, subtitleKind,
         _primaryConstructorMarker = Unit,
     )
 

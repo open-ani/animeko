@@ -243,6 +243,8 @@ abstract class SelectorMediaSourceEngine {
                 },
                 publishedTime = 0L,
                 properties = MediaProperties(
+                    subjectName = subjectName,
+                    episodeName = info.name,
                     subtitleLanguageIds = subtitleLanguages,
                     resolution = config.defaultResolution.id,
                     alliance = info.channel ?: mediaSourceId,

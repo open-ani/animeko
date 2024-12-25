@@ -16,6 +16,7 @@ import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
 import me.him188.ani.app.data.models.subject.SubjectSeriesInfo
 import me.him188.ani.app.domain.media.createTestDefaultMedia
+import me.him188.ani.app.domain.media.createTestMediaProperties
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
 import me.him188.ani.app.domain.media.fetch.MediaFetcher
 import me.him188.ani.app.domain.media.fetch.MediaFetcherConfig
@@ -25,7 +26,6 @@ import me.him188.ani.app.domain.mediasource.instance.createTestMediaSourceInstan
 import me.him188.ani.datasources.api.DefaultMedia
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.Media
-import me.him188.ani.datasources.api.MediaProperties
 import me.him188.ani.datasources.api.SubtitleKind
 import me.him188.ani.datasources.api.paging.SinglePagePagedSource
 import me.him188.ani.datasources.api.source.MatchKind
@@ -97,7 +97,7 @@ class MediaSelectorTestBuilder() {
         originalUrl = "https://example.com/1",
         publishedTime = 1,
         episodeRange = EpisodeRange.Companion.single(EpisodeSort(1)),
-        properties = MediaProperties(
+        properties = createTestMediaProperties(
             subtitleLanguageIds = listOf(
                 SubtitleLanguage.ChineseSimplified,
                 SubtitleLanguage.ChineseTraditional,

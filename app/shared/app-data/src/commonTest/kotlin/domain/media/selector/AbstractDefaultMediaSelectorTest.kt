@@ -14,10 +14,10 @@ import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
 import me.him188.ani.app.data.models.subject.SubjectSeriesInfo
 import me.him188.ani.app.domain.media.createTestDefaultMedia
+import me.him188.ani.app.domain.media.createTestMediaProperties
 import me.him188.ani.datasources.api.DefaultMedia
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.MediaExtraFiles
-import me.him188.ani.datasources.api.MediaProperties
 import me.him188.ani.datasources.api.SubtitleKind
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.source.MediaSourceLocation
@@ -143,7 +143,7 @@ sealed class AbstractDefaultMediaSelectorTest {
             originalUrl = "https://example.com/$id",
             publishedTime = publishedTime,
             episodeRange = episodeRange,
-            properties = MediaProperties(
+            properties = createTestMediaProperties(
                 subtitleLanguageIds = subtitleLanguages,
                 resolution = resolution,
                 alliance = alliance,

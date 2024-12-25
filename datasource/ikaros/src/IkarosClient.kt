@@ -78,7 +78,7 @@ class IkarosClient(
     suspend fun episodeRecords2SizeSource(
         subjectId: String,
         episodeRecords: List<IkarosEpisodeRecord>,
-        episodeSort: EpisodeSort
+        episodeSort: EpisodeSort,
     ): SizedSource<MediaMatch> {
         val mediaMatches = mutableListOf<MediaMatch>()
         val epSortNumber = if (episodeSort.number == null) 1.0 else episodeSort.number!!.toDouble()
@@ -114,6 +114,8 @@ class IkarosClient(
                         originalTitle = epRes.name,
                         publishedTime = DateFormater.default.utcDateStr2timeStamp(attachment?.updateTime ?: ""),
                         properties = MediaProperties(
+                            subjectName = null, // Ikaros is exact match and hence does not need these properties.
+                            episodeName = null,
                             subtitleLanguageIds = parseResult.subtitleLanguages.map { it.id },
                             resolution = parseResult.resolution?.displayName ?: "480P",
                             alliance = IkarosMediaSource.ID,
