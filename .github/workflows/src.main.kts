@@ -64,6 +64,7 @@ import io.github.typesafegithub.workflows.domain.CommandStep
 import io.github.typesafegithub.workflows.domain.Job
 import io.github.typesafegithub.workflows.domain.JobOutputs
 import io.github.typesafegithub.workflows.domain.RunnerType
+import io.github.typesafegithub.workflows.domain.Shell
 import io.github.typesafegithub.workflows.domain.Step
 import io.github.typesafegithub.workflows.domain.triggers.PullRequest
 import io.github.typesafegithub.workflows.domain.triggers.Push
@@ -474,10 +475,10 @@ fun getVerifyJobBody(
                     name = "Delete libraries from system",
                     command = shell(
                         $$"""
-                        sudo rm -rf /usr/local/lib/libssl* || true
-                        sudo rm -rf /usr/local/lib/libcrypto* || true
-                        sudo rm -rf /opt/homebrew/lib/libssl* || true
-                        sudo rm -rf /opt/homebrew/lib/libcrypto* || true
+                        sudo rm -rfv /usr/local/lib/libssl* || true
+                        sudo rm -rfv /usr/local/lib/libcrypto* || true
+                        sudo rm -rfv /opt/homebrew/lib/libssl* || true
+                        sudo rm -rfv /opt/homebrew/lib/libcrypto* || true
                     """.trimIndent(),
                     ),
                     continueOnError = true,
@@ -487,10 +488,11 @@ fun getVerifyJobBody(
             OS.WINDOWS -> {
                 run(
                     name = "Delete libraries from system",
+                    shell = Shell.PowerShell,
                     command = shell(
                         $$"""
-                        del /s /q C:\\vcpkg\\installed\\x64-windows\\lib\\libssl*
-                        del /s /q C:\\vcpkg\\installed\\x64-windows\\lib\\libcrypto*
+                        Remove-Item -Path "C:\vcpkg\installed\x64-windows\lib\libssl*" -Recurse -Force -Verbose
+                        Remove-Item -Path "C:\vcpkg\installed\x64-windows\lib\libcrypto*" -Recurse -Force -Verbose
                     """.trimIndent(),
                     ),
                     continueOnError = true,
