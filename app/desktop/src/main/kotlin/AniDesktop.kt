@@ -10,6 +10,7 @@
 package me.him188.ani.app.desktop
 
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -23,6 +24,8 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.InternalComposeUiApi
+import androidx.compose.ui.LocalSystemTheme
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
@@ -83,9 +86,10 @@ import me.him188.ani.app.platform.getCommonKoinModule
 import me.him188.ani.app.platform.notification.NoopNotifManager
 import me.him188.ani.app.platform.notification.NotifManager
 import me.him188.ani.app.platform.startCommonKoinModule
-import me.him188.ani.app.platform.window.setTitleBarColor
+import me.him188.ani.app.platform.window.setTitleBar
 import me.him188.ani.app.tools.update.DesktopUpdateInstaller
 import me.him188.ani.app.tools.update.UpdateInstaller
+import me.him188.ani.app.torrent.anitorrent.AnitorrentLibraryLoader
 import me.him188.ani.app.ui.foundation.LocalImageLoader
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.LocalWindowState
@@ -119,6 +123,7 @@ import org.koin.core.context.startKoin
 import org.koin.dsl.module
 import org.koin.mp.KoinPlatform
 import java.io.File
+import kotlin.system.exitProcess
 import kotlin.time.measureTime
 
 
@@ -168,6 +173,26 @@ object AniDesktop {
         logger.info { "dataDir: file://${projectDirectories.dataDir.replace(" ", "%20")}" }
         logger.info { "cacheDir: file://${projectDirectories.cacheDir.replace(" ", "%20")}" }
         logger.info { "logsDir: file://${logsDir.absolutePath.replace(" ", "%20")}" }
+
+
+        // Startup ok, run test task if needed
+        System.getenv("ANIMEKO_DESKTOP_TEST_TASK")?.let { taskName ->
+            logger.info { "Running test task: $taskName" }
+
+            when (taskName) {
+                "anitorrent-load-test" -> {
+                    AnitorrentLibraryLoader.loadLibraries()
+                    exitProcess(0)
+                }
+
+                else -> {
+                    logger.error { "Unknown test task: $taskName" }
+                    exitProcess(1)
+                }
+            }
+        }
+
+
 
         val defaultSize = DpSize(1301.dp, 855.dp)
         // Get the screen size as a Dimension object
@@ -307,6 +332,8 @@ object AniDesktop {
             windowStateRepository.flow.firstOrNull()
         }
 
+        val systemThemeDetector = SystemThemeDetector()
+
         application {
             WindowStateRecorder(
                 windowState = windowState,
@@ -338,6 +365,8 @@ object AniDesktop {
                         "renderApi: " + this.window.renderApi
                     }
                 }
+
+                val systemTheme by systemThemeDetector.current.collectAsStateWithLifecycle()
                 CompositionLocalProvider(
                     LocalContext provides context,
                     LocalWindowState provides windowState,
@@ -348,6 +377,8 @@ object AniDesktop {
                         )
                     },
                     LocalOnBackPressedDispatcherOwner provides backPressedDispatcherOwner,
+                    @OptIn(InternalComposeUiApi::class)
+                    LocalSystemTheme provides systemTheme,
                 ) {
                     // This actually runs only once since app is never changed.
                     val windowImmersed = true
@@ -387,7 +418,6 @@ object AniDesktop {
 
 }
 
-
 @Composable
 private fun FrameWindowScope.MainWindowContent(
     aniNavigator: AniNavigator,
@@ -406,7 +436,7 @@ private fun FrameWindowScope.MainWindowContent(
             }
         }
 
-        window.setTitleBarColor(AniThemeDefaults.navigationContainerColor)
+        window.setTitleBar(AniThemeDefaults.navigationContainerColor, isSystemInDarkTheme())
 
         Box(
             Modifier

@@ -96,6 +96,15 @@ fun PeerFilterSettingsPage(
                         enableSearch = true,
                         title = { AniTopAppBarDefaults.Title("管理 IP 黑名单") },
                         state = state,
+                        navigationIcon = {
+                            BackNavigationIconButton(
+                                {
+                                    if (navigator.canNavigateBack()) {
+                                        navigator.navigateBack()
+                                    }
+                                },
+                            )
+                        },
                         windowInsets = paneContentWindowInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
                     )
                 }

@@ -12,8 +12,11 @@ package me.him188.ani.app.platform.window
 import androidx.compose.ui.awt.ComposeWindow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.window.WindowState
+import com.sun.jna.platform.win32.Advapi32Util
+import com.sun.jna.platform.win32.WinReg
 import me.him188.ani.app.platform.PlatformWindow
 import me.him188.ani.utils.platform.Platform
+import me.him188.ani.utils.platform.currentPlatformDesktop
 import java.awt.Cursor
 import java.awt.GraphicsEnvironment
 import java.awt.Point
@@ -26,6 +29,10 @@ import java.awt.image.BufferedImage
  */
 interface WindowUtils {
     fun setTitleBarColor(hwnd: Long, color: Color): Boolean {
+        return false
+    }
+
+    fun setDarkTitleBar(hwnd: Long, dark: Boolean): Boolean {
         return false
     }
 
@@ -69,7 +76,27 @@ abstract class AwtWindowUtils : WindowUtils {
     }
 }
 
-fun ComposeWindow.setTitleBarColor(color: Color) {
-    WindowUtils.setTitleBarColor(windowHandle, color)
-}
+/**
+ * 为桌面端窗口设置标题栏颜色
+ * * 在 macOS 上没有作用, 因为 macOS 是沉浸标题栏
+ * * 在 Windows 10 仅设置暗色或亮色, Windows 10 不支持自定义标题栏颜色
+ * * 在 Linux 上没有作用, 因为 ani 现在不支持 Linux
+ */
+fun ComposeWindow.setTitleBar(color: Color, dark: Boolean) {
+    if (currentPlatformDesktop() is Platform.Windows) {
+        val winBuild = kotlin.runCatching {
+            Advapi32Util.registryGetStringValue(
+                WinReg.HKEY_LOCAL_MACHINE,
+                "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion",
+                "CurrentBuildNumber",
+            ).toIntOrNull()
+        }.getOrElse { null }
 
+        if (winBuild == null) return
+        if (winBuild >= 22000) {
+            WindowUtils.setTitleBarColor(windowHandle, color)
+        } else {
+            WindowUtils.setDarkTitleBar(windowHandle, dark)
+        }
+    }
+}

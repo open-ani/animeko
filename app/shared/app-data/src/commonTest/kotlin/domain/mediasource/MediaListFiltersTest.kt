@@ -96,6 +96,18 @@ class MediaListFiltersTest {
     }
 
     @TestFactory
+    fun `removeSpecials leading specials`() = runDynamicTests {
+        add("remove leading specials regardless of position") {
+            assertEquals("测试 第二季", removeSpecials("~~~~~~~~~~!测试 第二季"))
+        }
+        add("remove infix specials") {
+            // 需要两个非特殊字符后才会开始删除
+            assertEquals("测!!!试 第二季", removeSpecials("测!!!试!!! 第二季"))
+            assertEquals("测试 第二季", removeSpecials("测试!!!!!! 第二季"))
+        }
+    }
+
+    @TestFactory
     fun `removeSpecials cases`() = runDynamicTests {
         fun case(
             expected: String,
@@ -109,7 +121,7 @@ class MediaListFiltersTest {
         }
 
         case(
-            "香格里拉 弗陇提亚屎作猎人向神作发起挑战 第二季",
+            "香格里拉 弗陇提亚 屎作猎人向神作发起挑战  第二季",
             "香格里拉·弗陇提亚～屎作猎人向神作发起挑战～ 第二季",
             removeWhitespace = false,
         )
@@ -117,6 +129,26 @@ class MediaListFiltersTest {
             "香格里拉弗陇提亚屎作猎人向神作发起挑战第二季",
             "香格里拉·弗陇提亚～屎作猎人向神作发起挑战～ 第二季",
             removeWhitespace = true,
+        )
+        case(
+            "五等分的新娘∬",
+            "五等分的新娘∬",
+            removeWhitespace = true,
+        )
+        case(
+            "newgame",
+            "new game!!",
+            removeWhitespace = true,
+        )
+        case(
+            "理科生坠入情网故尝试证明 r=1-sinθ ♡",
+            "理科生坠入情网故尝试证明[r=1-sinθ]♡",
+            removeWhitespace = false,
+        )
+        case(
+            "青出于蓝 缘",
+            "青出于蓝～缘～",
+            removeWhitespace = false,
         )
     }
 

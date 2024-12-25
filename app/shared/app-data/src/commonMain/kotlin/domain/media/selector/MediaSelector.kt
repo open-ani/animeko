@@ -34,14 +34,76 @@ import me.him188.ani.datasources.api.topic.isSingleEpisode
 import kotlin.coroutines.CoroutineContext
 
 /**
- * 数据源资源过滤和选择器.
+ * 用于管理一组 [Media]，通过对其进行过滤、应用用户偏好以及上下文信息，
+ * 最终选择出单个 [Media] 资源的选择器接口。
  *
- * Media 处理流程:
- * 1. 过滤 (filter). 参考 [MediaSelectorSettings] 的过滤设置, 直接隐藏一些类型的 media. 被隐藏的 media 将会附带原因: [MediaExclusionReason]. 此步骤将输出为 [filteredCandidates].
- * 2. 用户偏好 (preference). 用户可以设置偏好, 例如选择字幕组, 分辨率等. 会根据用户偏好过滤出 [preferredCandidatesMedia].
- * 3. 选择 (select). 通过选择一个 [Media], 会广播事件 [events]. 最终选择到的 media 可通过 [selected] 获取.
+ * 本接口主要包含以下三个阶段：
+ * 1. **过滤**：基于 [MediaSelectorSettings] 等信息，产出 [filteredCandidates]（包含排除原因）与
+ *    [filteredCandidatesMedia]（仅保留未被排除的资源）。过滤逻辑常考虑字幕是否存在、完结番是否隐藏单集资源等。
+ * 2. **偏好**：提供 [alliance]、[resolution]、[subtitleLanguageId]、[mediaSourceId] 等偏好项，通过
+ *    [MediaPreferenceItem] 合并用户在本次会话中的设置 [MediaPreferenceItem.userSelected] 与用户在系统设置中配置的全局默认值 [MediaPreferenceItem.defaultSelected]，
+ *    从而进一步缩小为 [preferredCandidates] 和 [preferredCandidatesMedia]。
+ * 3. **选择**：支持手动或自动方式来选中某个 [Media]：
+ *    - 手动调用 [select]。
+ *    - 自动通过 [trySelectDefault]、[trySelectCached] 或 [trySelectFromMediaSources] 等方法完成。
  *
- * @see MediaSelectorFactory
+ *    最终选定的资源会存入 [selected]，并通过 [events] 广播变更。
+ *
+ * ### 1. 过滤阶段
+ *
+ * - [filteredCandidates]：包含所有被发现的资源，以及若被排除则附带 [MediaExclusionReason]。
+ * - [filteredCandidatesMedia]：仅包含未排除的资源，用于后续处理。
+ *
+ * ### 2. 偏好阶段
+ *
+ * - 偏好项 [alliance]、[resolution]、[subtitleLanguageId]、[mediaSourceId] 分别对应字幕组、分辨率、字幕语言、数据源 ID 等。
+ * - 系统和用户偏好合并后形成最终的可用值，再对 [filteredCandidatesMedia] 做“偏好筛选”，得到更精简的 [preferredCandidates]、[preferredCandidatesMedia]。
+ *
+ * ### 3. 选择阶段
+ *
+ * - [selected]：当前被选中的资源，若尚未选择则为 `null`。
+ * - [select]：手动选择某个 [Media]，并更新相关偏好，触发对应事件。
+ * - [unselect]：清除当前选择。
+ * - [trySelectDefault]：若尚无选择，则基于 [preferredCandidatesMedia] 自动挑选最优资源。
+ * - [trySelectCached]：若本地存在可用缓存且尚未选择，则优先选用缓存资源。
+ * - [trySelectFromMediaSources]：根据给定的数据源优先级或黑名单等信息进行自动选择。
+ * 
+ * 在选择时, 会触发 [MediaSelectorEvents.onChangePreference] 和 [MediaSelectorEvents.onSelect] 事件, 事件可用于保存用户偏好等操作.
+ *
+ * ## 使用示例
+ *
+ * 以下是一个演示如何观察各 Flow 并进行选择的示例代码（伪代码）：
+ *
+ * ```
+ * suspend fun usageExample(mediaSelector: MediaSelector) {
+ *     // 观察过滤后但包含排除原因的候选
+ *     mediaSelector.filteredCandidates.collect { allCandidates ->
+ *         println("所有候选资源(含排除原因): $allCandidates")
+ *     }
+ *
+ *     // 观察过滤后可用的字幕组选项
+ *     mediaSelector.alliance.available.collect { alliances ->
+ *         println("可选的字幕组列表: $alliances")
+ *     }
+ *
+ *     // 如果尚未选择任何资源，尝试自动选择一个符合当前偏好的资源
+ *     val autoSelected = mediaSelector.trySelectDefault()
+ *     if (autoSelected != null) {
+ *         println("已自动选择: ${autoSelected.mediaId}")
+ *     }
+ *
+ *     // 用户在 UI 中手动指定某个资源
+ *     val userChosenMedia: Media = /* 由用户在界面中选取 */
+ *     mediaSelector.select(userChosenMedia)
+ *
+ *     // 最终获取当前选中的资源
+ *     println("当前选中的资源: ${mediaSelector.selected.value}")
+ * }
+ * ```
+ *
+ * @see Media
+ * @see MediaSelectorSettings
+ * @see MediaPreference
  */
 interface MediaSelector {
     /**
@@ -167,12 +229,13 @@ interface MediaPreferenceItem<T : Any> {
     val available: Flow<List<T>>
 
     /**
-     * 用户的选择, 可能为空
+     * 用户在本次会话中的选择, 可能为空.
      */
     val userSelected: Flow<OptionalPreference<T>>
 
     /**
-     * 默认的选择, 为空表示没有默认的选择
+     * 默认的选择, 为空表示没有默认的选择.
+     * 这将会是用户在系统设置中配置的全局默认值.
      */
     val defaultSelected: Flow<T?>
 

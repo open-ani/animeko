@@ -61,6 +61,8 @@ compose-material3-adaptive = "1.0.1"
 stately-common = "2.0.7"
 vlcj = "4.8.2"
 
+jsystemthemedetector = "3.8"
+
 [libraries]
 # Build
 android-gradle-plugin = { module = "com.android.tools.build:gradle", version.ref = "android-gradle-plugin" }
@@ -245,3 +247,5 @@ aws-s3control = { module = "software.amazon.awssdk:s3control", version.ref = "aw
 aws-secretsmanager = { module = "software.amazon.awssdk:secretsmanager", version.ref = "aws" }
 
 #htmlunit = { group = "net.sourceforge.htmlunit", name = "htmlunit", version = "2.70.0" }
+
+jsystemthemedetector = { module = "org.openani.jsystemthemedetector:jSystemThemeDetector", version.ref = "jsystemthemedetector" }

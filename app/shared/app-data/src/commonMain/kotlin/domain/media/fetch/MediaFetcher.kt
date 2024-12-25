@@ -42,7 +42,12 @@ import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.episode.displayName
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.nameCnOrName
+import me.him188.ani.app.data.repository.RepositoryAuthorizationException
+import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.data.repository.RepositoryNetworkException
+import me.him188.ani.app.data.repository.RepositoryRateLimitedException
+import me.him188.ani.app.data.repository.RepositoryServiceUnavailableException
+import me.him188.ani.app.data.repository.RepositoryUnknownException
 import me.him188.ani.app.domain.mediasource.instance.MediaSourceInstance
 import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.datasources.api.Media
@@ -192,23 +197,7 @@ class MediaSourceMediaFetcher(
                     }
                     .catch { exception ->
                         state.value = MediaSourceFetchState.Failed(exception, restartCount)
-                        when (exception) {
-                            is ServerResponseException -> {
-                                logger.error { "Failed to fetch media from ${sourceInfo.displayName} due to ${exception.response.status}" }
-                            }
-
-                            is IOException, is RepositoryNetworkException -> {
-                                logger.warn { "Failed to fetch media from ${sourceInfo.displayName} due to network error" }
-                            }
-
-                            is CancellationException -> {
-                                logger.error { "Failed to fetch media from ${sourceInfo.displayName} due to CancellationException" }
-                            }
-
-                            else -> {
-                                logger.error(exception) { "Failed to fetch media from ${sourceInfo.displayName} due to upstream error" }
-                            }
-                        }
+                        logUpstreamException(exception)
                     }
                     .runningFold(emptyList<Media>()) { acc, list ->
                         acc + list
@@ -240,6 +229,50 @@ class MediaSourceMediaFetcher(
             ).onCompletion {
                 if (it == null)
                     logger.error { "results is completed normally, however it shouldn't" }
+            }
+        }
+
+        private fun logUpstreamException(exception: Throwable) {
+            when (exception) {
+                is ServerResponseException -> {
+                    logger.error { "Failed to fetch media from ${sourceInfo.displayName} due to ${exception.response.status}" }
+                }
+
+                is IOException -> {
+                    logger.warn { "Failed to fetch media from ${sourceInfo.displayName} due to network error" }
+                }
+
+                is CancellationException -> {
+                    logger.error { "Failed to fetch media from ${sourceInfo.displayName} due to CancellationException" }
+                }
+
+                is RepositoryException -> {
+                    when (exception) {
+                        is RepositoryAuthorizationException -> {
+                            logger.error { "Failed to fetch media from ${sourceInfo.displayName} due to forbidden" }
+                        }
+
+                        is RepositoryNetworkException -> {
+                            logger.warn { "Failed to fetch media from ${sourceInfo.displayName} due to network error" }
+                        }
+
+                        is RepositoryRateLimitedException -> {
+                            logger.error { "Failed to fetch media from ${sourceInfo.displayName} due to forbidden" }
+                        }
+
+                        is RepositoryServiceUnavailableException -> {
+                            logger.error { "Failed to fetch media from ${sourceInfo.displayName} due to service unavailable" }
+                        }
+
+                        is RepositoryUnknownException -> {
+                            logger.error(exception) { "Failed to fetch media from ${sourceInfo.displayName} due to upstream error" }
+                        }
+                    }
+                }
+
+                else -> {
+                    logger.error(exception) { "Failed to fetch media from ${sourceInfo.displayName} due to upstream error" }
+                }
             }
         }
 

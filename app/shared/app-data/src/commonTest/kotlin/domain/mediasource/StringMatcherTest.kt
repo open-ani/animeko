@@ -94,7 +94,7 @@ class StringMatcherTest {
             removeWhitespace = true,
             replaceNumbers = true,
         )
-        "地狱少女第一季" matches chiRemoved at 12
+        "地狱少女第一季" matches chiRemoved at 11
         "地狱少女" matches "地。" at 25
     }
 

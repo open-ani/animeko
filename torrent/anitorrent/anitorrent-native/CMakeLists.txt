@@ -28,7 +28,13 @@ if (ANDROID)
     set(CMAKE_ANDROID_NDK ${ANDROID_NDK})
     set(CMAKE_TOOLCHAIN_FILE ${ANDROID_NDK}/build/cmake/android.toolchain.cmake)
 else ()
-    if (WIN32)
+	if (APPLE)
+		set(BUILD_SHARED_LIBS OFF) # Build libtorrent as a static library
+		set(OPENSSL_USE_STATIC_LIBS TRUE) # Statically link OpenSSL
+		find_package(OpenSSL REQUIRED)
+    endif ()
+    
+	if (WIN32)
         add_compile_definitions(TORRENT_DISABLE_ENCRYPTION=true)
         add_compile_definitions(TORRENT_USE_OPENSSL)
         find_package(OpenSSL)
@@ -159,4 +165,8 @@ else ()
     endforeach()
 
     target_link_libraries(anitorrent PRIVATE torrent-rasterbar ${FILTERED_JNI_LIBRARIES})
+    
+    if (APPLE)
+    	target_link_libraries(anitorrent PRIVATE OpenSSL::SSL OpenSSL::Crypto) # Statically link OpenSSL
+    endif ()
 endif ()

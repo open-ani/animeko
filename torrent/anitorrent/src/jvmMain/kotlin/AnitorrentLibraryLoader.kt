@@ -10,21 +10,17 @@
 package me.him188.ani.app.torrent.anitorrent
 
 import me.him188.ani.app.torrent.api.TorrentLibraryLoader
+import me.him188.ani.utils.coroutines.withExceptionCollector
 import me.him188.ani.utils.logging.*
 import me.him188.ani.utils.platform.Platform
 import me.him188.ani.utils.platform.currentPlatform
 import me.him188.ani.utils.platform.isAndroid
 import java.io.IOException
-import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 import kotlin.concurrent.Volatile
-import kotlin.io.path.ExperimentalPathApi
 import kotlin.io.path.absolutePathString
-import kotlin.io.path.deleteRecursively
 import kotlin.io.path.outputStream
-import kotlin.math.absoluteValue
-import kotlin.random.Random
 
 object AnitorrentLibraryLoader : TorrentLibraryLoader {
     private val logger = logger<AnitorrentLibraryLoader>()
@@ -50,56 +46,82 @@ object AnitorrentLibraryLoader : TorrentLibraryLoader {
             System.loadLibrary("anitorrent")
             return
         }
+        val platform = platform as Platform.Desktop
         logger.info { "Loading anitorrent library" }
-        try {
-            System.loadLibrary("anitorrent")
-            logger.info { "Loading anitorrent library: success (from java.library.path)" }
-        } catch (e: UnsatisfiedLinkError) {
-            // 可能是调试状态, 从 resources 加载
-            logger.info { "Failed to load anitorrent directly from java.library.path, trying resources instead" }
-            val temp = getTempDirForPlatform()
-            logger.info { "Temp dir: ${temp.absolutePathString()}" }
-            if (platform is Platform.Windows) {
-                extractLibraryFromResources("libssl-3-x64", temp)
-                extractLibraryFromResources("libcrypto-3-x64", temp)
-                loadLibraryFromResources("torrent-rasterbar", temp)
+        logger.info { "java.library.path: ${System.getProperty("java.library.path")}" }
+        withExceptionCollector {
+            try {
+                System.loadLibrary("anitorrent")
+                logger.info { "Loading anitorrent library: success (from java.library.path)" }
+            } catch (e: UnsatisfiedLinkError) {
+                collect(e)
+
+                // 可能是调试状态, 从 resources 加载
+                logger.info { "Failed to load anitorrent directly from java.library.path, trying resources instead" }
+                val temp = getTempDirForPlatform()
+                logger.info { "Temp dir: ${temp.absolutePathString()}" }
+                when (platform) {
+                    is Platform.Windows -> {
+                        extractLibraryFromResources("libssl-3-x64", temp)?.let {
+                            logger.info { "Extract ssl: ${it.absolutePathString()}" }
+                        }
+                        extractLibraryFromResources("libcrypto-3-x64", temp)?.let {
+                            logger.info { "Extract crypto: ${it.absolutePathString()}" }
+                        }
+                        loadLibraryFromResources("torrent-rasterbar", temp)
+                    }
+
+                    is Platform.MacOS -> {
+                        // noop
+                    }
+
+                    is Platform.Linux -> {
+                        TODO("loadDependencies for Linux")
+                    }
+                }
+                loadLibraryFromResources("anitorrent", temp)
+                logger.info { "Loading anitorrent library: success (from resources)" }
             }
-            loadLibraryFromResources("anitorrent", temp)
-            logger.info { "Loading anitorrent library: success (from resources)" }
         }
     }
 
-    @OptIn(ExperimentalPathApi::class)
     private fun getTempDirForPlatform(): Path {
-        return if (platform is Platform.Windows) {
-            Paths.get(System.getProperty("user.dir"))
-        } else {
-            Files.createTempDirectory("libanitorrent${Random.nextInt().absoluteValue}").apply {
-                Runtime.getRuntime().addShutdownHook(
-                    Thread {
-                        try {
-                            deleteRecursively()
-                        } catch (e: IOException) {
-                            logger.error(e) { "Failed to delete temp directory $this" }
-                        }
-                    },
-                )
-            }
+        return Paths.get(System.getProperty("user.dir")) // macos 也得输出到当前目录, 因为 link path 只包含一些系统路径和 .
+//        return if (platform is Platform.Windows) {
+//            Paths.get(System.getProperty("user.dir"))
+//        } else {
+//            Files.createTempDirectory("libanitorrent${Random.nextInt().absoluteValue}").apply {
+//                Runtime.getRuntime().addShutdownHook(
+//                    Thread {
+//                        try {
+//                            deleteRecursively()
+//                        } catch (e: IOException) {
+//                            logger.error(e) { "Failed to delete temp directory $this" }
+//                        }
+//                    },
+//                )
+//            }
+//        }
+    }
+
+
+    private fun makeDesktopPlatformName(name: String): String {
+        return when (platform as Platform.Desktop) {
+            is Platform.Linux -> "lib$name.so"
+            is Platform.Windows -> "$name.dll"
+            is Platform.MacOS -> "lib$name.dylib"
         }
     }
 
     @Suppress("UnsafeDynamicallyLoadedCode")
     private fun extractLibraryFromResources(
         name: String,
-        tempDir: Path
+        tempDir: Path,
+        destinationName: String = name,
     ): Path? {
-        val filename = when (platform as Platform.Desktop) {
-            is Platform.Linux -> "lib$name.so"
-            is Platform.Windows -> "$name.dll"
-            is Platform.MacOS -> "lib$name.dylib"
-        }
+        val filename = makeDesktopPlatformName(name)
         this::class.java.classLoader?.getResourceAsStream(filename)?.use {
-            val tempFile = tempDir.resolve(filename)
+            val tempFile = tempDir.resolve(makeDesktopPlatformName(destinationName))
             tempFile.outputStream().use { output ->
                 it.copyTo(output)
             }
@@ -120,7 +142,7 @@ object AnitorrentLibraryLoader : TorrentLibraryLoader {
 
     @Synchronized
     @Throws(UnsatisfiedLinkError::class)
-    override fun loadLibraries() {
+    override fun loadLibraries() = synchronized(this) {
         if (libraryLoaded) return
 
         try {

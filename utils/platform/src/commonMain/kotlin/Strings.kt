@@ -9,6 +9,7 @@
 
 package me.him188.ani.utils.platform
 
+import androidx.collection.IntSet
 import kotlin.math.round
 
 /**
@@ -50,6 +51,29 @@ fun StringBuilder.deleteMatches(regex: Regex): StringBuilder {
     while (matchResult != null) {
         deleteRange(matchResult.range.first, matchResult.range.last + 1)
         matchResult = regex.find(this, matchResult.range.first)
+    }
+    return this
+}
+
+/**
+ * 删除 `StringBuilder` 中所有包含在指定 set 中的字符.
+ *
+ * 示例：
+ * ```kotlin
+ * val sb = StringBuilder("abc123def456ghi")
+ * sb.deleteAnyCharIn("acf") // returns "b123de456ghi"
+ * ```
+ * 
+ * @param chars [Char.code] 的 set
+ */
+fun StringBuilder.deleteAnyCharIn(chars: IntSet): StringBuilder {
+    var index = 0
+    while (index < length) {
+        if (this[index].code in chars) {
+            deleteAt(index)
+        } else {
+            index++
+        }
     }
     return this
 }
