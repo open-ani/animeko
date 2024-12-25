@@ -134,6 +134,8 @@ sealed class AbstractDefaultMediaSelectorTest {
         extraFiles: MediaExtraFiles = MediaExtraFiles.Empty,
         id: Int = mediaId++,
         originalTitle: String = "[字幕组] 孤独摇滚 $id",
+        subjectName: String? = null,
+        episodeName: String? = null,
     ): DefaultMedia {
         return createTestDefaultMedia(
             mediaId = "$sourceId.$id",
@@ -144,6 +146,8 @@ sealed class AbstractDefaultMediaSelectorTest {
             publishedTime = publishedTime,
             episodeRange = episodeRange,
             properties = createTestMediaProperties(
+                subjectName = subjectName,
+                episodeName = episodeName,
                 subtitleLanguageIds = subtitleLanguages,
                 resolution = resolution,
                 alliance = alliance,

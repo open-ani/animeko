@@ -96,4 +96,9 @@ sealed class MediaExclusionReason {
      * // no settings
      */
     data object FromSequelSeason : MediaExclusionReason()
+
+    /**
+     * 该资源是其他季度的资源, 而不是当前季度的
+     */
+    data object FromSeriesSeason : MediaExclusionReason()
 }
