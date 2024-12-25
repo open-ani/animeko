@@ -372,6 +372,7 @@ val buildMatrixInstances = listOf(
         gradleHeap = "4g",
         kotlinCompilerHeap = "4g",
         gradleParallel = true,
+        uploadDesktopInstallers = true,
         extraGradleArgs = listOf(
             "-P$ANI_ANDROID_ABIS=x86_64",
         ),
@@ -400,6 +401,7 @@ val buildMatrixInstances = listOf(
         buildIosFramework = false,
         gradleHeap = "4g",
         kotlinCompilerHeap = "4g",
+        uploadDesktopInstallers = true,
         extraGradleArgs = listOf(),
         buildAllAndroidAbis = true,
     ),
@@ -409,6 +411,7 @@ val buildMatrixInstances = listOf(
         buildAnitorrent = true,
         buildAnitorrentSeparately = true,
         composeResourceTriple = "macos-arm64",
+        uploadDesktopInstallers = true,
         extraGradleArgs = listOf(
             "-P$ANI_ANDROID_ABIS=arm64-v8a",
         ),
@@ -1166,6 +1169,7 @@ class WithMatrix(
                         name = ArtifactNames.macosDmg(matrix.arch),
                         path_Untyped = "app/desktop/build/compose/binaries/main-release/dmg/Ani-*.dmg",
                         overwrite = true,
+                        ifNoFilesFound = UploadArtifact.BehaviorIfNoFilesFound.Error,
                     ),
                 )
 
@@ -1179,6 +1183,7 @@ class WithMatrix(
                         name = ArtifactNames.macosPortable(matrix.arch),
                         path_Untyped = "app/desktop/build/compose/binaries/main-release/app/Ani.app",
                         overwrite = true,
+                        ifNoFilesFound = UploadArtifact.BehaviorIfNoFilesFound.Error,
                     ),
                 )
             }
@@ -1190,6 +1195,7 @@ class WithMatrix(
                         name = ArtifactNames.windowsPortable(),
                         path_Untyped = "app/desktop/build/compose/binaries/main-release/app",
                         overwrite = true,
+                        ifNoFilesFound = UploadArtifact.BehaviorIfNoFilesFound.Error,
                     ),
                 )
 
