@@ -147,6 +147,7 @@ fun EditComment(
             } else {
                 EditCommentDefaults.CommentTextField(
                     value = state.content,
+                    enabled = !sendingComment,
                     maxLines = if (state.editExpanded) Int.MAX_VALUE else 3,
                     modifier = Modifier
                         .focusRequester(focusRequester)
