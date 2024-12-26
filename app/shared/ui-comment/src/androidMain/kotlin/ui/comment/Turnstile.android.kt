@@ -26,6 +26,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -115,6 +116,11 @@ class AndroidTurnstileState(
         webView?.reloadPage()
     }
 
+    override fun cancel() {
+        webView?.destroy()
+        webView = null
+    }
+
     private fun createEmptyInputStream(): InputStream {
         return object : InputStream() {
             override fun read(): Int = -1
@@ -145,9 +151,12 @@ actual fun ActualTurnstile(
         )
     }
 
+    val context = LocalContext.current
+    val webView = remember { WebView(context) }
+
     AndroidView(
-        factory = { context ->
-            WebView(context)
+        factory = { _ ->
+            webView
                 .apply { layoutParams = currentLayoutParams }
                 .also {
                     state.isDarkTheme = isDark
@@ -155,12 +164,17 @@ actual fun ActualTurnstile(
                 }
         },
         modifier = modifier,
-        update = { webView ->
-            webView.layoutParams = currentLayoutParams
+        update = { wv ->
+            wv.layoutParams = currentLayoutParams
             state.isDarkTheme = isDark
-            state.webView = webView
         },
     )
+
+    DisposableEffect(Unit) {
+        onDispose {
+            webView.removeAllViews()
+        }
+    }
 }
 
 /**

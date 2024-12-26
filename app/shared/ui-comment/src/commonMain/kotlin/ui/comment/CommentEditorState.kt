@@ -121,6 +121,10 @@ class CommentEditorState(
             onSend(target, content)
         }.await()
     }
+
+    fun cancelSend() {
+        sendTasker.cancel()
+    }
 }
 
 @Immutable

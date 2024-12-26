@@ -30,9 +30,19 @@ interface TurnstileState {
 
     val tokenFlow: Flow<String>
 
-    // reload turnstile
+    /**
+     * Start requesting token.
+     * Calling this method represents that you want to get tokens. [tokenFlow] may produce results any minute.
+     */
     @UiThread
     fun reload()
+
+    /**
+     * Cancel requesting token.
+     * [tokenFlow] will not produce any result after calling this method.
+     */
+    @UiThread
+    fun cancel()
 
     companion object {
         /**
@@ -50,6 +60,7 @@ fun createPreviewTurnstileState(): TurnstileState {
         override val url: String = ""
         override val tokenFlow: Flow<String> = emptyFlow()
         override fun reload() {}
+        override fun cancel() {}
     }
 }
 

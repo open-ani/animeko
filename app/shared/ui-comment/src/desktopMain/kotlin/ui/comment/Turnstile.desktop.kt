@@ -13,7 +13,6 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.awt.SwingPanel
 import androidx.compose.ui.graphics.Color
@@ -92,10 +91,12 @@ class DesktopTurnstileState(
         }
     }
 
-    fun dispose() {
+    override fun cancel() {
         AniCefApp.blockOnCefContext {
             browser?.close(true)
             client?.dispose()
+            client = null
+            browser = null
         }
     }
 }
@@ -124,10 +125,4 @@ actual fun ActualTurnstile(
         },
         modifier = modifier.fillMaxWidth().height(100.dp),
     )
-
-    DisposableEffect(Unit) {
-        onDispose {
-            state.dispose()
-        }
-    }
 }
