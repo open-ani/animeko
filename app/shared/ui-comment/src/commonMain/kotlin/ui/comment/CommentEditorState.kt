@@ -114,12 +114,13 @@ class CommentEditorState(
 
         editExpanded = false
 
-        editor.override(TextFieldValue(""))
-
-        return sendTasker.async(context) {
+        val result = sendTasker.async(context) {
             checkNotNull(target)
             onSend(target, content)
         }.await()
+
+        editor.override(TextFieldValue(""))
+        return result
     }
 
     fun cancelSend() {
