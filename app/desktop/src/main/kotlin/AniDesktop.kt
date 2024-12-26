@@ -270,7 +270,7 @@ object AniDesktop {
             val args = (0 until argc).mapNotNull { i ->
                 System.getenv("ANIMEKO_DESKTOP_TEST_ARGV_$i")
             }
-            TestTasks.handleTestTask(taskName, args)
+            TestTasks.handleTestTask(taskName, args, context)
         }
 
         // Initialize CEF application.

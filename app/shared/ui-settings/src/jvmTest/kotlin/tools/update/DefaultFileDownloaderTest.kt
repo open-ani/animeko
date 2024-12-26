@@ -27,7 +27,8 @@ import java.io.File
 import kotlin.io.path.createTempDirectory
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.test.fail
 
@@ -66,7 +67,7 @@ class DefaultFileDownloaderTest {
         )
 
         // Basic assertion: The download should start and complete.
-        assertTrue(succeeded, "Download method should return true for a fresh download.")
+        assertNotNull(succeeded, "Download method should return true for a fresh download.")
 
         // Wait for the state to become "Succeed" or "Failed"
         val finalState = downloader.state.first { it is FileDownloaderState.Completed }
@@ -112,7 +113,7 @@ class DefaultFileDownloaderTest {
         )
 
         // Basic assertion: The download should start and complete.
-        assertTrue(succeeded, "Download method should return true for a fresh download.")
+        assertNotNull(succeeded, "Download method should return true for a fresh download.")
 
         // Wait for the state to become "Succeed" or "Failed"
         val finalState = downloader.state.first { it is FileDownloaderState.Completed }
@@ -189,7 +190,7 @@ class DefaultFileDownloaderTest {
 
         // The second call to "download" should detect the correct local file
         // and skip re-download, returning true as well.
-        assertTrue(succeeded, "Should skip download for correct existing file.")
+        assertNotNull(succeeded, "Should skip download for correct existing file.")
 
         // The final state should become "Succeed" quickly
         val finalState = downloader.state.first { it is FileDownloaderState.Completed }
@@ -226,7 +227,7 @@ class DefaultFileDownloaderTest {
             filenameProvider = { "test-file.txt" },
             saveDir = tempDir.toKtPath().inSystem,
         )
-        assertTrue(succeeded, "Download should succeed after re-downloading.")
+        assertNotNull(succeeded, "Download should succeed after re-downloading.")
 
         val finalState = downloader.state.first { it is FileDownloaderState.Completed }
         when (finalState) {
@@ -269,7 +270,7 @@ class DefaultFileDownloaderTest {
         // Depending on how you wrote your code, you might see `true` or `false` here.
         // For the posted code: it will eventually throw the last collected exception, so it's never returning normally.
         // We can verify the final state directly.
-        assertFalse(succeeded, "Should fail because the file's checksum won't match.")
+        assertNull(succeeded, "Should fail because the file's checksum won't match.")
 
         val finalState = downloader.state.first { it is FileDownloaderState.Completed }
         assertTrue(finalState is FileDownloaderState.Failed, "Expected final state to be Failed.")
@@ -327,7 +328,7 @@ class DefaultFileDownloaderTest {
             val finalState = downloader.state.first { it is FileDownloaderState.Completed }
             job.join()
 
-            assertTrue(succeeded, "Progress test: download should succeed.")
+            assertNotNull(succeeded, "Progress test: download should succeed.")
 
             when (finalState) {
                 is FileDownloaderState.Succeed -> {

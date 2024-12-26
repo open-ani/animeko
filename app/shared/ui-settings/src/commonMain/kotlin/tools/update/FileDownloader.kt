@@ -71,9 +71,9 @@ interface FileDownloader {
      */
     suspend fun download(
         alternativeUrls: List<String>,
-        filenameProvider: (url: String) -> String,
+        filenameProvider: (url: String) -> String = { it.substringAfterLast("/", "") },
         saveDir: SystemPath,
-    ): Boolean
+    ): SystemPath?
 }
 
 sealed class FileDownloaderState {
@@ -124,14 +124,14 @@ class DefaultFileDownloader(
         alternativeUrls: List<String>,
         filenameProvider: (url: String) -> String,
         saveDir: SystemPath,
-    ): Boolean {
+    ): SystemPath? {
         // Ensure there's at least one URL
         require(alternativeUrls.isNotEmpty()) { "No URLs provided." }
 
         // Transition to "Downloading" only if not already in a valid state
         state.update {
             if (it != FileDownloaderState.Idle && it !is FileDownloaderState.Completed) {
-                return false
+                return null
             }
             FileDownloaderState.Downloading
         }
@@ -158,7 +158,7 @@ class DefaultFileDownloader(
                                 // 已存在且校验通过 => 跳过下载
                                 logger.info { "File $filename already exists and SHA-1 matches. Skipping download." }
                                 state.value = FileDownloaderState.Succeed(url, targetFile, checked = true)
-                                return true
+                                return targetFile
                             } else {
                                 // 校验失败 => 删除旧文件
                                 logger.info { "File $filename exists but SHA-1 mismatch. Deleting old file..." }
@@ -183,13 +183,13 @@ class DefaultFileDownloader(
                             state.value = FileDownloaderState.Failed(
                                 IllegalStateException("Downloaded file $filename SHA-1 mismatch after download."),
                             )
-                            return false
+                            return null
                         }
                     }
 
                     // 下载完成且校验成功
                     state.value = FileDownloaderState.Succeed(url, targetFile, checked = remoteChecksum != null)
-                    return true
+                    return targetFile
 
                 } catch (e: CancellationException) {
                     // Propagate cancellation
@@ -204,7 +204,7 @@ class DefaultFileDownloader(
             throwLast()
         }
         // Unreachable in normal flow
-        return false
+        return null
     }
 
     /**
