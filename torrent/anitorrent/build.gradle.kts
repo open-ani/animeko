@@ -31,10 +31,13 @@ kotlin {
         api(anitorrentLibs.anitorrent.native)
     }
     sourceSets.getByName("desktopMain").dependencies {
-        val anitorrentVersion = anitorrentLibs.versions.anitorrent.get()
         val triple = getAnitorrentTriple()
         if (triple != null) {
-            api("org.openani.anitorrent:anitorrent-native-desktop:$anitorrentVersion:${triple}")
+            api(
+                anitorrentLibs.versions.anitorrent.map { anitorrentVersion ->
+                    "org.openani.anitorrent:anitorrent-native-desktop:$anitorrentVersion:${triple}"
+                },
+            )
         }
     }
 }
