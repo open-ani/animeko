@@ -119,12 +119,6 @@ android {
         compose = true
         buildConfig = true
     }
-    externalNativeBuild {
-        cmake {
-            path = projects.torrent.anitorrent.anitorrentNative.dependencyProject.projectDir.resolve("CMakeLists.txt")
-        }
-    }
-
 }
 
 idea {

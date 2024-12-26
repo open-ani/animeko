@@ -10,11 +10,11 @@
 package me.him188.ani.app.torrent.anitorrent.session
 
 import me.him188.ani.app.torrent.anitorrent.HandleId
-import me.him188.ani.app.torrent.anitorrent.binding.PeerInfoList
-import me.him188.ani.app.torrent.anitorrent.binding.torrent_handle_t
-import me.him188.ani.app.torrent.anitorrent.binding.torrent_info_t
 import me.him188.ani.app.torrent.api.files.FilePriority
 import me.him188.ani.app.torrent.api.peer.PeerInfo
+import org.openani.anitorrent.binding.PeerInfoList
+import org.openani.anitorrent.binding.torrent_handle_t
+import org.openani.anitorrent.binding.torrent_info_t
 
 class SwigTorrentHandle(
     internal val native: torrent_handle_t,
