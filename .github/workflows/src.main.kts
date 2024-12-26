@@ -155,8 +155,6 @@ class MatrixInstance(
      * 有一台机器是 true 就行
      */
     val uploadApk: Boolean,
-    val buildAnitorrent: Boolean,
-    val buildAnitorrentSeparately: Boolean,
     /**
      * Compose for Desktop 的 resource 标识符, e.g. `windows-x64`
      */
@@ -203,11 +201,6 @@ class MatrixInstance(
         add(quote("-Porg.gradle.daemon.idletimeout=60000"))
         add(quote("-Pkotlin.native.ignoreDisabledTargets=true"))
         add(quote("-Dfile.encoding=UTF-8"))
-
-        if (buildAnitorrent) {
-            add(quote("-Dani.enable.anitorrent=true"))
-            add(quote("-DCMAKE_BUILD_TYPE=Release"))
-        }
 
         if (os == OS.WINDOWS) {
             add(quote("-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake"))
@@ -352,12 +345,9 @@ val buildMatrixInstances = listOf(
     MatrixInstance(
         runner = Runner.SelfHostedWindows10,
         uploadApk = false,
-        buildAnitorrent = true,
-        buildAnitorrentSeparately = false, // windows 单线程构建 anitorrent, 要一起跑节约时间
         composeResourceTriple = "windows-x64",
         gradleHeap = "6g",
         kotlinCompilerHeap = "6g",
-        gradleParallel = true,
         uploadDesktopInstallers = false, // 只有 win server 2019 构建的包才能正常使用 anitorrent
         extraGradleArgs = listOf(
             "-P$ANI_ANDROID_ABIS=x86_64",
@@ -368,11 +358,8 @@ val buildMatrixInstances = listOf(
         runner = Runner.GithubWindowsServer2019,
         name = "Windows Server 2019 x86_64",
         uploadApk = false,
-        buildAnitorrent = true,
-        buildAnitorrentSeparately = false, // windows 单线程构建 anitorrent, 要一起跑节约时间
         composeResourceTriple = "windows-x64",
         gradleHeap = "4g",
-        kotlinCompilerHeap = "4g",
         gradleParallel = true,
         uploadDesktopInstallers = true,
         extraGradleArgs = listOf(
@@ -384,25 +371,17 @@ val buildMatrixInstances = listOf(
         runner = Runner.GithubUbuntu2004,
         name = "Ubuntu x86_64 (Compile only)",
         uploadApk = false,
-        buildAnitorrent = false,
-        buildAnitorrentSeparately = false,
         composeResourceTriple = "linux-x64",
         runTests = false,
         uploadDesktopInstallers = false,
         extraGradleArgs = listOf(),
-        gradleHeap = "4g",
-        kotlinCompilerHeap = "4g",
-        buildAllAndroidAbis = true,
     ),
     MatrixInstance(
         runner = Runner.GithubMacOS13,
         uploadApk = true, // all ABIs
-        buildAnitorrent = true,
-        buildAnitorrentSeparately = true,
         composeResourceTriple = "macos-x64",
         buildIosFramework = false,
         gradleHeap = "4g",
-        kotlinCompilerHeap = "4g",
         uploadDesktopInstallers = true,
         extraGradleArgs = listOf(),
         buildAllAndroidAbis = true,
@@ -410,14 +389,11 @@ val buildMatrixInstances = listOf(
     MatrixInstance(
         runner = Runner.SelfHostedMacOS15,
         uploadApk = true, // upload arm64-v8a once finished
-        buildAnitorrent = true,
-        buildAnitorrentSeparately = true,
         composeResourceTriple = "macos-arm64",
         uploadDesktopInstallers = true,
         extraGradleArgs = listOf(
             "-P$ANI_ANDROID_ABIS=arm64-v8a",
         ),
-        buildIosFramework = false,
         gradleHeap = "6g",
         kotlinCompilerHeap = "4g",
         gradleParallel = true,
@@ -436,7 +412,6 @@ fun getBuildJobBody(matrix: MatrixInstance): JobBuilder<BuildJobOutputs>.() -> U
     with(WithMatrix(matrix)) {
         freeSpace()
         installJbr21()
-        installNativeDeps()
         chmod777()
         setupGradle()
 
@@ -446,13 +421,11 @@ fun getBuildJobBody(matrix: MatrixInstance): JobBuilder<BuildJobOutputs>.() -> U
         )
 
         val prepareSigningKey = prepareSigningKey()
-        buildAnitorrent()
         compileAndAssemble()
         prepareSigningKey?.let {
             buildAndroidApk(it)
         }
         gradleCheck()
-        uploadAnitorrent()
         val packageOutputs = packageDesktopAndUpload()
 
         packageOutputs.macosAarch64DmgOutcome?.let {
@@ -726,7 +699,6 @@ workflow(
 
             freeSpace()
             installJbr21()
-            installNativeDeps()
             chmod777()
             setupGradle()
 
@@ -742,7 +714,6 @@ workflow(
             )
 
             val prepareSigningKey = prepareSigningKey()
-            buildAnitorrent()
             compileAndAssemble()
 
             prepareSigningKey?.let {
@@ -1004,29 +975,6 @@ class WithMatrix(
         }
     }
 
-    fun JobBuilder<*>.buildAnitorrent() {
-        if (matrix.buildAnitorrent and matrix.buildAnitorrentSeparately) {
-            runGradle(
-                name = "Build Anitorrent for Desktop",
-                tasks = [
-                    ":torrent:anitorrent:build",
-                    ":torrent:anitorrent:anitorrent-native:buildAnitorrent",
-                ],
-            )
-        }
-
-        if (matrix.buildAnitorrent) {
-            runGradle(
-                name = "Build Anitorrent for Android",
-                tasks = [
-                    ":torrent:anitorrent:anitorrent-native:buildAnitorrent",
-                    "buildCMakeDebug",
-                    "buildCMakeRelWithDebInfo",
-                ],
-            )
-        }
-    }
-
     fun JobBuilder<*>.compileAndAssemble() {
         runGradle(
             name = "Compile Kotlin",
@@ -1118,27 +1066,6 @@ class WithMatrix(
         }
     }
 
-    fun JobBuilder<*>.uploadAnitorrent() {
-        uses(
-            name = "Upload Anitorrent CMakeCache.txt",
-            `if` = expr { always() },
-            action = UploadArtifact(
-                name = $"anitorrent-cmake-cache-${matrix.runner.id}",
-                path_Untyped = "torrent/anitorrent/build-ci/CMakeCache.txt",
-                overwrite = true,
-            ),
-        )
-        uses(
-            name = $"Upload Anitorrent ${matrix.runner.id}",
-            `if` = expr { always() },
-            action = UploadArtifact(
-                name = $"anitorrent-${matrix.runner.id}",
-                path_Untyped = "torrent/anitorrent/anitorrent-native/build",
-                overwrite = true,
-            ),
-        )
-    }
-
     class PackageDesktopAndUploadOutputs {
         // null means not enabled on this machine
         var macosAarch64DmgOutcome: Step<*>.Outcome? = null
@@ -1189,7 +1116,7 @@ class WithMatrix(
             }
 
             if (matrix.isMacOS && matrix.isX64) {
-                val macosX64Portable = uses(
+                uses(
                     name = "Upload macOS dmg",
                     action = UploadArtifact(
                         name = ArtifactNames.macosPortable(matrix.arch),
