@@ -28,6 +28,7 @@ import org.gradle.internal.impldep.com.amazonaws.client.builder.AwsClientBuilder
 import org.gradle.internal.impldep.com.amazonaws.services.s3.AmazonS3ClientBuilder
 import org.gradle.internal.impldep.com.amazonaws.services.s3.model.ObjectMetadata
 import org.gradle.internal.impldep.com.amazonaws.services.s3.model.PutObjectRequest
+import java.security.MessageDigest
 
 plugins {
     kotlin("jvm")
@@ -306,39 +307,84 @@ open class ReleaseEnvironment {
         println("token = ${token.isNotEmpty()}")
         println("repository = $repository")
 
+        // Compute the SHA-1 for the file
+        val sha1Checksum = computeSha1Checksum(file)
+        val sha1FileName = "$name.sha1"
+        // Write the checksum to a temporary file
+        val sha1File = createTempSha1File(sha1Checksum, sha1FileName)
+
         runBlocking {
             HttpClient {
                 expectSuccess = true
             }.use { client ->
-                try {
+                // 1) Upload the main file to GitHub
+                uploadFileToGitHub(client, repository, releaseId, token, file, name, ContentType.parse(contentType))
 
-                    client.post("https://uploads.github.com/repos/$repository/releases/$releaseId/assets") {
-                        header("Authorization", "Bearer $token")
-                        header("Accept", "application/vnd.github+json")
-                        parameter("name", name)
+                // 2) Upload the SHA-1 file to GitHub
+                uploadFileToGitHub(client, repository, releaseId, token, sha1File, sha1FileName, ContentType.Text.Plain)
 
-                        contentType(ContentType.parse(contentType))
-                        setBody(
-                            object : OutgoingContent.ReadChannelContent() {
-                                override val contentType: ContentType get() = ContentType.parse(contentType)
-                                override val contentLength: Long = file.length()
-                                override fun readFrom(): ByteReadChannel {
-                                    return file.readChannel()
-                                }
-
-                            },
-                        )
-                    }
-                } catch (e: ClientRequestException) {
-//                    > Client request(POST https://uploads.github.com/repos/open-ani/animeko/releases/190838274/assets?name=ani-4.0.0-typesafe-actions-5-arm64-v8a.apk) invalid: 422 . Text: "{"message":"Validation Failed","request_id":"973A:1F88D9:CCBFD5:D954BA:675F47E0","documentation_url":"https://docs.github.com/rest","errors":[{"resource":"ReleaseAsset","code":"already_exists","field":"name"}]}"
-                    if (e.response.status.value == 422) {
-                        println("Asset already exists: $name")
-                        return@runBlocking
-                    }
-                }
+                // Optionally upload to S3
                 if (getProperty("UPLOAD_TO_S3") == "true") {
                     putS3Object(name, file, contentType)
+                    // Upload the sha1 file
+                    putS3Object(sha1FileName, sha1File, "text/plain")
                 }
+            }
+        }
+    }
+
+    /**
+     * Upload a file as a release asset to the specified GitHub repository/release.
+     *
+     * @param client      An instance of [HttpClient] you manage (preferably use `.use { }`).
+     * @param repository  The GitHub repository in "owner/repo" format (e.g. "open-ani/animeko").
+     * @param releaseId   The numeric ID of the release (not the tag name).
+     * @param token       Your GitHub personal access token (PAT) with the "repo" scope.
+     * @param file        The [File] to upload.
+     * @param fileName    How the file will appear on the release page.
+     * @param contentType The MIME type (e.g. "application/vnd.android.package-archive" for `.apk`).
+     *
+     * @return `true` if the upload was successful; `false` if the server returned a 422
+     *         indicating the asset already exists.
+     */
+    suspend fun uploadFileToGitHub(
+        client: HttpClient,
+        repository: String,
+        releaseId: String,
+        token: String,
+        file: File,
+        fileName: String,
+        contentType: ContentType
+    ): Boolean {
+        return try {
+            client.post("https://uploads.github.com/repos/$repository/releases/$releaseId/assets") {
+                header("Authorization", "Bearer $token")
+                header("Accept", "application/vnd.github+json")
+                parameter("name", fileName)
+
+                contentType(contentType)
+                setBody(
+                    object : OutgoingContent.ReadChannelContent() {
+                        override val contentType: ContentType
+                            get() = contentType
+                        override val contentLength: Long
+                            get() = file.length()
+
+                        override fun readFrom(): ByteReadChannel = file.readChannel()
+                    },
+                )
+            }
+
+            // If we made it here, the upload is successful
+            true
+        } catch (e: ClientRequestException) {
+            // Check for the 422 "already exists" error
+            if (e.response.status.value == 422) {
+                println("Asset already exists: $fileName")
+                false
+            } else {
+                // Propagate other errors
+                throw e
             }
         }
     }
@@ -350,6 +396,33 @@ open class ReleaseEnvironment {
             }
         }
         s3Client.putObject(request)
+    }
+
+    /**
+     * Computes the SHA-1 checksum of the given file.
+     */
+    private fun computeSha1Checksum(file: File): String {
+        val digest = MessageDigest.getInstance("SHA-1")
+        file.inputStream().use { input ->
+            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+            var bytesRead = input.read(buffer)
+            while (bytesRead != -1) {
+                digest.update(buffer, 0, bytesRead)
+                bytesRead = input.read(buffer)
+            }
+        }
+        // Convert the byte array to a hex string
+        return digest.digest().joinToString(separator = "") { "%02x".format(it) }
+    }
+
+    /**
+     * Writes the given SHA-1 checksum to a temporary file.
+     */
+    private fun createTempSha1File(sha1Checksum: String, sha1FileName: String): File {
+        // You can adjust the directory for the temp file if needed
+        val tempFile = File.createTempFile(sha1FileName, null)
+        tempFile.writeText(sha1Checksum)
+        return tempFile
     }
 
     fun generateDevVersionName(
