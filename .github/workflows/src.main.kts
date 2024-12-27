@@ -952,7 +952,7 @@ class WithMatrix(
                 timeoutMinutes_Untyped = "60",
                 command_Untyped = """./gradlew """ + matrix.gradleArgs.replace(
                     "--scan",
-                    "",
+                    "--stacktrace",
                 ), // com.gradle.develocity.DevelocityException: Internal error in Develocity Gradle plugin: finished notification
             ),
         )
