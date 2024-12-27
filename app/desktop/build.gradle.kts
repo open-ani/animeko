@@ -249,11 +249,14 @@ tasks.withType(AbstractJPackageTask::class) {
             }
         }
 
-        val jarsToUnpack = listOf("anitorrent-native")
+        val jarsToUnpack = listOf(
+            "anitorrent-native",
+            "anitorrent-native-desktop",
+        )
 
-        destinationDir.get().asFile.walk().firstOrNull { file ->
+        destinationDir.get().asFile.walk().filter { file ->
             jarsToUnpack.any { file.name.startsWith(it) && file.extension == "jar" }
-        }?.let { file ->
+        }.forEach { file ->
             unpackJar(file, file.parentFile) {
                 it.name.endsWith("dylib") || it.name.endsWith("so") || it.name.endsWith("dll")
             }
