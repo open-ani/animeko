@@ -950,7 +950,10 @@ class WithMatrix(
             action = Retry_Untyped(
                 maxAttempts_Untyped = "3",
                 timeoutMinutes_Untyped = "60",
-                command_Untyped = """./gradlew """ + matrix.gradleArgs,
+                command_Untyped = """./gradlew """ + matrix.gradleArgs.replace(
+                    "--scan",
+                    "",
+                ), // com.gradle.develocity.DevelocityException: Internal error in Develocity Gradle plugin: finished notification
             ),
         )
     }
