@@ -18,6 +18,18 @@ pluginManagement {
     }
 }
 
+dependencyResolutionManagement {
+    @Suppress("UnstableApiUsage")
+    repositories {
+        mavenCentral()
+    }
+    versionCatalogs {
+        create("anitorrentLibs") {
+            from("org.openani.anitorrent:catalog:0.0.9")
+        }
+    }
+}
+
 plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "0.8.0"
 }
@@ -46,7 +58,7 @@ includeProject(":utils:ui-testing")
 
 includeProject(":torrent:torrent-api", "torrent/api") // Torrent 系统 API
 includeProject(":torrent:anitorrent")
-includeProject(":torrent:anitorrent:anitorrent-native")
+//includeProject(":torrent:anitorrent:anitorrent-native")
 
 includeProject(":app:shared")
 includeProject(":app:shared:app-platform")
@@ -108,20 +120,3 @@ includeProject(
 includeProject(":ci-helper", "ci-helper") // 
 
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
-
-
-/// Composite Builds
-
-
-// https://github.com/aclassen/ComposeReorderable
-fun getMissingSubmoduleMessage(moduleName: String) = """
-        未找到 $moduleName, 这是因为没有正确 clone 或有新 submodule 导致的. 可尝试下列任意一种方法解决:
-        1. `git submodule update --init --recursive`
-        2. 使用 Android Studio 的 New Project from Version Control 创建项目, 而不要使用命令行 clone
-        3. 使用命令行时确保带上 recursive 选项: `git clone --recursive git@github.com:open-ani/ani.git`
-        """.trimIndent()
-
-if (file("torrent/anitorrent/anitorrent-native/libs/boost").run { !exists() || listFiles().isNullOrEmpty() }) {
-    error(getMissingSubmoduleMessage("""torrent/anitorrent/anitorrent-native/libs/boost"""))
-}
-

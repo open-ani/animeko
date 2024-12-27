@@ -14,15 +14,6 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import me.him188.ani.app.torrent.anitorrent.binding.event_listener_t
-import me.him188.ani.app.torrent.anitorrent.binding.new_event_listener_t
-import me.him188.ani.app.torrent.anitorrent.binding.peer_filter_t
-import me.him188.ani.app.torrent.anitorrent.binding.peer_info_t
-import me.him188.ani.app.torrent.anitorrent.binding.session_settings_t
-import me.him188.ani.app.torrent.anitorrent.binding.session_t
-import me.him188.ani.app.torrent.anitorrent.binding.torrent_resume_data_t
-import me.him188.ani.app.torrent.anitorrent.binding.torrent_state_t
-import me.him188.ani.app.torrent.anitorrent.binding.torrent_stats_t
 import me.him188.ani.app.torrent.anitorrent.session.SwigPeerInfo
 import me.him188.ani.app.torrent.anitorrent.session.SwigTorrentAddInfo
 import me.him188.ani.app.torrent.anitorrent.session.SwigTorrentHandle
@@ -33,6 +24,15 @@ import me.him188.ani.app.torrent.api.HttpFileDownloader
 import me.him188.ani.app.torrent.api.TorrentDownloaderConfig
 import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.logging.info
+import org.openani.anitorrent.binding.event_listener_t
+import org.openani.anitorrent.binding.new_event_listener_t
+import org.openani.anitorrent.binding.peer_filter_t
+import org.openani.anitorrent.binding.peer_info_t
+import org.openani.anitorrent.binding.session_settings_t
+import org.openani.anitorrent.binding.session_t
+import org.openani.anitorrent.binding.torrent_resume_data_t
+import org.openani.anitorrent.binding.torrent_state_t
+import org.openani.anitorrent.binding.torrent_stats_t
 import kotlin.coroutines.CoroutineContext
 
 internal fun TorrentDownloaderConfig.toSessionSettings(): session_settings_t {

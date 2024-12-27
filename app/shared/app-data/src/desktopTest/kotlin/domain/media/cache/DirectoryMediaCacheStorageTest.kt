@@ -27,6 +27,7 @@ import me.him188.ani.app.data.models.preference.ProxySettings
 import me.him188.ani.app.domain.media.cache.engine.TorrentMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.storage.DirectoryMediaCacheStorage
 import me.him188.ani.app.domain.media.createTestDefaultMedia
+import me.him188.ani.app.domain.media.createTestMediaProperties
 import me.him188.ani.app.domain.torrent.TorrentEngine
 import me.him188.ani.app.domain.torrent.engines.AnitorrentEngine
 import me.him188.ani.app.domain.torrent.peer.PeerFilterSettings
@@ -34,7 +35,6 @@ import me.him188.ani.app.torrent.anitorrent.session.AnitorrentDownloadSession
 import me.him188.ani.app.torrent.anitorrent.test.TestAnitorrentTorrentDownloader
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.MediaCacheMetadata
-import me.him188.ani.datasources.api.MediaProperties
 import me.him188.ani.datasources.api.source.MediaFetchRequest
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.source.MediaSourceLocation
@@ -109,7 +109,7 @@ class DirectoryMediaCacheStorageTest {
         originalUrl = "https://example.com/1",
         publishedTime = 1724493292758,
         episodeRange = EpisodeRange.single(EpisodeSort(2)),
-        properties = MediaProperties(
+        properties = createTestMediaProperties(
             subtitleLanguageIds = listOf("CHT"),
             resolution = "1080P",
             alliance = "北宇治字幕组北宇治字幕组北宇治字幕组北宇治字幕组北宇治字幕组北宇治字幕组北宇治字幕组北宇治字幕组",

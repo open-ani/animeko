@@ -106,6 +106,8 @@ abstract class RssMediaSourceEngine {
                 publishedTime = item.pubDate?.toInstant(TimeZone.currentSystemDefault())
                     ?.toEpochMilliseconds() ?: 0,
                 properties = MediaProperties(
+                    subjectName = null,
+                    episodeName = null,
                     subtitleLanguageIds = details.subtitleLanguages.map { it.id },
                     resolution = details.resolution?.toString() ?: Resolution.R1080P.toString(),
                     alliance = item.title.trim().split("]", "】").getOrNull(0).orEmpty().removePrefix("[")

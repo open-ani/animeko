@@ -1447,10 +1447,19 @@
       },
       "SubjectRelations": {
         "title": "SubjectRelations",
-        "required": [ "sequelSubjects", "subjectId" ],
+        "required": [ "sequelSubjects", "seriesMainSubjectIds", "subjectId" ],
         "type": "object",
         "properties": {
           "sequelSubjects": {
+            "title": "List<Int>",
+            "type": "array",
+            "items": {
+              "title": "Int",
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          "seriesMainSubjectIds": {
             "title": "List<Int>",
             "type": "array",
             "items": {

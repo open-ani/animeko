@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.datasources.jellyfin
 
 import io.ktor.client.call.body
@@ -78,21 +87,23 @@ abstract class BaseJellyfinMediaSource(config: MediaSourceConfig) : HttpMediaSou
                 .filter { it.Type == "Episode" && it.CanDownload }
                 .toList()
                 .distinctBy { it.Id }
-                .mapNotNull {
-                    it.IndexNumber ?: return@mapNotNull null
+                .mapNotNull { item ->
+                    item.IndexNumber ?: return@mapNotNull null
 
-                    val episodeRange = EpisodeRange.single(EpisodeSort(it.IndexNumber))
+                    val episodeRange = EpisodeRange.single(EpisodeSort(item.IndexNumber))
                     MediaMatch(
                         media = DefaultMedia(
-                            mediaId = it.Id,
+                            mediaId = item.Id,
                             mediaSourceId = mediaSourceId,
-                            originalUrl = "$baseUrl/Items/${it.Id}",
+                            originalUrl = "$baseUrl/Items/${item.Id}",
                             download = ResourceLocation.HttpStreamingFile(
-                                uri = getDownloadUri(it.Id),
+                                uri = getDownloadUri(item.Id),
                             ),
-                            originalTitle = "${it.IndexNumber} ${it.Name}",
+                            originalTitle = "${item.IndexNumber} ${item.Name}",
                             publishedTime = 0,
                             properties = MediaProperties(
+                                subjectName = null,
+                                episodeName = null, // TODO: Maybe we can get the names from Jellyfin
                                 subtitleLanguageIds = listOf("CHS"),
                                 resolution = "1080P",
                                 alliance = mediaSourceId,

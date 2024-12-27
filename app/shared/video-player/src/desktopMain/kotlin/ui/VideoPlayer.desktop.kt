@@ -43,7 +43,6 @@ import me.him188.ani.app.videoplayer.HttpStreamingVideoSource
 import me.him188.ani.app.videoplayer.data.VideoData
 import me.him188.ani.app.videoplayer.data.VideoProperties
 import me.him188.ani.app.videoplayer.data.VideoSource
-import me.him188.ani.app.videoplayer.data.emptyVideoData
 import me.him188.ani.app.videoplayer.io.SeekableInputCallbackMedia
 import me.him188.ani.app.videoplayer.ui.VlcjVideoPlayerState.VlcjData
 import me.him188.ani.app.videoplayer.ui.state.AbstractPlayerState
@@ -156,7 +155,7 @@ class VlcjVideoPlayerState(parentCoroutineContext: CoroutineContext) : PlayerSta
         if (source is HttpStreamingVideoSource) {
             return VlcjData(
                 source,
-                emptyVideoData(),
+                source.open(), // no need to close
                 setPlay = {
 
                     player.media().play(

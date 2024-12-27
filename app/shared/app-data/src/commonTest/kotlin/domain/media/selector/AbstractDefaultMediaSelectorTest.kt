@@ -12,11 +12,12 @@ package me.him188.ani.app.domain.media.selector
 import kotlinx.coroutines.flow.MutableStateFlow
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
+import me.him188.ani.app.data.models.subject.SubjectSeriesInfo
 import me.him188.ani.app.domain.media.createTestDefaultMedia
+import me.him188.ani.app.domain.media.createTestMediaProperties
 import me.him188.ani.datasources.api.DefaultMedia
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.MediaExtraFiles
-import me.him188.ani.datasources.api.MediaProperties
 import me.him188.ani.datasources.api.SubtitleKind
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.source.MediaSourceLocation
@@ -89,18 +90,32 @@ sealed class AbstractDefaultMediaSelectorTest {
         const val SOURCE_DMHY = "dmhy"
         const val SOURCE_MIKAN = "mikan"
 
-        @Suppress("SameParameterValue")
+        @Suppress("SameParameterValue", "INVISIBLE_REFERENCE")
+        @kotlin.internal.LowPriorityInOverloadResolution
         fun createMediaSelectorContextFromEmpty(
             subjectCompleted: Boolean = false,
             mediaSourcePrecedence: List<String> = emptyList(),
             subtitleKindFilters: MediaSelectorSubtitlePreferences = MediaSelectorSubtitlePreferences.AllNormal,
             subjectSequelNames: Set<String> = emptySet(),
+        ) = createMediaSelectorContextFromEmpty(
+            subjectCompleted = subjectCompleted,
+            mediaSourcePrecedence = mediaSourcePrecedence,
+            subtitleKindFilters = subtitleKindFilters,
+            subjectSeriesInfo = SubjectSeriesInfo.Fallback.copy(sequelSubjectNames = subjectSequelNames),
+        )
+
+        @Suppress("SameParameterValue")
+        fun createMediaSelectorContextFromEmpty(
+            subjectCompleted: Boolean = false,
+            mediaSourcePrecedence: List<String> = emptyList(),
+            subtitleKindFilters: MediaSelectorSubtitlePreferences = MediaSelectorSubtitlePreferences.AllNormal,
+            subjectSeriesInfo: SubjectSeriesInfo = SubjectSeriesInfo.Fallback,
         ) =
             MediaSelectorContext(
                 subjectFinished = subjectCompleted,
                 mediaSourcePrecedence = mediaSourcePrecedence,
                 subtitlePreferences = subtitleKindFilters,
-                subjectSequelNames = subjectSequelNames,
+                subjectSeriesInfo = subjectSeriesInfo,
             )
     }
 
@@ -119,6 +134,8 @@ sealed class AbstractDefaultMediaSelectorTest {
         extraFiles: MediaExtraFiles = MediaExtraFiles.Empty,
         id: Int = mediaId++,
         originalTitle: String = "[字幕组] 孤独摇滚 $id",
+        subjectName: String? = null,
+        episodeName: String? = null,
     ): DefaultMedia {
         return createTestDefaultMedia(
             mediaId = "$sourceId.$id",
@@ -128,7 +145,9 @@ sealed class AbstractDefaultMediaSelectorTest {
             originalUrl = "https://example.com/$id",
             publishedTime = publishedTime,
             episodeRange = episodeRange,
-            properties = MediaProperties(
+            properties = createTestMediaProperties(
+                subjectName = subjectName,
+                episodeName = episodeName,
                 subtitleLanguageIds = subtitleLanguages,
                 resolution = resolution,
                 alliance = alliance,

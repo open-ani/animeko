@@ -159,18 +159,6 @@ class SelectorMediaSource(
         query: SelectorSearchQuery,
         mediaSourceId: String,
     ): List<DefaultMedia> = withContext(Dispatchers.Default) {
-        val cache = repository.getCache(mediaSourceId, query.subjectName)
-        if (cache.isNotEmpty()) {
-            return@withContext cache.flatMap { webSearchInfo ->
-                selectMedia(
-                    webSearchInfo.webEpisodeInfos.asSequence(),
-                    searchConfig,
-                    query,
-                    mediaSourceId,
-                    subjectName = webSearchInfo.webSubjectInfo.name,
-                ).filteredList
-            }
-        }
         searchSubjects(
             searchConfig.searchUrl,
             subjectName = query.subjectName,
@@ -214,7 +202,7 @@ class SelectorMediaSource(
         val allSubjectNames = query.subjectNames.toSet()
 
         return query.subjectNames
-            .take(1) // 只采用第一个主名称就够了
+            .take(searchConfig.searchUseSubjectNamesCount.coerceAtLeast(1))
             .map { name ->
                 SinglePagePagedSource {
                     engine.search(

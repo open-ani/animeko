@@ -42,6 +42,15 @@ data class SelectorSearchConfig(
     val searchUrl: String = "", // required
     val searchUseOnlyFirstWord: Boolean = true,
     val searchRemoveSpecial: Boolean = true,
+    /**
+     * 搜索时, 使用多少个 subjectName. 至少需要有 1. 排序为:
+     * - 主中文名
+     * - 日文原名
+     * - 其他别名, 无特定顺序
+     *
+     * @since 4.2
+     */
+    val searchUseSubjectNamesCount: Int = 1,
     val rawBaseUrl: String = "", // if empty, guess
     /**
      * 两个搜索请求之间的间隔时间

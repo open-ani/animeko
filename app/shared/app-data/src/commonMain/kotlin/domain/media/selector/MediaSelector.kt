@@ -67,7 +67,7 @@ import kotlin.coroutines.CoroutineContext
  * - [trySelectDefault]：若尚无选择，则基于 [preferredCandidatesMedia] 自动挑选最优资源。
  * - [trySelectCached]：若本地存在可用缓存且尚未选择，则优先选用缓存资源。
  * - [trySelectFromMediaSources]：根据给定的数据源优先级或黑名单等信息进行自动选择。
- * 
+ *
  * 在选择时, 会触发 [MediaSelectorEvents.onChangePreference] 和 [MediaSelectorEvents.onSelect] 事件, 事件可用于保存用户偏好等操作.
  *
  * ## 使用示例
@@ -401,9 +401,19 @@ class DefaultMediaSelector(
                 }
             }
 
-            context.subjectSequelNames?.forEach { name ->
+            context.subjectSeriesInfo?.sequelSubjectNames?.forEach { name ->
                 if (name.isNotBlank() && name in media.originalTitle) {
                     return@filter exclude(MediaExclusionReason.FromSequelSeason) // 是其他季度
+                }
+            }
+
+            if (media.properties.subjectName != null) {
+                context.subjectSeriesInfo?.seriesSubjectNamesWithoutSelf?.forEach { name ->
+                    if (name.equals(media.properties.subjectName, ignoreCase = true)) {
+                        // 精确匹配到了是其他季度的名称. 这里只有用精确匹配才安全. 
+                        // 有些条目可能就只差距一个字母, 例如 "天降之物" 和 "天降之物f", 非常容易满足模糊匹配.
+                        return@filter exclude(MediaExclusionReason.FromSeriesSeason)
+                    }
                 }
             }
 

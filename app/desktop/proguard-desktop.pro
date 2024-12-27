@@ -107,4 +107,7 @@
 
 -keep @kotlinx.serialization.Serializable class * {*;} # Somehow kotlinx-serialization 官方的规则仍然会导致 Serializer not found, 所以干脆直接都 keep
 
+-keep class ** extends com.sun.jna.Structure { *; } # JNA C struct
+-keep class ** extends com.sun.jna.Library { *; } # JNA
+
 -verbose

@@ -168,29 +168,6 @@ internal fun SelectorConfigurationPane(
                     shape = textFieldShape,
                     enabled = state.enableEdit,
                 )
-                var requestIntervalString by remember(state.requestInterval) {
-                    mutableStateOf(state.requestInterval.inWholeMilliseconds.toString())
-                }
-                OutlinedTextField(
-                    requestIntervalString,
-                    {
-                        requestIntervalString = it
-                        state.requestInterval = it.toLongOrNull()?.milliseconds ?: state.requestInterval
-                    },
-                    Modifier
-                        .padding(top = (verticalSpacing - 8.dp).coerceAtLeast(0.dp))
-                        .fillMaxWidth().moveFocusOnEnter(),
-                    label = { Text("搜索请求间隔时间 (毫秒)") },
-                    supportingText = {
-                        Text(
-                            """每次查询将会使用所有别名分别发送请求。这个选项控制每发送一个请求后等待多久后再发送下一个请求""".trimIndent(),
-                        )
-                    },
-                    isError = requestIntervalString.toLongOrNull() == null,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                    shape = textFieldShape,
-                    enabled = state.enableEdit,
-                )
                 ListItem(
                     headlineContent = { Text("仅使用第一个词") },
                     Modifier
@@ -222,6 +199,59 @@ internal fun SelectorConfigurationPane(
                         )
                     },
                     colors = listItemColors,
+                )
+
+                var searchUseSubjectNamesCount by remember(state.searchUseSubjectNamesCount) {
+                    mutableStateOf(state.searchUseSubjectNamesCount.toString())
+                }
+                OutlinedTextField(
+                    searchUseSubjectNamesCount,
+                    {
+                        searchUseSubjectNamesCount = it
+                        state.searchUseSubjectNamesCount = it.toIntOrNull() ?: state.searchUseSubjectNamesCount
+                    },
+                    Modifier
+                        .padding(top = (verticalSpacing - 8.dp).coerceAtLeast(0.dp))
+                        .fillMaxWidth().moveFocusOnEnter(),
+                    label = { Text("尝试条目名称数量") },
+                    supportingText = {
+                        Text(
+                            """
+                                每次播放使用多少个条目名称进行查询。
+                                为 1 则只使用主中文名称，为 2 额外使用日文原名，大于 2 将额外使用其他别名，别名的数量不固定。
+                                一般用 1 就够了，使用多个名称将会显著增加播放时的等待时间。
+                                """.trimIndent(),
+                        )
+                    },
+                    isError = searchUseSubjectNamesCount.toIntOrNull().let {
+                        it == null || it < 1
+                    },
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                    shape = textFieldShape,
+                    enabled = state.enableEdit,
+                )
+                var requestIntervalString by remember(state.requestInterval) {
+                    mutableStateOf(state.requestInterval.inWholeMilliseconds.toString())
+                }
+                OutlinedTextField(
+                    requestIntervalString,
+                    {
+                        requestIntervalString = it
+                        state.requestInterval = it.toLongOrNull()?.milliseconds ?: state.requestInterval
+                    },
+                    Modifier
+                        .padding(top = (verticalSpacing - 8.dp).coerceAtLeast(0.dp))
+                        .fillMaxWidth().moveFocusOnEnter(),
+                    label = { Text("搜索请求间隔时间 (毫秒)") },
+                    supportingText = {
+                        Text(
+                            """控制每发送一个请求后等待多久后再发送下一个请求""".trimIndent(),
+                        )
+                    },
+                    isError = requestIntervalString.toLongOrNull() == null,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                    shape = textFieldShape,
+                    enabled = state.enableEdit,
                 )
             }
 

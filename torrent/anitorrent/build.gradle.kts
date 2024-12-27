@@ -9,9 +9,14 @@
 
 plugins {
     kotlin("multiplatform")
+    id("com.android.library")
     `ani-mpp-lib-targets`
     kotlin("plugin.serialization")
     id("org.jetbrains.kotlinx.atomicfu")
+}
+
+android {
+    namespace = "me.him188.ani.torrent.anitorrent"
 }
 
 kotlin {
@@ -22,7 +27,38 @@ kotlin {
         api(projects.torrent.torrentApi)
         api(projects.utils.coroutines)
     }
-    sourceSets.jvmMain.dependencies {
-        api(projects.torrent.anitorrent.anitorrentNative)
+    sourceSets.getByName("jvmMain").dependencies {
+        api(anitorrentLibs.anitorrent.native)
+    }
+    sourceSets.getByName("desktopMain").dependencies {
+        val triple = getAnitorrentTriple()
+        if (triple != null) {
+            api(
+                anitorrentLibs.versions.anitorrent.map { anitorrentVersion ->
+                    "org.openani.anitorrent:anitorrent-native-desktop:$anitorrentVersion:${triple}"
+                },
+            )
+        }
+    }
+}
+
+fun getAnitorrentTriple(): String? {
+    return when (getOs()) {
+        Os.MacOS -> {
+            when (getArch()) {
+                Arch.X86_64 -> "macos-x64"
+                Arch.AARCH64 -> "macos-aarch64"
+            }
+        }
+
+        Os.Windows -> {
+            when (getArch()) {
+                Arch.X86_64 -> "windows-x64"
+                else -> error("Unsupported architecture: ${getArch()}")
+            }
+        }
+
+        Os.Linux -> null
+        Os.Unknown -> error("Unsupported OS: ${getOs()}")
     }
 }

@@ -16,12 +16,14 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.yield
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
+import me.him188.ani.app.data.models.subject.SubjectSeriesInfo
 import me.him188.ani.datasources.api.DefaultMedia
 import me.him188.ani.datasources.api.MediaExtraFiles
 import me.him188.ani.datasources.api.Subtitle
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.source.MediaSourceKind.WEB
 import me.him188.ani.datasources.api.topic.EpisodeRange
+import me.him188.ani.datasources.api.topic.SubtitleLanguage
 import me.him188.ani.utils.coroutines.cancellableCoroutineScope
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -591,6 +593,109 @@ class DefaultMediaSelectorTest : AbstractDefaultMediaSelectorTest() {
         )
         assertEquals(5, selector.preferredCandidatesMedia.first().size)
         assertEquals(target, selector.trySelectDefault())
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    // 当资源条目名称精确匹配其他季度名称时自动排除 #1385
+    ///////////////////////////////////////////////////////////////////////////
+
+    @Test
+    fun `exclude other seasons - control group`() = runTest {
+        // 对照组
+
+        val target: DefaultMedia
+        mediaSelectorContext.value = createMediaSelectorContextFromEmpty(
+            true,
+            subjectSeriesInfo = SubjectSeriesInfo.Fallback.copy(seriesSubjectNamesWithoutSelf = setOf("条目名称I")),
+        )
+        mediaSelectorSettings.value = MediaSelectorSettings.Default
+        savedUserPreference.value = DEFAULT_PREFERENCE
+        savedDefaultPreference.value = DEFAULT_PREFERENCE
+        addMedia(
+            media(
+                alliance = "字幕组1", episodeRange = EpisodeRange.single("1"), kind = WEB,
+                subjectName = "条目名称", subtitleLanguages = listOf(SubtitleLanguage.ChineseSimplified.id),
+            ).also { target = it },
+            media(
+                alliance = "字幕组2", episodeRange = EpisodeRange.single("1"), kind = WEB,
+                subjectName = "条目名称", subtitleLanguages = listOf(SubtitleLanguage.ChineseTraditional.id),
+            ),
+        )
+        assertEquals(2, selector.preferredCandidates.first().size)
+        assertEquals(
+            listOf(null, null),
+            selector.preferredCandidates.first().map { it.exclusionReason },
+        )
+        assertEquals(
+            target,
+            selector.trySelectDefault(),
+        )
+    }
+
+    @Test
+    fun `exclude other seasons`() = runTest {
+        val target: DefaultMedia
+        mediaSelectorContext.value = createMediaSelectorContextFromEmpty(
+            true,
+            subjectSeriesInfo = SubjectSeriesInfo.Fallback.copy(seriesSubjectNamesWithoutSelf = setOf("条目名称I")),
+        )
+        mediaSelectorSettings.value = MediaSelectorSettings.Default
+        savedUserPreference.value = DEFAULT_PREFERENCE
+        savedDefaultPreference.value = DEFAULT_PREFERENCE
+        addMedia(
+            media(
+                // filtered out
+                alliance = "字幕组1", episodeRange = EpisodeRange.single("1"), kind = WEB,
+                subjectName = "条目名称I", subtitleLanguages = listOf(SubtitleLanguage.ChineseSimplified.id),
+            ),
+            media(
+                // kept
+                alliance = "字幕组2", episodeRange = EpisodeRange.single("1"), kind = WEB,
+                subjectName = "条目名称", subtitleLanguages = listOf(SubtitleLanguage.ChineseTraditional.id),
+            ).also { target = it },
+        )
+        assertEquals(2, selector.preferredCandidates.first().size)
+        assertEquals(
+            listOf(null, MediaExclusionReason.FromSeriesSeason),
+            selector.preferredCandidates.first().map { it.exclusionReason },
+        )
+        assertEquals(
+            target,
+            selector.trySelectDefault(),
+        )
+    }
+
+    @Test
+    fun `exclude other seasons does not filter out season of longer name`() = runTest {
+        val target: DefaultMedia
+        mediaSelectorContext.value = createMediaSelectorContextFromEmpty(
+            true,
+            subjectSeriesInfo = SubjectSeriesInfo.Fallback.copy(seriesSubjectNamesWithoutSelf = setOf("条目名称I")),
+        )
+        mediaSelectorSettings.value = MediaSelectorSettings.Default
+        savedUserPreference.value = DEFAULT_PREFERENCE
+        savedDefaultPreference.value = DEFAULT_PREFERENCE
+        addMedia(
+            media(
+                // filtered out
+                alliance = "字幕组1", episodeRange = EpisodeRange.single("1"), kind = WEB,
+                subjectName = "条目名称I", subtitleLanguages = listOf(SubtitleLanguage.ChineseSimplified.id),
+            ),
+            media(
+                // kept
+                alliance = "字幕组2", episodeRange = EpisodeRange.single("1"), kind = WEB,
+                subjectName = "条目名称III", subtitleLanguages = listOf(SubtitleLanguage.ChineseTraditional.id),
+            ).also { target = it },
+        )
+        assertEquals(2, selector.preferredCandidates.first().size)
+        assertEquals(
+            listOf(null, MediaExclusionReason.FromSeriesSeason),
+            selector.preferredCandidates.first().map { it.exclusionReason },
+        )
+        assertEquals(
+            target,
+            selector.trySelectDefault(),
+        )
     }
 
     ///////////////////////////////////////////////////////////////////////////

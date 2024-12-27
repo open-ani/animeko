@@ -18,10 +18,12 @@ import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
 import me.him188.ani.app.data.models.subject.SubjectInfo
+import me.him188.ani.app.data.models.subject.SubjectSeriesInfo
 import me.him188.ani.app.domain.media.SOURCE_DMHY
 import me.him188.ani.app.domain.media.TestMediaList
 import me.him188.ani.app.domain.media.cache.storage.TestMediaCacheStorage
 import me.him188.ani.app.domain.media.createTestDefaultMedia
+import me.him188.ani.app.domain.media.createTestMediaProperties
 import me.him188.ani.app.domain.media.fetch.MediaFetcherConfig
 import me.him188.ani.app.domain.media.fetch.MediaSourceMediaFetcher
 import me.him188.ani.app.domain.media.fetch.awaitCompletion
@@ -37,7 +39,6 @@ import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.EpisodeType
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.MediaCacheMetadata
-import me.him188.ani.datasources.api.MediaProperties
 import me.him188.ani.datasources.api.paging.SinglePagePagedSource
 import me.him188.ani.datasources.api.source.MatchKind
 import me.him188.ani.datasources.api.source.MediaMatch
@@ -93,7 +94,7 @@ class EpisodeCacheRequesterTest {
             subjectFinished = false,
             mediaSourcePrecedence = emptyList(),
             subtitlePreferences = MediaSelectorSubtitlePreferences.AllNormal,
-            subjectSequelNames = emptySet(),
+            subjectSeriesInfo = SubjectSeriesInfo.Fallback,
         ),
     )
     private val storage = TestMediaCacheStorage()
@@ -293,7 +294,7 @@ class EpisodeCacheRequesterTest {
             originalUrl = "https://example.com/1",
             publishedTime = 1,
             episodeRange = EpisodeRange.single(EpisodeSort(1)), // note here: single
-            properties = MediaProperties(
+            properties = createTestMediaProperties(
                 subtitleLanguageIds = listOf(ChineseSimplified, ChineseTraditional).map { it.id },
                 resolution = "1080P",
                 alliance = "桜都字幕组",
@@ -342,7 +343,7 @@ class EpisodeCacheRequesterTest {
             originalUrl = "https://example.com/1",
             publishedTime = 1,
             episodeRange = EpisodeRange.range(EpisodeSort(1), EpisodeSort(12)),
-            properties = MediaProperties(
+            properties = createTestMediaProperties(
                 subtitleLanguageIds = listOf(ChineseSimplified, ChineseTraditional).map { it.id },
                 resolution = "1080P",
                 alliance = "桜都字幕组",
@@ -391,7 +392,7 @@ class EpisodeCacheRequesterTest {
             originalUrl = "https://example.com/1",
             publishedTime = 1,
             episodeRange = epRange,
-            properties = MediaProperties(
+            properties = createTestMediaProperties(
                 subtitleLanguageIds = listOf(ChineseSimplified, ChineseTraditional).map { it.id },
                 resolution = "1080P",
                 alliance = "桜都字幕组",

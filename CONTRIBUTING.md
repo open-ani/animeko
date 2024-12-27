@@ -82,13 +82,10 @@ Runtime (JCEF), 版本 17 或 21, 下文简称 JBR.
 <img src=".readme/images/contributing/idea-settings-download-jdk.png" alt="download jbr" width="400"/>
 <img src=".readme/images/contributing/idea-settings-download-jdk-version.png" alt="choose version" width="200"/>
 
-### 配置 Android SDK & NDK
-
-项目包含使用 Android NDK 的 C++ 代码. 必须配置 NDK 才能编译:
+### 配置 Android SDK
 
 1. 打开 SDK Manager (Android Studio 中 Tools -> SDK Manager)
-2. 安装 SDK 至少 34
-3. 安装 Android SDK Build-Tools, NDK 和 Cmake 并更新到最新版本
+2. 安装 SDK 版本 34
 
 ## 2. 代码风格与代码规范
 

@@ -76,6 +76,12 @@ class SelectorConfigState(
         SelectorMediaSourceArguments.Default.searchConfig.searchRemoveSpecial,
     )
 
+    var searchUseSubjectNamesCount by argumentsStorage.prop(
+        { it.searchConfig.searchUseSubjectNamesCount },
+        { copy(searchConfig = searchConfig.copy(searchUseSubjectNamesCount = it)) },
+        SelectorMediaSourceArguments.Default.searchConfig.searchUseSubjectNamesCount,
+    )
+
     var rawBaseUrl by argumentsStorage.prop(
         { it.searchConfig.rawBaseUrl },
         { copy(searchConfig = searchConfig.copy(rawBaseUrl = it)) },

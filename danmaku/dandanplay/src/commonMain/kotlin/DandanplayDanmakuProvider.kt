@@ -27,6 +27,7 @@ import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.seasonMonth
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
+import kotlin.coroutines.cancellation.CancellationException
 
 class DandanplayDanmakuProvider(
     config: DanmakuProviderConfig,
@@ -110,11 +111,13 @@ class DandanplayDanmakuProvider(
         val episodes: List<DanmakuEpisode>? =
             runCatching { getEpisodesByExactSubjectMatch(request) }
                 .onFailure {
+                    if (it is CancellationException) throw it
                     logger.error(it) { "Failed to fetch episodes by exact match" }
                 }.getOrNull()
                 ?: runCatching {
                     getEpisodesByFuzzyEpisodeSearch(request)
                 }.onFailure {
+                    if (it is CancellationException) throw it
                     logger.error(it) { "Failed to fetch episodes by fuzzy search" }
                 }.getOrNull()
 
@@ -230,6 +233,7 @@ class DandanplayDanmakuProvider(
                     // 弹弹数据库有时候会只有 "第x话" 没有具体标题, 所以不带标题搜索就够了
                 ).animes
             }.onFailure {
+                if (it is CancellationException) throw it
                 logger.error(it) { "Failed to getEpisodesByFuzzyEpisodeSearch with '$name'" }
             }.getOrNull() ?: emptySet()
         }
@@ -258,6 +262,7 @@ class DandanplayDanmakuProvider(
             // 不建议用名字去请求弹弹 play 搜索, 它的搜索很不准
             dandanplayClient.getSeasonAnimeList(date.year, date.seasonMonth)
         }.onFailure {
+            if (it is CancellationException) throw it
             logger.error(it) { "Failed to fetch season anime list" }
         }.getOrNull()
             ?.bangumiList
@@ -272,6 +277,7 @@ class DandanplayDanmakuProvider(
             kotlin.runCatching {
                 dandanplayClient.searchSubject(name).animes
             }.onFailure {
+                if (it is CancellationException) throw it
                 logger.error(it) { "Failed to fetch anime list by name" }
             }.getOrNull() ?: emptySet()
         }

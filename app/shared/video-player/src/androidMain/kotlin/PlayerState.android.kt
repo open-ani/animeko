@@ -48,7 +48,6 @@ import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.videoplayer.data.VideoData
 import me.him188.ani.app.videoplayer.data.VideoProperties
 import me.him188.ani.app.videoplayer.data.VideoSource
-import me.him188.ani.app.videoplayer.data.emptyVideoData
 import me.him188.ani.app.videoplayer.media.VideoDataDataSource
 import me.him188.ani.app.videoplayer.ui.state.AbstractPlayerState
 import me.him188.ani.app.videoplayer.ui.state.AudioTrack
@@ -103,8 +102,8 @@ internal class ExoPlayerState @UiThread constructor(
         if (source is HttpStreamingVideoSource) {
             return ExoPlayerData(
                 source,
-                emptyVideoData(),
-                releaseResource = {},
+                source.open(), // no need to close
+                releaseResource = { },
                 setMedia = {
                     val headers = source.webVideo.headers
                     val item = MediaItem.Builder().apply {

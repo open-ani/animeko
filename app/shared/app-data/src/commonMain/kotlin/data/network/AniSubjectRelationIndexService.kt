@@ -25,10 +25,10 @@ class AniSubjectRelationIndexService(
 ) {
     private val api by apiLazy
 
-    suspend fun getSubjectSequelSubjects(subjectId: Int): List<Int> = withContext(ioDispatcher) {
+    suspend fun getSubjectRelationIndex(subjectId: Int) = withContext(ioDispatcher) {
         try {
             // https://auth.myani.org/v1/subject-relations/239816
-            api.getSubjectRelations(subjectId.toString()).body().sequelSubjects
+            api.getSubjectRelations(subjectId.toString()).body()
         } catch (e: Exception) {
             throw RepositoryException.wrapOrThrowCancellation(e)
         }

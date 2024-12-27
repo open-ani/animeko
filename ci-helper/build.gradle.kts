@@ -215,23 +215,24 @@ tasks.register("prepareArtifactsForManualUpload") {
     }
 }
 
-fun getProperty(name: String) =
-    System.getProperty(name)
-        ?: System.getenv(name)
-        ?: properties[name]?.toString()
-        ?: getLocalProperty(name)
-        ?: ext.get(name).toString()
-
-fun findProperty(name: String) =
-    System.getProperty(name)
-        ?: System.getenv(name)
-        ?: properties[name]?.toString()
-        ?: getLocalProperty(name)
-        ?: runCatching { ext.get(name) }.getOrNull()?.toString()
-
 // do not use `object`, compiler bug
 open class ReleaseEnvironment {
-    private val tag by lazy {
+    private fun getProperty(name: String) =
+        System.getProperty(name)
+            ?: System.getenv(name)
+            ?: properties[name]?.toString()
+            ?: getLocalProperty(name)
+            ?: ext.get(name).toString()
+
+    // K2 IDE can't resolve it if it's top-level
+    private fun findProperty(name: String) =
+        System.getProperty(name)
+            ?: System.getenv(name)
+            ?: properties[name]?.toString()
+            ?: getLocalProperty(name)
+            ?: runCatching { ext.get(name) }.getOrNull()?.toString()
+
+    private val tag: String by lazy {
         (findProperty("CI_TAG") ?: "3.0.0-dev").also { println("tag = $it") }
     }
     private val branch by lazy {
@@ -330,28 +331,12 @@ open class ReleaseEnvironment {
                     }
                 } catch (e: ClientRequestException) {
 //                    > Client request(POST https://uploads.github.com/repos/open-ani/animeko/releases/190838274/assets?name=ani-4.0.0-typesafe-actions-5-arm64-v8a.apk) invalid: 422 . Text: "{"message":"Validation Failed","request_id":"973A:1F88D9:CCBFD5:D954BA:675F47E0","documentation_url":"https://docs.github.com/rest","errors":[{"resource":"ReleaseAsset","code":"already_exists","field":"name"}]}"
-
                     if (e.response.status.value == 422) {
                         println("Asset already exists: $name")
                         return@runBlocking
                     }
                 }
                 if (getProperty("UPLOAD_TO_S3") == "true") {
-//                    val bucket = getProperty("AWS_BUCKET")
-//                    val baseUrl = getProperty("AWS_BASEURL").removeSuffix("/")
-//                    client.put("$baseUrl/$bucket/") {
-//                        header("Authorization", "Bearer $token")
-//                        header("x-amz-content-sha256",  "UNSIGNED-PAYLOAD")
-//                        parameter("name", name)
-//                        contentType(ContentType.parse(contentType))
-//                        setBody(object : OutgoingContent.ReadChannelContent() {
-//                            override val contentType: ContentType get() = ContentType.parse(contentType)
-//                            override val contentLength: Long = file.length()
-//                            override fun readFrom(): ByteReadChannel {
-//                                return file.readChannel()
-//                            }
-//                        })
-//                    }
                     putS3Object(name, file, contentType)
                 }
             }

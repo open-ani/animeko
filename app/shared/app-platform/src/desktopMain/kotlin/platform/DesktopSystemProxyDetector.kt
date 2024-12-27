@@ -24,8 +24,10 @@ sealed class DesktopSystemProxyDetector : SystemProxyDetector
 class WindowsSystemProxyDetector : DesktopSystemProxyDetector() {
     private val logger = logger<WindowsSystemProxyDetector>()
 
-    private val winHttp: WinHttp =
-        Native.load("winhttp", WinHttp::class.java, W32APIOptions.DEFAULT_OPTIONS) as WinHttp
+    private val winHttp: Result<WinHttp> =
+        runCatching {
+            Native.load("winhttp", WinHttp::class.java, W32APIOptions.DEFAULT_OPTIONS) as WinHttp
+        }
 
     override fun detect(): SystemProxyInfo? {
         return kotlin.runCatching {
@@ -85,7 +87,7 @@ class WindowsSystemProxyDetector : DesktopSystemProxyDetector() {
     // Function to get the proxy settings
     private fun getWindowsProxySettings(): WINHTTP_CURRENT_USER_IE_PROXY_CONFIG? {
         val proxyConfig = WINHTTP_CURRENT_USER_IE_PROXY_CONFIG()
-        val success = winHttp.WinHttpGetIEProxyConfigForCurrentUser(proxyConfig)
+        val success = winHttp.getOrThrow().WinHttpGetIEProxyConfigForCurrentUser(proxyConfig)
 
         return if (success) proxyConfig else null
     }

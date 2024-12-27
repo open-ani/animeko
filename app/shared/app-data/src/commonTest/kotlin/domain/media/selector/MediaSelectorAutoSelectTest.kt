@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.test.runTest
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
+import me.him188.ani.app.data.models.subject.SubjectSeriesInfo
 import me.him188.ani.app.domain.media.SOURCE_DMHY
 import me.him188.ani.app.domain.media.TestMediaList
 import me.him188.ani.app.domain.media.createTestDefaultMedia
@@ -27,6 +28,7 @@ import me.him188.ani.app.domain.mediasource.instance.createTestMediaSourceInstan
 import me.him188.ani.datasources.api.DefaultMedia
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.MediaProperties
+import me.him188.ani.datasources.api.SubtitleKind
 import me.him188.ani.datasources.api.paging.SinglePagePagedSource
 import me.him188.ani.datasources.api.paging.SizedSource
 import me.him188.ani.datasources.api.source.MatchKind
@@ -36,6 +38,7 @@ import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.source.MediaSourceLocation
 import me.him188.ani.datasources.api.source.TestHttpMediaSource
 import me.him188.ani.datasources.api.topic.EpisodeRange
+import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.FileSize.Companion.megaBytes
 import me.him188.ani.datasources.api.topic.Resolution
 import me.him188.ani.datasources.api.topic.ResourceLocation
@@ -68,7 +71,7 @@ class MediaSelectorAutoSelectTest {
             subjectFinished = false,
             mediaSourcePrecedence = emptyList(),
             subtitlePreferences = MediaSelectorSubtitlePreferences.AllNormal,
-            subjectSequelNames = emptySet(),
+            subjectSeriesInfo = SubjectSeriesInfo.Fallback,
         ),
     )
 
@@ -196,6 +199,25 @@ class MediaSelectorAutoSelectTest {
         )
     }
 
+    private fun createTestMediaProperties(
+        subjectName: String? = null,
+        episodeName: String? = null,
+        subtitleLanguageIds: List<String> = listOf(ChineseSimplified, ChineseTraditional).map { it.id },
+        resolution: String = "1080P",
+        alliance: String = "桜都字幕组",
+        size: FileSize = 122.megaBytes,
+        subtitleKind: SubtitleKind? = SubtitleKind.CLOSED,
+    ): MediaProperties = MediaProperties(
+        subjectName = subjectName,
+        episodeName = episodeName,
+        subtitleLanguageIds = subtitleLanguageIds,
+        resolution = resolution,
+        alliance = alliance,
+        size = size,
+        subtitleKind = subtitleKind,
+    )
+
+
     ///////////////////////////////////////////////////////////////////////////
     // awaitCompletedAndSelectDefault
     ///////////////////////////////////////////////////////////////////////////
@@ -240,7 +262,7 @@ class MediaSelectorAutoSelectTest {
             originalUrl = "https://example.com/1",
             publishedTime = 1,
             episodeRange = EpisodeRange.single(EpisodeSort(1)),
-            properties = MediaProperties(
+            properties = createTestMediaProperties(
                 subtitleLanguageIds = listOf(ChineseSimplified, ChineseTraditional).map { it.id },
                 resolution = "1080P",
                 alliance = "桜都字幕组",
@@ -266,7 +288,7 @@ class MediaSelectorAutoSelectTest {
             originalUrl = "https://example.com/1",
             publishedTime = 1,
             episodeRange = EpisodeRange.single(EpisodeSort(1)),
-            properties = MediaProperties(
+            properties = createTestMediaProperties(
                 subtitleLanguageIds = listOf(ChineseSimplified, ChineseTraditional).map { it.id },
                 resolution = "1080P",
                 alliance = "桜都字幕组",
