@@ -367,15 +367,15 @@ val buildMatrixInstances = listOf(
         ),
         buildAllAndroidAbis = false,
     ),
-    MatrixInstance(
-        runner = Runner.GithubUbuntu2004,
-        name = "Ubuntu x86_64 (Compile only)",
-        uploadApk = false,
-        composeResourceTriple = "linux-x64",
-        runTests = false,
-        uploadDesktopInstallers = false,
-        extraGradleArgs = listOf(),
-    ),
+//    MatrixInstance(
+//        runner = Runner.GithubUbuntu2004,
+//        name = "Ubuntu x86_64 (Compile only)",
+//        uploadApk = false,
+//        composeResourceTriple = "linux-x64",
+//        runTests = false,
+//        uploadDesktopInstallers = false,
+//        extraGradleArgs = listOf(),
+//    ),
     MatrixInstance(
         runner = Runner.GithubMacOS13,
         uploadApk = true, // all ABIs
