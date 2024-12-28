@@ -47,6 +47,7 @@ import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberTestMediaSelector
 import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberTestMediaSourceInfoProvider
 import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberTestMediaSourceResults
 import me.him188.ani.app.ui.subject.episode.statistics.VideoLoadingState
+import me.him188.ani.app.ui.subject.episode.video.components.SideSheets
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.rememberTestEpisodeSelectorState
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
 import me.him188.ani.app.videoplayer.ui.VideoControllerState
@@ -156,9 +157,10 @@ class EpisodeVideoControllerTest {
                 },
                 scope,
             )
+            val expanded = true
             EpisodeVideoImpl(
                 playerState = playerState,
-                expanded = true,
+                expanded = expanded,
                 hasNextEpisode = true,
                 onClickNextEpisode = {},
                 videoControllerState = videoControllerState,
@@ -192,15 +194,22 @@ class EpisodeVideoControllerTest {
                 sidebarVisible = true,
                 onToggleSidebar = {},
                 progressSliderState = progressSliderState,
-                mediaSelectorState = rememberTestMediaSelectorPresentation(),
-                onRefreshMediaSources = {},
-                mediaSourceResultsPresentation = rememberTestMediaSourceResults(),
-                episodeSelectorState = rememberTestEpisodeSelectorState(),
-                mediaSourceInfoProvider = rememberTestMediaSourceInfoProvider(),
                 audioController = NoOpLevelController,
                 brightnessController = NoOpLevelController,
                 leftBottomTips = {},
-                danmakuRegexFilterState = createTestDanmakuRegexFilterState(),
+                sideSheets = { sheetsController ->
+                    EpisodeVideoDefaults.SideSheets(
+                        sheetsController,
+                        videoControllerState,
+                        danmakuRegexFilterState = createTestDanmakuRegexFilterState(),
+                        expanded = expanded,
+                        mediaSelectorState = rememberTestMediaSelectorPresentation(),
+                        mediaSourceResultsPresentation = rememberTestMediaSourceResults(),
+                        mediaSourceInfoProvider = rememberTestMediaSourceInfoProvider(),
+                        episodeSelectorState = rememberTestEpisodeSelectorState(),
+                        onRefreshMediaSources = {},
+                    )
+                },
                 gestureFamily = gestureFamily,
             )
         }
@@ -453,7 +462,7 @@ class EpisodeVideoControllerTest {
                 assertEquals(NORMAL_INVISIBLE, controllerState.visibility)
             }
         }
-    
+
     /**
      * @see GestureFamily.swipeToSeek
      */
@@ -937,7 +946,7 @@ class EpisodeVideoControllerTest {
             waitForSideSheetClose = { waitUntil { onNodeWithTag(TAG_SPEED_SWITCHER_DROPDOWN_MENU).doesNotExist() } },
         )
     }
-    
+
     ///////////////////////////////////////////////////////////////////////////
     // MOUSE 模式下单击鼠标
     ///////////////////////////////////////////////////////////////////////////

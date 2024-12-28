@@ -120,6 +120,7 @@ import me.him188.ani.app.ui.subject.episode.danmaku.DummyDanmakuEditor
 import me.him188.ani.app.ui.subject.episode.danmaku.PlayerDanmakuState
 import me.him188.ani.app.ui.subject.episode.details.EpisodeDetails
 import me.him188.ani.app.ui.subject.episode.notif.VideoNotifEffect
+import me.him188.ani.app.ui.subject.episode.video.components.SideSheets
 import me.him188.ani.app.ui.subject.episode.video.topbar.EpisodePlayerTitle
 import me.him188.ani.app.videoplayer.ui.VideoControllerState
 import me.him188.ani.app.videoplayer.ui.guesture.NoOpLevelController
@@ -695,11 +696,6 @@ private fun EpisodeVideo(
             vm.sidebarVisible = it
         },
         progressSliderState = progressSliderState,
-        mediaSelectorState = vm.mediaSelectorState,
-        onRefreshMediaSources = { vm.refreshFetch() },
-        mediaSourceResultsPresentation = vm.mediaSourceResultsPresentation,
-        episodeSelectorState = vm.episodeSelectorState,
-        mediaSourceInfoProvider = vm.mediaSourceInfoProvider,
         audioController = remember {
             derivedStateOf {
                 platformComponents.audioManager?.asLevelController(StreamType.MUSIC) ?: NoOpLevelController
@@ -723,11 +719,23 @@ private fun EpisodeVideo(
                 )
             }
         },
+        sideSheets = { sheetsController ->
+            EpisodeVideoDefaults.SideSheets(
+                sheetsController,
+                videoControllerState,
+                vm.danmakuRegexFilterState,
+                expanded,
+                vm.mediaSelectorState,
+                vm.mediaSourceResultsPresentation,
+                vm.mediaSourceInfoProvider,
+                vm.episodeSelectorState,
+                onRefreshMediaSources = { vm.refreshFetch() },
+            )
+        },
         modifier = modifier
             .fillMaxWidth().background(Color.Black)
             .then(if (expanded) Modifier.fillMaxSize() else Modifier.statusBarsPadding()),
         maintainAspectRatio = maintainAspectRatio,
-        danmakuRegexFilterState = vm.danmakuRegexFilterState,
         contentWindowInsets = windowInsets,
     )
 }

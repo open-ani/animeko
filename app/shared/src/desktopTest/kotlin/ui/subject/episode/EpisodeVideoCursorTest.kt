@@ -47,6 +47,7 @@ import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberTestMediaSelector
 import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberTestMediaSourceInfoProvider
 import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberTestMediaSourceResults
 import me.him188.ani.app.ui.subject.episode.statistics.VideoLoadingState
+import me.him188.ani.app.ui.subject.episode.video.components.SideSheets
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.rememberTestEpisodeSelectorState
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
 import me.him188.ani.app.videoplayer.ui.VideoControllerState
@@ -93,9 +94,10 @@ class EpisodeVideoCursorTest {
                 DummyPlayerState(scope.coroutineContext)
             }
             Row {
+                val expanded = true
                 EpisodeVideoImpl(
                     playerState = playerState,
-                    expanded = true,
+                    expanded = expanded,
                     hasNextEpisode = true,
                     onClickNextEpisode = {},
                     videoControllerState = controllerState,
@@ -119,16 +121,23 @@ class EpisodeVideoCursorTest {
                     sidebarVisible = true,
                     onToggleSidebar = {},
                     progressSliderState = progressSliderState,
-                    mediaSelectorState = rememberTestMediaSelectorPresentation(),
-                    onRefreshMediaSources = {},
-                    mediaSourceResultsPresentation = rememberTestMediaSourceResults(),
-                    episodeSelectorState = rememberTestEpisodeSelectorState(),
-                    mediaSourceInfoProvider = rememberTestMediaSourceInfoProvider(),
                     audioController = NoOpLevelController,
                     brightnessController = NoOpLevelController,
                     leftBottomTips = {},
+                    sideSheets = { sheetsController ->
+                        EpisodeVideoDefaults.SideSheets(
+                            sheetsController,
+                            controllerState,
+                            danmakuRegexFilterState = createTestDanmakuRegexFilterState(),
+                            expanded = expanded,
+                            mediaSelectorState = rememberTestMediaSelectorPresentation(),
+                            mediaSourceResultsPresentation = rememberTestMediaSourceResults(),
+                            mediaSourceInfoProvider = rememberTestMediaSourceInfoProvider(),
+                            episodeSelectorState = rememberTestEpisodeSelectorState(),
+                            onRefreshMediaSources = {},
+                        )
+                    },
                     modifier = Modifier.weight(1f),
-                    danmakuRegexFilterState = createTestDanmakuRegexFilterState(),
                     gestureFamily = gestureFamily,
                 )
 
