@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.systemBars
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.DisplaySettings
@@ -32,17 +31,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -66,6 +62,7 @@ import me.him188.ani.app.ui.subject.episode.mediaFetch.MediaSourceInfoProvider
 import me.him188.ani.app.ui.subject.episode.mediaFetch.MediaSourceResultsPresentation
 import me.him188.ani.app.ui.subject.episode.statistics.VideoLoadingState
 import me.him188.ani.app.ui.subject.episode.video.components.FloatingFullscreenSwitchButton
+import me.him188.ani.app.ui.subject.episode.video.components.rememberStatusBarHeightAsState
 import me.him188.ani.app.ui.subject.episode.video.loading.EpisodeVideoLoadingIndicator
 import me.him188.ani.app.ui.subject.episode.video.settings.EpisodeVideoSettings
 import me.him188.ani.app.ui.subject.episode.video.settings.EpisodeVideoSettingsSideSheet
@@ -101,7 +98,6 @@ import me.him188.ani.danmaku.ui.DanmakuHost
 import me.him188.ani.danmaku.ui.DanmakuHostState
 import me.him188.ani.utils.platform.annotations.TestOnly
 import me.him188.ani.utils.platform.isDesktop
-import me.him188.ani.utils.platform.isMobile
 
 internal const val TAG_EPISODE_VIDEO_TOP_BAR = "EpisodeVideoTopBar"
 
@@ -220,24 +216,12 @@ internal fun EpisodeVideoImpl(
                 Text("预览模式")
             } else {
                 // Save the status bar height to offset the video player
-                var statusBarHeight by rememberSaveable { mutableStateOf(0) }
-                if (LocalPlatform.current.isMobile() && !expanded) {
-                    val insets = WindowInsets.systemBars
-                    val density = LocalDensity.current
-                    SideEffect {
-                        statusBarHeight = insets.getTop(density)
-                    }
-                }
+                val statusBarHeight by rememberStatusBarHeightAsState()
 
                 VideoPlayer(
                     playerState,
                     Modifier
-                        .offset(
-                            x = if (expanded) with(LocalDensity.current) {
-                                -statusBarHeight.toDp() / 2
-                            } else 0.dp,
-                            y = 0.dp,
-                        )
+                        .offset(x = -statusBarHeight / 2, y = 0.dp)
                         .matchParentSize(),
                 )
             }
