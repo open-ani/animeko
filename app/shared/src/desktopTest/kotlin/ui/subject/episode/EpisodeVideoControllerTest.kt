@@ -44,7 +44,6 @@ import me.him188.ani.app.ui.settings.danmaku.createTestDanmakuRegexFilterState
 import me.him188.ani.app.ui.subject.episode.danmaku.DanmakuEditor
 import me.him188.ani.app.ui.subject.episode.danmaku.PlayerDanmakuState
 import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberTestMediaSelectorPresentation
-import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberTestMediaSourceInfoProvider
 import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberTestMediaSourceResults
 import me.him188.ani.app.ui.subject.episode.statistics.VideoLoadingState
 import me.him188.ani.app.ui.subject.episode.video.components.DanmakuSettingsSheet
@@ -227,7 +226,6 @@ class EpisodeVideoControllerTest {
                             EpisodeVideoSideSheets.MediaSelectorSheet(
                                 mediaSelectorState = rememberTestMediaSelectorPresentation(),
                                 mediaSourceResultsPresentation = rememberTestMediaSourceResults(),
-                                mediaSourceInfoProvider = rememberTestMediaSourceInfoProvider(),
                                 onDismissRequest = { goBack() },
                                 onRefresh = {},
                             )

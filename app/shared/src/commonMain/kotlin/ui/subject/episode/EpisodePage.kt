@@ -748,7 +748,6 @@ private fun EpisodeVideo(
                     EpisodeVideoSideSheets.MediaSelectorSheet(
                         vm.mediaSelectorState,
                         vm.mediaSourceResultsPresentation,
-                        vm.mediaSourceInfoProvider,
                         onDismissRequest = { goBack() },
                         onRefresh = { vm.refreshFetch() },
                     )

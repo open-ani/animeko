@@ -27,7 +27,6 @@ import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.preview.PHONE_LANDSCAPE
 import me.him188.ani.app.ui.settings.danmaku.createTestDanmakuRegexFilterState
 import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberTestMediaSelectorPresentation
-import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberTestMediaSourceInfoProvider
 import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberTestMediaSourceResults
 import me.him188.ani.app.ui.subject.episode.statistics.VideoLoadingState
 import me.him188.ani.app.ui.subject.episode.video.components.DanmakuSettingsSheet
@@ -168,7 +167,6 @@ private fun PreviewVideoScaffoldImpl(
                     EpisodeVideoSideSheets.MediaSelectorSheet(
                         mediaSelectorState = rememberTestMediaSelectorPresentation(),
                         mediaSourceResultsPresentation = rememberTestMediaSourceResults(),
-                        mediaSourceInfoProvider = rememberTestMediaSourceInfoProvider(),
                         onDismissRequest = { goBack() },
                         onRefresh = {},
                     )
