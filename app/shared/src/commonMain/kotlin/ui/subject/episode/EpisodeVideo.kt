@@ -10,7 +10,6 @@
 package me.him188.ani.app.ui.subject.episode
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -33,7 +32,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.collectAsState
@@ -48,10 +46,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import me.him188.ani.app.data.models.preference.FullscreenSwitchMode
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.tools.rememberUiMonoTasker
 import me.him188.ani.app.ui.foundation.LocalIsPreviewing
@@ -69,6 +65,7 @@ import me.him188.ani.app.ui.subject.episode.mediaFetch.MediaSelectorState
 import me.him188.ani.app.ui.subject.episode.mediaFetch.MediaSourceInfoProvider
 import me.him188.ani.app.ui.subject.episode.mediaFetch.MediaSourceResultsPresentation
 import me.him188.ani.app.ui.subject.episode.statistics.VideoLoadingState
+import me.him188.ani.app.ui.subject.episode.video.components.FloatingFullscreenSwitchButton
 import me.him188.ani.app.ui.subject.episode.video.loading.EpisodeVideoLoadingIndicator
 import me.him188.ani.app.ui.subject.episode.video.settings.EpisodeVideoSettings
 import me.him188.ani.app.ui.subject.episode.video.settings.EpisodeVideoSettingsSideSheet
@@ -106,7 +103,6 @@ import me.him188.ani.danmaku.ui.DanmakuHostState
 import me.him188.ani.utils.platform.annotations.TestOnly
 import me.him188.ani.utils.platform.isDesktop
 import me.him188.ani.utils.platform.isMobile
-import kotlin.time.Duration.Companion.seconds
 
 internal const val TAG_EPISODE_VIDEO_TOP_BAR = "EpisodeVideoTopBar"
 
@@ -415,34 +411,11 @@ internal fun EpisodeVideoImpl(
         },
         detachedProgressSlider = detachedProgressSlider,
         floatingBottomEnd = {
-            when (config.fullscreenSwitchMode) {
-                FullscreenSwitchMode.ONLY_IN_CONTROLLER -> {}
-
-                FullscreenSwitchMode.ALWAYS_SHOW_FLOATING -> {
-                    PlayerControllerDefaults.FullscreenIcon(
-                        expanded,
-                        onClickFullscreen = onClickFullScreen,
-                    )
-                }
-
-                FullscreenSwitchMode.AUTO_HIDE_FLOATING -> {
-                    var visible by remember { mutableStateOf(true) }
-                    LaunchedEffect(true) {
-                        delay(5.seconds)
-                        visible = false
-                    }
-                    AnimatedVisibility(
-                        visible = visible,
-                        enter = fadeIn(snap()),
-                        exit = fadeOut(),
-                    ) {
-                        PlayerControllerDefaults.FullscreenIcon(
-                            expanded,
-                            onClickFullscreen = onClickFullScreen,
-                        )
-                    }
-                }
-            }
+            EpisodeVideoDefaults.FloatingFullscreenSwitchButton(
+                config.fullscreenSwitchMode,
+                isFullscreen = expanded,
+                onClickFullScreen,
+            )
         },
         rhsSheet = {
             val alwaysOnRequester = rememberAlwaysOnRequester(videoControllerState, "sideSheets")
@@ -513,7 +486,6 @@ internal fun EpisodeVideoImpl(
         leftBottomTips = leftBottomTips,
     )
 }
-
 
 private enum class SideSheetState {
     NONE,
