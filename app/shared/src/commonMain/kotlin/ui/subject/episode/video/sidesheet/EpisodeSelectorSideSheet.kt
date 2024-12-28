@@ -45,7 +45,8 @@ import me.him188.ani.app.ui.foundation.icons.PlayingIcon
 import me.him188.ani.app.ui.subject.cache.contentColorForWatchStatus
 import me.him188.ani.app.ui.subject.episode.EpisodePresentation
 import me.him188.ani.app.ui.subject.episode.TAG_EPISODE_SELECTOR_SHEET
-import me.him188.ani.app.ui.subject.episode.video.settings.EpisodeVideoSettingsSideSheet
+import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheets
+import me.him188.ani.app.ui.subject.episode.video.settings.SideSheetLayout
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.platform.annotations.TestOnly
 import kotlin.coroutines.CoroutineContext
@@ -115,21 +116,22 @@ class EpisodeSelectorState(
     }
 }
 
+@Suppress("UnusedReceiverParameter")
 @Composable
-fun EpisodeSelectorSideSheet(
+fun EpisodeVideoSideSheets.EpisodeSelectorSheet(
     state: EpisodeSelectorState,
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    EpisodeVideoSettingsSideSheet(
+    SideSheetLayout(
         onDismissRequest = onDismissRequest,
+        modifier = modifier.testTag(TAG_EPISODE_SELECTOR_SHEET),
         title = { Text(text = "选择剧集") },
         closeButton = {
             IconButton(onClick = onDismissRequest) {
                 Icon(Icons.Rounded.Close, contentDescription = "关闭")
             }
         },
-        modifier = modifier.testTag(TAG_EPISODE_SELECTOR_SHEET),
     ) {
         val lazyListState = rememberLazyListState()
         // 自动滚动到当前选中的剧集
@@ -166,12 +168,12 @@ fun EpisodeSelectorSideSheet(
                         }
                     },
                     colors =
-                    if (selected) ListItemDefaults.colors(
-                        headlineColor = MaterialTheme.colorScheme.primary,
-                        leadingIconColor = MaterialTheme.colorScheme.primary,
-                        trailingIconColor = MaterialTheme.colorScheme.primary,
-                    )
-                    else ListItemDefaults.colors(),
+                        if (selected) ListItemDefaults.colors(
+                            headlineColor = MaterialTheme.colorScheme.primary,
+                            leadingIconColor = MaterialTheme.colorScheme.primary,
+                            trailingIconColor = MaterialTheme.colorScheme.primary,
+                        )
+                        else ListItemDefaults.colors(),
                 )
 
                 if (index != state.items.lastIndex) {

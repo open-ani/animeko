@@ -14,17 +14,19 @@ package me.him188.ani.app.ui.subject.episode.video.sidesheet
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
+import me.him188.ani.app.ui.foundation.preview.PreviewTabletLightDark
 import me.him188.ani.app.ui.subject.episode.mediaFetch.emptyMediaSourceResultsPresentation
 import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberTestMediaSelectorPresentation
 import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberTestMediaSourceInfoProvider
+import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheets
 import me.him188.ani.utils.platform.annotations.TestOnly
 
 @Composable
 @Preview
-@Preview(device = "spec:width=1280dp,height=800dp,dpi=240")
+@PreviewTabletLightDark
 fun PreviewEpisodeVideoMediaSelectorSideSheet() {
     ProvideCompositionLocalsForPreview {
-        EpisodeVideoMediaSelectorSideSheet(
+        EpisodeVideoSideSheets.MediaSelectorSheet(
             mediaSelectorState = rememberTestMediaSelectorPresentation(),
             mediaSourceResultsPresentation = emptyMediaSourceResultsPresentation(),
             rememberTestMediaSourceInfoProvider(),

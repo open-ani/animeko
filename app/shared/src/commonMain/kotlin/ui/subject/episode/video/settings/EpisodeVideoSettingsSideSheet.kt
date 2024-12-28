@@ -26,7 +26,6 @@ import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
@@ -37,18 +36,12 @@ import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
 import me.him188.ani.app.ui.foundation.theme.aniDarkColorTheme
 
-object EpisodeVideoSettingsSideSheetDefaults {
-    val containerColor
-        @Composable
-        get() = MaterialTheme.colorScheme.surfaceContainerHigh
-}
-
 @Composable
-fun EpisodeVideoSettingsSideSheet(
+fun SideSheetLayout(
+    title: @Composable () -> Unit,
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
-    containerColor: Color = EpisodeVideoSettingsSideSheetDefaults.containerColor,
-    title: @Composable () -> Unit = { Text(text = "弹幕设置") },
+    containerColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
     navigationButton: @Composable () -> Unit = { },
     closeButton: @Composable () -> Unit = {},
     content: @Composable () -> Unit,
@@ -79,7 +72,7 @@ fun EpisodeVideoSettingsSideSheet(
                     )
                     .fillMaxHeight()
                     .widthIn(min = 300.dp, max = 400.dp)
-                    .width((maxWidth * 0.28f)),
+                    .width((this.maxWidth * 0.28f)),
                 color = containerColor,
             ) {
                 Column {

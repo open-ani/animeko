@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -27,11 +28,12 @@ import me.him188.ani.app.ui.subject.episode.mediaFetch.MediaSelectorView
 import me.him188.ani.app.ui.subject.episode.mediaFetch.MediaSourceInfoProvider
 import me.him188.ani.app.ui.subject.episode.mediaFetch.MediaSourceResultsPresentation
 import me.him188.ani.app.ui.subject.episode.mediaFetch.MediaSourceResultsView
-import me.him188.ani.app.ui.subject.episode.video.settings.EpisodeVideoSettingsSideSheet
-import me.him188.ani.app.ui.subject.episode.video.settings.EpisodeVideoSettingsSideSheetDefaults
+import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheets
+import me.him188.ani.app.ui.subject.episode.video.settings.SideSheetLayout
 
+@Suppress("UnusedReceiverParameter")
 @Composable
-fun EpisodeVideoMediaSelectorSideSheet(
+fun EpisodeVideoSideSheets.MediaSelectorSheet(
     mediaSelectorState: MediaSelectorState,
     mediaSourceResultsPresentation: MediaSourceResultsPresentation,
     mediaSourceInfoProvider: MediaSourceInfoProvider,
@@ -39,10 +41,10 @@ fun EpisodeVideoMediaSelectorSideSheet(
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    EpisodeVideoSettingsSideSheet(
+    SideSheetLayout(
+        title = { Text(text = "选择数据源") },
         onDismissRequest = onDismissRequest,
         Modifier.testTag(TAG_MEDIA_SELECTOR_SHEET),
-        title = { Text(text = "选择数据源") },
         closeButton = {
             IconButton(onClick = onDismissRequest) {
                 Icon(Icons.Rounded.Close, contentDescription = "关闭")
@@ -57,7 +59,7 @@ fun EpisodeVideoMediaSelectorSideSheet(
             modifier.padding(horizontal = 16.dp)
                 .fillMaxWidth()
                 .navigationBarsPadding(),
-            stickyHeaderBackgroundColor = EpisodeVideoSettingsSideSheetDefaults.containerColor,
+            stickyHeaderBackgroundColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             itemProgressBar = {},
             onClickItem = {
                 mediaSelectorState.select(it)

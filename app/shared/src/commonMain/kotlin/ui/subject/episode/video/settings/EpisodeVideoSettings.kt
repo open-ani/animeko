@@ -92,7 +92,7 @@ class EpisodeVideoSettingsViewModel : AbstractSettingsViewModel(), KoinComponent
 @Composable
 fun EpisodeVideoSettings(
     vm: EpisodeVideoSettingsViewModel,
-    onManageRegexFilters: () -> Unit,
+    onNavigateToFilterSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     return EpisodeVideoSettings(
@@ -101,7 +101,7 @@ fun EpisodeVideoSettings(
             vm::setDanmakuConfig
         },
         modifier = modifier,
-        onManageRegexFilters = onManageRegexFilters,
+        onManageRegexFilters = onNavigateToFilterSettings,
         enableRegexFilter = vm.danmakuFilterConfig.enableRegexFilter,
         switchDanmakuRegexFilterCompletely = vm::switchDanmakuRegexFilterCompletely,
     )

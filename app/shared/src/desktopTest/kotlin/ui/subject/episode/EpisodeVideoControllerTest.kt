@@ -9,11 +9,6 @@
 
 package me.him188.ani.app.ui.subject.episode
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -52,14 +47,13 @@ import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberTestMediaSelector
 import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberTestMediaSourceInfoProvider
 import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberTestMediaSourceResults
 import me.him188.ani.app.ui.subject.episode.statistics.VideoLoadingState
+import me.him188.ani.app.ui.subject.episode.video.components.DanmakuSettingsSheet
 import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheetPage
+import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheets
 import me.him188.ani.app.ui.subject.episode.video.components.SideSheets
-import me.him188.ani.app.ui.subject.episode.video.settings.EpisodeVideoSettings
-import me.him188.ani.app.ui.subject.episode.video.settings.EpisodeVideoSettingsSideSheet
-import me.him188.ani.app.ui.subject.episode.video.settings.EpisodeVideoSettingsViewModel
-import me.him188.ani.app.ui.subject.episode.video.sidesheet.EditDanmakuRegexFilterSideSheet
-import me.him188.ani.app.ui.subject.episode.video.sidesheet.EpisodeSelectorSideSheet
-import me.him188.ani.app.ui.subject.episode.video.sidesheet.EpisodeVideoMediaSelectorSideSheet
+import me.him188.ani.app.ui.subject.episode.video.sidesheet.DanmakuRegexFilterSettings
+import me.him188.ani.app.ui.subject.episode.video.sidesheet.EpisodeSelectorSheet
+import me.him188.ani.app.ui.subject.episode.video.sidesheet.MediaSelectorSheet
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.rememberTestEpisodeSelectorState
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
 import me.him188.ani.app.videoplayer.ui.VideoControllerState
@@ -214,33 +208,23 @@ class EpisodeVideoControllerTest {
                         sheetsController,
                         videoControllerState,
                         playerSettingsPage = {
-                            EpisodeVideoSettingsSideSheet(
+                            EpisodeVideoSideSheets.DanmakuSettingsSheet(
                                 onDismissRequest = { goBack() },
-                                Modifier.testTag(TAG_DANMAKU_SETTINGS_SHEET),
-                                title = { Text(text = "弹幕设置") },
-                                closeButton = {
-                                    IconButton(onClick = { goBack() }) {
-                                        Icon(Icons.Rounded.Close, contentDescription = "关闭")
-                                    }
+                                onNavigateToFilterSettings = {
+                                    sheetsController.navigateTo(EpisodeVideoSideSheetPage.EDIT_DANMAKU_REGEX_FILTER)
                                 },
-                            ) {
-                                EpisodeVideoSettings(
-                                    remember { EpisodeVideoSettingsViewModel() },
-                                    onManageRegexFilters = {
-                                        sheetsController.navigateTo(EpisodeVideoSideSheetPage.EDIT_DANMAKU_REGEX_FILTER)
-                                    },
-                                )
-                            }
+                                Modifier.testTag(TAG_DANMAKU_SETTINGS_SHEET),
+                            )
                         },
                         editDanmakuRegexFilterPage = {
-                            EditDanmakuRegexFilterSideSheet(
+                            EpisodeVideoSideSheets.DanmakuRegexFilterSettings(
                                 state = createTestDanmakuRegexFilterState(),
                                 onDismissRequest = { goBack() },
                                 expanded = expanded,
                             )
                         },
                         mediaSelectorPage = {
-                            EpisodeVideoMediaSelectorSideSheet(
+                            EpisodeVideoSideSheets.MediaSelectorSheet(
                                 mediaSelectorState = rememberTestMediaSelectorPresentation(),
                                 mediaSourceResultsPresentation = rememberTestMediaSourceResults(),
                                 mediaSourceInfoProvider = rememberTestMediaSourceInfoProvider(),
@@ -249,7 +233,7 @@ class EpisodeVideoControllerTest {
                             )
                         },
                         episodeSelectorPage = {
-                            EpisodeSelectorSideSheet(
+                            EpisodeVideoSideSheets.EpisodeSelectorSheet(
                                 state = rememberTestEpisodeSelectorState(),
                                 onDismissRequest = { goBack() },
                             )
