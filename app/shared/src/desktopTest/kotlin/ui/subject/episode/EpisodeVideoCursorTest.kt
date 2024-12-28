@@ -42,13 +42,7 @@ import me.him188.ani.app.ui.foundation.effects.TAG_CURSOR_VISIBILITY_EFFECT_VISI
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.foundation.theme.aniDarkColorTheme
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
-import me.him188.ani.app.ui.settings.danmaku.createTestDanmakuRegexFilterState
-import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberTestMediaSelectorPresentation
-import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberTestMediaSourceInfoProvider
-import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberTestMediaSourceResults
 import me.him188.ani.app.ui.subject.episode.statistics.VideoLoadingState
-import me.him188.ani.app.ui.subject.episode.video.components.SideSheets
-import me.him188.ani.app.ui.subject.episode.video.sidesheet.rememberTestEpisodeSelectorState
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
 import me.him188.ani.app.videoplayer.ui.VideoControllerState
 import me.him188.ani.app.videoplayer.ui.guesture.GestureFamily
@@ -124,19 +118,7 @@ class EpisodeVideoCursorTest {
                     audioController = NoOpLevelController,
                     brightnessController = NoOpLevelController,
                     leftBottomTips = {},
-                    sideSheets = { sheetsController ->
-                        EpisodeVideoDefaults.SideSheets(
-                            sheetsController,
-                            controllerState,
-                            danmakuRegexFilterState = createTestDanmakuRegexFilterState(),
-                            expanded = expanded,
-                            mediaSelectorState = rememberTestMediaSelectorPresentation(),
-                            mediaSourceResultsPresentation = rememberTestMediaSourceResults(),
-                            mediaSourceInfoProvider = rememberTestMediaSourceInfoProvider(),
-                            episodeSelectorState = rememberTestEpisodeSelectorState(),
-                            onRefreshMediaSources = {},
-                        )
-                    },
+                    sideSheets = {},
                     modifier = Modifier.weight(1f),
                     gestureFamily = gestureFamily,
                 )

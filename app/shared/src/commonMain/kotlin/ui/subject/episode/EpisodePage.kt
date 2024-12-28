@@ -39,8 +39,12 @@ import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -71,6 +75,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.coerceIn
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -120,7 +125,14 @@ import me.him188.ani.app.ui.subject.episode.danmaku.DummyDanmakuEditor
 import me.him188.ani.app.ui.subject.episode.danmaku.PlayerDanmakuState
 import me.him188.ani.app.ui.subject.episode.details.EpisodeDetails
 import me.him188.ani.app.ui.subject.episode.notif.VideoNotifEffect
+import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheetPage
 import me.him188.ani.app.ui.subject.episode.video.components.SideSheets
+import me.him188.ani.app.ui.subject.episode.video.settings.EpisodeVideoSettings
+import me.him188.ani.app.ui.subject.episode.video.settings.EpisodeVideoSettingsSideSheet
+import me.him188.ani.app.ui.subject.episode.video.settings.EpisodeVideoSettingsViewModel
+import me.him188.ani.app.ui.subject.episode.video.sidesheet.EditDanmakuRegexFilterSideSheet
+import me.him188.ani.app.ui.subject.episode.video.sidesheet.EpisodeSelectorSideSheet
+import me.him188.ani.app.ui.subject.episode.video.sidesheet.EpisodeVideoMediaSelectorSideSheet
 import me.him188.ani.app.ui.subject.episode.video.topbar.EpisodePlayerTitle
 import me.him188.ani.app.videoplayer.ui.VideoControllerState
 import me.him188.ani.app.videoplayer.ui.guesture.NoOpLevelController
@@ -723,13 +735,47 @@ private fun EpisodeVideo(
             EpisodeVideoDefaults.SideSheets(
                 sheetsController,
                 videoControllerState,
-                vm.danmakuRegexFilterState,
-                expanded,
-                vm.mediaSelectorState,
-                vm.mediaSourceResultsPresentation,
-                vm.mediaSourceInfoProvider,
-                vm.episodeSelectorState,
-                onRefreshMediaSources = { vm.refreshFetch() },
+                playerSettingsPage = {
+                    EpisodeVideoSettingsSideSheet(
+                        onDismissRequest = { goBack() },
+                        Modifier.testTag(TAG_DANMAKU_SETTINGS_SHEET),
+                        title = { Text(text = "弹幕设置") },
+                        closeButton = {
+                            IconButton(onClick = { goBack() }) {
+                                Icon(Icons.Rounded.Close, contentDescription = "关闭")
+                            }
+                        },
+                    ) {
+                        EpisodeVideoSettings(
+                            remember { EpisodeVideoSettingsViewModel() },
+                            onManageRegexFilters = {
+                                sheetsController.navigateTo(EpisodeVideoSideSheetPage.EDIT_DANMAKU_REGEX_FILTER)
+                            },
+                        )
+                    }
+                },
+                editDanmakuRegexFilterPage = {
+                    EditDanmakuRegexFilterSideSheet(
+                        state = vm.danmakuRegexFilterState,
+                        onDismissRequest = { goBack() },
+                        expanded = expanded,
+                    )
+                },
+                mediaSelectorPage = {
+                    EpisodeVideoMediaSelectorSideSheet(
+                        vm.mediaSelectorState,
+                        vm.mediaSourceResultsPresentation,
+                        vm.mediaSourceInfoProvider,
+                        onDismissRequest = { goBack() },
+                        onRefresh = { vm.refreshFetch() },
+                    )
+                },
+                episodeSelectorPage = {
+                    EpisodeSelectorSideSheet(
+                        vm.episodeSelectorState,
+                        onDismissRequest = { goBack() },
+                    )
+                },
             )
         },
         modifier = modifier

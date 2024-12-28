@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.app.ui.subject.episode.video.settings
 
 import androidx.compose.foundation.clickable
@@ -17,6 +26,7 @@ import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
@@ -38,7 +48,7 @@ fun EpisodeVideoSettingsSideSheet(
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
     containerColor: Color = EpisodeVideoSettingsSideSheetDefaults.containerColor,
-    title: @Composable () -> Unit = {},
+    title: @Composable () -> Unit = { Text(text = "弹幕设置") },
     navigationButton: @Composable () -> Unit = { },
     closeButton: @Composable () -> Unit = {},
     content: @Composable () -> Unit,

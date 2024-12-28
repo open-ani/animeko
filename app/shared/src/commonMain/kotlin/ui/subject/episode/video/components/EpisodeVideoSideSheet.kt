@@ -9,51 +9,29 @@
 
 package me.him188.ani.app.ui.subject.episode.video.components
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
 import kotlinx.serialization.Serializable
-import me.him188.ani.app.ui.settings.danmaku.DanmakuRegexFilterState
 import me.him188.ani.app.ui.subject.episode.EpisodeVideoDefaults
-import me.him188.ani.app.ui.subject.episode.TAG_DANMAKU_SETTINGS_SHEET
-import me.him188.ani.app.ui.subject.episode.mediaFetch.MediaSelectorState
-import me.him188.ani.app.ui.subject.episode.mediaFetch.MediaSourceInfoProvider
-import me.him188.ani.app.ui.subject.episode.mediaFetch.MediaSourceResultsPresentation
-import me.him188.ani.app.ui.subject.episode.video.settings.EpisodeVideoSettings
-import me.him188.ani.app.ui.subject.episode.video.settings.EpisodeVideoSettingsSideSheet
-import me.him188.ani.app.ui.subject.episode.video.settings.EpisodeVideoSettingsViewModel
-import me.him188.ani.app.ui.subject.episode.video.sidesheet.EditDanmakuRegexFilterSideSheet
-import me.him188.ani.app.ui.subject.episode.video.sidesheet.EpisodeSelectorSideSheet
-import me.him188.ani.app.ui.subject.episode.video.sidesheet.EpisodeSelectorState
-import me.him188.ani.app.ui.subject.episode.video.sidesheet.EpisodeVideoMediaSelectorSideSheet
 import me.him188.ani.app.videoplayer.ui.VideoControllerState
+import me.him188.ani.app.videoplayer.ui.VideoSideSheetScope
 import me.him188.ani.app.videoplayer.ui.VideoSideSheets
 import me.him188.ani.app.videoplayer.ui.VideoSideSheetsController
 import me.him188.ani.app.videoplayer.ui.hasPageAsState
 import me.him188.ani.app.videoplayer.ui.rememberAlwaysOnRequester
 import me.him188.ani.app.videoplayer.ui.rememberVideoSideSheetsController
 
-
 @Suppress("UnusedReceiverParameter")
 @Composable
 fun EpisodeVideoDefaults.SideSheets(
     sheetsController: VideoSideSheetsController<EpisodeVideoSideSheetPage> = rememberVideoSideSheetsController(),
     videoControllerState: VideoControllerState,
-    danmakuRegexFilterState: DanmakuRegexFilterState,
-    expanded: Boolean,
-    mediaSelectorState: MediaSelectorState,
-    mediaSourceResultsPresentation: MediaSourceResultsPresentation,
-    mediaSourceInfoProvider: MediaSourceInfoProvider,
-    episodeSelectorState: EpisodeSelectorState,
-    onRefreshMediaSources: () -> Unit,
+    playerSettingsPage: @Composable VideoSideSheetScope.() -> Unit,
+    editDanmakuRegexFilterPage: @Composable VideoSideSheetScope.() -> Unit,
+    mediaSelectorPage: @Composable VideoSideSheetScope.() -> Unit,
+    episodeSelectorPage: @Composable VideoSideSheetScope.() -> Unit,
     modifier: Modifier = Modifier,
 ) {
     VideoSideSheets(
@@ -61,50 +39,10 @@ fun EpisodeVideoDefaults.SideSheets(
         modifier,
     ) { page ->
         when (page) {
-            EpisodeVideoSideSheetPage.PLAYER_SETTINGS -> {
-                EpisodeVideoSettingsSideSheet(
-                    onDismissRequest = { goBack() },
-                    Modifier.testTag(TAG_DANMAKU_SETTINGS_SHEET),
-                    title = { Text(text = "弹幕设置") },
-                    closeButton = {
-                        IconButton(onClick = { goBack() }) {
-                            Icon(Icons.Rounded.Close, contentDescription = "关闭")
-                        }
-                    },
-                ) {
-                    EpisodeVideoSettings(
-                        remember { EpisodeVideoSettingsViewModel() },
-                        onManageRegexFilters = {
-                            sheetsController.navigateTo(EpisodeVideoSideSheetPage.EDIT_DANMAKU_REGEX_FILTER)
-                        },
-                    )
-                }
-            }
-
-            EpisodeVideoSideSheetPage.EDIT_DANMAKU_REGEX_FILTER -> {
-                EditDanmakuRegexFilterSideSheet(
-                    state = danmakuRegexFilterState,
-                    onDismissRequest = { goBack() },
-                    expanded = expanded,
-                )
-            }
-
-            EpisodeVideoSideSheetPage.MEDIA_SELECTOR -> {
-                EpisodeVideoMediaSelectorSideSheet(
-                    mediaSelectorState,
-                    mediaSourceResultsPresentation,
-                    mediaSourceInfoProvider,
-                    onDismissRequest = { goBack() },
-                    onRefresh = onRefreshMediaSources,
-                )
-            }
-
-            EpisodeVideoSideSheetPage.EPISODE_SELECTOR -> {
-                EpisodeSelectorSideSheet(
-                    episodeSelectorState,
-                    onDismissRequest = { goBack() },
-                )
-            }
+            EpisodeVideoSideSheetPage.PLAYER_SETTINGS -> playerSettingsPage()
+            EpisodeVideoSideSheetPage.EDIT_DANMAKU_REGEX_FILTER -> editDanmakuRegexFilterPage()
+            EpisodeVideoSideSheetPage.MEDIA_SELECTOR -> mediaSelectorPage()
+            EpisodeVideoSideSheetPage.EPISODE_SELECTOR -> episodeSelectorPage()
         }
     }
 
