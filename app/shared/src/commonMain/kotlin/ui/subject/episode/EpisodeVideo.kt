@@ -175,7 +175,7 @@ internal fun EpisodeVideoImpl(
         contentWindowInsets = contentWindowInsets,
         maintainAspectRatio = maintainAspectRatio,
         controllerState = videoControllerState,
-        gestureLocked = { isLocked },
+        gestureLocked = isLocked,
         topBar = {
             WindowDragArea {
                 PlayerTopBar(

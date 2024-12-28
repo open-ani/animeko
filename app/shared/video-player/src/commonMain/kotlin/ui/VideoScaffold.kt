@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.app.videoplayer.ui
 
 import androidx.compose.animation.AnimatedVisibility
@@ -30,8 +39,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.Stable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -72,7 +80,7 @@ fun VideoScaffold(
     contentWindowInsets: WindowInsets = WindowInsets.safeContent, // TODO: 目前只对部分元素有效
     maintainAspectRatio: Boolean = !expanded,
     controllerState: VideoControllerState,
-    gestureLocked: () -> Boolean = { false },
+    gestureLocked: Boolean = false,
     topBar: @Composable RowScope.() -> Unit = {},
     /**
      * @see VideoPlayer
@@ -89,7 +97,9 @@ fun VideoScaffold(
     rhsSheet: @Composable () -> Unit = {},
     leftBottomTips: @Composable () -> Unit = {},
 ) {
-    val gestureLockedState by derivedStateOf(gestureLocked) // delayed access to minimize recomposition
+    val controllerVisibility = controllerState.visibility
+        .withGestureLocked(gestureLocked)
+        .withExpanded(expanded)
 
     BoxWithConstraints(
         modifier.then(if (expanded) Modifier.fillMaxHeight() else Modifier.fillMaxWidth()),
@@ -136,7 +146,7 @@ fun VideoScaffold(
                 Column(Modifier.fillMaxSize().background(Color.Transparent)) {
                     // 顶部控制栏: 返回键, 标题, 设置
                     AnimatedVisibility(
-                        visible = controllerState.visibility.topBar && !gestureLockedState,
+                        visible = controllerVisibility.topBar,
                         enter = fadeIn(),
                         exit = fadeOut(),
                     ) {
@@ -178,7 +188,7 @@ fun VideoScaffold(
                     Column {
                         // 底部控制栏: 播放/暂停, 进度条, 切换全屏
                         AnimatedVisibility(
-                            visible = controllerState.visibility.bottomBar && !gestureLockedState,
+                            visible = controllerVisibility.bottomBar,
                             enter = fadeIn(),
                             exit = fadeOut(),
                         ) {
@@ -225,7 +235,7 @@ fun VideoScaffold(
 
                         }
                         AnimatedVisibility(
-                            visible = controllerState.visibility.detachedSlider && !gestureLockedState,
+                            visible = controllerVisibility.detachedSlider,
                             enter = fadeIn(),
                             exit = fadeOut(),
                         ) {
@@ -241,7 +251,7 @@ fun VideoScaffold(
                     }
                 }
                 AnimatedVisibility(
-                    controllerState.visibility.floatingBottomEnd && !expanded,
+                    controllerVisibility.floatingBottomEnd && !expanded,
                     Modifier.align(Alignment.BottomEnd),
                     enter = fadeIn(),
                     exit = fadeOut(),
@@ -270,7 +280,7 @@ fun VideoScaffold(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         AnimatedVisibility(
-                            visible = controllerState.visibility.rhsBar && !gestureLockedState,
+                            visible = controllerVisibility.rhsBar,
                             enter = fadeIn(),
                             exit = fadeOut(),
                         ) {
@@ -279,7 +289,7 @@ fun VideoScaffold(
 
                         // Separate from controllers, to fix position when controllers are/aren't hidden
                         AnimatedVisibility(
-                            visible = controllerState.visibility.rhsBar,
+                            visible = controllerVisibility.rhsBar,
                             enter = fadeIn(),
                             exit = fadeOut(),
                         ) {
@@ -319,5 +329,29 @@ fun VideoScaffold(
                 }
             }
         }
+    }
+}
+
+
+@Stable
+private fun ControllerVisibility.withGestureLocked(gestureLocked: Boolean): ControllerVisibility {
+    return if (gestureLocked) {
+        copy(
+            topBar = false,
+            bottomBar = false,
+            detachedSlider = false,
+            rhsBar = false,
+        )
+    } else {
+        this
+    }
+}
+
+@Stable
+private fun ControllerVisibility.withExpanded(isExpanded: Boolean): ControllerVisibility {
+    return if (isExpanded) {
+        this
+    } else {
+        copy(floatingBottomEnd = false)
     }
 }
