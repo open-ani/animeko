@@ -11,14 +11,15 @@ package me.him188.ani.app.torrent.anitorrent
 
 import me.him188.ani.app.torrent.api.TorrentLibraryLoader
 import me.him188.ani.utils.coroutines.withExceptionCollector
-import me.him188.ani.utils.logging.*
+import me.him188.ani.utils.logging.info
+import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.platform.Platform
 import me.him188.ani.utils.platform.currentPlatform
 import me.him188.ani.utils.platform.isAndroid
+import org.openani.anitorrent.binding.anitorrentJNI
 import java.io.IOException
 import java.nio.file.Path
 import java.nio.file.Paths
-import kotlin.concurrent.Volatile
 import kotlin.io.path.absolutePathString
 import kotlin.io.path.outputStream
 
@@ -148,6 +149,7 @@ object AnitorrentLibraryLoader : TorrentLibraryLoader {
         try {
             loadDependencies()
             _initAnitorrent
+            anitorrentJNI.lt_version() // check SWIG init
             libraryLoaded = true
         } catch (e: Throwable) {
             libraryLoaded = false
