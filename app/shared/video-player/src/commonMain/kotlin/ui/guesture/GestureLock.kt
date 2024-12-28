@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.app.videoplayer.ui.guesture
 
 import androidx.compose.foundation.BorderStroke
@@ -126,7 +135,6 @@ fun LockableVideoGestureHost(
     seekerState: SwipeSeekerState,
     progressSliderState: MediaProgressSliderState,
     indicatorState: GestureIndicatorState,
-    fastSkipState: FastSkipState,
     playerState: PlayerState,
     locked: Boolean,
     enableSwipeToSeek: Boolean,
@@ -137,6 +145,7 @@ fun LockableVideoGestureHost(
     onToggleFullscreen: () -> Unit = {},
     onExitFullscreen: () -> Unit = {},
     family: GestureFamily = LocalPlatform.current.mouseFamily,
+    fastSkipState: FastSkipState = rememberPlayerFastSkipState(playerState = playerState, indicatorState),
 ) {
     if (locked) {
         LockedScreenGestureHost(

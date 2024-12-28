@@ -84,7 +84,6 @@ import me.him188.ani.app.videoplayer.ui.guesture.LockableVideoGestureHost
 import me.him188.ani.app.videoplayer.ui.guesture.ScreenshotButton
 import me.him188.ani.app.videoplayer.ui.guesture.mouseFamily
 import me.him188.ani.app.videoplayer.ui.guesture.rememberGestureIndicatorState
-import me.him188.ani.app.videoplayer.ui.guesture.rememberPlayerFastSkipState
 import me.him188.ani.app.videoplayer.ui.guesture.rememberSwipeSeekerState
 import me.him188.ani.app.videoplayer.ui.progress.AudioSwitcher
 import me.him188.ani.app.videoplayer.ui.progress.MediaProgressIndicatorText
@@ -270,7 +269,6 @@ internal fun EpisodeVideoImpl(
                 swipeSeekerState,
                 progressSliderState,
                 indicatorState,
-                fastSkipState = rememberPlayerFastSkipState(playerState = playerState, indicatorState),
                 playerState,
                 locked = isLocked,
                 enableSwipeToSeek = enableSwipeToSeek,
