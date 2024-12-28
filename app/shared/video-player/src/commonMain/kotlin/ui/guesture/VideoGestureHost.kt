@@ -430,7 +430,7 @@ fun VideoGestureHost(
     progressSliderState: MediaProgressSliderState,
     indicatorState: GestureIndicatorState,
     fastSkipState: FastSkipState,
-    playerState: PlayerState,
+    playerState: PlayerState, // TODO: remove playerState from VideoGestureHost
     enableSwipeToSeek: Boolean,
     audioController: LevelController,
     brightnessController: LevelController,
