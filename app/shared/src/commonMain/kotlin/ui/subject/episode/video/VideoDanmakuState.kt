@@ -161,21 +161,7 @@ class DanmakuLoaderImpl(
 }
 
 @Stable
-interface VideoDanmakuState {
-    val danmakuHostState: DanmakuHostState
-
-    val enabled: Boolean
-    val isSettingEnabled: StateFlow<Boolean>
-    fun setEnabled(enabled: Boolean)
-
-    var danmakuEditorText: String
-
-    val isSending: StateFlow<Boolean>
-    fun sendAsync(info: DanmakuInfo, then: (suspend () -> Unit)? = null)
-}
-
-@Stable
-class VideoDanmakuStateImpl(
+class VideoDanmakuState(
     danmakuEnabled: State<Boolean>,
     danmakuConfig: State<DanmakuConfig>,
     private val onSend: suspend (info: DanmakuInfo) -> Danmaku,
@@ -183,25 +169,25 @@ class VideoDanmakuStateImpl(
     private val onHideController: () -> Unit,
     private val backgroundScope: CoroutineScope,
     danmakuTrackProperties: DanmakuTrackProperties = DanmakuTrackProperties.Default,
-) : VideoDanmakuState {
-    override val danmakuHostState: DanmakuHostState =
+) {
+    val danmakuHostState: DanmakuHostState =
         DanmakuHostState(danmakuConfig, danmakuTrackProperties)
 
-    override val enabled: Boolean by danmakuEnabled
-    override val isSettingEnabled: StateFlow<Boolean> get() = setEnabledTasker.isRunning
+    val enabled: Boolean by danmakuEnabled
+
     private val setEnabledTasker = MonoTasker(backgroundScope)
-    override fun setEnabled(enabled: Boolean) {
+    fun setEnabled(enabled: Boolean) {
         setEnabledTasker.launch {
             onSetEnabled(enabled)
         }
     }
 
-    override var danmakuEditorText: String by mutableStateOf("")
+    var danmakuEditorText: String by mutableStateOf("")
 
-    private val sendDanmakuTasker = MonoTasker(backgroundScope)
-    override val isSending: StateFlow<Boolean> get() = sendDanmakuTasker.isRunning
+    val sendDanmakuTasker = MonoTasker(backgroundScope)
+    val isSending: StateFlow<Boolean> get() = sendDanmakuTasker.isRunning
 
-    override fun sendAsync(
+    fun sendAsync(
         info: DanmakuInfo,
         then: (suspend () -> Unit)?
     ) {

@@ -46,7 +46,7 @@ import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberTestMediaSelector
 import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberTestMediaSourceInfoProvider
 import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberTestMediaSourceResults
 import me.him188.ani.app.ui.subject.episode.statistics.VideoLoadingState
-import me.him188.ani.app.ui.subject.episode.video.VideoDanmakuStateImpl
+import me.him188.ani.app.ui.subject.episode.video.VideoDanmakuState
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.rememberTestEpisodeSelectorState
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
 import me.him188.ani.app.videoplayer.ui.VideoControllerState
@@ -137,7 +137,7 @@ class EpisodeVideoControllerTest {
             val playerState = remember {
                 DummyPlayerState(scope.coroutineContext)
             }
-            val danmakuState = VideoDanmakuStateImpl(
+            val danmakuState = VideoDanmakuState(
                 danmakuEnabled = stateOf(true),
                 danmakuConfig = stateOf(DanmakuConfig.Default),
                 onSend = {

@@ -106,7 +106,7 @@ import me.him188.ani.app.ui.subject.episode.video.DelegateDanmakuStatistics
 import me.him188.ani.app.ui.subject.episode.video.LoadDanmakuRequest
 import me.him188.ani.app.ui.subject.episode.video.PlayerLauncher
 import me.him188.ani.app.ui.subject.episode.video.PlayerSkipOpEdState
-import me.him188.ani.app.ui.subject.episode.video.VideoDanmakuStateImpl
+import me.him188.ani.app.ui.subject.episode.video.VideoDanmakuState
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.EpisodeSelectorState
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
 import me.him188.ani.app.videoplayer.ui.VideoControllerState
@@ -620,7 +620,7 @@ class EpisodeViewModel(
         danmakuLoader.state.produceState(),
     )
 
-    val danmaku = VideoDanmakuStateImpl(
+    val danmaku = VideoDanmakuState(
         danmakuEnabled = settingsRepository.danmakuEnabled.flow.produceState(false),
         danmakuConfig = settingsRepository.danmakuConfig.flow.produceState(DanmakuConfig.Default),
         onSend = { info ->
