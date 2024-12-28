@@ -24,16 +24,88 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldColors
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
+import me.him188.ani.app.domain.danmaku.protocol.DanmakuInfo
+import me.him188.ani.app.domain.danmaku.protocol.DanmakuLocation
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
 import me.him188.ani.app.ui.foundation.theme.aniDarkColorTheme
+import me.him188.ani.app.ui.subject.episode.EpisodeVideoDefaults
+import me.him188.ani.app.ui.subject.episode.video.VideoDanmakuState
+import me.him188.ani.app.videoplayer.ui.VideoControllerState
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
+import me.him188.ani.app.videoplayer.ui.rememberAlwaysOnRequester
+import me.him188.ani.app.videoplayer.ui.state.PlayerState
+
+@Composable
+fun EpisodeVideoDefaults.DanmakuEditor(
+    videoDanmakuState: VideoDanmakuState,
+    danmakuTextPlaceholder: String,
+    playerState: PlayerState,
+    videoScaffoldConfig: VideoScaffoldConfig,
+    videoControllerState: VideoControllerState,
+    modifier: Modifier = Modifier,
+) {
+    val danmakuEditorRequester = rememberAlwaysOnRequester(videoControllerState, "danmakuEditor")
+
+    val focusManager = LocalFocusManager.current
+
+    /**
+     * 是否设置了暂停
+     */
+    var didSetPaused by rememberSaveable { mutableStateOf(false) }
+    val isSending = videoDanmakuState.isSending.collectAsStateWithLifecycle()
+    Row(modifier = modifier) {
+        DanmakuEditor(
+            text = videoDanmakuState.danmakuEditorText,
+            onTextChange = { videoDanmakuState.danmakuEditorText = it },
+            isSending = { isSending.value },
+            placeholderText = danmakuTextPlaceholder,
+            onSend = { text ->
+                videoDanmakuState.danmakuEditorText = ""
+                videoDanmakuState.sendAsync(
+                    DanmakuInfo(
+                        playerState.getExactCurrentPositionMillis(),
+                        text = text,
+                        color = Color.White.toArgb(),
+                        location = DanmakuLocation.NORMAL,
+                    ),
+                ) {
+                    focusManager.clearFocus()
+                }
+            },
+            modifier = Modifier.onFocusChanged {
+                if (it.isFocused) {
+                    if (videoScaffoldConfig.pauseVideoOnEditDanmaku && playerState.state.value.isPlaying) {
+                        didSetPaused = true
+                        playerState.pause()
+                    }
+                    danmakuEditorRequester.request()
+                } else {
+                    if (didSetPaused) {
+                        didSetPaused = false
+                        playerState.resume()
+                    }
+                    danmakuEditorRequester.cancelRequest()
+                }
+            }.weight(1f),
+        )
+    }
+}
 
 @Composable
 fun DanmakuEditor(
