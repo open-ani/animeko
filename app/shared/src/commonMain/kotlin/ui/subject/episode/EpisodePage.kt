@@ -117,9 +117,9 @@ import me.him188.ani.app.ui.subject.episode.comments.EpisodeCommentColumn
 import me.him188.ani.app.ui.subject.episode.comments.EpisodeEditCommentSheet
 import me.him188.ani.app.ui.subject.episode.danmaku.DanmakuEditor
 import me.him188.ani.app.ui.subject.episode.danmaku.DummyDanmakuEditor
+import me.him188.ani.app.ui.subject.episode.danmaku.PlayerDanmakuState
 import me.him188.ani.app.ui.subject.episode.details.EpisodeDetails
 import me.him188.ani.app.ui.subject.episode.notif.VideoNotifEffect
-import me.him188.ani.app.ui.subject.episode.video.VideoDanmakuState
 import me.him188.ani.app.ui.subject.episode.video.topbar.EpisodePlayerTitle
 import me.him188.ani.app.videoplayer.ui.VideoControllerState
 import me.him188.ani.app.videoplayer.ui.guesture.NoOpLevelController
@@ -466,6 +466,7 @@ private fun EpisodeSceneContentPhone(
             showDanmakuEditor = false
             tryUnpause()
         }
+        val scope = rememberCoroutineScope()
         ModalBottomSheet(
             onDismissRequest = dismiss,
             modifier = Modifier.desktopTitleBarPadding().statusBarsPadding(),
@@ -475,14 +476,15 @@ private fun EpisodeSceneContentPhone(
                 vm.danmaku,
                 onSend = { text ->
                     vm.danmaku.danmakuEditorText = ""
-                    vm.danmaku.sendAsync(
-                        DanmakuInfo(
-                            vm.playerState.getExactCurrentPositionMillis(),
-                            text = text,
-                            color = Color.White.toArgb(),
-                            location = DanmakuLocation.NORMAL,
-                        ),
-                    ) {
+                    scope.launch {
+                        vm.danmaku.send(
+                            DanmakuInfo(
+                                vm.playerState.getExactCurrentPositionMillis(),
+                                text = text,
+                                color = Color.White.toArgb(),
+                                location = DanmakuLocation.NORMAL,
+                            ),
+                        )
                         dismiss()
                     }
                 },
@@ -508,17 +510,17 @@ private fun EpisodeSceneContentPhone(
 
 @Composable
 private fun DetachedDanmakuEditorLayout(
-    videoDanmakuState: VideoDanmakuState,
+    playerDanmakuState: PlayerDanmakuState,
     onSend: (text: String) -> Unit,
     focusRequester: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier.padding(all = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text("发送弹幕", style = MaterialTheme.typography.titleMedium)
-        val isSending = videoDanmakuState.isSending.collectAsStateWithLifecycle()
+        val isSending = playerDanmakuState.isSending.collectAsStateWithLifecycle()
         DanmakuEditor(
-            text = videoDanmakuState.danmakuEditorText,
-            onTextChange = { videoDanmakuState.danmakuEditorText = it },
+            text = playerDanmakuState.danmakuEditorText,
+            onTextChange = { playerDanmakuState.danmakuEditorText = it },
             isSending = { isSending.value },
             placeholderText = remember { randomDanmakuPlaceholder() },
             onSend = onSend,
@@ -663,7 +665,7 @@ private fun EpisodeVideo(
         },
         danmakuEditor = {
             EpisodeVideoDefaults.DanmakuEditor(
-                videoDanmakuState = videoDanmakuState,
+                playerDanmakuState = videoDanmakuState,
                 danmakuTextPlaceholder = danmakuTextPlaceholder,
                 playerState = vm.playerState,
                 videoScaffoldConfig = vm.videoScaffoldConfig,

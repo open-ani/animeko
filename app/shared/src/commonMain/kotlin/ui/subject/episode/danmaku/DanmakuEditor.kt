@@ -25,6 +25,7 @@ import androidx.compose.material3.TextFieldColors
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -39,13 +40,13 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.domain.danmaku.protocol.DanmakuInfo
 import me.him188.ani.app.domain.danmaku.protocol.DanmakuLocation
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
 import me.him188.ani.app.ui.foundation.theme.aniDarkColorTheme
 import me.him188.ani.app.ui.subject.episode.EpisodeVideoDefaults
-import me.him188.ani.app.ui.subject.episode.video.VideoDanmakuState
 import me.him188.ani.app.videoplayer.ui.VideoControllerState
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
 import me.him188.ani.app.videoplayer.ui.rememberAlwaysOnRequester
@@ -53,7 +54,7 @@ import me.him188.ani.app.videoplayer.ui.state.PlayerState
 
 @Composable
 fun EpisodeVideoDefaults.DanmakuEditor(
-    videoDanmakuState: VideoDanmakuState,
+    playerDanmakuState: PlayerDanmakuState,
     danmakuTextPlaceholder: String,
     playerState: PlayerState,
     videoScaffoldConfig: VideoScaffoldConfig,
@@ -68,23 +69,25 @@ fun EpisodeVideoDefaults.DanmakuEditor(
      * 是否设置了暂停
      */
     var didSetPaused by rememberSaveable { mutableStateOf(false) }
-    val isSending = videoDanmakuState.isSending.collectAsStateWithLifecycle()
+    val isSending = playerDanmakuState.isSending.collectAsStateWithLifecycle()
     Row(modifier = modifier) {
+        val scope = rememberCoroutineScope()
         DanmakuEditor(
-            text = videoDanmakuState.danmakuEditorText,
-            onTextChange = { videoDanmakuState.danmakuEditorText = it },
+            text = playerDanmakuState.danmakuEditorText,
+            onTextChange = { playerDanmakuState.danmakuEditorText = it },
             isSending = { isSending.value },
             placeholderText = danmakuTextPlaceholder,
             onSend = { text ->
-                videoDanmakuState.danmakuEditorText = ""
-                videoDanmakuState.sendAsync(
-                    DanmakuInfo(
-                        playerState.getExactCurrentPositionMillis(),
-                        text = text,
-                        color = Color.White.toArgb(),
-                        location = DanmakuLocation.NORMAL,
-                    ),
-                ) {
+                playerDanmakuState.danmakuEditorText = ""
+                scope.launch {
+                    playerDanmakuState.send(
+                        DanmakuInfo(
+                            playerState.getExactCurrentPositionMillis(),
+                            text = text,
+                            color = Color.White.toArgb(),
+                            location = DanmakuLocation.NORMAL,
+                        ),
+                    )
                     focusManager.clearFocus()
                 }
             },

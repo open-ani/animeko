@@ -16,8 +16,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -28,30 +26,21 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.transformLatest
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.danmaku.DanmakuFilterConfig
 import me.him188.ani.app.data.models.danmaku.DanmakuRegexFilter
 import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.episode.displayName
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.domain.danmaku.CombinedDanmakuFetchResult
-import me.him188.ani.app.domain.danmaku.protocol.DanmakuInfo
-import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.ui.foundation.BackgroundScope
 import me.him188.ani.app.ui.foundation.HasBackgroundScope
 import me.him188.ani.app.ui.subject.episode.statistics.DanmakuLoadingState
-import me.him188.ani.danmaku.api.Danmaku
 import me.him188.ani.danmaku.api.DanmakuCollection
 import me.him188.ani.danmaku.api.DanmakuEvent
-import me.him188.ani.danmaku.api.DanmakuPresentation
 import me.him188.ani.danmaku.api.DanmakuSearchRequest
 import me.him188.ani.danmaku.api.DanmakuSession
 import me.him188.ani.danmaku.api.TimeBasedDanmakuSession
 import me.him188.ani.danmaku.api.emptyDanmakuCollection
-import me.him188.ani.danmaku.ui.DanmakuConfig
-import me.him188.ani.danmaku.ui.DanmakuHostState
-import me.him188.ani.danmaku.ui.DanmakuTrackProperties
 import kotlin.coroutines.CoroutineContext
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
@@ -160,53 +149,3 @@ class DanmakuLoaderImpl(
     }
 }
 
-@Stable
-class VideoDanmakuState(
-    danmakuEnabled: State<Boolean>,
-    danmakuConfig: State<DanmakuConfig>,
-    private val onSend: suspend (info: DanmakuInfo) -> Danmaku,
-    private val onSetEnabled: suspend (enabled: Boolean) -> Unit,
-    private val onHideController: () -> Unit,
-    private val backgroundScope: CoroutineScope,
-    danmakuTrackProperties: DanmakuTrackProperties = DanmakuTrackProperties.Default,
-) {
-    val danmakuHostState: DanmakuHostState =
-        DanmakuHostState(danmakuConfig, danmakuTrackProperties)
-
-    val enabled: Boolean by danmakuEnabled
-
-    private val setEnabledTasker = MonoTasker(backgroundScope)
-    fun setEnabled(enabled: Boolean) {
-        setEnabledTasker.launch {
-            onSetEnabled(enabled)
-        }
-    }
-
-    var danmakuEditorText: String by mutableStateOf("")
-
-    val sendDanmakuTasker = MonoTasker(backgroundScope)
-    val isSending: StateFlow<Boolean> get() = sendDanmakuTasker.isRunning
-
-    fun sendAsync(
-        info: DanmakuInfo,
-        then: (suspend () -> Unit)?
-    ) {
-        sendDanmakuTasker.launch {
-            val danmaku = onSend(info)
-            try {
-                backgroundScope.launch {
-                    // 如果用户此时暂停了视频, 这里就会一直挂起, 所以单独开一个
-                    danmakuHostState.send(DanmakuPresentation(danmaku, isSelf = true))
-                }
-                onHideController()
-                withContext(Dispatchers.Main) {
-                    then?.invoke()
-                }
-            } catch (e: Throwable) {
-                withContext(Dispatchers.Main) {
-                    danmakuEditorText = info.text
-                }
-            }
-        }
-    }
-}

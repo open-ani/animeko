@@ -42,11 +42,11 @@ import me.him188.ani.app.ui.framework.AniComposeUiTest
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import me.him188.ani.app.ui.settings.danmaku.createTestDanmakuRegexFilterState
 import me.him188.ani.app.ui.subject.episode.danmaku.DanmakuEditor
+import me.him188.ani.app.ui.subject.episode.danmaku.PlayerDanmakuState
 import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberTestMediaSelectorPresentation
 import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberTestMediaSourceInfoProvider
 import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberTestMediaSourceResults
 import me.him188.ani.app.ui.subject.episode.statistics.VideoLoadingState
-import me.him188.ani.app.ui.subject.episode.video.VideoDanmakuState
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.rememberTestEpisodeSelectorState
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
 import me.him188.ani.app.videoplayer.ui.VideoControllerState
@@ -137,7 +137,7 @@ class EpisodeVideoControllerTest {
             val playerState = remember {
                 DummyPlayerState(scope.coroutineContext)
             }
-            val danmakuState = VideoDanmakuState(
+            val danmakuState = PlayerDanmakuState(
                 danmakuEnabled = stateOf(true),
                 danmakuConfig = stateOf(DanmakuConfig.Default),
                 onSend = {
@@ -171,7 +171,7 @@ class EpisodeVideoControllerTest {
                 onExitFullscreen = {},
                 danmakuEditor = {
                     EpisodeVideoDefaults.DanmakuEditor(
-                        videoDanmakuState = danmakuState,
+                        playerDanmakuState = danmakuState,
                         danmakuTextPlaceholder = "",
                         playerState = playerState,
                         videoScaffoldConfig = VideoScaffoldConfig.Default,

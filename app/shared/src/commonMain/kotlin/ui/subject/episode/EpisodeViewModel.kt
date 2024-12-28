@@ -92,6 +92,7 @@ import me.him188.ani.app.ui.subject.AiringLabelState
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeState
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateFactory
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateLoader
+import me.him188.ani.app.ui.subject.episode.danmaku.PlayerDanmakuState
 import me.him188.ani.app.ui.subject.episode.details.EpisodeCarouselState
 import me.him188.ani.app.ui.subject.episode.details.EpisodeDetailsState
 import me.him188.ani.app.ui.subject.episode.mediaFetch.MediaSelectorPresentation
@@ -106,7 +107,6 @@ import me.him188.ani.app.ui.subject.episode.video.DelegateDanmakuStatistics
 import me.him188.ani.app.ui.subject.episode.video.LoadDanmakuRequest
 import me.him188.ani.app.ui.subject.episode.video.PlayerLauncher
 import me.him188.ani.app.ui.subject.episode.video.PlayerSkipOpEdState
-import me.him188.ani.app.ui.subject.episode.video.VideoDanmakuState
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.EpisodeSelectorState
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
 import me.him188.ani.app.videoplayer.ui.VideoControllerState
@@ -620,7 +620,7 @@ class EpisodeViewModel(
         danmakuLoader.state.produceState(),
     )
 
-    val danmaku = VideoDanmakuState(
+    val danmaku = PlayerDanmakuState(
         danmakuEnabled = settingsRepository.danmakuEnabled.flow.produceState(false),
         danmakuConfig = settingsRepository.danmakuConfig.flow.produceState(DanmakuConfig.Default),
         onSend = { info ->
