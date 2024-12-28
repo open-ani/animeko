@@ -20,6 +20,7 @@ import me.him188.ani.utils.io.inSystem
 import me.him188.ani.utils.io.toKtPath
 import me.him188.ani.utils.ktor.createDefaultHttpClient
 import me.him188.ani.utils.logging.error
+import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.platform.Platform
 import me.him188.ani.utils.platform.currentPlatformDesktop
@@ -59,10 +60,13 @@ object TestTasks {
             }
         }.use { client ->
             runBlocking {
+                logger.info { "Downloading update from $url" }
                 DefaultFileDownloader(client).download(
                     listOf(url),
                     saveDir = File(".").toKtPath().inSystem,
-                ) ?: error("Download failed")
+                ).also {
+                    logger.info { "Downloading done" }
+                } ?: error("Download failed")
             }
         }
 
@@ -79,6 +83,7 @@ object TestTasks {
             }
 
             is Platform.Windows -> {
+                logger.info { "Performing install" }
                 val updateInstaller = KoinPlatform.getKoin().get<UpdateInstaller>()
                 val installationResult = updateInstaller.install(result, context)
                 when (installationResult) {
