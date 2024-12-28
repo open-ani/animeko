@@ -26,7 +26,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -45,7 +44,6 @@ import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.domain.danmaku.protocol.DanmakuInfo
 import me.him188.ani.app.domain.danmaku.protocol.DanmakuLocation
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
-import me.him188.ani.app.ui.foundation.theme.aniDarkColorTheme
 import me.him188.ani.app.ui.subject.episode.EpisodeVideoDefaults
 import me.him188.ani.app.videoplayer.ui.VideoControllerState
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
@@ -121,29 +119,26 @@ fun DanmakuEditor(
     colors: TextFieldColors = PlayerControllerDefaults.inVideoDanmakuTextFieldColors(),
     style: TextStyle = MaterialTheme.typography.bodyMedium,
 ) {
-    val textUpdated by rememberUpdatedState(text)
-    MaterialTheme(aniDarkColorTheme()) {
-        PlayerControllerDefaults.DanmakuTextField(
-            text,
-            onValueChange = onTextChange,
-            modifier = modifier,
-            onSend = {
-                if (textUpdated.isEmpty()) return@DanmakuTextField
-                onSend(textUpdated)
-            },
-            isSending = isSending,
-            placeholder = {
-                Text(
-                    placeholderText,
-                    overflow = TextOverflow.Ellipsis,
-                    maxLines = 1,
-                    style = style,
-                )
-            },
-            colors = colors,
-            style = style,
-        )
-    }
+    PlayerControllerDefaults.DanmakuTextField(
+        text,
+        onValueChange = onTextChange,
+        modifier = modifier,
+        onSend = {
+            if (text.isEmpty()) return@DanmakuTextField
+            onSend(text)
+        },
+        isSending = isSending,
+        placeholder = {
+            Text(
+                placeholderText,
+                overflow = TextOverflow.Ellipsis,
+                maxLines = 1,
+                style = style,
+            )
+        },
+        colors = colors,
+        style = style,
+    )
 }
 
 @Composable
