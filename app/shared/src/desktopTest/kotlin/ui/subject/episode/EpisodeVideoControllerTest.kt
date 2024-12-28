@@ -31,6 +31,7 @@ import androidx.compose.ui.test.performMouseInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipe
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.coroutines.flow.MutableStateFlow
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.ui.doesNotExist
 import me.him188.ani.app.ui.exists
@@ -164,7 +165,7 @@ class EpisodeVideoControllerTest {
                 danmakuHostState = remember { DanmakuHostState() },
                 danmakuEnabled = false,
                 onToggleDanmaku = {},
-                videoLoadingState = { VideoLoadingState.Succeed(isBt = true) },
+                videoLoadingStateFlow = remember { MutableStateFlow(VideoLoadingState.Succeed(isBt = true)) },
                 onClickFullScreen = {},
                 onExitFullscreen = {},
                 danmakuEditor = {

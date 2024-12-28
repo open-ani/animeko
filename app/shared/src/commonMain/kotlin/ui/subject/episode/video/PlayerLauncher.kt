@@ -12,14 +12,17 @@ package me.him188.ani.app.ui.subject.episode.video
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transformLatest
 import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.episode.displayName
@@ -47,7 +50,7 @@ import kotlin.coroutines.CoroutineContext
 
 /**
  * 将 [MediaSelector] 和 [videoSourceResolver] 结合, 为 [playerState] 提供视频源.
- * 还会提供 [videoStatistics], 可以获取当前的加载状态.
+ * 还会提供 [videoStatisticsFlow], 可以获取当前的加载状态.
  *
  * 这实际上就是启动了一个一直运行的协程:
  * 当 [MediaSelector] 选择到资源的时候, 使用 [videoSourceResolver] 解析出 [VideoSource],
@@ -70,14 +73,19 @@ class PlayerLauncher(
         MutableStateFlow(VideoLoadingState.Initial)
     val videoLoadingState: StateFlow<VideoLoadingState> get() = _videoLoadingStateFlow.asStateFlow()
 
-    val videoStatistics: VideoStatistics = VideoStatistics(
-        playingMedia = mediaSelector.selected.produceState(),
-        playingMediaSourceInfo = mediaSelector.selected.flatMapLatest {
+    val videoStatisticsFlow: StateFlow<VideoStatistics> = combine(
+        mediaSelector.selected,
+        mediaSelector.selected.flatMapLatest {
             mediaSourceInfoProvider.getSourceInfoFlow(it?.mediaSourceId ?: return@flatMapLatest emptyFlow())
-        }.produceState(null),
-        playingFilename = playerState.videoData.map { it?.filename }.produceState(null),
-        mediaSourceLoading = mediaSourceLoading.produceState(true),
-        videoLoadingState = _videoLoadingStateFlow.produceState(VideoLoadingState.Initial),
+        },
+        playerState.videoData.map { it?.filename },
+        mediaSourceLoading,
+        _videoLoadingStateFlow,
+        ::VideoStatistics,
+    ).stateIn(
+        backgroundScope,
+        SharingStarted.WhileSubscribed(),
+        VideoStatistics.Placeholder,
     )
 
     init {

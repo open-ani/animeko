@@ -79,6 +79,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.window.core.layout.WindowHeightSizeClass
 import androidx.window.core.layout.WindowWidthSizeClass
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.danmaku.protocol.DanmakuInfo
 import me.him188.ani.app.domain.danmaku.protocol.DanmakuLocation
@@ -303,7 +304,7 @@ private fun EpisodeSceneTabletVeryWide(
                                 vm.episodeCarouselState,
                                 vm.editableSubjectCollectionTypeState,
                                 vm.danmakuStatistics,
-                                vm.videoStatistics,
+                                vm.videoStatisticsFlow,
                                 vm.mediaSelectorState,
                                 vm.mediaSourceResultsPresentation,
                                 vm.authState,
@@ -425,7 +426,7 @@ private fun EpisodeSceneContentPhone(
                 vm.episodeCarouselState,
                 vm.editableSubjectCollectionTypeState,
                 vm.danmakuStatistics,
-                vm.videoStatistics,
+                vm.videoStatisticsFlow,
                 vm.mediaSelectorState,
                 vm.mediaSourceResultsPresentation,
                 vm.authState,
@@ -640,7 +641,7 @@ private fun EpisodeVideo(
         danmakuHostState = videoDanmakuState.danmakuHostState,
         danmakuEnabled = videoDanmakuState.enabled,
         onToggleDanmaku = { videoDanmakuState.setEnabled(!videoDanmakuState.enabled) },
-        videoLoadingState = { vm.videoStatistics.videoLoadingState },
+        videoLoadingStateFlow = vm.videoStatisticsFlow.map { it.videoLoadingState },
         onClickFullScreen = {
             if (vm.isFullscreen) {
                 scope.launch {

@@ -24,6 +24,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.flow.MutableStateFlow
 import me.him188.ani.app.data.models.UserInfo
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.domain.media.TestMediaList
@@ -220,11 +221,13 @@ private fun PreviewEpisodeDetailsImpl(
             },
             editableSubjectCollectionTypeState = editableSubjectCollectionTypeState,
             danmakuStatistics = danmakuStatistics,
-            videoStatistics = remember {
-                testPlayerStatisticsState(
-                    playingMedia = playingMedia,
-                    playingFilename = "filename-filename-filename-filename-filename-filename-filename.mkv",
-                    videoLoadingState = VideoLoadingState.Succeed(isBt = true),
+            videoStatisticsFlow = remember {
+                MutableStateFlow(
+                    testPlayerStatisticsState(
+                        playingMedia = playingMedia,
+                        playingFilename = "filename-filename-filename-filename-filename-filename-filename.mkv",
+                        videoLoadingState = VideoLoadingState.Succeed(isBt = true),
+                    ),
                 )
             },
             mediaSelectorState = mediaSelectorState,

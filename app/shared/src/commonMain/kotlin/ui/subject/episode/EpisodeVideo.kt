@@ -54,6 +54,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import me.him188.ani.app.data.models.preference.FullscreenSwitchMode
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
@@ -141,7 +142,7 @@ internal fun EpisodeVideoImpl(
     danmakuHostState: DanmakuHostState,
     danmakuEnabled: Boolean,
     onToggleDanmaku: () -> Unit,
-    videoLoadingState: () -> VideoLoadingState,
+    videoLoadingStateFlow: Flow<VideoLoadingState>,
     onClickFullScreen: () -> Unit,
     onExitFullscreen: () -> Unit,
     danmakuEditor: @Composable() (RowScope.() -> Unit),
@@ -310,9 +311,10 @@ internal fun EpisodeVideoImpl(
         },
         floatingMessage = {
             Column {
+                val videoLoadingState by videoLoadingStateFlow.collectAsStateWithLifecycle(VideoLoadingState.Initial)
                 EpisodeVideoLoadingIndicator(
                     playerState,
-                    videoLoadingState(),
+                    videoLoadingState,
                     optimizeForFullscreen = expanded, // TODO: 这对 PC 其实可能不太好
                 )
                 val debugViewModel = rememberDebugSettingsViewModel()

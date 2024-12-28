@@ -21,6 +21,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
+import kotlinx.coroutines.flow.MutableStateFlow
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.preview.PHONE_LANDSCAPE
@@ -109,7 +110,7 @@ private fun PreviewVideoScaffoldImpl(
         danmakuHostState = remember { DanmakuHostState() },
         danmakuEnabled = danmakuEnabled,
         onToggleDanmaku = { danmakuEnabled = !danmakuEnabled },
-        videoLoadingState = { VideoLoadingState.Succeed(isBt = true) },
+        videoLoadingStateFlow = MutableStateFlow(VideoLoadingState.Succeed(isBt = true)),
         onClickFullScreen = { },
         onExitFullscreen = { },
         danmakuEditor = {

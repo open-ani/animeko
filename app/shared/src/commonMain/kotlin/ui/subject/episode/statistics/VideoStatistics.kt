@@ -31,8 +31,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.Stable
-import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -54,35 +52,32 @@ import me.him188.ani.datasources.api.source.MediaSourceInfo
 /**
  * 视频统计信息, 用于获取当前播放器正在播放的视频的来源 [Media] 和文件名, 以及弹幕信息.
  */
-@Stable
-class VideoStatistics(
-    playingMedia: State<Media?>,
-    playingMediaSourceInfo: State<MediaSourceInfo?>,
-    playingFilename: State<String?>,
-    mediaSourceLoading: State<Boolean>,
-    videoLoadingState: State<VideoLoadingState>,
-) {
-    /**
-     * [MediaFetcher] 的所有数据源是否都已经加载完成.
-     */
-    val mediaSourceLoading by mediaSourceLoading
-
+data class VideoStatistics(
     /**
      * 从 [MediaSelector] 选择后就有
      */
-    val playingMedia by playingMedia
-
+    val playingMedia: Media?,
     /**
      * [playingMedia] 所属的 [MediaSourceInfo]
      */
-    val playingMediaSourceInfo: MediaSourceInfo? by playingMediaSourceInfo
-
-
+    val playingMediaSourceInfo: MediaSourceInfo?,
     /**
      * 要播放器获取到视频文件后才有
      */
-    val playingFilename by playingFilename
-    val videoLoadingState by videoLoadingState
+    val playingFilename: String?,
+    /**
+     * [MediaFetcher] 的所有数据源是否都已经加载完成.
+     */
+    val mediaSourceLoading: Boolean,
+    val videoLoadingState: VideoLoadingState,
+    val isPlaceholder: Boolean = false,
+) {
+    companion object {
+        val Placeholder = VideoStatistics(
+            null, null, null, false, VideoLoadingState.Initial,
+            isPlaceholder = true,
+        )
+    }
 }
 
 @Composable

@@ -426,7 +426,7 @@ class EpisodeViewModel(
     /**
      * "视频统计" bottom sheet 显示内容
      */
-    val videoStatistics: VideoStatistics get() = playerLauncher.videoStatistics
+    val videoStatisticsFlow: Flow<VideoStatistics> get() = playerLauncher.videoStatisticsFlow
 
 
     /**

@@ -10,7 +10,6 @@
 package me.him188.ani.app.ui.subject.episode.statistics
 
 import me.him188.ani.app.domain.danmaku.AniDanmakuProvider
-import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.danmaku.api.DanmakuMatchInfo
 import me.him188.ani.danmaku.api.DanmakuMatchMethod
 import me.him188.ani.danmaku.dandanplay.DandanplayDanmakuProvider
@@ -52,9 +51,9 @@ fun testPlayerStatisticsState(
     playingFilename: String = "filename-filename-filename-filename-filename-filename-filename.mkv",
     videoLoadingState: VideoLoadingState = VideoLoadingState.Initial,
 ) = VideoStatistics(
-    playingMedia = stateOf(playingMedia),
-    playingMediaSourceInfo = stateOf(null),
-    playingFilename = stateOf(playingFilename),
-    mediaSourceLoading = stateOf(true),
-    videoLoadingState = stateOf(videoLoadingState),
+    playingMedia = playingMedia,
+    playingMediaSourceInfo = null,
+    playingFilename = playingFilename,
+    mediaSourceLoading = true,
+    videoLoadingState = videoLoadingState,
 )
