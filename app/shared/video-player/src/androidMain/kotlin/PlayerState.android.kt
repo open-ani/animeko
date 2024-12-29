@@ -113,6 +113,7 @@ internal class ExoPlayerState @UiThread constructor(
                                 MediaItem.SubtitleConfiguration.Builder(
                                     Uri.parse(it.uri),
                                 ).apply {
+                                    it.label?.let { label -> setLabel(label) }
                                     it.mimeType?.let { mimeType -> setMimeType(mimeType) }
                                     it.language?.let { language -> setLanguage(language) }
                                 }.build()
