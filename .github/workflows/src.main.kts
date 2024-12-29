@@ -521,6 +521,7 @@ fun getVerifyJobBody(
                         powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$${expr { github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "$${expr { github.workspace }}\ci-helper\verify" "$${task.name}"
                         """.trimIndent(),
                     ),
+                    timeoutMinutes = 5,
                 )
             }
         }
