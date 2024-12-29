@@ -45,11 +45,11 @@ import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import me.him188.ani.app.ui.subject.episode.statistics.VideoLoadingState
 import me.him188.ani.app.ui.subject.episode.video.components.FloatingFullscreenSwitchButton
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
-import me.him188.ani.app.videoplayer.ui.VideoControllerState
+import me.him188.ani.app.videoplayer.ui.PlayerControllerState
 import me.him188.ani.app.videoplayer.ui.guesture.GestureFamily
 import me.him188.ani.app.videoplayer.ui.guesture.NoOpLevelController
 import me.him188.ani.app.videoplayer.ui.guesture.VIDEO_GESTURE_MOUSE_MOVE_SHOW_CONTROLLER_DURATION
-import me.him188.ani.app.videoplayer.ui.progress.MediaProgressSliderState
+import me.him188.ani.app.videoplayer.ui.progress.PlayerProgressSliderState
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
 import me.him188.ani.app.videoplayer.ui.progress.TAG_PROGRESS_SLIDER_PREVIEW_POPUP
 import me.him188.ani.app.videoplayer.ui.state.DummyPlayerState
@@ -60,9 +60,9 @@ import kotlin.time.Duration.Companion.seconds
 
 class EpisodeVideoCursorTest {
 
-    private val controllerState = VideoControllerState(ControllerVisibility.Invisible)
+    private val controllerState = PlayerControllerState(ControllerVisibility.Invisible)
     private var currentPositionMillis by mutableLongStateOf(0L)
-    private val progressSliderState: MediaProgressSliderState = MediaProgressSliderState(
+    private val progressSliderState: PlayerProgressSliderState = PlayerProgressSliderState(
         { currentPositionMillis },
         { 100_000 },
         stateOf(persistentListOf()),
@@ -97,7 +97,7 @@ class EpisodeVideoCursorTest {
                     expanded = expanded,
                     hasNextEpisode = true,
                     onClickNextEpisode = {},
-                    videoControllerState = controllerState,
+                    playerControllerState = controllerState,
                     title = { Text("Title") },
                     danmakuHostState = remember { DanmakuHostState() },
                     danmakuEnabled = false,

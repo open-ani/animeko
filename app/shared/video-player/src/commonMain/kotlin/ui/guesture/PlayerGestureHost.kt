@@ -91,7 +91,7 @@ import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.isSystemInFullscreen
 import me.him188.ani.app.ui.foundation.theme.aniDarkColorTheme
 import me.him188.ani.app.utils.fixToString
-import me.him188.ani.app.videoplayer.ui.VideoControllerState
+import me.him188.ani.app.videoplayer.ui.PlayerControllerState
 import me.him188.ani.app.videoplayer.ui.guesture.GestureIndicatorState.State.BRIGHTNESS
 import me.him188.ani.app.videoplayer.ui.guesture.GestureIndicatorState.State.FAST_BACKWARD
 import me.him188.ani.app.videoplayer.ui.guesture.GestureIndicatorState.State.FAST_FORWARD
@@ -100,7 +100,7 @@ import me.him188.ani.app.videoplayer.ui.guesture.GestureIndicatorState.State.RES
 import me.him188.ani.app.videoplayer.ui.guesture.GestureIndicatorState.State.SEEKING
 import me.him188.ani.app.videoplayer.ui.guesture.GestureIndicatorState.State.VOLUME
 import me.him188.ani.app.videoplayer.ui.guesture.SwipeSeekerState.Companion.swipeToSeek
-import me.him188.ani.app.videoplayer.ui.progress.MediaProgressSliderState
+import me.him188.ani.app.videoplayer.ui.progress.PlayerProgressSliderState
 import me.him188.ani.app.videoplayer.ui.rememberAlwaysOnRequester
 import me.him188.ani.app.videoplayer.ui.state.PlayerState
 import me.him188.ani.app.videoplayer.ui.state.SupportsAudio
@@ -424,10 +424,10 @@ val VIDEO_GESTURE_MOUSE_MOVE_SHOW_CONTROLLER_DURATION = 3.seconds
 val VIDEO_GESTURE_TOUCH_SHOW_CONTROLLER_DURATION = 3.seconds
 
 @Composable
-fun VideoGestureHost(
-    controllerState: VideoControllerState,
+fun PlayerGestureHost(
+    controllerState: PlayerControllerState,
     seekerState: SwipeSeekerState,
-    progressSliderState: MediaProgressSliderState,
+    progressSliderState: PlayerProgressSliderState,
     indicatorState: GestureIndicatorState,
     fastSkipState: FastSkipState,
     playerState: PlayerState, // TODO: remove playerState from VideoGestureHost
@@ -751,7 +751,7 @@ fun VideoGestureHost(
                         )
                     }
                     .ifThen(family.keyboardUpDownForVolume) {
-                        audioController?.let { controller ->
+                        audioController.let { controller ->
                             onKey(ComposeKey.DirectionUp) {
                                 controller.increaseLevel(0.10f)
                             }

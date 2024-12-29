@@ -24,7 +24,7 @@ import me.him188.ani.app.ui.subject.episode.EpisodeVideoDefaults
 import me.him188.ani.app.ui.subject.episode.video.settings.EpisodeVideoSettings
 import me.him188.ani.app.ui.subject.episode.video.settings.EpisodeVideoSettingsViewModel
 import me.him188.ani.app.ui.subject.episode.video.settings.SideSheetLayout
-import me.him188.ani.app.videoplayer.ui.VideoControllerState
+import me.him188.ani.app.videoplayer.ui.PlayerControllerState
 import me.him188.ani.app.videoplayer.ui.VideoSideSheetScope
 import me.him188.ani.app.videoplayer.ui.VideoSideSheets
 import me.him188.ani.app.videoplayer.ui.VideoSideSheetsController
@@ -39,7 +39,7 @@ import me.him188.ani.app.videoplayer.ui.rememberVideoSideSheetsController
 @Composable
 fun EpisodeVideoDefaults.SideSheets(
     sheetsController: VideoSideSheetsController<EpisodeVideoSideSheetPage> = rememberVideoSideSheetsController(),
-    videoControllerState: VideoControllerState,
+    playerControllerState: PlayerControllerState,
     playerSettingsPage: @Composable VideoSideSheetScope.() -> Unit,
     editDanmakuRegexFilterPage: @Composable VideoSideSheetScope.() -> Unit,
     mediaSelectorPage: @Composable VideoSideSheetScope.() -> Unit,
@@ -58,7 +58,7 @@ fun EpisodeVideoDefaults.SideSheets(
         }
     }
 
-    val alwaysOnRequester = rememberAlwaysOnRequester(videoControllerState, "sideSheets")
+    val alwaysOnRequester = rememberAlwaysOnRequester(playerControllerState, "sideSheets")
     val isPage by sheetsController.hasPageAsState()
     if (isPage) {
         DisposableEffect(true) {

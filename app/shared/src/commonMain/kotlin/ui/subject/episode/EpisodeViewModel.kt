@@ -109,7 +109,7 @@ import me.him188.ani.app.ui.subject.episode.video.PlayerLauncher
 import me.him188.ani.app.ui.subject.episode.video.PlayerSkipOpEdState
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.EpisodeSelectorState
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
-import me.him188.ani.app.videoplayer.ui.VideoControllerState
+import me.him188.ani.app.videoplayer.ui.PlayerControllerState
 import me.him188.ani.app.videoplayer.ui.state.PlaybackState
 import me.him188.ani.app.videoplayer.ui.state.PlayerState
 import me.him188.ani.app.videoplayer.ui.state.PlayerStateFactory
@@ -185,7 +185,7 @@ class EpisodeViewModel(
         )
     }.shareInBackground(started = SharingStarted.Lazily)
 
-    val videoControllerState = VideoControllerState(ControllerVisibility.Invisible)
+    val playerControllerState = PlayerControllerState(ControllerVisibility.Invisible)
 
     /**
      * 更换 EP 是否已经完成了.
@@ -630,7 +630,7 @@ class EpisodeViewModel(
             settingsRepository.danmakuEnabled.set(it)
         },
         onHideController = {
-            videoControllerState.toggleFullVisible(false)
+            playerControllerState.toggleFullVisible(false)
         },
         backgroundScope,
     )

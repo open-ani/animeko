@@ -108,7 +108,7 @@ private fun PreviewVideoScaffoldImpl(
         expanded = expanded,
         hasNextEpisode = true,
         onClickNextEpisode = {},
-        videoControllerState = controllerState,
+        playerControllerState = controllerState,
         title = {
             EpisodePlayerTitle(
                 "28",

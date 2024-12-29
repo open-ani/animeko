@@ -45,7 +45,7 @@ import me.him188.ani.app.domain.danmaku.protocol.DanmakuInfo
 import me.him188.ani.app.domain.danmaku.protocol.DanmakuLocation
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
 import me.him188.ani.app.ui.subject.episode.EpisodeVideoDefaults
-import me.him188.ani.app.videoplayer.ui.VideoControllerState
+import me.him188.ani.app.videoplayer.ui.PlayerControllerState
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
 import me.him188.ani.app.videoplayer.ui.rememberAlwaysOnRequester
 import me.him188.ani.app.videoplayer.ui.state.PlayerState
@@ -56,10 +56,10 @@ fun EpisodeVideoDefaults.DanmakuEditor(
     danmakuTextPlaceholder: String,
     playerState: PlayerState,
     videoScaffoldConfig: VideoScaffoldConfig,
-    videoControllerState: VideoControllerState,
+    playerControllerState: PlayerControllerState,
     modifier: Modifier = Modifier,
 ) {
-    val danmakuEditorRequester = rememberAlwaysOnRequester(videoControllerState, "danmakuEditor")
+    val danmakuEditorRequester = rememberAlwaysOnRequester(playerControllerState, "danmakuEditor")
 
     val focusManager = LocalFocusManager.current
 

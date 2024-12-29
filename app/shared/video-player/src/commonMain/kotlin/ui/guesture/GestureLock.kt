@@ -36,8 +36,8 @@ import me.him188.ani.app.ui.foundation.theme.aniDarkColorTheme
 import me.him188.ani.app.ui.foundation.theme.aniLightColorTheme
 import me.him188.ani.app.ui.foundation.theme.slightlyWeaken
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
-import me.him188.ani.app.videoplayer.ui.VideoControllerState
-import me.him188.ani.app.videoplayer.ui.progress.MediaProgressSliderState
+import me.him188.ani.app.videoplayer.ui.PlayerControllerState
+import me.him188.ani.app.videoplayer.ui.progress.PlayerProgressSliderState
 import me.him188.ani.app.videoplayer.ui.state.PlayerState
 import kotlin.time.Duration.Companion.seconds
 
@@ -131,10 +131,9 @@ fun LockedScreenGestureHost(
 
 @Composable
 fun LockableVideoGestureHost(
-    controllerState: VideoControllerState,
+    controllerState: PlayerControllerState,
     seekerState: SwipeSeekerState,
-    progressSliderState: MediaProgressSliderState,
-    indicatorState: GestureIndicatorState,
+    progressSliderState: PlayerProgressSliderState,
     playerState: PlayerState,
     locked: Boolean,
     enableSwipeToSeek: Boolean,
@@ -145,7 +144,8 @@ fun LockableVideoGestureHost(
     onToggleFullscreen: () -> Unit = {},
     onExitFullscreen: () -> Unit = {},
     family: GestureFamily = LocalPlatform.current.mouseFamily,
-    fastSkipState: FastSkipState = rememberPlayerFastSkipState(playerState = playerState, indicatorState),
+    gestureIndicatorState: GestureIndicatorState = rememberGestureIndicatorState(),
+    fastSkipState: FastSkipState = rememberPlayerFastSkipState(playerState = playerState, gestureIndicatorState),
 ) {
     if (locked) {
         LockedScreenGestureHost(
@@ -154,11 +154,11 @@ fun LockableVideoGestureHost(
             modifier.testTag("LockedScreenGestureHost"),
         )
     } else {
-        VideoGestureHost(
+        PlayerGestureHost(
             controllerState,
             seekerState,
             progressSliderState,
-            indicatorState,
+            gestureIndicatorState,
             fastSkipState,
             playerState,
             enableSwipeToSeek = enableSwipeToSeek,

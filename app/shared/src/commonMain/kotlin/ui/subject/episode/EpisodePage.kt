@@ -129,7 +129,7 @@ import me.him188.ani.app.ui.subject.episode.video.sidesheet.DanmakuRegexFilterSe
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.EpisodeSelectorSheet
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.MediaSelectorSheet
 import me.him188.ani.app.ui.subject.episode.video.topbar.EpisodePlayerTitle
-import me.him188.ani.app.videoplayer.ui.VideoControllerState
+import me.him188.ani.app.videoplayer.ui.PlayerControllerState
 import me.him188.ani.app.videoplayer.ui.guesture.NoOpLevelController
 import me.him188.ani.app.videoplayer.ui.guesture.asLevelController
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
@@ -265,7 +265,7 @@ private fun EpisodeSceneTabletVeryWide(
             EpisodeVideo(
                 // do consume insets
                 vm,
-                vm.videoControllerState,
+                vm.playerControllerState,
                 expanded = true,
                 modifier = Modifier.weight(1f).fillMaxHeight(),
                 maintainAspectRatio = false,
@@ -425,7 +425,7 @@ private fun EpisodeSceneContentPhone(
         videoOnly = vm.isFullscreen,
         commentCount = { vm.episodeCommentState.count },
         video = {
-            EpisodeVideo(vm, vm.videoControllerState, vm.isFullscreen)
+            EpisodeVideo(vm, vm.playerControllerState, vm.isFullscreen)
         },
         episodeDetails = {
             val navigator = LocalNavigator.current
@@ -596,7 +596,7 @@ fun EpisodeSceneContentPhoneScaffold(
 @Composable
 private fun EpisodeVideo(
     vm: EpisodeViewModel,
-    videoControllerState: VideoControllerState,
+    playerControllerState: PlayerControllerState,
     expanded: Boolean,
     modifier: Modifier = Modifier,
     maintainAspectRatio: Boolean = !expanded,
@@ -606,7 +606,7 @@ private fun EpisodeVideo(
 
     // Don't rememberSavable. 刻意让每次切换都是隐藏的
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
-        videoControllerState.toggleFullVisible(false) // 每次切换全屏后隐藏
+        playerControllerState.toggleFullVisible(false) // 每次切换全屏后隐藏
     }
     val videoDanmakuState = vm.danmaku
 
@@ -650,7 +650,7 @@ private fun EpisodeVideo(
         expanded = expanded,
         hasNextEpisode = vm.episodeSelectorState.hasNextEpisode,
         onClickNextEpisode = { vm.episodeSelectorState.selectNext() },
-        videoControllerState = videoControllerState,
+        playerControllerState = playerControllerState,
         title = {
             val episode = vm.episodePresentation
             val subject = vm.subjectPresentation
@@ -678,7 +678,7 @@ private fun EpisodeVideo(
                 danmakuTextPlaceholder = danmakuTextPlaceholder,
                 playerState = vm.playerState,
                 videoScaffoldConfig = vm.videoScaffoldConfig,
-                videoControllerState = videoControllerState,
+                playerControllerState = playerControllerState,
             )
         },
         onClickScreenshot = {
@@ -736,7 +736,7 @@ private fun EpisodeVideo(
         sideSheets = { sheetsController ->
             EpisodeVideoDefaults.SideSheets(
                 sheetsController,
-                videoControllerState,
+                playerControllerState,
                 playerSettingsPage = {
                     EpisodeVideoSideSheets.DanmakuSettingsSheet(
                         onDismissRequest = { goBack() },

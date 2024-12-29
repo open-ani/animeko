@@ -57,12 +57,12 @@ import me.him188.ani.app.ui.subject.episode.video.sidesheet.EpisodeSelectorSheet
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.MediaSelectorSheet
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.rememberTestEpisodeSelectorState
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
-import me.him188.ani.app.videoplayer.ui.VideoControllerState
+import me.him188.ani.app.videoplayer.ui.PlayerControllerState
 import me.him188.ani.app.videoplayer.ui.guesture.GestureFamily
 import me.him188.ani.app.videoplayer.ui.guesture.NoOpLevelController
 import me.him188.ani.app.videoplayer.ui.guesture.VIDEO_GESTURE_MOUSE_MOVE_SHOW_CONTROLLER_DURATION
 import me.him188.ani.app.videoplayer.ui.guesture.VIDEO_GESTURE_TOUCH_SHOW_CONTROLLER_DURATION
-import me.him188.ani.app.videoplayer.ui.progress.MediaProgressSliderState
+import me.him188.ani.app.videoplayer.ui.progress.PlayerProgressSliderState
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
 import me.him188.ani.app.videoplayer.ui.progress.TAG_DANMAKU_ICON_BUTTON
 import me.him188.ani.app.videoplayer.ui.progress.TAG_MEDIA_PROGRESS_INDICATOR_TEXT
@@ -115,9 +115,9 @@ class EpisodeVideoControllerTest {
     }
 
 
-    private val controllerState = VideoControllerState(ControllerVisibility.Invisible)
+    private val controllerState = PlayerControllerState(ControllerVisibility.Invisible)
     private var currentPositionMillis by mutableLongStateOf(0L)
-    private val progressSliderState: MediaProgressSliderState = MediaProgressSliderState(
+    private val progressSliderState: PlayerProgressSliderState = PlayerProgressSliderState(
         { currentPositionMillis },
         { 100_000 },
         stateOf(persistentListOf()),
@@ -139,7 +139,7 @@ class EpisodeVideoControllerTest {
         get() = onNodeWithTag(TAG_DANMAKU_ICON_BUTTON, useUnmergedTree = true)
 
     @Composable
-    private fun Player(gestureFamily: GestureFamily, videoControllerState: VideoControllerState = controllerState) {
+    private fun Player(gestureFamily: GestureFamily, playerControllerState: PlayerControllerState = controllerState) {
         ProvideCompositionLocalsForPreview(colorScheme = aniDarkColorTheme()) {
             val scope = rememberCoroutineScope()
             val playerState = remember {
@@ -160,7 +160,7 @@ class EpisodeVideoControllerTest {
                 },
                 onSetEnabled = { },
                 onHideController = {
-                    videoControllerState.toggleFullVisible(false)
+                    playerControllerState.toggleFullVisible(false)
                 },
                 scope,
             )
@@ -170,7 +170,7 @@ class EpisodeVideoControllerTest {
                 expanded = expanded,
                 hasNextEpisode = true,
                 onClickNextEpisode = {},
-                videoControllerState = videoControllerState,
+                playerControllerState = playerControllerState,
                 title = { PlayerTopBar() },
                 danmakuHostState = remember { DanmakuHostState() },
                 danmakuEnabled = false,
@@ -184,7 +184,7 @@ class EpisodeVideoControllerTest {
                         danmakuTextPlaceholder = "",
                         playerState = playerState,
                         videoScaffoldConfig = VideoScaffoldConfig.Default,
-                        videoControllerState = videoControllerState,
+                        playerControllerState = playerControllerState,
                         modifier = Modifier.testTag(TAG_DANMAKU_EDITOR),
                     )
                 },
@@ -213,7 +213,7 @@ class EpisodeVideoControllerTest {
                 sideSheets = { sheetsController ->
                     EpisodeVideoDefaults.SideSheets(
                         sheetsController,
-                        videoControllerState,
+                        playerControllerState,
                         playerSettingsPage = {
                             EpisodeVideoSideSheets.DanmakuSettingsSheet(
                                 onDismissRequest = { goBack() },
@@ -358,7 +358,7 @@ class EpisodeVideoControllerTest {
      */
     @Test
     fun `touch - autoHideController - default show controller`() = runAniComposeUiTest {
-        val controllerState = VideoControllerState(ControllerVisibility.Visible)
+        val controllerState = PlayerControllerState(ControllerVisibility.Visible)
         mainClock.autoAdvance = false
         setContent {
             Player(GestureFamily.TOUCH, controllerState)

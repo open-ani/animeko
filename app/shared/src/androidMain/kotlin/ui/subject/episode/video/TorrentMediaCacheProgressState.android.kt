@@ -31,7 +31,7 @@ import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPrev
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.foundation.theme.aniDarkColorTheme
 import me.him188.ani.app.videoplayer.ui.progress.MediaProgressSlider
-import me.him188.ani.app.videoplayer.ui.progress.MediaProgressSliderState
+import me.him188.ani.app.videoplayer.ui.progress.PlayerProgressSliderState
 import kotlin.time.Duration.Companion.milliseconds
 
 // Try interactive preview to see cache progress change
@@ -70,7 +70,7 @@ fun PreviewMediaProgressSliderInteractive() = ProvideCompositionLocalsForPreview
         Box(modifier = Modifier.background(MaterialTheme.colorScheme.background)) {
             MediaProgressSlider(
                 remember {
-                    MediaProgressSliderState(
+                    PlayerProgressSliderState(
                         currentPositionMillis = { currentPositionMillis },
                         totalDurationMillis = { totalDurationMillis },
                         chapters = stateOf(persistentListOf()),
@@ -107,7 +107,7 @@ fun PreviewMediaProgressSliderNonConsecutiveCacheImpl(
         Box(modifier = Modifier.background(MaterialTheme.colorScheme.background)) {
             MediaProgressSlider(
                 remember {
-                    MediaProgressSliderState(
+                    PlayerProgressSliderState(
                         currentPositionMillis = { 2000 },
                         totalDurationMillis = { 30_000 },
                         chapters = stateOf(persistentListOf()),

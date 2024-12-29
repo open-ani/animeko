@@ -1,13 +1,22 @@
+/*
+ * Copyright (C) 2024 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.app.videoplayer.ui
 
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-class VideoControllerStateTest {
+class PlayerControllerStateTest {
     @Test
     fun `test toggle visibility`() = runTest {
-        val state = VideoControllerState(ControllerVisibility.Visible)
+        val state = PlayerControllerState(ControllerVisibility.Visible)
         state.toggleFullVisible()
         assertEquals(ControllerVisibility.Invisible, state.visibility)
         state.toggleFullVisible()
@@ -20,7 +29,7 @@ class VideoControllerStateTest {
 
     @Test
     fun `show detached slider when init invisible`() = runTest {
-        val state = VideoControllerState(ControllerVisibility.Invisible)
+        val state = PlayerControllerState(ControllerVisibility.Invisible)
         val requester = Any()
         state.setRequestProgressBar(requester)
         assertEquals(ControllerVisibility.DetachedSliderOnly, state.visibility)
@@ -31,7 +40,7 @@ class VideoControllerStateTest {
 
     @Test
     fun `do not show detached slider when init visible `() = runTest {
-        val state = VideoControllerState(ControllerVisibility.Visible)
+        val state = PlayerControllerState(ControllerVisibility.Visible)
         val requester = Any()
         state.setRequestProgressBar(requester)
         assertEquals(ControllerVisibility.Visible, state.visibility)
@@ -91,8 +100,8 @@ class VideoControllerStateTest {
         alwaysOn: Boolean,
         progressBarVisible: Boolean,
         fullVisible: Boolean
-    ): VideoControllerState {
-        val state = VideoControllerState(ControllerVisibility.Invisible)
+    ): PlayerControllerState {
+        val state = PlayerControllerState(ControllerVisibility.Invisible)
         val requester = Any()
         state.setRequestAlwaysOn(requester, alwaysOn)
         if (progressBarVisible)

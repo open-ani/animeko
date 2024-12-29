@@ -98,7 +98,7 @@ import me.him188.ani.app.ui.foundation.theme.aniDarkColorTheme
 import me.him188.ani.app.ui.foundation.theme.aniLightColorTheme
 import me.him188.ani.app.ui.foundation.theme.slightlyWeaken
 import me.him188.ani.app.ui.foundation.theme.stronglyWeaken
-import me.him188.ani.app.videoplayer.ui.VideoControllerState
+import me.him188.ani.app.videoplayer.ui.PlayerControllerState
 import me.him188.ani.app.videoplayer.ui.state.MediaCacheProgressState
 import me.him188.ani.app.videoplayer.ui.top.needWorkaroundForFocusManager
 import kotlin.math.roundToInt
@@ -159,7 +159,7 @@ object PlayerControllerDefaults {
         maxValue: Float,
         onClick: () -> Unit,
         onchange: (Float) -> Unit,
-        controllerState: VideoControllerState,
+        controllerState: PlayerControllerState,
         modifier: Modifier = Modifier,
     ) {
         val hoverInteraction = remember { MutableInteractionSource() }
@@ -559,7 +559,7 @@ object PlayerControllerDefaults {
 
     @Composable
     fun MediaProgressSlider(
-        progressSliderState: MediaProgressSliderState,
+        progressSliderState: PlayerProgressSliderState,
         cacheProgressState: MediaCacheProgressState,
         modifier: Modifier = Modifier,
         enabled: Boolean = true,

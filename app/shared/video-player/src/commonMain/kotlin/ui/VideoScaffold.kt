@@ -48,7 +48,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.theme.aniDarkColorTheme
 import me.him188.ani.app.ui.foundation.theme.slightlyWeaken
-import me.him188.ani.app.videoplayer.ui.guesture.VideoGestureHost
+import me.him188.ani.app.videoplayer.ui.guesture.PlayerGestureHost
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerBar
 import me.him188.ani.app.videoplayer.ui.top.PlayerTopBar
 
@@ -67,7 +67,7 @@ import me.him188.ani.app.videoplayer.ui.top.PlayerTopBar
  * @param topBar [PlayerTopBar]
  * @param video [VideoPlayer]. video 不会接受到点击事件.
  * @param danmakuHost 为 `DanmakuHost` 留的区域
- * @param gestureHost 手势区域, 例如快进/快退, 音量调节等. See [VideoGestureHost]
+ * @param gestureHost 手势区域, 例如快进/快退, 音量调节等. See [PlayerGestureHost]
  * @param floatingMessage 悬浮消息, 例如正在缓冲. 将会对齐到中央
  * @param rhsBar 右侧控制栏, 锁定手势等.
  * @param bottomBar [PlayerControllerBar]
@@ -79,7 +79,7 @@ fun VideoScaffold(
     modifier: Modifier = Modifier,
     contentWindowInsets: WindowInsets = WindowInsets.safeContent, // TODO: 目前只对部分元素有效
     maintainAspectRatio: Boolean = !expanded,
-    controllerState: VideoControllerState,
+    controllerState: PlayerControllerState,
     gestureLocked: Boolean = false,
     topBar: @Composable RowScope.() -> Unit = {},
     /**

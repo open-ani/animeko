@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.app.videoplayer.ui.progress
 
 import androidx.compose.animation.animateContentSize
@@ -77,7 +86,7 @@ const val TAG_PROGRESS_SLIDER = "ProgressSlider"
  * @see MediaProgressSlider
  */
 @Stable
-class MediaProgressSliderState(
+class PlayerProgressSliderState(
     currentPositionMillis: () -> Long,
     totalDurationMillis: () -> Long,
     chapters: State<ImmutableList<Chapter>>,
@@ -134,14 +143,14 @@ class MediaProgressSliderState(
 }
 
 /**
- * 便捷方法, 从 [PlayerState.currentPositionMillis] 创建  [MediaProgressSliderState]
+ * 便捷方法, 从 [PlayerState.currentPositionMillis] 创建  [PlayerProgressSliderState]
  */
 @Composable
 fun rememberMediaProgressSliderState(
     playerState: PlayerState,
     onPreview: (positionMillis: Long) -> Unit,
     onPreviewFinished: (positionMillis: Long) -> Unit,
-): MediaProgressSliderState {
+): PlayerProgressSliderState {
     val currentPosition by playerState.currentPositionMillis.collectAsStateWithLifecycle()
     val videoProperties by playerState.videoProperties.collectAsStateWithLifecycle()
     val totalDuration by remember {
@@ -154,7 +163,7 @@ fun rememberMediaProgressSliderState(
     val onPreviewFinishedUpdated by rememberUpdatedState(onPreviewFinished)
     val chapters = playerState.chapters.collectAsStateWithLifecycle()
     return remember {
-        MediaProgressSliderState(
+        PlayerProgressSliderState(
             { currentPosition },
             { totalDuration },
             chapters,
@@ -209,7 +218,7 @@ class MediaProgressSliderColors(
  */
 @Composable
 fun MediaProgressSlider(
-    state: MediaProgressSliderState,
+    state: PlayerProgressSliderState,
     cacheState: MediaCacheProgressState,
     colors: MediaProgressSliderColors = MediaProgressSliderDefaults.colors(),
     enabled: Boolean = true,

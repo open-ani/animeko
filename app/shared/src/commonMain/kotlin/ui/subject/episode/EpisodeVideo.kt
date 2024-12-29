@@ -57,7 +57,7 @@ import me.him188.ani.app.ui.subject.episode.statistics.VideoLoadingState
 import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheetPage
 import me.him188.ani.app.ui.subject.episode.video.components.rememberStatusBarHeightAsState
 import me.him188.ani.app.ui.subject.episode.video.loading.EpisodeVideoLoadingIndicator
-import me.him188.ani.app.videoplayer.ui.VideoControllerState
+import me.him188.ani.app.videoplayer.ui.PlayerControllerState
 import me.him188.ani.app.videoplayer.ui.VideoPlayer
 import me.him188.ani.app.videoplayer.ui.VideoScaffold
 import me.him188.ani.app.videoplayer.ui.VideoSideSheetsController
@@ -72,7 +72,7 @@ import me.him188.ani.app.videoplayer.ui.guesture.rememberSwipeSeekerState
 import me.him188.ani.app.videoplayer.ui.hasPageAsState
 import me.him188.ani.app.videoplayer.ui.progress.AudioSwitcher
 import me.him188.ani.app.videoplayer.ui.progress.MediaProgressIndicatorText
-import me.him188.ani.app.videoplayer.ui.progress.MediaProgressSliderState
+import me.him188.ani.app.videoplayer.ui.progress.PlayerProgressSliderState
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerBar
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults.SpeedSwitcher
@@ -108,7 +108,7 @@ internal fun EpisodeVideoImpl(
     expanded: Boolean,
     hasNextEpisode: Boolean,
     onClickNextEpisode: () -> Unit,
-    videoControllerState: VideoControllerState,
+    playerControllerState: PlayerControllerState,
     title: @Composable () -> Unit,
     danmakuHostState: DanmakuHostState,
     danmakuEnabled: Boolean,
@@ -121,7 +121,7 @@ internal fun EpisodeVideoImpl(
     detachedProgressSlider: @Composable () -> Unit,
     sidebarVisible: Boolean,
     onToggleSidebar: (isCollapsed: Boolean) -> Unit,
-    progressSliderState: MediaProgressSliderState,
+    progressSliderState: PlayerProgressSliderState,
     audioController: LevelController,
     brightnessController: LevelController,
     leftBottomTips: @Composable () -> Unit,
@@ -140,10 +140,10 @@ internal fun EpisodeVideoImpl(
     // auto hide cursor
     val videoInteractionSource = remember { MutableInteractionSource() }
     val isVideoHovered by videoInteractionSource.collectIsHoveredAsState()
-    val showCursor by remember(videoControllerState) {
+    val showCursor by remember(playerControllerState) {
         derivedStateOf {
-            !isVideoHovered || (videoControllerState.visibility.bottomBar
-                    || videoControllerState.visibility.detachedSlider
+            !isVideoHovered || (playerControllerState.visibility.bottomBar
+                    || playerControllerState.visibility.detachedSlider
                     || anySideSheetVisible)
         }
     }
@@ -156,7 +156,7 @@ internal fun EpisodeVideoImpl(
             .cursorVisibility(showCursor),
         contentWindowInsets = contentWindowInsets,
         maintainAspectRatio = maintainAspectRatio,
-        controllerState = videoControllerState,
+        controllerState = playerControllerState,
         gestureLocked = isLocked,
         topBar = {
             WindowDragArea {
@@ -237,10 +237,9 @@ internal fun EpisodeVideoImpl(
             val indicatorTasker = rememberUiMonoTasker()
             val indicatorState = rememberGestureIndicatorState()
             LockableVideoGestureHost(
-                videoControllerState,
+                playerControllerState,
                 swipeSeekerState,
                 progressSliderState,
-                indicatorState,
                 playerState,
                 locked = isLocked,
                 enableSwipeToSeek = enableSwipeToSeek,
@@ -264,6 +263,7 @@ internal fun EpisodeVideoImpl(
                 },
                 onExitFullscreen = onExitFullscreen,
                 family = gestureFamily,
+                indicatorState,
             )
         },
         floatingMessage = {
@@ -279,7 +279,7 @@ internal fun EpisodeVideoImpl(
                 if (debugViewModel.isAppInDebugMode && debugViewModel.debugSettings.value.showControllerAlwaysOnRequesters) {
                     TextWithBorder(
                         "Always on requesters: \n" +
-                                videoControllerState.getAlwaysOnRequesters().joinToString("\n"),
+                                playerControllerState.getAlwaysOnRequesters().joinToString("\n"),
                         style = MaterialTheme.typography.labelLarge,
                     )
                 }
@@ -329,7 +329,7 @@ internal fun EpisodeVideoImpl(
                             onchange = {
                                 playerState.setVolume(it)
                             },
-                            controllerState = videoControllerState,
+                            controllerState = playerControllerState,
                         )
                     }
                 },
@@ -357,7 +357,7 @@ internal fun EpisodeVideoImpl(
                         PlayerControllerDefaults.SubtitleSwitcher(playerState.subtitleTracks)
 
                         val speed by playerState.playbackSpeed.collectAsStateWithLifecycle()
-                        val alwaysOnRequester = rememberAlwaysOnRequester(videoControllerState, "speedSwitcher")
+                        val alwaysOnRequester = rememberAlwaysOnRequester(playerControllerState, "speedSwitcher")
                         SpeedSwitcher(
                             speed,
                             { playerState.setPlaybackSpeed(it) },
