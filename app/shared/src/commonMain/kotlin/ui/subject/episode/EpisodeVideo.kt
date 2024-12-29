@@ -40,6 +40,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -206,29 +207,20 @@ internal fun EpisodeVideoImpl(
                     title = if (expanded) {
                         {
                             Row(
-                                Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp),
+                                Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                                verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Box(Modifier.weight(1f, fill = true)) {
                                     title()
                                 }
                                 
                                 if (config.showTimeInTopBar) {
-                                    val currentTime = remember { mutableStateOf("") }
-                                    LaunchedEffect(Unit) {
-                                        while(true) {
-                                            currentTime.value = Clock.System.now()
-                                                .toLocalDateTime(TimeZone.currentSystemDefault())
-                                                .let { "${it.hour.toString().padStart(2, '0')}:${it.minute.toString().padStart(2, '0')}" }
-                                            delay(1000L)
-                                        }
-                                    }
-                                    Text(
-                                        currentTime.value,
-                                        style = MaterialTheme.typography.titleMedium
+                                    val currentTime by rememberCurrentTimeAsState()
+                                    TextWithBorder(
+                                        currentTime,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        borderColor = Color.Black
                                     )
                                 }
                             }
@@ -621,3 +613,20 @@ fun EpisodeVideoDefaults.DanmakuEditor(
     }
 }
 
+@Composable
+private fun rememberCurrentTimeAsState(): State<String> = remember { 
+    mutableStateOf("") 
+}.also { currentTime ->
+    LaunchedEffect(Unit) {
+        while(true) {
+            val now = Clock.System.now()
+            val localDateTime = now.toLocalDateTime(TimeZone.currentSystemDefault())
+            currentTime.value = "${localDateTime.hour.toString().padStart(2, '0')}:${localDateTime.minute.toString().padStart(2, '0')}"
+            
+            // 计算到下一分钟的延迟时间
+            val millisInMinute = 60_000L
+            val millisToNextMinute = millisInMinute - (now.toEpochMilliseconds() % millisInMinute)
+            delay(millisToNextMinute)
+        }
+    }
+}
