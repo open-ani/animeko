@@ -146,7 +146,7 @@ abstract class BaseJellyfinMediaSource(config: MediaSourceConfig) : HttpMediaSou
 
     private fun getSubtitles(itemId: String, mediaStreams: List<MediaStream>): List<Subtitle> {
         return mediaStreams
-            .filter { it.Type == "Subtitle" }
+            .filter { it.Type == "Subtitle" && it.IsTextSubtitleStream }
             .map { stream ->
                 Subtitle(
                     uri = getSubtitleUri(itemId, stream.Index, stream.Codec),
