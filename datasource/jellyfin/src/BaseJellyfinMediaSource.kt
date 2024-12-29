@@ -26,7 +26,9 @@ import kotlinx.coroutines.flow.toList
 import kotlinx.serialization.Serializable
 import me.him188.ani.datasources.api.DefaultMedia
 import me.him188.ani.datasources.api.EpisodeSort
+import me.him188.ani.datasources.api.MediaExtraFiles
 import me.him188.ani.datasources.api.MediaProperties
+import me.him188.ani.datasources.api.Subtitle
 import me.him188.ani.datasources.api.SubtitleKind
 import me.him188.ani.datasources.api.paging.SinglePagePagedSource
 import me.him188.ani.datasources.api.paging.SizedSource
@@ -125,6 +127,9 @@ abstract class BaseJellyfinMediaSource(config: MediaSourceConfig) : HttpMediaSou
                                 size = FileSize.Unspecified,
                                 subtitleKind = SubtitleKind.EXTERNAL_PROVIDED,
                             ),
+                            extraFiles = MediaExtraFiles(
+                                subtitles = getSubtitles(item.Id, item.MediaStreams),
+                            ),
                             episodeRange = episodeRange,
                             location = MediaSourceLocation.Lan,
                             kind = MediaSourceKind.WEB,
@@ -139,6 +144,26 @@ abstract class BaseJellyfinMediaSource(config: MediaSourceConfig) : HttpMediaSou
 
     protected abstract fun getDownloadUri(itemId: String): String
 
+    private fun getSubtitles(itemId: String, mediaStreams: List<MediaStream>): List<Subtitle> {
+        return mediaStreams
+            .filter { it.Type == "Subtitle" }
+            .map { stream ->
+                Subtitle(
+                    uri = getSubtitleUri(itemId, stream.Index, stream.Codec),
+                    language = stream.Title,
+                    mimeType = when (stream.Codec.lowercase()) {
+                        "ass" -> "text/x-ass"
+                        else -> "application/octet-stream"  // 默认二进制流
+                    },
+                )
+            }
+    }
+
+    private fun getSubtitleUri(itemId: String, index: Int, codec: String): String {
+        return "$baseUrl/Videos/$itemId/$itemId/Subtitles/$index/0/Stream.$codec"
+    }
+
+
     private suspend fun doSearch(
         subjectName: String? = null,
         recursive: Boolean = true,
@@ -149,6 +174,7 @@ abstract class BaseJellyfinMediaSource(config: MediaSourceConfig) : HttpMediaSou
         parameter("recursive", recursive)
         parameter("searchTerm", subjectName)
         parameter("fields", "CanDownload")
+        parameter("fields", "MediaStreams")
         parameter("parentId", parentId)
     }.body<SearchResponse>()
 }
@@ -156,6 +182,16 @@ abstract class BaseJellyfinMediaSource(config: MediaSourceConfig) : HttpMediaSou
 @Serializable
 private class SearchResponse(
     val Items: List<Item> = emptyList(),
+)
+
+@Serializable
+@Suppress("PropertyName")
+private data class MediaStream(
+    val Title: String? = null, // 除了字幕以外其他可能没有
+    val Type: String,
+    val Codec: String,
+    val Index: Int,
+    val IsTextSubtitleStream: Boolean,
 )
 
 @Serializable
@@ -168,4 +204,5 @@ private data class Item(
     val ParentIndexNumber: Int? = null,
     val Type: String, // "Episode", "Series", ...
     val CanDownload: Boolean = false,
+    val MediaStreams: List<MediaStream> = emptyList(),
 )
