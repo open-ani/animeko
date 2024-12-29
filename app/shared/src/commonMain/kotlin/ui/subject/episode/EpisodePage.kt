@@ -123,6 +123,7 @@ import me.him188.ani.app.ui.subject.episode.notif.VideoNotifEffect
 import me.him188.ani.app.ui.subject.episode.video.components.DanmakuSettingsSheet
 import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheetPage
 import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheets
+import me.him188.ani.app.ui.subject.episode.video.components.FloatingFullscreenSwitchButton
 import me.him188.ani.app.ui.subject.episode.video.components.SideSheets
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.DanmakuRegexFilterSettings
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.EpisodeSelectorSheet
@@ -631,6 +632,19 @@ private fun EpisodeVideo(
             context.getComponentAccessors()
         }
     }
+    val onClickFullScreen: () -> Unit = {
+        if (vm.isFullscreen) {
+            scope.launch {
+                context.setRequestFullScreen(window, false)
+                vm.isFullscreen = false
+            }
+        } else {
+            scope.launch {
+                vm.isFullscreen = true
+                context.setRequestFullScreen(window, true)
+            }
+        }
+    }
     EpisodeVideoImpl(
         vm.playerState,
         expanded = expanded,
@@ -651,19 +665,7 @@ private fun EpisodeVideo(
         danmakuEnabled = videoDanmakuState.enabled,
         onToggleDanmaku = { videoDanmakuState.setEnabled(!videoDanmakuState.enabled) },
         videoLoadingStateFlow = vm.videoStatisticsFlow.map { it.videoLoadingState },
-        onClickFullScreen = {
-            if (vm.isFullscreen) {
-                scope.launch {
-                    context.setRequestFullScreen(window, false)
-                    vm.isFullscreen = false
-                }
-            } else {
-                scope.launch {
-                    vm.isFullscreen = true
-                    context.setRequestFullScreen(window, true)
-                }
-            }
-        },
+        onClickFullScreen = onClickFullScreen,
         onExitFullscreen = {
             scope.launch {
                 context.setRequestFullScreen(window, false)
@@ -679,7 +681,6 @@ private fun EpisodeVideo(
                 videoControllerState = videoControllerState,
             )
         },
-        configProvider = remember(vm) { { vm.videoScaffoldConfig } },
         onClickScreenshot = {
             val currentPositionMillis = vm.playerState.currentPositionMillis.value
             val min = currentPositionMillis / 60000
@@ -724,6 +725,13 @@ private fun EpisodeVideo(
                     },
                 )
             }
+        },
+        fullscreenSwitchButton = {
+            EpisodeVideoDefaults.FloatingFullscreenSwitchButton(
+                vm.videoScaffoldConfig.fullscreenSwitchMode,
+                isFullscreen = expanded,
+                onClickFullScreen,
+            )
         },
         sideSheets = { sheetsController ->
             EpisodeVideoDefaults.SideSheets(

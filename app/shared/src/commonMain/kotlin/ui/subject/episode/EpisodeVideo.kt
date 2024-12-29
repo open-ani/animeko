@@ -42,7 +42,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.tools.rememberUiMonoTasker
 import me.him188.ani.app.ui.foundation.LocalIsPreviewing
 import me.him188.ani.app.ui.foundation.LocalPlatform
@@ -56,7 +55,6 @@ import me.him188.ani.app.ui.foundation.interaction.WindowDragArea
 import me.him188.ani.app.ui.foundation.rememberDebugSettingsViewModel
 import me.him188.ani.app.ui.subject.episode.statistics.VideoLoadingState
 import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheetPage
-import me.him188.ani.app.ui.subject.episode.video.components.FloatingFullscreenSwitchButton
 import me.him188.ani.app.ui.subject.episode.video.components.rememberStatusBarHeightAsState
 import me.him188.ani.app.ui.subject.episode.video.loading.EpisodeVideoLoadingIndicator
 import me.him188.ani.app.videoplayer.ui.VideoControllerState
@@ -119,7 +117,6 @@ internal fun EpisodeVideoImpl(
     onClickFullScreen: () -> Unit,
     onExitFullscreen: () -> Unit,
     danmakuEditor: @Composable() (RowScope.() -> Unit),
-    configProvider: () -> VideoScaffoldConfig,
     onClickScreenshot: () -> Unit,
     detachedProgressSlider: @Composable () -> Unit,
     sidebarVisible: Boolean,
@@ -128,6 +125,7 @@ internal fun EpisodeVideoImpl(
     audioController: LevelController,
     brightnessController: LevelController,
     leftBottomTips: @Composable () -> Unit,
+    fullscreenSwitchButton: @Composable () -> Unit,
     sideSheets: @Composable (controller: VideoSideSheetsController<EpisodeVideoSideSheetPage>) -> Unit,
     modifier: Modifier = Modifier,
     maintainAspectRatio: Boolean = !expanded,
@@ -137,7 +135,6 @@ internal fun EpisodeVideoImpl(
     // Don't rememberSavable. 刻意让每次切换都是隐藏的
     var isLocked by remember { mutableStateOf(false) }
     val sheetsController = rememberVideoSideSheetsController<EpisodeVideoSideSheetPage>()
-    val config by remember(configProvider) { derivedStateOf(configProvider) }
     val anySideSheetVisible by sheetsController.hasPageAsState()
 
     // auto hide cursor
@@ -383,16 +380,8 @@ internal fun EpisodeVideoImpl(
             )
         },
         detachedProgressSlider = detachedProgressSlider,
-        floatingBottomEnd = {
-            EpisodeVideoDefaults.FloatingFullscreenSwitchButton(
-                config.fullscreenSwitchMode,
-                isFullscreen = expanded,
-                onClickFullScreen,
-            )
-        },
-        rhsSheet = {
-            sideSheets(sheetsController)
-        },
+        floatingBottomEnd = { fullscreenSwitchButton() },
+        rhsSheet = { sideSheets(sheetsController) },
         leftBottomTips = leftBottomTips,
     )
 }

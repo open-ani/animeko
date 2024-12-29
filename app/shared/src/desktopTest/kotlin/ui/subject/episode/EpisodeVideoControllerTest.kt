@@ -32,6 +32,7 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipe
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.flow.MutableStateFlow
+import me.him188.ani.app.data.models.preference.FullscreenSwitchMode
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.ui.doesNotExist
 import me.him188.ani.app.ui.exists
@@ -49,6 +50,7 @@ import me.him188.ani.app.ui.subject.episode.statistics.VideoLoadingState
 import me.him188.ani.app.ui.subject.episode.video.components.DanmakuSettingsSheet
 import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheetPage
 import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheets
+import me.him188.ani.app.ui.subject.episode.video.components.FloatingFullscreenSwitchButton
 import me.him188.ani.app.ui.subject.episode.video.components.SideSheets
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.DanmakuRegexFilterSettings
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.EpisodeSelectorSheet
@@ -186,7 +188,6 @@ class EpisodeVideoControllerTest {
                         modifier = Modifier.testTag(TAG_DANMAKU_EDITOR),
                     )
                 },
-                configProvider = { VideoScaffoldConfig.Default },
                 onClickScreenshot = {},
                 detachedProgressSlider = {
                     PlayerControllerDefaults.MediaProgressSlider(
@@ -202,6 +203,13 @@ class EpisodeVideoControllerTest {
                 audioController = NoOpLevelController,
                 brightnessController = NoOpLevelController,
                 leftBottomTips = {},
+                fullscreenSwitchButton = {
+                    EpisodeVideoDefaults.FloatingFullscreenSwitchButton(
+                        FullscreenSwitchMode.ONLY_IN_CONTROLLER,
+                        isFullscreen = expanded,
+                        onClickFullScreen = {},
+                    )
+                },
                 sideSheets = { sheetsController ->
                     EpisodeVideoDefaults.SideSheets(
                         sheetsController,

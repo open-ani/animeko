@@ -43,6 +43,7 @@ import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.foundation.theme.aniDarkColorTheme
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import me.him188.ani.app.ui.subject.episode.statistics.VideoLoadingState
+import me.him188.ani.app.ui.subject.episode.video.components.FloatingFullscreenSwitchButton
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
 import me.him188.ani.app.videoplayer.ui.VideoControllerState
 import me.him188.ani.app.videoplayer.ui.guesture.GestureFamily
@@ -89,6 +90,8 @@ class EpisodeVideoCursorTest {
             }
             Row {
                 val expanded = true
+                val videoScaffoldConfig = VideoScaffoldConfig.Default
+                val onClickFullScreen = {}
                 EpisodeVideoImpl(
                     playerState = playerState,
                     expanded = expanded,
@@ -100,10 +103,9 @@ class EpisodeVideoCursorTest {
                     danmakuEnabled = false,
                     onToggleDanmaku = {},
                     videoLoadingStateFlow = remember { MutableStateFlow(VideoLoadingState.Succeed(isBt = true)) },
-                    onClickFullScreen = {},
+                    onClickFullScreen = onClickFullScreen,
                     onExitFullscreen = {},
                     danmakuEditor = {},
-                    configProvider = { VideoScaffoldConfig.Default },
                     onClickScreenshot = {},
                     detachedProgressSlider = {
                         PlayerControllerDefaults.MediaProgressSlider(
@@ -118,6 +120,13 @@ class EpisodeVideoCursorTest {
                     audioController = NoOpLevelController,
                     brightnessController = NoOpLevelController,
                     leftBottomTips = {},
+                    fullscreenSwitchButton = {
+                        EpisodeVideoDefaults.FloatingFullscreenSwitchButton(
+                            videoScaffoldConfig.fullscreenSwitchMode,
+                            isFullscreen = expanded,
+                            onClickFullScreen,
+                        )
+                    },
                     sideSheets = {},
                     modifier = Modifier.weight(1f),
                     gestureFamily = gestureFamily,

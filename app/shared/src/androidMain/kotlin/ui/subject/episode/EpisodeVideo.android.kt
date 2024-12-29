@@ -32,6 +32,7 @@ import me.him188.ani.app.ui.subject.episode.statistics.VideoLoadingState
 import me.him188.ani.app.ui.subject.episode.video.components.DanmakuSettingsSheet
 import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheetPage
 import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheets
+import me.him188.ani.app.ui.subject.episode.video.components.FloatingFullscreenSwitchButton
 import me.him188.ani.app.ui.subject.episode.video.components.SideSheets
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.DanmakuRegexFilterSettings
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.EpisodeSelectorSheet
@@ -100,6 +101,8 @@ private fun PreviewVideoScaffoldImpl(
             playerState.seekTo(it)
         },
     )
+    val videoScaffoldConfig = VideoScaffoldConfig.Default
+    val onClickFullScreen = { }
     EpisodeVideoImpl(
         playerState = playerState,
         expanded = expanded,
@@ -117,7 +120,7 @@ private fun PreviewVideoScaffoldImpl(
         danmakuEnabled = danmakuEnabled,
         onToggleDanmaku = { danmakuEnabled = !danmakuEnabled },
         videoLoadingStateFlow = MutableStateFlow(VideoLoadingState.Succeed(isBt = true)),
-        onClickFullScreen = { },
+        onClickFullScreen = onClickFullScreen,
         onExitFullscreen = { },
         danmakuEditor = {
             val (value, onValueChange) = remember { mutableStateOf("") }
@@ -127,7 +130,6 @@ private fun PreviewVideoScaffoldImpl(
                 Modifier.weight(1f),
             )
         },
-        configProvider = { VideoScaffoldConfig.Default },
         onClickScreenshot = {},
         detachedProgressSlider = {
             PlayerControllerDefaults.MediaProgressSlider(
@@ -143,6 +145,13 @@ private fun PreviewVideoScaffoldImpl(
         brightnessController = NoOpLevelController,
         leftBottomTips = {
             PlayerControllerDefaults.LeftBottomTips(onClick = {})
+        },
+        fullscreenSwitchButton = {
+            EpisodeVideoDefaults.FloatingFullscreenSwitchButton(
+                videoScaffoldConfig.fullscreenSwitchMode,
+                isFullscreen = expanded,
+                onClickFullScreen,
+            )
         },
         sideSheets = { sheetsController ->
             EpisodeVideoDefaults.SideSheets(

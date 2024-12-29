@@ -13,12 +13,14 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import kotlinx.coroutines.delay
 import me.him188.ani.app.data.models.preference.FullscreenSwitchMode
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
@@ -35,32 +37,35 @@ fun EpisodeVideoDefaults.FloatingFullscreenSwitchButton(
     mode: FullscreenSwitchMode,
     isFullscreen: Boolean,
     onClickFullScreen: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    when (mode) {
-        FullscreenSwitchMode.ONLY_IN_CONTROLLER -> {}
+    Box(modifier) {
+        when (mode) {
+            FullscreenSwitchMode.ONLY_IN_CONTROLLER -> {}
 
-        FullscreenSwitchMode.ALWAYS_SHOW_FLOATING -> {
-            PlayerControllerDefaults.FullscreenIcon(
-                isFullscreen,
-                onClickFullscreen = onClickFullScreen,
-            )
-        }
-
-        FullscreenSwitchMode.AUTO_HIDE_FLOATING -> {
-            var visible by remember { mutableStateOf(true) }
-            LaunchedEffect(true) {
-                delay(5.seconds)
-                visible = false
-            }
-            AnimatedVisibility(
-                visible = visible,
-                enter = fadeIn(snap()),
-                exit = fadeOut(),
-            ) {
+            FullscreenSwitchMode.ALWAYS_SHOW_FLOATING -> {
                 PlayerControllerDefaults.FullscreenIcon(
                     isFullscreen,
                     onClickFullscreen = onClickFullScreen,
                 )
+            }
+
+            FullscreenSwitchMode.AUTO_HIDE_FLOATING -> {
+                var visible by remember { mutableStateOf(true) }
+                LaunchedEffect(true) {
+                    delay(5.seconds)
+                    visible = false
+                }
+                AnimatedVisibility(
+                    visible = visible,
+                    enter = fadeIn(snap()),
+                    exit = fadeOut(),
+                ) {
+                    PlayerControllerDefaults.FullscreenIcon(
+                        isFullscreen,
+                        onClickFullscreen = onClickFullScreen,
+                    )
+                }
             }
         }
     }
