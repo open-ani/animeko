@@ -69,6 +69,10 @@ data class VideoScaffoldConfig(
      * 在播放器错误时自动切换视频源
      */
     val autoSwitchMediaOnPlayerError: Boolean = true,
+    /**
+     * 在播放器顶栏显示时间
+     */
+    val showTimeInTopBar: Boolean = true,
     @Suppress("PropertyName") @Transient val _placeholder: Int = 0,
 ) {
     companion object {

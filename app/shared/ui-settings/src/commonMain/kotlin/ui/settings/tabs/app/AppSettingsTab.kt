@@ -527,6 +527,14 @@ fun SettingsScope.PlayerGroup(
             },
             title = { Text("播放失败时自动切换资源") },
         )
+        HorizontalDividerItem()
+        SwitchItem(
+            checked = config.showTimeInTopBar,
+            onCheckedChange = {
+                videoScaffoldConfig.update(config.copy(showTimeInTopBar = it))
+            },
+            title = { Text("在播放器顶栏显示当前时间") },
+        )
     }
 }
 

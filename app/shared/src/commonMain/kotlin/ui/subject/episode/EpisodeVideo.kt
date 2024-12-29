@@ -17,10 +17,13 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
@@ -44,6 +47,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
@@ -55,6 +59,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.map
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import me.him188.ani.app.data.models.preference.FullscreenSwitchMode
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.domain.danmaku.protocol.DanmakuInfo
@@ -114,7 +121,6 @@ import me.him188.ani.danmaku.ui.DanmakuHostState
 import me.him188.ani.utils.platform.annotations.TestOnly
 import me.him188.ani.utils.platform.isDesktop
 import me.him188.ani.utils.platform.isMobile
-import kotlin.time.Duration.Companion.seconds
 
 internal const val TAG_EPISODE_VIDEO_TOP_BAR = "EpisodeVideoTopBar"
 
@@ -198,7 +204,35 @@ internal fun EpisodeVideoImpl(
                 PlayerTopBar(
                     Modifier.testTag(TAG_EPISODE_VIDEO_TOP_BAR),
                     title = if (expanded) {
-                        { title() }
+                        {
+                            Row(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(Modifier.weight(1f, fill = true)) {
+                                    title()
+                                }
+                                
+                                if (config.showTimeInTopBar) {
+                                    val currentTime = remember { mutableStateOf("") }
+                                    LaunchedEffect(Unit) {
+                                        while(true) {
+                                            currentTime.value = Clock.System.now()
+                                                .toLocalDateTime(TimeZone.currentSystemDefault())
+                                                .let { "${it.hour.toString().padStart(2, '0')}:${it.minute.toString().padStart(2, '0')}" }
+                                            delay(1000L)
+                                        }
+                                    }
+                                    Text(
+                                        currentTime.value,
+                                        style = MaterialTheme.typography.titleMedium
+                                    )
+                                }
+                            }
+                        }
                     } else {
                         null
                     },
@@ -435,7 +469,7 @@ internal fun EpisodeVideoImpl(
                 FullscreenSwitchMode.AUTO_HIDE_FLOATING -> {
                     var visible by remember { mutableStateOf(true) }
                     LaunchedEffect(true) {
-                        delay(5.seconds)
+                        delay(5000L)
                         visible = false
                     }
                     AnimatedVisibility(
