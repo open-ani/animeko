@@ -81,16 +81,31 @@ abstract class BaseJellyfinMediaSource(config: MediaSourceConfig) : HttpMediaSou
                     when (it.Type) {
                         "Season" -> doSearch(parentId = it.Id).Items.asFlow()
                         "Episode" -> flowOf(it)
+                        "Movie" -> flowOf(it)
                         else -> emptyFlow()
                     }
                 }
-                .filter { it.Type == "Episode" && it.CanDownload }
+                .filter { (it.Type == "Episode" || it.Type == "Movie") && it.CanDownload }
                 .toList()
                 .distinctBy { it.Id }
                 .mapNotNull { item ->
-                    item.IndexNumber ?: return@mapNotNull null
+                    val (originalTitle, episodeRange) = when (item.Type) {
+                        "Episode" -> {
+                            val indexNumber = item.IndexNumber ?: return@mapNotNull null
+                            Pair(
+                                "$indexNumber ${item.Name}",
+                                EpisodeRange.single(EpisodeSort(indexNumber)),
+                            )
+                        }
 
-                    val episodeRange = EpisodeRange.single(EpisodeSort(item.IndexNumber))
+                        "Movie" -> Pair(
+                            item.Name,
+                            EpisodeRange.unknownSeason(),
+                        )
+
+                        else -> return@mapNotNull null
+                    }
+
                     MediaMatch(
                         media = DefaultMedia(
                             mediaId = item.Id,
@@ -99,7 +114,7 @@ abstract class BaseJellyfinMediaSource(config: MediaSourceConfig) : HttpMediaSou
                             download = ResourceLocation.HttpStreamingFile(
                                 uri = getDownloadUri(item.Id),
                             ),
-                            originalTitle = "${item.IndexNumber} ${item.Name}",
+                            originalTitle = originalTitle,
                             publishedTime = 0,
                             properties = MediaProperties(
                                 subjectName = null,

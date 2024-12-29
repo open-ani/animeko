@@ -113,6 +113,33 @@
         }
       },
       "LocationType": "Virtual"
+    },
+    {
+      "Name": "魔法少女奈叶 Detonation",
+      "ServerId": "90441fd37c7b4f23bab43404b86eff22",
+      "Id": "8c96ca96d8f46cac5056aacf8893f6b5",
+      "CanDownload": true,
+      "HasSubtitles": true,
+      "Container": "mkv",
+      "PremiereDate": "2018-10-19T00:00:00.0000000Z",
+      "ChannelId": null,
+      "CommunityRating": 7,
+      "RunTimeTicks": 66616600000,
+      "ProductionYear": 2018,
+      "IsFolder": false,
+      "Type": "Movie",
+      "UserData": {
+        "PlaybackPositionTicks": 0,
+        "PlayCount": 0,
+        "IsFavorite": false,
+        "Played": false,
+        "Key": "547912",
+        "ItemId": "00000000000000000000000000000000"
+      },
+      "VideoType": "VideoFile",
+      "ImageBlurHashes": {},
+      "LocationType": "FileSystem",
+      "MediaType": "Video"
     }
   ],
   "TotalRecordCount": 3,
