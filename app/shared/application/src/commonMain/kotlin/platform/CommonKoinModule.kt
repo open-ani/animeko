@@ -128,7 +128,15 @@ private val Scope.settingsRepository get() = get<SettingsRepository>()
 
 fun KoinApplication.getCommonKoinModule(getContext: () -> Context, coroutineScope: CoroutineScope) = module {
     // Repositories
-    single<AniAuthClient> { AniAuthClient() }
+    single<AniAuthClient> {
+        val settings = get<SettingsRepository>()
+        AniAuthClient(
+            settings.proxySettings.flow.map { it.default }.map { proxySettings ->
+                proxySettings.toClientProxyConfig()
+            },
+            parentCoroutineContext = coroutineScope.coroutineContext,
+        )
+    }
     single<TokenRepository> { TokenRepositoryImpl(getContext().dataStores.tokenStore) }
     single<EpisodePreferencesRepository> { EpisodePreferencesRepositoryImpl(getContext().dataStores.preferredAllianceStore) }
     single<SessionManager> { BangumiSessionManager(koin, coroutineScope.coroutineContext) }
