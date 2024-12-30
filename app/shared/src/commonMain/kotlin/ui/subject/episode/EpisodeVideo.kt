@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import me.him188.ani.app.domain.media.player.MediaCacheProgressInfo
 import me.him188.ani.app.tools.rememberUiMonoTasker
 import me.him188.ani.app.ui.foundation.LocalIsPreviewing
 import me.him188.ani.app.ui.foundation.LocalPlatform
@@ -78,8 +79,6 @@ import me.him188.ani.app.videoplayer.ui.progress.PlayerProgressSliderState
 import me.him188.ani.app.videoplayer.ui.progress.SubtitleSwitcher
 import me.him188.ani.app.videoplayer.ui.rememberAlwaysOnRequester
 import me.him188.ani.app.videoplayer.ui.rememberVideoSideSheetsController
-import me.him188.ani.app.videoplayer.ui.state.ChunkState
-import me.him188.ani.app.videoplayer.ui.state.staticMediaCacheProgressState
 import me.him188.ani.app.videoplayer.ui.top.PlayerTopBar
 import me.him188.ani.danmaku.ui.DanmakuHost
 import me.him188.ani.danmaku.ui.DanmakuHostState
@@ -125,6 +124,7 @@ internal fun EpisodeVideoImpl(
     sidebarVisible: Boolean,
     onToggleSidebar: (isCollapsed: Boolean) -> Unit,
     progressSliderState: PlayerProgressSliderState,
+    cacheProgressInfoFlow: Flow<MediaCacheProgressInfo>,
     audioController: LevelController,
     brightnessController: LevelController,
     leftBottomTips: @Composable () -> Unit,
@@ -344,7 +344,7 @@ internal fun EpisodeVideoImpl(
                     // TODO: 2024/12/30 [mediamp]  MediaProgressSlider
                     PlayerControllerDefaults.MediaProgressSlider(
                         progressSliderState,
-                        cacheProgressState = staticMediaCacheProgressState(ChunkState.NONE),
+                        cacheProgressInfoFlow = cacheProgressInfoFlow,
                         showPreviewTimeTextOnThumb = expanded,
                     )
                 },

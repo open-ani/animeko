@@ -135,8 +135,6 @@ import me.him188.ani.app.videoplayer.ui.guesture.asLevelController
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults.randomDanmakuPlaceholder
 import me.him188.ani.app.videoplayer.ui.progress.rememberMediaProgressSliderState
-import me.him188.ani.app.videoplayer.ui.state.ChunkState
-import me.him188.ani.app.videoplayer.ui.state.staticMediaCacheProgressState
 import me.him188.ani.utils.platform.isMobile
 import org.openani.mediamp.features.Screenshots
 
@@ -697,10 +695,9 @@ private fun EpisodeVideo(
             }
         },
         detachedProgressSlider = {
-            // TODO: 2024/12/30 [mediamp]  MediaProgressSlider
             PlayerControllerDefaults.MediaProgressSlider(
                 progressSliderState,
-                cacheProgressState = staticMediaCacheProgressState(ChunkState.NONE),
+                cacheProgressInfoFlow = vm.cacheProgressInfoFlow,
                 enabled = false,
             )
         },
@@ -709,6 +706,7 @@ private fun EpisodeVideo(
             vm.sidebarVisible = it
         },
         progressSliderState = progressSliderState,
+        cacheProgressInfoFlow = vm.cacheProgressInfoFlow,
         audioController = remember {
             derivedStateOf {
                 platformComponents.audioManager?.asLevelController(StreamType.MUSIC) ?: NoOpLevelController

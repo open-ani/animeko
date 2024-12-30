@@ -21,8 +21,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.delay
+import me.him188.ani.app.domain.media.player.TorrentMediaCacheProgressProvider
 import me.him188.ani.app.torrent.api.pieces.PieceList
 import me.him188.ani.app.torrent.api.pieces.PieceState
 import me.him188.ani.app.torrent.api.pieces.forEach
@@ -32,7 +34,7 @@ import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.foundation.theme.aniDarkColorTheme
 import me.him188.ani.app.videoplayer.ui.progress.MediaProgressSlider
 import me.him188.ani.app.videoplayer.ui.progress.PlayerProgressSliderState
-import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 // Try interactive preview to see cache progress change
 @Preview
@@ -49,25 +51,23 @@ fun PreviewMediaProgressSliderInteractive() = ProvideCompositionLocalsForPreview
         mutableStateOf(false)
     }
 
-    val cacheProgress = remember {
-        TorrentMediaCacheProgressState(
+    val cacheProgressFlow = remember {
+        TorrentMediaCacheProgressProvider(
             pieces,
-            isFinished = { isFinished },
-        )
+        ).flow
     }
     LaunchedEffect(true) {
         pieces.forEach { piece ->
-            delay(200.milliseconds)
+            delay(2.seconds)
             piece.state = PieceState.DOWNLOADING
-            cacheProgress.update()
-            delay(200.milliseconds)
+            delay(2.seconds)
             piece.state = PieceState.FINISHED
-            cacheProgress.update()
         }
         isFinished = true
     }
     MaterialTheme(aniDarkColorTheme()) {
         Box(modifier = Modifier.background(MaterialTheme.colorScheme.background)) {
+            val cacheProgressInfo by cacheProgressFlow.collectAsStateWithLifecycle(null)
             MediaProgressSlider(
                 remember {
                     PlayerProgressSliderState(
@@ -78,7 +78,7 @@ fun PreviewMediaProgressSliderInteractive() = ProvideCompositionLocalsForPreview
                         onPreviewFinished = { currentPositionMillis = it },
                     )
                 },
-                cacheProgress,
+                { cacheProgressInfo },
             )
         }
     }
@@ -98,10 +98,12 @@ fun PreviewMediaProgressSliderNonConsecutiveCacheImpl(
     pieces: PieceList,
 ) = ProvideFoundationCompositionLocalsForPreview {
     val cacheProgress = remember {
-        TorrentMediaCacheProgressState(
+        TorrentMediaCacheProgressProvider(
             pieces,
-            isFinished = { false },
-        )
+        ).run {
+            runPass()
+            createInfo()
+        }
     }
     MaterialTheme(aniDarkColorTheme()) {
         Box(modifier = Modifier.background(MaterialTheme.colorScheme.background)) {
@@ -115,7 +117,7 @@ fun PreviewMediaProgressSliderNonConsecutiveCacheImpl(
                         onPreviewFinished = { },
                     )
                 },
-                cacheProgress,
+                { cacheProgress },
             )
         }
     }

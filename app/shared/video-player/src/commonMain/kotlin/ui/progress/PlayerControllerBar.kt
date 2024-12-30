@@ -91,6 +91,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.flow.Flow
+import me.him188.ani.app.domain.media.player.MediaCacheProgressInfo
 import me.him188.ani.app.ui.foundation.dialogs.PlatformPopupProperties
 import me.him188.ani.app.ui.foundation.effects.onKey
 import me.him188.ani.app.ui.foundation.ifThen
@@ -99,7 +102,6 @@ import me.him188.ani.app.ui.foundation.theme.aniLightColorTheme
 import me.him188.ani.app.ui.foundation.theme.slightlyWeaken
 import me.him188.ani.app.ui.foundation.theme.stronglyWeaken
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
-import me.him188.ani.app.videoplayer.ui.state.MediaCacheProgressState
 import me.him188.ani.app.videoplayer.ui.top.needWorkaroundForFocusManager
 import kotlin.math.roundToInt
 
@@ -560,13 +562,14 @@ object PlayerControllerDefaults {
     @Composable
     fun MediaProgressSlider(
         progressSliderState: PlayerProgressSliderState,
-        cacheProgressState: MediaCacheProgressState,
+        cacheProgressInfoFlow: Flow<MediaCacheProgressInfo>,
         modifier: Modifier = Modifier,
         enabled: Boolean = true,
         showPreviewTimeTextOnThumb: Boolean = true,
     ) {
+        val cacheProgressInfo by cacheProgressInfoFlow.collectAsStateWithLifecycle(null)
         me.him188.ani.app.videoplayer.ui.progress.MediaProgressSlider(
-            progressSliderState, cacheProgressState,
+            progressSliderState, { cacheProgressInfo },
             enabled = enabled,
             showPreviewTimeTextOnThumb = showPreviewTimeTextOnThumb,
             modifier = modifier,

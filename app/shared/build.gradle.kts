@@ -138,6 +138,7 @@ kotlin {
         implementation(libs.kotlinx.coroutines.test)
         implementation(projects.utils.testing)
         implementation(projects.utils.uiTesting)
+        implementation(libs.turbine)
     }
 
     sourceSets.androidMain.dependencies {

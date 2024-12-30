@@ -71,8 +71,8 @@ import me.him188.ani.app.videoplayer.ui.progress.TAG_PROGRESS_SLIDER_PREVIEW_POP
 import me.him188.ani.app.videoplayer.ui.progress.TAG_SELECT_EPISODE_ICON_BUTTON
 import me.him188.ani.app.videoplayer.ui.progress.TAG_SPEED_SWITCHER_DROPDOWN_MENU
 import me.him188.ani.app.videoplayer.ui.progress.TAG_SPEED_SWITCHER_TEXT_BUTTON
-import me.him188.ani.app.videoplayer.ui.state.ChunkState
-import me.him188.ani.app.videoplayer.ui.state.staticMediaCacheProgressState
+import me.him188.ani.app.domain.media.player.ChunkState
+import me.him188.ani.app.domain.media.player.staticMediaCacheProgressState
 import me.him188.ani.app.videoplayer.ui.top.PlayerTopBar
 import me.him188.ani.danmaku.api.Danmaku
 import me.him188.ani.danmaku.api.DanmakuLocation
@@ -167,6 +167,7 @@ class EpisodeVideoControllerTest {
                 scope,
             )
             val expanded = true
+            val cacheProgressInfoFlow = staticMediaCacheProgressState(ChunkState.NONE).flow
             EpisodeVideoImpl(
                 playerState = playerState,
                 expanded = expanded,
@@ -194,7 +195,7 @@ class EpisodeVideoControllerTest {
                 detachedProgressSlider = {
                     PlayerControllerDefaults.MediaProgressSlider(
                         progressSliderState,
-                        cacheProgressState = staticMediaCacheProgressState(ChunkState.NONE),
+                        cacheProgressInfoFlow = cacheProgressInfoFlow,
                         Modifier.testTag(TAG_DETACHED_PROGRESS_SLIDER),
                         enabled = false,
                     )
@@ -202,6 +203,7 @@ class EpisodeVideoControllerTest {
                 sidebarVisible = true,
                 onToggleSidebar = {},
                 progressSliderState = progressSliderState,
+                cacheProgressInfoFlow = cacheProgressInfoFlow,
                 audioController = NoOpLevelController,
                 brightnessController = NoOpLevelController,
                 leftBottomTips = {},

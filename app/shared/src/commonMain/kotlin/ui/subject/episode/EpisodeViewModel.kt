@@ -374,6 +374,7 @@ class EpisodeViewModel(
         mediaFetchSession.flatMapLatest { it.hasCompleted }.map { !it.allCompleted() },
         backgroundScope.coroutineContext,
     )
+    val cacheProgressInfoFlow = playerLauncher.cacheProgressProvider
 
     init { // after playerLauncher
         launchInBackground {

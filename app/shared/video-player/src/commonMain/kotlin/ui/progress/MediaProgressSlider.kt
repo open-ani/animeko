@@ -61,13 +61,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import me.him188.ani.app.domain.media.player.ChunkState
+import me.him188.ani.app.domain.media.player.MediaCacheProgressInfo
 import me.him188.ani.app.ui.foundation.dialogs.PlatformPopupProperties
 import me.him188.ani.app.ui.foundation.effects.onPointerEventMultiplatform
 import me.him188.ani.app.ui.foundation.theme.slightlyWeaken
 import me.him188.ani.app.ui.foundation.theme.weaken
-import me.him188.ani.app.videoplayer.ui.state.Chunk
-import me.him188.ani.app.videoplayer.ui.state.ChunkState
-import me.him188.ani.app.videoplayer.ui.state.MediaCacheProgressState
 import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.metadata.Chapter
 import kotlin.math.roundToInt
@@ -218,7 +217,7 @@ class MediaProgressSliderColors(
 @Composable
 fun MediaProgressSlider(
     state: PlayerProgressSliderState,
-    cacheState: MediaCacheProgressState,
+    cacheProgressInfoFlow: () -> MediaCacheProgressInfo?,
     colors: MediaProgressSliderColors = MediaProgressSliderDefaults.colors(),
     enabled: Boolean = true,
     showPreviewTimeTextOnThumb: Boolean = true,
@@ -252,13 +251,12 @@ fun MediaProgressSlider(
 
             Canvas(Modifier.matchParentSize()) {
                 // draw cached progress
-
-                cacheState.version // subscribe to state change
+                val snapshotCacheProgress = cacheProgressInfoFlow() ?: return@Canvas // ignore initial state
 
                 var currentX = 0f
 
                 // 连续的缓存区块连着画, 否则会因精度缺失导致不连续
-                forEachConsecutiveChunk(cacheState.chunks) { state, weight ->
+                forEachConsecutiveChunk(snapshotCacheProgress) { state, weight ->
                     val color = when (state) {
                         ChunkState.NONE -> Color.Unspecified
                         ChunkState.DOWNLOADING -> colors.downloadingColor
@@ -533,26 +531,34 @@ fun PreviewTimeText(
 }
 
 private inline fun forEachConsecutiveChunk(
-    chunks: List<Chunk>,
+    chunks: MediaCacheProgressInfo,
     action: (state: ChunkState, weight: Float) -> Unit
 ) {
     if (chunks.isEmpty()) return
 
-    var currentState: ChunkState = chunks[0].state
+    var currentState: ChunkState = chunks.chunkStates[0]
     var start = 0
     var end = 0
 
     for (index in 1..chunks.lastIndex) {
-        val chunk = chunks[index]
-        if (chunk.state != currentState) {
-            action(currentState, chunks.subList(start, end + 1).sumOf { it.weight })
-            currentState = chunk.state
+        val chunk = chunks.chunkStates[index]
+        if (chunk != currentState) {
+            action(currentState, chunks.sumWeightOfRange(start, end + 1))
+            currentState = chunk
             start = index
         }
         end = index
     }
     // Handle the final chunk
-    action(currentState, chunks.subList(start, end + 1).sumOf { it.weight })
+    action(currentState, chunks.sumWeightOfRange(start, end + 1))
+}
+
+private fun MediaCacheProgressInfo.sumWeightOfRange(start: Int, endExclusive: Int): Float {
+    var sum: Float = 0.toFloat()
+    for (i in start until endExclusive) {
+        sum += chunkWeights[i]
+    }
+    return sum
 }
 
 @OverloadResolutionByLambdaReturnType

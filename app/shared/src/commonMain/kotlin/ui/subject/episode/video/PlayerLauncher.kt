@@ -20,12 +20,16 @@ import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transformLatest
 import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.episode.displayName
+import me.him188.ani.app.domain.media.player.MediaCacheProgressInfo
+import me.him188.ani.app.domain.media.player.TorrentMediaCacheProgressProvider
 import me.him188.ani.app.domain.media.resolver.AniMediaSourceOpenException
 import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
 import me.him188.ani.app.domain.media.resolver.OpenFailures
@@ -40,6 +44,7 @@ import me.him188.ani.app.ui.foundation.HasBackgroundScope
 import me.him188.ani.app.ui.subject.episode.mediaFetch.MediaSourceInfoProvider
 import me.him188.ani.app.ui.subject.episode.statistics.VideoLoadingState
 import me.him188.ani.app.ui.subject.episode.statistics.VideoStatistics
+import me.him188.ani.app.videoplayer.torrent.TorrentVideoData
 import me.him188.ani.app.videoplayer.torrent.filenameOrNull
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.utils.logging.error
@@ -87,6 +92,18 @@ class PlayerLauncher(
         SharingStarted.WhileSubscribed(),
         VideoStatistics.Placeholder,
     )
+
+    val cacheProgressProvider = playerState.mediaData
+        .flatMapLatest { data ->
+            when (data) {
+                is TorrentVideoData -> TorrentMediaCacheProgressProvider(data.pieces).flow
+                else -> flowOf(MediaCacheProgressInfo.Empty)
+            }
+        }.shareIn(
+            backgroundScope,
+            SharingStarted.WhileSubscribed(),
+            replay = 1,
+        )
 
     init {
         mediaSelector.selected.transformLatest { media ->

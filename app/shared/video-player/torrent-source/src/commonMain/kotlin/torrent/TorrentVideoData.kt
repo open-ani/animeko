@@ -32,6 +32,7 @@ class TorrentVideoData(
 
     override fun fileLength(): Long = entry.length
 
+
     @OptIn(MediampInternalApi::class)
     override val networkStats: Flow<NetStats> =
         handle.entry.fileStats.map { it.downloadedBytes }.averageRate().map { downloadSpeed ->

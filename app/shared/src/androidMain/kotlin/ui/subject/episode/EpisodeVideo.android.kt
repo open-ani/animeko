@@ -44,8 +44,8 @@ import me.him188.ani.app.videoplayer.ui.guesture.NoOpLevelController
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
 import me.him188.ani.app.videoplayer.ui.progress.rememberMediaProgressSliderState
 import me.him188.ani.app.videoplayer.ui.rememberVideoControllerState
-import me.him188.ani.app.videoplayer.ui.state.ChunkState
-import me.him188.ani.app.videoplayer.ui.state.staticMediaCacheProgressState
+import me.him188.ani.app.domain.media.player.ChunkState
+import me.him188.ani.app.domain.media.player.staticMediaCacheProgressState
 import me.him188.ani.danmaku.ui.DanmakuHostState
 import me.him188.ani.utils.platform.annotations.TestOnly
 import org.openani.mediamp.DummyMediampPlayer
@@ -106,6 +106,7 @@ private fun PreviewVideoScaffoldImpl(
     )
     val videoScaffoldConfig = VideoScaffoldConfig.Default
     val onClickFullScreen = { }
+    val cacheProgressInfoFlow = staticMediaCacheProgressState(ChunkState.NONE).flow
     EpisodeVideoImpl(
         playerState = playerState,
         expanded = expanded,
@@ -137,13 +138,14 @@ private fun PreviewVideoScaffoldImpl(
         detachedProgressSlider = {
             PlayerControllerDefaults.MediaProgressSlider(
                 progressSliderState,
-                cacheProgressState = staticMediaCacheProgressState(ChunkState.NONE),
+                cacheProgressInfoFlow = cacheProgressInfoFlow,
                 enabled = false,
             )
         },
         sidebarVisible = true,
         onToggleSidebar = {},
         progressSliderState = progressSliderState,
+        cacheProgressInfoFlow = cacheProgressInfoFlow,
         audioController = NoOpLevelController,
         brightnessController = NoOpLevelController,
         leftBottomTips = {
