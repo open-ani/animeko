@@ -170,11 +170,11 @@ Compose Multiplatform 在 `desktop` 和 `ios` 均使用 [Skiko][Skiko] 渲染, �
 
 在这种架构下, 要开发一个适配各个平台的功能的流程通常是如下所示. 以增加视频播放器为例:
 
-1. 在 `commonMain` 中增加 `expect fun VideoPlayer(state: PlayerState)`. 该函数没有函数体,
+1. 在 `commonMain` 中增加 `expect fun VideoPlayer(state: MediampPlayer)`. 该函数没有函数体,
    各个平台分别实现函数体.
 2. 考虑该功能应当如何在各个平台实现. 对于视频播放器, 我们需要在三个平台分别实现.
 3. 在 `androidMain`, `desktopMain`, `iosMain` 中分别增加
-   `actual fun VideoPlayer(state: PlayerState) { ... }`
+   `actual fun VideoPlayer(state: MediampPlayer) { ... }`
 
 这样, 就可以在 `commonMain` 中调用 `VideoPlayer` 函数, 而在编译时 Kotlin 自动选择正确的实现.
 
@@ -482,7 +482,7 @@ App 主要通过 `repository` 和 `source` 与外部数据交互.
 
 ### `video-player`
 
-提供一个视频播放器 Composable: `VideoPlayer`, 对应地它的逻辑封装在 `PlayerState`.
+提供一个视频播放器 Composable: `VideoPlayer`, 对应地它的逻辑封装在 `MediampPlayer`.
 由于它依赖了一些 `foundation` 的组件, 所以没有放在项目顶层.
 
 ### `pages`: 按 UI 页面分类的功能模块

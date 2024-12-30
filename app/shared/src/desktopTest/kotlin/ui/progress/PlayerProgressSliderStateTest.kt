@@ -17,7 +17,7 @@ import kotlinx.collections.immutable.persistentListOf
 import me.him188.ani.app.ui.framework.runComposeStateTest
 import me.him188.ani.app.ui.framework.takeSnapshot
 import me.him188.ani.app.videoplayer.ui.progress.PlayerProgressSliderState
-import me.him188.ani.app.videoplayer.ui.state.Chapter
+import org.openani.mediamp.metadata.Chapter
 import kotlin.test.Test
 import kotlin.test.assertEquals
 

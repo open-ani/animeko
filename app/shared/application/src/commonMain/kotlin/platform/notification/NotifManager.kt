@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.app.platform.notification
 
 import androidx.compose.ui.graphics.ImageBitmap
@@ -5,7 +14,7 @@ import coil3.Image
 import coil3.annotation.ExperimentalCoilApi
 import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
-import me.him188.ani.app.videoplayer.ui.state.PlayerState
+import org.openani.mediamp.MediampPlayer
 import kotlin.concurrent.Volatile
 import kotlin.time.Duration
 
@@ -202,7 +211,7 @@ interface MediaNotif : Notif {
         setLargeIcon(albumArt)
     }
 
-    fun attachPlayerState(playerState: PlayerState)
+    fun attachPlayerState(playerState: MediampPlayer)
 }
 
 // For desktop
@@ -268,7 +277,7 @@ object NoopNotifManager : NotifManager() {
         override fun updateMediaMetadata(title: String?, album: String?, artist: String?, duration: Duration?) {
         }
 
-        override fun attachPlayerState(playerState: PlayerState) {}
+        override fun attachPlayerState(playerState: MediampPlayer) {}
     }
 
     private object NoopMediaNotifChannel : MediaNotifChannel<MediaNotif>() {

@@ -62,8 +62,8 @@ import me.him188.ani.app.videoplayer.ui.guesture.GestureFamily
 import me.him188.ani.app.videoplayer.ui.guesture.NoOpLevelController
 import me.him188.ani.app.videoplayer.ui.guesture.VIDEO_GESTURE_MOUSE_MOVE_SHOW_CONTROLLER_DURATION
 import me.him188.ani.app.videoplayer.ui.guesture.VIDEO_GESTURE_TOUCH_SHOW_CONTROLLER_DURATION
-import me.him188.ani.app.videoplayer.ui.progress.PlayerProgressSliderState
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
+import me.him188.ani.app.videoplayer.ui.progress.PlayerProgressSliderState
 import me.him188.ani.app.videoplayer.ui.progress.TAG_DANMAKU_ICON_BUTTON
 import me.him188.ani.app.videoplayer.ui.progress.TAG_MEDIA_PROGRESS_INDICATOR_TEXT
 import me.him188.ani.app.videoplayer.ui.progress.TAG_PROGRESS_SLIDER
@@ -71,12 +71,14 @@ import me.him188.ani.app.videoplayer.ui.progress.TAG_PROGRESS_SLIDER_PREVIEW_POP
 import me.him188.ani.app.videoplayer.ui.progress.TAG_SELECT_EPISODE_ICON_BUTTON
 import me.him188.ani.app.videoplayer.ui.progress.TAG_SPEED_SWITCHER_DROPDOWN_MENU
 import me.him188.ani.app.videoplayer.ui.progress.TAG_SPEED_SWITCHER_TEXT_BUTTON
-import me.him188.ani.app.videoplayer.ui.state.DummyPlayerState
+import me.him188.ani.app.videoplayer.ui.state.ChunkState
+import me.him188.ani.app.videoplayer.ui.state.staticMediaCacheProgressState
 import me.him188.ani.app.videoplayer.ui.top.PlayerTopBar
 import me.him188.ani.danmaku.api.Danmaku
 import me.him188.ani.danmaku.api.DanmakuLocation
 import me.him188.ani.danmaku.ui.DanmakuConfig
 import me.him188.ani.danmaku.ui.DanmakuHostState
+import org.openani.mediamp.DummyMediampPlayer
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.time.Duration.Companion.seconds
@@ -143,7 +145,7 @@ class EpisodeVideoControllerTest {
         ProvideCompositionLocalsForPreview(colorScheme = aniDarkColorTheme()) {
             val scope = rememberCoroutineScope()
             val playerState = remember {
-                DummyPlayerState(scope.coroutineContext)
+                DummyMediampPlayer(scope.coroutineContext)
             }
             val danmakuState = PlayerDanmakuState(
                 danmakuEnabled = stateOf(true),
@@ -192,7 +194,7 @@ class EpisodeVideoControllerTest {
                 detachedProgressSlider = {
                     PlayerControllerDefaults.MediaProgressSlider(
                         progressSliderState,
-                        cacheProgressState = playerState.cacheProgress,
+                        cacheProgressState = staticMediaCacheProgressState(ChunkState.NONE),
                         Modifier.testTag(TAG_DETACHED_PROGRESS_SLIDER),
                         enabled = false,
                     )

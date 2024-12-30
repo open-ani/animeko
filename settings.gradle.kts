@@ -7,6 +7,17 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
+import java.util.Properties
+
+/*
+ * Copyright (C) 2024 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 rootProject.name = "animeko"
 
 pluginManagement {
@@ -26,6 +37,10 @@ dependencyResolutionManagement {
     versionCatalogs {
         create("anitorrentLibs") {
             from("org.openani.anitorrent:catalog:0.1.0")
+        }
+
+        create("mediampLibs") {
+            from("org.openani.mediamp:catalog:0.0.6")
         }
     }
 }
@@ -120,3 +135,34 @@ includeProject(
 includeProject(":ci-helper", "ci-helper") // 
 
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
+
+
+val localPropertiesFile: File get() = rootProject.projectDir.resolve("local.properties")
+fun findLocalProperty(key: String): String? {
+    return if (localPropertiesFile.exists()) {
+        val properties = Properties()
+        localPropertiesFile.inputStream().buffered().use { input ->
+            properties.load(input)
+        }
+        properties.getProperty(key)
+    } else {
+        localPropertiesFile.createNewFile()
+        null
+    }
+}
+
+findLocalProperty("ani.build.mediamp.path")?.let { mediampPath ->
+    println("i:: Including mediamp as a Composite Build from: $mediampPath")
+    includeBuild(mediampPath) {
+        dependencySubstitution {
+            substitute(module("org.openani.mediamp:mediamp-api"))
+                .using(project(":mediamp-api"))
+            substitute(module("org.openani.mediamp:mediamp-compose"))
+                .using(project(":mediamp-compose"))
+            substitute(module("org.openani.mediamp:mediamp-backend-exoplayer"))
+                .using(project(":mediamp-backend-exoplayer"))
+            substitute(module("org.openani.mediamp:mediamp-backend-vlc"))
+                .using(project(":mediamp-backend-vlc"))
+        }
+    }
+}

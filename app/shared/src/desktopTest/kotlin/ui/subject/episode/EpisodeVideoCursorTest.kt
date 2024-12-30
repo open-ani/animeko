@@ -49,11 +49,13 @@ import me.him188.ani.app.videoplayer.ui.PlayerControllerState
 import me.him188.ani.app.videoplayer.ui.guesture.GestureFamily
 import me.him188.ani.app.videoplayer.ui.guesture.NoOpLevelController
 import me.him188.ani.app.videoplayer.ui.guesture.VIDEO_GESTURE_MOUSE_MOVE_SHOW_CONTROLLER_DURATION
-import me.him188.ani.app.videoplayer.ui.progress.PlayerProgressSliderState
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
+import me.him188.ani.app.videoplayer.ui.progress.PlayerProgressSliderState
 import me.him188.ani.app.videoplayer.ui.progress.TAG_PROGRESS_SLIDER_PREVIEW_POPUP
-import me.him188.ani.app.videoplayer.ui.state.DummyPlayerState
+import me.him188.ani.app.videoplayer.ui.state.ChunkState
+import me.him188.ani.app.videoplayer.ui.state.staticMediaCacheProgressState
 import me.him188.ani.danmaku.ui.DanmakuHostState
+import org.openani.mediamp.DummyMediampPlayer
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.time.Duration.Companion.seconds
@@ -86,7 +88,7 @@ class EpisodeVideoCursorTest {
         ProvideCompositionLocalsForPreview(colorScheme = aniDarkColorTheme()) {
             val scope = rememberCoroutineScope()
             val playerState = remember {
-                DummyPlayerState(scope.coroutineContext)
+                DummyMediampPlayer(scope.coroutineContext)
             }
             Row {
                 val expanded = true
@@ -110,7 +112,7 @@ class EpisodeVideoCursorTest {
                     detachedProgressSlider = {
                         PlayerControllerDefaults.MediaProgressSlider(
                             progressSliderState,
-                            cacheProgressState = playerState.cacheProgress,
+                            cacheProgressState = staticMediaCacheProgressState(ChunkState.NONE),
                             enabled = false,
                         )
                     },

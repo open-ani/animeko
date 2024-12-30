@@ -15,9 +15,9 @@ import me.him188.ani.app.torrent.api.pieces.PieceState
 import me.him188.ani.app.torrent.api.pieces.asSequence
 import me.him188.ani.app.torrent.api.pieces.first
 import me.him188.ani.app.torrent.api.pieces.last
-import me.him188.ani.utils.io.readAllBytes
-import me.him188.ani.utils.io.readBytes
-import me.him188.ani.utils.io.readExactBytes
+import me.him188.ani.app.torrent.readAllBytes
+import me.him188.ani.app.torrent.readBytes
+import me.him188.ani.app.torrent.readExactBytes
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.DynamicTest
 import org.junit.jupiter.api.TestFactory
@@ -39,6 +39,7 @@ internal val sampleTextByteArray = sampleText.toByteArray()
 /**
  * @see OffsetTorrentInputTest
  */
+@Suppress("INVISIBLE_MEMBER", "INVISIBLE_REFERENCE", "OPT_IN_USAGE_ERROR")
 internal sealed class TorrentInputTest {
     class NoShift : TorrentInputTest() {
         override val logicalPieces: MutablePieceList = PieceList.create(sampleTextByteArray.size.toLong(), 16)

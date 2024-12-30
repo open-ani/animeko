@@ -135,7 +135,10 @@ import me.him188.ani.app.videoplayer.ui.guesture.asLevelController
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults.randomDanmakuPlaceholder
 import me.him188.ani.app.videoplayer.ui.progress.rememberMediaProgressSliderState
+import me.him188.ani.app.videoplayer.ui.state.ChunkState
+import me.him188.ani.app.videoplayer.ui.state.staticMediaCacheProgressState
 import me.him188.ani.utils.platform.isMobile
+import org.openani.mediamp.features.Screenshots
 
 
 /**
@@ -182,7 +185,7 @@ private fun EpisodeSceneContent(
     val imageViewer = rememberImageViewerHandler()
     BackHandler(enabled = imageViewer.viewing.value) { imageViewer.clear() }
 
-    val playbackState by vm.playerState.state.collectAsStateWithLifecycle()
+    val playbackState by vm.playerState.playbackState.collectAsStateWithLifecycle()
     if (playbackState.isPlaying) {
         ScreenOnEffect()
     }
@@ -239,7 +242,7 @@ private fun EpisodeSceneTabletVeryWide(
     var didSetPaused by rememberSaveable { mutableStateOf(false) }
 
     val pauseOnPlaying: () -> Unit = {
-        if (vm.playerState.state.value.isPlaying) {
+        if (vm.playerState.playbackState.value.isPlaying) {
             didSetPaused = true
             vm.playerState.pause()
         } else {
@@ -407,7 +410,7 @@ private fun EpisodeSceneContentPhone(
     var didSetPaused by rememberSaveable { mutableStateOf(false) }
 
     val pauseOnPlaying: () -> Unit = {
-        if (vm.videoScaffoldConfig.pauseVideoOnEditDanmaku && vm.playerState.state.value.isPlaying) {
+        if (vm.videoScaffoldConfig.pauseVideoOnEditDanmaku && vm.playerState.playbackState.value.isPlaying) {
             didSetPaused = true
             vm.playerState.pause()
         } else {
@@ -689,12 +692,15 @@ private fun EpisodeVideo(
             val currentPosition = "${min}m${sec}s${ms}ms"
             // 条目ID-剧集序号-视频时间点.png
             val filename = "${vm.subjectId}-${vm.episodePresentation.ep}-${currentPosition}.png"
-            vm.playerState.saveScreenshotFile(filename)
+            scope.launch {
+                vm.playerState.features[Screenshots]?.takeScreenshot(filename)
+            }
         },
         detachedProgressSlider = {
+            // TODO: 2024/12/30 [mediamp]  MediaProgressSlider
             PlayerControllerDefaults.MediaProgressSlider(
                 progressSliderState,
-                cacheProgressState = vm.playerState.cacheProgress,
+                cacheProgressState = staticMediaCacheProgressState(ChunkState.NONE),
                 enabled = false,
             )
         },
@@ -832,7 +838,7 @@ private fun AutoPauseEffect(viewModel: EpisodeViewModel) {
     val autoPauseTasker = rememberUiMonoTasker()
     OnLifecycleEvent {
         if (it == Lifecycle.Event.ON_STOP) {
-            if (viewModel.playerState.state.value.isPlaying) {
+            if (viewModel.playerState.playbackState.value.isPlaying) {
                 pausedVideo = true
                 autoPauseTasker.launch {
                     // #160, 切换全屏时视频会暂停半秒

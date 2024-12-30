@@ -110,9 +110,6 @@ import me.him188.ani.app.ui.subject.episode.video.PlayerSkipOpEdState
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.EpisodeSelectorState
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
-import me.him188.ani.app.videoplayer.ui.state.PlaybackState
-import me.him188.ani.app.videoplayer.ui.state.PlayerState
-import me.him188.ani.app.videoplayer.ui.state.PlayerStateFactory
 import me.him188.ani.danmaku.api.Danmaku
 import me.him188.ani.danmaku.api.DanmakuEvent
 import me.him188.ani.danmaku.api.DanmakuPresentation
@@ -122,6 +119,7 @@ import me.him188.ani.datasources.api.source.MediaFetchRequest
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
+import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.coroutines.cancellableCoroutineScope
 import me.him188.ani.utils.coroutines.flows.flowOfEmptyList
 import me.him188.ani.utils.coroutines.retryWithBackoffDelay
@@ -129,6 +127,9 @@ import me.him188.ani.utils.coroutines.sampleWithInitial
 import me.him188.ani.utils.logging.info
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+import org.openani.mediamp.MediampPlayer
+import org.openani.mediamp.MediampPlayerFactory
+import org.openani.mediamp.PlaybackState
 import kotlin.math.max
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
@@ -144,7 +145,7 @@ class EpisodeViewModel(
     val getCurrentDate: () -> PackedDate = { PackedDate.now() },
 ) : KoinComponent, AbstractViewModel(), HasBackgroundScope {
     private val episodeId: MutableStateFlow<Int> = MutableStateFlow(initialEpisodeId)
-    private val playerStateFactory: PlayerStateFactory by inject()
+    private val playerStateFactory: MediampPlayerFactory<*> by inject()
     private val subjectCollectionRepository: SubjectCollectionRepository by inject()
     private val episodeCollectionRepository: EpisodeCollectionRepository by inject()
     private val animeScheduleRepository: AnimeScheduleRepository by inject()
@@ -342,7 +343,7 @@ class EpisodeViewModel(
     /**
      * Play controller for video view. This can be saved even when window configuration changes (i.e. everything recomposes).
      */
-    val playerState: PlayerState =
+    val playerState: MediampPlayer =
         playerStateFactory.create(context, backgroundScope.coroutineContext)
 
     /**
@@ -352,7 +353,7 @@ class EpisodeViewModel(
      * 它会在 mediaSelector.unselect() 任意时间后发现 selected 已经改变，导致 episodeId 可能已经改变，从而将当前集的播放进度保存到新的剧集中
      */
     private fun savePlayProgress() {
-        if (playerState.state.value == PlaybackState.FINISHED) return
+        if (playerState.playbackState.value == PlaybackState.FINISHED) return
         val positionMillis = playerState.currentPositionMillis.value
         val epId = episodeId.value
         val durationMillis = playerState.videoProperties.value?.durationMillis.let {
@@ -389,7 +390,7 @@ class EpisodeViewModel(
                         var blacklistedMediaIds = persistentHashSetOf<String>()
                         combine(
                             playerLauncher.videoLoadingState, // 解析链接出错 (未匹配到链接)
-                            playerState.state, // 解析成功, 但播放器出错 (无法链接到链接, 例如链接错误)
+                            playerState.playbackState, // 解析成功, 但播放器出错 (无法链接到链接, 例如链接错误)
                         ) { videoLoadingState, playerState ->
                             videoLoadingState is VideoLoadingState.Failed || playerState == PlaybackState.ERROR
                         }.distinctUntilChanged()
@@ -593,7 +594,7 @@ class EpisodeViewModel(
         requestFlow = mediaFetchSession.transformLatest {
             emit(null)
             emitAll(
-                playerState.videoData.mapLatest {
+                playerState.mediaData.mapLatest {
                     if (it == null) {
                         return@mapLatest null
                     }
@@ -601,8 +602,8 @@ class EpisodeViewModel(
                         subjectInfo.first(),
                         episodeInfo.filterNotNull().first(),
                         episodeId.value,
-                        it.filename,
-                        it.fileLength,
+                        null,
+                        withContext(Dispatchers.IO_) { it.fileLength() },
                     )
                 },
             )
@@ -698,7 +699,7 @@ class EpisodeViewModel(
 
     init {
         launchInMain { // state changes must be in main thread
-            playerState.state.collect {
+            playerState.playbackState.collect {
                 danmaku.danmakuHostState.setPaused(!it.isPlaying)
             }
         }
@@ -746,7 +747,7 @@ class EpisodeViewModel(
                             combine(
                                 playerState.currentPositionMillis.sampleWithInitial(5000),
                                 playerState.videoProperties.map { it?.durationMillis }.debounce(5000),
-                                playerState.state,
+                                playerState.playbackState,
                             ) { pos, max, playback ->
                                 if (max == null || !playback.isPlaying) return@combine
                                 if (episodePresentationFlow.first().collectionType == UnifiedCollectionType.DONE) {
@@ -776,7 +777,7 @@ class EpisodeViewModel(
                 .collectLatest { enabled ->
                     if (!enabled) return@collectLatest
 
-                    playerState.state.collect { playback ->
+                    playerState.playbackState.collect { playback ->
                         if (playback == PlaybackState.FINISHED
                             && playerState.videoProperties.value.let { prop ->
                                 prop != null && prop.durationMillis > 0L && prop.durationMillis - playerState.currentPositionMillis.value < 5000
@@ -820,7 +821,7 @@ class EpisodeViewModel(
             }
         }
         launchInBackground {
-            playerState.state.collect {
+            playerState.playbackState.collect {
                 when (it) {
                     // 加载播放进度
                     PlaybackState.READY -> {

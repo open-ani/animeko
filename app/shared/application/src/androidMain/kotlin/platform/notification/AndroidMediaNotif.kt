@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.app.platform.notification
 
 import android.app.PendingIntent
@@ -19,9 +28,10 @@ import kotlinx.coroutines.flow.sample
 import me.him188.ani.R
 import me.him188.ani.app.platform.notification.AndroidNotifManager.Companion.EXTRA_REQUEST_CODE
 import me.him188.ani.app.tools.MonoTasker
-import me.him188.ani.app.videoplayer.ui.state.PlaybackState
-import me.him188.ani.app.videoplayer.ui.state.PlayerState
 import me.him188.ani.utils.coroutines.childScope
+import org.openani.mediamp.MediampPlayer
+import org.openani.mediamp.PlaybackState
+import org.openani.mediamp.features.PlaybackSpeed
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.coroutines.CoroutineContext
 import kotlin.time.Duration
@@ -140,10 +150,10 @@ internal class AndroidMediaNotif(
         )
     }
 
-    override fun attachPlayerState(playerState: PlayerState) {
+    override fun attachPlayerState(playerState: MediampPlayer) {
         ongoing = true
 //        stateTasker.launch {
-//            playerState.state
+//            playerState.playbackState
 //                .sampleWithInitial(1000)
 //                .map {
 //                    if (it.isPlaying) {
@@ -159,9 +169,9 @@ internal class AndroidMediaNotif(
 //        }
         progressTasker.launch {
             combine(
-                playerState.state,
+                playerState.playbackState,
                 playerState.currentPositionMillis.sample(1000),
-                playerState.playbackSpeed,
+                playerState.features.getOrFail(PlaybackSpeed).valueFlow,
             ) { state, position, speed ->
 
                 mediaSession.setPlaybackState(

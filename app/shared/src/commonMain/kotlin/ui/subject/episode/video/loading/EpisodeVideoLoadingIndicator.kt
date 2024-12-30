@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.app.ui.subject.episode.video.loading
 
 import androidx.compose.material3.MaterialTheme
@@ -15,30 +24,34 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import me.him188.ani.app.ui.foundation.TextWithBorder
 import me.him188.ani.app.ui.subject.episode.statistics.VideoLoadingState
 import me.him188.ani.app.videoplayer.ui.VideoLoadingIndicator
-import me.him188.ani.app.videoplayer.ui.state.PlaybackState
-import me.him188.ani.app.videoplayer.ui.state.PlayerState
 import me.him188.ani.datasources.api.topic.FileSize
+import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
+import org.openani.mediamp.MediampPlayer
+import org.openani.mediamp.PlaybackState
+import org.openani.mediamp.features.Buffering
 import kotlin.time.Duration.Companion.seconds
 
 @Composable // see preview
 fun EpisodeVideoLoadingIndicator(
-    playerState: PlayerState,
+    playerState: MediampPlayer,
     videoLoadingState: VideoLoadingState,
     optimizeForFullscreen: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val isBuffering by playerState.isBuffering.collectAsStateWithLifecycle(false)
-    val state by playerState.state.collectAsStateWithLifecycle()
+    val buffering = playerState.features[Buffering]
+    val isBuffering by (buffering?.isBuffering ?: remember { flowOf(false) }).collectAsStateWithLifecycle(false)
+    val state by playerState.playbackState.collectAsStateWithLifecycle()
 
     val speed by remember(playerState) {
-        playerState.videoData.filterNotNull().flatMapLatest { video ->
+        playerState.mediaData.filterNotNull().flatMapLatest { video ->
             video.networkStats.map { it.downloadSpeed }
         }
-    }.collectAsStateWithLifecycle(FileSize.Unspecified)
+    }.collectAsStateWithLifecycle(-1L)
 
     if (isBuffering ||
         state == PlaybackState.PAUSED_BUFFERING || // 如果不加这个, 就会有一段时间资源名字还没显示出来, 也没显示缓冲中
@@ -47,7 +60,13 @@ fun EpisodeVideoLoadingIndicator(
     ) {
         EpisodeVideoLoadingIndicator(
             videoLoadingState,
-            speedProvider = { speed },
+            speedProvider = {
+                if (speed == -1L) {
+                    FileSize.Unspecified
+                } else {
+                    speed.bytes
+                }
+            },
             optimizeForFullscreen = optimizeForFullscreen,
             playerError = state == PlaybackState.ERROR,
             modifier = modifier,

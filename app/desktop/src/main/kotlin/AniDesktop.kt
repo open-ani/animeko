@@ -105,8 +105,6 @@ import me.him188.ani.app.ui.foundation.widgets.ToastViewModel
 import me.him188.ani.app.ui.foundation.widgets.Toaster
 import me.him188.ani.app.ui.main.AniApp
 import me.him188.ani.app.ui.main.AniAppContent
-import me.him188.ani.app.videoplayer.ui.VlcjVideoPlayerState
-import me.him188.ani.app.videoplayer.ui.state.PlayerStateFactory
 import me.him188.ani.desktop.generated.resources.Res
 import me.him188.ani.desktop.generated.resources.a_round
 import me.him188.ani.utils.io.inSystem
@@ -121,6 +119,10 @@ import org.jetbrains.compose.resources.painterResource
 import org.koin.core.context.startKoin
 import org.koin.dsl.module
 import org.koin.mp.KoinPlatform
+import org.openani.mediamp.MediampPlayerFactory
+import org.openani.mediamp.MediampPlayerFactoryLoader
+import org.openani.mediamp.backend.vlc.VlcMediampPlayer
+import org.openani.mediamp.backend.vlc.VlcMediampPlayerFactory
 import java.io.File
 import kotlin.system.exitProcess
 import kotlin.time.measureTime
@@ -243,10 +245,9 @@ object AniDesktop {
                             },
                         )
                     }
-                    single<PlayerStateFactory> {
-                        PlayerStateFactory { _, ctx ->
-                            VlcjVideoPlayerState(ctx)
-                        }
+                    single<MediampPlayerFactory<*>> {
+                        MediampPlayerFactoryLoader.register(VlcMediampPlayerFactory())
+                        MediampPlayerFactoryLoader.first()
                     }
                     single<BrowserNavigator> { DesktopBrowserNavigator() }
                     factory<VideoSourceResolver> {
@@ -302,7 +303,7 @@ object AniDesktop {
 
             // 预先加载 VLC, https://github.com/open-ani/ani/issues/618
             kotlin.runCatching {
-                VlcjVideoPlayerState.prepareLibraries()
+                VlcMediampPlayer.prepareLibraries()
             }.onFailure {
                 logger.error(it) { "Failed to prepare VLC" }
             }

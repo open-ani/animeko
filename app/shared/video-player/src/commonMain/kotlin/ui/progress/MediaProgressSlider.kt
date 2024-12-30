@@ -61,16 +61,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import kotlinx.collections.immutable.ImmutableList
 import me.him188.ani.app.ui.foundation.dialogs.PlatformPopupProperties
 import me.him188.ani.app.ui.foundation.effects.onPointerEventMultiplatform
 import me.him188.ani.app.ui.foundation.theme.slightlyWeaken
 import me.him188.ani.app.ui.foundation.theme.weaken
-import me.him188.ani.app.videoplayer.ui.state.Chapter
 import me.him188.ani.app.videoplayer.ui.state.Chunk
 import me.him188.ani.app.videoplayer.ui.state.ChunkState
 import me.him188.ani.app.videoplayer.ui.state.MediaCacheProgressState
-import me.him188.ani.app.videoplayer.ui.state.PlayerState
+import org.openani.mediamp.MediampPlayer
+import org.openani.mediamp.metadata.Chapter
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
 
@@ -89,7 +88,7 @@ const val TAG_PROGRESS_SLIDER = "ProgressSlider"
 class PlayerProgressSliderState(
     currentPositionMillis: () -> Long,
     totalDurationMillis: () -> Long,
-    chapters: State<ImmutableList<Chapter>>,
+    chapters: State<List<Chapter>>,
     /**
      * 当用户正在拖动进度条时触发. 每有一个 change 都会调用.
      */
@@ -143,11 +142,11 @@ class PlayerProgressSliderState(
 }
 
 /**
- * 便捷方法, 从 [PlayerState.currentPositionMillis] 创建  [PlayerProgressSliderState]
+ * 便捷方法, 从 [MediampPlayer.currentPositionMillis] 创建  [PlayerProgressSliderState]
  */
 @Composable
 fun rememberMediaProgressSliderState(
-    playerState: PlayerState,
+    playerState: MediampPlayer,
     onPreview: (positionMillis: Long) -> Unit,
     onPreviewFinished: (positionMillis: Long) -> Unit,
 ): PlayerProgressSliderState {

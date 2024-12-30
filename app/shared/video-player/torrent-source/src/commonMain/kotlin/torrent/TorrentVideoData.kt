@@ -13,33 +13,38 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import me.him188.ani.app.torrent.api.files.TorrentFileHandle
 import me.him188.ani.app.torrent.api.files.averageRate
-import me.him188.ani.app.videoplayer.data.VideoData
-import me.him188.ani.datasources.api.topic.FileSize
-import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
-import me.him188.ani.utils.io.SeekableInput
+import org.openani.mediamp.internal.MediampInternalApi
+import org.openani.mediamp.source.MediaData
+import org.openani.mediamp.source.NetStats
 import kotlin.coroutines.CoroutineContext
+
+interface MediaDataWithFileName : MediaData {
+    val filename: String
+}
+
+val MediaData.filenameOrNull get() = (this as? MediaDataWithFileName)?.filename
 
 class TorrentVideoData(
     private val handle: TorrentFileHandle,
-) : VideoData {
+) : MediaData, MediaDataWithFileName {
     private inline val entry get() = handle.entry
     override val filename: String get() = entry.pathInTorrent
-    override val fileLength: Long get() = entry.length
 
-    override fun computeHash(): String? = null
+    override fun fileLength(): Long = entry.length
 
-    override val networkStats: Flow<VideoData.Stats> =
+    @OptIn(MediampInternalApi::class)
+    override val networkStats: Flow<NetStats> =
         handle.entry.fileStats.map { it.downloadedBytes }.averageRate().map { downloadSpeed ->
-            VideoData.Stats(
-                downloadSpeed = downloadSpeed.bytes,
-                uploadRate = FileSize.Unspecified,
+            NetStats(
+                downloadSpeed = downloadSpeed,
+                uploadRate = -1,
             )
         }
 
     val pieces get() = handle.entry.pieces
     override val isCacheFinished get() = handle.entry.fileStats.map { it.isDownloadFinished }
 
-    override suspend fun createInput(coroutineContext: CoroutineContext): SeekableInput =
+    override suspend fun createInput(coroutineContext: CoroutineContext): org.openani.mediamp.io.SeekableInput =
         entry.createInput(coroutineContext)
 
     override suspend fun close() {

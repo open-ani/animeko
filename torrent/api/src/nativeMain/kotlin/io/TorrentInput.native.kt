@@ -12,8 +12,8 @@ package me.him188.ani.app.torrent.io
 import kotlinx.io.IOException
 import me.him188.ani.app.torrent.api.pieces.Piece
 import me.him188.ani.app.torrent.api.pieces.PieceList
-import me.him188.ani.utils.io.SeekableInput
 import me.him188.ani.utils.io.SystemPath
+import org.openani.mediamp.io.SeekableInput
 import kotlin.coroutines.CoroutineContext
 
 /**

@@ -28,8 +28,6 @@ import me.him188.ani.app.domain.media.resolver.WebViewVideoExtractor.Instruction
 import me.him188.ani.app.platform.AniCefApp
 import me.him188.ani.app.platform.Context
 import me.him188.ani.app.platform.DesktopContext
-import me.him188.ani.app.videoplayer.HttpStreamingVideoSource
-import me.him188.ani.app.videoplayer.data.VideoSource
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.matcher.MediaSourceWebVideoMatcherLoader
 import me.him188.ani.datasources.api.matcher.WebVideoMatcher
@@ -52,6 +50,7 @@ import org.cef.network.CefCookieManager
 import org.cef.network.CefRequest
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+import org.openani.mediamp.source.MediaSource
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration.Companion.seconds
 
@@ -73,7 +72,7 @@ class DesktopWebVideoSourceResolver(
 
     override suspend fun supports(media: Media): Boolean = media.download is ResourceLocation.WebVideo
 
-    override suspend fun resolve(media: Media, episode: EpisodeMetadata): VideoSource<*> {
+    override suspend fun resolve(media: Media, episode: EpisodeMetadata): MediaSource<*> {
         return withContext(Dispatchers.Default) {
             if (!supports(media)) throw UnsupportedMediaException(media)
 
@@ -114,11 +113,11 @@ class DesktopWebVideoSourceResolver(
                 )?.let {
                     (match(it.url) as? WebVideoMatcher.MatchResult.Matched)?.video
                 } ?: throw VideoSourceResolutionException(ResolutionFailures.NO_MATCHING_RESOURCE)
-            return@withContext HttpStreamingVideoSource(
+            return@withContext HttpStreamingMediaSource(
                 webVideo.m3u8Url,
                 media.originalTitle,
-                webVideo = webVideo,
-                media.extraFiles,
+                webVideo.headers,
+                media.extraFiles.toMediampMediaExtraFiles(),
             )
         }
     }

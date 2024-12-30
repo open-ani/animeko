@@ -26,7 +26,9 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transformLatest
 import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.episode.displayName
+import me.him188.ani.app.domain.media.resolver.AniMediaSourceOpenException
 import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
+import me.him188.ani.app.domain.media.resolver.OpenFailures
 import me.him188.ani.app.domain.media.resolver.ResolutionFailures
 import me.him188.ani.app.domain.media.resolver.TorrentVideoSource
 import me.him188.ani.app.domain.media.resolver.UnsupportedMediaException
@@ -38,14 +40,12 @@ import me.him188.ani.app.ui.foundation.HasBackgroundScope
 import me.him188.ani.app.ui.subject.episode.mediaFetch.MediaSourceInfoProvider
 import me.him188.ani.app.ui.subject.episode.statistics.VideoLoadingState
 import me.him188.ani.app.ui.subject.episode.statistics.VideoStatistics
-import me.him188.ani.app.videoplayer.data.OpenFailures
-import me.him188.ani.app.videoplayer.data.VideoSource
-import me.him188.ani.app.videoplayer.data.VideoSourceOpenException
-import me.him188.ani.app.videoplayer.ui.state.PlayerState
+import me.him188.ani.app.videoplayer.torrent.filenameOrNull
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
+import org.openani.mediamp.MediampPlayer
 import kotlin.coroutines.CoroutineContext
 
 /**
@@ -54,12 +54,12 @@ import kotlin.coroutines.CoroutineContext
  *
  * 这实际上就是启动了一个一直运行的协程:
  * 当 [MediaSelector] 选择到资源的时候, 使用 [videoSourceResolver] 解析出 [VideoSource],
- * 然后把它设置给 [playerState] (通过 [PlayerState.setVideoSource]).
+ * 然后把它设置给 [playerState] (通过 [MediampPlayer.setVideoSource]).
  */
 class PlayerLauncher(
     mediaSelector: MediaSelector,
     private val videoSourceResolver: VideoSourceResolver,
-    private val playerState: PlayerState,
+    private val playerState: MediampPlayer,
     private val mediaSourceInfoProvider: MediaSourceInfoProvider,
     episodeInfo: Flow<EpisodeInfo?>,
     mediaSourceLoading: Flow<Boolean>,
@@ -78,7 +78,7 @@ class PlayerLauncher(
         mediaSelector.selected.flatMapLatest {
             mediaSourceInfoProvider.getSourceInfoFlow(it?.mediaSourceId ?: return@flatMapLatest emptyFlow())
         },
-        playerState.videoData.map { it?.filename },
+        playerState.mediaData.map { it?.filenameOrNull },
         mediaSourceLoading,
         _videoLoadingStateFlow,
         ::VideoStatistics,
@@ -91,7 +91,7 @@ class PlayerLauncher(
     init {
         mediaSelector.selected.transformLatest { media ->
             _videoLoadingStateFlow.value = VideoLoadingState.Initial // 避免一直显示已取消 (.Cancelled)
-            playerState.clearVideoSource() // 只要 media 换了就清空
+            playerState.stop() // 只要 media 换了就清空
             if (media == null) {
                 return@transformLatest
             }
@@ -117,8 +117,8 @@ class PlayerLauncher(
             } catch (e: UnsupportedMediaException) {
                 logger.error { IllegalStateException("Failed to resolve video source, unsupported media", e) }
                 _videoLoadingStateFlow.value = VideoLoadingState.UnsupportedMedia
-                playerState.clearVideoSource()
-            } catch (e: VideoSourceOpenException) { // during playerState.setVideoSource
+                playerState.stop()
+            } catch (e: AniMediaSourceOpenException) { // during playerState.setVideoSource
                 logger.error {
                     IllegalStateException(
                         "Failed to resolve video source due to VideoSourceOpenException",
@@ -130,7 +130,7 @@ class PlayerLauncher(
                     OpenFailures.UNSUPPORTED_VIDEO_SOURCE -> VideoLoadingState.UnsupportedMedia
                     OpenFailures.ENGINE_DISABLED -> VideoLoadingState.UnsupportedMedia
                 }
-                playerState.clearVideoSource()
+                playerState.stop()
             } catch (e: VideoSourceResolutionException) { // during videoSourceResolver.resolve
                 logger.error {
                     IllegalStateException(
@@ -144,14 +144,14 @@ class PlayerLauncher(
                     ResolutionFailures.NETWORK_ERROR -> VideoLoadingState.NetworkError
                     ResolutionFailures.NO_MATCHING_RESOURCE -> VideoLoadingState.NoMatchingFile
                 }
-                playerState.clearVideoSource()
+                playerState.stop()
             } catch (e: CancellationException) { // 切换数据源
                 _videoLoadingStateFlow.value = VideoLoadingState.Cancelled
                 throw e
             } catch (e: Throwable) {
                 logger.error { IllegalStateException("Failed to resolve video source with unknown error", e) }
                 _videoLoadingStateFlow.value = VideoLoadingState.UnknownError(e)
-                playerState.clearVideoSource()
+                playerState.stop()
                 emit(null)
             }
         }.launchIn(backgroundScope)

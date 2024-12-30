@@ -48,13 +48,13 @@ import me.him188.ani.app.ui.subject.episode.EpisodeVideoDefaults
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
 import me.him188.ani.app.videoplayer.ui.rememberAlwaysOnRequester
-import me.him188.ani.app.videoplayer.ui.state.PlayerState
+import org.openani.mediamp.MediampPlayer
 
 @Composable
 fun EpisodeVideoDefaults.DanmakuEditor(
     playerDanmakuState: PlayerDanmakuState,
     danmakuTextPlaceholder: String,
-    playerState: PlayerState,
+    playerState: MediampPlayer,
     videoScaffoldConfig: VideoScaffoldConfig,
     playerControllerState: PlayerControllerState,
     modifier: Modifier = Modifier,
@@ -91,7 +91,7 @@ fun EpisodeVideoDefaults.DanmakuEditor(
             },
             modifier = Modifier.onFocusChanged {
                 if (it.isFocused) {
-                    if (videoScaffoldConfig.pauseVideoOnEditDanmaku && playerState.state.value.isPlaying) {
+                    if (videoScaffoldConfig.pauseVideoOnEditDanmaku && playerState.playbackState.value.isPlaying) {
                         didSetPaused = true
                         playerState.pause()
                     }

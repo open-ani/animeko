@@ -32,10 +32,10 @@ import me.him188.ani.app.torrent.api.files.TorrentFileHandle
 import me.him188.ani.app.torrent.api.pieces.PieceList
 import me.him188.ani.app.torrent.io.TorrentInput
 import me.him188.ani.utils.coroutines.IO_
-import me.him188.ani.utils.io.SeekableInput
 import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.io.inSystem
 import me.him188.ani.utils.io.toFile
+import org.openani.mediamp.io.SeekableInput
 import java.io.RandomAccessFile
 import kotlin.coroutines.CoroutineContext
 
@@ -46,7 +46,7 @@ class RemoteTorrentFileEntry(
     private val connectivityAware: ConnectivityAware
 ) : TorrentFileEntry {
     override val fileStats: Flow<TorrentFileEntry.Stats> = callbackFlow {
-        var disposable: IDisposableHandle? = null
+        var disposable: IDisposableHandle?
         val callback = object : ITorrentFileEntryStatsCallback.Stub() {
             override fun onEmit(stat: PTorrentFileEntryStats?) {
                 if (stat != null) trySend(stat.toStats())
@@ -55,7 +55,7 @@ class RemoteTorrentFileEntry(
 
         // todo: not thread-safe
         disposable = remote.call { getFileStats(callback) }
-        val transform = connectivityAware.registerStateTransform(false, true) {
+        val transform = connectivityAware.registerStateTransform(prev = false, next = true) {
             try {
                 disposable?.dispose()
             } catch (_: DeadObjectException) {
@@ -108,7 +108,7 @@ class RemoteTorrentFileEntry(
         return if (result != null) Path(result).inSystem else null
     }
 
-    override suspend fun createInput(coroutineContext: CoroutineContext): SeekableInput =
+    override suspend fun createInput(awaitCoroutineContext: CoroutineContext): SeekableInput =
         remote.callSuspendCancellable { cont ->
             getTorrentInputParams(
                 object : ContTorrentFileEntryGetInputParams.Stub() {
@@ -129,7 +129,7 @@ class RemoteTorrentFileEntry(
                             },
                             bufferSize = value.bufferSize,
                             size = value.size,
-                            awaitCoroutineContext = coroutineContext,
+                            awaitCoroutineContext = awaitCoroutineContext,
                         ).also { cont.resume(it) }
                     }
 

@@ -71,8 +71,6 @@ import me.him188.ani.app.ui.foundation.widgets.ToastViewModel
 import me.him188.ani.app.ui.foundation.widgets.Toaster
 import me.him188.ani.app.ui.main.AniApp
 import me.him188.ani.app.ui.main.AniAppContent
-import me.him188.ani.app.videoplayer.ui.state.DummyPlayerState
-import me.him188.ani.app.videoplayer.ui.state.PlayerStateFactory
 import me.him188.ani.utils.io.SystemCacheDir
 import me.him188.ani.utils.io.SystemDocumentDir
 import me.him188.ani.utils.io.SystemPath
@@ -81,6 +79,8 @@ import me.him188.ani.utils.io.resolve
 import me.him188.ani.utils.platform.annotations.TestOnly
 import org.koin.core.context.startKoin
 import org.koin.dsl.module
+import org.openani.mediamp.DummyMediampPlayer
+import org.openani.mediamp.MediampPlayerFactory
 import platform.UIKit.UIViewController
 
 @Suppress("FunctionName", "unused") // used in Swift
@@ -193,10 +193,8 @@ fun getIosModules(
             baseSaveDir = { defaultTorrentCacheDir },
         )
     }
-    single<PlayerStateFactory> {
-        PlayerStateFactory { _, _ ->
-            DummyPlayerState()
-        }
+    single<MediampPlayerFactory<*>> {
+        DummyMediampPlayer.Factory
     }
 
 

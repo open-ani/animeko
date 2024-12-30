@@ -18,11 +18,11 @@ import androidx.media3.datasource.BaseDataSource
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DataSpec
 import kotlinx.coroutines.runBlocking
-import me.him188.ani.app.videoplayer.data.VideoData
-import me.him188.ani.utils.io.SeekableInput
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
+import org.openani.mediamp.io.SeekableInput
+import org.openani.mediamp.source.MediaData
 import java.io.IOException
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.measureTimedValue
@@ -34,7 +34,7 @@ import kotlin.time.measureTimedValue
  */
 @androidx.annotation.OptIn(UnstableApi::class)
 class VideoDataDataSource(
-    private val videoData: VideoData,
+    private val videoData: MediaData,
     private val file: SeekableInput,
 ) : BaseDataSource(true) {
     private companion object {
@@ -88,7 +88,7 @@ class VideoDataDataSource(
             opened = true
         }
 
-        val torrentLength = videoData.fileLength
+        val torrentLength = videoData.fileLength() ?: 0
 
         if (ENABLE_TRACE_LOG) logger.info { "torrentLength = $torrentLength" }
 

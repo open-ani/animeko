@@ -44,9 +44,12 @@ import me.him188.ani.app.videoplayer.ui.guesture.NoOpLevelController
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
 import me.him188.ani.app.videoplayer.ui.progress.rememberMediaProgressSliderState
 import me.him188.ani.app.videoplayer.ui.rememberVideoControllerState
-import me.him188.ani.app.videoplayer.ui.state.DummyPlayerState
+import me.him188.ani.app.videoplayer.ui.state.ChunkState
+import me.him188.ani.app.videoplayer.ui.state.staticMediaCacheProgressState
 import me.him188.ani.danmaku.ui.DanmakuHostState
 import me.him188.ani.utils.platform.annotations.TestOnly
+import org.openani.mediamp.DummyMediampPlayer
+
 
 @Preview("Landscape Fullscreen - Light", device = PHONE_LANDSCAPE, uiMode = UI_MODE_NIGHT_NO)
 @Preview("Landscape Fullscreen - Dark", device = PHONE_LANDSCAPE, uiMode = UI_MODE_NIGHT_YES or UI_MODE_TYPE_NORMAL)
@@ -84,7 +87,7 @@ private fun PreviewVideoScaffoldImpl(
 ) = ProvideCompositionLocalsForPreview {
     val scope = rememberCoroutineScope()
     val playerState = remember {
-        DummyPlayerState(scope.coroutineContext)
+        DummyMediampPlayer(scope.coroutineContext)
     }
 
     val controllerState = rememberVideoControllerState(initialVisibility = controllerVisibility)
@@ -134,7 +137,7 @@ private fun PreviewVideoScaffoldImpl(
         detachedProgressSlider = {
             PlayerControllerDefaults.MediaProgressSlider(
                 progressSliderState,
-                cacheProgressState = playerState.cacheProgress,
+                cacheProgressState = staticMediaCacheProgressState(ChunkState.NONE),
                 enabled = false,
             )
         },
@@ -244,7 +247,7 @@ private fun PreviewVideoScaffoldImpl(
 //                locked = isLocked,
 //                Modifier.padding(top = 100.dp),
 //                onTogglePauseResume = {
-//                    if (playerState.state.value.isPlaying) {
+//                    if (playerState.playbackState.value.isPlaying) {
 //                        tasker.launch {
 //                            indicatorState.showPausedLong()
 //                        }
@@ -271,7 +274,7 @@ private fun PreviewVideoScaffoldImpl(
 //                rememberProgressSliderState(playerState = playerState, onPreview = {}, onPreviewFinished = {})
 //            PlayerControllerBar(
 //                startActions = {
-//                    val playing = playerState.state.collectAsStateWithLifecycle()
+//                    val playing = playerState.playbackState.collectAsStateWithLifecycle()
 //                    PlayerControllerDefaults.PlaybackIcon(
 //                        isPlaying = { playing.value.isPlaying },
 //                        onClick = { }
