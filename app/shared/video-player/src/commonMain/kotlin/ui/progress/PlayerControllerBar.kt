@@ -568,7 +568,7 @@ object PlayerControllerDefaults {
         showPreviewTimeTextOnThumb: Boolean = true,
     ) {
         val cacheProgressInfo by cacheProgressInfoFlow.collectAsStateWithLifecycle(null)
-        me.him188.ani.app.videoplayer.ui.progress.MediaProgressSlider(
+        MediaProgressSlider(
             progressSliderState, { cacheProgressInfo },
             enabled = enabled,
             showPreviewTimeTextOnThumb = showPreviewTimeTextOnThumb,

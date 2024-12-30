@@ -407,11 +407,6 @@ fun KoinApplication.getCommonKoinModule(getContext: () -> Context, coroutineScop
         DefaultMediaAutoCacheService.createWithKoin()
     }
 
-    // TODO: 2024/12/30 [mediamp]  CacheProgressStateFactoryManager
-//    CacheProgressStateFactoryManager.register(TorrentVideoData::class) { videoData, state ->
-//        TorrentMediaCacheProgressState(videoData.pieces) { state.value }
-//    }
-
     single<MeteredNetworkDetector> { createMeteredNetworkDetector(getContext()) }
     single<SubjectDetailsStateFactory> { DefaultSubjectDetailsStateFactory(coroutineScope.coroutineContext) }
 }

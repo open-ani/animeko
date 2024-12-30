@@ -341,7 +341,6 @@ internal fun EpisodeVideoImpl(
                     MediaProgressIndicatorText(progressSliderState)
                 },
                 progressSlider = {
-                    // TODO: 2024/12/30 [mediamp]  MediaProgressSlider
                     PlayerControllerDefaults.MediaProgressSlider(
                         progressSliderState,
                         cacheProgressInfoFlow = cacheProgressInfoFlow,
