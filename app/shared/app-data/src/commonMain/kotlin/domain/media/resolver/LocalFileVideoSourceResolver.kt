@@ -13,7 +13,7 @@ import kotlinx.io.files.Path
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.topic.ResourceLocation
 import org.openani.mediamp.source.MediaSource
-import org.openani.mediamp.source.SystemFileVideoSource
+import org.openani.mediamp.source.SystemFileMediaSource
 
 class LocalFileVideoSourceResolver : VideoSourceResolver {
     override suspend fun supports(media: Media): Boolean {
@@ -23,7 +23,7 @@ class LocalFileVideoSourceResolver : VideoSourceResolver {
     override suspend fun resolve(media: Media, episode: EpisodeMetadata): MediaSource<*> {
         when (val download = media.download) {
             is ResourceLocation.LocalFile -> {
-                return SystemFileVideoSource(
+                return SystemFileMediaSource(
                     Path(download.filePath),
                     media.extraFiles.toMediampMediaExtraFiles(),
                 )
