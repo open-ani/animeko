@@ -1,6 +1,16 @@
+/*
+ * Copyright (C) 2024 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.utils.ktor
 
 import io.ktor.client.HttpClientConfig
+import io.ktor.client.engine.HttpClientEngineConfig
 import io.ktor.client.engine.ProxyBuilder
 import io.ktor.client.engine.ProxyConfig
 import io.ktor.client.engine.http
@@ -72,13 +82,22 @@ fun HttpClientConfig<*>.userAgent(
 fun HttpClientConfig<*>.proxy(
     config: ClientProxyConfig?,
 ) {
-    config ?: return
     engine {
-        proxy = ClientProxyConfigValidator.parseProxy(config.url)
+        this.setProxy(config)
     }
 
     defaultRequest {
         val credentials = Base64.encode("jetbrains:foobar".toByteArray())
         header(HttpHeaders.ProxyAuthorization, "Basic $credentials")
+    }
+}
+
+fun HttpClientEngineConfig.setProxy(
+    config: ClientProxyConfig?,
+) {
+    proxy = if (config == null) {
+        null
+    } else {
+        ClientProxyConfigValidator.parseProxy(config.url)
     }
 }
