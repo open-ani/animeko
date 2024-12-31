@@ -10,9 +10,7 @@
 package me.him188.ani.app.ui.foundation
 
 import androidx.compose.animation.Crossfade
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.ScrollableState
-import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -22,26 +20,29 @@ import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.isUnspecified
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
-import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
 import kotlin.math.pow
 
@@ -49,15 +50,16 @@ import kotlin.math.pow
  * Provide buttons to navigate horizontally. Effectively works on desktop.
  */
 @Composable
-fun HorizontalScrollNavigator(
+fun HorizontalScrollControlScaffold(
     state: HorizontalScrollNavigatorState,
     modifier: Modifier = Modifier,
-    scrollLeftButton: @Composable (modifier: Modifier) -> Unit = {
-        HorizontalScrollNavigatorDefaults.ScrollLeftButton(it)
+    scrollLeftButton: @Composable () -> Unit = {
+        HorizontalScrollNavigatorDefaults.ScrollLeftButton()
     },
-    scrollRightButton: @Composable (modifier: Modifier) -> Unit = {
-        HorizontalScrollNavigatorDefaults.ScrollRightButton(it)
+    scrollRightButton: @Composable () -> Unit = {
+        HorizontalScrollNavigatorDefaults.ScrollRightButton()
     },
+    buttonShape: Shape = CircleShape,
     content: @Composable () -> Unit
 ) {
     Box(
@@ -66,8 +68,12 @@ fun HorizontalScrollNavigator(
                 awaitPointerEventScope {
                     while (true) {
                         val event = awaitPointerEvent(PointerEventPass.Initial)
+                        if (event.type == PointerEventType.Exit) {
+                            state.calculateDistance(Offset.Unspecified)
+                            continue
+                        }
                         event.changes.firstOrNull()?.let { pointerInputChange ->
-                            state.updateMousePointerPosition(pointerInputChange.position)
+                            state.calculateDistance(pointerInputChange.position)
                         }
                     }
                 }
@@ -79,11 +85,16 @@ fun HorizontalScrollNavigator(
             modifier = Modifier
                 .align(Alignment.CenterStart)
                 .padding(start = HorizontalScrollNavigatorDefaults.ButtonMargin)
-                .onGloballyPositioned { state.updateLeftButtonCoordinate(layoutCoordinates = it) },
+                .onPlaced { state.updateLeftButtonCoordinate(layoutCoordinates = it) },
         ) {
             Crossfade(targetState = state.showLeftButton) { show ->
                 if (show) {
-                    scrollLeftButton(Modifier.clickable { state.scrollLeft() })
+                    Surface(
+                        onClick = { state.scrollLeft() },
+                        shape = buttonShape,
+                        color = Color.Unspecified,
+                        content = scrollLeftButton,
+                    )
                 }
             }
         }
@@ -91,11 +102,16 @@ fun HorizontalScrollNavigator(
             modifier = Modifier
                 .align(Alignment.CenterEnd)
                 .padding(end = HorizontalScrollNavigatorDefaults.ButtonMargin)
-                .onGloballyPositioned { state.updateRightButtonCoordinate(layoutCoordinates = it) },
+                .onPlaced { state.updateRightButtonCoordinate(layoutCoordinates = it) },
         ) {
             Crossfade(targetState = state.showRightButton) { show ->
                 if (show) {
-                    scrollRightButton(Modifier.clickable { state.scrollRight() })
+                    Surface(
+                        onClick = { state.scrollRight() },
+                        shape = buttonShape,
+                        color = Color.Unspecified,
+                        content = scrollRightButton,
+                    )
                 }
             }
         }
@@ -107,42 +123,50 @@ fun HorizontalScrollNavigator(
  *
  * @param scrollableState the incoming scrollable state. Use this to detect
  *      if the content can be scrolled, then finally determine the visibility of navigation button.
- * @param onClickNavigation called when clicked navigation button.
+ * @param onClickScroll called when clicked navigation button.
  *      `step` is the scroll step, positive means scroll forward.
- * @see HorizontalScrollNavigator
+ *      You should handle actual scrolling in this lambda.
+ * @see HorizontalScrollControlScaffold
  */
 @Composable
-fun rememberHorizontalScrollNavigatorState(
+fun rememberHorizontalScrollControlState(
     scrollableState: ScrollableState,
-    scrollStep: Float = HorizontalScrollNavigatorDefaults.ScrollStep,
-    onClickNavigation: (step: Float) -> Unit = { },
+    scrollStep: () -> Dp = { HorizontalScrollNavigatorDefaults.ScrollStep },
+    onClickScroll: (step: Dp) -> Unit,
 ): HorizontalScrollNavigatorState {
-    val scope = rememberCoroutineScope()
-    return remember(scrollableState, scrollStep, scope) {
-        HorizontalScrollNavigatorState(scrollableState, scrollStep, onClickNavigation, scope)
+    val onClickScrollUpdated by rememberUpdatedState(onClickScroll)
+    return remember(scrollableState) {
+        HorizontalScrollNavigatorState(scrollableState, scrollStep) { onClickScrollUpdated(it) }
     }
 }
 
+@Stable
 class HorizontalScrollNavigatorState(
     private val scrollableState: ScrollableState,
-    private val scrollStep: Float,
-    private val onClickNavigation: (step: Float) -> Unit,
-    private val scope: CoroutineScope,
+    private val scrollStep: () -> Dp,
+    private val onClickScroll: (step: Dp) -> Unit
 ) {
-    private var pointerPosition: Offset? by mutableStateOf(null)
-    private var leftButtonPosition: Offset? by mutableStateOf(null)
-    private var rightButtonPosition: Offset? by mutableStateOf(null)
+    private var isPointerNearLeftButton by mutableStateOf(false)
+    private var isPointerNearRightButton by mutableStateOf(false)
+    private var leftButtonPosition: Offset by mutableStateOf(Offset.Unspecified)
+    private var rightButtonPosition: Offset by mutableStateOf(Offset.Unspecified)
 
     val showLeftButton: Boolean by derivedStateOf {
-        scrollableState.canScrollBackward && isPointerNear(leftButtonPosition, pointerPosition)
+        scrollableState.canScrollBackward && isPointerNearLeftButton
     }
 
     val showRightButton: Boolean by derivedStateOf {
-        scrollableState.canScrollForward && isPointerNear(rightButtonPosition, pointerPosition)
+        scrollableState.canScrollForward && isPointerNearRightButton
     }
 
-    fun updateMousePointerPosition(position: Offset) {
-        pointerPosition = position
+    fun calculateDistance(position: Offset) {
+        if (position.isUnspecified) {
+            isPointerNearLeftButton = false
+            isPointerNearRightButton = false
+            return
+        }
+        isPointerNearLeftButton = isPointerNear(leftButtonPosition, position)
+        isPointerNearRightButton = isPointerNear(rightButtonPosition, position)
     }
 
     fun updateLeftButtonCoordinate(layoutCoordinates: LayoutCoordinates) {
@@ -158,48 +182,44 @@ class HorizontalScrollNavigatorState(
     }
 
     fun scrollLeft() {
-        scroll(-scrollStep)
+        onClickScroll(-scrollStep())
     }
 
     fun scrollRight() {
-        scroll(scrollStep)
-    }
-
-    private fun scroll(step: Float) {
-        onClickNavigation(step)
-        scope.launch {
-            scrollableState.animateScrollBy(step)
-        }
+        onClickScroll(scrollStep())
     }
 
     private fun isPointerNear(buttonPosition: Offset?, pointerPosition: Offset?): Boolean {
         if (buttonPosition == null || pointerPosition == null) return false
         val dist = buttonPosition - pointerPosition
         val buttonSize = HorizontalScrollNavigatorDefaults.ButtonSize.value
-        return dist.x * dist.x + dist.y * dist.y <= (buttonSize * 2).pow(2)
+        return dist.x * dist.x + dist.y * dist.y <= (buttonSize * 1.5).pow(2)
     }
 }
 
+@Stable
 object HorizontalScrollNavigatorDefaults {
     val ButtonMargin = 12.dp
     val ButtonSize = 64.dp
-    const val ScrollStep: Float = 200f
+    val ScrollStep = 200.dp
 
     @Composable
-    fun ScrollLeftButton(modifier: Modifier = Modifier) {
+    fun ScrollLeftButton(
+        modifier: Modifier = Modifier,
+        contentDescription: String = "Scroll left"
+    ) {
         Surface(
-            modifier = Modifier.size(ButtonSize),
             shape = CircleShape,
             color = Color.Black.copy(alpha = 0.7f),
         ) {
             ProvideContentColor(Color.White) {
                 Box(
-                    modifier = modifier,
+                    modifier = Modifier.size(ButtonSize).then(modifier),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
                         Icons.Default.ArrowBackIosNew,
-                        contentDescription = "Scroll left",
+                        contentDescription = contentDescription,
                     )
                 }
             }
@@ -207,7 +227,12 @@ object HorizontalScrollNavigatorDefaults {
     }
 
     @Composable
-    fun ScrollRightButton(modifier: Modifier = Modifier) {
-        ScrollLeftButton(Modifier.rotate(180f).then(modifier))
+    fun ScrollRightButton(
+        contentDescription: String = "Scroll right"
+    ) {
+        ScrollLeftButton(
+            Modifier.rotate(180f),
+            contentDescription = contentDescription,
+        )
     }
 }

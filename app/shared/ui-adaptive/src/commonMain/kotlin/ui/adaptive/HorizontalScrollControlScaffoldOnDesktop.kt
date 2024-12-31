@@ -11,28 +11,28 @@ package me.him188.ani.app.ui.adaptive
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import me.him188.ani.app.ui.foundation.HorizontalScrollNavigator
+import me.him188.ani.app.ui.foundation.HorizontalScrollControlScaffold
 import me.him188.ani.app.ui.foundation.HorizontalScrollNavigatorDefaults
 import me.him188.ani.app.ui.foundation.HorizontalScrollNavigatorState
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.utils.platform.Platform
 
 @Composable
-fun HorizontalScrollNavigatorOnDesktop(
+fun HorizontalScrollControlScaffoldOnDesktop(
     state: HorizontalScrollNavigatorState,
     modifier: Modifier = Modifier,
-    scrollLeftButton: @Composable (modifier: Modifier) -> Unit = {
-        HorizontalScrollNavigatorDefaults.ScrollLeftButton(it)
+    scrollLeftButton: @Composable () -> Unit = {
+        HorizontalScrollNavigatorDefaults.ScrollLeftButton()
     },
-    scrollRightButton: @Composable (modifier: Modifier) -> Unit = {
-        HorizontalScrollNavigatorDefaults.ScrollRightButton(it)
+    scrollRightButton: @Composable () -> Unit = {
+        HorizontalScrollNavigatorDefaults.ScrollRightButton()
     },
     content: @Composable () -> Unit
 ) {
     val currentPlatform = LocalPlatform.current
 
     if (currentPlatform is Platform.Desktop) {
-        HorizontalScrollNavigator(
+        HorizontalScrollControlScaffold(
             state = state,
             modifier = modifier,
             scrollLeftButton = scrollLeftButton,

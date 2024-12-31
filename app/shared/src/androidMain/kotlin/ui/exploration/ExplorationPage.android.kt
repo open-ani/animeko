@@ -42,7 +42,7 @@ internal fun PreviewExplorationPage() {
                     trendingSubjectInfoPager,
                     followedSubjectsPager = createTestPager(TestFollowedSubjectInfos),
                     horizontalScrollTipFlow = flowOf(false),
-                    onSetDontShowHorizontalScrollTip = {},
+                    onSetDisableHorizontalScrollTip = {},
                 )
             },
             {},

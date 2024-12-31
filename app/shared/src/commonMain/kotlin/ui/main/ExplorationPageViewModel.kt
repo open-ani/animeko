@@ -44,7 +44,7 @@ class ExplorationPageViewModel : AbstractViewModel(), KoinComponent {
 
     private val nsfwSettingFlow = settingsRepository.uiSettings.flow.map { it.searchSettings.nsfwMode }
     private val horizontalScrollTipFlow =
-        settingsRepository.oneshotActionConfig.flow.map { it.horizontalScrollOnDesktopTip }
+        settingsRepository.oneshotActionConfig.flow.map { it.horizontalScrollTip }
     
     val explorationPageState: ExplorationPageState = ExplorationPageState(
         authState,
@@ -69,9 +69,9 @@ class ExplorationPageViewModel : AbstractViewModel(), KoinComponent {
             subjects.filter { !it.subjectInfo.nsfw }
         },
         horizontalScrollTipFlow = horizontalScrollTipFlow,
-        onSetDontShowHorizontalScrollTip = {
+        onSetDisableHorizontalScrollTip = {
             backgroundScope.launch {
-                settingsRepository.oneshotActionConfig.update { copy(horizontalScrollOnDesktopTip = false) }
+                settingsRepository.oneshotActionConfig.update { copy(horizontalScrollTip = false) }
             }
         },
 //            .onStart<List<FollowedSubjectInfo?>> {

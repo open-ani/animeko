@@ -23,7 +23,7 @@ data class OneshotActionConfig(
      * 在搜索标签页显示长按删除标签的 Tip
      */
     val deleteSearchTagTip: Boolean = true,
-    val horizontalScrollOnDesktopTip: Boolean = true,
+    val horizontalScrollTip: Boolean = true,
 ) {
     companion object {
         @Stable

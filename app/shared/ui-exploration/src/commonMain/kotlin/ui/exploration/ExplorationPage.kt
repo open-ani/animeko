@@ -10,6 +10,7 @@
 package me.him188.ani.app.ui.exploration
 
 import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
@@ -33,6 +34,7 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
@@ -40,6 +42,7 @@ import androidx.paging.PagingData
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItemsWithLifecycle
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.UserInfo
 import me.him188.ani.app.data.models.subject.FollowedSubjectInfo
 import me.him188.ani.app.data.models.subject.subjectInfo
@@ -50,7 +53,7 @@ import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.app.ui.adaptive.AniTopAppBar
 import me.him188.ani.app.ui.adaptive.AniTopAppBarDefaults
-import me.him188.ani.app.ui.adaptive.HorizontalScrollNavigatorOnDesktop
+import me.him188.ani.app.ui.adaptive.HorizontalScrollControlScaffoldOnDesktop
 import me.him188.ani.app.ui.adaptive.NavTitleHeader
 import me.him188.ani.app.ui.exploration.followed.FollowedSubjectsDefaults
 import me.him188.ani.app.ui.exploration.followed.FollowedSubjectsLazyRow
@@ -60,12 +63,16 @@ import me.him188.ani.app.ui.foundation.layout.CarouselItemDefaults
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.isAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.paneHorizontalPadding
-import me.him188.ani.app.ui.foundation.rememberHorizontalScrollNavigatorState
+import me.him188.ani.app.ui.foundation.rememberHorizontalScrollControlState
 import me.him188.ani.app.ui.foundation.session.SelfAvatar
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.search.isLoadingFirstPageOrRefreshing
 
+/**
+ * @param horizontalScrollTipFlow 探索界面有横向滚动的列表, 是否显示点击辅助滚动按钮后的提示.
+ * @param onSetDisableHorizontalScrollTip 探索界面有横向滚动的列表, 在第一次点击列表左右测的辅助滚动按钮后调用.
+ */
 @Stable
 class ExplorationPageState(
     val authState: AuthState,
@@ -73,7 +80,7 @@ class ExplorationPageState(
     val trendingSubjectInfoPager: LazyPagingItems<TrendingSubjectInfo>,
     val followedSubjectsPager: Flow<PagingData<FollowedSubjectInfo>>,
     val horizontalScrollTipFlow: Flow<Boolean>,
-    private val onSetDontShowHorizontalScrollTip: () -> Unit,
+    private val onSetDisableHorizontalScrollTip: () -> Unit,
 ) {
     val selfInfo by selfInfoState
 
@@ -91,8 +98,8 @@ class ExplorationPageState(
 
     val pageScrollState = ScrollState(0)
 
-    fun setDontShowHorizontalScrollTip() {
-        onSetDontShowHorizontalScrollTip()
+    fun setDisableHorizontalScrollTip() {
+        onSetDisableHorizontalScrollTip()
     }
 }
 
@@ -148,6 +155,7 @@ fun ExplorationPage(
         val density = LocalDensity.current
         val showHorizontalNavigateTip by state.horizontalScrollTipFlow.collectAsState(false)
         val toaster = LocalToaster.current
+        val scope = rememberCoroutineScope()
         
         Column(Modifier.padding(topBarPadding).verticalScroll(state.pageScrollState)) {
             NavTitleHeader(
@@ -155,14 +163,18 @@ fun ExplorationPage(
                 contentPadding = horizontalContentPadding,
             )
 
-            HorizontalScrollNavigatorOnDesktop(
-                rememberHorizontalScrollNavigatorState(
+            val carouselItemSize = CarouselItemDefaults.itemSize()
+            HorizontalScrollControlScaffoldOnDesktop(
+                rememberHorizontalScrollControlState(
                     state.trendingSubjectsCarouselState,
-                    with(density) { CarouselItemDefaults.itemSize().preferredWidth.toPx() * 2 },
-                    onClickNavigation = {
+                    scrollStep = { carouselItemSize.preferredWidth * 2 },
+                    onClickScroll = {
+                        scope.launch {
+                            state.trendingSubjectsCarouselState.animateScrollBy(with(density) { it.toPx() })
+                        }
                         if (showHorizontalNavigateTip) {
                             toaster.toast(getHorizontalScrollNavigatorTipText())
-                            state.setDontShowHorizontalScrollTip()
+                            state.setDisableHorizontalScrollTip()
                         }
                     },
                 ),
@@ -193,14 +205,17 @@ fun ExplorationPage(
             val followedSubjectsLayoutParameters =
                 FollowedSubjectsDefaults.layoutParameters(currentWindowAdaptiveInfo1())
 
-            HorizontalScrollNavigatorOnDesktop(
-                rememberHorizontalScrollNavigatorState(
+            HorizontalScrollControlScaffoldOnDesktop(
+                rememberHorizontalScrollControlState(
                     state.followedSubjectsLazyRowState,
-                    with(density) { followedSubjectsLayoutParameters.imageSize.height.toPx() * 2 },
-                    onClickNavigation = {
+                    scrollStep = { followedSubjectsLayoutParameters.imageSize.height * 2 },
+                    onClickScroll = {
+                        scope.launch {
+                            state.followedSubjectsLazyRowState.animateScrollBy(with(density) { it.toPx() })
+                        }
                         if (showHorizontalNavigateTip) {
                             toaster.toast(getHorizontalScrollNavigatorTipText())
-                            state.setDontShowHorizontalScrollTip()
+                            state.setDisableHorizontalScrollTip()
                         }
                     },
                 ),
