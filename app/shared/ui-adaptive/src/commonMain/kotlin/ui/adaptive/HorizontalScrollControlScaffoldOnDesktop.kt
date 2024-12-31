@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.ui.adaptive
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import me.him188.ani.app.ui.foundation.HorizontalScrollControlScaffold
@@ -40,6 +41,8 @@ fun HorizontalScrollControlScaffoldOnDesktop(
             content = content,
         )
     } else {
-        content()
+        Box(modifier = modifier) {
+            content()
+        }
     }
 }
