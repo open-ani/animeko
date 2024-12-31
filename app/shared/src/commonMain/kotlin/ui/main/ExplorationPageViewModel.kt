@@ -16,6 +16,7 @@ import androidx.paging.filter
 import androidx.paging.flatMap
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.models.subject.subjectInfo
 import me.him188.ani.app.data.network.TrendsRepository
@@ -42,6 +43,8 @@ class ExplorationPageViewModel : AbstractViewModel(), KoinComponent {
     private val selfInfoState = sessionManager.userInfo.produceState(null)
 
     private val nsfwSettingFlow = settingsRepository.uiSettings.flow.map { it.searchSettings.nsfwMode }
+    private val horizontalScrollTipFlow =
+        settingsRepository.oneshotActionConfig.flow.map { it.horizontalScrollOnDesktopTip }
     
     val explorationPageState: ExplorationPageState = ExplorationPageState(
         authState,
@@ -64,6 +67,12 @@ class ExplorationPageViewModel : AbstractViewModel(), KoinComponent {
         ) { nsfwMode, subjects ->
             if (nsfwMode != NsfwMode.HIDE) return@combine subjects
             subjects.filter { !it.subjectInfo.nsfw }
+        },
+        horizontalScrollTipFlow = horizontalScrollTipFlow,
+        onSetDontShowHorizontalScrollTip = {
+            backgroundScope.launch {
+                //settingsRepository.oneshotActionConfig.update { copy(horizontalScrollOnDesktopTip = false) }
+            }
         },
 //            .onStart<List<FollowedSubjectInfo?>> {
 //                emit(arrayOfNulls<FollowedSubjectInfo>(10).toList())

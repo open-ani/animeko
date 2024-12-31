@@ -31,6 +31,7 @@ import androidx.compose.material3.carousel.CarouselState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
@@ -62,6 +63,7 @@ import me.him188.ani.app.ui.foundation.layout.paneHorizontalPadding
 import me.him188.ani.app.ui.foundation.rememberHorizontalScrollNavigatorState
 import me.him188.ani.app.ui.foundation.session.SelfAvatar
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
+import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.search.isLoadingFirstPageOrRefreshing
 
 @Stable
@@ -70,6 +72,8 @@ class ExplorationPageState(
     selfInfoState: State<UserInfo?>,
     val trendingSubjectInfoPager: LazyPagingItems<TrendingSubjectInfo>,
     val followedSubjectsPager: Flow<PagingData<FollowedSubjectInfo>>,
+    val horizontalScrollTipFlow: Flow<Boolean>,
+    private val onSetDontShowHorizontalScrollTip: () -> Unit,
 ) {
     val selfInfo by selfInfoState
 
@@ -86,6 +90,10 @@ class ExplorationPageState(
 
 
     val pageScrollState = ScrollState(0)
+
+    fun setDontShowHorizontalScrollTip() {
+        onSetDontShowHorizontalScrollTip()
+    }
 }
 
 @Composable
@@ -138,6 +146,8 @@ fun ExplorationPage(
 
         val navigator = LocalNavigator.current
         val density = LocalDensity.current
+        val showHorizontalNavigateTip by state.horizontalScrollTipFlow.collectAsState(false)
+        val toaster = LocalToaster.current
         
         Column(Modifier.padding(topBarPadding).verticalScroll(state.pageScrollState)) {
             NavTitleHeader(
@@ -149,6 +159,12 @@ fun ExplorationPage(
                 rememberHorizontalScrollNavigatorState(
                     state.trendingSubjectsCarouselState,
                     with(density) { CarouselItemDefaults.itemSize().preferredWidth.toPx() * 2 },
+                    onClickNavigation = {
+                        if (showHorizontalNavigateTip) {
+                            toaster.toast(getHorizontalScrollNavigatorTipText())
+                            state.setDontShowHorizontalScrollTip()
+                        }
+                    },
                 ),
             ) {
                 TrendingSubjectsCarousel(
@@ -181,6 +197,12 @@ fun ExplorationPage(
                 rememberHorizontalScrollNavigatorState(
                     state.followedSubjectsLazyRowState,
                     with(density) { followedSubjectsLayoutParameters.imageSize.height.toPx() * 2 },
+                    onClickNavigation = {
+                        if (showHorizontalNavigateTip) {
+                            toaster.toast(getHorizontalScrollNavigatorTipText())
+                            state.setDontShowHorizontalScrollTip()
+                        }
+                    },
                 ),
             ) {
                 FollowedSubjectsLazyRow(
@@ -206,4 +228,8 @@ fun ExplorationPage(
             }
         }
     }
+}
+
+private fun getHorizontalScrollNavigatorTipText(): String {
+    return "按住 Shift 键并滚动鼠标滚轮同样可以水平滚动"
 }

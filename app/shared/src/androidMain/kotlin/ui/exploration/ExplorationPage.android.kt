@@ -16,6 +16,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.paging.compose.collectAsLazyPagingItemsWithLifecycle
+import kotlinx.coroutines.flow.flowOf
 import me.him188.ani.app.data.models.subject.TestFollowedSubjectInfos
 import me.him188.ani.app.domain.session.TestUserInfo
 import me.him188.ani.app.domain.session.createTestAuthState
@@ -40,6 +41,8 @@ internal fun PreviewExplorationPage() {
                     selfInfoState = stateOf(TestUserInfo),
                     trendingSubjectInfoPager,
                     followedSubjectsPager = createTestPager(TestFollowedSubjectInfos),
+                    horizontalScrollTipFlow = flowOf(false),
+                    onSetDontShowHorizontalScrollTip = {},
                 )
             },
             {},
