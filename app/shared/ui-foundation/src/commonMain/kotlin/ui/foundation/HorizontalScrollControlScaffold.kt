@@ -51,7 +51,7 @@ import kotlin.math.pow
  */
 @Composable
 fun HorizontalScrollControlScaffold(
-    state: HorizontalScrollNavigatorState,
+    state: HorizontalScrollControlState,
     modifier: Modifier = Modifier,
     scrollLeftButton: @Composable () -> Unit = {
         HorizontalScrollNavigatorDefaults.ScrollLeftButton()
@@ -119,7 +119,7 @@ fun HorizontalScrollControlScaffold(
 }
 
 /**
- * Create a [HorizontalScrollNavigatorState] that can be used to navigate horizontally
+ * Create a [HorizontalScrollControlState] that can be used to navigate horizontally
  *
  * @param scrollableState the incoming scrollable state. Use this to detect
  *      if the content can be scrolled, then finally determine the visibility of navigation button.
@@ -133,15 +133,15 @@ fun rememberHorizontalScrollControlState(
     scrollableState: ScrollableState,
     scrollStep: () -> Dp = { HorizontalScrollNavigatorDefaults.ScrollStep },
     onClickScroll: (step: Dp) -> Unit,
-): HorizontalScrollNavigatorState {
+): HorizontalScrollControlState {
     val onClickScrollUpdated by rememberUpdatedState(onClickScroll)
     return remember(scrollableState) {
-        HorizontalScrollNavigatorState(scrollableState, scrollStep) { onClickScrollUpdated(it) }
+        HorizontalScrollControlState(scrollableState, scrollStep) { onClickScrollUpdated(it) }
     }
 }
 
 @Stable
-class HorizontalScrollNavigatorState(
+class HorizontalScrollControlState(
     private val scrollableState: ScrollableState,
     private val scrollStep: () -> Dp,
     private val onClickScroll: (step: Dp) -> Unit
@@ -189,8 +189,7 @@ class HorizontalScrollNavigatorState(
         onClickScroll(scrollStep())
     }
 
-    private fun isPointerNear(buttonPosition: Offset?, pointerPosition: Offset?): Boolean {
-        if (buttonPosition == null || pointerPosition == null) return false
+    private fun isPointerNear(buttonPosition: Offset, pointerPosition: Offset): Boolean {
         val dist = buttonPosition - pointerPosition
         val buttonSize = HorizontalScrollNavigatorDefaults.ButtonSize.value
         return dist.x * dist.x + dist.y * dist.y <= (buttonSize * 1.5).pow(2)
@@ -228,10 +227,11 @@ object HorizontalScrollNavigatorDefaults {
 
     @Composable
     fun ScrollRightButton(
+        modifier: Modifier = Modifier,
         contentDescription: String = "Scroll right"
     ) {
         ScrollLeftButton(
-            Modifier.rotate(180f),
+            Modifier.rotate(180f).then(modifier),
             contentDescription = contentDescription,
         )
     }
