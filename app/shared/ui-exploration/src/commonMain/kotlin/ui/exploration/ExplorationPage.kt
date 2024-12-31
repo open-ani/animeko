@@ -49,11 +49,11 @@ import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.app.ui.adaptive.AniTopAppBar
 import me.him188.ani.app.ui.adaptive.AniTopAppBarDefaults
+import me.him188.ani.app.ui.adaptive.HorizontalScrollNavigatorOnDesktop
 import me.him188.ani.app.ui.adaptive.NavTitleHeader
 import me.him188.ani.app.ui.exploration.followed.FollowedSubjectsDefaults
 import me.him188.ani.app.ui.exploration.followed.FollowedSubjectsLazyRow
 import me.him188.ani.app.ui.exploration.trends.TrendingSubjectsCarousel
-import me.him188.ani.app.ui.foundation.HorizontalScrollNavigator
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.layout.CarouselItemDefaults
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
@@ -145,7 +145,7 @@ fun ExplorationPage(
                 contentPadding = horizontalContentPadding,
             )
 
-            HorizontalScrollNavigator(
+            HorizontalScrollNavigatorOnDesktop(
                 rememberHorizontalScrollNavigatorState(
                     state.trendingSubjectsCarouselState,
                     with(density) { CarouselItemDefaults.itemSize().preferredWidth.toPx() * 2 },
@@ -177,7 +177,7 @@ fun ExplorationPage(
             val followedSubjectsLayoutParameters =
                 FollowedSubjectsDefaults.layoutParameters(currentWindowAdaptiveInfo1())
 
-            HorizontalScrollNavigator(
+            HorizontalScrollNavigatorOnDesktop(
                 rememberHorizontalScrollNavigatorState(
                     state.followedSubjectsLazyRowState,
                     with(density) { followedSubjectsLayoutParameters.imageSize.height.toPx() * 2 },

@@ -58,9 +58,8 @@ fun HorizontalScrollNavigator(
     scrollRightButton: @Composable (modifier: Modifier) -> Unit = {
         HorizontalScrollNavigatorDefaults.ScrollRightButton(it)
     },
-    content: @Composable () -> Unit,
-
-    ) {
+    content: @Composable () -> Unit
+) {
     Box(
         modifier = modifier
             .pointerInput(Unit) {
@@ -119,7 +118,7 @@ fun rememberHorizontalScrollNavigatorState(
     onClickNavigation: (step: Float) -> Unit = { },
 ): HorizontalScrollNavigatorState {
     val scope = rememberCoroutineScope()
-    return remember(scrollStep, scope) {
+    return remember(scrollableState, scrollStep, scope) {
         HorizontalScrollNavigatorState(scrollableState, scrollStep, onClickNavigation, scope)
     }
 }
