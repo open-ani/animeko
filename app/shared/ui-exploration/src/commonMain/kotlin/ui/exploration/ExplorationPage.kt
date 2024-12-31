@@ -231,5 +231,5 @@ fun ExplorationPage(
 }
 
 private fun getHorizontalScrollNavigatorTipText(): String {
-    return "按住 Shift 键并滚动鼠标滚轮同样可以水平滚动"
+    return "按住 Shift + 鼠标滚轮 同样可以水平滚动"
 }

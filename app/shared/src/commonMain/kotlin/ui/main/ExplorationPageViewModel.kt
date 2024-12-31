@@ -71,7 +71,7 @@ class ExplorationPageViewModel : AbstractViewModel(), KoinComponent {
         horizontalScrollTipFlow = horizontalScrollTipFlow,
         onSetDontShowHorizontalScrollTip = {
             backgroundScope.launch {
-                //settingsRepository.oneshotActionConfig.update { copy(horizontalScrollOnDesktopTip = false) }
+                settingsRepository.oneshotActionConfig.update { copy(horizontalScrollOnDesktopTip = false) }
             }
         },
 //            .onStart<List<FollowedSubjectInfo?>> {
