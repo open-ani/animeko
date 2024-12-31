@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 OpenAni and contributors.
+ * Copyright (C) 2024 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -14,6 +14,7 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -108,12 +109,14 @@ fun Toast(
             }
         },
     ) {
+        val isDarkTheme = isSystemInDarkTheme()
         Surface(
             modifier = Modifier.padding(horizontal = 60.dp),
             shape = RoundedCornerShape(15.dp),
-            color = Color.Black.copy(alpha = 0.7f),
+            color = (if (isDarkTheme) Color.White else Color.Black).copy(alpha = 0.7f),
+            shadowElevation = 4.dp,
         ) {
-            CompositionLocalProvider(LocalContentColor provides Color.White) {
+            CompositionLocalProvider(LocalContentColor provides (if (isDarkTheme) Color.Black else Color.White)) {
                 Row(modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)) {
                     currentContent()
                 }
