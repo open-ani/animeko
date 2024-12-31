@@ -33,6 +33,7 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.paging.PagingData
 import androidx.paging.compose.LazyPagingItems
@@ -49,12 +50,16 @@ import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.app.ui.adaptive.AniTopAppBar
 import me.him188.ani.app.ui.adaptive.AniTopAppBarDefaults
 import me.him188.ani.app.ui.adaptive.NavTitleHeader
+import me.him188.ani.app.ui.exploration.followed.FollowedSubjectsDefaults
 import me.him188.ani.app.ui.exploration.followed.FollowedSubjectsLazyRow
 import me.him188.ani.app.ui.exploration.trends.TrendingSubjectsCarousel
+import me.him188.ani.app.ui.foundation.HorizontalScrollNavigator
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
+import me.him188.ani.app.ui.foundation.layout.CarouselItemDefaults
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.isAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.paneHorizontalPadding
+import me.him188.ani.app.ui.foundation.rememberHorizontalScrollNavigatorState
 import me.him188.ani.app.ui.foundation.session.SelfAvatar
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.search.isLoadingFirstPageOrRefreshing
@@ -132,52 +137,73 @@ fun ExplorationPage(
             PaddingValues(horizontal = horizontalPadding)
 
         val navigator = LocalNavigator.current
+        val density = LocalDensity.current
+        
         Column(Modifier.padding(topBarPadding).verticalScroll(state.pageScrollState)) {
             NavTitleHeader(
                 title = { Text("最高热度") },
                 contentPadding = horizontalContentPadding,
             )
 
-            TrendingSubjectsCarousel(
-                state.trendingSubjectInfoPager,
-                onClick = {
-                    navigator.navigateSubjectDetails(
-                        subjectId = it.bangumiId,
-                        placeholder = SubjectDetailPlaceholder(
-                            id = it.bangumiId,
-                            name = it.nameCn,
-                            coverUrl = it.imageLarge,
-                        ),
-                    )
-                },
-                contentPadding = PaddingValues(horizontal = horizontalPadding, vertical = 8.dp),
-                carouselState = state.trendingSubjectsCarouselState,
-            )
+            HorizontalScrollNavigator(
+                rememberHorizontalScrollNavigatorState(
+                    state.trendingSubjectsCarouselState,
+                    with(density) { CarouselItemDefaults.itemSize().preferredWidth.toPx() * 2 },
+                ),
+            ) {
+                TrendingSubjectsCarousel(
+                    state.trendingSubjectInfoPager,
+                    onClick = {
+                        navigator.navigateSubjectDetails(
+                            subjectId = it.bangumiId,
+                            placeholder = SubjectDetailPlaceholder(
+                                id = it.bangumiId,
+                                name = it.nameCn,
+                                coverUrl = it.imageLarge,
+                            ),
+                        )
+                    },
+                    contentPadding = PaddingValues(horizontal = horizontalPadding, vertical = 8.dp),
+                    carouselState = state.trendingSubjectsCarouselState,
+                )
+            }
 
             NavTitleHeader(
                 title = { Text("继续观看") },
                 contentPadding = horizontalContentPadding,
             )
+
             val followedSubjectsPager = state.followedSubjectsPager.collectAsLazyPagingItemsWithLifecycle()
-            FollowedSubjectsLazyRow(
-                followedSubjectsPager,
-                onClick = {
-                    navigator.navigateSubjectDetails(
-                        subjectId = it.subjectInfo.subjectId,
-                        placeholder = it.subjectInfo.toNavPlaceholder(),
-                    )
-                },
-                onPlay = {
-                    it.subjectProgressInfo.nextEpisodeIdToPlay?.let { it1 ->
-                        navigator.navigateEpisodeDetails(
-                            it.subjectInfo.subjectId,
-                            it1,
+            val followedSubjectsLayoutParameters =
+                FollowedSubjectsDefaults.layoutParameters(currentWindowAdaptiveInfo1())
+
+            HorizontalScrollNavigator(
+                rememberHorizontalScrollNavigatorState(
+                    state.followedSubjectsLazyRowState,
+                    with(density) { followedSubjectsLayoutParameters.imageSize.height.toPx() * 2 },
+                ),
+            ) {
+                FollowedSubjectsLazyRow(
+                    followedSubjectsPager,
+                    onClick = {
+                        navigator.navigateSubjectDetails(
+                            subjectId = it.subjectInfo.subjectId,
+                            placeholder = it.subjectInfo.toNavPlaceholder(),
                         )
-                    }
-                },
-                contentPadding = PaddingValues(horizontal = horizontalPadding, vertical = 8.dp),
-                lazyListState = state.followedSubjectsLazyRowState,
-            )
+                    },
+                    onPlay = {
+                        it.subjectProgressInfo.nextEpisodeIdToPlay?.let { it1 ->
+                            navigator.navigateEpisodeDetails(
+                                it.subjectInfo.subjectId,
+                                it1,
+                            )
+                        }
+                    },
+                    layoutParameters = followedSubjectsLayoutParameters,
+                    contentPadding = PaddingValues(horizontal = horizontalPadding, vertical = 8.dp),
+                    lazyListState = state.followedSubjectsLazyRowState,
+                )
+            }
         }
     }
 }
