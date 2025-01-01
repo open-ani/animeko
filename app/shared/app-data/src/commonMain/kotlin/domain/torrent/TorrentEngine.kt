@@ -34,6 +34,7 @@ import me.him188.ani.app.torrent.api.peer.PeerInfo
 import me.him188.ani.datasources.api.source.MediaSourceLocation
 import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.coroutines.onReplacement
+import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
 import kotlin.coroutines.CoroutineContext
@@ -143,7 +144,7 @@ abstract class AbstractTorrentEngine<Downloader : TorrentDownloader, Config : An
             combine(peerFilterSettings, downloader) { s, d -> s to d }
                 .collectLatest { (settings, downloader) ->
                     if (downloader == null) return@collectLatest
-                    downloader.applyPeerFilter(createPeerFilter(settings))
+                    downloader.applyPeerFilter(PeerFilterSettingsAsPeerFilter(settings))
                 }
         }
     }
@@ -176,22 +177,37 @@ abstract class AbstractTorrentEngine<Downloader : TorrentDownloader, Config : An
     }
 }
 
-
-private fun createPeerFilter(config: PeerFilterSettings): PeerFilter {
-    return object : PeerFilter {
-        private val correspondingFilters = buildList {
-            if (config.blockInvalidId) {
-                add(PeerInvalidIdFilter)
-            }
-            config.rules.forEach { rule ->
-                addAll(rule.blockedIpPattern.map(::PeerIpFilter))
-                addAll(rule.blockedIdRegex.map(::PeerIdFilter))
-                addAll(rule.blockedClientRegex.map(::PeerClientFilter))
-            }
+private class PeerFilterSettingsAsPeerFilter(
+    private val config: PeerFilterSettings,
+) : PeerFilter {
+    private val logger = logger<PeerFilterSettingsAsPeerFilter>()
+    private val correspondingFilters = buildList {
+        if (config.blockInvalidId) {
+            add(PeerInvalidIdFilter)
         }
-
-        override fun onFilter(info: PeerInfo): Boolean {
-            return correspondingFilters.any { it.onFilter(info) }
+        config.rules.forEach { rule ->
+            addAll(rule.blockedIpPattern.map(::PeerIpFilter))
+            addAll(rule.blockedIdRegex.map(::PeerIdFilter))
+            addAll(rule.blockedClientRegex.map(::PeerClientFilter))
         }
     }
+
+    override fun shouldBlock(info: PeerInfo): Boolean {
+        try {
+            val blockingRule = correspondingFilters.firstOrNull { it.shouldBlock(info) }
+            if (blockingRule != null) {
+                logger.info { "Peer ${info.describe()} is blocked by rule ${blockingRule.describe()}" }
+            }
+            return blockingRule != null
+        } catch (e: Throwable) {
+            logger.warn(e) { "Exception while checking whether to block peer ${info.describe()}. Accepting connection." }
+            return false
+        }
+    }
+
+    override fun describe(): String {
+        return "PeerFilterSettingsAsPeerFilter"
+    }
 }
+
+private fun PeerInfo.describe(): String = "${this.ipAddr}(${this.client})"

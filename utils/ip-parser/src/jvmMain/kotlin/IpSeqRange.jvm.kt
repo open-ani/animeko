@@ -10,6 +10,7 @@
 package me.him188.ani.utils.ipparser
 
 import inet.ipaddr.AddressStringException
+import inet.ipaddr.IPAddress
 import inet.ipaddr.IPAddressString
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
@@ -27,11 +28,13 @@ internal actual fun createIpSeqRange(ipSeqPattern: String): IpSeqRange {
 
         override fun contains(address: String): Boolean {
             if (range == null) return false
-            val ipAddress = try {
+            val ipAddress: IPAddress = try {
                 NoValidationIPAddressString(address).address
+                    ?: return false
             } catch (_: AddressStringException) {
                 return false
             }
+
             return range.contains(ipAddress)
         }
     }
