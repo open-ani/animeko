@@ -54,10 +54,10 @@ fun HorizontalScrollControlScaffold(
     state: HorizontalScrollControlState,
     modifier: Modifier = Modifier,
     scrollLeftButton: @Composable () -> Unit = {
-        HorizontalScrollNavigatorDefaults.ScrollLeftButton()
+        HorizontalScrollControlDefaults.ScrollLeftButton()
     },
     scrollRightButton: @Composable () -> Unit = {
-        HorizontalScrollNavigatorDefaults.ScrollRightButton()
+        HorizontalScrollControlDefaults.ScrollRightButton()
     },
     buttonShape: Shape = CircleShape,
     content: @Composable () -> Unit
@@ -84,7 +84,7 @@ fun HorizontalScrollControlScaffold(
         Box(
             modifier = Modifier
                 .align(Alignment.CenterStart)
-                .padding(start = HorizontalScrollNavigatorDefaults.ButtonMargin)
+                .padding(start = HorizontalScrollControlDefaults.ButtonMargin)
                 .onPlaced { state.updateLeftButtonCoordinate(layoutCoordinates = it) },
         ) {
             Crossfade(targetState = state.showLeftButton) { show ->
@@ -101,7 +101,7 @@ fun HorizontalScrollControlScaffold(
         Box(
             modifier = Modifier
                 .align(Alignment.CenterEnd)
-                .padding(end = HorizontalScrollNavigatorDefaults.ButtonMargin)
+                .padding(end = HorizontalScrollControlDefaults.ButtonMargin)
                 .onPlaced { state.updateRightButtonCoordinate(layoutCoordinates = it) },
         ) {
             Crossfade(targetState = state.showRightButton) { show ->
@@ -131,7 +131,7 @@ fun HorizontalScrollControlScaffold(
 @Composable
 fun rememberHorizontalScrollControlState(
     scrollableState: ScrollableState,
-    scrollStep: () -> Dp = { HorizontalScrollNavigatorDefaults.ScrollStep },
+    scrollStep: () -> Dp = { HorizontalScrollControlDefaults.ScrollStep },
     onClickScroll: (step: Dp) -> Unit,
 ): HorizontalScrollControlState {
     val onClickScrollUpdated by rememberUpdatedState(onClickScroll)
@@ -191,13 +191,13 @@ class HorizontalScrollControlState(
 
     private fun isPointerNear(buttonPosition: Offset, pointerPosition: Offset): Boolean {
         val dist = buttonPosition - pointerPosition
-        val buttonSize = HorizontalScrollNavigatorDefaults.ButtonSize.value
+        val buttonSize = HorizontalScrollControlDefaults.ButtonSize.value
         return dist.x * dist.x + dist.y * dist.y <= (buttonSize * 1.5).pow(2)
     }
 }
 
 @Stable
-object HorizontalScrollNavigatorDefaults {
+object HorizontalScrollControlDefaults {
     val ButtonMargin = 12.dp
     val ButtonSize = 64.dp
     val ScrollStep = 200.dp

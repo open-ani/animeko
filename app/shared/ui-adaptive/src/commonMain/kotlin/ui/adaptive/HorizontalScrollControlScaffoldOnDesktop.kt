@@ -12,9 +12,9 @@ package me.him188.ani.app.ui.adaptive
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import me.him188.ani.app.ui.foundation.HorizontalScrollControlDefaults
 import me.him188.ani.app.ui.foundation.HorizontalScrollControlScaffold
 import me.him188.ani.app.ui.foundation.HorizontalScrollControlState
-import me.him188.ani.app.ui.foundation.HorizontalScrollNavigatorDefaults
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.utils.platform.Platform
 
@@ -23,10 +23,10 @@ fun HorizontalScrollControlScaffoldOnDesktop(
     state: HorizontalScrollControlState,
     modifier: Modifier = Modifier,
     scrollLeftButton: @Composable () -> Unit = {
-        HorizontalScrollNavigatorDefaults.ScrollLeftButton()
+        HorizontalScrollControlDefaults.ScrollLeftButton()
     },
     scrollRightButton: @Composable () -> Unit = {
-        HorizontalScrollNavigatorDefaults.ScrollRightButton()
+        HorizontalScrollControlDefaults.ScrollRightButton()
     },
     content: @Composable () -> Unit
 ) {

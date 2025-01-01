@@ -62,17 +62,17 @@ class HorizontalScrollControlScaffoldTest {
         HorizontalScrollControlScaffold(
             rememberHorizontalScrollControlState(
                 scrollableState = listState,
-                scrollStep = { HorizontalScrollNavigatorDefaults.ScrollStep },
+                scrollStep = { HorizontalScrollControlDefaults.ScrollStep },
                 onClickScroll = { scope.launch { listState.scrollBy(with(density) { it.toPx() }) } },
             ),
             modifier = Modifier.width(500.dp),
             scrollLeftButton = {
-                HorizontalScrollNavigatorDefaults.ScrollLeftButton(
+                HorizontalScrollControlDefaults.ScrollLeftButton(
                     Modifier.testTag(TAG_SCROLL_CONTROL_LEFT_BUTTON),
                 )
             },
             scrollRightButton = {
-                HorizontalScrollNavigatorDefaults.ScrollRightButton(
+                HorizontalScrollControlDefaults.ScrollRightButton(
                     Modifier.testTag(TAG_SCROLL_CONTROL_RIGHT_BUTTON),
                 )
             },
