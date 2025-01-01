@@ -40,7 +40,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.layout.positionInParent
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
@@ -90,7 +89,7 @@ fun HorizontalScrollControlScaffold(
             Crossfade(targetState = state.showLeftButton) { show ->
                 if (show) {
                     Surface(
-                        onClick = { state.scrollLeft() },
+                        onClick = { state.scrollBackward() },
                         shape = buttonShape,
                         color = Color.Unspecified,
                         content = scrollLeftButton,
@@ -107,7 +106,7 @@ fun HorizontalScrollControlScaffold(
             Crossfade(targetState = state.showRightButton) { show ->
                 if (show) {
                     Surface(
-                        onClick = { state.scrollRight() },
+                        onClick = { state.scrollForward() },
                         shape = buttonShape,
                         color = Color.Unspecified,
                         content = scrollRightButton,
@@ -131,20 +130,18 @@ fun HorizontalScrollControlScaffold(
 @Composable
 fun rememberHorizontalScrollControlState(
     scrollableState: ScrollableState,
-    scrollStep: () -> Dp = { HorizontalScrollControlDefaults.ScrollStep },
-    onClickScroll: (step: Dp) -> Unit,
+    onClickScroll: (direction: HorizontalScrollControlState.Direction) -> Unit,
 ): HorizontalScrollControlState {
     val onClickScrollUpdated by rememberUpdatedState(onClickScroll)
     return remember(scrollableState) {
-        HorizontalScrollControlState(scrollableState, scrollStep) { onClickScrollUpdated(it) }
+        HorizontalScrollControlState(scrollableState) { onClickScrollUpdated(it) }
     }
 }
 
 @Stable
 class HorizontalScrollControlState(
     private val scrollableState: ScrollableState,
-    private val scrollStep: () -> Dp,
-    private val onClickScroll: (step: Dp) -> Unit
+    private val onClickScroll: (direction: Direction) -> Unit
 ) {
     private var isPointerNearLeftButton by mutableStateOf(false)
     private var isPointerNearRightButton by mutableStateOf(false)
@@ -181,12 +178,12 @@ class HorizontalScrollControlState(
                 Offset(buttonSize.width / 2f, buttonSize.height / 2f)
     }
 
-    fun scrollLeft() {
-        onClickScroll(-scrollStep())
+    fun scrollBackward() {
+        onClickScroll(Direction.BACKWARD)
     }
 
-    fun scrollRight() {
-        onClickScroll(scrollStep())
+    fun scrollForward() {
+        onClickScroll(Direction.FORWARD)
     }
 
     private fun isPointerNear(buttonPosition: Offset, pointerPosition: Offset): Boolean {
@@ -194,6 +191,8 @@ class HorizontalScrollControlState(
         val buttonSize = HorizontalScrollControlDefaults.ButtonSize.value
         return dist.x * dist.x + dist.y * dist.y <= (buttonSize * 1.5).pow(2)
     }
+
+    enum class Direction { BACKWARD, FORWARD }
 }
 
 @Stable

@@ -62,8 +62,16 @@ class HorizontalScrollControlScaffoldTest {
         HorizontalScrollControlScaffold(
             rememberHorizontalScrollControlState(
                 scrollableState = listState,
-                scrollStep = { HorizontalScrollControlDefaults.ScrollStep },
-                onClickScroll = { scope.launch { listState.scrollBy(with(density) { it.toPx() }) } },
+                onClickScroll = { direction ->
+                    scope.launch {
+                        listState.scrollBy(
+                            with(density) {
+                                HorizontalScrollControlDefaults.ScrollStep.toPx() *
+                                        (if (direction == HorizontalScrollControlState.Direction.BACKWARD) -1 else 1)
+                            },
+                        )
+                    }
+                },
             ),
             modifier = Modifier.width(500.dp),
             scrollLeftButton = {

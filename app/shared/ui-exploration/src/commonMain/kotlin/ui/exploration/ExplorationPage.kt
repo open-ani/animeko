@@ -58,6 +58,7 @@ import me.him188.ani.app.ui.adaptive.NavTitleHeader
 import me.him188.ani.app.ui.exploration.followed.FollowedSubjectsDefaults
 import me.him188.ani.app.ui.exploration.followed.FollowedSubjectsLazyRow
 import me.him188.ani.app.ui.exploration.trends.TrendingSubjectsCarousel
+import me.him188.ani.app.ui.foundation.HorizontalScrollControlState
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.layout.CarouselItemDefaults
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
@@ -167,10 +168,12 @@ fun ExplorationPage(
             HorizontalScrollControlScaffoldOnDesktop(
                 rememberHorizontalScrollControlState(
                     state.trendingSubjectsCarouselState,
-                    scrollStep = { carouselItemSize.preferredWidth * 2 },
-                    onClickScroll = {
+                    onClickScroll = { direction ->
                         scope.launch {
-                            state.trendingSubjectsCarouselState.animateScrollBy(with(density) { it.toPx() })
+                            state.trendingSubjectsCarouselState.animateScrollBy(
+                                with(density) { (carouselItemSize.preferredWidth * 2).toPx() } *
+                                        if (direction == HorizontalScrollControlState.Direction.BACKWARD) -1 else 1,
+                            )
                         }
                         if (showHorizontalNavigateTip) {
                             toaster.toast(getHorizontalScrollNavigatorTipText())
@@ -208,10 +211,12 @@ fun ExplorationPage(
             HorizontalScrollControlScaffoldOnDesktop(
                 rememberHorizontalScrollControlState(
                     state.followedSubjectsLazyRowState,
-                    scrollStep = { followedSubjectsLayoutParameters.imageSize.height * 2 },
-                    onClickScroll = {
+                    onClickScroll = { direction ->
                         scope.launch {
-                            state.followedSubjectsLazyRowState.animateScrollBy(with(density) { it.toPx() })
+                            state.followedSubjectsLazyRowState.animateScrollBy(
+                                with(density) { (followedSubjectsLayoutParameters.imageSize.height * 2).toPx() } *
+                                        if (direction == HorizontalScrollControlState.Direction.BACKWARD) -1 else 1,
+                            )
                         }
                         if (showHorizontalNavigateTip) {
                             toaster.toast(getHorizontalScrollNavigatorTipText())
