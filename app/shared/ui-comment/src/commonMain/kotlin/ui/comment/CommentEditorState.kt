@@ -150,7 +150,7 @@ sealed interface CommentContext {
     data class SubjectReview(val subjectId: Int) : CommentContext
 
     /**
-     * 回复某个人的评论
+     * 剧集回复某个人的评论
      */
-    data class Reply(val commentId: Int) : CommentContext
+    data class EpisodeReply(val subjectId: Int, val episodeId: Int, val commentId: Int) : CommentContext
 }

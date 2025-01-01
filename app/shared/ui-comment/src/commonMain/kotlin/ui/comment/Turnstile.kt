@@ -21,9 +21,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOn
 import me.him188.ani.app.ui.foundation.LocalIsPreviewing
+import kotlin.coroutines.CoroutineContext
 
 interface TurnstileState {
     val url: String
@@ -55,6 +59,10 @@ interface TurnstileState {
 
 expect fun createTurnstileState(url: String): TurnstileState
 
+fun TurnstileState(url: String): TurnstileState {
+    return createTurnstileState(url)
+}
+
 fun createPreviewTurnstileState(): TurnstileState {
     return object : TurnstileState {
         override val url: String = ""
@@ -64,8 +72,12 @@ fun createPreviewTurnstileState(): TurnstileState {
     }
 }
 
-fun TurnstileState(url: String): TurnstileState {
-    return createTurnstileState(url)
+@UiThread
+suspend fun TurnstileState.reloadAndGetToken(
+    tokenFlowContext: CoroutineContext = Dispatchers.Default
+): String {
+    reload()
+    return tokenFlow.flowOn(tokenFlowContext).first()
 }
 
 @Composable

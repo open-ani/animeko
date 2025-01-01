@@ -192,7 +192,7 @@ private fun EpisodeSceneContent(
     var didSetPaused by rememberSaveable { mutableStateOf(false) }
 
     val pauseOnPlaying: () -> Unit = {
-        if (vm.playerState.state.value.isPlaying) {
+        if (vm.playerState.playbackState.value.isPlaying) {
             didSetPaused = true
             vm.playerState.pause()
         } else {
@@ -820,7 +820,7 @@ private fun EpisodeCommentColumn(
         editCommentStubText = commentEditorState.content,
         onClickReply = {
             setShowEditCommentSheet(true)
-            commentEditorState.startEdit(CommentContext.Reply(it.toInt()))
+            commentEditorState.startEdit(CommentContext.EpisodeReply(subjectId, episodeId, it.toInt()))
             pauseOnPlaying()
 
         },
