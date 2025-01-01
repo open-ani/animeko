@@ -37,7 +37,8 @@ Animeko 支持云同步观看记录 ([Bangumi][Bangumi])、多视频数据源、
 以下几点可以给你一个技术上的大概了解，不感兴趣的可以直接看[截图](#功能截图)。
 
 - [Kotlin 多平台][Kotlin Multiplatform]架构，支持 Windows、macOS、Android 和 iOS (计划)
-- 基于 Kotlin 多平台架构，使用新一代响应式 UI 框架 [Compose Multiplatform][Compose Multiplatform] 构建 UI
+- 基于 Kotlin 多平台架构，使用新一代响应式 UI 框架 [Compose Multiplatform][Compose Multiplatform] 构建
+  UI
 - 内置专为 Animeko 打造的基于 [libtorrent][libtorrent] 的 BitTorrent 引擎，优化边下边播的体验
 - 高性能弹幕引擎，公益弹幕服务器 + 网络弹幕源
 - 适配多平台的视频播放器，Android 底层为 [ExoPlayer][ExoPlayer]，PC 底层为 [VLC][VLC]
@@ -140,14 +141,16 @@ Animeko 采用语义化版本号, 简单来说就是 `4.x.y` 的格式. 有以�
 全部视频数据都来自网络, Animeko 本身不存储任何视频数据。
 Animeko 支持两大数据源类型：BT 和在线。BT 源即为公共 BitTorrent P2P 网络，
 每个在 BT
-网络上的人都可分享自己拥有的资源供他人下载。在线源即为其他视频资源网站分享的内容。Animeko 本身并不提供任何视频资源。
+网络上的人都可分享自己拥有的资源供他人下载。在线源即为其他视频资源网站分享的内容。Animeko
+本身并不提供任何视频资源。
 
 本着互助精神，使用 BT 源时 Animeko 会自动做种 (分享数据)。
-BT 指纹为 `-aniLT3000-`，其中 `3000` 为版本号；UA 为类似 `ani_libtorrent/3.0.0`。
+BT 指纹为 `-AL4121-`，其中 `4123` 为版本号 `4.12.3`；UA 为类似 `ani_libtorrent/4.12.3`。
 
 ### 弹幕来源是什么?
 
-Animeko 拥有自己的公益弹幕服务器，在 Animeko 应用内发送的弹幕将会发送到弹幕服务器上。每条弹幕都会以 Bangumi
+Animeko 拥有自己的公益弹幕服务器，在 Animeko 应用内发送的弹幕将会发送到弹幕服务器上。每条弹幕都会以
+Bangumi
 用户名绑定以防滥用（并考虑未来增加举报和屏蔽功能）。
 
 Animeko 还会从[弹弹play][ddplay]获取关联弹幕，弹弹play还会从其他弹幕平台例如哔哩哔哩港澳台和巴哈姆特获取弹幕。

@@ -1,12 +1,16 @@
+/*
+ * Copyright (C) 2024 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.app.platform
 
 import androidx.compose.runtime.Stable
-import io.ktor.client.plugins.UserAgent
-import kotlinx.coroutines.flow.Flow
-import me.him188.ani.utils.ktor.ClientProxyConfig
-import me.him188.ani.utils.ktor.proxy
 import me.him188.ani.utils.platform.currentPlatform
-import kotlin.coroutines.CoroutineContext
 
 
 @Stable
@@ -25,9 +29,9 @@ interface AniBuildConfig {
 }
 
 /**
- * E.g. `30000` for `3.0.0`, `30102` for `3.1.2`
+ * E.g. `3000` for `3.0.0`, `3012` for `3.1.2`
  */
-val AniBuildConfig.versionCode: String
+val AniBuildConfig.fourDigitVersionCode: String
     get() = buildString {
         val split = versionName.substringBefore("-").split(".")
         if (split.size == 3) {
@@ -38,12 +42,12 @@ val AniBuildConfig.versionCode: String
                 append(it.toString().padStart(2, '0'))
             }
             split[2].toIntOrNull()?.let {
-                append(it.toString().padStart(2, '0'))
+                append(it.toString())
             }
         } else {
             for (section in split) {
                 section.toIntOrNull()?.let {
-                    append(it.toString().padStart(2, '0'))
+                    append(it.toString())
                 }
             }
         }

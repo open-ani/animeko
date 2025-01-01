@@ -28,7 +28,7 @@ data class TorrentPeerConfig(
     val localRule: PeerFilterRule = PeerFilterRule.Empty,
 
     /**
-     * [PeerInfo.id] 一般是以 ASCII `-xxxxxx-` 开头的 ByteArray. 例如 Ani 的是 `-aniLT3000-`.
+     * [PeerInfo.id] 一般是以 ASCII `-xxxxxx-` 开头的 ByteArray. 例如 Ani 的是类似 `-AL4000-`.
      * 如果 Peer 连接的客户端不是以此开头, 可以将其视为异常客户端.
      */
     val blockInvalidId: Boolean = true,

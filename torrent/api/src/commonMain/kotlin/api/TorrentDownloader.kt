@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.app.torrent.api
 
 import kotlinx.coroutines.flow.Flow
@@ -97,7 +106,7 @@ interface HttpFileDownloader : AutoCloseable {
 }
 
 class TorrentDownloaderConfig(
-    val peerFingerprint: String = "-aniLT3000-",
+    val peerFingerprint: String = "-AL4000-",
     val userAgent: String = "ani_libtorrent/3.0.0", // "libtorrent/2.1.0.0", "ani_libtorrent/3.0.0"
     val handshakeClientVersion: String? = "3.0.0",
     /**
@@ -112,8 +121,4 @@ class TorrentDownloaderConfig(
      * share ratio limit, 100 = 1.0
      */
     val shareRatioLimit: Int = 110,
-) {
-    companion object {
-        val Default: TorrentDownloaderConfig = TorrentDownloaderConfig()
-    }
-}
+)
