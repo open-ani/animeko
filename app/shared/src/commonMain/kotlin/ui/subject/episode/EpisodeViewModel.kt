@@ -679,7 +679,9 @@ class EpisodeViewModel(
             }
         },
         onSend = { context, content ->
-            val token = suspend { turnstileState.reloadAndGetToken() }
+            val token = suspend {
+                withContext(Dispatchers.Main) { turnstileState.reloadAndGetToken() }
+            }
                 .asFlow()
                 .retry(3)
                 .catch { logger.error(it) { "Failed to get turnstile token" } }
