@@ -12,7 +12,6 @@ package me.him188.ani.app.ui.subject.episode
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -77,10 +76,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.window.core.layout.WindowHeightSizeClass
 import androidx.window.core.layout.WindowWidthSizeClass
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.danmaku.protocol.DanmakuInfo
 import me.him188.ani.app.domain.danmaku.protocol.DanmakuLocation
@@ -97,7 +96,6 @@ import me.him188.ani.app.ui.foundation.ImageViewer
 import me.him188.ani.app.ui.foundation.LocalImageViewerHandler
 import me.him188.ani.app.ui.foundation.LocalIsPreviewing
 import me.him188.ani.app.ui.foundation.LocalPlatform
-import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.effects.DarkStatusBarAppearance
 import me.him188.ani.app.ui.foundation.effects.OnLifecycleEvent
 import me.him188.ani.app.ui.foundation.effects.ScreenOnEffect
@@ -119,17 +117,26 @@ import me.him188.ani.app.ui.subject.episode.comments.EpisodeCommentColumn
 import me.him188.ani.app.ui.subject.episode.comments.EpisodeEditCommentSheet
 import me.him188.ani.app.ui.subject.episode.danmaku.DanmakuEditor
 import me.him188.ani.app.ui.subject.episode.danmaku.DummyDanmakuEditor
+import me.him188.ani.app.ui.subject.episode.danmaku.PlayerDanmakuState
 import me.him188.ani.app.ui.subject.episode.details.EpisodeDetails
 import me.him188.ani.app.ui.subject.episode.notif.VideoNotifEffect
-import me.him188.ani.app.ui.subject.episode.video.VideoDanmakuState
+import me.him188.ani.app.ui.subject.episode.video.components.DanmakuSettingsSheet
+import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheetPage
+import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheets
+import me.him188.ani.app.ui.subject.episode.video.components.FloatingFullscreenSwitchButton
+import me.him188.ani.app.ui.subject.episode.video.components.SideSheets
+import me.him188.ani.app.ui.subject.episode.video.sidesheet.DanmakuRegexFilterSettings
+import me.him188.ani.app.ui.subject.episode.video.sidesheet.EpisodeSelectorSheet
+import me.him188.ani.app.ui.subject.episode.video.sidesheet.MediaSelectorSheet
 import me.him188.ani.app.ui.subject.episode.video.topbar.EpisodePlayerTitle
-import me.him188.ani.app.videoplayer.ui.VideoControllerState
+import me.him188.ani.app.videoplayer.ui.PlayerControllerState
 import me.him188.ani.app.videoplayer.ui.guesture.NoOpLevelController
 import me.him188.ani.app.videoplayer.ui.guesture.asLevelController
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults.randomDanmakuPlaceholder
 import me.him188.ani.app.videoplayer.ui.progress.rememberMediaProgressSliderState
 import me.him188.ani.utils.platform.isMobile
+import org.openani.mediamp.features.Screenshots
 
 
 /**
@@ -176,7 +183,7 @@ private fun EpisodeSceneContent(
     val imageViewer = rememberImageViewerHandler()
     BackHandler(enabled = imageViewer.viewing.value) { imageViewer.clear() }
 
-    val playbackState by vm.playerState.state.collectAsStateWithLifecycle()
+    val playbackState by vm.playerState.playbackState.collectAsStateWithLifecycle()
     if (playbackState.isPlaying) {
         ScreenOnEffect()
     }
@@ -282,6 +289,23 @@ private fun EpisodeSceneTabletVeryWide(
     setShowEditCommentSheet: (Boolean) -> Unit,
     windowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
 ) {
+    var showEditCommentSheet by rememberSaveable { mutableStateOf(false) }
+    var didSetPaused by rememberSaveable { mutableStateOf(false) }
+
+    val pauseOnPlaying: () -> Unit = {
+        if (vm.playerState.playbackState.value.isPlaying) {
+            didSetPaused = true
+            vm.playerState.pause()
+        } else {
+            didSetPaused = false
+        }
+    }
+    val tryUnpause: () -> Unit = {
+        if (didSetPaused) {
+            didSetPaused = false
+            vm.playerState.resume()
+        }
+    }
 
     BoxWithConstraints {
         val maxWidth = maxWidth
@@ -295,7 +319,7 @@ private fun EpisodeSceneTabletVeryWide(
             EpisodeVideo(
                 // do consume insets
                 vm,
-                vm.videoControllerState,
+                vm.playerControllerState,
                 expanded = true,
                 modifier = Modifier.weight(1f).fillMaxHeight(),
                 maintainAspectRatio = false,
@@ -342,7 +366,7 @@ private fun EpisodeSceneTabletVeryWide(
                                 vm.episodeCarouselState,
                                 vm.editableSubjectCollectionTypeState,
                                 vm.danmakuStatistics,
-                                vm.videoStatistics,
+                                vm.videoStatisticsFlow,
                                 vm.mediaSelectorState,
                                 vm.mediaSourceResultsPresentation,
                                 vm.authState,
@@ -351,6 +375,7 @@ private fun EpisodeSceneTabletVeryWide(
                                         navigator.navigateEpisodeDetails(vm.subjectId, episodeId)
                                     }
                                 },
+                                onRefreshMediaSources = { vm.refreshFetch() },
                             )
                         }
 
@@ -431,7 +456,7 @@ private fun EpisodeSceneContentPhone(
         videoOnly = vm.isFullscreen,
         commentCount = { vm.episodeCommentState.count },
         video = {
-            EpisodeVideo(vm, vm.videoControllerState, vm.isFullscreen)
+            EpisodeVideo(vm, vm.playerControllerState, vm.isFullscreen)
         },
         episodeDetails = {
             val navigator = LocalNavigator.current
@@ -440,7 +465,7 @@ private fun EpisodeSceneContentPhone(
                 vm.episodeCarouselState,
                 vm.editableSubjectCollectionTypeState,
                 vm.danmakuStatistics,
-                vm.videoStatistics,
+                vm.videoStatisticsFlow,
                 vm.mediaSelectorState,
                 vm.mediaSourceResultsPresentation,
                 vm.authState,
@@ -449,6 +474,7 @@ private fun EpisodeSceneContentPhone(
                         navigator.navigateEpisodeDetails(vm.subjectId, episodeId)
                     }
                 },
+                onRefreshMediaSources = { vm.refreshFetch() },
                 Modifier.fillMaxSize(),
             )
         },
@@ -480,6 +506,7 @@ private fun EpisodeSceneContentPhone(
             showDanmakuEditor = false
             tryUnpause()
         }
+        val scope = rememberCoroutineScope()
         ModalBottomSheet(
             onDismissRequest = dismiss,
             modifier = Modifier.desktopTitleBarPadding().statusBarsPadding(),
@@ -489,14 +516,15 @@ private fun EpisodeSceneContentPhone(
                 vm.danmaku,
                 onSend = { text ->
                     vm.danmaku.danmakuEditorText = ""
-                    vm.danmaku.sendAsync(
-                        DanmakuInfo(
-                            vm.playerState.getExactCurrentPositionMillis(),
-                            text = text,
-                            color = Color.White.toArgb(),
-                            location = DanmakuLocation.NORMAL,
-                        ),
-                    ) {
+                    scope.launch {
+                        vm.danmaku.send(
+                            DanmakuInfo(
+                                vm.playerState.getExactCurrentPositionMillis(),
+                                text = text,
+                                color = Color.White.toArgb(),
+                                location = DanmakuLocation.NORMAL,
+                            ),
+                        )
                         dismiss()
                     }
                 },
@@ -512,17 +540,17 @@ private fun EpisodeSceneContentPhone(
 
 @Composable
 private fun DetachedDanmakuEditorLayout(
-    videoDanmakuState: VideoDanmakuState,
+    playerDanmakuState: PlayerDanmakuState,
     onSend: (text: String) -> Unit,
     focusRequester: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier.padding(all = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text("发送弹幕", style = MaterialTheme.typography.titleMedium)
-        val isSending = videoDanmakuState.isSending.collectAsStateWithLifecycle()
+        val isSending = playerDanmakuState.isSending.collectAsStateWithLifecycle()
         DanmakuEditor(
-            text = videoDanmakuState.danmakuEditorText,
-            onTextChange = { videoDanmakuState.danmakuEditorText = it },
+            text = playerDanmakuState.danmakuEditorText,
+            onTextChange = { playerDanmakuState.danmakuEditorText = it },
             isSending = { isSending.value },
             placeholderText = remember { randomDanmakuPlaceholder() },
             onSend = onSend,
@@ -590,7 +618,7 @@ fun EpisodeSceneContentPhoneScaffold(
 @Composable
 private fun EpisodeVideo(
     vm: EpisodeViewModel,
-    videoControllerState: VideoControllerState,
+    playerControllerState: PlayerControllerState,
     expanded: Boolean,
     modifier: Modifier = Modifier,
     maintainAspectRatio: Boolean = !expanded,
@@ -600,7 +628,7 @@ private fun EpisodeVideo(
 
     // Don't rememberSavable. 刻意让每次切换都是隐藏的
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
-        videoControllerState.toggleFullVisible(false) // 每次切换全屏后隐藏
+        playerControllerState.toggleFullVisible(false) // 每次切换全屏后隐藏
     }
     val videoDanmakuState = vm.danmaku
 
@@ -626,12 +654,25 @@ private fun EpisodeVideo(
             context.getComponentAccessors()
         }
     }
+    val onClickFullScreen: () -> Unit = {
+        if (vm.isFullscreen) {
+            scope.launch {
+                context.setRequestFullScreen(window, false)
+                vm.isFullscreen = false
+            }
+        } else {
+            scope.launch {
+                vm.isFullscreen = true
+                context.setRequestFullScreen(window, true)
+            }
+        }
+    }
     EpisodeVideoImpl(
         vm.playerState,
         expanded = expanded,
         hasNextEpisode = vm.episodeSelectorState.hasNextEpisode,
         onClickNextEpisode = { vm.episodeSelectorState.selectNext() },
-        videoControllerState = videoControllerState,
+        playerControllerState = playerControllerState,
         title = {
             val episode = vm.episodePresentation
             val subject = vm.subjectPresentation
@@ -645,20 +686,8 @@ private fun EpisodeVideo(
         danmakuHostState = videoDanmakuState.danmakuHostState,
         danmakuEnabled = videoDanmakuState.enabled,
         onToggleDanmaku = { videoDanmakuState.setEnabled(!videoDanmakuState.enabled) },
-        videoLoadingState = { vm.videoStatistics.videoLoadingState },
-        onClickFullScreen = {
-            if (vm.isFullscreen) {
-                scope.launch {
-                    context.setRequestFullScreen(window, false)
-                    vm.isFullscreen = false
-                }
-            } else {
-                scope.launch {
-                    vm.isFullscreen = true
-                    context.setRequestFullScreen(window, true)
-                }
-            }
-        },
+        videoLoadingStateFlow = vm.videoStatisticsFlow.map { it.videoLoadingState },
+        onClickFullScreen = onClickFullScreen,
         onExitFullscreen = {
             scope.launch {
                 context.setRequestFullScreen(window, false)
@@ -667,14 +696,13 @@ private fun EpisodeVideo(
         },
         danmakuEditor = {
             EpisodeVideoDefaults.DanmakuEditor(
-                videoDanmakuState = videoDanmakuState,
+                playerDanmakuState = videoDanmakuState,
                 danmakuTextPlaceholder = danmakuTextPlaceholder,
                 playerState = vm.playerState,
                 videoScaffoldConfig = vm.videoScaffoldConfig,
-                videoControllerState = videoControllerState,
+                playerControllerState = playerControllerState,
             )
         },
-        configProvider = remember(vm) { { vm.videoScaffoldConfig } },
         onClickScreenshot = {
             val currentPositionMillis = vm.playerState.currentPositionMillis.value
             val min = currentPositionMillis / 60000
@@ -683,12 +711,14 @@ private fun EpisodeVideo(
             val currentPosition = "${min}m${sec}s${ms}ms"
             // 条目ID-剧集序号-视频时间点.png
             val filename = "${vm.subjectId}-${vm.episodePresentation.ep}-${currentPosition}.png"
-            vm.playerState.saveScreenshotFile(filename)
+            scope.launch {
+                vm.playerState.features[Screenshots]?.takeScreenshot(filename)
+            }
         },
         detachedProgressSlider = {
             PlayerControllerDefaults.MediaProgressSlider(
                 progressSliderState,
-                cacheProgressState = vm.playerState.cacheProgress,
+                cacheProgressInfoFlow = vm.cacheProgressInfoFlow,
                 enabled = false,
             )
         },
@@ -697,10 +727,7 @@ private fun EpisodeVideo(
             vm.sidebarVisible = it
         },
         progressSliderState = progressSliderState,
-        mediaSelectorState = vm.mediaSelectorState,
-        mediaSourceResultsPresentation = vm.mediaSourceResultsPresentation,
-        episodeSelectorState = vm.episodeSelectorState,
-        mediaSourceInfoProvider = vm.mediaSourceInfoProvider,
+        cacheProgressInfoFlow = vm.cacheProgressInfoFlow,
         audioController = remember {
             derivedStateOf {
                 platformComponents.audioManager?.asLevelController(StreamType.MUSIC) ?: NoOpLevelController
@@ -724,11 +751,52 @@ private fun EpisodeVideo(
                 )
             }
         },
+        fullscreenSwitchButton = {
+            EpisodeVideoDefaults.FloatingFullscreenSwitchButton(
+                vm.videoScaffoldConfig.fullscreenSwitchMode,
+                isFullscreen = expanded,
+                onClickFullScreen,
+            )
+        },
+        sideSheets = { sheetsController ->
+            EpisodeVideoDefaults.SideSheets(
+                sheetsController,
+                playerControllerState,
+                playerSettingsPage = {
+                    EpisodeVideoSideSheets.DanmakuSettingsSheet(
+                        onDismissRequest = { goBack() },
+                        onNavigateToFilterSettings = {
+                            sheetsController.navigateTo(EpisodeVideoSideSheetPage.EDIT_DANMAKU_REGEX_FILTER)
+                        },
+                    )
+                },
+                editDanmakuRegexFilterPage = {
+                    EpisodeVideoSideSheets.DanmakuRegexFilterSettings(
+                        state = vm.danmakuRegexFilterState,
+                        onDismissRequest = { goBack() },
+                        expanded = expanded,
+                    )
+                },
+                mediaSelectorPage = {
+                    EpisodeVideoSideSheets.MediaSelectorSheet(
+                        vm.mediaSelectorState,
+                        vm.mediaSourceResultsPresentation,
+                        onDismissRequest = { goBack() },
+                        onRefresh = { vm.refreshFetch() },
+                    )
+                },
+                episodeSelectorPage = {
+                    EpisodeVideoSideSheets.EpisodeSelectorSheet(
+                        vm.episodeSelectorState,
+                        onDismissRequest = { goBack() },
+                    )
+                },
+            )
+        },
         modifier = modifier
             .fillMaxWidth().background(Color.Black)
             .then(if (expanded) Modifier.fillMaxSize() else Modifier.statusBarsPadding()),
         maintainAspectRatio = maintainAspectRatio,
-        danmakuRegexFilterState = vm.danmakuRegexFilterState,
         contentWindowInsets = windowInsets,
     )
 }
@@ -789,7 +857,7 @@ private fun AutoPauseEffect(viewModel: EpisodeViewModel) {
     val autoPauseTasker = rememberUiMonoTasker()
     OnLifecycleEvent {
         if (it == Lifecycle.Event.ON_STOP) {
-            if (viewModel.playerState.state.value.isPlaying) {
+            if (viewModel.playerState.playbackState.value.isPlaying) {
                 pausedVideo = true
                 autoPauseTasker.launch {
                     // #160, 切换全屏时视频会暂停半秒
@@ -806,22 +874,5 @@ private fun AutoPauseEffect(viewModel: EpisodeViewModel) {
             }
             pausedVideo = false
         }
-    }
-}
-
-@Preview
-@Composable
-private fun PreviewEpisodePageDesktop() {
-    ProvideCompositionLocalsForPreview {
-        val context = LocalContext.current
-        val vm = viewModel<EpisodeViewModel> {
-            EpisodeViewModel(
-                initialSubjectId = 0,
-                initialEpisodeId = 0,
-                initialIsFullscreen = false,
-                context,
-            )
-        }
-        EpisodeScene(vm)
     }
 }

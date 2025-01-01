@@ -42,8 +42,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -52,7 +50,6 @@ import androidx.paging.compose.itemContentType
 import androidx.paging.compose.itemKey
 import androidx.window.core.layout.WindowWidthSizeClass
 import kotlinx.coroutines.CoroutineStart
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.preference.NsfwMode
@@ -83,7 +80,6 @@ fun SearchPage(
     detailContent: @Composable PaneScope.(subjectId: Int) -> Unit,
     modifier: Modifier = Modifier,
     onSelect: (index: Int, item: SubjectPreviewItemInfo) -> Unit = { _, _ -> },
-    focusSearchBarByDefault: Boolean = true,
     navigator: ThreePaneScaffoldNavigator<*> = rememberListDetailPaneScaffoldNavigator(),
     contentWindowInsets: WindowInsets = AniWindowInsets.forPageContent(),
     navigationIcon: @Composable () -> Unit = {},
@@ -92,7 +88,6 @@ fun SearchPage(
         navigator.navigateBack()
     }
 
-    val focusRequester = remember { FocusRequester() }
     val items = state.items
     SearchPageLayout(
         navigator,
@@ -104,7 +99,6 @@ fun SearchPage(
                         currentWindowAdaptiveInfo1().windowSizeClass.windowWidthSizeClass >= WindowWidthSizeClass.MEDIUM
                                 || !state.suggestionSearchBarState.expanded,
                     ) { contentPadding },
-                inputFieldModifier = Modifier.focusRequester(focusRequester),
                 placeholder = { Text("搜索") },
             )
         },
@@ -154,33 +148,6 @@ fun SearchPage(
         },
         contentWindowInsets = contentWindowInsets,
     )
-
-    // 不能挪到 searchBar 里面, 否则从详情页回来的时候会重复 focus
-    if (focusSearchBarByDefault) {
-        LaunchedEffect(Unit) { // 必须用 Unit, 否则会重复 focus
-            focusRequester.requestFocusWithRetry()
-        }
-    }
-}
-
-private suspend fun FocusRequester.requestFocusWithRetry() {
-    try {
-        requestFocus()
-    } catch (_: IllegalStateException) {
-        // focusRequester not initialized
-        delay(500)
-        try {
-            requestFocus()
-        } catch (_: IllegalStateException) {
-            // focusRequester not initialized
-            delay(500)
-            try {
-                requestFocus()
-            } catch (_: IllegalStateException) {
-                // focusRequester not initialized
-            }
-        }
-    }
 }
 
 @Composable

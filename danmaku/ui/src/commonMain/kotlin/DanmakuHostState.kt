@@ -35,61 +35,136 @@ import kotlinx.coroutines.withContext
 import me.him188.ani.danmaku.api.Danmaku
 import me.him188.ani.danmaku.api.DanmakuLocation
 import me.him188.ani.danmaku.api.DanmakuPresentation
+import me.him188.ani.danmaku.ui.DanmakuHostState.UIContext
 import kotlin.math.absoluteValue
 import kotlin.math.floor
 
+/**
+ * [DanmakuHostState] is the core state holder for managing and rendering danmakus (bullet-screen comments)
+ * within a Compose UI. It encapsulates the configuration, display properties, and lifecycle management
+ * needed to render danmakus on the screen with different styles (floating, top, bottom).
+ *
+ * This state class maintains:
+ * - Screen dimension updates for danmakus.
+ * - A [UIContext] containing measurement utilities and density for text measurement.
+ * - Track-based rendering for floating (NORMAL), top (TOP), and bottom (BOTTOM) danmakus.
+ * - Observers that react to changes in [DanmakuConfig] (font size, style, speed, etc.).
+ * - Methods to send or repopulate danmakus according to time offsets or track positions.
+ *
+ * Typical usage flow:
+ * 1. Call [setUIContext] to initialize text measurement, styling, and density.
+ * 2. Observe changes via [observeConfig] in a coroutine scope (usually during composition).
+ * 3. Drive the rendering loop with [interpolateFrameLoop], which automatically updates danmaku positions.
+ * 4. Use [send] or [trySend] to add new danmakus.
+ * 5. Optionally, use [repopulate] to clear and re-initialize the screen with a pre-sorted list of danmakus.
+ *
+ * @param danmakuConfigState A [State] of [DanmakuConfig], containing all user-configurable aspects of danmakus.
+ * @param danmakuTrackProperties Static properties for the danmaku tracks, such as speed multipliers and durations.
+ */
 @Stable
 class DanmakuHostState(
-    danmakuConfigState: State<DanmakuConfig> = mutableStateOf(DanmakuConfig.Default), // state 
+    danmakuConfigState: State<DanmakuConfig> = mutableStateOf(DanmakuConfig.Default),
     private val danmakuTrackProperties: DanmakuTrackProperties = DanmakuTrackProperties.Default,
 ) {
     private val danmakuConfig by danmakuConfigState
     private val uiContext: UIContext = UIContext()
-    
 
     /**
-     * DanmakuHost 显示大小, 在显示时修改
+     * The width of this DanmakuHost. Measured in pixels. Updated when the Composable hosting it changes size.
      */
     private val hostWidthState = mutableIntStateOf(0)
     internal var hostWidth by hostWidthState
+
+    /**
+     * The height of this DanmakuHost. Measured in pixels. Updated when the Composable hosting it changes size.
+     */
     private val hostHeightState = mutableIntStateOf(0)
     internal var hostHeight by hostHeightState
 
+    /**
+     * The height of each track in this DanmakuHost. Updated whenever the font size, display area,
+     * or host height changes.
+     */
     private val trackHeightState = mutableIntStateOf(0)
     internal var trackHeight by trackHeightState
         private set
 
-    // currently not configurable
+    /**
+     * Multiplier for floating danmaku speed. Currently not configurable outside of initialization.
+     */
     private val floatingSpeedMultiplierState = mutableFloatStateOf(danmakuTrackProperties.speedMultiplier)
-    // currently not configurable
+
+    /**
+     * Duration (in milliseconds) to present fixed (TOP/BOTTOM) danmakus on the screen.
+     * Currently not configurable outside of initialization.
+     */
     private val fixedDanmakuPresentDuration = mutableLongStateOf(danmakuTrackProperties.fixedDanmakuPresentDuration)
 
+    /**
+     * The alpha value of danmakus on the canvas, derived from [DanmakuConfig.style.alpha].
+     */
     internal val canvasAlpha by derivedStateOf { danmakuConfig.style.alpha }
+
+    /**
+     * Whether the danmaku system is paused, halting all position updates.
+     */
     internal var paused by mutableStateOf(false)
+
+    /**
+     * Whether debugging visuals are enabled (e.g., drawing bounding boxes).
+     */
     internal val isDebug by derivedStateOf { danmakuConfig.isDebug }
 
+    /**
+     * The total elapsed frame time in nanoseconds. This value accumulates over time
+     * unless [setPaused] is called to pause.
+     */
     private val elapsedFrameTimeNanoState = mutableLongStateOf(0)
 
     /**
      * 已经过的帧时间, 在 [setPaused] 设置暂停时此帧时间也会暂停
      */
     internal var elapsedFrameTimeNanos by elapsedFrameTimeNanoState
+
+    /**
+     * A timestamp-like value used to manually prompt updates (e.g., after config changes).
+     */
     internal var danmakuUpdateSubscription by mutableLongStateOf(0L)
         private set
 
-    // 弹幕轨道
+    /**
+     * Tracks for NORMAL (floating) danmakus.
+     */
     internal val floatingTrack = mutableListOf<FloatingDanmakuTrack<StyledDanmaku>>()
+
+    /**
+     * Tracks for TOP (fixed) danmakus.
+     */
     internal val topTrack = mutableListOf<FixedDanmakuTrack<StyledDanmaku>>()
+
+    /**
+     * Tracks for BOTTOM (fixed) danmakus.
+     */
     internal val bottomTrack = mutableListOf<FixedDanmakuTrack<StyledDanmaku>>()
 
     /**
-     * 所有在 [floatingTrack], [topTrack] 和 [bottomTrack] 弹幕.
-     * 在这里保留一个引用, 方便在 [repopulatePresentDanmaku] 的时候重新计算所有弹幕位置.
-     * 大部分弹幕是按时间排序的, 确保 [removeFirst] 操作能消耗较低的时间.
+     * All currently displayed floating danmakus. This list is updated as danmakus are placed or removed.
      */
     internal val presentFloatingDanmaku: MutableList<FloatingDanmaku<StyledDanmaku>> = mutableListOf()
+
+    /**
+     * All currently displayed fixed danmakus. This list is updated as danmakus are placed or removed.
+     */
     internal val presentFixedDanmaku: MutableList<FixedDanmaku<StyledDanmaku>> = mutableListOf()
 
+    /**
+     * Sets the [UIContext] required for text layout, styling, and density.
+     * Must be called before any layout or rendering logic.
+     *
+     * @param baseStyle A [TextStyle] used as the base for all danmakus.
+     * @param textMeasurer A [TextMeasurer] used to measure danmaku text.
+     * @param density A [Density] providing pixel-density-related conversions.
+     */
     fun setUIContext(
         baseStyle: TextStyle,
         textMeasurer: TextMeasurer,
@@ -99,7 +174,11 @@ class DanmakuHostState(
     }
 
     /**
-     * 监听 [DanmakuConfig] 和 [hostHeight] 配置变化
+     * Observes relevant [DanmakuConfig] changes (e.g., font size, display area, speed) and
+     * responds by updating track counts, track static properties, or repopulating existing
+     * danmakus. This method typically runs in a coroutine scope, often from a LaunchedEffect block.
+     *
+     * @param measurer A [TextMeasurer] to measure any newly required text layout adjustments.
      */
     internal suspend fun observeConfig(measurer: TextMeasurer) {
         uiContext.await()
@@ -124,14 +203,13 @@ class DanmakuHostState(
                                 && old.enableTop == new.enableTop
                                 && old.enableFloating == new.enableFloating
                                 && old.enableBottom == new.enableBottom
-
                     },
                 ) { newHeight, newConfig ->
                     val dummyTextLayout = dummyDanmaku(
                         measurer = measurer,
                         baseStyle = uiContext.baseStyle,
                         style = newConfig.style,
-                        dummyText = "哈哈哈哈"
+                        dummyText = "哈哈哈哈",
                     )
                     val verticalPadding = with(uiContext.density) {
                         (danmakuTrackProperties.verticalPadding * 2).dp.toPx()
@@ -240,13 +318,19 @@ class DanmakuHostState(
     }
 
     /**
-     * 更新弹幕轨道数量, 同时也会更新轨道属性
+     * Updates the number of tracks for floating, top, and bottom danmakus. Called whenever
+     * relevant configuration or dimension changes occur (e.g., screen height changes, enabling/disabling of track types).
+     *
+     * @param count The new track count.
+     * @param config The current [DanmakuConfig].
+     * @param baseTrackSpeedWidth A reference width used to calculate base speed for floating danmakus.
      */
     private suspend fun updateTrackCount(count: Int, config: DanmakuConfig, baseTrackSpeedWidth: Int) {
         uiContext.await()
         // updateTrack 时 speed 和 safeSeparation 也可能变化, 也需要更新
         val newFloatingTrackSpeed = with(uiContext.density) { danmakuConfig.speed.dp.toPx() }
         val newFloatingTrackSafeSeparation = with(uiContext.density) { danmakuConfig.safeSeparation.toPx() }
+
         floatingTrack.setTrackCountImpl(if (config.enableFloating) count else 0) { index ->
             FloatingDanmakuTrack(
                 trackIndex = index,
@@ -260,7 +344,7 @@ class DanmakuHostState(
                 onRemoveDanmaku = { removed -> presentFloatingDanmaku.removeFirst { it.danmaku == removed.danmaku } },
             )
         }
-        
+
         topTrack.setTrackCountImpl(if (config.enableTop) count else 0) { index ->
             FixedDanmakuTrack(
                 trackIndex = index,
@@ -288,13 +372,17 @@ class DanmakuHostState(
     }
 
     /**
-     * 更新一些 DanmakuTrack 的一些静态属性, 这些属性不是 State, 需要手动更新
+     * 更新一些 DanmakuTrack 的一些静态属性, 这些属性不是 State, 需要手动更新.
      * - [FloatingDanmakuTrack.baseSpeedPxPerSecond]
      * - [FloatingDanmakuTrack.safeSeparation]
      * - [FloatingDanmakuTrack.baseSpeedTextWidth]
+     *
+     * @param newConfigSpeed The new speed (dp/s) to apply to floating tracks.
+     * @param newConfigSafeSeparation The new minimum separation (Dp) to keep between danmakus.
+     * @param newBaseSpeedTextWidth The new reference width for base speed calculations.
      */
     private suspend fun updateTrackStaticProperties(
-        newConfigSpeed: Float? = null, 
+        newConfigSpeed: Float? = null,
         newConfigSafeSeparation: Dp? = null,
         newBaseSpeedTextWidth: Int? = null
     ) {
@@ -310,9 +398,10 @@ class DanmakuHostState(
     }
 
     /**
-     * 重新放置屏幕上弹幕的位置.
+     * Recomputes the position of all currently displayed danmakus (both floating and fixed) without
+     * fully clearing them. 此方法的行为与 [repopulate] 相同, 但是具有更高的执行效率.
      *
-     * 此方法的行为与 [repopulate] 相同, 但是具有更高的执行效率.
+     * @param currentElapsedFrameTimeNanos The current frame time in nanos, used to recalculate positions.
      */
     private suspend fun repopulatePresentDanmaku(currentElapsedFrameTimeNanos: Long) {
         uiContext.await()
@@ -323,7 +412,11 @@ class DanmakuHostState(
 
         clearPresentDanmaku()
 
-        presentFixedDanmakuCopied.forEach { trySend(it.danmaku.presentation, it.placeFrameTimeNanos) }
+        // Restore fixed danmakus in correct track positions.
+        presentFixedDanmakuCopied.forEach {
+            trySend(it.danmaku.presentation, it.placeFrameTimeNanos)
+        }
+        // Restore floating danmakus, adjusting for how far they've moved so far.
         presentFloatingDanmakuCopied.forEach {
             val placeFrameTimeNanos = currentElapsedFrameTimeNanos -
                     ((it.distanceX / (floatingTrackSpeed * it.speedMultiplier)) * 1_000_000_000f).toLong()
@@ -331,23 +424,36 @@ class DanmakuHostState(
                 trySend(it.danmaku.presentation, placeFrameTimeNanos)
             }
         }
-        
+
         // 暂停时重新放置后需要计算一次位置, 否则重新填充弹幕后,
         // 暂停的这一帧中所有填充的弹幕的静态属性都没有被计算而导致屏幕上没有弹幕
         if (paused) calculateDanmakuInFrame(0L, 0f)
     }
 
+    /**
+     * Drives the danmaku animation loop by incrementally updating the frame time and
+     * recalculating the positions of active danmakus. Should be launched in a coroutine that
+     * remains active (e.g., from a LaunchedEffect).
+     *
+     * This method will:
+     * - Update [elapsedFrameTimeNanos] every frame.
+     * - Call [calculateDanmakuInFrame] to move floating danmakus and finalize fixed danmaku positions.
+     *
+     * If [paused] is true, danmakus remain in place, but the loop keeps running.
+     */
     internal suspend fun interpolateFrameLoop() {
         uiContext.await()
         coroutineScope {
             var currentFloatingTrackSpeed = with(uiContext.density) { danmakuConfig.speed.dp.toPx() }
 
+            // Observe dynamic changes in speed.
             launch {
                 snapshotFlow { danmakuConfig.speed }.collect {
                     currentFloatingTrackSpeed = with(uiContext.density) { danmakuConfig.speed.dp.toPx() }
                 }
             }
 
+            // Frame loop: increment time, compute positions.
             launch {
                 var currentFrameTimeNanos = withFrameNanos {
                     // 使用了这一帧来获取时间, 需要补偿平均帧时间
@@ -372,10 +478,12 @@ class DanmakuHostState(
     }
 
     /**
-     * 计算一次弹幕的位置，若弹幕的静态位置没有被计算过，则会计算一次
-     * 
-     * @param appendedFrameTime 需要为浮动弹幕附加的帧时间，在[帧 loop][interpolateFrameLoop] 中需要增加帧时间.
-     * @param floatingTrackSpeed 浮动弹幕的基础速度.
+     * Calculates the position of all currently displayed danmakus.
+     * - For floating danmakus, updates [FloatingDanmaku.distanceX] based on [appendedFrameTime] and the provided [floatingTrackSpeed].
+     * - For fixed danmakus, ensures placement time and [FixedDanmaku.y] coordinate are set.
+     *
+     * @param appendedFrameTime The time in nanoseconds to move forward since the last frame.
+     * @param floatingTrackSpeed The base speed (px/s) of floating danmakus.
      */
     private fun calculateDanmakuInFrame(
         appendedFrameTime: Long,
@@ -397,7 +505,8 @@ class DanmakuHostState(
     }
 
     /**
-     * 逻辑帧 tick, 主要用于移除超出屏幕外或超过时间的弹幕
+     * Executes a "tick" to remove danmakus that have scrolled out of view (floating) or
+     * exceeded their presentation time (fixed).
      */
     internal fun tick() {
         floatingTrack.forEach { it.tick() }
@@ -406,12 +515,17 @@ class DanmakuHostState(
     }
 
     /**
-     * 尝试发送弹幕到屏幕, 如果当前时间点已没有更多轨道可以使用则会发送失败.
+     * Attempts to place a danmaku on the screen at the current frame time.
      *
-     * 对于一定发送成功的版本, 请查看 [DanmakuHostState.send].
+     * If the tracks are all busy at the exact moment, this method may fail and return `false`.
+     * Use [send] for a guaranteed placement (possibly with a slight delay).
      *
-     * @return 如果发送成功则返回 true
-     * @see DanmakuHostState.send
+     * @param danmaku The [DanmakuPresentation] data describing the text and style.
+     * @param placeFrameTimeNanos Optional. The frame time (in nanos) to place this danmaku.
+     *   Defaults to [DanmakuTrack.NOT_PLACED], meaning it will be placed immediately.
+     * @return True if placed successfully, otherwise false.
+     *
+     * @see send
      */
     // 若是浮动弹幕则加入到 [presentFloatingDanmaku], 固定弹幕加到 [presentFixedDanmaku].
     suspend fun trySend(
@@ -455,11 +569,15 @@ class DanmakuHostState(
     }
 
     /**
-     * 发送弹幕到屏幕, 此方法一定会保证弹幕发送出去
+     * Guaranteed method to place a danmaku on the screen. If all tracks are busy at the moment,
+     * [send] will schedule the danmaku to appear as soon as possible, potentially replacing a
+     * pending danmaku if no free track is found.
+     *
+     * @param danmaku The [DanmakuPresentation] data to send.
      */
     suspend fun send(danmaku: DanmakuPresentation) {
         uiContext.await()
-        
+
         withContext(Dispatchers.Main.immediate) {
             val currentElapsedFrameTimeNanos = elapsedFrameTimeNanos
             val styledDanmaku = StyledDanmaku(
@@ -474,7 +592,7 @@ class DanmakuHostState(
             if (danmaku.danmaku.location == DanmakuLocation.NORMAL) {
                 // 没开启就没办法发送, 因为轨道数量为 0
                 if (!danmakuConfig.enableFloating) return@withContext
-                
+
                 val safeSeparation = with(uiContext.density) { danmakuConfig.safeSeparation.toPx() }
                 val floatingTrackSpeed = with(uiContext.density) { danmakuConfig.speed.dp.toPx() }
 
@@ -624,6 +742,9 @@ class DanmakuHostState(
         }
     }
 
+    /**
+     * Clears all currently displayed danmakus from the screen, resetting the internal track structures.
+     */
     private fun clearPresentDanmaku() {
         floatingTrack.forEach { it.clearAll() }
         topTrack.forEach { it.clearAll() }
@@ -637,10 +758,22 @@ class DanmakuHostState(
         }
     }
 
+    /**
+     * Toggles the paused state of the danmaku system. While paused:
+     * - [elapsedFrameTimeNanos] stops accumulating.
+     * - Danmakus remain in their current positions (floating stops moving).
+     * - Layout changes can still occur, but no movement or timing-based updates happen.
+     *
+     * @param pause True to pause, false to resume.
+     */
     fun setPaused(pause: Boolean) {
         paused = pause
     }
 
+    /**
+     * Internal UI context class storing text measurement and density information.
+     * Ensures these are set before any layout or population logic executes.
+     */
     private class UIContext {
         lateinit var baseStyle: TextStyle
         lateinit var textMeasurer: TextMeasurer
@@ -648,14 +781,21 @@ class DanmakuHostState(
 
         private val setDeferred: CompletableDeferred<Unit> = CompletableDeferred()
 
+        /**
+         * Sets the fields of this [UIContext] and completes the internal deferred,
+         * unblocking any pending UI measurement or rendering operations.
+         */
         fun set(baseStyle: TextStyle, textMeasurer: TextMeasurer, density: Density) {
             this.baseStyle = baseStyle
             this.textMeasurer = textMeasurer
             this.density = density
-
             setDeferred.complete(Unit)
         }
 
+        /**
+         * Suspends until [set] is called, ensuring all measurement tools and densities
+         * are initialized before proceeding.
+         */
         suspend fun await() = setDeferred.await()
     }
 }

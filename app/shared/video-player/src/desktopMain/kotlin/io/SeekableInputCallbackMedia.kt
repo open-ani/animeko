@@ -9,10 +9,10 @@
 
 package me.him188.ani.app.videoplayer.io
 
-import me.him188.ani.utils.io.SeekableInput
 import me.him188.ani.utils.logging.debug
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.logger
+import org.openani.mediamp.io.SeekableInput
 import uk.co.caprica.vlcj.media.callback.DefaultCallbackMedia
 
 class SeekableInputCallbackMedia(

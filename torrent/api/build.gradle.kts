@@ -16,6 +16,7 @@ plugins {
 kotlin {
     sourceSets.commonMain.dependencies {
         api(libs.kotlinx.coroutines.core)
+        api(mediampLibs.mediamp.api)
         implementation(libs.kotlinx.collections.immutable)
         api(projects.utils.io)
 

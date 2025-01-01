@@ -262,7 +262,8 @@ abstract class AbstractMikanMediaSource(
                     author = null,
                     details = details.toTopicDetails(),
                     originalLink = kotlin.run {
-                        element.getElementsByTag("link").text().takeIf { it.isNotBlank() }?.let { return@run it }
+                        element.getElementsByTag("link").firstOrNull()?.text()?.takeIf { it.isNotBlank() }
+                            ?.let { return@run it }
                         // Note: It looks like Jsoup failed to parse the xml. Debug and print `element` to see details.
                         linkRegex.find(element.toString())?.value // This should work well
                     }?.let {

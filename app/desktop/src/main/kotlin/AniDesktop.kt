@@ -89,7 +89,6 @@ import me.him188.ani.app.platform.startCommonKoinModule
 import me.him188.ani.app.platform.window.setTitleBar
 import me.him188.ani.app.tools.update.DesktopUpdateInstaller
 import me.him188.ani.app.tools.update.UpdateInstaller
-import me.him188.ani.app.torrent.anitorrent.AnitorrentLibraryLoader
 import me.him188.ani.app.ui.foundation.LocalImageLoader
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.LocalWindowState
@@ -106,8 +105,6 @@ import me.him188.ani.app.ui.foundation.widgets.ToastViewModel
 import me.him188.ani.app.ui.foundation.widgets.Toaster
 import me.him188.ani.app.ui.main.AniApp
 import me.him188.ani.app.ui.main.AniAppContent
-import me.him188.ani.app.videoplayer.ui.VlcjVideoPlayerState
-import me.him188.ani.app.videoplayer.ui.state.PlayerStateFactory
 import me.him188.ani.desktop.generated.resources.Res
 import me.him188.ani.desktop.generated.resources.a_round
 import me.him188.ani.utils.io.inSystem
@@ -122,6 +119,10 @@ import org.jetbrains.compose.resources.painterResource
 import org.koin.core.context.startKoin
 import org.koin.dsl.module
 import org.koin.mp.KoinPlatform
+import org.openani.mediamp.MediampPlayerFactory
+import org.openani.mediamp.MediampPlayerFactoryLoader
+import org.openani.mediamp.backend.vlc.VlcMediampPlayer
+import org.openani.mediamp.backend.vlc.VlcMediampPlayerFactory
 import java.io.File
 import kotlin.system.exitProcess
 import kotlin.time.measureTime
@@ -156,6 +157,16 @@ object AniDesktop {
 
     @JvmStatic
     fun main(args: Array<String>) {
+        val originalExceptionHandler = Thread.currentThread().uncaughtExceptionHandler
+        Thread.currentThread().uncaughtExceptionHandler = Thread.UncaughtExceptionHandler { t, e ->
+            logger.error(e) { "!!!ANI FATAL EXCEPTION!!!" }
+            e.printStackTrace()
+            Thread.sleep(1000) // wait for logging to finish
+            originalExceptionHandler.uncaughtException(t, e)
+            Thread.sleep(5000)
+            exitProcess(1)
+        }
+
         val logsDir = File(projectDirectories.dataDir).resolve("logs").apply { mkdirs() }
 
         Log4j2Config.configureLogging(logsDir)
@@ -173,25 +184,6 @@ object AniDesktop {
         logger.info { "dataDir: file://${projectDirectories.dataDir.replace(" ", "%20")}" }
         logger.info { "cacheDir: file://${projectDirectories.cacheDir.replace(" ", "%20")}" }
         logger.info { "logsDir: file://${logsDir.absolutePath.replace(" ", "%20")}" }
-
-
-        // Startup ok, run test task if needed
-        System.getenv("ANIMEKO_DESKTOP_TEST_TASK")?.let { taskName ->
-            logger.info { "Running test task: $taskName" }
-
-            when (taskName) {
-                "anitorrent-load-test" -> {
-                    AnitorrentLibraryLoader.loadLibraries()
-                    exitProcess(0)
-                }
-
-                else -> {
-                    logger.error { "Unknown test task: $taskName" }
-                    exitProcess(1)
-                }
-            }
-        }
-
 
 
         val defaultSize = DpSize(1301.dp, 855.dp)
@@ -253,10 +245,9 @@ object AniDesktop {
                             },
                         )
                     }
-                    single<PlayerStateFactory> {
-                        PlayerStateFactory { _, ctx ->
-                            VlcjVideoPlayerState(ctx)
-                        }
+                    single<MediampPlayerFactory<*>> {
+                        MediampPlayerFactoryLoader.register(VlcMediampPlayerFactory())
+                        MediampPlayerFactoryLoader.first()
                     }
                     single<BrowserNavigator> { DesktopBrowserNavigator() }
                     factory<VideoSourceResolver> {
@@ -282,6 +273,18 @@ object AniDesktop {
             )
         }.startCommonKoinModule(coroutineScope)
 
+
+        // Startup ok, run test task if needed
+        System.getenv("ANIMEKO_DESKTOP_TEST_TASK")?.let { taskName ->
+            logger.info { "Running test task: $taskName" }
+
+            val argc = System.getenv("ANIMEKO_DESKTOP_TEST_ARGC")?.toIntOrNull() ?: 0
+            val args = (0 until argc).mapNotNull { i ->
+                System.getenv("ANIMEKO_DESKTOP_TEST_ARGV_$i")
+            }
+            TestTasks.handleTestTask(taskName, args, context)
+        }
+
         // Initialize CEF application.
         coroutineScope.launch {
             val proxySettings = koin.koin.get<SettingsRepository>()
@@ -300,7 +303,7 @@ object AniDesktop {
 
             // 预先加载 VLC, https://github.com/open-ani/ani/issues/618
             kotlin.runCatching {
-                VlcjVideoPlayerState.prepareLibraries()
+                VlcMediampPlayer.prepareLibraries()
             }.onFailure {
                 logger.error(it) { "Failed to prepare VLC" }
             }
@@ -415,7 +418,6 @@ object AniDesktop {
         }
         // unreachable here
     }
-
 }
 
 @Composable

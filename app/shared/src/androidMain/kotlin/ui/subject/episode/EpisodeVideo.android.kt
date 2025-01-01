@@ -21,14 +21,22 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
+import kotlinx.coroutines.flow.MutableStateFlow
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.preview.PHONE_LANDSCAPE
 import me.him188.ani.app.ui.settings.danmaku.createTestDanmakuRegexFilterState
 import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberTestMediaSelectorPresentation
-import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberTestMediaSourceInfoProvider
 import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberTestMediaSourceResults
 import me.him188.ani.app.ui.subject.episode.statistics.VideoLoadingState
+import me.him188.ani.app.ui.subject.episode.video.components.DanmakuSettingsSheet
+import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheetPage
+import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheets
+import me.him188.ani.app.ui.subject.episode.video.components.FloatingFullscreenSwitchButton
+import me.him188.ani.app.ui.subject.episode.video.components.SideSheets
+import me.him188.ani.app.ui.subject.episode.video.sidesheet.DanmakuRegexFilterSettings
+import me.him188.ani.app.ui.subject.episode.video.sidesheet.EpisodeSelectorSheet
+import me.him188.ani.app.ui.subject.episode.video.sidesheet.MediaSelectorSheet
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.rememberTestEpisodeSelectorState
 import me.him188.ani.app.ui.subject.episode.video.topbar.EpisodePlayerTitle
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
@@ -36,9 +44,12 @@ import me.him188.ani.app.videoplayer.ui.guesture.NoOpLevelController
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
 import me.him188.ani.app.videoplayer.ui.progress.rememberMediaProgressSliderState
 import me.him188.ani.app.videoplayer.ui.rememberVideoControllerState
-import me.him188.ani.app.videoplayer.ui.state.DummyPlayerState
+import me.him188.ani.app.domain.media.player.ChunkState
+import me.him188.ani.app.domain.media.player.staticMediaCacheProgressState
 import me.him188.ani.danmaku.ui.DanmakuHostState
 import me.him188.ani.utils.platform.annotations.TestOnly
+import org.openani.mediamp.DummyMediampPlayer
+
 
 @Preview("Landscape Fullscreen - Light", device = PHONE_LANDSCAPE, uiMode = UI_MODE_NIGHT_NO)
 @Preview("Landscape Fullscreen - Dark", device = PHONE_LANDSCAPE, uiMode = UI_MODE_NIGHT_YES or UI_MODE_TYPE_NORMAL)
@@ -76,7 +87,7 @@ private fun PreviewVideoScaffoldImpl(
 ) = ProvideCompositionLocalsForPreview {
     val scope = rememberCoroutineScope()
     val playerState = remember {
-        DummyPlayerState(scope.coroutineContext)
+        DummyMediampPlayer(scope.coroutineContext)
     }
 
     val controllerState = rememberVideoControllerState(initialVisibility = controllerVisibility)
@@ -93,12 +104,15 @@ private fun PreviewVideoScaffoldImpl(
             playerState.seekTo(it)
         },
     )
+    val videoScaffoldConfig = VideoScaffoldConfig.Default
+    val onClickFullScreen = { }
+    val cacheProgressInfoFlow = staticMediaCacheProgressState(ChunkState.NONE).flow
     EpisodeVideoImpl(
         playerState = playerState,
         expanded = expanded,
         hasNextEpisode = true,
         onClickNextEpisode = {},
-        videoControllerState = controllerState,
+        playerControllerState = controllerState,
         title = {
             EpisodePlayerTitle(
                 "28",
@@ -109,8 +123,8 @@ private fun PreviewVideoScaffoldImpl(
         danmakuHostState = remember { DanmakuHostState() },
         danmakuEnabled = danmakuEnabled,
         onToggleDanmaku = { danmakuEnabled = !danmakuEnabled },
-        videoLoadingState = { VideoLoadingState.Succeed(isBt = true) },
-        onClickFullScreen = { },
+        videoLoadingStateFlow = MutableStateFlow(VideoLoadingState.Succeed(isBt = true)),
+        onClickFullScreen = onClickFullScreen,
         onExitFullscreen = { },
         danmakuEditor = {
             val (value, onValueChange) = remember { mutableStateOf("") }
@@ -120,28 +134,65 @@ private fun PreviewVideoScaffoldImpl(
                 Modifier.weight(1f),
             )
         },
-        configProvider = { VideoScaffoldConfig.Default },
         onClickScreenshot = {},
         detachedProgressSlider = {
             PlayerControllerDefaults.MediaProgressSlider(
                 progressSliderState,
-                cacheProgressState = playerState.cacheProgress,
+                cacheProgressInfoFlow = cacheProgressInfoFlow,
                 enabled = false,
             )
         },
         sidebarVisible = true,
         onToggleSidebar = {},
         progressSliderState = progressSliderState,
-        mediaSelectorState = rememberTestMediaSelectorPresentation(),
-        mediaSourceResultsPresentation = rememberTestMediaSourceResults(),
-        episodeSelectorState = rememberTestEpisodeSelectorState(),
-        mediaSourceInfoProvider = rememberTestMediaSourceInfoProvider(),
+        cacheProgressInfoFlow = cacheProgressInfoFlow,
+        audioController = NoOpLevelController,
+        brightnessController = NoOpLevelController,
         leftBottomTips = {
             PlayerControllerDefaults.LeftBottomTips(onClick = {})
         },
-        danmakuRegexFilterState = createTestDanmakuRegexFilterState(),
-        audioController = NoOpLevelController,
-        brightnessController = NoOpLevelController,
+        fullscreenSwitchButton = {
+            EpisodeVideoDefaults.FloatingFullscreenSwitchButton(
+                videoScaffoldConfig.fullscreenSwitchMode,
+                isFullscreen = expanded,
+                onClickFullScreen,
+            )
+        },
+        sideSheets = { sheetsController ->
+            EpisodeVideoDefaults.SideSheets(
+                sheetsController,
+                controllerState,
+                playerSettingsPage = {
+                    EpisodeVideoSideSheets.DanmakuSettingsSheet(
+                        onDismissRequest = { goBack() },
+                        onNavigateToFilterSettings = {
+                            sheetsController.navigateTo(EpisodeVideoSideSheetPage.EDIT_DANMAKU_REGEX_FILTER)
+                        },
+                    )
+                },
+                editDanmakuRegexFilterPage = {
+                    EpisodeVideoSideSheets.DanmakuRegexFilterSettings(
+                        state = createTestDanmakuRegexFilterState(),
+                        onDismissRequest = { goBack() },
+                        expanded = expanded,
+                    )
+                },
+                mediaSelectorPage = {
+                    EpisodeVideoSideSheets.MediaSelectorSheet(
+                        mediaSelectorState = rememberTestMediaSelectorPresentation(),
+                        mediaSourceResultsPresentation = rememberTestMediaSourceResults(),
+                        onDismissRequest = { goBack() },
+                        onRefresh = {},
+                    )
+                },
+                episodeSelectorPage = {
+                    EpisodeVideoSideSheets.EpisodeSelectorSheet(
+                        state = rememberTestEpisodeSelectorState(),
+                        onDismissRequest = { goBack() },
+                    )
+                },
+            )
+        },
     )
 
 //    VideoScaffold(
@@ -198,7 +249,7 @@ private fun PreviewVideoScaffoldImpl(
 //                locked = isLocked,
 //                Modifier.padding(top = 100.dp),
 //                onTogglePauseResume = {
-//                    if (playerState.state.value.isPlaying) {
+//                    if (playerState.playbackState.value.isPlaying) {
 //                        tasker.launch {
 //                            indicatorState.showPausedLong()
 //                        }
@@ -225,7 +276,7 @@ private fun PreviewVideoScaffoldImpl(
 //                rememberProgressSliderState(playerState = playerState, onPreview = {}, onPreviewFinished = {})
 //            PlayerControllerBar(
 //                startActions = {
-//                    val playing = playerState.state.collectAsStateWithLifecycle()
+//                    val playing = playerState.playbackState.collectAsStateWithLifecycle()
 //                    PlayerControllerDefaults.PlaybackIcon(
 //                        isPlaying = { playing.value.isPlaying },
 //                        onClick = { }

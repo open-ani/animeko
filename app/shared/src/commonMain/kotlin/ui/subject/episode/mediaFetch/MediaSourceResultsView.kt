@@ -28,6 +28,7 @@ import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.HorizontalRule
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.CardDefaults
@@ -65,6 +66,7 @@ import me.him188.ani.app.ui.settings.rendering.SmallMediaSourceIcon
 fun MediaSourceResultsView(
     sourceResults: MediaSourceResultsPresentation,
     mediaSelector: MediaSelectorState,
+    onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val presentation by mediaSelector.mediaSource.presentationFlow.collectAsStateWithLifecycle()
@@ -78,6 +80,7 @@ fun MediaSourceResultsView(
                 mediaSelector.removePreferencesUntilFirstCandidate()
             }
         },
+        onRefresh,
         modifier,
     )
 }
@@ -87,6 +90,7 @@ fun MediaSourceResultsView(
     sourceResults: MediaSourceResultsPresentation,
     sourceSelected: (String) -> Boolean,
     onClickEnabled: (mediaSourceId: String) -> Unit,
+    onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier) {
@@ -116,6 +120,9 @@ fun MediaSourceResultsView(
                 BasicAlertDialog({ showHelp = false }) {
                     MediaSelectorHelp({ showHelp = false })
                 }
+            }
+            IconButton(onRefresh) {
+                Icon(Icons.Outlined.Refresh, "刷新")
             }
             IconButton({ showHelp = true }) {
                 Icon(Icons.AutoMirrored.Outlined.HelpOutline, "帮助")

@@ -11,6 +11,7 @@ package me.him188.ani.app.ui.subject.episode.mediaFetch
 
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -53,6 +54,7 @@ private fun PreviewMediaSelector() {
                     MediaSourceResultsView(
                         rememberTestMediaSourceResults(),
                         mediaSelector,
+                        onRefresh = {},
                     )
                 },
             )
@@ -89,14 +91,18 @@ private fun rememberTestMediaSelectorPresentation(previewMediaList: List<Media>)
 @PreviewLightDark
 @Composable
 private fun PreviewMediaItemIncluded(modifier: Modifier = Modifier) = ProvideFoundationCompositionLocalsForPreview {
-    MediaItem(
+    MediaSelectorItem(
         MediaGroup("Test").apply {
             add(previewMediaList[0].let { MaybeExcludedMedia.Included(it) })
         },
+        remember { MediaGroupState("test") },
         rememberTestMediaSourceInfoProvider(),
         selected = false,
-        rememberTestMediaSelectorPresentation(),
-        {},
+        onSelect = {},
+        preferredResolution = { null },
+        onPreferResolution = {},
+        preferredSubtitleLanguageId = { null },
+        onPreferSubtitleLanguageId = {},
         modifier = modifier,
     )
 }
@@ -105,14 +111,18 @@ private fun PreviewMediaItemIncluded(modifier: Modifier = Modifier) = ProvideFou
 @PreviewLightDark
 @Composable
 private fun PreviewMediaItemExcluded(modifier: Modifier = Modifier) = ProvideFoundationCompositionLocalsForPreview {
-    MediaItem(
+    MediaSelectorItem(
         MediaGroup("Test").apply {
             add(previewMediaList[0].let { MaybeExcludedMedia.Excluded(it, MediaExclusionReason.FromSequelSeason) })
         },
+        remember { MediaGroupState("test") },
         rememberTestMediaSourceInfoProvider(),
         selected = false,
-        rememberTestMediaSelectorPresentation(),
-        {},
+        onSelect = {},
+        preferredResolution = { null },
+        onPreferResolution = {},
+        preferredSubtitleLanguageId = { null },
+        onPreferSubtitleLanguageId = {},
         modifier = modifier,
     )
 }

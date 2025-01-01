@@ -32,6 +32,7 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipe
 import androidx.compose.ui.unit.dp
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.coroutines.flow.MutableStateFlow
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.ui.doesNotExist
 import me.him188.ani.app.ui.exists
@@ -41,31 +42,29 @@ import me.him188.ani.app.ui.foundation.effects.TAG_CURSOR_VISIBILITY_EFFECT_VISI
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.foundation.theme.aniDarkColorTheme
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
-import me.him188.ani.app.ui.settings.danmaku.createTestDanmakuRegexFilterState
-import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberTestMediaSelectorPresentation
-import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberTestMediaSourceInfoProvider
-import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberTestMediaSourceResults
 import me.him188.ani.app.ui.subject.episode.statistics.VideoLoadingState
-import me.him188.ani.app.ui.subject.episode.video.sidesheet.rememberTestEpisodeSelectorState
+import me.him188.ani.app.ui.subject.episode.video.components.FloatingFullscreenSwitchButton
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
-import me.him188.ani.app.videoplayer.ui.VideoControllerState
+import me.him188.ani.app.videoplayer.ui.PlayerControllerState
 import me.him188.ani.app.videoplayer.ui.guesture.GestureFamily
 import me.him188.ani.app.videoplayer.ui.guesture.NoOpLevelController
 import me.him188.ani.app.videoplayer.ui.guesture.VIDEO_GESTURE_MOUSE_MOVE_SHOW_CONTROLLER_DURATION
-import me.him188.ani.app.videoplayer.ui.progress.MediaProgressSliderState
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
+import me.him188.ani.app.videoplayer.ui.progress.PlayerProgressSliderState
 import me.him188.ani.app.videoplayer.ui.progress.TAG_PROGRESS_SLIDER_PREVIEW_POPUP
-import me.him188.ani.app.videoplayer.ui.state.DummyPlayerState
+import me.him188.ani.app.domain.media.player.ChunkState
+import me.him188.ani.app.domain.media.player.staticMediaCacheProgressState
 import me.him188.ani.danmaku.ui.DanmakuHostState
+import org.openani.mediamp.DummyMediampPlayer
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.time.Duration.Companion.seconds
 
 class EpisodeVideoCursorTest {
 
-    private val controllerState = VideoControllerState(ControllerVisibility.Invisible)
+    private val controllerState = PlayerControllerState(ControllerVisibility.Invisible)
     private var currentPositionMillis by mutableLongStateOf(0L)
-    private val progressSliderState: MediaProgressSliderState = MediaProgressSliderState(
+    private val progressSliderState: PlayerProgressSliderState = PlayerProgressSliderState(
         { currentPositionMillis },
         { 100_000 },
         stateOf(persistentListOf()),
@@ -89,44 +88,51 @@ class EpisodeVideoCursorTest {
         ProvideCompositionLocalsForPreview(colorScheme = aniDarkColorTheme()) {
             val scope = rememberCoroutineScope()
             val playerState = remember {
-                DummyPlayerState(scope.coroutineContext)
+                DummyMediampPlayer(scope.coroutineContext)
             }
             Row {
+                val expanded = true
+                val videoScaffoldConfig = VideoScaffoldConfig.Default
+                val onClickFullScreen = {}
+                val cacheProgressInfoFlow = staticMediaCacheProgressState(ChunkState.NONE).flow
                 EpisodeVideoImpl(
                     playerState = playerState,
-                    expanded = true,
+                    expanded = expanded,
                     hasNextEpisode = true,
                     onClickNextEpisode = {},
-                    videoControllerState = controllerState,
+                    playerControllerState = controllerState,
                     title = { Text("Title") },
                     danmakuHostState = remember { DanmakuHostState() },
                     danmakuEnabled = false,
                     onToggleDanmaku = {},
-                    videoLoadingState = { VideoLoadingState.Succeed(isBt = true) },
-                    onClickFullScreen = {},
+                    videoLoadingStateFlow = remember { MutableStateFlow(VideoLoadingState.Succeed(isBt = true)) },
+                    onClickFullScreen = onClickFullScreen,
                     onExitFullscreen = {},
                     danmakuEditor = {},
-                    configProvider = { VideoScaffoldConfig.Default },
                     onClickScreenshot = {},
                     detachedProgressSlider = {
                         PlayerControllerDefaults.MediaProgressSlider(
                             progressSliderState,
-                            cacheProgressState = playerState.cacheProgress,
+                            cacheProgressInfoFlow = cacheProgressInfoFlow,
                             enabled = false,
                         )
                     },
                     sidebarVisible = true,
                     onToggleSidebar = {},
                     progressSliderState = progressSliderState,
-                    mediaSelectorState = rememberTestMediaSelectorPresentation(),
-                    mediaSourceResultsPresentation = rememberTestMediaSourceResults(),
-                    episodeSelectorState = rememberTestEpisodeSelectorState(),
-                    mediaSourceInfoProvider = rememberTestMediaSourceInfoProvider(),
+                    cacheProgressInfoFlow = cacheProgressInfoFlow,
                     audioController = NoOpLevelController,
                     brightnessController = NoOpLevelController,
                     leftBottomTips = {},
+                    fullscreenSwitchButton = {
+                        EpisodeVideoDefaults.FloatingFullscreenSwitchButton(
+                            videoScaffoldConfig.fullscreenSwitchMode,
+                            isFullscreen = expanded,
+                            onClickFullScreen,
+                        )
+                    },
+                    sideSheets = {},
                     modifier = Modifier.weight(1f),
-                    danmakuRegexFilterState = createTestDanmakuRegexFilterState(),
                     gestureFamily = gestureFamily,
                 )
 

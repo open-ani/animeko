@@ -126,6 +126,11 @@ inline fun Platform.isMacOS(): Boolean {
     return this is Platform.MacOS
 }
 
+inline fun Platform.isWindows(): Boolean {
+    contract { returns(true) implies (this@isWindows is Platform.Windows) }
+    return this is Platform.Windows
+}
+
 inline fun Platform.isIos(): Boolean {
     contract { returns(true) implies (this@isIos is Platform.Ios) }
     return this is Platform.Ios

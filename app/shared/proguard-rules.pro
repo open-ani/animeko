@@ -33,7 +33,7 @@
 
 
 # anitorrent
--keep class me.him188.ani.app.torrent.anitorrent.binding.** { *; }
+-keep class org.openani.anitorrent.binding.** { *; }
 
 # Android AIDL for torrent service.
 -keepnames class me.him188.ani.app.domain.torrent.I* { *; }

@@ -24,16 +24,89 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldColors
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
+import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
+import me.him188.ani.app.domain.danmaku.protocol.DanmakuInfo
+import me.him188.ani.app.domain.danmaku.protocol.DanmakuLocation
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
-import me.him188.ani.app.ui.foundation.theme.aniDarkColorTheme
+import me.him188.ani.app.ui.subject.episode.EpisodeVideoDefaults
+import me.him188.ani.app.videoplayer.ui.PlayerControllerState
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
+import me.him188.ani.app.videoplayer.ui.rememberAlwaysOnRequester
+import org.openani.mediamp.MediampPlayer
+
+@Composable
+fun EpisodeVideoDefaults.DanmakuEditor(
+    playerDanmakuState: PlayerDanmakuState,
+    danmakuTextPlaceholder: String,
+    playerState: MediampPlayer,
+    videoScaffoldConfig: VideoScaffoldConfig,
+    playerControllerState: PlayerControllerState,
+    modifier: Modifier = Modifier,
+) {
+    val danmakuEditorRequester = rememberAlwaysOnRequester(playerControllerState, "danmakuEditor")
+
+    val focusManager = LocalFocusManager.current
+
+    /**
+     * 是否设置了暂停
+     */
+    var didSetPaused by rememberSaveable { mutableStateOf(false) }
+    val isSending = playerDanmakuState.isSending.collectAsStateWithLifecycle()
+    Row(modifier = modifier) {
+        val scope = rememberCoroutineScope()
+        DanmakuEditor(
+            text = playerDanmakuState.danmakuEditorText,
+            onTextChange = { playerDanmakuState.danmakuEditorText = it },
+            isSending = { isSending.value },
+            placeholderText = danmakuTextPlaceholder,
+            onSend = { text ->
+                playerDanmakuState.danmakuEditorText = ""
+                scope.launch {
+                    playerDanmakuState.send(
+                        DanmakuInfo(
+                            playerState.getExactCurrentPositionMillis(),
+                            text = text,
+                            color = Color.White.toArgb(),
+                            location = DanmakuLocation.NORMAL,
+                        ),
+                    )
+                    focusManager.clearFocus()
+                }
+            },
+            modifier = Modifier.onFocusChanged {
+                if (it.isFocused) {
+                    if (videoScaffoldConfig.pauseVideoOnEditDanmaku && playerState.playbackState.value.isPlaying) {
+                        didSetPaused = true
+                        playerState.pause()
+                    }
+                    danmakuEditorRequester.request()
+                } else {
+                    if (didSetPaused) {
+                        didSetPaused = false
+                        playerState.resume()
+                    }
+                    danmakuEditorRequester.cancelRequest()
+                }
+            }.weight(1f),
+        )
+    }
+}
 
 @Composable
 fun DanmakuEditor(
@@ -46,29 +119,26 @@ fun DanmakuEditor(
     colors: TextFieldColors = PlayerControllerDefaults.inVideoDanmakuTextFieldColors(),
     style: TextStyle = MaterialTheme.typography.bodyMedium,
 ) {
-    val textUpdated by rememberUpdatedState(text)
-    MaterialTheme(aniDarkColorTheme()) {
-        PlayerControllerDefaults.DanmakuTextField(
-            text,
-            onValueChange = onTextChange,
-            modifier = modifier,
-            onSend = {
-                if (textUpdated.isEmpty()) return@DanmakuTextField
-                onSend(textUpdated)
-            },
-            isSending = isSending,
-            placeholder = {
-                Text(
-                    placeholderText,
-                    overflow = TextOverflow.Ellipsis,
-                    maxLines = 1,
-                    style = style,
-                )
-            },
-            colors = colors,
-            style = style,
-        )
-    }
+    PlayerControllerDefaults.DanmakuTextField(
+        text,
+        onValueChange = onTextChange,
+        modifier = modifier,
+        onSend = {
+            if (text.isEmpty()) return@DanmakuTextField
+            onSend(text)
+        },
+        isSending = isSending,
+        placeholder = {
+            Text(
+                placeholderText,
+                overflow = TextOverflow.Ellipsis,
+                maxLines = 1,
+                style = style,
+            )
+        },
+        colors = colors,
+        style = style,
+    )
 }
 
 @Composable

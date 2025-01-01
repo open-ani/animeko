@@ -28,6 +28,7 @@ private fun PreviewEpisodePlayMediaSelectorSheet() = ProvideFoundationCompositio
         rememberTestMediaSelectorPresentation(),
         emptyMediaSourceResultsPresentation(),
         onDismissRequest = {},
+        onRefresh = {},
         Modifier.background(MaterialTheme.colorScheme.surface),
     )
 }
@@ -39,6 +40,7 @@ private fun PreviewEpisodePlayMediaSelectorSheet2() = ProvideFoundationCompositi
         rememberTestMediaSelectorPresentation(),
         emptyMediaSourceResultsPresentation(),
         onDismissRequest = {},
+        onRefresh = {},
         Modifier.background(MaterialTheme.colorScheme.surface),
     )
 }
@@ -50,6 +52,7 @@ private fun PreviewEpisodePlayMediaSelectorSheet3() = ProvideFoundationCompositi
         rememberTestMediaSelectorPresentation(),
         emptyMediaSourceResultsPresentation(),
         onDismissRequest = {},
+        onRefresh = {},
         Modifier.background(MaterialTheme.colorScheme.surface),
     )
 }

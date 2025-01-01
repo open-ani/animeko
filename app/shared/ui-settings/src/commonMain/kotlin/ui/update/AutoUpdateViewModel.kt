@@ -17,6 +17,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.UriHandler
+import io.ktor.client.plugins.HttpTimeout
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.first
@@ -25,6 +26,7 @@ import kotlinx.io.IOException
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.update.UpdateManager
 import me.him188.ani.app.platform.currentAniBuildConfig
+import me.him188.ani.app.platform.getAniUserAgent
 import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.tools.update.DefaultFileDownloader
 import me.him188.ani.app.tools.update.FileDownloaderState
@@ -33,6 +35,8 @@ import me.him188.ani.utils.io.createDirectories
 import me.him188.ani.utils.io.exists
 import me.him188.ani.utils.io.inSystem
 import me.him188.ani.utils.io.list
+import me.him188.ani.utils.ktor.createDefaultHttpClient
+import me.him188.ani.utils.ktor.userAgent
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.warn
 import me.him188.ani.utils.platform.annotations.TestOnly
@@ -51,7 +55,16 @@ class AutoUpdateViewModel : AbstractViewModel(), KoinComponent {
     private val updateManager: UpdateManager by inject()
 
     private val updateChecker: UpdateChecker by lazy { UpdateChecker() }
-    private val fileDownloader by lazy { DefaultFileDownloader() }
+    private val client by lazy {
+        createDefaultHttpClient {
+            userAgent(getAniUserAgent())
+            expectSuccess = true
+            install(HttpTimeout) {
+                requestTimeoutMillis = 1_000_000
+            }
+        }
+    }
+    private val fileDownloader by lazy { DefaultFileDownloader(client) }
 
     /**
      * 新版本下载进度
@@ -172,6 +185,8 @@ class AutoUpdateViewModel : AbstractViewModel(), KoinComponent {
                 // 删除旧的文件
                 val allowedFilenames = ver.downloadUrlAlternatives.map {
                     it.substringAfterLast("/", "")
+                }.let { list ->
+                    list + list.map { "$it.sha1" }
                 }
                 for (file in dir.list()) {
                     if (file.name == ".DS_Store") continue
@@ -194,6 +209,11 @@ class AutoUpdateViewModel : AbstractViewModel(), KoinComponent {
 
     fun restartDownload(uriHandler: UriHandler) {
         latestVersion?.let { startDownload(it, uriHandler) }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        client.close()
     }
 }
 

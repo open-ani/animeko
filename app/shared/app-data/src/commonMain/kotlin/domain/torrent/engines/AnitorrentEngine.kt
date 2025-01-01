@@ -59,11 +59,11 @@ class AnitorrentEngine(
     override val location: MediaSourceLocation get() = MediaSourceLocation.Local
     override val isSupported: Flow<Boolean>
         get() = flowOf(tryLoadLibraries())
-    
+
     init {
         initialized.complete(Unit)
     }
-    
+
     private fun tryLoadLibraries(): Boolean {
         try {
             anitorrentFactory.libraryLoader.loadLibraries()
@@ -127,7 +127,10 @@ private fun FileSize.toLibtorrentRate(): Int = when (this) {
     else -> inBytes.toInt()
 }
 
-private fun Double.toLibtorrentShareRatio(): Int = times(100).toInt()
+private fun Float.toLibtorrentShareRatio(): Int {
+    if (this >= AnitorrentConfig.SHARE_RATIO_LIMIT_INFINITE) return 100 * 200
+    return times(100).toInt()
+}
 
 private fun computeTorrentFingerprint(
     versionCode: String = currentAniBuildConfig.versionCode,

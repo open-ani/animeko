@@ -45,14 +45,14 @@ import me.him188.ani.app.platform.PermissionManager
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.Toaster
 import me.him188.ani.app.ui.main.AniApp
-import me.him188.ani.app.videoplayer.ui.state.DummyPlayerState
-import me.him188.ani.app.videoplayer.ui.state.PlayerStateFactory
 import me.him188.ani.utils.io.inSystem
 import me.him188.ani.utils.platform.annotations.TestOnly
 import org.koin.core.context.startKoin
 import org.koin.core.context.stopKoin
 import org.koin.core.module.Module
 import org.koin.dsl.module
+import org.openani.mediamp.DummyMediampPlayer
+import org.openani.mediamp.MediampPlayerFactory
 
 /**
  * 应当优先使用 [me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview].
@@ -72,10 +72,8 @@ fun ProvideCompositionLocalsForPreview(
 //            modules(getCommonKoinModule({ context }, coroutineScope))
             modules(
                 module {
-                    single<PlayerStateFactory> {
-                        PlayerStateFactory { _, _ ->
-                            DummyPlayerState(coroutineScope.coroutineContext)
-                        }
+                    single<MediampPlayerFactory<*>> {
+                        DummyMediampPlayer.Factory
                     }
                     single<SessionManager> { PreviewSessionManager }
                     factory<VideoSourceResolver> {

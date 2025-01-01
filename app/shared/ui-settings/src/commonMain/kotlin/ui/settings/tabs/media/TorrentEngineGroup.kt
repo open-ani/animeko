@@ -18,11 +18,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
+import me.him188.ani.app.data.models.preference.AnitorrentConfig.Companion.SHARE_RATIO_LIMIT_INFINITE
 import me.him188.ani.app.data.models.preference.supportsLimitUploadOnMeteredNetwork
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.ui.foundation.LocalPlatform
@@ -98,6 +100,28 @@ internal fun SettingsScope.TorrentEngineGroup(
                 },
                 title = { Text("上传速度限制") },
             )
+            var shareRatioLimit by remember {
+                mutableStateOf(torrentSettings.shareRatioLimit)
+            }
+            SliderItem(
+                shareRatioLimit,
+                onValueChange = { shareRatioLimit = it },
+                valueRange = 1f..10f,
+                onValueChangeFinished = {
+                    torrentSettingsState.update(torrentSettings.copy(shareRatioLimit = shareRatioLimit))
+                },
+                title = { Text("分享率限制") },
+                description = { Text("分享率 = 上传量 / 下载量。大于 1 说明上传量大于下载量。资源达到分享率限制后，将停止上传。") },
+                valueLabel = {
+                    Text(
+                        if (shareRatioLimit == SHARE_RATIO_LIMIT_INFINITE) {
+                            "无限制"
+                        } else {
+                            String.format1f(shareRatioLimit)
+                        },
+                    )
+                },
+            )
             if (LocalPlatform.current.supportsLimitUploadOnMeteredNetwork()) {
                 SwitchItem(
                     checked = torrentSettings.limitUploadOnMeteredNetwork,
@@ -126,6 +150,7 @@ private fun SettingsScope.RateSliderItem(
     value: FileSize,
     onValueChangeFinished: (value: FileSize) -> Unit,
     title: @Composable RowScope.() -> Unit,
+    description: @Composable (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     var editingValue by remember(value) {
@@ -135,6 +160,7 @@ private fun SettingsScope.RateSliderItem(
         if (editingValue == -1f) 10f else editingValue,
         onValueChange = { editingValue = it },
         title = title,
+        description = description,
         valueRange = 1f..10f,
         steps = 0,
         onValueChangeFinished = {

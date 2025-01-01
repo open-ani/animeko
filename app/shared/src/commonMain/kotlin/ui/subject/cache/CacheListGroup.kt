@@ -165,7 +165,13 @@ fun SettingsScope.EpisodeCacheListGroup(
                     rememberMediaSelectorPresentation(mediaSourceInfoProvider) { task.mediaSelector }
                 MediaSelectorView(
                     selectorPresentation,
-                    sourceResults = { MediaSourceResultsView(sourceResults, selectorPresentation) },
+                    sourceResults = {
+                        MediaSourceResultsView(
+                            sourceResults,
+                            selectorPresentation,
+                            onRefresh = { task.fetchSession.restartAll() },
+                        )
+                    },
                     stickyHeaderBackgroundColor = BottomSheetDefaults.ContainerColor,
                     modifier = Modifier.padding(vertical = 12.dp, horizontal = 16.dp)
                         .navigationBarsPadding()

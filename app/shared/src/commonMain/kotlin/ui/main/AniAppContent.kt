@@ -261,7 +261,7 @@ private fun AniAppContentImpl(
                     key = route.toString(),
                 ) {
                     EpisodeViewModel(
-                        initialSubjectId = route.subjectId,
+                        subjectId = route.subjectId,
                         initialEpisodeId = route.episodeId,
                         initialIsFullscreen = false,
                         context,

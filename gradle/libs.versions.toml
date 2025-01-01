@@ -38,6 +38,7 @@ androidx-annotation = "1.9.1"
 androidx-media3 = "1.4.1"
 androidx-lifecycle = "2.8.7"
 paging = "3.3.5" # https://developer.android.com/jetpack/androidx/releases/paging
+turbine = "1.2.0" # https://github.com/cashapp/turbine/releases/
 
 mockito = "5.12.0"
 mockito-kotlin = "5.4.0"
@@ -114,6 +115,9 @@ ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "kto
 ktor-client-websockets = { module = "io.ktor:ktor-client-websockets", version.ref = "ktor" }
 ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
 ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
+
+ktor-server-core = { module = "io.ktor:ktor-server-core", version.ref = "ktor" }
+ktor-server-test-host = { module = "io.ktor:ktor-server-test-host", version.ref = "ktor" }
 
 # Koin
 koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin" }
@@ -249,3 +253,4 @@ aws-secretsmanager = { module = "software.amazon.awssdk:secretsmanager", version
 #htmlunit = { group = "net.sourceforge.htmlunit", name = "htmlunit", version = "2.70.0" }
 
 jsystemthemedetector = { module = "org.openani.jsystemthemedetector:jSystemThemeDetector", version.ref = "jsystemthemedetector" }
+turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }

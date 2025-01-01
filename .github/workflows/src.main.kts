@@ -493,6 +493,7 @@ fun getVerifyJobBody(
     class VerifyTask(
         val name: String,
         val step: String,
+        val timeoutMinutes: Int = 5,
     )
 
     val tasksToExecute = listOf(
@@ -520,6 +521,7 @@ fun getVerifyJobBody(
                         powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$${expr { github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "$${expr { github.workspace }}\ci-helper\verify" "$${task.name}"
                         """.trimIndent(),
                     ),
+                    timeoutMinutes = 5,
                 )
             }
         }
@@ -533,6 +535,7 @@ fun getVerifyJobBody(
                 run(
                     name = task.step,
                     command = shell($$""""$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" "$GITHUB_WORKSPACE"/*.dmg $${task.name}"""),
+                    timeoutMinutes = task.timeoutMinutes,
                 )
             }
         }

@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.app.videoplayer.ui.guesture
 
 import androidx.compose.foundation.BorderStroke
@@ -27,9 +36,10 @@ import me.him188.ani.app.ui.foundation.theme.aniDarkColorTheme
 import me.him188.ani.app.ui.foundation.theme.aniLightColorTheme
 import me.him188.ani.app.ui.foundation.theme.slightlyWeaken
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
-import me.him188.ani.app.videoplayer.ui.VideoControllerState
-import me.him188.ani.app.videoplayer.ui.progress.MediaProgressSliderState
-import me.him188.ani.app.videoplayer.ui.state.PlayerState
+import me.him188.ani.app.videoplayer.ui.PlayerControllerState
+import me.him188.ani.app.videoplayer.ui.progress.PlayerProgressSliderState
+import org.openani.mediamp.MediampPlayer
+import org.openani.mediamp.features.PlaybackSpeed
 import kotlin.time.Duration.Companion.seconds
 
 @Composable
@@ -122,12 +132,10 @@ fun LockedScreenGestureHost(
 
 @Composable
 fun LockableVideoGestureHost(
-    controllerState: VideoControllerState,
+    controllerState: PlayerControllerState,
     seekerState: SwipeSeekerState,
-    progressSliderState: MediaProgressSliderState,
-    indicatorState: GestureIndicatorState,
-    fastSkipState: FastSkipState,
-    playerState: PlayerState,
+    progressSliderState: PlayerProgressSliderState,
+    playerState: MediampPlayer,
     locked: Boolean,
     enableSwipeToSeek: Boolean,
     audioController: LevelController,
@@ -137,6 +145,11 @@ fun LockableVideoGestureHost(
     onToggleFullscreen: () -> Unit = {},
     onExitFullscreen: () -> Unit = {},
     family: GestureFamily = LocalPlatform.current.mouseFamily,
+    gestureIndicatorState: GestureIndicatorState = rememberGestureIndicatorState(),
+    fastSkipState: FastSkipState = rememberPlayerFastSkipState(
+        playerState = playerState.features.getOrFail(PlaybackSpeed),
+        gestureIndicatorState,
+    ),
 ) {
     if (locked) {
         LockedScreenGestureHost(
@@ -145,16 +158,17 @@ fun LockableVideoGestureHost(
             modifier.testTag("LockedScreenGestureHost"),
         )
     } else {
-        VideoGestureHost(
+        PlayerGestureHost(
             controllerState,
             seekerState,
             progressSliderState,
-            indicatorState,
+            gestureIndicatorState,
             fastSkipState,
             playerState,
-            enableSwipeToSeek = enableSwipeToSeek,
-            audioController = audioController,
-            brightnessController = brightnessController,
+            enableSwipeToSeek,
+            audioController,
+            brightnessController,
+            modifier,
             onTogglePauseResume = onTogglePauseResume,
             onToggleFullscreen = onToggleFullscreen,
             onExitFullscreen = onExitFullscreen,

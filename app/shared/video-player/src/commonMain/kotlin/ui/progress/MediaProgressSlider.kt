@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.app.videoplayer.ui.progress
 
 import androidx.compose.animation.animateContentSize
@@ -52,16 +61,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import kotlinx.collections.immutable.ImmutableList
+import me.him188.ani.app.domain.media.player.ChunkState
+import me.him188.ani.app.domain.media.player.MediaCacheProgressInfo
 import me.him188.ani.app.ui.foundation.dialogs.PlatformPopupProperties
 import me.him188.ani.app.ui.foundation.effects.onPointerEventMultiplatform
 import me.him188.ani.app.ui.foundation.theme.slightlyWeaken
 import me.him188.ani.app.ui.foundation.theme.weaken
-import me.him188.ani.app.videoplayer.ui.state.Chapter
-import me.him188.ani.app.videoplayer.ui.state.Chunk
-import me.him188.ani.app.videoplayer.ui.state.ChunkState
-import me.him188.ani.app.videoplayer.ui.state.MediaCacheProgressState
-import me.him188.ani.app.videoplayer.ui.state.PlayerState
+import org.openani.mediamp.MediampPlayer
+import org.openani.mediamp.metadata.Chapter
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
 
@@ -77,10 +84,10 @@ const val TAG_PROGRESS_SLIDER = "ProgressSlider"
  * @see MediaProgressSlider
  */
 @Stable
-class MediaProgressSliderState(
+class PlayerProgressSliderState(
     currentPositionMillis: () -> Long,
     totalDurationMillis: () -> Long,
-    chapters: State<ImmutableList<Chapter>>,
+    chapters: State<List<Chapter>>,
     /**
      * 当用户正在拖动进度条时触发. 每有一个 change 都会调用.
      */
@@ -134,14 +141,14 @@ class MediaProgressSliderState(
 }
 
 /**
- * 便捷方法, 从 [PlayerState.currentPositionMillis] 创建  [MediaProgressSliderState]
+ * 便捷方法, 从 [MediampPlayer.currentPositionMillis] 创建  [PlayerProgressSliderState]
  */
 @Composable
 fun rememberMediaProgressSliderState(
-    playerState: PlayerState,
+    playerState: MediampPlayer,
     onPreview: (positionMillis: Long) -> Unit,
     onPreviewFinished: (positionMillis: Long) -> Unit,
-): MediaProgressSliderState {
+): PlayerProgressSliderState {
     val currentPosition by playerState.currentPositionMillis.collectAsStateWithLifecycle()
     val videoProperties by playerState.videoProperties.collectAsStateWithLifecycle()
     val totalDuration by remember {
@@ -154,7 +161,7 @@ fun rememberMediaProgressSliderState(
     val onPreviewFinishedUpdated by rememberUpdatedState(onPreviewFinished)
     val chapters = playerState.chapters.collectAsStateWithLifecycle()
     return remember {
-        MediaProgressSliderState(
+        PlayerProgressSliderState(
             { currentPosition },
             { totalDuration },
             chapters,
@@ -209,8 +216,8 @@ class MediaProgressSliderColors(
  */
 @Composable
 fun MediaProgressSlider(
-    state: MediaProgressSliderState,
-    cacheState: MediaCacheProgressState,
+    state: PlayerProgressSliderState,
+    cacheProgressInfoFlow: () -> MediaCacheProgressInfo?,
     colors: MediaProgressSliderColors = MediaProgressSliderDefaults.colors(),
     enabled: Boolean = true,
     showPreviewTimeTextOnThumb: Boolean = true,
@@ -244,13 +251,12 @@ fun MediaProgressSlider(
 
             Canvas(Modifier.matchParentSize()) {
                 // draw cached progress
-
-                cacheState.version // subscribe to state change
+                val snapshotCacheProgress = cacheProgressInfoFlow() ?: return@Canvas // ignore initial state
 
                 var currentX = 0f
 
                 // 连续的缓存区块连着画, 否则会因精度缺失导致不连续
-                forEachConsecutiveChunk(cacheState.chunks) { state, weight ->
+                forEachConsecutiveChunk(snapshotCacheProgress) { state, weight ->
                     val color = when (state) {
                         ChunkState.NONE -> Color.Unspecified
                         ChunkState.DOWNLOADING -> colors.downloadingColor
@@ -525,26 +531,34 @@ fun PreviewTimeText(
 }
 
 private inline fun forEachConsecutiveChunk(
-    chunks: List<Chunk>,
+    chunks: MediaCacheProgressInfo,
     action: (state: ChunkState, weight: Float) -> Unit
 ) {
     if (chunks.isEmpty()) return
 
-    var currentState: ChunkState = chunks[0].state
+    var currentState: ChunkState = chunks.chunkStates[0]
     var start = 0
     var end = 0
 
     for (index in 1..chunks.lastIndex) {
-        val chunk = chunks[index]
-        if (chunk.state != currentState) {
-            action(currentState, chunks.subList(start, end + 1).sumOf { it.weight })
-            currentState = chunk.state
+        val chunk = chunks.chunkStates[index]
+        if (chunk != currentState) {
+            action(currentState, chunks.sumWeightOfRange(start, end + 1))
+            currentState = chunk
             start = index
         }
         end = index
     }
     // Handle the final chunk
-    action(currentState, chunks.subList(start, end + 1).sumOf { it.weight })
+    action(currentState, chunks.sumWeightOfRange(start, end + 1))
+}
+
+private fun MediaCacheProgressInfo.sumWeightOfRange(start: Int, endExclusive: Int): Float {
+    var sum: Float = 0.toFloat()
+    for (i in start until endExclusive) {
+        sum += chunkWeights[i]
+    }
+    return sum
 }
 
 @OverloadResolutionByLambdaReturnType

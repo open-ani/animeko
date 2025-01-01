@@ -14,10 +14,9 @@ import kotlinx.io.IOException
 import me.him188.ani.app.torrent.api.pieces.Piece
 import me.him188.ani.app.torrent.api.pieces.PieceList
 import me.him188.ani.app.torrent.api.pieces.minOf
-import me.him188.ani.utils.io.BufferedInput.Companion.DEFAULT_BUFFER_PER_DIRECTION
-import me.him188.ani.utils.io.SeekableInput
 import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.io.length
+import org.openani.mediamp.io.SeekableInput
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 
@@ -51,3 +50,5 @@ class TorrentInputParameters
     val bufferSize: Int,
     val size: Long
 )
+
+const val DEFAULT_BUFFER_PER_DIRECTION = 8192 * 8

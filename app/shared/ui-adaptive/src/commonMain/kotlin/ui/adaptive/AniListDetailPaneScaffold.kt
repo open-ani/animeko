@@ -9,9 +9,7 @@
 
 package me.him188.ani.app.ui.adaptive
 
-import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.SharedTransitionLayout
-import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
@@ -111,6 +109,7 @@ fun <T> AniListDetailPaneScaffold(
         navigator.navigateBack()
     }
     val layoutParametersState by rememberUpdatedState(layoutParameters)
+    val contentWindowInsetsState by rememberUpdatedState(contentWindowInsets)
 
     SharedTransitionLayout {
         ListDetailPaneScaffold(
@@ -130,8 +129,8 @@ fun <T> AniListDetailPaneScaffold(
 
                                     override val paneContentWindowInsets: WindowInsets
                                         get() = when {
-                                            isSinglePane -> contentWindowInsets
-                                            else -> contentWindowInsets.only(WindowInsetsSides.Start + WindowInsetsSides.Vertical)
+                                            isSinglePane -> contentWindowInsetsState
+                                            else -> contentWindowInsetsState.only(WindowInsetsSides.Start + WindowInsetsSides.Vertical)
                                         }
 
                                     override fun Modifier.paneContentPadding(
@@ -197,8 +196,8 @@ fun <T> AniListDetailPaneScaffold(
 
                                     override val paneContentWindowInsets: WindowInsets
                                         get() = when {
-                                            isSinglePane -> contentWindowInsets
-                                            else -> contentWindowInsets.only(WindowInsetsSides.End + WindowInsetsSides.Vertical)
+                                            isSinglePane -> contentWindowInsetsState
+                                            else -> contentWindowInsetsState.only(WindowInsetsSides.End + WindowInsetsSides.Vertical)
                                         }
 
                                     override fun Modifier.paneContentPadding(

@@ -72,6 +72,18 @@ class LabelFirstRawTitleParser : RawTitleParser() {
                 }
             }
 
+            if (builder.subtitleLanguages.isEmpty()) {
+                when {
+                    "字幕组" in text -> {
+                        // 如果标题只有 "字幕组", 则认为是简日内嵌.
+                        builder.subtitleLanguages.add(SubtitleLanguage.ChineseSimplified)
+                        if (builder.subtitleKind == null) {
+                            builder.subtitleKind = SubtitleKind.EMBEDDED
+                        }
+                    }
+                }
+            }
+
             // 判断字幕类型
             if (builder.subtitleKind == null) {
                 builder.subtitleKind = when {

@@ -33,6 +33,11 @@ kotlin {
         implementation(libs.filekit.core)
         implementation(libs.filekit.compose)
     }
+    sourceSets.getByName("jvmTest").dependencies {
+        implementation(libs.slf4j.simple)
+        implementation(libs.ktor.server.core)
+        implementation(libs.ktor.server.test.host)
+    }
 }
 
 android {

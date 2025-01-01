@@ -455,6 +455,7 @@ jobs:
         path: '${{ github.workspace }}/ci-helper/verify'
     - id: 'step-3'
       name: 'Check that Anitorrent can be loaded'
+      timeout-minutes: 5
       shell: 'powershell'
       run: 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${{ github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "${{ github.workspace }}\ci-helper\verify" "anitorrent-load-test"'
   verify_github-windows-2022:
@@ -484,6 +485,7 @@ jobs:
         path: '${{ github.workspace }}/ci-helper/verify'
     - id: 'step-3'
       name: 'Check that Anitorrent can be loaded'
+      timeout-minutes: 5
       shell: 'powershell'
       run: 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${{ github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "${{ github.workspace }}\ci-helper\verify" "anitorrent-load-test"'
   verify_self-hosted-windows-10:
@@ -508,6 +510,7 @@ jobs:
         path: '${{ github.workspace }}/ci-helper/verify'
     - id: 'step-2'
       name: 'Check that Anitorrent can be loaded'
+      timeout-minutes: 5
       shell: 'powershell'
       run: 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${{ github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "${{ github.workspace }}\ci-helper\verify" "anitorrent-load-test"'
   verify_self-hosted-macos-15:
@@ -531,6 +534,7 @@ jobs:
         name: 'ani-macos-dmg-aarch64'
     - id: 'step-2'
       name: 'Check that Anitorrent can be loaded'
+      timeout-minutes: 5
       run: '"$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" "$GITHUB_WORKSPACE"/*.dmg anitorrent-load-test'
   verify_github-macos-14:
     name: 'Verify (macOS 14 AArch64 (GitHub))'
@@ -559,6 +563,7 @@ jobs:
         name: 'ani-macos-dmg-aarch64'
     - id: 'step-3'
       name: 'Check that Anitorrent can be loaded'
+      timeout-minutes: 5
       run: '"$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" "$GITHUB_WORKSPACE"/*.dmg anitorrent-load-test'
   verify_github-macos-15:
     name: 'Verify (macOS 15 AArch64 (GitHub))'
@@ -587,4 +592,5 @@ jobs:
         name: 'ani-macos-dmg-aarch64'
     - id: 'step-3'
       name: 'Check that Anitorrent can be loaded'
+      timeout-minutes: 5
       run: '"$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" "$GITHUB_WORKSPACE"/*.dmg anitorrent-load-test'

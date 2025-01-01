@@ -86,6 +86,12 @@ interface MediaFetchSession {
      * 因此该 flow 永远不会完结.
      */
     val hasCompleted: Flow<CompletedConditions>
+
+    fun restartAll() {
+        mediaSourceResults.forEach {
+            it.restart()
+        }
+    }
 }
 
 /**

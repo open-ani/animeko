@@ -777,11 +777,15 @@ class DefaultMediaSelector(
         }
     }
 
+    @OptIn(UnsafeOriginalMediaAccess::class)
     override suspend fun trySelectCached(): Media? {
         if (selected.value != null) return null
-        val candidates = preferredCandidatesMedia.first()
-        val cached = candidates.fastFirstOrNull { isLocalCache(it) } ?: return null
-        return selectDefault(cached)
+        // 不管这个 media 能不能播放, 只要缓存了就行. 所以我们直接使用 `MaybeExcludedMedia.original`
+
+        // 尽量选择满足用户偏好的缓存, 否则再随便挑一个缓存.
+        val cached = preferredCandidates.first().firstOrNull { isLocalCache(it.original) }
+            ?: filteredCandidates.first().firstOrNull { isLocalCache(it.original) } ?: return null
+        return selectDefault(cached.original)
     }
 
     override suspend fun removePreferencesUntilFirstCandidate() {

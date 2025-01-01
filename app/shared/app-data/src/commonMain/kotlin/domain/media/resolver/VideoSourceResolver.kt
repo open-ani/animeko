@@ -10,14 +10,14 @@
 package me.him188.ani.app.domain.media.resolver
 
 import androidx.compose.runtime.Composable
-import me.him188.ani.app.videoplayer.data.VideoSource
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.Media
+import org.openani.mediamp.source.MediaSource
 import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * 根据 [EpisodeMetadata] 中的集数信息和 [Media.location] 中的下载方式,
- * 解析一个 [Media] 为可以播放的 [VideoSource].
+ * 解析一个 [Media] 为可以播放的 [MediaSource].
  *
  * 实际操作可涉及创建种子下载任务, 寻找文件等.
  *
@@ -51,7 +51,7 @@ interface VideoSourceResolver {
      * @throws Exception 所有抛出的其他异常都属于 bug
      */
     @Throws(VideoSourceResolutionException::class, CancellationException::class)
-    suspend fun resolve(media: Media, episode: EpisodeMetadata): VideoSource<*>
+    suspend fun resolve(media: Media, episode: EpisodeMetadata): MediaSource<*>
 
     companion object {
         fun from(vararg resolvers: VideoSourceResolver): VideoSourceResolver {
@@ -127,7 +127,7 @@ private class ChainedVideoSourceResolver(
         }
     }
 
-    override suspend fun resolve(media: Media, episode: EpisodeMetadata): VideoSource<*> {
+    override suspend fun resolve(media: Media, episode: EpisodeMetadata): MediaSource<*> {
         return resolvers.firstOrNull { it.supports(media) }?.resolve(media, episode)
             ?: throw UnsupportedMediaException(media)
     }

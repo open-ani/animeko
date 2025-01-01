@@ -61,6 +61,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.flow.Flow
 import me.him188.ani.app.data.models.episode.displayName
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.domain.session.AuthState
@@ -126,11 +127,12 @@ fun EpisodeDetails(
     episodeCarouselState: EpisodeCarouselState,
     editableSubjectCollectionTypeState: EditableSubjectCollectionTypeState,
     danmakuStatistics: DanmakuStatistics,
-    videoStatistics: VideoStatistics,
+    videoStatisticsFlow: Flow<VideoStatistics>,
     mediaSelectorState: MediaSelectorState,
     mediaSourceResultsPresentation: MediaSourceResultsPresentation,
     authState: AuthState,
     onSwitchEpisode: (episodeId: Int) -> Unit,
+    onRefreshMediaSources: () -> Unit,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
 ) {
@@ -176,6 +178,8 @@ fun EpisodeDetails(
     }
 
     EditableSubjectCollectionTypeDialogsHost(editableSubjectCollectionTypeState)
+
+    val videoStatistics by videoStatisticsFlow.collectAsStateWithLifecycle(VideoStatistics.Placeholder)
 
     EpisodeDetailsScaffold(
         subjectTitle = { Text(state.subjectTitle) },
@@ -293,6 +297,7 @@ fun EpisodeDetails(
                                         mediaSelectorState,
                                         mediaSourceResultsPresentation,
                                         onDismissRequest = { showMediaSelector = false },
+                                        onRefresh = onRefreshMediaSources,
                                         onSelected = { showMediaSelector = false },
                                         stickyHeaderBackgroundColor = BottomSheetDefaults.ContainerColor,
                                     )

@@ -90,7 +90,6 @@ import me.him188.ani.app.ui.settings.tabs.media.source.MediaSourceSubscriptionGr
 import me.him188.ani.app.ui.settings.tabs.network.DanmakuGroup
 import me.him188.ani.app.ui.settings.tabs.network.GlobalProxyGroup
 import me.him188.ani.utils.platform.hasScrollingBug
-import me.him188.ani.utils.platform.isMobile
 
 /**
  * @see renderPreferenceTab 查看名称
@@ -233,10 +232,10 @@ internal fun SettingsPageLayout(
         }
     }
 
-    val topAppBarScrollBehavior = if (LocalPlatform.current.isMobile()) {
-        TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-    } else {
+    val topAppBarScrollBehavior = if (LocalPlatform.current.hasScrollingBug()) {
         null
+    } else {
+        TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     }
 
     val listPaneScrollState = rememberScrollState()

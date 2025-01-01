@@ -49,12 +49,11 @@ import me.him188.ani.app.torrent.api.pieces.last
 import me.him188.ani.app.torrent.api.pieces.maxBy
 import me.him188.ani.app.torrent.api.pieces.minBy
 import me.him188.ani.app.torrent.api.pieces.sumOf
+import me.him188.ani.app.torrent.io.DEFAULT_BUFFER_PER_DIRECTION
 import me.him188.ani.app.torrent.io.RawTorrentInputConstructorParameter
 import me.him188.ani.app.torrent.io.TorrentInput
 import me.him188.ani.app.torrent.io.TorrentInputParameters
 import me.him188.ani.utils.coroutines.IO_
-import me.him188.ani.utils.io.BufferedInput.Companion.DEFAULT_BUFFER_PER_DIRECTION
-import me.him188.ani.utils.io.SeekableInput
 import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.io.absolutePath
 import me.him188.ani.utils.io.deleteRecursively
@@ -65,6 +64,7 @@ import me.him188.ani.utils.logging.thisLogger
 import me.him188.ani.utils.logging.warn
 import me.him188.ani.utils.platform.annotations.TestOnly
 import me.him188.ani.utils.platform.currentTimeMillis
+import org.openani.mediamp.io.SeekableInput
 import kotlin.concurrent.Volatile
 import kotlin.coroutines.CoroutineContext
 import kotlin.jvm.JvmField

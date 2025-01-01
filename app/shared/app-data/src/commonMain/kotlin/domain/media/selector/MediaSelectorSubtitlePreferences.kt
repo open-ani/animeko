@@ -10,7 +10,6 @@
 package me.him188.ani.app.domain.media.selector
 
 import me.him188.ani.app.domain.media.selector.SubtitleKindPreference.HIDE
-import me.him188.ani.app.domain.media.selector.SubtitleKindPreference.LOW_PRIORITY
 import me.him188.ani.app.domain.media.selector.SubtitleKindPreference.NORMAL
 import me.him188.ani.datasources.api.SubtitleKind
 import me.him188.ani.utils.platform.Platform
@@ -73,7 +72,7 @@ value class MediaSelectorSubtitlePreferences(
                 is Platform.Android -> ImmutableEnumMap<SubtitleKind, _> {
                     when (it) {
                         SubtitleKind.EMBEDDED -> NORMAL
-                        SubtitleKind.CLOSED -> LOW_PRIORITY
+                        SubtitleKind.CLOSED -> HIDE
                         SubtitleKind.EXTERNAL_PROVIDED -> NORMAL
                         SubtitleKind.EXTERNAL_DISCOVER -> HIDE
                         SubtitleKind.CLOSED_OR_EXTERNAL_DISCOVER -> NORMAL

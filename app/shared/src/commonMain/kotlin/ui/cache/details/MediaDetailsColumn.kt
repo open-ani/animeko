@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.app.ui.cache.details
 
 import androidx.compose.foundation.layout.size
@@ -30,6 +39,7 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import io.ktor.http.Url
 import me.him188.ani.app.tools.formatDateTime
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.media.MediaDetailsRenderer
@@ -53,12 +63,12 @@ fun MediaDetailsLazyGrid(
     val clipboard = LocalClipboardManager.current
 
 
+    val toaster = LocalToaster.current
     LazyVerticalGrid(
         GridCells.Adaptive(minSize = 300.dp),
         modifier,
     ) {
         val copyContent = @Composable { value: () -> String ->
-            val toaster = LocalToaster.current
             IconButton(
                 {
                     clipboard.setText(AnnotatedString(value()))
@@ -69,7 +79,16 @@ fun MediaDetailsLazyGrid(
             }
         }
         val browseContent = @Composable { url: String ->
-            IconButton({ browser.openUri(url) }) {
+            IconButton(
+                {
+                    if (runCatching { Url(url) }.isSuccess) {
+                        browser.openUri(url)
+                    } else {
+                        clipboard.setText(AnnotatedString(url))
+                        toaster.toast("已复制")
+                    }
+                },
+            ) {
                 Icon(Icons.Rounded.ArrowOutward, contentDescription = "打开链接")
             }
         }

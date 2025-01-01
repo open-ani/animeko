@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.repository.RepositoryRateLimitedException
+import me.him188.ani.app.domain.mediasource.MediaListFilters
 import me.him188.ani.datasources.bangumi.BangumiRateLimitedException
 import me.him188.ani.datasources.bangumi.BangumiSearchSubjectNewApi
 import me.him188.ani.datasources.bangumi.client.BangumiSearchApi
@@ -47,10 +48,6 @@ class BangumiSubjectSearchService(
                 }
             },
         )
-    }
-
-    private fun sanitizeKeyword(keyword: String): String {
-        return keyword.replace(Regex("[！!]")) { " " }.trim()
     }
 
     suspend fun searchSubjectNames(
@@ -107,6 +104,20 @@ class BangumiSubjectSearchService(
                 )
             } catch (e: BangumiRateLimitedException) {
                 throw RepositoryRateLimitedException(cause = e)
+            }
+        }
+    }
+
+    companion object {
+        fun sanitizeKeyword(keyword: String): String {
+            return buildString(keyword.length) {
+                for (c in keyword) {
+                    if (MediaListFilters.charsToDeleteForSearch.contains(c.code)) {
+                        append(' ')
+                    } else {
+                        append(c)
+                    }
+                }
             }
         }
     }

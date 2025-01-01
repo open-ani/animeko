@@ -20,11 +20,11 @@ import me.him188.ani.app.torrent.api.pieces.containsAbsolutePieceIndex
 import me.him188.ani.app.torrent.api.pieces.last
 import me.him188.ani.app.torrent.api.pieces.maxOf
 import me.him188.ani.app.torrent.api.pieces.minOf
-import me.him188.ani.utils.io.BufferedInput
-import me.him188.ani.utils.io.SeekableInput
 import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.io.toFile
 import me.him188.ani.utils.platform.annotations.Range
+import org.openani.mediamp.io.BufferedSeekableInput
+import org.openani.mediamp.io.SeekableInput
 import java.io.RandomAccessFile
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
@@ -87,7 +87,7 @@ class TorrentInput(
      * 当 [SeekableInput] 需要等待 piece 完成时, 会[切换][withContext]到的 [CoroutineContext].
      */
     private val awaitCoroutineContext: CoroutineContext = EmptyCoroutineContext,
-) : BufferedInput(bufferSize) {
+) : BufferedSeekableInput(bufferSize) {
 
     // exclusive
     private val logicalLastOffset = logicalStartOffset + size - 1

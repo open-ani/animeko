@@ -28,7 +28,7 @@ data class AnitorrentConfig(
     /**
      * 种子分享率限制.
      */
-    val shareRatioLimit: Double = 1.1,
+    val shareRatioLimit: Float = 2.0f, // libtorrent default. See https://libtorrent.org/reference-Settings.html#share-ratio-limit
     /**
      * 在计费网络限制上传速度为 10 KB/s
      * * Android 移动流量
@@ -38,6 +38,7 @@ data class AnitorrentConfig(
     @Transient private val _placeholder: Int = 0,
 ) {
     companion object {
+        const val SHARE_RATIO_LIMIT_INFINITE = 10f
         val DEFAULT_UPLOAD_RATE_LIMIT = 2.megaBytes
 
         val Default = AnitorrentConfig()

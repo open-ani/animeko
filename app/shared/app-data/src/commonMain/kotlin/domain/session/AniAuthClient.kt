@@ -9,18 +9,14 @@
 
 package me.him188.ani.app.domain.session
 
-import io.ktor.client.HttpClient
 import io.ktor.client.plugins.ClientRequestException
-import io.ktor.client.plugins.HttpRequestRetry
 import io.ktor.client.plugins.HttpSend
-import io.ktor.client.plugins.HttpTimeout
-import io.ktor.client.plugins.UserAgent
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.plugin
 import io.ktor.http.HttpStatusCode
-import io.ktor.serialization.kotlinx.json.json
 import io.ktor.util.reflect.typeInfo
-import kotlinx.serialization.json.Json
+import kotlinx.coroutines.CoroutineName
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.runApiRequest
 import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.platform.getAniUserAgent
@@ -30,27 +26,24 @@ import me.him188.ani.client.apis.SubjectRelationsAniApi
 import me.him188.ani.client.apis.TrendsAniApi
 import me.him188.ani.client.models.AniBangumiUserToken
 import me.him188.ani.client.models.AniRefreshBangumiTokenRequest
+import me.him188.ani.utils.coroutines.childScope
+import me.him188.ani.utils.ktor.ClientProxyConfig
+import me.him188.ani.utils.ktor.createDefaultHttpClient
 import me.him188.ani.utils.ktor.registerLogging
+import me.him188.ani.utils.ktor.setProxy
+import me.him188.ani.utils.ktor.userAgent
+import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
+import kotlin.coroutines.CoroutineContext
 
-class AniAuthClient : AutoCloseable {
+class AniAuthClient(
+    private val proxy: Flow<ClientProxyConfig?>,
+    parentCoroutineContext: CoroutineContext,
+) : AutoCloseable {
+    private val scope = parentCoroutineContext.childScope(CoroutineName("AniAuthClient"))
     private val logger = logger<AniAuthClient>()
-    private val httpClient = HttpClient {
-        install(UserAgent) {
-            agent = getAniUserAgent(currentAniBuildConfig.versionName)
-        }
-        install(HttpRequestRetry) {
-            maxRetries = 3
-            delayMillis { 2000 }
-        }
-        install(HttpTimeout)
-        install(ContentNegotiation) {
-            json(
-                Json {
-                    ignoreUnknownKeys = true
-                },
-            )
-        }
+    private val httpClient = createDefaultHttpClient {
+        userAgent(getAniUserAgent(currentAniBuildConfig.versionName))
         expectSuccess = true
     }.apply {
         registerLogging(logger)
@@ -60,6 +53,15 @@ class AniAuthClient : AutoCloseable {
                 execute(request)
             } else {
                 originalCall
+            }
+        }
+    }
+
+    init {
+        scope.launch {
+            proxy.collect {
+                logger.info { "AniAuthClient using new proxy config: $it" }
+                httpClient.engineConfig.setProxy(it)
             }
         }
     }

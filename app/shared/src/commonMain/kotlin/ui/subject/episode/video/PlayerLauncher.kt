@@ -12,18 +12,27 @@ package me.him188.ani.app.ui.subject.episode.video
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.shareIn
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transformLatest
 import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.episode.displayName
+import me.him188.ani.app.domain.media.player.MediaCacheProgressInfo
+import me.him188.ani.app.domain.media.player.TorrentMediaCacheProgressProvider
+import me.him188.ani.app.domain.media.resolver.AniMediaSourceOpenException
 import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
+import me.him188.ani.app.domain.media.resolver.OpenFailures
 import me.him188.ani.app.domain.media.resolver.ResolutionFailures
 import me.him188.ani.app.domain.media.resolver.TorrentVideoSource
 import me.him188.ani.app.domain.media.resolver.UnsupportedMediaException
@@ -35,28 +44,27 @@ import me.him188.ani.app.ui.foundation.HasBackgroundScope
 import me.him188.ani.app.ui.subject.episode.mediaFetch.MediaSourceInfoProvider
 import me.him188.ani.app.ui.subject.episode.statistics.VideoLoadingState
 import me.him188.ani.app.ui.subject.episode.statistics.VideoStatistics
-import me.him188.ani.app.videoplayer.data.OpenFailures
-import me.him188.ani.app.videoplayer.data.VideoSource
-import me.him188.ani.app.videoplayer.data.VideoSourceOpenException
-import me.him188.ani.app.videoplayer.ui.state.PlayerState
+import me.him188.ani.app.videoplayer.torrent.TorrentVideoData
+import me.him188.ani.app.videoplayer.torrent.filenameOrNull
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
+import org.openani.mediamp.MediampPlayer
 import kotlin.coroutines.CoroutineContext
 
 /**
  * 将 [MediaSelector] 和 [videoSourceResolver] 结合, 为 [playerState] 提供视频源.
- * 还会提供 [videoStatistics], 可以获取当前的加载状态.
+ * 还会提供 [videoStatisticsFlow], 可以获取当前的加载状态.
  *
  * 这实际上就是启动了一个一直运行的协程:
  * 当 [MediaSelector] 选择到资源的时候, 使用 [videoSourceResolver] 解析出 [VideoSource],
- * 然后把它设置给 [playerState] (通过 [PlayerState.setVideoSource]).
+ * 然后把它设置给 [playerState] (通过 [MediampPlayer.setVideoSource]).
  */
 class PlayerLauncher(
     mediaSelector: MediaSelector,
     private val videoSourceResolver: VideoSourceResolver,
-    private val playerState: PlayerState,
+    private val playerState: MediampPlayer,
     private val mediaSourceInfoProvider: MediaSourceInfoProvider,
     episodeInfo: Flow<EpisodeInfo?>,
     mediaSourceLoading: Flow<Boolean>,
@@ -70,20 +78,37 @@ class PlayerLauncher(
         MutableStateFlow(VideoLoadingState.Initial)
     val videoLoadingState: StateFlow<VideoLoadingState> get() = _videoLoadingStateFlow.asStateFlow()
 
-    val videoStatistics: VideoStatistics = VideoStatistics(
-        playingMedia = mediaSelector.selected.produceState(),
-        playingMediaSourceInfo = mediaSelector.selected.flatMapLatest {
+    val videoStatisticsFlow: StateFlow<VideoStatistics> = combine(
+        mediaSelector.selected,
+        mediaSelector.selected.flatMapLatest {
             mediaSourceInfoProvider.getSourceInfoFlow(it?.mediaSourceId ?: return@flatMapLatest emptyFlow())
-        }.produceState(null),
-        playingFilename = playerState.videoData.map { it?.filename }.produceState(null),
-        mediaSourceLoading = mediaSourceLoading.produceState(true),
-        videoLoadingState = _videoLoadingStateFlow.produceState(VideoLoadingState.Initial),
+        },
+        playerState.mediaData.map { it?.filenameOrNull },
+        mediaSourceLoading,
+        _videoLoadingStateFlow,
+        ::VideoStatistics,
+    ).stateIn(
+        backgroundScope,
+        SharingStarted.WhileSubscribed(),
+        VideoStatistics.Placeholder,
     )
+
+    val cacheProgressProvider = playerState.mediaData
+        .flatMapLatest { data ->
+            when (data) {
+                is TorrentVideoData -> TorrentMediaCacheProgressProvider(data.pieces).flow
+                else -> flowOf(MediaCacheProgressInfo.Empty)
+            }
+        }.shareIn(
+            backgroundScope,
+            SharingStarted.WhileSubscribed(),
+            replay = 1,
+        )
 
     init {
         mediaSelector.selected.transformLatest { media ->
             _videoLoadingStateFlow.value = VideoLoadingState.Initial // 避免一直显示已取消 (.Cancelled)
-            playerState.clearVideoSource() // 只要 media 换了就清空
+            playerState.stop() // 只要 media 换了就清空
             if (media == null) {
                 return@transformLatest
             }
@@ -109,8 +134,8 @@ class PlayerLauncher(
             } catch (e: UnsupportedMediaException) {
                 logger.error { IllegalStateException("Failed to resolve video source, unsupported media", e) }
                 _videoLoadingStateFlow.value = VideoLoadingState.UnsupportedMedia
-                playerState.clearVideoSource()
-            } catch (e: VideoSourceOpenException) { // during playerState.setVideoSource
+                playerState.stop()
+            } catch (e: AniMediaSourceOpenException) { // during playerState.setVideoSource
                 logger.error {
                     IllegalStateException(
                         "Failed to resolve video source due to VideoSourceOpenException",
@@ -122,7 +147,7 @@ class PlayerLauncher(
                     OpenFailures.UNSUPPORTED_VIDEO_SOURCE -> VideoLoadingState.UnsupportedMedia
                     OpenFailures.ENGINE_DISABLED -> VideoLoadingState.UnsupportedMedia
                 }
-                playerState.clearVideoSource()
+                playerState.stop()
             } catch (e: VideoSourceResolutionException) { // during videoSourceResolver.resolve
                 logger.error {
                     IllegalStateException(
@@ -136,14 +161,14 @@ class PlayerLauncher(
                     ResolutionFailures.NETWORK_ERROR -> VideoLoadingState.NetworkError
                     ResolutionFailures.NO_MATCHING_RESOURCE -> VideoLoadingState.NoMatchingFile
                 }
-                playerState.clearVideoSource()
+                playerState.stop()
             } catch (e: CancellationException) { // 切换数据源
                 _videoLoadingStateFlow.value = VideoLoadingState.Cancelled
                 throw e
             } catch (e: Throwable) {
                 logger.error { IllegalStateException("Failed to resolve video source with unknown error", e) }
                 _videoLoadingStateFlow.value = VideoLoadingState.UnknownError(e)
-                playerState.clearVideoSource()
+                playerState.stop()
                 emit(null)
             }
         }.launchIn(backgroundScope)

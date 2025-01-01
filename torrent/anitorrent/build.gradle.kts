@@ -34,8 +34,8 @@ kotlin {
         val triple = getAnitorrentTriple()
         if (triple != null) {
             api(
-                anitorrentLibs.versions.anitorrent.map { anitorrentVersion ->
-                    "org.openani.anitorrent:anitorrent-native-desktop:$anitorrentVersion:${triple}"
+                anitorrentLibs.anitorrent.native.desktop.asProvider().map { notation ->
+                    "$notation:${triple}"
                 },
             )
         }

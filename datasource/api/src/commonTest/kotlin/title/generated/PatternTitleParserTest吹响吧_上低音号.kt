@@ -1359,9 +1359,9 @@ public class PatternTitleParserTest吹响吧_上低音号 : PatternBasedTitlePar
     val r =
         parse("[千夏字幕组&VCB-Studio] Gekijouban Hibike! Euphonium Chikai no Finale / 剧场版 吹响吧！上低音号～誓言的终章～ 10-bit 1080p HEVC BDRip [MOVIE]")
     assertEquals("S?", r.episodeRange.toString())
-    assertEquals("", r.subtitleLanguages.sortedBy { it.id }.joinToString { it.id })
+    assertEquals("CHS", r.subtitleLanguages.sortedBy { it.id }.joinToString { it.id })
     assertEquals("1080P", r.resolution.toString())
-    assertEquals(null, r.subtitleKind)
+    assertEquals(SubtitleKind.EMBEDDED, r.subtitleKind)
   }
 
   @Test

@@ -32,6 +32,7 @@ fun EpisodePlayMediaSelector(
     mediaSelector: MediaSelectorState,
     sourceResults: MediaSourceResultsPresentation,
     onDismissRequest: () -> Unit,
+    onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
     stickyHeaderBackgroundColor: Color = Color.Unspecified,
     onSelected: (Media) -> Unit = {},
@@ -39,7 +40,10 @@ fun EpisodePlayMediaSelector(
     MediaSelectorView(
         mediaSelector,
         sourceResults = {
-            MediaSourceResultsView(sourceResults, mediaSelector)
+            MediaSourceResultsView(
+                sourceResults, mediaSelector,
+                onRefresh = onRefresh,
+            )
         },
         modifier.padding(vertical = 12.dp, horizontal = 16.dp)
             .fillMaxWidth()

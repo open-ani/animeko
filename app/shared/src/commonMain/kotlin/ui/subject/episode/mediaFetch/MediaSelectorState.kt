@@ -71,7 +71,14 @@ class MediaPreferenceItemState<T : Any>(
         val finalSelected: T?,
         val isWorking: Boolean,
         val isPlaceholder: Boolean = false,
-    )
+    ) {
+        companion object {
+            private val Placeholder = Presentation(emptyList(), null, isWorking = false, isPlaceholder = true)
+
+            @Suppress("UNCHECKED_CAST")
+            fun <T : Any> placeholder(): Presentation<T> = Placeholder as Presentation<T>
+        }
+    }
 
     private val tasker = MonoTasker(backgroundScope)
 
@@ -123,29 +130,11 @@ class MediaSelectorState(
         val groupedMediaListIncluded: List<MediaGroup>,
         val groupedMediaListExcluded: List<MediaGroup>,
         val selected: Media?,
+        val alliance: MediaPreferenceItemState.Presentation<String>,
+        val resolution: MediaPreferenceItemState.Presentation<String>,
+        val subtitleLanguageId: MediaPreferenceItemState.Presentation<String>,
+        val mediaSource: MediaPreferenceItemState.Presentation<String>,
         val isPlaceholder: Boolean = false,
-    )
-
-    val presentationFlow = combine(
-        mediaSelector.filteredCandidates,
-        mediaSelector.preferredCandidates,
-        mediaSelector.selected,
-    ) { filteredCandidatesMedia, preferredCandidates, selected ->
-        val (groupsExcluded, groupsIncluded) = MediaGrouper.buildGroups(preferredCandidates).partition { it.isExcluded }
-        Presentation(
-            filteredCandidatesMedia,
-            preferredCandidates.mapNotNull { it.result },
-            groupsIncluded,
-            groupsExcluded,
-            selected,
-        )
-    }.stateIn(
-        backgroundScope,
-        started = SharingStarted.WhileSubscribed(),
-        Presentation(
-            emptyList(), emptyList(), emptyList(), emptyList(), null,
-            isPlaceholder = true,
-        ),
     )
 
     private val groupStates: SnapshotStateMap<MediaGroupId, MediaGroupState> = SnapshotStateMap()
@@ -164,6 +153,37 @@ class MediaSelectorState(
         MediaPreferenceItemState(mediaSelector.subtitleLanguageId, backgroundScope)
     val mediaSource: MediaPreferenceItemState<String> =
         MediaPreferenceItemState(mediaSelector.mediaSourceId, backgroundScope)
+
+    val presentationFlow = me.him188.ani.utils.coroutines.flows.combine(
+        mediaSelector.filteredCandidates,
+        mediaSelector.preferredCandidates,
+        mediaSelector.selected,
+        alliance.presentationFlow,
+        resolution.presentationFlow,
+        subtitleLanguageId.presentationFlow,
+        mediaSource.presentationFlow,
+    ) { filteredCandidatesMedia, preferredCandidates, selected, alliance, resolution, subtitleLanguageId, mediaSource ->
+        val (groupsExcluded, groupsIncluded) = MediaGrouper.buildGroups(preferredCandidates).partition { it.isExcluded }
+        Presentation(
+            filteredCandidatesMedia,
+            preferredCandidates.mapNotNull { it.result },
+            groupsIncluded,
+            groupsExcluded,
+            selected,
+            alliance, resolution, subtitleLanguageId, mediaSource,
+        )
+    }.stateIn(
+        backgroundScope,
+        started = SharingStarted.WhileSubscribed(),
+        Presentation(
+            emptyList(), emptyList(), emptyList(), emptyList(), null,
+            alliance = MediaPreferenceItemState.Presentation.placeholder(),
+            resolution = MediaPreferenceItemState.Presentation.placeholder(),
+            subtitleLanguageId = MediaPreferenceItemState.Presentation.placeholder(),
+            mediaSource = MediaPreferenceItemState.Presentation.placeholder(),
+            isPlaceholder = true,
+        ),
+    )
 
     /**
      * @see MediaSelector.select

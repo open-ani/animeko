@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.app.ui.subject.episode.video.settings
 
 import androidx.compose.foundation.clickable
@@ -27,18 +36,12 @@ import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
 import me.him188.ani.app.ui.foundation.theme.aniDarkColorTheme
 
-object EpisodeVideoSettingsSideSheetDefaults {
-    val containerColor
-        @Composable
-        get() = MaterialTheme.colorScheme.surfaceContainerHigh
-}
-
 @Composable
-fun EpisodeVideoSettingsSideSheet(
+fun SideSheetLayout(
+    title: @Composable () -> Unit,
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
-    containerColor: Color = EpisodeVideoSettingsSideSheetDefaults.containerColor,
-    title: @Composable () -> Unit = {},
+    containerColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
     navigationButton: @Composable () -> Unit = { },
     closeButton: @Composable () -> Unit = {},
     content: @Composable () -> Unit,
@@ -69,7 +72,7 @@ fun EpisodeVideoSettingsSideSheet(
                     )
                     .fillMaxHeight()
                     .widthIn(min = 300.dp, max = 400.dp)
-                    .width((maxWidth * 0.28f)),
+                    .width((this.maxWidth * 0.28f)),
                 color = containerColor,
             ) {
                 Column {
