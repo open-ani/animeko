@@ -14,11 +14,9 @@ import io.ktor.client.plugins.ClientRequestException
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import me.him188.ani.app.data.models.ApiResponse
 import me.him188.ani.app.data.models.UserInfo
 import me.him188.ani.app.data.models.episode.EpisodeComment
 import me.him188.ani.app.data.models.episode.toEpisodeComment
-import me.him188.ani.app.data.models.runApiRequest
 import me.him188.ani.app.data.models.subject.SubjectReview
 import me.him188.ani.datasources.api.paging.Paged
 import me.him188.ani.datasources.api.paging.processPagedResponse
@@ -46,7 +44,7 @@ sealed interface BangumiCommentService {
         content: String,
         cfTurnstileResponse: String,
         replyToCommentId: Int? = null
-    ): ApiResponse<Unit>
+    )
 }
 
 class BangumiBangumiCommentServiceImpl(
@@ -75,18 +73,16 @@ class BangumiBangumiCommentServiceImpl(
         content: String,
         cfTurnstileResponse: String,
         replyToCommentId: Int?
-    ): ApiResponse<Unit> {
-        return runApiRequest {
-            withContext(ioDispatcher) {
-                client.getNextApi().createSubjectEpComment(
-                    episodeId,
-                    BangumiNextCreateSubjectEpCommentRequest(
-                        cfTurnstileResponse,
-                        content,
-                        replyToCommentId,
-                    ),
-                )
-            }
+    ) {
+        withContext(ioDispatcher) {
+            client.getNextApi().createSubjectEpComment(
+                episodeId,
+                BangumiNextCreateSubjectEpCommentRequest(
+                    cfTurnstileResponse,
+                    content,
+                    replyToCommentId,
+                ),
+            )
         }
     }
 

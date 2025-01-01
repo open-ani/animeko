@@ -19,7 +19,6 @@ import androidx.paging.map
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
-import me.him188.ani.app.data.models.ApiResponse
 import me.him188.ani.app.data.models.UserInfo
 import me.him188.ani.app.data.models.episode.EpisodeComment
 import me.him188.ani.app.data.models.subject.SubjectReview
@@ -99,8 +98,8 @@ class BangumiCommentRepository(
         content: String,
         cfTurnstileResponse: String,
         replyToCommentId: Int?,
-    ): ApiResponse<Unit> {
-        return try {
+    ) {
+        try {
             commentService.postEpisodeComment(episodeId, content, cfTurnstileResponse, replyToCommentId)
         } catch (e: Exception) {
             throw RepositoryException.wrapOrThrowCancellation(e)

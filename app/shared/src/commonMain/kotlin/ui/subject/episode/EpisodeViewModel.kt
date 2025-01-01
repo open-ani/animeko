@@ -17,6 +17,7 @@ import androidx.compose.runtime.setValue
 import androidx.paging.cachedIn
 import androidx.paging.map
 import kotlinx.collections.immutable.persistentHashSetOf
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -45,14 +46,12 @@ import kotlinx.coroutines.flow.retry
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.withContext
-import me.him188.ani.app.data.models.ApiResponse
 import me.him188.ani.app.data.models.episode.renderEpisodeEp
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
 import me.him188.ani.app.data.network.BangumiCommentService
-import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.data.repository.episode.AnimeScheduleRepository
 import me.him188.ani.app.data.repository.episode.BangumiCommentRepository
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
@@ -684,17 +683,23 @@ class EpisodeViewModel(
             }
                 .asFlow()
                 .retry(3)
-                .catch { logger.error(it) { "Failed to get turnstile token" } }
+                .catch {
+                    if (it !is CancellationException) {
+                        logger.error(it) { "Failed to get token, see exception" }
+                    }
+                }
                 .firstOrNull()
 
             if (token == null) return@CommentEditorState false
 
             try {
-                bangumiCommentRepository.postComment(context, content, token)
+                bangumiCommentRepository.postEpisodeComment(context, content, token)
                 commentStateRestarter.restart() // 评论发送成功了, 刷新一下
                 return@CommentEditorState true
-            } catch (e: RepositoryException) {
-                logger.error(e) { "Failed to post comment, see exception" }
+            } catch (e: Exception) {
+                if (e !is CancellationException) {
+                    logger.error(e) { "Failed to post comment, see exception" }
+                }
                 return@CommentEditorState false
             }
         },
@@ -897,18 +902,18 @@ class EpisodeViewModel(
 }
 
 
-private suspend fun BangumiCommentRepository.postComment(
+private suspend fun BangumiCommentRepository.postEpisodeComment(
     context: CommentContext,
     content: String,
     turnstileToken: String
-): ApiResponse<Unit> {
-    return when (context) {
+) {
+    when (context) {
         is CommentContext.Episode ->
             postEpisodeComment(context.episodeId, content, turnstileToken, null)
 
         is CommentContext.EpisodeReply ->
             postEpisodeComment(context.episodeId, content, turnstileToken, context.commentId)
 
-        is CommentContext.SubjectReview -> ApiResponse.success(Unit) // TODO: send subject comment
+        is CommentContext.SubjectReview -> error("unreachable on postEpisodeComment")
     }
 }
