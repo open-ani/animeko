@@ -12,44 +12,40 @@ package me.him188.ani.utils.ipparser
 import inet.ipaddr.AddressStringException
 import inet.ipaddr.IPAddress
 import inet.ipaddr.IPAddressString
-import me.him188.ani.utils.logging.logger
-import me.him188.ani.utils.logging.warn
 
-private val logger = logger("IpSeqRange")
-
-internal actual fun createIpSeqRange(ipSeqPattern: String): IpSeqRange {
-    return object : IpSeqRange {
-        private val range = try {
-            IPAddressString(ipSeqPattern).address
-        } catch (ex: AddressStringException) {
-            logger.warn(ex) { "failed to parse ip range $ipSeqPattern" }
-            null
-        }
-
-        override fun contains(address: String): Boolean {
-            if (range == null) return false
-            val ipAddress: IPAddress = try {
-                NoValidationIPAddressString(address).address
-                    ?: return false
-            } catch (_: AddressStringException) {
-                return false
-            }
-
-            return range.contains(ipAddress)
-        }
+/**
+ * Creates a new IpSeqRange instance using the [ipSeqPattern].
+ * @throws IllegalArgumentException if the pattern is invalid.
+ */
+internal actual fun IpSeqRange(ipSeqPattern: String): IpSeqRange {
+    val range: IPAddress? = try {
+        IPAddressString(ipSeqPattern).address
+    } catch (ex: AddressStringException) {
+        throw IllegalArgumentException(ex)
     }
+
+    if (range == null) {
+        throw IllegalArgumentException("Invalid IP range pattern: '$ipSeqPattern'")
+    }
+
+    return JvmIpSeqRange(range)
 }
 
-private class NoValidationIPAddressString(addr: String) : IPAddressString(addr) {
-    override fun validate() {
-        // NO-OP
+private class JvmIpSeqRange(
+    private val range: IPAddress
+) : IpSeqRange {
+    override fun contains(address: String): Boolean {
+        val ipAddress: IPAddress = try {
+            IPAddressParser.parse(address)
+                ?: return false
+        } catch (_: Exception) {
+            return false
+        }
+
+        return range.contains(ipAddress)
     }
 
-    override fun validateIPv4() {
-        // NO-OP
-    }
-
-    override fun validateIPv6() {
-        // NO-OP
+    override fun toString(): String {
+        return "JvmIpSeqRange(range=$range)"
     }
 }

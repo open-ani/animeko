@@ -14,8 +14,17 @@ import me.him188.ani.app.torrent.api.peer.PeerInfo
 import me.him188.ani.utils.ipparser.IpSeqRange
 
 class PeerIpFilter(private val pattern: String) : PeerFilter {
-    private val parser = IpSeqRange.parse(pattern)
+    private val parser = try {
+        IpSeqRange.parse(pattern)
+    } catch (_: IllegalArgumentException) {
+        null
+    }
+
     override fun shouldBlock(info: PeerInfo): Boolean {
+        if (parser == null) {
+            return false
+        }
+
         return parser.contains(info.ipAddr)
     }
 
