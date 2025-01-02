@@ -78,6 +78,7 @@ import me.him188.ani.utils.coroutines.flows.flowOfEmptyList
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.platform.currentTimeMillis
 import kotlin.coroutines.CoroutineContext
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -158,6 +159,7 @@ class SubjectCollectionRepositoryImpl(
     private val getCurrentDate: () -> PackedDate = { PackedDate.now() },
     private val enableAllEpisodeTypes: Flow<Boolean>,
     defaultDispatcher: CoroutineContext = Dispatchers.Default,
+    private val cacheExpiry: Duration = 1.hours,
 ) : SubjectCollectionRepository(defaultDispatcher) {
     @OptIn(OpaqueSession::class)
     private fun <T> Flow<T>.restartOnNewLogin(): Flow<T> =
@@ -192,12 +194,16 @@ class SubjectCollectionRepositoryImpl(
 //        }
     }
 
+    private fun SubjectCollectionEntity.isExpired(): Boolean {
+        return (currentTimeMillis() - lastFetched).milliseconds > cacheExpiry
+    }
+
     override fun subjectCollectionFlow(subjectId: Int): Flow<SubjectCollectionInfo> =
         subjectCollectionDao.findById(subjectId)
             .restartOnNewLogin()
             .onEach {
                 // 如果没有缓存, 则 fetch 然后插入 subject 缓存
-                if (it == null) {
+                if (it == null || it.isExpired()) {
                     coroutineScope {
                         val subjectCollectionDeferred = async { bangumiSubjectService.getSubjectCollection(subjectId) }
                         val recurrenceDeferred = async { animeScheduleRepository.getSubjectRecurrence(subjectId) }
@@ -395,7 +401,7 @@ class SubjectCollectionRepositoryImpl(
     ) : RemoteMediator<Int, T>() {
         override suspend fun initialize(): InitializeAction = withContext(defaultDispatcher) {
             val lastUpdated = subjectCollectionDao.lastFetched(query.type)
-            if ((currentTimeMillis() - lastUpdated).milliseconds > 1.hours) {
+            if ((currentTimeMillis() - lastUpdated).milliseconds > cacheExpiry) {
                 InitializeAction.LAUNCH_INITIAL_REFRESH
             } else {
                 InitializeAction.SKIP_INITIAL_REFRESH

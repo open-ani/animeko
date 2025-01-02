@@ -63,12 +63,21 @@ class EpisodeCollectionRepository(
 
     private val subjectCollectionRepository by subjectCollectionRepository
 
+    private fun EpisodeCollectionEntity.isExpired(): Boolean {
+        return (currentTimeMillis() - lastFetched).milliseconds > cacheExpiry
+    }
+
+    private fun SubjectCollectionEntity.isExpired(): Boolean {
+        return (currentTimeMillis() - lastFetched).milliseconds > cacheExpiry
+    }
+
     /**
      * 获取指定条目的指定剧集信息, 如果没有则从网络获取并缓存
      */
     fun episodeCollectionInfoFlow(subjectId: Int, episodeId: Int): Flow<EpisodeCollectionInfo> {
         return episodeCollectionDao.findByEpisodeId(episodeId).map { entity ->
-            entity?.toEpisodeCollectionInfo()
+            entity?.takeIf { !it.isExpired() }
+                ?.toEpisodeCollectionInfo()
                 ?: kotlin.run {
                     bangumiEpisodeService.getEpisodeCollectionById(episodeId)
                         ?.also {
@@ -131,14 +140,17 @@ class EpisodeCollectionRepository(
     ): Boolean {
         if (!allowCached) return false
         if (cachedEpisodes.isEmpty()) {
-            val subjectTotalEpisodes = subjectDao.findById(subjectId).first()?.totalEpisodes
+            subjectDao.findById(subjectId).first()
+                ?.takeIf { !it.isExpired() }
+                ?.totalEpisodes
                 ?: // 无法确定条目是否有剧集, 无法确认缓存是否有效, 保守判定为无效
                 return false
 
-            if (subjectTotalEpisodes == 0) {
-                // 条目没有剧集, 缓存有效 (为空)
-                return true
-            }
+            // 不能这样判断, 因为 bangumi 数据上 subjectTotalEpisodes 可能一直都是 0, 但是实际上有剧集.
+//            if (subjectTotalEpisodes == 0) {
+//                // 条目没有剧集, 缓存有效 (为空)
+//                return true
+//            }
 
             // 条目有剧集而缓存未空. 缓存肯定无效. 已经无效了就不用再判断时间了
             return false
