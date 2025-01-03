@@ -12,6 +12,8 @@ package me.him188.ani.app.domain.episode
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filterNotNull
@@ -59,7 +61,7 @@ class EpisodeFetchPlayStateTest {
     fun `infoBundleFlow emits null first`() = runTest {
         val suite = EpisodePlayerTestSuite(backgroundScope)
         val state = suite.createState()
-        assertNotEquals(null, state.infoBundleFlow.first()) // refreshes UI
+        assertEquals(null, state.infoBundleFlow.first()) // refreshes UI
     }
 
     @Test
@@ -73,15 +75,12 @@ class EpisodeFetchPlayStateTest {
     @Test
     fun `infoBundleFlow load failure is captured in the background`() = runTest {
         val backgroundException = CompletableDeferred<Throwable>()
-
         val scope = CoroutineScope(
-            backgroundScope.coroutineContext + CoroutineExceptionHandler { _, throwable ->
+            SupervisorJob(backgroundScope.coroutineContext[Job]) + CoroutineExceptionHandler { _, throwable ->
                 backgroundException.complete(throwable)
             },
         )
-        val suite = EpisodePlayerTestSuite(
-            scope,
-        )
+        val suite = EpisodePlayerTestSuite(scope)
         suite.registerComponent<GetSubjectEpisodeInfoBundleFlowUseCase> {
             GetSubjectEpisodeInfoBundleFlowUseCase { idsFlow ->
                 idsFlow.map {
