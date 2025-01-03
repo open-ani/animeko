@@ -23,12 +23,14 @@ import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
 import kotlinx.coroutines.flow.MutableStateFlow
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
+import me.him188.ani.app.domain.media.player.ChunkState
+import me.him188.ani.app.domain.media.player.staticMediaCacheProgressState
+import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.preview.PHONE_LANDSCAPE
 import me.him188.ani.app.ui.settings.danmaku.createTestDanmakuRegexFilterState
 import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberTestMediaSelectorPresentation
 import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberTestMediaSourceResults
-import me.him188.ani.app.ui.subject.episode.statistics.VideoLoadingState
 import me.him188.ani.app.ui.subject.episode.video.components.DanmakuSettingsSheet
 import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheetPage
 import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheets
@@ -44,8 +46,6 @@ import me.him188.ani.app.videoplayer.ui.guesture.NoOpLevelController
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
 import me.him188.ani.app.videoplayer.ui.progress.rememberMediaProgressSliderState
 import me.him188.ani.app.videoplayer.ui.rememberVideoControllerState
-import me.him188.ani.app.domain.media.player.ChunkState
-import me.him188.ani.app.domain.media.player.staticMediaCacheProgressState
 import me.him188.ani.danmaku.ui.DanmakuHostState
 import me.him188.ani.utils.platform.annotations.TestOnly
 import org.openani.mediamp.DummyMediampPlayer

@@ -81,8 +81,8 @@ import androidx.window.core.layout.WindowWidthSizeClass
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import me.him188.ani.app.domain.danmaku.protocol.DanmakuInfo
-import me.him188.ani.app.domain.danmaku.protocol.DanmakuLocation
+import me.him188.ani.app.data.network.protocol.DanmakuInfo
+import me.him188.ani.app.data.network.protocol.DanmakuLocation
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.features.StreamType
@@ -183,7 +183,7 @@ private fun EpisodeSceneContent(
     val imageViewer = rememberImageViewerHandler()
     BackHandler(enabled = imageViewer.viewing.value) { imageViewer.clear() }
 
-    val playbackState by vm.playerState.playbackState.collectAsStateWithLifecycle()
+    val playbackState by vm.player.playbackState.collectAsStateWithLifecycle()
     if (playbackState.isPlaying) {
         ScreenOnEffect()
     }
@@ -192,9 +192,9 @@ private fun EpisodeSceneContent(
     var didSetPaused by rememberSaveable { mutableStateOf(false) }
 
     val pauseOnPlaying: () -> Unit = {
-        if (vm.playerState.playbackState.value.isPlaying) {
+        if (vm.player.playbackState.value.isPlaying) {
             didSetPaused = true
-            vm.playerState.pause()
+            vm.player.pause()
         } else {
             didSetPaused = false
         }
@@ -202,7 +202,7 @@ private fun EpisodeSceneContent(
     val tryUnpause: () -> Unit = {
         if (didSetPaused) {
             didSetPaused = false
-            vm.playerState.resume()
+            vm.player.resume()
         }
     }
 
@@ -293,9 +293,9 @@ private fun EpisodeSceneTabletVeryWide(
     var didSetPaused by rememberSaveable { mutableStateOf(false) }
 
     val pauseOnPlaying: () -> Unit = {
-        if (vm.playerState.playbackState.value.isPlaying) {
+        if (vm.player.playbackState.value.isPlaying) {
             didSetPaused = true
-            vm.playerState.pause()
+            vm.player.pause()
         } else {
             didSetPaused = false
         }
@@ -303,7 +303,7 @@ private fun EpisodeSceneTabletVeryWide(
     val tryUnpause: () -> Unit = {
         if (didSetPaused) {
             didSetPaused = false
-            vm.playerState.resume()
+            vm.player.resume()
         }
     }
 
@@ -361,22 +361,25 @@ private fun EpisodeSceneTabletVeryWide(
                     when (index) {
                         0 -> Box(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                             val navigator = LocalNavigator.current
-                            EpisodeDetails(
-                                vm.episodeDetailsState,
-                                vm.episodeCarouselState,
-                                vm.editableSubjectCollectionTypeState,
-                                vm.danmakuStatistics,
-                                vm.videoStatisticsFlow,
-                                vm.mediaSelectorState,
-                                vm.mediaSourceResultsPresentation,
-                                vm.authState,
-                                onSwitchEpisode = { episodeId ->
-                                    if (!vm.episodeSelectorState.selectEpisodeId(episodeId)) {
-                                        navigator.navigateEpisodeDetails(vm.subjectId, episodeId)
-                                    }
-                                },
-                                onRefreshMediaSources = { vm.refreshFetch() },
-                            )
+                            val pageState by vm.pageState.collectAsStateWithLifecycle()
+                            pageState?.let { page ->
+                                EpisodeDetails(
+                                    vm.episodeDetailsState,
+                                    vm.episodeCarouselState,
+                                    vm.editableSubjectCollectionTypeState,
+                                    page.danmakuStatistics,
+                                    vm.videoStatisticsFlow,
+                                    page.mediaSelectorState,
+                                    page.mediaSourceResultsPresentation,
+                                    vm.authState,
+                                    onSwitchEpisode = { episodeId ->
+                                        if (!vm.episodeSelectorState.selectEpisodeId(episodeId)) {
+                                            navigator.navigateEpisodeDetails(vm.subjectId, episodeId)
+                                        }
+                                    },
+                                    onRefreshMediaSources = { vm.refreshFetch() },
+                                )
+                            }
                         }
 
                         1 -> EpisodeCommentColumn(
@@ -460,23 +463,26 @@ private fun EpisodeSceneContentPhone(
         },
         episodeDetails = {
             val navigator = LocalNavigator.current
-            EpisodeDetails(
-                vm.episodeDetailsState,
-                vm.episodeCarouselState,
-                vm.editableSubjectCollectionTypeState,
-                vm.danmakuStatistics,
-                vm.videoStatisticsFlow,
-                vm.mediaSelectorState,
-                vm.mediaSourceResultsPresentation,
-                vm.authState,
-                onSwitchEpisode = { episodeId ->
-                    if (!vm.episodeSelectorState.selectEpisodeId(episodeId)) {
-                        navigator.navigateEpisodeDetails(vm.subjectId, episodeId)
-                    }
-                },
-                onRefreshMediaSources = { vm.refreshFetch() },
-                Modifier.fillMaxSize(),
-            )
+            val pageState by vm.pageState.collectAsStateWithLifecycle()
+            pageState?.let { page ->
+                EpisodeDetails(
+                    vm.episodeDetailsState,
+                    vm.episodeCarouselState,
+                    vm.editableSubjectCollectionTypeState,
+                    page.danmakuStatistics,
+                    vm.videoStatisticsFlow,
+                    page.mediaSelectorState,
+                    page.mediaSourceResultsPresentation,
+                    vm.authState,
+                    onSwitchEpisode = { episodeId ->
+                        if (!vm.episodeSelectorState.selectEpisodeId(episodeId)) {
+                            navigator.navigateEpisodeDetails(vm.subjectId, episodeId)
+                        }
+                    },
+                    onRefreshMediaSources = { vm.refreshFetch() },
+                    Modifier.fillMaxSize(),
+                )
+            }
         },
         commentColumn = {
             EpisodeCommentColumn(
@@ -519,7 +525,7 @@ private fun EpisodeSceneContentPhone(
                     scope.launch {
                         vm.danmaku.send(
                             DanmakuInfo(
-                                vm.playerState.getCurrentPositionMillis(),
+                                vm.player.getCurrentPositionMillis(),
                                 text = text,
                                 color = Color.White.toArgb(),
                                 location = DanmakuLocation.NORMAL,
@@ -637,13 +643,17 @@ private fun EpisodeVideo(
     val danmakuTextPlaceholder = remember { randomDanmakuPlaceholder() }
     val window = LocalPlatformWindow.current
 
+    SideEffect {
+        vm.startBackgroundTasks()
+    }
+
     val progressSliderState = rememberMediaProgressSliderState(
-        vm.playerState,
+        vm.player,
         onPreview = {
             // not yet supported
         },
         onPreviewFinished = {
-            vm.playerState.seekTo(it)
+            vm.player.seekTo(it)
         },
     )
     val scope = rememberCoroutineScope()
@@ -668,7 +678,7 @@ private fun EpisodeVideo(
         }
     }
     EpisodeVideoImpl(
-        vm.playerState,
+        vm.player,
         expanded = expanded,
         hasNextEpisode = vm.episodeSelectorState.hasNextEpisode,
         onClickNextEpisode = { vm.episodeSelectorState.selectNext() },
@@ -698,13 +708,13 @@ private fun EpisodeVideo(
             EpisodeVideoDefaults.DanmakuEditor(
                 playerDanmakuState = videoDanmakuState,
                 danmakuTextPlaceholder = danmakuTextPlaceholder,
-                playerState = vm.playerState,
+                playerState = vm.player,
                 videoScaffoldConfig = vm.videoScaffoldConfig,
                 playerControllerState = playerControllerState,
             )
         },
         onClickScreenshot = {
-            val currentPositionMillis = vm.playerState.getCurrentPositionMillis()
+            val currentPositionMillis = vm.player.getCurrentPositionMillis()
             val min = currentPositionMillis / 60000
             val sec = (currentPositionMillis - (min * 60000)) / 1000
             val ms = currentPositionMillis - (min * 60000) - (sec * 1000)
@@ -712,7 +722,7 @@ private fun EpisodeVideo(
             // 条目ID-剧集序号-视频时间点.png
             val filename = "${vm.subjectId}-${vm.episodePresentation.ep}-${currentPosition}.png"
             scope.launch {
-                vm.playerState.features[Screenshots]?.takeScreenshot(filename)
+                vm.player.features[Screenshots]?.takeScreenshot(filename)
             }
         },
         detachedProgressSlider = {
@@ -778,12 +788,15 @@ private fun EpisodeVideo(
                     )
                 },
                 mediaSelectorPage = {
-                    EpisodeVideoSideSheets.MediaSelectorSheet(
-                        vm.mediaSelectorState,
-                        vm.mediaSourceResultsPresentation,
-                        onDismissRequest = { goBack() },
-                        onRefresh = { vm.refreshFetch() },
-                    )
+                    val pageState by vm.pageState.collectAsStateWithLifecycle()
+                    pageState?.let { page ->
+                        EpisodeVideoSideSheets.MediaSelectorSheet(
+                            page.mediaSelectorState,
+                            page.mediaSourceResultsPresentation,
+                            onDismissRequest = { goBack() },
+                            onRefresh = { vm.refreshFetch() },
+                        )
+                    }
                 },
                 episodeSelectorPage = {
                     EpisodeVideoSideSheets.EpisodeSelectorSheet(
@@ -857,12 +870,12 @@ private fun AutoPauseEffect(viewModel: EpisodeViewModel) {
     val autoPauseTasker = rememberUiMonoTasker()
     OnLifecycleEvent {
         if (it == Lifecycle.Event.ON_STOP) {
-            if (viewModel.playerState.playbackState.value.isPlaying) {
+            if (viewModel.player.playbackState.value.isPlaying) {
                 pausedVideo = true
                 autoPauseTasker.launch {
                     // #160, 切换全屏时视频会暂停半秒
                     // > 这其实是之前写切后台自动暂停导致的，检测了 lifecycle 事件，切全屏和切后台是一样的事件。延迟一下就可以了
-                    viewModel.playerState.pause() // 正在播放时, 切到后台自动暂停
+                    viewModel.player.pause() // 正在播放时, 切到后台自动暂停
                 }
             } else {
                 // 如果不是正在播放, 则不操作暂停, 当下次切回前台时, 也不要恢复播放
@@ -870,7 +883,7 @@ private fun AutoPauseEffect(viewModel: EpisodeViewModel) {
             }
         } else if (it == Lifecycle.Event.ON_START && pausedVideo) {
             autoPauseTasker.launch {
-                viewModel.playerState.resume() // 切回前台自动恢复, 当且仅当之前是自动暂停的
+                viewModel.player.resume() // 切回前台自动恢复, 当且仅当之前是自动暂停的
             }
             pausedVideo = false
         }

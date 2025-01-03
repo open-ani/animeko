@@ -26,11 +26,11 @@ import me.him188.ani.app.data.models.preference.UISettings
 import me.him188.ani.app.data.models.preference.UpdateSettings
 import me.him188.ani.app.data.models.preference.VideoResolverSettings
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
+import me.him188.ani.app.data.network.AniBangumiSeverBaseUrls
 import me.him188.ani.app.data.repository.media.MediaSourceInstanceRepository
 import me.him188.ani.app.data.repository.media.MediaSourceSubscriptionRepository
 import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
-import me.him188.ani.app.domain.danmaku.AniBangumiSeverBaseUrls
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceCodecManager
 import me.him188.ani.app.domain.mediasource.codec.serializeSubscriptionToString

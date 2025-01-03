@@ -42,6 +42,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import me.him188.ani.app.domain.media.player.MediaCacheProgressInfo
+import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.tools.rememberUiMonoTasker
 import me.him188.ani.app.ui.foundation.LocalIsPreviewing
 import me.him188.ani.app.ui.foundation.LocalPlatform
@@ -53,7 +54,6 @@ import me.him188.ani.app.ui.foundation.icons.RightPanelClose
 import me.him188.ani.app.ui.foundation.icons.RightPanelOpen
 import me.him188.ani.app.ui.foundation.interaction.WindowDragArea
 import me.him188.ani.app.ui.foundation.rememberDebugSettingsViewModel
-import me.him188.ani.app.ui.subject.episode.statistics.VideoLoadingState
 import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheetPage
 import me.him188.ani.app.ui.subject.episode.video.components.rememberStatusBarHeightAsState
 import me.him188.ani.app.ui.subject.episode.video.loading.EpisodeVideoLoadingIndicator
@@ -82,7 +82,6 @@ import me.him188.ani.app.videoplayer.ui.rememberVideoSideSheetsController
 import me.him188.ani.app.videoplayer.ui.top.PlayerTopBar
 import me.him188.ani.danmaku.ui.DanmakuHost
 import me.him188.ani.danmaku.ui.DanmakuHostState
-import me.him188.ani.datasources.api.MediaProperties
 import me.him188.ani.utils.platform.annotations.TestOnly
 import me.him188.ani.utils.platform.isDesktop
 import org.openani.mediamp.MediampPlayer

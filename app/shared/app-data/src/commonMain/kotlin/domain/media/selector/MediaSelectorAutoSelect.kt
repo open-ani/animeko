@@ -37,7 +37,6 @@ import me.him188.ani.utils.logging.SilentLogger
 import me.him188.ani.utils.logging.debug
 import kotlin.concurrent.Volatile
 import kotlin.coroutines.cancellation.CancellationException
-import kotlin.jvm.JvmInline
 
 /**
  * 访问 [MediaSelector] 的自动选择功能
@@ -47,8 +46,7 @@ inline val MediaSelector.autoSelect get() = MediaSelectorAutoSelect(this)
 /**
  * [MediaSelector] 自动选择功能
  */
-@JvmInline
-value class MediaSelectorAutoSelect(
+class MediaSelectorAutoSelect(
     private val mediaSelector: MediaSelector,
 ) {
     /**

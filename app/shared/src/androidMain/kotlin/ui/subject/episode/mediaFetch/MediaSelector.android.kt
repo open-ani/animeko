@@ -65,7 +65,7 @@ private fun PreviewMediaSelector() {
 @Composable
 @OptIn(TestOnly::class)
 private fun rememberTestMediaSelectorPresentation(previewMediaList: List<Media>) =
-    rememberMediaSelectorPresentation(rememberTestMediaSourceInfoProvider()) {
+    rememberMediaSelectorState(rememberTestMediaSourceInfoProvider()) {
         DefaultMediaSelector(
             mediaSelectorContextNotCached = flowOf(MediaSelectorContext.EmptyForPreview),
             mediaListNotCached = MutableStateFlow(

@@ -26,8 +26,8 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import me.him188.ani.app.domain.media.player.data.DownloadingMediaData
+import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.ui.foundation.TextWithBorder
-import me.him188.ani.app.ui.subject.episode.statistics.VideoLoadingState
 import me.him188.ani.app.videoplayer.ui.VideoLoadingIndicator
 import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes

@@ -36,6 +36,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.domain.media.player.ChunkState
 import me.him188.ani.app.domain.media.player.staticMediaCacheProgressState
+import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.ui.doesNotExist
 import me.him188.ani.app.ui.exists
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
@@ -43,7 +44,6 @@ import me.him188.ani.app.ui.foundation.effects.TAG_CURSOR_VISIBILITY_EFFECT_INVI
 import me.him188.ani.app.ui.foundation.effects.TAG_CURSOR_VISIBILITY_EFFECT_VISIBLE
 import me.him188.ani.app.ui.foundation.theme.aniDarkColorTheme
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
-import me.him188.ani.app.ui.subject.episode.statistics.VideoLoadingState
 import me.him188.ani.app.ui.subject.episode.video.components.FloatingFullscreenSwitchButton
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState

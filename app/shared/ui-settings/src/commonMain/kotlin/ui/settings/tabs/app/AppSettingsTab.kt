@@ -40,7 +40,7 @@ import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.models.preference.UISettings
 import me.him188.ani.app.data.models.preference.UpdateSettings
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
-import me.him188.ani.app.domain.danmaku.protocol.ReleaseClass
+import me.him188.ani.app.data.network.protocol.ReleaseClass
 import me.him188.ani.app.navigation.MainScenePage
 import me.him188.ani.app.navigation.getIcon
 import me.him188.ani.app.navigation.getText

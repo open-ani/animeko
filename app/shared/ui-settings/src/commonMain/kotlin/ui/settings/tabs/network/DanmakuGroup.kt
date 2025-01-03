@@ -20,7 +20,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import me.him188.ani.app.data.models.preference.DanmakuSettings
-import me.him188.ani.app.domain.danmaku.AniBangumiSeverBaseUrls
+import me.him188.ani.app.data.network.AniBangumiSeverBaseUrls
 import me.him188.ani.app.ui.settings.framework.ConnectionTester
 import me.him188.ani.app.ui.settings.framework.ConnectionTesterResultIndicator
 import me.him188.ani.app.ui.settings.framework.ConnectionTesterRunner

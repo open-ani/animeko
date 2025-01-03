@@ -42,12 +42,57 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import me.him188.ani.app.domain.danmaku.DanmakuLoadingState
 import me.him188.ani.app.domain.media.fetch.MediaFetcher
+import me.him188.ani.app.domain.media.player.data.filenameOrNull
 import me.him188.ani.app.domain.media.selector.MediaSelector
+import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
 import me.him188.ani.app.ui.media.renderProperties
+import me.him188.ani.app.ui.subject.episode.mediaFetch.MediaSourceInfoProvider
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.source.MediaSourceInfo
+import org.openani.mediamp.MediampPlayer
+
+class VideoStatisticsCollector(
+    mediaSelector: Flow<MediaSelector>,
+    videoLoadingStateFlow: Flow<VideoLoadingState>,
+    playerState: MediampPlayer,
+    private val mediaSourceInfoProvider: MediaSourceInfoProvider,
+    mediaSourceLoading: Flow<Boolean>,
+    backgroundScope: CoroutineScope,
+) {
+    val videoStatisticsFlow: StateFlow<VideoStatistics> = kotlin.run {
+        val selectedMediaFlow = mediaSelector.flatMapLatest { it.selected }
+        combine(
+            selectedMediaFlow,
+            selectedMediaFlow.flatMapLatest {
+                mediaSourceInfoProvider.getSourceInfoFlow(it?.mediaSourceId ?: return@flatMapLatest emptyFlow())
+            },
+            selectedMediaFlow
+                .combine(playerState.mediaData.map { it?.filenameOrNull }) { selectedMedia, filename ->
+                    filename ?: selectedMedia?.originalTitle
+                },
+            mediaSourceLoading,
+            videoLoadingStateFlow,
+            ::VideoStatistics,
+        ).stateIn(
+            backgroundScope,
+            SharingStarted.WhileSubscribed(),
+            VideoStatistics.Placeholder,
+        )
+    }
+}
+
 
 /**
  * 视频统计信息, 用于获取当前播放器正在播放的视频的来源 [Media] 和文件名, 以及弹幕信息.

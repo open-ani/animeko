@@ -10,6 +10,7 @@
 package me.him188.ani.app.domain.media.resolver
 
 import androidx.compose.runtime.Composable
+import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.domain.media.player.data.MediaDataProvider
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.Media
@@ -73,6 +74,10 @@ data class EpisodeMetadata(
     val ep: EpisodeSort?,
     val sort: EpisodeSort,
 )
+
+fun EpisodeInfo.toEpisodeMetadata(): EpisodeMetadata {
+    return EpisodeMetadata(nameCn, ep, sort)
+}
 
 class UnsupportedMediaException(
     val media: Media,

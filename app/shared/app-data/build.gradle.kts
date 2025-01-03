@@ -68,6 +68,9 @@ kotlin {
     sourceSets.commonTest.dependencies {
         implementation(projects.utils.uiTesting)
     }
+    sourceSets.jvmTest.dependencies {
+        implementation(libs.slf4j.simple)
+    }
     sourceSets.androidMain.dependencies {
         implementation(libs.androidx.compose.ui.tooling.preview)
         implementation(libs.androidx.compose.ui.tooling)

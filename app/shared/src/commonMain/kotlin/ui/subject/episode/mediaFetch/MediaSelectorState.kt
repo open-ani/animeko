@@ -39,16 +39,8 @@ import me.him188.ani.app.ui.foundation.rememberBackgroundScope
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.utils.platform.annotations.TestOnly
 
-fun MediaSelectorPresentation(
-    mediaSelector: MediaSelector,
-    mediaSourceInfoProvider: MediaSourceInfoProvider,
-    backgroundScope: CoroutineScope,
-): MediaSelectorState = MediaSelectorState(
-    mediaSelector, mediaSourceInfoProvider, backgroundScope,
-)
-
 @Composable
-fun rememberMediaSelectorPresentation(
+fun rememberMediaSelectorState(
     mediaSourceInfoProvider: MediaSourceInfoProvider,
     mediaSelector: () -> MediaSelector,// lambda remembered
 ): MediaSelectorState {
@@ -57,7 +49,7 @@ fun rememberMediaSelectorPresentation(
         derivedStateOf(mediaSelector)
     }
     return remember {
-        MediaSelectorPresentation(selector, mediaSourceInfoProvider, scope.backgroundScope)
+        MediaSelectorState(selector, mediaSourceInfoProvider, scope.backgroundScope)
     }
 }
 
@@ -221,7 +213,7 @@ fun rememberTestMediaSelectorPresentation(): MediaSelectorState {
 
 @OptIn(TestOnly::class)
 private fun createState(backgroundScope: CoroutineScope) =
-    MediaSelectorPresentation(
+    MediaSelectorState(
         DefaultMediaSelector(
             mediaSelectorContextNotCached = flowOf(MediaSelectorContext.EmptyForPreview),
             mediaListNotCached = MutableStateFlow(TestMediaList),

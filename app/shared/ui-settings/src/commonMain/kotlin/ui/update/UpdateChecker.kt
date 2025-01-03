@@ -18,8 +18,8 @@ import io.ktor.utils.io.core.use
 import kotlinx.coroutines.CancellationException
 import kotlinx.io.IOException
 import kotlinx.serialization.json.Json
-import me.him188.ani.app.domain.danmaku.protocol.ReleaseClass
-import me.him188.ani.app.domain.danmaku.protocol.ReleaseUpdatesDetailedResponse
+import me.him188.ani.app.data.network.protocol.ReleaseClass
+import me.him188.ani.app.data.network.protocol.ReleaseUpdatesDetailedResponse
 import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.tools.TimeFormatter
 import me.him188.ani.utils.coroutines.withExceptionCollector
