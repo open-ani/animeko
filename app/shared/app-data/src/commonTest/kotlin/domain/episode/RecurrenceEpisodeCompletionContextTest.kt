@@ -17,7 +17,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.time.Duration.Companion.days
 
-class EpisodeCompletionContextTest {
+class EpisodeCompletionParamsTest {
     @Test
     fun `mapAirDate null recurrence`() {
         val airDate = PackedDate(2024, 11, 20)

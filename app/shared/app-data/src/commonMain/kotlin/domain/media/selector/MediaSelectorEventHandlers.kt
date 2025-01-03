@@ -11,12 +11,10 @@ package me.him188.ani.app.domain.media.selector
 
 import kotlinx.coroutines.flow.debounce
 import me.him188.ani.app.data.models.preference.MediaPreference
-import kotlin.jvm.JvmInline
 
 inline val MediaSelector.eventHandling get() = MediaSelectorEventHandlers(this)
 
-@JvmInline
-value class MediaSelectorEventHandlers(
+class MediaSelectorEventHandlers(
     private val mediaSelector: MediaSelector,
 ) {
     /**
