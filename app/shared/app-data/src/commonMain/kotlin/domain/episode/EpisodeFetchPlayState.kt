@@ -15,7 +15,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.foundation.LoadError
-import me.him188.ani.app.domain.foundation.LoadResult
 import me.him188.ani.app.domain.media.resolver.toEpisodeMetadata
 import me.him188.ani.app.domain.media.selector.MediaSelectorAutoSelectUseCase
 import me.him188.ani.app.domain.media.selector.MediaSelectorEventSavePreferenceUseCase
