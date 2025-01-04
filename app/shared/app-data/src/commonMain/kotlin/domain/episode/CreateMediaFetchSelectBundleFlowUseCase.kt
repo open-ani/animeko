@@ -36,7 +36,7 @@ import kotlin.coroutines.CoroutineContext
  *
  * @see MediaFetchSelectBundle
  */
-interface CreateMediaFetchSelectBundleFlowUseCase : UseCase {
+fun interface CreateMediaFetchSelectBundleFlowUseCase : UseCase {
     /**
      * Creates a [MediaFetchSelectBundle] for the given [MediaFetchRequest].
      *
