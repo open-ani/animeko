@@ -13,6 +13,6 @@ import androidx.compose.runtime.Immutable
 import me.him188.ani.app.domain.danmaku.DanmakuLoadingState
 
 @Immutable
-class DanmakuStatistics(
+data class DanmakuStatistics(
     val danmakuLoadingState: DanmakuLoadingState
 )

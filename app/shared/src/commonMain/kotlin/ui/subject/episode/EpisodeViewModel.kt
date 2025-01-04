@@ -48,6 +48,7 @@ import me.him188.ani.app.data.models.episode.renderEpisodeEp
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
+import me.him188.ani.app.data.network.protocol.DanmakuInfo
 import me.him188.ani.app.data.repository.episode.BangumiCommentRepository
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.media.EpisodePreferencesRepository
@@ -56,6 +57,8 @@ import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepository
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.danmaku.DanmakuManager
+import me.him188.ani.app.domain.danmaku.SetDanmakuEnabledUseCase
+import me.him188.ani.app.domain.episode.EpisodeDanmakuLoader
 import me.him188.ani.app.domain.episode.EpisodeFetchPlayState
 import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.domain.media.cache.EpisodeCacheStatus
@@ -66,6 +69,7 @@ import me.him188.ani.app.domain.media.resolver.MediaResolver
 import me.him188.ani.app.domain.player.CacheProgressProvider
 import me.him188.ani.app.domain.player.SavePlayProgressUseCase
 import me.him188.ani.app.domain.session.AuthState
+import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.app.platform.Context
 import me.him188.ani.app.ui.comment.BangumiCommentSticker
 import me.him188.ani.app.ui.comment.CommentContext
@@ -76,6 +80,7 @@ import me.him188.ani.app.ui.comment.CommentState
 import me.him188.ani.app.ui.comment.EditCommentSticker
 import me.him188.ani.app.ui.comment.TurnstileState
 import me.him188.ani.app.ui.comment.reloadAndGetToken
+import me.him188.ani.app.ui.danmaku.UIDanmakuEvent
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.foundation.AuthState
 import me.him188.ani.app.ui.foundation.HasBackgroundScope
@@ -87,7 +92,6 @@ import me.him188.ani.app.ui.subject.AiringLabelState
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeState
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateFactory
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateLoader
-import me.him188.ani.app.ui.subject.episode.danmaku.PlayerDanmakuState
 import me.him188.ani.app.ui.subject.episode.details.EpisodeCarouselState
 import me.him188.ani.app.ui.subject.episode.details.EpisodeDetailsState
 import me.him188.ani.app.ui.subject.episode.mediaFetch.MediaSelectorState
@@ -115,6 +119,7 @@ import me.him188.ani.utils.coroutines.retryWithBackoffDelay
 import me.him188.ani.utils.coroutines.sampleWithInitial
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
+import org.koin.core.Koin
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import org.openani.mediamp.MediampPlayer
@@ -125,12 +130,14 @@ import kotlin.time.Duration.Companion.milliseconds
 
 
 @Stable
-class EpisodePageState(
+data class EpisodePageState(
     val mediaSelectorState: MediaSelectorState,
     val mediaSourceResultsPresentation: MediaSourceResultsPresentation,
     val danmakuStatistics: DanmakuStatistics,
     val subjectPresentation: SubjectPresentation,
     val episodePresentation: EpisodePresentation,
+    val danmakuEnabled: Boolean,
+    val danmakuConfig: DanmakuConfig,
     val isLoading: Boolean = false,
     val loadError: LoadError? = null,
     val isPlaceholder: Boolean = false,
@@ -143,6 +150,7 @@ class EpisodeViewModel(
     initialIsFullscreen: Boolean = false,
     context: Context,
     val getCurrentDate: () -> PackedDate = { PackedDate.now() },
+    private val koin: Koin = GlobalKoin,
 ) : KoinComponent, AbstractViewModel(), HasBackgroundScope {
     // region dependencies
     private val playerStateFactory: MediampPlayerFactory<*> by inject()
@@ -159,12 +167,16 @@ class EpisodeViewModel(
     private val episodePlayHistoryRepository: EpisodePlayHistoryRepository by inject()
     private val savePlayProgressUseCase: SavePlayProgressUseCase by inject()
     private val subjectDetailsStateFactory: SubjectDetailsStateFactory by inject()
+    private val setDanmakuEnabledUseCase: SetDanmakuEnabledUseCase by inject()
     // endregion
 
     val player: MediampPlayer =
         playerStateFactory.create(context, backgroundScope.coroutineContext)
 
-    private val fetchPlayState = EpisodeFetchPlayState(subjectId, initialEpisodeId, player, backgroundScope)
+    private val fetchPlayState = EpisodeFetchPlayState(
+        subjectId, initialEpisodeId, player, backgroundScope, koin,
+        sharingStarted = SharingStarted.WhileSubscribed(5_000),
+    )
 
     // region Subject and episode data info flows
     private val episodeIdFlow get() = fetchPlayState.episodeIdFlow
@@ -173,9 +185,11 @@ class EpisodeViewModel(
 
     private val subjectCollectionFlow =
         subjectEpisodeInfoBundleFlow.filterNotNull().map { it.subjectCollectionInfo }
+            .distinctUntilChanged()
 
-    private val subjectInfoFlow = subjectCollectionFlow.map { it.subjectInfo }
+    private val subjectInfoFlow = subjectCollectionFlow.map { it.subjectInfo }.distinctUntilChanged()
     private val episodeCollectionFlow = subjectEpisodeInfoBundleFlow.map { it?.episodeCollectionInfo }
+        .distinctUntilChanged()
 
     private val episodeCollectionsFlow = episodeCollectionRepository.subjectEpisodeCollectionInfosFlow(subjectId)
         .shareInBackground()
@@ -239,7 +253,7 @@ class EpisodeViewModel(
             subjectInfo = subjectInfoFlow.produceState(SubjectInfo.Empty),
             airingLabelState = AiringLabelState(
                 subjectCollectionFlow.map { it.airingInfo }.produceState(null),
-                subjectCollectionFlow.map { it ->
+                subjectCollectionFlow.map {
                     SubjectProgressInfo.compute(it.subjectInfo, it.episodes, getCurrentDate(), it.recurrence)
                 }
                     .produceState(null),
@@ -339,22 +353,45 @@ class EpisodeViewModel(
         parentCoroutineContext = backgroundScope.coroutineContext,
     )
 
-    val danmaku = PlayerDanmakuState(
+
+    private val danmakuLoader = EpisodeDanmakuLoader(
         player = player,
-        bundleFlow = fetchPlayState.infoBundleFlow.filterNotNull(),
-        danmakuEnabled = settingsRepository.danmakuEnabled.flow.produceState(false),
-        danmakuConfig = settingsRepository.danmakuConfig.flow.produceState(DanmakuConfig.Default),
-        onSend = { info ->
-            danmakuManager.post(episodeIdFlow.value, info)
-        },
-        onSetEnabled = {
-            settingsRepository.danmakuEnabled.set(it)
-        },
-        onHideController = {
-            playerControllerState.toggleFullVisible(false)
-        },
+        bundleFlow = fetchPlayState.infoBundleFlow.filterNotNull().distinctUntilChanged(),
         backgroundScope,
+        koin,
     )
+
+    /**
+     * Danmaku event flow to be processed by UI DanmakuHost.
+     */
+    val uiDanmakuEventFlow = danmakuManager.selfId.flatMapLatest { selfId ->
+        fun createDanmakuPresentation(
+            data: Danmaku,
+            selfId: String?,
+        ) = DanmakuPresentation(data, isSelf = selfId == data.senderId)
+
+        danmakuLoader.danmakuEventFlow.mapNotNull { event ->
+            when (event) {
+                is DanmakuEvent.Add -> {
+                    val data = event.danmaku
+                    if (data.text.isBlank()) {
+                        null
+                    } else {
+                        UIDanmakuEvent.Add(createDanmakuPresentation(data, selfId))
+                    }
+                }
+
+                is DanmakuEvent.Repopulate -> {
+                    UIDanmakuEvent.Repopulate(
+                        event.list
+                            .filter { it.text.any { c -> !c.isWhitespace() } }
+                            .map { createDanmakuPresentation(it, selfId) },
+                    )
+                }
+            }
+        }
+    }.shareInBackground()
+
 
     private val commentStateRestarter = FlowRestarter()
     val episodeCommentState: CommentState = CommentState(
@@ -426,12 +463,14 @@ class EpisodeViewModel(
             .produceState(0.milliseconds),
     )
 
-    val pageState = combine(
-        subjectEpisodeInfoBundleFlow,
+    val pageState = me.him188.ani.utils.coroutines.flows.combine(
+        subjectEpisodeInfoBundleFlow.distinctUntilChanged(),
         subjectEpisodeInfoBundleLoadErrorFlow,
         fetchPlayState.fetchSelectFlow.filterNotNull(),
-        danmaku.danmakuStatisticsFlow,
-    ) { subjectEpisodeBundle, loadError, fetchSelect, danmakuStatistics ->
+        danmakuLoader.danmakuLoadingStateFlow.map { DanmakuStatistics(it) }.distinctUntilChanged(),
+        settingsRepository.danmakuEnabled.flow,
+        settingsRepository.danmakuConfig.flow,
+    ) { subjectEpisodeBundle, loadError, fetchSelect, danmakuStatistics, danmakuEnabled, danmakuConfig ->
 
         val (subject, episode) = if (subjectEpisodeBundle == null) {
             SubjectPresentation.Placeholder to EpisodePresentation.Placeholder
@@ -458,12 +497,12 @@ class EpisodeViewModel(
             danmakuStatistics = danmakuStatistics,
             subjectPresentation = subject,
             episodePresentation = episode,
+            danmakuEnabled = danmakuEnabled,
+            danmakuConfig = danmakuConfig,
             isLoading = subjectEpisodeBundle == null,
             loadError = loadError,
         )
-    }.stateIn(backgroundScope, started = SharingStarted.WhileSubscribed(), null)
-
-    private val selfUserId = danmakuManager.selfId
+    }.stateIn(backgroundScope, started = SharingStarted.WhileSubscribed(5_000), null)
 
     /**
      * 保存播放进度的入口有4个：退出播放页，切换剧集，同集切换数据源，暂停播放
@@ -491,6 +530,18 @@ class EpisodeViewModel(
         }
     }
 
+    suspend fun postDanmaku(danmaku: DanmakuInfo): Danmaku {
+        return withContext(Dispatchers.Default) {
+            danmakuManager.post(episodeIdFlow.value, danmaku)
+        }
+    }
+
+    fun setDanmakuEnabled(enabled: Boolean) {
+        launchInBackground {
+            setDanmakuEnabledUseCase(enabled)
+        }
+    }
+
     fun refreshFetch() {
         launchInBackground {
             mediaFetchSession.firstOrNull()?.restartAll()
@@ -509,39 +560,6 @@ class EpisodeViewModel(
     }
 
     init {
-        launchInMain { // state changes must be in main thread
-            player.playbackState.collect {
-                danmaku.danmakuHostState.setPaused(!it.isPlaying)
-            }
-        }
-
-        launchInBackground {
-            cancellableCoroutineScope {
-                val selfId = selfUserId.stateIn(this)
-                danmaku.danmakuEventFlow.collect { event ->
-                    when (event) {
-                        is DanmakuEvent.Add -> {
-                            val data = event.danmaku
-                            if (data.text.isBlank()) return@collect
-                            danmaku.danmakuHostState.trySend(
-                                createDanmakuPresentation(data, selfId.value),
-                            )
-                        }
-
-                        is DanmakuEvent.Repopulate -> {
-                            danmaku.danmakuHostState.repopulate(
-                                event.list
-                                    .filter { it.text.any { c -> !c.isWhitespace() } }
-                                    .map { createDanmakuPresentation(it, selfId.value) },
-                            )
-
-                        }
-                    }
-                }
-                cancelScope()
-            }
-        }
-
         // 自动标记看完
         launchInBackground {
             settingsRepository.videoScaffoldConfig.flow
@@ -672,20 +690,14 @@ class EpisodeViewModel(
         }
     }
 
-    private fun createDanmakuPresentation(
-        data: Danmaku,
-        selfId: String?,
-    ) = DanmakuPresentation(
-        data,
-        isSelf = selfId == data.senderId,
-    )
-
     override fun onCleared() {
         super.onCleared()
         backgroundScope.launch(NonCancellable + CoroutineName("EpisodeViewModel#onCleared")) {
             stopPlaying()
         }
     }
+
+    override fun getKoin(): Koin = koin
 }
 
 

@@ -53,7 +53,6 @@ import me.him188.ani.app.videoplayer.ui.guesture.VIDEO_GESTURE_MOUSE_MOVE_SHOW_C
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
 import me.him188.ani.app.videoplayer.ui.progress.PlayerProgressSliderState
 import me.him188.ani.app.videoplayer.ui.progress.TAG_PROGRESS_SLIDER_PREVIEW_POPUP
-import me.him188.ani.danmaku.ui.DanmakuHostState
 import org.openani.mediamp.DummyMediampPlayer
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -101,7 +100,7 @@ class EpisodeVideoCursorTest {
                     onClickNextEpisode = {},
                     playerControllerState = controllerState,
                     title = { Text("Title") },
-                    danmakuHostState = remember { DanmakuHostState() },
+                    danmakuHost = {},
                     danmakuEnabled = false,
                     onToggleDanmaku = {},
                     videoLoadingStateFlow = remember { MutableStateFlow(VideoLoadingState.Succeed(isBt = true)) },

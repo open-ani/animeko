@@ -37,6 +37,7 @@ import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.domain.media.player.ChunkState
 import me.him188.ani.app.domain.media.player.staticMediaCacheProgressState
 import me.him188.ani.app.domain.player.VideoLoadingState
+import me.him188.ani.app.ui.danmaku.PlayerDanmakuEditor
 import me.him188.ani.app.ui.doesNotExist
 import me.him188.ani.app.ui.exists
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
@@ -44,7 +45,6 @@ import me.him188.ani.app.ui.foundation.theme.aniDarkColorTheme
 import me.him188.ani.app.ui.framework.AniComposeUiTest
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import me.him188.ani.app.ui.settings.danmaku.createTestDanmakuRegexFilterState
-import me.him188.ani.app.ui.subject.episode.danmaku.DanmakuEditor
 import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberTestMediaSelectorPresentation
 import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberTestMediaSourceResults
 import me.him188.ani.app.ui.subject.episode.video.components.DanmakuSettingsSheet
@@ -72,7 +72,6 @@ import me.him188.ani.app.videoplayer.ui.progress.TAG_SELECT_EPISODE_ICON_BUTTON
 import me.him188.ani.app.videoplayer.ui.progress.TAG_SPEED_SWITCHER_DROPDOWN_MENU
 import me.him188.ani.app.videoplayer.ui.progress.TAG_SPEED_SWITCHER_TEXT_BUTTON
 import me.him188.ani.app.videoplayer.ui.top.PlayerTopBar
-import me.him188.ani.danmaku.ui.DanmakuHostState
 import org.openani.mediamp.DummyMediampPlayer
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -163,14 +162,14 @@ class EpisodeVideoControllerTest {
                 onClickNextEpisode = {},
                 playerControllerState = playerControllerState,
                 title = { PlayerTopBar() },
-                danmakuHostState = remember { DanmakuHostState() },
+                danmakuHost = {},
                 danmakuEnabled = false,
                 onToggleDanmaku = {},
                 videoLoadingStateFlow = remember { MutableStateFlow(VideoLoadingState.Succeed(isBt = true)) },
                 onClickFullScreen = {},
                 onExitFullscreen = {},
                 danmakuEditor = {
-                    EpisodeVideoDefaults.DanmakuEditor(
+                    PlayerDanmakuEditor(
                         text = "",
                         onTextChange = {},
                         isSending = { false },

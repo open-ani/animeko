@@ -11,8 +11,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.platform.LocalContext
+import me.him188.ani.app.ui.danmaku.DummyDanmakuEditor
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
-import me.him188.ani.app.ui.subject.episode.danmaku.DummyDanmakuEditor
 
 @Composable
 @Preview(widthDp = 1080 / 3, heightDp = 2400 / 3, showBackground = true)

@@ -11,6 +11,8 @@ package me.him188.ani.app.domain.usecase
 
 import me.him188.ani.app.domain.danmaku.SearchDanmakuUseCase
 import me.him188.ani.app.domain.danmaku.SearchDanmakuUseCaseImpl
+import me.him188.ani.app.domain.danmaku.SetDanmakuEnabledUseCase
+import me.him188.ani.app.domain.danmaku.SetDanmakuEnabledUseCaseImpl
 import me.him188.ani.app.domain.episode.CreateMediaFetchSelectBundleFlowUseCase
 import me.him188.ani.app.domain.episode.CreateMediaFetchSelectBundleFlowUseCaseImpl
 import me.him188.ani.app.domain.episode.GetEpisodeCollectionInfoFlowUseCase
@@ -37,7 +39,6 @@ import org.koin.core.KoinApplication
 import org.koin.dsl.module
 import org.koin.mp.KoinPlatform
 
-@Suppress("UnusedReceiverParameter")
 fun KoinApplication.useCaseModules() = module {
     single<GetEpisodeCollectionInfoFlowUseCase> { GetEpisodeCollectionInfoFlowUseCaseImpl() }
     single<SearchDanmakuUseCase> { SearchDanmakuUseCaseImpl() }
@@ -51,6 +52,7 @@ fun KoinApplication.useCaseModules() = module {
     single<AutoSwitchMediaOnPlayerErrorUseCase> { AutoSwitchMediaOnPlayerErrorUseCaseImpl() }
     single<GetVideoScaffoldConfigUseCase> { GetVideoScaffoldConfigUseCaseImpl }
     single<SavePlayProgressUseCase> { SavePlayProgressUseCaseImpl() }
+    single<SetDanmakuEnabledUseCase> { SetDanmakuEnabledUseCaseImpl(koin) }
 }
 
 val GlobalKoin get() = KoinPlatform.getKoin()

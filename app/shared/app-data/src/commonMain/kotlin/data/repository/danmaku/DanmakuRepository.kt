@@ -12,9 +12,11 @@ package me.him188.ani.app.data.repository.danmaku
 import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.episode.displayName
 import me.him188.ani.app.data.models.subject.SubjectInfo
+import me.him188.ani.app.data.network.protocol.DanmakuInfo
 import me.him188.ani.app.data.repository.Repository
 import me.him188.ani.app.domain.danmaku.CombinedDanmakuFetchResult
 import me.him188.ani.app.domain.danmaku.DanmakuManager
+import me.him188.ani.danmaku.api.Danmaku
 import me.him188.ani.danmaku.api.DanmakuSearchRequest
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
@@ -53,4 +55,6 @@ class DanmakuRepository(
             ),
         )
     }
+
+    suspend fun post(episodeId: Int, info: DanmakuInfo): Danmaku = danmakuManager.post(episodeId, info)
 }

@@ -23,18 +23,16 @@ import me.him188.ani.danmaku.api.DanmakuCollection
 import me.him188.ani.danmaku.api.TimeBasedDanmakuSession
 import me.him188.ani.danmaku.api.emptyDanmakuCollection
 
+/**
+ * A general danmaku loader, that fetches danmaku from the network and cache and provides a [Flow] of [DanmakuCollection]
+ */
 sealed interface DanmakuLoader {
     val state: StateFlow<DanmakuLoadingState>
     val collectionFlow: Flow<DanmakuCollection>
-//    val eventFlow: Flow<DanmakuEvent>
-//    suspend fun requestRepopulate()
 }
 
 class DanmakuLoaderImpl(
     requestFlow: Flow<SearchDanmakuRequest?>,
-//    currentPosition: Flow<Duration>,
-//    danmakuFilterConfig: Flow<DanmakuFilterConfig>,
-//    danmakuRegexFilterList: Flow<List<DanmakuRegexFilter>>,
     flowScope: CoroutineScope,
     private val searchDanmakuUseCase: SearchDanmakuUseCase
 ) : DanmakuLoader {

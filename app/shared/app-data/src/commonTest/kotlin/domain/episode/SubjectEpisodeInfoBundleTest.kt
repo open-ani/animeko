@@ -25,7 +25,6 @@ import kotlinx.coroutines.test.runTest
 import me.him188.ani.app.data.repository.RepositoryNetworkException
 import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.utils.coroutines.CancellationException
-import kotlin.coroutines.cancellation.CancellationException
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -118,7 +117,7 @@ class SubjectEpisodeInfoBundleTest {
 
         // infoLoadErrorState should remain null because we explicitly skip CancellationException
         // in 'onCompletion'.
-        val firstError = state.infoLoadErrorState.drop(1).first()
+        val firstError = state.infoLoadErrorState.first()
         // We expect that the flow completes (or is canceled) without setting a LoadError
         // Because .onCompletion() checks for `e != null && e !is CancellationException`
         // => a CancellationException should not set state.infoLoadErrorState.
@@ -128,9 +127,8 @@ class SubjectEpisodeInfoBundleTest {
         job.cancel()
         scope.cancel()
 
-        // The thrown exception is indeed a CancellationException (and should not bubble up as backgroundException)
-        // but if you want to confirm the cause, you can also do an assertion here:
-        assertIs<CancellationException>(backgroundException.await())
+        // Not asserting this, because CancellationException will just be ignored by the SupervisorJob.
+//        assertIs<CancellationException>(backgroundException.await())
     }
 
     @Test

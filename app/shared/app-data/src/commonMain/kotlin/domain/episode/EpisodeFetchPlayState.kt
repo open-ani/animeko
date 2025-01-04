@@ -39,6 +39,7 @@ class EpisodeFetchPlayState(
     player: MediampPlayer,
     private val backgroundScope: CoroutineScope,
     private val koin: Koin = GlobalKoin,
+    sharingStarted: SharingStarted = SharingStarted.WhileSubscribed(),
 ) : KoinComponent {
     private val mediaSelectorAutoSelectUseCase: MediaSelectorAutoSelectUseCase by inject()
     private val mediaSelectorEventSavePreferenceUseCase: MediaSelectorEventSavePreferenceUseCase by inject()
@@ -59,7 +60,7 @@ class EpisodeFetchPlayState(
      * When an error occurs, the flow emits `null`, and the error can be observed from [infoLoadErrorFlow].
      */
     val infoBundleFlow =
-        infoLoader.infoBundleFlow.shareIn(backgroundScope, SharingStarted.WhileSubscribed(), replay = 1)
+        infoLoader.infoBundleFlow.shareIn(backgroundScope, sharingStarted, replay = 1)
 
     /**
      * A flow of the error that occurred during the loading of [infoBundleFlow].
@@ -75,7 +76,8 @@ class EpisodeFetchPlayState(
      * This flow does not produce errors.
      */
     val fetchSelectFlow = createMediaFetchSelectBundleFlowUseCase(infoBundleFlow)
-        .shareIn(backgroundScope, SharingStarted.WhileSubscribed(), 1)
+        .shareIn(backgroundScope, sharingStarted, 1)
+        .distinctUntilChanged()
 
 
     /**

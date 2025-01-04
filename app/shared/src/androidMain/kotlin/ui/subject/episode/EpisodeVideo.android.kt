@@ -46,7 +46,6 @@ import me.him188.ani.app.videoplayer.ui.guesture.NoOpLevelController
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
 import me.him188.ani.app.videoplayer.ui.progress.rememberMediaProgressSliderState
 import me.him188.ani.app.videoplayer.ui.rememberVideoControllerState
-import me.him188.ani.danmaku.ui.DanmakuHostState
 import me.him188.ani.utils.platform.annotations.TestOnly
 import org.openani.mediamp.DummyMediampPlayer
 
@@ -120,7 +119,7 @@ private fun PreviewVideoScaffoldImpl(
                 "葬送的芙莉莲",
             )
         },
-        danmakuHostState = remember { DanmakuHostState() },
+        danmakuHost = {},
         danmakuEnabled = danmakuEnabled,
         onToggleDanmaku = { danmakuEnabled = !danmakuEnabled },
         videoLoadingStateFlow = MutableStateFlow(VideoLoadingState.Succeed(isBt = true)),

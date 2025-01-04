@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.app.ui.subject.episode.danmaku
+package me.him188.ani.app.ui.danmaku
 
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -44,7 +44,6 @@ import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.data.network.protocol.DanmakuInfo
 import me.him188.ani.app.data.network.protocol.DanmakuLocation
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
-import me.him188.ani.app.ui.subject.episode.EpisodeVideoDefaults
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
 import me.him188.ani.app.videoplayer.ui.rememberAlwaysOnRequester
@@ -52,21 +51,21 @@ import org.openani.mediamp.MediampPlayer
 
 
 @Composable
-fun EpisodeVideoDefaults.DanmakuEditor(
-    playerDanmakuState: PlayerDanmakuState,
+fun PlayerDanmakuEditor(
+    danmakuEditorState: DanmakuEditorState,
     danmakuTextPlaceholder: String,
     playerState: MediampPlayer,
     videoScaffoldConfig: VideoScaffoldConfig,
     playerControllerState: PlayerControllerState,
     modifier: Modifier = Modifier,
 ) {
-    val sending by playerDanmakuState.isSending.collectAsStateWithLifecycle()
-    DanmakuEditor(
-        text = playerDanmakuState.danmakuEditorText,
-        onTextChange = { playerDanmakuState.danmakuEditorText = it },
+    val sending by danmakuEditorState.isSending.collectAsStateWithLifecycle()
+    PlayerDanmakuEditor(
+        text = danmakuEditorState.text,
+        onTextChange = { danmakuEditorState.text = it },
         isSending = { sending },
         onSend = {
-            playerDanmakuState.send(it)
+            danmakuEditorState.post(it)
         },
         danmakuTextPlaceholder, playerState, videoScaffoldConfig, playerControllerState, modifier,
     )
@@ -74,7 +73,7 @@ fun EpisodeVideoDefaults.DanmakuEditor(
 
 
 @Composable
-fun EpisodeVideoDefaults.DanmakuEditor(
+fun PlayerDanmakuEditor(
     text: String,
     onTextChange: (String) -> Unit,
     isSending: () -> Boolean,
@@ -95,7 +94,7 @@ fun EpisodeVideoDefaults.DanmakuEditor(
     var didSetPaused by rememberSaveable { mutableStateOf(false) }
     Row(modifier = modifier) {
         val scope = rememberCoroutineScope()
-        DanmakuEditor(
+        PlayerDanmakuEditor(
             text = text,
             onTextChange = onTextChange,
             isSending = isSending,
@@ -134,7 +133,7 @@ fun EpisodeVideoDefaults.DanmakuEditor(
 }
 
 @Composable
-fun DanmakuEditor(
+fun PlayerDanmakuEditor(
     text: String,
     onTextChange: (String) -> Unit,
     isSending: () -> Boolean,
