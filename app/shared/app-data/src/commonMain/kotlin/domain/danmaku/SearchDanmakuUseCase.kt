@@ -11,11 +11,10 @@ package me.him188.ani.app.domain.danmaku
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import me.him188.ani.app.data.models.episode.displayName
 import me.him188.ani.app.data.repository.RepositoryException
+import me.him188.ani.app.data.repository.danmaku.DanmakuRepository
 import me.him188.ani.app.data.repository.danmaku.SearchDanmakuRequest
 import me.him188.ani.app.domain.usecase.UseCase
-import me.him188.ani.danmaku.api.DanmakuSearchRequest
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import kotlin.coroutines.CoroutineContext
@@ -30,27 +29,9 @@ fun interface SearchDanmakuUseCase : UseCase {
 class SearchDanmakuUseCaseImpl(
     private val context: CoroutineContext = Dispatchers.Default,
 ) : SearchDanmakuUseCase, KoinComponent {
-    private val danmakuManager: DanmakuManager by inject()
+    private val repo: DanmakuRepository by inject()
 
     override suspend fun invoke(request: SearchDanmakuRequest): CombinedDanmakuFetchResult = withContext(context) {
-        val subject = request.subjectInfo
-        val episode = request.episodeInfo
-
-        danmakuManager.fetch(
-            DanmakuSearchRequest(
-                subjectId = subject.subjectId,
-                subjectPrimaryName = subject.displayName,
-                subjectNames = subject.allNames,
-                subjectPublishDate = subject.airDate,
-                episodeId = episode.episodeId,
-                episodeSort = episode.sort,
-                episodeEp = episode.ep,
-                episodeName = episode.displayName,
-                filename = request.filename,
-                fileHash = request.fileHash,
-                fileSize = request.fileLength,
-                videoDuration = request.videoDuration,
-            ),
-        )
+        repo.search(request)
     }
 }
