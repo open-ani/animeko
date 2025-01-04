@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import me.him188.ani.app.domain.episode.EpisodeFetchPlayState
 import me.him188.ani.app.domain.episode.MediaFetchSelectBundle
+import me.him188.ani.app.domain.player.VideoLoadingState
 import org.koin.core.Koin
 import org.openani.mediamp.MediampPlayer
 
@@ -73,6 +74,7 @@ interface PlayerExtensionContext {
     val episodeIdFlow: StateFlow<Int>
 
     val player: MediampPlayer
+    val videoLoadingState: Flow<VideoLoadingState>
     val fetchSelectFlow: Flow<MediaFetchSelectBundle?>
 
     suspend fun switchEpisode(newEpisodeId: Int)

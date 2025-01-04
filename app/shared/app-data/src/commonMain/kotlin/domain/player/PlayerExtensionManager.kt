@@ -7,13 +7,16 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.app.domain.player.extension
+package me.him188.ani.app.domain.player
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import me.him188.ani.app.domain.episode.EpisodeFetchPlayState
 import me.him188.ani.app.domain.episode.MediaFetchSelectBundle
 import me.him188.ani.app.domain.episode.player
+import me.him188.ani.app.domain.player.extension.EpisodePlayerExtensionFactory
+import me.him188.ani.app.domain.player.extension.PlayerExtension
+import me.him188.ani.app.domain.player.extension.PlayerExtensionContext
 import org.koin.core.Koin
 import org.openani.mediamp.MediampPlayer
 import kotlin.coroutines.cancellation.CancellationException
@@ -48,6 +51,8 @@ fun PlayerExtensionManager(
             get() = state.episodeIdFlow
         override val player: MediampPlayer
             get() = state.player
+        override val videoLoadingState: Flow<VideoLoadingState>
+            get() = state.playerSession.videoLoadingState
         override val fetchSelectFlow: Flow<MediaFetchSelectBundle?>
             get() = state.fetchSelectFlow
 

@@ -48,9 +48,7 @@ import me.him188.ani.app.data.models.subject.SubjectProgressInfo
 import me.him188.ani.app.data.network.protocol.DanmakuInfo
 import me.him188.ani.app.data.repository.episode.BangumiCommentRepository
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
-import me.him188.ani.app.data.repository.media.EpisodePreferencesRepository
 import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepository
-import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepository
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.danmaku.DanmakuManager
@@ -64,8 +62,11 @@ import me.him188.ani.app.domain.media.fetch.FilteredMediaSourceResults
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.resolver.MediaResolver
 import me.him188.ani.app.domain.player.CacheProgressProvider
+import me.him188.ani.app.domain.player.extension.AutoSelectExtension
 import me.him188.ani.app.domain.player.extension.MarkAsWatchedExtension
 import me.him188.ani.app.domain.player.extension.RememberPlayProgressExtension
+import me.him188.ani.app.domain.player.extension.SaveMediaPreferenceExtension
+import me.him188.ani.app.domain.player.extension.SwitchMediaOnPlayerErrorExtension
 import me.him188.ani.app.domain.player.extension.SwitchNextEpisodeExtension
 import me.him188.ani.app.domain.session.AuthState
 import me.him188.ani.app.domain.usecase.GlobalKoin
@@ -155,9 +156,7 @@ class EpisodeViewModel(
     private val settingsRepository: SettingsRepository by inject()
     private val danmakuRegexFilterRepository: DanmakuRegexFilterRepository by inject()
     private val mediaSourceManager: MediaSourceManager by inject()
-    private val episodePreferencesRepository: EpisodePreferencesRepository by inject()
     private val bangumiCommentRepository: BangumiCommentRepository by inject()
-    private val episodePlayHistoryRepository: EpisodePlayHistoryRepository by inject()
     private val subjectDetailsStateFactory: SubjectDetailsStateFactory by inject()
     private val setDanmakuEnabledUseCase: SetDanmakuEnabledUseCase by inject()
     // endregion
@@ -181,6 +180,9 @@ class EpisodeViewModel(
                     }
                 },
             ),
+            SwitchMediaOnPlayerErrorExtension,
+            AutoSelectExtension,
+            SaveMediaPreferenceExtension,
         ),
         koin,
         sharingStarted = SharingStarted.WhileSubscribed(5_000),

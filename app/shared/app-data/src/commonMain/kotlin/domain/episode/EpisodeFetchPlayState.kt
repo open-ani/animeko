@@ -19,12 +19,10 @@ import me.him188.ani.app.domain.media.fetch.MediaFetchSession
 import me.him188.ani.app.domain.media.resolver.toEpisodeMetadata
 import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.media.selector.MediaSelectorAutoSelectUseCase
-import me.him188.ani.app.domain.media.selector.MediaSelectorEventSavePreferenceUseCase
-import me.him188.ani.app.domain.player.AutoSwitchMediaOnPlayerErrorUseCase
+import me.him188.ani.app.domain.player.ExtensionException
+import me.him188.ani.app.domain.player.PlayerExtensionManager
 import me.him188.ani.app.domain.player.extension.EpisodePlayerExtensionFactory
 import me.him188.ani.app.domain.player.extension.ExtensionBackgroundTaskScope
-import me.him188.ani.app.domain.player.extension.ExtensionException
-import me.him188.ani.app.domain.player.extension.PlayerExtensionManager
 import me.him188.ani.app.domain.usecase.GlobalKoin
 import org.koin.core.Koin
 import org.koin.core.component.KoinComponent
@@ -49,10 +47,7 @@ class EpisodeFetchPlayState(
     private val koin: Koin = GlobalKoin,
     sharingStarted: SharingStarted = SharingStarted.WhileSubscribed(),
 ) : KoinComponent {
-    private val mediaSelectorAutoSelectUseCase: MediaSelectorAutoSelectUseCase by inject()
-    private val mediaSelectorEventSavePreferenceUseCase: MediaSelectorEventSavePreferenceUseCase by inject()
     private val createMediaFetchSelectBundleFlowUseCase: CreateMediaFetchSelectBundleFlowUseCase by inject()
-    private val autoSwitchMediaOnPlayerErrorUseCase: AutoSwitchMediaOnPlayerErrorUseCase by inject()
 
     private val _episodeIdFlow: MutableStateFlow<Int> = MutableStateFlow(initialEpisodeId)
     val episodeIdFlow: StateFlow<Int> = _episodeIdFlow.asStateFlow()
@@ -153,28 +148,7 @@ class EpisodeFetchPlayState(
         if (backgroundTasksStarted) return
         backgroundTasksStarted = true
 
-        backgroundScope.launch(CoroutineName("MediaSelectorAutoSelect")) {
-            fetchSelectFlow.collectLatest { bundle ->
-                if (bundle == null) return@collectLatest
-                mediaSelectorAutoSelectUseCase(bundle.mediaFetchSession, bundle.mediaSelector)
-            }
-        }
-
-        backgroundScope.launch(CoroutineName("MediaSelectorEventSavePreference")) {
-            fetchSelectFlow.collectLatest { bundle ->
-                if (bundle == null) return@collectLatest
-                mediaSelectorEventSavePreferenceUseCase(bundle.mediaSelector, subjectId)
-            }
-        }
-
-        backgroundScope.launch(CoroutineName("AutoSwitchMediaOnPlayerError")) {
-            autoSwitchMediaOnPlayerErrorUseCase(
-                fetchSelectFlow.filterNotNull(),
-                playerSession.videoLoadingState,
-                playerSession.player.playbackState,
-            )
-        }
-
+        // This is a very basic feature, not extension.
         backgroundScope.launch(CoroutineName("LoadMediaOnSelect")) {
             fetchSelectFlow.collectLatest { fetchSelect ->
                 if (fetchSelect == null) return@collectLatest
@@ -192,22 +166,25 @@ class EpisodeFetchPlayState(
         }
 
         extensionManager.call { extension ->
-            object : ExtensionBackgroundTaskScope {
-                override fun launch(subName: String, block: suspend CoroutineScope.() -> Unit): Job {
-                    return backgroundScope.launch(CoroutineName(extension.name + "." + subName)) {
-                        try {
-                            block()
-                        } catch (e: CancellationException) {
-                            throw e
-                        } catch (e: Exception) {
-                            throw ExtensionException(
-                                "Unhandled exception in background scope from task '$subName' launched by extension '$extension'",
-                                e
-                            )
+            extension.onUIAttach(
+                object : ExtensionBackgroundTaskScope {
+                    override fun launch(subName: String, block: suspend CoroutineScope.() -> Unit): Job {
+                        return backgroundScope.launch(CoroutineName(extension.name + "." + subName)) {
+                            try {
+                                block()
+                            } catch (e: CancellationException) {
+                                throw e
+                            } catch (e: Exception) {
+                                throw ExtensionException(
+                                    "Unhandled exception in background scope from task '$subName' launched by extension '$extension'",
+                                    e
+                                )
+                            }
                         }
                     }
                 }
-            }
+
+            )
         }
     }
 

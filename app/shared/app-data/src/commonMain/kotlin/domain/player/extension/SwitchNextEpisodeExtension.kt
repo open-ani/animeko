@@ -16,8 +16,15 @@ import me.him188.ani.app.domain.settings.GetVideoScaffoldConfigUseCase
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import org.koin.core.Koin
+import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.PlaybackState
 
+/**
+ * 自动连播.
+ *
+ * 监控 [MediampPlayer.playbackState], 当其变为 [PlaybackState.FINISHED] 且距离视频结束不足 5 秒时, 切换到下一集.
+ * 下一集由 [getNextEpisode] 提供.
+ */
 class SwitchNextEpisodeExtension(
     private val context: PlayerExtensionContext,
     koin: Koin,

@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.app.domain.player
+package me.him188.ani.app.domain.player.extension
 
 import kotlinx.collections.immutable.persistentHashSetOf
 import kotlinx.coroutines.delay
@@ -23,36 +23,40 @@ import me.him188.ani.app.domain.media.fetch.MediaFetchSession
 import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.media.selector.autoSelect
 import me.him188.ani.app.domain.mediasource.GetWebMediaSourceInstanceFlowUseCase
+import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.domain.settings.GetMediaSelectorSettingsFlowUseCase
 import me.him188.ani.app.domain.settings.GetVideoScaffoldConfigUseCase
-import me.him188.ani.app.domain.usecase.GlobalKoin
-import me.him188.ani.app.domain.usecase.UseCase
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import org.koin.core.Koin
-import org.koin.core.component.KoinComponent
-import org.koin.core.component.inject
 import org.openani.mediamp.PlaybackState
 import kotlin.time.Duration.Companion.seconds
 
-fun interface AutoSwitchMediaOnPlayerErrorUseCase : UseCase {
-    suspend operator fun invoke(
-        mediaFetchSessionFlow: Flow<MediaFetchSelectBundle>,
-        videoLoadingStateFlow: Flow<VideoLoadingState>,
-        playbackStateFlow: Flow<PlaybackState>
-    )
-}
+/**
+ * 当播放失败时, 自动切换到下一个可选择的 media.
+ */
+class SwitchMediaOnPlayerErrorExtension(
+    private val context: PlayerExtensionContext,
+    koin: Koin
+) : PlayerExtension("SwitchMediaOnPlayerErrorExtension") {
+    private val getVideoScaffoldConfigUseCase: GetVideoScaffoldConfigUseCase by koin.inject()
+    private val getWebMediaSourceInstanceFlowUseCase: GetWebMediaSourceInstanceFlowUseCase by koin.inject()
+    private val getMediaSelectorSettingsFlowUseCase: GetMediaSelectorSettingsFlowUseCase by koin.inject()
 
-class AutoSwitchMediaOnPlayerErrorUseCaseImpl(
-    private val koin: Koin = GlobalKoin,
-) : AutoSwitchMediaOnPlayerErrorUseCase, KoinComponent {
-    private val getVideoScaffoldConfigUseCase: GetVideoScaffoldConfigUseCase by inject()
-    private val getWebMediaSourceInstanceFlowUseCase: GetWebMediaSourceInstanceFlowUseCase by inject()
-    private val getMediaSelectorSettingsFlowUseCase: GetMediaSelectorSettingsFlowUseCase by inject()
 
-    override suspend fun invoke(
-        mediaFetchSessionFlow: Flow<MediaFetchSelectBundle>,
+    override fun onUIAttach(backgroundTaskScope: ExtensionBackgroundTaskScope) {
+        backgroundTaskScope.launch("PlayerErrorListener") {
+            invoke(
+                context.fetchSelectFlow,
+                context.videoLoadingState,
+                context.player.playbackState,
+            )
+        }
+    }
+
+    private suspend fun invoke(
+        mediaFetchSessionFlow: Flow<MediaFetchSelectBundle?>,
         videoLoadingStateFlow: Flow<VideoLoadingState>,
         playbackStateFlow: Flow<PlaybackState>
     ) {
@@ -69,23 +73,38 @@ class AutoSwitchMediaOnPlayerErrorUseCaseImpl(
                     // 设置关闭, 不要自动切换
                     return@collectLatest
                 }
-                mediaFetchSessionFlow.collectLatest { bundle ->
-                    combine(
-                        videoLoadingStateFlow, // 解析链接出错 (未匹配到链接)
-                        playbackStateFlow, // 解析成功, 但播放器出错 (无法链接到链接, 例如链接错误)
-                    ) { videoLoadingState, playbackState ->
-                        videoLoadingState is VideoLoadingState.Failed || playbackState == PlaybackState.ERROR
-                    }.distinctUntilChanged()
-                        .collectLatest { isError ->
-                            if (isError) {
-                                handler.handleError(bundle.mediaFetchSession, bundle.mediaSelector)
-                            } // else: cancel selection
-                        }
-                }
+
+                handler.observeLoadErrorAndHandle(mediaFetchSessionFlow, videoLoadingStateFlow, playbackStateFlow)
             }
     }
 
-    override fun getKoin(): Koin = koin
+    private suspend fun PlayerLoadErrorHandler.observeLoadErrorAndHandle(
+        mediaFetchSessionFlow: Flow<MediaFetchSelectBundle?>,
+        videoLoadingStateFlow: Flow<VideoLoadingState>,
+        playbackStateFlow: Flow<PlaybackState>
+    ) {
+        mediaFetchSessionFlow.collectLatest { bundle ->
+            if (bundle == null) return@collectLatest
+
+            combine(
+                videoLoadingStateFlow, // 解析链接出错 (未匹配到链接)
+                playbackStateFlow, // 解析成功, 但播放器出错 (无法链接到链接, 例如链接错误)
+            ) { videoLoadingState, playbackState ->
+                videoLoadingState is VideoLoadingState.Failed || playbackState == PlaybackState.ERROR
+            }.distinctUntilChanged()
+                .collectLatest { isError ->
+                    if (isError) {
+                        handleError(bundle.mediaFetchSession, bundle.mediaSelector)
+                    } // else: cancel selection
+                }
+        }
+    }
+
+    companion object : EpisodePlayerExtensionFactory<SwitchMediaOnPlayerErrorExtension> {
+        override fun create(context: PlayerExtensionContext, koin: Koin): SwitchMediaOnPlayerErrorExtension {
+            return SwitchMediaOnPlayerErrorExtension(context, koin)
+        }
+    }
 }
 
 private class PlayerLoadErrorHandler(

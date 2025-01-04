@@ -30,6 +30,9 @@ import me.him188.ani.utils.logging.logger
 import org.koin.core.Koin
 import org.openani.mediamp.MediampPlayer
 
+/**
+ * 自动标记为已看
+ */
 class MarkAsWatchedExtension(
     private val context: PlayerExtensionContext,
     koin: Koin,
