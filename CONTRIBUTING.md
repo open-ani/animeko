@@ -626,7 +626,7 @@ navigator,
 ### 如何增加一个新页面
 
 1. 在 `app/shared/pages` 目录下创建一个新目录, 例如 `pages/person-details`
-2. 在 `app/shread/build.gradle.kts` 中仿照现有代码,
+2. 在 `app/shared/build.gradle.kts` 中仿照现有代码,
    添加一行 `submodule("app/shared/pages/person-details")`
 3. 创建 `app/shared/pages/person-details/common`, `.../android`, `.../desktop`
 4. 在三个目录中分别创建 `package.kt`, 内容为 `package me.him188.ani.app.ui.person.details` (

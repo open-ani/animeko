@@ -582,7 +582,7 @@ private fun SubjectDetailsContentPager(
 }
 
 /**
- * 加载展位页
+ * 加载占位页
  */
 @Composable
 private fun PlaceholderSubjectDetailsContentPager(paddingValues: PaddingValues) {
