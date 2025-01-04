@@ -13,7 +13,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
-import me.him188.ani.app.domain.danmaku.protocol.ReleaseClass
+import me.him188.ani.app.data.network.protocol.ReleaseClass
 import me.him188.ani.utils.platform.currentPlatform
 import me.him188.ani.utils.platform.isIos
 

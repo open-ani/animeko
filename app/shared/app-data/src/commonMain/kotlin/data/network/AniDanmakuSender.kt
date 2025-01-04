@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.app.domain.danmaku
+package me.him188.ani.app.data.network
 
 import io.ktor.client.call.body
 import io.ktor.client.plugins.HttpTimeout
@@ -26,11 +26,11 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import me.him188.ani.app.domain.danmaku.protocol.AniUser
-import me.him188.ani.app.domain.danmaku.protocol.BangumiLoginRequest
-import me.him188.ani.app.domain.danmaku.protocol.BangumiLoginResponse
-import me.him188.ani.app.domain.danmaku.protocol.DanmakuInfo
-import me.him188.ani.app.domain.danmaku.protocol.DanmakuPostRequest
+import me.him188.ani.app.data.network.protocol.AniUser
+import me.him188.ani.app.data.network.protocol.BangumiLoginRequest
+import me.him188.ani.app.data.network.protocol.BangumiLoginResponse
+import me.him188.ani.app.data.network.protocol.DanmakuInfo
+import me.him188.ani.app.data.network.protocol.DanmakuPostRequest
 import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.ui.foundation.BackgroundScope
 import me.him188.ani.app.ui.foundation.HasBackgroundScope

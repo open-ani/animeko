@@ -9,7 +9,8 @@
 
 package me.him188.ani.app.ui.subject.episode.statistics
 
-import me.him188.ani.app.domain.danmaku.AniDanmakuProvider
+import me.him188.ani.app.data.network.AniDanmakuProvider
+import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.danmaku.api.DanmakuMatchInfo
 import me.him188.ani.danmaku.api.DanmakuMatchMethod
 import me.him188.ani.danmaku.dandanplay.DandanplayDanmakuProvider

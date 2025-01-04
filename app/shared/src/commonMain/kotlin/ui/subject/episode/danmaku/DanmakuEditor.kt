@@ -41,8 +41,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
-import me.him188.ani.app.domain.danmaku.protocol.DanmakuInfo
-import me.him188.ani.app.domain.danmaku.protocol.DanmakuLocation
+import me.him188.ani.app.data.network.protocol.DanmakuInfo
+import me.him188.ani.app.data.network.protocol.DanmakuLocation
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
 import me.him188.ani.app.ui.subject.episode.EpisodeVideoDefaults
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
@@ -50,9 +50,35 @@ import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
 import me.him188.ani.app.videoplayer.ui.rememberAlwaysOnRequester
 import org.openani.mediamp.MediampPlayer
 
+
 @Composable
 fun EpisodeVideoDefaults.DanmakuEditor(
     playerDanmakuState: PlayerDanmakuState,
+    danmakuTextPlaceholder: String,
+    playerState: MediampPlayer,
+    videoScaffoldConfig: VideoScaffoldConfig,
+    playerControllerState: PlayerControllerState,
+    modifier: Modifier = Modifier,
+) {
+    val sending by playerDanmakuState.isSending.collectAsStateWithLifecycle()
+    DanmakuEditor(
+        text = playerDanmakuState.danmakuEditorText,
+        onTextChange = { playerDanmakuState.danmakuEditorText = it },
+        isSending = { sending },
+        onSend = {
+            playerDanmakuState.send(it)
+        },
+        danmakuTextPlaceholder, playerState, videoScaffoldConfig, playerControllerState, modifier,
+    )
+}
+
+
+@Composable
+fun EpisodeVideoDefaults.DanmakuEditor(
+    text: String,
+    onTextChange: (String) -> Unit,
+    isSending: () -> Boolean,
+    onSend: suspend (DanmakuInfo) -> Unit,
     danmakuTextPlaceholder: String,
     playerState: MediampPlayer,
     videoScaffoldConfig: VideoScaffoldConfig,
@@ -67,18 +93,17 @@ fun EpisodeVideoDefaults.DanmakuEditor(
      * 是否设置了暂停
      */
     var didSetPaused by rememberSaveable { mutableStateOf(false) }
-    val isSending = playerDanmakuState.isSending.collectAsStateWithLifecycle()
     Row(modifier = modifier) {
         val scope = rememberCoroutineScope()
         DanmakuEditor(
-            text = playerDanmakuState.danmakuEditorText,
-            onTextChange = { playerDanmakuState.danmakuEditorText = it },
-            isSending = { isSending.value },
+            text = text,
+            onTextChange = onTextChange,
+            isSending = isSending,
             placeholderText = danmakuTextPlaceholder,
             onSend = { text ->
-                playerDanmakuState.danmakuEditorText = ""
+                onTextChange("")
                 scope.launch {
-                    playerDanmakuState.send(
+                    onSend(
                         DanmakuInfo(
                             playerState.getCurrentPositionMillis(),
                             text = text,

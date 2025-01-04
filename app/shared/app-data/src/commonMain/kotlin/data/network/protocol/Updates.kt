@@ -7,10 +7,9 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.app.domain.danmaku.protocol
+package me.him188.ani.app.data.network.protocol
 
 import kotlinx.serialization.Serializable
-import me.him188.ani.app.domain.danmaku.protocol.ReleaseClass.entries
 
 
 @Serializable

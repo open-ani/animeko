@@ -36,19 +36,17 @@ import me.him188.ani.app.data.models.preference.FullscreenSwitchMode
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.domain.media.player.ChunkState
 import me.him188.ani.app.domain.media.player.staticMediaCacheProgressState
+import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.ui.doesNotExist
 import me.him188.ani.app.ui.exists
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
-import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.foundation.theme.aniDarkColorTheme
 import me.him188.ani.app.ui.framework.AniComposeUiTest
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import me.him188.ani.app.ui.settings.danmaku.createTestDanmakuRegexFilterState
 import me.him188.ani.app.ui.subject.episode.danmaku.DanmakuEditor
-import me.him188.ani.app.ui.subject.episode.danmaku.PlayerDanmakuState
 import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberTestMediaSelectorPresentation
 import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberTestMediaSourceResults
-import me.him188.ani.app.ui.subject.episode.statistics.VideoLoadingState
 import me.him188.ani.app.ui.subject.episode.video.components.DanmakuSettingsSheet
 import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheetPage
 import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheets
@@ -74,9 +72,6 @@ import me.him188.ani.app.videoplayer.ui.progress.TAG_SELECT_EPISODE_ICON_BUTTON
 import me.him188.ani.app.videoplayer.ui.progress.TAG_SPEED_SWITCHER_DROPDOWN_MENU
 import me.him188.ani.app.videoplayer.ui.progress.TAG_SPEED_SWITCHER_TEXT_BUTTON
 import me.him188.ani.app.videoplayer.ui.top.PlayerTopBar
-import me.him188.ani.danmaku.api.Danmaku
-import me.him188.ani.danmaku.api.DanmakuLocation
-import me.him188.ani.danmaku.ui.DanmakuConfig
 import me.him188.ani.danmaku.ui.DanmakuHostState
 import org.openani.mediamp.DummyMediampPlayer
 import kotlin.test.Test
@@ -159,25 +154,6 @@ class EpisodeVideoControllerTest {
             val playerState = remember {
                 DummyMediampPlayer(scope.coroutineContext)
             }
-            val danmakuState = PlayerDanmakuState(
-                danmakuEnabled = stateOf(true),
-                danmakuConfig = stateOf(DanmakuConfig.Default),
-                onSend = {
-                    Danmaku(
-                        "",
-                        "dummy",
-                        0L, "1",
-                        DanmakuLocation.entries.random(),
-                        text = "",
-                        0,
-                    )
-                },
-                onSetEnabled = { },
-                onHideController = {
-                    playerControllerState.toggleFullVisible(false)
-                },
-                scope,
-            )
             val expanded = true
             val cacheProgressInfoFlow = staticMediaCacheProgressState(ChunkState.NONE).flow
             EpisodeVideoImpl(
@@ -195,7 +171,10 @@ class EpisodeVideoControllerTest {
                 onExitFullscreen = {},
                 danmakuEditor = {
                     EpisodeVideoDefaults.DanmakuEditor(
-                        playerDanmakuState = danmakuState,
+                        text = "",
+                        onTextChange = {},
+                        isSending = { false },
+                        onSend = {},
                         danmakuTextPlaceholder = "",
                         playerState = playerState,
                         videoScaffoldConfig = VideoScaffoldConfig.Default,

@@ -26,9 +26,9 @@ import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.domain.media.TestMediaList
 import me.him188.ani.app.domain.media.TestMediaSourceInfo
+import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.media.renderProperties
-import me.him188.ani.app.ui.subject.episode.statistics.VideoLoadingState
 import me.him188.ani.app.ui.subject.episode.statistics.VideoLoadingSummary
 import me.him188.ani.datasources.api.DefaultMedia
 import me.him188.ani.utils.platform.annotations.TestOnly

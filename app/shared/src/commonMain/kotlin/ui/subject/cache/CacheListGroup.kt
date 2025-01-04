@@ -79,7 +79,7 @@ import me.him188.ani.app.ui.settings.framework.components.TextItem
 import me.him188.ani.app.ui.subject.episode.mediaFetch.MediaSelectorView
 import me.him188.ani.app.ui.subject.episode.mediaFetch.MediaSourceInfoProvider
 import me.him188.ani.app.ui.subject.episode.mediaFetch.MediaSourceResultsView
-import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberMediaSelectorPresentation
+import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberMediaSelectorState
 import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberMediaSourceResultsPresentation
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
@@ -162,7 +162,7 @@ fun SettingsScope.EpisodeCacheListGroup(
                 contentWindowInsets = { BottomSheetDefaults.windowInsets.add(WindowInsets.desktopTitleBar()) },
             ) {
                 val selectorPresentation =
-                    rememberMediaSelectorPresentation(mediaSourceInfoProvider) { task.mediaSelector }
+                    rememberMediaSelectorState(mediaSourceInfoProvider) { task.mediaSelector }
                 MediaSelectorView(
                     selectorPresentation,
                     sourceResults = {

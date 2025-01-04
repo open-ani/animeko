@@ -7,11 +7,11 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.app.domain.danmaku
+package me.him188.ani.app.data.network
 
 import io.ktor.client.call.body
 import io.ktor.client.request.get
-import me.him188.ani.app.domain.danmaku.protocol.DanmakuGetResponse
+import me.him188.ani.app.data.network.protocol.DanmakuGetResponse
 import me.him188.ani.danmaku.api.AbstractDanmakuProvider
 import me.him188.ani.danmaku.api.DanmakuFetchResult
 import me.him188.ani.danmaku.api.DanmakuMatchInfo
@@ -22,7 +22,7 @@ import me.him188.ani.danmaku.api.DanmakuProviderFactory
 import me.him188.ani.danmaku.api.DanmakuSearchRequest
 import me.him188.ani.utils.logging.info
 import kotlin.coroutines.CoroutineContext
-import me.him188.ani.app.domain.danmaku.protocol.DanmakuLocation as ProtocolDanmakuLocation
+import me.him188.ani.app.data.network.protocol.DanmakuLocation as ProtocolDanmakuLocation
 import me.him188.ani.danmaku.api.Danmaku as ApiDanmaku
 import me.him188.ani.danmaku.api.DanmakuLocation as ApiDanmakuLocation
 
