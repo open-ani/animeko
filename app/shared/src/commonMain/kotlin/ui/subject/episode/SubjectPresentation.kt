@@ -28,3 +28,10 @@ class SubjectPresentation(
         )
     }
 }
+
+fun SubjectInfo.toPresentation(): SubjectPresentation {
+    return SubjectPresentation(
+        title = displayName,
+        info = this,
+    )
+}

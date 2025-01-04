@@ -79,7 +79,6 @@ import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollect
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeState
 import me.him188.ani.app.ui.subject.details.SubjectDetailsPage
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateLoader
-import me.him188.ani.app.ui.subject.episode.EpisodePresentation
 import me.him188.ani.app.ui.subject.episode.details.components.DanmakuMatchInfoGrid
 import me.him188.ani.app.ui.subject.episode.details.components.EpisodeWatchStatusButton
 import me.him188.ani.app.ui.subject.episode.details.components.PlayingEpisodeItem
@@ -97,20 +96,16 @@ import me.him188.ani.utils.platform.isDesktop
 
 @Stable
 class EpisodeDetailsState(
-    episodePresentation: State<EpisodePresentation>,
     subjectInfo: State<SubjectInfo>,
     val airingLabelState: AiringLabelState,
     val subjectDetailsStateLoader: SubjectDetailsStateLoader,
 ) {
-    private val episode by episodePresentation
     private val subject by subjectInfo
 
     val subjectId by derivedStateOf { subject.subjectId }
 //    var subjectDetailsState by mutableStateOf<SubjectDetailsState?>(null)
 //    val subjectDetailsStateError: SearchProblem
 
-    val episodeTitle by derivedStateOf { episode.title }
-    val episodeSort by derivedStateOf { episode.sort }
     val subjectTitle by derivedStateOf { subject.displayName }
 
     var showEpisodes: Boolean by mutableStateOf(false)

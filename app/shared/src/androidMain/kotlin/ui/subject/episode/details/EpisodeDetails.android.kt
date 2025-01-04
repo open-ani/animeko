@@ -39,7 +39,6 @@ import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollect
 import me.him188.ani.app.ui.subject.collection.components.rememberTestEditableSubjectCollectionTypeState
 import me.him188.ani.app.ui.subject.createTestAiringLabelState
 import me.him188.ani.app.ui.subject.details.state.createTestSubjectDetailsLoader
-import me.him188.ani.app.ui.subject.episode.EpisodePresentation
 import me.him188.ani.app.ui.subject.episode.mediaFetch.MediaSelectorState
 import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberTestMediaSelectorPresentation
 import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberTestMediaSourceResults
@@ -163,13 +162,6 @@ private fun rememberTestEpisodeDetailsState(
     val scope = rememberCoroutineScope()
     return remember {
         EpisodeDetailsState(
-            episodePresentation = mutableStateOf(
-                EpisodePresentation.Placeholder.copy(
-                    title = "一个剧集",
-                    sort = "01",
-                    isPlaceholder = false,
-                ),
-            ),
             subjectInfo = mutableStateOf(subjectInfo),
             airingLabelState = createTestAiringLabelState(),
             subjectDetailsStateLoader = createTestSubjectDetailsLoader(scope),

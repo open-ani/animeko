@@ -56,7 +56,7 @@ class EpisodeFetchPlayState(
      *
      * Flow re-emits (almost immediately) when [episode switches][setEpisodeId].
      *
-     * When an error occurs, the flow emits `null`, and the error can be observed from [infoLoadErrorState].
+     * When an error occurs, the flow emits `null`, and the error can be observed from [infoLoadErrorFlow].
      */
     val infoBundleFlow =
         infoLoader.infoBundleFlow.shareIn(backgroundScope, SharingStarted.WhileSubscribed(), replay = 1)
@@ -64,7 +64,7 @@ class EpisodeFetchPlayState(
     /**
      * A flow of the error that occurred during the loading of [infoBundleFlow].
      */
-    val infoLoadErrorState: StateFlow<LoadError?> = infoLoader.infoLoadErrorState
+    val infoLoadErrorFlow: StateFlow<LoadError?> = infoLoader.infoLoadErrorState
 
 
     /**

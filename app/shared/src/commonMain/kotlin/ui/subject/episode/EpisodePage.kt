@@ -234,26 +234,38 @@ private fun EpisodeSceneContent(
             windowSizeClass.windowWidthSizeClass >= WindowWidthSizeClass.EXPANDED -> true // #932
             else -> false
         }
-        CompositionLocalProvider(LocalImageViewerHandler provides imageViewer) {
-            when {
-                showExpandedUI || isSystemInFullscreen() ->
-                    EpisodeSceneTabletVeryWide(
-                        vm,
-                        Modifier.fillMaxSize(),
-                        pauseOnPlaying = pauseOnPlaying,
-                        tryUnpause = tryUnpause,
-                        setShowEditCommentSheet = { showEditCommentSheet = it },
-                        windowInsets,
-                    )
+        val pageState = vm.pageState.collectAsStateWithLifecycle()
 
-                else -> EpisodeSceneContentPhone(
-                    vm,
-                    Modifier.fillMaxSize(),
-                    pauseOnPlaying = pauseOnPlaying,
-                    tryUnpause = tryUnpause,
-                    setShowEditCommentSheet = { showEditCommentSheet = it },
-                    windowInsets,
-                )
+        when (val page = pageState.value) {
+            null -> {
+                // TODO: EpisodePage loading
+            }
+
+            else -> {
+                CompositionLocalProvider(LocalImageViewerHandler provides imageViewer) {
+                    when {
+                        showExpandedUI || isSystemInFullscreen() ->
+                            EpisodeSceneTabletVeryWide(
+                                vm,
+                                page,
+                                Modifier.fillMaxSize(),
+                                pauseOnPlaying = pauseOnPlaying,
+                                tryUnpause = tryUnpause,
+                                setShowEditCommentSheet = { showEditCommentSheet = it },
+                                windowInsets,
+                            )
+
+                        else -> EpisodeSceneContentPhone(
+                            vm,
+                            page,
+                            Modifier.fillMaxSize(),
+                            pauseOnPlaying = pauseOnPlaying,
+                            tryUnpause = tryUnpause,
+                            setShowEditCommentSheet = { showEditCommentSheet = it },
+                            windowInsets,
+                        )
+                    }
+                }
             }
         }
         ImageViewer(imageViewer) { imageViewer.clear() }
@@ -283,6 +295,7 @@ private fun EpisodeSceneContent(
 @Composable
 private fun EpisodeSceneTabletVeryWide(
     vm: EpisodeViewModel,
+    page: EpisodePageState,
     modifier: Modifier = Modifier,
     pauseOnPlaying: () -> Unit,
     tryUnpause: () -> Unit,
@@ -319,6 +332,7 @@ private fun EpisodeSceneTabletVeryWide(
             EpisodeVideo(
                 // do consume insets
                 vm,
+                page,
                 vm.playerControllerState,
                 expanded = true,
                 modifier = Modifier.weight(1f).fillMaxHeight(),
@@ -382,15 +396,17 @@ private fun EpisodeSceneTabletVeryWide(
                             }
                         }
 
-                        1 -> EpisodeCommentColumn(
-                            commentState = vm.episodeCommentState,
-                            commentEditorState = vm.commentEditorState,
-                            subjectId = vm.subjectId,
-                            episodeId = vm.episodePresentation.episodeId,
-                            setShowEditCommentSheet = setShowEditCommentSheet,
-                            pauseOnPlaying = pauseOnPlaying,
-                            lazyStaggeredGridState = vm.commentLazyStaggeredGirdState,
-                        )
+                        1 -> {
+                            EpisodeCommentColumn(
+                                commentState = vm.episodeCommentState,
+                                commentEditorState = vm.commentEditorState,
+                                subjectId = vm.subjectId,
+                                episodeId = page.episodePresentation.episodeId,
+                                setShowEditCommentSheet = setShowEditCommentSheet,
+                                pauseOnPlaying = pauseOnPlaying,
+                                lazyStaggeredGridState = vm.commentLazyStaggeredGirdState,
+                            )
+                        }
                     }
                 }
             }
@@ -447,6 +463,7 @@ private fun TabRow(
 @Composable
 private fun EpisodeSceneContentPhone(
     vm: EpisodeViewModel,
+    page: EpisodePageState,
     modifier: Modifier = Modifier,
     pauseOnPlaying: () -> Unit,
     tryUnpause: () -> Unit,
@@ -459,7 +476,7 @@ private fun EpisodeSceneContentPhone(
         videoOnly = vm.isFullscreen,
         commentCount = { vm.episodeCommentState.count },
         video = {
-            EpisodeVideo(vm, vm.playerControllerState, vm.isFullscreen)
+            EpisodeVideo(vm, page, vm.playerControllerState, vm.isFullscreen)
         },
         episodeDetails = {
             val navigator = LocalNavigator.current
@@ -489,7 +506,7 @@ private fun EpisodeSceneContentPhone(
                 commentState = vm.episodeCommentState,
                 commentEditorState = vm.commentEditorState,
                 subjectId = vm.subjectId,
-                episodeId = vm.episodePresentation.episodeId,
+                episodeId = page.episodePresentation.episodeId,
                 setShowEditCommentSheet = setShowEditCommentSheet,
                 pauseOnPlaying = pauseOnPlaying,
                 lazyStaggeredGridState = vm.commentLazyStaggeredGirdState,
@@ -624,6 +641,7 @@ fun EpisodeSceneContentPhoneScaffold(
 @Composable
 private fun EpisodeVideo(
     vm: EpisodeViewModel,
+    page: EpisodePageState,
     playerControllerState: PlayerControllerState,
     expanded: Boolean,
     modifier: Modifier = Modifier,
@@ -684,8 +702,8 @@ private fun EpisodeVideo(
         onClickNextEpisode = { vm.episodeSelectorState.selectNext() },
         playerControllerState = playerControllerState,
         title = {
-            val episode = vm.episodePresentation
-            val subject = vm.subjectPresentation
+            val episode = page.episodePresentation
+            val subject = page.subjectPresentation
             EpisodePlayerTitle(
                 episode.ep,
                 episode.title,
@@ -720,7 +738,7 @@ private fun EpisodeVideo(
             val ms = currentPositionMillis - (min * 60000) - (sec * 1000)
             val currentPosition = "${min}m${sec}s${ms}ms"
             // 条目ID-剧集序号-视频时间点.png
-            val filename = "${vm.subjectId}-${vm.episodePresentation.ep}-${currentPosition}.png"
+            val filename = "${vm.subjectId}-${page.episodePresentation.ep}-${currentPosition}.png"
             scope.launch {
                 vm.player.features[Screenshots]?.takeScreenshot(filename)
             }
