@@ -15,7 +15,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.foundation.LoadError
+import me.him188.ani.app.domain.media.fetch.MediaFetchSession
 import me.him188.ani.app.domain.media.resolver.toEpisodeMetadata
+import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.media.selector.MediaSelectorAutoSelectUseCase
 import me.him188.ani.app.domain.media.selector.MediaSelectorEventSavePreferenceUseCase
 import me.him188.ani.app.domain.player.AutoSwitchMediaOnPlayerErrorUseCase
@@ -49,25 +51,39 @@ class EpisodeFetchPlayState(
 
     private val infoLoader = SubjectEpisodeInfoBundleLoader(subjectId, episodeIdFlow, koin)
 
-    val infoLoadErrorState: StateFlow<LoadError?> = infoLoader.infoLoadErrorState
-
     /**
      * Combined subject- and episode-related details.
      *
      * Flow re-emits (almost immediately) when [episode switches][setEpisodeId].
+     *
+     * When an error occurs, the flow emits `null`, and the error can be observed from [infoLoadErrorState].
      */
     val infoBundleFlow =
         infoLoader.infoBundleFlow.shareIn(backgroundScope, SharingStarted.WhileSubscribed(), replay = 1)
 
     /**
+     * A flow of the error that occurred during the loading of [infoBundleFlow].
+     */
+    val infoLoadErrorState: StateFlow<LoadError?> = infoLoader.infoLoadErrorState
+
+
+    /**
      * A flow of the bundle of [MediaFetchSession] and [MediaSelector].
      *
      * Flow re-emits (almost immediately) when [infoBundleFlow] emits.
+     *
+     * This flow does not produce errors.
      */
-    val fetchSelectFlow = createMediaFetchSelectBundleFlowUseCase(
-        infoBundleFlow, // map error as null
-    ).shareIn(backgroundScope, SharingStarted.WhileSubscribed(), 1)
+    val fetchSelectFlow = createMediaFetchSelectBundleFlowUseCase(infoBundleFlow)
+        .shareIn(backgroundScope, SharingStarted.WhileSubscribed(), 1)
 
+
+    /**
+     * A cold flow that emits `true` when media sources are loading.
+     *
+     * - When all media sources have completed, this flow emits `false`.
+     * - If there is an error when loading episode data, this flow emits `false`.
+     */
     val mediaSourceLoadingFlow = fetchSelectFlow
         .transformLatest { bundle ->
             if (bundle == null) {

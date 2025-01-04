@@ -17,17 +17,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
-import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
-import me.him188.ani.app.domain.media.resolver.MediaResolver
-import me.him188.ani.app.domain.media.resolver.MediaSourceOpenException
-import me.him188.ani.app.domain.media.resolver.OpenFailures
-import me.him188.ani.app.domain.media.resolver.ResolutionFailures
-import me.him188.ani.app.domain.media.resolver.TorrentMediaDataProvider
-import me.him188.ani.app.domain.media.resolver.UnsupportedMediaException
-import me.him188.ani.app.domain.media.resolver.VideoSourceResolutionException
+import me.him188.ani.app.domain.media.resolver.*
 import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.player.VideoLoadingState
-import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.utils.logging.error
@@ -48,7 +40,7 @@ class MediaFetchSelectBundle(
 
 class PlayerSession(
     val player: MediampPlayer,
-    private val koin: Koin = GlobalKoin,
+    private val koin: Koin,
 ) : KoinComponent {
     private val mediaResolver: MediaResolver by inject()
 

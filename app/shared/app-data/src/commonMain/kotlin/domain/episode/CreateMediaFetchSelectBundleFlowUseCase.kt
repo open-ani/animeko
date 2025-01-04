@@ -10,12 +10,7 @@
 package me.him188.ani.app.domain.episode
 
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.emitAll
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.transformLatest
+import kotlinx.coroutines.flow.*
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.fetch.create
 import me.him188.ani.app.domain.media.fetch.createFetchFetchSessionFlow
@@ -26,17 +21,28 @@ import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import kotlin.coroutines.CoroutineContext
 
+/**
+ * A use case that constructs [MediaFetchSelectBundle]s according to [MediaFetchRequest] or [SubjectEpisodeInfoBundle].
+ *
+ * It simply calls factories and does not perform I/O.
+ *
+ * @see MediaFetchSelectBundle
+ */
 fun interface CreateMediaFetchSelectBundleFlowUseCase : UseCase {
+    /**
+     * Creates a [MediaFetchSelectBundle] for the given [MediaFetchRequest].
+     *
+     * This function does not throw.
+     */
     operator fun invoke(
         fetchRequest: MediaFetchRequest,
     ): Flow<MediaFetchSelectBundle>
 
-//    operator fun invoke(
-//        subjectEpisodeInfoBundleFlow: Flow<SubjectEpisodeInfoBundle>,
-//    ): Flow<MediaFetchSelectBundle> = subjectEpisodeInfoBundleFlow.flatMapLatest { bundle ->
-//        invoke(MediaFetchRequest.create(bundle.subjectCollectionInfo.subjectInfo, bundle.episodeCollectionInfo.episodeInfo))
-//    }
-
+    /**
+     * Creates a [MediaFetchSelectBundle] for the given [SubjectEpisodeInfoBundle].
+     *
+     * This function does not throw.
+     */
     operator fun invoke(
         subjectEpisodeInfoBundleFlow: Flow<SubjectEpisodeInfoBundle?>,
     ): Flow<MediaFetchSelectBundle?> = subjectEpisodeInfoBundleFlow.transformLatest { bundle ->

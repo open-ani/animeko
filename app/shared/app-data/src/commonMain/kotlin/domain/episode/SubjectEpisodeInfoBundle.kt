@@ -24,6 +24,8 @@ import org.koin.core.Koin
 /**
  * A simple data bundle combining subject and episode collection info.
  *
+ * Can be loaded using [SubjectEpisodeInfoBundleLoader].
+ *
  * @see createTestSubjectEpisodeInfoBundle
  * @see SubjectEpisodeInfoBundleLoader
  */
