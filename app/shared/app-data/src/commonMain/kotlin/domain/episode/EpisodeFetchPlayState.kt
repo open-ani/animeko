@@ -38,10 +38,6 @@ class EpisodeFetchPlayState(
     private val backgroundScope: CoroutineScope,
     private val koin: Koin = GlobalKoin,
 ) : KoinComponent {
-    private val getSubjectEpisodeInfoBundleFlowUseCase: GetSubjectEpisodeInfoBundleFlowUseCase by inject()
-//    private val subjectCollectionRepository: SubjectCollectionRepository by inject()
-//    private val episodeCollectionRepository: EpisodeCollectionRepository by inject()
-
     private val mediaSelectorAutoSelectUseCase: MediaSelectorAutoSelectUseCase by inject()
     private val mediaSelectorEventSavePreferenceUseCase: MediaSelectorEventSavePreferenceUseCase by inject()
     private val createMediaFetchSelectBundleFlowUseCase: CreateMediaFetchSelectBundleFlowUseCase by inject()
@@ -50,8 +46,10 @@ class EpisodeFetchPlayState(
     private val _episodeIdFlow: MutableStateFlow<Int> = MutableStateFlow(initialEpisodeId)
     val episodeIdFlow: StateFlow<Int> = _episodeIdFlow.asStateFlow()
 
-    private val _infoLoadErrorState: MutableStateFlow<LoadError?> = MutableStateFlow(null)
-    val infoLoadErrorState: StateFlow<LoadError?> = _infoLoadErrorState.asStateFlow()
+
+    private val infoLoader = SubjectEpisodeInfoBundleLoader(subjectId, episodeIdFlow, koin)
+
+    val infoLoadErrorState: StateFlow<LoadError?> = infoLoader.infoLoadErrorState
 
     /**
      * Combined subject- and episode-related details.
@@ -59,27 +57,7 @@ class EpisodeFetchPlayState(
      * Flow re-emits (almost immediately) when [episode switches][setEpisodeId].
      */
     val infoBundleFlow =
-        _episodeIdFlow.map { GetSubjectEpisodeInfoBundleFlowUseCase.SubjectIdAndEpisodeId(subjectId, it) }
-            .transformLatest {
-                emit(null) // clears all states
-                try {
-                    emitAll(
-                        getSubjectEpisodeInfoBundleFlowUseCase(flowOf(it))
-                            .onEach {
-                                _infoLoadErrorState.value = null
-                            }
-                            .onCompletion {
-                                if (it != null) {
-                                    _infoLoadErrorState.value = LoadError.fromException(it)
-                                }
-                            },
-                    )
-                } catch (e: Throwable) {
-//                    _infoLoadErrorState.value = LoadError.fromException(e)
-                    println("Error: $e")
-                    throw e
-                }
-            }.shareIn(backgroundScope, SharingStarted.WhileSubscribed(), replay = 1)
+        infoLoader.infoBundleFlow.shareIn(backgroundScope, SharingStarted.WhileSubscribed(), replay = 1)
 
     /**
      * A flow of the bundle of [MediaFetchSession] and [MediaSelector].

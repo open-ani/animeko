@@ -23,6 +23,9 @@ import org.koin.core.Koin
 import org.koin.dsl.module
 import org.openani.mediamp.DummyMediampPlayer
 
+/**
+ * Test helper for [EpisodeFetchPlayState] and related states.
+ */
 class EpisodePlayerTestSuite(
     val backgroundScope: CoroutineScope,
 ) {
