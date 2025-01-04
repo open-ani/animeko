@@ -54,7 +54,7 @@ class EpisodeFetchPlayState(
     val infoLoadErrorState: StateFlow<LoadError?> = _infoLoadErrorState.asStateFlow()
 
     /**
-     * Combined subject- and episode-related details, encapsulated in [LoadResult].
+     * Combined subject- and episode-related details.
      *
      * Flow re-emits (almost immediately) when [episode switches][setEpisodeId].
      */
