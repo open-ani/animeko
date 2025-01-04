@@ -45,8 +45,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -528,28 +528,33 @@ private fun SubjectDetailsContentPager(
             if (connectedScrollState.isScrolledTop) stickyTopBarColor else backgroundColor,
             tween(),
         )
-        ScrollableTabRow(
-            selectedTabIndex = pagerState.currentPage,
-            indicator = @Composable { tabPositions ->
-                TabRowDefaults.PrimaryIndicator(
-                    Modifier.pagerTabIndicatorOffset(pagerState, tabPositions),
-                )
-            },
-            containerColor = tabContainerColor,
-            contentColor = TabRowDefaults.secondaryContentColor,
-            divider = {},
-            modifier = Modifier,
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center
         ) {
-            SubjectDetailsTab.entries.forEachIndexed { index, tabId ->
-                Tab(
-                    selected = pagerState.currentPage == index,
-                    onClick = {
-                        scope.launch { pagerState.animateScrollToPage(index) }
-                    },
-                    text = {
-                        Text(text = renderSubjectDetailsTab(tabId))
-                    },
-                )
+            TabRow(
+                selectedTabIndex = pagerState.currentPage,
+                modifier = Modifier.width(240.dp), // 3个 tab 的总宽度 = 80 * 3
+                indicator = @Composable { tabPositions ->
+                    TabRowDefaults.PrimaryIndicator(
+                        Modifier.pagerTabIndicatorOffset(pagerState, tabPositions),
+                    )
+                },
+                containerColor = tabContainerColor,
+                contentColor = TabRowDefaults.secondaryContentColor,
+                divider = {},
+            ) {
+                SubjectDetailsTab.entries.forEachIndexed { index, tabId ->
+                    Tab(
+                        selected = pagerState.currentPage == index,
+                        onClick = {
+                            scope.launch { pagerState.animateScrollToPage(index) }
+                        },
+                        text = {
+                            Text(text = renderSubjectDetailsTab(tabId))
+                        },
+                    )
+                }
             }
         }
 
