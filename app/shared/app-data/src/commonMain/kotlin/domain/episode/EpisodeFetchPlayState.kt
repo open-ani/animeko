@@ -61,11 +61,13 @@ class EpisodeFetchPlayState(
      */
     val infoBundleFlow =
         infoLoader.infoBundleFlow.shareIn(backgroundScope, sharingStarted, replay = 1)
+    // TODO: test infoBundleFlow observes value
 
     /**
      * A flow of the error that occurred during the loading of [infoBundleFlow].
      */
     val infoLoadErrorFlow: StateFlow<LoadError?> = infoLoader.infoLoadErrorState
+    // TODO: test error is reflected
 
 
     /**
@@ -77,6 +79,7 @@ class EpisodeFetchPlayState(
      */
     val fetchSelectFlow = createMediaFetchSelectBundleFlowUseCase(infoBundleFlow)
         .shareIn(backgroundScope, sharingStarted, replay = 1)
+    // TODO: 2025/1/4 test fetchSelectFlow changes only when infoBundleFlow's value equality changes 
 
 
     /**
@@ -97,6 +100,7 @@ class EpisodeFetchPlayState(
                 },
             )
         }
+    // TODO: test this
 
     val playerSession = PlayerSession(
         player,
