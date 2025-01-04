@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.ui.subject.episode
 
-import androidx.annotation.MainThread
 import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
@@ -31,14 +30,12 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.retry
 import kotlinx.coroutines.flow.stateIn
@@ -67,7 +64,9 @@ import me.him188.ani.app.domain.media.fetch.FilteredMediaSourceResults
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.resolver.MediaResolver
 import me.him188.ani.app.domain.player.CacheProgressProvider
-import me.him188.ani.app.domain.player.SavePlayProgressUseCase
+import me.him188.ani.app.domain.player.extension.MarkAsWatchedExtension
+import me.him188.ani.app.domain.player.extension.RememberPlayProgressExtension
+import me.him188.ani.app.domain.player.extension.SwitchNextEpisodeExtension
 import me.him188.ani.app.domain.session.AuthState
 import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.app.platform.Context
@@ -85,7 +84,6 @@ import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.foundation.AuthState
 import me.him188.ani.app.ui.foundation.HasBackgroundScope
 import me.him188.ani.app.ui.foundation.launchInBackground
-import me.him188.ani.app.ui.foundation.launchInMain
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.settings.danmaku.DanmakuRegexFilterState
 import me.him188.ani.app.ui.subject.AiringLabelState
@@ -109,22 +107,17 @@ import me.him188.ani.danmaku.api.DanmakuEvent
 import me.him188.ani.danmaku.api.DanmakuPresentation
 import me.him188.ani.danmaku.ui.DanmakuConfig
 import me.him188.ani.datasources.api.PackedDate
-import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
-import me.him188.ani.utils.coroutines.cancellableCoroutineScope
 import me.him188.ani.utils.coroutines.flows.FlowRestarter
 import me.him188.ani.utils.coroutines.flows.flowOfEmptyList
 import me.him188.ani.utils.coroutines.flows.restartable
-import me.him188.ani.utils.coroutines.retryWithBackoffDelay
 import me.him188.ani.utils.coroutines.sampleWithInitial
 import me.him188.ani.utils.logging.error
-import me.him188.ani.utils.logging.info
 import org.koin.core.Koin
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.MediampPlayerFactory
-import org.openani.mediamp.PlaybackState
 import org.openani.mediamp.features.chapters
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -165,7 +158,6 @@ class EpisodeViewModel(
     private val episodePreferencesRepository: EpisodePreferencesRepository by inject()
     private val bangumiCommentRepository: BangumiCommentRepository by inject()
     private val episodePlayHistoryRepository: EpisodePlayHistoryRepository by inject()
-    private val savePlayProgressUseCase: SavePlayProgressUseCase by inject()
     private val subjectDetailsStateFactory: SubjectDetailsStateFactory by inject()
     private val setDanmakuEnabledUseCase: SetDanmakuEnabledUseCase by inject()
     // endregion
@@ -174,7 +166,23 @@ class EpisodeViewModel(
         playerStateFactory.create(context, backgroundScope.coroutineContext)
 
     private val fetchPlayState = EpisodeFetchPlayState(
-        subjectId, initialEpisodeId, player, backgroundScope, koin,
+        subjectId, initialEpisodeId, player, backgroundScope,
+        extensions = listOf(
+            RememberPlayProgressExtension,
+            MarkAsWatchedExtension,
+            SwitchNextEpisodeExtension.Factory(
+                getNextEpisode = { currentEpisodeId ->
+                    val list = episodeCollectionsFlow.first()
+                    val currentIndex = list.indexOfFirst { it.episodeId == currentEpisodeId }
+                    if (currentIndex == -1) {
+                        null
+                    } else {
+                        list.getOrNull(currentIndex + 1)?.episodeId
+                    }
+                },
+            ),
+        ),
+        koin,
         sharingStarted = SharingStarted.WhileSubscribed(5_000),
     )
 
@@ -293,7 +301,7 @@ class EpisodeViewModel(
                 }?.second ?: EpisodeCacheStatus.NotCached
             },
             onSelect = {
-                launchInMain {
+                launchInBackground {
                     switchEpisode(it.episodeInfo.episodeId)
                 }
             },
@@ -345,7 +353,7 @@ class EpisodeViewModel(
             }
         },
         onSelect = {
-            launchInMain {
+            launchInBackground {
                 switchEpisode(it.episodeId)
             }
         },
@@ -504,29 +512,11 @@ class EpisodeViewModel(
         )
     }.stateIn(backgroundScope, started = SharingStarted.WhileSubscribed(5_000), null)
 
-    /**
-     * 保存播放进度的入口有4个：退出播放页，切换剧集，同集切换数据源，暂停播放
-     * 其中 切换剧集 和 同集切换数据源 虽然都是切换数据源，但它们并不能合并成一个入口，
-     * 因为 切换数据源 是依赖 PlayerLauncher collect mediaSelector.selected 实现的，
-     * 它会在 mediaSelector.unselect() 任意时间后发现 selected 已经改变，导致 episodeId 可能已经改变，从而将当前集的播放进度保存到新的剧集中
-     */
-    private suspend fun savePlayProgress() {
-        withContext(Dispatchers.Main.immediate) {
-            savePlayProgressUseCase(
-                player.playbackState.value,
-                player.getCurrentPositionMillis(),
-                player.mediaProperties.value?.durationMillis ?: 0L,
-                episodeIdFlow.value,
-            )
-        }
-    }
-
     suspend fun switchEpisode(episodeId: Int) {
+        fetchPlayState.switchEpisode(episodeId)
+        
         withContext(Dispatchers.Main.immediate) {
-            savePlayProgress()
-            fetchPlayState.setEpisodeId(episodeId)
             episodeDetailsState.showEpisodes = false // 选择后关闭弹窗
-            player.stop()
         }
     }
 
@@ -548,79 +538,11 @@ class EpisodeViewModel(
         }
     }
 
-    @MainThread
-    suspend fun stopPlaying() {
-        // 退出播放页前保存播放进度
-        savePlayProgress()
-        player.stop()
-    }
-
     fun startBackgroundTasks() {
         fetchPlayState.startBackgroundTasks()
     }
 
     init {
-        // 自动标记看完
-        launchInBackground {
-            settingsRepository.videoScaffoldConfig.flow
-                .map { it.autoMarkDone }
-                .distinctUntilChanged()
-                .debounce(1000)
-                .collectLatest { enabled ->
-                    if (!enabled) return@collectLatest
-
-                    // 设置启用
-
-                    mediaFetchSession.collectLatest {
-                        cancellableCoroutineScope {
-                            combine(
-                                player.currentPositionMillis.sampleWithInitial(5000),
-                                player.mediaProperties.map { it?.durationMillis }.debounce(5000),
-                                player.playbackState,
-                            ) { pos, max, playback ->
-                                if (max == null || !playback.isPlaying) return@combine
-                                if (episodeCollectionFlow.first()?.collectionType == UnifiedCollectionType.DONE) {
-                                    cancelScope() // 已经看过了
-                                }
-                                if (pos > max.toFloat() * 0.9) {
-                                    logger.info { "观看到 90%, 标记看过" }
-                                    suspend {
-                                        episodeCollectionRepository.setEpisodeCollectionType(
-                                            subjectId,
-                                            episodeIdFlow.value,
-                                            UnifiedCollectionType.DONE,
-                                        )
-                                    }.asFlow().retryWithBackoffDelay().first()
-                                    cancelScope() // 标记成功一次后就不要再检查了
-                                }
-                            }.collect()
-                        }
-                    }
-                }
-        }
-
-        launchInBackground {
-            settingsRepository.videoScaffoldConfig.flow
-                .map { it.autoPlayNext }
-                .distinctUntilChanged()
-                .collectLatest { enabled ->
-                    if (!enabled) return@collectLatest
-
-                    player.playbackState.collect { playback ->
-                        if (playback == PlaybackState.FINISHED
-                            && player.mediaProperties.value.let { prop ->
-                                prop != null && prop.durationMillis > 0L && prop.durationMillis - player.currentPositionMillis.value < 5000
-                            }
-                        ) {
-                            logger.info("播放完毕，切换下一集")
-                            launchInMain {// state changes must be in main thread
-                                episodeSelectorState.takeIf { it.hasNextEpisode }?.selectNext()
-                            }
-                        }
-                    }
-                }
-        }
-
         // 跳过 OP 和 ED
         launchInBackground {
             settingsRepository.videoScaffoldConfig.flow
@@ -642,58 +564,13 @@ class EpisodeViewModel(
                     }.collect()
                 }
         }
-
-        launchInBackground {
-            mediaSelector.mapLatest { selector ->
-                if (selector == null) return@mapLatest
-                selector.events.onBeforeSelect.collect {
-                    // 切换 数据源 前保存播放进度
-                    withContext(Dispatchers.Main) {
-                        savePlayProgress()
-                    }
-                }
-            }
-        }
-        launchInBackground {
-            player.playbackState.collect {
-                when (it) {
-                    // 加载播放进度
-                    PlaybackState.READY -> {
-                        val positionMillis =
-                            episodePlayHistoryRepository.getPositionMillisByEpisodeId(episodeId = episodeIdFlow.value)
-                        if (positionMillis == null) {
-                            logger.info { "Did not find saved position" }
-                        } else {
-                            logger.info { "Loaded saved position: $positionMillis, waiting for video properties" }
-                            player.mediaProperties.filter { it != null && it.durationMillis > 0L }.firstOrNull()
-                            logger.info { "Loaded saved position: $positionMillis, video properties ready, seeking" }
-                            withContext(Dispatchers.Main) { // android must call in main thread
-                                player.seekTo(positionMillis)
-                            }
-                        }
-                    }
-
-                    PlaybackState.PAUSED -> savePlayProgress()
-
-                    PlaybackState.FINISHED -> {
-                        if (player.mediaProperties.value.let { it != null && it.durationMillis > 0L }) {
-                            // 视频长度有效, 说明正常播放中
-                            episodePlayHistoryRepository.remove(episodeIdFlow.value)
-                        } else {
-                            // 视频加载失败或者在切换数据源时又切换了另一个数据源, 不要删除记录
-                        }
-                    }
-
-                    else -> Unit
-                }
-            }
-        }
     }
 
     override fun onCleared() {
         super.onCleared()
         backgroundScope.launch(NonCancellable + CoroutineName("EpisodeViewModel#onCleared")) {
-            stopPlaying()
+            fetchPlayState.onClose()
+            player.stop()
         }
     }
 

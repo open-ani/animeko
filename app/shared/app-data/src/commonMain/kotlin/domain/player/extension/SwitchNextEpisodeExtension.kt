@@ -1,0 +1,68 @@
+/*
+ * Copyright (C) 2024 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
+package me.him188.ani.app.domain.player.extension
+
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import me.him188.ani.app.domain.settings.GetVideoScaffoldConfigUseCase
+import me.him188.ani.utils.logging.info
+import me.him188.ani.utils.logging.logger
+import org.koin.core.Koin
+import org.openani.mediamp.PlaybackState
+
+class SwitchNextEpisodeExtension(
+    private val context: PlayerExtensionContext,
+    koin: Koin,
+    private val getNextEpisode: suspend (currentEpisodeId: Int) -> Int?,
+) : PlayerExtension("SwitchNextEpisode") {
+    private val getVideoScaffoldConfigUseCase: GetVideoScaffoldConfigUseCase by koin.inject()
+
+    override fun onUIAttach(backgroundTaskScope: ExtensionBackgroundTaskScope) {
+        backgroundTaskScope.launch("SwitchNextEpisode") {
+            getVideoScaffoldConfigUseCase()
+                .map { it.autoPlayNext }
+                .distinctUntilChanged()
+                .collectLatest { enabled ->
+                    if (!enabled) return@collectLatest
+
+                    impl()
+                }
+
+        }
+    }
+
+    private suspend fun impl(): Nothing {
+        val player = context.player
+        player.playbackState.collect { playback ->
+            val closeToEnd = player.mediaProperties.value.let { prop ->
+                prop != null && prop.durationMillis > 0L && prop.durationMillis - player.currentPositionMillis.value < 5000
+            }
+
+            if (playback == PlaybackState.FINISHED && closeToEnd) {
+                val nextEpisode = getNextEpisode(context.episodeIdFlow.value)
+                logger.info("播放完毕，切换下一集 $nextEpisode")
+                context.switchEpisode(nextEpisode ?: return@collect)
+            }
+        }
+    }
+
+    class Factory(
+        private val getNextEpisode: suspend (currentEpisodeId: Int) -> Int?,
+    ) : EpisodePlayerExtensionFactory<SwitchNextEpisodeExtension> {
+        override fun create(context: PlayerExtensionContext, koin: Koin): SwitchNextEpisodeExtension {
+            return SwitchNextEpisodeExtension(context, koin, getNextEpisode)
+        }
+    }
+
+    companion object {
+        private val logger = logger<SwitchNextEpisodeExtension>()
+    }
+}

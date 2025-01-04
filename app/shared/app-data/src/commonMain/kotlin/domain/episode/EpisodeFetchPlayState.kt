@@ -10,10 +10,10 @@
 package me.him188.ani.app.domain.episode
 
 import androidx.annotation.MainThread
-import kotlinx.coroutines.CoroutineName
-import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
 import me.him188.ani.app.domain.media.resolver.toEpisodeMetadata
@@ -21,11 +21,18 @@ import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.media.selector.MediaSelectorAutoSelectUseCase
 import me.him188.ani.app.domain.media.selector.MediaSelectorEventSavePreferenceUseCase
 import me.him188.ani.app.domain.player.AutoSwitchMediaOnPlayerErrorUseCase
+import me.him188.ani.app.domain.player.extension.EpisodePlayerExtensionFactory
+import me.him188.ani.app.domain.player.extension.ExtensionBackgroundTaskScope
+import me.him188.ani.app.domain.player.extension.ExtensionException
+import me.him188.ani.app.domain.player.extension.PlayerExtensionManager
 import me.him188.ani.app.domain.usecase.GlobalKoin
 import org.koin.core.Koin
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import org.openani.mediamp.MediampPlayer
+import kotlin.coroutines.AbstractCoroutineContextElement
+import kotlin.coroutines.CoroutineContext
+import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * A state class that combines fetch, select, and play for an episode.
@@ -38,6 +45,7 @@ class EpisodeFetchPlayState(
     initialEpisodeId: Int,
     player: MediampPlayer,
     private val backgroundScope: CoroutineScope,
+    extensions: List<EpisodePlayerExtensionFactory<*>>,
     private val koin: Koin = GlobalKoin,
     sharingStarted: SharingStarted = SharingStarted.WhileSubscribed(),
 ) : KoinComponent {
@@ -55,7 +63,7 @@ class EpisodeFetchPlayState(
     /**
      * Combined subject- and episode-related details.
      *
-     * Flow re-emits (almost immediately) when [episode switches][setEpisodeId].
+     * Flow re-emits (almost immediately) when [episode switches][switchEpisode].
      *
      * When an error occurs, the flow emits `null`, and the error can be observed from [infoLoadErrorFlow].
      */
@@ -107,8 +115,32 @@ class EpisodeFetchPlayState(
         koin,
     )
 
-    fun setEpisodeId(episodeId: Int) {
-        _episodeIdFlow.value = episodeId
+    private val extensionManager by lazy {
+        PlayerExtensionManager(extensions, this, koin) // leaking 'this', but should be fine
+    }
+
+    private val switchEpisodeLock = Mutex()
+
+    suspend fun switchEpisode(episodeId: Int) {
+        currentCoroutineContext()[InSwitchEpisode]?.let { element ->
+            error(
+                "Recursive switchEpisode call detected. " +
+                        "You wanted to switch to $episodeId, while you are already switching to ${element.newEpisodeId}."
+            )
+        }
+
+        withContext(InSwitchEpisode(episodeId)) {
+            switchEpisodeLock.withLock {
+                withContext(Dispatchers.Main.immediate) {
+                    player.stop()
+                }
+
+                extensionManager.call {
+                    it.onBeforeSwitchEpisode(episodeId)
+                }
+                _episodeIdFlow.value = episodeId
+            }
+        }
     }
 
     private var backgroundTasksStarted = false
@@ -143,7 +175,7 @@ class EpisodeFetchPlayState(
             )
         }
 
-        backgroundScope.launch(CoroutineName("LoadMedia")) {
+        backgroundScope.launch(CoroutineName("LoadMediaOnSelect")) {
             fetchSelectFlow.collectLatest { fetchSelect ->
                 if (fetchSelect == null) return@collectLatest
 
@@ -158,7 +190,41 @@ class EpisodeFetchPlayState(
                 }
             }
         }
+
+        extensionManager.call { extension ->
+            object : ExtensionBackgroundTaskScope {
+                override fun launch(subName: String, block: suspend CoroutineScope.() -> Unit): Job {
+                    return backgroundScope.launch(CoroutineName(extension.name + "." + subName)) {
+                        try {
+                            block()
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            throw ExtensionException(
+                                "Unhandled exception in background scope from task '$subName' launched by extension '$extension'",
+                                e
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Called when view model is cleared
+     */
+    suspend fun onClose() {
+        extensionManager.call { it.onClose() }
     }
 
     override fun getKoin(): Koin = koin
+}
+
+val EpisodeFetchPlayState.player get() = playerSession.player
+
+private class InSwitchEpisode(
+    val newEpisodeId: Int,
+) : AbstractCoroutineContextElement(InSwitchEpisode) {
+    companion object Key : CoroutineContext.Key<InSwitchEpisode>
 }

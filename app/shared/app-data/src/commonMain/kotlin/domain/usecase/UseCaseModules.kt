@@ -17,8 +17,12 @@ import me.him188.ani.app.domain.episode.CreateMediaFetchSelectBundleFlowUseCase
 import me.him188.ani.app.domain.episode.CreateMediaFetchSelectBundleFlowUseCaseImpl
 import me.him188.ani.app.domain.episode.GetEpisodeCollectionInfoFlowUseCase
 import me.him188.ani.app.domain.episode.GetEpisodeCollectionInfoFlowUseCaseImpl
+import me.him188.ani.app.domain.episode.GetEpisodeCollectionTypeUseCase
+import me.him188.ani.app.domain.episode.GetEpisodeCollectionTypeUseCaseImpl
 import me.him188.ani.app.domain.episode.GetSubjectEpisodeInfoBundleFlowUseCase
 import me.him188.ani.app.domain.episode.GetSubjectEpisodeInfoBundleFlowUseCaseImpl
+import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeUseCase
+import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeUseCaseImpl
 import me.him188.ani.app.domain.media.selector.MediaSelectorAutoSelectUseCase
 import me.him188.ani.app.domain.media.selector.MediaSelectorAutoSelectUseCaseImpl
 import me.him188.ani.app.domain.media.selector.MediaSelectorEventSavePreferenceUseCase
@@ -27,8 +31,6 @@ import me.him188.ani.app.domain.mediasource.GetWebMediaSourceInstanceFlowUseCase
 import me.him188.ani.app.domain.mediasource.GetWebMediaSourceInstanceFlowUseCaseImpl
 import me.him188.ani.app.domain.player.AutoSwitchMediaOnPlayerErrorUseCase
 import me.him188.ani.app.domain.player.AutoSwitchMediaOnPlayerErrorUseCaseImpl
-import me.him188.ani.app.domain.player.SavePlayProgressUseCase
-import me.him188.ani.app.domain.player.SavePlayProgressUseCaseImpl
 import me.him188.ani.app.domain.settings.GetDanmakuRegexFilterListFlowUseCase
 import me.him188.ani.app.domain.settings.GetDanmakuRegexFilterListFlowUseCaseImpl
 import me.him188.ani.app.domain.settings.GetMediaSelectorSettingsFlowUseCase
@@ -51,8 +53,9 @@ fun KoinApplication.useCaseModules() = module {
     single<GetMediaSelectorSettingsFlowUseCase> { GetMediaSelectorSettingsFlowUseCaseImpl }
     single<AutoSwitchMediaOnPlayerErrorUseCase> { AutoSwitchMediaOnPlayerErrorUseCaseImpl() }
     single<GetVideoScaffoldConfigUseCase> { GetVideoScaffoldConfigUseCaseImpl }
-    single<SavePlayProgressUseCase> { SavePlayProgressUseCaseImpl() }
     single<SetDanmakuEnabledUseCase> { SetDanmakuEnabledUseCaseImpl(koin) }
+    single<SetEpisodeCollectionTypeUseCase> { SetEpisodeCollectionTypeUseCaseImpl(koin) }
+    single<GetEpisodeCollectionTypeUseCase> { GetEpisodeCollectionTypeUseCaseImpl(koin) }
 }
 
 val GlobalKoin get() = KoinPlatform.getKoin()

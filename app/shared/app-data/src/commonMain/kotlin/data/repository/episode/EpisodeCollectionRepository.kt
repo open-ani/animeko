@@ -200,6 +200,34 @@ class EpisodeCollectionRepository(
     }
 
     /**
+     * 获取指定条目的指定剧集的收藏状态.
+     *
+     * @param allowNetwork 是否允许网络请求. 如果不允许, 将只返回本地缓存, 即使已经失效.
+     * @return 收藏状态. 当无法确定时返回 `null`.
+     */
+    suspend fun getEpisodeCollectionType(
+        episodeId: Int,
+        allowNetwork: Boolean
+    ): UnifiedCollectionType? = withContext(defaultDispatcher) {
+        try {
+            val local = episodeCollectionDao.findByEpisodeId(episodeId).first()
+
+            if (local != null && (!local.isExpired() || !allowNetwork)) {
+                return@withContext local.selfCollectionType
+            } else {
+                val remote = bangumiEpisodeService.getEpisodeCollectionById(episodeId)
+                if (remote != null) {
+                    return@withContext remote.collectionType
+                }
+
+                return@withContext null
+            }
+        } catch (e: Throwable) {
+            throw RepositoryException.wrapOrThrowCancellation(e)
+        }
+    }
+
+    /**
      * 获取指定条目是否已经完结. 不是用户是否看完, 只要条目本身完结了就算.
      */
     fun subjectCompletedFlow(subjectId: Int): Flow<Boolean> {

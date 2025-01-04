@@ -10,6 +10,7 @@
 package me.him188.ani.app.domain.episode
 
 import kotlinx.coroutines.test.runTest
+import me.him188.ani.app.domain.player.extension.EpisodePlayerExtensionFactory
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -17,8 +18,17 @@ class EpisodeFetchPlayStateTest {
     private val subjectId = 1
     private val initialEpisodeId = 2
 
-    private fun EpisodePlayerTestSuite.createState(): EpisodeFetchPlayState {
-        return EpisodeFetchPlayState(subjectId, initialEpisodeId, player, backgroundScope, koin)
+    private fun EpisodePlayerTestSuite.createState(
+        extensions: List<EpisodePlayerExtensionFactory<*>> = listOf(),
+    ): EpisodeFetchPlayState {
+        return EpisodeFetchPlayState(
+            subjectId,
+            initialEpisodeId,
+            player,
+            backgroundScope,
+            extensions = extensions,
+            koin
+        )
     }
 
     @Test
