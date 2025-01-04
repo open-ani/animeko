@@ -14,13 +14,20 @@ import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.data.models.subject.SubjectInfo
+import me.him188.ani.app.data.models.subject.TestSubjectCollections
+import me.him188.ani.app.domain.foundation.FlowLoadErrorObserver
 import me.him188.ani.app.domain.foundation.LoadError
+import me.him188.ani.app.domain.foundation.catchLoadError
+import me.him188.ani.utils.platform.annotations.TestOnly
 import org.koin.core.Koin
 
 /**
  * A simple data bundle combining subject and episode collection info.
+ *
+ * @see createTestSubjectEpisodeInfoBundle
+ * @see SubjectEpisodeInfoBundleLoader
  */
-class SubjectEpisodeInfoBundle(
+data class SubjectEpisodeInfoBundle(
     val subjectId: Int,
     val episodeId: Int,
     val subjectCollectionInfo: SubjectCollectionInfo,
@@ -37,6 +44,23 @@ class SubjectEpisodeInfoBundle(
     val episodeInfo: EpisodeInfo get() = episodeCollectionInfo.episodeInfo
 }
 
+@TestOnly
+fun createTestSubjectEpisodeInfoBundle(
+    subjectId: Int,
+    episodeId: Int,
+): SubjectEpisodeInfoBundle {
+    return SubjectEpisodeInfoBundle(
+        subjectId,
+        episodeId,
+        TestSubjectCollections[0].run {
+            copy(subjectInfo = subjectInfo.copy(subjectId = subjectId))
+        },
+        TestSubjectCollections[0].episodes[0].run {
+            copy(episodeInfo = episodeInfo.copy(episodeId = episodeId))
+        },
+    )
+}
+
 /**
  * Loads [SubjectEpisodeInfoBundle] flows for a given [subjectId] and a dynamic [episodeIdFlow].
  *
@@ -48,6 +72,8 @@ class SubjectEpisodeInfoBundle(
  * @param episodeIdFlow A flow that emits the latest episode ID to load.
  *
  * @sample me.him188.ani.app.domain.getBundleFlow
+ *
+ * @see LoadError
  */
 class SubjectEpisodeInfoBundleLoader(
     subjectId: Int,
@@ -59,15 +85,12 @@ class SubjectEpisodeInfoBundleLoader(
      */
     private val getSubjectEpisodeInfoBundleFlowUseCase: GetSubjectEpisodeInfoBundleFlowUseCase by koin.inject()
 
-    /**
-     * The internal mutable error state that tracks loading exceptions.
-     */
-    private val _infoLoadErrorState: MutableStateFlow<LoadError?> = MutableStateFlow(null)
+    private val flowLoadErrorObserver = FlowLoadErrorObserver()
 
     /**
      * A read-only flow of the last loading error, if any. Null when no error has occurred.
      */
-    val infoLoadErrorState: StateFlow<LoadError?> = _infoLoadErrorState.asStateFlow()
+    val infoLoadErrorState: StateFlow<LoadError?> = flowLoadErrorObserver.loadErrorState
 
     /**
      * A flow of [SubjectEpisodeInfoBundle] that updates each time [episodeIdFlow] emits a new value.
@@ -79,7 +102,9 @@ class SubjectEpisodeInfoBundleLoader(
      * This flow is intended to be shared in a view model or other long-lived scope.
      * Do not collect it multiple times concurrently.
      *
-     * The flow **never** completes exceptionally. Actually, it only completely and normally completes when [episodeIdFlow] compete.
+     * The flow may or may not complete. If the [episodeIdFlow] completes, this flow will also complete,
+     * and it's guaranteed to complete normally without throwing an exception,
+     * as all exceptions are caught and handled by [flowLoadErrorObserver].
      */
     val infoBundleFlow: Flow<SubjectEpisodeInfoBundle?> =
         episodeIdFlow.map { GetSubjectEpisodeInfoBundleFlowUseCase.SubjectIdAndEpisodeId(subjectId, it) }
@@ -90,16 +115,7 @@ class SubjectEpisodeInfoBundleLoader(
                 // Now fetch the new data, tracking errors
                 emitAll(
                     getSubjectEpisodeInfoBundleFlowUseCase(flowOf(request))
-                        .onEach {
-                            // If no error is thrown, reset the error state
-                            _infoLoadErrorState.value = null
-                        }
-                        .onCompletion { e ->
-                            // If an exception occurs, store it for UI error handling
-                            if (e != null) {
-                                _infoLoadErrorState.value = LoadError.fromException(e)
-                            }
-                        },
+                        .catchLoadError(flowLoadErrorObserver),
                 )
             }
 }

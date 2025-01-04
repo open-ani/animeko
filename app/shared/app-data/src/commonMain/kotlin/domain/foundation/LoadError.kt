@@ -18,6 +18,8 @@ import me.him188.ani.app.tools.paging.exceptions
 
 /**
  * 加载时遇到的问题.
+ *
+ * @see FlowLoadErrorObserver
  */
 sealed class LoadError {
     data object NoResults : LoadError()

@@ -67,6 +67,7 @@ kotlin {
     }
     sourceSets.commonTest.dependencies {
         implementation(projects.utils.uiTesting)
+        implementation(libs.turbine)
     }
     sourceSets.jvmTest.dependencies {
         implementation(libs.slf4j.simple)

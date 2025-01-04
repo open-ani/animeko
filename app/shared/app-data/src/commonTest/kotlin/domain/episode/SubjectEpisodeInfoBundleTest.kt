@@ -20,9 +20,12 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import me.him188.ani.app.data.repository.RepositoryNetworkException
 import me.him188.ani.app.domain.foundation.LoadError
+import me.him188.ani.utils.coroutines.CancellationException
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -42,6 +45,10 @@ class SubjectEpisodeInfoBundleTest {
         val state = suite.createState(episodeIdFlow)
         assertEquals(null, state.infoLoadErrorState.value)
     }
+
+    ///////////////////////////////////////////////////////////////////////////
+    // infoBundleFlow
+    ///////////////////////////////////////////////////////////////////////////
 
     @Test
     fun `infoBundleFlow emits null first`() = runTest {
@@ -90,4 +97,80 @@ class SubjectEpisodeInfoBundleTest {
         scope.cancel()
         assertIs<RepositoryNetworkException>(backgroundException.await(), "should be a network error")
     }
+
+    @Test
+    fun `infoBundleFlow does NOT update infoLoadErrorState on CancellationException`() = runTest {
+        val episodeIdFlow = MutableStateFlow(2)
+        val (scope, backgroundException) = createExceptionCapturingSupervisorScope()
+        val suite = EpisodePlayerTestSuite(scope)
+
+        // Override GetSubjectEpisodeInfoBundleFlowUseCase to throw CancellationException
+        suite.registerComponent<GetSubjectEpisodeInfoBundleFlowUseCase> {
+            GetSubjectEpisodeInfoBundleFlowUseCase { idsFlow ->
+                idsFlow.map {
+                    throw CancellationException("Simulated cancellation")
+                }
+            }
+        }
+
+        val state = suite.createState(episodeIdFlow)
+        val job = state.infoBundleFlow.drop(1).launchIn(scope) // Start collecting
+
+        // infoLoadErrorState should remain null because we explicitly skip CancellationException
+        // in 'onCompletion'.
+        val firstError = state.infoLoadErrorState.drop(1).first()
+        // We expect that the flow completes (or is canceled) without setting a LoadError
+        // Because .onCompletion() checks for `e != null && e !is CancellationException`
+        // => a CancellationException should not set state.infoLoadErrorState.
+        assertEquals(null, firstError, "infoLoadErrorState should remain null on CancellationException")
+
+        // Cancel everything
+        job.cancel()
+        scope.cancel()
+
+        // The thrown exception is indeed a CancellationException (and should not bubble up as backgroundException)
+        // but if you want to confirm the cause, you can also do an assertion here:
+        assertIs<CancellationException>(backgroundException.await())
+    }
+
+    @Test
+    fun `infoBundleFlow collector cancellation does NOT set infoLoadErrorState`() = runTest {
+        val episodeIdFlow = MutableStateFlow(2)
+        val suite = EpisodePlayerTestSuite(backgroundScope)
+
+        // Provide normal successful flow so that no error is thrown
+        suite.registerComponent<GetSubjectEpisodeInfoBundleFlowUseCase> {
+            GetSubjectEpisodeInfoBundleFlowUseCase { idsFlow ->
+                // Normally return a valid bundle
+                idsFlow.map {
+                    // Simplified: just build a fake bundle
+                    createTestSubjectEpisodeInfoBundle(
+                        subjectId = it.subjectId,
+                        episodeId = it.episodeId,
+                    )
+                }
+            }
+        }
+
+        val state = suite.createState(episodeIdFlow)
+
+        // Collect in a child job
+        val collectorJob = state.infoBundleFlow.drop(1).onEach {
+            // Once we get the first success, we manually cancel
+            this.cancel()
+        }.launchIn(backgroundScope)
+
+        // Wait briefly to ensure the collection started
+        // (You can also explicitly wait for the drop(1).first() if you want.)
+        advanceUntilIdle()
+
+        // Once canceled by the collector, there should be no new error state
+        assertEquals(
+            null, state.infoLoadErrorState.value,
+            "Collector cancellation should not produce a LoadError",
+        )
+
+        collectorJob.cancel() // Just ensure it's fully canceled
+    }
+
 }
