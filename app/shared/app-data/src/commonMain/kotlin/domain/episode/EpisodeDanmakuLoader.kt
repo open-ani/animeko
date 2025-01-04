@@ -17,7 +17,6 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.shareIn
-import me.him188.ani.app.data.repository.danmaku.DanmakuRepository
 import me.him188.ani.app.data.repository.danmaku.SearchDanmakuRequest
 import me.him188.ani.app.domain.danmaku.DanmakuLoaderImpl
 import me.him188.ani.app.domain.danmaku.DanmakuLoadingState
@@ -40,7 +39,6 @@ class EpisodeDanmakuLoader(
     koin: Koin,
 ) {
     private val getDanmakuRegexFilterListFlowUseCase: GetDanmakuRegexFilterListFlowUseCase by koin.inject()
-    private val danmakuRepository: DanmakuRepository by koin.inject()
 
     private val flowScope = backgroundScope
 
@@ -53,7 +51,7 @@ class EpisodeDanmakuLoader(
             )
         },
         backgroundScope,
-        searchDanmakuUseCase = { danmakuRepository.search(it) },
+        koin,
     )
 
     private val danmakuSessionFlow: Flow<DanmakuSession> = danmakuLoader.collectionFlow.mapLatest { session ->

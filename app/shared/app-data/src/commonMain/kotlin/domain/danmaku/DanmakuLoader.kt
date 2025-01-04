@@ -22,6 +22,7 @@ import me.him188.ani.app.data.repository.danmaku.SearchDanmakuRequest
 import me.him188.ani.danmaku.api.DanmakuCollection
 import me.him188.ani.danmaku.api.TimeBasedDanmakuSession
 import me.him188.ani.danmaku.api.emptyDanmakuCollection
+import org.koin.core.Koin
 
 /**
  * A general danmaku loader, that fetches danmaku from the network and cache and provides a [Flow] of [DanmakuCollection]
@@ -34,8 +35,10 @@ sealed interface DanmakuLoader {
 class DanmakuLoaderImpl(
     requestFlow: Flow<SearchDanmakuRequest?>,
     flowScope: CoroutineScope,
-    private val searchDanmakuUseCase: SearchDanmakuUseCase
+    koin: Koin
 ) : DanmakuLoader {
+    private val searchDanmakuUseCase: SearchDanmakuUseCase by koin.inject()
+    
     override val state: MutableStateFlow<DanmakuLoadingState> = MutableStateFlow(DanmakuLoadingState.Idle)
 
     override val collectionFlow: Flow<DanmakuCollection> =
