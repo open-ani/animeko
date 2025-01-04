@@ -96,6 +96,9 @@ fun <T> Flow<T>.catchLoadError(observer: FlowLoadErrorObserver): Flow<T> {
             if (exception != null && exception !is CancellationException) {
                 observer.loadErrorStateMutable.value = LoadError.fromException(exception)
             }
+            if (exception is CancellationException) {
+                throw exception
+            }
         }
 }
 
