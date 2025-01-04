@@ -21,7 +21,8 @@ import me.him188.ani.danmaku.api.DanmakuSearchRequest
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
-class SearchDanmakuRequest(
+// Stable equals is required by DanmakuLoaderImpl
+data class SearchDanmakuRequest(
     val subjectInfo: SubjectInfo,
     val episodeInfo: EpisodeInfo,
     val episodeId: Int,
