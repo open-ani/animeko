@@ -10,19 +10,26 @@
 package me.him188.ani.app.desktop.storage
 
 import dev.dirs.ProjectDirectories
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
+import me.him188.ani.utils.coroutines.runInterruptible
 import java.io.File
 
 object ProjectDirectoriesAppFolderResolver : AppFolderResolver {
-    override fun resolve(appInfo: AppInfo): AppDataDirectories {
-        val projectDirectories = ProjectDirectories.from(
-            appInfo.qualifier,
-            appInfo.organization,
-            appInfo.name,
-        )
+    override fun resolve(appInfo: AppInfo): AppDataDirectories = runBlocking {
+        kotlinx.coroutines.withTimeout(5000) {
+            runInterruptible(Dispatchers.IO) {
+                val projectDirectories = ProjectDirectories.from(
+                    appInfo.qualifier,
+                    appInfo.organization,
+                    appInfo.name,
+                )
 
-        return AppDataDirectories(
-            File(projectDirectories.dataDir).toPath(),
-            File(projectDirectories.cacheDir).toPath(),
-        )
+                AppDataDirectories(
+                    File(projectDirectories.dataDir).toPath(),
+                    File(projectDirectories.cacheDir).toPath(),
+                )
+            }
+        }
     }
 }
