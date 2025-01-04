@@ -76,8 +76,7 @@ class EpisodeFetchPlayState(
      * This flow does not produce errors.
      */
     val fetchSelectFlow = createMediaFetchSelectBundleFlowUseCase(infoBundleFlow)
-        .shareIn(backgroundScope, sharingStarted, 1)
-        .distinctUntilChanged()
+        .shareIn(backgroundScope, sharingStarted, replay = 1)
 
 
     /**
