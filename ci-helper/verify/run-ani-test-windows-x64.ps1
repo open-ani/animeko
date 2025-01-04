@@ -86,6 +86,7 @@ Write-Host "Found Ani.exe at: $($aniExe.FullName)"
 # --- Step 4: Set environment variable & run Ani.exe ---
 Write-Host "Setting ANIMEKO_DESKTOP_TEST_TASK to '$TestString'..."
 $env:ANIMEKO_DESKTOP_TEST_TASK = $TestString
+$env:ANI_DISALLOW_PROJECT_DIRECTORIES_FALLBACK = "true"
 
 Write-Host "Running Ani.exe..."
 $process = Start-Process -FilePath $aniExe.FullName -Wait -PassThru

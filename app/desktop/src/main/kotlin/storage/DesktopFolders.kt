@@ -37,6 +37,8 @@ object WindowsAppFolderResolver : AppFolderResolver {
         return runCatching {
             WindowsJnaAppFolderResolver.resolve(appInfo)
         }.recoverCatching {
+            it.printStackTrace()
+            if (System.getenv("ANI_DISALLOW_PROJECT_DIRECTORIES_FALLBACK") == "true") throw it
             ProjectDirectoriesAppFolderResolver.resolve(appInfo)
         }.getOrThrow()
     }

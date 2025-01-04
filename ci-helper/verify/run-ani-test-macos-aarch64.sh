@@ -86,6 +86,7 @@ mkdir -p extracted_dmg
 # --- Step 4: Set environment variable for the test ---
 echo "Step 4: Setting ANIMEKO_DESKTOP_TEST_TASK to '$TEST_STRING'..."
 export ANIMEKO_DESKTOP_TEST_TASK="$TEST_STRING"
+export ANI_DISALLOW_PROJECT_DIRECTORIES_FALLBACK="true"
 
 # The final Ani.app is likely found at:
 #   extracted_dmg/Ani/Ani.app/Contents/MacOS/Ani
