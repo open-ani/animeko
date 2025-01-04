@@ -53,6 +53,8 @@ import me.him188.ani.app.data.repository.SavedWindowState
 import me.him188.ani.app.data.repository.WindowStateRepository
 import me.him188.ani.app.data.repository.WindowStateRepositoryImpl
 import me.him188.ani.app.data.repository.user.SettingsRepository
+import me.him188.ani.app.desktop.storage.AppFolderResolver
+import me.him188.ani.app.desktop.storage.AppInfo
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.resolver.DesktopWebMediaResolver
 import me.him188.ani.app.domain.media.resolver.HttpStreamingMediaResolver
@@ -125,7 +127,7 @@ import org.openani.mediamp.compose.MediampPlayerSurfaceProviderLoader
 import org.openani.mediamp.vlc.VlcMediampPlayer
 import org.openani.mediamp.vlc.VlcMediampPlayerFactory
 import org.openani.mediamp.vlc.compose.VlcMediampPlayerSurfaceProvider
-import java.io.File
+import kotlin.io.path.absolutePathString
 import kotlin.system.exitProcess
 import kotlin.time.measureTime
 
@@ -169,7 +171,17 @@ object AniDesktop {
             exitProcess(1)
         }
 
-        val logsDir = File(projectDirectories.dataDir).resolve("logs").apply { mkdirs() }
+        val projectDirectories = AppFolderResolver.INSTANCE.resolve(
+            AppInfo(
+                "me",
+                "Him188",
+                if (AniBuildConfigDesktop.isDebug) "Ani-debug" else "Ani",
+            ),
+        )
+        val dataDir = projectDirectories.data
+        val cacheDir = projectDirectories.cache
+
+        val logsDir = dataDir.resolve("logs").toFile().apply { mkdirs() }
 
         Log4j2Config.configureLogging(logsDir)
 
@@ -178,8 +190,8 @@ object AniDesktop {
         }
         logger.info { "Ani platform: ${currentPlatform()}, version: ${currentAniBuildConfig.versionName}" }
 
-        logger.info { "dataDir: file://${projectDirectories.dataDir.replace(" ", "%20")}" }
-        logger.info { "cacheDir: file://${projectDirectories.cacheDir.replace(" ", "%20")}" }
+        logger.info { "dataDir: file://${dataDir.absolutePathString().replace(" ", "%20")}" }
+        logger.info { "cacheDir: file://${cacheDir.absolutePathString().replace(" ", "%20")}" }
         logger.info { "logsDir: file://${logsDir.absolutePath.replace(" ", "%20")}" }
         val coroutineScope = createAppRootCoroutineScope()
 
@@ -206,8 +218,8 @@ object AniDesktop {
         )
         val context = DesktopContext(
             windowState,
-            File(projectDirectories.dataDir),
-            File(projectDirectories.dataDir),
+            dataDir.toFile(),
+            cacheDir.toFile(),
             logsDir,
             ExtraWindowProperties(),
         )
@@ -219,7 +231,7 @@ object AniDesktop {
 
         coroutineScope.launch(Dispatchers.IO) {
             // since 3.4.0, anitorrent 增加后不兼容 QB 数据
-            File(projectDirectories.cacheDir).resolve("torrent").let {
+            cacheDir.toFile().resolve("torrent").let {
                 if (it.exists()) {
                     it.deleteRecursively()
                 }
@@ -243,7 +255,7 @@ object AniDesktop {
                                 val saveDir = runBlocking {
                                     get<SettingsRepository>().mediaCacheSettings.flow.first().saveDir
                                         ?.let(::Path)
-                                } ?: projectDirectories.torrentCacheDir.toKtPath()
+                                } ?: context.torrentDataCacheDir.toKtPath()
                                 toplevelLogger.info { "TorrentManager saveDir: $saveDir" }
                                 saveDir.inSystem
                             },
@@ -299,8 +311,8 @@ object AniDesktop {
                 ?.configIfEnabledOrNull
 
             AniCefApp.initialize(
-                logDir = File(projectDirectories.dataDir).resolve("logs"),
-                cacheDir = File(projectDirectories.cacheDir).resolve("jcef-cache"),
+                logDir = dataDir.toFile().resolve("logs"),
+                cacheDir = cacheDir.toFile().resolve("jcef-cache"),
                 proxyServer = proxySettings?.url,
                 proxyAuthUsername = proxySettings?.authorization?.username,
                 proxyAuthPassword = proxySettings?.authorization?.password,

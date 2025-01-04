@@ -33,6 +33,7 @@ class DesktopContext(
     val extraWindowProperties: ExtraWindowProperties,
 ) : Context() {
     val dataStoreDir = dataDir.resolve("datastore")
+    val torrentDataCacheDir = cacheDir.resolve("torrent-data")
 }
 
 @Stable

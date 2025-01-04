@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.app.ui.settings.tabs.media
 
 import androidx.compose.material.icons.Icons
@@ -10,8 +19,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import io.github.vinceglb.filekit.compose.rememberDirectoryPickerLauncher
-import me.him188.ani.app.desktop.projectDirectories
-import me.him188.ani.app.desktop.torrentCacheDir
+import me.him188.ani.app.platform.LocalDesktopContext
 import me.him188.ani.app.ui.settings.framework.components.RowButtonItem
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.TextFieldItem
@@ -23,7 +31,9 @@ actual fun SettingsScope.CacheDirectoryGroup(state: CacheDirectoryGroupState) {
     Group({ Text("存储设置") }) {
         val mediaCacheSettings by state.mediaCacheSettingsState
 
-        val defaultSaveDir = remember { projectDirectories.torrentCacheDir.absolutePath }
+        val context = LocalDesktopContext.current
+
+        val defaultSaveDir = remember { context.torrentDataCacheDir.absolutePath }
         val currentSaveDir: String by remember {
             derivedStateOf {
                 mediaCacheSettings.saveDir ?: defaultSaveDir
@@ -57,7 +67,7 @@ actual fun SettingsScope.CacheDirectoryGroup(state: CacheDirectoryGroupState) {
             icon = { Icon(Icons.Rounded.ArrowOutward, null) },
             onClick = {
                 Desktop.getDesktop().open(
-                    File(mediaCacheSettings.saveDir ?: projectDirectories.torrentCacheDir.absolutePath),
+                    File(mediaCacheSettings.saveDir ?: context.torrentDataCacheDir.absolutePath),
                 )
             },
         )
