@@ -31,7 +31,12 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.BottomSheetDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
@@ -49,6 +54,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -65,13 +72,11 @@ import me.him188.ani.app.data.models.subject.nameCn
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.app.ui.foundation.OutlinedTag
-import me.him188.ani.app.ui.foundation.Tag
 import me.him188.ani.app.ui.foundation.avatar.AvatarImage
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBarPadding
 import me.him188.ani.app.ui.foundation.layout.paneHorizontalPadding
-import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
 import me.him188.ani.app.ui.subject.AiringLabel
 import me.him188.ani.app.ui.subject.AiringLabelState
 import me.him188.ani.app.ui.subject.renderSubjectSeason
@@ -243,6 +248,7 @@ private fun TagsList(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier) {
+        val clipboardManager = LocalClipboardManager.current
         val allTags by remember(info) {
             derivedStateOf { info.tags }
         }
@@ -269,28 +275,63 @@ private fun TagsList(
                 }
             }
             presentTags.forEach { tag ->
-                Tag(
-                    Modifier
-                        .clickable {}
-                        .height(40.dp)
-                        .padding(vertical = 4.dp),
+                var showCopyMenu by remember { mutableStateOf(false) }
+                
+                Box(
+                    modifier = Modifier.height(40.dp) // 32 (Chip) + 8 (vertical spacing, equal to horizontalArrangement)
+                    // 直接放 AssistChip 会导致垂直间距过大，不得不套一个 Box。可能是 workaround
                 ) {
-                    ProvideTextStyleContentColor(
-                        MaterialTheme.typography.labelMedium,
-                    ) {
-                        Text(
-                            tag.name,
-                            Modifier.align(Alignment.CenterVertically),
-                            maxLines = 1,
-                        )
+                    AssistChip(
+                        onClick = { showCopyMenu = true },
+                        label = {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Text(
+                                    tag.name,
+                                    style = MaterialTheme.typography.labelMedium
+                                )
+                                Text(
+                                    tag.count.toString(),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.secondary
+                                )
+                            }
+                        }
+                    )
+                }
 
-                        Text(
-                            tag.count.toString(),
-                            Modifier.padding(start = 6.dp).align(Alignment.CenterVertically),
-                            maxLines = 1,
-                            color = MaterialTheme.colorScheme.secondary,
-                        )
-                    }
+                if (showCopyMenu) {
+                    AlertDialog(
+                        onDismissRequest = { showCopyMenu = false },
+                        icon = {
+                            Icon(
+                                imageVector = Icons.Default.ContentCopy,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                            )
+                        },
+                        title = { Text("复制标签") },
+                        text = { Text("是否复制标签「${tag.name}」？") },
+                        confirmButton = {
+                            TextButton(
+                                onClick = {
+                                    clipboardManager.setText(AnnotatedString(tag.name))
+                                    showCopyMenu = false
+                                },
+                            ) {
+                                Text("复制")
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(
+                                onClick = { showCopyMenu = false },
+                            ) {
+                                Text("取消")
+                            }
+                        },
+                    )
                 }
             }
             if (hasMoreTags) {
@@ -313,9 +354,6 @@ private fun TagsList(
                 }
             }
         }
-//        if (hasMoreTags) {
-//            
-//        }
     }
 }
 
