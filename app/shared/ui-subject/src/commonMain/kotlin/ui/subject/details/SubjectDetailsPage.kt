@@ -15,6 +15,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -517,7 +518,6 @@ private fun SubjectDetailsContentPager(
         pageCount = { 3 },
     )
 
-    // Pager with TabRow
     Column(
         Modifier
             .fillMaxHeight()
@@ -528,13 +528,16 @@ private fun SubjectDetailsContentPager(
             if (connectedScrollState.isScrolledTop) stickyTopBarColor else backgroundColor,
             tween(),
         )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(tabContainerColor),
+            contentAlignment = Alignment.Center,
         ) {
             TabRow(
                 selectedTabIndex = pagerState.currentPage,
-                modifier = Modifier.width(240.dp), // 3个 tab 的总宽度 = 80 * 3
+                modifier = Modifier.width(240.dp), // 3个tab的总宽度 = 80 * 3
                 indicator = @Composable { tabPositions ->
                     TabRowDefaults.PrimaryIndicator(
                         Modifier.pagerTabIndicatorOffset(pagerState, tabPositions),
