@@ -9,7 +9,10 @@
 
 package me.him188.ani.app.domain.episode
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.setMain
 import me.him188.ani.app.data.persistent.MemoryDataStore
 import me.him188.ani.app.data.repository.player.EpisodeHistories
 import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepository
@@ -21,6 +24,7 @@ import me.him188.ani.utils.coroutines.childScope
 class EpisodeFetchPlayStateSwitchEpisodeTest : AbstractPlayerExtensionTest() {
     private val repository = EpisodePlayHistoryRepositoryImpl(MemoryDataStore(EpisodeHistories.Empty))
     private fun TestScope.createCase() = run {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         val testScope = this.childScope()
         val suite = EpisodePlayerTestSuite(this, testScope)
         suite.registerComponent<EpisodePlayHistoryRepository> { repository }

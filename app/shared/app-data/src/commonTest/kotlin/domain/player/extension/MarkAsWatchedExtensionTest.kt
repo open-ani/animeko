@@ -12,15 +12,18 @@
 package me.him188.ani.app.domain.player.extension
 
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestResult
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.data.repository.RepositoryNetworkException
 import me.him188.ani.app.domain.episode.EpisodeFetchPlayState
@@ -60,6 +63,7 @@ class MarkAsWatchedExtensionTest : AbstractPlayerExtensionTest() {
         getEpisodeCollectionType: GetEpisodeCollectionTypeUseCase = GetEpisodeCollectionTypeUseCase { _, _ -> null },
         setEpisodeCollectionType: SetEpisodeCollectionTypeUseCase = SetEpisodeCollectionTypeUseCase { _, _, _ -> },
     ): Triple<CoroutineScope, EpisodePlayerTestSuite, EpisodeFetchPlayState> {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         val testScope = this.childScope()
         val suite = createSuite(testScope)
 

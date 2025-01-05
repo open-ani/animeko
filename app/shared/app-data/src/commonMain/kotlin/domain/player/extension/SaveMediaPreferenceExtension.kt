@@ -21,7 +21,7 @@ class SaveMediaPreferenceExtension(
     koin: Koin
 ) : PlayerExtension("SaveMediaPreference") {
     private val mediaSelectorEventSavePreferenceUseCase: MediaSelectorEventSavePreferenceUseCase by koin.inject()
-    override fun onUIAttach(backgroundTaskScope: ExtensionBackgroundTaskScope) {
+    override fun onStart(backgroundTaskScope: ExtensionBackgroundTaskScope) {
         backgroundTaskScope.launch("SaveMediaPreference") {
             context.fetchSelectFlow.collectLatest { bundle ->
                 if (bundle == null) return@collectLatest

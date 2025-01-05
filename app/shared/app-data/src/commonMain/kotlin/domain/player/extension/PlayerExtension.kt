@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.domain.player.extension
 
-import androidx.annotation.UiThread
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
@@ -31,15 +30,9 @@ abstract class PlayerExtension(
 ) { // FYI: chain of responsibility pattern
 
     /**
-     * Called when composition UI is attaching the player.
-     *
-     * You are allowed to launch to [backgroundTaskScope].
-     * Lifecycle of the jobs are managed by the player, so you don't need to worry about it.
-     *
-     * Do NOT perform any expensive operations here as it will block the UI.
+     * Called when the extension is allowed to launchpad background tasks.
      */
-    @UiThread
-    open fun onUIAttach(backgroundTaskScope: ExtensionBackgroundTaskScope) {
+    open fun onStart(backgroundTaskScope: ExtensionBackgroundTaskScope) {
     }
 
     /**

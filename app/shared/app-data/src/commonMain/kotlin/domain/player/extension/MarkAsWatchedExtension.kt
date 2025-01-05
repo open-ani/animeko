@@ -39,7 +39,7 @@ class MarkAsWatchedExtension(
     private val getEpisodeCollectionTypeUseCase: GetEpisodeCollectionTypeUseCase by koin.inject()
     private val setEpisodeCollectionTypeUseCase: SetEpisodeCollectionTypeUseCase by koin.inject()
 
-    override fun onUIAttach(backgroundTaskScope: ExtensionBackgroundTaskScope) {
+    override fun onStart(backgroundTaskScope: ExtensionBackgroundTaskScope) {
         backgroundTaskScope.launch("AutoMarkWatched") {
             context.fetchSelectFlow.collectLatest { fetchSelect ->
                 if (fetchSelect == null) return@collectLatest

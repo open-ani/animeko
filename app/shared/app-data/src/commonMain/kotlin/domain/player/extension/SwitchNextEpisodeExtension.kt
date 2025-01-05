@@ -32,7 +32,7 @@ class SwitchNextEpisodeExtension(
 ) : PlayerExtension("SwitchNextEpisode") {
     private val getVideoScaffoldConfigUseCase: GetVideoScaffoldConfigUseCase by koin.inject()
 
-    override fun onUIAttach(backgroundTaskScope: ExtensionBackgroundTaskScope) {
+    override fun onStart(backgroundTaskScope: ExtensionBackgroundTaskScope) {
         backgroundTaskScope.launch("SwitchNextEpisode") {
             getVideoScaffoldConfigUseCase()
                 .map { it.autoPlayNext }

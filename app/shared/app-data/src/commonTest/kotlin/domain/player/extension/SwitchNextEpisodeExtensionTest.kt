@@ -9,11 +9,14 @@
 
 package me.him188.ani.app.domain.player.extension
 
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.data.repository.RepositoryNetworkException
 import me.him188.ani.app.domain.episode.EpisodePlayerTestSuite
@@ -36,6 +39,7 @@ class SwitchNextEpisodeExtensionTest : AbstractPlayerExtensionTest() {
     }
 
     private fun TestScope.createCase(getNextEpisode: suspend (currentEpisodeId: Int) -> Int?) = run {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         val testScope = this.childScope()
         val suite = EpisodePlayerTestSuite(this, testScope)
         suite.enableAutoPlayNext()

@@ -45,7 +45,7 @@ class SwitchMediaOnPlayerErrorExtension(
     private val getMediaSelectorSettingsFlowUseCase: GetMediaSelectorSettingsFlowUseCase by koin.inject()
 
 
-    override fun onUIAttach(backgroundTaskScope: ExtensionBackgroundTaskScope) {
+    override fun onStart(backgroundTaskScope: ExtensionBackgroundTaskScope) {
         backgroundTaskScope.launch("PlayerErrorListener") {
             invoke(
                 context.fetchSelectFlow,

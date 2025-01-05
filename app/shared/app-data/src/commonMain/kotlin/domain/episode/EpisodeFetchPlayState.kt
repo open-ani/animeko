@@ -169,7 +169,7 @@ class EpisodeFetchPlayState(
             }
 
         extensionManager.call { extension ->
-            extension.onUIAttach(ExtensionBackgroundTaskScopeImpl(extension))
+            extension.onStart(ExtensionBackgroundTaskScopeImpl(extension))
         }
     }
 

@@ -36,7 +36,7 @@ class RememberPlayProgressExtension(
 ) : PlayerExtension(name = "SaveProgressExtension") {
     private val playProgressRepository: EpisodePlayHistoryRepository by koin.inject()
 
-    override fun onUIAttach(backgroundTaskScope: ExtensionBackgroundTaskScope) {
+    override fun onStart(backgroundTaskScope: ExtensionBackgroundTaskScope) {
         backgroundTaskScope.launch("MediaSelectorListener") {
             context.fetchSelectFlow.collectLatest { fetchSelect ->
                 if (fetchSelect == null) return@collectLatest

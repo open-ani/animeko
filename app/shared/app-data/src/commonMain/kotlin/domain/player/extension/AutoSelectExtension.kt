@@ -25,7 +25,7 @@ class AutoSelectExtension(
 ) : PlayerExtension("AutoSelect") {
     private val mediaSelectorAutoSelectUseCase: MediaSelectorAutoSelectUseCase by koin.inject()
 
-    override fun onUIAttach(backgroundTaskScope: ExtensionBackgroundTaskScope) {
+    override fun onStart(backgroundTaskScope: ExtensionBackgroundTaskScope) {
         backgroundTaskScope.launch("AutoSelect") {
             context.fetchSelectFlow.collectLatest { fetchSelect ->
                 if (fetchSelect == null) return@collectLatest
