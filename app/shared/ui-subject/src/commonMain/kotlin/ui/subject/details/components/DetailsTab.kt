@@ -32,12 +32,8 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.BottomSheetDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
@@ -56,7 +52,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -276,18 +271,16 @@ private fun TagsList(
                 }
             }
             presentTags.forEach { tag ->
-                var showCopyMenu by remember { mutableStateOf(false) }
-
                 Box(
                     modifier = Modifier.height(40.dp), // 32 (Chip) + 8 (vertical spacing, equal to horizontalArrangement)
                     // 直接放 AssistChip 会导致垂直间距过大，不得不套一个 Box。可能是 workaround
                 ) {
                     AssistChip(
-                        onClick = { showCopyMenu = true },
+                        onClick = { /* TODO */ },
                         label = {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
                             ) {
                                 Text(
                                     text = tag.name,
@@ -300,38 +293,6 @@ private fun TagsList(
                                     color = MaterialTheme.colorScheme.secondary,
                                     modifier = Modifier.wrapContentSize(align = Alignment.Center),
                                 )
-                            }
-                        },
-                    )
-                }
-
-                if (showCopyMenu) {
-                    AlertDialog(
-                        onDismissRequest = { showCopyMenu = false },
-                        icon = {
-                            Icon(
-                                imageVector = Icons.Default.ContentCopy,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                            )
-                        },
-                        title = { Text("复制标签") },
-                        text = { Text("是否复制标签「${tag.name}」？") },
-                        confirmButton = {
-                            TextButton(
-                                onClick = {
-                                    clipboardManager.setText(AnnotatedString(tag.name))
-                                    showCopyMenu = false
-                                },
-                            ) {
-                                Text("复制")
-                            }
-                        },
-                        dismissButton = {
-                            TextButton(
-                                onClick = { showCopyMenu = false },
-                            ) {
-                                Text("取消")
                             }
                         },
                     )
