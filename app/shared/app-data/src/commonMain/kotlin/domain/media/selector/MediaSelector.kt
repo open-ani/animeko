@@ -312,7 +312,8 @@ class DefaultMediaSelector(
 
     private fun <T> Flow<T>.cached(): Flow<T> {
         if (!enableCaching) return this
-        return this.shareIn(CoroutineScope(flowCoroutineContext), SharingStarted.WhileSubscribed(), replay = 1)
+        // TODO: 2025/1/5 We need to correctly handle lifecycle. Let DefaultMediaSelector's caller control it.
+        return this.shareIn(CoroutineScope(flowCoroutineContext), SharingStarted.WhileSubscribed(5_000), replay = 1)
     }
 
     private val mediaSelectorSettings = mediaSelectorSettings.cached()
