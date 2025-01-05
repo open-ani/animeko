@@ -27,7 +27,7 @@ import org.openani.mediamp.MediampPlayer
  */
 abstract class PlayerExtension(
     val name: String,
-) { // FYI: chain of responsibility pattern
+) {
 
     /**
      * Called when the extension is allowed to launchpad background tasks.
