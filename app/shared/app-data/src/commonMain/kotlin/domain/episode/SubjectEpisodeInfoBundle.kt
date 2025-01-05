@@ -108,7 +108,7 @@ class SubjectEpisodeInfoBundleLoader(
      * and it's guaranteed to complete normally without throwing an exception,
      * as all exceptions are caught and handled by [flowLoadErrorObserver].
      */
-    val infoBundleFlow: Flow<SubjectEpisodeInfoBundle?> =
+    val infoBundleFlowFlatten: Flow<SubjectEpisodeInfoBundle?> =
         episodeIdFlow.map { GetSubjectEpisodeInfoBundleFlowUseCase.SubjectIdAndEpisodeId(subjectId, it) }
             .transformLatest { request ->
                 // Clear previous state or results
@@ -120,4 +120,5 @@ class SubjectEpisodeInfoBundleLoader(
                         .catchLoadError(flowLoadErrorObserver),
                 )
             }
+
 }

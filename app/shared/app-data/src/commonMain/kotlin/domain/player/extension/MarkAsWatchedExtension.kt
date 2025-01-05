@@ -47,7 +47,7 @@ class MarkAsWatchedExtension(
                 invoke(
                     context.player,
                     context.subjectId,
-                    context.episodeIdFlow.value, // no need to combine flow. 当 epId 变化时, fetchSelectFlow 也会变化, 这里就能重新调用, 获取最新的 episodeId.
+                    context.getCurrentEpisodeId(), // no need to combine flow. 当 epId 变化时, fetchSelectFlow 也会变化, 这里就能重新调用, 获取最新的 episodeId.
                 )
             }
         }

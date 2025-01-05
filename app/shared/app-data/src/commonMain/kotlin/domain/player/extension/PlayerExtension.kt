@@ -12,7 +12,6 @@ package me.him188.ani.app.domain.player.extension
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.StateFlow
 import me.him188.ani.app.domain.episode.EpisodeFetchPlayState
 import me.him188.ani.app.domain.episode.MediaFetchSelectBundle
 import me.him188.ani.app.domain.player.VideoLoadingState
@@ -64,12 +63,12 @@ interface ExtensionBackgroundTaskScope {
  */
 interface PlayerExtensionContext {
     val subjectId: Int
-    val episodeIdFlow: StateFlow<Int>
 
     val player: MediampPlayer
     val videoLoadingState: Flow<VideoLoadingState>
     val fetchSelectFlow: Flow<MediaFetchSelectBundle?>
 
+    fun getCurrentEpisodeId(): Int
     suspend fun switchEpisode(newEpisodeId: Int)
 }
 

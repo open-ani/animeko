@@ -10,7 +10,6 @@
 package me.him188.ani.app.domain.player
 
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.StateFlow
 import me.him188.ani.app.domain.episode.EpisodeFetchPlayState
 import me.him188.ani.app.domain.episode.MediaFetchSelectBundle
 import me.him188.ani.app.domain.episode.player
@@ -47,8 +46,7 @@ fun PlayerExtensionManager(
     val context = object : PlayerExtensionContext {
         override val subjectId: Int
             get() = state.subjectId
-        override val episodeIdFlow: StateFlow<Int>
-            get() = state.episodeIdFlow
+
         override val player: MediampPlayer
             get() = state.player
         override val videoLoadingState: Flow<VideoLoadingState>
@@ -56,8 +54,12 @@ fun PlayerExtensionManager(
         override val fetchSelectFlow: Flow<MediaFetchSelectBundle?>
             get() = state.fetchSelectFlow
 
+        override fun getCurrentEpisodeId(): Int {
+            return state.episodeIdFlow.value
+        }
+
         override suspend fun switchEpisode(newEpisodeId: Int) {
-            if (episodeIdFlow.value == newEpisodeId) {
+            if (getCurrentEpisodeId() == newEpisodeId) {
                 error("Cannot switch to the same episode: $newEpisodeId")
             }
 

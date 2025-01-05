@@ -25,6 +25,6 @@ fun getBundleFlow(subjectId: Int, koin: Koin, backgroundScope: CoroutineScope) {
 
     val loader = SubjectEpisodeInfoBundleLoader(subjectId, episodeIdFlow, koin)
 
-    val bundleFlow: SharedFlow<SubjectEpisodeInfoBundle?> = loader.infoBundleFlow
+    val bundleFlow: SharedFlow<SubjectEpisodeInfoBundle?> = loader.infoBundleFlowFlatten
         .shareIn(backgroundScope, started = WhileSubscribed(), replay = 1)
 }

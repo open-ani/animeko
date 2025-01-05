@@ -54,7 +54,7 @@ class SwitchNextEpisodeExtension(
             }
 
             if (playback == PlaybackState.FINISHED && closeToEnd) {
-                val nextEpisode = getNextEpisode(context.episodeIdFlow.value)
+                val nextEpisode = getNextEpisode(context.getCurrentEpisodeId())
                 logger.info("播放完毕，切换下一集 $nextEpisode")
                 context.switchEpisode(nextEpisode ?: return@collect)
             }

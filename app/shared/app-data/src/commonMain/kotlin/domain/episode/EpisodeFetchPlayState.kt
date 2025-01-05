@@ -63,7 +63,7 @@ class EpisodeFetchPlayState(
      * When an error occurs, the flow emits `null`, and the error can be observed from [infoLoadErrorFlow].
      */
     val infoBundleFlow =
-        infoLoader.infoBundleFlow.shareIn(backgroundScope, sharingStarted, replay = 1)
+        infoLoader.infoBundleFlowFlatten.shareIn(backgroundScope, sharingStarted, replay = 1)
     // TODO: test infoBundleFlow observes value
 
     /**
@@ -117,6 +117,10 @@ class EpisodeFetchPlayState(
 
     private val switchEpisodeLock = Mutex()
 
+    fun getCurrentEpisodeId(): Int {
+        return episodeIdFlow.value
+    }
+
     suspend fun switchEpisode(episodeId: Int) {
         currentCoroutineContext()[InSwitchEpisode]?.let { element ->
             error(
@@ -134,7 +138,13 @@ class EpisodeFetchPlayState(
                 extensionManager.call {
                     it.onBeforeSwitchEpisode(episodeId)
                 }
+
+                // 1. Set new episode ID. This will trigger [infoLoader] to update.
+                
                 _episodeIdFlow.value = episodeId
+                infoBundleFlow.drop(1).filter {
+                    it?.episodeId == episodeId
+                }.firstOrNull()
             }
         }
     }

@@ -58,7 +58,7 @@ class SwitchNextEpisodeExtensionTest : AbstractPlayerExtensionTest() {
         val (testScope, suite, state) =
             createCase(getNextEpisode = { 1000 })
 
-        assertEquals(initialEpisodeId, state.episodeIdFlow.value)
+        assertEquals(initialEpisodeId, state.getCurrentEpisodeId())
 
         // 播到最尾部了
         suite.player.currentPositionMillis.value = suite.player.mediaProperties.value.durationMillis
@@ -66,7 +66,7 @@ class SwitchNextEpisodeExtensionTest : AbstractPlayerExtensionTest() {
 
         advanceUntilIdle()
 
-        assertEquals(2, state.episodeIdFlow.value)
+        assertEquals(2, state.getCurrentEpisodeId())
 
         testScope.cancel()
     }
@@ -76,7 +76,7 @@ class SwitchNextEpisodeExtensionTest : AbstractPlayerExtensionTest() {
         val (testScope, suite, state) =
             createCase(getNextEpisode = { 1000 })
 
-        assertEquals(initialEpisodeId, state.episodeIdFlow.value)
+        assertEquals(initialEpisodeId, state.getCurrentEpisodeId())
 
         // 播到最尾部了
         suite.player.currentPositionMillis.value = suite.player.mediaProperties.value.durationMillis - 5001
@@ -84,7 +84,7 @@ class SwitchNextEpisodeExtensionTest : AbstractPlayerExtensionTest() {
 
         advanceUntilIdle()
 
-        assertEquals(2, state.episodeIdFlow.value)
+        assertEquals(2, state.getCurrentEpisodeId())
 
         testScope.cancel()
     }
@@ -94,7 +94,7 @@ class SwitchNextEpisodeExtensionTest : AbstractPlayerExtensionTest() {
         val (testScope, suite, state) =
             createCase(getNextEpisode = { 1000 })
 
-        assertEquals(initialEpisodeId, state.episodeIdFlow.value)
+        assertEquals(initialEpisodeId, state.getCurrentEpisodeId())
 
         // 播到最尾部了
         suite.player.currentPositionMillis.value = suite.player.mediaProperties.value.durationMillis
@@ -102,7 +102,7 @@ class SwitchNextEpisodeExtensionTest : AbstractPlayerExtensionTest() {
 
         advanceUntilIdle()
 
-        assertEquals(1000, state.episodeIdFlow.value)
+        assertEquals(1000, state.getCurrentEpisodeId())
 
         testScope.cancel()
     }
@@ -118,7 +118,7 @@ class SwitchNextEpisodeExtensionTest : AbstractPlayerExtensionTest() {
                 },
             )
 
-        assertEquals(initialEpisodeId, state.episodeIdFlow.value)
+        assertEquals(initialEpisodeId, state.getCurrentEpisodeId())
 
         // 播到最尾部了
         suite.player.currentPositionMillis.value = suite.player.mediaProperties.value.durationMillis
@@ -126,7 +126,7 @@ class SwitchNextEpisodeExtensionTest : AbstractPlayerExtensionTest() {
 
         advanceUntilIdle()
 
-        assertEquals(1000, state.episodeIdFlow.value)
+        assertEquals(1000, state.getCurrentEpisodeId())
         assertEquals(1, getNextEpisodeCalled)
 
         testScope.cancel()
@@ -148,7 +148,7 @@ class SwitchNextEpisodeExtensionTest : AbstractPlayerExtensionTest() {
         )
         state.startBackgroundTasks()
 
-        assertEquals(initialEpisodeId, state.episodeIdFlow.value)
+        assertEquals(initialEpisodeId, state.getCurrentEpisodeId())
 
         // 播到最尾部了
         suite.player.currentPositionMillis.value = suite.player.mediaProperties.value.durationMillis
@@ -156,7 +156,7 @@ class SwitchNextEpisodeExtensionTest : AbstractPlayerExtensionTest() {
 
         advanceUntilIdle()
 
-        assertEquals(2, state.episodeIdFlow.value)
+        assertEquals(2, state.getCurrentEpisodeId())
         backgroundException.await().run {
             assertIs<ExtensionException>(this)
             assertIs<RepositoryNetworkException>(cause)

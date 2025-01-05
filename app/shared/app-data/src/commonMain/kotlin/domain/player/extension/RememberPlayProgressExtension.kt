@@ -51,7 +51,7 @@ class RememberPlayProgressExtension(
         backgroundTaskScope.launch("PlaybackStateListener") {
             val player = context.player
             player.playbackState.collect { playbackState ->
-                val episodeId = context.episodeIdFlow.value
+                val episodeId = context.getCurrentEpisodeId()
 
                 when (playbackState) {
                     // 加载播放进度
@@ -110,7 +110,7 @@ class RememberPlayProgressExtension(
             context.player.getCurrentPositionMillis()
         }
 
-        val episodeId = context.episodeIdFlow.value
+        val episodeId = context.getCurrentEpisodeId()
 
         if (currentPositionMillis in 0..<durationMillis) {
             logger.info { "Saving position for epId=$episodeId: ${currentPositionMillis.milliseconds}" }
