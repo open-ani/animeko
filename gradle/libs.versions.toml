@@ -64,6 +64,8 @@ vlcj = "4.8.2"
 
 jsystemthemedetector = "3.8"
 
+materialKolor = "2.0.0"
+
 [libraries]
 # Build
 android-gradle-plugin = { module = "com.android.tools.build:gradle", version.ref = "android-gradle-plugin" }
@@ -254,3 +256,4 @@ aws-secretsmanager = { module = "software.amazon.awssdk:secretsmanager", version
 
 jsystemthemedetector = { module = "org.openani.jsystemthemedetector:jSystemThemeDetector", version.ref = "jsystemthemedetector" }
 turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
+materialKolor = "com.materialkolor:material-kolor:2.0.0"
