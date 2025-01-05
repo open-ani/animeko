@@ -120,6 +120,9 @@ kotlin {
         api(libs.coil.compose.core)
         api(libs.coil.network.ktor2)
         implementation(libs.constraintlayout.compose)
+        
+        //
+        implementation(libs.materialKolor)
     }
 
     // shared by android and desktop
