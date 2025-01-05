@@ -20,7 +20,6 @@ import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import org.koin.core.Koin
 import org.openani.mediamp.PlaybackState
-import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * 记忆播放进度.
@@ -44,7 +43,7 @@ class RememberPlayProgressExtension(
 
                     fetchSelect.mediaSelector.events.onBeforeSelect.collect {
                         // 切换 数据源 前保存播放进度
-                        savePlayProgress(session.episodeId)
+                        savePlayProgressOrRemove(session.episodeId)
                     }
                 }
 
@@ -74,7 +73,7 @@ class RememberPlayProgressExtension(
                     }
 
                     PlaybackState.PAUSED -> {
-                        savePlayProgress(episodeId)
+                        savePlayProgressOrRemove(episodeId)
                     }
 
                     PlaybackState.FINISHED -> {
@@ -95,33 +94,52 @@ class RememberPlayProgressExtension(
 
     @OptIn(UnsafeEpisodeSessionApi::class)
     override suspend fun onBeforeSwitchEpisode(newEpisodeId: Int) {
-        savePlayProgress(context.getCurrentEpisodeId())
+        savePlayProgressOrRemove(context.getCurrentEpisodeId())
     }
 
     @OptIn(UnsafeEpisodeSessionApi::class)
     override suspend fun onClose() {
-        savePlayProgress(context.getCurrentEpisodeId())
+        savePlayProgressOrRemove(context.getCurrentEpisodeId())
     }
 
-    private suspend fun savePlayProgress(
+    private suspend fun savePlayProgressOrRemove(
         episodeId: Int
     ) {
-        val playbackState = context.player.playbackState.value
-        val videoDurationMillis = context.player.mediaProperties.value?.durationMillis
+        val player = context.player
+        val playbackState = player.playbackState.value
+        val videoDurationMillis = player.mediaProperties.value?.durationMillis
 
-        if (playbackState == PlaybackState.FINISHED) return
-
-        val durationMillis = videoDurationMillis.let {
-            if (it == null) return@let 0L
-            return@let it
+        if (videoDurationMillis == null || videoDurationMillis <= 0L) {
+            return
         }
 
-        val currentPositionMillis = withContext(Dispatchers.Main.immediate) {
-            context.player.getCurrentPositionMillis()
-        }
-        if (currentPositionMillis in 0..<durationMillis - 1000) { // 最后一秒不会保存进度
-            logger.info { "Saving position for epId=$episodeId: ${currentPositionMillis.milliseconds}" }
-            playProgressRepository.saveOrUpdate(episodeId, currentPositionMillis)
+        when (playbackState) {
+            PlaybackState.READY,
+            PlaybackState.ERROR -> return
+
+            PlaybackState.FINISHED -> {
+                playProgressRepository.remove(episodeId)
+                return
+            }
+
+            PlaybackState.PAUSED,
+            PlaybackState.PLAYING,
+            PlaybackState.PAUSED_BUFFERING -> {
+                val currentPositionMillis = withContext(Dispatchers.Main.immediate) {
+                    player.getCurrentPositionMillis()
+                }
+
+                check(videoDurationMillis >= currentPositionMillis) {
+                    "Current position is greater than video duration: $currentPositionMillis > $videoDurationMillis"
+                }
+
+                if (videoDurationMillis - currentPositionMillis < 5000) {
+                    playProgressRepository.remove(episodeId)
+                } else {
+                    playProgressRepository.saveOrUpdate(episodeId, currentPositionMillis)
+                }
+                return
+            }
         }
     }
 

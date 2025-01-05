@@ -86,6 +86,9 @@ class EpisodeFetchPlayStateSwitchEpisodeTest : AbstractPlayerExtensionTest() {
         suite.player.playbackState.value = PlaybackState.FINISHED
         advanceUntilIdle() // 自动切换到下一集数
 
+        // 前一集播放完毕了
+        assertEquals(null, playHistory.getPositionMillisByEpisodeId(initialEpisodeId))
+
         assertEquals(newEpisodeId, state.getCurrentEpisodeId())
 
         // 加载新的视频

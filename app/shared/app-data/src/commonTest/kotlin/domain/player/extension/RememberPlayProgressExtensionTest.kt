@@ -166,7 +166,6 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
             repository.flow.first(),
         )
 
-        suite.setMediaDuration(100_000)
         suite.player.playbackState.value = PlaybackState.FINISHED
         advanceUntilIdle()
         assertEquals(emptyList(), repository.flow.first())
@@ -188,10 +187,64 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
             repository.flow.first(),
         )
 
-        suite.setMediaDuration(100_000)
         state.onClose()
         advanceUntilIdle()
         assertEquals(
+            listOf(EpisodeHistory(episodeId = initialEpisodeId, positionMillis = 1000)),
+            repository.flow.first(),
+        )
+
+        testScope.cancel()
+    }
+
+    @Test
+    fun `removes saved when pausing close to the end`() = runTest {
+        val (testScope, suite, state) = createCase()
+        advanceUntilIdle()
+
+        suite.setMediaDuration(100_000)
+        suite.player.currentPositionMillis.value = 1000
+        suite.player.playbackState.value = PlaybackState.PAUSED
+        advanceUntilIdle()
+        assertEquals(
+            listOf(EpisodeHistory(episodeId = initialEpisodeId, positionMillis = 1000)),
+            repository.flow.first(),
+        )
+
+        suite.player.playbackState.value = PlaybackState.PLAYING
+        advanceUntilIdle()
+
+        suite.player.currentPositionMillis.value = 100_000 - 1
+        suite.player.playbackState.value = PlaybackState.PAUSED
+        advanceUntilIdle()
+        assertEquals(
+            listOf(),
+            repository.flow.first(),
+        )
+
+        testScope.cancel()
+    }
+
+    @Test
+    fun `does not removes saved if paused and skip close to the end`() = runTest {
+        val (testScope, suite, state) = createCase()
+        advanceUntilIdle()
+
+        suite.setMediaDuration(100_000)
+        suite.player.currentPositionMillis.value = 1000
+        suite.player.playbackState.value = PlaybackState.PAUSED
+        advanceUntilIdle()
+        assertEquals(
+            listOf(EpisodeHistory(episodeId = initialEpisodeId, positionMillis = 1000)),
+            repository.flow.first(),
+        )
+
+        // Did not return to PLAYING state. 
+
+        suite.player.seekTo(100_000 - 1)
+        advanceUntilIdle()
+        assertEquals(
+            // current algorithm does not remove the history in this case
             listOf(EpisodeHistory(episodeId = initialEpisodeId, positionMillis = 1000)),
             repository.flow.first(),
         )
