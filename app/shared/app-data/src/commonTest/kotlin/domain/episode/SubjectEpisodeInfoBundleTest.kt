@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.domain.episode
 
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,6 +21,7 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import me.him188.ani.app.data.repository.RepositoryNetworkException
@@ -37,10 +39,14 @@ class SubjectEpisodeInfoBundleTest {
         return SubjectEpisodeInfoBundleLoader(subjectId, episodeIdFlow, koin)
     }
 
+    private fun TestScope.createSuite(
+        backgroundScopeForState: CoroutineScope = this.backgroundScope,
+    ) = EpisodePlayerTestSuite(this, backgroundScopeForState)
+
     @Test
     fun `infoLoadErrorState initially null`() = runTest {
         val episodeIdFlow = MutableStateFlow(2)
-        val suite = EpisodePlayerTestSuite(backgroundScope)
+        val suite = createSuite()
         val state = suite.createState(episodeIdFlow)
         assertEquals(null, state.infoLoadErrorState.value)
     }
@@ -52,7 +58,7 @@ class SubjectEpisodeInfoBundleTest {
     @Test
     fun `infoBundleFlow emits null first`() = runTest {
         val episodeIdFlow = MutableStateFlow(2)
-        val suite = EpisodePlayerTestSuite(backgroundScope)
+        val suite = createSuite()
         val state = suite.createState(episodeIdFlow)
         assertEquals(null, state.infoBundleFlow.first()) // refreshes UI
     }
@@ -60,7 +66,7 @@ class SubjectEpisodeInfoBundleTest {
     @Test
     fun `infoBundleFlow load success`() = runTest {
         val episodeIdFlow = MutableStateFlow(2)
-        val suite = EpisodePlayerTestSuite(backgroundScope)
+        val suite = createSuite()
         val state = suite.createState(episodeIdFlow)
         assertNotEquals(null, state.infoBundleFlow.drop(1).first())
         assertEquals(null, state.infoLoadErrorState.value)
@@ -69,7 +75,7 @@ class SubjectEpisodeInfoBundleTest {
     @Test
     fun `infoBundleFlow completes when episodeId completes`() = runTest {
         val episodeIdFlow = flowOf(2)
-        val suite = EpisodePlayerTestSuite(backgroundScope)
+        val suite = createSuite()
         val state = suite.createState(episodeIdFlow)
         state.infoBundleFlow.drop(1).toList().run {
             assertEquals(1, size)
@@ -81,7 +87,7 @@ class SubjectEpisodeInfoBundleTest {
     fun `infoBundleFlow load failure is captured in the background amd exposed via infoLoadErrorState`() = runTest {
         val episodeIdFlow = MutableStateFlow(2)
         val (scope, backgroundException) = createExceptionCapturingSupervisorScope()
-        val suite = EpisodePlayerTestSuite(scope)
+        val suite = createSuite(scope)
         suite.registerComponent<GetSubjectEpisodeInfoBundleFlowUseCase> {
             GetSubjectEpisodeInfoBundleFlowUseCase { idsFlow ->
                 idsFlow.map {
@@ -101,7 +107,7 @@ class SubjectEpisodeInfoBundleTest {
     fun `infoBundleFlow does NOT update infoLoadErrorState on CancellationException`() = runTest {
         val episodeIdFlow = MutableStateFlow(2)
         val (scope, backgroundException) = createExceptionCapturingSupervisorScope()
-        val suite = EpisodePlayerTestSuite(scope)
+        val suite = createSuite(scope)
 
         // Override GetSubjectEpisodeInfoBundleFlowUseCase to throw CancellationException
         suite.registerComponent<GetSubjectEpisodeInfoBundleFlowUseCase> {
@@ -134,7 +140,7 @@ class SubjectEpisodeInfoBundleTest {
     @Test
     fun `infoBundleFlow collector cancellation does NOT set infoLoadErrorState`() = runTest {
         val episodeIdFlow = MutableStateFlow(2)
-        val suite = EpisodePlayerTestSuite(backgroundScope)
+        val suite = createSuite()
 
         // Provide normal successful flow so that no error is thrown
         suite.registerComponent<GetSubjectEpisodeInfoBundleFlowUseCase> {

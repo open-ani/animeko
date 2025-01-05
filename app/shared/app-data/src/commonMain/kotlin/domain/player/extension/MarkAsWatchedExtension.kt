@@ -9,13 +9,11 @@
 
 package me.him188.ani.app.domain.player.extension
 
-import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import me.him188.ani.app.domain.episode.GetEpisodeCollectionTypeUseCase
 import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeUseCase
@@ -23,7 +21,6 @@ import me.him188.ani.app.domain.settings.GetVideoScaffoldConfigUseCase
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
 import me.him188.ani.utils.coroutines.cancellableCoroutineScope
-import me.him188.ani.utils.coroutines.retryWithBackoffDelay
 import me.him188.ani.utils.coroutines.sampleWithInitial
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
@@ -36,13 +33,14 @@ import org.openani.mediamp.MediampPlayer
 class MarkAsWatchedExtension(
     private val context: PlayerExtensionContext,
     koin: Koin,
+    private val enableSamplingAndDebounce: Boolean,
 ) : PlayerExtension("AutoMarkWatched") {
     private val getVideoScaffoldConfigUseCase: GetVideoScaffoldConfigUseCase by koin.inject()
     private val getEpisodeCollectionTypeUseCase: GetEpisodeCollectionTypeUseCase by koin.inject()
     private val setEpisodeCollectionTypeUseCase: SetEpisodeCollectionTypeUseCase by koin.inject()
 
     override fun onUIAttach(backgroundTaskScope: ExtensionBackgroundTaskScope) {
-        backgroundTaskScope.launch("") {
+        backgroundTaskScope.launch("AutoMarkWatched") {
             context.fetchSelectFlow.collectLatest { fetchSelect ->
                 if (fetchSelect == null) return@collectLatest
 
@@ -90,16 +88,16 @@ class MarkAsWatchedExtension(
         // 设置启用
         cancellableCoroutineScope {
             combine(
-                player.currentPositionMillis.sampleWithInitial(5000),
-                player.mediaProperties.map { it?.durationMillis }.debounce(5000),
+                player.currentPositionMillis
+                    .let { if (enableSamplingAndDebounce) it.sampleWithInitial(5000) else it },
+                player.mediaProperties.map { it?.durationMillis }
+                    .let { if (enableSamplingAndDebounce) it.debounce(5000) else it },
                 player.playbackState,
             ) { pos, max, playback ->
                 if (max == null || !playback.isPlaying) return@combine
                 if (pos > max.toFloat() * 0.9) {
                     logger.info { "观看到 90%, 标记看过" }
-                    suspend {
-                        setEpisodeCollectionTypeUseCase(subjectId, episodeId, UnifiedCollectionType.DONE)
-                    }.asFlow().retryWithBackoffDelay().first()
+                    setEpisodeCollectionTypeUseCase(subjectId, episodeId, UnifiedCollectionType.DONE)
                     cancelScope() // 标记成功一次后就不要再检查了
                 }
             }.collect()
@@ -110,7 +108,7 @@ class MarkAsWatchedExtension(
         private val logger = logger<MarkAsWatchedExtension>()
 
         override fun create(context: PlayerExtensionContext, koin: Koin): MarkAsWatchedExtension {
-            return MarkAsWatchedExtension(context, koin)
+            return MarkAsWatchedExtension(context, koin, enableSamplingAndDebounce = true)
         }
     }
 }

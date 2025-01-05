@@ -13,6 +13,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
+import me.him188.ani.utils.platform.annotations.SerializationOnly
 
 @Immutable
 enum class FullscreenSwitchMode {
@@ -34,7 +35,7 @@ enum class FullscreenSwitchMode {
 
 @Serializable
 @Immutable
-data class VideoScaffoldConfig(
+data class VideoScaffoldConfig @SerializationOnly constructor(
     // TODO: 这个名字可能不好 
     /**
      * 在小屏 (竖屏) 模式下也在右下角显示全屏按钮.
@@ -69,10 +70,24 @@ data class VideoScaffoldConfig(
      * 在播放器错误时自动切换视频源
      */
     val autoSwitchMediaOnPlayerError: Boolean = true,
+    // WARNING: if you add new property here, review Companion properties.
     @Suppress("PropertyName") @Transient val _placeholder: Int = 0,
 ) {
     companion object {
+        @OptIn(SerializationOnly::class)
         @Stable
         val Default = VideoScaffoldConfig()
+
+        @OptIn(SerializationOnly::class)
+        val AllDisabled = VideoScaffoldConfig(
+            fullscreenSwitchMode = FullscreenSwitchMode.ONLY_IN_CONTROLLER,
+            pauseVideoOnEditDanmaku = false,
+            autoMarkDone = false,
+            hideSelectorOnSelect = false,
+            autoFullscreenOnLandscapeMode = false,
+            autoPlayNext = false,
+            autoSkipOpEd = false,
+            autoSwitchMediaOnPlayerError = false,
+        )
     }
 }

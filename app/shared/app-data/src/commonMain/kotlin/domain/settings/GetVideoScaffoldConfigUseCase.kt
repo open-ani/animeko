@@ -16,7 +16,7 @@ import me.him188.ani.app.domain.usecase.UseCase
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
-interface GetVideoScaffoldConfigUseCase : UseCase {
+fun interface GetVideoScaffoldConfigUseCase : UseCase {
     operator fun invoke(): Flow<VideoScaffoldConfig>
 }
 

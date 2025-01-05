@@ -27,23 +27,35 @@ data class EpisodeHistories(
     }
 }
 
-class EpisodePlayHistoryRepository(
-    private val dataStore: DataStore<EpisodeHistories>
-) : Repository() {
-    val flow: Flow<List<EpisodeHistory>> = dataStore.data.map { it.histories }
+interface EpisodePlayHistoryRepository {
+    val flow: Flow<List<EpisodeHistory>>
 
-    suspend fun clear() {
+    suspend fun clear()
+
+    suspend fun remove(episodeId: Int)
+
+    suspend fun saveOrUpdate(episodeId: Int, positionMillis: Long)
+
+    suspend fun getPositionMillisByEpisodeId(episodeId: Int): Long?
+}
+
+class EpisodePlayHistoryRepositoryImpl(
+    private val dataStore: DataStore<EpisodeHistories>
+) : Repository(), EpisodePlayHistoryRepository {
+    override val flow: Flow<List<EpisodeHistory>> = dataStore.data.map { it.histories }
+
+    override suspend fun clear() {
         dataStore.updateData { EpisodeHistories.Empty }
     }
 
-    suspend fun remove(episodeId: Int) {
+    override suspend fun remove(episodeId: Int) {
         dataStore.updateData { current ->
             logger.info { "remove play progress for episode $episodeId" }
             current.copy(histories = current.histories.filter { it.episodeId != episodeId })
         }
     }
 
-    suspend fun saveOrUpdate(episodeId: Int, positionMillis: Long) {
+    override suspend fun saveOrUpdate(episodeId: Int, positionMillis: Long) {
         val episodeHistory = EpisodeHistory(
             episodeId = episodeId,
             positionMillis = positionMillis,
@@ -67,7 +79,7 @@ class EpisodePlayHistoryRepository(
         }
     }
 
-    suspend fun getPositionMillisByEpisodeId(episodeId: Int): Long? {
+    override suspend fun getPositionMillisByEpisodeId(episodeId: Int): Long? {
         return dataStore.data.map { current ->
             current.histories.find { it.episodeId == episodeId }?.positionMillis
         }.firstOrNull()?.also {

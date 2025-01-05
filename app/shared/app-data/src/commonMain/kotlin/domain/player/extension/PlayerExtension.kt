@@ -80,6 +80,6 @@ interface PlayerExtensionContext {
     suspend fun switchEpisode(newEpisodeId: Int)
 }
 
-interface EpisodePlayerExtensionFactory<T : PlayerExtension> {
+fun interface EpisodePlayerExtensionFactory<T : PlayerExtension> {
     fun create(context: PlayerExtensionContext, koin: Koin): T
 }

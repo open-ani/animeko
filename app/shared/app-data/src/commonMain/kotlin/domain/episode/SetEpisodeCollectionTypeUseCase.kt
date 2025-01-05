@@ -9,12 +9,15 @@
 
 package me.him188.ani.app.domain.episode
 
+import kotlinx.coroutines.flow.asFlow
+import kotlinx.coroutines.flow.first
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.domain.usecase.UseCase
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
+import me.him188.ani.utils.coroutines.retryWithBackoffDelay
 import org.koin.core.Koin
 
-interface SetEpisodeCollectionTypeUseCase : UseCase {
+fun interface SetEpisodeCollectionTypeUseCase : UseCase {
     suspend operator fun invoke(
         subjectId: Int,
         episodeId: Int,
@@ -27,7 +30,9 @@ class SetEpisodeCollectionTypeUseCaseImpl(
 ) : SetEpisodeCollectionTypeUseCase {
     private val episodeCollectionRepository: EpisodeCollectionRepository by koin.inject()
     override suspend fun invoke(subjectId: Int, episodeId: Int, collectionType: UnifiedCollectionType) {
-        episodeCollectionRepository.setEpisodeCollectionType(subjectId, episodeId, collectionType)
+        suspend {
+            episodeCollectionRepository.setEpisodeCollectionType(subjectId, episodeId, collectionType)
+        }.asFlow().retryWithBackoffDelay(3).first()
     }
 }
 

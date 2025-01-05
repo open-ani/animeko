@@ -14,6 +14,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import kotlinx.io.IOException
 import me.him188.ani.app.data.models.preference.MediaPreference
@@ -25,7 +26,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 class MediaSelectorFastSelectSourcesTest {
-    private fun createTestBuilder(): MediaSelectorTestBuilder = MediaSelectorTestBuilder().apply {
+    private fun TestScope.createTestBuilder(): MediaSelectorTestBuilder = MediaSelectorTestBuilder(this).apply {
         savedUserPreference.value = MediaPreference.Any
         savedDefaultPreference.value = MediaPreference.Any
     }

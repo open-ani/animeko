@@ -9,11 +9,7 @@
 
 package me.him188.ani.app.domain.episode
 
-import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.CoroutineExceptionHandler
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.test.TestScope
@@ -27,10 +23,11 @@ import org.openani.mediamp.DummyMediampPlayer
  * Test helper for [EpisodeFetchPlayState] and related states.
  */
 class EpisodePlayerTestSuite(
-    val backgroundScope: CoroutineScope,
+    testScope: TestScope,
+    val backgroundScope: CoroutineScope = testScope.backgroundScope,
 ) {
     val player = DummyMediampPlayer()
-    private val mediaSelectorTestBuilder = MediaSelectorTestBuilder()
+    private val mediaSelectorTestBuilder = MediaSelectorTestBuilder(testScope)
 
     val koin = Koin()
 
@@ -82,10 +79,15 @@ class EpisodePlayerTestSuite(
     }
 }
 
-fun TestScope.createExceptionCapturingSupervisorScope(): Pair<CoroutineScope, CompletableDeferred<Throwable>> {
+/**
+ * ```
+ * val (scope, backgroundException) = createExceptionCapturingSupervisorScope()
+ * ```
+ */
+fun TestScope.createExceptionCapturingSupervisorScope(parentScope: CoroutineScope = backgroundScope): Pair<CoroutineScope, CompletableDeferred<Throwable>> {
     val backgroundException = CompletableDeferred<Throwable>()
     val scope = CoroutineScope(
-        SupervisorJob(backgroundScope.coroutineContext[Job]) + CoroutineExceptionHandler { _, throwable ->
+        SupervisorJob(parentScope.coroutineContext[Job]) + CoroutineExceptionHandler { _, throwable ->
             backgroundException.complete(throwable)
         },
     )

@@ -14,7 +14,7 @@ import me.him188.ani.app.domain.usecase.UseCase
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import org.koin.core.Koin
 
-interface GetEpisodeCollectionTypeUseCase : UseCase {
+fun interface GetEpisodeCollectionTypeUseCase : UseCase {
     suspend operator fun invoke(
         episodeId: Int,
         allowNetwork: Boolean,

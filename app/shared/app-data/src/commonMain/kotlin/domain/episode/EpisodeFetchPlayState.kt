@@ -23,10 +23,9 @@ import me.him188.ani.app.domain.player.ExtensionException
 import me.him188.ani.app.domain.player.PlayerExtensionManager
 import me.him188.ani.app.domain.player.extension.EpisodePlayerExtensionFactory
 import me.him188.ani.app.domain.player.extension.ExtensionBackgroundTaskScope
+import me.him188.ani.app.domain.player.extension.PlayerExtension
 import me.him188.ani.app.domain.usecase.GlobalKoin
 import org.koin.core.Koin
-import org.koin.core.component.KoinComponent
-import org.koin.core.component.inject
 import org.openani.mediamp.MediampPlayer
 import kotlin.coroutines.AbstractCoroutineContextElement
 import kotlin.coroutines.CoroutineContext
@@ -46,8 +45,9 @@ class EpisodeFetchPlayState(
     extensions: List<EpisodePlayerExtensionFactory<*>>,
     private val koin: Koin = GlobalKoin,
     sharingStarted: SharingStarted = SharingStarted.WhileSubscribed(),
-) : KoinComponent {
-    private val createMediaFetchSelectBundleFlowUseCase: CreateMediaFetchSelectBundleFlowUseCase by inject()
+    val mainDispatcher: CoroutineContext = Dispatchers.Main.immediate,
+) {
+    private val createMediaFetchSelectBundleFlowUseCase: CreateMediaFetchSelectBundleFlowUseCase by koin.inject()
 
     private val _episodeIdFlow: MutableStateFlow<Int> = MutableStateFlow(initialEpisodeId)
     val episodeIdFlow: StateFlow<Int> = _episodeIdFlow.asStateFlow()
@@ -108,6 +108,7 @@ class EpisodeFetchPlayState(
     val playerSession = PlayerSession(
         player,
         koin,
+        mainDispatcher
     )
 
     private val extensionManager by lazy {
@@ -126,7 +127,7 @@ class EpisodeFetchPlayState(
 
         withContext(InSwitchEpisode(episodeId)) {
             switchEpisodeLock.withLock {
-                withContext(Dispatchers.Main.immediate) {
+                withContext(mainDispatcher) {
                     player.stop()
                 }
 
@@ -148,43 +149,49 @@ class EpisodeFetchPlayState(
         if (backgroundTasksStarted) return
         backgroundTasksStarted = true
 
-        // This is a very basic feature, not extension.
-        backgroundScope.launch(CoroutineName("LoadMediaOnSelect")) {
-            fetchSelectFlow.collectLatest { fetchSelect ->
-                if (fetchSelect == null) return@collectLatest
 
-                fetchSelect.mediaSelector.selected.collectLatest { media ->
-                    playerSession.loadMedia(
-                        media,
-                        infoBundleFlow
-                            .filterNotNull()
-                            .map { it.episodeInfo.toEpisodeMetadata() }
-                            .first(),
+        // This is a very basic feature, not extension, but we launch it here for simplicity.
+        ExtensionBackgroundTaskScopeImpl(object : PlayerExtension("LoadMediaOnSelect") {})
+            .launch("LoadMediaOnSelect") {
+                fetchSelectFlow.collectLatest { fetchSelect ->
+                    if (fetchSelect == null) return@collectLatest
+
+                    fetchSelect.mediaSelector.selected.collectLatest { media ->
+                        playerSession.loadMedia(
+                            media,
+                            infoBundleFlow
+                                .filterNotNull()
+                                .map { it.episodeInfo.toEpisodeMetadata() }
+                                .first(),
+                        )
+                    }
+                }
+            }
+
+        extensionManager.call { extension ->
+            extension.onUIAttach(ExtensionBackgroundTaskScopeImpl(extension))
+        }
+    }
+
+    private inner class ExtensionBackgroundTaskScopeImpl(
+        private val extension: PlayerExtension,
+    ) : ExtensionBackgroundTaskScope {
+        override fun launch(subName: String, block: suspend CoroutineScope.() -> Unit): Job {
+            return backgroundScope.launch(
+                CoroutineName(extension.name + "." + subName),
+                start = CoroutineStart.UNDISPATCHED // TODO
+            ) {
+                try {
+                    block()
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    throw ExtensionException(
+                        "Unhandled exception in background scope from task '$subName' launched by extension '$extension'",
+                        e
                     )
                 }
             }
-        }
-
-        extensionManager.call { extension ->
-            extension.onUIAttach(
-                object : ExtensionBackgroundTaskScope {
-                    override fun launch(subName: String, block: suspend CoroutineScope.() -> Unit): Job {
-                        return backgroundScope.launch(CoroutineName(extension.name + "." + subName)) {
-                            try {
-                                block()
-                            } catch (e: CancellationException) {
-                                throw e
-                            } catch (e: Exception) {
-                                throw ExtensionException(
-                                    "Unhandled exception in background scope from task '$subName' launched by extension '$extension'",
-                                    e
-                                )
-                            }
-                        }
-                    }
-                }
-
-            )
         }
     }
 
@@ -194,8 +201,6 @@ class EpisodeFetchPlayState(
     suspend fun onClose() {
         extensionManager.call { it.onClose() }
     }
-
-    override fun getKoin(): Koin = koin
 }
 
 val EpisodeFetchPlayState.player get() = playerSession.player

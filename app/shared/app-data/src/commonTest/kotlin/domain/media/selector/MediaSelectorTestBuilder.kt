@@ -12,6 +12,7 @@ package me.him188.ani.app.domain.media.selector
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asFlow
+import kotlinx.coroutines.test.TestScope
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
 import me.him188.ani.app.data.models.subject.SubjectSeriesInfo
@@ -41,7 +42,9 @@ import me.him188.ani.datasources.api.topic.ResourceLocation
 import me.him188.ani.datasources.api.topic.SubtitleLanguage
 import kotlin.coroutines.EmptyCoroutineContext
 
-class MediaSelectorTestBuilder() {
+class MediaSelectorTestBuilder(
+    testScope: TestScope,
+) {
     val savedUserPreference = MutableStateFlow(DEFAULT_PREFERENCE)
     val savedDefaultPreference = MutableStateFlow(DEFAULT_PREFERENCE)
     val mediaSelectorSettings = MutableStateFlow(MediaSelectorSettings.Companion.Default)
