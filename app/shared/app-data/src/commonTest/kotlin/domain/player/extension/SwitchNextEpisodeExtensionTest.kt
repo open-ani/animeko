@@ -7,6 +7,8 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
+@file:OptIn(UnsafeEpisodeSessionApi::class)
+
 package me.him188.ani.app.domain.player.extension
 
 import kotlinx.coroutines.Dispatchers
@@ -20,7 +22,9 @@ import kotlinx.coroutines.test.setMain
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.data.repository.RepositoryNetworkException
 import me.him188.ani.app.domain.episode.EpisodePlayerTestSuite
+import me.him188.ani.app.domain.episode.UnsafeEpisodeSessionApi
 import me.him188.ani.app.domain.episode.createExceptionCapturingSupervisorScope
+import me.him188.ani.app.domain.episode.getCurrentEpisodeId
 import me.him188.ani.app.domain.player.ExtensionException
 import me.him188.ani.app.domain.settings.GetVideoScaffoldConfigUseCase
 import me.him188.ani.utils.coroutines.childScope
@@ -49,7 +53,7 @@ class SwitchNextEpisodeExtensionTest : AbstractPlayerExtensionTest() {
                 SwitchNextEpisodeExtension.Factory(getNextEpisode = getNextEpisode),
             ),
         )
-        state.startBackgroundTasks()
+        state.onUIReady()
         Triple(testScope, suite, state)
     }
 
@@ -61,7 +65,7 @@ class SwitchNextEpisodeExtensionTest : AbstractPlayerExtensionTest() {
         assertEquals(initialEpisodeId, state.getCurrentEpisodeId())
 
         // 播到最尾部了
-        suite.player.currentPositionMillis.value = suite.player.mediaProperties.value.durationMillis
+        suite.player.currentPositionMillis.value = suite.player.mediaProperties.value!!.durationMillis
         suite.player.playbackState.value = PlaybackState.PLAYING
 
         advanceUntilIdle()
@@ -79,7 +83,7 @@ class SwitchNextEpisodeExtensionTest : AbstractPlayerExtensionTest() {
         assertEquals(initialEpisodeId, state.getCurrentEpisodeId())
 
         // 播到最尾部了
-        suite.player.currentPositionMillis.value = suite.player.mediaProperties.value.durationMillis - 5001
+        suite.player.currentPositionMillis.value = suite.player.mediaProperties.value!!.durationMillis - 5001
         suite.player.playbackState.value = PlaybackState.FINISHED
 
         advanceUntilIdle()
@@ -97,7 +101,7 @@ class SwitchNextEpisodeExtensionTest : AbstractPlayerExtensionTest() {
         assertEquals(initialEpisodeId, state.getCurrentEpisodeId())
 
         // 播到最尾部了
-        suite.player.currentPositionMillis.value = suite.player.mediaProperties.value.durationMillis
+        suite.player.currentPositionMillis.value = suite.player.mediaProperties.value!!.durationMillis
         suite.player.playbackState.value = PlaybackState.FINISHED
 
         advanceUntilIdle()
@@ -121,7 +125,7 @@ class SwitchNextEpisodeExtensionTest : AbstractPlayerExtensionTest() {
         assertEquals(initialEpisodeId, state.getCurrentEpisodeId())
 
         // 播到最尾部了
-        suite.player.currentPositionMillis.value = suite.player.mediaProperties.value.durationMillis
+        suite.player.currentPositionMillis.value = suite.player.mediaProperties.value!!.durationMillis
         suite.player.playbackState.value = PlaybackState.FINISHED
 
         advanceUntilIdle()
@@ -146,12 +150,12 @@ class SwitchNextEpisodeExtensionTest : AbstractPlayerExtensionTest() {
                 ),
             ),
         )
-        state.startBackgroundTasks()
+        state.onUIReady()
 
         assertEquals(initialEpisodeId, state.getCurrentEpisodeId())
 
         // 播到最尾部了
-        suite.player.currentPositionMillis.value = suite.player.mediaProperties.value.durationMillis
+        suite.player.currentPositionMillis.value = suite.player.mediaProperties.value!!.durationMillis
         suite.player.playbackState.value = PlaybackState.FINISHED
 
         advanceUntilIdle()

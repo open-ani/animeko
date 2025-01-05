@@ -47,11 +47,13 @@ class SwitchMediaOnPlayerErrorExtension(
 
     override fun onStart(backgroundTaskScope: ExtensionBackgroundTaskScope) {
         backgroundTaskScope.launch("PlayerErrorListener") {
-            invoke(
-                context.fetchSelectFlow,
-                context.videoLoadingState,
-                context.player.playbackState,
-            )
+            context.sessionFlow.collectLatest { session ->
+                invoke(
+                    session.fetchSelectFlow,
+                    context.videoLoadingStateFlow,
+                    context.player.playbackState,
+                )
+            }
         }
     }
 

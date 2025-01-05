@@ -7,42 +7,94 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
+@file:OptIn(UnsafeEpisodeSessionApi::class)
+
 package me.him188.ani.app.domain.episode
 
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.data.persistent.MemoryDataStore
 import me.him188.ani.app.data.repository.player.EpisodeHistories
 import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepository
 import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepositoryImpl
 import me.him188.ani.app.domain.player.extension.AbstractPlayerExtensionTest
 import me.him188.ani.app.domain.player.extension.RememberPlayProgressExtension
+import me.him188.ani.app.domain.player.extension.SwitchNextEpisodeExtension
+import me.him188.ani.app.domain.player.extension.loadMedia
+import me.him188.ani.app.domain.settings.GetVideoScaffoldConfigUseCase
 import me.him188.ani.utils.coroutines.childScope
+import org.openani.mediamp.PlaybackState
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
+/**
+ * 测试多个扩展之间的在 [EpisodeFetchSelectPlayState.switchEpisode] 的兼容性.
+ */
 class EpisodeFetchPlayStateSwitchEpisodeTest : AbstractPlayerExtensionTest() {
-    private val repository = EpisodePlayHistoryRepositoryImpl(MemoryDataStore(EpisodeHistories.Empty))
-    private fun TestScope.createCase() = run {
+    private val playHistory = EpisodePlayHistoryRepositoryImpl(MemoryDataStore(EpisodeHistories.Empty))
+    private val newEpisodeId = 1000
+
+    private fun TestScope.createCase(): Triple<CoroutineScope, EpisodePlayerTestSuite, EpisodeFetchSelectPlayState> {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         val testScope = this.childScope()
         val suite = EpisodePlayerTestSuite(this, testScope)
-        suite.registerComponent<EpisodePlayHistoryRepository> { repository }
+        suite.registerComponent<EpisodePlayHistoryRepository> { playHistory }
+        suite.registerComponent<GetVideoScaffoldConfigUseCase> {
+            GetVideoScaffoldConfigUseCase {
+                flowOf(VideoScaffoldConfig.AllDisabled.copy(autoPlayNext = true))
+            }
+        }
 
         val state = suite.createState(
             listOf(
                 RememberPlayProgressExtension,
+                SwitchNextEpisodeExtension.Factory(
+                    getNextEpisode = { currentEpisodeId ->
+                        assertEquals(initialEpisodeId, currentEpisodeId)
+                        newEpisodeId
+                    },
+                ),
             ),
         )
-        state.startBackgroundTasks()
-        Triple(testScope, suite, state)
+        state.onUIReady()
+        return Triple(testScope, suite, state)
     }
-//    
-//    @Test
-//    fun `switchEpisode then load`() = runTest {
-//        val (testScope) = createCase()
-//
-////        assertEquals(emptyList(), repository.flow.first())
-//        testScope.cancel()
-//    }
+
+    @Test
+    fun `switchEpisode then load`() = runTest {
+        val (testScope, suite, state) =
+            createCase()
+
+        playHistory.saveOrUpdate(initialEpisodeId, 3000)
+        playHistory.saveOrUpdate(newEpisodeId, 5000)
+
+        // 播放到一半
+
+        assertEquals(initialEpisodeId, state.getCurrentEpisodeId())
+
+        // 播到最尾部了
+        suite.setMediaDuration(100_000)
+        suite.player.currentPositionMillis.value = suite.player.mediaProperties.value!!.durationMillis
+        suite.player.playbackState.value = PlaybackState.FINISHED
+        advanceUntilIdle() // 自动切换到下一集数
+
+        assertEquals(newEpisodeId, state.getCurrentEpisodeId())
+
+        // 加载新的视频
+        suite.player.loadMedia(100_000)
+        advanceUntilIdle() // 自动加载播放进度
+
+        // should load the saved progress for new episode
+        assertEquals(5000, suite.player.currentPositionMillis.value)
+
+        testScope.cancel()
+    }
 }

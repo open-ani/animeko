@@ -41,13 +41,11 @@ class MarkAsWatchedExtension(
 
     override fun onStart(backgroundTaskScope: ExtensionBackgroundTaskScope) {
         backgroundTaskScope.launch("AutoMarkWatched") {
-            context.fetchSelectFlow.collectLatest { fetchSelect ->
-                if (fetchSelect == null) return@collectLatest
-
+            context.sessionFlow.collectLatest { session ->
                 invoke(
                     context.player,
                     context.subjectId,
-                    context.getCurrentEpisodeId(), // no need to combine flow. 当 epId 变化时, fetchSelectFlow 也会变化, 这里就能重新调用, 获取最新的 episodeId.
+                    session.episodeId,
                 )
             }
         }

@@ -7,8 +7,6 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-@file:OptIn(InternalMediampApi::class)
-
 package me.him188.ani.app.domain.player.extension
 
 import kotlinx.coroutines.CoroutineScope
@@ -26,7 +24,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.data.repository.RepositoryNetworkException
-import me.him188.ani.app.domain.episode.EpisodeFetchPlayState
+import me.him188.ani.app.domain.episode.EpisodeFetchSelectPlayState
 import me.him188.ani.app.domain.episode.EpisodePlayerTestSuite
 import me.him188.ani.app.domain.episode.GetEpisodeCollectionTypeUseCase
 import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeUseCase
@@ -35,9 +33,7 @@ import me.him188.ani.app.domain.player.ExtensionException
 import me.him188.ani.app.domain.settings.GetVideoScaffoldConfigUseCase
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.coroutines.childScope
-import org.openani.mediamp.InternalMediampApi
 import org.openani.mediamp.PlaybackState
-import org.openani.mediamp.metadata.copy
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -62,7 +58,7 @@ class MarkAsWatchedExtensionTest : AbstractPlayerExtensionTest() {
         ),
         getEpisodeCollectionType: GetEpisodeCollectionTypeUseCase = GetEpisodeCollectionTypeUseCase { _, _ -> null },
         setEpisodeCollectionType: SetEpisodeCollectionTypeUseCase = SetEpisodeCollectionTypeUseCase { _, _, _ -> },
-    ): Triple<CoroutineScope, EpisodePlayerTestSuite, EpisodeFetchPlayState> {
+    ): Triple<CoroutineScope, EpisodePlayerTestSuite, EpisodeFetchSelectPlayState> {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         val testScope = this.childScope()
         val suite = createSuite(testScope)
@@ -83,7 +79,7 @@ class MarkAsWatchedExtensionTest : AbstractPlayerExtensionTest() {
         val state = suite.createState(
             extensions = listOf(extensionFactory),
         )
-        state.startBackgroundTasks()
+        state.onUIReady()
         return Triple(testScope, suite, state)
     }
 
@@ -102,7 +98,7 @@ class MarkAsWatchedExtensionTest : AbstractPlayerExtensionTest() {
         // Simulate playback at 95% (well past 90%) and state is PLAYING or FINISHED.
         suite.player.currentPositionMillis.value = 9500L
         // Suppose the total duration is 10 seconds for easy math.
-        suite.player.mediaProperties.value = suite.player.mediaProperties.value.copy(durationMillis = 10000L)
+        suite.setMediaDuration(10000L)
         suite.player.playbackState.value = PlaybackState.PLAYING
 
         advanceUntilIdle()
@@ -138,7 +134,7 @@ class MarkAsWatchedExtensionTest : AbstractPlayerExtensionTest() {
     @Test
     fun `does not mark if already DONE or DROPPED`() = runTest {
         var setCalled = false
-        val (testScope, suite, state) = createCase(
+        val (testScope, suite, _) = createCase(
             getEpisodeCollectionType = { _, _ -> UnifiedCollectionType.DONE },
             setEpisodeCollectionType = { _, _, _ ->
                 setCalled = true
@@ -146,7 +142,7 @@ class MarkAsWatchedExtensionTest : AbstractPlayerExtensionTest() {
         )
 
         // Even though we are at 95% and playing, if it's already DONE, we don't mark it again.
-        suite.player.mediaProperties.value = suite.player.mediaProperties.value.copy(durationMillis = 10000L)
+        suite.setMediaDuration(durationMillis = 10000L)
         suite.player.currentPositionMillis.value = 9500L
         suite.player.playbackState.value = PlaybackState.PLAYING
 
@@ -163,7 +159,7 @@ class MarkAsWatchedExtensionTest : AbstractPlayerExtensionTest() {
         var requestedEpisodeId: Int? = null
         var requestedType: UnifiedCollectionType? = null
 
-        val (testScope, suite, state) = createCase(
+        val (testScope, suite, _) = createCase(
             getEpisodeCollectionType = { _, _ -> null }, // Not already marked
             setEpisodeCollectionType = { subjectId, episodeId, type ->
                 requestedSubjectId = subjectId
@@ -173,7 +169,7 @@ class MarkAsWatchedExtensionTest : AbstractPlayerExtensionTest() {
         )
 
         // Set up 10-second media, move position to 95%, and set state to PLAYING.
-        suite.player.mediaProperties.value = suite.player.mediaProperties.value.copy(durationMillis = 10000L)
+        suite.setMediaDuration(durationMillis = 10000L)
         suite.player.currentPositionMillis.value = 9500L
         suite.player.playbackState.value = PlaybackState.PLAYING
 
@@ -197,7 +193,7 @@ class MarkAsWatchedExtensionTest : AbstractPlayerExtensionTest() {
         )
 
         // Move near 90% & mark as PLAYING -> triggers mark once.
-        suite.player.mediaProperties.value = suite.player.mediaProperties.value.copy(durationMillis = 10000L)
+        suite.setMediaDuration(durationMillis = 10000L)
         suite.player.currentPositionMillis.value = 9500L
         suite.player.playbackState.value = PlaybackState.PLAYING
         advanceUntilIdle()
@@ -239,7 +235,7 @@ class MarkAsWatchedExtensionTest : AbstractPlayerExtensionTest() {
                 extensionFactory,
             ),
         )
-        state.startBackgroundTasks()
+        state.onUIReady()
 
         // Move near 90% & mark as PLAYING -> triggers mark once, but we'll throw from setEpisodeCollectionTypeUseCase
         suite.setMediaDuration(10000L)
@@ -256,6 +252,8 @@ class MarkAsWatchedExtensionTest : AbstractPlayerExtensionTest() {
         scope.cancel()
     }
 
-    private fun TestScope.createSuite(scope: CoroutineScope) =
-        EpisodePlayerTestSuite(this, scope)
+    private fun TestScope.createSuite(scope: CoroutineScope): EpisodePlayerTestSuite {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        return EpisodePlayerTestSuite(this, scope)
+    }
 }

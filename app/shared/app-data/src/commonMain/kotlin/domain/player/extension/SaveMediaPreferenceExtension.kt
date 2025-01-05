@@ -10,6 +10,7 @@
 package me.him188.ani.app.domain.player.extension
 
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.flatMapLatest
 import me.him188.ani.app.domain.media.selector.MediaSelectorEventSavePreferenceUseCase
 import org.koin.core.Koin
 
@@ -23,7 +24,7 @@ class SaveMediaPreferenceExtension(
     private val mediaSelectorEventSavePreferenceUseCase: MediaSelectorEventSavePreferenceUseCase by koin.inject()
     override fun onStart(backgroundTaskScope: ExtensionBackgroundTaskScope) {
         backgroundTaskScope.launch("SaveMediaPreference") {
-            context.fetchSelectFlow.collectLatest { bundle ->
+            context.sessionFlow.flatMapLatest { it.fetchSelectFlow }.collectLatest { bundle ->
                 if (bundle == null) return@collectLatest
                 mediaSelectorEventSavePreferenceUseCase(bundle.mediaSelector, context.subjectId)
             }

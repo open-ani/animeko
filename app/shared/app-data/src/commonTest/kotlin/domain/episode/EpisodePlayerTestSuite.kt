@@ -20,7 +20,7 @@ import org.koin.dsl.module
 import org.openani.mediamp.DummyMediampPlayer
 
 /**
- * Test helper for [EpisodeFetchPlayState] and related states.
+ * Test helper for [EpisodeFetchSelectPlayState] and related states.
  */
 class EpisodePlayerTestSuite(
     testScope: TestScope,

@@ -10,8 +10,10 @@
 package me.him188.ani.app.domain.player
 
 import kotlinx.coroutines.flow.Flow
-import me.him188.ani.app.domain.episode.EpisodeFetchPlayState
-import me.him188.ani.app.domain.episode.MediaFetchSelectBundle
+import me.him188.ani.app.domain.episode.EpisodeFetchSelectPlayState
+import me.him188.ani.app.domain.episode.EpisodeSession
+import me.him188.ani.app.domain.episode.UnsafeEpisodeSessionApi
+import me.him188.ani.app.domain.episode.getCurrentEpisodeId
 import me.him188.ani.app.domain.episode.player
 import me.him188.ani.app.domain.player.extension.EpisodePlayerExtensionFactory
 import me.him188.ani.app.domain.player.extension.PlayerExtension
@@ -40,7 +42,7 @@ class PlayerExtensionManager(
 
 fun PlayerExtensionManager(
     extensions: List<EpisodePlayerExtensionFactory<*>>,
-    state: EpisodeFetchPlayState,
+    state: EpisodeFetchSelectPlayState,
     koin: Koin,
 ): PlayerExtensionManager {
     val context = object : PlayerExtensionContext {
@@ -49,15 +51,17 @@ fun PlayerExtensionManager(
 
         override val player: MediampPlayer
             get() = state.player
-        override val videoLoadingState: Flow<VideoLoadingState>
+        override val videoLoadingStateFlow: Flow<VideoLoadingState>
             get() = state.playerSession.videoLoadingState
-        override val fetchSelectFlow: Flow<MediaFetchSelectBundle?>
-            get() = state.fetchSelectFlow
+        override val sessionFlow: Flow<EpisodeSession>
+            get() = state.episodeSessionFlow
 
-        override fun getCurrentEpisodeId(): Int {
-            return state.episodeIdFlow.value
+        @UnsafeEpisodeSessionApi
+        override suspend fun getCurrentEpisodeId(): Int {
+            return state.getCurrentEpisodeId()
         }
 
+        @OptIn(UnsafeEpisodeSessionApi::class)
         override suspend fun switchEpisode(newEpisodeId: Int) {
             if (getCurrentEpisodeId() == newEpisodeId) {
                 error("Cannot switch to the same episode: $newEpisodeId")

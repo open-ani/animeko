@@ -77,7 +77,7 @@ class PlayerSession(
                 VideoLoadingState.DecodingData(isBt = media.kind == MediaSourceKind.BitTorrent),
             )
             val data = source.open(scopeForCleanup = backgroundScope) // may throw MediaSourceOpenException
-            player.setVideoSource(data)
+            player.setMediaData(data)
             logger.info { "playerState.applySourceToPlayer with source = $source" }
             _videoLoadingStateFlow.value = VideoLoadingState.Succeed(isBt = source is TorrentMediaDataProvider)
         } catch (e: UnsupportedMediaException) {
@@ -122,12 +122,12 @@ class PlayerSession(
     }
 
     fun close() {
-        player.release()
+        player.close()
     }
 
     private suspend fun stopPlayer() {
         withContext(mainDispatcher) {
-            player.stop()
+            player.stopPlayback()
         }
     }
 

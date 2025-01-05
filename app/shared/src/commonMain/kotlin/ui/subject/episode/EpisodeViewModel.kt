@@ -54,7 +54,13 @@ import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.danmaku.DanmakuManager
 import me.him188.ani.app.domain.danmaku.SetDanmakuEnabledUseCase
 import me.him188.ani.app.domain.episode.EpisodeDanmakuLoader
-import me.him188.ani.app.domain.episode.EpisodeFetchPlayState
+import me.him188.ani.app.domain.episode.EpisodeFetchSelectPlayState
+import me.him188.ani.app.domain.episode.UnsafeEpisodeSessionApi
+import me.him188.ani.app.domain.episode.episodeIdFlow
+import me.him188.ani.app.domain.episode.getCurrentEpisodeId
+import me.him188.ani.app.domain.episode.infoBundleFlow
+import me.him188.ani.app.domain.episode.infoLoadErrorFlow
+import me.him188.ani.app.domain.episode.mediaSelectorFlow
 import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.domain.media.cache.EpisodeCacheStatus
 import me.him188.ani.app.domain.media.cache.MediaCacheManager
@@ -164,7 +170,7 @@ class EpisodeViewModel(
     val player: MediampPlayer =
         playerStateFactory.create(context, backgroundScope.coroutineContext)
 
-    private val fetchPlayState = EpisodeFetchPlayState(
+    private val fetchPlayState = EpisodeFetchSelectPlayState(
         subjectId, initialEpisodeId, player, backgroundScope,
         extensions = listOf(
             RememberPlayProgressExtension,
@@ -189,27 +195,36 @@ class EpisodeViewModel(
     )
 
     // region Subject and episode data info flows
+    @UnsafeEpisodeSessionApi
     private val episodeIdFlow get() = fetchPlayState.episodeIdFlow
-    private val subjectEpisodeInfoBundleFlow get() = fetchPlayState.infoBundleFlow
-    private val subjectEpisodeInfoBundleLoadErrorFlow get() = fetchPlayState.infoLoadErrorFlow
 
+    @UnsafeEpisodeSessionApi
+    private val subjectEpisodeInfoBundleFlow get() = fetchPlayState.infoBundleFlow
+
+    @UnsafeEpisodeSessionApi
+    private val subjectEpisodeInfoBundleLoadErrorFlow = fetchPlayState.infoLoadErrorFlow
+        .filterNotNull()
+        .stateIn(backgroundScope, SharingStarted.WhileSubscribed(), null)
+
+    @UnsafeEpisodeSessionApi
     private val subjectCollectionFlow =
         subjectEpisodeInfoBundleFlow.filterNotNull().map { it.subjectCollectionInfo }
             .distinctUntilChanged()
 
+    @UnsafeEpisodeSessionApi
     private val subjectInfoFlow = subjectCollectionFlow.map { it.subjectInfo }.distinctUntilChanged()
+
+    @UnsafeEpisodeSessionApi
     private val episodeCollectionFlow = subjectEpisodeInfoBundleFlow.map { it?.episodeCollectionInfo }
         .distinctUntilChanged()
 
     private val episodeCollectionsFlow = episodeCollectionRepository.subjectEpisodeCollectionInfosFlow(subjectId)
         .shareInBackground()
 
+    @UnsafeEpisodeSessionApi
     private val episodeInfoFlow = episodeCollectionFlow.map { it?.episodeInfo }.distinctUntilChanged()
     // endregion
 
-
-    private val mediaFetchSession get() = fetchPlayState.fetchSelectFlow.map { it?.mediaFetchSession }
-    private val mediaSelector get() = fetchPlayState.fetchSelectFlow.map { it?.mediaSelector }
 
     val playerControllerState = PlayerControllerState(ControllerVisibility.Invisible)
     private val mediaSourceInfoProvider: MediaSourceInfoProvider = MediaSourceInfoProvider(
@@ -223,13 +238,14 @@ class EpisodeViewModel(
     /**
      * "视频统计" bottom sheet 显示内容
      */
+    @OptIn(UnsafeEpisodeSessionApi::class)
     val videoStatisticsFlow: Flow<VideoStatistics> = VideoStatisticsCollector(
-        fetchPlayState.fetchSelectFlow.map { it?.mediaSelector }
+        fetchPlayState.mediaSelectorFlow
             .filterNotNull(), // // TODO: 2025/1/3 check filterNotNull
         fetchPlayState.playerSession.videoLoadingState,
         player,
         mediaSourceInfoProvider,
-        mediaSourceLoading = fetchPlayState.mediaSourceLoadingFlow,
+        mediaSourceLoading = fetchPlayState.episodeSessionFlow.flatMapLatest { it.mediaSourceLoadingFlow },
         backgroundScope,
     ).videoStatisticsFlow
 
@@ -258,6 +274,7 @@ class EpisodeViewModel(
 
     val authState: AuthState = AuthState()
 
+    @OptIn(UnsafeEpisodeSessionApi::class)
     val episodeDetailsState: EpisodeDetailsState = kotlin.run {
         EpisodeDetailsState(
             subjectInfo = subjectInfoFlow.produceState(SubjectInfo.Empty),
@@ -275,6 +292,7 @@ class EpisodeViewModel(
     /**
      * 剧集列表
      */
+    @OptIn(UnsafeEpisodeSessionApi::class)
     val episodeCarouselState: EpisodeCarouselState = kotlin.run {
         val episodeCacheStatusListState by episodeCollectionsFlow.flatMapLatest { list ->
             if (list.isEmpty()) {
@@ -325,6 +343,7 @@ class EpisodeViewModel(
         )
     }
 
+    @OptIn(UnsafeEpisodeSessionApi::class)
     val editableSubjectCollectionTypeState: EditableSubjectCollectionTypeState =
         EditableSubjectCollectionTypeState(
             selfCollectionTypeFlow = subjectCollectionFlow
@@ -348,6 +367,7 @@ class EpisodeViewModel(
     /**
      * 播放器内切换剧集
      */
+    @OptIn(UnsafeEpisodeSessionApi::class)
     val episodeSelectorState: EpisodeSelectorState = EpisodeSelectorState(
         itemsFlow = episodeCollectionsFlow.combine(subjectCollectionFlow) { list, subject ->
             list.map {
@@ -364,6 +384,7 @@ class EpisodeViewModel(
     )
 
 
+    @OptIn(UnsafeEpisodeSessionApi::class)
     private val danmakuLoader = EpisodeDanmakuLoader(
         player = player,
         bundleFlow = fetchPlayState.infoBundleFlow.filterNotNull().distinctUntilChanged(),
@@ -404,6 +425,8 @@ class EpisodeViewModel(
 
 
     private val commentStateRestarter = FlowRestarter()
+
+    @OptIn(UnsafeEpisodeSessionApi::class)
     val episodeCommentState: CommentState = CommentState(
         list = episodeIdFlow
             .restartable(commentStateRestarter)
@@ -422,6 +445,7 @@ class EpisodeViewModel(
         "https://next.bgm.tv/p1/turnstile?redirect_uri=${TurnstileState.CALLBACK_INTERCEPTION_PREFIX}",
     )
 
+    @OptIn(UnsafeEpisodeSessionApi::class)
     val commentEditorState: CommentEditorState = CommentEditorState(
         showExpandEditCommentButton = true,
         initialEditExpanded = false,
@@ -473,58 +497,65 @@ class EpisodeViewModel(
             .produceState(0.milliseconds),
     )
 
-    val pageState = me.him188.ani.utils.coroutines.flows.combine(
-        subjectEpisodeInfoBundleFlow.distinctUntilChanged(),
-        subjectEpisodeInfoBundleLoadErrorFlow,
-        fetchPlayState.fetchSelectFlow.filterNotNull(),
-        danmakuLoader.danmakuLoadingStateFlow.map { DanmakuStatistics(it) }.distinctUntilChanged(),
-        settingsRepository.danmakuEnabled.flow,
-        settingsRepository.danmakuConfig.flow,
-    ) { subjectEpisodeBundle, loadError, fetchSelect, danmakuStatistics, danmakuEnabled, danmakuConfig ->
+    val pageState = fetchPlayState.episodeSessionFlow.flatMapLatest { episodeSession ->
+        me.him188.ani.utils.coroutines.flows.combine(
+            episodeSession.infoBundleFlow.distinctUntilChanged(),
+            episodeSession.infoLoadErrorStateFlow,
+            episodeSession.fetchSelectFlow.filterNotNull(),
+            danmakuLoader.danmakuLoadingStateFlow.map { DanmakuStatistics(it) }.distinctUntilChanged(),
+            settingsRepository.danmakuEnabled.flow,
+            settingsRepository.danmakuConfig.flow,
+        ) { subjectEpisodeBundle, loadError, fetchSelect, danmakuStatistics, danmakuEnabled, danmakuConfig ->
 
-        val (subject, episode) = if (subjectEpisodeBundle == null) {
-            SubjectPresentation.Placeholder to EpisodePresentation.Placeholder
-        } else { // modern JVM will optimize out the Pair creation
-            Pair(
-                subjectEpisodeBundle.subjectInfo.toPresentation(),
-                subjectEpisodeBundle.episodeCollectionInfo.toPresentation(subjectEpisodeBundle.subjectCollectionInfo.recurrence),
+            val (subject, episode) = if (subjectEpisodeBundle == null) {
+                SubjectPresentation.Placeholder to EpisodePresentation.Placeholder
+            } else { // modern JVM will optimize out the Pair creation
+                Pair(
+                    subjectEpisodeBundle.subjectInfo.toPresentation(),
+                    subjectEpisodeBundle.episodeCollectionInfo.toPresentation(subjectEpisodeBundle.subjectCollectionInfo.recurrence),
+                )
+            }
+
+            EpisodePageState(
+                mediaSelectorState = MediaSelectorState(
+                    fetchSelect.mediaSelector,
+                    mediaSourceInfoProvider,
+                    backgroundScope,
+                ),
+                mediaSourceResultsPresentation = MediaSourceResultsPresentation(
+                    FilteredMediaSourceResults(
+                        results = flowOf(fetchSelect.mediaFetchSession.mediaSourceResults),
+                        settings = settingsRepository.mediaSelectorSettings.flow,
+                    ),
+                    backgroundScope.coroutineContext,
+                ),
+                danmakuStatistics = danmakuStatistics,
+                subjectPresentation = subject,
+                episodePresentation = episode,
+                danmakuEnabled = danmakuEnabled,
+                danmakuConfig = danmakuConfig,
+                isLoading = subjectEpisodeBundle == null,
+                loadError = loadError,
             )
         }
-
-        EpisodePageState(
-            mediaSelectorState = MediaSelectorState(
-                fetchSelect.mediaSelector,
-                mediaSourceInfoProvider,
-                backgroundScope,
-            ),
-            mediaSourceResultsPresentation = MediaSourceResultsPresentation(
-                FilteredMediaSourceResults(
-                    results = flowOf(fetchSelect.mediaFetchSession.mediaSourceResults),
-                    settings = settingsRepository.mediaSelectorSettings.flow,
-                ),
-                backgroundScope.coroutineContext,
-            ),
-            danmakuStatistics = danmakuStatistics,
-            subjectPresentation = subject,
-            episodePresentation = episode,
-            danmakuEnabled = danmakuEnabled,
-            danmakuConfig = danmakuConfig,
-            isLoading = subjectEpisodeBundle == null,
-            loadError = loadError,
-        )
     }.stateIn(backgroundScope, started = SharingStarted.WhileSubscribed(5_000), null)
 
     suspend fun switchEpisode(episodeId: Int) {
-        fetchPlayState.switchEpisode(episodeId)
-        
+        // 关闭弹窗
         withContext(Dispatchers.Main.immediate) {
-            episodeDetailsState.showEpisodes = false // 选择后关闭弹窗
+            episodeDetailsState.showEpisodes = false
         }
+
+        // 在后台 dispatchers 中操作
+        backgroundScope.launch {
+            fetchPlayState.switchEpisode(episodeId)
+        }.join()
     }
 
+    @OptIn(UnsafeEpisodeSessionApi::class)
     suspend fun postDanmaku(danmaku: DanmakuInfo): Danmaku {
         return withContext(Dispatchers.Default) {
-            danmakuManager.post(episodeIdFlow.value, danmaku)
+            danmakuManager.post(fetchPlayState.getCurrentEpisodeId(), danmaku)
         }
     }
 
@@ -536,12 +567,17 @@ class EpisodeViewModel(
 
     fun refreshFetch() {
         launchInBackground {
-            mediaFetchSession.firstOrNull()?.restartAll()
+            // Although it's flow, it should be ready.
+            fetchPlayState.episodeSessionFlow.flatMapLatest { it.fetchSelectFlow }
+                .map { it?.mediaFetchSession }
+                .filterNotNull()
+                .firstOrNull()
+                ?.restartAll()
         }
     }
 
-    fun startBackgroundTasks() {
-        fetchPlayState.startBackgroundTasks()
+    fun onUIReady() {
+        fetchPlayState.onUIReady()
     }
 
     init {
@@ -555,6 +591,7 @@ class EpisodeViewModel(
                     if (!enabled) return@collectLatest
 
                     // 设置启用
+                    @OptIn(UnsafeEpisodeSessionApi::class)
                     combine(
                         player.currentPositionMillis.sampleWithInitial(1000),
                         episodeIdFlow,
@@ -572,7 +609,7 @@ class EpisodeViewModel(
         super.onCleared()
         backgroundScope.launch(NonCancellable + CoroutineName("EpisodeViewModel#onCleared")) {
             fetchPlayState.onClose()
-            player.stop()
+            player.stopPlayback()
         }
     }
 

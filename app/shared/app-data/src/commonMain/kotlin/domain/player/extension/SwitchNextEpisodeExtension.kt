@@ -12,6 +12,7 @@ package me.him188.ani.app.domain.player.extension
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import me.him188.ani.app.domain.episode.EpisodeSession
 import me.him188.ani.app.domain.settings.GetVideoScaffoldConfigUseCase
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
@@ -34,19 +35,20 @@ class SwitchNextEpisodeExtension(
 
     override fun onStart(backgroundTaskScope: ExtensionBackgroundTaskScope) {
         backgroundTaskScope.launch("SwitchNextEpisode") {
-            getVideoScaffoldConfigUseCase()
-                .map { it.autoPlayNext }
-                .distinctUntilChanged()
-                .collectLatest { enabled ->
-                    if (!enabled) return@collectLatest
+            context.sessionFlow.collectLatest { session ->
+                getVideoScaffoldConfigUseCase()
+                    .map { it.autoPlayNext }
+                    .distinctUntilChanged()
+                    .collectLatest inner@{ enabled ->
+                        if (!enabled) return@inner
 
-                    impl()
-                }
-
+                        impl(session)
+                    }
+            }
         }
     }
 
-    private suspend fun impl(): Nothing {
+    private suspend fun impl(session: EpisodeSession): Nothing {
         val player = context.player
         player.playbackState.collect { playback ->
             val closeToEnd = player.mediaProperties.value.let { prop ->
@@ -54,7 +56,7 @@ class SwitchNextEpisodeExtension(
             }
 
             if (playback == PlaybackState.FINISHED && closeToEnd) {
-                val nextEpisode = getNextEpisode(context.getCurrentEpisodeId())
+                val nextEpisode = getNextEpisode(session.episodeId)
                 logger.info("播放完毕，切换下一集 $nextEpisode")
                 context.switchEpisode(nextEpisode ?: return@collect)
             }

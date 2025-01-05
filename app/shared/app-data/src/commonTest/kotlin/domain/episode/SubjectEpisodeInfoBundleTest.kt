@@ -60,7 +60,7 @@ class SubjectEpisodeInfoBundleTest {
         val episodeIdFlow = MutableStateFlow(2)
         val suite = createSuite()
         val state = suite.createState(episodeIdFlow)
-        assertEquals(null, state.infoBundleFlowFlatten.first()) // refreshes UI
+        assertEquals(null, state.infoBundleFlow.first()) // refreshes UI
     }
 
     @Test
@@ -68,7 +68,7 @@ class SubjectEpisodeInfoBundleTest {
         val episodeIdFlow = MutableStateFlow(2)
         val suite = createSuite()
         val state = suite.createState(episodeIdFlow)
-        assertNotEquals(null, state.infoBundleFlowFlatten.drop(1).first())
+        assertNotEquals(null, state.infoBundleFlow.drop(1).first())
         assertEquals(null, state.infoLoadErrorState.value)
     }
 
@@ -77,7 +77,7 @@ class SubjectEpisodeInfoBundleTest {
         val episodeIdFlow = flowOf(2)
         val suite = createSuite()
         val state = suite.createState(episodeIdFlow)
-        state.infoBundleFlowFlatten.drop(1).toList().run {
+        state.infoBundleFlow.drop(1).toList().run {
             assertEquals(1, size)
             assertNotEquals(null, first())
         }
@@ -96,7 +96,7 @@ class SubjectEpisodeInfoBundleTest {
             }
         }
         val state = suite.createState(episodeIdFlow)
-        val job = state.infoBundleFlowFlatten.drop(1).launchIn(scope) // will hang forever
+        val job = state.infoBundleFlow.drop(1).launchIn(scope) // will hang forever
         assertEquals(LoadError.NetworkError, state.infoLoadErrorState.onEach { println(it) }.filterNotNull().first())
         job.cancel()
         scope.cancel()
@@ -119,7 +119,7 @@ class SubjectEpisodeInfoBundleTest {
         }
 
         val state = suite.createState(episodeIdFlow)
-        val job = state.infoBundleFlowFlatten.drop(1).launchIn(scope) // Start collecting
+        val job = state.infoBundleFlow.drop(1).launchIn(scope) // Start collecting
 
         // infoLoadErrorState should remain null because we explicitly skip CancellationException
         // in 'onCompletion'.
@@ -159,7 +159,7 @@ class SubjectEpisodeInfoBundleTest {
         val state = suite.createState(episodeIdFlow)
 
         // Collect in a child job
-        val collectorJob = state.infoBundleFlowFlatten.drop(1).onEach {
+        val collectorJob = state.infoBundleFlow.drop(1).onEach {
             // Once we get the first success, we manually cancel
             this.cancel()
         }.launchIn(backgroundScope)

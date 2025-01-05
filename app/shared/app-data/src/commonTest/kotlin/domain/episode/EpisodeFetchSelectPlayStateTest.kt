@@ -15,7 +15,7 @@ import me.him188.ani.app.domain.player.extension.AbstractPlayerExtensionTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-class EpisodeFetchPlayStateTest : AbstractPlayerExtensionTest() {
+class EpisodeFetchSelectPlayStateTest : AbstractPlayerExtensionTest() {
 //    fun TestScope.createState(
 //        extensions: List<EpisodePlayerExtensionFactory<*>> = listOf(
 //            RememberPlayProgressExtension,
@@ -56,7 +56,7 @@ class EpisodeFetchPlayStateTest : AbstractPlayerExtensionTest() {
 //        val state = suite.createState(
 //            extensions = listOf(extensionFactory),
 //        )
-//        state.startBackgroundTasks()
+//        state.onUIReady()
 //        return Triple(testScope, suite, state)
 //    }
 

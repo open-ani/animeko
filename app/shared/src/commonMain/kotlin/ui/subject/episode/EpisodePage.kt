@@ -681,7 +681,7 @@ private fun EpisodeVideo(
     val window = LocalPlatformWindow.current
 
     SideEffect {
-        vm.startBackgroundTasks()
+        vm.onUIReady()
     }
 
     val progressSliderState = rememberMediaProgressSliderState(

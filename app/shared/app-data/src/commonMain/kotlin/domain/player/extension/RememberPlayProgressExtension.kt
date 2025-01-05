@@ -15,11 +15,11 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepository
+import me.him188.ani.app.domain.episode.UnsafeEpisodeSessionApi
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import org.koin.core.Koin
 import org.openani.mediamp.PlaybackState
-import kotlin.math.max
 import kotlin.time.Duration.Companion.milliseconds
 
 /**
@@ -38,19 +38,23 @@ class RememberPlayProgressExtension(
 
     override fun onStart(backgroundTaskScope: ExtensionBackgroundTaskScope) {
         backgroundTaskScope.launch("MediaSelectorListener") {
-            context.fetchSelectFlow.collectLatest { fetchSelect ->
-                if (fetchSelect == null) return@collectLatest
+            context.sessionFlow.collectLatest { session ->
+                session.fetchSelectFlow.collectLatest inner@{ fetchSelect ->
+                    if (fetchSelect == null) return@inner
 
-                fetchSelect.mediaSelector.events.onBeforeSelect.collect {
-                    // 切换 数据源 前保存播放进度
-                    savePlayProgress()
+                    fetchSelect.mediaSelector.events.onBeforeSelect.collect {
+                        // 切换 数据源 前保存播放进度
+                        savePlayProgress(session.episodeId)
+                    }
                 }
+
             }
         }
 
         backgroundTaskScope.launch("PlaybackStateListener") {
             val player = context.player
             player.playbackState.collect { playbackState ->
+                @OptIn(UnsafeEpisodeSessionApi::class)
                 val episodeId = context.getCurrentEpisodeId()
 
                 when (playbackState) {
@@ -69,7 +73,9 @@ class RememberPlayProgressExtension(
                         }
                     }
 
-                    PlaybackState.PAUSED -> savePlayProgress()
+                    PlaybackState.PAUSED -> {
+                        savePlayProgress(episodeId)
+                    }
 
                     PlaybackState.FINISHED -> {
                         if (player.mediaProperties.value.let { it != null && it.durationMillis > 0L }) {
@@ -87,15 +93,19 @@ class RememberPlayProgressExtension(
         }
     }
 
+    @OptIn(UnsafeEpisodeSessionApi::class)
     override suspend fun onBeforeSwitchEpisode(newEpisodeId: Int) {
-        savePlayProgress()
+        savePlayProgress(context.getCurrentEpisodeId())
     }
 
+    @OptIn(UnsafeEpisodeSessionApi::class)
     override suspend fun onClose() {
-        savePlayProgress()
+        savePlayProgress(context.getCurrentEpisodeId())
     }
 
-    private suspend fun savePlayProgress() {
+    private suspend fun savePlayProgress(
+        episodeId: Int
+    ) {
         val playbackState = context.player.playbackState.value
         val videoDurationMillis = context.player.mediaProperties.value?.durationMillis
 
@@ -103,16 +113,13 @@ class RememberPlayProgressExtension(
 
         val durationMillis = videoDurationMillis.let {
             if (it == null) return@let 0L
-            return@let max(0, it - 1000) // 最后一秒不会保存进度
+            return@let it
         }
 
         val currentPositionMillis = withContext(Dispatchers.Main.immediate) {
             context.player.getCurrentPositionMillis()
         }
-
-        val episodeId = context.getCurrentEpisodeId()
-
-        if (currentPositionMillis in 0..<durationMillis) {
+        if (currentPositionMillis in 0..<durationMillis - 1000) { // 最后一秒不会保存进度
             logger.info { "Saving position for epId=$episodeId: ${currentPositionMillis.milliseconds}" }
             playProgressRepository.saveOrUpdate(episodeId, currentPositionMillis)
         }

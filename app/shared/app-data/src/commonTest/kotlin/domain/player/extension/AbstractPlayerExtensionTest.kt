@@ -13,10 +13,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
-import me.him188.ani.app.domain.episode.EpisodeFetchPlayState
+import me.him188.ani.app.domain.episode.EpisodeFetchSelectPlayState
 import me.him188.ani.app.domain.episode.EpisodePlayerTestSuite
-import org.openani.mediamp.InternalMediampApi
-import org.openani.mediamp.metadata.copy
+import org.openani.mediamp.DummyMediampPlayer
+import org.openani.mediamp.PlaybackState
+import org.openani.mediamp.metadata.MediaProperties
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.test.BeforeTest
 
@@ -27,8 +28,8 @@ abstract class AbstractPlayerExtensionTest {
 
     fun EpisodePlayerTestSuite.createState(
         extensions: List<EpisodePlayerExtensionFactory<*>> = listOf(),
-    ): EpisodeFetchPlayState {
-        return EpisodeFetchPlayState(
+    ): EpisodeFetchSelectPlayState {
+        return EpisodeFetchSelectPlayState(
             subjectId,
             initialEpisodeId,
             player,
@@ -39,10 +40,11 @@ abstract class AbstractPlayerExtensionTest {
         )
     }
 
-    @OptIn(InternalMediampApi::class)
     fun EpisodePlayerTestSuite.setMediaDuration(durationMillis: Long) {
-        player.mediaProperties.value = player.mediaProperties.value.copy(durationMillis = durationMillis)
+        player.mediaProperties.value = player.mediaProperties.value?.copy(durationMillis = durationMillis)
+            ?: MediaProperties.Empty.copy(durationMillis = durationMillis)
     }
+
 
     @BeforeTest
     fun installDispatcher() {
@@ -53,5 +55,14 @@ abstract class AbstractPlayerExtensionTest {
     fun resetDispatcher() {
         Dispatchers.resetMain()
     }
-
 }
+
+fun DummyMediampPlayer.loadMedia(
+    durationMs: Long,
+) {
+    mediaProperties.value = MediaProperties(
+        durationMillis = durationMs,
+    )
+    playbackState.value = PlaybackState.READY
+}
+
