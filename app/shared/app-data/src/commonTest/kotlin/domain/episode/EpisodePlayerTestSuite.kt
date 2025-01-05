@@ -27,7 +27,7 @@ class EpisodePlayerTestSuite(
     val backgroundScope: CoroutineScope = testScope.backgroundScope,
 ) {
     val player = DummyMediampPlayer()
-    private val mediaSelectorTestBuilder = MediaSelectorTestBuilder(testScope)
+    val mediaSelectorTestBuilder = MediaSelectorTestBuilder(testScope)
 
     val koin = Koin()
 
@@ -68,11 +68,15 @@ class EpisodePlayerTestSuite(
         )
     }
 
-    inline fun <reified T : Any> registerComponent(crossinline value: () -> T) {
+    class ComponentScope(
+        val koin: Koin,
+    )
+
+    inline fun <reified T : Any> registerComponent(crossinline value: ComponentScope.() -> T) {
         koin.loadModules(
             listOf(
                 module {
-                    single<T> { value() }
+                    single<T> { value(ComponentScope(getKoin())) }
                 },
             ),
         )

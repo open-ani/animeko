@@ -247,7 +247,8 @@ class EpisodeFetchSelectPlayState(
                     episodeSession.fetchSelectFlow.collectLatest fetchSelect@{ fetchSelect ->
                         if (fetchSelect == null) return@fetchSelect
 
-                        fetchSelect.mediaSelector.selected.collectLatest { media ->
+                        // `filterNotNull()` is needed. Even when media is unselect, we should not stop the player.
+                        fetchSelect.mediaSelector.selected.filterNotNull().collectLatest { media ->
                             playerSession.loadMedia(
                                 media,
                                 episodeSession.infoBundleFlow
