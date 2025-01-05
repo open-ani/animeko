@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -276,9 +277,9 @@ private fun TagsList(
             }
             presentTags.forEach { tag ->
                 var showCopyMenu by remember { mutableStateOf(false) }
-                
+
                 Box(
-                    modifier = Modifier.height(40.dp) // 32 (Chip) + 8 (vertical spacing, equal to horizontalArrangement)
+                    modifier = Modifier.height(40.dp), // 32 (Chip) + 8 (vertical spacing, equal to horizontalArrangement)
                     // 直接放 AssistChip 会导致垂直间距过大，不得不套一个 Box。可能是 workaround
                 ) {
                     AssistChip(
@@ -286,19 +287,21 @@ private fun TagsList(
                         label = {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
                             ) {
                                 Text(
-                                    tag.name,
-                                    style = MaterialTheme.typography.labelMedium
+                                    text = tag.name,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    modifier = Modifier.wrapContentSize(align = Alignment.Center),
                                 )
                                 Text(
-                                    tag.count.toString(),
+                                    text = tag.count.toString(),
                                     style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.secondary
+                                    color = MaterialTheme.colorScheme.secondary,
+                                    modifier = Modifier.wrapContentSize(align = Alignment.Center),
                                 )
                             }
-                        }
+                        },
                     )
                 }
 

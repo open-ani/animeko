@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -238,7 +239,9 @@ fun CollectionPage(
                         ) {
                             Text(
                                 text = size.getCount(type).toString(),
-                                modifier = Modifier.padding(horizontal = 2.dp),
+                                modifier = Modifier
+                                    .padding(horizontal = 2.dp)
+                                    .wrapContentSize(align = Alignment.Center),
                                 style = MaterialTheme.typography.labelLarge,
                                 textAlign = TextAlign.Center,
                             )
