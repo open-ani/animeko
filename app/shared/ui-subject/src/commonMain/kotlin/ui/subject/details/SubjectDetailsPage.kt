@@ -537,7 +537,7 @@ private fun SubjectDetailsContentPager(
         ) {
             TabRow(
                 selectedTabIndex = pagerState.currentPage,
-                modifier = Modifier.widthIn(max = 240.dp), // 3个tab的总宽度 = 80 * 3
+                modifier = Modifier.widthIn(max = SubjectDetailsDefaults.TabRowWidth),
                 indicator = @Composable { tabPositions ->
                     TabRowDefaults.PrimaryIndicator(
                         Modifier.pagerTabIndicatorOffset(pagerState, tabPositions),

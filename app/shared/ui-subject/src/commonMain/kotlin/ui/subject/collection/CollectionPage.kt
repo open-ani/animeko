@@ -234,8 +234,8 @@ fun CollectionPage(
                             softWrap = false,
                         )
                         Badge(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                            contentColor = MaterialTheme.colorScheme.onSurface,
                         ) {
                             Text(
                                 text = size.getCount(type).toString(),

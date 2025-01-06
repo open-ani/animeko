@@ -51,7 +51,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -80,6 +79,9 @@ import me.him188.ani.datasources.api.PackedDate
 
 
 object SubjectDetailsDefaults {
+    val TabWidth = 80.dp
+    val TabRowWidth = TabWidth * 3  // 240.dp
+    
     @Composable
     fun Title(text: String) {
         Text(
@@ -244,7 +246,6 @@ private fun TagsList(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier) {
-        val clipboardManager = LocalClipboardManager.current
         val allTags by remember(info) {
             derivedStateOf { info.tags }
         }
