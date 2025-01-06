@@ -80,9 +80,6 @@ class EpisodeSession(
         .shareIn(sessionScope, sharingStarted, replay = 1)
     // TODO: 2025/1/4 test fetchSelectFlow changes only when infoBundleFlow's value equality changes 
 
-    val mediaSelectorFlow = fetchSelectFlow.map { it?.mediaSelector }
-    val mediaFetchSessionFlow = fetchSelectFlow.map { it?.mediaFetchSession }
-
     /**
      * A cold flow that emits `true` when media sources are loading.
      *
