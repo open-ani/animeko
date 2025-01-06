@@ -112,15 +112,15 @@ class EpisodeFetchSelectPlayState(
             )
         }
 
-        switchEpisodeLock.withLock {
-            /**
-             * Caution: switchEpisode maybe called from a session scope task that was launched from [PlayerExtension.onStart].
-             *
-             * At step 1 we close the scope. This will cancel all session scope tasks, including the current one running this line of code.
-             *
-             * So we launch a new coroutine to do the actual work.
-             */
-            backgroundScope.launch {
+        /**
+         * Caution: switchEpisode maybe called from a session scope task that was launched from [PlayerExtension.onStart].
+         *
+         * At step 1 we close the scope. This will cancel all session scope tasks, including the current one running this line of code.
+         *
+         * So we launch a new coroutine to do the actual work.
+         */
+        backgroundScope.launch {
+            switchEpisodeLock.withLock {
                 withContext(InSwitchEpisode(episodeId)) {
                     // 1. 停止上一个 episode 生命周期内的所有后台任务.
                     logger.info { "SwitchEpisode($episodeId): Stopping previous scope" }
@@ -157,8 +157,8 @@ class EpisodeFetchSelectPlayState(
 
                     logger.info { "SwitchEpisode($episodeId): Complete" }
                 }
-            }.join()
-        }
+            }
+        }.join()
     }
 
     private fun newEpisodeSession(episodeId: Int) = EpisodeSession(
@@ -329,12 +329,14 @@ suspend fun EpisodeFetchSelectPlayState.getCurrentEpisodeId(): Int {
  *
  * A correct way to do this is to `collectLatest` from [EpisodeFetchSelectPlayState.episodeSessionFlow] directly.
  *
+ * ```
  * episodeSession.collectLatest { session ->
  *     session.mediaSelectorFlow.flatMapLatest { it.mediaSelector.selected }.collectLatest { media ->
  *         val episodeId = session.episodeId // Correct. We are using the episodeId from the session that you are observing mediaSelectorFlow from.
  *         savePreference(episodeId, media.mediaProperties)
  *     }
  * }
+ * ```
  */
 @RequiresOptIn(
     message = "This flow API is unsafe for use. When you collect from multiple flows marked with this annotation, you may see inconsistent (old) data from one flow." +
