@@ -10,7 +10,6 @@
 package me.him188.ani.app.domain.episode
 
 import kotlinx.coroutines.CoroutineName
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -22,17 +21,32 @@ import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.transformLatest
 import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
+import me.him188.ani.app.domain.media.fetch.MediaFetcher
 import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.utils.coroutines.childScope
 import org.koin.core.Koin
 import kotlin.coroutines.CoroutineContext
 
+
 /**
- * A session of [MediaFetchSession] and [MediaSelector] for a subject episode, that is 'bound' to the lifecycle of the episodeId.
+ * 该类封装了针对单个 episode 的基础信息获取 ([SubjectEpisodeInfoBundle]), 媒体获取 ([MediaFetchSession]) 和媒体选择 ([MediaSelector]) 逻辑，
+ * 并与特定的 `episodeId` 绑定, 充当一个管理针对该 episodeId 启动的后台任务的作用域。
  *
- * When the episodeId changes, you should [close] this session and create a new one.
+ * 当需要切换到新的 `episodeId` 时，需要关闭当前 [EpisodeSession]（调用 [sessionScope].cancel），并创建新的 [EpisodeSession] 实例来管理新的 episode 流程。
+ * 这个切换逻辑在 [EpisodeFetchSelectPlayState.switchEpisode] 中实现.
  *
- * @see EpisodeFetchSelectPlayState
+ * ### 主要功能
+ * 1. [MediaFetchSession] 和 [MediaSelector] 的管理和同步. 通过 [fetchSelectFlow] 提供. 作为一个 bundle 提供, 确保两者的数据一致性.
+ * 2. **信息加载**：利用 [infoBundleFlow] 加载并维护 episode 相关的信息 ([SubjectEpisodeInfoBundle]).
+ * 3. **加载状态与错误处理**：
+ *   - [infoLoadErrorStateFlow] 用于捕获并上报加载错误，例如网络错误或数据解析错误。
+ *   - [mediaSourceLoadingFlow] 用于指示 [MediaFetcher] 的所有数据是否都加载完成了, 供下游监听使用.
+ * 4. 后台任务作用域. [sessionScope] 可以用来启动针对该 episode 的后台任务, 例如自动选择数据源.
+ *
+ * **注意**：若要在不同的 Flow 中同时收集 [EpisodeSession] 提供的 flow，请仔细参考 [UnsafeEpisodeSessionApi] 提示，以防止在切换 episode 时产生意外的竞争或数据错配。
+ *
+ * @param subjectId 当前所管理的番剧或节目主体 ID。
+ * @param episodeId 当前 session 管理的 episode ID，与本会话的生命周期强绑定。
  */
 class EpisodeSession(
     subjectId: Int,
@@ -40,16 +54,23 @@ class EpisodeSession(
     koin: Koin,
     parentCoroutineContext: CoroutineContext,
     sharingStarted: SharingStarted = SharingStarted.WhileSubscribed(),
-) : AutoCloseable {
+) {
     private val createMediaFetchSelectBundleFlowUseCase: CreateMediaFetchSelectBundleFlowUseCase by koin.inject()
 
-    val sessionScope =
+    /**
+     * Scope for this session (bound to episodeId).
+     * Should be closed when switching to another episode.
+     *
+     * @see EpisodeFetchSelectPlayState.switchEpisode
+     */
+    internal val sessionScope =
         parentCoroutineContext.childScope(CoroutineName("SubjectEpisodeFetchSelectSession")) // supervisor scope
 
+    // 防止重新启动
     internal val sessionScopeTasksStarted = MutableStateFlow(false)
 
     /**
-     * Loads subec
+     * 加载 episode 的基本信息
      */
     private val infoLoader = SubjectEpisodeInfoBundleLoader(
         subjectId,
@@ -98,9 +119,4 @@ class EpisodeSession(
                 },
             )
         }
-
-
-    override fun close() {
-        sessionScope.cancel()
-    }
 }

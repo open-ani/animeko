@@ -46,6 +46,9 @@ class MediaFetchSelectBundle(
 // episodeId 改变, 需要全部清空
 // 如果 episodeId 不变, 但是 EpisodeCollectionInfo 变了, 只需要更新一些信息.
 
+/**
+ * PlayerSession 封装对 [MediampPlayer] 的控制. 主要是解析 Media 并播放: [loadMedia].
+ */
 class PlayerSession(
     val player: MediampPlayer,
     private val koin: Koin,
@@ -56,8 +59,14 @@ class PlayerSession(
     private val _videoLoadingStateFlow: MutableStateFlow<VideoLoadingState> =
         MutableStateFlow(VideoLoadingState.Initial)
 
+    /**
+     * 当前的视频加载状态.
+     */
     val videoLoadingState: StateFlow<VideoLoadingState> get() = _videoLoadingStateFlow.asStateFlow()
 
+    /**
+     * 解析 media 并开始播放这个 media.
+     */
     suspend fun loadMedia(media: Media?, episodeInfo: EpisodeMetadata) = coroutineScope {
         val backgroundScope = this
         _videoLoadingStateFlow.value = VideoLoadingState.Initial // 避免一直显示已取消 (.Cancelled)
