@@ -35,7 +35,8 @@ sealed interface DanmakuLoader {
 class DanmakuLoaderImpl(
     requestFlow: Flow<SearchDanmakuRequest?>,
     flowScope: CoroutineScope,
-    koin: Koin
+    koin: Koin,
+    sharingStarted: SharingStarted = SharingStarted.WhileSubscribed()
 ) : DanmakuLoader {
     private val searchDanmakuUseCase: SearchDanmakuUseCase by koin.inject()
     
@@ -61,6 +62,6 @@ class DanmakuLoaderImpl(
                 state.value = DanmakuLoadingState.Failed(e)
                 throw e
             }
-        }.shareIn(flowScope, started = SharingStarted.WhileSubscribed(), replay = 1)
+        }.shareIn(flowScope, started = sharingStarted, replay = 1)
 }
 

@@ -50,6 +50,7 @@ class EpisodeDanmakuLoader(
     private val bundleFlow: Flow<SubjectEpisodeInfoBundle>,
     backgroundScope: CoroutineScope,
     koin: Koin,
+    sharingStarted: SharingStarted = SharingStarted.WhileSubscribed(),
 ) {
     private val getDanmakuRegexFilterListFlowUseCase: GetDanmakuRegexFilterListFlowUseCase by koin.inject()
 
@@ -72,7 +73,7 @@ class EpisodeDanmakuLoader(
                     info.subjectInfo,
                     info.episodeInfo,
                     info.episodeId,
-                    filename = mediaData?.filenameOrNull ?: selectedMedia.first()?.originalTitle,
+                    filename = mediaData.filenameOrNull ?: selectedMedia.first()?.originalTitle,
                     fileLength = when (mediaData) {
                         null -> null
                         is SeekableInputMediaData -> mediaData.fileLength()
@@ -94,6 +95,7 @@ class EpisodeDanmakuLoader(
             },
         backgroundScope,
         koin,
+        sharingStarted,
     )
 
     private val danmakuSessionFlow: Flow<DanmakuSession> = danmakuLoader.collectionFlow.mapLatest { session ->
@@ -101,7 +103,7 @@ class EpisodeDanmakuLoader(
             progress = player.currentPositionMillis.map { it.milliseconds },
             danmakuRegexFilterList = getDanmakuRegexFilterListFlowUseCase(),
         )
-    }.shareIn(flowScope, started = SharingStarted.WhileSubscribed(), replay = 1)
+    }.shareIn(flowScope, started = sharingStarted, replay = 1)
 
     val danmakuLoadingStateFlow: Flow<DanmakuLoadingState> = danmakuLoader.state
     val danmakuEventFlow: Flow<DanmakuEvent> = danmakuSessionFlow.flatMapLatest { it.events }

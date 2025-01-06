@@ -406,6 +406,7 @@ class EpisodeViewModel(
         bundleFlow = fetchPlayState.infoBundleFlow.filterNotNull().distinctUntilChanged(),
         backgroundScope,
         koin,
+        sharingStarted = SharingStarted.WhileSubscribed(5_000),
     )
 
     /**
