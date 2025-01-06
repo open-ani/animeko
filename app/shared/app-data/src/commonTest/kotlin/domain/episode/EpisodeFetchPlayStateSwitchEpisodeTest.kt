@@ -136,6 +136,10 @@ class EpisodeFetchPlayStateSwitchEpisodeTest : AbstractPlayerExtensionTest() {
         val myMedia = TestMediaList[0]
         ms1.complete(listOf(myMedia))
         state.mediaSelectorFlow.first()!!.select(myMedia)
+        advanceUntilIdle() // 自动选择
+
+        suite.setMediaDuration(100_000)
+        suite.player.playbackState.value = PlaybackState.READY
         advanceUntilIdle() // 自动加载播放进度
 
         // should load the saved progress for new episode
