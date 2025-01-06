@@ -265,7 +265,7 @@ private fun TagsList(
                         if (remainingItems == 0) {
                             maxLines = 4
                         } else {
-                            maxLines += 30
+                            maxLines = Int.MAX_VALUE
                         }
                     },
                     label = { Text(if (remainingItems == 0) "折叠" else "+$remainingItems") },
