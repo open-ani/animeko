@@ -550,6 +550,7 @@ private fun SubjectDetailsContentPager(
                 SubjectDetailsTab.entries.forEachIndexed { index, tabId ->
                     Tab(
                         selected = pagerState.currentPage == index,
+                        modifier = Modifier.widthIn(max = SubjectDetailsDefaults.TabWidth),
                         onClick = {
                             scope.launch { pagerState.animateScrollToPage(index) }
                         },

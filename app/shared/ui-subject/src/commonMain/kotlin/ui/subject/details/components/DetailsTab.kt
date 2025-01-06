@@ -83,6 +83,7 @@ import me.him188.ani.datasources.api.PackedDate
 
 
 object SubjectDetailsDefaults {
+    val TabWidth = 80.dp
     val TabRowWidth = 80.dp * 3  // 240.dp, 三个Tab的宽度
 
     @Composable
