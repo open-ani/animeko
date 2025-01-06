@@ -28,12 +28,12 @@ fun PlayerDanmakuHost(
     danmakuEvent: Flow<UIDanmakuEvent>,
     modifier: Modifier = Modifier,
 ) {
-    LaunchedEffect(Unit) {
+    LaunchedEffect(player, danmakuHostState) {
         player.playbackState.collect {
             danmakuHostState.setPaused(!it.isPlaying)
         }
     }
-    LaunchedEffect(Unit) {
+    LaunchedEffect(danmakuEvent, danmakuHostState) {
         danmakuEvent.collect { event ->
             when (event) {
                 is UIDanmakuEvent.Add -> {

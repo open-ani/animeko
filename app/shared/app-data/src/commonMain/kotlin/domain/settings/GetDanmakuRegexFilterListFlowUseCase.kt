@@ -11,14 +11,18 @@ package me.him188.ani.app.domain.settings
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
 import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.usecase.UseCase
+import me.him188.ani.utils.logging.error
+import me.him188.ani.utils.logging.logger
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import kotlin.coroutines.CoroutineContext
+import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * Obtains the regex filters to be applied to danmaku collection, according to the user's settings.
@@ -38,5 +42,15 @@ class GetDanmakuRegexFilterListFlowUseCaseImpl(
             if (!config.enableRegexFilter) emptyList()
             else list.filter { it.enabled }.map { it.regex }
         }.flowOn(flowContext)
+            .catch { e ->
+                if (e !is CancellationException) {
+                    logger.error(e) { "Failed to get danmaku regex filter list" }
+                }
+                emit(listOf())
+                throw e
+            }
     }
+
+
+    private val logger = logger<GetDanmakuRegexFilterListFlowUseCaseImpl>()
 }

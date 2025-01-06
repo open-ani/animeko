@@ -43,13 +43,14 @@ class EpisodeDanmakuLoader(
     private val flowScope = backgroundScope
 
     private val danmakuLoader = DanmakuLoaderImpl(
-        bundleFlow.map { bundle ->
-            SearchDanmakuRequest(
-                bundle.subjectInfo,
-                bundle.episodeInfo,
-                bundle.episodeId,
-            )
-        },
+        bundleFlow
+            .map { bundle ->
+                SearchDanmakuRequest(
+                    bundle.subjectInfo,
+                    bundle.episodeInfo,
+                    bundle.episodeId,
+                )
+            },
         backgroundScope,
         koin,
     )

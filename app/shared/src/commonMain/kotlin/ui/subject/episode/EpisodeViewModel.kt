@@ -120,6 +120,7 @@ import me.him188.ani.utils.coroutines.flows.flowOfEmptyList
 import me.him188.ani.utils.coroutines.flows.restartable
 import me.him188.ani.utils.coroutines.sampleWithInitial
 import me.him188.ani.utils.logging.error
+import me.him188.ani.utils.logging.warn
 import org.koin.core.Koin
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -426,7 +427,10 @@ class EpisodeViewModel(
                 }
             }
         }
-    }.shareInBackground()
+    }.shareInBackground(
+        started = SharingStarted.WhileSubscribed(5000), // Must be some time, because when switching full-screen (i.e. configuration change), UI may stop collect for some milliseconds.
+        replay = 1,
+    ) // This is lazy. If user puts app into background, queries will abort.
 
 
     private val commentStateRestarter = FlowRestarter()
@@ -519,6 +523,10 @@ class EpisodeViewModel(
                     subjectEpisodeBundle.subjectInfo.toPresentation(),
                     subjectEpisodeBundle.episodeCollectionInfo.toPresentation(subjectEpisodeBundle.subjectCollectionInfo.recurrence),
                 )
+            }
+
+            if (loadError != null) { // TODO: 2025/1/6 display load error in UI 
+                logger.warn { "InfoBundle load error: loadError" }
             }
 
             EpisodePageState(
