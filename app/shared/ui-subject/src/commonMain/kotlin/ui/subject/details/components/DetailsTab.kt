@@ -14,9 +14,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ContextualFlowRow
-import androidx.compose.foundation.layout.ContextualFlowRowOverflow
-import androidx.compose.foundation.layout.ContextualFlowRowOverflowScope
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -28,7 +25,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -253,70 +249,143 @@ private fun TagsList(
         val allTags by remember(info) {
             derivedStateOf { info.tags }
         }
-        var maxLines by remember { mutableStateOf(4) }
-        val totalCount = allTags.size
-
-        val moreOrCollapseIndicator = @Composable { scope: ContextualFlowRowOverflowScope ->
-            val remainingItems = totalCount - scope.shownItemCount
-            Box(
-                modifier = Modifier.height(40.dp),
-            ) {
-                AssistChip(
-                    onClick = {
-                        if (remainingItems == 0) {
-                            maxLines = 4
-                        } else {
-                            maxLines = Int.MAX_VALUE
-                        }
-                    },
-                    label = { Text(if (remainingItems == 0) "折叠" else "+$remainingItems") },
-                )
-            }
-        }
-
-        ContextualFlowRow(
-            modifier = Modifier
-                .fillMaxWidth()
-                .wrapContentHeight(align = Alignment.Top),
+        var isExpanded by rememberSaveable { mutableStateOf(false) }
+        val hasMoreTags by remember { derivedStateOf { allTags.size > ALWAYS_SHOW_TAGS_COUNT } }
+        FlowRow(
+            verticalArrangement = Arrangement.Center,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            maxLines = maxLines,
-            overflow = ContextualFlowRowOverflow.expandOrCollapseIndicator(
-                minRowsToShowCollapse = 4,
-                expandIndicator = moreOrCollapseIndicator,
-                collapseIndicator = moreOrCollapseIndicator,
-            ),
-            itemCount = totalCount,
-        ) { index ->
-            val tag = allTags[index]
-            var showCopyMenu by remember { mutableStateOf(false) }
-
-            Box(
-                modifier = Modifier.height(40.dp), // 32 (Chip) + 8 (vertical spacing, equal to horizontalArrangement)
-                // 直接放 AssistChip 会导致垂直间距过大，不得不套一个 Box。可能是 workaround
-            ) {
-                AssistChip(
-                    onClick = { /* TODO */ },
-                    label = {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        ) {
-                            Text(
-                                text = tag.name,
-                                // style = MaterialTheme.typography.labelMedium,
-                                modifier = Modifier.wrapContentSize(align = Alignment.Center),
-                            )
-                            Text(
-                                text = tag.count.toString(),
-                                // style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.secondary,
-                                modifier = Modifier.wrapContentSize(align = Alignment.Center),
-                            )
+        ) {
+            val presentTags by remember {
+                derivedStateOf {
+                    when {
+                        isExpanded -> allTags
+                        allTags.size <= 6 -> allTags
+                        else -> {
+                            val filteredByCount = allTags.filter { it.count > 100 }
+                            if (filteredByCount.size < ALWAYS_SHOW_TAGS_COUNT) {
+                                allTags.take(ALWAYS_SHOW_TAGS_COUNT)
+                            } else {
+                                filteredByCount
+                            }
                         }
-                    },
-                )
+                    }
+                }
+            }
+            presentTags.forEach { tag ->
+                Box(
+                    modifier = Modifier.height(40.dp), // 32 (Chip) + 8 (vertical spacing, equal to horizontalArrangement)
+                    // 直接放 AssistChip 会导致垂直间距过大，不得不套一个 Box。可能是 workaround
+                ) {
+                    AssistChip(
+                        onClick = { /* TODO */ },
+                        label = {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            ) {
+                                Text(
+                                    text = tag.name,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    modifier = Modifier.wrapContentSize(align = Alignment.Center),
+                                )
+                                Text(
+                                    text = tag.count.toString(),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.secondary,
+                                    modifier = Modifier.wrapContentSize(align = Alignment.Center),
+                                )
+                            }
+                        },
+                    )
+                }
+            }
+            if (hasMoreTags) {
+                Box(Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
+                    if (isExpanded) {
+                        TextButton(
+                            { isExpanded = !isExpanded },
+                            Modifier.height(40.dp),
+                        ) {
+                            Text("显示更少")
+                        }
+                    } else {
+                        TextButton(
+                            { isExpanded = !isExpanded },
+                            Modifier.height(40.dp),
+                        ) {
+                            Text("显示更多")
+                        }
+                    }
+                }
             }
         }
+//        val allTags by remember(info) {
+//            derivedStateOf { info.tags }
+//        }
+//        var maxLines by remember { mutableStateOf(4) }
+//        val totalCount = allTags.size
+//
+//        val moreOrCollapseIndicator = @Composable { scope: ContextualFlowRowOverflowScope ->
+//            val remainingItems = totalCount - scope.shownItemCount
+//            Box(
+//                modifier = Modifier.height(40.dp),
+//            ) {
+//                AssistChip(
+//                    onClick = {
+//                        if (remainingItems == 0) {
+//                            maxLines = 4
+//                        } else {
+//                            maxLines = Int.MAX_VALUE
+//                        }
+//                    },
+//                    label = { Text(if (remainingItems == 0) "折叠" else "显示更多") },
+//                )
+//            }
+//        }
+//
+//        ContextualFlowRow(
+//            modifier = Modifier
+//                .fillMaxWidth()
+//                .wrapContentHeight(align = Alignment.Top),
+//            horizontalArrangement = Arrangement.spacedBy(8.dp),
+//            maxLines = maxLines,
+//            overflow = ContextualFlowRowOverflow.expandOrCollapseIndicator(
+//                minRowsToShowCollapse = 4,
+//                expandIndicator = moreOrCollapseIndicator,
+//                collapseIndicator = moreOrCollapseIndicator,
+//            ),
+//            itemCount = totalCount,
+//        ) { index ->
+//            val tag = allTags[index]
+//            var showCopyMenu by remember { mutableStateOf(false) }
+//
+//            Box(
+//                modifier = Modifier.height(40.dp), // 32 (Chip) + 8 (vertical spacing, equal to horizontalArrangement)
+//                // 直接放 AssistChip 会导致垂直间距过大，不得不套一个 Box。可能是 workaround
+//            ) {
+//                AssistChip(
+//                    onClick = { /* TODO */ },
+//                    label = {
+//                        Row(
+//                            verticalAlignment = Alignment.CenterVertically,
+//                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+//                        ) {
+//                            Text(
+//                                text = tag.name,
+//                                // style = MaterialTheme.typography.labelMedium,
+//                                modifier = Modifier.wrapContentSize(align = Alignment.Center),
+//                            )
+//                            Text(
+//                                text = tag.count.toString(),
+//                                // style = MaterialTheme.typography.labelMedium,
+//                                color = MaterialTheme.colorScheme.secondary,
+//                                modifier = Modifier.wrapContentSize(align = Alignment.Center),
+//                            )
+//                        }
+//                    },
+//                )
+//            }
+//        }
 
 //        var isExpanded by rememberSaveable { mutableStateOf(false) }
 //        val hasMoreTags by remember { derivedStateOf { allTags.size > ALWAYS_SHOW_TAGS_COUNT } }
