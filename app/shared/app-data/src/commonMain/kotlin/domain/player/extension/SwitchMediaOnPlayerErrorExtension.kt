@@ -63,7 +63,7 @@ class SwitchMediaOnPlayerErrorExtension(
         playbackStateFlow: Flow<PlaybackState>
     ) {
         val handler = PlayerLoadErrorHandler(
-            getWebSources = { getWebMediaSourceInstanceFlowUseCase().first().map { it.mediaSourceId } },
+            getWebSources = { getWebMediaSourceInstanceFlowUseCase().first() },
             getPreferKind = { getMediaSelectorSettingsFlowUseCase().first().preferKind },
         )
 

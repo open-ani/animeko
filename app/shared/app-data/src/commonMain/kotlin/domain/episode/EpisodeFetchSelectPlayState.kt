@@ -35,6 +35,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.domain.foundation.LoadError
+import me.him188.ani.app.domain.media.fetch.MediaFetchSession
 import me.him188.ani.app.domain.media.resolver.toEpisodeMetadata
 import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.media.selector.MediaSelectorAutoSelectUseCase
@@ -285,9 +286,12 @@ val EpisodeFetchSelectPlayState.infoLoadErrorFlow: Flow<LoadError?> get() = epis
 val EpisodeFetchSelectPlayState.infoBundleFlow get() = episodeSessionFlow.flatMapLatest { it.infoBundleFlow }
 
 @UnsafeEpisodeSessionApi
+val EpisodeFetchSelectPlayState.mediaFetchSessionFlow: Flow<MediaFetchSession?>
+    get() = episodeSessionFlow.flatMapLatest { it.fetchSelectFlow }.map { it?.mediaFetchSession }
+
+@UnsafeEpisodeSessionApi
 val EpisodeFetchSelectPlayState.mediaSelectorFlow: Flow<MediaSelector?>
-    get() =
-        episodeSessionFlow.flatMapLatest { it.fetchSelectFlow }.map { it?.mediaSelector }
+    get() = episodeSessionFlow.flatMapLatest { it.fetchSelectFlow }.map { it?.mediaSelector }
 
 @UnsafeEpisodeSessionApi
 val EpisodeFetchSelectPlayState.episodeIdFlow get() = episodeSessionFlow.map { it.episodeId }

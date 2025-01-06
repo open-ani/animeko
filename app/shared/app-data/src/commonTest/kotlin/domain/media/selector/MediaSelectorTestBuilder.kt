@@ -43,7 +43,7 @@ import me.him188.ani.datasources.api.topic.SubtitleLanguage
 import kotlin.coroutines.EmptyCoroutineContext
 
 class MediaSelectorTestBuilder(
-    testScope: TestScope,
+    private val testScope: TestScope,
 ) {
     val savedUserPreference = MutableStateFlow(DEFAULT_PREFERENCE)
     val savedDefaultPreference = MutableStateFlow(DEFAULT_PREFERENCE)
@@ -91,7 +91,8 @@ class MediaSelectorTestBuilder(
 
     fun createMedia(
         mediaSourceId: String,
-        kind: MediaSourceKind = MediaSourceKind.WEB
+        kind: MediaSourceKind = MediaSourceKind.WEB,
+        alliance: String = "XX字幕组",
     ): DefaultMedia = createTestDefaultMedia(
         mediaId = "$mediaSourceId.1",
         mediaSourceId = mediaSourceId,
@@ -106,7 +107,7 @@ class MediaSelectorTestBuilder(
                 SubtitleLanguage.ChineseTraditional,
             ).map { it.id },
             resolution = "1080P",
-            alliance = "XX字幕组",
+            alliance = alliance,
             size = 122.megaBytes,
             subtitleKind = SubtitleKind.CLOSED,
         ),
@@ -137,6 +138,7 @@ class MediaSelectorTestBuilder(
         savedDefaultPreference = savedDefaultPreference,
         enableCaching = false,
         mediaSelectorSettings = mediaSelectorSettings,
+        flowCoroutineContext = EmptyCoroutineContext,
     )
 
     fun create(): Triple<MediaSourceMediaFetcher, MediaFetchSession, DefaultMediaSelector> {

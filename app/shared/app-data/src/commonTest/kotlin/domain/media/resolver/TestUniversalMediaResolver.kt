@@ -18,7 +18,7 @@ import org.openani.mediamp.source.UriMediaData
 /**
  * Resolves any media into a [UriMediaData].
  */
-object UniversalTestMediaResolver : MediaResolver {
+object TestUniversalMediaResolver : MediaResolver {
     override suspend fun supports(media: Media): Boolean = true
 
     override suspend fun resolve(media: Media, episode: EpisodeMetadata): MediaDataProvider<*> =

@@ -14,6 +14,7 @@ package me.him188.ani.app.domain.episode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
@@ -25,6 +26,9 @@ import me.him188.ani.app.data.persistent.MemoryDataStore
 import me.him188.ani.app.data.repository.player.EpisodeHistories
 import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepository
 import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepositoryImpl
+import me.him188.ani.app.domain.media.TestMediaList
+import me.him188.ani.app.domain.media.resolver.MediaResolver
+import me.him188.ani.app.domain.media.resolver.TestUniversalMediaResolver
 import me.him188.ani.app.domain.player.extension.AbstractPlayerExtensionTest
 import me.him188.ani.app.domain.player.extension.RememberPlayProgressExtension
 import me.him188.ani.app.domain.player.extension.SwitchNextEpisodeExtension
@@ -52,6 +56,9 @@ class EpisodeFetchPlayStateSwitchEpisodeTest : AbstractPlayerExtensionTest() {
                 flowOf(VideoScaffoldConfig.AllDisabled.copy(autoPlayNext = true))
             }
         }
+        suite.registerComponent<MediaResolver> {
+            TestUniversalMediaResolver
+        }
 
         val state = suite.createState(
             listOf(
@@ -69,7 +76,7 @@ class EpisodeFetchPlayStateSwitchEpisodeTest : AbstractPlayerExtensionTest() {
     }
 
     @Test
-    fun `switchEpisode then load`() = runTest {
+    fun `switchEpisode then load play history - no media source`() = runTest {
         val (testScope, suite, state) =
             createCase()
 
@@ -93,6 +100,42 @@ class EpisodeFetchPlayStateSwitchEpisodeTest : AbstractPlayerExtensionTest() {
 
         // 加载新的视频
         suite.player.loadMedia(100_000)
+        advanceUntilIdle() // 自动加载播放进度
+
+        // should load the saved progress for new episode
+        assertEquals(5000, suite.player.currentPositionMillis.value)
+
+        testScope.cancel()
+    }
+
+    @Test
+    fun `switchEpisode then load play history - wait for media source`() = runTest {
+        val (testScope, suite, state) =
+            createCase()
+
+        val ms1 = suite.mediaSelectorTestBuilder.delayedMediaSource("1")
+
+        playHistory.saveOrUpdate(initialEpisodeId, 3000)
+        playHistory.saveOrUpdate(newEpisodeId, 5000)
+
+        // 播放到一半
+
+        assertEquals(initialEpisodeId, state.getCurrentEpisodeId())
+
+        // 播到最尾部了
+        suite.setMediaDuration(100_000)
+        suite.player.currentPositionMillis.value = suite.player.mediaProperties.value!!.durationMillis
+        suite.player.playbackState.value = PlaybackState.FINISHED
+        advanceUntilIdle() // 自动切换到下一集数
+
+        // 前一集播放完毕了
+        assertEquals(null, playHistory.getPositionMillisByEpisodeId(initialEpisodeId))
+
+        assertEquals(newEpisodeId, state.getCurrentEpisodeId())
+
+        val myMedia = TestMediaList[0]
+        ms1.complete(listOf(myMedia))
+        state.mediaSelectorFlow.first()!!.select(myMedia)
         advanceUntilIdle() // 自动加载播放进度
 
         // should load the saved progress for new episode

@@ -50,7 +50,9 @@ class MediaSelectorAutoSelectUseCaseImpl(
                     awaitCompletedAndSelectDefault(
                         session,
                         preferKindFlow,
-                    )
+                    ).also {
+                        logger.info { "[MediaSelectorAutoSelect] awaitCompletedAndSelectDefault result: $it" }
+                    }
                 }
                 launch {
                     // 快速自动选择数据源. 当按数据源顺序排序, 当最高排序的数据源查询完成后立即自动选择. #1322
@@ -61,8 +63,7 @@ class MediaSelectorAutoSelectUseCaseImpl(
 
                     suspend fun doSelect(allowNonPreferred: Flow<Boolean>) = fastSelectSources(
                         session,
-                        getWebMediaSourceInstanceFlowUseCase().first()
-                            .map { it.mediaSourceId }, // no need to subscribe to changes
+                        getWebMediaSourceInstanceFlowUseCase().first(), // no need to subscribe to changes
                         preferKind = preferKindFlow,
                         overrideUserSelection = false,
                         blacklistMediaIds = emptySet(),
@@ -94,15 +95,19 @@ class MediaSelectorAutoSelectUseCaseImpl(
                             allowNonPreferred = flowOf(true),
                         )
                     }
-                    logger.info { "fastSelectSources result: $result" }
+                    logger.info { "[MediaSelectorAutoSelect] fastSelectSources result: $result" }
                 }
                 launch {
-                    selectCached(session)
+                    selectCached(session).also {
+                        logger.info { "[MediaSelectorAutoSelect] selectCached result: $it" }
+                    }
                 }
 
                 launch {
                     if (getMediaSelectorSettingsFlowUseCase().first().autoEnableLastSelected) {
-                        autoEnableLastSelected(session)
+                        autoEnableLastSelected(session).also {
+                            logger.info { "[MediaSelectorAutoSelect] autoEnableLastSelected result: $it" }
+                        }
                     }
                 }
             }

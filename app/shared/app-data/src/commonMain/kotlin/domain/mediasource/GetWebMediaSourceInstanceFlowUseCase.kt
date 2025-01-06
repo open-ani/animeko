@@ -14,7 +14,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
-import me.him188.ani.app.domain.mediasource.instance.MediaSourceInstance
 import me.him188.ani.app.domain.usecase.UseCase
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import org.koin.core.component.KoinComponent
@@ -22,7 +21,7 @@ import org.koin.core.component.inject
 import kotlin.coroutines.CoroutineContext
 
 fun interface GetWebMediaSourceInstanceFlowUseCase : UseCase {
-    suspend operator fun invoke(): Flow<List<MediaSourceInstance>>
+    suspend operator fun invoke(): Flow<List<String>>
 }
 
 class GetWebMediaSourceInstanceFlowUseCaseImpl(
@@ -30,10 +29,11 @@ class GetWebMediaSourceInstanceFlowUseCaseImpl(
 ) : GetWebMediaSourceInstanceFlowUseCase, KoinComponent {
     private val mediaSourceManager: MediaSourceManager by inject()
 
-    override suspend fun invoke(): Flow<List<MediaSourceInstance>> {
+    override suspend fun invoke(): Flow<List<String>> {
         return mediaSourceManager.allInstances
             .map { list ->
                 list.filter { it.source.kind == MediaSourceKind.WEB }
+                    .map { it.mediaSourceId }
             }
             .flowOn(flowContext)
     }

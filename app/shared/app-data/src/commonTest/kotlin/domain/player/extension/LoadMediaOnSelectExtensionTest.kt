@@ -29,7 +29,7 @@ import me.him188.ani.app.domain.episode.UnsafeEpisodeSessionApi
 import me.him188.ani.app.domain.episode.mediaSelectorFlow
 import me.him188.ani.app.domain.media.TestMediaList
 import me.him188.ani.app.domain.media.resolver.MediaResolver
-import me.him188.ani.app.domain.media.resolver.UniversalTestMediaResolver
+import me.him188.ani.app.domain.media.resolver.TestUniversalMediaResolver
 import me.him188.ani.app.domain.settings.GetVideoScaffoldConfigUseCase
 import me.him188.ani.utils.coroutines.childScope
 import org.openani.mediamp.source.UriMediaData
@@ -53,7 +53,7 @@ class LoadMediaOnSelectExtensionTest : AbstractPlayerExtensionTest() {
             }
         }
         suite.registerComponent<MediaResolver> {
-            UniversalTestMediaResolver
+            TestUniversalMediaResolver
         }
 
         val state = suite.createState(listOf()) // LoadMediaOnSelectExtension is intrinsic

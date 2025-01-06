@@ -417,7 +417,7 @@ class MediaSourceMediaFetcher(
     }
 }
 
-class CompletedConditions(
+data class CompletedConditions(
     private val values: EnumMap<MediaSourceKind, Boolean?>
 ) {
     fun allCompleted() = values.values.all { it ?: true }

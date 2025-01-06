@@ -16,7 +16,7 @@ import me.him188.ani.app.domain.usecase.UseCase
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
-interface GetMediaSelectorSettingsFlowUseCase : UseCase {
+fun interface GetMediaSelectorSettingsFlowUseCase : UseCase {
     operator fun invoke(): Flow<MediaSelectorSettings>
 }
 

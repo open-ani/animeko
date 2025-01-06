@@ -12,7 +12,8 @@ interface EnumMap<K : Enum<K>, V> : Map<K, V> {
     override fun containsKey(key: K): Boolean = true
 }
 
-class ImmutableEnumMap<K : Enum<K>, V> @PublishedApi internal constructor(
+@ConsistentCopyVisibility
+data class ImmutableEnumMap<K : Enum<K>, V> @PublishedApi internal constructor(
     private val delegate: ImmutableMap<K, V>
 ) : ImmutableMap<K, V> by delegate, EnumMap<K, V> {
     override fun get(key: K): V {
