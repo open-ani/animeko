@@ -23,8 +23,10 @@ import me.him188.ani.app.data.repository.player.EpisodeHistories
 import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepository
 import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepositoryImpl
 import me.him188.ani.app.domain.episode.EpisodePlayerTestSuite
+import me.him188.ani.app.domain.episode.player
 import me.him188.ani.utils.coroutines.childScope
 import org.openani.mediamp.PlaybackState
+import kotlin.test.Ignore
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
@@ -94,6 +96,156 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
     }
 
     @Test
+    fun `when position is -1 - dont save`() = runTest {
+        val (testScope, suite, state) = createCase()
+        advanceUntilIdle()
+
+        suite.setMediaDuration(100_000)
+        suite.player.currentPositionMillis.value = -1
+        advanceUntilIdle()
+
+        assertEquals(
+            listOf(),
+            repository.flow.first(),
+        )
+
+        testScope.cancel()
+    }
+
+    @Test
+    fun `when position is 0 - dont save`() = runTest {
+        val (testScope, suite, state) = createCase()
+        advanceUntilIdle()
+
+        suite.setMediaDuration(100_000)
+        suite.player.currentPositionMillis.value = 0
+        advanceUntilIdle()
+
+        assertEquals(
+            listOf(),
+            repository.flow.first(),
+        )
+
+        testScope.cancel()
+    }
+
+    @Test
+    fun `when position is -1 - dont remove`() = runTest {
+        val (testScope, suite, state) = createCase()
+        advanceUntilIdle()
+        repository.saveOrUpdate(episodeId = initialEpisodeId, 1000)
+
+        suite.setMediaDuration(100_000)
+        suite.player.currentPositionMillis.value = -1
+        advanceUntilIdle()
+
+        assertEquals(
+            listOf(EpisodeHistory(episodeId = initialEpisodeId, positionMillis = 1000)),
+            repository.flow.first(),
+        )
+
+        testScope.cancel()
+    }
+
+    @Test
+    fun `when position is 0 - dont remove`() = runTest {
+        val (testScope, suite, state) = createCase()
+        advanceUntilIdle()
+        repository.saveOrUpdate(episodeId = initialEpisodeId, 1000)
+
+        suite.setMediaDuration(100_000)
+        suite.player.currentPositionMillis.value = 0
+        advanceUntilIdle()
+
+        assertEquals(
+            listOf(EpisodeHistory(episodeId = initialEpisodeId, positionMillis = 1000)),
+            repository.flow.first(),
+        )
+
+        testScope.cancel()
+    }
+
+    @Test
+    fun `when finish at 1 percent - saves play progress`() = runTest {
+        val (testScope, suite, state) = createCase()
+        advanceUntilIdle()
+
+        suite.setMediaDuration(100_000)
+        suite.player.currentPositionMillis.value = 1000
+        advanceUntilIdle()
+        suite.player.playbackState.value = PlaybackState.FINISHED
+        advanceUntilIdle()
+
+        assertEquals(
+            listOf(EpisodeHistory(episodeId = initialEpisodeId, positionMillis = 1000)),
+            repository.flow.first(),
+        )
+
+        testScope.cancel()
+    }
+
+    @Test
+    fun `when finish at end - removes play progress`() = runTest {
+        val (testScope, suite, state) = createCase()
+        advanceUntilIdle()
+        repository.saveOrUpdate(episodeId = initialEpisodeId, 500)
+
+        suite.setMediaDuration(100_000)
+        suite.player.currentPositionMillis.value = 100_000 - 1
+        advanceUntilIdle()
+        suite.player.playbackState.value = PlaybackState.FINISHED
+        advanceUntilIdle()
+
+        assertEquals(
+            listOf(),
+            repository.flow.first(),
+        )
+
+        testScope.cancel()
+    }
+
+    @Test
+    @Ignore // TODO: We should enable this test
+    fun `when stopPlayback at 1 percent - saves play progress`() = runTest {
+        val (testScope, suite, state) = createCase()
+        advanceUntilIdle()
+
+        suite.setMediaDuration(100_000)
+        suite.player.currentPositionMillis.value = 1000
+        advanceUntilIdle()
+        state.player.stopPlayback()
+        advanceUntilIdle()
+
+        assertEquals(
+            listOf(EpisodeHistory(episodeId = initialEpisodeId, positionMillis = 1000)),
+            repository.flow.first(),
+        )
+
+        testScope.cancel()
+    }
+
+    @Test
+    @Ignore // TODO: We should enable this test
+    fun `when stopPlayback at end - removes play progress`() = runTest {
+        val (testScope, suite, state) = createCase()
+        advanceUntilIdle()
+        repository.saveOrUpdate(episodeId = initialEpisodeId, 500)
+
+        suite.setMediaDuration(100_000)
+        suite.player.currentPositionMillis.value = 100_000 - 1
+        advanceUntilIdle()
+        state.player.stopPlayback()
+        advanceUntilIdle()
+
+        assertEquals(
+            listOf(),
+            repository.flow.first(),
+        )
+
+        testScope.cancel()
+    }
+
+    @Test
     fun `when closing - does not save play progress if duration is zero`() = runTest {
         val (testScope, suite, state) = createCase()
         advanceUntilIdle()
@@ -148,27 +300,6 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
 
         assertEquals(EpisodeHistory(episodeId = initialEpisodeId, positionMillis = 1001), repository.flow.first()[0])
         assertEquals(1, repository.flow.first().size)
-
-        testScope.cancel()
-    }
-
-    @Test
-    fun `removes saved when finishes`() = runTest {
-        val (testScope, suite, _) = createCase()
-        advanceUntilIdle()
-
-        suite.setMediaDuration(100_000)
-        suite.player.currentPositionMillis.value = 1000
-        suite.player.playbackState.value = PlaybackState.PAUSED
-        advanceUntilIdle()
-        assertEquals(
-            listOf(EpisodeHistory(episodeId = initialEpisodeId, positionMillis = 1000)),
-            repository.flow.first(),
-        )
-
-        suite.player.playbackState.value = PlaybackState.FINISHED
-        advanceUntilIdle()
-        assertEquals(emptyList(), repository.flow.first())
 
         testScope.cancel()
     }

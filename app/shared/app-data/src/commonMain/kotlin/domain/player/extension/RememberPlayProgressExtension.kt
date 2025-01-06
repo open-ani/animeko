@@ -77,12 +77,7 @@ class RememberPlayProgressExtension(
                     }
 
                     PlaybackState.FINISHED -> {
-                        if (player.mediaProperties.value.let { it != null && it.durationMillis > 0L }) {
-                            // 视频长度有效, 说明正常播放中
-                            playProgressRepository.remove(episodeId)
-                        } else {
-                            // 视频加载失败或者在切换数据源时又切换了另一个数据源, 不要删除记录
-                        }
+                        savePlayProgressOrRemove(episodeId)
                     }
 
                     else -> Unit
@@ -117,16 +112,16 @@ class RememberPlayProgressExtension(
             PlaybackState.READY,
             PlaybackState.ERROR -> return
 
-            PlaybackState.FINISHED -> {
-                playProgressRepository.remove(episodeId)
-                return
-            }
-
+            PlaybackState.FINISHED,
             PlaybackState.PAUSED,
             PlaybackState.PLAYING,
             PlaybackState.PAUSED_BUFFERING -> {
                 val currentPositionMillis = withContext(Dispatchers.Main.immediate) {
                     player.getCurrentPositionMillis()
+                }
+
+                if (currentPositionMillis <= 0L) {
+                    return
                 }
 
                 check(videoDurationMillis >= currentPositionMillis) {
