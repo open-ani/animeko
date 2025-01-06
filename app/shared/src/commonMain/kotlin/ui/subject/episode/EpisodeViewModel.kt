@@ -30,6 +30,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
@@ -39,6 +40,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.retry
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.episode.renderEpisodeEp
@@ -393,6 +395,14 @@ class EpisodeViewModel(
     @OptIn(UnsafeEpisodeSessionApi::class)
     private val danmakuLoader = EpisodeDanmakuLoader(
         player = player,
+        // TODO: 2025/1/6 this is not very good. May see old data. 
+        selectedMedia = fetchPlayState.mediaSelectorFlow.transformLatest {
+            if (it == null) {
+                emit(null)
+            } else {
+                emitAll(it.selected)
+            }
+        },
         bundleFlow = fetchPlayState.infoBundleFlow.filterNotNull().distinctUntilChanged(),
         backgroundScope,
         koin,
