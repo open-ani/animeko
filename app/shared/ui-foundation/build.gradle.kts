@@ -53,6 +53,8 @@ kotlin {
         api(projects.app.shared.pagingCompose)
         
         api(libs.koin.core)
+
+        implementation(libs.materialKolor)
     }
     sourceSets.commonTest.dependencies {
         api(projects.utils.uiTesting)
