@@ -19,6 +19,7 @@ import org.openani.mediamp.DummyMediampPlayer
 import org.openani.mediamp.PlaybackState
 import org.openani.mediamp.metadata.MediaProperties
 import kotlin.coroutines.EmptyCoroutineContext
+import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 
 abstract class AbstractPlayerExtensionTest {
@@ -51,7 +52,7 @@ abstract class AbstractPlayerExtensionTest {
         Dispatchers.setMain(StandardTestDispatcher())
     }
 
-    @BeforeTest
+    @AfterTest
     fun resetDispatcher() {
         Dispatchers.resetMain()
     }
@@ -65,4 +66,3 @@ fun DummyMediampPlayer.loadMedia(
     )
     playbackState.value = PlaybackState.READY
 }
-

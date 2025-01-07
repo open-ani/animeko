@@ -40,7 +40,7 @@ import me.him188.ani.datasources.api.topic.FileSize.Companion.megaBytes
 import me.him188.ani.datasources.api.topic.Resolution
 import me.him188.ani.datasources.api.topic.ResourceLocation
 import me.him188.ani.datasources.api.topic.SubtitleLanguage
-import kotlin.coroutines.EmptyCoroutineContext
+import kotlin.coroutines.ContinuationInterceptor
 
 class MediaSelectorTestBuilder(
     private val testScope: TestScope,
@@ -118,7 +118,7 @@ class MediaSelectorTestBuilder(
     fun createMediaFetcher() = MediaSourceMediaFetcher(
         configProvider = { MediaFetcherConfig.Companion.Default },
         mediaSources = mediaSources,
-        flowContext = EmptyCoroutineContext,
+        flowContext = testScope.coroutineContext[ContinuationInterceptor]!!,
     )
 
     fun createMediaFetchSession(fetcher: MediaFetcher) = fetcher.newSession(
@@ -138,7 +138,7 @@ class MediaSelectorTestBuilder(
         savedDefaultPreference = savedDefaultPreference,
         enableCaching = false,
         mediaSelectorSettings = mediaSelectorSettings,
-        flowCoroutineContext = EmptyCoroutineContext,
+        flowCoroutineContext = testScope.coroutineContext[ContinuationInterceptor]!!,
     )
 
     fun create(): Triple<MediaSourceMediaFetcher, MediaFetchSession, DefaultMediaSelector> {
