@@ -11,6 +11,8 @@ package me.him188.ani.app.data.models.preference
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
+import androidx.compose.ui.graphics.Color
+import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 import me.him188.ani.app.navigation.MainScenePage
@@ -41,7 +43,8 @@ data class ThemeSettings(
     /**
      * Only on Android
      */
-    val dynamicTheme: Boolean = false,
+    val dynamicTheme: Boolean = true,
+    @Contextual val seedColor: Color? = null,
     @Suppress("PropertyName") @Transient val _placeholder: Int = 0,
 ) {
     companion object {
