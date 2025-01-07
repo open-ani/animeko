@@ -26,6 +26,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.CardColors
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
@@ -39,6 +40,9 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.IntOffset
 import androidx.window.core.layout.WindowSizeClass
+import com.materialkolor.DynamicMaterialTheme
+import com.materialkolor.PaletteStyle
+import com.materialkolor.rememberDynamicMaterialThemeState
 import me.him188.ani.app.ui.foundation.animation.EmphasizedAccelerateEasing
 import me.him188.ani.app.ui.foundation.animation.EmphasizedDecelerateEasing
 import me.him188.ani.app.ui.foundation.animation.StandardAccelerate
@@ -46,6 +50,27 @@ import me.him188.ani.app.ui.foundation.animation.StandardDecelerate
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.isCompact
 import kotlin.math.roundToInt
+
+val DefaultSeedColor = Color(0xFF68A500)
+
+@Composable
+fun AniTheme(
+    darkTheme: Boolean = isSystemInDarkTheme(),
+    seedColor: Color = DefaultSeedColor,
+    content: @Composable () -> Unit
+) {
+    val dynamicThemeState = rememberDynamicMaterialThemeState(
+        isDark = darkTheme,
+        style = PaletteStyle.Vibrant, // PaletteStyle.TonalSpot
+        seedColor = seedColor,
+    )
+
+    DynamicMaterialTheme(
+        state = dynamicThemeState,
+        animate = true,
+        content = content,
+    )
+}
 
 @Stable
 object AniThemeDefaults {

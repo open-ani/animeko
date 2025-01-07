@@ -12,10 +12,10 @@ package me.him188.ani.app.ui.main
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.ColorScheme
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Stable
@@ -35,6 +35,8 @@ import me.him188.ani.app.tools.TimeFormatter
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.ifThen
+import me.him188.ani.app.ui.foundation.theme.AniTheme
+import me.him188.ani.app.ui.foundation.theme.DefaultSeedColor
 import me.him188.ani.utils.platform.isMobile
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -75,8 +77,14 @@ fun AniApp(
         // 主题读好再进入 APP, 防止黑白背景闪烁
         val theme = viewModel.themeSettings ?: return@CompositionLocalProvider
 
-        MaterialTheme(
-            overrideColorTheme ?: currentPlatformColorTheme(theme.darkMode, theme.dynamicTheme),
+        AniTheme(
+            darkTheme = when (theme.darkMode) {
+                DarkMode.LIGHT -> false
+                DarkMode.DARK -> true
+                DarkMode.AUTO -> isSystemInDarkTheme()
+                else -> isSystemInDarkTheme()
+            },
+            seedColor = theme.seedColor ?: DefaultSeedColor,
         ) {
             Box(
                 modifier = modifier
