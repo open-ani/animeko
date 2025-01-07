@@ -146,15 +146,16 @@ abstract class BaseJellyfinMediaSource(config: MediaSourceConfig) : HttpMediaSou
 
     private fun getSubtitles(itemId: String, mediaStreams: List<MediaStream>): List<Subtitle> {
         return mediaStreams
-            .filter { it.Type == "Subtitle" && it.IsTextSubtitleStream }
+            .filter { it.Type == "Subtitle" && it.IsTextSubtitleStream && it.IsExternal }
             .map { stream ->
                 Subtitle(
                     uri = getSubtitleUri(itemId, stream.Index, stream.Codec),
-                    language = stream.Title,
+                    language = stream.Language,
                     mimeType = when (stream.Codec.lowercase()) {
                         "ass" -> "text/x-ass"
                         else -> "application/octet-stream"  // 默认二进制流
                     },
+                    label = stream.Title,
                 )
             }
     }
@@ -188,9 +189,11 @@ private class SearchResponse(
 @Suppress("PropertyName")
 private data class MediaStream(
     val Title: String? = null, // 除了字幕以外其他可能没有
+    val Language: String? = null, // 字幕语言代码，如 chs
     val Type: String,
     val Codec: String,
     val Index: Int,
+    val IsExternal: Boolean, // 是否为外挂字幕
     val IsTextSubtitleStream: Boolean,
 )
 
