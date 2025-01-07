@@ -50,7 +50,6 @@ class AniAppViewModel : AbstractViewModel(), KoinComponent {
 @Composable
 fun AniApp(
     modifier: Modifier = Modifier,
-    overrideColorTheme: ColorScheme? = null,
     content: @Composable () -> Unit,
 ) {
 //    val proxy by remember {

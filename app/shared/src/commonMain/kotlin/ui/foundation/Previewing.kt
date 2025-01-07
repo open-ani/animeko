@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.ui.foundation
 
-import androidx.compose.material3.ColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
@@ -62,7 +61,6 @@ import org.openani.mediamp.MediampPlayerFactory
 @Composable
 fun ProvideCompositionLocalsForPreview(
     module: Module.() -> Unit = {},
-    colorScheme: ColorScheme? = null,
     content: @Composable () -> Unit,
 ) {
     ProvideFoundationCompositionLocalsForPreview {
@@ -129,7 +127,7 @@ fun ProvideCompositionLocalsForPreview(
             }
             NavHost(navController, startDestination = "test") { // provide ViewModelStoreOwner
                 composable("test") {
-                    AniApp(overrideColorTheme = colorScheme) {
+                    AniApp {
                         content()
                     }
                 }
