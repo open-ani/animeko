@@ -25,7 +25,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.lifecycle.viewmodel.compose.viewModel
-import kotlinx.coroutines.flow.map
 import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.data.repository.user.SettingsRepository
@@ -43,7 +42,7 @@ import org.koin.core.component.inject
 @Stable
 class AniAppViewModel : AbstractViewModel(), KoinComponent {
     private val settings: SettingsRepository by inject()
-    val themeSettings: ThemeSettings? by settings.uiSettings.flow.map { it.theme }.produceState(null)
+    val themeSettings: ThemeSettings? by settings.themeSettings.flow.produceState(null)
 }
 
 @Composable

@@ -11,8 +11,6 @@ package me.him188.ani.app.data.models.preference
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
-import androidx.compose.ui.graphics.Color
-import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 import me.him188.ani.app.navigation.MainScenePage
@@ -24,7 +22,6 @@ data class UISettings(
      * 启动 App 时的初始页面
      */
     val mainSceneInitialPage: MainScenePage = MainScenePage.Exploration,
-    val theme: ThemeSettings = ThemeSettings.Default,
     val myCollections: MyCollectionsSettings = MyCollectionsSettings.Default,
     val searchSettings: SearchSettings = SearchSettings.Default,
     val episodeProgress: EpisodeProgressSettings = EpisodeProgressSettings.Default,
@@ -34,29 +31,6 @@ data class UISettings(
         @Stable
         val Default = UISettings()
     }
-}
-
-@Serializable
-@Immutable
-data class ThemeSettings(
-    val darkMode: DarkMode = DarkMode.AUTO,
-    /**
-     * Only on Android
-     */
-    val dynamicTheme: Boolean = false,
-    val isAmoled: Boolean = false,
-    @Contextual val seedColor: Color? = null,
-    @Suppress("PropertyName") @Transient val _placeholder: Int = 0,
-) {
-    companion object {
-        @Stable
-        val Default = ThemeSettings()
-    }
-}
-
-@Serializable
-enum class DarkMode {
-    LIGHT, DARK, AUTO,
 }
 
 @Serializable
