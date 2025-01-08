@@ -54,7 +54,15 @@ import kotlin.math.roundToInt
 val DefaultSeedColor = Color(0xFF68A500)
 
 @Composable
-fun AniTheme(
+expect fun AniTheme(
+    darkTheme: Boolean = isSystemInDarkTheme(),
+    seedColor: Color = DefaultSeedColor,
+    useDynamicTheme: Boolean,
+    content: @Composable () -> Unit
+)
+
+@Composable
+internal fun AniThemeImpl(
     darkTheme: Boolean = isSystemInDarkTheme(),
     seedColor: Color = DefaultSeedColor,
     content: @Composable () -> Unit

@@ -15,7 +15,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.material3.ColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Stable
@@ -84,6 +83,7 @@ fun AniApp(
                 else -> isSystemInDarkTheme()
             },
             seedColor = theme.seedColor ?: DefaultSeedColor,
+            useDynamicTheme = theme.dynamicTheme,
         ) {
             Box(
                 modifier = modifier
@@ -105,9 +105,3 @@ fun AniApp(
         }
     }
 }
-
-@Composable
-internal expect fun currentPlatformColorTheme(
-    darkMode: DarkMode,
-    useDynamicTheme: Boolean
-): ColorScheme

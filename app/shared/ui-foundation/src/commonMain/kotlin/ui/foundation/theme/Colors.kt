@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.ui.foundation.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -40,17 +39,6 @@ fun Color.stronglyWeaken(): Color {
 @Composable
 fun Color.disabledWeaken(): Color {
     return copy(alpha = 0.12f)
-}
-
-@Composable
-fun aniColorScheme(
-    dark: Boolean = isSystemInDarkTheme()
-): ColorScheme {
-    return if (dark) {
-        aniDarkColorTheme()
-    } else {
-        aniLightColorTheme()
-    }
 }
 
 @Stable
