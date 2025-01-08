@@ -130,7 +130,9 @@ fun SettingsScope.AppearanceGroup(
                 {
                     state.update(
                         uiSettings.copy(
-                            theme = uiSettings.theme.copy(dynamicTheme = !uiSettings.theme.dynamicTheme),
+                            theme = uiSettings.theme.copy(
+                                dynamicTheme = !uiSettings.theme.dynamicTheme,
+                            ),
                         ),
                     )
                 },
@@ -391,9 +393,7 @@ fun SettingsScope.SoftwareUpdateGroup(
                 }
                 when (state.updateCheckerTester.tester.result) {
                     is CheckVersionResult.HasNewVersion -> showUpdatePopup = true
-                    is CheckVersionResult.Failed,
-                    is CheckVersionResult.UpToDate,
-                    null -> {
+                    is CheckVersionResult.Failed, is CheckVersionResult.UpToDate, null -> {
                         state.updateCheckerTester.testAll()
                         autoUpdate.startCheckLatestVersion(uriHandler)
                     }
@@ -535,16 +535,13 @@ private fun ReleaseClassIcon(releaseClass: ReleaseClass) {
     when (releaseClass) {
         ReleaseClass.ALPHA -> Icon(Icons.Rounded.RocketLaunch, null)
         ReleaseClass.BETA -> Icon(Icons.Rounded.Science, null)
-        ReleaseClass.RC,
-        ReleaseClass.STABLE -> Icon(Icons.Rounded.Verified, null)
+        ReleaseClass.RC, ReleaseClass.STABLE -> Icon(Icons.Rounded.Verified, null)
     }
 }
 
 @Stable
 private fun guessReleaseClass(version: String): ReleaseClass {
-    val metadata = version
-        .substringAfter("-", "")
-        .lowercase()
+    val metadata = version.substringAfter("-", "").lowercase()
     return when {
         metadata.isEmpty() -> ReleaseClass.STABLE
         "alpha" in metadata || "dev" in metadata -> ReleaseClass.ALPHA
