@@ -81,6 +81,7 @@ import me.him188.ani.app.ui.settings.tabs.DebugTab
 import me.him188.ani.app.ui.settings.tabs.app.AppearanceGroup
 import me.him188.ani.app.ui.settings.tabs.app.PlayerGroup
 import me.him188.ani.app.ui.settings.tabs.app.SoftwareUpdateGroup
+import me.him188.ani.app.ui.settings.tabs.app.ThemeGroup
 import me.him188.ani.app.ui.settings.tabs.media.AutoCacheGroup
 import me.him188.ani.app.ui.settings.tabs.media.CacheDirectoryGroup
 import me.him188.ani.app.ui.settings.tabs.media.MediaSelectionGroup
@@ -119,6 +120,7 @@ fun SettingsPage(
         navItems = {
             Title("应用与界面", paddingTop = 0.dp)
             Item(SettingsTab.APPEARANCE)
+            Item(SettingsTab.THEME)
             Item(SettingsTab.UPDATE)
 
             Title("数据源与播放")
@@ -158,6 +160,7 @@ fun SettingsPage(
                     ) {
                         when (currentTab) {
                             SettingsTab.APPEARANCE -> AppearanceGroup(vm.uiSettings)
+                            SettingsTab.THEME -> ThemeGroup(vm.themeSettings)
                             SettingsTab.UPDATE -> SoftwareUpdateGroup(vm.softwareUpdateGroupState)
                             SettingsTab.PLAYER -> PlayerGroup(
                                 vm.videoScaffoldConfig,
@@ -359,6 +362,7 @@ abstract class SettingsDrawerScope internal constructor() : ColumnScope {
 private fun getIcon(tab: SettingsTab): ImageVector {
     return when (tab) {
         SettingsTab.APPEARANCE -> Icons.Rounded.Palette
+        SettingsTab.THEME -> Icons.Rounded.Palette
         SettingsTab.UPDATE -> Icons.Rounded.Update
         SettingsTab.PLAYER -> Icons.Rounded.SmartDisplay
         SettingsTab.MEDIA_SOURCE -> Icons.Rounded.Subscriptions
@@ -377,6 +381,7 @@ private fun getIcon(tab: SettingsTab): ImageVector {
 private fun getName(tab: SettingsTab): String {
     return when (tab) {
         SettingsTab.APPEARANCE -> "界面"
+        SettingsTab.THEME -> "主题"
         SettingsTab.UPDATE -> "软件更新"
         SettingsTab.PLAYER -> "播放器和弹幕过滤"
         SettingsTab.MEDIA_SOURCE -> "数据源管理"
