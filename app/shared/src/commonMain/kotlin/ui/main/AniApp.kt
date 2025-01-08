@@ -101,13 +101,14 @@ fun AniApp(
         val theme = viewModel.themeSettings ?: return@CompositionLocalProvider
 
         AniTheme(
+            seedColor = theme.seedColor ?: DefaultSeedColor,
             darkTheme = when (theme.darkMode) {
                 DarkMode.LIGHT -> false
                 DarkMode.DARK -> true
                 DarkMode.AUTO -> isSystemInDarkTheme()
                 else -> isSystemInDarkTheme()
             },
-            seedColor = theme.seedColor ?: DefaultSeedColor,
+            isAmoled = theme.isAmoled,
             useDynamicTheme = theme.dynamicTheme,
         ) {
             Box(

@@ -44,6 +44,7 @@ data class ThemeSettings(
      * Only on Android
      */
     val dynamicTheme: Boolean = false,
+    val isAmoled: Boolean = false,
     @Contextual val seedColor: Color? = null,
     @Suppress("PropertyName") @Transient val _placeholder: Int = 0,
 ) {
