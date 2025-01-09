@@ -32,7 +32,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.navigation.LocalBackDispatcher
-import me.him188.ani.app.ui.foundation.theme.aniDarkColorTheme
+import me.him188.ani.app.ui.foundation.theme.aniColorTheme
 import me.him188.ani.utils.platform.isDesktop
 
 /**
@@ -41,9 +41,9 @@ import me.him188.ani.utils.platform.isDesktop
 @Composable
 fun PlayerTopBar(
     modifier: Modifier = Modifier,
-    title: @Composable() (() -> Unit)? = null,
-    actions: @Composable() (RowScope.() -> Unit) = {},
-    color: Color = aniDarkColorTheme().onBackground,
+    title: @Composable (() -> Unit)? = null,
+    actions: @Composable (RowScope.() -> Unit) = {},
+    color: Color = aniColorTheme(isDark = true).onBackground,
     windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
 ) {
     TopAppBar(
@@ -78,7 +78,7 @@ fun PlayerTopBar(
             containerColor = Color.Transparent,
         ),
         actions = {
-            CompositionLocalProvider(LocalContentColor provides aniDarkColorTheme().onBackground) {
+            CompositionLocalProvider(LocalContentColor provides aniColorTheme(isDark = true).onBackground) {
                 actions()
             }
         },

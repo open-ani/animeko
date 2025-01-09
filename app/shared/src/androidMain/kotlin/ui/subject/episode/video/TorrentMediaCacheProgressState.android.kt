@@ -30,8 +30,7 @@ import me.him188.ani.app.torrent.api.pieces.PieceState
 import me.him188.ani.app.torrent.api.pieces.forEach
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview
-import me.him188.ani.app.ui.foundation.stateOf
-import me.him188.ani.app.ui.foundation.theme.aniDarkColorTheme
+import me.him188.ani.app.ui.foundation.theme.aniColorTheme
 import me.him188.ani.app.videoplayer.ui.progress.MediaProgressSlider
 import me.him188.ani.app.videoplayer.ui.progress.PlayerProgressSliderState
 import kotlin.time.Duration.Companion.seconds
@@ -65,7 +64,7 @@ fun PreviewMediaProgressSliderInteractive() = ProvideCompositionLocalsForPreview
         }
         isFinished = true
     }
-    MaterialTheme(aniDarkColorTheme()) {
+    MaterialTheme(aniColorTheme(isDark = true)) {
         Box(modifier = Modifier.background(MaterialTheme.colorScheme.background)) {
             val cacheProgressInfo by cacheProgressFlow.collectAsStateWithLifecycle(null)
             MediaProgressSlider(
@@ -105,14 +104,14 @@ fun PreviewMediaProgressSliderNonConsecutiveCacheImpl(
             createInfo()
         }
     }
-    MaterialTheme(aniDarkColorTheme()) {
+    MaterialTheme(aniColorTheme(isDark = true)) {
         Box(modifier = Modifier.background(MaterialTheme.colorScheme.background)) {
             MediaProgressSlider(
                 remember {
                     PlayerProgressSliderState(
                         currentPositionMillis = { 2000 },
                         totalDurationMillis = { 30_000 },
-                        chapters = {persistentListOf()},
+                        chapters = { persistentListOf() },
                         onPreview = {},
                         onPreviewFinished = { },
                     )

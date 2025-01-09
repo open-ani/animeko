@@ -9,11 +9,7 @@
 
 package me.him188.ani.app.ui.foundation.theme
 
-import androidx.compose.material3.ColorScheme
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.Stable
 import androidx.compose.ui.graphics.Color
 
 @Composable
@@ -41,14 +37,13 @@ fun Color.disabledWeaken(): Color {
     return copy(alpha = 0.12f)
 }
 
-@Stable
-fun aniDarkColorTheme(): ColorScheme {
-    PaletteTokens.run {
-        return darkColorScheme()
-    }
-}
-
-
-@Stable
-fun aniLightColorTheme(): ColorScheme = lightColorScheme(
-)
+//@Stable
+//fun aniDarkColorTheme(): ColorScheme {
+//    PaletteTokens.run {
+//        return darkColorScheme()
+//    }
+//}
+//
+//@Stable
+//fun aniLightColorTheme(): ColorScheme = lightColorScheme(
+//)

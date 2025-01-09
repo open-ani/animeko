@@ -14,6 +14,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
@@ -26,6 +27,27 @@ import com.materialkolor.rememberDynamicColorScheme
 import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.platform.findActivity
+
+@Composable
+actual fun aniColorTheme(
+    themeSettings: ThemeSettings,
+    isDark: Boolean
+): ColorScheme {
+    return if (themeSettings.useDynamicTheme && Build.VERSION.SDK_INT >= 31) {
+        if (isDark) {
+            dynamicDarkColorScheme(LocalContext.current)
+        } else {
+            dynamicLightColorScheme(LocalContext.current)
+        }
+    } else {
+        rememberDynamicColorScheme(
+            primary = Color(themeSettings.seedColor),
+            isDark = isDark,
+            isAmoled = themeSettings.isAmoled,
+            style = PaletteStyle.TonalSpot,
+        )
+    }
+}
 
 @Composable
 actual fun AniTheme(
@@ -63,23 +85,8 @@ actual fun AniTheme(
         }
     }
 
-    val colorScheme = if (themeSettings.useDynamicTheme && Build.VERSION.SDK_INT >= 31) {
-        if (isDark) {
-            dynamicDarkColorScheme(LocalContext.current)
-        } else {
-            dynamicLightColorScheme(LocalContext.current)
-        }
-    } else {
-        rememberDynamicColorScheme(
-            primary = Color(themeSettings.seedColor),
-            isDark = isDark,
-            isAmoled = themeSettings.isAmoled,
-            style = PaletteStyle.TonalSpot,
-        )
-    }
-
     MaterialTheme(
-        colorScheme = colorScheme,
+        colorScheme = aniColorTheme(themeSettings, isDark),
         content = content,
     )
 }
