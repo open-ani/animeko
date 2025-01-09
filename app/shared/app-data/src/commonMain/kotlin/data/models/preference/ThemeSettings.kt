@@ -15,18 +15,18 @@ import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 
+const val DEFAULT_SEED_COLOR = -14982255
+
 @Serializable
 enum class DarkMode {
     LIGHT, DARK, AUTO,
 }
 
-const val DEFAULT_SEED_COLOR = -14982255
-
 @Serializable
 @Immutable
 data class ThemeSettings(
     val darkMode: DarkMode = DarkMode.AUTO,
-    val useDynamicTheme: Boolean = false, // Only on Android && Build.VERSION.SDK_INT >= 31
+    val useDynamicTheme: Boolean = false, // default "true" on Android && Build.VERSION.SDK_INT >= 31
     val isAmoled: Boolean = false,
     @Contextual val seedColor: Int = DEFAULT_SEED_COLOR,
     @Suppress("PropertyName") @Transient val _placeholder: Int = 0,

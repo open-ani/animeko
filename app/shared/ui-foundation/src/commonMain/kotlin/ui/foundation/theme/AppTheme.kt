@@ -26,7 +26,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.CardColors
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
@@ -40,7 +39,7 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.IntOffset
 import androidx.window.core.layout.WindowSizeClass
-import me.him188.ani.app.data.models.preference.DEFAULT_SEED_COLOR
+import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.ui.foundation.animation.EmphasizedAccelerateEasing
 import me.him188.ani.app.ui.foundation.animation.EmphasizedDecelerateEasing
 import me.him188.ani.app.ui.foundation.animation.StandardAccelerate
@@ -51,10 +50,7 @@ import kotlin.math.roundToInt
 
 @Composable
 expect fun AniTheme(
-    seedColor: Int = DEFAULT_SEED_COLOR,
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    isAmoled: Boolean = false,
-    useDynamicTheme: Boolean,
+    themeSettings: ThemeSettings,
     content: @Composable () -> Unit
 )
 
