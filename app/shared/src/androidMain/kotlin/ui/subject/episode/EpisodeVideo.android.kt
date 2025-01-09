@@ -294,7 +294,7 @@ private fun PreviewVideoScaffoldImpl(
 //                    ProgressSlider(progressSliderState)
 //                },
 //                danmakuEditor = {
-//                    MaterialTheme(aniDarkColorTheme()) {
+//                    MaterialTheme(aniColorTheme(isDark = true)) {
 //                        var text by rememberSaveable { mutableStateOf("") }
 //                        var sending by remember { mutableStateOf(false) }
 //                        LaunchedEffect(key1 = sending) {

@@ -26,8 +26,10 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.CardColors
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TopAppBarColors
 import androidx.compose.material3.TopAppBarDefaults
@@ -49,8 +51,14 @@ import me.him188.ani.app.ui.foundation.layout.isCompact
 import kotlin.math.roundToInt
 
 @Composable
+expect fun aniColorTheme(
+    themeSettings: ThemeSettings = LocalThemeSettings.current,
+    isDark: Boolean = isSystemInDarkTheme()
+): ColorScheme
+
+@Composable
 expect fun AniTheme(
-    themeSettings: ThemeSettings,
+    themeSettings: ThemeSettings = LocalThemeSettings.current,
     content: @Composable () -> Unit
 )
 
@@ -252,4 +260,8 @@ data class NavigationMotionScheme(
 @Stable
 val LocalNavigationMotionScheme = compositionLocalOf<NavigationMotionScheme> {
     error("No LocalNavigationMotionScheme provided")
+}
+
+val LocalThemeSettings = compositionLocalOf<ThemeSettings> {
+    error("LocalThemeSettings not provided")
 }

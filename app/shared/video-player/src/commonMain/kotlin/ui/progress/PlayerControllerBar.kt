@@ -97,8 +97,7 @@ import me.him188.ani.app.domain.media.player.MediaCacheProgressInfo
 import me.him188.ani.app.ui.foundation.dialogs.PlatformPopupProperties
 import me.him188.ani.app.ui.foundation.effects.onKey
 import me.him188.ani.app.ui.foundation.ifThen
-import me.him188.ani.app.ui.foundation.theme.aniDarkColorTheme
-import me.him188.ani.app.ui.foundation.theme.aniLightColorTheme
+import me.him188.ani.app.ui.foundation.theme.aniColorTheme
 import me.him188.ani.app.ui.foundation.theme.slightlyWeaken
 import me.him188.ani.app.ui.foundation.theme.stronglyWeaken
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
@@ -390,7 +389,7 @@ object PlayerControllerDefaults {
         style: TextStyle = MaterialTheme.typography.bodyMedium,
         colors: TextFieldColors = inVideoDanmakuTextFieldColors()
     ) {
-        MaterialTheme(aniLightColorTheme()) {
+        MaterialTheme(aniColorTheme(isDark = false)) {
             BasicTextField(
                 value,
                 onValueChange,
@@ -647,7 +646,7 @@ fun PlayerControllerBar(
                         Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        MaterialTheme(aniDarkColorTheme()) {
+                        MaterialTheme(aniColorTheme(isDark = true)) {
                             progressSlider()
                         }
                     }
@@ -670,7 +669,7 @@ fun PlayerControllerBar(
                 Modifier.weight(1f),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                MaterialTheme(aniDarkColorTheme()) {
+                MaterialTheme(aniColorTheme(isDark = true)) {
                     if (expanded) {
                         ProvideTextStyle(MaterialTheme.typography.labelSmall) {
                             danmakuEditor()
@@ -684,7 +683,7 @@ fun PlayerControllerBar(
             Row(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                MaterialTheme(aniDarkColorTheme()) {
+                MaterialTheme(aniColorTheme(isDark = true)) {
                     endActions()
                 }
             }

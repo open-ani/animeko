@@ -32,6 +32,7 @@ import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.theme.AniTheme
+import me.him188.ani.app.ui.foundation.theme.LocalThemeSettings
 import me.him188.ani.utils.platform.isMobile
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -59,24 +60,23 @@ fun AniApp(
 //        }
 //    }
 
+    val focusManager by rememberUpdatedState(LocalFocusManager.current)
+    val keyboard by rememberUpdatedState(LocalSoftwareKeyboardController.current)
+
+    val viewModel = viewModel { AniAppViewModel() }
+
+    // 主题读好再进入 APP, 防止黑白背景闪烁
+    val themeSettings = viewModel.themeSettings ?: return
+
     CompositionLocalProvider(
 //        LocalImageLoader provides imageLoader,
         LocalTimeFormatter provides remember { TimeFormatter() },
+        LocalThemeSettings provides themeSettings,
     ) {
-        val focusManager by rememberUpdatedState(LocalFocusManager.current)
-        val keyboard by rememberUpdatedState(LocalSoftwareKeyboardController.current)
-
-        val viewModel = viewModel { AniAppViewModel() }
-
-        // 主题读好再进入 APP, 防止黑白背景闪烁
-        val themeSettings = viewModel.themeSettings ?: return@CompositionLocalProvider
-
         AniTheme(themeSettings) {
             Box(
-                modifier = modifier
-                    .ifThen(LocalPlatform.current.isMobile()) {
-                        focusable(false)
-                            .clickable(
+                modifier = modifier.ifThen(LocalPlatform.current.isMobile()) {
+                    focusable(false).clickable(
                                 remember { MutableInteractionSource() },
                                 null,
                             ) {

@@ -32,8 +32,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import me.him188.ani.app.ui.foundation.LocalPlatform
-import me.him188.ani.app.ui.foundation.theme.aniDarkColorTheme
-import me.him188.ani.app.ui.foundation.theme.aniLightColorTheme
+import me.him188.ani.app.ui.foundation.theme.aniColorTheme
 import me.him188.ani.app.ui.foundation.theme.slightlyWeaken
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
@@ -50,13 +49,13 @@ fun GestureLock(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-//    val background = aniDarkColorTheme().onSurface
+//    val background = aniColorTheme(isDark = true).onSurface
 //    SmallFloatingActionButton(
 //        onClick = onClick,
 //        modifier = modifier,
 //        containerColor = background,
 //    ) {
-//        CompositionLocalProvider(LocalContentColor provides aniDarkColorTheme().contentColorFor(background)) {
+//        CompositionLocalProvider(LocalContentColor provides aniColorTheme(isDark = true).contentColorFor(background)) {
 //            if (isLocked) {
 //                Icon(Icons.Outlined.LockOpen, contentDescription = "Lock screen")
 //            } else {
@@ -67,12 +66,12 @@ fun GestureLock(
     Surface(
         modifier.testTag(TAG_GESTURE_LOCK),
         shape = RoundedCornerShape(16.dp),
-        color = aniDarkColorTheme().background.copy(0.05f),
-        border = BorderStroke(0.5.dp, aniLightColorTheme().outline.slightlyWeaken()),
+        color = aniColorTheme(isDark = true).background.copy(0.05f),
+        border = BorderStroke(0.5.dp, aniColorTheme(isDark = false).outline.slightlyWeaken()),
     ) {
         IconButton(onClick) {
             val color = if (isLocked) {
-                aniDarkColorTheme().primary
+                aniColorTheme(isDark = true).primary
             } else {
                 Color.White
             }

@@ -120,6 +120,7 @@ fun ProvideCompositionLocalsForPreview(
                     override val lifecycle: Lifecycle get() = TestGlobalLifecycle
                 }
             },
+            // TODO: LocalThemeSettings provides themeSettings,
         ) {
             val navController = rememberNavController()
             SideEffect {
