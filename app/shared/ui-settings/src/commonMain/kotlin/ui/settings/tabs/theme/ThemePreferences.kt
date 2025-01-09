@@ -66,6 +66,8 @@ fun SettingsScope.ThemeGroup(
     val themeSettings by state
 
     Group(title = { Text("主题") }) {
+        // TODO: DarkThemePreference.kt
+        // Use TextButton with Icon. And only show if build sdk_int >= 29
         AnimatedVisibility(
             LocalPlatform.current.isDesktop() || LocalPlatform.current.isAndroid(),
         ) {
@@ -227,7 +229,7 @@ fun ColorButtons(
 fun ColorButtonImpl(
     modifier: Modifier = Modifier,
     isSelected: () -> Boolean = { false },
-    cardColor: Color = MaterialTheme.colorScheme.secondaryContainer,
+    cardColor: Color = MaterialTheme.colorScheme.primaryContainer,
     containerColor: Color = MaterialTheme.colorScheme.primaryContainer,
     onClick: () -> Unit = {},
     baseColor: Color

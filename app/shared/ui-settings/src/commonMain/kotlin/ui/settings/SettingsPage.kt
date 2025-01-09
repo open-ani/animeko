@@ -31,6 +31,7 @@ import androidx.compose.material.icons.rounded.FilterList
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Science
+import androidx.compose.material.icons.rounded.SettingsApplications
 import androidx.compose.material.icons.rounded.SmartDisplay
 import androidx.compose.material.icons.rounded.Storage
 import androidx.compose.material.icons.rounded.Subscriptions
@@ -361,7 +362,7 @@ abstract class SettingsDrawerScope internal constructor() : ColumnScope {
 @Stable
 private fun getIcon(tab: SettingsTab): ImageVector {
     return when (tab) {
-        SettingsTab.APPEARANCE -> Icons.Rounded.Palette
+        SettingsTab.APPEARANCE -> Icons.Rounded.SettingsApplications
         SettingsTab.THEME -> Icons.Rounded.Palette
         SettingsTab.UPDATE -> Icons.Rounded.Update
         SettingsTab.PLAYER -> Icons.Rounded.SmartDisplay
@@ -381,7 +382,7 @@ private fun getIcon(tab: SettingsTab): ImageVector {
 private fun getName(tab: SettingsTab): String {
     return when (tab) {
         SettingsTab.APPEARANCE -> "界面"
-        SettingsTab.THEME -> "主题"
+        SettingsTab.THEME -> "主题与色彩"
         SettingsTab.UPDATE -> "软件更新"
         SettingsTab.PLAYER -> "播放器和弹幕过滤"
         SettingsTab.MEDIA_SOURCE -> "数据源管理"
