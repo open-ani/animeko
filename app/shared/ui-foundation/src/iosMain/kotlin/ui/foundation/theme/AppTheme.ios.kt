@@ -17,14 +17,14 @@ import com.materialkolor.rememberDynamicColorScheme
 
 @Composable
 actual fun AniTheme(
-    seedColor: Color,
+    seedColor: Int,
     darkTheme: Boolean,
     isAmoled: Boolean,
     useDynamicTheme: Boolean,
     content: @Composable () -> Unit
 ) {
     val colorScheme = rememberDynamicColorScheme(
-        primary = seedColor,
+        primary = Color(seedColor),
         isDark = darkTheme,
         isAmoled = isAmoled,
         style = PaletteStyle.TonalSpot,

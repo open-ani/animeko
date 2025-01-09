@@ -40,6 +40,7 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.IntOffset
 import androidx.window.core.layout.WindowSizeClass
+import me.him188.ani.app.data.models.preference.DEFAULT_SEED_COLOR
 import me.him188.ani.app.ui.foundation.animation.EmphasizedAccelerateEasing
 import me.him188.ani.app.ui.foundation.animation.EmphasizedDecelerateEasing
 import me.him188.ani.app.ui.foundation.animation.StandardAccelerate
@@ -48,11 +49,9 @@ import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.isCompact
 import kotlin.math.roundToInt
 
-val DefaultSeedColor = Color(0xFF68A500)
-
 @Composable
 expect fun AniTheme(
-    seedColor: Color = DefaultSeedColor,
+    seedColor: Int = DEFAULT_SEED_COLOR,
     darkTheme: Boolean = isSystemInDarkTheme(),
     isAmoled: Boolean = false,
     useDynamicTheme: Boolean,
