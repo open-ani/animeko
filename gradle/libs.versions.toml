@@ -64,7 +64,7 @@ vlcj = "4.8.2"
 
 jsystemthemedetector = "3.8"
 
-materialKolor = "2.0.0"
+materialkolor = "2.0.0"
 
 [libraries]
 # Build
@@ -256,4 +256,4 @@ aws-secretsmanager = { module = "software.amazon.awssdk:secretsmanager", version
 
 jsystemthemedetector = { module = "org.openani.jsystemthemedetector:jSystemThemeDetector", version.ref = "jsystemthemedetector" }
 turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
-materialKolor = "com.materialkolor:material-kolor:2.0.0"
+materialkolor = { module = "com.materialkolor:material-kolor", version.ref = "materialkolor" }
