@@ -26,7 +26,7 @@ import me.him188.ani.app.platform.findActivity
 
 @Composable
 actual fun AniTheme(
-    seedColor: Color,
+    seedColor: Int,
     darkTheme: Boolean,
     isAmoled: Boolean,
     useDynamicTheme: Boolean,
@@ -65,7 +65,7 @@ actual fun AniTheme(
         }
     } else {
         rememberDynamicColorScheme(
-            primary = seedColor,
+            primary = Color(seedColor),
             isDark = darkTheme,
             isAmoled = isAmoled,
             style = PaletteStyle.TonalSpot,

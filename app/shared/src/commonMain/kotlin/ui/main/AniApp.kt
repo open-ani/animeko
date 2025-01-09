@@ -34,7 +34,6 @@ import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.theme.AniTheme
-import me.him188.ani.app.ui.foundation.theme.DefaultSeedColor
 import me.him188.ani.utils.platform.isMobile
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -75,7 +74,7 @@ fun AniApp(
         val theme = viewModel.themeSettings ?: return@CompositionLocalProvider
 
         AniTheme(
-            seedColor = theme.seedColor ?: DefaultSeedColor,
+            seedColor = theme.seedColor,
             darkTheme = when (theme.darkMode) {
                 DarkMode.LIGHT -> false
                 DarkMode.DARK -> true
@@ -83,7 +82,7 @@ fun AniApp(
                 else -> isSystemInDarkTheme()
             },
             isAmoled = theme.isAmoled,
-            useDynamicTheme = theme.dynamicTheme,
+            useDynamicTheme = theme.useDynamicTheme,
         ) {
             Box(
                 modifier = modifier
