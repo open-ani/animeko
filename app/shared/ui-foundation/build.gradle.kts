@@ -54,7 +54,7 @@ kotlin {
         
         api(libs.koin.core)
 
-        implementation(libs.materialKolor)
+        implementation(libs.materialkolor)
     }
     sourceSets.commonTest.dependencies {
         api(projects.utils.uiTesting)

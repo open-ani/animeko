@@ -13,6 +13,9 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowOutward
+import androidx.compose.material.icons.rounded.DarkMode
+import androidx.compose.material.icons.rounded.HdrAuto
+import androidx.compose.material.icons.rounded.LightMode
 import androidx.compose.material.icons.rounded.RocketLaunch
 import androidx.compose.material.icons.rounded.Science
 import androidx.compose.material.icons.rounded.Verified
@@ -24,11 +27,12 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.materialkolor.hct.Hct
 import kotlinx.coroutines.CoroutineScope
 import me.him188.ani.app.data.models.danmaku.DanmakuFilterConfig
 import me.him188.ani.app.data.models.preference.DarkMode
@@ -67,7 +71,6 @@ import me.him188.ani.utils.platform.isDesktop
 import me.him188.ani.utils.platform.isIos
 import me.him188.ani.utils.platform.isMobile
 import kotlin.coroutines.cancellation.CancellationException
-
 
 sealed class CheckVersionResult {
     data class HasNewVersion(
@@ -202,20 +205,47 @@ fun SettingsScope.ThemeGroup(
     val themeSettings by state
 
     Group(title = { Text("主题") }) {
-        val isDarkMode by rememberUpdatedState(themeSettings.darkMode == DarkMode.DARK)
-
         // TODO: DarkMode Selection
+        // Switch, TextButton with Icon, DarkThemePreferences.kt
+        AnimatedVisibility(
+            LocalPlatform.current.isDesktop() || LocalPlatform.current.isAndroid(),
+        ) {
+            DropdownItem(
+                selected = { themeSettings.darkMode },
+                values = { DarkMode.entries },
+                itemText = {
+                    when (it) {
+                        DarkMode.AUTO -> Text("自动")
+                        DarkMode.LIGHT -> Text("浅色")
+                        DarkMode.DARK -> Text("深色")
+                    }
+                },
+                onSelect = {
+                    state.update(themeSettings.copy(darkMode = it))
+                },
+                itemIcon = {
+                    when (it) {
+                        DarkMode.AUTO -> Icon(Icons.Rounded.HdrAuto, null)
+                        DarkMode.LIGHT -> Icon(Icons.Rounded.LightMode, null)
+                        DarkMode.DARK -> Icon(Icons.Rounded.DarkMode, null)
+                    }
+                },
+                description = {
+                    when (themeSettings.darkMode) {
+                        DarkMode.AUTO -> Text("根据系统设置自动切换")
+                        else -> {}
+                    }
+                },
+                title = { Text("深色模式") },
+            )
+        }
 
         // TODO: && Build.VERSION.SDK_INT >= 31
         if (LocalPlatform.current.isAndroid()) {
             SwitchItem(
                 checked = themeSettings.dynamicTheme,
                 onCheckedChange = { checked ->
-                    state.update(
-                        themeSettings.copy(
-                            dynamicTheme = checked,
-                        ),
-                    )
+                    state.update(themeSettings.copy(dynamicTheme = checked))
                 },
                 title = { Text("动态色彩") },
                 description = { Text("将壁纸主题色应用于应用主题") },
@@ -225,16 +255,19 @@ fun SettingsScope.ThemeGroup(
         SwitchItem(
             checked = themeSettings.isAmoled,
             onCheckedChange = { checked ->
-                state.update(
-                    themeSettings.copy(
-                        isAmoled = checked,
-                    ),
-                )
+                state.update(themeSettings.copy(isAmoled = checked))
             },
             title = { Text("AMOLED") },
             description = { Text("在深色模式下使用纯黑背景") },
             // icon = 
         )
+    }
+
+    val ColorList =
+        ((4..10) + (1..3)).map { it * 35.0 }.map { Color(Hct.from(it, 40.0, 40.0).toInt()) }
+
+    Group(title = { Text("调色板") }) {
+        // TODO
     }
 }
 
