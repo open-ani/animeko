@@ -12,7 +12,6 @@ package me.him188.ani.app.ui.main
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
@@ -25,7 +24,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.lifecycle.viewmodel.compose.viewModel
-import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.tools.LocalTimeFormatter
@@ -71,19 +69,9 @@ fun AniApp(
         val viewModel = viewModel { AniAppViewModel() }
 
         // 主题读好再进入 APP, 防止黑白背景闪烁
-        val theme = viewModel.themeSettings ?: return@CompositionLocalProvider
+        val themeSettings = viewModel.themeSettings ?: return@CompositionLocalProvider
 
-        AniTheme(
-            seedColor = theme.seedColor,
-            darkTheme = when (theme.darkMode) {
-                DarkMode.LIGHT -> false
-                DarkMode.DARK -> true
-                DarkMode.AUTO -> isSystemInDarkTheme()
-                else -> isSystemInDarkTheme()
-            },
-            isAmoled = theme.isAmoled,
-            useDynamicTheme = theme.useDynamicTheme,
-        ) {
+        AniTheme(themeSettings) {
             Box(
                 modifier = modifier
                     .ifThen(LocalPlatform.current.isMobile()) {
