@@ -11,20 +11,15 @@ package me.him188.ani.app.ui.settings.tabs.theme
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -44,7 +39,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
 import com.materialkolor.hct.Hct
 import com.materialkolor.ktx.toHct
@@ -57,7 +51,6 @@ import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.SwitchItem
 import me.him188.ani.utils.platform.isAndroid
 import me.him188.ani.utils.platform.isDesktop
-import me.him188.ani.utils.platform.isMobile
 
 private val colorList =
     ((4..10) + (1..3))
@@ -128,72 +121,17 @@ fun SettingsScope.ThemeGroup(
     }
 
     Group(title = { Text("调色板") }) {
-        if (LocalPlatform.current.isMobile()) {
-            val colors = colorList.chunked(4)
-            val pageCount = colors.size
-
-            val pagerState = rememberPagerState(
-                initialPage = colors.indexOfFirst { chunk ->
-                    chunk.any { it.toArgb() == themeSettings.seedColor }
-                }.let { if (it == -1) 0 else it },
-            ) {
-                pageCount
-            }
-
-            HorizontalPager(
-                modifier = Modifier.fillMaxWidth().clearAndSetSemantics {},
-                state = pagerState,
-                contentPadding = PaddingValues(horizontal = 12.dp),
-            ) { page ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
-                ) {
-                    colors[page].forEach { color ->
-                        ColorButton(
-                            color = color,
-                            themeSettings = themeSettings,
-                            state = state,
-                        )
-                    }
-                }
-            }
-
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.CenterHorizontally)
-                    .padding(vertical = 12.dp)
-                    .clearAndSetSemantics {},
-                horizontalArrangement = Arrangement.Center,
-            ) {
-                repeat(pageCount) { iteration ->
-                    val color = if (pagerState.currentPage == iteration)
-                        MaterialTheme.colorScheme.primary
-                    else
-                        MaterialTheme.colorScheme.outlineVariant
-                    Box(
-                        modifier = Modifier
-                            .padding(2.dp)
-                            .size(6.dp)
-                            .clip(CircleShape)
-                            .background(color),
-                    )
-                }
-            }
-        } else {
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                // maxItemsInEachRow = 4
-            ) {
-                colorList.forEach { color ->
-                    ColorButton(
-                        color = color,
-                        themeSettings = themeSettings,
-                        state = state,
-                    )
-                }
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            // maxItemsInEachRow = 4
+        ) {
+            colorList.forEach { color ->
+                ColorButton(
+                    color = color,
+                    themeSettings = themeSettings,
+                    state = state,
+                )
             }
         }
     }
