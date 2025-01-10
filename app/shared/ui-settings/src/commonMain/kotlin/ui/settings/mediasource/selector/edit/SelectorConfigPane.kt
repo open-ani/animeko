@@ -320,7 +320,7 @@ internal fun SelectorConfigurationPane(
                     Modifier.focusable(false).clickable(
                         enabled = state.enableEdit,
                     ) { state.filterBySubjectName = !state.filterBySubjectName },
-                    supportingContent = { Text("要求资源标题包含条目名称。适用于数据源可能搜到无关内容的情况。通常建议开启") },
+                    supportingContent = { Text("要求资源标题包含条目名称。适用于数据源可能搜到无关内容的情况。此功能只对 4.4.0 以前版本有效，对其他版本无效") },
                     trailingContent = {
                         Switch(
                             state.filterBySubjectName, { state.filterBySubjectName = it },
