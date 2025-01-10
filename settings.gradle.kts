@@ -36,7 +36,7 @@ dependencyResolutionManagement {
     }
     versionCatalogs {
         create("anitorrentLibs") {
-            from("org.openani.anitorrent:catalog:0.1.0")
+            from("org.openani.anitorrent:catalog:0.1.1")
         }
 
         create("mediampLibs") {
