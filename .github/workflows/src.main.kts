@@ -24,7 +24,7 @@
 @file:DependsOn("org.jetbrains:annotations:23.0.0")
 @file:DependsOn("actions:github-script:v7")
 @file:DependsOn("gradle:actions__setup-gradle:v3")
-@file:DependsOn("nick-fields:retry:v2")
+@file:DependsOn("nick-fields:retry:v3")
 @file:DependsOn("timheuer:base64-to-file:v1.1")
 @file:DependsOn("actions:upload-artifact:v4")
 @file:DependsOn("actions:download-artifact:v4")
