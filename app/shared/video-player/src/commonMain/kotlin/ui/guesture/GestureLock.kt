@@ -32,7 +32,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import me.him188.ani.app.ui.foundation.LocalPlatform
-import me.him188.ani.app.ui.foundation.theme.aniColorTheme
+import me.him188.ani.app.ui.foundation.theme.appColorScheme
 import me.him188.ani.app.ui.foundation.theme.slightlyWeaken
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
@@ -66,12 +66,12 @@ fun GestureLock(
     Surface(
         modifier.testTag(TAG_GESTURE_LOCK),
         shape = RoundedCornerShape(16.dp),
-        color = aniColorTheme(isDark = true).background.copy(0.05f),
-        border = BorderStroke(0.5.dp, aniColorTheme(isDark = false).outline.slightlyWeaken()),
+        color = appColorScheme(isDark = true).background.copy(0.05f),
+        border = BorderStroke(0.5.dp, appColorScheme(isDark = false).outline.slightlyWeaken()),
     ) {
         IconButton(onClick) {
             val color = if (isLocked) {
-                aniColorTheme(isDark = true).primary
+                appColorScheme(isDark = true).primary
             } else {
                 Color.White
             }

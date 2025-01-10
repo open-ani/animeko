@@ -16,7 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import me.him188.ani.app.ui.foundation.theme.aniColorTheme
+import me.him188.ani.app.ui.foundation.theme.appColorScheme
 import me.him188.ani.app.ui.foundation.theme.slightlyWeaken
 
 @Composable
@@ -27,9 +27,9 @@ fun PlayerFloatingButtonBox(
     Surface(
         modifier,
         shape = RoundedCornerShape(16.dp),
-        color = aniColorTheme(isDark = true).background.copy(0.05f),
+        color = appColorScheme(isDark = true).background.copy(0.05f),
         contentColor = Color.White,
-        border = BorderStroke(0.5.dp, aniColorTheme(isDark = false).outline.slightlyWeaken()),
+        border = BorderStroke(0.5.dp, appColorScheme(isDark = false).outline.slightlyWeaken()),
     ) {
         content()
     }

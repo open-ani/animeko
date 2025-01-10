@@ -25,15 +25,16 @@ import androidx.compose.ui.platform.LocalContext
 import com.materialkolor.PaletteStyle
 import com.materialkolor.rememberDynamicColorScheme
 import me.him188.ani.app.data.models.preference.DarkMode
-import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.platform.findActivity
 
 @Composable
-actual fun aniColorTheme(
-    themeSettings: ThemeSettings,
-    isDark: Boolean
+actual fun appColorScheme(
+    seedColor: Int,
+    useDynamicTheme: Boolean,
+    isAmoled: Boolean,
+    isDark: Boolean,
 ): ColorScheme {
-    return if (themeSettings.useDynamicTheme && Build.VERSION.SDK_INT >= 31) {
+    return if (useDynamicTheme && Build.VERSION.SDK_INT >= 31) {
         if (isDark) {
             dynamicDarkColorScheme(LocalContext.current)
         } else {
@@ -41,9 +42,9 @@ actual fun aniColorTheme(
         }
     } else {
         rememberDynamicColorScheme(
-            primary = Color(themeSettings.seedColor),
+            primary = Color(seedColor),
             isDark = isDark,
-            isAmoled = themeSettings.isAmoled,
+            isAmoled = isAmoled,
             style = PaletteStyle.TonalSpot,
         )
     }
@@ -51,10 +52,9 @@ actual fun aniColorTheme(
 
 @Composable
 actual fun AniTheme(
-    themeSettings: ThemeSettings,
     content: @Composable () -> Unit
 ) {
-    val isDark = when (themeSettings.darkMode) {
+    val isDark = when (LocalThemeSettings.current.darkMode) {
         DarkMode.LIGHT -> false
         DarkMode.DARK -> true
         DarkMode.AUTO -> isSystemInDarkTheme()
@@ -86,7 +86,7 @@ actual fun AniTheme(
     }
 
     MaterialTheme(
-        colorScheme = aniColorTheme(themeSettings, isDark),
+        colorScheme = appColorScheme(),
         content = content,
     )
 }

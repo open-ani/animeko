@@ -41,7 +41,7 @@ import me.him188.ani.app.ui.danmaku.PlayerDanmakuEditor
 import me.him188.ani.app.ui.doesNotExist
 import me.him188.ani.app.ui.exists
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
-import me.him188.ani.app.ui.foundation.theme.aniDarkColorTheme
+import me.him188.ani.app.ui.foundation.theme.appColorScheme
 import me.him188.ani.app.ui.framework.AniComposeUiTest
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import me.him188.ani.app.ui.settings.danmaku.createTestDanmakuRegexFilterState
@@ -148,7 +148,7 @@ class EpisodeVideoControllerTest {
 
     @Composable
     private fun Player(gestureFamily: GestureFamily, playerControllerState: PlayerControllerState = controllerState) {
-        ProvideCompositionLocalsForPreview(colorScheme = aniDarkColorTheme()) {
+        ProvideCompositionLocalsForPreview(colorScheme = appColorScheme(isDark = true)) {
             val scope = rememberCoroutineScope()
             val playerState = remember {
                 DummyMediampPlayer(scope.coroutineContext)
