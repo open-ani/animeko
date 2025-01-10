@@ -15,9 +15,10 @@ import io.ktor.client.plugins.plugin
 import io.ktor.http.HttpStatusCode
 import io.ktor.util.reflect.typeInfo
 import kotlinx.coroutines.CoroutineName
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.runApiRequest
+import me.him188.ani.app.domain.settings.ProxyProvider
+import me.him188.ani.app.domain.settings.collectProxyTo
 import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.platform.getAniUserAgent
 import me.him188.ani.client.apis.BangumiOAuthAniApi
@@ -27,17 +28,14 @@ import me.him188.ani.client.apis.TrendsAniApi
 import me.him188.ani.client.models.AniBangumiUserToken
 import me.him188.ani.client.models.AniRefreshBangumiTokenRequest
 import me.him188.ani.utils.coroutines.childScope
-import me.him188.ani.utils.ktor.ClientProxyConfig
 import me.him188.ani.utils.ktor.createDefaultHttpClient
 import me.him188.ani.utils.ktor.registerLogging
-import me.him188.ani.utils.ktor.setProxy
 import me.him188.ani.utils.ktor.userAgent
-import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import kotlin.coroutines.CoroutineContext
 
 class AniAuthClient(
-    private val proxy: Flow<ClientProxyConfig?>,
+    private val proxyProvider: ProxyProvider,
     parentCoroutineContext: CoroutineContext,
 ) : AutoCloseable {
     private val scope = parentCoroutineContext.childScope(CoroutineName("AniAuthClient"))
@@ -55,14 +53,9 @@ class AniAuthClient(
                 originalCall
             }
         }
-    }
 
-    init {
         scope.launch {
-            proxy.collect {
-                logger.info { "AniAuthClient using new proxy config: $it" }
-                httpClient.engineConfig.setProxy(it)
-            }
+            proxyProvider.collectProxyTo(this@apply)
         }
     }
 

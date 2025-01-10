@@ -14,6 +14,7 @@ import androidx.compose.runtime.getValue
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.get
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import me.him188.ani.app.data.models.danmaku.DanmakuFilterConfig
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
 import me.him188.ani.app.data.models.preference.DanmakuSettings
@@ -35,6 +36,7 @@ import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceCodecManager
 import me.him188.ani.app.domain.mediasource.codec.serializeSubscriptionToString
 import me.him188.ani.app.domain.mediasource.subscription.MediaSourceSubscriptionUpdater
+import me.him188.ani.app.domain.settings.ProxyProvider
 import me.him188.ani.app.platform.PermissionManager
 import me.him188.ani.app.ui.foundation.launchInBackground
 import me.him188.ani.app.ui.settings.danmaku.DanmakuRegexFilterState
@@ -50,6 +52,7 @@ import me.him188.ani.app.ui.settings.tabs.media.source.EditMediaSourceState
 import me.him188.ani.app.ui.settings.tabs.media.source.MediaSourceGroupState
 import me.him188.ani.app.ui.settings.tabs.media.source.MediaSourceLoader
 import me.him188.ani.app.ui.settings.tabs.media.source.MediaSourceSubscriptionGroupState
+import me.him188.ani.app.ui.settings.tabs.network.SystemProxyPresentation
 import me.him188.ani.datasources.api.source.ConnectionStatus
 import me.him188.ani.datasources.api.source.asAutoCloseable
 import me.him188.ani.datasources.bangumi.BangumiClient
@@ -68,6 +71,7 @@ class SettingsViewModel : AbstractSettingsViewModel(), KoinComponent {
     private val mediaSourceSubscriptionRepository: MediaSourceSubscriptionRepository by inject()
     private val mediaSourceSubscriptionUpdater: MediaSourceSubscriptionUpdater by inject()
     private val mediaSourceCodecManager: MediaSourceCodecManager by inject()
+    private val proxyProvider: ProxyProvider by inject()
 
     val softwareUpdateGroupState: SoftwareUpdateGroupState = SoftwareUpdateGroupState(
         updateSettings = settingsRepository.updateSettings.stateInBackground(UpdateSettings.Default.copy(_placeholder = -1)),
@@ -121,6 +125,15 @@ class SettingsViewModel : AbstractSettingsViewModel(), KoinComponent {
 
     val proxySettingsState =
         settingsRepository.proxySettings.stateInBackground(ProxySettings.Default.copy(_placeHolder = -1))
+
+    val detectedProxy = proxyProvider.proxy
+        .map {
+            if (it == null) SystemProxyPresentation.NotDetected else SystemProxyPresentation.Detected(it)
+        }
+        .onStart {
+            emit(SystemProxyPresentation.Detecting)
+        }
+        .shareInBackground()
 
     val danmakuSettingsState =
         settingsRepository.danmakuSettings.stateInBackground(placeholder = DanmakuSettings(_placeholder = -1))

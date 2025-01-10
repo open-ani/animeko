@@ -15,7 +15,6 @@ import com.sun.jna.Pointer
 import com.sun.jna.Structure
 import com.sun.jna.win32.W32APIOptions
 import io.ktor.http.Url
-import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 
@@ -30,26 +29,19 @@ class WindowsSystemProxyDetector : DesktopSystemProxyDetector() {
         }
 
     override fun detect(): SystemProxyInfo? {
-        return kotlin.runCatching {
-            val proxyConfig = getWindowsProxySettings()
-                ?: return null
-            val url = pointerToString(proxyConfig.lpszProxy) ?: return null
-            if (url.contains("://")) {
-                Url(url)
-            } else {
-                @Suppress("HttpUrlsUsage")
-                Url("http://$url")
-            }
-        }.fold(
-            onSuccess = { url ->
-                logger.info { "Detected system proxy: $url" }
-                SystemProxyInfo(url)
-            },
-            onFailure = {
-                logger.error(it) { "Failed to detect proxy" }
-                null
-            },
-        )
+        val proxyConfig = getWindowsProxySettings()
+            ?: return null
+        val urlString = pointerToString(proxyConfig.lpszProxy) ?: return null
+
+        val url = if (urlString.contains("://")) {
+            Url(urlString)
+        } else {
+            @Suppress("HttpUrlsUsage")
+            Url("http://$urlString")
+        }
+
+        logger.info { "Detected system proxy: $urlString" }
+        return SystemProxyInfo(url)
     }
 
 

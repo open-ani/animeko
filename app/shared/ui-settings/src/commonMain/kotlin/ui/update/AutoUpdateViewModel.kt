@@ -20,13 +20,12 @@ import androidx.compose.ui.platform.UriHandler
 import io.ktor.client.plugins.HttpTimeout
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import kotlinx.io.IOException
 import me.him188.ani.app.data.repository.user.SettingsRepository
-import me.him188.ani.app.domain.media.fetch.toClientProxyConfig
+import me.him188.ani.app.domain.settings.ProxyProvider
+import me.him188.ani.app.domain.settings.collectProxyTo
 import me.him188.ani.app.domain.update.UpdateManager
 import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.platform.getAniUserAgent
@@ -40,7 +39,6 @@ import me.him188.ani.utils.io.exists
 import me.him188.ani.utils.io.inSystem
 import me.him188.ani.utils.io.list
 import me.him188.ani.utils.ktor.createDefaultHttpClient
-import me.him188.ani.utils.ktor.setProxy
 import me.him188.ani.utils.ktor.userAgent
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.warn
@@ -55,6 +53,7 @@ import kotlin.coroutines.cancellation.CancellationException
  */
 @Stable
 class AutoUpdateViewModel : AbstractViewModel(), KoinComponent {
+    private val proxyProvider: ProxyProvider by inject()
     private val settingsRepository: SettingsRepository by inject()
     private val updateSettings = settingsRepository.updateSettings.flow
     private val updateManager: UpdateManager by inject()
@@ -70,9 +69,7 @@ class AutoUpdateViewModel : AbstractViewModel(), KoinComponent {
             followRedirects = true
         }.apply {
             launchInBackground {
-                settingsRepository.proxySettings.flow.map { it.default }.distinctUntilChanged().collect {
-                    engine.config.setProxy(it.toClientProxyConfig())
-                }
+                proxyProvider.collectProxyTo(this@apply)
             }
         }
     }

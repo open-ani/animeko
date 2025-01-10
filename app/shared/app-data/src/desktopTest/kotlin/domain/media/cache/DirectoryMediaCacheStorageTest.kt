@@ -23,7 +23,6 @@ import kotlinx.serialization.json.JsonObjectBuilder
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
-import me.him188.ani.app.data.models.preference.ProxySettings
 import me.him188.ani.app.domain.media.cache.engine.TorrentMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.storage.DirectoryMediaCacheStorage
 import me.him188.ani.app.domain.media.createTestDefaultMedia
@@ -90,7 +89,7 @@ class DirectoryMediaCacheStorageTest {
             CACHE_MEDIA_SOURCE_ID,
             AnitorrentEngine(
                 config = flowOf(AnitorrentConfig()),
-                proxySettings = flowOf(ProxySettings.Disabled),
+                proxyConfig = flowOf(null),
                 peerFilterSettings = flowOf(PeerFilterSettings.Empty),
                 saveDir = dir.toKtPath().inSystem,
                 parentCoroutineContext = coroutineContext,

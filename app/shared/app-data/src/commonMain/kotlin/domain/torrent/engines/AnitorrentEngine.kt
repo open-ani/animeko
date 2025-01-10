@@ -16,10 +16,9 @@ import io.ktor.client.statement.readBytes
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
-import me.him188.ani.app.data.models.preference.MediaSourceProxySettings
-import me.him188.ani.app.data.models.preference.ProxySettings
+import me.him188.ani.app.data.models.preference.ProxyConfig
 import me.him188.ani.app.domain.media.fetch.toClientProxyConfig
 import me.him188.ani.app.domain.torrent.AbstractTorrentEngine
 import me.him188.ani.app.domain.torrent.TorrentEngineType
@@ -37,14 +36,14 @@ import me.him188.ani.datasources.api.source.MediaSourceLocation
 import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.ktor.createDefaultHttpClient
-import me.him188.ani.utils.ktor.proxy
+import me.him188.ani.utils.ktor.setProxy
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import kotlin.coroutines.CoroutineContext
 
 class AnitorrentEngine(
     config: Flow<AnitorrentConfig>,
-    proxySettings: Flow<ProxySettings>,
+    proxyConfig: Flow<ProxyConfig?>,
     peerFilterSettings: Flow<PeerFilterSettings>,
     private val saveDir: SystemPath,
     parentCoroutineContext: CoroutineContext,
@@ -52,9 +51,9 @@ class AnitorrentEngine(
 ) : AbstractTorrentEngine<AnitorrentTorrentDownloader<*, *>, AnitorrentConfig>(
     type = TorrentEngineType.Anitorrent,
     config = config,
-    parentCoroutineContext = parentCoroutineContext,
-    proxySettings = proxySettings.map { it.default },
+    proxyConfig,
     peerFilterSettings = peerFilterSettings,
+    parentCoroutineContext = parentCoroutineContext,
 ) {
     override val location: MediaSourceLocation get() = MediaSourceLocation.Local
     override val isSupported: Flow<Boolean>
@@ -77,19 +76,24 @@ class AnitorrentEngine(
 
     override suspend fun testConnection(): Boolean = isSupported.first()
 
-    private fun createTorrentFileDownloader(proxySettings: MediaSourceProxySettings): HttpFileDownloader {
+    private fun createTorrentFileDownloader(proxyProvider: Flow<ProxyConfig?>): HttpFileDownloader {
         return createDefaultHttpClient {
             install(UserAgent) {
                 agent = getAniUserAgent()
             }
-            proxy(proxySettings.toClientProxyConfig())
             expectSuccess = true
+        }.apply {
+            scope.launch(coroutineContext) {
+                proxyProvider.collect {
+                    this@apply.engineConfig.setProxy(it?.toClientProxyConfig())
+                }
+            }
         }.asHttpFileDownloader()
     }
 
     override suspend fun newInstance(
         config: AnitorrentConfig,
-        proxySettings: MediaSourceProxySettings
+        proxyProvider: Flow<ProxyConfig?>
     ): AnitorrentTorrentDownloader<*, *> {
         if (!isSupported.first()) {
             logger.error { "Anitorrent is disabled because it is not built. Read `/torrent/anitorrent/README.md` for more information." }
@@ -97,7 +101,7 @@ class AnitorrentEngine(
         }
         return anitorrentFactory.createDownloader(
             rootDataDirectory = saveDir,
-            createTorrentFileDownloader(proxySettings),
+            createTorrentFileDownloader(proxyProvider),
             config.toTorrentDownloaderConfig(),
             parentCoroutineContext = scope.coroutineContext,
         ) as AnitorrentTorrentDownloader<*, *>

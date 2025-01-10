@@ -22,9 +22,10 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.builtins.nullable
 import kotlinx.serialization.json.Json
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
-import me.him188.ani.app.data.models.preference.ProxySettings
+import me.him188.ani.app.data.models.preference.ProxyConfig
 import me.him188.ani.app.domain.torrent.IRemoteAniTorrentEngine
 import me.him188.ani.app.domain.torrent.IRemoteTorrentDownloader
 import me.him188.ani.app.domain.torrent.client.DefaultConnectivityAware
@@ -33,7 +34,7 @@ import me.him188.ani.app.domain.torrent.collector.IProxySettingsCollector
 import me.him188.ani.app.domain.torrent.collector.ITorrentPeerConfigCollector
 import me.him188.ani.app.domain.torrent.engines.AnitorrentEngine
 import me.him188.ani.app.domain.torrent.parcel.PAnitorrentConfig
-import me.him188.ani.app.domain.torrent.parcel.PProxySettings
+import me.him188.ani.app.domain.torrent.parcel.PProxyConfig
 import me.him188.ani.app.domain.torrent.parcel.PTorrentPeerFilterSettings
 import me.him188.ani.app.domain.torrent.peer.PeerFilterSettings
 import me.him188.ani.app.torrent.api.TorrentDownloader
@@ -44,7 +45,7 @@ import kotlin.coroutines.CoroutineContext
 
 class TorrentEngineProxy(
     private val saveDirDeferred: CompletableDeferred<String>,
-    private val proxySettings: MutableSharedFlow<ProxySettings>,
+    private val proxyConfig: MutableSharedFlow<ProxyConfig?>,
     private val peerFilterSettings: MutableSharedFlow<PeerFilterSettings>,
     private val anitorrentConfig: MutableSharedFlow<AnitorrentConfig>,
     private val anitorrent: CompletableDeferred<AnitorrentEngine>,
@@ -87,10 +88,10 @@ class TorrentEngineProxy(
 
     override fun getProxySettingsCollector(): IProxySettingsCollector {
         return object : IProxySettingsCollector.Stub() {
-            override fun collect(config: PProxySettings?) {
-                logger.info { "received client ProxySettings: $config" }
-                if (config != null) proxySettings.tryEmit(
-                    json.decodeFromString(ProxySettings.serializer(), config.serializedJson),
+            override fun collect(config: PProxyConfig?) {
+                logger.info { "received client ProxyConfig: $config" }
+                if (config != null) proxyConfig.tryEmit(
+                    json.decodeFromString(ProxyConfig.serializer().nullable, config.serializedJson),
                 )
             }
         }

@@ -22,10 +22,10 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
 import me.him188.ani.app.data.models.preference.ProxyConfig
 import me.him188.ani.app.data.models.preference.VideoResolverSettings
-import me.him188.ani.app.data.models.preference.configIfEnabledOrNull
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.media.player.data.MediaDataProvider
 import me.him188.ani.app.domain.media.resolver.WebViewVideoExtractor.Instruction
+import me.him188.ani.app.domain.settings.ProxyProvider
 import me.him188.ani.app.platform.AniCefApp
 import me.him188.ani.app.platform.Context
 import me.him188.ani.app.platform.DesktopContext
@@ -69,6 +69,7 @@ class DesktopWebMediaResolver(
         java.util.ServiceLoader.load(WebVideoMatcher::class.java).filterNotNull()
     }
     private val settings: SettingsRepository by inject()
+    private val proxyProvider: ProxyProvider by inject()
 
     override suspend fun supports(media: Media): Boolean = media.download is ResourceLocation.WebVideo
 
@@ -76,7 +77,6 @@ class DesktopWebMediaResolver(
         return withContext(Dispatchers.Default) {
             if (!supports(media)) throw UnsupportedMediaException(media)
 
-            val config = settings.proxySettings.flow.first().default
             val resolverSettings = settings.videoResolverSettings.flow.first()
             val matchersFromMediaSource = matcherLoader.loadMatchers(media.mediaSourceId)
             val allMatchers = matchersFromMediaSource + matchersFromClasspath
@@ -97,7 +97,7 @@ class DesktopWebMediaResolver(
                     .firstOrNull { it !is WebVideoMatcher.MatchResult.Continue }
             }
 
-            val webVideo = CefVideoExtractor(config.configIfEnabledOrNull, resolverSettings)
+            val webVideo = CefVideoExtractor(proxyProvider.proxy.first(), resolverSettings)
                 .getVideoResourceUrl(
                     this@DesktopWebMediaResolver.context,
                     media.download.uri,

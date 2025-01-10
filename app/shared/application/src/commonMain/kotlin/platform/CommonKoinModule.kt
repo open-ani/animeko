@@ -16,14 +16,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import me.him188.ani.app.data.models.preference.configIfEnabledOrNull
 import me.him188.ani.app.data.network.AniSubjectRelationIndexService
 import me.him188.ani.app.data.network.AnimeScheduleService
 import me.him188.ani.app.data.network.BangumiBangumiCommentServiceImpl
@@ -87,7 +85,6 @@ import me.him188.ani.app.domain.media.cache.engine.TorrentMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.storage.DirectoryMediaCacheStorage
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.fetch.MediaSourceManagerImpl
-import me.him188.ani.app.domain.media.fetch.toClientProxyConfig
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceCodecManager
 import me.him188.ani.app.domain.mediasource.subscription.MediaSourceSubscriptionRequesterImpl
 import me.him188.ani.app.domain.mediasource.subscription.MediaSourceSubscriptionUpdater
@@ -98,21 +95,21 @@ import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.session.SessionStatus
 import me.him188.ani.app.domain.session.finalState
 import me.him188.ani.app.domain.session.unverifiedAccessToken
+import me.him188.ani.app.domain.settings.ProxyProvider
+import me.him188.ani.app.domain.settings.SettingsBasedProxyProvider
+import me.him188.ani.app.domain.settings.collectProxyTo
 import me.him188.ani.app.domain.torrent.TorrentManager
 import me.him188.ani.app.domain.update.UpdateManager
 import me.him188.ani.app.domain.usecase.useCaseModules
 import me.him188.ani.app.ui.subject.details.state.DefaultSubjectDetailsStateFactory
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateFactory
 import me.him188.ani.datasources.bangumi.BangumiClient
-import me.him188.ani.datasources.bangumi.DelegateBangumiClient
 import me.him188.ani.datasources.bangumi.createBangumiClient
 import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.coroutines.childScopeContext
-import me.him188.ani.utils.coroutines.onReplacement
 import me.him188.ani.utils.io.resolve
 import me.him188.ani.utils.ktor.createDefaultHttpClient
-import me.him188.ani.utils.ktor.proxy
 import me.him188.ani.utils.ktor.registerLogging
 import me.him188.ani.utils.ktor.userAgent
 import me.him188.ani.utils.logging.logger
@@ -132,12 +129,10 @@ fun KoinApplication.getCommonKoinModule(getContext: () -> Context, coroutineScop
 
 private fun KoinApplication.otherModules(getContext: () -> Context, coroutineScope: CoroutineScope) = module {
     // Repositories
+    single<ProxyProvider> { SettingsBasedProxyProvider(koin, coroutineScope) }
     single<AniAuthClient> {
-        val settings = get<SettingsRepository>()
         AniAuthClient(
-            settings.proxySettings.flow.map { it.default }.map { proxySettings ->
-                proxySettings.toClientProxyConfig()
-            },
+            get<ProxyProvider>(),
             parentCoroutineContext = coroutineScope.coroutineContext,
         )
     }
@@ -145,21 +140,18 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
     single<EpisodePreferencesRepository> { EpisodePreferencesRepositoryImpl(getContext().dataStores.preferredAllianceStore) }
     single<SessionManager> { BangumiSessionManager(koin, coroutineScope.coroutineContext) }
     single<BangumiClient> {
-        val settings = get<SettingsRepository>()
+        val proxyProvider = get<ProxyProvider>()
         val sessionManager by inject<SessionManager>()
-        DelegateBangumiClient(
-            settings.proxySettings.flow.map { it.default }.map { proxySettings ->
-                createBangumiClient(
-                    @OptIn(OpaqueSession::class)
-                    sessionManager.unverifiedAccessToken,
-                    proxySettings.toClientProxyConfig(),
-                    coroutineScope.coroutineContext,
-                    userAgent = getAniUserAgent(currentAniBuildConfig.versionName),
-                )
-            }.onReplacement {
-                it.close()
-            }.shareIn(coroutineScope, started = SharingStarted.Lazily, replay = 1),
-        )
+        createBangumiClient(
+            @OptIn(OpaqueSession::class)
+            sessionManager.unverifiedAccessToken,
+            coroutineScope.coroutineContext,
+            userAgent = getAniUserAgent(currentAniBuildConfig.versionName),
+        ).apply {
+            coroutineScope.launch {
+                proxyProvider.collectProxyTo(this@apply.httpClient)
+            }
+        }
     }
 
     single<RepositoryUsernameProvider> {
@@ -284,25 +276,22 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
     single<AniSubjectRelationIndexService> {
         AniSubjectRelationIndexService(lazy { get<AniAuthClient>().subjectRelationsApi })
     }
-    single<PeerFilterSubscriptionRepository> {
-        val settings = get<SettingsRepository>()
-        // TODO: extract client?
-        val client = settings.proxySettings.flow.map { it.default }.map { proxySettings ->
-            createDefaultHttpClient {
-                userAgent(getAniUserAgent())
-                proxy(proxySettings.configIfEnabledOrNull?.toClientProxyConfig())
-                expectSuccess = true
-            }.apply {
-                registerLogging(logger<MediaSourceSubscriptionUpdater>())
-            }
-        }.onReplacement {
-            it.close()
-        }.shareIn(coroutineScope, started = SharingStarted.Lazily, replay = 1)
 
+    single<PeerFilterSubscriptionRepository> {
+        val settings = koin.get<ProxyProvider>()
+        val client = createDefaultHttpClient {
+            userAgent(getAniUserAgent())
+            expectSuccess = true
+        }.apply {
+            registerLogging(logger<PeerFilterSubscriptionRepository>())
+            coroutineScope.launch {
+                settings.collectProxyTo(this@apply)
+            }
+        }
         PeerFilterSubscriptionRepository(
             dataStore = getContext().dataStores.peerFilterSubscriptionStore,
             ruleSaveDir = getContext().files.dataDir.resolve("peerfilter-subs"),
-            httpClient = client,
+            httpClient = flowOf(client),
         )
     }
     single<BangumiProfileService> { BangumiProfileService() }
@@ -382,23 +371,21 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
         )
     }
     single<MediaSourceSubscriptionUpdater> {
-        val settings = get<SettingsRepository>()
-        val client = settings.proxySettings.flow.map { it.default }.map { proxySettings ->
-            createDefaultHttpClient {
-                userAgent(getAniUserAgent())
-                proxy(proxySettings.configIfEnabledOrNull?.toClientProxyConfig())
-                expectSuccess = true
-            }.apply {
-                registerLogging(logger<MediaSourceSubscriptionUpdater>())
+        val settings = koin.get<ProxyProvider>()
+        val client = createDefaultHttpClient {
+            userAgent(getAniUserAgent())
+            expectSuccess = true
+        }.apply {
+            registerLogging(logger<MediaSourceSubscriptionUpdater>())
+            coroutineScope.launch {
+                settings.collectProxyTo(this@apply)
             }
-        }.onReplacement {
-            it.close()
-        }.shareIn(coroutineScope, started = SharingStarted.Lazily, replay = 1)
+        }
         MediaSourceSubscriptionUpdater(
             get<MediaSourceSubscriptionRepository>(),
             get<MediaSourceManager>(),
             get<MediaSourceCodecManager>(),
-            requester = MediaSourceSubscriptionRequesterImpl(client),
+            requester = MediaSourceSubscriptionRequesterImpl(flowOf(client)),
         )
     }
     single<SelectorMediaSourceEpisodeCacheRepository> {

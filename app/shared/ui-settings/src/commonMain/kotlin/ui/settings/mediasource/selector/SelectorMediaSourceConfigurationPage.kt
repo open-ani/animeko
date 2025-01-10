@@ -18,35 +18,35 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import me.him188.ani.app.data.models.preference.configIfEnabledOrNull
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
-import me.him188.ani.app.domain.media.fetch.toClientProxyConfig
 import me.him188.ani.app.domain.media.fetch.updateMediaSourceArguments
 import me.him188.ani.app.domain.media.resolver.WebViewVideoExtractor
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceCodecManager
 import me.him188.ani.app.domain.mediasource.web.DefaultSelectorMediaSourceEngine
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSourceArguments
+import me.him188.ani.app.domain.settings.ProxyProvider
+import me.him188.ani.app.domain.settings.collectProxyTo
 import me.him188.ani.app.platform.Context
 import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.ui.foundation.AbstractViewModel
+import me.him188.ani.app.ui.foundation.launchInBackground
 import me.him188.ani.app.ui.foundation.produceState
 import me.him188.ani.app.ui.settings.mediasource.rss.SaveableStorage
 import me.him188.ani.datasources.api.source.HttpMediaSource
+import me.him188.ani.datasources.api.source.asAutoCloseable
 import me.him188.ani.datasources.api.source.createHttpClient
 import me.him188.ani.datasources.api.source.deserializeArgumentsOrNull
-import me.him188.ani.utils.coroutines.onReplacement
-import me.him188.ani.utils.ktor.proxy
 import me.him188.ani.utils.ktor.registerLogging
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.get
@@ -61,6 +61,7 @@ class EditSelectorMediaSourceViewModel(
 ) : AbstractViewModel(), KoinComponent {
     private val mediaSourceManager: MediaSourceManager by inject()
     private val settingsRepository: SettingsRepository by inject()
+    private val proxyProvider: ProxyProvider by inject()
 
     private val instanceId: MutableStateFlow<String> = MutableStateFlow(initialInstanceId)
 
@@ -105,10 +106,9 @@ class EditSelectorMediaSourceViewModel(
                         isSavingFlow = saveTasker.isRunning,
                     ),
                     allowEditState = allowEdit,
-                    engine = DefaultSelectorMediaSourceEngine(client),
+                    engine = DefaultSelectorMediaSourceEngine(flowOf(client)),
                     webViewVideoExtractor = combine(
-                        settingsRepository.proxySettings.flow.map { it.default.configIfEnabledOrNull }
-                            .distinctUntilChanged(),
+                        proxyProvider.proxy,
                         settingsRepository.videoResolverSettings.flow.distinctUntilChanged(),
                     ) { proxySettings, videoResolverSettings ->
                         WebViewVideoExtractor(proxySettings, videoResolverSettings)
@@ -123,16 +123,18 @@ class EditSelectorMediaSourceViewModel(
         }
     }.flowOn(Dispatchers.Default)
 
-    private val client = settingsRepository.proxySettings.flow.map {
+    private val client by lazy {
         HttpMediaSource.createHttpClient {
-            proxy(it.default.toClientProxyConfig())
+            proxyProvider.proxy
             BrowserUserAgent()
         }.apply {
             registerLogging(logger)
+            launchInBackground {
+                proxyProvider.collectProxyTo(this@apply)
+            }
+            addCloseable(this.asAutoCloseable())
         }
-    }.onReplacement {
-        it.close()
-    }.shareInBackground(started = SharingStarted.Lazily)
+    }
 
 //    val testState: RssTestPaneState = RssTestPaneState(
 //        // 这里用的是序列化之后的配置, 也就是只有保存成功之后, 才会更新测试 (和触发重新查询)
@@ -140,9 +142,4 @@ class EditSelectorMediaSourceViewModel(
 //        engine = DefaultRssMediaSourceEngine(client, parser = RssParser(includeOrigin = true)),
 //        backgroundScope,
 //    )
-
-    override fun onCleared() {
-        super.onCleared()
-        client.replayCache.firstOrNull()?.close()
-    }
 }
