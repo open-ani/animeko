@@ -41,6 +41,7 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.IntOffset
 import androidx.window.core.layout.WindowSizeClass
+import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.ui.foundation.animation.EmphasizedAccelerateEasing
 import me.him188.ani.app.ui.foundation.animation.EmphasizedDecelerateEasing
@@ -51,14 +52,19 @@ import me.him188.ani.app.ui.foundation.layout.isCompact
 import kotlin.math.roundToInt
 
 @Composable
-expect fun aniColorTheme(
-    themeSettings: ThemeSettings = LocalThemeSettings.current,
-    isDark: Boolean = isSystemInDarkTheme()
+expect fun appColorScheme(
+    seedColor: Int = LocalThemeSettings.current.seedColor,
+    useDynamicTheme: Boolean = LocalThemeSettings.current.useDynamicTheme,
+    isAmoled: Boolean = LocalThemeSettings.current.isAmoled,
+    isDark: Boolean = when (LocalThemeSettings.current.darkMode) {
+        DarkMode.LIGHT -> false
+        DarkMode.DARK -> true
+        DarkMode.AUTO -> isSystemInDarkTheme()
+    }
 ): ColorScheme
 
 @Composable
 expect fun AniTheme(
-    themeSettings: ThemeSettings = LocalThemeSettings.current,
     content: @Composable () -> Unit
 )
 

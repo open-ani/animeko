@@ -46,7 +46,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
-import me.him188.ani.app.ui.foundation.theme.aniColorTheme
+import me.him188.ani.app.ui.foundation.theme.appColorScheme
 import me.him188.ani.app.ui.foundation.theme.slightlyWeaken
 import me.him188.ani.app.videoplayer.ui.guesture.PlayerGestureHost
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerBar
@@ -132,7 +132,7 @@ fun VideoScaffold(
                     .padding(vertical = 8.dp)
                     .windowInsetsPadding(contentWindowInsets),
             ) {
-                CompositionLocalProvider(LocalContentColor provides aniColorTheme(isDark = true).onBackground) {
+                CompositionLocalProvider(LocalContentColor provides appColorScheme(isDark = true).onBackground) {
                     danmakuHost()
                 }
             }
@@ -173,7 +173,7 @@ fun VideoScaffold(
                                         .windowInsetsPadding(contentWindowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top)),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
-                                    CompositionLocalProvider(LocalContentColor provides aniColorTheme(isDark = true).onBackground) {
+                                    CompositionLocalProvider(LocalContentColor provides appColorScheme(isDark = true).onBackground) {
                                         topBar()
                                     }
                                 }
@@ -225,7 +225,7 @@ fun VideoScaffold(
                                         .windowInsetsPadding(contentWindowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
-                                    MaterialTheme(aniColorTheme(isDark = true)) {
+                                    MaterialTheme(appColorScheme(isDark = true)) {
                                         CompositionLocalProvider(LocalContentColor provides Color.White) {
                                             bottomBar()
                                         }
@@ -243,7 +243,7 @@ fun VideoScaffold(
                                 Modifier.padding(horizontal = 4.dp, vertical = 12.dp)
                                     .windowInsetsPadding(contentWindowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)),
                             ) {
-                                MaterialTheme(aniColorTheme(isDark = true)) {
+                                MaterialTheme(appColorScheme(isDark = true)) {
                                     detachedProgressSlider()
                                 }
                             }
@@ -262,7 +262,7 @@ fun VideoScaffold(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.End,
                     ) {
-                        MaterialTheme(aniColorTheme(isDark = true)) {
+                        MaterialTheme(appColorScheme(isDark = true)) {
                             CompositionLocalProvider(LocalContentColor provides Color.White) {
                                 floatingBottomEnd()
                             }
@@ -316,7 +316,7 @@ fun VideoScaffold(
                 contentAlignment = Alignment.Center,
             ) {
                 ProvideTextStyle(MaterialTheme.typography.labelSmall) {
-                    CompositionLocalProvider(LocalContentColor provides aniColorTheme(isDark = true).onBackground.slightlyWeaken()) {
+                    CompositionLocalProvider(LocalContentColor provides appColorScheme(isDark = true).onBackground.slightlyWeaken()) {
                         floatingMessage()
                     }
                 }
@@ -324,7 +324,7 @@ fun VideoScaffold(
 
             // 右侧 sheet
             Box(Modifier.matchParentSize().windowInsetsPadding(contentWindowInsets)) {
-                MaterialTheme(aniColorTheme(isDark = true)) {
+                MaterialTheme(appColorScheme(isDark = true)) {
                     rhsSheet()
                 }
             }

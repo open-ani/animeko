@@ -73,7 +73,7 @@ fun AniApp(
         LocalTimeFormatter provides remember { TimeFormatter() },
         LocalThemeSettings provides themeSettings,
     ) {
-        AniTheme(themeSettings) {
+        AniTheme {
             Box(
                 modifier = modifier.ifThen(LocalPlatform.current.isMobile()) {
                     focusable(false).clickable(

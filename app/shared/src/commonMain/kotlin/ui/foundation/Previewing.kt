@@ -9,6 +9,8 @@
 
 package me.him188.ani.app.ui.foundation
 
+import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
@@ -45,7 +47,6 @@ import me.him188.ani.app.platform.GrantedPermissionManager
 import me.him188.ani.app.platform.PermissionManager
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.Toaster
-import me.him188.ani.app.ui.main.AniApp
 import me.him188.ani.utils.io.inSystem
 import me.him188.ani.utils.platform.annotations.TestOnly
 import org.koin.core.context.startKoin
@@ -63,6 +64,7 @@ import org.openani.mediamp.MediampPlayerFactory
 @Composable
 fun ProvideCompositionLocalsForPreview(
     module: Module.() -> Unit = {},
+    colorScheme: ColorScheme,
     content: @Composable () -> Unit,
 ) {
     ProvideFoundationCompositionLocalsForPreview {
@@ -124,7 +126,6 @@ fun ProvideCompositionLocalsForPreview(
                     override val lifecycle: Lifecycle get() = TestGlobalLifecycle
                 }
             },
-            // TODO: LocalThemeSettings provides themeSettings,
         ) {
             val navController = rememberNavController()
             SideEffect {
@@ -132,7 +133,7 @@ fun ProvideCompositionLocalsForPreview(
             }
             NavHost(navController, startDestination = "test") { // provide ViewModelStoreOwner
                 composable("test") {
-                    AniApp {
+                    MaterialTheme(colorScheme) {
                         content()
                     }
                 }

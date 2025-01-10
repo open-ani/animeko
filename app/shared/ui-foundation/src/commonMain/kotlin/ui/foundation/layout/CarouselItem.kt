@@ -32,7 +32,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.window.core.layout.WindowWidthSizeClass
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
-import me.him188.ani.app.ui.foundation.theme.aniColorTheme
+import me.him188.ani.app.ui.foundation.theme.appColorScheme
 
 @Stable
 private val carouselBrush = Brush.verticalGradient(
@@ -132,7 +132,7 @@ object CarouselItemDefaults {
         get() = MaterialTheme.shapes.extraLarge
 
     @Composable
-    fun colors(): CarouselItemColors = aniColorTheme(isDark = true).run {
+    fun colors(): CarouselItemColors = appColorScheme(isDark = true).run {
         return CarouselItemColors(MaterialTheme.colorScheme.onSurface, MaterialTheme.colorScheme.onSurface)
     }
 

@@ -9,42 +9,34 @@
 
 package me.him188.ani.app.ui.foundation.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import com.materialkolor.PaletteStyle
 import com.materialkolor.rememberDynamicColorScheme
-import me.him188.ani.app.data.models.preference.DarkMode
-import me.him188.ani.app.data.models.preference.ThemeSettings
 
 @Composable
-actual fun aniColorTheme(
-    themeSettings: ThemeSettings,
-    isDark: Boolean
+actual fun appColorScheme(
+    seedColor: Int,
+    useDynamicTheme: Boolean,
+    isAmoled: Boolean,
+    isDark: Boolean,
 ): ColorScheme {
     return rememberDynamicColorScheme(
-        primary = Color(themeSettings.seedColor),
+        primary = Color(seedColor),
         isDark = isDark,
-        isAmoled = themeSettings.isAmoled,
+        isAmoled = isAmoled,
         style = PaletteStyle.TonalSpot,
     )
 }
 
 @Composable
 actual fun AniTheme(
-    themeSettings: ThemeSettings,
     content: @Composable () -> Unit
 ) {
-    val isDark = when (themeSettings.darkMode) {
-        DarkMode.LIGHT -> false
-        DarkMode.DARK -> true
-        DarkMode.AUTO -> isSystemInDarkTheme()
-    }
-
     MaterialTheme(
-        colorScheme = aniColorTheme(themeSettings, isDark),
+        colorScheme = appColorScheme(),
         content = content,
     )
 }
