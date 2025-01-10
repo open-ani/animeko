@@ -133,7 +133,7 @@ object CarouselItemDefaults {
 
     @Composable
     fun colors(): CarouselItemColors = aniColorTheme(isDark = true).run {
-        return CarouselItemColors(onSurface, onSurface)
+        return CarouselItemColors(MaterialTheme.colorScheme.onSurface, MaterialTheme.colorScheme.onSurface)
     }
 
     @Composable
