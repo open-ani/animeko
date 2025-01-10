@@ -11,7 +11,6 @@ package me.him188.ani.app.data.models.preference
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
-import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 
@@ -28,7 +27,7 @@ data class ThemeSettings(
     val darkMode: DarkMode = DarkMode.AUTO,
     val useDynamicTheme: Boolean = false, // default "true" on Android && Build.VERSION.SDK_INT >= 31
     val isAmoled: Boolean = false,
-    @Contextual val seedColor: Int = DEFAULT_SEED_COLOR,
+    val seedColor: Int = DEFAULT_SEED_COLOR,
     @Suppress("PropertyName") @Transient val _placeholder: Int = 0,
 ) {
     companion object {

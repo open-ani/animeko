@@ -59,6 +59,11 @@ import me.him188.ani.utils.platform.isAndroid
 import me.him188.ani.utils.platform.isDesktop
 import me.him188.ani.utils.platform.isMobile
 
+private val colorList =
+    ((4..10) + (1..3))
+        .map { it * 35.0 }
+        .map { Color(Hct.from(it, 40.0, 40.0).toInt()) }
+
 @Composable
 fun SettingsScope.ThemeGroup(
     state: SettingsState<ThemeSettings>,
@@ -67,7 +72,7 @@ fun SettingsScope.ThemeGroup(
 
     Group(title = { Text("主题") }) {
         // TODO: DarkThemePreference.kt
-        // Use TextButton with Icon. And only show if build sdk_int >= 29
+        //  Use TextButton with Icon. And only show if build sdk_int >= 29
         AnimatedVisibility(
             LocalPlatform.current.isDesktop() || LocalPlatform.current.isAndroid(),
         ) {
@@ -105,12 +110,7 @@ fun SettingsScope.ThemeGroup(
             SwitchItem(
                 checked = themeSettings.useDynamicTheme,
                 onCheckedChange = { checked ->
-                    state.update(
-                        themeSettings.copy(
-                            useDynamicTheme = checked,
-                            // seedColor = if (checked) Color.Black.toArgb() else themeSettings.seedColor
-                        ),
-                    )
+                    state.update(themeSettings.copy(useDynamicTheme = checked))
                 },
                 title = { Text("动态色彩") },
                 description = { Text("将壁纸主题色应用于应用主题") },
@@ -126,9 +126,6 @@ fun SettingsScope.ThemeGroup(
 //            description = { Text("在深色模式下使用纯黑背景") },
 //        )
     }
-
-    val colorList =
-        ((4..10) + (1..3)).map { it * 35.0 }.map { Color(Hct.from(it, 40.0, 40.0).toInt()) }
 
     Group(title = { Text("调色板") }) {
         if (LocalPlatform.current.isMobile()) {
@@ -153,7 +150,7 @@ fun SettingsScope.ThemeGroup(
                     horizontalArrangement = Arrangement.Center,
                 ) {
                     colors[page].forEach { color ->
-                        ColorButtons(
+                        ColorButton(
                             color = color,
                             themeSettings = themeSettings,
                             state = state,
@@ -191,7 +188,7 @@ fun SettingsScope.ThemeGroup(
                 // maxItemsInEachRow = 4
             ) {
                 colorList.forEach { color ->
-                    ColorButtons(
+                    ColorButton(
                         color = color,
                         themeSettings = themeSettings,
                         state = state,
@@ -203,16 +200,14 @@ fun SettingsScope.ThemeGroup(
 }
 
 @Composable
-fun ColorButtons(
+private fun ColorButton(
     color: Color,
     themeSettings: ThemeSettings,
     state: SettingsState<ThemeSettings>
 ) {
-    ColorButtonImpl(
+    ColorButton(
         modifier = Modifier,
-        isSelected = { color.toArgb() == themeSettings.seedColor && !themeSettings.useDynamicTheme },
-        cardColor = MaterialTheme.colorScheme.surfaceContainer,
-        containerColor = MaterialTheme.colorScheme.primaryContainer,
+        selected = color.toArgb() == themeSettings.seedColor && !themeSettings.useDynamicTheme,
         onClick = {
             state.update(
                 themeSettings.copy(
@@ -226,16 +221,16 @@ fun ColorButtons(
 }
 
 @Composable
-fun ColorButtonImpl(
+fun ColorButton(
+    onClick: () -> Unit,
+    baseColor: Color,
+    selected: Boolean,
     modifier: Modifier = Modifier,
-    isSelected: () -> Boolean = { false },
-    cardColor: Color = MaterialTheme.colorScheme.primaryContainer,
+    cardColor: Color = MaterialTheme.colorScheme.surfaceContainer,
     containerColor: Color = MaterialTheme.colorScheme.primaryContainer,
-    onClick: () -> Unit = {},
-    baseColor: Color
 ) {
-    val containerSize by animateDpAsState(targetValue = if (isSelected()) 28.dp else 0.dp)
-    val iconSize by animateDpAsState(targetValue = if (isSelected()) 16.dp else 0.dp)
+    val containerSize by animateDpAsState(targetValue = if (selected) 28.dp else 0.dp)
+    val iconSize by animateDpAsState(targetValue = if (selected) 16.dp else 0.dp)
 
     Surface(
         modifier = modifier
