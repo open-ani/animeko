@@ -21,7 +21,7 @@ import kotlinx.io.files.Path
 import me.him188.ani.android.activity.MainActivity
 import me.him188.ani.android.navigation.AndroidBrowserNavigator
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
-import me.him188.ani.app.data.models.preference.ProxySettings
+import me.him188.ani.app.data.models.preference.ProxyConfig
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.resolver.AndroidWebMediaResolver
@@ -29,6 +29,7 @@ import me.him188.ani.app.domain.media.resolver.HttpStreamingMediaResolver
 import me.him188.ani.app.domain.media.resolver.LocalFileMediaResolver
 import me.him188.ani.app.domain.media.resolver.MediaResolver
 import me.him188.ani.app.domain.media.resolver.TorrentMediaResolver
+import me.him188.ani.app.domain.settings.ProxyProvider
 import me.him188.ani.app.domain.torrent.DefaultTorrentManager
 import me.him188.ani.app.domain.torrent.LocalAnitorrentEngineFactory
 import me.him188.ani.app.domain.torrent.TorrentEngine
@@ -176,6 +177,7 @@ fun getAndroidModules(
         DefaultTorrentManager.create(
             coroutineScope.coroutineContext,
             get(),
+            proxyProvider = get<ProxyProvider>().proxy,
             get(),
             get(),
             baseSaveDir = { Path(cacheDir).inSystem },
@@ -184,14 +186,14 @@ fun getAndroidModules(
                     override fun createTorrentEngine(
                         parentCoroutineContext: CoroutineContext,
                         config: Flow<AnitorrentConfig>,
-                        proxySettings: Flow<ProxySettings>,
+                        proxyConfig: Flow<ProxyConfig?>,
                         peerFilterSettings: Flow<PeerFilterSettings>,
                         saveDir: SystemPath
                     ): TorrentEngine {
                         return RemoteAnitorrentEngine(
                             get(),
                             config,
-                            proxySettings,
+                            proxyConfig,
                             peerFilterSettings,
                             saveDir,
                             parentCoroutineContext,

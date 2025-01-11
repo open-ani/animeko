@@ -34,6 +34,8 @@ import me.him188.ani.app.domain.media.resolver.MediaResolver
 import me.him188.ani.app.domain.media.resolver.TorrentMediaResolver
 import me.him188.ani.app.domain.session.PreviewSessionManager
 import me.him188.ani.app.domain.session.SessionManager
+import me.him188.ani.app.domain.settings.NoProxyProvider
+import me.him188.ani.app.domain.settings.ProxyProvider
 import me.him188.ani.app.domain.torrent.DefaultTorrentManager
 import me.him188.ani.app.domain.torrent.TorrentManager
 import me.him188.ani.app.navigation.AniNavigator
@@ -72,6 +74,7 @@ fun ProvideCompositionLocalsForPreview(
 //            modules(getCommonKoinModule({ context }, coroutineScope))
             modules(
                 module {
+                    single<ProxyProvider> { NoProxyProvider }
                     single<MediampPlayerFactory<*>> {
                         DummyMediampPlayer.Factory
                     }
@@ -88,6 +91,7 @@ fun ProvideCompositionLocalsForPreview(
                         DefaultTorrentManager.create(
                             coroutineScope.coroutineContext,
                             get(),
+                            proxyProvider = get<ProxyProvider>().proxy,
                             get(),
                             get(),
                             baseSaveDir = { Path("preview-cache").inSystem },

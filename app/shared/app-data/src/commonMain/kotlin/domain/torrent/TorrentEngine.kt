@@ -26,7 +26,7 @@ import kotlinx.coroutines.flow.retry
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
-import me.him188.ani.app.data.models.preference.MediaSourceProxySettings
+import me.him188.ani.app.data.models.preference.ProxyConfig
 import me.him188.ani.app.domain.torrent.peer.PeerFilterSettings
 import me.him188.ani.app.torrent.api.TorrentDownloader
 import me.him188.ani.app.torrent.api.peer.PeerFilter
@@ -95,7 +95,7 @@ class TorrentDownloaderInitializationException(
 abstract class AbstractTorrentEngine<Downloader : TorrentDownloader, Config : Any>(
     final override val type: TorrentEngineType,
     protected val config: Flow<Config>,
-    protected val proxySettings: Flow<MediaSourceProxySettings>,
+    protected val proxyProvider: Flow<ProxyConfig?>,
     protected val peerFilterSettings: Flow<PeerFilterSettings>,
     parentCoroutineContext: CoroutineContext,
 ) : TorrentEngine {
@@ -113,7 +113,7 @@ abstract class AbstractTorrentEngine<Downloader : TorrentDownloader, Config : An
             //  目前没有必要在 proxySettings 变更时重新创建 downloader, 因为 downloader 不会使用代理.
             initialized.await()
 
-            newInstance(config, proxySettings.first()).also { downloader ->
+            newInstance(config, proxyProvider).also { downloader ->
                 scope.coroutineContext.job.invokeOnCompletion {
                     downloader.close()
                 }
@@ -149,7 +149,7 @@ abstract class AbstractTorrentEngine<Downloader : TorrentDownloader, Config : An
         }
     }
 
-    protected abstract suspend fun newInstance(config: Config, proxySettings: MediaSourceProxySettings): Downloader
+    protected abstract suspend fun newInstance(config: Config, proxyProvider: Flow<ProxyConfig?>): Downloader
 
     protected abstract suspend fun Downloader.applyConfig(config: Config)
 

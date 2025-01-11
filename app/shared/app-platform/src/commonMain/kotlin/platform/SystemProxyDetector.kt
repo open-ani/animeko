@@ -17,7 +17,7 @@ data class SystemProxyInfo(
 
 interface SystemProxyDetector {
     /**
-     * Might block thread, but does not throw.
+     * Might block thread and throw.
      */
     fun detect(): SystemProxyInfo?
 

@@ -178,7 +178,7 @@ fun SettingsPage(
 
                             SettingsTab.MEDIA_SELECTOR -> MediaSelectionGroup(vm.mediaSelectionGroupState)
                             SettingsTab.DANMAKU -> DanmakuGroup(vm.danmakuSettingsState, vm.danmakuServerTesters)
-                            SettingsTab.PROXY -> GlobalProxyGroup(vm.proxySettingsState)
+                            SettingsTab.PROXY -> GlobalProxyGroup(vm.proxySettingsState, vm.detectedProxy)
                             SettingsTab.BT -> TorrentEngineGroup(vm.torrentSettingsState)
                             SettingsTab.CACHE -> AutoCacheGroup(vm.mediaCacheSettingsState)
                             SettingsTab.STORAGE -> CacheDirectoryGroup(vm.cacheDirectoryGroupState)

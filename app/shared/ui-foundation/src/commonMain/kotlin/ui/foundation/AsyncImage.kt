@@ -28,12 +28,7 @@ import coil3.network.ktor2.KtorNetworkFetcherFactory
 import coil3.request.CachePolicy
 import coil3.request.crossfade
 import coil3.svg.SvgDecoder
-import me.him188.ani.app.data.models.preference.ProxyConfig
-import me.him188.ani.app.domain.media.fetch.toClientProxyConfig
-import me.him188.ani.app.platform.getAniUserAgent
-import me.him188.ani.utils.ktor.createDefaultHttpClient
-import me.him188.ani.utils.ktor.proxy
-import me.him188.ani.utils.ktor.userAgent
+import io.ktor.client.HttpClient
 import me.him188.ani.utils.platform.currentPlatform
 import me.him188.ani.utils.platform.isDesktop
 
@@ -153,9 +148,9 @@ fun AsyncImage(
     )
 }
 
-fun getDefaultImageLoader(
+fun createDefaultImageLoader(
     context: PlatformContext,
-    proxyConfig: ProxyConfig?,
+    client: HttpClient,
     config: ImageLoader.Builder.() -> Unit = {}
 ): ImageLoader {
     return ImageLoader.Builder(context).apply {
@@ -180,10 +175,7 @@ fun getDefaultImageLoader(
             add(
                 KtorNetworkFetcherFactory(
                     httpClient = {
-                        createDefaultHttpClient {
-                            userAgent(getAniUserAgent())
-                            proxy(proxyConfig?.toClientProxyConfig())
-                        }
+                        client
                     },
                 ),
             )

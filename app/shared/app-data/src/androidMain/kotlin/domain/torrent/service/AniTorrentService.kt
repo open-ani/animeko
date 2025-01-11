@@ -34,7 +34,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlinx.io.files.Path
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
-import me.him188.ani.app.data.models.preference.ProxySettings
+import me.him188.ani.app.data.models.preference.ProxyConfig
 import me.him188.ani.app.domain.torrent.engines.AnitorrentEngine
 import me.him188.ani.app.domain.torrent.peer.PeerFilterSettings
 import me.him188.ani.app.domain.torrent.service.proxy.TorrentEngineProxy
@@ -57,7 +57,7 @@ class AniTorrentService : LifecycleService(), CoroutineScope {
     
     // config flow for constructing torrent engine.
     private val saveDirDeferred: CompletableDeferred<String> = CompletableDeferred()
-    private val proxySettings: MutableSharedFlow<ProxySettings> = MutableSharedFlow(1)
+    private val proxyConfig: MutableSharedFlow<ProxyConfig?> = MutableSharedFlow(1)
     private val torrentPeerConfig: MutableSharedFlow<PeerFilterSettings> = MutableSharedFlow(1)
     private val anitorrentConfig: MutableSharedFlow<AnitorrentConfig> = MutableSharedFlow(1)
 
@@ -70,7 +70,7 @@ class AniTorrentService : LifecycleService(), CoroutineScope {
     private val binder by lazy {
         TorrentEngineProxy(
             saveDirDeferred,
-            proxySettings,
+            proxyConfig,
             torrentPeerConfig,
             anitorrentConfig,
             anitorrent,
@@ -96,7 +96,7 @@ class AniTorrentService : LifecycleService(), CoroutineScope {
                     anitorrentConfig.combine(meteredNetworkDetector.isMeteredNetworkFlow) { config, isMetered ->
                         if (isMetered) config.copy(uploadRateLimit = 1.kiloBytes) else config
                     },
-                    proxySettings,
+                    proxyConfig = proxyConfig,
                     torrentPeerConfig,
                     Path(saveDirDeferred.await()).inSystem,
                     coroutineContext,
