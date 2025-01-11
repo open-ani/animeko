@@ -129,7 +129,7 @@ fun KoinApplication.getCommonKoinModule(getContext: () -> Context, coroutineScop
 
 private fun KoinApplication.otherModules(getContext: () -> Context, coroutineScope: CoroutineScope) = module {
     // Repositories
-    single<ProxyProvider> { SettingsBasedProxyProvider(koin, coroutineScope) }
+    single<ProxyProvider> { SettingsBasedProxyProvider(get(), coroutineScope) }
     single<AniAuthClient> {
         AniAuthClient(
             get<ProxyProvider>(),

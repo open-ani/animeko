@@ -33,7 +33,6 @@ import me.him188.ani.app.platform.SystemProxyDetector
 import me.him188.ani.utils.ktor.setProxy
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
-import org.koin.core.Koin
 import kotlin.time.Duration.Companion.hours
 
 interface ProxyProvider {
@@ -82,10 +81,9 @@ class SystemProxyProvider(
 
 
 class SettingsBasedProxyProvider(
-    koin: Koin,
+    private val settingsRepository: SettingsRepository,
     backgroundScope: CoroutineScope,
 ) : ProxyProvider {
-    private val settingsRepository: SettingsRepository by koin.inject()
     override val proxy: Flow<ProxyConfig?> by lazy {
         settingsRepository.proxySettings.flow.map { it.default }
             .distinctUntilChanged()
