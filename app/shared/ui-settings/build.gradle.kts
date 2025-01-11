@@ -24,6 +24,8 @@ kotlin {
         api(projects.app.shared.uiAdaptive)
         implementation(compose.components.resources)
         implementation(projects.app.shared.reorderable)
+
+        implementation(libs.materialkolor)
     }
     sourceSets.commonTest.dependencies {
     }

@@ -42,7 +42,6 @@ import me.him188.ani.app.ui.exists
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.effects.TAG_CURSOR_VISIBILITY_EFFECT_INVISIBLE
 import me.him188.ani.app.ui.foundation.effects.TAG_CURSOR_VISIBILITY_EFFECT_VISIBLE
-import me.him188.ani.app.ui.foundation.theme.aniDarkColorTheme
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import me.him188.ani.app.ui.subject.episode.video.components.FloatingFullscreenSwitchButton
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
@@ -83,7 +82,9 @@ class EpisodeVideoCursorTest {
 
     @Composable
     private fun Player(gestureFamily: GestureFamily = GestureFamily.MOUSE) {
-        ProvideCompositionLocalsForPreview(colorScheme = aniDarkColorTheme()) {
+        ProvideCompositionLocalsForPreview(
+            forceDarkTheme = true,
+        ) {
             val scope = rememberCoroutineScope()
             val playerState = remember {
                 DummyMediampPlayer(scope.coroutineContext)

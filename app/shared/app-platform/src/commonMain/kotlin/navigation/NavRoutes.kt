@@ -17,7 +17,6 @@ import androidx.compose.material.icons.rounded.TravelExplore
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import kotlinx.serialization.Serializable
-import me.him188.ani.app.navigation.MainScenePage.entries
 
 @Serializable
 sealed class NavRoutes {
@@ -115,6 +114,7 @@ enum class MainScenePage {
 @Immutable
 enum class SettingsTab {
     APPEARANCE,
+    THEME,
     UPDATE,
 
     PLAYER,

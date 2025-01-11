@@ -9,12 +9,13 @@
 
 package me.him188.ani.app.ui.foundation
 
-import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.graphics.Color
 import androidx.datastore.preferences.core.mutablePreferencesOf
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
@@ -22,7 +23,9 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.materialkolor.rememberDynamicColorScheme
 import kotlinx.io.files.Path
+import me.him188.ani.app.data.models.preference.DEFAULT_SEED_COLOR
 import me.him188.ani.app.data.persistent.MemoryDataStore
 import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepository
 import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepositoryImpl
@@ -44,7 +47,6 @@ import me.him188.ani.app.platform.GrantedPermissionManager
 import me.him188.ani.app.platform.PermissionManager
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.Toaster
-import me.him188.ani.app.ui.main.AniApp
 import me.him188.ani.utils.io.inSystem
 import me.him188.ani.utils.platform.annotations.TestOnly
 import org.koin.core.context.startKoin
@@ -62,10 +64,16 @@ import org.openani.mediamp.MediampPlayerFactory
 @Composable
 fun ProvideCompositionLocalsForPreview(
     module: Module.() -> Unit = {},
-    colorScheme: ColorScheme? = null,
+    forceDarkTheme: Boolean = false,
     content: @Composable () -> Unit,
 ) {
-    ProvideFoundationCompositionLocalsForPreview {
+    val colorScheme = rememberDynamicColorScheme(
+        seedColor = Color(DEFAULT_SEED_COLOR),
+        isDark = forceDarkTheme,
+        isAmoled = false,
+    )
+
+    ProvideFoundationCompositionLocalsForPreview(forceDarkTheme) {
         val coroutineScope = rememberCoroutineScope()
         runCatching { stopKoin() }
         startKoin {
@@ -129,7 +137,7 @@ fun ProvideCompositionLocalsForPreview(
             }
             NavHost(navController, startDestination = "test") { // provide ViewModelStoreOwner
                 composable("test") {
-                    AniApp(overrideColorTheme = colorScheme) {
+                    MaterialTheme(colorScheme) {
                         content()
                     }
                 }
