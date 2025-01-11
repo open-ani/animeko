@@ -52,6 +52,7 @@ actual fun appColorScheme(
 
 @Composable
 actual fun AniTheme(
+    forceDarkTheme: Boolean,
     content: @Composable () -> Unit
 ) {
     val isDark = when (LocalThemeSettings.current.darkMode) {
@@ -86,7 +87,11 @@ actual fun AniTheme(
     }
 
     MaterialTheme(
-        colorScheme = appColorScheme(),
+        colorScheme = if (forceDarkTheme) {
+            appColorScheme(isDark = true)
+        } else {
+            appColorScheme()
+        },
         content = content,
     )
 }

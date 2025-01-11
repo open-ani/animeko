@@ -33,10 +33,15 @@ actual fun appColorScheme(
 
 @Composable
 actual fun AniTheme(
+    forceDarkTheme: Boolean,
     content: @Composable () -> Unit
 ) {
     MaterialTheme(
-        colorScheme = appColorScheme(),
+        colorScheme = if (forceDarkTheme) {
+            appColorScheme(isDark = true)
+        } else {
+            appColorScheme()
+        },
         content = content,
     )
 }
