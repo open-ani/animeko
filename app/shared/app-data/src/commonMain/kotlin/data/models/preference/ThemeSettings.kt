@@ -18,7 +18,7 @@ const val DEFAULT_SEED_COLOR = -10066178 // Color(0xFF6200EE).toArgb()
 
 @Serializable
 enum class DarkMode {
-    LIGHT, DARK, AUTO,
+    AUTO, LIGHT, DARK,
 }
 
 @Serializable
