@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -10,41 +10,25 @@
 package me.him188.ani.app.ui.settings.tabs.theme
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.sizeIn
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.HdrAuto
 import androidx.compose.material.icons.rounded.LightMode
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.unit.dp
 import com.materialkolor.hct.Hct
-import com.materialkolor.ktx.toHct
 import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.ui.foundation.LocalPlatform
+import me.him188.ani.app.ui.settings.components.ColorButton
 import me.him188.ani.app.ui.settings.framework.SettingsState
 import me.him188.ani.app.ui.settings.framework.components.DropdownItem
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
@@ -64,8 +48,6 @@ fun SettingsScope.ThemeGroup(
     val themeSettings by state
 
     Group(title = { Text("主题") }) {
-        // TODO: DarkThemePreference.kt
-        //  Use TextButton with Icon. And only show if build sdk_int >= 29
         AnimatedVisibility(
             LocalPlatform.current.isDesktop() || LocalPlatform.current.isAndroid(),
         ) {
@@ -99,6 +81,43 @@ fun SettingsScope.ThemeGroup(
             )
         }
 
+//        Row(
+//            modifier = Modifier
+//                .fillMaxWidth()
+//                .padding(8.dp),
+//            horizontalArrangement = Arrangement.Center,
+//        ) {
+//            var selectedIndex by remember(themeSettings.darkMode) {
+//                mutableIntStateOf(themeSettings.darkMode.ordinal)
+//            }
+//            val options = DarkMode.entries.toList()
+//
+//            SingleChoiceSegmentedButtonRow(
+//                modifier = Modifier.widthIn(240.dp, 240.dp)
+//            ) {
+//                options.forEachIndexed { index, mode ->
+//                    SegmentedButton(
+//                        selected = index == selectedIndex,
+//                        onClick = {
+//                            selectedIndex = index
+//                            state.update(themeSettings.copy(darkMode = options[index]))
+//                        },
+//                        shape = SegmentedButtonDefaults.itemShape(
+//                            index = index,
+//                            count = options.size,
+//                        ),
+//                        label = {
+//                            when (mode) {
+//                                DarkMode.AUTO -> Text("系统")
+//                                DarkMode.LIGHT -> Text("浅色")
+//                                DarkMode.DARK -> Text("深色")
+//                            }
+//                        },
+//                    )
+//                }
+//            }
+//        }
+
         if (LocalPlatform.current.isAndroid()) {
             SwitchItem(
                 checked = themeSettings.useDynamicTheme,
@@ -124,7 +143,6 @@ fun SettingsScope.ThemeGroup(
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center,
-            // maxItemsInEachRow = 4
         ) {
             colorList.forEach { color ->
                 ColorButton(
@@ -156,69 +174,4 @@ private fun ColorButton(
         },
         baseColor = color,
     )
-}
-
-@Composable
-fun ColorButton(
-    onClick: () -> Unit,
-    baseColor: Color,
-    selected: Boolean,
-    modifier: Modifier = Modifier,
-    cardColor: Color = MaterialTheme.colorScheme.surfaceContainer,
-    containerColor: Color = MaterialTheme.colorScheme.primaryContainer,
-) {
-    val containerSize by animateDpAsState(targetValue = if (selected) 28.dp else 0.dp)
-    val iconSize by animateDpAsState(targetValue = if (selected) 16.dp else 0.dp)
-
-    Surface(
-        modifier = modifier
-            .padding(4.dp)
-            .sizeIn(maxHeight = 80.dp, maxWidth = 80.dp, minHeight = 64.dp, minWidth = 64.dp)
-            .aspectRatio(1f),
-        shape = RoundedCornerShape(16.dp),
-        color = cardColor,
-        onClick = onClick,
-    ) {
-        Box(Modifier.fillMaxSize()) {
-            val hct = baseColor.toHct()
-            val color1 = Color(Hct.from(hct.hue, 40.0, 80.0).toInt())
-            val color2 = Color(Hct.from(hct.hue, 40.0, 90.0).toInt())
-            val color3 = Color(Hct.from(hct.hue, 40.0, 60.0).toInt())
-
-            Box(
-                modifier = modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .drawBehind { drawCircle(color1) }
-                    .align(Alignment.Center),
-            ) {
-                Surface(
-                    color = color2,
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .size(24.dp),
-                ) {}
-                Surface(
-                    color = color3,
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .size(24.dp),
-                ) {}
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .clip(CircleShape)
-                        .size(containerSize)
-                        .drawBehind { drawCircle(containerColor) },
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Check,
-                        contentDescription = null,
-                        modifier = Modifier.size(iconSize).align(Alignment.Center),
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    )
-                }
-            }
-        }
-    }
 }
