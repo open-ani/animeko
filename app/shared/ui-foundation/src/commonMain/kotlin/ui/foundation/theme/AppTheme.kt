@@ -55,7 +55,7 @@ import kotlin.math.roundToInt
 expect fun appColorScheme(
     seedColor: Int = LocalThemeSettings.current.seedColor,
     useDynamicTheme: Boolean = LocalThemeSettings.current.useDynamicTheme,
-    isAmoled: Boolean = LocalThemeSettings.current.isAmoled,
+    useBlackBackground: Boolean = LocalThemeSettings.current.useBlackBackground,
     isDark: Boolean = when (LocalThemeSettings.current.darkMode) {
         DarkMode.LIGHT -> false
         DarkMode.DARK -> true
@@ -65,7 +65,11 @@ expect fun appColorScheme(
 
 @Composable
 expect fun AniTheme(
-    forceDarkTheme: Boolean = false,
+    isDark: Boolean = when (LocalThemeSettings.current.darkMode) {
+        DarkMode.LIGHT -> false
+        DarkMode.DARK -> true
+        DarkMode.AUTO -> isSystemInDarkTheme()
+    },
     content: @Composable () -> Unit
 )
 

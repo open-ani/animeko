@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -13,7 +13,6 @@ import android.os.Build
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.dynamicDarkColorScheme
@@ -24,14 +23,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import com.materialkolor.PaletteStyle
 import com.materialkolor.rememberDynamicColorScheme
-import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.platform.findActivity
 
 @Composable
 actual fun appColorScheme(
     seedColor: Int,
     useDynamicTheme: Boolean,
-    isAmoled: Boolean,
+    useBlackBackground: Boolean,
     isDark: Boolean,
 ): ColorScheme {
     return if (useDynamicTheme && Build.VERSION.SDK_INT >= 31) {
@@ -44,7 +42,7 @@ actual fun appColorScheme(
         rememberDynamicColorScheme(
             primary = Color(seedColor),
             isDark = isDark,
-            isAmoled = isAmoled,
+            isAmoled = useBlackBackground,
             style = PaletteStyle.TonalSpot,
         )
     }
@@ -52,15 +50,9 @@ actual fun appColorScheme(
 
 @Composable
 actual fun AniTheme(
-    forceDarkTheme: Boolean,
+    isDark: Boolean,
     content: @Composable () -> Unit
 ) {
-    val isDark = when (LocalThemeSettings.current.darkMode) {
-        DarkMode.LIGHT -> false
-        DarkMode.DARK -> true
-        DarkMode.AUTO -> isSystemInDarkTheme()
-    }
-
     // Set statusBarStyle & navigationBarStyle
     val activity = LocalContext.current.findActivity() as? ComponentActivity
     if (activity != null) {
@@ -87,11 +79,7 @@ actual fun AniTheme(
     }
 
     MaterialTheme(
-        colorScheme = if (forceDarkTheme) {
-            appColorScheme(isDark = true)
-        } else {
-            appColorScheme()
-        },
+        colorScheme = appColorScheme(isDark = isDark),
         content = content,
     )
 }

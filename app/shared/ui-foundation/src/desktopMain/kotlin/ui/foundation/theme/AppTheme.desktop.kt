@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -20,28 +20,24 @@ import com.materialkolor.rememberDynamicColorScheme
 actual fun appColorScheme(
     seedColor: Int,
     useDynamicTheme: Boolean,
-    isAmoled: Boolean,
+    useBlackBackground: Boolean,
     isDark: Boolean,
 ): ColorScheme {
     return rememberDynamicColorScheme(
         primary = Color(seedColor),
         isDark = isDark,
-        isAmoled = isAmoled,
+        isAmoled = useBlackBackground,
         style = PaletteStyle.TonalSpot,
     )
 }
 
 @Composable
 actual fun AniTheme(
-    forceDarkTheme: Boolean,
+    isDark: Boolean,
     content: @Composable () -> Unit
 ) {
     MaterialTheme(
-        colorScheme = if (forceDarkTheme) {
-            appColorScheme(isDark = true)
-        } else {
-            appColorScheme()
-        },
+        colorScheme = appColorScheme(isDark = isDark),
         content = content,
     )
 }

@@ -11,6 +11,7 @@ package me.him188.ani.app.ui.settings.tabs.theme
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
@@ -22,6 +23,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import com.materialkolor.hct.Hct
@@ -36,10 +38,7 @@ import me.him188.ani.app.ui.settings.framework.components.SwitchItem
 import me.him188.ani.utils.platform.isAndroid
 import me.him188.ani.utils.platform.isDesktop
 
-private val colorList =
-    ((4..10) + (1..3))
-        .map { it * 35.0 }
-        .map { Color(Hct.from(it, 40.0, 40.0).toInt()) }
+private val colorList = ((4..10) + (1..3)).map { it * 35.0 }.map { Color(Hct.from(it, 40.0, 40.0).toInt()) }
 
 @Composable
 fun SettingsScope.ThemeGroup(
@@ -129,27 +128,31 @@ fun SettingsScope.ThemeGroup(
             )
         }
 
-//        SwitchItem(
-//            checked = themeSettings.isAmoled,
-//            onCheckedChange = { checked ->
-//                state.update(themeSettings.copy(isAmoled = checked))
-//            },
-//            title = { Text("AMOLED") },
-//            description = { Text("在深色模式下使用纯黑背景") },
-//        )
+        SwitchItem(
+            checked = themeSettings.useBlackBackground,
+            onCheckedChange = { checked ->
+                state.update(themeSettings.copy(useBlackBackground = checked))
+            },
+            title = { Text("AMOLED") },
+            description = { Text("在深色模式下使用纯黑背景") },
+        )
     }
 
-    Group(title = { Text("调色板") }) {
-        FlowRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
-        ) {
-            colorList.forEach { color ->
-                ColorButton(
-                    color = color,
-                    themeSettings = themeSettings,
-                    state = state,
-                )
+    Box(
+        modifier = Modifier.alpha(if (themeSettings.useDynamicTheme) 0.5f else 1f),
+    ) {
+        Group(title = { Text("调色板") }) {
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+            ) {
+                colorList.forEach { color ->
+                    ColorButton(
+                        color = color,
+                        themeSettings = themeSettings,
+                        state = state,
+                    )
+                }
             }
         }
     }
@@ -157,9 +160,7 @@ fun SettingsScope.ThemeGroup(
 
 @Composable
 private fun ColorButton(
-    color: Color,
-    themeSettings: ThemeSettings,
-    state: SettingsState<ThemeSettings>
+    color: Color, themeSettings: ThemeSettings, state: SettingsState<ThemeSettings>
 ) {
     ColorButton(
         modifier = Modifier,

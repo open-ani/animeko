@@ -11,10 +11,12 @@ package me.him188.ani.app.data.models.preference
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 
-const val DEFAULT_SEED_COLOR = -10066178 // Color(0xFF6200EE).toArgb()
+val DEFAULT_SEED_COLOR = Color(0xFF6200EE).toArgb()
 
 @Serializable
 enum class DarkMode {
@@ -26,7 +28,7 @@ enum class DarkMode {
 data class ThemeSettings(
     val darkMode: DarkMode = DarkMode.AUTO,
     val useDynamicTheme: Boolean = false, // default "true" on Android && Build.VERSION.SDK_INT >= 31
-    val isAmoled: Boolean = false,
+    val useBlackBackground: Boolean = false,
     val seedColor: Int = DEFAULT_SEED_COLOR,
     @Suppress("PropertyName") @Transient val _placeholder: Int = 0,
 ) {
