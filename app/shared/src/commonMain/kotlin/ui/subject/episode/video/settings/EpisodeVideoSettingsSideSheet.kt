@@ -34,7 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
-import me.him188.ani.app.ui.foundation.theme.appColorScheme
+import me.him188.ani.app.ui.foundation.theme.AniTheme
 
 @Composable
 fun SideSheetLayout(
@@ -49,7 +49,7 @@ fun SideSheetLayout(
     // Compose does not yet support side sheets
     // https://m3.material.io/components/side-sheets/overview
 
-    MaterialTheme(appColorScheme(isDark = true)) {
+    AniTheme(forceDarkTheme = true) {
         BoxWithConstraints(
             Modifier.fillMaxSize()
                 .windowInsetsPadding(BottomSheetDefaults.windowInsets)

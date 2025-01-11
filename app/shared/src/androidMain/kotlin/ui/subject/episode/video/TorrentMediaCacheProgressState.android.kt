@@ -30,7 +30,7 @@ import me.him188.ani.app.torrent.api.pieces.PieceState
 import me.him188.ani.app.torrent.api.pieces.forEach
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview
-import me.him188.ani.app.ui.foundation.theme.appColorScheme
+import me.him188.ani.app.ui.foundation.theme.AniTheme
 import me.him188.ani.app.videoplayer.ui.progress.MediaProgressSlider
 import me.him188.ani.app.videoplayer.ui.progress.PlayerProgressSliderState
 import kotlin.time.Duration.Companion.seconds
@@ -64,7 +64,7 @@ fun PreviewMediaProgressSliderInteractive() = ProvideCompositionLocalsForPreview
         }
         isFinished = true
     }
-    MaterialTheme(appColorScheme(isDark = true)) {
+    AniTheme(forceDarkTheme = true) {
         Box(modifier = Modifier.background(MaterialTheme.colorScheme.background)) {
             val cacheProgressInfo by cacheProgressFlow.collectAsStateWithLifecycle(null)
             MediaProgressSlider(
@@ -104,7 +104,7 @@ fun PreviewMediaProgressSliderNonConsecutiveCacheImpl(
             createInfo()
         }
     }
-    MaterialTheme(appColorScheme(isDark = true)) {
+    AniTheme(forceDarkTheme = true) {
         Box(modifier = Modifier.background(MaterialTheme.colorScheme.background)) {
             MediaProgressSlider(
                 remember {

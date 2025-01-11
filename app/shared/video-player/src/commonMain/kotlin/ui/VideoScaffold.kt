@@ -46,6 +46,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
+import me.him188.ani.app.ui.foundation.theme.AniTheme
 import me.him188.ani.app.ui.foundation.theme.appColorScheme
 import me.him188.ani.app.ui.foundation.theme.slightlyWeaken
 import me.him188.ani.app.videoplayer.ui.guesture.PlayerGestureHost
@@ -225,7 +226,7 @@ fun VideoScaffold(
                                         .windowInsetsPadding(contentWindowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
-                                    MaterialTheme(appColorScheme(isDark = true)) {
+                                    AniTheme(forceDarkTheme = true) {
                                         CompositionLocalProvider(LocalContentColor provides Color.White) {
                                             bottomBar()
                                         }
@@ -243,7 +244,7 @@ fun VideoScaffold(
                                 Modifier.padding(horizontal = 4.dp, vertical = 12.dp)
                                     .windowInsetsPadding(contentWindowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)),
                             ) {
-                                MaterialTheme(appColorScheme(isDark = true)) {
+                                AniTheme(forceDarkTheme = true) {
                                     detachedProgressSlider()
                                 }
                             }
@@ -262,7 +263,7 @@ fun VideoScaffold(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.End,
                     ) {
-                        MaterialTheme(appColorScheme(isDark = true)) {
+                        AniTheme(forceDarkTheme = true) {
                             CompositionLocalProvider(LocalContentColor provides Color.White) {
                                 floatingBottomEnd()
                             }
@@ -324,7 +325,7 @@ fun VideoScaffold(
 
             // 右侧 sheet
             Box(Modifier.matchParentSize().windowInsetsPadding(contentWindowInsets)) {
-                MaterialTheme(appColorScheme(isDark = true)) {
+                AniTheme(forceDarkTheme = true) {
                     rhsSheet()
                 }
             }

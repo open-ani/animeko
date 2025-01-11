@@ -65,6 +65,7 @@ expect fun appColorScheme(
 
 @Composable
 expect fun AniTheme(
+    forceDarkTheme: Boolean = false,
     content: @Composable () -> Unit
 )
 

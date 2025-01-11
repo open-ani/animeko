@@ -97,6 +97,7 @@ import me.him188.ani.app.domain.media.player.MediaCacheProgressInfo
 import me.him188.ani.app.ui.foundation.dialogs.PlatformPopupProperties
 import me.him188.ani.app.ui.foundation.effects.onKey
 import me.him188.ani.app.ui.foundation.ifThen
+import me.him188.ani.app.ui.foundation.theme.AniTheme
 import me.him188.ani.app.ui.foundation.theme.appColorScheme
 import me.him188.ani.app.ui.foundation.theme.slightlyWeaken
 import me.him188.ani.app.ui.foundation.theme.stronglyWeaken
@@ -646,7 +647,7 @@ fun PlayerControllerBar(
                         Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        MaterialTheme(appColorScheme(isDark = true)) {
+                        AniTheme(forceDarkTheme = true) {
                             progressSlider()
                         }
                     }
@@ -669,7 +670,7 @@ fun PlayerControllerBar(
                 Modifier.weight(1f),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                MaterialTheme(appColorScheme(isDark = true)) {
+                AniTheme(forceDarkTheme = true) {
                     if (expanded) {
                         ProvideTextStyle(MaterialTheme.typography.labelSmall) {
                             danmakuEditor()
@@ -683,7 +684,7 @@ fun PlayerControllerBar(
             Row(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                MaterialTheme(appColorScheme(isDark = true)) {
+                AniTheme(forceDarkTheme = true) {
                     endActions()
                 }
             }
