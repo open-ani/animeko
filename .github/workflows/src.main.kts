@@ -581,7 +581,7 @@ fun WorkflowBuilder.addConsistencyCheckJob(filename: String) {
         run(
             command = ".github/workflows/${__FILE__.name}",
         )
-        run(command = "python ./github/workflows/check_yaml_equivalence.py $originalPath $backupPath")
+        run(command = "python .github/workflows/check_yaml_equivalence.py $originalPath $backupPath")
     }
 }
 
