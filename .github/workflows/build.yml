@@ -42,7 +42,7 @@ jobs:
         cache-disabled: 'true'
     - id: 'step-4'
       name: 'Clean and download dependencies'
-      uses: 'nick-fields/retry@v2'
+      uses: 'nick-fields/retry@v3'
       with:
         timeout_minutes: '60'
         max_attempts: '3'
@@ -55,7 +55,7 @@ jobs:
       run: './gradlew compileKotlin compileCommonMainKotlinMetadata compileDebugKotlinAndroid compileReleaseKotlinAndroid compileJvmMainKotlinMetadata compileKotlinDesktop compileKotlinMetadata "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "--parallel" "-Pani.android.abis=x86_64"'
     - id: 'step-7'
       name: 'Check'
-      uses: 'nick-fields/retry@v2'
+      uses: 'nick-fields/retry@v3'
       with:
         timeout_minutes: '60'
         max_attempts: '2'
@@ -90,7 +90,7 @@ jobs:
         cache-disabled: 'true'
     - id: 'step-4'
       name: 'Clean and download dependencies'
-      uses: 'nick-fields/retry@v2'
+      uses: 'nick-fields/retry@v3'
       with:
         timeout_minutes: '60'
         max_attempts: '3'
@@ -103,7 +103,7 @@ jobs:
       run: './gradlew compileKotlin compileCommonMainKotlinMetadata compileDebugKotlinAndroid compileReleaseKotlinAndroid compileJvmMainKotlinMetadata compileKotlinDesktop compileKotlinMetadata "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=x86_64"'
     - id: 'step-7'
       name: 'Check'
-      uses: 'nick-fields/retry@v2'
+      uses: 'nick-fields/retry@v3'
       with:
         timeout_minutes: '60'
         max_attempts: '2'
@@ -159,7 +159,7 @@ jobs:
         cache-disabled: 'true'
     - id: 'step-6'
       name: 'Clean and download dependencies'
-      uses: 'nick-fields/retry@v2'
+      uses: 'nick-fields/retry@v3'
       with:
         timeout_minutes: '60'
         max_attempts: '3'
@@ -249,7 +249,7 @@ jobs:
         overwrite: 'true'
     - id: 'step-20'
       name: 'Check'
-      uses: 'nick-fields/retry@v2'
+      uses: 'nick-fields/retry@v3'
       with:
         timeout_minutes: '60'
         max_attempts: '2'
@@ -264,7 +264,7 @@ jobs:
       actions: 'write'
     if: '${{ github.repository == ''open-ani/animeko'' }}'
     outputs:
-      macosAarch64DmgSuccess: '${{ steps.step-22.outcome == ''success'' }}'
+      macosAarch64DmgSuccess: '${{ steps.step-13.outcome == ''success'' }}'
     steps:
     - id: 'step-0'
       uses: 'actions/checkout@v4'
@@ -274,7 +274,7 @@ jobs:
       name: 'Resolve JBR location'
       run: |-
         # Expand jbrLocationExpr
-        jbr_location_expr=$(eval echo ${{ runner.tool_cache }}/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz)
+        jbr_location_expr=$(eval echo ${{ runner.tool_cache }}/jbrsdk_jcef-21.0.5-osx-aarch64-b631.32.tar.gz)
         echo "jbrLocation=$jbr_location_expr" >> $GITHUB_OUTPUT
     - id: 'step-2'
       name: 'Get JBR 21 for macOS AArch64'
@@ -282,7 +282,7 @@ jobs:
         jbrLocation: '${{ steps.step-1.outputs.jbrLocation }}'
       run: |-
         jbr_location="$jbrLocation"
-        checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz.checksum"
+        checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-osx-aarch64-b631.32.tar.gz.checksum"
         checksum_file="checksum.tmp"
         wget -q -O $checksum_file $checksum_url
 
@@ -294,7 +294,7 @@ jobs:
         fi
 
         if [ "$file_checksum" != "$expected_checksum" ]; then
-            wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz -O "$jbr_location"
+            wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-osx-aarch64-b631.32.tar.gz -O "$jbr_location"
             file_checksum=$(shasum -a 512 "$jbr_location" | awk '{print $1}')
         fi
 
@@ -326,7 +326,7 @@ jobs:
         cache-disabled: 'true'
     - id: 'step-7'
       name: 'Clean and download dependencies'
-      uses: 'nick-fields/retry@v2'
+      uses: 'nick-fields/retry@v3'
       with:
         timeout_minutes: '60'
         max_attempts: '3'
@@ -335,88 +335,25 @@ jobs:
       name: 'Update dev version name'
       run: './gradlew updateDevVersionNameFromGit "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=arm64-v8a"'
     - id: 'step-9'
-      name: 'Prepare signing key'
-      continue-on-error: true
-      uses: 'timheuer/base64-to-file@v1.1'
-      with:
-        fileName: 'android_signing_key'
-        fileDir: './'
-        encodedString: '${{ secrets.SIGNING_RELEASE_STOREFILE }}'
-      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
-    - id: 'step-10'
       name: 'Compile Kotlin'
       run: './gradlew compileKotlin compileCommonMainKotlinMetadata compileDebugKotlinAndroid compileReleaseKotlinAndroid compileJvmMainKotlinMetadata compileKotlinDesktop compileKotlinMetadata "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=arm64-v8a"'
-    - id: 'step-11'
-      name: 'Build Android Debug APKs'
-      run: './gradlew assembleDebug "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=arm64-v8a"'
-    - id: 'step-12'
-      name: 'Upload Android Debug APK arm64-v8a'
-      uses: 'actions/upload-artifact@v4'
-      with:
-        name: 'ani-android-arm64-v8a-debug'
-        path: 'app/android/build/outputs/apk/debug/android-arm64-v8a-debug.apk'
-        overwrite: 'true'
-    - id: 'step-13'
-      name: 'Upload Android Debug APK x86_64'
-      uses: 'actions/upload-artifact@v4'
-      with:
-        name: 'ani-android-x86_64-debug'
-        path: 'app/android/build/outputs/apk/debug/android-x86_64-debug.apk'
-        overwrite: 'true'
-    - id: 'step-14'
-      name: 'Upload Android Debug APK armeabi-v7a'
-      uses: 'actions/upload-artifact@v4'
-      with:
-        name: 'ani-android-armeabi-v7a-debug'
-        path: 'app/android/build/outputs/apk/debug/android-armeabi-v7a-debug.apk'
-        overwrite: 'true'
-    - id: 'step-15'
-      name: 'Build Android Release APKs'
-      env:
-        signing_release_storeFileFromRoot: '${{ steps.step-9.outputs.filePath }}'
-        signing_release_storePassword: '${{ secrets.SIGNING_RELEASE_STOREPASSWORD }}'
-        signing_release_keyAlias: '${{ secrets.SIGNING_RELEASE_KEYALIAS }}'
-        signing_release_keyPassword: '${{ secrets.SIGNING_RELEASE_KEYPASSWORD }}'
-      run: './gradlew assembleRelease "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=arm64-v8a"'
-      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
-    - id: 'step-16'
-      name: 'Upload Android Release APK arm64-v8a'
-      uses: 'actions/upload-artifact@v4'
-      with:
-        name: 'ani-android-arm64-v8a-release'
-        path: 'app/android/build/outputs/apk/release/android-arm64-v8a-release.apk'
-        overwrite: 'true'
-    - id: 'step-17'
-      name: 'Upload Android Release APK x86_64'
-      uses: 'actions/upload-artifact@v4'
-      with:
-        name: 'ani-android-x86_64-release'
-        path: 'app/android/build/outputs/apk/release/android-x86_64-release.apk'
-        overwrite: 'true'
-    - id: 'step-18'
-      name: 'Upload Android Release APK armeabi-v7a'
-      uses: 'actions/upload-artifact@v4'
-      with:
-        name: 'ani-android-armeabi-v7a-release'
-        path: 'app/android/build/outputs/apk/release/android-armeabi-v7a-release.apk'
-        overwrite: 'true'
-    - id: 'step-19'
+    - id: 'step-10'
       name: 'Check'
-      uses: 'nick-fields/retry@v2'
+      uses: 'nick-fields/retry@v3'
       with:
         timeout_minutes: '60'
         max_attempts: '2'
         command: './gradlew check "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=arm64-v8a"'
-    - id: 'step-20'
+    - id: 'step-11'
       name: 'Package Desktop'
       run: './gradlew packageReleaseDistributionForCurrentOS "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=arm64-v8a"'
-    - id: 'step-21'
+    - id: 'step-12'
       name: 'Upload compose logs'
       uses: 'actions/upload-artifact@v4'
       with:
         name: 'compose-logs-self-hosted-macos-15'
         path: 'app/desktop/build/compose/logs'
-    - id: 'step-22'
+    - id: 'step-13'
       name: 'Upload macOS dmg'
       uses: 'actions/upload-artifact@v4'
       with:
@@ -424,7 +361,7 @@ jobs:
         path: 'app/desktop/build/compose/binaries/main-release/dmg/Ani-*.dmg'
         if-no-files-found: 'error'
         overwrite: 'true'
-    - id: 'step-23'
+    - id: 'step-14'
       name: 'Cleanup temp files'
       continue-on-error: true
       run: 'chmod +x ./ci-helper/cleanup-temp-files-macos.sh && ./ci-helper/cleanup-temp-files-macos.sh'
