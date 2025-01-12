@@ -25,7 +25,7 @@ jobs:
       - id: 'step-3'
         run: '.github/workflows/src.main.kts'
       - id: 'step-4'
-        run: 'python ./github/workflows/check_yaml_equivalence.py .github/workflows/release.yml .github/workflows/release.yml-check.yml'
+        run: 'python .github/workflows/check_yaml_equivalence.py .github/workflows/release.yml .github/workflows/release.yml-check.yml'
   create-release:
     name: 'Create Release'
     runs-on: 'ubuntu-latest'
