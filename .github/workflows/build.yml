@@ -25,7 +25,7 @@ jobs:
       - id: 'step-3'
         run: '.github/workflows/src.main.kts'
       - id: 'step-4'
-        run: 'python check_yaml_equivalence.py .github/workflows/build.yml .github/workflows/build.yml-check.yml'
+        run: 'python ./github/workflows/check_yaml_equivalence.py .github/workflows/build.yml .github/workflows/build.yml-check.yml'
   build_self-hosted-windows-10:
     name: 'Build (Windows 10 x86_64 (Self-Hosted))'
     runs-on:
