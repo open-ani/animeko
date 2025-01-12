@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
-import me.him188.ani.app.data.models.preference.ProxySettings
+import me.him188.ani.app.data.models.preference.ProxyConfig
 import me.him188.ani.app.data.repository.torrent.peer.PeerFilterSubscriptionRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.torrent.peer.PeerFilterSettings
@@ -48,7 +48,7 @@ class DefaultTorrentManager(
     parentCoroutineContext: CoroutineContext,
     factory: TorrentEngineFactory,
     private val saveDir: (type: TorrentEngineType) -> SystemPath,
-    private val proxySettingsFlow: Flow<ProxySettings>,
+    private val proxyConfig: Flow<ProxyConfig?>,
     private val anitorrentConfigFlow: Flow<AnitorrentConfig>,
     private val isMeteredNetworkFlow: Flow<Boolean>,
     private val peerFilterSettings: Flow<PeerFilterSettings>
@@ -65,7 +65,7 @@ class DefaultTorrentManager(
                 logger.debug { "Anitorrent upload rate limit: $limit/s" }
                 config.copy(uploadRateLimit = limit)
             },
-            proxySettingsFlow,
+            proxyConfig = proxyConfig,
             peerFilterSettings,
             saveDir(TorrentEngineType.Anitorrent),
         )
@@ -85,6 +85,7 @@ class DefaultTorrentManager(
         fun create(
             parentCoroutineContext: CoroutineContext,
             settingsRepository: SettingsRepository,
+            proxyProvider: Flow<ProxyConfig?>,
             subscriptionRepository: PeerFilterSubscriptionRepository,
             meteredNetworkDetector: MeteredNetworkDetector,
             baseSaveDir: () -> SystemPath,
@@ -97,7 +98,7 @@ class DefaultTorrentManager(
                 { type ->
                     saveDirLazy.resolve(type.id)
                 },
-                settingsRepository.proxySettings.flow,
+                proxyProvider,
                 settingsRepository.anitorrentConfig.flow,
                 meteredNetworkDetector.isMeteredNetworkFlow.distinctUntilChanged(),
                 combine(settingsRepository.torrentPeerConfig.flow, subscriptionRepository.rulesFlow) { config, rules ->

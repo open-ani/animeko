@@ -22,14 +22,15 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.serialization.builtins.nullable
 import kotlinx.serialization.json.Json
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
-import me.him188.ani.app.data.models.preference.ProxySettings
+import me.him188.ani.app.data.models.preference.ProxyConfig
 import me.him188.ani.app.domain.torrent.IRemoteAniTorrentEngine
 import me.him188.ani.app.domain.torrent.TorrentEngine
 import me.him188.ani.app.domain.torrent.TorrentEngineType
 import me.him188.ani.app.domain.torrent.parcel.PAnitorrentConfig
-import me.him188.ani.app.domain.torrent.parcel.PProxySettings
+import me.him188.ani.app.domain.torrent.parcel.PProxyConfig
 import me.him188.ani.app.domain.torrent.parcel.toParceled
 import me.him188.ani.app.domain.torrent.peer.PeerFilterSettings
 import me.him188.ani.app.domain.torrent.service.TorrentServiceConnection
@@ -46,7 +47,7 @@ import kotlin.coroutines.CoroutineContext
 class RemoteAnitorrentEngine(
     private val connection: TorrentServiceConnection,
     anitorrentConfigFlow: Flow<AnitorrentConfig>,
-    proxySettingsFlow: Flow<ProxySettings>,
+    proxyConfig: Flow<ProxyConfig?>,
     peerFilterConfig: Flow<PeerFilterSettings>,
     saveDir: SystemPath,
     parentCoroutineContext: CoroutineContext,
@@ -78,9 +79,9 @@ class RemoteAnitorrentEngine(
     init {
         // transfer from app to service.
         collectSettingsToRemote(
-            settingsFlow = proxySettingsFlow.map { json.encodeToString(ProxySettings.serializer(), it) },
+            settingsFlow = proxyConfig.map { json.encodeToString(ProxyConfig.serializer().nullable, it) },
             getBinder = { getBinderOrFail().proxySettingsCollector },
-            transact = { collect(PProxySettings(it)) },
+            transact = { collect(PProxyConfig(it)) },
         )
         collectSettingsToRemote(
             settingsFlow = peerFilterConfig.map { it.toParceled() },

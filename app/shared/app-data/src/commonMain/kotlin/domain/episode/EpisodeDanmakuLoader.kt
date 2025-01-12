@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
@@ -65,7 +66,12 @@ class EpisodeDanmakuLoader(
 //    }
 
     private val danmakuLoader = DanmakuLoaderImpl(
-        combine(bundleFlow, player.mediaData) { info, mediaData ->
+        combine(
+            bundleFlow,
+            player.mediaData,
+            selectedMedia,
+            player.mediaProperties.filter { it != null }.map { it?.duration ?: 0.milliseconds },
+        ) { info, mediaData, selectedMedia, duration ->
             if (mediaData == null) {
                 null
             } else {
@@ -73,13 +79,13 @@ class EpisodeDanmakuLoader(
                     info.subjectInfo,
                     info.episodeInfo,
                     info.episodeId,
-                    filename = mediaData.filenameOrNull ?: selectedMedia.first()?.originalTitle,
+                    filename = mediaData.filenameOrNull ?: selectedMedia?.originalTitle,
                     fileLength = when (mediaData) {
                         null -> null
                         is SeekableInputMediaData -> mediaData.fileLength()
                         is UriMediaData -> null
                     },
-                    videoDuration = player.mediaProperties.value?.duration ?: 0.milliseconds,
+                    videoDuration = duration,
                 )
             }
         }.distinctUntilChanged()

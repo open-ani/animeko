@@ -23,20 +23,18 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.serialization.SerializationStrategy
 import kotlinx.serialization.json.JsonElement
-import me.him188.ani.app.data.models.preference.MediaSourceProxySettings
 import me.him188.ani.app.data.models.preference.ProxyAuthorization
 import me.him188.ani.app.data.models.preference.ProxyConfig
-import me.him188.ani.app.data.models.preference.configIfEnabledOrNull
 import me.him188.ani.app.data.repository.media.MediaSourceInstanceRepository
 import me.him188.ani.app.data.repository.media.MikanIndexCacheRepository
 import me.him188.ani.app.data.repository.media.SelectorMediaSourceEpisodeCacheRepository
 import me.him188.ani.app.data.repository.media.updateConfig
-import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.media.cache.MediaCacheManager.Companion.LOCAL_FS_MEDIA_SOURCE_ID
 import me.him188.ani.app.domain.mediasource.instance.MediaSourceInstance
 import me.him188.ani.app.domain.mediasource.instance.MediaSourceSave
 import me.him188.ani.app.domain.mediasource.rss.RssMediaSource
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSource
+import me.him188.ani.app.domain.settings.ProxyProvider
 import me.him188.ani.app.platform.getAniUserAgent
 import me.him188.ani.app.tools.ServiceLoader
 import me.him188.ani.datasources.api.matcher.MediaSourceWebVideoMatcherLoader
@@ -187,8 +185,7 @@ class MediaSourceManagerImpl(
     additionalSources: () -> List<MediaSource>, // local sources, calculated only once
     flowCoroutineContext: CoroutineContext = Dispatchers.Default,
 ) : MediaSourceManager, KoinComponent {
-    private val settingsRepository: SettingsRepository by inject()
-    private val proxyConfig = settingsRepository.proxySettings.flow
+    private val proxyProvider: ProxyProvider by inject()
     private val mikanIndexCacheRepository: MikanIndexCacheRepository by inject()
     private val instances: MediaSourceInstanceRepository by inject()
     private val selectorMediaSourceEpisodeCacheRepository: SelectorMediaSourceEpisodeCacheRepository by inject()
@@ -219,7 +216,7 @@ class MediaSourceManagerImpl(
         }
     }
     override val allInstances =
-        combine(instances.flow, proxyConfig.map { it.default }.distinctUntilChanged()) { saves, config ->
+        combine(instances.flow, proxyProvider.proxy.distinctUntilChanged()) { saves, config ->
             // 一定要 additionalSources 在前面, local sources 需要优先使用
             this.additionalSources + saves.mapNotNull { createInstance(it, config) }
         }.onReplacement { list ->
@@ -227,7 +224,7 @@ class MediaSourceManagerImpl(
         }.flowOn(flowCoroutineContext).shareIn(scope, replay = 1, started = SharingStarted.Lazily)
     override val allFactories: List<MediaSourceFactory> get() = factories
 
-    private fun createInstance(save: MediaSourceSave, config: MediaSourceProxySettings): MediaSourceInstance? {
+    private fun createInstance(save: MediaSourceSave, config: ProxyConfig?): MediaSourceInstance? {
         val factory = factories.find { it.factoryId == save.factoryId }
         return if (factory == null) {
             logger.error { "MediaSourceFactory '${save.factoryId}' not found for ${save.mediaSourceId}" }
@@ -306,12 +303,12 @@ class MediaSourceManagerImpl(
     }
 
     private fun MediaSourceFactory.create(
-        globalProxySettings: MediaSourceProxySettings,
+        proxyConfig: ProxyConfig?,
         mediaSourceId: String,
         config: MediaSourceConfig,
     ): MediaSource {
         val mediaSourceConfig = config.copy(
-            proxy = config.proxy ?: globalProxySettings.toClientProxyConfig(),
+            proxy = config.proxy ?: proxyConfig?.toClientProxyConfig(),
             userAgent = getAniUserAgent(),
         )
         return when (this) {
@@ -324,10 +321,6 @@ class MediaSourceManagerImpl(
     private companion object {
         private val logger = logger<MediaSourceManager>()
     }
-}
-
-fun MediaSourceProxySettings.toClientProxyConfig(): ClientProxyConfig? {
-    return configIfEnabledOrNull?.toClientProxyConfig()
 }
 
 fun ProxyConfig.toClientProxyConfig() = ClientProxyConfig(

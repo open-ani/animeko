@@ -59,9 +59,7 @@ import me.him188.ani.datasources.bangumi.models.search.BangumiSort
 import me.him188.ani.datasources.bangumi.models.subjects.BangumiLegacySubject
 import me.him188.ani.datasources.bangumi.models.subjects.BangumiSubjectImageSize
 import me.him188.ani.datasources.bangumi.next.apis.SubjectBangumiNextApi
-import me.him188.ani.utils.ktor.ClientProxyConfig
 import me.him188.ani.utils.ktor.HttpTokenChecker
-import me.him188.ani.utils.ktor.proxy
 import me.him188.ani.utils.ktor.registerLogging
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.thisLogger
@@ -70,6 +68,7 @@ import kotlin.coroutines.CoroutineContext
 
 interface BangumiClient : Closeable {
     // Bangumi open API: https://github.com/bangumi/api/blob/master/open-api/api.yml
+    val httpClient: HttpClient
 
     /*
     {
@@ -104,11 +103,11 @@ interface BangumiClient : Closeable {
         ): BangumiClient =
             BangumiClientImpl(bearerToken, parentCoroutineContext, httpClientConfiguration)
     }
+
 }
 
 fun createBangumiClient(
     bearerToken: Flow<String?>,
-    proxyConfig: ClientProxyConfig?,
     parentCoroutineContext: CoroutineContext,
     userAgent: String,
 ): BangumiClient {
@@ -116,31 +115,9 @@ fun createBangumiClient(
         bearerToken,
         parentCoroutineContext,
     ) {
-        proxy(proxyConfig)
         install(UserAgent) {
             agent = userAgent
         }
-    }
-}
-
-class DelegateBangumiClient(
-    private val client: Flow<BangumiClient>,
-) : BangumiClient {
-    override suspend fun executeGraphQL(actionName: String, query: String, variables: JsonObject?): JsonObject =
-        client.first().executeGraphQL(actionName, query, variables)
-
-    override suspend fun getSelfInfoByToken(accessToken: String?): BangumiUser? =
-        client.first().getSelfInfoByToken(accessToken)
-
-    override suspend fun testConnection(): ConnectionStatus {
-        return client.first().testConnection()
-    }
-
-    override suspend fun getApi(): DefaultApi = client.first().getApi()
-    override suspend fun getNextApi(): SubjectBangumiNextApi = client.first().getNextApi()
-    override suspend fun getSearchApi(): BangumiSearchApi = client.first().getSearchApi()
-
-    override fun close() {
     }
 }
 
@@ -215,7 +192,7 @@ class BangumiClientImpl(
         isLenient = true
     }
 
-    private val httpClient = HttpClient {
+    override val httpClient = HttpClient {
         httpClientConfiguration()
         install(HttpRequestRetry) {
             maxRetries = 3

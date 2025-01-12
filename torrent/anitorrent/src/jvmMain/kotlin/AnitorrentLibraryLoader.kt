@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -10,7 +10,6 @@
 package me.him188.ani.app.torrent.anitorrent
 
 import me.him188.ani.app.torrent.api.TorrentLibraryLoader
-import me.him188.ani.utils.coroutines.withExceptionCollector
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.platform.Platform
@@ -50,13 +49,11 @@ object AnitorrentLibraryLoader : TorrentLibraryLoader {
         val platform = platform as Platform.Desktop
         logger.info { "Loading anitorrent library" }
         logger.info { "java.library.path: ${System.getProperty("java.library.path")}" }
-        withExceptionCollector {
+        try {
+            System.loadLibrary("anitorrent")
+            logger.info { "Loading anitorrent library: success (from java.library.path)" }
+        } catch (firstE: UnsatisfiedLinkError) {
             try {
-                System.loadLibrary("anitorrent")
-                logger.info { "Loading anitorrent library: success (from java.library.path)" }
-            } catch (e: UnsatisfiedLinkError) {
-                collect(e)
-
                 // 可能是调试状态, 从 resources 加载
                 logger.info { "Failed to load anitorrent directly from java.library.path, trying resources instead" }
                 val temp = getTempDirForPlatform()
@@ -81,8 +78,10 @@ object AnitorrentLibraryLoader : TorrentLibraryLoader {
                     }
                 }
                 loadLibraryFromResources("anitorrent", temp)
-                logger.info { "Loading anitorrent library: success (from resources)" }
+            } catch (e: Throwable) {
+                e.addSuppressed(firstE)
             }
+            logger.info { "Loading anitorrent library: success (from resources)" }
         }
     }
 

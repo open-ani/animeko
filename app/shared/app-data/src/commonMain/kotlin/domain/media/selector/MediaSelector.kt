@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -31,6 +31,7 @@ import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.domain.mediasource.MediaListFilter
 import me.him188.ani.app.domain.mediasource.MediaListFilterContext
 import me.him188.ani.app.domain.mediasource.MediaListFilters
+import me.him188.ani.app.domain.mediasource.StringMatcher
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.source.MediaSourceLocation
@@ -358,6 +359,13 @@ class DefaultMediaSelector(
                     .thenByDescending {
                         @OptIn(UnsafeOriginalMediaAccess::class)
                         it.original.publishedTime
+                    }
+                    .thenByDescending {
+                        // 相似度越高, 排序越前
+                        when (it) {
+                            is MaybeExcludedMedia.Excluded -> 0
+                            is MaybeExcludedMedia.Included -> it.similarity
+                        }
                     },
             )
     }.flowOn(flowCoroutineContext)
@@ -389,9 +397,21 @@ class DefaultMediaSelector(
             )
         } else null
 
+
         return list.fastMap filter@{ media ->
+            val mediaSubjectName = media.properties.subjectName ?: media.originalTitle
+            val contextSubjectNames = context.subjectInfo?.allNames.orEmpty().asSequence() + sequenceOfEmptyString
+
             // 由下面实现调用, 方便创建 MaybeExcludedMedia
-            fun include(): MaybeExcludedMedia = MaybeExcludedMedia.Included(media)
+            fun include(): MaybeExcludedMedia {
+                return MaybeExcludedMedia.Included(
+                    media,
+                    similarity = contextSubjectNames
+                        .map { StringMatcher.calculateMatchRate(it, mediaSubjectName) }
+                        .max(),
+                )
+            }
+
             fun exclude(reason: MediaExclusionReason): MaybeExcludedMedia = MaybeExcludedMedia.Excluded(media, reason)
 
             if (isLocalCache(media)) return@filter include() // 本地缓存总是要显示
@@ -439,17 +459,24 @@ class DefaultMediaSelector(
             }
 
             if (mediaListFilterContext != null) {
-                val allow = with(MediaListFilters.ContainsSubjectName) {
-                    mediaListFilterContext.applyOn(
-                        object : MediaListFilter.Candidate {
-                            override val originalTitle: String get() = media.originalTitle
-                            override val subjectName: String get() = media.properties.subjectName ?: media.originalTitle
-                            override val episodeRange: EpisodeRange? get() = media.episodeRange
-                            override fun toString(): String {
-                                return "Candidate(media=$media)"
-                            }
-                        },
-                    )
+                val allow = when (media.kind) {
+                    MediaSourceKind.WEB -> {
+                        with(MediaListFilters.ContainsSubjectName) {
+                            mediaListFilterContext.applyOn(
+                                object : MediaListFilter.Candidate {
+                                    override val originalTitle: String get() = media.originalTitle
+                                    override val subjectName: String get() = mediaSubjectName
+                                    override val episodeRange: EpisodeRange? get() = media.episodeRange
+                                    override fun toString(): String {
+                                        return "Candidate(media=$media)"
+                                    }
+                                },
+                            )
+                        }
+                    }
+
+                    MediaSourceKind.BitTorrent -> true
+                    MediaSourceKind.LocalCache -> true
                 }
 
                 if (!allow) {
@@ -900,3 +927,5 @@ private val Media.costForDownload
         MediaSourceLocation.Lan -> 1
         else -> 2
     }
+
+private val sequenceOfEmptyString = sequenceOf("")

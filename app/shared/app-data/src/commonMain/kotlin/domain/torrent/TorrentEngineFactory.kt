@@ -11,7 +11,7 @@ package me.him188.ani.app.domain.torrent
 
 import kotlinx.coroutines.flow.Flow
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
-import me.him188.ani.app.data.models.preference.ProxySettings
+import me.him188.ani.app.data.models.preference.ProxyConfig
 import me.him188.ani.app.domain.torrent.engines.AnitorrentEngine
 import me.him188.ani.app.domain.torrent.peer.PeerFilterSettings
 import me.him188.ani.utils.io.SystemPath
@@ -21,7 +21,7 @@ interface TorrentEngineFactory {
     fun createTorrentEngine(
         parentCoroutineContext: CoroutineContext,
         config: Flow<AnitorrentConfig>,
-        proxySettings: Flow<ProxySettings>,
+        proxyConfig: Flow<ProxyConfig?>,
         peerFilterSettings: Flow<PeerFilterSettings>,
         saveDir: SystemPath,
     ): TorrentEngine
@@ -31,10 +31,10 @@ object LocalAnitorrentEngineFactory : TorrentEngineFactory {
     override fun createTorrentEngine(
         parentCoroutineContext: CoroutineContext,
         config: Flow<AnitorrentConfig>,
-        proxySettings: Flow<ProxySettings>,
+        proxyConfig: Flow<ProxyConfig?>,
         peerFilterSettings: Flow<PeerFilterSettings>,
         saveDir: SystemPath
     ): TorrentEngine {
-        return AnitorrentEngine(config, proxySettings, peerFilterSettings, saveDir, parentCoroutineContext)
+        return AnitorrentEngine(config, proxyConfig, peerFilterSettings, saveDir, parentCoroutineContext)
     }
 }

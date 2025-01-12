@@ -20,7 +20,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -39,15 +38,12 @@ import androidx.compose.ui.window.application
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import coil3.compose.LocalPlatformContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.io.files.Path
-import me.him188.ani.app.data.models.preference.configIfEnabledOrNull
 import me.him188.ani.app.data.persistent.dataStores
 import me.him188.ani.app.data.repository.SavedWindowState
 import me.him188.ani.app.data.repository.WindowStateRepository
@@ -62,6 +58,7 @@ import me.him188.ani.app.domain.media.resolver.LocalFileMediaResolver
 import me.him188.ani.app.domain.media.resolver.MediaResolver
 import me.him188.ani.app.domain.media.resolver.TorrentMediaResolver
 import me.him188.ani.app.domain.session.SessionManager
+import me.him188.ani.app.domain.settings.ProxyProvider
 import me.him188.ani.app.domain.torrent.DefaultTorrentManager
 import me.him188.ani.app.domain.torrent.TorrentManager
 import me.him188.ani.app.domain.update.UpdateManager
@@ -91,10 +88,8 @@ import me.him188.ani.app.platform.startCommonKoinModule
 import me.him188.ani.app.platform.window.setTitleBar
 import me.him188.ani.app.tools.update.DesktopUpdateInstaller
 import me.him188.ani.app.tools.update.UpdateInstaller
-import me.him188.ani.app.ui.foundation.LocalImageLoader
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.LocalWindowState
-import me.him188.ani.app.ui.foundation.getDefaultImageLoader
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
 import me.him188.ani.app.ui.foundation.layout.isSystemInFullscreen
@@ -249,6 +244,7 @@ object AniDesktop {
                         DefaultTorrentManager.create(
                             coroutineScope.coroutineContext,
                             get(),
+                            proxyProvider = get<ProxyProvider>().proxy,
                             get(),
                             get(),
                             baseSaveDir = {
@@ -304,11 +300,8 @@ object AniDesktop {
 
         // Initialize CEF application.
         coroutineScope.launch {
-            val proxySettings = koin.koin.get<SettingsRepository>()
-                .proxySettings.flow
-                .firstOrNull()
-                ?.default
-                ?.configIfEnabledOrNull
+            val proxySettings = koin.koin.get<ProxyProvider>()
+                .proxy.first()
 
             AniCefApp.initialize(
                 logDir = dataDir.toFile().resolve("logs"),
@@ -445,18 +438,6 @@ private fun FrameWindowScope.MainWindowContent(
 ) {
     val settingsRepository = KoinPlatform.getKoin().get<SettingsRepository>()
     AniApp {
-        val proxyConfig = settingsRepository.proxySettings.flow.map {
-            it.default.configIfEnabledOrNull
-        }
-        val proxy by proxyConfig.collectAsStateWithLifecycle(null)
-
-        val coilContext = LocalPlatformContext.current
-        val imageLoader by remember(coilContext) {
-            derivedStateOf {
-                getDefaultImageLoader(coilContext, proxyConfig = proxy)
-            }
-        }
-
         window.setTitleBar(AniThemeDefaults.navigationContainerColor, isSystemInDarkTheme())
 
         Box(
@@ -481,7 +462,6 @@ private fun FrameWindowScope.MainWindowContent(
                             vm.show(text)
                         }
                     },
-                    LocalImageLoader provides imageLoader,
                 ) {
                     Box(Modifier.padding(all = paddingByWindowSize)) {
                         val uiSettings by settingsRepository.uiSettings.flow.collectAsStateWithLifecycle(null)

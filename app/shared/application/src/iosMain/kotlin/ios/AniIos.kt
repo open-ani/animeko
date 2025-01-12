@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -28,15 +27,13 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import coil3.compose.LocalPlatformContext
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.map
-import me.him188.ani.app.data.models.preference.configIfEnabledOrNull
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.media.resolver.HttpStreamingMediaResolver
 import me.him188.ani.app.domain.media.resolver.LocalFileMediaResolver
 import me.him188.ani.app.domain.media.resolver.MediaResolver
 import me.him188.ani.app.domain.media.resolver.TorrentMediaResolver
+import me.him188.ani.app.domain.settings.ProxyProvider
 import me.him188.ani.app.domain.torrent.DefaultTorrentManager
 import me.him188.ani.app.domain.torrent.TorrentManager
 import me.him188.ani.app.navigation.AniNavigator
@@ -57,9 +54,7 @@ import me.him188.ani.app.platform.notification.NotifManager
 import me.him188.ani.app.platform.startCommonKoinModule
 import me.him188.ani.app.tools.update.IosUpdateInstaller
 import me.him188.ani.app.tools.update.UpdateInstaller
-import me.him188.ani.app.ui.foundation.LocalImageLoader
 import me.him188.ani.app.ui.foundation.TestGlobalLifecycle
-import me.him188.ani.app.ui.foundation.getDefaultImageLoader
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
 import me.him188.ani.app.ui.foundation.layout.isSystemInFullscreen
@@ -111,27 +106,14 @@ fun MainViewController(): UIViewController {
         },
     )
     val settingsRepository = koin.get<SettingsRepository>()
-    val proxyConfig = settingsRepository.proxySettings.flow.map {
-        it.default.configIfEnabledOrNull
-    }
     return ComposeUIViewController {
         AniApp {
-            val proxy by proxyConfig.collectAsStateWithLifecycle(null)
-
-            val coilContext = LocalPlatformContext.current
-            val imageLoader by remember(coilContext) {
-                derivedStateOf {
-                    getDefaultImageLoader(coilContext, proxyConfig = proxy)
-                }
-            }
-
             CompositionLocalProvider(
                 LocalContext provides context,
                 LocalPlatformWindow provides remember {
                     PlatformWindow()
                 },
                 LocalOnBackPressedDispatcherOwner provides onBackPressedDispatcherOwner,
-                LocalImageLoader provides imageLoader,
             ) {
                 Box(
                     Modifier.background(color = MaterialTheme.colorScheme.background)
@@ -188,6 +170,7 @@ fun getIosModules(
         DefaultTorrentManager.create(
             coroutineScope.coroutineContext,
             settingsRepository = get(),
+            proxyProvider = get<ProxyProvider>().proxy,
             subscriptionRepository = get(),
             meteredNetworkDetector = get(),
             baseSaveDir = { defaultTorrentCacheDir },

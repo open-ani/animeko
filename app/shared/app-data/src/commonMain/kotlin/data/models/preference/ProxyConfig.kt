@@ -9,16 +9,14 @@
 
 package me.him188.ani.app.data.models.preference
 
-import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.Stable
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
-import me.him188.ani.app.platform.SystemProxyDetector
+import me.him188.ani.utils.platform.annotations.SerializationOnly
 
 /**
  * All proxy preferences
  */
-@Immutable
 @Serializable
 data class ProxySettings(
     /**
@@ -28,48 +26,54 @@ data class ProxySettings(
     @Suppress("PropertyName") @Transient val _placeHolder: Int = 0,
 ) {
     companion object {
-        @Stable
         val Default = ProxySettings()
 
-        @Stable
-        val Disabled = ProxySettings(default = MediaSourceProxySettings(enabled = false))
+        val Disabled = ProxySettings(default = MediaSourceProxySettings(mode = ProxyMode.DISABLED))
     }
 }
 
-@RequiresOptIn
-@Target(AnnotationTarget.PROPERTY)
-annotation class ProxyConfigRegardlessOfEnabled
-
-@Immutable
 @Serializable
-data class MediaSourceProxySettings(
-    val enabled: Boolean = false,
+data class MediaSourceProxySettings @SerializationOnly constructor(
     /**
-     * Use [configIfEnabledOrNull]
+     * v4.4 以前的设置. 新版本不再使用, 请使用 [mode] 替代. 构造时可固定传入 false
      */
-    @property:ProxyConfigRegardlessOfEnabled val config: ProxyConfig = ProxyConfig.Default,
+    @Deprecated(message = "For compatibility", level = DeprecationLevel.ERROR)
+    val enabled: Boolean = false, // 在 4.4 以前也是 false.
+    /**
+     * @since 4.4
+     */
+    @Suppress("DEPRECATION_ERROR")
+    val mode: ProxyMode = if (enabled) ProxyMode.CUSTOM else ProxyMode.SYSTEM, // 旧用户可能已经设置了 enabled = true, 我们需要保持他们的设置.
+    /**
+     * 如果 [mode] 为 [ProxyMode.CUSTOM], 则使用此配置
+     */
+    @SerialName("config")
+    val customConfig: ProxyConfig = ProxyConfig.Default,
 ) {
+    @OptIn(SerializationOnly::class)
+    constructor (
+        mode: ProxyMode = ProxyMode.SYSTEM,
+        /**
+         * 如果 [mode] 为 [ProxyMode.CUSTOM], 则使用此配置
+         */
+        customConfig: ProxyConfig = ProxyConfig.Default,
+    ) : this(enabled = mode != ProxyMode.DISABLED, mode = mode, customConfig = customConfig)
+
     companion object {
-        @Stable
-        val Default by lazy {
-            val defaultProxy = SystemProxyDetector.instance.detect()
-            // 如果检测到了则启用检测到的代理, 否则使用默认的代理 (但保持禁用)
-            if (defaultProxy == null) {
-                MediaSourceProxySettings()
-            } else {
-                MediaSourceProxySettings(
-                    enabled = true,
-                    config = ProxyConfig(url = defaultProxy.url.toString()),
-                )
-            }
-        }
+        val Default = MediaSourceProxySettings()
     }
 }
 
-@OptIn(ProxyConfigRegardlessOfEnabled::class)
-val MediaSourceProxySettings.configIfEnabledOrNull get() = if (enabled) config else null
+/**
+ * @since 4.4
+ */
+@Serializable
+enum class ProxyMode {
+    DISABLED,
+    SYSTEM,
+    CUSTOM
+}
 
-@Immutable
 @Serializable
 data class ProxyConfig(
     val url: String = "http://127.0.0.1:7890",
@@ -80,7 +84,6 @@ data class ProxyConfig(
     }
 }
 
-@Immutable
 @Serializable
 data class ProxyAuthorization(
     val username: String,
