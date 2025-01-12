@@ -1,7 +1,7 @@
 #!/usr/bin/env kotlin
 
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -76,7 +76,6 @@ import io.github.typesafegithub.workflows.dsl.expressions.contexts.GitHubContext
 import io.github.typesafegithub.workflows.dsl.expressions.contexts.SecretsContext
 import io.github.typesafegithub.workflows.dsl.expressions.expr
 import io.github.typesafegithub.workflows.dsl.workflow
-import io.github.typesafegithub.workflows.yaml.ConsistencyCheckJobConfig
 import org.intellij.lang.annotations.Language
 
 check(KotlinVersion.CURRENT.isAtLeast(2, 0, 0)) {
@@ -573,7 +572,6 @@ workflow(
     ),
     sourceFile = __FILE__,
     targetFileName = "build.yml",
-    consistencyCheckJobConfig = ConsistencyCheckJobConfig.Disabled,
 ) {
     // Expands job matrix at compile-time so that we set job-level `if` condition. 
     val builds: List<Pair<MatrixInstance, Job<BuildJobOutputs>>> = buildMatrixInstances.map { matrix ->
@@ -638,7 +636,6 @@ workflow(
     ),
     sourceFile = __FILE__,
     targetFileName = "release.yml",
-    consistencyCheckJobConfig = ConsistencyCheckJobConfig.Disabled,
 ) {
     val createRelease = job(
         id = "create-release",
