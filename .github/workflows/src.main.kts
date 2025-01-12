@@ -1150,6 +1150,7 @@ class WithMatrix(
         if (matrix.uploadDesktopInstallers) {
             uses(
                 name = "Upload compose logs",
+                `if` = expr { always() },
                 action = UploadArtifact(
                     name = "compose-logs-${matrix.runner.id}",
                     path_Untyped = "app/desktop/build/compose/logs",
