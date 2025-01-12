@@ -411,6 +411,7 @@ fun getBuildJobBody(matrix: MatrixInstance): JobBuilder<BuildJobOutputs>.() -> U
 
     with(WithMatrix(matrix)) {
         freeSpace()
+        deleteLocalProperties()
         installJbr21()
         chmod777()
         setupGradle()
@@ -726,6 +727,7 @@ workflow(
             val gitTag = getGitTag()
 
             freeSpace()
+            deleteLocalProperties()
             installJbr21()
             chmod777()
             setupGradle()
@@ -843,6 +845,13 @@ class WithMatrix(
             )
         }
     }
+    
+    fun JobBuilder<*>.deleteLocalProperties() {
+        run(
+            command = shell($$"""rm local.properties"""),
+            continueOnError = true,
+        )
+    }
 
     fun JobBuilder<*>.installJbr21() {
         // For mac
@@ -851,10 +860,6 @@ class WithMatrix(
             "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-osx-aarch64-b631.32.tar.gz.checksum"
 
         val jbrFilename = jbrUrl.substringAfterLast('/')
-
-        run(
-            command = shell($$"""rm local.properties"""),
-        )
 
         when (matrix.runner.os to matrix.runner.arch) {
             OS.MACOS to Arch.AARCH64 -> {

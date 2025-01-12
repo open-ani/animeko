@@ -97,6 +97,7 @@ jobs:
         index_of_str: 'v'
         default_return_value: '${{ steps.step-1.outputs.tag }}'
     - id: 'step-3'
+      continue-on-error: true
       run: 'rm local.properties'
     - id: 'step-4'
       name: 'Setup JBR 21 for other OS'
@@ -152,6 +153,7 @@ jobs:
         index_of_str: 'v'
         default_return_value: '${{ steps.step-1.outputs.tag }}'
     - id: 'step-3'
+      continue-on-error: true
       run: 'rm local.properties'
     - id: 'step-4'
       name: 'Setup JBR 21 for other OS'
@@ -232,6 +234,7 @@ jobs:
       continue-on-error: true
       run: 'chmod +x ./ci-helper/free-space-macos.sh && ./ci-helper/free-space-macos.sh'
     - id: 'step-4'
+      continue-on-error: true
       run: 'rm local.properties'
     - id: 'step-5'
       name: 'Setup JBR 21 for other OS'
@@ -416,6 +419,7 @@ jobs:
         index_of_str: 'v'
         default_return_value: '${{ steps.step-1.outputs.tag }}'
     - id: 'step-3'
+      continue-on-error: true
       run: 'rm local.properties'
     - id: 'step-4'
       name: 'Resolve JBR location'

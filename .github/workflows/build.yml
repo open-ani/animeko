@@ -41,6 +41,7 @@ jobs:
       with:
         submodules: 'recursive'
     - id: 'step-1'
+      continue-on-error: true
       run: 'rm local.properties'
     - id: 'step-2'
       name: 'Setup JBR 21 for other OS'
@@ -91,6 +92,7 @@ jobs:
       with:
         submodules: 'recursive'
     - id: 'step-1'
+      continue-on-error: true
       run: 'rm local.properties'
     - id: 'step-2'
       name: 'Setup JBR 21 for other OS'
@@ -161,6 +163,7 @@ jobs:
       continue-on-error: true
       run: 'chmod +x ./ci-helper/free-space-macos.sh && ./ci-helper/free-space-macos.sh'
     - id: 'step-2'
+      continue-on-error: true
       run: 'rm local.properties'
     - id: 'step-3'
       name: 'Setup JBR 21 for other OS'
@@ -293,6 +296,7 @@ jobs:
       with:
         submodules: 'recursive'
     - id: 'step-1'
+      continue-on-error: true
       run: 'rm local.properties'
     - id: 'step-2'
       name: 'Resolve JBR location'
