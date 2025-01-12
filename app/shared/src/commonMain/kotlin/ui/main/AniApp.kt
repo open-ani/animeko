@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -24,15 +25,27 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil3.ImageLoader
+import coil3.compose.LocalPlatformContext
+import io.ktor.client.HttpClient
 import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.data.repository.user.SettingsRepository
+import me.him188.ani.app.domain.settings.ProxyProvider
+import me.him188.ani.app.domain.settings.collectProxyTo
+import me.him188.ani.app.platform.getAniUserAgent
 import me.him188.ani.app.tools.LocalTimeFormatter
 import me.him188.ani.app.tools.TimeFormatter
 import me.him188.ani.app.ui.foundation.AbstractViewModel
+import me.him188.ani.app.ui.foundation.LocalImageLoader
 import me.him188.ani.app.ui.foundation.LocalPlatform
+import me.him188.ani.app.ui.foundation.createDefaultImageLoader
 import me.him188.ani.app.ui.foundation.ifThen
+import me.him188.ani.app.ui.foundation.launchInBackground
 import me.him188.ani.app.ui.foundation.theme.AniTheme
 import me.him188.ani.app.ui.foundation.theme.LocalThemeSettings
+import me.him188.ani.datasources.api.source.asAutoCloseable
+import me.him188.ani.utils.ktor.createDefaultHttpClient
+import me.him188.ani.utils.ktor.userAgent
 import me.him188.ani.utils.platform.isMobile
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -40,7 +53,19 @@ import org.koin.core.component.inject
 @Stable
 class AniAppViewModel : AbstractViewModel(), KoinComponent {
     private val settings: SettingsRepository by inject()
+    private val proxyProvider: ProxyProvider by inject()
     val themeSettings: ThemeSettings? by settings.themeSettings.flow.produceState(null)
+    val imageLoaderClient by lazy {
+        createDefaultHttpClient {
+            userAgent(getAniUserAgent())
+            followRedirects = true
+        }.apply {
+            launchInBackground {
+                proxyProvider.collectProxyTo(this@apply)
+            }
+            addCloseable(this.asAutoCloseable())
+        }
+    }
 }
 
 @Composable
@@ -60,9 +85,6 @@ fun AniApp(
 //        }
 //    }
 
-    val focusManager by rememberUpdatedState(LocalFocusManager.current)
-    val keyboard by rememberUpdatedState(LocalSoftwareKeyboardController.current)
-
     val viewModel = viewModel { AniAppViewModel() }
 
     // 主题读好再进入 APP, 防止黑白背景闪烁
@@ -70,9 +92,13 @@ fun AniApp(
 
     CompositionLocalProvider(
 //        LocalImageLoader provides imageLoader,
+        LocalImageLoader provides rememberImageLoader(viewModel.imageLoaderClient),
         LocalTimeFormatter provides remember { TimeFormatter() },
         LocalThemeSettings provides themeSettings,
     ) {
+        val focusManager by rememberUpdatedState(LocalFocusManager.current)
+        val keyboard by rememberUpdatedState(LocalSoftwareKeyboardController.current)
+
         AniTheme {
             Box(
                 modifier = modifier.ifThen(LocalPlatform.current.isMobile()) {
@@ -91,4 +117,14 @@ fun AniApp(
             }
         }
     }
+}
+
+@Composable
+private fun rememberImageLoader(client: HttpClient): ImageLoader {
+    val coilContext = LocalPlatformContext.current
+    return remember(coilContext, client) {
+        derivedStateOf {
+            createDefaultImageLoader(coilContext, client)
+        }
+    }.value
 }
