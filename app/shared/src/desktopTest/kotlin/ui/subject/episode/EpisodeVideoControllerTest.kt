@@ -241,6 +241,7 @@ class EpisodeVideoControllerTest {
                     )
                 },
                 gestureFamily = gestureFamily,
+                fastSkipTimes = 3f,
             )
         }
     }

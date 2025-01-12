@@ -267,7 +267,7 @@ private fun AniAppContentImpl(
                         context,
                     )
                 }
-                EpisodeScene(vm, Modifier.fillMaxSize(), windowInsets)
+                EpisodeScene(vm, Modifier.fillMaxSize(), windowInsets, fastSkipTimes = vm.videoScaffoldConfig.fastSkipTimes)
             }
             composable<NavRoutes.Settings>(
                 enterTransition = enterTransition,

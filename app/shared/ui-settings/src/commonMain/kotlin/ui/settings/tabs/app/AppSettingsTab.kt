@@ -58,6 +58,7 @@ import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.SwitchItem
 import me.him188.ani.app.ui.settings.framework.components.TextButtonItem
 import me.him188.ani.app.ui.settings.framework.components.TextItem
+import me.him188.ani.app.ui.settings.framework.components.TextFieldItem
 import me.him188.ani.app.ui.update.AutoUpdateViewModel
 import me.him188.ani.app.ui.update.ChangelogDialog
 import me.him188.ani.app.ui.update.NewVersion
@@ -526,6 +527,38 @@ fun SettingsScope.PlayerGroup(
                 videoScaffoldConfig.update(config.copy(autoSwitchMediaOnPlayerError = it))
             },
             title = { Text("播放失败时自动切换资源") },
+        )
+        HorizontalDividerItem()
+        TextFieldItem(
+            config.fastSkipTimes.toString(),
+            title = { Text("长按倍速") },
+            description = {
+                Text(
+                    "长按加速的倍数",
+                )
+            },
+            onValueChangeCompleted = {
+                fun stringToFloat(str: String): Float? {
+                    return try {
+                        str.toFloat()
+                    } catch (e: NumberFormatException){
+                        null
+                    }
+                }
+                val ff: Float? = stringToFloat(it)
+                if(ff != null){
+                    videoScaffoldConfig.update(config.copy(fastSkipTimes = ff))
+                }
+            },
+            isErrorProvider = {
+                try {
+                    it.toFloat()
+                    false
+                }catch (e: NumberFormatException){
+                    true
+                }
+            },
+            sanitizeValue = { it.trim() },
         )
     }
 }

@@ -70,6 +70,10 @@ data class VideoScaffoldConfig @SerializationOnly constructor(
      * 在播放器错误时自动切换视频源
      */
     val autoSwitchMediaOnPlayerError: Boolean = true,
+    /**
+     * 长按倍速的倍数
+     */
+    val fastSkipTimes: Float = 3f,
     // WARNING: if you add new property here, review Companion properties.
     @Suppress("PropertyName") @Transient val _placeholder: Int = 0,
 ) {
@@ -88,6 +92,7 @@ data class VideoScaffoldConfig @SerializationOnly constructor(
             autoPlayNext = false,
             autoSkipOpEd = false,
             autoSwitchMediaOnPlayerError = false,
+            fastSkipTimes = 3f
         )
     }
 }

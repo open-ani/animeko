@@ -151,6 +151,7 @@ fun LockableVideoGestureHost(
     fastSkipState: FastSkipState = rememberPlayerFastSkipState(
         playerState = playerState.features.getOrFail(PlaybackSpeed),
         gestureIndicatorState,
+        3f
     ),
 ) {
     if (locked) {

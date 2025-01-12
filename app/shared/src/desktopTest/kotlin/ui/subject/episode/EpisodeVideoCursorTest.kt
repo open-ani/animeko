@@ -132,6 +132,7 @@ class EpisodeVideoCursorTest {
                     sideSheets = {},
                     modifier = Modifier.weight(1f),
                     gestureFamily = gestureFamily,
+                    fastSkipTimes = 3f,
                 )
 
                 Column(Modifier.fillMaxHeight().requiredWidth(100.dp)) {
