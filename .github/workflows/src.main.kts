@@ -1,7 +1,7 @@
 #!/usr/bin/env kotlin
 
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -562,6 +562,29 @@ fun WorkflowBuilder.addVerifyJob(build: Job<BuildJobOutputs>, runner: Runner, if
     )
 }
 
+fun WorkflowBuilder.addConsistencyCheckJob(filename: String) {
+    job(
+        id = "consistency-check",
+        name = "Workflow YAML Consistency Check",
+        runsOn = RunnerType.UbuntuLatest,
+        permissions = mapOf(),
+    ) {
+        uses(action = Checkout())
+        run(
+            command = "pip3 install PyYAML",
+        )
+        val originalPath = """.github/workflows/$filename"""
+        val backupPath = """.github/workflows/$filename-check.yml"""
+        run(
+            command = """cp "$originalPath" "$backupPath" """,
+        )
+        run(
+            command = ".github/workflows/${__FILE__.name}",
+        )
+        run(command = "python check_yaml_equivalence.py $originalPath $backupPath")
+    }
+}
+
 workflow(
     name = "Build",
     on = listOf(
@@ -575,6 +598,7 @@ workflow(
     targetFileName = "build.yml",
     consistencyCheckJobConfig = ConsistencyCheckJobConfig.Disabled,
 ) {
+    addConsistencyCheckJob()
     // Expands job matrix at compile-time so that we set job-level `if` condition. 
     val builds: List<Pair<MatrixInstance, Job<BuildJobOutputs>>> = buildMatrixInstances.map { matrix ->
         matrix to job(
@@ -640,6 +664,7 @@ workflow(
     targetFileName = "release.yml",
     consistencyCheckJobConfig = ConsistencyCheckJobConfig.Disabled,
 ) {
+    addConsistencyCheckJob()
     val createRelease = job(
         id = "create-release",
         name = "Create Release",
