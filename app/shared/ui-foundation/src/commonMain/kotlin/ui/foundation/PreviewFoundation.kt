@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.ui.foundation
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -25,6 +26,7 @@ import coil3.compose.LocalPlatformContext
 import coil3.serviceLoaderEnabled
 import com.materialkolor.rememberDynamicColorScheme
 import me.him188.ani.app.data.models.preference.DEFAULT_SEED_COLOR
+import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.tools.LocalTimeFormatter
@@ -32,6 +34,7 @@ import me.him188.ani.app.tools.TimeFormatter
 import me.him188.ani.app.ui.foundation.navigation.LocalOnBackPressedDispatcherOwner
 import me.him188.ani.app.ui.foundation.navigation.OnBackPressedDispatcher
 import me.him188.ani.app.ui.foundation.navigation.OnBackPressedDispatcherOwner
+import me.him188.ani.app.ui.foundation.theme.LocalThemeSettings
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.NoOpToaster
 import me.him188.ani.utils.platform.annotations.TestOnly
@@ -46,7 +49,7 @@ import org.jetbrains.compose.resources.imageResource
 @OptIn(TestOnly::class)
 @Composable
 inline fun ProvideFoundationCompositionLocalsForPreview(
-    isDark: Boolean = false,
+    isDark: Boolean = isSystemInDarkTheme(),
     crossinline content: @Composable () -> Unit,
 ) {
     val colorScheme = rememberDynamicColorScheme(
@@ -86,6 +89,7 @@ inline fun ProvideFoundationCompositionLocalsForPreview(
                 override val lifecycle: Lifecycle get() = TestGlobalLifecycle
             }
         },
+        LocalThemeSettings providesDefault ThemeSettings.Default,
     ) {
         val navController = rememberNavController()
         SideEffect {

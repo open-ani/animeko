@@ -273,6 +273,7 @@ val LocalNavigationMotionScheme = compositionLocalOf<NavigationMotionScheme> {
     error("No LocalNavigationMotionScheme provided")
 }
 
-val LocalThemeSettings = compositionLocalOf {
-    ThemeSettings.Default
+val LocalThemeSettings = compositionLocalOf<ThemeSettings> {
+    // ThemeSettings.Default
+    error("LocalThemeSettings not provided")
 }
