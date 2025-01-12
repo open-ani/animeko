@@ -852,6 +852,10 @@ class WithMatrix(
 
         val jbrFilename = jbrUrl.substringAfterLast('/')
 
+        run(
+            command = shell($$"""rm local.properties"""),
+        )
+
         when (matrix.runner.os to matrix.runner.arch) {
             OS.MACOS to Arch.AARCH64 -> {
                 val jbrLocationExpr = run(
@@ -901,7 +905,7 @@ class WithMatrix(
                     ),
                 )
 
-                uses(
+                val jbr = uses(
                     name = "Setup JBR 21 for macOS AArch64",
                     action = SetupJava_Untyped(
                         distribution_Untyped = "jdkfile",
@@ -909,6 +913,10 @@ class WithMatrix(
                         jdkFile_Untyped = expr { jbrLocationExpr },
                     ),
                     env = mapOf("GITHUB_TOKEN" to expr { secrets.GITHUB_TOKEN }),
+                )
+                
+                run(
+                    command = """echo "ani.compose.java.home=${jbr.outputs.path}\n" >> local.properties""",
                 )
             }
 
