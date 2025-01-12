@@ -89,8 +89,6 @@ import me.him188.ani.app.ui.foundation.effects.onKey
 import me.him188.ani.app.ui.foundation.effects.onPointerEventMultiplatform
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.isSystemInFullscreen
-import me.him188.ani.app.ui.foundation.theme.AniTheme
-import me.him188.ani.app.ui.foundation.theme.appColorScheme
 import me.him188.ani.app.utils.fixToString
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
 import me.him188.ani.app.videoplayer.ui.guesture.GestureIndicatorState.State.BRIGHTNESS
@@ -248,7 +246,7 @@ fun GestureIndicator(
     state: GestureIndicatorState,
 ) {
     val shape = MaterialTheme.shapes.small
-    val colors = appColorScheme(isDark = true)
+    val colors = MaterialTheme.colorScheme
     var lastDelta by remember {
         mutableIntStateOf(state.deltaSeconds)
     }
@@ -450,9 +448,7 @@ fun PlayerGestureHost(
                     indicatorState.showSeeking(seekerState.deltaSeconds)
                 }
             }
-            AniTheme(isDark = true) {
-                GestureIndicator(indicatorState)
-            }
+            GestureIndicator(indicatorState)
         }
         val maxHeight = maxHeight
 

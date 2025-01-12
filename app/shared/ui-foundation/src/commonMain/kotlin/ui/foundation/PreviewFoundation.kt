@@ -57,7 +57,7 @@ inline fun ProvideFoundationCompositionLocalsForPreview(
         isDark = isDark,
         isAmoled = false,
     )
-    
+
     val aniNavigator = remember { AniNavigator() }
     val previewImage = imageResource(Res.drawable.a)
     val coilContext = LocalPlatformContext.current

@@ -97,8 +97,6 @@ import me.him188.ani.app.domain.media.player.MediaCacheProgressInfo
 import me.him188.ani.app.ui.foundation.dialogs.PlatformPopupProperties
 import me.him188.ani.app.ui.foundation.effects.onKey
 import me.him188.ani.app.ui.foundation.ifThen
-import me.him188.ani.app.ui.foundation.theme.AniTheme
-import me.him188.ani.app.ui.foundation.theme.appColorScheme
 import me.him188.ani.app.ui.foundation.theme.slightlyWeaken
 import me.him188.ani.app.ui.foundation.theme.stronglyWeaken
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
@@ -390,53 +388,51 @@ object PlayerControllerDefaults {
         style: TextStyle = MaterialTheme.typography.bodyMedium,
         colors: TextFieldColors = inVideoDanmakuTextFieldColors()
     ) {
-        MaterialTheme(appColorScheme(isDark = false)) {
-            BasicTextField(
-                value,
-                onValueChange,
-                modifier.onKey(Key.Enter) {
-                    onSend()
-                }.height(38.dp),
-                textStyle = style.copy(color = colors.unfocusedTextColor),
-                cursorBrush = SolidColor(rememberUpdatedState(if (isError) colors.errorCursorColor else colors.cursorColor).value),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                keyboardActions = KeyboardActions(onSend = { onSend() }),
-                decorationBox = { innerTextField ->
-                    OutlinedTextFieldDefaults.DecorationBox(
-                        value,
-                        innerTextField,
-                        enabled = enabled,
-                        singleLine = singleLine,
-                        visualTransformation = VisualTransformation.None,
-                        interactionSource = interactionSource,
-                        contentPadding = PaddingValues(vertical = 7.dp, horizontal = 16.dp),
-                        colors = colors,
-                        placeholder = {
-                            Row(
-                                Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Box(Modifier.weight(1f)) {
-                                    placeholder()
-                                }
+        BasicTextField(
+            value,
+            onValueChange,
+            modifier.onKey(Key.Enter) {
+                onSend()
+            }.height(38.dp),
+            textStyle = style.copy(color = colors.unfocusedTextColor),
+            cursorBrush = SolidColor(rememberUpdatedState(if (isError) colors.errorCursorColor else colors.cursorColor).value),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+            keyboardActions = KeyboardActions(onSend = { onSend() }),
+            decorationBox = { innerTextField ->
+                OutlinedTextFieldDefaults.DecorationBox(
+                    value,
+                    innerTextField,
+                    enabled = enabled,
+                    singleLine = singleLine,
+                    visualTransformation = VisualTransformation.None,
+                    interactionSource = interactionSource,
+                    contentPadding = PaddingValues(vertical = 7.dp, horizontal = 16.dp),
+                    colors = colors,
+                    placeholder = {
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Box(Modifier.weight(1f)) {
+                                placeholder()
                             }
-                        },
-                        leadingIcon = leadingIcon,
-                        trailingIcon = trailingIcon,
-                        container = {
-                            Container(
-                                enabled = enabled,
-                                isError = isError,
-                                interactionSource = interactionSource,
-                                colors = colors,
-                                shape = shape,
-                            )
-                        },
-                    )
-                },
-            )
-        }
+                        }
+                    },
+                    leadingIcon = leadingIcon,
+                    trailingIcon = trailingIcon,
+                    container = {
+                        Container(
+                            enabled = enabled,
+                            isError = isError,
+                            interactionSource = interactionSource,
+                            colors = colors,
+                            shape = shape,
+                        )
+                    },
+                )
+            },
+        )
     }
 
     /**
@@ -647,9 +643,7 @@ fun PlayerControllerBar(
                         Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        AniTheme(isDark = true) {
-                            progressSlider()
-                        }
+                        progressSlider()
                     }
                 }
             }
@@ -670,23 +664,19 @@ fun PlayerControllerBar(
                 Modifier.weight(1f),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                AniTheme(isDark = true) {
-                    if (expanded) {
-                        ProvideTextStyle(MaterialTheme.typography.labelSmall) {
-                            danmakuEditor()
-                        }
-                    } else {
-                        progressSlider()
+                if (expanded) {
+                    ProvideTextStyle(MaterialTheme.typography.labelSmall) {
+                        danmakuEditor()
                     }
+                } else {
+                    progressSlider()
                 }
             }
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                AniTheme(isDark = true) {
-                    endActions()
-                }
+                endActions()
             }
         }
     }

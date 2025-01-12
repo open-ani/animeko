@@ -34,7 +34,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
-import me.him188.ani.app.ui.foundation.theme.AniTheme
 
 @Composable
 fun SideSheetLayout(
@@ -49,60 +48,58 @@ fun SideSheetLayout(
     // Compose does not yet support side sheets
     // https://m3.material.io/components/side-sheets/overview
 
-    AniTheme(isDark = true) {
-        BoxWithConstraints(
-            Modifier.fillMaxSize()
-                .windowInsetsPadding(BottomSheetDefaults.windowInsets)
+    BoxWithConstraints(
+        Modifier.fillMaxSize()
+            .windowInsetsPadding(BottomSheetDefaults.windowInsets)
+            .clickable(
+                onClick = onDismissRequest,
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+            ),
+        contentAlignment = Alignment.TopEnd,
+    ) {
+        // Layout guideline:
+        // https://m3.material.io/components/side-sheets/guidelines#96245186-bae4-4a33-b41f-17833bb2e2d7
+
+        Surface(
+            modifier
                 .clickable(
-                    onClick = onDismissRequest,
+                    onClick = { }, // just to intercept clicks
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
-                ),
-            contentAlignment = Alignment.TopEnd,
+                )
+                .fillMaxHeight()
+                .widthIn(min = 300.dp, max = 400.dp)
+                .width((this.maxWidth * 0.28f)),
+            color = containerColor,
         ) {
-            // Layout guideline:
-            // https://m3.material.io/components/side-sheets/guidelines#96245186-bae4-4a33-b41f-17833bb2e2d7
-
-            Surface(
-                modifier
-                    .clickable(
-                        onClick = { }, // just to intercept clicks
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                    )
-                    .fillMaxHeight()
-                    .widthIn(min = 300.dp, max = 400.dp)
-                    .width((this.maxWidth * 0.28f)),
-                color = containerColor,
-            ) {
-                Column {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Row(
-                            Modifier.padding(start = 16.dp, end = 12.dp).padding(vertical = 16.dp).weight(1f),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        ) {
-                            CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.outline) {
-                                navigationButton()
-                            }
-
-                            Row(Modifier.weight(1f)) {
-                                ProvideTextStyleContentColor(
-                                    MaterialTheme.typography.titleLarge,
-                                    MaterialTheme.colorScheme.onSurfaceVariant,
-                                ) {
-                                    title()
-                                }
-                            }
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        Modifier.padding(start = 16.dp, end = 12.dp).padding(vertical = 16.dp).weight(1f),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.outline) {
+                            navigationButton()
                         }
 
-                        Box(Modifier.padding(start = 12.dp)) {
-                            closeButton()
+                        Row(Modifier.weight(1f)) {
+                            ProvideTextStyleContentColor(
+                                MaterialTheme.typography.titleLarge,
+                                MaterialTheme.colorScheme.onSurfaceVariant,
+                            ) {
+                                title()
+                            }
                         }
                     }
 
-                    content()
+                    Box(Modifier.padding(start = 12.dp)) {
+                        closeButton()
+                    }
                 }
+
+                content()
             }
         }
     }

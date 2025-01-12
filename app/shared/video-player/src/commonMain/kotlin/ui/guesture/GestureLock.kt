@@ -21,6 +21,7 @@ import androidx.compose.material.icons.outlined.LockOpen
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -32,7 +33,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import me.him188.ani.app.ui.foundation.LocalPlatform
-import me.him188.ani.app.ui.foundation.theme.appColorScheme
 import me.him188.ani.app.ui.foundation.theme.slightlyWeaken
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
@@ -49,7 +49,7 @@ fun GestureLock(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-//    val background = appColorScheme(isDark = true).onSurface
+//    val background = MaterialTheme.colorScheme.onSurface
 //    SmallFloatingActionButton(
 //        onClick = onClick,
 //        modifier = modifier,
@@ -66,12 +66,12 @@ fun GestureLock(
     Surface(
         modifier.testTag(TAG_GESTURE_LOCK),
         shape = RoundedCornerShape(16.dp),
-        color = appColorScheme(isDark = true).background.copy(0.05f),
-        border = BorderStroke(0.5.dp, appColorScheme(isDark = false).outline.slightlyWeaken()),
+        color = MaterialTheme.colorScheme.background.copy(0.05f),
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.slightlyWeaken()),
     ) {
         IconButton(onClick) {
             val color = if (isLocked) {
-                appColorScheme(isDark = true).primary
+                MaterialTheme.colorScheme.primary
             } else {
                 Color.White
             }

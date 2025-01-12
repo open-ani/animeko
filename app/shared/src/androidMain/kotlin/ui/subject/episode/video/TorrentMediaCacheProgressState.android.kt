@@ -30,7 +30,6 @@ import me.him188.ani.app.torrent.api.pieces.PieceState
 import me.him188.ani.app.torrent.api.pieces.forEach
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview
-import me.him188.ani.app.ui.foundation.theme.AniTheme
 import me.him188.ani.app.videoplayer.ui.progress.MediaProgressSlider
 import me.him188.ani.app.videoplayer.ui.progress.PlayerProgressSliderState
 import kotlin.time.Duration.Companion.seconds
@@ -64,22 +63,20 @@ fun PreviewMediaProgressSliderInteractive() = ProvideCompositionLocalsForPreview
         }
         isFinished = true
     }
-    AniTheme(isDark = true) {
-        Box(modifier = Modifier.background(MaterialTheme.colorScheme.background)) {
-            val cacheProgressInfo by cacheProgressFlow.collectAsStateWithLifecycle(null)
-            MediaProgressSlider(
-                remember {
-                    PlayerProgressSliderState(
-                        currentPositionMillis = { currentPositionMillis },
-                        totalDurationMillis = { totalDurationMillis },
-                        chapters = { persistentListOf() },
-                        onPreview = {},
-                        onPreviewFinished = { currentPositionMillis = it },
-                    )
-                },
-                { cacheProgressInfo },
-            )
-        }
+    Box(modifier = Modifier.background(MaterialTheme.colorScheme.background)) {
+        val cacheProgressInfo by cacheProgressFlow.collectAsStateWithLifecycle(null)
+        MediaProgressSlider(
+            remember {
+                PlayerProgressSliderState(
+                    currentPositionMillis = { currentPositionMillis },
+                    totalDurationMillis = { totalDurationMillis },
+                    chapters = { persistentListOf() },
+                    onPreview = {},
+                    onPreviewFinished = { currentPositionMillis = it },
+                )
+            },
+            { cacheProgressInfo },
+        )
     }
 }
 
@@ -104,21 +101,19 @@ fun PreviewMediaProgressSliderNonConsecutiveCacheImpl(
             createInfo()
         }
     }
-    AniTheme(isDark = true) {
-        Box(modifier = Modifier.background(MaterialTheme.colorScheme.background)) {
-            MediaProgressSlider(
-                remember {
-                    PlayerProgressSliderState(
-                        currentPositionMillis = { 2000 },
-                        totalDurationMillis = { 30_000 },
-                        chapters = { persistentListOf() },
-                        onPreview = {},
-                        onPreviewFinished = { },
-                    )
-                },
-                { cacheProgress },
-            )
-        }
+    Box(modifier = Modifier.background(MaterialTheme.colorScheme.background)) {
+        MediaProgressSlider(
+            remember {
+                PlayerProgressSliderState(
+                    currentPositionMillis = { 2000 },
+                    totalDurationMillis = { 30_000 },
+                    chapters = { persistentListOf() },
+                    onPreview = {},
+                    onPreviewFinished = { },
+                )
+            },
+            { cacheProgress },
+        )
     }
 }
 

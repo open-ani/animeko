@@ -21,7 +21,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
-import me.him188.ani.app.ui.foundation.theme.AniTheme
 
 @Composable
 fun VideoLoadingIndicator(
@@ -30,16 +29,14 @@ fun VideoLoadingIndicator(
     modifier: Modifier = Modifier,
     textStyle: TextStyle = MaterialTheme.typography.labelLarge,
 ) {
-    AniTheme(isDark = true) {
-        Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-            if (showProgress) {
-                CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 3.dp)
-            }
+    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        if (showProgress) {
+            CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 3.dp)
+        }
 
-            Row(Modifier.padding(top = 8.dp)) {
-                ProvideTextStyleContentColor(textStyle, color = MaterialTheme.colorScheme.onSurface) {
-                    text()
-                }
+        Row(Modifier.padding(top = 8.dp)) {
+            ProvideTextStyleContentColor(textStyle, color = MaterialTheme.colorScheme.onSurface) {
+                text()
             }
         }
     }
