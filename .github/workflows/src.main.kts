@@ -598,7 +598,7 @@ workflow(
     targetFileName = "build.yml",
     consistencyCheckJobConfig = ConsistencyCheckJobConfig.Disabled,
 ) {
-    addConsistencyCheckJob()
+    addConsistencyCheckJob("build.yml")
     // Expands job matrix at compile-time so that we set job-level `if` condition. 
     val builds: List<Pair<MatrixInstance, Job<BuildJobOutputs>>> = buildMatrixInstances.map { matrix ->
         matrix to job(
@@ -664,7 +664,7 @@ workflow(
     targetFileName = "release.yml",
     consistencyCheckJobConfig = ConsistencyCheckJobConfig.Disabled,
 ) {
-    addConsistencyCheckJob()
+    addConsistencyCheckJob("release.yml")
     val createRelease = job(
         id = "create-release",
         name = "Create Release",
