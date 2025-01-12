@@ -344,7 +344,7 @@ jobs:
       env:
         GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
     - id: 'step-5'
-      run: 'echo "ani.compose.java.home=steps.step-4.outputs.path\n" >> local.properties'
+      run: 'echo "ani.compose.java.home=${{ steps.step-4.outputs.path }}\n" >> local.properties'
     - id: 'step-6'
       run: 'echo "jvm.toolchain.version=21" >> local.properties'
     - id: 'step-7'

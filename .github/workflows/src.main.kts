@@ -921,7 +921,7 @@ class WithMatrix(
                 )
                 
                 run(
-                    command = """echo "ani.compose.java.home=${jbr.outputs.path}\n" >> local.properties""",
+                    command = """echo "ani.compose.java.home=${expr { jbr.outputs.path }}\n" >> local.properties""",
                 )
             }
 
