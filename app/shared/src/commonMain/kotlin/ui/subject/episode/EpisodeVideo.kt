@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -55,6 +55,7 @@ import me.him188.ani.app.ui.foundation.icons.RightPanelClose
 import me.him188.ani.app.ui.foundation.icons.RightPanelOpen
 import me.him188.ani.app.ui.foundation.interaction.WindowDragArea
 import me.him188.ani.app.ui.foundation.rememberDebugSettingsViewModel
+import me.him188.ani.app.ui.foundation.theme.appColorScheme
 import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheetPage
 import me.him188.ani.app.ui.subject.episode.video.components.rememberStatusBarHeightAsState
 import me.him188.ani.app.ui.subject.episode.video.loading.EpisodeVideoLoadingIndicator
@@ -152,262 +153,266 @@ internal fun EpisodeVideoImpl(
         }
     }
 
-
-    VideoScaffold(
-        expanded = expanded,
-        modifier = modifier
-            .hoverable(videoInteractionSource)
-            .cursorVisibility(showCursor),
-        contentWindowInsets = contentWindowInsets,
-        maintainAspectRatio = maintainAspectRatio,
-        controllerState = playerControllerState,
-        gestureLocked = isLocked,
-        topBar = {
-            WindowDragArea {
-                PlayerTopBar(
-                    Modifier.testTag(TAG_EPISODE_VIDEO_TOP_BAR),
-                    title = if (expanded) {
-                        { title() }
-                    } else {
-                        null
-                    },
-                    actions = {
-                        IconButton({ playerState.skip(85000L) }) {
-                            Icon(AniIcons.Forward85, "跳过 85s")
-                        }
-                        if (expanded) {
+    // Use AniTheme(isDark = true) here may cause problems in layout.
+    MaterialTheme(colorScheme = appColorScheme(isDark = true)) {
+        VideoScaffold(
+            expanded = expanded,
+            modifier = modifier
+                .hoverable(videoInteractionSource)
+                .cursorVisibility(showCursor),
+            contentWindowInsets = contentWindowInsets,
+            maintainAspectRatio = maintainAspectRatio,
+            controllerState = playerControllerState,
+            gestureLocked = isLocked,
+            topBar = {
+                WindowDragArea {
+                    PlayerTopBar(
+                        Modifier.testTag(TAG_EPISODE_VIDEO_TOP_BAR),
+                        title = if (expanded) {
+                            { title() }
+                        } else {
+                            null
+                        },
+                        actions = {
+                            IconButton({ playerState.skip(85000L) }) {
+                                Icon(AniIcons.Forward85, "跳过 85s")
+                            }
+                            if (expanded) {
+                                IconButton(
+                                    { sheetsController.navigateTo(EpisodeVideoSideSheetPage.MEDIA_SELECTOR) },
+                                    Modifier.testTag(TAG_SHOW_MEDIA_SELECTOR),
+                                ) {
+                                    Icon(Icons.Rounded.DisplaySettings, contentDescription = "数据源")
+                                }
+                            }
                             IconButton(
-                                { sheetsController.navigateTo(EpisodeVideoSideSheetPage.MEDIA_SELECTOR) },
-                                Modifier.testTag(TAG_SHOW_MEDIA_SELECTOR),
+                                { sheetsController.navigateTo(EpisodeVideoSideSheetPage.PLAYER_SETTINGS) },
+                                Modifier.testTag(TAG_SHOW_SETTINGS),
                             ) {
-                                Icon(Icons.Rounded.DisplaySettings, contentDescription = "数据源")
+                                Icon(Icons.Rounded.Settings, contentDescription = "设置")
                             }
-                        }
-                        IconButton(
-                            { sheetsController.navigateTo(EpisodeVideoSideSheetPage.PLAYER_SETTINGS) },
-                            Modifier.testTag(TAG_SHOW_SETTINGS),
-                        ) {
-                            Icon(Icons.Rounded.Settings, contentDescription = "设置")
-                        }
-                        if (expanded && LocalPlatform.current.isDesktop()) {
-                            IconButton({ onToggleSidebar(!sidebarVisible) }, Modifier.testTag(TAG_COLLAPSE_SIDEBAR)) {
-                                if (sidebarVisible) {
-                                    Icon(AniIcons.RightPanelClose, contentDescription = "折叠侧边栏")
-                                } else {
-                                    Icon(AniIcons.RightPanelOpen, contentDescription = "展开侧边栏")
+                            if (expanded && LocalPlatform.current.isDesktop()) {
+                                IconButton(
+                                    { onToggleSidebar(!sidebarVisible) },
+                                    Modifier.testTag(TAG_COLLAPSE_SIDEBAR),
+                                ) {
+                                    if (sidebarVisible) {
+                                        Icon(AniIcons.RightPanelClose, contentDescription = "折叠侧边栏")
+                                    } else {
+                                        Icon(AniIcons.RightPanelOpen, contentDescription = "展开侧边栏")
+                                    }
                                 }
                             }
+                        },
+                        windowInsets = contentWindowInsets,
+                    )
+                }
+            },
+            video = {
+                if (LocalIsPreviewing.current) {
+                    Text("预览模式")
+                } else {
+                    // Save the status bar height to offset the video player
+                    val statusBarHeight by rememberStatusBarHeightAsState()
+
+                    VideoPlayer(
+                        playerState,
+                        Modifier
+                            .offset(x = -statusBarHeight / 2, y = 0.dp)
+                            .matchParentSize(),
+                    )
+                }
+            },
+            danmakuHost = {
+                AnimatedVisibility(
+                    danmakuEnabled,
+                    enter = fadeIn(tween(200)),
+                    exit = fadeOut(tween(200)),
+                ) {
+                    Box(Modifier.matchParentSize()) {
+                        danmakuHost()
+                    }
+                }
+            },
+            gestureHost = {
+                val swipeSeekerState = rememberSwipeSeekerState(constraints.maxWidth) {
+                    playerState.skip(it * 1000L)
+                }
+                val videoPropertiesState by playerState.mediaProperties.collectAsState(null)
+                val enableSwipeToSeek by remember {
+                    derivedStateOf {
+                        videoPropertiesState?.let { it.durationMillis != 0L } == true
+                    }
+                }
+
+                val indicatorTasker = rememberUiMonoTasker()
+                val indicatorState = rememberGestureIndicatorState()
+                LockableVideoGestureHost(
+                    playerControllerState,
+                    swipeSeekerState,
+                    progressSliderState,
+                    playerState,
+                    locked = isLocked,
+                    enableSwipeToSeek = enableSwipeToSeek,
+                    audioController = audioController,
+                    brightnessController = brightnessController,
+                    Modifier,
+                    onTogglePauseResume = {
+                        if (playerState.playbackState.value.isPlaying) {
+                            indicatorTasker.launch {
+                                indicatorState.showPausedLong()
+                            }
+                        } else {
+                            indicatorTasker.launch {
+                                indicatorState.showResumedLong()
+                            }
+                        }
+                        playerState.togglePause()
+                    },
+                    onToggleFullscreen = {
+                        onClickFullScreen()
+                    },
+                    onExitFullscreen = onExitFullscreen,
+                    family = gestureFamily,
+                    indicatorState,
+                )
+            },
+            floatingMessage = {
+                Column {
+                    val videoLoadingState by videoLoadingStateFlow.collectAsStateWithLifecycle(VideoLoadingState.Initial)
+                    EpisodeVideoLoadingIndicator(
+                        playerState,
+                        videoLoadingState,
+                        optimizeForFullscreen = expanded, // TODO: 这对 PC 其实可能不太好
+                    )
+                    val debugViewModel = rememberDebugSettingsViewModel()
+                    @OptIn(TestOnly::class)
+                    if (debugViewModel.isAppInDebugMode && debugViewModel.debugSettings.value.showControllerAlwaysOnRequesters) {
+                        TextWithBorder(
+                            "Always on requesters: \n" +
+                                    playerControllerState.getAlwaysOnRequesters().joinToString("\n"),
+                            style = MaterialTheme.typography.labelLarge,
+                        )
+
+                        TextWithBorder(
+                            "ControllerVisibility: \n" + playerControllerState.visibility,
+                            style = MaterialTheme.typography.labelLarge,
+                        )
+
+                        TextWithBorder(
+                            "expanded: $expanded",
+                            style = MaterialTheme.typography.labelLarge,
+                        )
+                    }
+                }
+            },
+            rhsButtons = {
+                if (expanded && LocalPlatform.current.isDesktop()) {
+                    ScreenshotButton(
+                        onClick = onClickScreenshot,
+                    )
+                }
+            },
+            gestureLock = {
+                if (expanded) {
+                    GestureLock(isLocked = isLocked, onClick = { isLocked = !isLocked })
+                }
+            },
+            bottomBar = {
+                PlayerControllerBar(
+                    startActions = {
+                        val isPlaying by remember(playerState) { playerState.playbackState.map { it.isPlaying } }
+                            .collectAsStateWithLifecycle(false)
+                        PlayerControllerDefaults.PlaybackIcon(
+                            isPlaying = { isPlaying },
+                            onClick = { playerState.togglePause() },
+                        )
+
+                        if (hasNextEpisode && expanded) {
+                            PlayerControllerDefaults.NextEpisodeIcon(
+                                onClick = onClickNextEpisode,
+                            )
+                        }
+                        PlayerControllerDefaults.DanmakuIcon(
+                            danmakuEnabled,
+                            onClick = { onToggleDanmaku() },
+                        )
+                        val audioLevelController = playerState.features[AudioLevelController]
+                        if (expanded && audioLevelController != null) {
+                            val volumeState by audioLevelController.volume.collectAsStateWithLifecycle()
+                            val volumeMute by audioLevelController.isMute.collectAsStateWithLifecycle()
+                            PlayerControllerDefaults.AudioIcon(
+                                volumeState,
+                                isMute = volumeMute,
+                                maxValue = audioLevelController.maxVolume,
+                                onClick = {
+                                    audioLevelController.toggleMute()
+                                },
+                                onchange = {
+                                    audioLevelController.setVolume(it)
+                                },
+                                controllerState = playerControllerState,
+                            )
                         }
                     },
-                    windowInsets = contentWindowInsets,
-                )
-            }
-        },
-        video = {
-            if (LocalIsPreviewing.current) {
-                Text("预览模式")
-            } else {
-                // Save the status bar height to offset the video player
-                val statusBarHeight by rememberStatusBarHeightAsState()
-
-                VideoPlayer(
-                    playerState,
-                    Modifier
-                        .offset(x = -statusBarHeight / 2, y = 0.dp)
-                        .matchParentSize(),
-                )
-            }
-        },
-        danmakuHost = {
-            AnimatedVisibility(
-                danmakuEnabled,
-                enter = fadeIn(tween(200)),
-                exit = fadeOut(tween(200)),
-            ) {
-                Box(Modifier.matchParentSize()) {
-                    danmakuHost()
-                }
-            }
-        },
-        gestureHost = {
-            val swipeSeekerState = rememberSwipeSeekerState(constraints.maxWidth) {
-                playerState.skip(it * 1000L)
-            }
-            val videoPropertiesState by playerState.mediaProperties.collectAsState(null)
-            val enableSwipeToSeek by remember {
-                derivedStateOf {
-                    videoPropertiesState?.let { it.durationMillis != 0L } == true
-                }
-            }
-
-            val indicatorTasker = rememberUiMonoTasker()
-            val indicatorState = rememberGestureIndicatorState()
-            LockableVideoGestureHost(
-                playerControllerState,
-                swipeSeekerState,
-                progressSliderState,
-                playerState,
-                locked = isLocked,
-                enableSwipeToSeek = enableSwipeToSeek,
-                audioController = audioController,
-                brightnessController = brightnessController,
-                Modifier,
-                onTogglePauseResume = {
-                    if (playerState.playbackState.value.isPlaying) {
-                        indicatorTasker.launch {
-                            indicatorState.showPausedLong()
-                        }
-                    } else {
-                        indicatorTasker.launch {
-                            indicatorState.showResumedLong()
-                        }
-                    }
-                    playerState.togglePause()
-                },
-                onToggleFullscreen = {
-                    onClickFullScreen()
-                },
-                onExitFullscreen = onExitFullscreen,
-                family = gestureFamily,
-                indicatorState,
-            )
-        },
-        floatingMessage = {
-            Column {
-                val videoLoadingState by videoLoadingStateFlow.collectAsStateWithLifecycle(VideoLoadingState.Initial)
-                EpisodeVideoLoadingIndicator(
-                    playerState,
-                    videoLoadingState,
-                    optimizeForFullscreen = expanded, // TODO: 这对 PC 其实可能不太好
-                )
-                val debugViewModel = rememberDebugSettingsViewModel()
-                @OptIn(TestOnly::class)
-                if (debugViewModel.isAppInDebugMode && debugViewModel.debugSettings.value.showControllerAlwaysOnRequesters) {
-                    TextWithBorder(
-                        "Always on requesters: \n" +
-                                playerControllerState.getAlwaysOnRequesters().joinToString("\n"),
-                        style = MaterialTheme.typography.labelLarge,
-                    )
-
-                    TextWithBorder(
-                        "ControllerVisibility: \n" + playerControllerState.visibility,
-                        style = MaterialTheme.typography.labelLarge,
-                    )
-
-                    TextWithBorder(
-                        "expanded: $expanded",
-                        style = MaterialTheme.typography.labelLarge,
-                    )
-                }
-            }
-        },
-        rhsButtons = {
-            if (expanded && LocalPlatform.current.isDesktop()) {
-                ScreenshotButton(
-                    onClick = onClickScreenshot,
-                )
-            }
-        },
-        gestureLock = {
-            if (expanded) {
-                GestureLock(isLocked = isLocked, onClick = { isLocked = !isLocked })
-            }
-        },
-        bottomBar = {
-            PlayerControllerBar(
-                startActions = {
-                    val isPlaying by remember(playerState) { playerState.playbackState.map { it.isPlaying } }
-                        .collectAsStateWithLifecycle(false)
-                    PlayerControllerDefaults.PlaybackIcon(
-                        isPlaying = { isPlaying },
-                        onClick = { playerState.togglePause() },
-                    )
-
-                    if (hasNextEpisode && expanded) {
-                        PlayerControllerDefaults.NextEpisodeIcon(
-                            onClick = onClickNextEpisode,
+                    progressIndicator = {
+                        MediaProgressIndicatorText(progressSliderState)
+                    },
+                    progressSlider = {
+                        PlayerControllerDefaults.MediaProgressSlider(
+                            progressSliderState,
+                            cacheProgressInfoFlow = cacheProgressInfoFlow,
+                            showPreviewTimeTextOnThumb = expanded,
                         )
-                    }
-                    PlayerControllerDefaults.DanmakuIcon(
-                        danmakuEnabled,
-                        onClick = { onToggleDanmaku() },
-                    )
-                    val audioLevelController = playerState.features[AudioLevelController]
-                    if (expanded && audioLevelController != null) {
-                        val volumeState by audioLevelController.volume.collectAsStateWithLifecycle()
-                        val volumeMute by audioLevelController.isMute.collectAsStateWithLifecycle()
-                        PlayerControllerDefaults.AudioIcon(
-                            volumeState,
-                            isMute = volumeMute,
-                            maxValue = audioLevelController.maxVolume,
-                            onClick = {
-                                audioLevelController.toggleMute()
-                            },
-                            onchange = {
-                                audioLevelController.setVolume(it)
-                            },
-                            controllerState = playerControllerState,
-                        )
-                    }
-                },
-                progressIndicator = {
-                    MediaProgressIndicatorText(progressSliderState)
-                },
-                progressSlider = {
-                    PlayerControllerDefaults.MediaProgressSlider(
-                        progressSliderState,
-                        cacheProgressInfoFlow = cacheProgressInfoFlow,
-                        showPreviewTimeTextOnThumb = expanded,
-                    )
-                },
-                danmakuEditor = danmakuEditor,
-                endActions = {
-                    if (expanded) {
-                        PlayerControllerDefaults.SelectEpisodeIcon(
-                            onClick = { sheetsController.navigateTo(EpisodeVideoSideSheetPage.EPISODE_SELECTOR) },
-                        )
+                    },
+                    danmakuEditor = danmakuEditor,
+                    endActions = {
+                        if (expanded) {
+                            PlayerControllerDefaults.SelectEpisodeIcon(
+                                onClick = { sheetsController.navigateTo(EpisodeVideoSideSheetPage.EPISODE_SELECTOR) },
+                            )
 
-                        if (LocalPlatform.current.isDesktop()) {
-                            playerState.audioTracks?.let {
-                                PlayerControllerDefaults.AudioSwitcher(it)
-                            }
-                        }
-
-                        playerState.subtitleTracks?.let {
-                            PlayerControllerDefaults.SubtitleSwitcher(it)
-                        }
-
-                        val playbackSpeed = playerState.features.getOrFail(PlaybackSpeed)
-                        val speed by playbackSpeed.valueFlow.collectAsStateWithLifecycle(1f)
-                        val alwaysOnRequester = rememberAlwaysOnRequester(playerControllerState, "speedSwitcher")
-                        SpeedSwitcher(
-                            speed,
-                            { playbackSpeed.set(it) },
-                            onExpandedChanged = {
-                                if (it) {
-                                    alwaysOnRequester.request()
-                                } else {
-                                    alwaysOnRequester.cancelRequest()
+                            if (LocalPlatform.current.isDesktop()) {
+                                playerState.audioTracks?.let {
+                                    PlayerControllerDefaults.AudioSwitcher(it)
                                 }
-                            },
-                        )
+                            }
 
-                    }
-                    PlayerControllerDefaults.FullscreenIcon(
-                        expanded,
-                        onClickFullscreen = onClickFullScreen,
-                    )
-                },
-                expanded = expanded,
-            )
-        },
-        detachedProgressSlider = detachedProgressSlider,
-        floatingBottomEnd = { fullscreenSwitchButton() },
-        rhsSheet = { sideSheets(sheetsController) },
-        leftBottomTips = leftBottomTips,
-    )
+                            playerState.subtitleTracks?.let {
+                                PlayerControllerDefaults.SubtitleSwitcher(it)
+                            }
+
+                            val playbackSpeed = playerState.features.getOrFail(PlaybackSpeed)
+                            val speed by playbackSpeed.valueFlow.collectAsStateWithLifecycle(1f)
+                            val alwaysOnRequester = rememberAlwaysOnRequester(playerControllerState, "speedSwitcher")
+                            SpeedSwitcher(
+                                speed,
+                                { playbackSpeed.set(it) },
+                                onExpandedChanged = {
+                                    if (it) {
+                                        alwaysOnRequester.request()
+                                    } else {
+                                        alwaysOnRequester.cancelRequest()
+                                    }
+                                },
+                            )
+
+                        }
+                        PlayerControllerDefaults.FullscreenIcon(
+                            expanded,
+                            onClickFullscreen = onClickFullScreen,
+                        )
+                    },
+                    expanded = expanded,
+                )
+            },
+            detachedProgressSlider = detachedProgressSlider,
+            floatingBottomEnd = { fullscreenSwitchButton() },
+            rhsSheet = { sideSheets(sheetsController) },
+            leftBottomTips = leftBottomTips,
+        )
+    }
 }
 
 @Stable
 object EpisodeVideoDefaults
-
