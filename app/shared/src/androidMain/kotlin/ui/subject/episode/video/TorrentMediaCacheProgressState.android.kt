@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -30,8 +30,6 @@ import me.him188.ani.app.torrent.api.pieces.PieceState
 import me.him188.ani.app.torrent.api.pieces.forEach
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview
-import me.him188.ani.app.ui.foundation.stateOf
-import me.him188.ani.app.ui.foundation.theme.aniDarkColorTheme
 import me.him188.ani.app.videoplayer.ui.progress.MediaProgressSlider
 import me.him188.ani.app.videoplayer.ui.progress.PlayerProgressSliderState
 import kotlin.time.Duration.Companion.seconds
@@ -65,22 +63,20 @@ fun PreviewMediaProgressSliderInteractive() = ProvideCompositionLocalsForPreview
         }
         isFinished = true
     }
-    MaterialTheme(aniDarkColorTheme()) {
-        Box(modifier = Modifier.background(MaterialTheme.colorScheme.background)) {
-            val cacheProgressInfo by cacheProgressFlow.collectAsStateWithLifecycle(null)
-            MediaProgressSlider(
-                remember {
-                    PlayerProgressSliderState(
-                        currentPositionMillis = { currentPositionMillis },
-                        totalDurationMillis = { totalDurationMillis },
-                        chapters = { persistentListOf() },
-                        onPreview = {},
-                        onPreviewFinished = { currentPositionMillis = it },
-                    )
-                },
-                { cacheProgressInfo },
-            )
-        }
+    Box(modifier = Modifier.background(MaterialTheme.colorScheme.background)) {
+        val cacheProgressInfo by cacheProgressFlow.collectAsStateWithLifecycle(null)
+        MediaProgressSlider(
+            remember {
+                PlayerProgressSliderState(
+                    currentPositionMillis = { currentPositionMillis },
+                    totalDurationMillis = { totalDurationMillis },
+                    chapters = { persistentListOf() },
+                    onPreview = {},
+                    onPreviewFinished = { currentPositionMillis = it },
+                )
+            },
+            { cacheProgressInfo },
+        )
     }
 }
 
@@ -105,21 +101,19 @@ fun PreviewMediaProgressSliderNonConsecutiveCacheImpl(
             createInfo()
         }
     }
-    MaterialTheme(aniDarkColorTheme()) {
-        Box(modifier = Modifier.background(MaterialTheme.colorScheme.background)) {
-            MediaProgressSlider(
-                remember {
-                    PlayerProgressSliderState(
-                        currentPositionMillis = { 2000 },
-                        totalDurationMillis = { 30_000 },
-                        chapters = {persistentListOf()},
-                        onPreview = {},
-                        onPreviewFinished = { },
-                    )
-                },
-                { cacheProgress },
-            )
-        }
+    Box(modifier = Modifier.background(MaterialTheme.colorScheme.background)) {
+        MediaProgressSlider(
+            remember {
+                PlayerProgressSliderState(
+                    currentPositionMillis = { 2000 },
+                    totalDurationMillis = { 30_000 },
+                    chapters = { persistentListOf() },
+                    onPreview = {},
+                    onPreviewFinished = { },
+                )
+            },
+            { cacheProgress },
+        )
     }
 }
 

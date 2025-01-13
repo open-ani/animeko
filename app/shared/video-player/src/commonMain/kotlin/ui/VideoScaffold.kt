@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -46,7 +46,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
-import me.him188.ani.app.ui.foundation.theme.aniDarkColorTheme
 import me.him188.ani.app.ui.foundation.theme.slightlyWeaken
 import me.him188.ani.app.videoplayer.ui.guesture.PlayerGestureHost
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerBar
@@ -132,7 +131,7 @@ fun VideoScaffold(
                     .padding(vertical = 8.dp)
                     .windowInsetsPadding(contentWindowInsets),
             ) {
-                CompositionLocalProvider(LocalContentColor provides aniDarkColorTheme().onBackground) {
+                CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onBackground) {
                     danmakuHost()
                 }
             }
@@ -173,7 +172,7 @@ fun VideoScaffold(
                                         .windowInsetsPadding(contentWindowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top)),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
-                                    CompositionLocalProvider(LocalContentColor provides aniDarkColorTheme().onBackground) {
+                                    CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onBackground) {
                                         topBar()
                                     }
                                 }
@@ -225,10 +224,8 @@ fun VideoScaffold(
                                         .windowInsetsPadding(contentWindowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
-                                    MaterialTheme(aniDarkColorTheme()) {
-                                        CompositionLocalProvider(LocalContentColor provides Color.White) {
-                                            bottomBar()
-                                        }
+                                    CompositionLocalProvider(LocalContentColor provides Color.White) {
+                                        bottomBar()
                                     }
                                 }
                             }
@@ -243,9 +240,7 @@ fun VideoScaffold(
                                 Modifier.padding(horizontal = 4.dp, vertical = 12.dp)
                                     .windowInsetsPadding(contentWindowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)),
                             ) {
-                                MaterialTheme(aniDarkColorTheme()) {
-                                    detachedProgressSlider()
-                                }
+                                detachedProgressSlider()
                             }
                         }
                     }
@@ -262,10 +257,8 @@ fun VideoScaffold(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.End,
                     ) {
-                        MaterialTheme(aniDarkColorTheme()) {
-                            CompositionLocalProvider(LocalContentColor provides Color.White) {
-                                floatingBottomEnd()
-                            }
+                        CompositionLocalProvider(LocalContentColor provides Color.White) {
+                            floatingBottomEnd()
                         }
                     }
                 }
@@ -316,7 +309,7 @@ fun VideoScaffold(
                 contentAlignment = Alignment.Center,
             ) {
                 ProvideTextStyle(MaterialTheme.typography.labelSmall) {
-                    CompositionLocalProvider(LocalContentColor provides aniDarkColorTheme().onBackground.slightlyWeaken()) {
+                    CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onBackground.slightlyWeaken()) {
                         floatingMessage()
                     }
                 }
@@ -324,9 +317,7 @@ fun VideoScaffold(
 
             // 右侧 sheet
             Box(Modifier.matchParentSize().windowInsetsPadding(contentWindowInsets)) {
-                MaterialTheme(aniDarkColorTheme()) {
-                    rhsSheet()
-                }
+                rhsSheet()
             }
         }
     }

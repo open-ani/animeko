@@ -13,9 +13,6 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowOutward
-import androidx.compose.material.icons.rounded.DarkMode
-import androidx.compose.material.icons.rounded.HdrAuto
-import androidx.compose.material.icons.rounded.LightMode
 import androidx.compose.material.icons.rounded.RocketLaunch
 import androidx.compose.material.icons.rounded.Science
 import androidx.compose.material.icons.rounded.Verified
@@ -33,10 +30,10 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.CoroutineScope
 import me.him188.ani.app.data.models.danmaku.DanmakuFilterConfig
-import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.data.models.preference.EpisodeListProgressTheme
 import me.him188.ani.app.data.models.preference.FullscreenSwitchMode
 import me.him188.ani.app.data.models.preference.NsfwMode
+import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.data.models.preference.UISettings
 import me.him188.ani.app.data.models.preference.UpdateSettings
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
@@ -58,17 +55,16 @@ import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.SwitchItem
 import me.him188.ani.app.ui.settings.framework.components.TextButtonItem
 import me.him188.ani.app.ui.settings.framework.components.TextItem
+import me.him188.ani.app.ui.settings.tabs.theme.ThemeGroup
 import me.him188.ani.app.ui.update.AutoUpdateViewModel
 import me.him188.ani.app.ui.update.ChangelogDialog
 import me.him188.ani.app.ui.update.NewVersion
 import me.him188.ani.app.ui.update.TextButtonUpdateLogo
 import me.him188.ani.app.ui.update.UpdateChecker
-import me.him188.ani.utils.platform.isAndroid
 import me.him188.ani.utils.platform.isDesktop
 import me.him188.ani.utils.platform.isIos
 import me.him188.ani.utils.platform.isMobile
 import kotlin.coroutines.cancellation.CancellationException
-
 
 sealed class CheckVersionResult {
     data class HasNewVersion(
@@ -85,6 +81,7 @@ sealed class CheckVersionResult {
 fun AppSettingsTab(
     softwareUpdateGroupState: SoftwareUpdateGroupState,
     uiSettings: SettingsState<UISettings>,
+    themeSettings: SettingsState<ThemeSettings>,
     videoScaffoldConfig: SettingsState<VideoScaffoldConfig>,
     danmakuFilterConfig: SettingsState<DanmakuFilterConfig>,
     danmakuRegexFilterState: DanmakuRegexFilterState,
@@ -94,6 +91,7 @@ fun AppSettingsTab(
     SettingsTab(modifier) {
         SoftwareUpdateGroup(softwareUpdateGroupState)
         AppearanceGroup(uiSettings)
+        ThemeGroup(themeSettings)
         PlayerGroup(
             videoScaffoldConfig,
             danmakuFilterConfig,
@@ -122,129 +120,75 @@ fun SettingsScope.AppearanceGroup(
         description = { Text("启动 APP 时进入的页面") },
     )
 
+    Group(title = { Text("搜索") }, useThinHeader = true) {
+        SwitchItem(
+            checked = uiSettings.searchSettings.enableNewSearchSubjectApi,
+            onCheckedChange = {
+                state.update(
+                    uiSettings.copy(
+                        searchSettings = uiSettings.searchSettings.copy(
+                            enableNewSearchSubjectApi = !uiSettings.searchSettings.enableNewSearchSubjectApi,
+                        ),
+                    ),
+                )
+            },
+            title = { Text("使用新版条目查询接口") },
+            description = { Text("实验性接口，可能会缺失部分条目，谨慎启用") },
+        )
+        DropdownItem(
+            selected = { uiSettings.searchSettings.nsfwMode },
+            values = { NsfwMode.entries },
+            itemText = {
+                when (it) {
+                    NsfwMode.HIDE -> Text("隐藏")
+                    NsfwMode.BLUR -> Text("模糊")
+                    NsfwMode.DISPLAY -> Text("显示")
+                }
+            },
+            onSelect = {
+                state.update(
+                    uiSettings.copy(
+                        searchSettings = uiSettings.searchSettings.copy(nsfwMode = it),
+                    ),
+                )
+            },
+            title = { Text("NSFW 内容") },
+        )
+    }
 
-    Group(title = { Text("主题") }) {
-        if (LocalPlatform.current.isAndroid()) {
-            SwitchItem(
-                uiSettings.theme.dynamicTheme,
-                {
-                    state.update(
-                        uiSettings.copy(
-                            theme = uiSettings.theme.copy(dynamicTheme = !uiSettings.theme.dynamicTheme),
+    Group(title = { Text("我的追番") }, useThinHeader = true) {
+        SwitchItem(
+            checked = uiSettings.myCollections.enableListAnimation1,
+            onCheckedChange = {
+                state.update(
+                    uiSettings.copy(
+                        myCollections = uiSettings.myCollections.copy(
+                            enableListAnimation1 = !uiSettings.myCollections.enableListAnimation1,
                         ),
-                    )
-                },
-                title = { Text("动态主题") },
-                description = { Text("根据桌面壁纸定制主题") },
-            )
-        }
-        AnimatedVisibility(
-            LocalPlatform.current.isDesktop() || LocalPlatform.current.isAndroid(),
-        ) {
-            DropdownItem(
-                selected = { uiSettings.theme.darkMode },
-                values = { DarkMode.entries },
-                itemText = {
-                    when (it) {
-                        DarkMode.AUTO -> Text("自动")
-                        DarkMode.LIGHT -> Text("浅色")
-                        DarkMode.DARK -> Text("深色")
-                    }
-                },
-                onSelect = {
-                    state.update(
-                        uiSettings.copy(
-                            theme = uiSettings.theme.copy(darkMode = it),
-                        ),
-                    )
-                },
-                itemIcon = {
-                    when (it) {
-                        DarkMode.AUTO -> Icon(Icons.Rounded.HdrAuto, null)
-                        DarkMode.LIGHT -> Icon(Icons.Rounded.LightMode, null)
-                        DarkMode.DARK -> Icon(Icons.Rounded.DarkMode, null)
-                    }
-                },
-                description = {
-                    when (uiSettings.theme.darkMode) {
-                        DarkMode.AUTO -> Text("根据系统设置自动切换")
-                        else -> {}
-                    }
-                },
-                title = { Text("深色模式") },
-            )
-        }
+                    ),
+                )
+            },
+            title = { Text("列表滚动动画") },
+            description = { Text("如遇到显示重叠问题，可尝试关闭") },
+        )
+    }
 
-        Group(title = { Text("搜索") }, useThinHeader = true) {
-            SwitchItem(
-                checked = uiSettings.searchSettings.enableNewSearchSubjectApi,
-                onCheckedChange = {
-                    state.update(
-                        uiSettings.copy(
-                            searchSettings = uiSettings.searchSettings.copy(
-                                enableNewSearchSubjectApi = !uiSettings.searchSettings.enableNewSearchSubjectApi,
-                            ),
+    Group(title = { Text("选集播放") }, useThinHeader = true) {
+        val episode by remember { derivedStateOf { uiSettings.episodeProgress } }
+        SwitchItem(
+            checked = episode.theme == EpisodeListProgressTheme.LIGHT_UP,
+            onCheckedChange = {
+                state.update(
+                    uiSettings.copy(
+                        episodeProgress = episode.copy(
+                            theme = if (it) EpisodeListProgressTheme.LIGHT_UP else EpisodeListProgressTheme.ACTION,
                         ),
-                    )
-                },
-                title = { Text("使用新版条目查询接口") },
-                description = { Text("实验性接口，可能会缺失部分条目，谨慎启用") },
-            )
-            DropdownItem(
-                selected = { uiSettings.searchSettings.nsfwMode },
-                values = { NsfwMode.entries },
-                itemText = {
-                    when (it) {
-                        NsfwMode.HIDE -> Text("隐藏")
-                        NsfwMode.BLUR -> Text("模糊")
-                        NsfwMode.DISPLAY -> Text("显示")
-                    }
-                },
-                onSelect = {
-                    state.update(
-                        uiSettings.copy(
-                            searchSettings = uiSettings.searchSettings.copy(nsfwMode = it),
-                        ),
-                    )
-                },
-                title = { Text("NSFW 内容") },
-            )
-        }
-
-        Group(title = { Text("我的追番") }, useThinHeader = true) {
-            SwitchItem(
-                checked = uiSettings.myCollections.enableListAnimation1,
-                onCheckedChange = {
-                    state.update(
-                        uiSettings.copy(
-                            myCollections = uiSettings.myCollections.copy(
-                                enableListAnimation1 = !uiSettings.myCollections.enableListAnimation1,
-                            ),
-                        ),
-                    )
-                },
-                title = { Text("列表滚动动画") },
-                description = { Text("如遇到显示重叠问题，可尝试关闭") },
-            )
-        }
-
-        Group(title = { Text("选集播放") }, useThinHeader = true) {
-            val episode by remember { derivedStateOf { uiSettings.episodeProgress } }
-            SwitchItem(
-                checked = episode.theme == EpisodeListProgressTheme.LIGHT_UP,
-                onCheckedChange = {
-                    state.update(
-                        uiSettings.copy(
-                            episodeProgress = episode.copy(
-                                theme = if (it) EpisodeListProgressTheme.LIGHT_UP else EpisodeListProgressTheme.ACTION,
-                            ),
-                        ),
-                    )
-                },
-                title = { Text("点亮模式") },
-                description = { Text("高亮已经看过的剧集，而不是将要看的剧集") },
-            )
-        }
+                    ),
+                )
+            },
+            title = { Text("点亮模式") },
+            description = { Text("高亮已经看过的剧集，而不是将要看的剧集") },
+        )
     }
 }
 
@@ -391,9 +335,7 @@ fun SettingsScope.SoftwareUpdateGroup(
                 }
                 when (state.updateCheckerTester.tester.result) {
                     is CheckVersionResult.HasNewVersion -> showUpdatePopup = true
-                    is CheckVersionResult.Failed,
-                    is CheckVersionResult.UpToDate,
-                    null -> {
+                    is CheckVersionResult.Failed, is CheckVersionResult.UpToDate, null -> {
                         state.updateCheckerTester.testAll()
                         autoUpdate.startCheckLatestVersion(uriHandler)
                     }
@@ -535,16 +477,13 @@ private fun ReleaseClassIcon(releaseClass: ReleaseClass) {
     when (releaseClass) {
         ReleaseClass.ALPHA -> Icon(Icons.Rounded.RocketLaunch, null)
         ReleaseClass.BETA -> Icon(Icons.Rounded.Science, null)
-        ReleaseClass.RC,
-        ReleaseClass.STABLE -> Icon(Icons.Rounded.Verified, null)
+        ReleaseClass.RC, ReleaseClass.STABLE -> Icon(Icons.Rounded.Verified, null)
     }
 }
 
 @Stable
 private fun guessReleaseClass(version: String): ReleaseClass {
-    val metadata = version
-        .substringAfter("-", "")
-        .lowercase()
+    val metadata = version.substringAfter("-", "").lowercase()
     return when {
         metadata.isEmpty() -> ReleaseClass.STABLE
         "alpha" in metadata || "dev" in metadata -> ReleaseClass.ALPHA

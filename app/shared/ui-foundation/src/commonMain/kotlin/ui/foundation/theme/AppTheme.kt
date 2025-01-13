@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -26,8 +26,10 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.CardColors
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TopAppBarColors
 import androidx.compose.material3.TopAppBarDefaults
@@ -39,6 +41,8 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.IntOffset
 import androidx.window.core.layout.WindowSizeClass
+import me.him188.ani.app.data.models.preference.DarkMode
+import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.ui.foundation.animation.EmphasizedAccelerateEasing
 import me.him188.ani.app.ui.foundation.animation.EmphasizedDecelerateEasing
 import me.him188.ani.app.ui.foundation.animation.StandardAccelerate
@@ -46,6 +50,28 @@ import me.him188.ani.app.ui.foundation.animation.StandardDecelerate
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.isCompact
 import kotlin.math.roundToInt
+
+@Composable
+expect fun appColorScheme(
+    seedColor: Int = LocalThemeSettings.current.seedColor,
+    useDynamicTheme: Boolean = LocalThemeSettings.current.useDynamicTheme,
+    useBlackBackground: Boolean = LocalThemeSettings.current.useBlackBackground,
+    isDark: Boolean = when (LocalThemeSettings.current.darkMode) {
+        DarkMode.LIGHT -> false
+        DarkMode.DARK -> true
+        DarkMode.AUTO -> isSystemInDarkTheme()
+    }
+): ColorScheme
+
+@Composable
+expect fun AniTheme(
+    isDark: Boolean = when (LocalThemeSettings.current.darkMode) {
+        DarkMode.LIGHT -> false
+        DarkMode.DARK -> true
+        DarkMode.AUTO -> isSystemInDarkTheme()
+    },
+    content: @Composable () -> Unit
+)
 
 @Stable
 object AniThemeDefaults {
@@ -56,12 +82,10 @@ object AniThemeDefaults {
      * Navigation rail on desktop, bottom navigation on mobile.
      */
     val navigationContainerColor
-        @Composable
-        get() = MaterialTheme.colorScheme.surfaceContainer
+        @Composable get() = MaterialTheme.colorScheme.surfaceContainer
 
     val pageContentBackgroundColor
-        @Composable
-        get() = MaterialTheme.colorScheme.surfaceContainerLowest
+        @Composable get() = MaterialTheme.colorScheme.surfaceContainerLowest
 
     /**
      * 默认的 [TopAppBarColors], 期望用于 [pageContentBackgroundColor] 的容器之内
@@ -86,21 +110,19 @@ object AniThemeDefaults {
      * 仅充当背景作用的卡片颜色, 例如 RSS 设置页中的那些圆角卡片背景
      */
     @Composable
-    fun backgroundCardColors(): CardColors =
-        CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-            contentColor = contentColorFor(MaterialTheme.colorScheme.surfaceContainerLow),
-        )
+    fun backgroundCardColors(): CardColors = CardDefaults.cardColors(
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        contentColor = contentColorFor(MaterialTheme.colorScheme.surfaceContainerLow),
+    )
 
     /**
      * 适用于整个 pane 都是一堆卡片, 而且这些卡片有一定的作用. 例如追番列表的卡片.
      */
     @Composable
-    fun primaryCardColors(): CardColors =
-        CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-            contentColor = contentColorFor(MaterialTheme.colorScheme.surfaceContainerHigh),
-        )
+    fun primaryCardColors(): CardColors = CardDefaults.cardColors(
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        contentColor = contentColorFor(MaterialTheme.colorScheme.surfaceContainerHigh),
+    )
 
 
     @Stable
@@ -178,8 +200,7 @@ data class NavigationMotionScheme(
 ) {
     companion object {
         inline val current
-            @Composable
-            get() = LocalNavigationMotionScheme.current
+            @Composable get() = LocalNavigationMotionScheme.current
 
         // https://m3.material.io/styles/motion/easing-and-duration/applying-easing-and-duration#e5b958f0-435d-4e84-aed4-8d1ea395fa5c
         private const val enterDuration = 500
@@ -210,8 +231,7 @@ data class NavigationMotionScheme(
                 }
             }
 
-            val exitTransition: ExitTransition =
-                fadeOut(tween(exitDuration, easing = exitEasing))
+            val exitTransition: ExitTransition = fadeOut(tween(exitDuration, easing = exitEasing))
 
             val popEnterTransition = run {
                 if (useSlide) {
@@ -251,4 +271,9 @@ data class NavigationMotionScheme(
 @Stable
 val LocalNavigationMotionScheme = compositionLocalOf<NavigationMotionScheme> {
     error("No LocalNavigationMotionScheme provided")
+}
+
+val LocalThemeSettings = compositionLocalOf<ThemeSettings> {
+    // ThemeSettings.Default
+    error("LocalThemeSettings not provided")
 }

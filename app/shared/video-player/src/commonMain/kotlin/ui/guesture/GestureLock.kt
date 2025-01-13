@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -21,6 +21,7 @@ import androidx.compose.material.icons.outlined.LockOpen
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -32,8 +33,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import me.him188.ani.app.ui.foundation.LocalPlatform
-import me.him188.ani.app.ui.foundation.theme.aniDarkColorTheme
-import me.him188.ani.app.ui.foundation.theme.aniLightColorTheme
 import me.him188.ani.app.ui.foundation.theme.slightlyWeaken
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
@@ -50,13 +49,13 @@ fun GestureLock(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-//    val background = aniDarkColorTheme().onSurface
+//    val background = MaterialTheme.colorScheme.onSurface
 //    SmallFloatingActionButton(
 //        onClick = onClick,
 //        modifier = modifier,
 //        containerColor = background,
 //    ) {
-//        CompositionLocalProvider(LocalContentColor provides aniDarkColorTheme().contentColorFor(background)) {
+//        CompositionLocalProvider(LocalContentColor provides aniColorTheme(isDark = true).contentColorFor(background)) {
 //            if (isLocked) {
 //                Icon(Icons.Outlined.LockOpen, contentDescription = "Lock screen")
 //            } else {
@@ -67,12 +66,12 @@ fun GestureLock(
     Surface(
         modifier.testTag(TAG_GESTURE_LOCK),
         shape = RoundedCornerShape(16.dp),
-        color = aniDarkColorTheme().background.copy(0.05f),
-        border = BorderStroke(0.5.dp, aniLightColorTheme().outline.slightlyWeaken()),
+        color = MaterialTheme.colorScheme.background.copy(0.05f),
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.slightlyWeaken()),
     ) {
         IconButton(onClick) {
             val color = if (isLocked) {
-                aniDarkColorTheme().primary
+                MaterialTheme.colorScheme.primary
             } else {
                 Color.White
             }

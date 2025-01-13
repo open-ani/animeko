@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -14,8 +14,6 @@ import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.material3.ColorScheme
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Stable
@@ -30,8 +28,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.ImageLoader
 import coil3.compose.LocalPlatformContext
 import io.ktor.client.HttpClient
-import kotlinx.coroutines.flow.map
-import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.settings.ProxyProvider
@@ -45,6 +41,8 @@ import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.createDefaultImageLoader
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.launchInBackground
+import me.him188.ani.app.ui.foundation.theme.AniTheme
+import me.him188.ani.app.ui.foundation.theme.LocalThemeSettings
 import me.him188.ani.datasources.api.source.asAutoCloseable
 import me.him188.ani.utils.ktor.createDefaultHttpClient
 import me.him188.ani.utils.ktor.userAgent
@@ -56,7 +54,7 @@ import org.koin.core.component.inject
 class AniAppViewModel : AbstractViewModel(), KoinComponent {
     private val settings: SettingsRepository by inject()
     private val proxyProvider: ProxyProvider by inject()
-    val themeSettings: ThemeSettings? by settings.uiSettings.flow.map { it.theme }.produceState(null)
+    val themeSettings: ThemeSettings? by settings.themeSettings.flow.produceState(null)
     val imageLoaderClient by lazy {
         createDefaultHttpClient {
             userAgent(getAniUserAgent())
@@ -73,7 +71,6 @@ class AniAppViewModel : AbstractViewModel(), KoinComponent {
 @Composable
 fun AniApp(
     modifier: Modifier = Modifier,
-    overrideColorTheme: ColorScheme? = null,
     content: @Composable () -> Unit,
 ) {
 //    val proxy by remember {
@@ -89,25 +86,23 @@ fun AniApp(
 //    }
 
     val viewModel = viewModel { AniAppViewModel() }
+
+    // 主题读好再进入 APP, 防止黑白背景闪烁
+    val themeSettings = viewModel.themeSettings ?: return
+
     CompositionLocalProvider(
 //        LocalImageLoader provides imageLoader,
         LocalImageLoader provides rememberImageLoader(viewModel.imageLoaderClient),
         LocalTimeFormatter provides remember { TimeFormatter() },
+        LocalThemeSettings provides themeSettings,
     ) {
         val focusManager by rememberUpdatedState(LocalFocusManager.current)
         val keyboard by rememberUpdatedState(LocalSoftwareKeyboardController.current)
 
-        // 主题读好再进入 APP, 防止黑白背景闪烁
-        val theme = viewModel.themeSettings ?: return@CompositionLocalProvider
-
-        MaterialTheme(
-            overrideColorTheme ?: currentPlatformColorTheme(theme.darkMode, theme.dynamicTheme),
-        ) {
+        AniTheme {
             Box(
-                modifier = modifier
-                    .ifThen(LocalPlatform.current.isMobile()) {
-                        focusable(false)
-                            .clickable(
+                modifier = modifier.ifThen(LocalPlatform.current.isMobile()) {
+                    focusable(false).clickable(
                                 remember { MutableInteractionSource() },
                                 null,
                             ) {
@@ -133,9 +128,3 @@ private fun rememberImageLoader(client: HttpClient): ImageLoader {
         }
     }.value
 }
-
-@Composable
-internal expect fun currentPlatformColorTheme(
-    darkMode: DarkMode,
-    useDynamicTheme: Boolean
-): ColorScheme

@@ -32,6 +32,7 @@ import me.him188.ani.app.data.models.preference.MediaSelectorSettings
 import me.him188.ani.app.data.models.preference.OneshotActionConfig
 import me.him188.ani.app.data.models.preference.ProfileSettings
 import me.him188.ani.app.data.models.preference.ProxySettings
+import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.data.models.preference.TorrentPeerConfig
 import me.him188.ani.app.data.models.preference.UISettings
 import me.him188.ani.app.data.models.preference.UpdateSettings
@@ -67,6 +68,7 @@ interface SettingsRepository {
     val mediaCacheSettings: Settings<MediaCacheSettings>
     val danmakuSettings: Settings<DanmakuSettings>
     val uiSettings: Settings<UISettings>
+    val themeSettings: Settings<ThemeSettings>
     val updateSettings: Settings<UpdateSettings>
     val videoScaffoldConfig: Settings<VideoScaffoldConfig>
 
@@ -195,6 +197,11 @@ class PreferencesRepositoryImpl(
         "uiSettings",
         UISettings.serializer(),
         default = { UISettings.Default },
+    )
+    override val themeSettings: Settings<ThemeSettings> = SerializablePreference(
+        "themeSettings",
+        ThemeSettings.serializer(),
+        default = { ThemeSettings.Default },
     )
     override val updateSettings: Settings<UpdateSettings> = SerializablePreference(
         "updateSettings",

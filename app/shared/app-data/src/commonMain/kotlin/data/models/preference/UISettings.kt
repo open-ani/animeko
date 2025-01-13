@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -22,7 +22,11 @@ data class UISettings(
      * 启动 App 时的初始页面
      */
     val mainSceneInitialPage: MainScenePage = MainScenePage.Exploration,
-    val theme: ThemeSettings = ThemeSettings.Default,
+
+    @Suppress("DEPRECATION") @Deprecated(
+        "For migration. Use themeSettings instead",
+        level = DeprecationLevel.WARNING,
+    ) val theme: LegacyThemeSettings? = null,
     val myCollections: MyCollectionsSettings = MyCollectionsSettings.Default,
     val searchSettings: SearchSettings = SearchSettings.Default,
     val episodeProgress: EpisodeProgressSettings = EpisodeProgressSettings.Default,
@@ -34,9 +38,11 @@ data class UISettings(
     }
 }
 
+@Deprecated("For migration. Use themeSettings instead", level = DeprecationLevel.WARNING)
+@Suppress("DEPRECATION")
 @Serializable
 @Immutable
-data class ThemeSettings(
+data class LegacyThemeSettings(
     val darkMode: DarkMode = DarkMode.AUTO,
     /**
      * Only on Android
@@ -46,13 +52,8 @@ data class ThemeSettings(
 ) {
     companion object {
         @Stable
-        val Default = ThemeSettings()
+        val Default = LegacyThemeSettings()
     }
-}
-
-@Serializable
-enum class DarkMode {
-    LIGHT, DARK, AUTO,
 }
 
 @Serializable

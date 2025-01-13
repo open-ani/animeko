@@ -23,6 +23,7 @@ import me.him188.ani.app.data.models.preference.MediaCacheSettings
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
 import me.him188.ani.app.data.models.preference.ProxySettings
+import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.data.models.preference.UISettings
 import me.him188.ani.app.data.models.preference.UpdateSettings
 import me.him188.ani.app.data.models.preference.VideoResolverSettings
@@ -80,6 +81,10 @@ class SettingsViewModel : AbstractSettingsViewModel(), KoinComponent {
 
     val uiSettings: SettingsState<UISettings> =
         settingsRepository.uiSettings.stateInBackground(UISettings.Default.copy(_placeholder = -1))
+
+    val themeSettings: SettingsState<ThemeSettings> =
+        settingsRepository.themeSettings.stateInBackground(ThemeSettings.Default.copy(_placeholder = -1))
+    
     val videoScaffoldConfig: SettingsState<VideoScaffoldConfig> =
         settingsRepository.videoScaffoldConfig.stateInBackground(VideoScaffoldConfig.Default.copy(_placeholder = -1))
 
