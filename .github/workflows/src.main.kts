@@ -935,9 +935,10 @@ class WithMatrix(
                     ),
                     env = mapOf("GITHUB_TOKEN" to expr { secrets.GITHUB_TOKEN }),
                 )
-
+                
                 run(
-                    command = """echo "ani.compose.java.home=${expr { jbr.outputs.path }}" >> local.properties""",
+                    // Replaces '\' with '/' on Windows
+                    command = $$"""echo "ani.compose.java.home=${$${expr { jbr.outputs.path }}//\\//}" >> local.properties""",
                 )
             }
         }
