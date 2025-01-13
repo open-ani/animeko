@@ -71,7 +71,7 @@ compose.desktop {
         }
         mainClass = "me.him188.ani.app.desktop.AniDesktop"
         nativeDistributions {
-            getLocalProperty("ani.compose.java.home")?.let {
+            System.getenv("ANI_COMPOSE_JAVA_HOME")?.let {
                 javaHome = it
             }
             modules(

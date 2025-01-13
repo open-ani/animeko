@@ -910,7 +910,7 @@ class WithMatrix(
                     ),
                 )
 
-                val jbr = uses(
+                uses(
                     name = "Setup JBR 21 for macOS AArch64",
                     action = SetupJava_Untyped(
                         distribution_Untyped = "jdkfile",
@@ -919,29 +919,17 @@ class WithMatrix(
                     ),
                     env = mapOf("GITHUB_TOKEN" to expr { secrets.GITHUB_TOKEN }),
                 )
-                
-                run(
-                    command = """echo "ani.compose.java.home=${expr { jbr.outputs.path }}" >> local.properties""",
-                    shell = Shell.Bash,
-                )
             }
 
             else -> {
                 // For Windows + Ubuntu
-                val jbr = uses(
+                uses(
                     name = "Setup JBR 21 for other OS",
                     action = SetupJava_Untyped(
                         distribution_Untyped = "jetbrains",
                         javaVersion_Untyped = "21",
                     ),
                     env = mapOf("GITHUB_TOKEN" to expr { secrets.GITHUB_TOKEN }),
-                )
-                
-                run(
-                    // Replaces '\' with '/' on Windows
-                    command = $$"""echo "ani.compose.java.home=${JBR_PATH//\\//}" >> local.properties""",
-                    shell = Shell.Bash,
-                    env = mapOf("JBR_PATH" to expr { jbr.outputs.path }),
                 )
             }
         }
@@ -1138,6 +1126,9 @@ class WithMatrix(
             return PackageDesktopAndUploadOutputs()
         }
 
+        val envMap = mapOf(
+            "ANI_COMPOSE_JAVA_HOME" to expr { env["JAVA_HOME"]!! },
+        )
         if (matrix.isWindows) {
             // Windows does not support installers
             runGradle(
@@ -1145,6 +1136,7 @@ class WithMatrix(
                 tasks = [
                     "createReleaseDistributable", // portable
                 ],
+                env = envMap,
             )
         } else {
             // macOS uses installers
@@ -1153,6 +1145,7 @@ class WithMatrix(
                 tasks = [
                     "packageReleaseDistributionForCurrentOS", // dmg
                 ],
+                env = envMap,
             )
         }
 
