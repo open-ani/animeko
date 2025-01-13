@@ -939,7 +939,7 @@ class WithMatrix(
         }
 
         run(
-            command = shell($$"""echo "jvm.toolchain.version=21" >> local.properties"""),
+            command = shell($$"""echo "jvm.toolchain.version=21\n" >> local.properties"""),
         )
     }
 
