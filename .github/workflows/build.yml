@@ -52,8 +52,10 @@ jobs:
       env:
         GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
     - id: 'step-3'
+      env:
+        JBR_PATH: '${{ steps.step-2.outputs.path }}'
       shell: 'bash'
-      run: 'PP=${{ steps.step-2.outputs.path }} && echo "ani.compose.java.home=${PP//\\//}" >> local.properties'
+      run: 'echo "ani.compose.java.home=${JBR_PATH//\\//}" >> local.properties'
     - id: 'step-4'
       name: 'Dump Local Properties'
       run: 'echo "jvm.toolchain.version=21" >> local.properties'
@@ -107,8 +109,10 @@ jobs:
       env:
         GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
     - id: 'step-3'
+      env:
+        JBR_PATH: '${{ steps.step-2.outputs.path }}'
       shell: 'bash'
-      run: 'PP=${{ steps.step-2.outputs.path }} && echo "ani.compose.java.home=${PP//\\//}" >> local.properties'
+      run: 'echo "ani.compose.java.home=${JBR_PATH//\\//}" >> local.properties'
     - id: 'step-4'
       name: 'Dump Local Properties'
       run: 'echo "jvm.toolchain.version=21" >> local.properties'
@@ -182,8 +186,10 @@ jobs:
       env:
         GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
     - id: 'step-4'
+      env:
+        JBR_PATH: '${{ steps.step-3.outputs.path }}'
       shell: 'bash'
-      run: 'PP=${{ steps.step-3.outputs.path }} && echo "ani.compose.java.home=${PP//\\//}" >> local.properties'
+      run: 'echo "ani.compose.java.home=${JBR_PATH//\\//}" >> local.properties'
     - id: 'step-5'
       name: 'Dump Local Properties'
       run: 'echo "jvm.toolchain.version=21" >> local.properties'
