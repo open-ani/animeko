@@ -108,6 +108,7 @@ jobs:
       env:
         GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
     - id: 'step-5'
+      name: 'Dump Local Properties'
       run: 'echo "jvm.toolchain.version=21" >> local.properties'
     - id: 'step-6'
       name: 'Setup Gradle'
@@ -164,6 +165,7 @@ jobs:
       env:
         GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
     - id: 'step-5'
+      name: 'Dump Local Properties'
       run: 'echo "jvm.toolchain.version=21" >> local.properties'
     - id: 'step-6'
       name: 'Setup Gradle'
@@ -245,6 +247,7 @@ jobs:
       env:
         GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
     - id: 'step-6'
+      name: 'Dump Local Properties'
       run: 'echo "jvm.toolchain.version=21" >> local.properties'
     - id: 'step-7'
       run: 'chmod -R 777 .'
@@ -469,6 +472,7 @@ jobs:
     - id: 'step-7'
       run: 'echo "ani.compose.java.home=${{ steps.step-6.outputs.path }}" >> local.properties'
     - id: 'step-8'
+      name: 'Dump Local Properties'
       run: 'echo "jvm.toolchain.version=21" >> local.properties'
     - id: 'step-9'
       run: 'chmod -R 777 .'

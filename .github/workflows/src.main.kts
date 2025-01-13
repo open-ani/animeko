@@ -927,13 +927,17 @@ class WithMatrix(
 
             else -> {
                 // For Windows + Ubuntu
-                uses(
+                val jbr = uses(
                     name = "Setup JBR 21 for other OS",
                     action = SetupJava_Untyped(
                         distribution_Untyped = "jetbrains",
                         javaVersion_Untyped = "21",
                     ),
                     env = mapOf("GITHUB_TOKEN" to expr { secrets.GITHUB_TOKEN }),
+                )
+
+                run(
+                    command = """echo "ani.compose.java.home=${expr { jbr.outputs.path }}" >> local.properties""",
                 )
             }
         }
