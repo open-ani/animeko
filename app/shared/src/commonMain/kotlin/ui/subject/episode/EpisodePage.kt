@@ -151,6 +151,7 @@ fun EpisodeScene(
     viewModel: EpisodeViewModel,
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
+    fastSkipTimes: Float,
 ) {
     Column(modifier.fillMaxSize()) {
         Scaffold(
@@ -160,6 +161,7 @@ fun EpisodeScene(
                 viewModel,
                 Modifier,
                 windowInsets = windowInsets,
+                fastSkipTimes,
             )
         }
     }
@@ -170,6 +172,7 @@ private fun EpisodeSceneContent(
     vm: EpisodeViewModel,
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
+    fastSkipTimes: Float,
 ) {
     // 处理当用户点击返回键时, 如果是全屏, 则退出全屏
     // 按返回退出全屏
@@ -279,6 +282,7 @@ private fun EpisodeSceneContent(
                                 tryUnpause = tryUnpause,
                                 setShowEditCommentSheet = { showEditCommentSheet = it },
                                 windowInsets,
+                                fastSkipTimes,
                             )
 
                         else -> EpisodeSceneContentPhone(
@@ -291,6 +295,7 @@ private fun EpisodeSceneContent(
                             tryUnpause = tryUnpause,
                             setShowEditCommentSheet = { showEditCommentSheet = it },
                             windowInsets,
+                            fastSkipTimes,
                         )
                     }
                 }
@@ -331,6 +336,7 @@ private fun EpisodeSceneTabletVeryWide(
     tryUnpause: () -> Unit,
     setShowEditCommentSheet: (Boolean) -> Unit,
     windowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
+    fastSkipTimes: Float,
 ) {
     BoxWithConstraints {
         val maxWidth = maxWidth
@@ -357,6 +363,7 @@ private fun EpisodeSceneTabletVeryWide(
                     // 非全屏右边还有东西
                     windowInsets.only(WindowInsetsSides.Left + WindowInsetsSides.Top)
                 },
+                fastSkipTimes = fastSkipTimes
             )
 
             if (vm.isFullscreen || !vm.sidebarVisible) {
@@ -485,6 +492,7 @@ private fun EpisodeSceneContentPhone(
     tryUnpause: () -> Unit,
     setShowEditCommentSheet: (Boolean) -> Unit,
     windowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
+    fastSkipTimes: Float,
 ) {
     var showDanmakuEditor by rememberSaveable { mutableStateOf(false) }
 
@@ -495,7 +503,7 @@ private fun EpisodeSceneContentPhone(
             EpisodeVideo(
                 vm, page,
                 danmakuHostState,
-                danmakuEditorState, vm.playerControllerState, vm.isFullscreen,
+                danmakuEditorState, vm.playerControllerState, vm.isFullscreen, fastSkipTimes = fastSkipTimes,
             )
         },
         episodeDetails = {
@@ -668,6 +676,7 @@ private fun EpisodeVideo(
     modifier: Modifier = Modifier,
     maintainAspectRatio: Boolean = !expanded,
     windowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
+    fastSkipTimes: Float,
 ) {
     val context by rememberUpdatedState(LocalContext.current)
 
@@ -851,6 +860,7 @@ private fun EpisodeVideo(
             .then(if (expanded) Modifier.fillMaxSize() else Modifier.statusBarsPadding()),
         maintainAspectRatio = maintainAspectRatio,
         contentWindowInsets = windowInsets,
+        fastSkipTimes = fastSkipTimes,
     )
 }
 

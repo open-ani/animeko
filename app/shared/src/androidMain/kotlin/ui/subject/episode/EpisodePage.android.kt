@@ -17,7 +17,7 @@ import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 @Composable
 @Preview(widthDp = 1080 / 3, heightDp = 2400 / 3, showBackground = true)
 @Preview(device = Devices.TABLET, showBackground = true)
-internal fun PreviewEpisodePage() {
+internal fun PreviewEpisodePage(fastSkipTimes: Float = 3f,) {
     ProvideCompositionLocalsForPreview {
         val context = LocalContext.current
         EpisodeScene(
@@ -28,6 +28,7 @@ internal fun PreviewEpisodePage() {
                     context = context,
                 )
             },
+            fastSkipTimes = fastSkipTimes
         )
     }
 }

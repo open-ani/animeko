@@ -70,6 +70,7 @@ import me.him188.ani.app.videoplayer.ui.guesture.ScreenshotButton
 import me.him188.ani.app.videoplayer.ui.guesture.mouseFamily
 import me.him188.ani.app.videoplayer.ui.guesture.rememberGestureIndicatorState
 import me.him188.ani.app.videoplayer.ui.guesture.rememberSwipeSeekerState
+import me.him188.ani.app.videoplayer.ui.guesture.rememberPlayerFastSkipState
 import me.him188.ani.app.videoplayer.ui.hasPageAsState
 import me.him188.ani.app.videoplayer.ui.progress.AudioSwitcher
 import me.him188.ani.app.videoplayer.ui.progress.MediaProgressIndicatorText
@@ -135,6 +136,7 @@ internal fun EpisodeVideoImpl(
     maintainAspectRatio: Boolean = !expanded,
     gestureFamily: GestureFamily = LocalPlatform.current.mouseFamily,
     contentWindowInsets: WindowInsets = WindowInsets(0.dp),
+    fastSkipTimes: Float,
 ) {
     // Don't rememberSavable. 刻意让每次切换都是隐藏的
     var isLocked by remember { mutableStateOf(false) }
@@ -270,6 +272,12 @@ internal fun EpisodeVideoImpl(
                 onExitFullscreen = onExitFullscreen,
                 family = gestureFamily,
                 indicatorState,
+                fastSkipState = rememberPlayerFastSkipState(
+                    playerState = playerState.features.getOrFail(PlaybackSpeed),
+                    indicatorState,
+                    fastSkipTimes = fastSkipTimes
+
+                )
             )
         },
         floatingMessage = {

@@ -28,15 +28,17 @@ import org.openani.mediamp.features.PlaybackSpeed
 fun rememberPlayerFastSkipState(
     playerState: PlaybackSpeed,
     gestureIndicatorState: GestureIndicatorState,
+    fastSkipTimes: Float,
 ): FastSkipState {
     return remember(playerState) {
-        PlayerFastSkipState(playerState, gestureIndicatorState).fastSkipState
+        PlayerFastSkipState(playerState, gestureIndicatorState, fastSkipTimes).fastSkipState
     }
 }
 
 class PlayerFastSkipState(
     private val playbackSpeed: PlaybackSpeed,
     private val gestureIndicatorState: GestureIndicatorState,
+    private val fastSkipTimes: Float = 3f,
 ) {
     private var originalSpeed = 0f
     private var gestureIndicatorTicket = 0
@@ -45,7 +47,7 @@ class PlayerFastSkipState(
             originalSpeed = playbackSpeed.value
             playbackSpeed.set(
                 when (skipDirection) {
-                    SkipDirection.FORWARD -> 3f
+                    SkipDirection.FORWARD -> fastSkipTimes
                     SkipDirection.BACKWARD -> error("Backward skipping is not supported")
                 },
             )

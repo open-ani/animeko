@@ -54,35 +54,36 @@ import org.openani.mediamp.DummyMediampPlayer
 @Preview("Landscape Fullscreen - Dark", device = PHONE_LANDSCAPE, uiMode = UI_MODE_NIGHT_YES or UI_MODE_TYPE_NORMAL)
 @Composable
 private fun PreviewVideoScaffoldFullscreen() {
-    PreviewVideoScaffoldImpl(expanded = true)
+    PreviewVideoScaffoldImpl(expanded = true, fastSkipTimes = 3f)
 }
 
 @Preview("Portrait - Light", heightDp = 300, device = Devices.PHONE, uiMode = UI_MODE_NIGHT_NO)
 @Preview("Portrait - Dark", heightDp = 300, device = Devices.PHONE, uiMode = UI_MODE_NIGHT_YES or UI_MODE_TYPE_NORMAL)
 @Composable
 private fun PreviewVideoScaffold() {
-    PreviewVideoScaffoldImpl(expanded = false)
+    PreviewVideoScaffoldImpl(expanded = false, fastSkipTimes = 3f)
 }
 
 @Preview("Landscape Fullscreen - Light", device = PHONE_LANDSCAPE, uiMode = UI_MODE_NIGHT_NO)
 @Preview("Landscape Fullscreen - Dark", device = PHONE_LANDSCAPE, uiMode = UI_MODE_NIGHT_YES or UI_MODE_TYPE_NORMAL)
 @Composable
 private fun PreviewDetachedSliderFullscreen() {
-    PreviewVideoScaffoldImpl(expanded = true, controllerVisibility = ControllerVisibility.DetachedSliderOnly)
+    PreviewVideoScaffoldImpl(expanded = true, controllerVisibility = ControllerVisibility.DetachedSliderOnly, fastSkipTimes = 3f)
 }
 
 @Preview("Portrait - Light", heightDp = 300, device = Devices.PHONE, uiMode = UI_MODE_NIGHT_NO)
 @Preview("Portrait - Dark", heightDp = 300, device = Devices.PHONE, uiMode = UI_MODE_NIGHT_YES or UI_MODE_TYPE_NORMAL)
 @Composable
 private fun PreviewDetachedSlider() {
-    PreviewVideoScaffoldImpl(expanded = false, controllerVisibility = ControllerVisibility.DetachedSliderOnly)
+    PreviewVideoScaffoldImpl(expanded = false, controllerVisibility = ControllerVisibility.DetachedSliderOnly, fastSkipTimes = 3f)
 }
 
 @OptIn(TestOnly::class)
 @Composable
 private fun PreviewVideoScaffoldImpl(
     expanded: Boolean,
-    controllerVisibility: ControllerVisibility = ControllerVisibility.Visible
+    controllerVisibility: ControllerVisibility = ControllerVisibility.Visible,
+    fastSkipTimes: Float,
 ) = ProvideCompositionLocalsForPreview {
     val scope = rememberCoroutineScope()
     val playerState = remember {
@@ -192,6 +193,7 @@ private fun PreviewVideoScaffoldImpl(
                 },
             )
         },
+        fastSkipTimes = fastSkipTimes
     )
 
 //    VideoScaffold(
