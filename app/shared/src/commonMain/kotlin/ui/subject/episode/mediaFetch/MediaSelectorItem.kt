@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.ui.subject.episode.mediaFetch
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -191,10 +190,6 @@ fun MediaSelectorItemLayout(
                 MaterialTheme.colorScheme.surfaceContainerHighest
             },
         ),
-        border = if (selected) BorderStroke(
-            width = 1.dp,
-            color = MaterialTheme.colorScheme.primary,
-        ) else null,
     ) {
         val horizontalPadding = 16.dp
 
