@@ -1126,9 +1126,6 @@ class WithMatrix(
             return PackageDesktopAndUploadOutputs()
         }
 
-        val envMap = mapOf(
-            "ANI_COMPOSE_JAVA_HOME" to expr { env["JAVA_HOME"]!! },
-        )
         if (matrix.isWindows) {
             // Windows does not support installers
             runGradle(
@@ -1136,7 +1133,6 @@ class WithMatrix(
                 tasks = [
                     "createReleaseDistributable", // portable
                 ],
-                env = envMap,
             )
         } else {
             // macOS uses installers
@@ -1145,7 +1141,6 @@ class WithMatrix(
                 tasks = [
                     "packageReleaseDistributionForCurrentOS", // dmg
                 ],
-                env = envMap,
             )
         }
 
