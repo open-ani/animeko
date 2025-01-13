@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.data.network.AniSubjectRelationIndexService
 import me.him188.ani.app.data.network.AnimeScheduleService
 import me.him188.ani.app.data.network.BangumiBangumiCommentServiceImpl
@@ -441,6 +442,22 @@ fun KoinApplication.startCommonKoinModule(coroutineScope: CoroutineScope): KoinA
     coroutineScope.launch {
         val peerFilterRepo = koin.get<PeerFilterSubscriptionRepository>()
         peerFilterRepo.loadOrUpdateAll()
+    }
+
+    // TODO: For ThemeSettings migration. Delete in the future.
+    coroutineScope.launch {
+        val settingsRepository = koin.get<SettingsRepository>()
+        val uiSettings = settingsRepository.uiSettings
+        val legacyThemeSettings = uiSettings.flow.first().theme
+        val themeSettings = settingsRepository.themeSettings
+
+        if (legacyThemeSettings != null) {
+            val newThemeSettings = ThemeSettings(
+                darkMode = legacyThemeSettings.darkMode,
+                useDynamicTheme = legacyThemeSettings.dynamicTheme,
+            )
+            themeSettings.update { newThemeSettings }
+        }
     }
 
     return this
