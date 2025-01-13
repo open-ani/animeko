@@ -939,7 +939,7 @@ class WithMatrix(
                 
                 run(
                     // Replaces '\' with '/' on Windows
-                    command = $$"""echo "ani.compose.java.home=${$${expr { jbr.outputs.path }}//\\//}" >> local.properties""",
+                    command = $$"""PP=$${expr { jbr.outputs.path }} && echo "ani.compose.java.home=${PP//\\//}" >> local.properties""",
                     shell = Shell.Bash,
                 )
             }
