@@ -921,7 +921,7 @@ class WithMatrix(
                 )
                 
                 run(
-                    command = """echo "ani.compose.java.home=${expr { jbr.outputs.path }}\n" >> local.properties""",
+                    command = """echo "ani.compose.java.home=${expr { jbr.outputs.path }}" >> local.properties""",
                 )
             }
 
@@ -939,7 +939,8 @@ class WithMatrix(
         }
 
         run(
-            command = shell($$"""echo "jvm.toolchain.version=21\n" >> local.properties"""),
+            name = "Dump Local Properties",
+            command = shell($$"""echo "jvm.toolchain.version=21" >> local.properties"""),
         )
     }
 
@@ -969,6 +970,11 @@ class WithMatrix(
                 command = shell($$"""chmod +x ./ci-helper/install-deps-macos-ci.sh && ./ci-helper/install-deps-macos-ci.sh"""),
             )
         }
+
+        run(
+            command = shell($$"""cat local.properties"""),
+            shell = Shell.Bash
+        )
     }
 
     fun JobBuilder<*>.chmod777() {
