@@ -445,10 +445,12 @@ fun KoinApplication.startCommonKoinModule(coroutineScope: CoroutineScope): KoinA
     }
 
     // TODO: For ThemeSettings migration. Delete in the future.
+    @Suppress("DEPRECATION")
     coroutineScope.launch {
         val settingsRepository = koin.get<SettingsRepository>()
         val uiSettings = settingsRepository.uiSettings
-        val legacyThemeSettings = uiSettings.flow.first().theme
+        val uiSettingsContent = uiSettings.flow.first()
+        val legacyThemeSettings = uiSettingsContent.theme
         val themeSettings = settingsRepository.themeSettings
 
         if (legacyThemeSettings != null) {
@@ -457,6 +459,7 @@ fun KoinApplication.startCommonKoinModule(coroutineScope: CoroutineScope): KoinA
                 useDynamicTheme = legacyThemeSettings.dynamicTheme,
             )
             themeSettings.update { newThemeSettings }
+            uiSettings.update { uiSettingsContent.copy(theme = null) }
         }
     }
 
