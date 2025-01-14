@@ -1,7 +1,7 @@
 #!/usr/bin/env kotlin
 
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -411,6 +411,7 @@ fun getBuildJobBody(matrix: MatrixInstance): JobBuilder<BuildJobOutputs>.() -> U
 
     with(WithMatrix(matrix)) {
         freeSpace()
+        deleteLocalProperties()
         installJbr21()
         chmod777()
         setupGradle()
@@ -562,6 +563,29 @@ fun WorkflowBuilder.addVerifyJob(build: Job<BuildJobOutputs>, runner: Runner, if
     )
 }
 
+fun WorkflowBuilder.addConsistencyCheckJob(filename: String) {
+    job(
+        id = "consistency-check",
+        name = "Workflow YAML Consistency Check",
+        runsOn = RunnerType.UbuntuLatest,
+        permissions = mapOf(),
+    ) {
+        uses(action = Checkout())
+        run(
+            command = "pip3 install PyYAML",
+        )
+        val originalPath = """.github/workflows/$filename"""
+        val backupPath = """.github/workflows/$filename-check.yml"""
+        run(
+            command = """cp "$originalPath" "$backupPath" """,
+        )
+        run(
+            command = ".github/workflows/${__FILE__.name}",
+        )
+        run(command = "python .github/workflows/check_yaml_equivalence.py $originalPath $backupPath")
+    }
+}
+
 workflow(
     name = "Build",
     on = listOf(
@@ -575,6 +599,7 @@ workflow(
     targetFileName = "build.yml",
     consistencyCheckJobConfig = ConsistencyCheckJobConfig.Disabled,
 ) {
+    addConsistencyCheckJob("build.yml")
     // Expands job matrix at compile-time so that we set job-level `if` condition. 
     val builds: List<Pair<MatrixInstance, Job<BuildJobOutputs>>> = buildMatrixInstances.map { matrix ->
         matrix to job(
@@ -640,6 +665,7 @@ workflow(
     targetFileName = "release.yml",
     consistencyCheckJobConfig = ConsistencyCheckJobConfig.Disabled,
 ) {
+    addConsistencyCheckJob("release.yml")
     val createRelease = job(
         id = "create-release",
         name = "Create Release",
@@ -701,6 +727,7 @@ workflow(
             val gitTag = getGitTag()
 
             freeSpace()
+            deleteLocalProperties()
             installJbr21()
             chmod777()
             setupGradle()
@@ -818,12 +845,19 @@ class WithMatrix(
             )
         }
     }
+    
+    fun JobBuilder<*>.deleteLocalProperties() {
+        run(
+            command = shell($$"""rm local.properties"""),
+            continueOnError = true,
+        )
+    }
 
     fun JobBuilder<*>.installJbr21() {
         // For mac
-        val jbrUrl = "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-osx-aarch64-b631.32.tar.gz"
+        val jbrUrl = "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz"
         val jbrChecksumUrl =
-            "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-osx-aarch64-b631.32.tar.gz.checksum"
+            "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz.checksum"
 
         val jbrFilename = jbrUrl.substringAfterLast('/')
 
@@ -901,6 +935,7 @@ class WithMatrix(
         }
 
         run(
+            name = "Dump Local Properties",
             command = shell($$"""echo "jvm.toolchain.version=21" >> local.properties"""),
         )
     }
@@ -931,6 +966,11 @@ class WithMatrix(
                 command = shell($$"""chmod +x ./ci-helper/install-deps-macos-ci.sh && ./ci-helper/install-deps-macos-ci.sh"""),
             )
         }
+
+        run(
+            command = shell($$"""cat local.properties"""),
+            shell = Shell.Bash
+        )
     }
 
     fun JobBuilder<*>.chmod777() {
@@ -1153,6 +1193,7 @@ class WithMatrix(
         if (matrix.uploadDesktopInstallers) {
             uses(
                 name = "Upload compose logs",
+                `if` = expr { always() },
                 action = UploadArtifact(
                     name = "compose-logs-${matrix.runner.id}",
                     path_Untyped = "app/desktop/build/compose/logs",
