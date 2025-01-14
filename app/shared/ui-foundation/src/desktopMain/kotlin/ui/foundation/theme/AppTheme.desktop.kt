@@ -31,20 +31,14 @@ actual fun appColorScheme(
         modifyColorScheme = { colorScheme ->
             if (useBlackBackground && isDark) {
                 colorScheme.copy(
-//                    surface = Color.Black,
-//                    background = Color.Black,
-//                    surfaceContainerLowest = Color.Black,
-//                    surfaceContainerLow = Color.Black.copy(alpha = 0.1f),
-//                    surfaceContainer = Color.Black.copy(alpha = 0.2f),
-//                    surfaceContainerHigh = Color.Black.copy(alpha = 0.3f),
-//                    surfaceContainerHighest = Color.Black.copy(alpha = 0.4f),
-//                    primary = Color.Black,
-//                    primaryContainer = Color.Black,
-//                    secondary = Color.Black,
-//                    secondaryContainer = Color.Black,
                     background = Color.Black,
+                    onBackground = Color.White,
+
                     surface = Color.Black,
-                    surfaceVariant = Color(0xFF121212),
+                    onSurface = Color.White,
+                    surfaceContainerLowest = Color.Black,
+
+                    surfaceVariant = Color.Black,
                     onSurfaceVariant = Color.White,
                 )
             } else colorScheme
