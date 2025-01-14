@@ -855,9 +855,9 @@ class WithMatrix(
 
     fun JobBuilder<*>.installJbr21() {
         // For mac
-        val jbrUrl = "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-osx-aarch64-b750.29.tar.gz"
+        val jbrUrl = "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz"
         val jbrChecksumUrl =
-            "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-osx-aarch64-b750.29.tar.gz.checksum"
+            "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz.checksum"
 
         val jbrFilename = jbrUrl.substringAfterLast('/')
 
