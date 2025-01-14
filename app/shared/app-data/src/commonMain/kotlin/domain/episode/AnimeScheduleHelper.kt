@@ -17,26 +17,31 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
-import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.schedule.OnAirAnimeInfo
-import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
+import me.him188.ani.app.data.models.subject.LightEpisodeInfo
+import me.him188.ani.app.data.models.subject.LightSubjectAndEpisodes
 import me.him188.ani.datasources.api.toLocalDateOrNull
-
-data class EpisodeWithAiringTime(
-    val subject: SubjectCollectionInfo,
-    val episode: EpisodeInfo,
-    val airingTime: Instant,
-)
 
 object AnimeScheduleHelper {
     private val Utc9 = TimeZone.of("UTC+9")
 
+    data class Subject(
+        val subjectId: Int,
+        val episodes: List<LightEpisodeInfo>,
+    )
+
+    data class EpisodeNextAiringTime(
+        val subjectId: Int,
+        val episode: LightEpisodeInfo,
+        val airingTime: Instant,
+    )
+
     fun buildAiringScheduleForDate(
-        subjects: List<SubjectCollectionInfo>,
+        subjects: List<LightSubjectAndEpisodes>,
         airInfos: List<OnAirAnimeInfo>,
         targetDate: LocalDate,
         localTimeZone: TimeZone,
-    ): List<EpisodeWithAiringTime> {
+    ): List<EpisodeNextAiringTime> {
         // Pre-map OnAirAnimeInfo by bangumiId (subjectId)
         val subjectIdToAirInfo = MutableIntObjectMap<OnAirAnimeInfo>(subjects.size).apply {
             airInfos.forEach { put(it.bangumiId, it) }
@@ -51,7 +56,6 @@ object AnimeScheduleHelper {
 
             // Sort episodes in ascending order of "sort"
             val episodes = subject.episodes
-                .map { it.episodeInfo }
                 .sortedBy { it.sort }
 
             // Keep track of the last known valid date/time (as Instant in UTC+9).
@@ -65,7 +69,7 @@ object AnimeScheduleHelper {
             var lastKnownInstant: Instant? = null
 
             // The actual “match” we find for targetDate
-            var matchedEpisode: EpisodeInfo? = null
+            var matchedEpisode: LightEpisodeInfo? = null
             var matchedEpisodeInstant: Instant? = null
 
             episodes.forEachIndexed { index, ep ->
@@ -140,8 +144,8 @@ object AnimeScheduleHelper {
             val nextEpisode = matchedEpisode ?: return@mapNotNull null
             val nextEpisodeInstant = matchedEpisodeInstant ?: return@mapNotNull null
 
-            EpisodeWithAiringTime(
-                subject = subject,
+            EpisodeNextAiringTime(
+                subjectId = subject.subjectId,
                 episode = nextEpisode,
                 airingTime = nextEpisodeInstant,
             )

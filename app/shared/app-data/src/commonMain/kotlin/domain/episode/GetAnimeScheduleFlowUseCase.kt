@@ -11,9 +11,9 @@ package me.him188.ani.app.domain.episode
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.Instant
@@ -21,15 +21,24 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
+import me.him188.ani.app.data.models.subject.LightEpisodeInfo
+import me.him188.ani.app.data.models.subject.LightSubjectInfo
 import me.him188.ani.app.data.repository.episode.AnimeScheduleRepository
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.domain.usecase.UseCase
+import me.him188.ani.utils.platform.collections.mapToIntList
 import org.koin.core.Koin
 import kotlin.coroutines.CoroutineContext
 
 data class AiringScheduleForDate(
     val date: LocalDate,
     val list: List<EpisodeWithAiringTime>,
+)
+
+data class EpisodeWithAiringTime(
+    val subject: LightSubjectInfo,
+    val episode: LightEpisodeInfo,
+    val airingTime: Instant,
 )
 
 fun interface GetAnimeScheduleFlowUseCase : UseCase {
@@ -52,22 +61,27 @@ class GetAnimeScheduleFlowUseCaseImpl(
                         it.begin != null && it.recurrence != null && (end == null || end < Clock.System.now())
                     }
 
-                combine(
-                    onAirAnimeInfos.map { it.bangumiId }.map { subjectCollectionRepository.subjectCollectionFlow(it) },
-                ) {
-                    val subjects = it.toList()
-
-                    (-7..14).map { offsetDays ->
-                        val date = now.toLocalDateTime(timeZone).date.plus(DatePeriod(days = offsetDays))
-                        val airingSchedule = AnimeScheduleHelper.buildAiringScheduleForDate(
-                            subjects,
-                            onAirAnimeInfos,
-                            date,
-                            timeZone,
-                        )
-                        AiringScheduleForDate(date, airingSchedule)
+                subjectCollectionRepository.batchLightSubjectAndEpisodesFlow(onAirAnimeInfos.mapToIntList { it.bangumiId })
+                    .mapLatest { subjects ->
+                        (-7..14).map { offsetDays ->
+                            val date = now.toLocalDateTime(timeZone).date.plus(DatePeriod(days = offsetDays))
+                            val airingSchedule = AnimeScheduleHelper.buildAiringScheduleForDate(
+                                subjects,
+                                onAirAnimeInfos,
+                                date,
+                                timeZone,
+                            )
+                            AiringScheduleForDate(
+                                date,
+                                airingSchedule.map { episodeSchedule ->
+                                    EpisodeWithAiringTime(
+                                        subject = subjects.first { it.subjectId == episodeSchedule.subjectId }.subject,
+                                        episode = episodeSchedule.episode,
+                                        airingTime = episodeSchedule.airingTime,
+                                    )
+                                },
+                            )
+                        }
                     }
-                }
-
             }.flowOn(defaultDispatcher)
 }

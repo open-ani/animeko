@@ -106,7 +106,11 @@ fun PackedDate.toStringExcludingSameYear(): String = when {
 
 fun PackedDate.toLocalDateOrNull(): LocalDate? {
     if (isInvalid) return null
-    return LocalDate(year, month, day)
+    return try {
+        LocalDate(year, month, day) // May throw IAE
+    } catch (e: IllegalArgumentException) {
+        null
+    }
 }
 
 fun PackedDate?.isNullOrInvalid(): Boolean = this == null || this.isInvalid

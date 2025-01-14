@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -31,6 +31,8 @@ import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.subject.CharacterInfo
 import me.him188.ani.app.data.models.subject.CharacterRole
+import me.him188.ani.app.data.models.subject.LightSubjectAndEpisodes
+import me.him188.ani.app.data.models.subject.LightSubjectInfo
 import me.him188.ani.app.data.models.subject.PersonInfo
 import me.him188.ani.app.data.models.subject.PersonPosition
 import me.him188.ani.app.data.models.subject.RatingCounts
@@ -90,6 +92,10 @@ interface BangumiSubjectService {
         ids: IntList,
         withCharacterActors: Boolean,
     ): List<BatchSubjectRelations>
+
+    suspend fun batchGetLightSubjectAndEpisodes(
+        subjectIds: IntList,
+    ): List<LightSubjectAndEpisodes>
 
     /**
      * 获取用户对这个条目的收藏状态. flow 一定会 emit 至少一个值或抛出异常. 当用户没有收藏这个条目时 emit `null`.
@@ -338,6 +344,38 @@ class RemoteBangumiSubjectService(
                             }.orEmpty()
                         },
                     )
+                }
+            }
+        }
+    }
+
+    override suspend fun batchGetLightSubjectAndEpisodes(subjectIds: IntList): List<LightSubjectAndEpisodes> {
+        if (subjectIds.isEmpty()) {
+            return emptyList()
+        }
+        return withContext(ioDispatcher) {
+            val respDeferred = async {
+                BangumiLightSubjectGraphQLExecutor.execute(client, subjectIds)
+            }
+
+            // 等待查询条目信息
+            val (response, errors) = respDeferred.await()
+
+            // 解析条目详情
+            response.mapIndexed { index, element ->
+                if (element == null) { // error
+                    val subjectId = subjectIds[index]
+                    LightSubjectAndEpisodes(
+                        subject = LightSubjectInfo(
+                            subjectId,
+                            name = "错误 $subjectId: $errors",
+                            nameCn = "错误 $subjectId: $errors",
+                            imageLarge = "",
+                        ),
+                        episodes = emptyList(),
+                    )
+                } else {
+                    BangumiSubjectGraphQLParser.parseLightSubjectAndEpisodes(element)
                 }
             }
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -128,8 +128,8 @@ private fun AniAnimeSeasonId.toAnimeSeasonId(): AnimeSeasonId {
 
 private val AniAnimeSeason.quarterNumber: Int
     get() = when (this) {
-        AniAnimeSeason.SPRING -> 1
-        AniAnimeSeason.SUMMER -> 2
-        AniAnimeSeason.AUTUMN -> 3
-        AniAnimeSeason.WINTER -> 4
+        AniAnimeSeason.WINTER -> 1
+        AniAnimeSeason.SPRING -> 2
+        AniAnimeSeason.SUMMER -> 3
+        AniAnimeSeason.AUTUMN -> 4
     }

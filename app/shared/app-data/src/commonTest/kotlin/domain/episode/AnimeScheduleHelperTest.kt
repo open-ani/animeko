@@ -15,19 +15,15 @@ import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
-import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.data.models.episode.EpisodeInfo
-import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.models.schedule.AnimeRecurrence
 import me.him188.ani.app.data.models.schedule.OnAirAnimeInfo
-import me.him188.ani.app.data.models.subject.SelfRatingInfo
-import me.him188.ani.app.data.models.subject.SubjectAiringInfo
+import me.him188.ani.app.data.models.subject.LightEpisodeInfo
+import me.him188.ani.app.data.models.subject.LightSubjectAndEpisodes
+import me.him188.ani.app.data.models.subject.LightSubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
-import me.him188.ani.app.data.models.subject.SubjectInfo
-import me.him188.ani.app.data.models.subject.SubjectProgressInfo
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.PackedDate
-import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -67,33 +63,18 @@ class AnimeScheduleHelperTest {
      */
     private fun createSubjectCollectionInfo(
         subjectId: Int,
-        episodes: List<EpisodeInfo>,
-        collectionType: UnifiedCollectionType = UnifiedCollectionType.WISH, // or any default
+        episodes: List<LightEpisodeInfo>,
         subjectName: String = "Default Subject"
-    ): SubjectCollectionInfo {
-        val subjectInfo = SubjectInfo.Empty.copy(
+    ): LightSubjectAndEpisodes {
+        val subjectInfo = LightSubjectInfo(
             subjectId = subjectId,
             name = subjectName,
+            nameCn = subjectName,
             imageLarge = "https://example.com/default.jpg",
         )
-        val episodeCollectionInfos = episodes.map {
-            EpisodeCollectionInfo(
-                episodeInfo = it,
-                collectionType = collectionType,
-            )
-        }
-        return SubjectCollectionInfo(
-            collectionType = collectionType,
-            subjectInfo = subjectInfo,
-            selfRatingInfo = SelfRatingInfo.Empty, // or other defaults
-            episodes = episodeCollectionInfos,
-            airingInfo = SubjectAiringInfo.EmptyCompleted, // or default
-            progressInfo = SubjectProgressInfo.Done, // or default
-            recurrence = null,   // null => not used from Subject side
-            cachedStaffUpdated = 0L,
-            cachedCharactersUpdated = 0L,
-            lastUpdated = 0L,
-            nsfwMode = NsfwMode.HIDE,
+        return LightSubjectAndEpisodes(
+            subjectInfo,
+            episodes = episodes,
         )
     }
 
@@ -136,7 +117,7 @@ class AnimeScheduleHelperTest {
         episodeId: Int,
         airDateString: String? = null,
         sort: String = "$episodeId" // default sort is just the episode number
-    ): EpisodeInfo {
+    ): LightEpisodeInfo {
         val packedDate = if (airDateString.isNullOrBlank() || airDateString == "Invalid") {
             PackedDate.Invalid
         } else {
@@ -148,13 +129,11 @@ class AnimeScheduleHelperTest {
                 PackedDate.Invalid
             }
         }
-        return EpisodeInfo(
+        return LightEpisodeInfo(
             episodeId = episodeId,
-            type = null,
             name = "Ep$episodeId",
             nameCn = "第${episodeId}集",
             airDate = packedDate,
-            desc = "",
             sort = EpisodeSort(sort),
             ep = null,
         )
@@ -172,11 +151,11 @@ class AnimeScheduleHelperTest {
     }
 
     private fun convert(
-        subjects: List<SubjectCollectionInfo>,
+        subjects: List<LightSubjectAndEpisodes>,
         airInfos: List<OnAirAnimeInfo>,
         targetDate: LocalDate,
         localTimeZone: TimeZone = TimeZone.UTC,
-    ): List<EpisodeWithAiringTime> = AnimeScheduleHelper.buildAiringScheduleForDate(
+    ): List<AnimeScheduleHelper.EpisodeNextAiringTime> = AnimeScheduleHelper.buildAiringScheduleForDate(
         subjects,
         airInfos,
         targetDate,
@@ -261,7 +240,7 @@ class AnimeScheduleHelperTest {
         assertEquals(1, result.size, "Expected exactly one matching episode")
 
         val scheduleItem = result.first()
-        assertEquals(201, scheduleItem.subject.subjectId)
+        assertEquals(201, scheduleItem.subjectId)
         assertEquals(1f, scheduleItem.episode.sort.number)
         // And so forth ...
     }
@@ -293,7 +272,7 @@ class AnimeScheduleHelperTest {
         val result = convert(subjects, airInfos, targetDate)
         assertEquals(1, result.size)
         val scheduleItem = result.first()
-        assertEquals(202, scheduleItem.subject.subjectId)
+        assertEquals(202, scheduleItem.subjectId)
         assertEquals(2f, scheduleItem.episode.sort.number, "We matched episode 2 by guess")
     }
 
@@ -323,7 +302,7 @@ class AnimeScheduleHelperTest {
         val result = convert(subjects, airInfos, targetDate)
         assertEquals(1, result.size)
         val scheduleItem = result.first()
-        assertEquals(303, scheduleItem.subject.subjectId)
+        assertEquals(303, scheduleItem.subjectId)
         assertEquals(1f, scheduleItem.episode.sort.number)
     }
 

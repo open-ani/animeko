@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -38,6 +38,7 @@ data class OnAirAnimeInfo(
 
 typealias AnimeRecurrence = SubjectRecurrence
 
+
 @Serializable
 enum class AnimeSeason(val quarterNumber: Int, val monthRange: Set<Int>) {
     WINTER(1, setOf(12, 1, 2)), // 1
@@ -58,14 +59,6 @@ data class AnimeSeasonId(
 ) : Comparable<AnimeSeasonId> {
     // serialized
     val id: String = "${year}q${season.quarterNumber}"
-
-    val yearMonths
-        get() = when (season) {
-            AnimeSeason.WINTER -> listOf(year - 1 to 12, year to 1, year to 2)
-            AnimeSeason.SPRING -> listOf(year to 3, year to 4, year to 5)
-            AnimeSeason.SUMMER -> listOf(year to 6, year to 7, year to 8)
-            AnimeSeason.AUTUMN -> listOf(year to 9, year to 10, year to 11)
-        }
 
     companion object {
         private val COMPARATOR = compareBy<AnimeSeasonId> { it.year }
@@ -110,3 +103,12 @@ data class AnimeSeasonId(
 
     override fun compareTo(other: AnimeSeasonId): Int = COMPARATOR.compare(this, other)
 }
+
+val AnimeSeasonId.yearMonths
+    get() = when (season) {
+        // 2024 年 1 月新番, 是从 2023 年 12 月末开播, 播到 2024 年 3 月.
+        AnimeSeason.WINTER -> listOf(year - 1 to 12, year to 1, year to 2)
+        AnimeSeason.SPRING -> listOf(year to 3, year to 4, year to 5)
+        AnimeSeason.SUMMER -> listOf(year to 6, year to 7, year to 8)
+        AnimeSeason.AUTUMN -> listOf(year to 9, year to 10, year to 11)
+    }

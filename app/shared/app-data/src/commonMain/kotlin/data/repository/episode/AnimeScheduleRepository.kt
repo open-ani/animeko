@@ -47,7 +47,7 @@ class AnimeScheduleRepository(
      * 获取所有新番季度的 ID
      */
     private fun animeSeasonIdsFlow(): Flow<List<AnimeSeasonId>> =
-        refreshTicker.mapLatest { animeScheduleService.getSeasonIds() }
+        refreshTicker.mapLatest { animeScheduleService.getSeasonIds().sortedDescending() }
 
     /**
      * 获取指定季度的新番时间表

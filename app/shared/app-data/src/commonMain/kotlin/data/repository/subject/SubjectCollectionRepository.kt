@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -9,6 +9,8 @@
 
 package me.him188.ani.app.data.repository.subject
 
+import androidx.collection.IntList
+import androidx.collection.mutableIntListOf
 import androidx.paging.LoadType
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
@@ -25,6 +27,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
@@ -36,7 +39,11 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
+import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.preference.NsfwMode
+import me.him188.ani.app.data.models.subject.LightEpisodeInfo
+import me.him188.ani.app.data.models.subject.LightSubjectAndEpisodes
+import me.him188.ani.app.data.models.subject.LightSubjectInfo
 import me.him188.ani.app.data.models.subject.SelfRatingInfo
 import me.him188.ani.app.data.models.subject.SubjectAiringInfo
 import me.him188.ani.app.data.models.subject.SubjectCollectionCounts
@@ -76,6 +83,7 @@ import me.him188.ani.datasources.bangumi.processing.toSubjectCollectionType
 import me.him188.ani.utils.coroutines.combine
 import me.him188.ani.utils.coroutines.flows.flowOfEmptyList
 import me.him188.ani.utils.logging.logger
+import me.him188.ani.utils.platform.collections.toIntArray
 import me.him188.ani.utils.platform.currentTimeMillis
 import kotlin.coroutines.CoroutineContext
 import kotlin.time.Duration
@@ -98,6 +106,11 @@ sealed class SubjectCollectionRepository(
     abstract fun subjectCollectionCountsFlow(): Flow<SubjectCollectionCounts?>
 
     abstract fun subjectCollectionFlow(subjectId: Int): Flow<SubjectCollectionInfo>
+
+    /**
+     * 批量获取多个条目的基本信息和前 100 剧集列表.
+     */
+    abstract fun batchLightSubjectAndEpisodesFlow(subjectIds: IntList): Flow<List<LightSubjectAndEpisodes>>
 
     abstract fun subjectCollectionsPager(
         query: CollectionsFilterQuery = CollectionsFilterQuery.Empty,
@@ -232,6 +245,32 @@ class SubjectCollectionRepositoryImpl(
                     nsfwModeSettings = nsfwModeSettings,
                 )
             }.flowOn(defaultDispatcher)
+
+    override fun batchLightSubjectAndEpisodesFlow(subjectIds: IntList): Flow<List<LightSubjectAndEpisodes>> {
+        return flow {
+            val existing = subjectCollectionDao.filterByIds(subjectIds.toIntArray()).first()
+            val missingIds = mutableIntListOf()
+            subjectIds.forEach { subjectId ->
+                val existingSubject = existing.find { it.subjectId == subjectId }
+                if (existingSubject == null || existingSubject.isExpired()) {
+                    missingIds.add(subjectId)
+                }
+            }
+
+            emit(
+                existing.map { subjectCollectionEntity ->
+                    LightSubjectAndEpisodes(
+                        subjectCollectionEntity.toLightSubjectInfo(),
+                        episodeCollectionRepository.subjectEpisodeCollectionInfosFlow(subjectCollectionEntity.subjectId)
+                            .first().map {
+                                it.episodeInfo.toLightEpisodeInfo()
+                            },
+                    )
+                }
+                    .plus(batchGetLightSubjectEpisodes(missingIds)),// TODO: 2025/1/14 batchGetLightSubjectEpisodes 没有按 epType 过滤 
+            )
+        }
+    }
 
     override fun mostRecentlyUpdatedSubjectCollectionsFlow(
         limit: Int,
@@ -457,6 +496,10 @@ class SubjectCollectionRepositoryImpl(
         }
     }
 
+    private suspend fun batchGetLightSubjectEpisodes(subjectIds: IntList): List<LightSubjectAndEpisodes> {
+        return bangumiSubjectService.batchGetLightSubjectAndEpisodes(subjectIds)
+    }
+
     private suspend fun batchGetSubjectEpisodes(items: List<BatchSubjectCollection>): List<EpisodeCollectionEntity> {
         return coroutineScope {
             // 并发
@@ -513,6 +556,20 @@ class SubjectCollectionRepositoryImpl(
         private val logger = logger<SubjectCollectionRepository>()
     }
 }
+
+internal fun EpisodeInfo.toLightEpisodeInfo(): LightEpisodeInfo {
+    return LightEpisodeInfo(
+        episodeId = episodeId,
+        name = name,
+        nameCn = nameCn,
+        airDate = airDate,
+        sort = sort,
+        ep = ep,
+    )
+}
+
+internal fun SubjectCollectionEntity.toLightSubjectInfo() =
+    LightSubjectInfo(subjectId, name, nameCn, imageLarge)
 
 data class CollectionsFilterQuery(
     val type: UnifiedCollectionType?,

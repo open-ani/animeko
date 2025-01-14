@@ -25,7 +25,7 @@ class SchedulePageViewModel(
 ) : AbstractViewModel() {
     private val getAnimeScheduleFlowUseCase: GetAnimeScheduleFlowUseCase by koin.inject()
 
-    val airingSchedulesFlow =
+    private val airingSchedulesFlow =
         getAnimeScheduleFlowUseCase(Clock.System.now(), timeZone = TimeZone.currentSystemDefault())
             .shareInBackground()
 

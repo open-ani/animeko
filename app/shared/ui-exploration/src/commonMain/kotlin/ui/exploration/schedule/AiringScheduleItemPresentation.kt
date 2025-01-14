@@ -15,7 +15,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
-import me.him188.ani.app.data.models.episode.displayName
+import me.him188.ani.app.data.models.subject.displayName
 import me.him188.ani.app.domain.episode.EpisodeWithAiringTime
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
@@ -98,12 +98,12 @@ fun EpisodeWithAiringTime.toPresentation(timeZone: TimeZone): AiringScheduleItem
     // Return the item
     return AiringScheduleItemPresentation(
         subjectId = subject.subjectId,
-        subjectTitle = subject.subjectInfo.name,
-        imageUrl = subject.subjectInfo.imageLarge,
+        subjectTitle = subject.displayName,
+        imageUrl = subject.imageLarge,
         episodeSort = episode.sort,
         episodeEp = episode.ep,
         episodeName = episode.displayName,
-        subjectCollectionType = subject.collectionType,
+        subjectCollectionType = UnifiedCollectionType.NOT_COLLECTED,
         dayOfWeek = dateTime.dayOfWeek,
         time = dateTime.time,
     )
