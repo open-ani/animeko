@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -71,8 +71,10 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.compose.collectAsLazyPagingItemsWithLifecycle
 import kotlinx.coroutines.launch
+import me.him188.ani.app.data.models.episode.findCacheStatus
 import me.him188.ani.app.data.models.subject.SubjectCollectionStats
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.domain.foundation.LoadError
@@ -209,6 +211,7 @@ private fun SubjectDetailsPage(
     BackHandler(enabled = imageViewer.viewing.value) { imageViewer.clear() }
 
     val placeholderModifier = Modifier.placeholder(state.showPlaceholder)
+    val presentation by state.presentationFlow.collectAsStateWithLifecycle()
     SubjectDetailsPageLayout(
         state.subjectId,
         state.info,
@@ -250,6 +253,7 @@ private fun SubjectDetailsPage(
         selectEpisodeButton = {
             SubjectDetailsDefaults.SelectEpisodeButtons(
                 state.subjectProgressState,
+                episodeCacheStatus = { presentation.episodeCacheInfo.findCacheStatus(it) },
                 onShowEpisodeList = { showSelectEpisode = true },
                 onPlay = onPlay,
                 placeholderModifier,

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -26,6 +26,7 @@ import me.him188.ani.app.ui.subject.details.TestSubjectCharacterList
 import me.him188.ani.app.ui.subject.details.TestSubjectInfo
 import me.him188.ani.app.ui.subject.rating.createTestEditableRatingState
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
+import me.him188.ani.utils.coroutines.flows.flowOfEmptyList
 import me.him188.ani.utils.platform.annotations.TestOnly
 
 
@@ -62,7 +63,9 @@ fun createTestSubjectDetailsState(
             backgroundScope = backgroundScope,
         ),
         subjectProgressState = createTestSubjectProgressState(),
+        episodeProgressInfoFlow = flowOfEmptyList(),
         subjectCommentState = createTestCommentState(backgroundScope),
         showPlaceholder = isPlaceholder,
+        backgroundScope = backgroundScope,
     )
 }

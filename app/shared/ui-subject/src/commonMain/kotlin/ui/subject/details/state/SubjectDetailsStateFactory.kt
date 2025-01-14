@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -64,10 +64,10 @@ import me.him188.ani.app.ui.comment.CommentState
 import me.him188.ani.app.ui.foundation.produceState
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.subject.AiringLabelState
+import me.him188.ani.app.ui.subject.SubjectProgressState
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeState
 import me.him188.ani.app.ui.subject.collection.progress.EpisodeListState
 import me.him188.ani.app.ui.subject.collection.progress.EpisodeListStateFactory
-import me.him188.ani.app.ui.subject.collection.progress.SubjectProgressState
 import me.him188.ani.app.ui.subject.collection.progress.SubjectProgressStateFactory
 import me.him188.ani.app.ui.subject.details.updateRating
 import me.him188.ani.app.ui.subject.rating.EditableRatingState
@@ -75,6 +75,7 @@ import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
 import me.him188.ani.utils.coroutines.childScope
+import me.him188.ani.utils.coroutines.flows.flowOfEmptyList
 import me.him188.ani.utils.coroutines.update
 import me.him188.ani.utils.platform.annotations.TestOnly
 import org.koin.core.component.KoinComponent
@@ -339,9 +340,11 @@ class DefaultSubjectDetailsStateFactory(
         val subjectProgressState = subjectProgressStateFactory.run {
             SubjectProgressState(
                 subjectProgressInfoState,
-                episodeProgressInfoList(subjectId).produceState(emptyList(), subjectScope),
             )
         }
+
+        val episodeProgressInfoFlow =
+            subjectProgressStateFactory.episodeProgressInfoList(subjectId)
 
         val comments = bangumiCommentRepository.subjectCommentsPager(subjectId)
             .map { page ->
@@ -433,8 +436,10 @@ class DefaultSubjectDetailsStateFactory(
             editableSubjectCollectionTypeState = editableSubjectCollectionTypeState,
             editableRatingState = editableRatingState,
             subjectProgressState = subjectProgressState,
+            episodeProgressInfoFlow = flowOfEmptyList(),
             subjectCommentState = subjectCommentState,
             showPlaceholder = false,
+            backgroundScope = this,
         )
         return state
     }
@@ -484,8 +489,8 @@ class DefaultSubjectDetailsStateFactory(
             ),
             subjectProgressState = SubjectProgressState(
                 info = stateOf(null),
-                episodeProgressInfos = stateOf(emptyList()),
             ),
+            episodeProgressInfoFlow = flowOfEmptyList(),
             subjectCommentState = CommentState(
                 list = emptyFlow(),
                 countState = stateOf(null),
@@ -493,6 +498,7 @@ class DefaultSubjectDetailsStateFactory(
                 backgroundScope = this,
             ),
             showPlaceholder = true,
+            backgroundScope = this,
         )
     }
 }

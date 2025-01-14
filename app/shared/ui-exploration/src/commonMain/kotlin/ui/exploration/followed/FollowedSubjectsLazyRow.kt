@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -64,7 +64,7 @@ import me.him188.ani.app.ui.search.LoadErrorCardRole
 import me.him188.ani.app.ui.search.isFinishedAndEmpty
 import me.him188.ani.app.ui.search.isLoadingFirstPage
 import me.him188.ani.app.ui.search.rememberLoadErrorState
-import me.him188.ani.app.ui.subject.AiringLabelState
+import me.him188.ani.app.ui.subject.SubjectProgressState
 
 // https://www.figma.com/design/LET1n9mmDa6npDTIlUuJjU/Animeko?node-id=62-4581&node-type=frame&t=Evw0PwXZHXQNgEm3-0
 @Composable
@@ -175,14 +175,9 @@ private fun FollowedSubjectItem(
         supportingText = {
             if (item != null) {
                 val airingState = remember(item) {
-                    AiringLabelState(
-                        stateOf(item.subjectAiringInfo),
-                        stateOf(item.subjectProgressInfo),
-                    )
+                    SubjectProgressState(stateOf(item.subjectProgressInfo))
                 }
-                airingState.progressText?.let {
-                    Text(it, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
+                Text(airingState.buttonText, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         },
         maskShape = shape,

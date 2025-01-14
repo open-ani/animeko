@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -11,12 +11,18 @@ package me.him188.ani.app.ui.subject.details.state
 
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.paging.PagingData
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import me.him188.ani.app.data.models.episode.EpisodeProgressInfo
 import me.him188.ani.app.data.models.subject.RelatedCharacterInfo
 import me.him188.ani.app.data.models.subject.RelatedPersonInfo
 import me.him188.ani.app.data.models.subject.RelatedSubjectInfo
@@ -24,9 +30,9 @@ import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.domain.session.AuthState
 import me.him188.ani.app.ui.comment.CommentState
 import me.him188.ani.app.ui.subject.AiringLabelState
+import me.him188.ani.app.ui.subject.SubjectProgressState
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeState
 import me.him188.ani.app.ui.subject.collection.progress.EpisodeListState
-import me.him188.ani.app.ui.subject.collection.progress.SubjectProgressState
 import me.him188.ani.app.ui.subject.rating.EditableRatingState
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 
@@ -53,12 +59,31 @@ class SubjectDetailsState(
     val editableSubjectCollectionTypeState: EditableSubjectCollectionTypeState,
     val editableRatingState: EditableRatingState,
     val subjectProgressState: SubjectProgressState,
+    episodeProgressInfoFlow: Flow<List<EpisodeProgressInfo>>,
     val subjectCommentState: CommentState,
     /**
      * 是否预先显示少量 [info].
      */
     val showPlaceholder: Boolean,
+    backgroundScope: CoroutineScope,
 ) {
+    @Immutable
+    data class Presentation(
+        val episodeCacheInfo: List<EpisodeProgressInfo>,
+        val isPlaceholder: Boolean = false,
+    ) {
+        companion object {
+            val Placeholder = Presentation(emptyList(), isPlaceholder = true)
+        }
+    }
+
+    val presentationFlow = episodeProgressInfoFlow.map { episodeCacheInfo ->
+        Presentation(
+            episodeCacheInfo,
+        )
+    }.stateIn(backgroundScope, started = SharingStarted.WhileSubscribed(), Presentation.Placeholder)
+    //.shareIn(backgroundScope, started = SharingStarted.WhileSubscribed(), replay = 1)
+
     private val selfCollectionTypeOrNull by selfCollectionTypeState
     val selfCollectionType by derivedStateOf { selfCollectionTypeOrNull }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -88,6 +88,7 @@ import me.him188.ani.app.platform.startCommonKoinModule
 import me.him188.ani.app.platform.window.setTitleBar
 import me.him188.ani.app.tools.update.DesktopUpdateInstaller
 import me.him188.ani.app.tools.update.UpdateInstaller
+import me.him188.ani.app.torrent.anitorrent.AnitorrentLibraryLoader
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.LocalWindowState
 import me.him188.ani.app.ui.foundation.ifThen
@@ -300,6 +301,10 @@ object AniDesktop {
 
         // Initialize CEF application.
         coroutineScope.launch {
+            AnitorrentLibraryLoader.loadLibraries() 
+            // Load anitorrent libraries before JCEF, so they won't load at the same time.
+            // We suspect concurrent loading of native libraries may cause some issues #1121.
+            
             val proxySettings = koin.koin.get<ProxyProvider>()
                 .proxy.first()
 
