@@ -30,6 +30,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.compose.NavHost
@@ -53,6 +54,8 @@ import me.him188.ani.app.ui.cache.CacheManagementViewModel
 import me.him188.ani.app.ui.cache.details.MediaCacheDetailsPage
 import me.him188.ani.app.ui.cache.details.MediaCacheDetailsPageViewModel
 import me.him188.ani.app.ui.cache.details.MediaDetailsLazyGrid
+import me.him188.ani.app.ui.exploration.schedule.SchedulePage
+import me.him188.ani.app.ui.exploration.schedule.SchedulePageViewModel
 import me.him188.ani.app.ui.foundation.layout.LocalSharedTransitionScopeProvider
 import me.him188.ani.app.ui.foundation.layout.SharedTransitionScopeProvider
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
@@ -432,7 +435,22 @@ private fun AniAppContentImpl(
                 popEnterTransition = popEnterTransition,
                 popExitTransition = popExitTransition,
             ) { backStackEntry ->
+                val route = backStackEntry.toRoute<NavRoutes.Schedule>()
 
+                val vm = viewModel { SchedulePageViewModel() }
+                val presentation by vm.presentationFlow.collectAsStateWithLifecycle()
+                SchedulePage(
+                    data = presentation.airingSchedules,
+                    Modifier.fillMaxSize(),
+                    windowInsets = windowInsets,
+                    navigationIcon = {
+                        BackNavigationIconButton(
+                            {
+                                aniNavigator.popBackStack(route, inclusive = true)
+                            },
+                        )
+                    },
+                )
             }
         }
 

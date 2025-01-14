@@ -9,22 +9,21 @@
 
 package me.him188.ani.app.ui.exploration.schedule
 
-import androidx.collection.MutableIntObjectMap
 import androidx.compose.runtime.Immutable
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
-import me.him188.ani.app.data.models.episode.EpisodeInfo
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import me.him188.ani.app.data.models.episode.displayName
-import me.him188.ani.app.data.models.schedule.OnAirAnimeInfo
-import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
+import me.him188.ani.app.domain.episode.EpisodeWithAiringTime
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.platform.annotations.TestOnly
 import me.him188.ani.utils.platform.collections.ImmutableEnumMap
 
 @Immutable
-data class ScheduleItemPresentation(
+data class AiringScheduleItemPresentation(
     val subjectId: Int,
     val subjectTitle: String,
     val imageUrl: String,
@@ -33,23 +32,24 @@ data class ScheduleItemPresentation(
     val episodeName: String?,
 
     val subjectCollectionType: UnifiedCollectionType,
-
-    /**
-     * 未来的开始日期. 如果此条目已经开播了, 则为 `null`.
-     */
-    val futureStartDate: LocalDate?,
     val dayOfWeek: DayOfWeek,
     val time: LocalTime,
 )
 
+@Immutable
+data class AiringSchedule(
+    val date: LocalDate,
+    val episodes: List<AiringScheduleColumnItem>,
+)
+
 @TestOnly
-val TestScheduleItemPresentations
+val TestAiringScheduleItemPresentations
     get() = buildList {
         var id = 0
         repeat(50) { i ->
             repeat(if (i % 8 == 0) 2 else 1) {
                 add(
-                    ScheduleItemPresentation(
+                    AiringScheduleItemPresentation(
                         subjectId = ++id,
                         subjectTitle = "Subject $id",
                         imageUrl = "https://example.com/image.jpg",
@@ -57,11 +57,6 @@ val TestScheduleItemPresentations
                         episodeEp = EpisodeSort(1),
                         episodeName = "Episode 1",
                         subjectCollectionType = UnifiedCollectionType.entries[i % UnifiedCollectionType.entries.size],
-                        futureStartDate = if (i % 4 == 0) {
-                            LocalDate(2024, 5, 9)
-                        } else {
-                            null
-                        },
                         dayOfWeek = DayOfWeek.entries[i % DayOfWeek.entries.size],
                         time = LocalTime(i % 24, 0),
                     ),
@@ -75,77 +70,58 @@ val TestScheduleItemPresentations
  * @see TestSchedulePageData
  */
 @TestOnly
-val TestScheduleItemPresentationData: ImmutableEnumMap<DayOfWeek, List<ScheduleItemPresentation>>
-    get() = ImmutableEnumMap<DayOfWeek, List<ScheduleItemPresentation>> { day ->
-        TestScheduleItemPresentations.filter { it.dayOfWeek == day }
+val TestAiringScheduleItemPresentationData: ImmutableEnumMap<DayOfWeek, List<AiringScheduleItemPresentation>>
+    get() = ImmutableEnumMap<DayOfWeek, List<AiringScheduleItemPresentation>> { day ->
+        TestAiringScheduleItemPresentations.filter { it.dayOfWeek == day }
             .sortedWith(
-                compareBy<ScheduleItemPresentation> { it.time }
+                compareBy<AiringScheduleItemPresentation> { it.time }
                     .thenBy { it.subjectTitle },
             )
     }
 
 
 @TestOnly
-val TestSchedulePageData: ImmutableEnumMap<DayOfWeek, List<ScheduleDayColumnItem>>
+val TestSchedulePageData: ImmutableEnumMap<DayOfWeek, List<AiringScheduleColumnItem>>
     get() = ImmutableEnumMap<DayOfWeek, _> { day ->
         val currentTime = LocalTime(12, 0)
-        val list = TestScheduleItemPresentations.filter { it.dayOfWeek == day }
+        val list = TestAiringScheduleItemPresentations.filter { it.dayOfWeek == day }
             .sortedWith(
-                compareBy<ScheduleItemPresentation> { it.time }
+                compareBy<AiringScheduleItemPresentation> { it.time }
                     .thenBy { it.subjectTitle },
             )
 
         SchedulePageDataHelper.withCurrentTimeIndicator(list, currentTime)
     }
 
+fun EpisodeWithAiringTime.toPresentation(timeZone: TimeZone): AiringScheduleItemPresentation {
+    val dateTime = airingTime.toLocalDateTime(timeZone)
+    // Return the item
+    return AiringScheduleItemPresentation(
+        subjectId = subject.subjectId,
+        subjectTitle = subject.subjectInfo.name,
+        imageUrl = subject.subjectInfo.imageLarge,
+        episodeSort = episode.sort,
+        episodeEp = episode.ep,
+        episodeName = episode.displayName,
+        subjectCollectionType = subject.collectionType,
+        dayOfWeek = dateTime.dayOfWeek,
+        time = dateTime.time,
+    )
+}
+
 object SchedulePageDataHelper {
-
-    /**
-     * Returns the subjects which will have a new episode on air on [targetDate].
-     */
-    fun convert(
-        subjects: List<SubjectCollectionInfo>,
-        airInfos: List<OnAirAnimeInfo>,
-        targetDate: LocalDate,
-    ): List<ScheduleItemPresentation> {
-        val subjectIdToAirInfo = MutableIntObjectMap<OnAirAnimeInfo>(subjects.size).apply {
-            airInfos.forEach { put(it.bangumiId, it) }
-        }
-        return subjects.mapNotNull { info ->
-            val airInfo = subjectIdToAirInfo[info.subjectId] ?: return@mapNotNull null
-            val subjectBegin = airInfo.begin ?: return@mapNotNull null
-            val recurrence = airInfo.recurrence ?: return@mapNotNull null
-
-            val nextEpisode: EpisodeInfo = TODO()
-            val nextEpisodeTime: LocalTime = TODO()
-
-            ScheduleItemPresentation(
-                subjectId = info.subjectId,
-                subjectTitle = info.subjectInfo.name,
-                imageUrl = info.subjectInfo.imageLarge,
-                episodeSort = nextEpisode.sort,
-                episodeEp = nextEpisode.ep,
-                episodeName = nextEpisode.displayName,
-                subjectCollectionType = info.collectionType,
-                futureStartDate = null,
-                dayOfWeek = DayOfWeek.MONDAY,
-                time = nextEpisodeTime,
-            )
-        }
-    }
-
     fun withCurrentTimeIndicator(
-        list: List<ScheduleItemPresentation>,
+        list: List<AiringScheduleItemPresentation>,
         currentTime: LocalTime,
-    ): List<ScheduleDayColumnItem> {
+    ): List<AiringScheduleColumnItem> {
         val insertionIndex = list.indexOfLast { it.time <= currentTime }
         return buildList(capacity = list.size + 1) {
             var previousTime: LocalTime? = null
-            val handleItem = { itemPresentation: ScheduleItemPresentation ->
+            val handleItem = { itemPresentation: AiringScheduleItemPresentation ->
                 val showtime = previousTime != itemPresentation.time
                 previousTime = itemPresentation.time
                 add(
-                    ScheduleDayColumnItem.Item(
+                    AiringScheduleColumnItem.Data(
                         item = itemPresentation,
                         showtime,
                     ),
@@ -156,7 +132,7 @@ object SchedulePageDataHelper {
                 handleItem(itemPresentation)
             }
             add(
-                ScheduleDayColumnItem.CurrentTimeIndicator(
+                AiringScheduleColumnItem.CurrentTimeIndicator(
                     currentTime = currentTime,
                 ),
             )

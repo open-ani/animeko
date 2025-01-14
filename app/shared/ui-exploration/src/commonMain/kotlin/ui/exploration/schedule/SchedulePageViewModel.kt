@@ -9,8 +9,13 @@
 
 package me.him188.ani.app.ui.exploration.schedule
 
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
-import me.him188.ani.app.data.repository.episode.AnimeScheduleRepository
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
+import me.him188.ani.app.domain.episode.GetAnimeScheduleFlowUseCase
 import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import org.koin.core.Koin
@@ -18,11 +23,37 @@ import org.koin.core.Koin
 class SchedulePageViewModel(
     koin: Koin = GlobalKoin,
 ) : AbstractViewModel() {
-    private val scheduleRepository: AnimeScheduleRepository by koin.inject()
+    private val getAnimeScheduleFlowUseCase: GetAnimeScheduleFlowUseCase by koin.inject()
 
-    val pageStateFlow =
-        scheduleRepository.recentScheduleSubjectsFlow()
-            .map { list ->
-                SchedulePageDataHelper.withCurrentTimeIndicator()
-            }
+    val airingSchedulesFlow =
+        getAnimeScheduleFlowUseCase(Clock.System.now(), timeZone = TimeZone.currentSystemDefault())
+            .shareInBackground()
+
+    val pageState = SchedulePageState(
+
+    )
+
+    val presentationFlow = airingSchedulesFlow.map { list ->
+        val timeZone = TimeZone.currentSystemDefault()
+        SchedulePagePresentation(
+            airingSchedules = list.map { airingSchedule ->
+                AiringSchedule(
+                    airingSchedule.date,
+                    SchedulePageDataHelper.withCurrentTimeIndicator(
+                        airingSchedule.list.map { it.toPresentation(timeZone) },
+                        Clock.System.now().toLocalDateTime(timeZone).time,
+                    ),
+                )
+            },
+        )
+    }.stateIn(
+        backgroundScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = SchedulePagePresentation(emptyList(), isPlaceholder = true),
+    )
 }
+
+class SchedulePagePresentation(
+    val airingSchedules: List<AiringSchedule>,
+    val isPlaceholder: Boolean = false,
+)

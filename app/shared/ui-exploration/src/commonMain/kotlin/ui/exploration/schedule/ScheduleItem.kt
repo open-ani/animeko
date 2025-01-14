@@ -154,7 +154,6 @@ object ScheduleItemDefaults {
 
     @Composable
     fun Time(
-        futureStartDate: LocalDate?,
         time: LocalTime,
         modifier: Modifier = Modifier
     ) {

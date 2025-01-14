@@ -15,7 +15,7 @@ import me.him188.ani.datasources.api.EpisodeType
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-class ScheduleItemDefaultsTest {
+class EpisodeWithAiringTimeDefaultsTest {
     @Test
     fun `renderEpisodeDisplay sort only`() {
         assertEquals("第 1 话", renderEpisodeDisplay(EpisodeSort(1), null, null))

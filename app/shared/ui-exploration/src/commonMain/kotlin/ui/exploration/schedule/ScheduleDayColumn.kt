@@ -48,7 +48,7 @@ import me.him188.ani.app.ui.foundation.text.ProvideContentColor
  */
 @Composable
 fun ScheduleDayColumn(
-    items: List<ScheduleDayColumnItem>,
+    items: List<AiringScheduleColumnItem>,
     dayOfWeek: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     layoutParams: ScheduleDayColumnLayoutParams = ScheduleDayColumnLayoutParams.Default,
@@ -72,23 +72,23 @@ fun ScheduleDayColumn(
                 items,
                 key = { item ->
                     when (item) {
-                        is ScheduleDayColumnItem.Item -> item.item.subjectId
-                        is ScheduleDayColumnItem.CurrentTimeIndicator -> item.hashCode()
+                        is AiringScheduleColumnItem.Data -> item.item.subjectId
+                        is AiringScheduleColumnItem.CurrentTimeIndicator -> item.hashCode()
                     }
                 },
                 contentType = { item ->
                     when (item) {
-                        is ScheduleDayColumnItem.Item -> true
-                        is ScheduleDayColumnItem.CurrentTimeIndicator -> false
+                        is AiringScheduleColumnItem.Data -> true
+                        is AiringScheduleColumnItem.CurrentTimeIndicator -> false
                     }
                 },
             ) { columnItem ->
                 when (columnItem) {
-                    is ScheduleDayColumnItem.CurrentTimeIndicator -> {
+                    is AiringScheduleColumnItem.CurrentTimeIndicator -> {
                         ScheduleCurrentTimeIndicator(columnItem, Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
                     }
 
-                    is ScheduleDayColumnItem.Item -> {
+                    is AiringScheduleColumnItem.Data -> {
                         val item = columnItem.item
                         ScheduleItem(
                             subjectTitle = { ScheduleItemDefaults.SubjectTitle(item.subjectTitle) },
@@ -102,7 +102,7 @@ fun ScheduleDayColumn(
                             leadingImage = { AsyncImage(item.imageUrl, "${item.subjectTitle} 封面") },
                             time = {
                                 if (columnItem.showTime) {
-                                    ScheduleItemDefaults.Time(item.futureStartDate, item.time)
+                                    ScheduleItemDefaults.Time(item.time)
                                 }
                             },
                             action = {
@@ -120,7 +120,7 @@ fun ScheduleDayColumn(
 
 @Composable
 private fun ScheduleCurrentTimeIndicator(
-    columnItem: ScheduleDayColumnItem.CurrentTimeIndicator,
+    columnItem: AiringScheduleColumnItem.CurrentTimeIndicator,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -146,17 +146,17 @@ private fun ScheduleCurrentTimeIndicator(
 }
 
 @Immutable
-sealed class ScheduleDayColumnItem {
+sealed class AiringScheduleColumnItem {
     @Immutable
-    data class Item(
-        val item: ScheduleItemPresentation,
+    data class Data(
+        val item: AiringScheduleItemPresentation,
         val showTime: Boolean,
-    ) : ScheduleDayColumnItem()
+    ) : AiringScheduleColumnItem()
 
     @Immutable
     data class CurrentTimeIndicator(
         val currentTime: LocalTime,
-    ) : ScheduleDayColumnItem()
+    ) : AiringScheduleColumnItem()
 }
 
 @Immutable

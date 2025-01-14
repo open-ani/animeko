@@ -12,9 +12,7 @@ package me.him188.ani.app.data.repository.episode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.asFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.mapLatest
@@ -22,12 +20,10 @@ import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.toList
 import me.him188.ani.app.data.models.schedule.AnimeScheduleInfo
 import me.him188.ani.app.data.models.schedule.AnimeSeasonId
-import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.data.models.subject.SubjectRecurrence
 import me.him188.ani.app.data.network.AnimeScheduleService
 import me.him188.ani.app.data.repository.Repository
 import me.him188.ani.app.data.repository.RepositoryServiceUnavailableException
-import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.utils.logging.error
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.cancellation.CancellationException
@@ -36,7 +32,7 @@ import kotlin.time.Duration.Companion.hours
 
 class AnimeScheduleRepository(
     private val animeScheduleService: AnimeScheduleService,
-    private val subjectCollectionRepository: SubjectCollectionRepository,
+//    private val subjectCollectionRepository: SubjectCollectionRepository,
     private val updatePeriod: Duration = 1.hours,
     defaultDispatcher: CoroutineContext = Dispatchers.Default,
 ) : Repository(defaultDispatcher) {
@@ -52,14 +48,12 @@ class AnimeScheduleRepository(
      */
     private fun animeSeasonIdsFlow(): Flow<List<AnimeSeasonId>> =
         refreshTicker.mapLatest { animeScheduleService.getSeasonIds() }
-            .cachedWithTransparentException()
 
     /**
      * 获取指定季度的新番时间表
      */
     private fun animeScheduleFlow(seasonId: AnimeSeasonId): Flow<AnimeScheduleInfo?> =
         refreshTicker.mapLatest { animeScheduleService.getScheduleInfo(seasonId) }
-            .cachedWithTransparentException()
 
     suspend fun getSubjectRecurrence(subjectId: Int): SubjectRecurrence? {
         try {
@@ -80,11 +74,11 @@ class AnimeScheduleRepository(
     }
 
     /**
-     * 获取最近一年的新番时间表 // todo
+     * 获取最近两季度的新番时间表
      */
     fun recentSchedulesFlow(): Flow<List<AnimeScheduleInfo>> =
         animeSeasonIdsFlow().mapLatest { seasons ->
-            seasons.take(1) // TODO: 2025/1/14  recentSchedulesFlow seasons
+            seasons.take(2)
                 .map {
                     suspend { animeScheduleService.getScheduleInfo(it) }.asFlow() // emits 1 item
                 }
@@ -94,17 +88,17 @@ class AnimeScheduleRepository(
         }.flowOn(defaultDispatcher)
 
 
-    fun recentScheduleSubjectsFlow(): Flow<List<SubjectCollectionInfo>> =
-        recentSchedulesFlow()
-            .mapLatest { schedules ->
-                schedules.flatMap { it.list }
-            }.flatMapLatest { list ->
-                combine(
-                    list.map {
-                        subjectCollectionRepository.subjectCollectionFlow(it.bangumiId)
-                    },
-                ) {
-                    it.toList()
-                }
-            }
+//    fun recentScheduleSubjectsFlow(): Flow<List<SubjectCollectionInfo>> =
+//        recentSchedulesFlow()
+//            .mapLatest { schedules ->
+//                schedules.flatMap { it.list }
+//            }.flatMapLatest { list ->
+//                combine(
+//                    list.map {
+//                        subjectCollectionRepository.subjectCollectionFlow(it.bangumiId)
+//                    },
+//                ) {
+//                    it.toList()
+//                }
+//            }
 }

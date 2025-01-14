@@ -90,7 +90,7 @@ class SchedulePageState(
 
 @Composable
 fun SchedulePage(
-    data: (DayOfWeek) -> List<ScheduleDayColumnItem>,
+    data: List<AiringSchedule>,
     modifier: Modifier = Modifier,
     layoutParams: SchedulePageLayoutParams = SchedulePageLayoutParams.calculate(),
     colors: SchedulePageColors = SchedulePageDefaults.colors(),
@@ -112,7 +112,7 @@ fun SchedulePage(
                     DayOfWeekHeadline(day)
                 }
             },
-            items = data(day),
+            items = data.firstOrNull { it.date.dayOfWeek == day }?.episodes.orEmpty(),
             layoutParams = layoutParams.columnLayoutParams,
             state = state.scheduleColumnStates[day],
             itemColors = colors.itemColors,
