@@ -9,7 +9,7 @@
 
 package me.him188.ani.app.ui.settings.tabs.theme
 
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.FlowRow
@@ -38,7 +38,8 @@ import me.him188.ani.app.ui.settings.framework.components.SwitchItem
 import me.him188.ani.utils.platform.isAndroid
 import me.him188.ani.utils.platform.isDesktop
 
-private val colorList = ((4..10) + (1..3)).map { it * 35.0 }.map { Color(Hct.from(it, 40.0, 40.0).toInt()) }
+private val colorList =
+    ((4..10) + (1..3)).map { it * 35.0 }.map { Color(Hct.from(it, 40.0, 40.0).toInt()) }
 
 @Composable
 fun SettingsScope.ThemeGroup(
@@ -46,10 +47,11 @@ fun SettingsScope.ThemeGroup(
 ) {
     val themeSettings by state
 
-    Group(title = { Text("主题") }) {
-        AnimatedVisibility(
-            LocalPlatform.current.isDesktop() || LocalPlatform.current.isAndroid(),
-        ) {
+    Group(
+        title = { Text("主题") },
+        modifier = Modifier.animateContentSize(),
+    ) {
+        if (LocalPlatform.current.isDesktop() || LocalPlatform.current.isAndroid()) {
             DropdownItem(
                 selected = { themeSettings.darkMode },
                 values = { DarkMode.entries },
