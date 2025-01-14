@@ -50,6 +50,7 @@ import me.him188.ani.app.domain.media.selector.MediaExclusionReason
 import me.him188.ani.app.domain.media.selector.UnsafeOriginalMediaAccess
 import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.tools.formatDateTime
+import me.him188.ani.app.ui.foundation.theme.weaken
 import me.him188.ani.app.ui.media.renderSubtitleLanguage
 import me.him188.ani.app.ui.settings.rendering.MediaSourceIcon
 import me.him188.ani.app.ui.settings.rendering.MediaSourceIcons
@@ -188,12 +189,12 @@ fun MediaSelectorItemLayout(
             containerColor = if (selected) {
                 MaterialTheme.colorScheme.secondaryContainer
             } else {
-                MaterialTheme.colorScheme.surfaceContainerHighest
+                Color.Transparent
             },
         ),
-        border = if (selected) BorderStroke(
+        border = if (!selected) BorderStroke(
             width = 1.dp,
-            color = MaterialTheme.colorScheme.primary,
+            color = MaterialTheme.colorScheme.outline.weaken(),
         ) else null,
     ) {
         val horizontalPadding = 16.dp
