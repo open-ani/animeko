@@ -194,7 +194,7 @@ fun MediaSelectorItemLayout(
         ),
         border = if (!selected) BorderStroke(
             width = 1.dp,
-            color = MaterialTheme.colorScheme.outline.weaken(),
+            color = MaterialTheme.colorScheme.outline,
         ) else null,
     ) {
         val horizontalPadding = 16.dp
