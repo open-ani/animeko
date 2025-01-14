@@ -128,14 +128,14 @@ fun SettingsScope.ThemeGroup(
             )
         }
 
-//        SwitchItem(
-//            checked = themeSettings.useBlackBackground,
-//            onCheckedChange = { checked ->
-//                state.update(themeSettings.copy(useBlackBackground = checked))
-//            },
-//            title = { Text("高对比度深色主题") },
-//            description = { Text("深色模式使用纯黑背景，在 AMOLED 屏幕使用纯黑背景可以省电") },
-//        )
+        SwitchItem(
+            checked = themeSettings.useBlackBackground,
+            onCheckedChange = { checked ->
+                state.update(themeSettings.copy(useBlackBackground = checked))
+            },
+            title = { Text("高对比度深色主题") },
+            description = { Text("深色模式使用纯黑背景，在 AMOLED 屏幕使用纯黑背景可以省电") },
+        )
     }
 
     Box(
