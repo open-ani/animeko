@@ -55,6 +55,7 @@ import androidx.window.core.layout.WindowSizeClass
 import androidx.window.core.layout.WindowWidthSizeClass
 import kotlinx.coroutines.launch
 import kotlinx.datetime.DayOfWeek
+import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.ui.adaptive.AniTopAppBar
 import me.him188.ani.app.ui.adaptive.HorizontalScrollControlScaffoldOnDesktop
 import me.him188.ani.app.ui.foundation.HorizontalScrollControlState
@@ -64,6 +65,7 @@ import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.pagerTabIndicatorOffset
 import me.him188.ani.app.ui.foundation.rememberHorizontalScrollControlState
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
+import me.him188.ani.app.ui.search.LoadErrorCard
 import me.him188.ani.utils.platform.collections.ImmutableEnumMap
 
 @Stable
@@ -98,6 +100,8 @@ class SchedulePageState(
 @Composable
 fun SchedulePage(
     data: List<AiringSchedule>,
+    loadError: LoadError?,
+    onRetry: () -> Unit,
     onClickItem: (item: AiringScheduleItemPresentation) -> Unit,
     modifier: Modifier = Modifier,
     layoutParams: SchedulePageLayoutParams = SchedulePageLayoutParams.calculate(),
@@ -106,26 +110,48 @@ fun SchedulePage(
     state: SchedulePageState = remember { SchedulePageState() },
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
 ) {
-    SchedulePageLayout(
-        modifier = modifier,
-        layoutParams = layoutParams,
-        colors = colors,
-        navigationIcon = navigationIcon,
-        state = state,
-        windowInsets = windowInsets,
-    ) { day ->
-        ScheduleDayColumn(
-            onClickItem = onClickItem,
-            dayOfWeek = {
-                if (layoutParams.showDayOfWeekHeadline) {
-                    DayOfWeekHeadline(day)
-                }
-            },
-            items = data.firstOrNull { it.date.dayOfWeek == day }?.episodes.orEmpty(),
-            layoutParams = layoutParams.columnLayoutParams,
-            state = state.scheduleColumnStates[day],
-            itemColors = colors.itemColors,
-        )
+    Scaffold(
+        modifier,
+        topBar = {
+            AniTopAppBar(
+                title = { Text("新番时间表") },
+                Modifier.fillMaxWidth(),
+                navigationIcon = navigationIcon,
+                windowInsets = windowInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
+            )
+        },
+        containerColor = AniThemeDefaults.pageContentBackgroundColor,
+        contentWindowInsets = windowInsets.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal),
+    ) { paddingValues ->
+        if (loadError != null) {
+            LoadErrorCard(
+                loadError,
+                onRetry = onRetry,
+                modifier = Modifier.padding(paddingValues)
+                    .padding(layoutParams.pageContentPadding)
+                    .padding(all = 16.dp),
+            )
+        } else {
+            SchedulePageContent(
+                modifier = Modifier.padding(paddingValues),
+                layoutParams = layoutParams,
+                colors = colors,
+                state = state,
+            ) { day ->
+                ScheduleDayColumn(
+                    onClickItem = onClickItem,
+                    dayOfWeek = {
+                        if (layoutParams.showDayOfWeekHeadline) {
+                            DayOfWeekHeadline(day)
+                        }
+                    },
+                    items = data.firstOrNull { it.date.dayOfWeek == day }?.episodes.orEmpty(),
+                    layoutParams = layoutParams.columnLayoutParams,
+                    state = state.scheduleColumnStates[day],
+                    itemColors = colors.itemColors,
+                )
+            }
+        }
     }
 }
 
@@ -157,82 +183,66 @@ private fun DayOfWeekHeadline(
 }
 
 @Composable
-fun SchedulePageLayout(
+fun SchedulePageContent(
     modifier: Modifier = Modifier,
     layoutParams: SchedulePageLayoutParams = SchedulePageLayoutParams.calculate(),
     colors: SchedulePageColors = SchedulePageDefaults.colors(),
-    navigationIcon: @Composable () -> Unit = {},
     state: SchedulePageState = remember { SchedulePageState() },
-    windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
     pageContent: @Composable (page: DayOfWeek) -> Unit,
 ) {
-    Scaffold(
-        modifier,
-        topBar = {
-            AniTopAppBar(
-                title = { Text("新番时间表") },
-                Modifier.fillMaxWidth(),
-                navigationIcon = navigationIcon,
-                windowInsets = windowInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
-            )
-        },
-        containerColor = AniThemeDefaults.pageContentBackgroundColor,
-        contentWindowInsets = windowInsets.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal),
-    ) { paddingValues ->
-        Column(Modifier.padding(paddingValues)) {
-            val uiScope = rememberCoroutineScope()
-            if (layoutParams.showTabRow) {
-                ScrollableTabRow(
-                    selectedTabIndex = state.pagerState.currentPage,
-                    containerColor = colors.tabRowContainerColor,
-                    indicator = { tabPositions ->
-                        TabRowDefaults.SecondaryIndicator(
-                            Modifier.pagerTabIndicatorOffset(state.pagerState, tabPositions),
-                        )
-                    },
-                ) {
-                    dayOfWeekEntries.forEach { day ->
-                        Tab(
-                            selected = state.selectedDay == day,
-                            onClick = {
-                                uiScope.launch {
-                                    state.animateScrollTo(day)
-                                }
-                            },
-                            text = { Text(renderDayOfWeek(day), softWrap = false) },
-                            selectedContentColor = colors.tabSelectedContentColor,
-                            unselectedContentColor = colors.tabUnselectedContentColor,
-                        )
-                    }
+    Column(modifier) {
+        val uiScope = rememberCoroutineScope()
+        if (layoutParams.showTabRow) {
+            ScrollableTabRow(
+                selectedTabIndex = state.pagerState.currentPage,
+                containerColor = colors.tabRowContainerColor,
+                indicator = { tabPositions ->
+                    TabRowDefaults.SecondaryIndicator(
+                        Modifier.pagerTabIndicatorOffset(state.pagerState, tabPositions),
+                    )
+                },
+            ) {
+                dayOfWeekEntries.forEach { day ->
+                    Tab(
+                        selected = state.selectedDay == day,
+                        onClick = {
+                            uiScope.launch {
+                                state.animateScrollTo(day)
+                            }
+                        },
+                        text = { Text(renderDayOfWeek(day), softWrap = false) },
+                        selectedContentColor = colors.tabSelectedContentColor,
+                        unselectedContentColor = colors.tabUnselectedContentColor,
+                    )
                 }
             }
+        }
 
-            val density = LocalDensity.current
-            HorizontalScrollControlScaffoldOnDesktop(
-                rememberHorizontalScrollControlState(
-                    state.pagerState,
-                    onClickScroll = { direction ->
-                        uiScope.launch {
-                            state.pagerState.animateScrollBy(
-                                with(density) { (300.dp).toPx() } *
-                                        if (direction == HorizontalScrollControlState.Direction.BACKWARD) -1 else 1,
-                            )
-                        }
-                    },
-                ),
-            ) {
-                HorizontalPager(
-                    state.pagerState,
-                    Modifier.fillMaxSize(),
-                    pageSize = layoutParams.pageSize,
-                    pageSpacing = layoutParams.pageSpacing,
-                    contentPadding = layoutParams.pageContentPadding,
-                    verticalAlignment = Alignment.Top,
-                    key = { it },
-                ) { index ->
-                    Box(Modifier.fillMaxSize()) { // ensure the page is scrollable
-                        pageContent(dayOfWeekEntries[index])
+        val density = LocalDensity.current
+        HorizontalScrollControlScaffoldOnDesktop(
+            rememberHorizontalScrollControlState(
+                state.pagerState,
+                onClickScroll = { direction ->
+                    uiScope.launch {
+                        state.pagerState.animateScrollBy(
+                            with(density) { (300.dp).toPx() } *
+                                    if (direction == HorizontalScrollControlState.Direction.BACKWARD) -1 else 1,
+                        )
                     }
+                },
+            ),
+        ) {
+            HorizontalPager(
+                state.pagerState,
+                Modifier.fillMaxSize(),
+                pageSize = layoutParams.pageSize,
+                pageSpacing = layoutParams.pageSpacing,
+                contentPadding = layoutParams.pageContentPadding,
+                verticalAlignment = Alignment.Top,
+                key = { it },
+            ) { index ->
+                Box(Modifier.fillMaxSize()) { // ensure the page is scrollable
+                    pageContent(dayOfWeekEntries[index])
                 }
             }
         }

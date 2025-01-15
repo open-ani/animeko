@@ -28,6 +28,8 @@ fun PreviewSchedulePage() {
         Surface(color = MaterialTheme.colorScheme.surfaceContainerLowest) {
             SchedulePage(
                 TestSchedulePageData,
+                null,
+                onRetry = {},
                 onClickItem = {},
                 navigationIcon = {
                     BackNavigationIconButton({})
