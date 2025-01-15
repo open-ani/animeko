@@ -23,8 +23,7 @@ import androidx.navigation.compose.rememberNavController
 import coil3.ImageLoader
 import coil3.compose.LocalPlatformContext
 import coil3.serviceLoaderEnabled
-import com.materialkolor.rememberDynamicColorScheme
-import me.him188.ani.app.data.models.preference.DEFAULT_SEED_COLOR
+import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.navigation.LocalNavigator
@@ -34,6 +33,7 @@ import me.him188.ani.app.ui.foundation.navigation.LocalOnBackPressedDispatcherOw
 import me.him188.ani.app.ui.foundation.navigation.OnBackPressedDispatcher
 import me.him188.ani.app.ui.foundation.navigation.OnBackPressedDispatcherOwner
 import me.him188.ani.app.ui.foundation.theme.LocalThemeSettings
+import me.him188.ani.app.ui.foundation.theme.appColorScheme
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.NoOpToaster
 import me.him188.ani.utils.platform.annotations.TestOnly
@@ -51,12 +51,6 @@ inline fun ProvideFoundationCompositionLocalsForPreview(
     isDark: Boolean = isSystemInDarkTheme(),
     crossinline content: @Composable () -> Unit,
 ) {
-    val colorScheme = rememberDynamicColorScheme(
-        seedColor = DEFAULT_SEED_COLOR,
-        isDark = isDark,
-        isAmoled = false,
-    )
-
     val aniNavigator = remember { AniNavigator() }
     val previewImage = imageResource(Res.drawable.a)
     val coilContext = LocalPlatformContext.current
@@ -88,14 +82,16 @@ inline fun ProvideFoundationCompositionLocalsForPreview(
                 override val lifecycle: Lifecycle get() = TestGlobalLifecycle
             }
         },
-        LocalThemeSettings providesDefault ThemeSettings.Default,
+        LocalThemeSettings providesDefault ThemeSettings.Default.copy(
+            darkMode = if (isDark) DarkMode.DARK else DarkMode.LIGHT,
+        ),
     ) {
         val navController = rememberNavController()
         SideEffect {
             aniNavigator.setNavController(navController)
         }
         ProvidePlatformCompositionLocalsForPreview {
-            MaterialTheme(colorScheme) {
+            MaterialTheme(appColorScheme()) {
                 content()
             }
         }

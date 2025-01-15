@@ -22,9 +22,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.materialkolor.rememberDynamicColorScheme
 import kotlinx.io.files.Path
-import me.him188.ani.app.data.models.preference.DEFAULT_SEED_COLOR
 import me.him188.ani.app.data.persistent.MemoryDataStore
 import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepository
 import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepositoryImpl
@@ -46,6 +44,7 @@ import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.NoopBrowserNavigator
 import me.him188.ani.app.platform.GrantedPermissionManager
 import me.him188.ani.app.platform.PermissionManager
+import me.him188.ani.app.ui.foundation.theme.appColorScheme
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.Toaster
 import me.him188.ani.utils.io.inSystem
@@ -68,12 +67,6 @@ fun ProvideCompositionLocalsForPreview(
     isDark: Boolean = false,
     content: @Composable () -> Unit,
 ) {
-    val colorScheme = rememberDynamicColorScheme(
-        seedColor = DEFAULT_SEED_COLOR,
-        isDark = isDark,
-        isAmoled = false,
-    )
-
     ProvideFoundationCompositionLocalsForPreview(isDark) {
         val coroutineScope = rememberCoroutineScope()
         runCatching { stopKoin() }
@@ -140,7 +133,7 @@ fun ProvideCompositionLocalsForPreview(
             }
             NavHost(navController, startDestination = "test") { // provide ViewModelStoreOwner
                 composable("test") {
-                    MaterialTheme(colorScheme) {
+                    MaterialTheme(appColorScheme()) {
                         content()
                     }
                 }

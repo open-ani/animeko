@@ -15,8 +15,10 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.graphics.Color
@@ -39,27 +41,35 @@ actual fun appColorScheme(
             dynamicLightColorScheme(LocalContext.current)
         }
     } else {
-        dynamicColorScheme(
-            primary = seedColor,
-            isDark = isDark,
-            isAmoled = useBlackBackground,
-            style = PaletteStyle.TonalSpot,
-            modifyColorScheme = { colorScheme ->
-                if (useBlackBackground && isDark) {
-                    colorScheme.copy(
-                        background = Color.Black,
-                        onBackground = Color.White,
-
-                        surface = Color.Black,
-                        onSurface = Color.White,
-                        surfaceContainerLowest = Color.Black,
-
-                        surfaceVariant = Color.Black,
-                        onSurfaceVariant = Color.White,
-                    )
-                } else colorScheme
+        if (seedColor == Color.Unspecified) {
+            if (isDark) {
+                darkColorScheme()
+            } else {
+                lightColorScheme()
             }
-        )
+        } else {
+            dynamicColorScheme(
+                primary = seedColor,
+                isDark = isDark,
+                isAmoled = useBlackBackground,
+                style = PaletteStyle.TonalSpot,
+                modifyColorScheme = { colorScheme ->
+                    if (useBlackBackground && isDark) {
+                        colorScheme.copy(
+                            background = Color.Black,
+                            onBackground = Color.White,
+
+                            surface = Color.Black,
+                            onSurface = Color.White,
+                            surfaceContainerLowest = Color.Black,
+
+                            surfaceVariant = Color.Black,
+                            onSurfaceVariant = Color.White,
+                        )
+                    } else colorScheme
+                },
+            )
+        }
     }
 }
 
