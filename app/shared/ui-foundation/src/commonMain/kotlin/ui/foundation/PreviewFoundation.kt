@@ -15,7 +15,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
-import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleObserver
 import androidx.lifecycle.LifecycleOwner
@@ -53,7 +52,7 @@ inline fun ProvideFoundationCompositionLocalsForPreview(
     crossinline content: @Composable () -> Unit,
 ) {
     val colorScheme = rememberDynamicColorScheme(
-        seedColor = Color(DEFAULT_SEED_COLOR),
+        seedColor = DEFAULT_SEED_COLOR,
         isDark = isDark,
         isAmoled = false,
     )

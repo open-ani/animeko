@@ -27,7 +27,7 @@ import me.him188.ani.app.platform.findActivity
 
 @Composable
 actual fun appColorScheme(
-    seedColor: Int,
+    seedColor: Color,
     useDynamicTheme: Boolean,
     useBlackBackground: Boolean,
     isDark: Boolean,
@@ -40,7 +40,7 @@ actual fun appColorScheme(
         }
     } else {
         dynamicColorScheme(
-            primary = Color(seedColor),
+            primary = seedColor,
             isDark = isDark,
             isAmoled = useBlackBackground,
             style = PaletteStyle.TonalSpot,
@@ -66,7 +66,7 @@ actual fun appColorScheme(
 @Composable
 actual fun AniTheme(
     isDark: Boolean,
-    content: @Composable () -> Unit
+    content: @Composable () -> Unit,
 ) {
     // Set statusBarStyle & navigationBarStyle
     val activity = LocalContext.current.findActivity() as? ComponentActivity

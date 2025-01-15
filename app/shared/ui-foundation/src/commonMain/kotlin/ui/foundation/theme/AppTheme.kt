@@ -53,7 +53,7 @@ import kotlin.math.roundToInt
 
 @Composable
 expect fun appColorScheme(
-    seedColor: Int = LocalThemeSettings.current.seedColor,
+    seedColor: Color = LocalThemeSettings.current.seedColor,
     useDynamicTheme: Boolean = LocalThemeSettings.current.useDynamicTheme,
     useBlackBackground: Boolean = LocalThemeSettings.current.useBlackBackground,
     isDark: Boolean = when (LocalThemeSettings.current.darkMode) {

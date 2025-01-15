@@ -25,7 +25,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import com.materialkolor.hct.Hct
 import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.data.models.preference.ThemeSettings
@@ -166,11 +165,11 @@ private fun ColorButton(
 ) {
     ColorButton(
         modifier = Modifier,
-        selected = color.toArgb() == themeSettings.seedColor && !themeSettings.useDynamicTheme,
+        selected = color.value == themeSettings.seedColorValue && !themeSettings.useDynamicTheme,
         onClick = {
             state.update(
                 themeSettings.copy(
-                    seedColor = color.toArgb(),
+                    seedColorValue = color.value,
                     useDynamicTheme = false,
                 ),
             )

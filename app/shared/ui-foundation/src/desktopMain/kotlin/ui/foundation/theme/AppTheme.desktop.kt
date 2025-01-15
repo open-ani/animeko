@@ -18,13 +18,13 @@ import com.materialkolor.dynamicColorScheme
 
 @Composable
 actual fun appColorScheme(
-    seedColor: Int,
+    seedColor: Color,
     useDynamicTheme: Boolean,
     useBlackBackground: Boolean,
     isDark: Boolean,
 ): ColorScheme {
     return dynamicColorScheme(
-        primary = Color(seedColor),
+        primary = seedColor,
         isDark = isDark,
         isAmoled = useBlackBackground,
         style = PaletteStyle.TonalSpot,
@@ -49,7 +49,7 @@ actual fun appColorScheme(
 @Composable
 actual fun AniTheme(
     isDark: Boolean,
-    content: @Composable () -> Unit
+    content: @Composable () -> Unit,
 ) {
     MaterialTheme(
         colorScheme = appColorScheme(isDark = isDark),
