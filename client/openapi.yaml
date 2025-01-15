@@ -791,6 +791,70 @@
         "deprecated": false
       }
     },
+    "/v1/schedule/seasons/latest": {
+      "get": {
+        "tags": [ "Schedule" ],
+        "summary": "获取最近几个季度的列表",
+        "description": "获取最近几个季度的列表",
+        "operationId": "getLatestAnimeSeasons",
+        "parameters": [ ],
+        "responses": {
+          "200": {
+            "description": "获取成功",
+            "headers": { },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LatestAnimeSchedules"
+                },
+                "examples": {
+                  "example": {
+                    "value": {
+                      "list": [ {
+                        "seasonId": {
+                          "year": 2024,
+                          "season": "SUMMER",
+                          "id": "2024q3"
+                        },
+                        "list": [ {
+                          "bangumiId": 404480,
+                          "name": "ラブライブ！スーパースター!!(第3期)",
+                          "aliases": [ "Love Live ! Superstar!!", "Love Live! Superstar!! 第三季", "爱与演唱会!超级明星!! 第三季", "Love Live! Superstar!! 第三季", "LoveLive! SuperStar!! 第三季" ],
+                          "begin": "2024-10-06T08:00:00Z",
+                          "recurrence": {
+                            "startTime": "2024-10-06T08:00:00Z",
+                            "intervalMillis": 604800000
+                          },
+                          "mikanId": 3427
+                        } ]
+                      }, {
+                        "seasonId": {
+                          "year": 2024,
+                          "season": "SUMMER",
+                          "id": "2024q3"
+                        },
+                        "list": [ {
+                          "bangumiId": 404480,
+                          "name": "ラブライブ！スーパースター!!(第3期)",
+                          "aliases": [ "Love Live ! Superstar!!", "Love Live! Superstar!! 第三季", "爱与演唱会!超级明星!! 第三季", "Love Live! Superstar!! 第三季", "LoveLive! SuperStar!! 第三季" ],
+                          "begin": "2024-10-06T08:00:00Z",
+                          "recurrence": {
+                            "startTime": "2024-10-06T08:00:00Z",
+                            "intervalMillis": 604800000
+                          },
+                          "mikanId": 3427
+                        } ]
+                      } ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "deprecated": false
+      }
+    },
     "/v1/schedule/season/{seasonId}": {
       "get": {
         "tags": [ "Schedule" ],
@@ -824,6 +888,11 @@
                 "examples": {
                   "example": {
                     "value": {
+                      "seasonId": {
+                        "year": 2024,
+                        "season": "SUMMER",
+                        "id": "2024q3"
+                      },
                       "list": [ {
                         "bangumiId": 404480,
                         "name": "ラブライブ！スーパースター!!(第3期)",
@@ -1361,6 +1430,23 @@
           }
         }
       },
+      "AnimeSchedule": {
+        "title": "AnimeSchedule",
+        "required": [ "list", "seasonId" ],
+        "type": "object",
+        "properties": {
+          "list": {
+            "title": "List<OnAirAnimeInfo>",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OnAirAnimeInfo"
+            }
+          },
+          "seasonId": {
+            "$ref": "#/components/schemas/AnimeSeasonId"
+          }
+        }
+      },
       "OnAirAnimeInfo": {
         "title": "OnAirAnimeInfo",
         "required": [ "aliases", "bangumiId", "name" ],
@@ -1417,16 +1503,16 @@
           }
         }
       },
-      "AnimeSchedule": {
-        "title": "AnimeSchedule",
+      "LatestAnimeSchedules": {
+        "title": "LatestAnimeSchedules",
         "required": [ "list" ],
         "type": "object",
         "properties": {
           "list": {
-            "title": "List<OnAirAnimeInfo>",
+            "title": "List<AnimeSchedule>",
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/OnAirAnimeInfo"
+              "$ref": "#/components/schemas/AnimeSchedule"
             }
           }
         }

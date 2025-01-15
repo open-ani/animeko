@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -9,13 +9,7 @@
 
 package me.him188.ani.client.infrastructure
 
-import io.ktor.utils.io.core.ByteReadPacket
-import io.ktor.utils.io.core.Input
-import io.ktor.utils.io.core.buildPacket
-import io.ktor.utils.io.core.readAvailable
-import io.ktor.utils.io.core.readBytes
-import io.ktor.utils.io.core.writeFully
-import io.ktor.utils.io.core.writeText
+import io.ktor.utils.io.core.*
 import kotlin.experimental.and
 
 private val digits = "0123456789abcdef".toCharArray()

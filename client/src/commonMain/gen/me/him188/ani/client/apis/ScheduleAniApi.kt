@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -24,19 +24,21 @@
 
 package me.him188.ani.client.apis
 
-import io.ktor.client.HttpClient
-import io.ktor.client.HttpClientConfig
-import io.ktor.client.engine.HttpClientEngine
-import kotlinx.serialization.json.Json
-import me.him188.ani.client.infrastructure.ApiClient
-import me.him188.ani.client.infrastructure.HttpResponse
-import me.him188.ani.client.infrastructure.RequestConfig
-import me.him188.ani.client.infrastructure.RequestMethod
-import me.him188.ani.client.infrastructure.toMultiValue
-import me.him188.ani.client.infrastructure.wrap
 import me.him188.ani.client.models.AniAnimeSchedule
 import me.him188.ani.client.models.AniAnimeSeasonIdList
 import me.him188.ani.client.models.AniBatchGetSubjectRecurrenceResponse
+import me.him188.ani.client.models.AniLatestAnimeSchedules
+
+import me.him188.ani.client.infrastructure.*
+import io.ktor.client.HttpClient
+import io.ktor.client.HttpClientConfig
+import io.ktor.client.request.forms.formData
+import io.ktor.client.engine.HttpClientEngine
+import kotlinx.serialization.json.Json
+import io.ktor.http.ParametersBuilder
+import kotlinx.serialization.*
+import kotlinx.serialization.descriptors.*
+import kotlinx.serialization.encoding.*
 
 open class ScheduleAniApi : ApiClient {
 
@@ -109,6 +111,38 @@ open class ScheduleAniApi : ApiClient {
         val localVariableConfig = RequestConfig<kotlin.Any?>(
             RequestMethod.GET,
             "/v1/schedule/seasons",
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = false,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames,
+        ).wrap()
+    }
+
+
+    /**
+     * 获取最近几个季度的列表
+     * 获取最近几个季度的列表
+     * @return AniLatestAnimeSchedules
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun getLatestAnimeSeasons(): HttpResponse<AniLatestAnimeSchedules> {
+
+        val localVariableAuthNames = listOf<String>()
+
+        val localVariableBody =
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.GET,
+            "/v1/schedule/seasons/latest",
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = false,

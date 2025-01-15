@@ -24,30 +24,20 @@
 
 package me.him188.ani.client.models
 
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
- * 
  *
- * @param bangumiToken 
- * @param clientArch 
- * @param clientOS 
- * @param clientVersion 
+ *
+ * @param list
  */
 @Serializable
 
-data class AniBangumiLoginRequest(
+data class AniLatestAnimeSchedules(
 
-    @SerialName(value = "bangumiToken") @Required val bangumiToken: kotlin.String,
-
-    @SerialName(value = "clientArch") val clientArch: kotlin.String? = null,
-
-    @SerialName(value = "clientOS") val clientOS: kotlin.String? = null,
-
-    @SerialName(value = "clientVersion") val clientVersion: kotlin.String? = null
+    @SerialName(value = "list") @Required val list: kotlin.collections.List<AniAnimeSchedule>
 
 )
 
