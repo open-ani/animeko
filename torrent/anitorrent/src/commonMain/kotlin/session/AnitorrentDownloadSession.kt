@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -11,6 +11,7 @@ package me.him188.ani.app.torrent.anitorrent.session
 
 import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -54,6 +55,7 @@ import me.him188.ani.app.torrent.io.RawTorrentInputConstructorParameter
 import me.him188.ani.app.torrent.io.TorrentInput
 import me.him188.ani.app.torrent.io.TorrentInputParameters
 import me.him188.ani.utils.coroutines.IO_
+import me.him188.ani.utils.coroutines.update
 import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.io.absolutePath
 import me.him188.ani.utils.io.deleteRecursively
@@ -67,7 +69,6 @@ import me.him188.ani.utils.platform.currentTimeMillis
 import org.openani.mediamp.io.SeekableInput
 import kotlin.concurrent.Volatile
 import kotlin.coroutines.CoroutineContext
-import kotlin.jvm.JvmField
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
@@ -148,7 +149,7 @@ class AnitorrentDownloadSession(
         }
     }
 
-    private val openFiles = mutableListOf<AnitorrentEntry.EntryHandle>()
+    private val openFiles = MutableStateFlow(persistentListOf<AnitorrentEntry.EntryHandle>())
     private val prioritizer = createPiecePriorities()
 
     inner class AnitorrentEntry(
@@ -188,7 +189,7 @@ class AnitorrentDownloadSession(
             override val entry get() = this@AnitorrentEntry
 
             override suspend fun closeImpl() {
-                openFiles.remove(this)
+                openFiles.update { remove(this@EntryHandle) }
                 closeIfNotInUse()
             }
 
@@ -222,7 +223,7 @@ class AnitorrentDownloadSession(
 
         override fun createHandle(): TorrentFileHandle {
             return EntryHandle().also {
-                openFiles.add(it)
+                openFiles.update { add(it) }
             }
         }
 
@@ -440,7 +441,7 @@ class AnitorrentDownloadSession(
         with(info.allPiecesInTorrent) {
             info.allPiecesInTorrent.getByPieceIndex(pieceIndex).state = PieceState.FINISHED
         }
-        for (file in openFiles) {
+        for (file in openFiles.value) {
             if (pieceIndex in file.entry.pieceIndexRange) {
                 file.entry.controller.onPieceDownloaded(pieceIndex)
             }
@@ -545,13 +546,13 @@ class AnitorrentDownloadSession(
     }
 
     override suspend fun closeIfNotInUse() {
-        if (openFiles.isEmpty()) {
+        if (openFiles.value.isEmpty()) {
             close()
         }
     }
 
     fun deleteEntireTorrentIfNotInUse() {
-        if (openFiles.isEmpty() && closed) {
+        if (openFiles.value.isEmpty() && closed) {
             saveDirectory.deleteRecursively()
             onDelete(this)
         }
