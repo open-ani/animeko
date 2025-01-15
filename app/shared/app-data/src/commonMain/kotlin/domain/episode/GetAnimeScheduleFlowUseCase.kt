@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.domain.episode
 
+import androidx.compose.ui.util.packInts
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flatMapLatest
@@ -39,7 +40,9 @@ data class EpisodeWithAiringTime(
     val subject: LightSubjectInfo,
     val episode: LightEpisodeInfo,
     val airingTime: Instant,
-)
+) {
+    val combinedId = packInts(subject.subjectId, episode.episodeId)
+}
 
 fun interface GetAnimeScheduleFlowUseCase : UseCase {
     operator fun invoke(now: Instant, timeZone: TimeZone): Flow<List<AiringScheduleForDate>>
@@ -79,7 +82,7 @@ class GetAnimeScheduleFlowUseCaseImpl(
                                         episode = episodeSchedule.episode,
                                         airingTime = episodeSchedule.airingTime,
                                     )
-                                },
+                                }.distinctBy { it.combinedId },
                             )
                         }
                     }

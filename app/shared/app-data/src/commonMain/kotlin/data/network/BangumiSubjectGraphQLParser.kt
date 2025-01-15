@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.data.network
 
+import kotlinx.datetime.TimeZone
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -45,6 +46,7 @@ import me.him188.ani.utils.serialization.getStringOrFail
 import me.him188.ani.utils.serialization.jsonObjectOrNull
 
 object BangumiSubjectGraphQLParser {
+    private val utc9 = TimeZone.of("UTC+9")
     private fun JsonElement.vSequence(): Sequence<String> {
         return when (this) {
             is JsonArray -> this.asSequence().flatMap { it.vSequence() }
@@ -284,6 +286,7 @@ object BangumiSubjectGraphQLParser {
                 name = episode.getStringOrFail("name"),
                 nameCn = episode.getStringOrFail("name_cn"),
                 airDate = PackedDate.parseFromDate(episode.getStringOrFail("airdate")),
+                timezone = utc9,
                 sort = EpisodeSort(
                     BigNum(episode.getStringOrFail("sort")),
                     type = parseBangumiEpisodeType(episode.getIntOrFail("type")),

@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.data.models.subject
 
+import kotlinx.datetime.TimeZone
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.PackedDate
 
@@ -33,6 +34,7 @@ data class LightEpisodeInfo(
     val name: String,
     val nameCn: String,
     val airDate: PackedDate,
+    val timezone: TimeZone,
     val sort: EpisodeSort,
     val ep: EpisodeSort?,
 )

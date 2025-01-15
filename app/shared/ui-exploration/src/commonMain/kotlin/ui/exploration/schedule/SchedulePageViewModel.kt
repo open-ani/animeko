@@ -26,7 +26,7 @@ class SchedulePageViewModel(
     private val getAnimeScheduleFlowUseCase: GetAnimeScheduleFlowUseCase by koin.inject()
 
     private val airingSchedulesFlow =
-        getAnimeScheduleFlowUseCase(Clock.System.now(), timeZone = TimeZone.currentSystemDefault())
+        getAnimeScheduleFlowUseCase(currentTime(), timeZone = TimeZone.currentSystemDefault())
             .shareInBackground()
 
     val pageState = SchedulePageState(
@@ -37,11 +37,13 @@ class SchedulePageViewModel(
         val timeZone = TimeZone.currentSystemDefault()
         SchedulePagePresentation(
             airingSchedules = list.map { airingSchedule ->
+                val currentDateTime = currentTime().toLocalDateTime(timeZone)
                 AiringSchedule(
                     airingSchedule.date,
-                    SchedulePageDataHelper.withCurrentTimeIndicator(
+                    SchedulePageDataHelper.toColumnItems(
                         airingSchedule.list.map { it.toPresentation(timeZone) },
-                        Clock.System.now().toLocalDateTime(timeZone).time,
+                        addIndicator = currentDateTime.date == airingSchedule.date,
+                        currentDateTime.time,
                     ),
                 )
             },
@@ -51,6 +53,8 @@ class SchedulePageViewModel(
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = SchedulePagePresentation(emptyList(), isPlaceholder = true),
     )
+
+    private fun currentTime() = Clock.System.now()
 }
 
 class SchedulePagePresentation(

@@ -24,6 +24,7 @@ import me.him188.ani.app.data.models.subject.LightSubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.PackedDate
+import me.him188.ani.datasources.api.UTC9
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -134,6 +135,7 @@ class AnimeScheduleHelperTest {
             name = "Ep$episodeId",
             nameCn = "第${episodeId}集",
             airDate = packedDate,
+            timezone = UTC9,
             sort = EpisodeSort(sort),
             ep = null,
         )
@@ -145,7 +147,7 @@ class AnimeScheduleHelperTest {
      */
     private fun localDateToInstantString(date: LocalDate, hour: Int = 9): String {
         val dt = date.toLocalDateTime(hour = hour, minute = 0, second = 0)
-        val instant = dt.toInstant(TimeZone.UTC)
+        val instant = dt.toInstant(UTC9)
         // Make sure we produce an ISO-8601 with UTC offset, e.g. "2025-01-14T09:00:00Z"
         return instant.toString()
     }

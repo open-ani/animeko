@@ -27,6 +27,7 @@ data class AiringScheduleItemPresentation(
     val subjectId: Int,
     val subjectTitle: String,
     val imageUrl: String,
+    val episodeId: Int,
     val episodeSort: EpisodeSort,
     val episodeEp: EpisodeSort?,
     val episodeName: String?,
@@ -53,6 +54,7 @@ val TestAiringScheduleItemPresentations
                         subjectId = ++id,
                         subjectTitle = "Subject $id",
                         imageUrl = "https://example.com/image.jpg",
+                        episodeId = id,
                         episodeSort = EpisodeSort(if (i % 3 == 0) 13 else 1),
                         episodeEp = EpisodeSort(1),
                         episodeName = "Episode 1",
@@ -90,7 +92,7 @@ val TestSchedulePageData: ImmutableEnumMap<DayOfWeek, List<AiringScheduleColumnI
                     .thenBy { it.subjectTitle },
             )
 
-        SchedulePageDataHelper.withCurrentTimeIndicator(list, currentTime)
+        SchedulePageDataHelper.toColumnItems(list, addIndicator = true, currentTime)
     }
 
 fun EpisodeWithAiringTime.toPresentation(timeZone: TimeZone): AiringScheduleItemPresentation {
@@ -100,6 +102,7 @@ fun EpisodeWithAiringTime.toPresentation(timeZone: TimeZone): AiringScheduleItem
         subjectId = subject.subjectId,
         subjectTitle = subject.displayName,
         imageUrl = subject.imageLarge,
+        episodeId = episode.episodeId,
         episodeSort = episode.sort,
         episodeEp = episode.ep,
         episodeName = episode.displayName,
@@ -110,8 +113,9 @@ fun EpisodeWithAiringTime.toPresentation(timeZone: TimeZone): AiringScheduleItem
 }
 
 object SchedulePageDataHelper {
-    fun withCurrentTimeIndicator(
+    fun toColumnItems(
         list: List<AiringScheduleItemPresentation>,
+        addIndicator: Boolean,
         currentTime: LocalTime,
     ): List<AiringScheduleColumnItem> {
         val insertionIndex = list.indexOfLast { it.time <= currentTime }
@@ -131,11 +135,13 @@ object SchedulePageDataHelper {
             for (itemPresentation in list.subList(0, insertionIndex + 1)) {
                 handleItem(itemPresentation)
             }
-            add(
-                AiringScheduleColumnItem.CurrentTimeIndicator(
-                    currentTime = currentTime,
-                ),
-            )
+            if (addIndicator) {
+                add(
+                    AiringScheduleColumnItem.CurrentTimeIndicator(
+                        currentTime = currentTime,
+                    ),
+                )
+            }
             for (itemPresentation in list.subList(insertionIndex + 1, list.size)) {
                 handleItem(itemPresentation)
             }

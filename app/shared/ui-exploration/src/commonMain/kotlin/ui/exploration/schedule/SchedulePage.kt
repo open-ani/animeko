@@ -10,6 +10,7 @@
 package me.him188.ani.app.ui.exploration.schedule
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
@@ -45,6 +46,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.window.core.layout.WindowSizeClass
@@ -52,10 +54,13 @@ import androidx.window.core.layout.WindowWidthSizeClass
 import kotlinx.coroutines.launch
 import kotlinx.datetime.DayOfWeek
 import me.him188.ani.app.ui.adaptive.AniTopAppBar
+import me.him188.ani.app.ui.adaptive.HorizontalScrollControlScaffoldOnDesktop
+import me.him188.ani.app.ui.foundation.HorizontalScrollControlState
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.layout.compareTo
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.pagerTabIndicatorOffset
+import me.him188.ani.app.ui.foundation.rememberHorizontalScrollControlState
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.utils.platform.collections.ImmutableEnumMap
 
@@ -171,6 +176,7 @@ fun SchedulePageLayout(
         contentWindowInsets = windowInsets.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal),
     ) { paddingValues ->
         Column(Modifier.padding(paddingValues)) {
+            val uiScope = rememberCoroutineScope()
             if (layoutParams.showTabRow) {
                 ScrollableTabRow(
                     selectedTabIndex = state.pagerState.currentPage,
@@ -181,7 +187,6 @@ fun SchedulePageLayout(
                         )
                     },
                 ) {
-                    val uiScope = rememberCoroutineScope()
                     dayOfWeekEntries.forEach { day ->
                         Tab(
                             selected = state.selectedDay == day,
@@ -198,14 +203,30 @@ fun SchedulePageLayout(
                 }
             }
 
-            HorizontalPager(
-                state.pagerState,
-                pageSize = layoutParams.pageSize,
-                pageSpacing = layoutParams.pageSpacing,
-                verticalAlignment = Alignment.Top,
-                key = { it },
+            val density = LocalDensity.current
+            HorizontalScrollControlScaffoldOnDesktop(
+                rememberHorizontalScrollControlState(
+                    state.pagerState,
+                    onClickScroll = { direction ->
+                        uiScope.launch {
+                            state.pagerState.animateScrollBy(
+                                with(density) { (300.dp).toPx() } *
+                                        if (direction == HorizontalScrollControlState.Direction.BACKWARD) -1 else 1,
+                            )
+                        }
+                    },
+                ),
             ) {
-                pageContent(dayOfWeekEntries[it])
+                HorizontalPager(
+                    state.pagerState,
+                    pageSize = layoutParams.pageSize,
+                    pageSpacing = layoutParams.pageSpacing,
+                    verticalAlignment = Alignment.Top,
+                    key = { it },
+                ) {
+                    pageContent(dayOfWeekEntries[it])
+                }
+
             }
         }
     }

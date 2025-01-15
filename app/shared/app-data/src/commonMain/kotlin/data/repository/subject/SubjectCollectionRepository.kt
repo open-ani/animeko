@@ -75,6 +75,7 @@ import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.session.verifiedAccessToken
 import me.him188.ani.datasources.api.EpisodeType.MainStory
 import me.him188.ani.datasources.api.PackedDate
+import me.him188.ani.datasources.api.UTC9
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.bangumi.apis.DefaultApi
 import me.him188.ani.datasources.bangumi.models.BangumiUserSubjectCollectionModifyPayload
@@ -563,6 +564,7 @@ internal fun EpisodeInfo.toLightEpisodeInfo(): LightEpisodeInfo {
         name = name,
         nameCn = nameCn,
         airDate = airDate,
+        timezone = UTC9,
         sort = sort,
         ep = ep,
     )

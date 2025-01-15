@@ -35,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.util.packInts
 import kotlinx.datetime.LocalTime
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.layout.paddingIfNotEmpty
@@ -72,7 +73,7 @@ fun ScheduleDayColumn(
                 items,
                 key = { item ->
                     when (item) {
-                        is AiringScheduleColumnItem.Data -> item.item.subjectId
+                        is AiringScheduleColumnItem.Data -> packInts(item.item.subjectId, item.item.episodeId)
                         is AiringScheduleColumnItem.CurrentTimeIndicator -> item.hashCode()
                     }
                 },

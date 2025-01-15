@@ -98,6 +98,8 @@ value class PackedDate(
     }
 }
 
+val UTC9 = TimeZone.of("UTC+9")
+
 fun PackedDate.toStringExcludingSameYear(): String = when {
     isInvalid -> toString()
     year == PackedDate.now().year -> "$month-$day"
