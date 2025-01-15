@@ -13,7 +13,10 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.datetime.Clock
+import kotlinx.datetime.DatePeriod
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
 import me.him188.ani.app.domain.episode.GetAnimeScheduleFlowUseCase
 import me.him188.ani.app.domain.usecase.GlobalKoin
@@ -51,7 +54,10 @@ class SchedulePageViewModel(
     }.stateIn(
         backgroundScope,
         started = SharingStarted.WhileSubscribed(5000),
-        initialValue = SchedulePagePresentation(emptyList(), isPlaceholder = true),
+        initialValue = SchedulePagePresentation(
+            generatePlaceholderAiringScheduleList(),
+            isPlaceholder = true,
+        ),
     )
 
     private fun currentTime() = Clock.System.now()
@@ -61,3 +67,17 @@ data class SchedulePagePresentation(
     val airingSchedules: List<AiringSchedule>,
     val isPlaceholder: Boolean = false,
 )
+
+private fun generatePlaceholderAiringScheduleList(
+    baseDate: LocalDate = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+): List<AiringSchedule> {
+    val episodes = (1..10).map {
+        AiringScheduleColumnItem.PlaceholderData(id = it, showTime = true)
+    }
+    return (0..6).map { offset ->
+        AiringSchedule(
+            baseDate.plus(DatePeriod(days = offset)),
+            episodes = episodes,
+        )
+    }
+}

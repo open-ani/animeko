@@ -10,6 +10,7 @@
 package me.him188.ani.app.ui.exploration.schedule
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -39,9 +40,11 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.packInts
 import kotlinx.datetime.LocalTime
+import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.layout.paddingIfNotEmpty
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
+import me.him188.ani.datasources.api.EpisodeSort
 
 
 /**
@@ -77,24 +80,34 @@ fun ScheduleDayColumn(
                     when (item) {
                         is AiringScheduleColumnItem.Data -> packInts(item.item.subjectId, item.item.episodeId)
                         is AiringScheduleColumnItem.CurrentTimeIndicator -> item.hashCode()
+                        is AiringScheduleColumnItem.PlaceholderData -> item.id
                     }
                 },
                 contentType = { item ->
                     when (item) {
                         is AiringScheduleColumnItem.Data -> true
                         is AiringScheduleColumnItem.CurrentTimeIndicator -> false
+                        is AiringScheduleColumnItem.PlaceholderData -> true
                     }
                 },
             ) { columnItem ->
                 when (columnItem) {
                     is AiringScheduleColumnItem.CurrentTimeIndicator -> {
-                        ScheduleCurrentTimeIndicator(columnItem, Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+                        ScheduleCurrentTimeIndicator(
+                            columnItem,
+                            Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                                .placeholder(columnItem.isPlaceholder),
+                        )
                     }
 
                     is AiringScheduleColumnItem.Data -> {
                         val item = columnItem.item
                         ScheduleItem(
-                            subjectTitle = { ScheduleItemDefaults.SubjectTitle(item.subjectTitle) },
+                            subjectTitle = {
+                                ScheduleItemDefaults.SubjectTitle(
+                                    item.subjectTitle,
+                                )
+                            },
                             episode = {
                                 ScheduleItemDefaults.Episode(
                                     item.episodeSort,
@@ -121,12 +134,38 @@ fun ScheduleDayColumn(
                             colors = itemColors,
                         )
                     }
+
+                    is AiringScheduleColumnItem.PlaceholderData -> {
+                        ScheduleItem(
+                            subjectTitle = {
+                                ScheduleItemDefaults.SubjectTitle("Placeholder", Modifier.placeholder(true))
+                            },
+                            episode = {
+                                ScheduleItemDefaults.Episode(
+                                    EpisodeSort(1),
+                                    null,
+                                    "Placeholder",
+                                    Modifier.placeholder(true),
+                                )
+                            },
+                            leadingImage = {
+                                Box(Modifier.fillMaxSize().placeholder(true))
+                            },
+                            time = {
+                                if (columnItem.showTime) {
+                                    ScheduleItemDefaults.Time(dummyLocalTime, Modifier.placeholder(true))
+                                }
+                            },
+                        )
+                    }
                 }
             }
         }
 
     }
 }
+
+private val dummyLocalTime = LocalTime(1, 2, 3)
 
 @Composable
 private fun ScheduleCurrentTimeIndicator(
@@ -164,8 +203,15 @@ sealed class AiringScheduleColumnItem {
     ) : AiringScheduleColumnItem()
 
     @Immutable
+    data class PlaceholderData(
+        val id: Int,
+        val showTime: Boolean,
+    ) : AiringScheduleColumnItem()
+
+    @Immutable
     data class CurrentTimeIndicator(
         val currentTime: LocalTime,
+        val isPlaceholder: Boolean,
     ) : AiringScheduleColumnItem()
 }
 

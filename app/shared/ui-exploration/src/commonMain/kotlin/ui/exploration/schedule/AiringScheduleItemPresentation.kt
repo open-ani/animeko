@@ -147,6 +147,7 @@ object SchedulePageDataHelper {
                 add(
                     AiringScheduleColumnItem.CurrentTimeIndicator(
                         currentTime = currentTime,
+                        isPlaceholder = false,
                     ),
                 )
             }
