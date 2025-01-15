@@ -11,6 +11,8 @@ package me.him188.ani.app.ui.foundation.theme
 
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import com.materialkolor.PaletteStyle
@@ -23,27 +25,35 @@ actual fun appColorScheme(
     useBlackBackground: Boolean,
     isDark: Boolean,
 ): ColorScheme {
-    return dynamicColorScheme(
-        primary = seedColor,
-        isDark = isDark,
-        isAmoled = useBlackBackground,
-        style = PaletteStyle.TonalSpot,
-        modifyColorScheme = { colorScheme ->
-            if (useBlackBackground && isDark) {
-                colorScheme.copy(
-                    background = Color.Black,
-                    onBackground = Color.White,
+    return if (seedColor == Color.Unspecified) {
+        if (isDark) {
+            darkColorScheme()
+        } else {
+            lightColorScheme()
+        }
+    } else {
+        dynamicColorScheme(
+            primary = seedColor,
+            isDark = isDark,
+            isAmoled = useBlackBackground,
+            style = PaletteStyle.TonalSpot,
+            modifyColorScheme = { colorScheme ->
+                if (useBlackBackground && isDark) {
+                    colorScheme.copy(
+                        background = Color.Black,
+                        onBackground = Color.White,
 
-                    surface = Color.Black,
-                    onSurface = Color.White,
-                    surfaceContainerLowest = Color.Black,
+                        surface = Color.Black,
+                        onSurface = Color.White,
+                        surfaceContainerLowest = Color.Black,
 
-                    surfaceVariant = Color.Black,
-                    onSurfaceVariant = Color.White,
-                )
-            } else colorScheme
-        },
-    )
+                        surfaceVariant = Color.Black,
+                        onSurfaceVariant = Color.White,
+                    )
+                } else colorScheme
+            },
+        )
+    }
 }
 
 @Composable

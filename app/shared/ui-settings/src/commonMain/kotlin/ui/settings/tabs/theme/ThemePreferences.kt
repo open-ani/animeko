@@ -25,6 +25,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.isUnspecified
 import com.materialkolor.hct.Hct
 import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.data.models.preference.ThemeSettings
@@ -38,7 +39,7 @@ import me.him188.ani.utils.platform.isAndroid
 import me.him188.ani.utils.platform.isDesktop
 
 private val colorList =
-    ((4..10) + (1..3)).map { it * 35.0 }.map { Color(Hct.from(it, 40.0, 40.0).toInt()) }
+    listOf(Color.Unspecified) + ((4..10) + (1..3)).map { it * 35.0 }.map { Color(Hct.from(it, 40.0, 40.0).toInt()) }
 
 @Composable
 fun SettingsScope.ThemeGroup(
@@ -174,6 +175,6 @@ private fun ColorButton(
                 ),
             )
         },
-        baseColor = color,
+        baseColor = if (color.isUnspecified) Color(0xFF6200EE) else color,
     )
 }
