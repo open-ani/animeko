@@ -10,35 +10,36 @@
 package me.him188.ani.app.domain.episode
 
 import androidx.collection.MutableIntObjectMap
-import kotlinx.datetime.Instant
-import kotlinx.datetime.LocalDate
-import kotlinx.datetime.LocalDateTime
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.atStartOfDayIn
-import kotlinx.datetime.toInstant
-import kotlinx.datetime.toLocalDateTime
+import kotlinx.datetime.*
 import me.him188.ani.app.data.models.schedule.OnAirAnimeInfo
 import me.him188.ani.app.data.models.subject.LightEpisodeInfo
 import me.him188.ani.app.data.models.subject.LightSubjectAndEpisodes
 import me.him188.ani.datasources.api.toLocalDateOrNull
+import kotlin.math.roundToInt
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
 
 object AnimeScheduleHelper {
+
     data class EpisodeNextAiringTime(
         val subjectId: Int,
         val episode: LightEpisodeInfo,
         val airingTime: Instant,
     )
 
-
     /**
-     * Builds an airing schedule for [targetDate], where [targetDate] is assumed
-     * to be in the [localTimeZone]. Allows for an [allowedDeviation] to treat an
-     * episode’s airing time as “on the same date” if it’s within that margin of
-     * midnight (or any reference point you wish).
+     * Builds an airing schedule for [targetDate], in the given [localTimeZone], with an
+     * [allowedDeviation] (default = 24h). The algorithm:
      *
-     * By default, [allowedDeviation] is 24 hours.
+     * - For each subject & episode (in ascending sort order):
+     *   - Determine an "intended" LocalDate for that episode (either from [episode.airDate]
+     *     if valid, or guess from the previous episode).
+     *   - Convert that LocalDate into an approximate "actual" Instant by snapping to the nearest
+     *     multiple of [recurrence.interval] from [recurrence.startTime]—but only if the difference
+     *     is within [allowedDeviation].
+     *   - If it’s out of [allowedDeviation], fall back to “previous episode’s actual airtime + interval”
+     *     or “startTime + (episodeIndex * interval)”.
+     *   - Finally, if that actual airtime’s LocalDate == [targetDate], we include it in the result.
      */
     fun buildAiringScheduleForDate(
         subjects: List<LightSubjectAndEpisodes>,
@@ -52,78 +53,79 @@ object AnimeScheduleHelper {
             airInfos.forEach { put(it.bangumiId, it) }
         }
 
-        // We'll pick midnight of targetDate in localTimeZone as our reference.
-        // E.g., 2025-02-08T00:00:00 local => some Instant
-        val targetMidnight: Instant = targetDate.atStartOfDayIn(localTimeZone)
-
         return subjects.mapNotNull { subject ->
             val airInfo = subjectIdToAirInfo[subject.subjectId] ?: return@mapNotNull null
 
             // If we have no actual begin time or no recurrence, skip
-            val subjectBegin = airInfo.begin ?: return@mapNotNull null
+            val startTime = airInfo.begin ?: return@mapNotNull null
             val recurrence = airInfo.recurrence ?: return@mapNotNull null
 
             // Sort episodes in ascending order of "sort"
             val episodes = subject.episodes.sortedBy { it.sort }
 
-            var lastKnownInstant: Instant? = null
-
-            // We'll store the first matched episode we find for this subject
+            var lastEpisodeInstant: Instant? = null
             var matchedEpisode: LightEpisodeInfo? = null
             var matchedEpisodeInstant: Instant? = null
 
             episodes.forEachIndexed { index, ep ->
-                // 1-based index => (episode n) => subjectBegin + (n-1)*interval
                 val episodeNumber = index + 1
 
-                // 1) If the episode has a valid airDate, parse it in ep.timezone.
-                val localDateFromAirDate = ep.airDate.toLocalDateOrNull()
-                    ?.atStartOfDayIn(ep.timezone)  // interpret “date” in ep’s own timezone
-                val epInstant = if (localDateFromAirDate != null) {
-                    // We have a valid date from metadata. We'll combine it with
-                    // subjectBegin's local "time" portion or just keep it at midnight.
-                    // Example approach: keep the day from the metadata but the "time"
-                    // from subjectBegin in localTimeZone.
-                    val baseTime = subjectBegin.toLocalDateTime(localTimeZone).time
-                    val localDateTime = localDateFromAirDate.toLocalDateTime(localTimeZone)
-                    val finalDateTime = LocalDateTime(
-                        localDateTime.year,
-                        localDateTime.monthNumber,
-                        localDateTime.dayOfMonth,
-                        baseTime.hour,
-                        baseTime.minute,
-                        baseTime.second,
-                        baseTime.nanosecond,
-                    )
-                    finalDateTime.toInstant(localTimeZone).also {
-                        lastKnownInstant = it
-                    }
-                } else {
-                    // 2) If invalid date, guess from last known + recurrence
-                    if (lastKnownInstant != null) {
-                        lastKnownInstant!!.plus(recurrence.interval).also {
-                            lastKnownInstant = it
-                        }
+                // 1) Figure out an intended local date/time from ep.airDate (if valid)
+                val epLocalDate: LocalDate? = ep.airDate.toLocalDateOrNull()
+                // We'll interpret it in ep.timezone at 00:00
+                val epLocalMidnight: Instant? = epLocalDate
+                    ?.atStartOfDayIn(ep.timezone)
+
+                // 2) Try to snap that epLocalMidnight to the nearest multiple of recurrence.interval
+                //    from the recurrence.startTime, as long as the difference is <= allowedDeviation.
+                //    This is “the ideal actual airing time.” 
+                val snappedAirtime: Instant? = epLocalMidnight?.let { localMidnight ->
+                    val diff = localMidnight - recurrence.startTime
+                    val n = (diff.inWholeMilliseconds.toDouble() / recurrence.interval.inWholeMilliseconds).roundToInt()
+                    val candidateAirtime = recurrence.startTime + (recurrence.interval * n)
+                    val offBy = (candidateAirtime - localMidnight).absoluteValue
+
+                    if (offBy <= allowedDeviation) {
+                        // The candidate is "close enough" to the epLocalMidnight
+                        candidateAirtime
                     } else {
-                        // If none known, anchor to subjectBegin + (episodeNumber-1)*interval
-                        subjectBegin.plus(recurrence.interval * (episodeNumber - 1)).also {
-                            lastKnownInstant = it
-                        }
+                        // If it's too far from the 'intended' date, we disregard snapping
+                        null
                     }
                 }
 
-                // Now epInstant is the computed or actual airing Instant in localTimeZone reference
-                // Compare epInstant to targetMidnight by absolute difference
-                val diff = (epInstant - targetMidnight).absoluteValue
-                if (diff <= allowedDeviation) {
-                    // This means epInstant is “close enough” to that date (± 24h by default)
+                // 3) If invalid date or snapping is too far, use a guess:
+                //    if we have a lastEpisodeInstant, use lastEpisodeInstant + interval
+                //    else use startTime + (episodeIndex)*interval
+                val actualEpTime: Instant = when {
+                    snappedAirtime != null -> {
+                        snappedAirtime
+                    }
+
+                    lastEpisodeInstant != null -> {
+                        lastEpisodeInstant!!.plus(recurrence.interval)
+                    }
+
+                    else -> {
+                        // For the 1st episode if everything else is invalid
+                        startTime + recurrence.interval * (episodeNumber - 1)
+                    }
+                }
+
+                // Update lastEpisodeInstant
+                lastEpisodeInstant = actualEpTime
+
+                // 4) Now see if that actualEpTime falls on the targetDate (in localTimeZone).
+                //    For example, if actualEpTime is Jan 1 at any time, and targetDate is Jan 1 => match.
+                val actualEpLocalDate = actualEpTime.toLocalDateTime(localTimeZone).date
+                if (actualEpLocalDate == targetDate) {
                     matchedEpisode = ep
-                    matchedEpisodeInstant = epInstant
+                    matchedEpisodeInstant = actualEpTime
                     return@forEachIndexed
                 }
             }
 
-            // If not found, skip
+            // If no matched episode, skip
             val nextEpisode = matchedEpisode ?: return@mapNotNull null
             val nextEpisodeInstant = matchedEpisodeInstant ?: return@mapNotNull null
 

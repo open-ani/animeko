@@ -30,6 +30,7 @@ import me.him188.ani.app.domain.usecase.UseCase
 import me.him188.ani.utils.platform.collections.mapToIntList
 import org.koin.core.Koin
 import kotlin.coroutines.CoroutineContext
+import kotlin.time.Duration.Companion.minutes
 
 data class AiringScheduleForDate(
     val date: LocalDate,
@@ -73,6 +74,7 @@ class GetAnimeScheduleFlowUseCaseImpl(
                                 onAirAnimeInfos,
                                 date,
                                 timeZone,
+                                allowedDeviation = 1.minutes,
                             )
                             AiringScheduleForDate(
                                 date,
