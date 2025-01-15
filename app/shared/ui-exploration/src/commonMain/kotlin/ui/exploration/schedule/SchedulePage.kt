@@ -11,6 +11,7 @@ package me.him188.ani.app.ui.exploration.schedule
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -24,6 +25,7 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PageSize
 import androidx.compose.foundation.pager.PagerState
@@ -59,6 +61,7 @@ import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.ui.adaptive.AniTopAppBar
 import me.him188.ani.app.ui.adaptive.HorizontalScrollControlScaffoldOnDesktop
 import me.him188.ani.app.ui.foundation.HorizontalScrollControlState
+import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.layout.compareTo
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
@@ -67,6 +70,7 @@ import me.him188.ani.app.ui.foundation.rememberHorizontalScrollControlState
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.search.LoadErrorCard
 import me.him188.ani.utils.platform.collections.ImmutableEnumMap
+import me.him188.ani.utils.platform.isDesktop
 
 @Stable
 private val dayOfWeekEntries = DayOfWeek.entries
@@ -75,9 +79,13 @@ private val dayOfWeekEntries = DayOfWeek.entries
 class SchedulePageState(
     initialSelectedDay: DayOfWeek = DayOfWeek.MONDAY,
 ) {
+    // on mobile
     internal val pagerState = PagerState(
         currentPage = dayOfWeekEntries.indexOf(initialSelectedDay),
     ) { dayOfWeekEntries.size }
+
+    // on desktop jvm
+    val lazyListState = LazyListState(firstVisibleItemIndex = pagerState.currentPage)
 
     val selectedDay: DayOfWeek by derivedStateOf {
         dayOfWeekEntries[pagerState.currentPage]
@@ -219,19 +227,40 @@ fun SchedulePageContent(
         }
 
         val density = LocalDensity.current
-        HorizontalScrollControlScaffoldOnDesktop(
-            rememberHorizontalScrollControlState(
-                state.pagerState,
-                onClickScroll = { direction ->
-                    uiScope.launch {
-                        state.pagerState.animateScrollBy(
-                            with(density) { (300.dp).toPx() } *
-                                    if (direction == HorizontalScrollControlState.Direction.BACKWARD) -1 else 1,
-                        )
+
+        if (LocalPlatform.current.isDesktop() && !layoutParams.isSinglePage) {
+            // CMP bug, HorizontalPager 在 PC 上滚动到末尾后, 内嵌的 LazyColumn 无法纵向滚动
+            HorizontalScrollControlScaffoldOnDesktop(
+                rememberHorizontalScrollControlState(
+                    state.lazyListState,
+                    onClickScroll = { direction ->
+                        uiScope.launch {
+                            state.lazyListState.animateScrollBy(
+                                with(density) { (300.dp).toPx() } *
+                                        if (direction == HorizontalScrollControlState.Direction.BACKWARD) -1 else 1,
+                            )
+                        }
+                    },
+                ),
+            ) {
+                LazyRow(
+                    Modifier.fillMaxSize(),
+                    horizontalArrangement = Arrangement.spacedBy(layoutParams.pageSpacing),
+                    state = state.lazyListState,
+                ) {
+                    items(dayOfWeekEntries.size) { index ->
+                        val widthModifier = when (val pageSize = layoutParams.pageSize) {
+                            PageSize.Fill -> Modifier.fillMaxWidth()
+                            is PageSize.Fixed -> Modifier.width(pageSize.pageSize)
+                            else -> Modifier
+                        }
+                        Box(widthModifier.fillParentMaxHeight().padding(layoutParams.pageContentPadding)) {
+                            pageContent(dayOfWeekEntries[index])
+                        }
                     }
-                },
-            ),
-        ) {
+                }
+            }
+        } else {
             HorizontalPager(
                 state.pagerState,
                 Modifier.fillMaxSize(),
@@ -258,6 +287,7 @@ data class SchedulePageLayoutParams private constructor(
     val showTabRow: Boolean,
     val showDayOfWeekHeadline: Boolean,
     val columnLayoutParams: ScheduleDayColumnLayoutParams,
+    val isSinglePage: Boolean, // Workaround for CMP bug
 ) {
     @Stable
     companion object {
@@ -269,6 +299,7 @@ data class SchedulePageLayoutParams private constructor(
             showTabRow = true,
             showDayOfWeekHeadline = false,
             columnLayoutParams = ScheduleDayColumnLayoutParams.Default,
+            isSinglePage = true,
         )
 
         @Stable
@@ -279,6 +310,7 @@ data class SchedulePageLayoutParams private constructor(
             showTabRow = false,
             showDayOfWeekHeadline = true,
             columnLayoutParams = ScheduleDayColumnLayoutParams.Default,
+            isSinglePage = false,
         )
 
         @Composable
