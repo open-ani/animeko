@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.ui.foundation
 
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
@@ -44,7 +43,7 @@ import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.NoopBrowserNavigator
 import me.him188.ani.app.platform.GrantedPermissionManager
 import me.him188.ani.app.platform.PermissionManager
-import me.him188.ani.app.ui.foundation.theme.appColorScheme
+import me.him188.ani.app.ui.foundation.theme.AniTheme
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.Toaster
 import me.him188.ani.utils.io.inSystem
@@ -133,7 +132,7 @@ fun ProvideCompositionLocalsForPreview(
             }
             NavHost(navController, startDestination = "test") { // provide ViewModelStoreOwner
                 composable("test") {
-                    MaterialTheme(appColorScheme()) {
+                    AniTheme {
                         content()
                     }
                 }

@@ -55,7 +55,7 @@ import me.him188.ani.app.ui.foundation.icons.RightPanelClose
 import me.him188.ani.app.ui.foundation.icons.RightPanelOpen
 import me.him188.ani.app.ui.foundation.interaction.WindowDragArea
 import me.him188.ani.app.ui.foundation.rememberDebugSettingsViewModel
-import me.him188.ani.app.ui.foundation.theme.appColorScheme
+import me.him188.ani.app.ui.foundation.theme.AniTheme
 import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheetPage
 import me.him188.ani.app.ui.subject.episode.video.components.rememberStatusBarHeightAsState
 import me.him188.ani.app.ui.subject.episode.video.loading.EpisodeVideoLoadingIndicator
@@ -153,8 +153,7 @@ internal fun EpisodeVideoImpl(
         }
     }
 
-    // Use AniTheme(isDark = true) here may cause problems in layout.
-    MaterialTheme(colorScheme = appColorScheme(isDark = true)) {
+    AniTheme {
         VideoScaffold(
             expanded = expanded,
             modifier = modifier

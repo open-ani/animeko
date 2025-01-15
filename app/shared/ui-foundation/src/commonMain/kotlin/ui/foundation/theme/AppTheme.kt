@@ -51,6 +51,10 @@ import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.isCompact
 import kotlin.math.roundToInt
 
+/**
+ * Create a [ColorScheme] based on the current theme settings.
+ * You should prefer [AniTheme] if possible.
+ */
 @Composable
 expect fun appColorScheme(
     seedColor: Color = LocalThemeSettings.current.seedColor,
@@ -63,6 +67,9 @@ expect fun appColorScheme(
     }
 ): ColorScheme
 
+/**
+ * 覆盖主题颜色.
+ */
 @Composable
 expect fun AniTheme(
     isDark: Boolean = when (LocalThemeSettings.current.darkMode) {
