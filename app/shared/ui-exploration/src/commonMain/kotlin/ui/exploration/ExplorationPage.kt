@@ -24,7 +24,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Schedule
+import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.ButtonDefaults
@@ -165,7 +165,7 @@ fun ExplorationPage(
 
         Column(Modifier.padding(topBarPadding).verticalScroll(state.pageScrollState)) {
             NavTitleHeader(
-                title = { Text("最高热度") },
+                title = { Text("最高热度", softWrap = false) },
                 contentPadding = horizontalContentPadding,
                 trailingActions = {
                     TextButton(
@@ -173,9 +173,9 @@ fun ExplorationPage(
                         Modifier,
                         contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
                     ) {
-                        Icon(Icons.Rounded.Schedule, null, Modifier.size(ButtonDefaults.IconSize))
+                        Icon(Icons.Rounded.CalendarMonth, null, Modifier.size(ButtonDefaults.IconSize))
                         Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                        Text("新番时间表")
+                        Text("新番时间表", softWrap = false)
                     }
                 },
             )
@@ -216,7 +216,7 @@ fun ExplorationPage(
             }
 
             NavTitleHeader(
-                title = { Text("继续观看") },
+                title = { Text("继续观看", softWrap = false) },
                 contentPadding = horizontalContentPadding,
             )
 

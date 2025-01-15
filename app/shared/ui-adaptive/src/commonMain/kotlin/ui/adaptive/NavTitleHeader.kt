@@ -9,9 +9,9 @@
 
 package me.him188.ani.app.ui.adaptive
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -36,7 +36,7 @@ fun NavTitleHeader(
     contentPadding: PaddingValues = PaddingValues(),
 ) {
     Row(modifier.fillMaxWidth().padding(contentPadding)) {
-        Row(Modifier.heightIn(min = 48.dp).weight(1f, fill = false), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
             ProvideTextStyleContentColor(
                 MaterialTheme.typography.headlineSmall,
                 MaterialTheme.colorScheme.onSurface,
@@ -51,7 +51,9 @@ fun NavTitleHeader(
             }
         }
 
-        Row(Modifier.weight(1f), horizontalArrangement = Arrangement.End) {
+        Spacer(Modifier.weight(1f))
+
+        Row {
             ProvideContentColor(MaterialTheme.colorScheme.onSurface) {
                 trailingActions()
             }
