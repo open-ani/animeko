@@ -450,6 +450,7 @@ private fun AniAppContentImpl(
                             },
                         )
                     },
+                    state = vm.pageState,
                 )
             }
         }

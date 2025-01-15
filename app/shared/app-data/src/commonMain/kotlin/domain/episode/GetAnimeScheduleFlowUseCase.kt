@@ -67,7 +67,7 @@ class GetAnimeScheduleFlowUseCaseImpl(
 
                 subjectCollectionRepository.batchLightSubjectAndEpisodesFlow(onAirAnimeInfos.mapToIntList { it.bangumiId })
                     .mapLatest { subjects ->
-                        (-7..14).map { offsetDays ->
+                        (0..6).map { offsetDays ->
                             val date = now.toLocalDateTime(timeZone).date.plus(DatePeriod(days = offsetDays))
                             val airingSchedule = AnimeScheduleHelper.buildAiringScheduleForDate(
                                 subjects,

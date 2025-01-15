@@ -26,6 +26,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -89,7 +90,7 @@ fun ScheduleItem(
             headlineContent = subjectTitle,
             supportingContent = episode,
             leadingContent = {
-                Box(Modifier.size(56.dp)) {
+                Box(Modifier.size(56.dp).clip(MaterialTheme.shapes.small)) {
                     leadingImage()
                 }
             },

@@ -11,11 +11,13 @@ package me.him188.ani.app.ui.exploration.schedule
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
@@ -219,14 +221,17 @@ fun SchedulePageLayout(
             ) {
                 HorizontalPager(
                     state.pagerState,
+                    Modifier.fillMaxSize(),
                     pageSize = layoutParams.pageSize,
                     pageSpacing = layoutParams.pageSpacing,
+                    contentPadding = layoutParams.pageContentPadding,
                     verticalAlignment = Alignment.Top,
                     key = { it },
-                ) {
-                    pageContent(dayOfWeekEntries[it])
+                ) { index ->
+                    Box(Modifier.fillMaxSize()) { // ensure the page is scrollable
+                        pageContent(dayOfWeekEntries[index])
+                    }
                 }
-
             }
         }
     }

@@ -27,7 +27,7 @@ fun PreviewSchedulePage() {
     ProvideFoundationCompositionLocalsForPreview {
         Surface(color = MaterialTheme.colorScheme.surfaceContainerLowest) {
             SchedulePage(
-                TestSchedulePageData::get,
+                TestSchedulePageData,
                 navigationIcon = {
                     BackNavigationIconButton({})
                 },

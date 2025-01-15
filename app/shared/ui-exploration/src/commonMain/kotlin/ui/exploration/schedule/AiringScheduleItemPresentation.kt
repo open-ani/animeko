@@ -83,16 +83,22 @@ val TestAiringScheduleItemPresentationData: ImmutableEnumMap<DayOfWeek, List<Air
 
 
 @TestOnly
-val TestSchedulePageData: ImmutableEnumMap<DayOfWeek, List<AiringScheduleColumnItem>>
-    get() = ImmutableEnumMap<DayOfWeek, _> { day ->
+val TestSchedulePageData: List<AiringSchedule>
+    get() {
         val currentTime = LocalTime(12, 0)
-        val list = TestAiringScheduleItemPresentations.filter { it.dayOfWeek == day }
+        val list = TestAiringScheduleItemPresentations.filter { it.dayOfWeek == DayOfWeek.MONDAY }
             .sortedWith(
                 compareBy<AiringScheduleItemPresentation> { it.time }
                     .thenBy { it.subjectTitle },
             )
 
-        SchedulePageDataHelper.toColumnItems(list, addIndicator = true, currentTime)
+
+        return listOf(
+            AiringSchedule(
+                date = LocalDate(2024, 1, 1),
+                SchedulePageDataHelper.toColumnItems(list, addIndicator = true, currentTime),
+            ),
+        )
     }
 
 fun EpisodeWithAiringTime.toPresentation(timeZone: TimeZone): AiringScheduleItemPresentation {
@@ -118,6 +124,8 @@ object SchedulePageDataHelper {
         addIndicator: Boolean,
         currentTime: LocalTime,
     ): List<AiringScheduleColumnItem> {
+        @Suppress("NAME_SHADOWING")
+        val list = list.sortedBy { it.time }
         val insertionIndex = list.indexOfLast { it.time <= currentTime }
         return buildList(capacity = list.size + 1) {
             var previousTime: LocalTime? = null

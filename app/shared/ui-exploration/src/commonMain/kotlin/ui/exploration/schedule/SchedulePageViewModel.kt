@@ -30,7 +30,7 @@ class SchedulePageViewModel(
             .shareInBackground()
 
     val pageState = SchedulePageState(
-
+        initialSelectedDay = currentTime().toLocalDateTime(TimeZone.currentSystemDefault()).dayOfWeek,
     )
 
     val presentationFlow = airingSchedulesFlow.map { list ->
@@ -57,7 +57,7 @@ class SchedulePageViewModel(
     private fun currentTime() = Clock.System.now()
 }
 
-class SchedulePagePresentation(
+data class SchedulePagePresentation(
     val airingSchedules: List<AiringSchedule>,
     val isPlaceholder: Boolean = false,
 )

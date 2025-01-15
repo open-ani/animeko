@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -32,6 +33,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -100,7 +102,14 @@ fun ScheduleDayColumn(
                                     item.episodeName,
                                 )
                             },
-                            leadingImage = { AsyncImage(item.imageUrl, "${item.subjectTitle} 封面") },
+                            leadingImage = {
+                                AsyncImage(
+                                    item.imageUrl,
+                                    "${item.subjectTitle} 封面",
+                                    Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop,
+                                )
+                            },
                             time = {
                                 if (columnItem.showTime) {
                                     ScheduleItemDefaults.Time(item.time)
