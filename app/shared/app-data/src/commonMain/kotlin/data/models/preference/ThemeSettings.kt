@@ -26,7 +26,7 @@ enum class DarkMode {
 @Immutable
 data class ThemeSettings(
     val darkMode: DarkMode = DarkMode.AUTO,
-    val useDynamicTheme: Boolean = false, // default "true" on Android && Build.VERSION.SDK_INT >= 31
+    val useDynamicTheme: Boolean = false, // only supported on Android with Build.VERSION.SDK_INT >= 31
     val useBlackBackground: Boolean = false,
     val seedColorValue: ULong = DEFAULT_SEED_COLOR.value,
     @Suppress("PropertyName") @Transient val _placeholder: Int = 0,
