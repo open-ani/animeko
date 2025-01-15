@@ -11,13 +11,9 @@ package me.him188.ani.app.data.repository.episode
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.asFlow
-import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.mapLatest
-import kotlinx.coroutines.flow.merge
-import kotlinx.coroutines.flow.toList
 import me.him188.ani.app.data.models.schedule.AnimeScheduleInfo
 import me.him188.ani.app.data.models.schedule.AnimeSeasonId
 import me.him188.ani.app.data.models.subject.SubjectRecurrence
@@ -76,16 +72,11 @@ class AnimeScheduleRepository(
     /**
      * 获取最近两季度的新番时间表
      */
-    fun recentSchedulesFlow(): Flow<List<AnimeScheduleInfo>> =
-        animeSeasonIdsFlow().mapLatest { seasons ->
-            seasons.take(2)
-                .map {
-                    suspend { animeScheduleService.getScheduleInfo(it) }.asFlow() // emits 1 item
-                }
-                .merge() // launches 4 coroutines, emits at most 4 items
-                .filterNotNull() // should not be null, just defensive programming
-                .toList()
+    fun recentSchedulesFlow(): Flow<List<AnimeScheduleInfo>> {
+        return flow {
+            emit(animeScheduleService.getLatestAnimeScheduleInfos())
         }.flowOn(defaultDispatcher)
+    }
 
 
 //    fun recentScheduleSubjectsFlow(): Flow<List<SubjectCollectionInfo>> =

@@ -29,6 +29,7 @@ import me.him188.ani.client.apis.ScheduleAniApi
 import me.him188.ani.client.models.AniAnimeRecurrence
 import me.him188.ani.client.models.AniAnimeSeason
 import me.him188.ani.client.models.AniAnimeSeasonId
+import me.him188.ani.client.models.AniLatestAnimeSchedules
 import me.him188.ani.client.models.AniOnAirAnimeInfo
 import me.him188.ani.utils.coroutines.IO_
 import kotlin.coroutines.CoroutineContext
@@ -90,6 +91,17 @@ class AnimeScheduleService(
             } catch (e: Exception) {
                 throw RepositoryException.wrapOrThrowCancellation(e)
             }
+        }
+    }
+
+    suspend fun getLatestAnimeScheduleInfos(): List<AnimeScheduleInfo> = withContext(ioDispatcher) {
+        try {
+            val resp = api.getLatestAnimeSeasons()
+            resp.typedBody<AniLatestAnimeSchedules>(typeInfo<AniLatestAnimeSchedules>()).list.map { item ->
+                AnimeScheduleInfo(item.seasonId.toAnimeSeasonId(), item.list.map { it.toAnimeScheduleInfo() })
+            }
+        } catch (e: Exception) {
+            throw RepositoryException.wrapOrThrowCancellation(e)
         }
     }
 
