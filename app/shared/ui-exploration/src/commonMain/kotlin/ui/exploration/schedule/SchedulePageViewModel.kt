@@ -37,7 +37,7 @@ class SchedulePageViewModel(
         getAnimeScheduleFlowUseCase(currentTime(), timeZone = TimeZone.currentSystemDefault())
             .restartable(airingSchedulesFlowRestarter)
             .catching()
-            .shareInBackground()
+            .shareInBackground(started = SharingStarted.Lazily) // always cached
 
     val pageState = SchedulePageState(
         initialSelectedDay = currentTime().toLocalDateTime(TimeZone.currentSystemDefault()).dayOfWeek,
