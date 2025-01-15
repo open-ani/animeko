@@ -29,9 +29,10 @@ data class ThemeSettings(
     val useDynamicTheme: Boolean = false, // default "true" on Android && Build.VERSION.SDK_INT >= 31
     val useBlackBackground: Boolean = false,
     val seedColorValue: ULong = DEFAULT_SEED_COLOR.value,
-    @Transient val seedColor: Color = Color(seedColorValue),
     @Suppress("PropertyName") @Transient val _placeholder: Int = 0,
 ) {
+    @Transient
+    val seedColor: Color = Color(seedColorValue)
     companion object {
         @Stable
         val Default = ThemeSettings()
