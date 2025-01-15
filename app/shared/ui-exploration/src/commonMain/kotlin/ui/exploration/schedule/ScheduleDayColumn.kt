@@ -55,6 +55,7 @@ import me.him188.ani.datasources.api.EpisodeSort
 @Composable
 fun ScheduleDayColumn(
     items: List<AiringScheduleColumnItem>,
+    onClickItem: (item: AiringScheduleItemPresentation) -> Unit,
     dayOfWeek: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     layoutParams: ScheduleDayColumnLayoutParams = ScheduleDayColumnLayoutParams.Default,
@@ -103,6 +104,7 @@ fun ScheduleDayColumn(
                     is AiringScheduleColumnItem.Data -> {
                         val item = columnItem.item
                         ScheduleItem(
+                            onClick = { onClickItem(item) },
                             subjectTitle = {
                                 ScheduleItemDefaults.SubjectTitle(
                                     item.subjectTitle,
@@ -137,6 +139,7 @@ fun ScheduleDayColumn(
 
                     is AiringScheduleColumnItem.PlaceholderData -> {
                         ScheduleItem(
+                            onClick = {},
                             subjectTitle = {
                                 ScheduleItemDefaults.SubjectTitle("Placeholder", Modifier.placeholder(true))
                             },

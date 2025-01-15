@@ -441,6 +441,9 @@ private fun AniAppContentImpl(
                 val presentation by vm.presentationFlow.collectAsStateWithLifecycle()
                 SchedulePage(
                     data = presentation.airingSchedules,
+                    onClickItem = {
+                        aniNavigator.navigateSubjectDetails(it.subjectId)
+                    },
                     Modifier.fillMaxSize(),
                     windowInsets = windowInsets,
                     navigationIcon = {

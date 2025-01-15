@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.ui.exploration.schedule
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -55,6 +57,7 @@ import me.him188.ani.datasources.api.EpisodeSort
  */
 @Composable
 fun ScheduleItem(
+    onClick: () -> Unit,
     subjectTitle: @Composable () -> Unit,
     episode: @Composable () -> Unit,
     leadingImage: @Composable () -> Unit,
@@ -96,7 +99,7 @@ fun ScheduleItem(
             },
             trailingContent = action,
             colors = colors,
-            modifier = modifier,
+            modifier = modifier.clickable(role = Role.Button, onClickLabel = "查看详情", onClick = onClick),
         )
     }
 

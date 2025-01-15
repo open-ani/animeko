@@ -98,6 +98,7 @@ class SchedulePageState(
 @Composable
 fun SchedulePage(
     data: List<AiringSchedule>,
+    onClickItem: (item: AiringScheduleItemPresentation) -> Unit,
     modifier: Modifier = Modifier,
     layoutParams: SchedulePageLayoutParams = SchedulePageLayoutParams.calculate(),
     colors: SchedulePageColors = SchedulePageDefaults.colors(),
@@ -114,6 +115,7 @@ fun SchedulePage(
         windowInsets = windowInsets,
     ) { day ->
         ScheduleDayColumn(
+            onClickItem = onClickItem,
             dayOfWeek = {
                 if (layoutParams.showDayOfWeekHeadline) {
                     DayOfWeekHeadline(day)
