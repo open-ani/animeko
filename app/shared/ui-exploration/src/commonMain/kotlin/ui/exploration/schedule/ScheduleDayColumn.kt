@@ -34,6 +34,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -97,7 +98,7 @@ fun ScheduleDayColumn(
                         ScheduleCurrentTimeIndicator(
                             columnItem,
                             Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                                .placeholder(columnItem.isPlaceholder),
+                                .placeholder(columnItem.isPlaceholder, shape = RectangleShape),
                         )
                     }
 
@@ -141,22 +142,28 @@ fun ScheduleDayColumn(
                         ScheduleItem(
                             onClick = {},
                             subjectTitle = {
-                                ScheduleItemDefaults.SubjectTitle("Placeholder", Modifier.placeholder(true))
+                                ScheduleItemDefaults.SubjectTitle(
+                                    "Placeholder",
+                                    Modifier.placeholder(true, shape = RectangleShape),
+                                )
                             },
                             episode = {
                                 ScheduleItemDefaults.Episode(
                                     EpisodeSort(1),
                                     null,
                                     "Placeholder",
-                                    Modifier.placeholder(true),
+                                    Modifier.placeholder(true, shape = RectangleShape),
                                 )
                             },
                             leadingImage = {
-                                Box(Modifier.fillMaxSize().placeholder(true))
+                                Box(Modifier.fillMaxSize().placeholder(true, shape = RectangleShape))
                             },
                             time = {
                                 if (columnItem.showTime) {
-                                    ScheduleItemDefaults.Time(dummyLocalTime, Modifier.placeholder(true))
+                                    ScheduleItemDefaults.Time(
+                                        dummyLocalTime,
+                                        Modifier.placeholder(true, shape = RectangleShape),
+                                    )
                                 }
                             },
                         )
