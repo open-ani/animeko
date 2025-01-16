@@ -440,8 +440,7 @@ private fun AniAppContentImpl(
                 val vm = viewModel { SchedulePageViewModel() }
                 val presentation by vm.presentationFlow.collectAsStateWithLifecycle()
                 SchedulePage(
-                    data = presentation.airingSchedules,
-                    loadError = presentation.error,
+                    presentation,
                     onRetry = { vm.refresh() },
                     onClickItem = {
                         aniNavigator.navigateSubjectDetails(it.subjectId)

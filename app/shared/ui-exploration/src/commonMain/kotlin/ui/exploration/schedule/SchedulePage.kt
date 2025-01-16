@@ -57,7 +57,6 @@ import androidx.window.core.layout.WindowSizeClass
 import androidx.window.core.layout.WindowWidthSizeClass
 import kotlinx.coroutines.launch
 import kotlinx.datetime.DayOfWeek
-import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.ui.adaptive.AniTopAppBar
 import me.him188.ani.app.ui.adaptive.HorizontalScrollControlScaffoldOnDesktop
 import me.him188.ani.app.ui.foundation.HorizontalScrollControlState
@@ -107,8 +106,7 @@ class SchedulePageState(
 
 @Composable
 fun SchedulePage(
-    data: List<AiringSchedule>,
-    loadError: LoadError?,
+    presentation: SchedulePagePresentation,
     onRetry: () -> Unit,
     onClickItem: (item: AiringScheduleItemPresentation) -> Unit,
     modifier: Modifier = Modifier,
@@ -131,9 +129,9 @@ fun SchedulePage(
         containerColor = AniThemeDefaults.pageContentBackgroundColor,
         contentWindowInsets = windowInsets.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal),
     ) { paddingValues ->
-        if (loadError != null) {
+        if (presentation.error != null) {
             LoadErrorCard(
-                loadError,
+                presentation.error,
                 onRetry = onRetry,
                 modifier = Modifier.padding(paddingValues)
                     .padding(layoutParams.pageContentPadding)
@@ -153,7 +151,7 @@ fun SchedulePage(
                             DayOfWeekHeadline(day)
                         }
                     },
-                    items = data.firstOrNull { it.date.dayOfWeek == day }?.episodes.orEmpty(),
+                    items = presentation.airingSchedules.firstOrNull { it.date.dayOfWeek == day }?.episodes.orEmpty(),
                     layoutParams = layoutParams.columnLayoutParams,
                     state = state.scheduleColumnStates[day],
                     itemColors = colors.itemColors,
