@@ -15,7 +15,7 @@ import androidx.compose.ui.graphics.Color
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 
-val DEFAULT_SEED_COLOR = Color.Unspecified
+val DEFAULT_SEED_COLOR = Color(0xFF6200EE)
 
 @Serializable
 enum class DarkMode {

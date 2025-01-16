@@ -25,7 +25,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.isUnspecified
 import com.materialkolor.hct.Hct
 import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.data.models.preference.ThemeSettings
@@ -175,6 +174,6 @@ private fun ColorButton(
                 ),
             )
         },
-        baseColor = if (color.isUnspecified) Color(0xFF6200EE) else color,
+        baseColor = color,
     )
 }

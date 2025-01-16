@@ -69,7 +69,7 @@ expect fun appColorScheme(
 
 /**
  * AniApp MaterialTheme.
- * @param isDark Override [DarkMode] in specific situations.
+ * @param isDark Used for overriding [DarkMode] in specific situations.
  */
 @Composable
 fun AniTheme(
