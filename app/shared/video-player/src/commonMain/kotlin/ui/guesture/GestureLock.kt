@@ -55,7 +55,7 @@ fun GestureLock(
 //        modifier = modifier,
 //        containerColor = background,
 //    ) {
-//        CompositionLocalProvider(LocalContentColor provides aniColorTheme(isDark = true).contentColorFor(background)) {
+//        CompositionLocalProvider(LocalContentColor provides appColorScheme(isDark = true).contentColorFor(background)) {
 //            if (isLocked) {
 //                Icon(Icons.Outlined.LockOpen, contentDescription = "Lock screen")
 //            } else {

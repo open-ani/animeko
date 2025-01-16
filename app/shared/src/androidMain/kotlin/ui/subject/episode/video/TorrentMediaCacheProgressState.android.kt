@@ -37,7 +37,7 @@ import kotlin.time.Duration.Companion.seconds
 // Try interactive preview to see cache progress change
 @Preview
 @Composable
-fun PreviewMediaProgressSliderInteractive() = ProvideCompositionLocalsForPreview {
+fun PreviewMediaProgressSliderInteractive() = ProvideCompositionLocalsForPreview(isDark = true) {
     var currentPositionMillis by remember { mutableLongStateOf(2000) }
     val totalDurationMillis by remember { mutableLongStateOf(30_000) }
     val pieces = remember {
@@ -92,7 +92,7 @@ private fun buildPiecesWithStep(
 @Composable
 fun PreviewMediaProgressSliderNonConsecutiveCacheImpl(
     pieces: PieceList,
-) = ProvideFoundationCompositionLocalsForPreview {
+) = ProvideFoundationCompositionLocalsForPreview(isDark = true) {
     val cacheProgress = remember {
         TorrentMediaCacheProgressProvider(
             pieces,

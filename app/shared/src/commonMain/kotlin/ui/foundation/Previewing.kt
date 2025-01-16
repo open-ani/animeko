@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.ui.foundation
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
@@ -63,7 +64,7 @@ import org.openani.mediamp.MediampPlayerFactory
 @Composable
 fun ProvideCompositionLocalsForPreview(
     module: Module.() -> Unit = {},
-    isDark: Boolean = false,
+    isDark: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit,
 ) {
     ProvideFoundationCompositionLocalsForPreview(isDark) {
@@ -132,7 +133,7 @@ fun ProvideCompositionLocalsForPreview(
             }
             NavHost(navController, startDestination = "test") { // provide ViewModelStoreOwner
                 composable("test") {
-                    AniTheme {
+                    AniTheme(isDark = isDark) {
                         content()
                     }
                 }

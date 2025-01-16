@@ -82,9 +82,7 @@ class EpisodeVideoCursorTest {
 
     @Composable
     private fun Player(gestureFamily: GestureFamily = GestureFamily.MOUSE) {
-        ProvideCompositionLocalsForPreview(
-            isDark = true,
-        ) {
+        ProvideCompositionLocalsForPreview(isDark = true) {
             val scope = rememberCoroutineScope()
             val playerState = remember {
                 DummyMediampPlayer(scope.coroutineContext)

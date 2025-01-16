@@ -90,7 +90,7 @@ inline fun ProvideFoundationCompositionLocalsForPreview(
             aniNavigator.setNavController(navController)
         }
         ProvidePlatformCompositionLocalsForPreview {
-            AniTheme {
+            AniTheme(isDark = isDark) {
                 content()
             }
         }
