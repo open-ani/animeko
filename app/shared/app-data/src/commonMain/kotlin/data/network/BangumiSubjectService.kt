@@ -354,12 +354,8 @@ class RemoteBangumiSubjectService(
             return emptyList()
         }
         return withContext(ioDispatcher) {
-            val respDeferred = async {
-                BangumiLightSubjectGraphQLExecutor.execute(client, subjectIds)
-            }
-
             // 等待查询条目信息
-            val (response, errors) = respDeferred.await()
+            val (response, errors) = BangumiLightSubjectGraphQLExecutor.execute(client, subjectIds)
 
             // 解析条目详情
             response.mapIndexed { index, element ->
