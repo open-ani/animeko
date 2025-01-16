@@ -28,7 +28,6 @@ import me.him188.ani.app.data.repository.episode.AnimeScheduleRepository
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.domain.usecase.UseCase
 import me.him188.ani.utils.platform.collections.mapToIntList
-import org.koin.core.Koin
 import kotlin.coroutines.CoroutineContext
 import kotlin.time.Duration.Companion.minutes
 
@@ -50,12 +49,10 @@ fun interface GetAnimeScheduleFlowUseCase : UseCase {
 }
 
 class GetAnimeScheduleFlowUseCaseImpl(
-    koin: Koin,
+    private val animeScheduleRepository: AnimeScheduleRepository,
+    private val subjectCollectionRepository: SubjectCollectionRepository,
     private val defaultDispatcher: CoroutineContext = Dispatchers.Default,
 ) : GetAnimeScheduleFlowUseCase {
-    private val animeScheduleRepository: AnimeScheduleRepository by koin.inject()
-    private val subjectCollectionRepository: SubjectCollectionRepository by koin.inject()
-
     override fun invoke(now: Instant, timeZone: TimeZone): Flow<List<AiringScheduleForDate>> =
         animeScheduleRepository.recentSchedulesFlow()
             .flatMapLatest { schedule ->

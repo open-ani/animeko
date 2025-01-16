@@ -55,7 +55,7 @@ fun KoinApplication.useCaseModules() = module {
     single<SetDanmakuEnabledUseCase> { SetDanmakuEnabledUseCaseImpl(koin) }
     single<SetEpisodeCollectionTypeUseCase> { SetEpisodeCollectionTypeUseCaseImpl(koin) }
     single<GetEpisodeCollectionTypeUseCase> { GetEpisodeCollectionTypeUseCaseImpl(koin) }
-    single<GetAnimeScheduleFlowUseCase> { GetAnimeScheduleFlowUseCaseImpl(koin) }
+    single<GetAnimeScheduleFlowUseCase> { GetAnimeScheduleFlowUseCaseImpl(get(), get()) }
 }
 
 val GlobalKoin get() = KoinPlatform.getKoin()
