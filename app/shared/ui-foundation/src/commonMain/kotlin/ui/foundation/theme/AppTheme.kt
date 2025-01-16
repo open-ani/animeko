@@ -52,7 +52,7 @@ import me.him188.ani.app.ui.foundation.layout.isCompact
 import kotlin.math.roundToInt
 
 /**
- * Create a [ColorScheme] based on the current theme settings.
+ * Create a [ColorScheme] based on the current [ThemeSettings].
  * You should prefer [AniTheme] if possible.
  */
 @Composable
@@ -64,21 +64,27 @@ expect fun appColorScheme(
         DarkMode.LIGHT -> false
         DarkMode.DARK -> true
         DarkMode.AUTO -> isSystemInDarkTheme()
-    }
+    },
 ): ColorScheme
 
 /**
- * 覆盖主题颜色.
+ * AniApp MaterialTheme.
+ * @param isDark Override [DarkMode] in specific situations.
  */
 @Composable
-expect fun AniTheme(
+fun AniTheme(
     isDark: Boolean = when (LocalThemeSettings.current.darkMode) {
         DarkMode.LIGHT -> false
         DarkMode.DARK -> true
         DarkMode.AUTO -> isSystemInDarkTheme()
     },
-    content: @Composable () -> Unit
-)
+    content: @Composable () -> Unit,
+) {
+    MaterialTheme(
+        colorScheme = appColorScheme(isDark = isDark),
+        content = content,
+    )
+}
 
 @Stable
 object AniThemeDefaults {

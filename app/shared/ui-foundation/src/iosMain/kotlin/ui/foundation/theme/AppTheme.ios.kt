@@ -10,7 +10,6 @@
 package me.him188.ani.app.ui.foundation.theme
 
 import androidx.compose.material3.ColorScheme
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
@@ -54,15 +53,4 @@ actual fun appColorScheme(
             },
         )
     }
-}
-
-@Composable
-actual fun AniTheme(
-    isDark: Boolean,
-    content: @Composable () -> Unit,
-) {
-    MaterialTheme(
-        colorScheme = appColorScheme(isDark = isDark),
-        content = content,
-    )
 }

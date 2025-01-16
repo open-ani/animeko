@@ -15,7 +15,6 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
@@ -76,23 +75,12 @@ actual fun appColorScheme(
 }
 
 @Composable
-actual fun AniTheme(
-    isDark: Boolean,
-    content: @Composable () -> Unit,
-) {
-    MaterialTheme(
-        colorScheme = appColorScheme(isDark = isDark),
-        content = content,
-    )
-}
-
-@Composable
 fun SystemBarColorEffect(
     isDark: Boolean = when (LocalThemeSettings.current.darkMode) {
         DarkMode.LIGHT -> false
         DarkMode.DARK -> true
         DarkMode.AUTO -> isSystemInDarkTheme()
-    }
+    },
 ) {
     // Set statusBarStyle & navigationBarStyle
     val activity = LocalContext.current.findActivity() as? ComponentActivity
