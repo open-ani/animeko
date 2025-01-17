@@ -502,6 +502,38 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         testScope.cancel()
     }
 
+    @Test
+    fun `remove saved history on switch episode`() = runTest {
+        val (testScope, suite, state) = createCase()
+        advanceUntilIdle()
+        repository.saveOrUpdate(episodeId = initialEpisodeId, 500)
+        suite.setMediaDuration(100_000)
+        suite.player.currentPositionMillis.value = 100000
+
+        state.switchEpisode(1000)
+        advanceUntilIdle()
+
+        assertEquals(emptyList(), repository.flow.first())
+        testScope.cancel()
+    }
+
+    @Test
+    fun `remove saved history on switch episode even if player position greater than video duration`() = runTest {
+        // https://github.com/open-ani/animeko/issues/1506
+        val (testScope, suite, state) = createCase()
+        advanceUntilIdle()
+        repository.saveOrUpdate(episodeId = initialEpisodeId, 500)
+        suite.setMediaDuration(100_000)
+        suite.player.currentPositionMillis.value = 100001
+
+        state.switchEpisode(1000)
+        advanceUntilIdle()
+
+
+        assertEquals(emptyList(), repository.flow.first())
+        testScope.cancel()
+    }
+
     ///////////////////////////////////////////////////////////////////////////
     // Edge cases when switching episode
     ///////////////////////////////////////////////////////////////////////////
