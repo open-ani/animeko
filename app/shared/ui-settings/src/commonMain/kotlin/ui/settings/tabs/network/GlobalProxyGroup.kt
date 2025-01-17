@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -11,6 +11,8 @@ package me.him188.ani.app.ui.settings.tabs.network
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -20,6 +22,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.Flow
 import me.him188.ani.app.data.models.preference.ProxyConfig
@@ -80,6 +83,7 @@ internal fun SettingsScope.GlobalProxyGroup(
                                 )
                             },
                             selected = index == selectedIndex,
+                            modifier = Modifier.width(IntrinsicSize.Max),
                         ) {
                             Text(
                                 when (mode) {
@@ -87,6 +91,7 @@ internal fun SettingsScope.GlobalProxyGroup(
                                     ProxyMode.SYSTEM -> "系统代理"
                                     ProxyMode.CUSTOM -> "自定义"
                                 },
+                                softWrap = false,
                             )
                         }
                     }
