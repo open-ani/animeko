@@ -153,7 +153,7 @@ internal fun EpisodeVideoImpl(
         }
     }
 
-    AniTheme {
+    AniTheme(isDark = true) {
         VideoScaffold(
             expanded = expanded,
             modifier = modifier
