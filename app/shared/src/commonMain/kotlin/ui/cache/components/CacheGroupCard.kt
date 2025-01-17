@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -33,7 +33,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Text
-import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
@@ -50,7 +49,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.navigation.LocalNavigator
-import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.datasources.api.CachedMedia
@@ -191,7 +189,8 @@ fun CacheGroupCard(
         colors = outerCardColors,
     ) {
         Card(
-            Modifier.fillMaxWidth(),
+            Modifier.fillMaxWidth()
+                .clickable { state.expanded = !state.expanded },
             shape = shape,
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.secondaryContainer,
@@ -222,12 +221,7 @@ fun CacheGroupCard(
                         ProvideTextStyle(MaterialTheme.typography.headlineSmall) {
                             Crossfade(
                                 state.cardTitle,
-                                Modifier
-                                    .ifThen(state.subjectId != null) {
-                                        clickable { state.subjectId?.let { navigator.navigateSubjectDetails(it) } }
-                                    }
-                                    .minimumInteractiveComponentSize()
-                                    .animateContentSize(),
+                                Modifier.animateContentSize(),
                             ) {
                                 SelectionContainer { Text(it ?: "") }
                             }
