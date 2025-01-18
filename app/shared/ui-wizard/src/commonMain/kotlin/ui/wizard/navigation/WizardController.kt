@@ -22,14 +22,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import me.him188.ani.utils.coroutines.update
-import me.him188.ani.utils.platform.annotations.TestOnly
 
-/**
- * Only for testing purposes.
- *
- * You should create [WizardController] at your view model.
- */
-@TestOnly
+
 @Composable
 fun rememberWizardController(
     onFinish: (Map<String, WizardStepData>) -> Unit
