@@ -44,43 +44,59 @@ jobs:
       continue-on-error: true
       run: 'rm local.properties'
     - id: 'step-2'
-      name: 'Resolve JBR location'
-      shell: 'bash'
+      name: 'Resolve JBR location (Windows)'
+      shell: 'powershell'
       run: |-
-        # Expand jbrLocationExpr
-        jbr_location_expr='${{ runner.tool_cache }}/jbrsdk_jcef-21.0.5-windows-x64-b750.29.tar.gz'
-        echo "jbrLocation=$jbr_location_expr" >> $GITHUB_OUTPUT
+        # In PowerShell, environment variables are accessed as $env:VAR_NAME
+        $jbrPath = "$(${{ runner.tool_cache }})/$jbrFilename"
+
+        # Write the location to GitHub Actions output file
+        echo "jbrLocation=$jbrPath" >> $env:GITHUB_OUTPUT
     - id: 'step-3'
-      name: 'Get JBR 21 for macOS AArch64'
+      name: 'Get JBR (Windows)'
       env:
-        jbrLocation: '${{ steps.step-2.outputs.jbrLocation }}'
-      shell: 'bash'
+        JBR_URL: 'https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-windows-x64-b750.29.tar.gz'
+        JBR_CHECKSUM_URL: 'https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-windows-x64-b750.29.tar.gz.checksum'
+        JBR_LOCATION: '${{ steps.step-2.outputs.jbrLocation }}'
+      shell: 'powershell'
       run: |-
-        jbr_location="$jbrLocation"
-        checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-windows-x64-b750.29.tar.gz.checksum"
-        checksum_file="checksum.tmp"
-        wget -q -O $checksum_file $checksum_url
+        # We have the environment variables below, so use them in the script
+        $checksumUrl = $env:JBR_CHECKSUM_URL
+        $checksumFile = "checksum.tmp"
+        $jbrLocation = $env:JBR_LOCATION
+        $expectedChecksum = ""
 
-        expected_checksum=$(awk '{print $1}' $checksum_file)
-        file_checksum=""
+        # Download the checksum file
+        Invoke-WebRequest -Uri $checksumUrl -OutFile $checksumFile
 
-        if [ -f "$jbr_location" ]; then
-            file_checksum=$(shasum -a 512 "$jbr_location" | awk '{print $1}')
-        fi
+        # The file likely has just one line "<sha512>  <filename>"
+        # so split by space and take the first piece
+        $expectedChecksum = (Get-Content $checksumFile)[0].Split(" ")[0]
 
-        if [ "$file_checksum" != "$expected_checksum" ]; then
-            wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-windows-x64-b750.29.tar.gz -O "$jbr_location"
-            file_checksum=$(shasum -a 512 "$jbr_location" | awk '{print $1}')
-        fi
+        # If the file already exists, compute its sha512
+        $fileChecksum = ""
+        if (Test-Path $jbrLocation) {
+            $fileChecksum = (Get-FileHash $jbrLocation -Algorithm SHA512).Hash.ToLower()
+        }
 
-        if [ "$file_checksum" != "$expected_checksum" ]; then
-            echo "Checksum verification failed!" >&2
-            rm -f $checksum_file
+        # If checksums don't match, re-download
+        if ($fileChecksum -ne $expectedChecksum.ToLower()) {
+            Invoke-WebRequest -Uri $env:JBR_URL -OutFile $jbrLocation
+            $fileChecksum = (Get-FileHash $jbrLocation -Algorithm SHA512).Hash.ToLower()
+        }
+
+        # If it still doesn't match, fail
+        if ($fileChecksum -ne $expectedChecksum.ToLower()) {
+            Write-Host "Checksum verification failed!"
+            Remove-Item $checksumFile -ErrorAction SilentlyContinue
             exit 1
-        fi
+        }
 
-        rm -f $checksum_file
-        file "$jbr_location"
+        # Cleanup
+        Remove-Item $checksumFile -ErrorAction SilentlyContinue
+
+        # Print some info about the file (optional)
+        Get-Item $jbrLocation
     - id: 'step-4'
       name: 'Setup JBR 21 for other OS'
       uses: 'gmitch215/setup-java@6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d'
@@ -135,43 +151,59 @@ jobs:
       continue-on-error: true
       run: 'rm local.properties'
     - id: 'step-2'
-      name: 'Resolve JBR location'
-      shell: 'bash'
+      name: 'Resolve JBR location (Windows)'
+      shell: 'powershell'
       run: |-
-        # Expand jbrLocationExpr
-        jbr_location_expr='${{ runner.tool_cache }}/jbrsdk_jcef-21.0.5-windows-x64-b750.29.tar.gz'
-        echo "jbrLocation=$jbr_location_expr" >> $GITHUB_OUTPUT
+        # In PowerShell, environment variables are accessed as $env:VAR_NAME
+        $jbrPath = "$(${{ runner.tool_cache }})/$jbrFilename"
+
+        # Write the location to GitHub Actions output file
+        echo "jbrLocation=$jbrPath" >> $env:GITHUB_OUTPUT
     - id: 'step-3'
-      name: 'Get JBR 21 for macOS AArch64'
+      name: 'Get JBR (Windows)'
       env:
-        jbrLocation: '${{ steps.step-2.outputs.jbrLocation }}'
-      shell: 'bash'
+        JBR_URL: 'https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-windows-x64-b750.29.tar.gz'
+        JBR_CHECKSUM_URL: 'https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-windows-x64-b750.29.tar.gz.checksum'
+        JBR_LOCATION: '${{ steps.step-2.outputs.jbrLocation }}'
+      shell: 'powershell'
       run: |-
-        jbr_location="$jbrLocation"
-        checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-windows-x64-b750.29.tar.gz.checksum"
-        checksum_file="checksum.tmp"
-        wget -q -O $checksum_file $checksum_url
+        # We have the environment variables below, so use them in the script
+        $checksumUrl = $env:JBR_CHECKSUM_URL
+        $checksumFile = "checksum.tmp"
+        $jbrLocation = $env:JBR_LOCATION
+        $expectedChecksum = ""
 
-        expected_checksum=$(awk '{print $1}' $checksum_file)
-        file_checksum=""
+        # Download the checksum file
+        Invoke-WebRequest -Uri $checksumUrl -OutFile $checksumFile
 
-        if [ -f "$jbr_location" ]; then
-            file_checksum=$(shasum -a 512 "$jbr_location" | awk '{print $1}')
-        fi
+        # The file likely has just one line "<sha512>  <filename>"
+        # so split by space and take the first piece
+        $expectedChecksum = (Get-Content $checksumFile)[0].Split(" ")[0]
 
-        if [ "$file_checksum" != "$expected_checksum" ]; then
-            wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-windows-x64-b750.29.tar.gz -O "$jbr_location"
-            file_checksum=$(shasum -a 512 "$jbr_location" | awk '{print $1}')
-        fi
+        # If the file already exists, compute its sha512
+        $fileChecksum = ""
+        if (Test-Path $jbrLocation) {
+            $fileChecksum = (Get-FileHash $jbrLocation -Algorithm SHA512).Hash.ToLower()
+        }
 
-        if [ "$file_checksum" != "$expected_checksum" ]; then
-            echo "Checksum verification failed!" >&2
-            rm -f $checksum_file
+        # If checksums don't match, re-download
+        if ($fileChecksum -ne $expectedChecksum.ToLower()) {
+            Invoke-WebRequest -Uri $env:JBR_URL -OutFile $jbrLocation
+            $fileChecksum = (Get-FileHash $jbrLocation -Algorithm SHA512).Hash.ToLower()
+        }
+
+        # If it still doesn't match, fail
+        if ($fileChecksum -ne $expectedChecksum.ToLower()) {
+            Write-Host "Checksum verification failed!"
+            Remove-Item $checksumFile -ErrorAction SilentlyContinue
             exit 1
-        fi
+        }
 
-        rm -f $checksum_file
-        file "$jbr_location"
+        # Cleanup
+        Remove-Item $checksumFile -ErrorAction SilentlyContinue
+
+        # Print some info about the file (optional)
+        Get-Item $jbrLocation
     - id: 'step-4'
       name: 'Setup JBR 21 for other OS'
       uses: 'gmitch215/setup-java@6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d'
@@ -251,7 +283,7 @@ jobs:
       run: |-
         # Expand jbrLocationExpr
         jbr_location_expr='${{ runner.tool_cache }}/jbrsdk_jcef-21.0.5-osx-x64-b631.8.tar.gz'
-        echo "jbrLocation=$jbr_location_expr" >> $GITHUB_OUTPUT
+        echo 'jbrLocation=$jbr_location_expr' >> $GITHUB_OUTPUT
     - id: 'step-4'
       name: 'Get JBR 21 for macOS AArch64'
       env:
@@ -284,7 +316,7 @@ jobs:
         rm -f $checksum_file
         file "$jbr_location"
     - id: 'step-5'
-      name: 'Setup JBR 21 for macOS AArch64'
+      name: 'Setup JBR 21 for macOS '
       uses: 'gmitch215/setup-java@6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d'
       with:
         java-version: '21'
@@ -424,7 +456,7 @@ jobs:
       run: |-
         # Expand jbrLocationExpr
         jbr_location_expr='${{ runner.tool_cache }}/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz'
-        echo "jbrLocation=$jbr_location_expr" >> $GITHUB_OUTPUT
+        echo 'jbrLocation=$jbr_location_expr' >> $GITHUB_OUTPUT
     - id: 'step-3'
       name: 'Get JBR 21 for macOS AArch64'
       env:
@@ -457,7 +489,7 @@ jobs:
         rm -f $checksum_file
         file "$jbr_location"
     - id: 'step-4'
-      name: 'Setup JBR 21 for macOS AArch64'
+      name: 'Setup JBR 21 for macOS '
       uses: 'gmitch215/setup-java@6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d'
       with:
         java-version: '21'

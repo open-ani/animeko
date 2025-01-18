@@ -855,12 +855,11 @@ class WithMatrix(
 
     fun JobBuilder<*>.installJbr21() {
         // For mac
-        fun downloadJbr(
+        fun downloadJbrUnix(
             filename: String,
         ): String {
             val jbrUrl = "https://cache-redirector.jetbrains.com/intellij-jbr/$filename"
-            val jbrChecksumUrl =
-                "https://cache-redirector.jetbrains.com/intellij-jbr/$filename.checksum"
+            val jbrChecksumUrl = "https://cache-redirector.jetbrains.com/intellij-jbr/$filename.checksum"
 
             val jbrFilename = jbrUrl.substringAfterLast('/')
             
@@ -870,7 +869,7 @@ class WithMatrix(
                     $$"""
             # Expand jbrLocationExpr
             jbr_location_expr='$${expr { runner.tool_cache } + "/" + jbrFilename}'
-            echo "jbrLocation=$jbr_location_expr" >> $GITHUB_OUTPUT
+            echo 'jbrLocation=$jbr_location_expr' >> $GITHUB_OUTPUT
             """.trimIndent(),
                 ),
                 shell = Shell.Bash,
@@ -917,36 +916,110 @@ class WithMatrix(
             return jbrLocationExpr
         }
 
+        fun downloadJbrWindows(
+            filename: String,
+        ): String {
+            // These URLs should remain the same; only the shell commands change.
+            val jbrUrl = "https://cache-redirector.jetbrains.com/intellij-jbr/$filename"
+            val jbrChecksumUrl = "https://cache-redirector.jetbrains.com/intellij-jbr/$filename.checksum"
+
+            val jbrFilename = jbrUrl.substringAfterLast('/')
+
+            // First step: Resolve JBR location (store a final path in the GITHUB_OUTPUT)
+            val jbrLocationExpr = run(
+                name = "Resolve JBR location (Windows)",
+                command = shell(
+                    // Use a PowerShell script block.
+                    // The result of this step sets the 'jbrLocation' output.
+                    $$"""
+            # In PowerShell, environment variables are accessed as $env:VAR_NAME
+            $jbrPath = "$($${expr { runner.tool_cache }})/$jbrFilename"
+
+            # Write the location to GitHub Actions output file
+            echo "jbrLocation=$jbrPath" >> $env:GITHUB_OUTPUT
+            """.trimIndent()
+                ),
+                shell = Shell.PowerShell,
+            ).outputs["jbrLocation"]
+
+            // Second step: Download & verify JBR with checksums
+            run(
+                name = "Get JBR (Windows)",
+                command = shell(
+                    $$"""
+            # We have the environment variables below, so use them in the script
+            $checksumUrl = $env:JBR_CHECKSUM_URL
+            $checksumFile = "checksum.tmp"
+            $jbrLocation = $env:JBR_LOCATION
+            $expectedChecksum = ""
+
+            # Download the checksum file
+            Invoke-WebRequest -Uri $checksumUrl -OutFile $checksumFile
+
+            # The file likely has just one line "<sha512>  <filename>"
+            # so split by space and take the first piece
+            $expectedChecksum = (Get-Content $checksumFile)[0].Split(" ")[0]
+
+            # If the file already exists, compute its sha512
+            $fileChecksum = ""
+            if (Test-Path $jbrLocation) {
+                $fileChecksum = (Get-FileHash $jbrLocation -Algorithm SHA512).Hash.ToLower()
+            }
+
+            # If checksums don't match, re-download
+            if ($fileChecksum -ne $expectedChecksum.ToLower()) {
+                Invoke-WebRequest -Uri $env:JBR_URL -OutFile $jbrLocation
+                $fileChecksum = (Get-FileHash $jbrLocation -Algorithm SHA512).Hash.ToLower()
+            }
+
+            # If it still doesn't match, fail
+            if ($fileChecksum -ne $expectedChecksum.ToLower()) {
+                Write-Host "Checksum verification failed!"
+                Remove-Item $checksumFile -ErrorAction SilentlyContinue
+                exit 1
+            }
+
+            # Cleanup
+            Remove-Item $checksumFile -ErrorAction SilentlyContinue
+            
+            # Print some info about the file (optional)
+            Get-Item $jbrLocation
+            """.trimIndent()
+                ),
+                // Pass in environment variables that the script can read
+                env = mapOf(
+                    "JBR_URL" to jbrUrl,
+                    "JBR_CHECKSUM_URL" to jbrChecksumUrl,
+                    "JBR_LOCATION" to expr { jbrLocationExpr },
+                ),
+                shell = Shell.PowerShell,
+            )
+
+            return jbrLocationExpr
+        }
+
         when (matrix.runner.os) {
             OS.MACOS -> {
-                if (matrix.arch == Arch.AARCH64) {
-                    val jbrLocationExpr = downloadJbr("jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz")
-                    uses(
-                        name = "Setup JBR 21 for macOS AArch64",
-                        action = SetupJava_Untyped(
-                            distribution_Untyped = "jdkfile",
-                            javaVersion_Untyped = "21",
-                            jdkFile_Untyped = expr { jbrLocationExpr },
-                        ),
-                        env = mapOf("GITHUB_TOKEN" to expr { secrets.GITHUB_TOKEN }),
-                    )
+                val jbrLocationExpr = if (matrix.arch == Arch.AARCH64) {
+                    downloadJbrUnix("jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz")
                 } else {
-                    val jbrLocationExpr = downloadJbr("jbrsdk_jcef-21.0.5-osx-x64-b631.8.tar.gz")
-                    uses(
-                        name = "Setup JBR 21 for macOS AArch64",
-                        action = SetupJava_Untyped(
-                            distribution_Untyped = "jdkfile",
-                            javaVersion_Untyped = "21",
-                            jdkFile_Untyped = expr { jbrLocationExpr },
-                        ),
-                        env = mapOf("GITHUB_TOKEN" to expr { secrets.GITHUB_TOKEN }),
-                    )
+                    downloadJbrUnix("jbrsdk_jcef-21.0.5-osx-x64-b631.8.tar.gz")
                 }
+                
+                uses(
+                    name = "Setup JBR 21 for macOS ",
+                    action = SetupJava_Untyped(
+                        distribution_Untyped = "jdkfile",
+                        javaVersion_Untyped = "21",
+                        jdkFile_Untyped = expr { jbrLocationExpr },
+                    ),
+                    env = mapOf("GITHUB_TOKEN" to expr { secrets.GITHUB_TOKEN }),
+                )
             }
 
             OS.WINDOWS -> {
                 // For Windows + Ubuntu
-                val jbrLocationExpr = downloadJbr("jbrsdk_jcef-21.0.5-windows-x64-b750.29.tar.gz")
+                val jbrLocationExpr = downloadJbrWindows("jbrsdk_jcef-21.0.5-windows-x64-b750.29.tar.gz")
                 uses(
                     name = "Setup JBR 21 for other OS",
                     action = SetupJava_Untyped(
