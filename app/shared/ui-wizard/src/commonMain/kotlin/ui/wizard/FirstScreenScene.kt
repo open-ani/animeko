@@ -17,7 +17,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
@@ -29,6 +30,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 
+/**
+ * 首次启动 APP 的欢迎界面, 在向导之前显示.
+ */
 @Composable
 fun FirstScreenScene(
     modifier: Modifier = Modifier,
@@ -40,49 +44,48 @@ fun FirstScreenScene(
         modifier = modifier,
         contentAlignment = Alignment.Center,
     ) {
-        LazyColumn(
+        Column(
             modifier = Modifier
                 .windowInsetsPadding(windowInsets)
-                .fillMaxWidth(),
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.Start,
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            item {
-                Text(
-                    text = "欢迎使用 Animeko",
-                    style = MaterialTheme.typography.headlineMedium,
-                )
-                Text(
-                    text = "一站式在线弹幕追番平台 (简称 Ani)",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-                Column(
-                    modifier = Modifier
-                        .padding(vertical = 8.dp)
-                        .fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+            Text(
+                text = "欢迎使用 Animeko",
+                style = MaterialTheme.typography.headlineMedium,
+            )
+            Text(
+                text = "一站式在线弹幕追番平台 (简称 Ani)",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Column(
+                modifier = Modifier
+                    .padding(vertical = 8.dp)
+                    .fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
 
-                    ) {
-                    CompositionLocalProvider(
-                        LocalTextStyle provides MaterialTheme.typography.bodyMedium,
-                    ) {
-                        Text("Ani 目前由爱好者组成的组织 open-ani 和社区贡献者维护，完全免费，在 GitHub 上开源。")
-                        Text("Ani 的目标是提供尽可能简单且舒适的追番体验。")
-                    }
+                ) {
+                CompositionLocalProvider(
+                    LocalTextStyle provides MaterialTheme.typography.bodyMedium,
+                ) {
+                    Text("Ani 由爱好者组成的组织 OpenAni 和社区贡献者维护，完全免费，在 GitHub 上开源。")
+                    Text("Ani 的目标是提供尽可能简单且舒适的追番体验。")
                 }
+            }
 
-                Box(modifier = Modifier.fillMaxWidth()) {
-                    contactActions()
-                }
+            Box(modifier = Modifier.fillMaxWidth()) {
+                contactActions()
+            }
 
-                Box(modifier = Modifier.padding(horizontal = 64.dp, vertical = 32.dp)) {
-                    Button(
-                        onClick = onLinkStart,
-                        modifier = Modifier.widthIn(300.dp),
-                    ) {
-                        Text("继续")
-                    }
+            Box(modifier = Modifier.padding(horizontal = 64.dp, vertical = 32.dp)) {
+                Button(
+                    onClick = onLinkStart,
+                    modifier = Modifier.widthIn(300.dp),
+                ) {
+                    Text("继续")
                 }
             }
         }

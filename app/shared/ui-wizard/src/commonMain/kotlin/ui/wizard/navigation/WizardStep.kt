@@ -9,31 +9,30 @@
 
 package me.him188.ani.app.ui.wizard.navigation
 
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.runtime.Composable
 
 class WizardStep<T : Any>(
     val key: String,
-    val stepName: String,
+    val stepName: @Composable (T) -> Unit,
     val data: T,
     val canForward: (T) -> Boolean,
     val skippable: Boolean,
     val forwardButton: @Composable (Boolean) -> Unit,
     val backwardButton: @Composable () -> Unit,
     val skipButton: @Composable () -> Unit,
-    val content: @Composable ColumnScope.(WizardConfigState<T>) -> Unit,
+    val content: @Composable WizardStepScope<T>.() -> Unit,
 )
 
 fun <T : Any> WizardStep<T>.copy(
     key: String = this.key,
-    stepName: String = this.stepName,
+    stepName: @Composable (T) -> Unit = this.stepName,
     data: T = this.data,
     canForward: (T) -> Boolean = this.canForward,
     skippable: Boolean = this.skippable,
     forwardButton: @Composable (Boolean) -> Unit = this.forwardButton,
     backwardButton: @Composable () -> Unit = this.backwardButton,
     skipButton: @Composable () -> Unit = this.skipButton,
-    content: @Composable ColumnScope.(WizardConfigState<T>) -> Unit = this.content,
+    content: @Composable WizardStepScope<T>.() -> Unit = this.content,
 ): WizardStep<T> {
     return WizardStep(
         key = key,

@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
@@ -29,7 +28,6 @@ import androidx.navigation.compose.rememberNavController
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.wizard.WizardDefaults
 
-@Suppress("LocalVariableName")
 @Composable
 fun WizardNavHost(
     controller: WizardController,
@@ -40,18 +38,15 @@ fun WizardNavHost(
     val navController = rememberNavController()
     controller.setNavController(navController)
 
-    DisposableEffect(controller, builder) {
-        WizardBuilder(controller).apply(builder).build()
-        onDispose {}
+    DisposableEffect(Unit) {
+        val steps = WizardBuilder(controller).apply(builder).build()
+        controller.setupSteps(steps)
+        onDispose { }
     }
 
-    val _currentStepIndex by controller.currentStepIndex.collectAsState(null)
-    val _totalStepIndex by controller.totalStepIndex.collectAsState(null)
-    val _currentStep by controller.currentStep.collectAsState(null)
-
-    val currentStepIndex = _currentStepIndex ?: return
-    val totalStepIndex = _totalStepIndex ?: return
-    val currentStep = _currentStep ?: return
+    val totalStepIndex = controller.totalStepIndex.collectAsState(null).value ?: return
+    val currentStep = controller.currentStep.collectAsState(null).value ?: return
+    val currentStepIndex = controller.currentStepIndex.collectAsState(null).value ?: return
 
     Scaffold(
         topBar = {
@@ -60,7 +55,7 @@ fun WizardNavHost(
                 totalStep = totalStepIndex,
             ) {
                 val currentStepName by rememberUpdatedState(currentStep.stepName)
-                Text(currentStepName)
+                currentStepName(currentStep.data)
             }
         },
         bottomBar = {
@@ -69,28 +64,22 @@ fun WizardNavHost(
                     val canForward = remember(currentStep.data) {
                         currentStep.canForward(currentStep.data)
                     }
-                    val currentForwardButton by rememberUpdatedState(currentStep.forwardButton)
-                    currentForwardButton(canForward)
+                    currentStep.forwardButton.invoke(canForward)
                 },
                 backwardAction = {
-                    val currentBackwardButton by rememberUpdatedState(currentStep.backwardButton)
-                    currentBackwardButton()
+                    currentStep.backwardButton.invoke()
                 },
                 tertiaryAction = {
-                    val currentSkippable by rememberUpdatedState(currentStep.skippable)
-                    val currentSkipButton by rememberUpdatedState(currentStep.skipButton)
-                    if (currentSkippable) {
-                        currentSkipButton()
-                    }
+                    currentStep.skipButton.invoke()
                 },
             )
         },
         modifier = modifier,
         contentWindowInsets = windowInsets,
     ) { contentPadding ->
-        val _navController by controller.navController.collectAsState()
-        val currentNavController = _navController ?: return@Scaffold
-        val startDestination = controller.startDestination() ?: return@Scaffold
+        val currentNavController =
+            controller.navController.collectAsState().value ?: return@Scaffold
+        val startDestination = controller.startDestinationAsState().value ?: return@Scaffold
         val steps by controller.steps.collectAsState()
 
         NavHost(
@@ -115,7 +104,7 @@ fun WizardNavHost(
                         .collectAsState(false)
 
                     val configState = remember(finalStep, requestedSkip) {
-                        WizardConfigState(
+                        WizardStepScope(
                             finalStep.data,
                             requestedSkip,
                             onUpdate = { controller.updateCurrentStepData(it) },
@@ -124,7 +113,7 @@ fun WizardNavHost(
                     }
 
                     Column(Modifier.fillMaxSize()) {
-                        step.content(this, configState)
+                        step.content(configState)
                     }
                 }
             }

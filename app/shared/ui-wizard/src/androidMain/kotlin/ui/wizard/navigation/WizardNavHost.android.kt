@@ -26,48 +26,48 @@ fun PreviewWizardNavHost() {
         WizardNavHost(rememberWizardController {}) {
             step(
                 key = "theme",
-                title = "选择主题",
+                title = { Text("选择主题") },
                 defaultConfig = MyTheme("default", 0),
-            ) { config ->
-                Text("my theme: ${config.data.theme} ${config.data.counter}")
+            ) {
+                Text("my theme: ${data.theme} ${data.counter}")
                 Button(
                     {
-                        config.update { copy(counter = counter + 1) }
+                        update { copy(counter = counter + 1) }
                     },
                 ) { Text("Update theme") }
             }
 
             step(
                 key = "proxy",
-                title = "设置代理",
+                title = { Text("设置代理") },
                 defaultConfig = MyProxy("proxy default", 0),
                 canForward = { it.counter >= 8 },
-            ) { config ->
-                Text("my theme: ${config.data.proxy} ${config.data.counter}")
+            ) {
+                Text("my theme: ${data.proxy} ${data.counter}")
                 Text("continue unless counter >= 8")
                 Button(
                     {
-                        config.update { copy(counter = counter + 1) }
+                        update { copy(counter = counter + 1) }
                     },
                 ) { Text("Update proxy") }
             }
 
             step(
                 key = "bittorrent",
-                title = "BitTorrent 功能",
+                title = { Text("BitTorrent 功能") },
                 defaultConfig = MyBitTorrent("bittorrent default", 0),
                 skippable = true,
-            ) { config ->
-                Text("my bit torrent: ${config.data.proxy} ${config.data.counter}")
+            ) {
+                Text("my bit torrent: ${data.proxy} ${data.counter}")
                 Button(
                     {
-                        config.update { copy(counter = counter + 1) }
+                        update { copy(counter = counter + 1) }
                     },
                 ) { Text("Update bittorrent") }
 
-                if (config.requestedSkip) {
+                if (requestedSkip) {
                     BasicAlertDialog(
-                        onDismissRequest = { config.confirmSkip(false) },
+                        onDismissRequest = { confirmSkip(false) },
                     ) {
                         Surface {
                             Column {
@@ -75,12 +75,12 @@ fun PreviewWizardNavHost() {
                                 Row {
                                     Button(
                                         {
-                                            config.confirmSkip(false)
+                                            confirmSkip(false)
                                         },
                                     ) { Text("No") }
                                     Button(
                                         {
-                                            config.confirmSkip(true)
+                                            confirmSkip(true)
                                         },
                                     ) { Text("Skip") }
                                 }
@@ -92,9 +92,9 @@ fun PreviewWizardNavHost() {
 
             step(
                 key = "finish",
-                title = "完成",
+                title = { Text("完成") },
                 defaultConfig = Unit,
-            ) { config ->
+            ) {
                 Text("Finish")
             }
         }

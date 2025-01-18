@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.ui.wizard.navigation
 
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
@@ -21,13 +20,12 @@ annotation class WizardStepDsl
 class WizardBuilder(
     private val controller: WizardController,
 ) {
-    private val steps: MutableMap<String, WizardStep<Any>> = mutableMapOf()
-    private val stepLine: MutableList<String> = mutableListOf()
+    private val steps: LinkedHashMap<String, WizardStep<Any>> = linkedMapOf()
 
     @WizardStepDsl
     fun <T : Any> step(
         key: String,
-        title: String,
+        title: @Composable (T) -> Unit,
         defaultConfig: T,
         canForward: (T) -> Boolean = { true },
         skippable: Boolean = false,
@@ -37,18 +35,25 @@ class WizardBuilder(
         backward: @Composable () -> Unit = {
             WizardDefaults.GoBackwardButton({ controller.goBackward() })
         },
-        skipButton: @Composable () -> Unit = {
-            val scope = rememberCoroutineScope()
-            WizardDefaults.SkipButton(
-                {
-                    scope.launch {
-                        controller.requestSkip()
-                    }
-                },
-            )
+        skipButton: @Composable () -> Unit = if (skippable) {
+            {
+                val scope = rememberCoroutineScope()
+                WizardDefaults.SkipButton(
+                    {
+                        scope.launch {
+                            controller.requestSkip()
+                        }
+                    },
+                )
+            }
+        } else {
+            { }
         },
-        content: @Composable ColumnScope.(WizardConfigState<T>) -> Unit,
+        content: @Composable WizardStepScope<T>.() -> Unit,
     ) {
+        if (steps[key] != null) {
+            throw IllegalArgumentException("Duplicate step key: $key")
+        }
         @Suppress("UNCHECKED_CAST")
         steps[key] = WizardStep(
             key,
@@ -61,11 +66,9 @@ class WizardBuilder(
             skipButton,
             content,
         ) as WizardStep<Any>
-        stepLine.remove(key)
-        stepLine.add(key)
     }
 
-    fun build() {
-        controller.setupSteps(steps, stepLine)
+    fun build(): Map<String, WizardStep<Any>> {
+        return steps
     }
 }
