@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 #  Copyright (C) 2024-2025 OpenAni and contributors.
 # 
 #  此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
@@ -7,6 +9,7 @@
 
 import hashlib
 import os
+import shutil
 import ssl
 import sys
 import urllib.request
@@ -14,16 +17,19 @@ import urllib.request
 
 def download_with_no_cert_check(url: str, destination: str):
 	"""
-	Downloads the file from `url` to `destination`,
-	ignoring certificate verification errors.
+	Downloads the file from `url` to `destination`, ignoring certificate verification.
 	"""
 	# Create an unverified SSL context
 	ssl_ctx = ssl.create_default_context()
 	ssl_ctx.check_hostname = False
 	ssl_ctx.verify_mode = ssl.CERT_NONE
 
-	# Use this context when retrieving the file
-	urllib.request.urlretrieve(url, destination, context=ssl_ctx)
+	# Open the remote URL with our unverified context
+	with urllib.request.urlopen(url, context=ssl_ctx) as response, open(
+			destination, "wb"
+	) as out_file:
+		# Copy the response data to the local file
+		shutil.copyfileobj(response, out_file)
 
 
 def sha512sum(filepath: str) -> str:
@@ -52,7 +58,7 @@ def main():
 	jbr_filename = jbr_url.split('/')[-1]
 	jbr_location = os.path.join(runner_tool_cache, jbr_filename)
 
-	# Write jbrLocation to GITHUB_OUTPUT if desired
+	# Write jbrLocation to GITHUB_OUTPUT if it exists
 	if github_output:
 		with open(github_output, "a", encoding="utf-8") as f:
 			f.write(f"jbrLocation={jbr_location}\n")
@@ -61,17 +67,17 @@ def main():
 	checksum_file = "checksum.tmp"
 	download_with_no_cert_check(jbr_checksum_url, checksum_file)
 
-	# Parse expected checksum from first line
+	# Parse expected checksum from the first line of the .checksum file
 	with open(checksum_file, "r", encoding="utf-8") as cf:
 		line = cf.readline().strip()
 	expected_checksum = line.split()[0].lower()
 
-	# If file exists, compute checksum
+	# If file exists, compute its SHA-512
 	file_checksum = ""
 	if os.path.isfile(jbr_location):
 		file_checksum = sha512sum(jbr_location)
 
-	# If mismatch, redownload
+	# If mismatch, re-download
 	if file_checksum != expected_checksum:
 		download_with_no_cert_check(jbr_url, jbr_location)
 		file_checksum = sha512sum(jbr_location)
