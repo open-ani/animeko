@@ -48,7 +48,7 @@ jobs:
       shell: 'powershell'
       run: |-
         # In PowerShell, environment variables are accessed as $env:VAR_NAME
-        $jbrPath = "$(${{ runner.tool_cache }})/$jbrFilename"
+        $jbrPath = "${{ runner.tool_cache }}/$jbrFilename"
 
         # Write the location to GitHub Actions output file
         echo "jbrLocation=$jbrPath" >> $env:GITHUB_OUTPUT
@@ -155,7 +155,7 @@ jobs:
       shell: 'powershell'
       run: |-
         # In PowerShell, environment variables are accessed as $env:VAR_NAME
-        $jbrPath = "$(${{ runner.tool_cache }})/$jbrFilename"
+        $jbrPath = "${{ runner.tool_cache }}/$jbrFilename"
 
         # Write the location to GitHub Actions output file
         echo "jbrLocation=$jbrPath" >> $env:GITHUB_OUTPUT

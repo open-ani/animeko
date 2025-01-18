@@ -933,7 +933,7 @@ class WithMatrix(
                     // The result of this step sets the 'jbrLocation' output.
                     $$"""
             # In PowerShell, environment variables are accessed as $env:VAR_NAME
-            $jbrPath = "$($${expr { runner.tool_cache }})/$jbrFilename"
+            $jbrPath = "$${expr { runner.tool_cache }}/$jbrFilename"
 
             # Write the location to GitHub Actions output file
             echo "jbrLocation=$jbrPath" >> $env:GITHUB_OUTPUT
