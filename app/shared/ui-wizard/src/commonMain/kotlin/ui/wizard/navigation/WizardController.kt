@@ -22,7 +22,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import me.him188.ani.utils.coroutines.update
-import org.jetbrains.annotations.TestOnly
+import me.him188.ani.utils.platform.annotations.TestOnly
 
 /**
  * Only for testing purposes.
@@ -144,6 +144,7 @@ class WizardController(
         }
 
         val targetStepKey = stepLine.getOrNull(currentStepIndex + (if (forward) 1 else -1))
+            ?: return
         val targetStep = _steps.value[targetStepKey] ?: return
 
         _currentStep.update { targetStep }
@@ -153,7 +154,7 @@ class WizardController(
             && prevBackEntry != null
             && prevBackEntry.destination.route == targetStepKey
         ) {
-            navController.popBackStack(prevBackEntry.destination.id, false)
+            navController.popBackStack(targetStepKey, false)
         } else {
             navController.navigate(targetStep.key)
         }

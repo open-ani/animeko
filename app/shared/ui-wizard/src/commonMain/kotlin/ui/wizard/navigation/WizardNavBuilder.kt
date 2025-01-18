@@ -61,7 +61,7 @@ class WizardBuilder(
             skipButton,
             content,
         ) as WizardStep<Any>
-        stepLine.removeIf { it == key }
+        stepLine.remove(key)
         stepLine.add(key)
     }
 
