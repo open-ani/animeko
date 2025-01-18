@@ -936,7 +936,7 @@ class WithMatrix(
                 shell = Shell.PowerShell,
             )
 
-            return expr { step.outputs["jbrLocation"] }
+            return step.outputs["jbrLocation"]
         }
 
         when (matrix.runner.os) {

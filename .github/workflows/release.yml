@@ -113,7 +113,7 @@ jobs:
       with:
         java-version: '21'
         distribution: 'jetbrains'
-        jdkFile: '${{ {{ steps.step-4.outputs.jbrLocation }} }}'
+        jdkFile: '${{ steps.step-4.outputs.jbrLocation }}'
       env:
         GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
     - id: 'step-6'
@@ -179,7 +179,7 @@ jobs:
       with:
         java-version: '21'
         distribution: 'jetbrains'
-        jdkFile: '${{ {{ steps.step-4.outputs.jbrLocation }} }}'
+        jdkFile: '${{ steps.step-4.outputs.jbrLocation }}'
       env:
         GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
     - id: 'step-6'
