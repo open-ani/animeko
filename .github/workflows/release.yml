@@ -101,12 +101,10 @@ jobs:
       run: 'rm local.properties'
     - id: 'step-4'
       name: 'Resolve JBR location'
-      env:
-        MY_PATH: '${{ runner.tool_cache }}/jbrsdk_jcef-21.0.5-windows-x64-b750.29.tar.gz'
       shell: 'bash'
       run: |-
         # Expand jbrLocationExpr
-        jbr_location_expr=$(eval echo $(echo "$MY_PATH" | sed 's/\\/\//g'))
+        jbr_location_expr='${'$'}${'$'}{expr { runner.tool_cache } + "/" + jbrFilename}'
         echo "jbrLocation=$jbr_location_expr" >> $GITHUB_OUTPUT
     - id: 'step-5'
       name: 'Get JBR 21 for macOS AArch64'
@@ -199,12 +197,10 @@ jobs:
       run: 'rm local.properties'
     - id: 'step-4'
       name: 'Resolve JBR location'
-      env:
-        MY_PATH: '${{ runner.tool_cache }}/jbrsdk_jcef-21.0.5-windows-x64-b750.29.tar.gz'
       shell: 'bash'
       run: |-
         # Expand jbrLocationExpr
-        jbr_location_expr=$(eval echo $(echo "$MY_PATH" | sed 's/\\/\//g'))
+        jbr_location_expr='${'$'}${'$'}{expr { runner.tool_cache } + "/" + jbrFilename}'
         echo "jbrLocation=$jbr_location_expr" >> $GITHUB_OUTPUT
     - id: 'step-5'
       name: 'Get JBR 21 for macOS AArch64'
@@ -322,12 +318,10 @@ jobs:
       run: 'rm local.properties'
     - id: 'step-5'
       name: 'Resolve JBR location'
-      env:
-        MY_PATH: '${{ runner.tool_cache }}/jbrsdk_jcef-21.0.5-osx-x64-b631.8.tar.gz'
       shell: 'bash'
       run: |-
         # Expand jbrLocationExpr
-        jbr_location_expr=$(eval echo $(echo "$MY_PATH" | sed 's/\\/\//g'))
+        jbr_location_expr='${'$'}${'$'}{expr { runner.tool_cache } + "/" + jbrFilename}'
         echo "jbrLocation=$jbr_location_expr" >> $GITHUB_OUTPUT
     - id: 'step-6'
       name: 'Get JBR 21 for macOS AArch64'
@@ -549,12 +543,10 @@ jobs:
       run: 'rm local.properties'
     - id: 'step-4'
       name: 'Resolve JBR location'
-      env:
-        MY_PATH: '${{ runner.tool_cache }}/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz'
       shell: 'bash'
       run: |-
         # Expand jbrLocationExpr
-        jbr_location_expr=$(eval echo $(echo "$MY_PATH" | sed 's/\\/\//g'))
+        jbr_location_expr='${'$'}${'$'}{expr { runner.tool_cache } + "/" + jbrFilename}'
         echo "jbrLocation=$jbr_location_expr" >> $GITHUB_OUTPUT
     - id: 'step-5'
       name: 'Get JBR 21 for macOS AArch64'
