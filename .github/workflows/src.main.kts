@@ -869,7 +869,7 @@ class WithMatrix(
                 command = shell(
                     $$"""
             # Expand jbrLocationExpr
-            jbr_location_expr='${'$'}${'$'}{expr { runner.tool_cache } + "/" + jbrFilename}'
+            jbr_location_expr='$${expr { runner.tool_cache } + "/" + jbrFilename}'
             echo "jbrLocation=$jbr_location_expr" >> $GITHUB_OUTPUT
             """.trimIndent(),
                 ),

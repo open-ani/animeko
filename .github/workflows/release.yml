@@ -104,7 +104,7 @@ jobs:
       shell: 'bash'
       run: |-
         # Expand jbrLocationExpr
-        jbr_location_expr='${'$'}${'$'}{expr { runner.tool_cache } + "/" + jbrFilename}'
+        jbr_location_expr='${{ runner.tool_cache }}/jbrsdk_jcef-21.0.5-windows-x64-b750.29.tar.gz'
         echo "jbrLocation=$jbr_location_expr" >> $GITHUB_OUTPUT
     - id: 'step-5'
       name: 'Get JBR 21 for macOS AArch64'
@@ -200,7 +200,7 @@ jobs:
       shell: 'bash'
       run: |-
         # Expand jbrLocationExpr
-        jbr_location_expr='${'$'}${'$'}{expr { runner.tool_cache } + "/" + jbrFilename}'
+        jbr_location_expr='${{ runner.tool_cache }}/jbrsdk_jcef-21.0.5-windows-x64-b750.29.tar.gz'
         echo "jbrLocation=$jbr_location_expr" >> $GITHUB_OUTPUT
     - id: 'step-5'
       name: 'Get JBR 21 for macOS AArch64'
@@ -321,7 +321,7 @@ jobs:
       shell: 'bash'
       run: |-
         # Expand jbrLocationExpr
-        jbr_location_expr='${'$'}${'$'}{expr { runner.tool_cache } + "/" + jbrFilename}'
+        jbr_location_expr='${{ runner.tool_cache }}/jbrsdk_jcef-21.0.5-osx-x64-b631.8.tar.gz'
         echo "jbrLocation=$jbr_location_expr" >> $GITHUB_OUTPUT
     - id: 'step-6'
       name: 'Get JBR 21 for macOS AArch64'
@@ -546,7 +546,7 @@ jobs:
       shell: 'bash'
       run: |-
         # Expand jbrLocationExpr
-        jbr_location_expr='${'$'}${'$'}{expr { runner.tool_cache } + "/" + jbrFilename}'
+        jbr_location_expr='${{ runner.tool_cache }}/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz'
         echo "jbrLocation=$jbr_location_expr" >> $GITHUB_OUTPUT
     - id: 'step-5'
       name: 'Get JBR 21 for macOS AArch64'
