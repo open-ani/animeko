@@ -287,6 +287,24 @@ val LocalNavigationMotionScheme = compositionLocalOf<NavigationMotionScheme> {
 }
 
 val LocalThemeSettings = compositionLocalOf<ThemeSettings> {
-    // ThemeSettings.Default
     error("LocalThemeSettings not provided")
+}
+
+fun modifyColorSchemeForBlackBackground(
+    colorScheme: ColorScheme,
+    useBlackBackground: Boolean,
+): ColorScheme {
+    return if (useBlackBackground) {
+        colorScheme.copy(
+            background = Color.Black,
+            onBackground = Color.White,
+
+            surface = Color.Black,
+            onSurface = Color.White,
+            surfaceContainerLowest = Color.Black,
+
+            surfaceVariant = Color.Black,
+            onSurfaceVariant = Color.White,
+        )
+    } else colorScheme
 }
