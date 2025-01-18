@@ -964,7 +964,7 @@ class WithMatrix(
                 uses(
                     name = "Setup JBR 21 for other OS",
                     action = SetupJava_Untyped(
-                        distribution_Untyped = "jetbrains",
+                        distribution_Untyped = "jdkfile",
                         javaVersion_Untyped = "21",
                         jdkFile_Untyped = expr { jbrLocationExpr },
                     ),

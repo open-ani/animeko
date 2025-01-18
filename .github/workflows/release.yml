@@ -112,7 +112,7 @@ jobs:
       uses: 'gmitch215/setup-java@6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d'
       with:
         java-version: '21'
-        distribution: 'jetbrains'
+        distribution: 'jdkfile'
         jdkFile: '${{ steps.step-4.outputs.jbrLocation }}'
       env:
         GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
@@ -178,7 +178,7 @@ jobs:
       uses: 'gmitch215/setup-java@6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d'
       with:
         java-version: '21'
-        distribution: 'jetbrains'
+        distribution: 'jdkfile'
         jdkFile: '${{ steps.step-4.outputs.jbrLocation }}'
       env:
         GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
