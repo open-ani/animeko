@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 #  Copyright (C) 2024-2025 OpenAni and contributors.
 # 
 #  此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
@@ -7,64 +5,80 @@
 # 
 #  https://github.com/open-ani/ani/blob/main/LICENSE
 
-import os
-import sys
 import hashlib
+import os
+import ssl
+import sys
 import urllib.request
 
+
+def download_with_no_cert_check(url: str, destination: str):
+	"""
+	Downloads the file from `url` to `destination`,
+	ignoring certificate verification errors.
+	"""
+	# Create an unverified SSL context
+	ssl_ctx = ssl.create_default_context()
+	ssl_ctx.check_hostname = False
+	ssl_ctx.verify_mode = ssl.CERT_NONE
+
+	# Use this context when retrieving the file
+	urllib.request.urlretrieve(url, destination, context=ssl_ctx)
+
+
+def sha512sum(filepath: str) -> str:
+	sha512 = hashlib.sha512()
+	with open(filepath, "rb") as f:
+		for chunk in iter(lambda: f.read(8192), b""):
+			sha512.update(chunk)
+	return sha512.hexdigest().lower()
+
+
 def main():
-	# Read environment variables
+	# Read env variables
 	runner_tool_cache = os.environ.get("RUNNER_TOOL_CACHE", "")
 	jbr_url = os.environ.get("JBR_URL", "")
 	jbr_checksum_url = os.environ.get("JBR_CHECKSUM_URL", "")
+	github_output = os.environ.get("GITHUB_OUTPUT", "")
 
 	if not runner_tool_cache or not jbr_url or not jbr_checksum_url:
-		print("Required environment variables (RUNNER_TOOL_CACHE, JBR_URL, JBR_CHECKSUM_URL) are not set.", file=sys.stderr)
+		print(
+			"Missing required env vars: RUNNER_TOOL_CACHE, JBR_URL, JBR_CHECKSUM_URL.",
+			file=sys.stderr
+		)
 		sys.exit(1)
 
-	# Derive filename from the JBR URL
+	# Derive final path
 	jbr_filename = jbr_url.split('/')[-1]
-
-	# Compute final JBR path: <runner_tool_cache>/<filename>
 	jbr_location = os.path.join(runner_tool_cache, jbr_filename)
 
-	# Write jbrLocation to GITHUB_OUTPUT so subsequent steps can access it
-	github_output = os.environ.get("GITHUB_OUTPUT")
+	# Write jbrLocation to GITHUB_OUTPUT if desired
 	if github_output:
-		# Append the variable
 		with open(github_output, "a", encoding="utf-8") as f:
 			f.write(f"jbrLocation={jbr_location}\n")
 
-	# Function to compute the SHA-512 hash
-	def sha512sum(filepath):
-		sha512 = hashlib.sha512()
-		with open(filepath, "rb") as f:
-			for chunk in iter(lambda: f.read(8192), b""):
-				sha512.update(chunk)
-		return sha512.hexdigest().lower()
-
-	# 1) Download checksum file
+	# Download the checksum file (ignoring cert errors)
 	checksum_file = "checksum.tmp"
-	urllib.request.urlretrieve(jbr_checksum_url, checksum_file)
+	download_with_no_cert_check(jbr_checksum_url, checksum_file)
 
-	# 2) Parse the first line for the expected checksum
+	# Parse expected checksum from first line
 	with open(checksum_file, "r", encoding="utf-8") as cf:
 		line = cf.readline().strip()
 	expected_checksum = line.split()[0].lower()
 
-	# 3) If jbr_location already exists, compute its SHA-512
+	# If file exists, compute checksum
 	file_checksum = ""
 	if os.path.isfile(jbr_location):
 		file_checksum = sha512sum(jbr_location)
 
-	# 4) If checksums don’t match, re-download
+	# If mismatch, redownload
 	if file_checksum != expected_checksum:
-		urllib.request.urlretrieve(jbr_url, jbr_location)
+		download_with_no_cert_check(jbr_url, jbr_location)
 		file_checksum = sha512sum(jbr_location)
 
-	# 5) If it still doesn't match, fail
+	# Final check
 	if file_checksum != expected_checksum:
-		print("Checksum verification failed!", file=sys.stderr)
+		print("[!] Checksum verification failed.", file=sys.stderr)
 		try:
 			os.remove(checksum_file)
 		except OSError:
@@ -77,10 +91,8 @@ def main():
 	except OSError:
 		pass
 
-	# Optional: Print info about the file
-	st = os.stat(jbr_location)
-	print(f"Downloaded JBR to: {jbr_location}")
-	print(f"File size: {st.st_size} bytes, Last modified: {st.st_mtime}")
+	print("[*] JBR downloaded and verified successfully, ignoring SSL errors.")
+
 
 if __name__ == "__main__":
 	main()
