@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -44,6 +44,7 @@ import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberTestMediaSelector
 import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberTestMediaSourceResults
 import me.him188.ani.app.ui.subject.episode.statistics.testPlayerStatisticsState
 import me.him188.ani.app.ui.subject.episode.video.DanmakuStatistics
+import me.him188.ani.app.ui.subject.episode.video.createTestDanmakuStatistics
 import me.him188.ani.danmaku.api.DanmakuMatchInfo
 import me.him188.ani.danmaku.api.DanmakuMatchMethod
 import me.him188.ani.datasources.api.Media
@@ -115,7 +116,7 @@ fun PreviewEpisodeDetailsDanmakuFailed() = ProvideFoundationCompositionLocalsFor
     PreviewEpisodeDetailsImpl(
         state,
         remember {
-            DanmakuStatistics(DanmakuLoadingState.Failed(IllegalStateException()))
+            createTestDanmakuStatistics(DanmakuLoadingState.Failed(IllegalStateException()), danmakuEnabled = true)
         },
     )
 }
@@ -137,7 +138,7 @@ fun PreviewEpisodeDetailsDanmakuLoading() = ProvideFoundationCompositionLocalsFo
     PreviewEpisodeDetailsImpl(
         state,
         remember {
-            DanmakuStatistics(DanmakuLoadingState.Loading)
+            createTestDanmakuStatistics(DanmakuLoadingState.Loading)
         },
     )
 }
@@ -174,7 +175,7 @@ private fun rememberTestEpisodeDetailsState(
 private fun PreviewEpisodeDetailsImpl(
     state: EpisodeDetailsState,
     danmakuStatistics: DanmakuStatistics = remember {
-        DanmakuStatistics(
+        createTestDanmakuStatistics(
             DanmakuLoadingState.Success(
                 listOf(
                     DanmakuMatchInfo(

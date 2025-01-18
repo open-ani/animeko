@@ -523,7 +523,11 @@ class EpisodeViewModel(
             episodeSession.infoBundleFlow.distinctUntilChanged(),
             episodeSession.infoLoadErrorStateFlow,
             episodeSession.fetchSelectFlow.filterNotNull(),
-            danmakuLoader.danmakuLoadingStateFlow.map { DanmakuStatistics(it) }.distinctUntilChanged(),
+            combine(
+                danmakuLoader.danmakuLoadingStateFlow,
+                settingsRepository.danmakuEnabled.flow,
+                ::DanmakuStatistics,
+            ).distinctUntilChanged(),
             settingsRepository.danmakuEnabled.flow,
             settingsRepository.danmakuConfig.flow,
         ) { subjectEpisodeBundle, loadError, fetchSelect, danmakuStatistics, danmakuEnabled, danmakuConfig ->
