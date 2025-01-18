@@ -100,84 +100,38 @@ jobs:
       continue-on-error: true
       run: 'rm local.properties'
     - id: 'step-4'
-      name: 'Resolve JBR location (Windows)'
-      shell: 'powershell'
-      run: |-
-        # In PowerShell, environment variables are accessed as $env:VAR_NAME
-        $jbrPath = "${{ runner.tool_cache }}/$jbrFilename"
-
-        # Write the location to GitHub Actions output file
-        echo "jbrLocation=$jbrPath" >> $env:GITHUB_OUTPUT
-    - id: 'step-5'
       name: 'Get JBR (Windows)'
       env:
+        RUNNER_TOOL_CACHE: '${{ runner.tool_cache }}'
         JBR_URL: 'https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-windows-x64-b750.29.tar.gz'
         JBR_CHECKSUM_URL: 'https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-windows-x64-b750.29.tar.gz.checksum'
-        JBR_LOCATION: '${{ steps.step-4.outputs.jbrLocation }}'
       shell: 'powershell'
-      run: |-
-        # We have the environment variables below, so use them in the script
-        $checksumUrl = $env:JBR_CHECKSUM_URL
-        $checksumFile = "checksum.tmp"
-        $jbrLocation = $env:JBR_LOCATION
-        $expectedChecksum = ""
-
-        # Download the checksum file
-        Invoke-WebRequest -Uri $checksumUrl -OutFile $checksumFile
-
-        # The file likely has just one line "<sha512>  <filename>"
-        # so split by space and take the first piece
-        $expectedChecksum = (Get-Content $checksumFile)[0].Split(" ")[0]
-
-        # If the file already exists, compute its sha512
-        $fileChecksum = ""
-        if (Test-Path $jbrLocation) {
-            $fileChecksum = (Get-FileHash $jbrLocation -Algorithm SHA512).Hash.ToLower()
-        }
-
-        # If checksums don't match, re-download
-        if ($fileChecksum -ne $expectedChecksum.ToLower()) {
-            Invoke-WebRequest -Uri $env:JBR_URL -OutFile $jbrLocation
-            $fileChecksum = (Get-FileHash $jbrLocation -Algorithm SHA512).Hash.ToLower()
-        }
-
-        # If it still doesn't match, fail
-        if ($fileChecksum -ne $expectedChecksum.ToLower()) {
-            Write-Host "Checksum verification failed!"
-            Remove-Item $checksumFile -ErrorAction SilentlyContinue
-            exit 1
-        }
-
-        # Cleanup
-        Remove-Item $checksumFile -ErrorAction SilentlyContinue
-
-        # Print some info about the file (optional)
-        Get-Item $jbrLocation
-    - id: 'step-6'
+      run: 'python .github/workflows/download_jbr.py'
+    - id: 'step-5'
       name: 'Setup JBR 21 for other OS'
       uses: 'gmitch215/setup-java@6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d'
       with:
         java-version: '21'
         distribution: 'jetbrains'
-        jdkFile: '${{ steps.step-4.outputs.jbrLocation }}'
+        jdkFile: '${{ {{ steps.step-4.outputs.jbrLocation }} }}'
       env:
         GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
-    - id: 'step-7'
+    - id: 'step-6'
       name: 'Dump Local Properties'
       run: 'echo "jvm.toolchain.version=21" >> local.properties'
-    - id: 'step-8'
+    - id: 'step-7'
       name: 'Setup Gradle'
       uses: 'gradle/actions/setup-gradle@v3'
       with:
         cache-disabled: 'true'
-    - id: 'step-9'
+    - id: 'step-8'
       name: 'Clean and download dependencies'
       uses: 'nick-fields/retry@v3'
       with:
         timeout_minutes: '60'
         max_attempts: '3'
         command: './gradlew "--stacktrace" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "--parallel" "-Pani.android.abis=x86_64"'
-    - id: 'step-10'
+    - id: 'step-9'
       name: 'Update Release Version Name'
       env:
         GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
@@ -185,7 +139,7 @@ jobs:
         CI_RELEASE_ID: '${{ needs.create-release.outputs.id }}'
         CI_TAG: '${{ steps.step-1.outputs.tag }}'
       run: './gradlew updateReleaseVersionNameFromGit "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "--parallel" "-Pani.android.abis=x86_64"'
-    - id: 'step-11'
+    - id: 'step-10'
       name: 'Compile Kotlin'
       run: './gradlew compileKotlin compileCommonMainKotlinMetadata compileDebugKotlinAndroid compileReleaseKotlinAndroid compileJvmMainKotlinMetadata compileKotlinDesktop compileKotlinMetadata "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "--parallel" "-Pani.android.abis=x86_64"'
   release_github-windows-2019:
@@ -212,84 +166,38 @@ jobs:
       continue-on-error: true
       run: 'rm local.properties'
     - id: 'step-4'
-      name: 'Resolve JBR location (Windows)'
-      shell: 'powershell'
-      run: |-
-        # In PowerShell, environment variables are accessed as $env:VAR_NAME
-        $jbrPath = "${{ runner.tool_cache }}/$jbrFilename"
-
-        # Write the location to GitHub Actions output file
-        echo "jbrLocation=$jbrPath" >> $env:GITHUB_OUTPUT
-    - id: 'step-5'
       name: 'Get JBR (Windows)'
       env:
+        RUNNER_TOOL_CACHE: '${{ runner.tool_cache }}'
         JBR_URL: 'https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-windows-x64-b750.29.tar.gz'
         JBR_CHECKSUM_URL: 'https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-windows-x64-b750.29.tar.gz.checksum'
-        JBR_LOCATION: '${{ steps.step-4.outputs.jbrLocation }}'
       shell: 'powershell'
-      run: |-
-        # We have the environment variables below, so use them in the script
-        $checksumUrl = $env:JBR_CHECKSUM_URL
-        $checksumFile = "checksum.tmp"
-        $jbrLocation = $env:JBR_LOCATION
-        $expectedChecksum = ""
-
-        # Download the checksum file
-        Invoke-WebRequest -Uri $checksumUrl -OutFile $checksumFile
-
-        # The file likely has just one line "<sha512>  <filename>"
-        # so split by space and take the first piece
-        $expectedChecksum = (Get-Content $checksumFile)[0].Split(" ")[0]
-
-        # If the file already exists, compute its sha512
-        $fileChecksum = ""
-        if (Test-Path $jbrLocation) {
-            $fileChecksum = (Get-FileHash $jbrLocation -Algorithm SHA512).Hash.ToLower()
-        }
-
-        # If checksums don't match, re-download
-        if ($fileChecksum -ne $expectedChecksum.ToLower()) {
-            Invoke-WebRequest -Uri $env:JBR_URL -OutFile $jbrLocation
-            $fileChecksum = (Get-FileHash $jbrLocation -Algorithm SHA512).Hash.ToLower()
-        }
-
-        # If it still doesn't match, fail
-        if ($fileChecksum -ne $expectedChecksum.ToLower()) {
-            Write-Host "Checksum verification failed!"
-            Remove-Item $checksumFile -ErrorAction SilentlyContinue
-            exit 1
-        }
-
-        # Cleanup
-        Remove-Item $checksumFile -ErrorAction SilentlyContinue
-
-        # Print some info about the file (optional)
-        Get-Item $jbrLocation
-    - id: 'step-6'
+      run: 'python .github/workflows/download_jbr.py'
+    - id: 'step-5'
       name: 'Setup JBR 21 for other OS'
       uses: 'gmitch215/setup-java@6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d'
       with:
         java-version: '21'
         distribution: 'jetbrains'
-        jdkFile: '${{ steps.step-4.outputs.jbrLocation }}'
+        jdkFile: '${{ {{ steps.step-4.outputs.jbrLocation }} }}'
       env:
         GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
-    - id: 'step-7'
+    - id: 'step-6'
       name: 'Dump Local Properties'
       run: 'echo "jvm.toolchain.version=21" >> local.properties'
-    - id: 'step-8'
+    - id: 'step-7'
       name: 'Setup Gradle'
       uses: 'gradle/actions/setup-gradle@v3'
       with:
         cache-disabled: 'true'
-    - id: 'step-9'
+    - id: 'step-8'
       name: 'Clean and download dependencies'
       uses: 'nick-fields/retry@v3'
       with:
         timeout_minutes: '60'
         max_attempts: '3'
         command: './gradlew "--stacktrace" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=x86_64"'
-    - id: 'step-10'
+    - id: 'step-9'
       name: 'Update Release Version Name'
       env:
         GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
@@ -297,10 +205,10 @@ jobs:
         CI_RELEASE_ID: '${{ needs.create-release.outputs.id }}'
         CI_TAG: '${{ steps.step-1.outputs.tag }}'
       run: './gradlew updateReleaseVersionNameFromGit "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=x86_64"'
-    - id: 'step-11'
+    - id: 'step-10'
       name: 'Compile Kotlin'
       run: './gradlew compileKotlin compileCommonMainKotlinMetadata compileDebugKotlinAndroid compileReleaseKotlinAndroid compileJvmMainKotlinMetadata compileKotlinDesktop compileKotlinMetadata "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=x86_64"'
-    - id: 'step-12'
+    - id: 'step-11'
       name: 'Upload Desktop Installers'
       env:
         GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
@@ -314,7 +222,7 @@ jobs:
         AWS_REGION: '${{ secrets.AWS_REGION }}'
         AWS_BUCKET: '${{ secrets.AWS_BUCKET }}'
       run: './gradlew :ci-helper:uploadDesktopInstallers "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=x86_64"'
-    - id: 'step-13'
+    - id: 'step-12'
       name: 'Upload compose logs'
       uses: 'actions/upload-artifact@v4'
       with:

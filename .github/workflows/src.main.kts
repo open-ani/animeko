@@ -924,78 +924,19 @@ class WithMatrix(
             val jbrChecksumUrl = "https://cache-redirector.jetbrains.com/intellij-jbr/$filename.checksum"
 
             val jbrFilename = jbrUrl.substringAfterLast('/')
-
-            // First step: Resolve JBR location (store a final path in the GITHUB_OUTPUT)
-            val jbrLocationExpr = run(
-                name = "Resolve JBR location (Windows)",
-                command = shell(
-                    // Use a PowerShell script block.
-                    // The result of this step sets the 'jbrLocation' output.
-                    $$"""
-            # In PowerShell, environment variables are accessed as $env:VAR_NAME
-            $jbrPath = "$${expr { runner.tool_cache }}/$jbrFilename"
-
-            # Write the location to GitHub Actions output file
-            echo "jbrLocation=$jbrPath" >> $env:GITHUB_OUTPUT
-            """.trimIndent()
-                ),
-                shell = Shell.PowerShell,
-            ).outputs["jbrLocation"]
-
-            // Second step: Download & verify JBR with checksums
-            run(
+            val step = run(
                 name = "Get JBR (Windows)",
-                command = shell(
-                    $$"""
-            # We have the environment variables below, so use them in the script
-            $checksumUrl = $env:JBR_CHECKSUM_URL
-            $checksumFile = "checksum.tmp"
-            $jbrLocation = $env:JBR_LOCATION
-            $expectedChecksum = ""
-
-            # Download the checksum file
-            Invoke-WebRequest -Uri $checksumUrl -OutFile $checksumFile
-
-            # The file likely has just one line "<sha512>  <filename>"
-            # so split by space and take the first piece
-            $expectedChecksum = (Get-Content $checksumFile)[0].Split(" ")[0]
-
-            # If the file already exists, compute its sha512
-            $fileChecksum = ""
-            if (Test-Path $jbrLocation) {
-                $fileChecksum = (Get-FileHash $jbrLocation -Algorithm SHA512).Hash.ToLower()
-            }
-
-            # If checksums don't match, re-download
-            if ($fileChecksum -ne $expectedChecksum.ToLower()) {
-                Invoke-WebRequest -Uri $env:JBR_URL -OutFile $jbrLocation
-                $fileChecksum = (Get-FileHash $jbrLocation -Algorithm SHA512).Hash.ToLower()
-            }
-
-            # If it still doesn't match, fail
-            if ($fileChecksum -ne $expectedChecksum.ToLower()) {
-                Write-Host "Checksum verification failed!"
-                Remove-Item $checksumFile -ErrorAction SilentlyContinue
-                exit 1
-            }
-
-            # Cleanup
-            Remove-Item $checksumFile -ErrorAction SilentlyContinue
-            
-            # Print some info about the file (optional)
-            Get-Item $jbrLocation
-            """.trimIndent()
-                ),
+                command = "python .github/workflows/download_jbr.py",
                 // Pass in environment variables that the script can read
                 env = mapOf(
+                    "RUNNER_TOOL_CACHE" to expr { runner.tool_cache },
                     "JBR_URL" to jbrUrl,
                     "JBR_CHECKSUM_URL" to jbrChecksumUrl,
-                    "JBR_LOCATION" to expr { jbrLocationExpr },
                 ),
                 shell = Shell.PowerShell,
             )
 
-            return jbrLocationExpr
+            return expr { step.outputs["jbrLocation"] }
         }
 
         when (matrix.runner.os) {
