@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -84,6 +84,7 @@ includeProject(":app:shared:ui-adaptive")
 includeProject(":app:shared:ui-subject")
 includeProject(":app:shared:ui-exploration")
 includeProject(":app:shared:ui-comment")
+includeProject(":app:shared:ui-wizard")
 includeProject(":app:shared:video-player:video-player-api", "app/shared/video-player/api")
 includeProject(":app:shared:video-player:torrent-source")
 includeProject(":app:shared:video-player")
