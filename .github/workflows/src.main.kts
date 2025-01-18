@@ -869,11 +869,12 @@ class WithMatrix(
                 command = shell(
                     $$"""
             # Expand jbrLocationExpr
-            jbr_location_expr=$(eval echo $${expr { runner.tool_cache } + "/" + jbrFilename})
+            jbr_location_expr=$(eval echo $(echo "$MY_PATH" | sed 's/\\/\//g'))
             echo "jbrLocation=$jbr_location_expr" >> $GITHUB_OUTPUT
             """.trimIndent(),
                 ),
                 shell = Shell.Bash,
+                env = mapOf("MY_PATH" to expr { runner.tool_cache } + "/" + jbrFilename),
             ).outputs["jbrLocation"]
 
             run(
