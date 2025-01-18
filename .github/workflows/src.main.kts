@@ -855,29 +855,31 @@ class WithMatrix(
 
     fun JobBuilder<*>.installJbr21() {
         // For mac
-        val jbrUrl = "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz"
-        val jbrChecksumUrl =
-            "https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz.checksum"
+        fun downloadJbr(
+            filename: String,
+        ): String {
+            val jbrUrl = "https://cache-redirector.jetbrains.com/intellij-jbr/$filename"
+            val jbrChecksumUrl =
+                "https://cache-redirector.jetbrains.com/intellij-jbr/$filename.checksum"
 
-        val jbrFilename = jbrUrl.substringAfterLast('/')
-
-        when (matrix.runner.os to matrix.runner.arch) {
-            OS.MACOS to Arch.AARCH64 -> {
-                val jbrLocationExpr = run(
-                    name = "Resolve JBR location",
-                    command = shell(
-                        $$"""
+            val jbrFilename = jbrUrl.substringAfterLast('/')
+            
+            val jbrLocationExpr = run(
+                name = "Resolve JBR location",
+                command = shell(
+                    $$"""
             # Expand jbrLocationExpr
             jbr_location_expr=$(eval echo $${expr { runner.tool_cache } + "/" + jbrFilename})
             echo "jbrLocation=$jbr_location_expr" >> $GITHUB_OUTPUT
             """.trimIndent(),
-                    ),
-                ).outputs["jbrLocation"]
+                ),
+                shell = Shell.Bash,
+            ).outputs["jbrLocation"]
 
-                run(
-                    name = "Get JBR 21 for macOS AArch64",
-                    command = shell(
-                        $$"""
+            run(
+                name = "Get JBR 21 for macOS AArch64",
+                command = shell(
+                    $$"""
         jbr_location="$jbrLocation"
         checksum_url="$$jbrChecksumUrl"
         checksum_file="checksum.tmp"
@@ -904,16 +906,50 @@ class WithMatrix(
         rm -f $checksum_file
         file "$jbr_location"
     """.trimIndent(),
-                    ),
-                    env = mapOf(
-                        "jbrLocation" to expr { jbrLocationExpr },
-                    ),
-                )
+                ),
+                env = mapOf(
+                    "jbrLocation" to expr { jbrLocationExpr },
+                ),
+                shell = Shell.Bash,
+            )
+            
+            return jbrLocationExpr
+        }
 
+        when (matrix.runner.os) {
+            OS.MACOS -> {
+                if (matrix.arch == Arch.AARCH64) {
+                    val jbrLocationExpr = downloadJbr("jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz")
+                    uses(
+                        name = "Setup JBR 21 for macOS AArch64",
+                        action = SetupJava_Untyped(
+                            distribution_Untyped = "jdkfile",
+                            javaVersion_Untyped = "21",
+                            jdkFile_Untyped = expr { jbrLocationExpr },
+                        ),
+                        env = mapOf("GITHUB_TOKEN" to expr { secrets.GITHUB_TOKEN }),
+                    )
+                } else {
+                    val jbrLocationExpr = downloadJbr("jbrsdk_jcef-21.0.5-osx-x64-b631.8.tar.gz")
+                    uses(
+                        name = "Setup JBR 21 for macOS AArch64",
+                        action = SetupJava_Untyped(
+                            distribution_Untyped = "jdkfile",
+                            javaVersion_Untyped = "21",
+                            jdkFile_Untyped = expr { jbrLocationExpr },
+                        ),
+                        env = mapOf("GITHUB_TOKEN" to expr { secrets.GITHUB_TOKEN }),
+                    )
+                }
+            }
+
+            OS.WINDOWS -> {
+                // For Windows + Ubuntu
+                val jbrLocationExpr = downloadJbr("jbrsdk_jcef-21.0.5-windows-x64-b750.29.tar.gz")
                 uses(
-                    name = "Setup JBR 21 for macOS AArch64",
+                    name = "Setup JBR 21 for other OS",
                     action = SetupJava_Untyped(
-                        distribution_Untyped = "jdkfile",
+                        distribution_Untyped = "jetbrains",
                         javaVersion_Untyped = "21",
                         jdkFile_Untyped = expr { jbrLocationExpr },
                     ),
@@ -921,17 +957,7 @@ class WithMatrix(
                 )
             }
 
-            else -> {
-                // For Windows + Ubuntu
-                uses(
-                    name = "Setup JBR 21 for other OS",
-                    action = SetupJava_Untyped(
-                        distribution_Untyped = "jetbrains",
-                        javaVersion_Untyped = "21",
-                    ),
-                    env = mapOf("GITHUB_TOKEN" to expr { secrets.GITHUB_TOKEN }),
-                )
-            }
+            OS.UBUNTU -> error("Not supported")
         }
 
         run(
