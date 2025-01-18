@@ -44,33 +44,31 @@ fun WizardNavHost(
         onDispose { }
     }
 
-    val totalStepIndex = controller.totalStepIndex.collectAsState(null).value ?: return
-    val currentStep = controller.currentStep.collectAsState(null).value ?: return
-    val currentStepIndex = controller.currentStepIndex.collectAsState(null).value ?: return
+    val wizardState = controller.state.collectAsState(null).value ?: return
 
     Scaffold(
         topBar = {
             WizardDefaults.StepTopAppBar(
-                currentStep = currentStepIndex,
-                totalStep = totalStepIndex,
+                currentStep = wizardState.currentStepIndex,
+                totalStep = wizardState.totalStepIndex,
             ) {
-                val currentStepName by rememberUpdatedState(currentStep.stepName)
-                currentStepName(currentStep.data)
+                val currentStepName by rememberUpdatedState(wizardState.currentStep.stepName)
+                currentStepName(wizardState.currentStep.data)
             }
         },
         bottomBar = {
             WizardDefaults.StepControlBar(
                 forwardAction = {
-                    val canForward = remember(currentStep.data) {
-                        currentStep.canForward(currentStep.data)
+                    val canForward = remember(wizardState.currentStep.data) {
+                        wizardState.currentStep.canForward(wizardState.currentStep.data)
                     }
-                    currentStep.forwardButton.invoke(canForward)
+                    wizardState.currentStep.forwardButton.invoke(canForward)
                 },
                 backwardAction = {
-                    currentStep.backwardButton.invoke()
+                    wizardState.currentStep.backwardButton.invoke()
                 },
                 tertiaryAction = {
-                    currentStep.skipButton.invoke()
+                    wizardState.currentStep.skipButton.invoke()
                 },
             )
         },
@@ -80,7 +78,6 @@ fun WizardNavHost(
         val currentNavController =
             controller.navController.collectAsState().value ?: return@Scaffold
         val startDestination = controller.startDestinationAsState().value ?: return@Scaffold
-        val steps by controller.steps.collectAsState()
 
         NavHost(
             currentNavController,
@@ -89,15 +86,16 @@ fun WizardNavHost(
                 .padding(contentPadding)
                 .fillMaxSize(),
         ) {
-            steps.forEach { (key, step) ->
-                composable(key) { backStackEntry ->
+            wizardState.steps.forEach { step ->
+                composable(step.key) { backStackEntry ->
                     val currentKey = backStackEntry.destination.route ?: return@composable
 
-                    val indexedStep = remember(steps, currentKey) {
-                        steps[currentKey]
+                    val indexedStep = remember(wizardState.steps, currentKey) {
+                        wizardState.steps.find { currentKey == it.key }
                     }
                     val currentOrSnapshotStep by derivedStateOf {
-                        if (indexedStep?.key == currentStep.key) currentStep else indexedStep
+                        if (indexedStep?.key == wizardState.currentStep.key)
+                            wizardState.currentStep else indexedStep
                     }
                     val finalStep = currentOrSnapshotStep ?: return@composable
                     val requestedSkip by controller.skipState.waitingConfirmation
