@@ -933,7 +933,7 @@ class WithMatrix(
                     "JBR_URL" to jbrUrl,
                     "JBR_CHECKSUM_URL" to jbrChecksumUrl,
                 ),
-                shell = Shell.Bash,
+                shell = Shell.Cmd,
             )
 
             return step.outputs["jbrLocation"]
