@@ -100,29 +100,38 @@ jobs:
       continue-on-error: true
       run: 'rm local.properties'
     - id: 'step-4'
+      name: 'Get JBR (Windows)'
+      env:
+        RUNNER_TOOL_CACHE: '${{ runner.tool_cache }}'
+        JBR_URL: 'https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-windows-x64-b750.29.tar.gz'
+        JBR_CHECKSUM_URL: 'https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-windows-x64-b750.29.tar.gz.checksum'
+      shell: 'cmd'
+      run: 'python .github/workflows/download_jbr.py'
+    - id: 'step-5'
       name: 'Setup JBR 21 for other OS'
       uses: 'gmitch215/setup-java@6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d'
       with:
         java-version: '21'
-        distribution: 'jetbrains'
+        distribution: 'jdkfile'
+        jdkFile: '${{ steps.step-4.outputs.jbrLocation }}'
       env:
         GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
-    - id: 'step-5'
+    - id: 'step-6'
       name: 'Dump Local Properties'
       run: 'echo "jvm.toolchain.version=21" >> local.properties'
-    - id: 'step-6'
+    - id: 'step-7'
       name: 'Setup Gradle'
       uses: 'gradle/actions/setup-gradle@v3'
       with:
         cache-disabled: 'true'
-    - id: 'step-7'
+    - id: 'step-8'
       name: 'Clean and download dependencies'
       uses: 'nick-fields/retry@v3'
       with:
         timeout_minutes: '60'
         max_attempts: '3'
         command: './gradlew "--stacktrace" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "--parallel" "-Pani.android.abis=x86_64"'
-    - id: 'step-8'
+    - id: 'step-9'
       name: 'Update Release Version Name'
       env:
         GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
@@ -130,7 +139,7 @@ jobs:
         CI_RELEASE_ID: '${{ needs.create-release.outputs.id }}'
         CI_TAG: '${{ steps.step-1.outputs.tag }}'
       run: './gradlew updateReleaseVersionNameFromGit "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "--parallel" "-Pani.android.abis=x86_64"'
-    - id: 'step-9'
+    - id: 'step-10'
       name: 'Compile Kotlin'
       run: './gradlew compileKotlin compileCommonMainKotlinMetadata compileDebugKotlinAndroid compileReleaseKotlinAndroid compileJvmMainKotlinMetadata compileKotlinDesktop compileKotlinMetadata "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "--parallel" "-Pani.android.abis=x86_64"'
   release_github-windows-2019:
@@ -157,29 +166,38 @@ jobs:
       continue-on-error: true
       run: 'rm local.properties'
     - id: 'step-4'
+      name: 'Get JBR (Windows)'
+      env:
+        RUNNER_TOOL_CACHE: '${{ runner.tool_cache }}'
+        JBR_URL: 'https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-windows-x64-b750.29.tar.gz'
+        JBR_CHECKSUM_URL: 'https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-windows-x64-b750.29.tar.gz.checksum'
+      shell: 'cmd'
+      run: 'python .github/workflows/download_jbr.py'
+    - id: 'step-5'
       name: 'Setup JBR 21 for other OS'
       uses: 'gmitch215/setup-java@6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d'
       with:
         java-version: '21'
-        distribution: 'jetbrains'
+        distribution: 'jdkfile'
+        jdkFile: '${{ steps.step-4.outputs.jbrLocation }}'
       env:
         GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
-    - id: 'step-5'
+    - id: 'step-6'
       name: 'Dump Local Properties'
       run: 'echo "jvm.toolchain.version=21" >> local.properties'
-    - id: 'step-6'
+    - id: 'step-7'
       name: 'Setup Gradle'
       uses: 'gradle/actions/setup-gradle@v3'
       with:
         cache-disabled: 'true'
-    - id: 'step-7'
+    - id: 'step-8'
       name: 'Clean and download dependencies'
       uses: 'nick-fields/retry@v3'
       with:
         timeout_minutes: '60'
         max_attempts: '3'
         command: './gradlew "--stacktrace" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=x86_64"'
-    - id: 'step-8'
+    - id: 'step-9'
       name: 'Update Release Version Name'
       env:
         GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
@@ -187,10 +205,10 @@ jobs:
         CI_RELEASE_ID: '${{ needs.create-release.outputs.id }}'
         CI_TAG: '${{ steps.step-1.outputs.tag }}'
       run: './gradlew updateReleaseVersionNameFromGit "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=x86_64"'
-    - id: 'step-9'
+    - id: 'step-10'
       name: 'Compile Kotlin'
       run: './gradlew compileKotlin compileCommonMainKotlinMetadata compileDebugKotlinAndroid compileReleaseKotlinAndroid compileJvmMainKotlinMetadata compileKotlinDesktop compileKotlinMetadata "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=x86_64"'
-    - id: 'step-10'
+    - id: 'step-11'
       name: 'Upload Desktop Installers'
       env:
         GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
@@ -204,7 +222,7 @@ jobs:
         AWS_REGION: '${{ secrets.AWS_REGION }}'
         AWS_BUCKET: '${{ secrets.AWS_BUCKET }}'
       run: './gradlew :ci-helper:uploadDesktopInstallers "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=x86_64"'
-    - id: 'step-11'
+    - id: 'step-12'
       name: 'Upload compose logs'
       uses: 'actions/upload-artifact@v4'
       with:
@@ -239,31 +257,70 @@ jobs:
       continue-on-error: true
       run: 'rm local.properties'
     - id: 'step-5'
-      name: 'Setup JBR 21 for other OS'
+      name: 'Resolve JBR location'
+      shell: 'bash'
+      run: |-
+        # Expand jbrLocationExpr
+        jbr_location_expr='${{ runner.tool_cache }}/jbrsdk_jcef-21.0.5-osx-x64-b631.8.tar.gz'
+        echo "jbrLocation=$jbr_location_expr" >> $GITHUB_OUTPUT
+    - id: 'step-6'
+      name: 'Get JBR 21 for macOS AArch64'
+      env:
+        jbrLocation: '${{ steps.step-5.outputs.jbrLocation }}'
+      shell: 'bash'
+      run: |-
+        jbr_location="$jbrLocation"
+        checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-osx-x64-b631.8.tar.gz.checksum"
+        checksum_file="checksum.tmp"
+        wget -q -O $checksum_file $checksum_url
+
+        expected_checksum=$(awk '{print $1}' $checksum_file)
+        file_checksum=""
+
+        if [ -f "$jbr_location" ]; then
+            file_checksum=$(shasum -a 512 "$jbr_location" | awk '{print $1}')
+        fi
+
+        if [ "$file_checksum" != "$expected_checksum" ]; then
+            wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-osx-x64-b631.8.tar.gz -O "$jbr_location"
+            file_checksum=$(shasum -a 512 "$jbr_location" | awk '{print $1}')
+        fi
+
+        if [ "$file_checksum" != "$expected_checksum" ]; then
+            echo "Checksum verification failed!" >&2
+            rm -f $checksum_file
+            exit 1
+        fi
+
+        rm -f $checksum_file
+        file "$jbr_location"
+    - id: 'step-7'
+      name: 'Setup JBR 21 for macOS '
       uses: 'gmitch215/setup-java@6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d'
       with:
         java-version: '21'
-        distribution: 'jetbrains'
+        distribution: 'jdkfile'
+        jdkFile: '${{ steps.step-5.outputs.jbrLocation }}'
       env:
         GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
-    - id: 'step-6'
+    - id: 'step-8'
       name: 'Dump Local Properties'
       run: 'echo "jvm.toolchain.version=21" >> local.properties'
-    - id: 'step-7'
+    - id: 'step-9'
       run: 'chmod -R 777 .'
-    - id: 'step-8'
+    - id: 'step-10'
       name: 'Setup Gradle'
       uses: 'gradle/actions/setup-gradle@v3'
       with:
         cache-disabled: 'true'
-    - id: 'step-9'
+    - id: 'step-11'
       name: 'Clean and download dependencies'
       uses: 'nick-fields/retry@v3'
       with:
         timeout_minutes: '60'
         max_attempts: '3'
         command: './gradlew "--stacktrace" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g"'
-    - id: 'step-10'
+    - id: 'step-12'
       name: 'Update Release Version Name'
       env:
         GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
@@ -271,7 +328,7 @@ jobs:
         CI_RELEASE_ID: '${{ needs.create-release.outputs.id }}'
         CI_TAG: '${{ steps.step-1.outputs.tag }}'
       run: './gradlew updateReleaseVersionNameFromGit "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g"'
-    - id: 'step-11'
+    - id: 'step-13'
       name: 'Prepare signing key'
       continue-on-error: true
       uses: 'timheuer/base64-to-file@v1.1'
@@ -280,78 +337,78 @@ jobs:
         fileDir: './'
         encodedString: '${{ secrets.SIGNING_RELEASE_STOREFILE }}'
       if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
-    - id: 'step-12'
+    - id: 'step-14'
       name: 'Compile Kotlin'
       run: './gradlew compileKotlin compileCommonMainKotlinMetadata compileDebugKotlinAndroid compileReleaseKotlinAndroid compileJvmMainKotlinMetadata compileKotlinDesktop compileKotlinMetadata "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g"'
-    - id: 'step-13'
+    - id: 'step-15'
       name: 'Build Android Debug APKs'
       run: './gradlew assembleDebug "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g"'
-    - id: 'step-14'
+    - id: 'step-16'
       name: 'Upload Android Debug APK arm64-v8a'
       uses: 'actions/upload-artifact@v4'
       with:
         name: 'ani-android-arm64-v8a-debug'
         path: 'app/android/build/outputs/apk/debug/android-arm64-v8a-debug.apk'
         overwrite: 'true'
-    - id: 'step-15'
+    - id: 'step-17'
       name: 'Upload Android Debug APK x86_64'
       uses: 'actions/upload-artifact@v4'
       with:
         name: 'ani-android-x86_64-debug'
         path: 'app/android/build/outputs/apk/debug/android-x86_64-debug.apk'
         overwrite: 'true'
-    - id: 'step-16'
+    - id: 'step-18'
       name: 'Upload Android Debug APK armeabi-v7a'
       uses: 'actions/upload-artifact@v4'
       with:
         name: 'ani-android-armeabi-v7a-debug'
         path: 'app/android/build/outputs/apk/debug/android-armeabi-v7a-debug.apk'
         overwrite: 'true'
-    - id: 'step-17'
+    - id: 'step-19'
       name: 'Upload Android Debug APK universal'
       uses: 'actions/upload-artifact@v4'
       with:
         name: 'ani-android-universal-debug'
         path: 'app/android/build/outputs/apk/debug/android-universal-debug.apk'
         overwrite: 'true'
-    - id: 'step-18'
+    - id: 'step-20'
       name: 'Build Android Release APKs'
       env:
-        signing_release_storeFileFromRoot: '${{ steps.step-11.outputs.filePath }}'
+        signing_release_storeFileFromRoot: '${{ steps.step-13.outputs.filePath }}'
         signing_release_storePassword: '${{ secrets.SIGNING_RELEASE_STOREPASSWORD }}'
         signing_release_keyAlias: '${{ secrets.SIGNING_RELEASE_KEYALIAS }}'
         signing_release_keyPassword: '${{ secrets.SIGNING_RELEASE_KEYPASSWORD }}'
       run: './gradlew assembleRelease "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g"'
       if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
-    - id: 'step-19'
+    - id: 'step-21'
       name: 'Upload Android Release APK arm64-v8a'
       uses: 'actions/upload-artifact@v4'
       with:
         name: 'ani-android-arm64-v8a-release'
         path: 'app/android/build/outputs/apk/release/android-arm64-v8a-release.apk'
         overwrite: 'true'
-    - id: 'step-20'
+    - id: 'step-22'
       name: 'Upload Android Release APK x86_64'
       uses: 'actions/upload-artifact@v4'
       with:
         name: 'ani-android-x86_64-release'
         path: 'app/android/build/outputs/apk/release/android-x86_64-release.apk'
         overwrite: 'true'
-    - id: 'step-21'
+    - id: 'step-23'
       name: 'Upload Android Release APK armeabi-v7a'
       uses: 'actions/upload-artifact@v4'
       with:
         name: 'ani-android-armeabi-v7a-release'
         path: 'app/android/build/outputs/apk/release/android-armeabi-v7a-release.apk'
         overwrite: 'true'
-    - id: 'step-22'
+    - id: 'step-24'
       name: 'Upload Android Release APK universal'
       uses: 'actions/upload-artifact@v4'
       with:
         name: 'ani-android-universal-release'
         path: 'app/android/build/outputs/apk/release/android-universal-release.apk'
         overwrite: 'true'
-    - id: 'step-23'
+    - id: 'step-25'
       name: 'Upload Android APK for Release'
       env:
         GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
@@ -365,19 +422,19 @@ jobs:
         AWS_REGION: '${{ secrets.AWS_REGION }}'
         AWS_BUCKET: '${{ secrets.AWS_BUCKET }}'
       run: './gradlew :ci-helper:uploadAndroidApk "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g"'
-    - id: 'step-24'
+    - id: 'step-26'
       name: 'Generate QR code for APK (GitHub)'
       uses: 'snow-actions/qrcode@v1.0.0'
       with:
         text: 'https://github.com/Him188/ani/releases/download/${{ steps.step-1.outputs.tag }}/ani-${{ steps.step-2.outputs.substring }}-universal.apk'
         path: 'apk-qrcode-github.png'
-    - id: 'step-25'
+    - id: 'step-27'
       name: 'Generate QR code for APK (Cloudflare)'
       uses: 'snow-actions/qrcode@v1.0.0'
       with:
         text: 'https://d.myani.org/${{ steps.step-1.outputs.tag }}/ani-${{ steps.step-2.outputs.substring }}-universal.apk'
         path: 'apk-qrcode-cloudflare.png'
-    - id: 'step-26'
+    - id: 'step-28'
       name: 'Upload QR code'
       env:
         GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
@@ -391,7 +448,7 @@ jobs:
         AWS_REGION: '${{ secrets.AWS_REGION }}'
         AWS_BUCKET: '${{ secrets.AWS_BUCKET }}'
       run: './gradlew :ci-helper:uploadAndroidApkQR "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g"'
-    - id: 'step-27'
+    - id: 'step-29'
       name: 'Upload compose logs'
       uses: 'actions/upload-artifact@v4'
       with:
@@ -426,14 +483,16 @@ jobs:
       run: 'rm local.properties'
     - id: 'step-4'
       name: 'Resolve JBR location'
+      shell: 'bash'
       run: |-
         # Expand jbrLocationExpr
-        jbr_location_expr=$(eval echo ${{ runner.tool_cache }}/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz)
+        jbr_location_expr='${{ runner.tool_cache }}/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz'
         echo "jbrLocation=$jbr_location_expr" >> $GITHUB_OUTPUT
     - id: 'step-5'
       name: 'Get JBR 21 for macOS AArch64'
       env:
         jbrLocation: '${{ steps.step-4.outputs.jbrLocation }}'
+      shell: 'bash'
       run: |-
         jbr_location="$jbrLocation"
         checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz.checksum"
@@ -461,7 +520,7 @@ jobs:
         rm -f $checksum_file
         file "$jbr_location"
     - id: 'step-6'
-      name: 'Setup JBR 21 for macOS AArch64'
+      name: 'Setup JBR 21 for macOS '
       uses: 'gmitch215/setup-java@6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d'
       with:
         java-version: '21'
