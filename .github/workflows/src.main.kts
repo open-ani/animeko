@@ -1155,14 +1155,16 @@ class WithMatrix(
             )
         }
         if (matrix.runAndroidInstrumentedTests && matrix.isUnix) {
-            run(
-                name = "Enable KVM",
-                command = """
+            if (matrix.isUbuntu) {
+                run(
+                    name = "Enable KVM",
+                    command = """
                   echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
                   sudo udevadm control --reload-rules
                   sudo udevadm trigger --name-match=kvm
                 """.trimIndent(),
-            )
+                )
+            }
             for (arch in listOf(
                 AndroidEmulatorRunner.Arch.Arm64V8a,
                 AndroidEmulatorRunner.Arch.X8664, // test loading anitorrent and other native libraries
