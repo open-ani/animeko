@@ -1167,13 +1167,15 @@ class WithMatrix(
                 AndroidEmulatorRunner.Arch.Arm64V8a,
                 AndroidEmulatorRunner.Arch.X8664, // test loading anitorrent and other native libraries
             )) {
-                for (apiLevel in listOf(30, 35)) { // 30 is min, 35 is our targetSdk
+                // 30 is min for instrumented test (because we have spaces in func names), 
+                // 35 is our targetSdk
+                for (apiLevel in listOf(30, 35)) {
                     uses(
                         name = "Android Instrumented Test for API $apiLevel",
                         action = AndroidEmulatorRunner(
                             apiLevel = apiLevel,
                             arch = arch,
-                            script = "./gradlew connectedTest " + matrix.gradleArgs + " -",
+                            script = "./gradlew connectedTest " + matrix.gradleArgs + " -Pandroid.min.sdk=30",
                         ),
                     )
                 }
