@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -117,7 +117,7 @@ class SubjectAiringInfoTest {
     }
 
     @Test
-    fun `one episode but has invalid date - when subject is known broadcast for 10+ years`() {
+    fun `one episode but has invalid date - when subject is known broadcast for 10 more years`() {
         val eps = listOf(
             ep(1, PackedDate.Invalid),
         )

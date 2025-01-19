@@ -367,7 +367,7 @@ class DefaultMediaSelectorTest : AbstractDefaultMediaSelectorTest() {
     ///////////////////////////////////////////////////////////////////////////
 
     @Test
-    fun `always show cached even if preferences don't match`() = runTest {
+    fun `always show cached even if preferences dont match`() = runTest {
         val target: DefaultMedia
         addMedia(
             media(alliance = "字幕组1", subtitleLanguages = listOf("CHS")),
