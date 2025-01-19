@@ -370,19 +370,24 @@ val buildMatrixInstances = listOf(
         gradleHeap = "4g",
         gradleParallel = true,
     ),
-//    MatrixInstance(
-//        runner = Runner.GithubUbuntu2004,
-//        name = "Ubuntu x86_64 (Compile only)",
-//        uploadApk = false,
-//        composeResourceTriple = "linux-x64",
-//        runTests = false,
-//        uploadDesktopInstallers = false,
-//        extraGradleArgs = listOf(),
-//    ),
+    MatrixInstance(
+        runner = Runner.GithubUbuntu2004,
+        name = "Ubuntu x86_64 (Android Tests)",
+        uploadApk = false,
+        runAndroidInstrumentedTests = true,
+        composeResourceTriple = "linux-x64",
+        runTests = false,
+        uploadDesktopInstallers = false,
+        extraGradleArgs = listOf(
+            "-P$ANI_ANDROID_ABIS=x86_64",
+        ),
+        buildAllAndroidAbis = false,
+        gradleHeap = "4g",
+    ),
     MatrixInstance(
         runner = Runner.GithubMacOS13,
         uploadApk = true, // all ABIs
-        runAndroidInstrumentedTests = true,
+        runAndroidInstrumentedTests = false,
         composeResourceTriple = "macos-x64",
         uploadDesktopInstallers = true,
         extraGradleArgs = listOf(),
@@ -425,23 +430,27 @@ fun getBuildJobBody(matrix: MatrixInstance): JobBuilder<BuildJobOutputs>.() -> U
             name = "Update dev version name",
             tasks = ["updateDevVersionNameFromGit"],
         )
+        if (matrix.isUbuntu) {
+            compileAndAssemble()
+            androidConnectedTests()
+        } else {
+            val prepareSigningKey = prepareSigningKey()
+            compileAndAssemble()
+            prepareSigningKey?.let {
+                buildAndroidApk(it)
+            }
+            gradleCheck()
+            androidConnectedTests()
+            val packageOutputs = packageDesktopAndUpload()
 
-        val prepareSigningKey = prepareSigningKey()
-        compileAndAssemble()
-        prepareSigningKey?.let {
-            buildAndroidApk(it)
+            packageOutputs.macosAarch64DmgOutcome?.let {
+                jobOutputs.macosAarch64DmgSuccess = it.eq(AbstractResult.Status.Success)
+            }
+
+            packageOutputs.windowsX64PortableOutcome?.let {
+                jobOutputs.windowsX64PortableSuccess = it.eq(AbstractResult.Status.Success)
+            }
         }
-        gradleCheck()
-        val packageOutputs = packageDesktopAndUpload()
-
-        packageOutputs.macosAarch64DmgOutcome?.let {
-            jobOutputs.macosAarch64DmgSuccess = it.eq(AbstractResult.Status.Success)
-        }
-
-        packageOutputs.windowsX64PortableOutcome?.let {
-            jobOutputs.windowsX64PortableSuccess = it.eq(AbstractResult.Status.Success)
-        }
-
         cleanupTempFiles()
     }
 }
@@ -964,10 +973,9 @@ class WithMatrix(
             }
 
             OS.WINDOWS -> {
-                // For Windows + Ubuntu
                 val jbrLocationExpr = downloadJbrWindows("jbrsdk_jcef-21.0.5-windows-x64-b750.29.tar.gz")
                 uses(
-                    name = "Setup JBR 21 for other OS",
+                    name = "Setup JBR 21 for Windows",
                     action = SetupJava_Untyped(
                         distribution_Untyped = "jdkfile",
                         javaVersion_Untyped = "21",
@@ -977,7 +985,18 @@ class WithMatrix(
                 )
             }
 
-            OS.UBUNTU -> error("Not supported")
+            OS.UBUNTU ->{
+                val jbrLocationExpr = downloadJbrWindows("jbrsdk_jcef-21.0.5-linux-x64-b750.29.tar.gz")
+                uses(
+                    name = "Setup JBR 21 for Ubuntu",
+                    action = SetupJava_Untyped(
+                        distribution_Untyped = "jdkfile",
+                        javaVersion_Untyped = "21",
+                        jdkFile_Untyped = expr { jbrLocationExpr },
+                    ),
+                    env = mapOf("GITHUB_TOKEN" to expr { secrets.GITHUB_TOKEN }),
+                )
+            }
         }
 
         run(
@@ -1156,6 +1175,9 @@ class WithMatrix(
                 ),
             )
         }
+    }
+    
+    fun JobBuilder<*>.androidConnectedTests() {
         if (matrix.runAndroidInstrumentedTests && matrix.isUnix) {
             if (matrix.isUbuntu) {
                 run(
@@ -1170,7 +1192,7 @@ class WithMatrix(
             for (arch in listOfNotNull(
                 // test loading anitorrent and other native libraries
                 if (matrix.arch == Arch.AARCH64) AndroidEmulatorRunner.Arch.Arm64V8a else null,
-                if (matrix.arch == Arch.X64) AndroidEmulatorRunner.Arch.X8664 else null, 
+                if (matrix.arch == Arch.X64) AndroidEmulatorRunner.Arch.X8664 else null,
             )) {
                 // 30 is min for instrumented test (because we have spaces in func names), 
                 // 35 is our targetSdk

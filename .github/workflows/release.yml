@@ -108,7 +108,7 @@ jobs:
       shell: 'cmd'
       run: 'python .github/workflows/download_jbr.py'
     - id: 'step-5'
-      name: 'Setup JBR 21 for other OS'
+      name: 'Setup JBR 21 for Windows'
       uses: 'gmitch215/setup-java@6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d'
       with:
         java-version: '21'
@@ -174,7 +174,7 @@ jobs:
       shell: 'cmd'
       run: 'python .github/workflows/download_jbr.py'
     - id: 'step-5'
-      name: 'Setup JBR 21 for other OS'
+      name: 'Setup JBR 21 for Windows'
       uses: 'gmitch215/setup-java@6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d'
       with:
         java-version: '21'

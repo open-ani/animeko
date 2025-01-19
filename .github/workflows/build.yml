@@ -52,7 +52,7 @@ jobs:
       shell: 'cmd'
       run: 'python .github/workflows/download_jbr.py'
     - id: 'step-3'
-      name: 'Setup JBR 21 for other OS'
+      name: 'Setup JBR 21 for Windows'
       uses: 'gmitch215/setup-java@6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d'
       with:
         java-version: '21'
@@ -113,7 +113,7 @@ jobs:
       shell: 'cmd'
       run: 'python .github/workflows/download_jbr.py'
     - id: 'step-3'
-      name: 'Setup JBR 21 for other OS'
+      name: 'Setup JBR 21 for Windows'
       uses: 'gmitch215/setup-java@6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d'
       with:
         java-version: '21'
@@ -167,6 +167,80 @@ jobs:
         path: 'app/desktop/build/compose/binaries/main-release/app'
         if-no-files-found: 'error'
         overwrite: 'true'
+  build_github-ubuntu-2004:
+    name: 'Build (Ubuntu x86_64 (Android Tests))'
+    runs-on:
+    - 'ubuntu-20.04'
+    permissions:
+      actions: 'write'
+    steps:
+    - id: 'step-0'
+      uses: 'actions/checkout@v4'
+      with:
+        submodules: 'recursive'
+    - id: 'step-1'
+      continue-on-error: true
+      run: 'rm local.properties'
+    - id: 'step-2'
+      name: 'Get JBR (Windows)'
+      env:
+        RUNNER_TOOL_CACHE: '${{ runner.tool_cache }}'
+        JBR_URL: 'https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-linux-x64-b750.29.tar.gz'
+        JBR_CHECKSUM_URL: 'https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-linux-x64-b750.29.tar.gz.checksum'
+      shell: 'cmd'
+      run: 'python .github/workflows/download_jbr.py'
+    - id: 'step-3'
+      name: 'Setup JBR 21 for Ubuntu'
+      uses: 'gmitch215/setup-java@6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d'
+      with:
+        java-version: '21'
+        distribution: 'jdkfile'
+        jdkFile: '${{ steps.step-2.outputs.jbrLocation }}'
+      env:
+        GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
+    - id: 'step-4'
+      name: 'Dump Local Properties'
+      run: 'echo "jvm.toolchain.version=21" >> local.properties'
+    - id: 'step-5'
+      run: 'chmod -R 777 .'
+    - id: 'step-6'
+      name: 'Setup Gradle'
+      uses: 'gradle/actions/setup-gradle@v3'
+      with:
+        cache-disabled: 'true'
+    - id: 'step-7'
+      name: 'Clean and download dependencies'
+      uses: 'nick-fields/retry@v3'
+      with:
+        timeout_minutes: '60'
+        max_attempts: '3'
+        command: './gradlew "--stacktrace" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.android.abis=x86_64"'
+    - id: 'step-8'
+      name: 'Update dev version name'
+      run: './gradlew updateDevVersionNameFromGit "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.android.abis=x86_64"'
+    - id: 'step-9'
+      name: 'Compile Kotlin'
+      run: './gradlew compileKotlin compileCommonMainKotlinMetadata compileDebugKotlinAndroid compileReleaseKotlinAndroid compileJvmMainKotlinMetadata compileKotlinDesktop compileKotlinMetadata "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.android.abis=x86_64"'
+    - id: 'step-10'
+      name: 'Enable KVM'
+      run: |-
+        echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+        sudo udevadm control --reload-rules
+        sudo udevadm trigger --name-match=kvm
+    - id: 'step-11'
+      name: 'Android Instrumented Test (api=30, arch=x86_64)'
+      uses: 'reactivecircus/android-emulator-runner@v2'
+      with:
+        api-level: '30'
+        arch: 'x86_64'
+        script: './gradlew connectedCheck "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.android.abis=x86_64" -Pandroid.min.sdk=30'
+    - id: 'step-12'
+      name: 'Android Instrumented Test (api=35, arch=x86_64)'
+      uses: 'reactivecircus/android-emulator-runner@v2'
+      with:
+        api-level: '35'
+        arch: 'x86_64'
+        script: './gradlew connectedCheck "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.android.abis=x86_64" -Pandroid.min.sdk=30'
   build_github-macos-13:
     name: 'Build (macOS 13 x86_64 (GitHub))'
     runs-on:
@@ -339,20 +413,6 @@ jobs:
         timeout_minutes: '60'
         max_attempts: '2'
         command: './gradlew check "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g"'
-    - id: 'step-24'
-      name: 'Android Instrumented Test (api=30, arch=x86_64)'
-      uses: 'reactivecircus/android-emulator-runner@v2'
-      with:
-        api-level: '30'
-        arch: 'x86_64'
-        script: './gradlew connectedCheck "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" -Pandroid.min.sdk=30'
-    - id: 'step-25'
-      name: 'Android Instrumented Test (api=35, arch=x86_64)'
-      uses: 'reactivecircus/android-emulator-runner@v2'
-      with:
-        api-level: '35'
-        arch: 'x86_64'
-        script: './gradlew connectedCheck "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" -Pandroid.min.sdk=30'
   build_self-hosted-macos-15:
     name: 'Build (macOS 15 AArch64 (Self-Hosted))'
     runs-on:
