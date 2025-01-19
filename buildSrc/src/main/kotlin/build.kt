@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -258,15 +258,16 @@ fun Project.configureKotlinTestSettings() {
 
                         sourceSet.name == "commonTest" -> {
                             sourceSet.dependencies {
-                                implementation(kotlin("test"))?.because(b)
                                 implementation(kotlin("test-annotations-common"))?.because(b)
                             }
                         }
 
-                        target?.platformType == KotlinPlatformType.androidJvm -> {
-                            // Android uses JUnit4
+                        target?.platformType == KotlinPlatformType.androidJvm 
+                                || sourceSet.name == "androidInstrumentedTest"
+                                || sourceSet.name == "androidUnitTest" -> {
                             sourceSet.dependencies {
-                                implementation("junit:junit:4.13")?.because(b)
+                                implementation(kotlin("test-junit5"))?.because(b)
+//                                implementation("junit:junit:4.13")?.because(b)
                             }
                         }
                     }
