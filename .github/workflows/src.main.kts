@@ -930,7 +930,7 @@ class WithMatrix(
             return jbrLocationExpr
         }
 
-        fun downloadJbrWindows(
+        fun downloadJbrUsingPython(
             filename: String,
         ): String {
             // These URLs should remain the same; only the shell commands change.
@@ -947,7 +947,7 @@ class WithMatrix(
                     "JBR_URL" to jbrUrl,
                     "JBR_CHECKSUM_URL" to jbrChecksumUrl,
                 ),
-                shell = Shell.Cmd,
+                shell = if (matrix.isWindows) Shell.Cmd else Shell.Bash,
             )
 
             return step.outputs["jbrLocation"]
@@ -973,7 +973,7 @@ class WithMatrix(
             }
 
             OS.WINDOWS -> {
-                val jbrLocationExpr = downloadJbrWindows("jbrsdk_jcef-21.0.5-windows-x64-b750.29.tar.gz")
+                val jbrLocationExpr = downloadJbrUsingPython("jbrsdk_jcef-21.0.5-windows-x64-b750.29.tar.gz")
                 uses(
                     name = "Setup JBR 21 for Windows",
                     action = SetupJava_Untyped(
@@ -986,7 +986,7 @@ class WithMatrix(
             }
 
             OS.UBUNTU ->{
-                val jbrLocationExpr = downloadJbrWindows("jbrsdk_jcef-21.0.5-linux-x64-b750.29.tar.gz")
+                val jbrLocationExpr = downloadJbrUsingPython("jbrsdk_jcef-21.0.5-linux-x64-b750.29.tar.gz")
                 uses(
                     name = "Setup JBR 21 for Ubuntu",
                     action = SetupJava_Untyped(
