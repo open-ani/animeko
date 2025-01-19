@@ -11,17 +11,12 @@ package me.him188.ani.utils.coroutines
 
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.runningFold
-import kotlinx.coroutines.launch
 import kotlin.coroutines.CoroutineContext
 
 
@@ -170,17 +165,3 @@ fun <T1, T2, T3, R> Flow<T1>.combine(
     flow2: Flow<T3>,
     transform: suspend (a: T1, b: T2, c: T3) -> R
 ): Flow<R> = combine(this, flow1, flow2, transform)
-
-
-fun <T, R> MutableStateFlow<T>.mapAsStateFlow(
-    coroutineContext: CoroutineContext = Dispatchers.Default,
-    block: (T) -> R
-): StateFlow<R> {
-    val result = MutableStateFlow(block(this.value))
-    CoroutineScope(coroutineContext).launch {
-        this@mapAsStateFlow.collectLatest { value ->
-            result.value = block(value)
-        }
-    }
-    return result
-}
