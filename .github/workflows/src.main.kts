@@ -1201,7 +1201,7 @@ class WithMatrix(
                         action = AndroidEmulatorRunner(
                             apiLevel = apiLevel,
                             arch = arch,
-                            script = "./gradlew connectedCheck " + matrix.gradleArgs + " -Pandroid.min.sdk=30",
+                            script = "./gradlew connectedDebugAndroidTest " + matrix.gradleArgs + " -Pandroid.min.sdk=30",
                         ),
                     )
                 }

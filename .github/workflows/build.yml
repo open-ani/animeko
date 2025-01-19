@@ -233,14 +233,14 @@ jobs:
       with:
         api-level: '30'
         arch: 'x86_64'
-        script: './gradlew connectedCheck "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.android.abis=x86_64" -Pandroid.min.sdk=30'
+        script: './gradlew connectedDebugAndroidTest "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.android.abis=x86_64" -Pandroid.min.sdk=30'
     - id: 'step-12'
       name: 'Android Instrumented Test (api=35, arch=x86_64)'
       uses: 'reactivecircus/android-emulator-runner@v2'
       with:
         api-level: '35'
         arch: 'x86_64'
-        script: './gradlew connectedCheck "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.android.abis=x86_64" -Pandroid.min.sdk=30'
+        script: './gradlew connectedDebugAndroidTest "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.android.abis=x86_64" -Pandroid.min.sdk=30'
   build_github-macos-13:
     name: 'Build (macOS 13 x86_64 (GitHub))'
     runs-on:
@@ -515,14 +515,14 @@ jobs:
       with:
         api-level: '30'
         arch: 'arm64-v8a'
-        script: './gradlew connectedCheck "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=arm64-v8a" -Pandroid.min.sdk=30'
+        script: './gradlew connectedDebugAndroidTest "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=arm64-v8a" -Pandroid.min.sdk=30'
     - id: 'step-13'
       name: 'Android Instrumented Test (api=35, arch=arm64-v8a)'
       uses: 'reactivecircus/android-emulator-runner@v2'
       with:
         api-level: '35'
         arch: 'arm64-v8a'
-        script: './gradlew connectedCheck "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=arm64-v8a" -Pandroid.min.sdk=30'
+        script: './gradlew connectedDebugAndroidTest "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=arm64-v8a" -Pandroid.min.sdk=30'
     - id: 'step-14'
       name: 'Package Desktop'
       run: './gradlew packageReleaseDistributionForCurrentOS "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=arm64-v8a"'
