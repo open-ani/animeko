@@ -262,13 +262,10 @@ fun Project.configureKotlinTestSettings() {
                             }
                         }
 
-                        target?.platformType == KotlinPlatformType.androidJvm 
+                        target?.platformType == KotlinPlatformType.androidJvm
                                 || sourceSet.name == "androidInstrumentedTest"
                                 || sourceSet.name == "androidUnitTest" -> {
-                            sourceSet.dependencies {
-                                implementation(kotlin("test-junit5"))?.because(b)
-//                                implementation("junit:junit:4.13")?.because(b)
-                            }
+                            sourceSet.configureJvmTest(b)
                         }
                     }
                 }

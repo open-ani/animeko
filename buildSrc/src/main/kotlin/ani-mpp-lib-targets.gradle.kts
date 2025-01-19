@@ -187,6 +187,12 @@ if (android != null) {
             // we use plugin android-junit5 to configure this
 //            testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         }
+        packaging { 
+            resources {
+                pickFirsts.add("META-INF/LICENSE.md")
+                pickFirsts.add("META-INF/LICENSE-notice.md")
+            }
+        }
 //        flavorDimensions.add("api")
 //        productFlavors {
 //            create("minApi30") {
@@ -194,7 +200,7 @@ if (android != null) {
 //                minSdk = 30
 //                isDefault = false
 //            }
-//            create("minApi26") {
+//            create("default") {
 //                dimension = "api"
 //                isDefault = true
 //            }
