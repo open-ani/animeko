@@ -228,3 +228,7 @@ if (android != null) {
         }
     }
 }
+
+if (android != null) {
+    apply(plugin = "de.mannodermaus.android-junit5")
+}
