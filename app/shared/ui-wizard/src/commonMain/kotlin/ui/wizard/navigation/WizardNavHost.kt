@@ -35,6 +35,21 @@ import me.him188.ani.app.ui.wizard.WizardDefaults
 fun WizardNavHost(
     controller: WizardController,
     modifier: Modifier = Modifier,
+    indicatorBar: @Composable (WizardState) -> Unit = {
+        WizardDefaults.StepTopAppBar(
+            currentStep = it.currentStepIndex,
+            totalStep = it.totalStepIndex,
+        ) {
+            it.currentStep.stepName.invoke()
+        }
+    },
+    controlBar: @Composable (WizardState) -> Unit = {
+        WizardDefaults.StepControlBar(
+            forwardAction = { it.currentStep.forwardButton.invoke() },
+            backwardAction = { it.currentStep.backwardButton.invoke() },
+            tertiaryAction = { it.currentStep.skipButton.invoke() },
+        )
+    },
     motionScheme: NavigationMotionScheme = WizardDefaults.motionScheme,
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
     content: WizardNavHostScope.() -> Unit,
@@ -51,21 +66,8 @@ fun WizardNavHost(
     val wizardState = controller.state.collectAsState(null).value ?: return
 
     Scaffold(
-        topBar = {
-            WizardDefaults.StepTopAppBar(
-                currentStep = wizardState.currentStepIndex,
-                totalStep = wizardState.totalStepIndex,
-            ) {
-                wizardState.currentStep.stepName.invoke()
-            }
-        },
-        bottomBar = {
-            WizardDefaults.StepControlBar(
-                forwardAction = { wizardState.currentStep.forwardButton.invoke() },
-                backwardAction = { wizardState.currentStep.backwardButton.invoke() },
-                tertiaryAction = { wizardState.currentStep.skipButton.invoke() },
-            )
-        },
+        topBar = { indicatorBar(wizardState) },
+        bottomBar = { controlBar(wizardState) },
         modifier = modifier,
         contentWindowInsets = windowInsets,
     ) { contentPadding ->
