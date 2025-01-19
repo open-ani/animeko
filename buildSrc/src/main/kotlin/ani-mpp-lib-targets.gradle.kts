@@ -69,7 +69,15 @@ configure<KotlinMultiplatformExtension> {
                 }
             }
         }
-
+        
+        // This won't work (KT 2.1.0)
+//        sourceSets {
+//            val commonAndroidTest = create("commonAndroidTest") {
+//                dependsOn(getByName("jvmTest"))
+//            }
+//            getByName("androidInstrumentedTest").dependsOn(commonAndroidTest)
+//            getByName("androidUnitTest").dependsOn(commonAndroidTest)
+//        }
     } else {
         jvm()
 
