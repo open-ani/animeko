@@ -200,7 +200,6 @@ class MatrixInstance(
         }
 
         add(quote("--scan"))
-        add(quote("--no-configuration-cache"))
         add(quote("-Porg.gradle.daemon.idletimeout=60000"))
         add(quote("-Pkotlin.native.ignoreDisabledTargets=true"))
         add(quote("-Dfile.encoding=UTF-8"))
@@ -747,7 +746,7 @@ workflow(
 
             runGradle(
                 name = "Update Release Version Name",
-                tasks = ["updateReleaseVersionNameFromGit"],
+                tasks = ["updateReleaseVersionNameFromGit", "\"--no-configuration-cache\""],
                 env = mapOf(
                     "GITHUB_TOKEN" to expr { secrets.GITHUB_TOKEN },
                     "GITHUB_REPOSITORY" to expr { secrets.GITHUB_REPOSITORY },
@@ -1330,7 +1329,7 @@ class WithMatrix(
             if (matrix.uploadApk) {
                 runGradle(
                     name = "Upload Android APK for Release",
-                    tasks = [":ci-helper:uploadAndroidApk"],
+                    tasks = [":ci-helper:uploadAndroidApk", "\"--no-configuration-cache\""],
                     env = ciHelperSecrets,
                 )
             }
@@ -1357,7 +1356,7 @@ class WithMatrix(
                 runGradle(
                     name = "Upload QR code",
                     `if` = condition,
-                    tasks = [":ci-helper:uploadAndroidApkQR"],
+                    tasks = [":ci-helper:uploadAndroidApkQR", "\"--no-configuration-cache\""],
                     env = ciHelperSecrets,
                 )
             }
@@ -1367,7 +1366,7 @@ class WithMatrix(
             if (matrix.uploadDesktopInstallers and (!matrix.isMacOSX64)) {
                 runGradle(
                     name = "Upload Desktop Installers",
-                    tasks = [":ci-helper:uploadDesktopInstallers"],
+                    tasks = [":ci-helper:uploadDesktopInstallers", "\"--no-configuration-cache\""],
                     env = ciHelperSecrets,
                 )
             }
