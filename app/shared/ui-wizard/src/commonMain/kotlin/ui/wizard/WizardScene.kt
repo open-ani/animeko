@@ -9,6 +9,11 @@
 
 package me.him188.ani.app.ui.wizard
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideIn
+import androidx.compose.animation.slideOut
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,9 +35,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
+import me.him188.ani.app.ui.foundation.theme.NavigationMotionScheme
 import me.him188.ani.app.ui.wizard.navigation.WizardController
 
 @Composable
@@ -45,6 +52,33 @@ fun WizardScene(
 
 
 object WizardDefaults {
+
+    val motionScheme = kotlin.run {
+        val slideEnter = 350
+        val fadeEnter = 262
+        val slideExit = 200
+        val fadeExit = 150
+
+        NavigationMotionScheme(
+            enterTransition = fadeIn(animationSpec = tween(fadeEnter, slideEnter - fadeEnter)) +
+                    slideIn(tween(slideEnter)) {
+                        IntOffset((it.width * 0.15).toInt(), 0)
+                    },
+            exitTransition = fadeOut(animationSpec = tween(fadeExit, slideExit - fadeExit)) +
+                    slideOut(tween(slideExit)) {
+                        IntOffset(-(it.width * 0.15).toInt(), 0)
+                    },
+            popEnterTransition = fadeIn(animationSpec = tween(fadeEnter, slideEnter - fadeEnter)) +
+                    slideIn(tween(slideEnter)) {
+                        IntOffset(-(it.width * 0.15).toInt(), 0)
+                    },
+            popExitTransition = fadeOut(animationSpec = tween(fadeExit, slideExit - fadeExit)) +
+                    slideOut(tween(slideExit)) {
+                        IntOffset((it.width * 0.15).toInt(), 0)
+                    },
+        )
+    }
+    
     @Composable
     fun StepTopAppBar(
         currentStep: Int,
