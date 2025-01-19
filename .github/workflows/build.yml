@@ -339,6 +339,40 @@ jobs:
         timeout_minutes: '60'
         max_attempts: '2'
         command: './gradlew check "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g"'
+    - id: 'step-24'
+      name: 'Enable KVM'
+      run: |-
+        echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+        sudo udevadm control --reload-rules
+        sudo udevadm trigger --name-match=kvm
+    - id: 'step-25'
+      name: 'Android Instrumented Test for API 30'
+      uses: 'reactivecircus/android-emulator-runner@v2'
+      with:
+        api-level: '30'
+        arch: 'arm64-v8a'
+        script: './gradlew connectedTest "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" -'
+    - id: 'step-26'
+      name: 'Android Instrumented Test for API 35'
+      uses: 'reactivecircus/android-emulator-runner@v2'
+      with:
+        api-level: '35'
+        arch: 'arm64-v8a'
+        script: './gradlew connectedTest "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" -'
+    - id: 'step-27'
+      name: 'Android Instrumented Test for API 30'
+      uses: 'reactivecircus/android-emulator-runner@v2'
+      with:
+        api-level: '30'
+        arch: 'x86_64'
+        script: './gradlew connectedTest "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" -'
+    - id: 'step-28'
+      name: 'Android Instrumented Test for API 35'
+      uses: 'reactivecircus/android-emulator-runner@v2'
+      with:
+        api-level: '35'
+        arch: 'x86_64'
+        script: './gradlew connectedTest "--scan" "--no-configuration-cache" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" -'
   build_self-hosted-macos-15:
     name: 'Build (macOS 15 AArch64 (Self-Hosted))'
     runs-on:

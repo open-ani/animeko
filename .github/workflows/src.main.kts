@@ -28,6 +28,7 @@
 @file:DependsOn("timheuer:base64-to-file:v1.1")
 @file:DependsOn("actions:upload-artifact:v4")
 @file:DependsOn("actions:download-artifact:v4")
+@file:DependsOn("reactivecircus:android-emulator-runner:v2")
 
 // Release
 @file:DependsOn("dawidd6:action-get-tag:v1")
@@ -55,6 +56,7 @@ import io.github.typesafegithub.workflows.actions.dawidd6.ActionGetTag_Untyped
 import io.github.typesafegithub.workflows.actions.gmitch215.SetupJava_Untyped
 import io.github.typesafegithub.workflows.actions.gradle.ActionsSetupGradle
 import io.github.typesafegithub.workflows.actions.nickfields.Retry_Untyped
+import io.github.typesafegithub.workflows.actions.reactivecircus.AndroidEmulatorRunner
 import io.github.typesafegithub.workflows.actions.snowactions.Qrcode_Untyped
 import io.github.typesafegithub.workflows.actions.softprops.ActionGhRelease
 import io.github.typesafegithub.workflows.actions.timheuer.Base64ToFile_Untyped
@@ -155,6 +157,7 @@ class MatrixInstance(
      * 有一台机器是 true 就行
      */
     val uploadApk: Boolean,
+    val runAndroidInstrumentedTests: Boolean = uploadApk,
     /**
      * Compose for Desktop 的 resource 标识符, e.g. `windows-x64`
      */
@@ -346,26 +349,26 @@ val buildMatrixInstances = listOf(
         runner = Runner.SelfHostedWindows10,
         uploadApk = false,
         composeResourceTriple = "windows-x64",
-        gradleHeap = "6g",
-        kotlinCompilerHeap = "6g",
-        uploadDesktopInstallers = false, // 只有 win server 2019 构建的包才能正常使用 anitorrent
+        uploadDesktopInstallers = false,
         extraGradleArgs = listOf(
             "-P$ANI_ANDROID_ABIS=x86_64",
         ),
-        buildAllAndroidAbis = false,
+        buildAllAndroidAbis = false, // 只有 win server 2019 构建的包才能正常使用 anitorrent
+        gradleHeap = "6g",
+        kotlinCompilerHeap = "6g",
     ),
     MatrixInstance(
         runner = Runner.GithubWindowsServer2019,
         name = "Windows Server 2019 x86_64",
         uploadApk = false,
         composeResourceTriple = "windows-x64",
-        gradleHeap = "4g",
-        gradleParallel = true,
         uploadDesktopInstallers = true,
         extraGradleArgs = listOf(
             "-P$ANI_ANDROID_ABIS=x86_64",
         ),
         buildAllAndroidAbis = false,
+        gradleHeap = "4g",
+        gradleParallel = true,
     ),
 //    MatrixInstance(
 //        runner = Runner.GithubUbuntu2004,
@@ -380,11 +383,11 @@ val buildMatrixInstances = listOf(
         runner = Runner.GithubMacOS13,
         uploadApk = true, // all ABIs
         composeResourceTriple = "macos-x64",
-        buildIosFramework = false,
-        gradleHeap = "4g",
         uploadDesktopInstallers = true,
         extraGradleArgs = listOf(),
+        buildIosFramework = false,
         buildAllAndroidAbis = true,
+        gradleHeap = "4g",
     ),
     MatrixInstance(
         runner = Runner.SelfHostedMacOS15,
@@ -394,10 +397,10 @@ val buildMatrixInstances = listOf(
         extraGradleArgs = listOf(
             "-P$ANI_ANDROID_ABIS=arm64-v8a",
         ),
+        buildAllAndroidAbis = false,
         gradleHeap = "6g",
         kotlinCompilerHeap = "4g",
         gradleParallel = true,
-        buildAllAndroidAbis = false,
     ),
 )
 
@@ -845,7 +848,7 @@ class WithMatrix(
             )
         }
     }
-    
+
     fun JobBuilder<*>.deleteLocalProperties() {
         run(
             command = shell($$"""rm local.properties"""),
@@ -862,7 +865,7 @@ class WithMatrix(
             val jbrChecksumUrl = "https://cache-redirector.jetbrains.com/intellij-jbr/$filename.checksum"
 
             val jbrFilename = jbrUrl.substringAfterLast('/')
-            
+
             val jbrLocationExpr = run(
                 name = "Resolve JBR location",
                 command = shell(
@@ -912,7 +915,7 @@ class WithMatrix(
                 ),
                 shell = Shell.Bash,
             )
-            
+
             return jbrLocationExpr
         }
 
@@ -946,7 +949,7 @@ class WithMatrix(
                 } else {
                     downloadJbrUnix("jbrsdk_jcef-21.0.5-osx-x64-b631.8.tar.gz")
                 }
-                
+
                 uses(
                     name = "Setup JBR 21 for macOS ",
                     action = SetupJava_Untyped(
@@ -1010,7 +1013,7 @@ class WithMatrix(
 
         run(
             command = shell($$"""cat local.properties"""),
-            shell = Shell.Bash
+            shell = Shell.Bash,
         )
     }
 
@@ -1150,6 +1153,31 @@ class WithMatrix(
                     command_Untyped = "./gradlew check " + matrix.gradleArgs,
                 ),
             )
+        }
+        if (matrix.runAndroidInstrumentedTests && matrix.isUnix) {
+            run(
+                name = "Enable KVM",
+                command = """
+                  echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+                  sudo udevadm control --reload-rules
+                  sudo udevadm trigger --name-match=kvm
+                """.trimIndent(),
+            )
+            for (arch in listOf(
+                AndroidEmulatorRunner.Arch.Arm64V8a,
+                AndroidEmulatorRunner.Arch.X8664, // test loading anitorrent and other native libraries
+            )) {
+                for (apiLevel in listOf(30, 35)) { // 30 is min, 35 is our targetSdk
+                    uses(
+                        name = "Android Instrumented Test for API $apiLevel",
+                        action = AndroidEmulatorRunner(
+                            apiLevel = apiLevel,
+                            arch = arch,
+                            script = "./gradlew connectedTest " + matrix.gradleArgs + " -",
+                        ),
+                    )
+                }
+            }
         }
     }
 
