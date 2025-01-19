@@ -27,6 +27,12 @@ import androidx.navigation.compose.rememberNavController
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.wizard.WizardDefaults
 
+/**
+ * A wrapper around [NavHost] that provides a wizard-like experience.
+ * Which only provides linear and ordered navigation.
+ *
+ * WizardNavHost also provides a top bar and bottom bar for the wizard.
+ */
 @Composable
 fun WizardNavHost(
     controller: WizardController,

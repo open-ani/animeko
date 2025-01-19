@@ -11,6 +11,11 @@ package me.him188.ani.app.ui.wizard.navigation
 
 import androidx.compose.runtime.Composable
 
+/**
+ * A step in the wizard.
+ *
+ * @param key Unique key for this step, used to build navigation graph.
+ */
 class WizardStep<T : Any>(
     val key: String,
     val stepName: @Composable () -> Unit,
