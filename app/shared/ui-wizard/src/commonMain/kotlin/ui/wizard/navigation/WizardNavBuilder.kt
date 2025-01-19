@@ -10,8 +10,6 @@
 package me.him188.ani.app.ui.wizard.navigation
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.rememberCoroutineScope
-import kotlinx.coroutines.launch
 import me.him188.ani.app.ui.wizard.WizardDefaults
 
 @DslMarker
@@ -25,30 +23,15 @@ class WizardBuilder(
     @WizardStepDsl
     fun <T : Any> step(
         key: String,
-        title: @Composable (T) -> Unit,
-        defaultConfig: T,
-        canForward: (T) -> Boolean = { true },
-        skippable: Boolean = false,
-        forward: @Composable (canForward: Boolean) -> Unit = {
-            WizardDefaults.GoForwardButton({ controller.goForward() }, it)
+        title: @Composable () -> Unit,
+        defaultData: T,
+        forward: @Composable () -> Unit = {
+            WizardDefaults.GoForwardButton({ controller.goForward() }, true)
         },
         backward: @Composable () -> Unit = {
             WizardDefaults.GoBackwardButton({ controller.goBackward() })
         },
-        skipButton: @Composable () -> Unit = if (skippable) {
-            {
-                val scope = rememberCoroutineScope()
-                WizardDefaults.SkipButton(
-                    {
-                        scope.launch {
-                            controller.requestSkip()
-                        }
-                    },
-                )
-            }
-        } else {
-            { }
-        },
+        skipButton: @Composable () -> Unit = {},
         content: @Composable WizardStepScope<T>.() -> Unit,
     ) {
         if (steps[key] != null) {
@@ -58,9 +41,7 @@ class WizardBuilder(
         steps[key] = WizardStep(
             key,
             title,
-            defaultConfig,
-            canForward,
-            skippable,
+            defaultData,
             forward,
             backward,
             skipButton,

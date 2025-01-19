@@ -23,23 +23,5 @@ import androidx.compose.runtime.Stable
  */
 @Stable
 class WizardStepScope<T>(
-    val data: T,
-    val requestedSkip: Boolean,
-    private val onUpdate: (T) -> Unit,
-    private val onConfirmSkip: (Boolean) -> Unit,
-) {
-
-    /**
-     * 更新 UI 数据, 会导致 [data] 变更为新的数据
-     */
-    fun update(block: T.() -> T) {
-        onUpdate(data.block())
-    }
-
-    /**
-     * 确认是否跳过此步骤
-     */
-    fun confirmSkip(skip: Boolean) {
-        onConfirmSkip(skip)
-    }
-}
+    val data: T
+)

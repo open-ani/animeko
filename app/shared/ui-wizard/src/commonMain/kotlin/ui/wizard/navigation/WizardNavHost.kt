@@ -20,7 +20,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -52,24 +51,14 @@ fun WizardNavHost(
                 currentStep = wizardState.currentStepIndex,
                 totalStep = wizardState.totalStepIndex,
             ) {
-                val currentStepName by rememberUpdatedState(wizardState.currentStep.stepName)
-                currentStepName(wizardState.currentStep.data)
+                wizardState.currentStep.stepName.invoke()
             }
         },
         bottomBar = {
             WizardDefaults.StepControlBar(
-                forwardAction = {
-                    val canForward = remember(wizardState.currentStep.data) {
-                        wizardState.currentStep.canForward(wizardState.currentStep.data)
-                    }
-                    wizardState.currentStep.forwardButton.invoke(canForward)
-                },
-                backwardAction = {
-                    wizardState.currentStep.backwardButton.invoke()
-                },
-                tertiaryAction = {
-                    wizardState.currentStep.skipButton.invoke()
-                },
+                forwardAction = { wizardState.currentStep.forwardButton.invoke() },
+                backwardAction = { wizardState.currentStep.backwardButton.invoke() },
+                tertiaryAction = { wizardState.currentStep.skipButton.invoke() },
             )
         },
         modifier = modifier,
@@ -102,12 +91,7 @@ fun WizardNavHost(
                         .collectAsState(false)
 
                     val configState = remember(finalStep, requestedSkip) {
-                        WizardStepScope(
-                            finalStep.data,
-                            requestedSkip,
-                            onUpdate = { controller.updateCurrentStepData(it) },
-                            onConfirmSkip = { controller.skipState.confirm(it) },
-                        )
+                        WizardStepScope(finalStep.defaultData)
                     }
 
                     Column(Modifier.fillMaxSize()) {

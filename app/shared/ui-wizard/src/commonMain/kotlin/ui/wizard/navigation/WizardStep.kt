@@ -13,41 +13,10 @@ import androidx.compose.runtime.Composable
 
 class WizardStep<T : Any>(
     val key: String,
-    val stepName: @Composable (T) -> Unit,
-    val data: T,
-    val canForward: (T) -> Boolean,
-    val skippable: Boolean,
-    val forwardButton: @Composable (Boolean) -> Unit,
+    val stepName: @Composable () -> Unit,
+    val defaultData: T,
+    val forwardButton: @Composable () -> Unit,
     val backwardButton: @Composable () -> Unit,
     val skipButton: @Composable () -> Unit,
     val content: @Composable WizardStepScope<T>.() -> Unit,
-)
-
-fun <T : Any> WizardStep<T>.copy(
-    key: String = this.key,
-    stepName: @Composable (T) -> Unit = this.stepName,
-    data: T = this.data,
-    canForward: (T) -> Boolean = this.canForward,
-    skippable: Boolean = this.skippable,
-    forwardButton: @Composable (Boolean) -> Unit = this.forwardButton,
-    backwardButton: @Composable () -> Unit = this.backwardButton,
-    skipButton: @Composable () -> Unit = this.skipButton,
-    content: @Composable WizardStepScope<T>.() -> Unit = this.content,
-): WizardStep<T> {
-    return WizardStep(
-        key = key,
-        stepName = stepName,
-        data = data,
-        canForward = canForward,
-        skippable = skippable,
-        forwardButton = forwardButton,
-        backwardButton = backwardButton,
-        skipButton = skipButton,
-        content = content,
-    )
-}
-
-data class WizardStepData(
-    val data: Any,
-    val skipped: Boolean
 )
