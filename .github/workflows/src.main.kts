@@ -426,7 +426,7 @@ fun getBuildJobBody(matrix: MatrixInstance): JobBuilder<BuildJobOutputs>.() -> U
 
         runGradle(
             name = "Update dev version name",
-            tasks = ["updateDevVersionNameFromGit"],
+            tasks = ["updateDevVersionNameFromGit", "\"--no-configuration-cache\""],
         )
         if (matrix.isUbuntu) {
             compileAndAssemble()
