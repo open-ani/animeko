@@ -168,7 +168,7 @@ jobs:
         if-no-files-found: 'error'
         overwrite: 'true'
   build_github-ubuntu-2004:
-    name: 'Build (Ubuntu x86_64 (Android Tests))'
+    name: 'Build (Ubuntu 20.04 x86_64 (GitHub))'
     runs-on:
     - 'ubuntu-20.04'
     permissions:
