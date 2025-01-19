@@ -12,7 +12,7 @@ package me.him188.ani.app.ui.wizard.navigation
 import androidx.compose.runtime.Stable
 
 /**
- * 在使用 [WizardBuilder.step] 构建的时候使用, 为 UI 提供数据获取和更新的能力
+ * 在使用 [WizardNavHostScope.step] 构建的时候使用, 为 UI 提供数据获取和更新的能力
  *
  * 让向导步骤界面可以读取配置和设置新的配置, 显示跳过状态
  *

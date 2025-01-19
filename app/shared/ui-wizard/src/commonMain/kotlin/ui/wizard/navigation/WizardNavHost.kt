@@ -32,13 +32,13 @@ fun WizardNavHost(
     controller: WizardController,
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
-    builder: WizardBuilder.() -> Unit,
+    content: WizardNavHostScope.() -> Unit,
 ) {
     val navController = rememberNavController()
     controller.setNavController(navController)
 
     DisposableEffect(Unit) {
-        val steps = WizardBuilder(controller).apply(builder).build()
+        val steps = WizardNavHostScope(controller).apply(content).build()
         controller.setupSteps(steps)
         onDispose { }
     }

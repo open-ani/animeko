@@ -15,7 +15,7 @@ import me.him188.ani.app.ui.wizard.WizardDefaults
 @DslMarker
 annotation class WizardStepDsl
 
-class WizardBuilder(
+class WizardNavHostScope(
     private val controller: WizardController,
 ) {
     private val steps: LinkedHashMap<String, WizardStep<Any>> = linkedMapOf()
