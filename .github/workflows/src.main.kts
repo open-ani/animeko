@@ -1171,7 +1171,7 @@ class WithMatrix(
                 // 35 is our targetSdk
                 for (apiLevel in listOf(30, 35)) {
                     uses(
-                        name = "Android Instrumented Test for API $apiLevel",
+                        name = "Android Instrumented Test (api=$apiLevel, arch=$arch)",
                         action = AndroidEmulatorRunner(
                             apiLevel = apiLevel,
                             arch = arch,
