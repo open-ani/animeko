@@ -43,7 +43,7 @@ kotlin {
         }
     }
 
-    sourceSets.jvmMain {
+    sourceSets.getByName("jvmMain") {
         dependencies {
             api(libs.jsoup)
         }
