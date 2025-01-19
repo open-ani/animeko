@@ -382,6 +382,7 @@ val buildMatrixInstances = listOf(
     MatrixInstance(
         runner = Runner.GithubMacOS13,
         uploadApk = true, // all ABIs
+        runAndroidInstrumentedTests = true,
         composeResourceTriple = "macos-x64",
         uploadDesktopInstallers = true,
         extraGradleArgs = listOf(),
@@ -392,6 +393,7 @@ val buildMatrixInstances = listOf(
     MatrixInstance(
         runner = Runner.SelfHostedMacOS15,
         uploadApk = false, // upload arm64-v8a once finished
+        runAndroidInstrumentedTests = true,
         composeResourceTriple = "macos-arm64",
         uploadDesktopInstallers = true,
         extraGradleArgs = listOf(
@@ -1165,9 +1167,10 @@ class WithMatrix(
                 """.trimIndent(),
                 )
             }
-            for (arch in listOf(
-                AndroidEmulatorRunner.Arch.Arm64V8a,
-                AndroidEmulatorRunner.Arch.X8664, // test loading anitorrent and other native libraries
+            for (arch in listOfNotNull(
+                // test loading anitorrent and other native libraries
+                if (matrix.arch == Arch.AARCH64) AndroidEmulatorRunner.Arch.Arm64V8a else null,
+                if (matrix.arch == Arch.X64) AndroidEmulatorRunner.Arch.X8664 else null, 
             )) {
                 // 30 is min for instrumented test (because we have spaces in func names), 
                 // 35 is our targetSdk
