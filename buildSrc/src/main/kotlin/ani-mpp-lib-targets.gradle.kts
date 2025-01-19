@@ -184,8 +184,8 @@ if (android != null) {
         compileSdk = getIntProperty("android.compile.sdk")
         defaultConfig {
             minSdk = getIntProperty("android.min.sdk")
-            // we use plugin android-junit5 to configure this
-//            testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+            testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+            testInstrumentationRunnerArguments.set("runnerBuilder", "de.mannodermaus.junit5.AndroidJUnit5Builder")
         }
         packaging { 
             resources {

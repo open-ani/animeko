@@ -219,12 +219,16 @@ fun Project.configureEncoding() {
     }
 }
 
-const val JUNIT_VERSION = "5.7.2"
+const val JUNIT_VERSION = "5.11.4"
 
 fun Project.configureKotlinTestSettings() {
     tasks.withType(Test::class) {
         useJUnitPlatform()
     }
+
+    val libs = versionCatalogLibs()
+    libs["junit4-"]
+    libs.findVersion("junit4").get()
 
     allKotlinTargets().all {
         if (this !is KotlinJvmTarget) return@all
@@ -266,6 +270,17 @@ fun Project.configureKotlinTestSettings() {
                                 || sourceSet.name == "androidInstrumentedTest"
                                 || sourceSet.name == "androidUnitTest" -> {
                             sourceSet.configureJvmTest(b)
+
+                            if (sourceSet.name == "androidInstrumentedTest") {
+                                project.dependencies {
+                                    "androidTestImplementation"("androidx.test:runner:1.4.0")
+                                    "androidTestImplementation"("de.mannodermaus.junit5:android-test-core:1.2.2")
+                                    "androidTestRuntimeOnly"("de.mannodermaus.junit5:android-test-runner:1.2.2")
+
+                                    "androidTestImplementation"("org.junit.jupiter:junit-jupiter-api:${JUNIT_VERSION}")
+                                    "androidTestRuntimeOnly"("org.junit.jupiter:junit-jupiter-engine:${JUNIT_VERSION}")
+                                }
+                            }
                         }
                     }
                 }
@@ -278,8 +293,12 @@ fun KotlinSourceSet.configureJvmTest(because: String) {
     dependencies {
         implementation(kotlin("test-junit5"))?.because(because)
 
+        // also see above for androidInstrumentedTest
         implementation("org.junit.jupiter:junit-jupiter-api:${JUNIT_VERSION}")?.because(because)
         runtimeOnly("org.junit.jupiter:junit-jupiter-engine:${JUNIT_VERSION}")?.because(because)
+
+//        runtimeOnly("junit:junit:4.13.2")?.because(because)
+//        runtimeOnly("org.junit.vintage:junit-vintage-engine:${JUNIT_VERSION}")?.because(because)
     }
 }
 

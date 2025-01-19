@@ -13,7 +13,7 @@ plugins {
     kotlin("plugin.serialization")
     `ani-mpp-lib-targets`
     idea
-//    id("de.mannodermaus.android-junit5") version "1.11.2.0"
+    id("de.mannodermaus.android-junit5") version "1.11.2.0"
 }
 
 android {
@@ -52,4 +52,8 @@ kotlin {
 
 idea {
     module.generatedSourceDirs.add(file("src/commonTest/kotlin/title/generated"))
+}
+
+junitPlatform {
+    this.instrumentationTests.enabled = true
 }
