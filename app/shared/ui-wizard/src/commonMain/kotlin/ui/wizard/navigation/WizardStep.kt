@@ -16,12 +16,11 @@ import androidx.compose.runtime.Composable
  *
  * @param key Unique key for this step, used to build navigation graph.
  */
-class WizardStep<T : Any>(
+class WizardStep(
     val key: String,
     val stepName: @Composable () -> Unit,
-    val defaultData: T,
     val forwardButton: @Composable () -> Unit,
     val backwardButton: @Composable () -> Unit,
     val skipButton: @Composable () -> Unit,
-    val content: @Composable WizardStepScope<T>.() -> Unit,
+    val content: @Composable () -> Unit,
 )

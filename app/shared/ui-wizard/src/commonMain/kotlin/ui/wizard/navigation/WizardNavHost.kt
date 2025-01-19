@@ -17,9 +17,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -82,28 +79,9 @@ fun WizardNavHost(
                 .fillMaxSize(),
         ) {
             wizardState.steps.forEach { step ->
-                composable(step.key) { backStackEntry ->
-                    val currentKey = backStackEntry.destination.route ?: return@composable
-
-                    val indexedStep = remember(wizardState.steps, currentKey) {
-                        wizardState.steps.find { currentKey == it.key }
-                    }
-                    val currentOrSnapshotStep by remember {
-                        derivedStateOf {
-                            if (indexedStep?.key == wizardState.currentStep.key)
-                                wizardState.currentStep else indexedStep
-                        }
-                    }
-                    val finalStep = currentOrSnapshotStep ?: return@composable
-                    val requestedSkip by controller.skipState.waitingConfirmation
-                        .collectAsState(false)
-
-                    val configState = remember(finalStep, requestedSkip) {
-                        WizardStepScope(finalStep.defaultData)
-                    }
-
+                composable(step.key) {
                     Column(Modifier.fillMaxSize()) {
-                        step.content(configState)
+                        step.content.invoke()
                     }
                 }
             }

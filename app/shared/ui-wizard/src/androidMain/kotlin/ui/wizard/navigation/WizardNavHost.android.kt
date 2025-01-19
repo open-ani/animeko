@@ -12,6 +12,7 @@ package me.him188.ani.app.ui.wizard.navigation
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.tooling.preview.Preview
 import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview
 
@@ -23,8 +24,10 @@ fun PreviewWizardNavHost() {
             step(
                 key = "theme",
                 title = { Text("选择主题") },
-                defaultData = TestWizardData.MyTheme("theme default", 0),
             ) {
+                val data = remember {
+                    TestWizardData.MyTheme("theme default", 0)
+                }
                 Text("my theme: ${data.theme} ${data.counter}")
                 Button(
                     {
@@ -36,8 +39,10 @@ fun PreviewWizardNavHost() {
             step(
                 key = "proxy",
                 title = { Text("设置代理") },
-                defaultData = TestWizardData.MyProxy("proxy default", 0),
             ) {
+                val data = remember {
+                    TestWizardData.MyProxy("proxy default", 0)
+                }
                 Text("my theme: ${data.proxy} ${data.counter}")
                 Text("continue unless counter >= 8")
                 Button(
@@ -50,8 +55,10 @@ fun PreviewWizardNavHost() {
             step(
                 key = "bit_torrent",
                 title = { Text("BitTorrent 功能") },
-                defaultData = TestWizardData.MyBitTorrent("bittorrent default", 0),
             ) {
+                val data = remember {
+                    TestWizardData.MyBitTorrent("bittorrent default", 0)
+                }
                 Text("my bit torrent: ${data.bittorrent} ${data.counter}")
                 Button(
                     {
@@ -63,7 +70,6 @@ fun PreviewWizardNavHost() {
             step(
                 key = "finish",
                 title = { Text("完成") },
-                defaultData = TestWizardData.MyFinish,
             ) {
                 Text("Finish")
             }

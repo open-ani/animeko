@@ -17,7 +17,6 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.navigation.NavHostController
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -39,11 +38,10 @@ fun rememberWizardController(): WizardController {
 class WizardController() {
     private val _controller = MutableStateFlow<NavHostController?>(null)
 
-    private val steps = MutableStateFlow(emptyMap<String, WizardStep<Any>>())
+    private val steps = MutableStateFlow(emptyMap<String, WizardStep>())
     private val currentStepKey: MutableStateFlow<String?> = MutableStateFlow(null)
 
     val navController: StateFlow<NavHostController?> = _controller
-    val skipState = SkipState()
 
     val state: Flow<WizardState?> = combine(
         steps,
@@ -62,7 +60,7 @@ class WizardController() {
         _controller.update { controller }
     }
 
-    fun setupSteps(steps: Map<String, WizardStep<Any>>) {
+    fun setupSteps(steps: Map<String, WizardStep>) {
         this.steps.update { steps }
         currentStepKey.update { steps.entries.firstOrNull()?.key }
     }
@@ -110,34 +108,8 @@ class WizardController() {
 
 @Stable
 class WizardState(
-    val steps: List<WizardStep<Any>>,
-    val currentStep: WizardStep<Any>,
+    val steps: List<WizardStep>,
+    val currentStep: WizardStep,
     val totalStepIndex: Int,
     val currentStepIndex: Int,
 )
-
-class SkipState() {
-    private val deferred = MutableStateFlow(CompletableDeferred(false))
-    private val _waitingConfirmation = MutableStateFlow(false)
-    val waitingConfirmation: Flow<Boolean> = _waitingConfirmation
-
-    suspend fun awaitConfirmation(): Boolean {
-        val currentDeferred = deferred.value
-        return if (currentDeferred.isCompleted) {
-            val newDeferred = CompletableDeferred<Boolean>()
-            deferred.update { newDeferred }
-            _waitingConfirmation.update { true }
-            newDeferred.await()
-        } else {
-            currentDeferred.await()
-        }
-    }
-
-    fun confirm(skip: Boolean) {
-        val currentDeferred = deferred.value
-        if (currentDeferred.isActive) {
-            _waitingConfirmation.update { false }
-            currentDeferred.complete(skip)
-        }
-    }
-}

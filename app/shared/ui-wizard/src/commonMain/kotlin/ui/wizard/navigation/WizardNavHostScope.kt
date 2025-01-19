@@ -18,13 +18,12 @@ annotation class WizardStepDsl
 class WizardNavHostScope(
     private val controller: WizardController,
 ) {
-    private val steps: LinkedHashMap<String, WizardStep<Any>> = linkedMapOf()
+    private val steps: LinkedHashMap<String, WizardStep> = linkedMapOf()
 
     @WizardStepDsl
-    fun <T : Any> step(
+    fun step(
         key: String,
         title: @Composable () -> Unit,
-        defaultData: T,
         forward: @Composable () -> Unit = {
             WizardDefaults.GoForwardButton({ controller.goForward() }, true)
         },
@@ -32,24 +31,22 @@ class WizardNavHostScope(
             WizardDefaults.GoBackwardButton({ controller.goBackward() })
         },
         skipButton: @Composable () -> Unit = {},
-        content: @Composable WizardStepScope<T>.() -> Unit,
+        content: @Composable () -> Unit,
     ) {
         if (steps[key] != null) {
             throw IllegalArgumentException("Duplicate step key: $key")
         }
-        @Suppress("UNCHECKED_CAST")
         steps[key] = WizardStep(
             key,
             title,
-            defaultData,
             forward,
             backward,
             skipButton,
             content,
-        ) as WizardStep<Any>
+        )
     }
 
-    fun build(): Map<String, WizardStep<Any>> {
+    fun build(): Map<String, WizardStep> {
         return steps
     }
 }
