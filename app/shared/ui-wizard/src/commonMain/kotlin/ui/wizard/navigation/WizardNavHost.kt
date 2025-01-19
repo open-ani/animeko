@@ -82,9 +82,11 @@ fun WizardNavHost(
                     val indexedStep = remember(wizardState.steps, currentKey) {
                         wizardState.steps.find { currentKey == it.key }
                     }
-                    val currentOrSnapshotStep by derivedStateOf {
-                        if (indexedStep?.key == wizardState.currentStep.key)
-                            wizardState.currentStep else indexedStep
+                    val currentOrSnapshotStep by remember {
+                        derivedStateOf {
+                            if (indexedStep?.key == wizardState.currentStep.key)
+                                wizardState.currentStep else indexedStep
+                        }
                     }
                     val finalStep = currentOrSnapshotStep ?: return@composable
                     val requestedSkip by controller.skipState.waitingConfirmation
