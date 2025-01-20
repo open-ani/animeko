@@ -37,6 +37,7 @@ actual fun appColorScheme(
         if (isDark) {
             modifyColorSchemeForBlackBackground(
                 colorScheme = dynamicDarkColorScheme(LocalContext.current),
+                isDark = true,
                 useBlackBackground = useBlackBackground,
             )
         } else {
@@ -49,7 +50,7 @@ actual fun appColorScheme(
             isAmoled = useBlackBackground,
             style = PaletteStyle.TonalSpot,
             modifyColorScheme = { colorScheme ->
-                modifyColorSchemeForBlackBackground(colorScheme, useBlackBackground)
+                modifyColorSchemeForBlackBackground(colorScheme, isDark, useBlackBackground)
             },
         )
     }

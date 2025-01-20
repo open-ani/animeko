@@ -292,9 +292,10 @@ val LocalThemeSettings = compositionLocalOf<ThemeSettings> {
 
 fun modifyColorSchemeForBlackBackground(
     colorScheme: ColorScheme,
+    isDark: Boolean,
     useBlackBackground: Boolean,
 ): ColorScheme {
-    return if (useBlackBackground) {
+    return if (isDark && useBlackBackground) {
         colorScheme.copy(
             background = Color.Black,
             onBackground = Color.White,
