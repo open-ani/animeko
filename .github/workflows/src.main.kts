@@ -983,7 +983,7 @@ class WithMatrix(
                 )
             }
 
-            OS.UBUNTU ->{
+            OS.UBUNTU -> {
                 val jbrLocationExpr = downloadJbrUsingPython("jbrsdk_jcef-21.0.5-linux-x64-b750.29.tar.gz")
                 uses(
                     name = "Setup JBR 21 for Ubuntu",
@@ -1174,7 +1174,7 @@ class WithMatrix(
             )
         }
     }
-    
+
     fun JobBuilder<*>.androidConnectedTests() {
         if (matrix.runAndroidInstrumentedTests && matrix.isUnix) {
             if (matrix.isUbuntu) {
@@ -1187,6 +1187,13 @@ class WithMatrix(
                 """.trimIndent(),
                 )
             }
+            runGradle(
+                name = "Build Android Instrumented Tests",
+                tasks = [
+                    "assembleDebugAndroidTest",
+                    "\"-Pandroid.min.sdk=30\"",
+                ],
+            )
             for (arch in listOfNotNull(
                 // test loading anitorrent and other native libraries
                 if (matrix.arch == Arch.AARCH64) AndroidEmulatorRunner.Arch.Arm64V8a else null,
@@ -1200,7 +1207,7 @@ class WithMatrix(
                         action = AndroidEmulatorRunner(
                             apiLevel = apiLevel,
                             arch = arch,
-                            script = "./gradlew connectedDebugAndroidTest " + matrix.gradleArgs + " -Pandroid.min.sdk=30",
+                            script = "./gradlew connectedDebugAndroidTest \"-Pandroid.min.sdk=30\" " + matrix.gradleArgs,
                         ),
                     )
                 }
