@@ -392,6 +392,7 @@ val buildMatrixInstances = listOf(
         buildIosFramework = false,
         buildAllAndroidAbis = true,
         gradleHeap = "4g",
+        kotlinCompilerHeap = "6g",
     ),
     MatrixInstance(
         runner = Runner.SelfHostedMacOS15,
