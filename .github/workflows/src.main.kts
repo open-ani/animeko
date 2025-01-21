@@ -1091,11 +1091,17 @@ class WithMatrix(
             tasks = [
                 "compileKotlin",
                 "compileCommonMainKotlinMetadata",
-                "compileDebugKotlinAndroid",
-                "compileReleaseKotlinAndroid",
                 "compileJvmMainKotlinMetadata",
                 "compileKotlinDesktop",
                 "compileKotlinMetadata",
+            ],
+        )
+        // Run separately to avoid OOM
+        runGradle(
+            name = "Compile Kotlin Android",
+            tasks = [
+                "compileDebugKotlinAndroid",
+                "compileReleaseKotlinAndroid",
             ],
         )
     }
