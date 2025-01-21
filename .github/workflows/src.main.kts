@@ -380,7 +380,8 @@ val buildMatrixInstances = listOf(
             "-P$ANI_ANDROID_ABIS=x86_64",
         ),
         buildAllAndroidAbis = false,
-        gradleHeap = "4g",
+        gradleHeap = "6g",
+        kotlinCompilerHeap = "6g",
     ),
     MatrixInstance(
         runner = Runner.GithubMacOS13,
@@ -388,10 +389,10 @@ val buildMatrixInstances = listOf(
         runAndroidInstrumentedTests = false,
         composeResourceTriple = "macos-x64",
         uploadDesktopInstallers = true,
-        extraGradleArgs = listOf(),
+        extraGradleArgs = listOf(), 
         buildIosFramework = false,
         buildAllAndroidAbis = true,
-        gradleHeap = "4g",
+        gradleHeap = "6g",
         kotlinCompilerHeap = "6g",
     ),
     MatrixInstance(
