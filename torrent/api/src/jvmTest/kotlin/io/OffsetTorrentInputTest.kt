@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -159,7 +159,7 @@ internal class OffsetTorrentInputTest {
     }
 
     @Test
-    fun `buffer single finished pieces, initial zero`() = runTest {
+    fun `buffer single finished pieces  initial zero`() = runTest {
         logicalPieces.getByPieceIndex(0).state = PieceState.FINISHED
         // other pieces not finished
         assertEquals(8, input.computeMaxBufferSizeForward(0, 100000))
@@ -167,7 +167,7 @@ internal class OffsetTorrentInputTest {
     }
 
     @Test
-    fun `buffer single finished pieces, from intermediate`() = runTest {
+    fun `buffer single finished pieces  from intermediate`() = runTest {
         logicalPieces.getByPieceIndex(0).state = PieceState.FINISHED
         // other pieces not finished
         assertEquals(2, input.computeMaxBufferSizeForward(6, 100000))
@@ -175,7 +175,7 @@ internal class OffsetTorrentInputTest {
     }
 
     @Test
-    fun `buffer single finished pieces, over buffer`() = runTest {
+    fun `buffer single finished pieces  over buffer`() = runTest {
         logicalPieces.getByPieceIndex(0).state = PieceState.FINISHED
         // other pieces not finished
         assertEquals(0, input.computeMaxBufferSizeForward(8, 100000)) // 8+8=16, 超过了第一个 buffer
@@ -183,7 +183,7 @@ internal class OffsetTorrentInputTest {
     }
 
     @Test
-    fun `buffer multiple finished pieces, from intermediate`() = runTest {
+    fun `buffer multiple finished pieces  from intermediate`() = runTest {
         logicalPieces.getByPieceIndex(0).state = PieceState.FINISHED
         logicalPieces.getByPieceIndex(1).state = PieceState.FINISHED
         // other pieces not finished
@@ -202,7 +202,7 @@ internal class OffsetTorrentInputTest {
     }
 
     @Test
-    fun `buffer zero byte (corner case)`() = runTest {
+    fun `buffer zero byte  corner case`() = runTest {
         logicalPieces.getByPieceIndex(0).state = PieceState.FINISHED
         // other pieces not finished
         assertEquals(0, input.computeMaxBufferSizeForward(logicalPieces.getByPieceIndex(0).size, 100000))
@@ -364,7 +364,7 @@ internal class OffsetTorrentInputTest {
     }
 
     @Test
-    fun `buffer when piece not ready, then ready and re-buffer`() = runTest {
+    fun `buffer when piece not ready  then ready and re-buffer`() = runTest {
         for (logicalPiece in logicalPieces.asSequence()) {
             logicalPiece.state = PieceState.FINISHED
         }
