@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024-2025 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.app.ui.framework
 
 import androidx.compose.runtime.Composable
@@ -27,14 +36,7 @@ internal abstract class AbstractAniComposeUiTest(override val composeUiTest: Com
         get() = composeUiTest.mainClock
 
     override fun <T> runOnUiThread(action: () -> T): T = composeUiTest.runOnUiThread(action)
-    override fun <T> runOnIdle(action: () -> T): T {
-        waitForIdle()
-        val res = runOnUiThread {
-            action()
-        }
-        waitForIdle()
-        return res
-    }
+    override fun <T> runOnIdle(action: () -> T): T = composeUiTest.runOnIdle(action)
 
     override fun waitForIdle() = composeUiTest.waitForIdle()
     override suspend fun awaitIdle() = composeUiTest.awaitIdle()
