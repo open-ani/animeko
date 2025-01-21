@@ -18,6 +18,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.SemanticsNodeInteractionsProvider
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.click
@@ -144,6 +145,10 @@ class EpisodeVideoControllerTest {
         get() = onNodeWithTag(TAG_DANMAKU_EDITOR, useUnmergedTree = true)
     private val SemanticsNodeInteractionsProvider.danmakuIconButton
         get() = onNodeWithTag(TAG_DANMAKU_ICON_BUTTON, useUnmergedTree = true)
+    private val SemanticsNodeInteractionsProvider.player
+        get() = onNodeWithTag("PLAYER", useUnmergedTree = true)
+    private val SemanticsNodeInteractionsProvider.mediaProgressIndicatorText: SemanticsNodeInteraction
+        get() = onNodeWithTag(TAG_MEDIA_PROGRESS_INDICATOR_TEXT, useUnmergedTree = true)
 
     @Composable
     private fun Player(gestureFamily: GestureFamily, playerControllerState: PlayerControllerState = controllerState) {
@@ -242,6 +247,7 @@ class EpisodeVideoControllerTest {
                     )
                 },
                 gestureFamily = gestureFamily,
+                modifier = Modifier.testTag("PLAYER"),
             )
         }
     }
@@ -587,38 +593,34 @@ class EpisodeVideoControllerTest {
         waitForIdle()
         val root = onAllNodes(isRoot()).onFirst()
 
-        runOnUiThread {
-            mainClock.autoAdvance = false
-            root.performClick()// 显示全部控制器
-        }
-        runOnIdle {
-            mainClock.advanceTimeBy(1000L)
-            waitUntil { topBar.exists() }
-            detachedProgressSlider.assertDoesNotExist()
-        }
+        mainClock.autoAdvance = false
+        root.performClick() // 显示全部控制器
+        mainClock.advanceTimeBy(1000L)
+        waitForIdle()
+
+        topBar.assertExists()
+        detachedProgressSlider.assertDoesNotExist()
 
         mainClock.autoAdvance = false
-        runOnUiThread {
-            progressSlider.performTouchInput {
-                down(centerLeft)
-                moveBy(Offset(centerX, 0f))
-            }
+        root.performTouchInput {
+            down(centerLeft)
+            moveBy(Offset(centerX, 0f))
         }
-        runOnIdle {
-            waitUntil { onNodeWithTag(TAG_MEDIA_PROGRESS_INDICATOR_TEXT, useUnmergedTree = true).exists() }
-            onNodeWithTag(TAG_MEDIA_PROGRESS_INDICATOR_TEXT, useUnmergedTree = true).assertTextEquals("00:48 / 01:40")
+        waitForIdle() // does nothing because autoAdvance is false
+        mainClock.advanceTimeByFrame() // renders the next frame (i.e. update derivedStateOf and Text)
+        mediaProgressIndicatorText.assertTextEquals("00:47 / 01:40")
+        runOnUiThread {
             assertEquals(NORMAL_VISIBLE, controllerState.visibility)
         }
 
         // 松开手指
-        runOnUiThread {
-            root.performTouchInput {
-                up()
-            }
+        root.performTouchInput {
+            up()
         }
+        waitForIdle()
 
         runOnIdle {
-            waitUntil { onNodeWithText("00:48 / 01:40").exists() }
+            waitUntil { onNodeWithText("00:47 / 01:40").exists() }
             assertEquals(NORMAL_VISIBLE, controllerState.visibility)
         }
     }
@@ -1039,20 +1041,18 @@ class EpisodeVideoControllerTest {
             )
         }
 
-        val root = onAllNodes(isRoot()).onFirst()
         // 显示控制器
-        runOnUiThread {
-            mainClock.autoAdvance = false
-            root.performTouchInput {
-                if (gestureFamily == GestureFamily.MOUSE) {
-                    swipe(centerLeft, center)
-                } else {
-                    click()
-                }
+        mainClock.autoAdvance = false
+        if (gestureFamily == GestureFamily.MOUSE) {
+            player.slightlyMoveFromCenterToRight()
+        } else {
+            player.performMouseInput {
+                click()
             }
         }
+        mainClock.advanceTimeBy(1000)
         runOnIdle {
-            mainClock.advanceTimeUntil { topBar.exists() }
+            topBar.assertExists()
             assertEquals(
                 NORMAL_VISIBLE,
                 controllerState.visibility,
@@ -1071,6 +1071,11 @@ class EpisodeVideoControllerTest {
             assertEquals(expectAlwaysOn, controllerState.alwaysOn)
             assertControllerVisible(expectAlwaysOn)
         }
+    }
+
+    private fun SemanticsNodeInteraction.slightlyMoveFromCenterToRight() = performMouseInput {
+        moveTo(center, delayMillis = 0)
+        moveBy(Offset(100f, 0f), delayMillis = 0)
     }
 
     private fun AniComposeUiTest.assertControllerVisible(visible: Boolean) = runOnIdle {
