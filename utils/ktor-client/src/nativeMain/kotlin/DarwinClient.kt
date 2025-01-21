@@ -12,4 +12,4 @@ package me.him188.ani.utils.ktor
 import io.ktor.client.engine.*
 import io.ktor.client.engine.darwin.*
 
-actual fun getPlatformEngine(): HttpClientEngineFactory<*> = Darwin
+actual fun getPlatformKtorEngine(): HttpClientEngineFactory<*> = Darwin

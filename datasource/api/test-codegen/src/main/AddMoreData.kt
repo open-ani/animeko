@@ -24,7 +24,7 @@ import me.him188.ani.datasources.api.topic.Topic
 import me.him188.ani.datasources.api.topic.TopicCategory
 import me.him188.ani.datasources.dmhy.impl.DmhyPagedSourceImpl
 import me.him188.ani.datasources.dmhy.impl.protocol.Network
-import me.him188.ani.utils.ktor.getPlatformEngine
+import me.him188.ani.utils.ktor.getPlatformKtorEngine
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import java.io.File
@@ -59,7 +59,7 @@ class TopicFetcher(
     private val dataSource: String,
 ) {
     suspend fun fetchTopics(name: String): List<Topic> {
-        HttpClient(getPlatformEngine()) {
+        HttpClient(getPlatformKtorEngine()) {
             followRedirects = true
 
             install(UserAgent) {

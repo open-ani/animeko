@@ -12,4 +12,4 @@ package me.him188.ani.utils.ktor
 import io.ktor.client.engine.*
 import io.ktor.client.engine.okhttp.*
 
-actual fun getPlatformEngine(): HttpClientEngineFactory<*> = OkHttp
+actual fun getPlatformKtorEngine(): HttpClientEngineFactory<*> = OkHttp

@@ -37,11 +37,11 @@ import kotlin.time.Duration
 import kotlin.time.measureTimedValue
 
 // 根据不同平台，选择相应的 HttpClientEngine
-expect fun getPlatformEngine(): HttpClientEngineFactory<*>
+expect fun getPlatformKtorEngine(): HttpClientEngineFactory<*>
 
 fun createDefaultHttpClient(
     clientConfig: HttpClientConfig<*>.() -> Unit = {},
-): HttpClient = HttpClient(getPlatformEngine()) {
+): HttpClient = HttpClient(getPlatformKtorEngine()) {
     install(HttpRequestRetry) {
         maxRetries = 1
         delayMillis { 1000 }
