@@ -19,12 +19,15 @@ import androidx.paging.map
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.data.models.episode.EpisodeInfo
@@ -98,38 +101,42 @@ class EpisodeCollectionRepository(
     fun subjectEpisodeCollectionInfosFlow(
         subjectId: Int,
         allowCached: Boolean = true,
-    ): Flow<List<EpisodeCollectionInfo>> = flow {
-        // 从 epTypeFilter 中拿到当前 epType，在一次调用中，假设 epType 不会多次改变
-        val epType = epTypeFilter.first()
-        val cachedEntities = episodeCollectionDao.filterBySubjectId(subjectId, epType).firstOrNull().orEmpty()
-        if (shouldUseCache(allowCached, cachedEntities, subjectId)) {
-            // 有有效缓存则直接返回
-            emit(cachedEntities.map { it.toEpisodeCollectionInfo() })
-            return@flow
-        }
-        try {
-            val freshList = bangumiEpisodeService.getEpisodeCollectionInfosBySubjectId(subjectId, null) // 总是缓存所有类型
-                .toList() // 目前先直接全拿了, 反正一般情况下剧集数量很少
-                .also { list ->
-                    if (subjectDao.findById(subjectId).first() != null) {
-                        // 插入后会立即触发 filterBySubjectId 更新 (emit 新的)
-                        episodeCollectionDao.upsert(list.map { it.toEntity(subjectId) })
-                    }
-                }
-                // 过滤需要的类型
-                .let { list ->
-                    if (epType == null) list
-                    else list.filter { it.episodeInfo.type == epType }
+    ): Flow<List<EpisodeCollectionInfo>> = epTypeFilter.flatMapLatest { epType ->
+        episodeCollectionDao
+            .filterBySubjectId(subjectId, epType)
+            .distinctUntilChanged()
+            .transformLatest { cachedEpisodes ->
+                if (shouldUseCache(allowCached, cachedEpisodes, subjectId)) {
+                    // 有有效缓存则直接返回
+                    emit(cachedEpisodes.map { it.toEpisodeCollectionInfo() })
+                    return@transformLatest
                 }
 
-            emit(freshList)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            // 失败则返回缓存
-            logger.error(e) { "Failed to get episode collection infos for subject $subjectId" }
-            emit(cachedEntities.map { it.toEpisodeCollectionInfo() })
-        }
+                try {
+                    emit(
+                        bangumiEpisodeService.getEpisodeCollectionInfosBySubjectId(subjectId, null) // 总是缓存所有类型
+                            .toList() // 目前先直接全拿了, 反正一般情况下剧集数量很少
+                            .also { list ->
+                                if (subjectDao.findById(subjectId).first() != null) {
+                                    // 插入后会立即触发 filterBySubjectId 更新 (emit 新的)
+                                    episodeCollectionDao.upsert(list.map { it.toEntity(subjectId) })
+                                }
+                            }
+                            // 过滤需要的类型
+                            .let { list ->
+                                if (epType == null) list
+                                else list.filter { it.episodeInfo.type == epType }
+                            },
+                    )
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    // 失败则返回缓存
+                    logger.error(e) { "Failed to get episode collection infos for subject $subjectId" }
+                    emit(cachedEpisodes.map { it.toEpisodeCollectionInfo() })
+                    return@transformLatest
+                }
+            }
     }.flowOn(defaultDispatcher)
 
     private suspend fun shouldUseCache(

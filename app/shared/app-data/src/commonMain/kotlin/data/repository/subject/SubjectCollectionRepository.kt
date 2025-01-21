@@ -34,6 +34,7 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.retry
+import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
@@ -263,7 +264,8 @@ class SubjectCollectionRepositoryImpl(
             emit(
                 existing.asFlow()
                     .flatMapMerge(concurrency = 4) { entity ->
-                        episodeCollectionRepository.subjectEpisodeCollectionInfosFlow(entity.subjectId)
+                        episodeCollectionRepository.subjectEpisodeCollectionInfosFlow(entity.subjectId, false)
+                            .take(1)
                             .map { episodes ->
                                 LightSubjectAndEpisodes(
                                     entity.toLightSubjectInfo(),
