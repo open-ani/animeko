@@ -23,6 +23,7 @@ import me.him188.ani.app.data.network.protocol.ReleaseUpdatesDetailedResponse
 import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.tools.TimeFormatter
 import me.him188.ani.utils.coroutines.withExceptionCollector
+import me.him188.ani.utils.ktor.getPlatformEngine
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
@@ -36,7 +37,7 @@ class UpdateChecker {
         releaseClass: ReleaseClass,
         currentVersion: String = currentAniBuildConfig.versionName,
     ): NewVersion? {
-        HttpClient {
+        HttpClient(getPlatformEngine()) {
             expectSuccess = true
         }.use { client ->
             withExceptionCollector {

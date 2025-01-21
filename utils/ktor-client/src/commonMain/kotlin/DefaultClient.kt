@@ -11,6 +11,7 @@ package me.him188.ani.utils.ktor
 
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
+import io.ktor.client.engine.HttpClientEngineFactory
 import io.ktor.client.plugins.BrowserUserAgent
 import io.ktor.client.plugins.HttpRequestRetry
 import io.ktor.client.plugins.HttpSend
@@ -35,9 +36,12 @@ import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration
 import kotlin.time.measureTimedValue
 
+// 根据不同平台，选择相应的 HttpClientEngine
+expect fun getPlatformEngine(): HttpClientEngineFactory<*>
+
 fun createDefaultHttpClient(
     clientConfig: HttpClientConfig<*>.() -> Unit = {},
-) = HttpClient {
+): HttpClient = HttpClient(getPlatformEngine()) {
     install(HttpRequestRetry) {
         maxRetries = 1
         delayMillis { 1000 }
