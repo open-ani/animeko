@@ -35,10 +35,10 @@ import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
  */
 @Composable
 fun FirstScreenScene(
-    modifier: Modifier = Modifier,
-    contactActions: @Composable () -> Unit,
-    windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
     onLinkStart: () -> Unit,
+    contactActions: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+    windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
 ) {
     Box(
         modifier = modifier,

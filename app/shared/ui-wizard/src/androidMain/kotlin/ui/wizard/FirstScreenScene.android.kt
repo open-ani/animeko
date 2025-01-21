@@ -29,7 +29,7 @@ import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPrev
 @Composable
 fun PreviewFirstScreenScene() {
     ProvideFoundationCompositionLocalsForPreview {
-        FirstScreenScene(contactActions = { TestContactActions() }) { }
+        FirstScreenScene({ }, contactActions = { TestContactActions() })
     }
 }
 

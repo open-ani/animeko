@@ -37,8 +37,8 @@ fun WizardNavHost(
     modifier: Modifier = Modifier,
     indicatorBar: @Composable (WizardState) -> Unit = {
         WizardDefaults.StepTopAppBar(
-            currentStep = it.currentStepIndex,
-            totalStep = it.totalStepIndex,
+            currentStep = it.currentStepIndex + 1,
+            totalStep = it.stepCount,
         ) {
             it.currentStep.stepName.invoke()
         }
@@ -57,7 +57,7 @@ fun WizardNavHost(
     val navController = rememberNavController()
     controller.setNavController(navController)
 
-    DisposableEffect(Unit) {
+    DisposableEffect(controller) {
         val steps = WizardNavHostScope(controller).apply(content).build()
         controller.setupSteps(steps)
         onDispose { }

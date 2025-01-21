@@ -51,8 +51,8 @@ class WizardController() {
         WizardState(
             steps = steps.map { it.value },
             currentStep = currentStep,
-            currentStepIndex = steps.entries.indexOfFirst { it.key == currentStepKey } + 1,
-            totalStepIndex = steps.size,
+            currentStepIndex = steps.entries.indexOfFirst { it.key == currentStepKey },
+            stepCount = steps.size,
         )
     }
 
@@ -62,13 +62,17 @@ class WizardController() {
 
     fun setupSteps(steps: Map<String, WizardStep>) {
         this.steps.update { steps }
-        currentStepKey.update { steps.entries.firstOrNull()?.key }
+        if (currentStepKey.value == null || steps[currentStepKey.value] == null) {
+            currentStepKey.update { steps.entries.firstOrNull()?.key }
+        }
     }
 
     @Composable
     fun startDestinationAsState(): State<String?> {
         val stepLine by steps.collectAsState()
-        return derivedStateOf { stepLine.entries.firstOrNull()?.key }
+        return remember {
+            derivedStateOf { stepLine.entries.firstOrNull()?.key }
+        }
     }
 
     fun goForward() {
@@ -110,6 +114,6 @@ class WizardController() {
 class WizardState(
     val steps: List<WizardStep>,
     val currentStep: WizardStep,
-    val totalStepIndex: Int,
     val currentStepIndex: Int,
+    val stepCount: Int,
 )
