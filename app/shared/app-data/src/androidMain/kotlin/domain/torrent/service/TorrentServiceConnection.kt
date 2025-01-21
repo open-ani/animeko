@@ -73,6 +73,7 @@ import kotlin.time.Duration.Companion.minutes
 class TorrentServiceConnection(
     private val context: Context,
     private val onRequiredRestartService: () -> ComponentName?,
+    private val backgroundScope: CoroutineScope,
 ) : LifecycleEventObserver, ServiceConnection, BroadcastReceiver() {
     private val logger = logger<TorrentServiceConnection>()
 
@@ -114,14 +115,24 @@ class TorrentServiceConnection(
                 }
             }
 
-            Lifecycle.Event.ON_START -> {
+            Lifecycle.Event.ON_RESUME -> {
                 shouldRestartServiceImmediately = true
                 // 如果 app 在后台时断开了 service 连接, 需要在切回前台时重新启动
                 if (!connected.value) {
                     logger.debug {
                         "AniTorrentService is not started or stopped while app is switching to foreground, restarting."
                     }
-                    restartService()
+                    backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                        while (true) {
+                            restartService()
+                            delay(1000)
+                            if (connected.value) {
+                                break
+                            } else {
+                                logger.warn { "AniTorrentService is not started while application is ON_RESUME, retrying." }
+                            }
+                        }
+                    }
                 }
             }
 

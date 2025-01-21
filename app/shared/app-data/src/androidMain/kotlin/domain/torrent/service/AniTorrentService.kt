@@ -132,17 +132,18 @@ class AniTorrentService : LifecycleService(), CoroutineScope {
         }
 
         notification.parseNotificationStrategyFromIntent(intent)
-        notification.createNotification(this)
-
-        // 启动完成的广播
-        sendBroadcast(
-            Intent().apply {
-                setPackage(packageName)
-                setAction(INTENT_STARTUP)
-            },
-        )
-        
-        return START_STICKY
+        if (notification.createNotification(this)) {
+            // 启动完成的广播
+            sendBroadcast(
+                Intent().apply {
+                    setPackage(packageName)
+                    setAction(INTENT_STARTUP)
+                },
+            )
+            return START_STICKY
+        } else {
+            return START_NOT_STICKY
+        }
     }
     
     

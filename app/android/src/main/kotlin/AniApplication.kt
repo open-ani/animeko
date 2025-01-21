@@ -23,7 +23,6 @@ import kotlinx.coroutines.launch
 import me.him188.ani.android.activity.MainActivity
 import me.him188.ani.app.domain.media.cache.MediaCacheNotificationTask
 import me.him188.ani.app.domain.torrent.TorrentManager
-import me.him188.ani.app.domain.torrent.service.AniTorrentService
 import me.him188.ani.app.domain.torrent.service.TorrentServiceConnection
 import me.him188.ani.app.platform.AndroidLoggingConfigurator
 import me.him188.ani.app.platform.JvmLogHelper
@@ -85,9 +84,11 @@ class AniApplication : Application() {
         }
 
 
+        val scope = createAppRootCoroutineScope()
         val torrentServiceConnection = TorrentServiceConnection(
             this,
             onRequiredRestartService = { startAniTorrentService() },
+            scope,
         )
         if (FEATURE_USE_TORRENT_SERVICE) {
             try {
@@ -107,7 +108,6 @@ class AniApplication : Application() {
 
         instance = Instance()
 
-        val scope = createAppRootCoroutineScope()
         scope.launch(Dispatchers.IO_) {
             runCatching {
                 JvmLogHelper.deleteOldLogs(Paths.get(logsDir))
@@ -169,7 +169,7 @@ class AniApplication : Application() {
 
     private fun startAniTorrentService(): ComponentName? {
         return startForegroundService(
-            Intent(this, AniTorrentService::class.java).apply {
+            Intent(this, TorrentServiceConnection.anitorrentServiceClass).apply {
                 putExtra("app_name", me.him188.ani.R.string.app_name)
                 putExtra("app_service_title_text_idle", me.him188.ani.R.string.app_service_title_text_idle)
                 putExtra("app_service_title_text_working", me.him188.ani.R.string.app_service_title_text_working)

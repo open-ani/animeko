@@ -24,6 +24,8 @@ import android.os.Parcelable
 import kotlinx.parcelize.Parcelize
 import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
+import me.him188.ani.utils.logging.logger
+import me.him188.ani.utils.logging.warn
 
 class ServiceNotification(
     private val context: Context
@@ -93,15 +95,27 @@ class ServiceNotification(
     /**
      * create notification with initial state idle.
      */
-    fun createNotification(service: Service) {
+    fun createNotification(service: Service): Boolean {
         val currentNotification = notificationService.activeNotifications.find { it.id == NOTIFICATION_ID }
-        if (currentNotification != null) return
+        if (currentNotification != null) return true
 
         val notification = buildNotification(
             notificationAppearance,
             NotificationDisplayStrategy.Idle(0.bytes, 0.bytes),
         )
-        service.startForeground(NOTIFICATION_ID, notification)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            try {
+                service.startForeground(NOTIFICATION_ID, notification)
+                return true
+            } catch (e: ForegroundServiceStartNotAllowedException) {
+                // Android 15 limitation: https://developer.android.com/about/versions/15/behavior-changes-15#datasync-timeout
+                logger.warn { "Foreground service start not allowed (possibly due to system limitations): $e" } // we intend to only log exception messages without stacktrace
+                return false
+            }
+        } else {
+            service.startForeground(NOTIFICATION_ID, notification)
+            return true
+        }
     }
 
     /**
@@ -176,6 +190,7 @@ class ServiceNotification(
     companion object {
         private const val NOTIFICATION_ID = 114
         private const val NOTIFICATION_CHANNEL_ID = "me.him188.ani.app.domain.torrent.service.AniTorrentService"
+        private val logger = logger<ServiceNotification>()
 
         private val defaultNotificationAppearance = NotificationAppearance(
             name = "Animeko BT 引擎服务",
