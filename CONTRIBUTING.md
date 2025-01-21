@@ -131,6 +131,11 @@ iOS 代码, 但还没有配置构建 iOS APP.
 
 Ani 项目的几乎所有模块都使用 KMP. 源集结构如下:
 
+图例:
+- 蓝色 (android, desktop, iosArm64) 为最终目标. 它们将会构建成为 APP.
+- 绿色的 (iosSimulatorArm64) 是 iOS 模拟器目标, 仅为运行测试.
+- `A -> B` 表示 A 依赖 B
+
 ```mermaid
 flowchart TD
     subgraph "多平台项目统一源集结构"
@@ -156,9 +161,6 @@ flowchart TD
     end
 ```
 
-蓝色 (android, desktop, iosArm64) 为最终目标. 它们将会构建成为 APP.
-绿色的 (iosSimulatorArm64) 是 iOS 模拟器目标, 仅为运行测试.
-
 [Skiko]: https://github.com/JetBrains/skiko
 
 Compose Multiplatform 在 `desktop` 和 `ios` 均使用 [Skiko][Skiko] 渲染, 因此共享的 `skiko` 源集.
@@ -182,7 +184,7 @@ Compose Multiplatform 在 `desktop` 和 `ios` 均使用 [Skiko][Skiko] 渲染, �
 > 如果有一些功能只有一个平台需要, 例如 PC 上的隐藏鼠标指针功能, 你仍然需要为所有平台提供实现,
 > 将函数体留空即可.
 
-### 项目架构
+### 模块结构
 
 模块结构也对应源码目录结构. 对于具体的模块说明, 请查看 [6. App 项目架构](#6-app-项目架构).
 
