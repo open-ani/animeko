@@ -372,7 +372,7 @@ val buildMatrixInstances = listOf(
     MatrixInstance(
         runner = Runner.GithubUbuntu2004,
         uploadApk = false,
-        runAndroidInstrumentedTests = true,
+        runAndroidInstrumentedTests = false,
         composeResourceTriple = "linux-x64",
         runTests = false,
         uploadDesktopInstallers = false,

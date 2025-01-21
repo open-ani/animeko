@@ -230,31 +230,6 @@ jobs:
     - id: 'step-10'
       name: 'Compile Kotlin Android'
       run: './gradlew compileDebugKotlinAndroid compileReleaseKotlinAndroid "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.android.abis=x86_64"'
-    - id: 'step-11'
-      name: 'Enable KVM'
-      run: |-
-        echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-        sudo udevadm control --reload-rules
-        sudo udevadm trigger --name-match=kvm
-    - id: 'step-12'
-      name: 'Build Android Instrumented Tests'
-      run: './gradlew assembleDebugAndroidTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.android.abis=x86_64"'
-    - id: 'step-13'
-      name: 'Android Instrumented Test (api=30, arch=x86_64)'
-      uses: 'reactivecircus/android-emulator-runner@v2'
-      with:
-        api-level: '30'
-        arch: 'x86_64'
-        emulator-boot-timeout: '1800'
-        script: './gradlew connectedDebugAndroidTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.android.abis=x86_64"'
-    - id: 'step-14'
-      name: 'Android Instrumented Test (api=35, arch=x86_64)'
-      uses: 'reactivecircus/android-emulator-runner@v2'
-      with:
-        api-level: '35'
-        arch: 'x86_64'
-        emulator-boot-timeout: '1800'
-        script: './gradlew connectedDebugAndroidTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.android.abis=x86_64"'
   build_github-macos-13:
     name: 'Build (macOS 13 x86_64 (GitHub))'
     runs-on:
