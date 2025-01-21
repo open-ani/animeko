@@ -264,7 +264,7 @@ class SubjectCollectionRepositoryImpl(
             emit(
                 existing.asFlow()
                     .flatMapMerge(concurrency = 4) { entity ->
-                        episodeCollectionRepository.subjectEpisodeCollectionInfosFlow(entity.subjectId, false)
+                        episodeCollectionRepository.subjectEpisodeCollectionInfosFlow(entity.subjectId)
                             .take(1)
                             .map { episodes ->
                                 LightSubjectAndEpisodes(
