@@ -39,6 +39,9 @@ androidx-media3 = "1.4.1"
 androidx-lifecycle = "2.8.7"
 paging = "3.3.5" # https://developer.android.com/jetpack/androidx/releases/paging
 turbine = "1.2.0" # https://github.com/cashapp/turbine/releases/
+junit4 = "4.13.2"
+junit5 = "5.11.4"
+mannodermaus-junit5 = "1.6.0" # https://github.com/mannodermaus/android-junit5
 
 mockito = "5.12.0"
 mockito-kotlin = "5.4.0"
@@ -78,6 +81,15 @@ atomicfu-gradle-plugin = { module = "org.jetbrains.kotlinx:atomicfu-gradle-plugi
 compose-multiplatfrom-gradle-plugin = { module = "org.jetbrains.compose:org.jetbrains.compose.gradle.plugin", version.ref = "compose-multiplatform" }
 kotlin-compose-compiler-gradle-plugin = { module = "org.jetbrains.kotlin:compose-compiler-gradle-plugin", version.ref = "kotlin" }
 #compose-multiplatfrom-compiler-plugin = { module = "org.jetbrains.compose:org.jetbrains.compose.compiler", version.ref = "compose-multiplatform-compiler" }
+
+# These are used dynamically
+junit5-jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit5" }
+junit5-jupiter-api = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junit5" }
+junit5-jupiter-params = { module = "org.junit.jupiter:junit-jupiter-params", version.ref = "junit5" }
+junit5-vintage-engine = { module = "org.junit.vintage:junit-vintage-engine", version.ref = "junit5" }
+junit5-android-test-core = { module = "de.mannodermaus.junit5:android-test-core", version.ref = "mannodermaus-junit5" }
+junit5-android-test-runner = { module = "de.mannodermaus.junit5:android-test-runner", version.ref = "mannodermaus-junit5" }
+junit4 = { module = "junit:junit", version.ref = "junit4" }
 
 # Kotlinx
 ksoup = { module = "com.fleeksoft.ksoup:ksoup", version.ref = "ksoup" }
@@ -204,6 +216,7 @@ androidx-lifecycle-runtime-ktx = { module = "androidx.lifecycle:lifecycle-runtim
 androidx-lifecycle-service = { module = "androidx.lifecycle:lifecycle-service", version.ref = "androidx-lifecycle" }
 androidx-lifecycle-process = { module = "androidx.lifecycle:lifecycle-process", version.ref = "androidx-lifecycle" }
 androidx-collection = { module = "androidx.collection:collection", version = "1.4.5" }
+androidx-test-runner = { module = "androidx.test:runner", version = "1.5.0" }
 
 #androidx-navigation-compose = { module = "androidx.navigation:navigation-compose", version = "2.7.6" }
 slf4j-android = { module = "uk.uuid.slf4j:slf4j-android", version = "2.0.7-0" }

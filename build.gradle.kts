@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -29,6 +29,7 @@ plugins {
     id("com.google.devtools.ksp") version libs.versions.ksp apply false
     id("androidx.room") version libs.versions.room apply false
     id("com.strumenta.antlr-kotlin") version libs.versions.antlr.kotlin apply false
+    id("de.mannodermaus.android-junit5") version "1.11.2.0" apply false
     idea
 }
 

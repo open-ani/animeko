@@ -7,22 +7,17 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-plugins {
-    kotlin("multiplatform")
-    `ani-mpp-lib-targets`
-    kotlin("plugin.serialization")
+package me.him188.ani.app.ui
+
+import androidx.compose.ui.test.SemanticsNodeInteraction
+
+fun SemanticsNodeInteraction.exists(): Boolean {
+    try {
+        assertDoesNotExist()
+    } catch (e: AssertionError) {
+        return true
+    }
+    return false
 }
 
-kotlin {
-    sourceSets.commonMain.dependencies {
-        api(projects.utils.io)
-    }
-
-    sourceSets.getByName("jvmMain").dependencies {
-        api(libs.jsoup)
-    }
-
-    sourceSets.nativeMain.dependencies {
-        api(libs.ksoup)
-    }
-}
+fun SemanticsNodeInteraction.doesNotExist(): Boolean = !exists()

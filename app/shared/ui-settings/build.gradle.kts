@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -42,6 +42,16 @@ kotlin {
 
 android {
     namespace = "me.him188.ani.app.ui.settings"
+    packaging {
+        resources {
+            excludes.add("win32-x86-64/attach_hotspot_windows.dll")
+            excludes.add("win32-x86/attach_hotspot_windows.dll")
+            pickFirsts.add("META-INF/AL2.0")
+            pickFirsts.add("META-INF/LGPL2.1")
+            excludes.add("META-INF/DEPENDENCIES")
+            excludes.add("META-INF/licenses/ASM")
+        }
+    }
 }
 
 compose.resources {

@@ -127,13 +127,19 @@ iOS 代码, 但还没有配置构建 iOS APP.
 > 共享源集内, 可以使用各个平台的专有 API. 例如安卓和桌面都是 JVM, 也就都可以使用 JDK (Java) API.
 > 在 iOS 源集内, 则可使用 native API, 例如 UIKit. 在 iOS 上, Kotlin 还支持 C/Objective-C 交互.
 
-### 多平台源集结构
+### 多平台编译目标结构
 
-Ani 项目的几乎所有模块都使用 KMP. 源集结构如下:
+Ani 项目的几乎所有模块都使用 KMP. 编译目标结构如下:
+
+图例:
+
+- 蓝色 (android, desktop, iosArm64) 为最终目标. 它们将会构建成为 APP.
+- 绿色的 (iosSimulatorArm64) 是 iOS 模拟器目标, 仅为运行测试.
+- `A -> B` 表示 A 依赖 B
 
 ```mermaid
 flowchart TD
-    subgraph "多平台项目统一源集结构"
+    subgraph "多平台项目统一编译目标结构"
         direction BT
         style common fill: white, color: black
         style android fill: aqua, color: black
@@ -156,9 +162,6 @@ flowchart TD
     end
 ```
 
-蓝色 (android, desktop, iosArm64) 为最终目标. 它们将会构建成为 APP.
-绿色的 (iosSimulatorArm64) 是 iOS 模拟器目标, 仅为运行测试.
-
 [Skiko]: https://github.com/JetBrains/skiko
 
 Compose Multiplatform 在 `desktop` 和 `ios` 均使用 [Skiko][Skiko] 渲染, 因此共享的 `skiko` 源集.
@@ -173,7 +176,7 @@ Compose Multiplatform 在 `desktop` 和 `ios` 均使用 [Skiko][Skiko] 渲染, �
 1. 在 `commonMain` 中增加 `expect fun VideoPlayer(state: MediampPlayer)`. 该函数没有函数体,
    各个平台分别实现函数体.
 2. 考虑该功能应当如何在各个平台实现. 对于视频播放器, 我们需要在三个平台分别实现.
-3. 在 `androidMain`, `desktopMain`, `iosMain` 中分别增加
+3. 在 `androidMain`, `desktopMain`, `appleMain` 中分别增加
    `actual fun VideoPlayer(state: MediampPlayer) { ... }`
 
 这样, 就可以在 `commonMain` 中调用 `VideoPlayer` 函数, 而在编译时 Kotlin 自动选择正确的实现.
@@ -182,7 +185,69 @@ Compose Multiplatform 在 `desktop` 和 `ios` 均使用 [Skiko][Skiko] 渲染, �
 > 如果有一些功能只有一个平台需要, 例如 PC 上的隐藏鼠标指针功能, 你仍然需要为所有平台提供实现,
 > 将函数体留空即可.
 
-### 项目架构
+### 测试源集结构
+
+基于多平台架构, Ani 也拥有多平台测试. 测试源集结构如下:
+
+```
+- commonTest
+   - jvmTest
+      - desktopTest
+      - androidUnitTest
+      - androidInstrumentedTest
+   - nativeTest
+      - appleTest
+         - iosTest
+            - iosSimulatorArm64Test
+   - skikoTest (由 desktopTest 和 iosTest 共享)
+```
+
+- 绝大部分测试可写在 `commonTest` 里, 它们会被所有平台共享, 也就是所有平台都会执行这些测试.
+- 对于桌面端专用的测试, 应当放置在 `jvmTest/desktopTest`, 对于 iOS 专用的测试, 应当放置在
+  `nativeTest/appleTest/iosTest`, 以此类推.
+- 如果是桌面端和安卓都可以使用的测试, 则放置在 `jvmTest` 中.
+
+#### Android Instrumented Test
+
+[Android Instrumented Test]: https://developer.android.com/training/testing/unit-testing/instrumented-unit-tests
+
+项目拥有 [Android Instrumented Test]. 安卓平台测试有以下两种:
+
+- `androidUnitTest`: 使用本地 JDK 运行的单元测试, 无法调用 Android SDK API.
+- `androidInstrumentedTest`: 连接到安卓模拟器或真机运行.
+
+> [!TIP]
+> **为什么要有两种测试?**
+>
+> 因为安卓 SDK 和 JDK 有些许区别. 例如:
+>
+> - 安卓的 Regex 需要比 JDK 更多的转义. 当不成对时, `\]` 在 JDK 可以去除前面的 `\`, 而在安卓不可以.
+    IDE 会提示去除 `\`, 导致在安卓真机运行时才能发现问题 (而现在开发者更倾向于方便地用 PC
+    缩小窗口大小来"模拟"安卓, 很可能会漏掉 bug)
+> - 部分 API 在安卓上没有, 但在 `jvmMain` 内可以访问, 导致运行时 `NoSuchMethodError`. 例如
+    `List.removeFirst()`.
+
+##### 如何在本地运行 instrumented test
+
+1. 在 local.properties 增加 `android.min.sdk=30`. 因为 SDK 30 才支持函数名写空格 (我们已经有一万个
+   case 了, 没办法回头改每个 case 的名字了).
+2. `./gradlew connectedCheck`
+
+说明:
+
+- `./gradlew check` 不会执行 `androidInstrumentedTest` (但会执行 `androidUnitTest` 和其他). 需要使用
+  `./gradlew connectedCheck` 才能执行 instrumented test. 默认会连接到 ADB 连接的一个设备,
+  也就是需要提前插上手机或启动模拟器.
+- IDE 内不支持从一个函数运行, 只能用 `./gradlew connectedCheck` 运行全部.
+
+#### 我需要在日常提交代码前运行 instrumented test 吗?
+
+不需要. 绝大部分情况下不会有代码通过了 `commonTest` (即所有平台的 unit 测试), 但不能在安卓真机上运行.
+PR 的 CI 总是会运行 instrumented test, 如果 CI 报错才需要本地运行 debug.
+
+简单来说, 日常仍然只需要测试 `./gradlew check` 通过后, 即可 push commit 和提交 PR.
+
+### 模块结构
 
 模块结构也对应源码目录结构. 对于具体的模块说明, 请查看 [6. App 项目架构](#6-app-项目架构).
 

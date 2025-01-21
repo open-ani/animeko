@@ -69,7 +69,15 @@ configure<KotlinMultiplatformExtension> {
                 }
             }
         }
-
+        
+        // This won't work (KT 2.1.0)
+//        sourceSets {
+//            val commonAndroidTest = create("commonAndroidTest") {
+//                dependsOn(getByName("jvmTest"))
+//            }
+//            getByName("androidInstrumentedTest").dependsOn(commonAndroidTest)
+//            getByName("androidUnitTest").dependsOn(commonAndroidTest)
+//        }
     } else {
         jvm()
 
@@ -184,8 +192,14 @@ if (android != null) {
         compileSdk = getIntProperty("android.compile.sdk")
         defaultConfig {
             minSdk = getIntProperty("android.min.sdk")
-            // we use plugin android-junit5 to configure this
-//            testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+            testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+            testInstrumentationRunnerArguments.set("runnerBuilder", "de.mannodermaus.junit5.AndroidJUnit5Builder")
+        }
+        packaging { 
+            resources {
+                pickFirsts.add("META-INF/LICENSE.md")
+                pickFirsts.add("META-INF/LICENSE-notice.md")
+            }
         }
 //        flavorDimensions.add("api")
 //        productFlavors {
@@ -194,7 +208,7 @@ if (android != null) {
 //                minSdk = 30
 //                isDefault = false
 //            }
-//            create("minApi26") {
+//            create("default") {
 //                dimension = "api"
 //                isDefault = true
 //            }
@@ -213,4 +227,8 @@ if (android != null) {
             }
         }
     }
+}
+
+if (android != null) {
+    apply(plugin = "de.mannodermaus.android-junit5")
 }
