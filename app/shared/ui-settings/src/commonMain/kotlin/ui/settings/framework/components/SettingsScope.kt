@@ -39,7 +39,7 @@ import me.him188.ani.app.ui.foundation.theme.weaken
 object SettingsDefaults {
     val groupBackgroundColor
         @Composable
-        get() = MaterialTheme.colorScheme.surfaceContainerLow
+        get() = Color.Transparent
 
     @Composable
     fun listItemColors() = ListItemDefaults.colors(containerColor = groupBackgroundColor)
