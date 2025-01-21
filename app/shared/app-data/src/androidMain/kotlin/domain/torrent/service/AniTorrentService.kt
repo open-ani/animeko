@@ -17,6 +17,7 @@ import android.os.IBinder
 import android.os.PowerManager
 import android.os.Process
 import android.os.SystemClock
+import androidx.annotation.RequiresApi
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.CompletableDeferred
@@ -49,12 +50,12 @@ import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import kotlin.coroutines.CoroutineContext
 
-class AniTorrentService : LifecycleService(), CoroutineScope {
+sealed class AniTorrentService : LifecycleService(), CoroutineScope {
     private val logger = logger<AniTorrentService>()
     override val coroutineContext: CoroutineContext =
-        Dispatchers.Default + CoroutineName("AniTorrentService") + 
+        Dispatchers.Default + CoroutineName("AniTorrentService") +
                 SupervisorJob(lifecycleScope.coroutineContext[Job])
-    
+
     // config flow for constructing torrent engine.
     private val saveDirDeferred: CompletableDeferred<String> = CompletableDeferred()
     private val proxyConfig: MutableSharedFlow<ProxyConfig?> = MutableSharedFlow(1)
@@ -85,10 +86,10 @@ class AniTorrentService : LifecycleService(), CoroutineScope {
         (getSystemService(Context.POWER_SERVICE) as PowerManager)
             .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "AniTorrentService::wake_lock")
     }
-    
+
     override fun onCreate() {
         super.onCreate()
-        
+
         launch {
             // try to initialize anitorrent engine.
             anitorrent.complete(
@@ -122,7 +123,7 @@ class AniTorrentService : LifecycleService(), CoroutineScope {
             stopSelf()
             return super.onStartCommand(intent, flags, startId)
         }
-        
+
         // acquire wake lock when app is stopped.
         val acquireWakeLock = intent?.getLongExtra("acquireWakeLock", -1L) ?: -1L
         if (acquireWakeLock != -1L) {
@@ -145,8 +146,8 @@ class AniTorrentService : LifecycleService(), CoroutineScope {
             return START_NOT_STICKY
         }
     }
-    
-    
+
+
     override fun onBind(intent: Intent): IBinder {
         super.onBind(intent)
         logger.info { "client bind anitorrent." }
@@ -219,3 +220,8 @@ class AniTorrentService : LifecycleService(), CoroutineScope {
         const val INTENT_STARTUP = "me.him188.ani.android.ANI_TORRENT_SERVICE_STARTUP"
     }
 }
+
+@RequiresApi(34)
+class AniTorrentServiceApi34 : AniTorrentService()
+
+class AniTorrentServiceApiDefault : AniTorrentService()

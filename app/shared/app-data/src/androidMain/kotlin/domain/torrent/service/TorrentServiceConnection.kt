@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -16,6 +16,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.ServiceConnection
+import android.os.Build
 import android.os.IBinder
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
@@ -24,12 +25,13 @@ import androidx.lifecycle.LifecycleOwner
 import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.torrent.IRemoteAniTorrentEngine
-import me.him188.ani.utils.logging.debug
-import me.him188.ani.utils.logging.error
-import me.him188.ani.utils.logging.logger
-import me.him188.ani.utils.logging.warn
+import me.him188.ani.utils.logging.*
 import kotlin.time.Duration.Companion.minutes
 
 /**
@@ -99,11 +101,11 @@ class TorrentServiceConnection(
     var startServiceResultWhileAppStartup = false
 
     private val acquireWakeLockIntent by lazy {
-        Intent(context, AniTorrentService::class.java).apply {
+        Intent(context, TorrentServiceConnection.anitorrentServiceClass).apply {
             putExtra("acquireWakeLock", 1.minutes.inWholeMilliseconds)
         }
     }
-    
+
     override fun onStateChanged(source: LifecycleOwner, event: Lifecycle.Event) {
         when (event) {
             Lifecycle.Event.ON_CREATE -> {
@@ -220,7 +222,7 @@ class TorrentServiceConnection(
 
     private fun bindService(): Boolean {
         val bindResult = context.bindService(
-            Intent(context, AniTorrentService::class.java), this, Context.BIND_ABOVE_CLIENT,
+            Intent(context, anitorrentServiceClass), this, Context.BIND_ABOVE_CLIENT,
         )
         if (!bindResult) logger.error { "Failed to bind AniTorrentService." }
         return bindResult
@@ -228,5 +230,13 @@ class TorrentServiceConnection(
 
     suspend fun awaitBinder(): IRemoteAniTorrentEngine {
         return binder.await()
+    }
+
+    companion object {
+        val anitorrentServiceClass = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            AniTorrentServiceApi34::class.java
+        } else {
+            AniTorrentServiceApiDefault::class.java
+        }
     }
 }

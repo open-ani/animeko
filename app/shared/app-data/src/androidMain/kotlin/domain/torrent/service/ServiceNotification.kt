@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.domain.torrent.service
 
+import android.app.ForegroundServiceStartNotAllowedException
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -38,7 +39,7 @@ class ServiceNotification(
     private val stopServiceIntent by lazy {
         PendingIntent.getService(
             context, 0,
-            Intent(context, AniTorrentService::class.java).apply { putExtra("stopService", true) },
+            Intent(context, TorrentServiceConnection.anitorrentServiceClass).apply { putExtra("stopService", true) },
             PendingIntent.FLAG_IMMUTABLE,
         )
     }
@@ -61,7 +62,7 @@ class ServiceNotification(
             notificationAppearance = appearance
             return
         }
-        
+
         val name = intent.getStringOrDefault("app_name") {
             defaultNotificationAppearance.name
         }
@@ -81,7 +82,7 @@ class ServiceNotification(
         val icon = (intent?.getIntExtra("app_icon", -1) ?: -1)
             .let { if (it == -1) defaultNotificationAppearance.icon else Icon.createWithResource(context, it) }
         notificationOpenActivityIntent = intent?.getParcelable<Intent>("open_activity_intent")
-        
+
         notificationAppearance = NotificationAppearance(
             name = name,
             titleIdle = titleIdle,
