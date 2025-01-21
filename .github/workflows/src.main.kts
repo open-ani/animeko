@@ -1208,6 +1208,7 @@ class WithMatrix(
                             apiLevel = apiLevel,
                             arch = arch,
                             script = "./gradlew connectedDebugAndroidTest \"-Pandroid.min.sdk=30\" " + matrix.gradleArgs,
+                            emulatorBootTimeout = 1800,
                         ),
                     )
                 }
