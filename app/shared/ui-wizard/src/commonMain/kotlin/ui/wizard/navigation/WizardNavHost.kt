@@ -57,7 +57,7 @@ fun WizardNavHost(
     val navController = rememberNavController()
     controller.setNavController(navController)
 
-    DisposableEffect(controller) {
+    DisposableEffect(controller, content) {
         val steps = WizardNavHostScope(controller).apply(content).build()
         controller.setupSteps(steps)
         onDispose { }
