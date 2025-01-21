@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -15,7 +15,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.platform.debugInspectorInfo
 import androidx.compose.ui.unit.dp
-import androidx.window.core.layout.WindowWidthSizeClass
 
 /**
  * 每个窗口 (页面) 距离窗口边缘的间距.
@@ -28,8 +27,9 @@ fun Modifier.materialWindowMarginPadding(): Modifier = composed(
     },
 ) {
     // https://m3.material.io/foundations/layout/applying-layout
-    val values = when (currentWindowAdaptiveInfo1().windowSizeClass.windowWidthSizeClass) {
-        WindowWidthSizeClass.COMPACT -> {
+    val windowSizeClass = currentWindowAdaptiveInfo1().windowSizeClass
+    val values = when {
+        windowSizeClass.isWidthCompact -> {
             // https://m3.material.io/foundations/layout/applying-layout/compact#5a83ddd7-137f-4657-ba2d-eb08cac065e7
             MaterialWindowMarginPaddings.COMPACT
         }

@@ -67,7 +67,7 @@ import me.him188.ani.app.ui.foundation.HorizontalScrollControlState
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.layout.CarouselItemDefaults
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
-import me.him188.ani.app.ui.foundation.layout.isAtLeastMedium
+import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.paneHorizontalPadding
 import me.him188.ani.app.ui.foundation.rememberHorizontalScrollControlState
 import me.him188.ani.app.ui.foundation.session.SelfAvatar
@@ -128,7 +128,7 @@ fun ExplorationPage(
                 actions = {
                     actions()
                     if (state.authState.isKnownGuest // #1269 游客模式下无法打开设置界面
-                        || currentWindowAdaptiveInfo1().windowSizeClass.windowWidthSizeClass.isAtLeastMedium
+                        || currentWindowAdaptiveInfo1().windowSizeClass.isWidthAtLeastMedium
                     ) {
                         IconButton(onClick = onClickSettings) {
                             Icon(Icons.Rounded.Settings, "设置")

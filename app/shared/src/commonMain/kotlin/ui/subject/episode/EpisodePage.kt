@@ -76,8 +76,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.window.core.layout.WindowHeightSizeClass
-import androidx.window.core.layout.WindowWidthSizeClass
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -105,10 +103,14 @@ import me.him188.ani.app.ui.foundation.effects.OnLifecycleEvent
 import me.him188.ani.app.ui.foundation.effects.ScreenOnEffect
 import me.him188.ani.app.ui.foundation.effects.ScreenRotationEffect
 import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
-import me.him188.ani.app.ui.foundation.layout.compareTo
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBarPadding
+import me.him188.ani.app.ui.foundation.layout.isHeightAtLeastMedium
+import me.him188.ani.app.ui.foundation.layout.isHeightCompact
 import me.him188.ani.app.ui.foundation.layout.isSystemInFullscreen
+import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastExpanded
+import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
+import me.him188.ani.app.ui.foundation.layout.isWidthCompact
 import me.him188.ani.app.ui.foundation.layout.setRequestFullScreen
 import me.him188.ani.app.ui.foundation.layout.setSystemBarVisible
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
@@ -228,14 +230,12 @@ private fun EpisodeSceneContent(
 
     BoxWithConstraints(modifier) {
         val windowSizeClass = currentWindowAdaptiveInfo1().windowSizeClass
-        val width = windowSizeClass.windowWidthSizeClass
-        val height = windowSizeClass.windowHeightSizeClass
 
         val showExpandedUI = when {
-            width == WindowWidthSizeClass.COMPACT && height == WindowHeightSizeClass.COMPACT -> false
-            width == WindowWidthSizeClass.COMPACT && height > WindowHeightSizeClass.COMPACT -> false
-            width > WindowWidthSizeClass.COMPACT && height == WindowHeightSizeClass.COMPACT -> true // #1279
-            windowSizeClass.windowWidthSizeClass >= WindowWidthSizeClass.EXPANDED -> true // #932
+            windowSizeClass.isWidthCompact && windowSizeClass.isHeightCompact -> false
+            windowSizeClass.isWidthCompact && windowSizeClass.isHeightAtLeastMedium -> false
+            windowSizeClass.isWidthAtLeastMedium && windowSizeClass.isHeightCompact -> true // #1279
+            windowSizeClass.isWidthAtLeastExpanded -> true // #932
             else -> false
         }
         val pageState = vm.pageState.collectAsStateWithLifecycle()

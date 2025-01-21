@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -31,7 +31,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.effects.moveFocusOnEnter
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
-import me.him188.ani.app.ui.foundation.layout.isCompact
+import me.him188.ani.app.ui.foundation.layout.isWidthCompact
 
 @Stable
 object EditMediaSourceTestDataCardDefaults {
@@ -52,7 +52,7 @@ object EditMediaSourceTestDataCardDefaults {
         content: @Composable FlowRowScope.() -> Unit
     ) {
         BoxWithConstraints {
-            val isCompact = currentWindowAdaptiveInfo1().windowSizeClass.windowWidthSizeClass.isCompact
+            val isCompact = currentWindowAdaptiveInfo1().windowSizeClass.isWidthCompact
             androidx.compose.foundation.layout.FlowRow(
                 modifier.padding(all = 16.dp).padding(bottom = 4.dp).focusGroup(),
                 verticalArrangement = if (isCompact) {

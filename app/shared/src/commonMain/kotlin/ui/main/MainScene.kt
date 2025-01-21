@@ -64,7 +64,7 @@ import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBarPadding
-import me.him188.ani.app.ui.foundation.layout.isAtLeastMedium
+import me.him188.ani.app.ui.foundation.layout.isHeightAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.setRequestFullScreen
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
@@ -122,7 +122,7 @@ private fun MainSceneContent(
                         { onNavigateToPage(MainScenePage.Search) },
                         Modifier
                             .desktopTitleBarPadding()
-                            .ifThen(currentWindowAdaptiveInfo1().windowSizeClass.windowHeightSizeClass.isAtLeastMedium) {
+                            .ifThen(currentWindowAdaptiveInfo1().windowSizeClass.isHeightAtLeastMedium) {
                                 // 移动端横屏不增加额外 padding
                                 padding(vertical = 48.dp)
                             },
@@ -134,7 +134,7 @@ private fun MainSceneContent(
                 navigationRailFooter = {
                     NavigationRailItem(
                         modifier = Modifier.padding(bottom = itemSpacing)
-                            .ifThen(currentWindowAdaptiveInfo1().windowSizeClass.windowHeightSizeClass.isAtLeastMedium) {
+                            .ifThen(currentWindowAdaptiveInfo1().windowSizeClass.isHeightAtLeastMedium) {
                                 // 移动端横屏不增加额外 padding
                                 padding(vertical = 16.dp)
                             },

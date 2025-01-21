@@ -45,7 +45,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.window.core.layout.WindowWidthSizeClass
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceCodecManager
@@ -58,6 +57,7 @@ import me.him188.ani.app.ui.foundation.layout.PaddingValuesSides
 import me.him188.ani.app.ui.foundation.layout.ThreePaneScaffoldValueConverter.ExtraPaneForNestedDetails
 import me.him188.ani.app.ui.foundation.layout.convert
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
+import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.only
 import me.him188.ani.app.ui.foundation.layout.panePadding
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
@@ -288,7 +288,7 @@ fun EditRssMediaSourcePage(
                 ListDetailAnimatedPane {
                     Crossfade(testState.viewingItem) { item ->
                         item ?: return@Crossfade
-                        if (currentWindowAdaptiveInfo1().windowSizeClass.windowWidthSizeClass != WindowWidthSizeClass.COMPACT) {
+                        if (currentWindowAdaptiveInfo1().windowSizeClass.isWidthAtLeastMedium) {
                             SideSheetPane(
                                 onClose = {
                                     coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
