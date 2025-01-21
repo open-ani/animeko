@@ -22,11 +22,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flatMapMerge
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
@@ -259,16 +261,18 @@ class SubjectCollectionRepositoryImpl(
             }
 
             emit(
-                existing.map { subjectCollectionEntity ->
-                    LightSubjectAndEpisodes(
-                        subjectCollectionEntity.toLightSubjectInfo(),
-                        episodeCollectionRepository.subjectEpisodeCollectionInfosFlow(subjectCollectionEntity.subjectId)
-                            .first().map {
-                                it.episodeInfo.toLightEpisodeInfo()
-                            },
-                    )
-                }
-                    .plus(batchGetLightSubjectEpisodes(missingIds)),// TODO: 2025/1/14 batchGetLightSubjectEpisodes 没有按 epType 过滤 
+                existing.asFlow()
+                    .flatMapMerge(concurrency = 4) { entity ->
+                        episodeCollectionRepository.subjectEpisodeCollectionInfosFlow(entity.subjectId)
+                            .map { episodes ->
+                                LightSubjectAndEpisodes(
+                                    entity.toLightSubjectInfo(),
+                                    episodes.map { it.episodeInfo.toLightEpisodeInfo() },
+                                )
+                            }
+                    }
+                    .toList()
+                    .plus(batchGetLightSubjectEpisodes(missingIds)), // TODO: 2025/1/14 batchGetLightSubjectEpisodes 没有按 epType 过滤
             )
         }
     }
