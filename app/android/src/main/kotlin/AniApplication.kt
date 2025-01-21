@@ -32,6 +32,7 @@ import me.him188.ani.app.platform.startCommonKoinModule
 import me.him188.ani.app.ui.settings.tabs.getLogsDir
 import me.him188.ani.app.ui.settings.tabs.media.DEFAULT_TORRENT_CACHE_DIR_NAME
 import me.him188.ani.utils.coroutines.IO_
+import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.logger
 import org.koin.android.ext.android.getKoin
@@ -88,9 +89,11 @@ class AniApplication : Application() {
         val torrentServiceConnection = TorrentServiceConnection(
             this,
             onRequiredRestartService = { startAniTorrentService() },
-            scope,
+            scope.childScope(CoroutineName("TorrentServiceConnection")),
+            lifecycle = ProcessLifecycleOwner.get().lifecycle,
         )
         if (FEATURE_USE_TORRENT_SERVICE) {
+            torrentServiceConnection.startLifecycleJob()
             try {
                 startAniTorrentService()
                 torrentServiceConnection.startServiceResultWhileAppStartup = true
@@ -133,12 +136,6 @@ class AniApplication : Application() {
         }
         scope.launch(CoroutineName("MediaCacheNotificationTask")) {
             MediaCacheNotificationTask(koin.get(), koin.get()).run()
-        }
-
-        // use lifecycle of application process
-        if (FEATURE_USE_TORRENT_SERVICE) {
-            val connection = koin.get<TorrentServiceConnection>()
-            ProcessLifecycleOwner.get().lifecycle.addObserver(connection)
         }
     }
 

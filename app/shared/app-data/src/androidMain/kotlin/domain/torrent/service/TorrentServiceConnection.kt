@@ -22,11 +22,13 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
@@ -38,9 +40,9 @@ import kotlin.time.Duration.Companion.minutes
  * 管理与 [AniTorrentService] 的连接并获取 [IRemoteAniTorrentEngine] 远程访问接口.
  * 通过 [awaitBinder] 获取服务接口, 再启动完成并绑定之前将挂起协程.
  *
- * 连接管理由 [Lifecycle] 机制控制. 在 [ON_CREATE][Lifecycle.Event.ON_CREATE]
+ * 连接管理由传入的 [lifecycle] 机制控制. 在 [ON_CREATE][Lifecycle.Event.ON_CREATE]
  * 和 [ON_DESTROY][Lifecycle.Event.ON_DESTROY] 范围控制服务的绑定与解绑.
- * 在 [ON_START][Lifecycle.Event.ON_START] 和 [ON_STOP][Lifecycle.Event.ON_STOP]
+ * 在 [ON_RESUME][Lifecycle.Event.ON_RESUME] 和 [ON_STOP][Lifecycle.Event.ON_STOP]
  * 范围控制服务始终保持运行.
  *
  * 服务连接控制依赖的 lifecycle 应当尽可能大, 所以应该使用
@@ -52,19 +54,18 @@ import kotlin.time.Duration.Companion.minutes
  *
  * ## 管理连接的逻辑
  *
- * * App 启动时在 `AniApplication` 启动 [AniTorrentService], 随后由 [ON_CREATE][Lifecycle.Event.ON_CREATE]
- *   事件触发第一次绑定 Binder.
+ * 需要调用 [startLifecycleJob] 来启动生命周期监听:
  *
- * * App 正在运行时 (生命周期在 [ON_START][Lifecycle.Event.ON_START] 至 [ON_STOP][Lifecycle.Event.ON_STOP] 期间)
+ * * App 正在运行时 (生命周期在 [ON_RESUME][Lifecycle.Event.ON_RESUME] 至 [ON_STOP][Lifecycle.Event.ON_STOP] 期间)
  *   如果 [服务断开][onServiceConnected], [TorrentServiceConnection] 会尝试重启服务并监听
  *   [启动完成的广播][AniTorrentService.INTENT_STARTUP]. [AniTorrentService] 将在启动完成后发送此广播来触发绑定 Binder
  *   并取消监听启动完成的广播.
  *
  * * App 在后台时 (生命周期在 [ON_STOP][Lifecycle.Event.ON_STOP] 至 [ON_DESTROY][Lifecycle.Event.ON_DESTROY] 期间)
  *   如果 [服务断开][onServiceConnected], [TorrentServiceConnection] 不会尝试重启服务.
- *   但在下一次进入 [ON_START][Lifecycle.Event.ON_START] 时会重启, 步骤和上面相同.
+ *   但在下一次进入 [ON_RESUME][Lifecycle.Event.ON_RESUME] 时会重启, 步骤和上面相同.
  *
- * 上方的三条逻辑保证了 app 在 [ON_START][Lifecycle.Event.ON_START] 至 [ON_STOP][Lifecycle.Event.ON_STOP] 期间服务一定存活.
+ * 上方的三条逻辑保证了 app 在 [ON_RESUME][Lifecycle.Event.ON_RESUME] 至 [ON_STOP][Lifecycle.Event.ON_STOP] 期间服务一定存活.
  * 所以前面建议应该使用 [ProcessLifecycleOwner][androidx.lifecycle.ProcessLifecycleOwner] 管理连接.
  *
  * @see androidx.lifecycle.ProcessLifecycleOwner
@@ -76,7 +77,8 @@ class TorrentServiceConnection(
     private val context: Context,
     private val onRequiredRestartService: () -> ComponentName?,
     private val backgroundScope: CoroutineScope,
-) : LifecycleEventObserver, ServiceConnection, BroadcastReceiver() {
+    private val lifecycle: Lifecycle,
+) : ServiceConnection, BroadcastReceiver() {
     private val logger = logger<TorrentServiceConnection>()
 
     private var binder: CompletableDeferred<IRemoteAniTorrentEngine> = CompletableDeferred()
@@ -101,12 +103,58 @@ class TorrentServiceConnection(
     var startServiceResultWhileAppStartup = false
 
     private val acquireWakeLockIntent by lazy {
-        Intent(context, TorrentServiceConnection.anitorrentServiceClass).apply {
+        Intent(context, anitorrentServiceClass).apply {
             putExtra("acquireWakeLock", 1.minutes.inWholeMilliseconds)
         }
     }
 
-    override fun onStateChanged(source: LifecycleOwner, event: Lifecycle.Event) {
+    private var startLifecycleJobCalled = false
+
+    /**
+     * 启动 [Lifecycle] 监听, 在 [Lifecycle.State.RESUMED] 时自动 [restartService]
+     */
+    fun startLifecycleJob() {
+        if (startLifecycleJobCalled) return
+        startLifecycleJobCalled = true
+        lifecycle.addObserver(
+            object : LifecycleEventObserver {
+                override fun onStateChanged(source: LifecycleOwner, event: Lifecycle.Event) {
+                    this@TorrentServiceConnection.onStateChanged(event)
+                }
+            },
+        )
+
+        backgroundScope.launch(CoroutineName("AniTorrentService auto restart")) {
+            lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                shouldRestartServiceImmediately = true
+
+                // auto restart if not connected
+                if (!connected.value) {
+                    logger.debug {
+                        "AniTorrentService is not started or stopped while app is switching to foreground, restarting."
+                    }
+                    while (!connected.value) {
+                        restartService()
+                        delay(1000)
+                        if (connected.value) {
+                            break
+                        } else {
+                            logger.warn { "AniTorrentService is not started while application is ON_RESUME, retrying." }
+                        }
+                    }
+                }
+
+                try {
+                    awaitCancellation()
+                } finally {
+                    // so shouldRestartServiceImmediately is true iff state is RESUMED
+                    shouldRestartServiceImmediately = false
+                }
+            }
+        }
+    }
+
+    private fun onStateChanged(event: Lifecycle.Event) {
         when (event) {
             Lifecycle.Event.ON_CREATE -> {
                 if (startServiceResultWhileAppStartup) {
@@ -117,31 +165,9 @@ class TorrentServiceConnection(
                 }
             }
 
-            Lifecycle.Event.ON_RESUME -> {
-                shouldRestartServiceImmediately = true
-                // 如果 app 在后台时断开了 service 连接, 需要在切回前台时重新启动
-                if (!connected.value) {
-                    logger.debug {
-                        "AniTorrentService is not started or stopped while app is switching to foreground, restarting."
-                    }
-                    backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
-                        while (true) {
-                            restartService()
-                            delay(1000)
-                            if (connected.value) {
-                                break
-                            } else {
-                                logger.warn { "AniTorrentService is not started while application is ON_RESUME, retrying." }
-                            }
-                        }
-                    }
-                }
-            }
-
             Lifecycle.Event.ON_STOP -> {
-                shouldRestartServiceImmediately = false
                 try {
-                    // 请求 wake lock, 如果在 app 中息屏可以保证 service 正常跑 10 分钟.
+                    // 请求 wake lock, 如果在 app 中息屏可以保证 service 正常跑 [acquireWakeLockIntent] 分钟.
                     context.startService(acquireWakeLockIntent)
                 } catch (ex: IllegalStateException) {
                     // 大概率是 ServiceStartForegroundException, 服务已经终止了, 不需要再请求 wakelock.
@@ -206,17 +232,20 @@ class TorrentServiceConnection(
     override fun onReceive(context: Context?, intent: Intent?) {
         logger.debug { "AniTorrentService is restarted, rebinding." }
         bindService()
-        this.context.unregisterReceiver(this)
     }
 
-    private fun restartService() {
+    private val registerReceiver by lazy {
         ContextCompat.registerReceiver(
             context,
             this,
             restartServiceIntentFilter,
             ContextCompat.RECEIVER_NOT_EXPORTED,
         )
+        Unit
+    }
 
+    private fun restartService() {
+        registerReceiver // init lazy
         onRequiredRestartService()
     }
 
