@@ -125,9 +125,16 @@ fun SelectTheme(
             ) {
                 AniThemeDefaults.colorList.forEach {
                     ColorButton(
-                        onClick = { onUpdate(config.copy(seedColorValue = it.value)) },
+                        onClick = {
+                            onUpdate(
+                                config.copy(
+                                    useDynamicTheme = false,
+                                    seedColorValue = it.value,
+                                ),
+                            )
+                        },
                         baseColor = it,
-                        selected = config.seedColorValue == it.value,
+                        selected = !config.useDynamicTheme && config.seedColorValue == it.value,
                         cardColor = Color.Transparent,
                     )
                 }
