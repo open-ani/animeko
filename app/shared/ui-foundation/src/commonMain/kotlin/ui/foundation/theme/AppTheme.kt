@@ -309,3 +309,12 @@ fun modifyColorSchemeForBlackBackground(
         )
     } else colorScheme
 }
+
+@Composable
+expect fun SystemBarColorEffect(
+    isDark: Boolean = when (LocalThemeSettings.current.darkMode) {
+        DarkMode.LIGHT -> false
+        DarkMode.DARK -> true
+        DarkMode.AUTO -> isSystemInDarkTheme()
+    },
+)

@@ -32,3 +32,7 @@ actual fun appColorScheme(
         },
     )
 }
+
+@Composable
+actual fun SystemBarColorEffect(isDark: Boolean) {
+}
