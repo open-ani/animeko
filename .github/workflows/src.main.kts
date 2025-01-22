@@ -80,6 +80,7 @@ import io.github.typesafegithub.workflows.dsl.expressions.expr
 import io.github.typesafegithub.workflows.dsl.workflow
 import io.github.typesafegithub.workflows.yaml.ConsistencyCheckJobConfig
 import org.intellij.lang.annotations.Language
+import kotlin.math.max
 
 check(KotlinVersion.CURRENT.isAtLeast(2, 0, 0)) {
     "This script requires Kotlin 2.0.0 or later"
@@ -833,11 +834,15 @@ class WithMatrix(
         `if`: String? = null,
         @Language("shell", prefix = "./gradlew ") vararg tasks: String,
         env: Map<String, String> = emptyMap(),
-    ): CommandStep = run(
-        name = name,
+        maxAttempts: Int = 1,
+        timeoutMinutes: Int = 120,
+    ): ActionStep<Retry_Untyped.Outputs> = uses(
+        name = name, 
         `if` = `if`,
-        command = shell(
-            buildString {
+        action = Retry_Untyped(
+            maxAttempts_Untyped = "$maxAttempts",
+            timeoutMinutes_Untyped = "$timeoutMinutes",
+            command_Untyped = buildString {
                 append("./gradlew ")
                 tasks.joinTo(this, " ")
                 append(' ')
@@ -1096,6 +1101,7 @@ class WithMatrix(
                 "compileKotlinDesktop",
                 "compileKotlinMetadata",
             ],
+            maxAttempts = 2,
         )
         // Run separately to avoid OOM
         runGradle(
@@ -1104,6 +1110,7 @@ class WithMatrix(
                 "compileDebugKotlinAndroid",
                 "compileReleaseKotlinAndroid",
             ],
+            maxAttempts = 2,
         )
     }
 
