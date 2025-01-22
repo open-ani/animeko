@@ -45,12 +45,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.window.core.layout.WindowSizeClass
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
+import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
 import me.him188.ani.app.ui.foundation.theme.NavigationMotionScheme
 import me.him188.ani.app.ui.wizard.navigation.WizardController
 import me.him188.ani.app.ui.wizard.navigation.WizardNavHost
+import me.him188.ani.app.ui.wizard.step.BitTorrentFeature
 import me.him188.ani.app.ui.wizard.step.ConfigureProxy
+import me.him188.ani.app.ui.wizard.step.ProxyTestCaseState
 import me.him188.ani.app.ui.wizard.step.SelectTheme
 
 @Composable
@@ -59,7 +63,8 @@ fun WizardScene(
     state: WizardPresentationState,
     modifier: Modifier = Modifier,
     useEnterAnim: Boolean = true,
-    windowInsets: WindowInsets = AniWindowInsets.forPageContent()
+    windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
+    windowSizeClass: WindowSizeClass = currentWindowAdaptiveInfo1().windowSizeClass
 ) {
     var barVisible by rememberSaveable { mutableStateOf(!useEnterAnim) }
 
@@ -103,14 +108,26 @@ fun WizardScene(
                 }
             },
         ) {
-            step("select_theme", { Text("选择主题") }) {
+            step("theme", { Text("选择主题") }) {
                 SelectTheme(
                     config = state.selectThemeState.value,
                     onUpdate = { state.selectThemeState.update(it) },
                     modifier = Modifier.fillMaxSize(),
+                    windowSizeClass = windowSizeClass,
                 )
             }
-            step("configure_proxy", { Text("设置代理") }) {
+            step(
+                "proxy",
+                title = { Text("设置代理") },
+                forward = {
+                    WizardDefaults.GoForwardButton(
+                        { controller.goForward() },
+                        enabled = state.configureProxyState.testState.items.value
+                            .all { it.state == ProxyTestCaseState.SUCCESS },
+                    )
+                },
+                skipButton = { WizardDefaults.SkipButton({ controller.goForward() }) },
+            ) {
                 val configureProxyState = state.configureProxyState
                 ConfigureProxy(
                     config = configureProxyState.configState.value,
@@ -121,6 +138,13 @@ fun WizardScene(
                     systemProxy = configureProxyState.systemProxy.value,
                     testItems = configureProxyState.testState.items.value,
                     modifier = Modifier.fillMaxSize(),
+                    windowSizeClass = windowSizeClass,
+                )
+            }
+            step("bittorrent", { Text("BitTorrent 功能") }) {
+                BitTorrentFeature(
+                    modifier = Modifier.fillMaxSize(),
+                    windowSizeClass = windowSizeClass,
                 )
             }
         }

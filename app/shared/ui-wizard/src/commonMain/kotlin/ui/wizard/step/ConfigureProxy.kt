@@ -44,8 +44,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.window.core.layout.WindowSizeClass
 import me.him188.ani.app.data.models.preference.ProxyMode
 import me.him188.ani.app.data.models.preference.ProxySettings
+import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.SettingsState
@@ -120,7 +122,7 @@ private fun SettingsScope.ProxyTestStatusGroup(
 @Composable
 private fun renderTestCaseName(case: ProxyTestCase): String {
     return when (case.name) {
-        ProxyTestCaseEnums.ANI_DANMAKU_API -> "Ani"
+        ProxyTestCaseEnums.ANI_DANMAKU_API -> "Animeko"
         ProxyTestCaseEnums.BANGUMI_V0 -> "Bangumi"
         ProxyTestCaseEnums.BANGUMI_P1 -> "Bangumi"
     }
@@ -314,7 +316,8 @@ fun ConfigureProxy(
     systemProxy: SystemProxyPresentation,
     testItems: List<ProxyTestItem>,
     onUpdate: (config: ProxySettings) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    windowSizeClass: WindowSizeClass = currentWindowAdaptiveInfo1().windowSizeClass
 ) {
     var editingProxy by rememberSaveable { mutableStateOf(false) }
 

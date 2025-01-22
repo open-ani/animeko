@@ -32,8 +32,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.window.core.layout.WindowSizeClass
 import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.data.models.preference.ThemeSettings
+import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
+import me.him188.ani.app.ui.foundation.layout.paneHorizontalPadding
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.theme.appColorScheme
 import me.him188.ani.app.ui.settings.SettingsTab
@@ -48,57 +51,54 @@ import me.him188.ani.app.ui.theme.colorList
 fun SelectTheme(
     config: ThemeSettings,
     onUpdate: (ThemeSettings) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    windowSizeClass: WindowSizeClass = currentWindowAdaptiveInfo1().windowSizeClass
 ) {
     SettingsTab(modifier = modifier) {
-        Group(
-            title = { },
-            useThinHeader = true,
+        Row(
+            modifier = Modifier
+                .padding(horizontal = windowSizeClass.paneHorizontalPadding)
+                .fillMaxWidth()
+                .scrollable(
+                    rememberScrollState(),
+                    orientation = Orientation.Horizontal,
+                ),
+            horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .scrollable(
-                        rememberScrollState(),
-                        orientation = Orientation.Horizontal,
-                    ),
-                horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
-            ) {
-                ColorSchemePreviewItem(
-                    onClick = { onUpdate(config.copy(darkMode = DarkMode.AUTO)) },
-                    text = { Text("自动") },
-                    panel = {
-                        DiagonalMixedThemePreviewPanel(
-                            leftTopColorScheme = appColorScheme(isDark = false),
-                            rightBottomColorScheme = appColorScheme(isDark = true),
-                            modifier = Modifier.size(96.dp, 146.dp),
-                        )
-                    },
-                    selected = config.darkMode == DarkMode.AUTO,
-                )
-                ColorSchemePreviewItem(
-                    onClick = { onUpdate(config.copy(darkMode = DarkMode.LIGHT)) },
-                    panel = {
-                        ThemePreviewPanel(
-                            colorScheme = appColorScheme(isDark = false),
-                            modifier = Modifier.size(96.dp, 146.dp),
-                        )
-                    },
-                    text = { Text("亮色") },
-                    selected = config.darkMode == DarkMode.LIGHT,
-                )
-                ColorSchemePreviewItem(
-                    onClick = { onUpdate(config.copy(darkMode = DarkMode.DARK)) },
-                    panel = {
-                        ThemePreviewPanel(
-                            colorScheme = appColorScheme(isDark = true),
-                            modifier = Modifier.size(96.dp, 146.dp),
-                        )
-                    },
-                    text = { Text("暗色") },
-                    selected = config.darkMode == DarkMode.DARK,
-                )
-            }
+            ColorSchemePreviewItem(
+                onClick = { onUpdate(config.copy(darkMode = DarkMode.AUTO)) },
+                text = { Text("自动") },
+                panel = {
+                    DiagonalMixedThemePreviewPanel(
+                        leftTopColorScheme = appColorScheme(isDark = false),
+                        rightBottomColorScheme = appColorScheme(isDark = true),
+                        modifier = Modifier.size(96.dp, 146.dp),
+                    )
+                },
+                selected = config.darkMode == DarkMode.AUTO,
+            )
+            ColorSchemePreviewItem(
+                onClick = { onUpdate(config.copy(darkMode = DarkMode.LIGHT)) },
+                panel = {
+                    ThemePreviewPanel(
+                        colorScheme = appColorScheme(isDark = false),
+                        modifier = Modifier.size(96.dp, 146.dp),
+                    )
+                },
+                text = { Text("亮色") },
+                selected = config.darkMode == DarkMode.LIGHT,
+            )
+            ColorSchemePreviewItem(
+                onClick = { onUpdate(config.copy(darkMode = DarkMode.DARK)) },
+                panel = {
+                    ThemePreviewPanel(
+                        colorScheme = appColorScheme(isDark = true),
+                        modifier = Modifier.size(96.dp, 146.dp),
+                    )
+                },
+                text = { Text("暗色") },
+                selected = config.darkMode == DarkMode.DARK,
+            )
         }
         Group(
             title = { Text("色彩") },
@@ -119,7 +119,7 @@ fun SelectTheme(
             )
             FlowRow(
                 modifier = Modifier
-                    .padding(vertical = 16.dp)
+                    .padding(horizontal = windowSizeClass.paneHorizontalPadding, vertical = 16.dp)
                     .fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center,
             ) {

@@ -53,6 +53,7 @@ import me.him188.ani.utils.ktor.proxy
 class WelcomeViewModel : AbstractViewModel() {
     private val themeConfig = mutableStateOf(ThemeSettings.Default)
     private val proxyConfig = MutableStateFlow(ProxySettings.Default)
+    private val bitTorrentEnabled = mutableStateOf(true)
 
     private val proxyTestRunning = FlowRunning()
     private val proxyProvider = ProxySettingsFlowProxyProvider(proxyConfig, backgroundScope)
@@ -204,3 +205,9 @@ sealed class ProxyTestCase(
         val All = listOf(AniDanmakuApi, BangumiMasterApi, BangumiNextApi)
     }
 }
+
+@Stable
+class BitTorrentFeatureState(
+    val enabled: SettingsState<Boolean>,
+    //val 
+)

@@ -20,7 +20,9 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.window.core.layout.WindowSizeClass
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
+import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.theme.LocalThemeSettings
 import me.him188.ani.app.ui.foundation.theme.SystemBarColorEffect
 import me.him188.ani.app.ui.foundation.theme.appColorScheme
@@ -31,6 +33,7 @@ fun WelcomePage(
     vm: WelcomeViewModel,
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
+    windowSizeClass: WindowSizeClass = currentWindowAdaptiveInfo1().windowSizeClass
 ) {
     val navController = rememberNavController()
     vm.welcomeNavController = navController
@@ -58,6 +61,7 @@ fun WelcomePage(
     wizardState: WizardPresentationState,
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
+    windowSizeClass: WindowSizeClass = currentWindowAdaptiveInfo1().windowSizeClass
 ) {
     Surface {
         NavHost(
@@ -70,6 +74,7 @@ fun WelcomePage(
                     onLinkStart = { navController.navigate("wizard") },
                     contactActions = { },
                     windowInsets = windowInsets,
+                    windowSizeClass = windowSizeClass,
                     modifier = Modifier.fillMaxSize(),
                 )
             }
@@ -78,6 +83,7 @@ fun WelcomePage(
                     controller = wizardController,
                     state = wizardState,
                     windowInsets = windowInsets,
+                    windowSizeClass = windowSizeClass,
                     useEnterAnim = true,
                     modifier = Modifier.fillMaxSize(),
                 )
