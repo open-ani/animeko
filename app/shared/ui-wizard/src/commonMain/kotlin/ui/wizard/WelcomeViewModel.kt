@@ -37,11 +37,16 @@ import me.him188.ani.app.data.models.preference.ProxySettings
 import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.domain.media.fetch.toClientProxyConfig
 import me.him188.ani.app.domain.settings.ProxySettingsFlowProxyProvider
+import me.him188.ani.app.platform.ContextMP
+import me.him188.ani.app.platform.GrantedPermissionManager
+import me.him188.ani.app.platform.PermissionManager
+import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.foundation.launchInBackground
 import me.him188.ani.app.ui.settings.framework.SettingsState
 import me.him188.ani.app.ui.settings.tabs.network.SystemProxyPresentation
 import me.him188.ani.app.ui.wizard.navigation.WizardController
+import me.him188.ani.app.ui.wizard.step.NotificationPermissionState
 import me.him188.ani.app.ui.wizard.step.ProxyTestCaseState
 import me.him188.ani.app.ui.wizard.step.ProxyTestItem
 import me.him188.ani.app.ui.wizard.step.ProxyTestState
@@ -49,8 +54,11 @@ import me.him188.ani.utils.coroutines.flows.FlowRunning
 import me.him188.ani.utils.coroutines.update
 import me.him188.ani.utils.ktor.createDefaultHttpClient
 import me.him188.ani.utils.ktor.proxy
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
 
-class WelcomeViewModel : AbstractViewModel() {
+class WelcomeViewModel : AbstractViewModel(), KoinComponent {
+    private val permissionManager: PermissionManager by inject()
     private val themeConfig = mutableStateOf(ThemeSettings.Default)
     private val proxyConfig = MutableStateFlow(ProxySettings.Default)
     private val bitTorrentEnabled = mutableStateOf(true)
@@ -97,6 +105,25 @@ class WelcomeViewModel : AbstractViewModel() {
         ),
     )
 
+    private val notificationPermissionGrant = MutableStateFlow(false)
+    private val lastGrantPermissionResult = MutableStateFlow<Boolean?>(null)
+    private val requestNotificationPermissionTasker = MonoTasker(backgroundScope)
+
+    private val bitTorrentFeatureState = BitTorrentFeatureState(
+        enabled = SettingsState(
+            valueState = bitTorrentEnabled,
+            onUpdate = { bitTorrentEnabled.value = it },
+            placeholder = true,
+            backgroundScope = backgroundScope,
+        ),
+        notificationPermissionState = NotificationPermissionState(
+            showGrantNotificationItem = permissionManager !is GrantedPermissionManager,
+            granted = notificationPermissionGrant.produceState(),
+            lastRequestResult = lastGrantPermissionResult.produceState(),
+        ),
+        onRequestNotificationPermission = { requestNotificationPermission(it) },
+    )
+
     var welcomeNavController: NavController? by mutableStateOf(null)
 
     val wizardController = WizardController()
@@ -108,6 +135,7 @@ class WelcomeViewModel : AbstractViewModel() {
             backgroundScope = backgroundScope,
         ),
         configureProxyState = configureProxyState,
+        bitTorrentFeatureState = bitTorrentFeatureState
     )
 
     init {
@@ -155,12 +183,28 @@ class WelcomeViewModel : AbstractViewModel() {
             }
         }
     }
+
+    fun requestNotificationPermission(context: ContextMP) {
+        requestNotificationPermissionTasker.launch {
+            if (permissionManager.checkNotificationPermission(context)) return@launch
+            val result = permissionManager.requestNotificationPermission(context)
+            lastGrantPermissionResult.value = result
+            notificationPermissionGrant.value = result
+        }
+    }
+
+    fun checkNotificationPermission(context: ContextMP) {
+        val result = permissionManager.checkNotificationPermission(context)
+        notificationPermissionGrant.update { result }
+        if (result) lastGrantPermissionResult.update { null }
+    }
 }
 
 @Stable
 class WizardPresentationState(
     val selectThemeState: SettingsState<ThemeSettings>,
     val configureProxyState: ConfigureProxyState,
+    val bitTorrentFeatureState: BitTorrentFeatureState,
 )
 
 @Stable
@@ -209,5 +253,6 @@ sealed class ProxyTestCase(
 @Stable
 class BitTorrentFeatureState(
     val enabled: SettingsState<Boolean>,
-    //val 
+    val notificationPermissionState: NotificationPermissionState,
+    val onRequestNotificationPermission: (ContextMP) -> Unit,
 )

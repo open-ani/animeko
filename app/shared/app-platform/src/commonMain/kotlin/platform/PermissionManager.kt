@@ -1,6 +1,22 @@
+/*
+ * Copyright (C) 2024-2025 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.app.platform
 
 interface PermissionManager {
+    fun checkNotificationPermission(context: ContextMP): Boolean
+
+    /**
+     * 请求应用通知权限
+     *
+     * @return `true` 成功授权, `false` 拒绝授权或保持现状
+     */
     suspend fun requestNotificationPermission(context: ContextMP): Boolean
 
     /**
@@ -10,6 +26,10 @@ interface PermissionManager {
 }
 
 object GrantedPermissionManager : PermissionManager {
+    override fun checkNotificationPermission(context: ContextMP): Boolean {
+        return true
+    }
+    
     override suspend fun requestNotificationPermission(context: ContextMP): Boolean {
         return true
     }

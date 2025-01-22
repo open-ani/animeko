@@ -21,6 +21,7 @@ import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.settings.framework.SettingsState
 import me.him188.ani.app.ui.settings.tabs.network.SystemProxyPresentation
 import me.him188.ani.app.ui.wizard.navigation.rememberWizardController
+import me.him188.ani.app.ui.wizard.step.NotificationPermissionState
 import me.him188.ani.app.ui.wizard.step.ProxyTestCaseState
 import me.him188.ani.app.ui.wizard.step.ProxyTestItem
 import me.him188.ani.app.ui.wizard.step.ProxyTestState
@@ -63,6 +64,20 @@ internal fun createTestWizardPresentationState(scope: CoroutineScope): WizardPre
                     },
                 ),
             ),
+        ),
+        bitTorrentFeatureState = BitTorrentFeatureState(
+            enabled = SettingsState(
+                valueState = stateOf(true),
+                onUpdate = { },
+                placeholder = true,
+                backgroundScope = scope,
+            ),
+            notificationPermissionState = NotificationPermissionState(
+                showGrantNotificationItem = true,
+                granted = stateOf(false),
+                lastRequestResult = stateOf(null),
+            ),
+            onRequestNotificationPermission = { },
         ),
     )
 }

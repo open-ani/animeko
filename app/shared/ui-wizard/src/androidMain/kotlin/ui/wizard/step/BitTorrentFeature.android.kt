@@ -13,12 +13,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview
 
-@Preview
+@Preview(showBackground = true)
 @Composable
 fun PreviewBitTorrentFeatureStep() {
     ProvideFoundationCompositionLocalsForPreview {
         BitTorrentFeature(
-
+            bitTorrentEnabled = true,
+            grantedNotificationPermission = false,
+            lastRequestNotificationPermissionResult = false,
+            onBitTorrentEnableChanged = { },
+            onRequestNotificationPermission = { },
         )
     }
 }

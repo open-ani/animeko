@@ -46,6 +46,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.window.core.layout.WindowSizeClass
+import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
@@ -66,6 +67,7 @@ fun WizardScene(
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
     windowSizeClass: WindowSizeClass = currentWindowAdaptiveInfo1().windowSizeClass
 ) {
+    val context = LocalContext.current
     var barVisible by rememberSaveable { mutableStateOf(!useEnterAnim) }
 
     DisposableEffect(Unit) {
@@ -143,6 +145,15 @@ fun WizardScene(
             }
             step("bittorrent", { Text("BitTorrent 功能") }) {
                 BitTorrentFeature(
+                    bitTorrentEnabled = state.bitTorrentFeatureState.enabled.value,
+                    grantedNotificationPermission =
+                    state.bitTorrentFeatureState.notificationPermissionState.granted.value,
+                    lastRequestNotificationPermissionResult =
+                    state.bitTorrentFeatureState.notificationPermissionState.lastRequestResult.value,
+                    onBitTorrentEnableChanged = { state.bitTorrentFeatureState.enabled.update(it) },
+                    onRequestNotificationPermission = {
+                        state.bitTorrentFeatureState.onRequestNotificationPermission(context)
+                    },
                     modifier = Modifier.fillMaxSize(),
                     windowSizeClass = windowSizeClass,
                 )
@@ -161,9 +172,9 @@ object WizardDefaults {
     
     val motionScheme = kotlin.run {
         val slideEnter = 350
-        val fadeEnter = 262
+        val fadeEnter = 350
         val slideExit = 200
-        val fadeExit = 150
+        val fadeExit = 200
 
         NavigationMotionScheme(
             enterTransition = fadeIn(animationSpec = tween(fadeEnter, slideEnter - fadeEnter)) +
