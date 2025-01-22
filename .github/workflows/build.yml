@@ -201,10 +201,10 @@ jobs:
         path: 'app/desktop/build/compose/binaries/main-release/app'
         if-no-files-found: 'error'
         overwrite: 'true'
-  build_github-ubuntu-2004:
-    name: 'Build (Ubuntu 20.04 x86_64 (GitHub))'
+  build_github-ubuntu-2404:
+    name: 'Build (Ubuntu 24.04 x86_64 (GitHub))'
     runs-on:
-    - 'ubuntu-20.04'
+    - 'ubuntu-24.04'
     permissions:
       actions: 'write'
     steps:

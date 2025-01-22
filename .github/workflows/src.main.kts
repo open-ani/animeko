@@ -300,12 +300,12 @@ sealed class Runner(
         labels = setOf("macos-15"),
     )
 
-    object GithubUbuntu2004 : GithubHosted(
-        id = "github-ubuntu-2004",
-        displayName = "Ubuntu 20.04 x86_64 (GitHub)",
+    object GithubUbuntu2404 : GithubHosted(
+        id = "github-ubuntu-2404",
+        displayName = "Ubuntu 24.04 x86_64 (GitHub)",
         os = OS.UBUNTU,
         arch = Arch.X64,
-        labels = setOf("ubuntu-20.04"),
+        labels = setOf("ubuntu-24.04"),
     )
 
     // Objects under SelfHosted
@@ -331,7 +331,7 @@ sealed class Runner(
 //            GithubWindowsServer2022,
 //            GithubMacOS13,
 //            GithubMacOS14,
-//            GithubUbuntu2004,
+//            GithubUbuntu2404,
 //            SelfHostedWindows10,
 //            SelfHostedMacOS15,
 //        )
@@ -371,7 +371,7 @@ val buildMatrixInstances = listOf(
         gradleParallel = true,
     ),
     MatrixInstance(
-        runner = Runner.GithubUbuntu2004,
+        runner = Runner.GithubUbuntu2404,
         uploadApk = false,
         runAndroidInstrumentedTests = false,
         composeResourceTriple = "linux-x64",
