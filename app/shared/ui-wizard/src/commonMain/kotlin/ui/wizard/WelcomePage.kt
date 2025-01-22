@@ -11,14 +11,18 @@ package me.him188.ani.app.ui.wizard
 
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
+import me.him188.ani.app.ui.foundation.theme.LocalThemeSettings
+import me.him188.ani.app.ui.foundation.theme.appColorScheme
 import me.him188.ani.app.ui.wizard.navigation.WizardController
 
 @Composable
@@ -30,13 +34,19 @@ fun WelcomePage(
     val navController = rememberNavController()
     vm.welcomeNavController = navController
 
-    WelcomePage(
-        navController = navController,
-        wizardController = vm.wizardController,
-        wizardState = vm.wizardState,
-        modifier = modifier,
-        windowInsets = windowInsets,
-    )
+    CompositionLocalProvider(
+        LocalThemeSettings provides vm.wizardState.selectThemeState.value,
+    ) {
+        MaterialTheme(colorScheme = appColorScheme()) {
+            WelcomePage(
+                navController = navController,
+                wizardController = vm.wizardController,
+                wizardState = vm.wizardState,
+                modifier = modifier,
+                windowInsets = windowInsets,
+            )
+        }
+    }
 }
 
 @Composable
