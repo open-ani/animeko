@@ -71,6 +71,7 @@ kotlin {
         api(projects.app.shared.uiExploration)
         api(projects.app.shared.uiSubject)
         api(projects.app.shared.uiAdaptive)
+        api(projects.app.shared.uiWizard)
 
         // Compose
         api(compose.foundation)

@@ -35,6 +35,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
@@ -78,6 +79,10 @@ object WizardDefaults {
                     },
         )
     }
+
+    fun renderStepIndicatorText(currentStep: Int, totalStep: Int): String {
+        return "步骤 $currentStep / $totalStep"
+    }
     
     @Composable
     fun StepTopAppBar(
@@ -85,11 +90,9 @@ object WizardDefaults {
         totalStep: Int,
         modifier: Modifier = Modifier,
         windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
+        indicatorStepTextTestTag: String = "indicatorText",
         stepName: @Composable () -> Unit,
     ) {
-        val renderedStep = remember(currentStep, totalStep) {
-            "步骤 $currentStep / $totalStep"
-        }
         LargeTopAppBar(
             title = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -97,7 +100,12 @@ object WizardDefaults {
                         value = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.primary,
                     ) {
-                        Text(renderedStep)
+                        Text(
+                            text = remember(currentStep, totalStep) {
+                                renderStepIndicatorText(currentStep, totalStep)
+                            },
+                            modifier = Modifier.testTag(indicatorStepTextTestTag),
+                        )
                     }
                     stepName()
                 }
