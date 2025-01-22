@@ -22,6 +22,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.theme.LocalThemeSettings
+import me.him188.ani.app.ui.foundation.theme.SystemBarColorEffect
 import me.him188.ani.app.ui.foundation.theme.appColorScheme
 import me.him188.ani.app.ui.wizard.navigation.WizardController
 
@@ -37,6 +38,7 @@ fun WelcomePage(
     CompositionLocalProvider(
         LocalThemeSettings provides vm.wizardState.selectThemeState.value,
     ) {
+        SystemBarColorEffect()
         MaterialTheme(colorScheme = appColorScheme()) {
             WelcomePage(
                 navController = navController,
