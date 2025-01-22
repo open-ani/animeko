@@ -119,8 +119,8 @@ abstract class BaseJellyfinMediaSource(config: MediaSourceConfig) : HttpMediaSou
                             originalTitle = originalTitle,
                             publishedTime = 0,
                             properties = MediaProperties(
-                                subjectName = null,
-                                episodeName = null, // TODO: Maybe we can get the names from Jellyfin
+                                subjectName = item.SeasonName,
+                                episodeName = item.Name,
                                 subtitleLanguageIds = listOf("CHS"),
                                 resolution = "1080P",
                                 alliance = mediaSourceId,
@@ -201,6 +201,7 @@ private data class MediaStream(
 @Suppress("PropertyName")
 private data class Item(
     val Name: String,
+    val SeasonName: String? = null,
     val Id: String,
     val OriginalTitle: String? = null, // 日文
     val IndexNumber: Int? = null,
