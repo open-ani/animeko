@@ -14,8 +14,7 @@ import androidx.compose.runtime.Stable
 import androidx.compose.ui.graphics.Color
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
-
-val DEFAULT_SEED_COLOR = Color(0xFF4F378B)
+import me.him188.ani.app.ui.foundation.theme.DefaultSeedColor
 
 @Serializable
 enum class DarkMode {
@@ -29,7 +28,7 @@ data class ThemeSettings(
     val useDynamicTheme: Boolean = false, // only supported on Android with Build.VERSION.SDK_INT >= 31
     // TODO: Default "true" if supported (on Android, Build.VERSION.SDK_INT >= 31)
     val useBlackBackground: Boolean = false,
-    val seedColorValue: ULong = DEFAULT_SEED_COLOR.value,
+    val seedColorValue: ULong = DefaultSeedColor.value,
     @Suppress("PropertyName") @Transient val _placeholder: Int = 0,
 ) {
     @Transient

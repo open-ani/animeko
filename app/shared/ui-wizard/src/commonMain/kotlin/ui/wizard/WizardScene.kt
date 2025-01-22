@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.ui.wizard
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -20,6 +21,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
@@ -32,27 +34,111 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import me.him188.ani.app.data.models.preference.ProxyMode
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
 import me.him188.ani.app.ui.foundation.theme.NavigationMotionScheme
 import me.him188.ani.app.ui.wizard.navigation.WizardController
+import me.him188.ani.app.ui.wizard.navigation.WizardNavHost
+import me.him188.ani.app.ui.wizard.step.SelectProxy
+import me.him188.ani.app.ui.wizard.step.SelectTheme
 
 @Composable
 fun WizardScene(
     controller: WizardController,
+    state: WizardPresentationState,
     modifier: Modifier = Modifier,
-    windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
+    onUpdateProxyTestMode: (ProxyMode) -> Unit,
+    useEnterAnim: Boolean = true,
+    windowInsets: WindowInsets = AniWindowInsets.forPageContent()
 ) {
+    var barVisible by rememberSaveable { mutableStateOf(!useEnterAnim) }
+
+    DisposableEffect(Unit) {
+        barVisible = true
+        onDispose { }
+    }
+
+    Box(
+        modifier = modifier,
+        contentAlignment = Alignment.Center,
+    ) {
+        WizardNavHost(
+            controller,
+            modifier = Modifier
+                .windowInsetsPadding(windowInsets)
+                .fillMaxSize(),
+            indicatorBar = {
+                AnimatedVisibility(
+                    barVisible,
+                    enter = WizardDefaults.indicatorBarEnterAnim,
+                ) {
+                    WizardDefaults.StepTopAppBar(
+                        currentStep = it.currentStepIndex + 1,
+                        totalStep = it.stepCount,
+                    ) {
+                        it.currentStep.stepName.invoke()
+                    }
+                }
+            },
+            controlBar = {
+                AnimatedVisibility(
+                    barVisible,
+                    enter = WizardDefaults.controlBarEnterAnim,
+                ) {
+                    WizardDefaults.StepControlBar(
+                        forwardAction = { it.currentStep.forwardButton.invoke() },
+                        backwardAction = { it.currentStep.backwardButton.invoke() },
+                        tertiaryAction = { it.currentStep.skipButton.invoke() },
+                    )
+                }
+            },
+        ) {
+            step("theme", { Text("选择主题") }) {
+                SelectTheme(
+                    config = state.selectThemeState.value,
+                    onUpdate = { state.selectThemeState.update(it) },
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+            step("proxy", { Text("网络设置") }) {
+                val selectProxyState = state.selectProxyState
+                SelectProxy(
+                    config = selectProxyState.configState.value,
+                    onUpdate = { mode, config ->
+                        selectProxyState.configState.update(config)
+                        onUpdateProxyTestMode(mode)
+                    },
+                    testRunning = selectProxyState.testState.testRunning.value,
+                    currentTestMode = selectProxyState.testState.currentTestMode.value,
+                    systemProxy = selectProxyState.systemProxy.value,
+                    testItems = selectProxyState.testState.items.value,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+        }
+    }
 }
 
 
 object WizardDefaults {
+    val controlBarEnterAnim = fadeIn(animationSpec = tween(200)) +
+            slideIn(animationSpec = tween(200), initialOffset = { IntOffset(0, it.height) })
 
+    val indicatorBarEnterAnim = fadeIn(animationSpec = tween(200)) +
+            slideIn(animationSpec = tween(200), initialOffset = { IntOffset(0, -it.height) })
+    
     val motionScheme = kotlin.run {
         val slideEnter = 350
         val fadeEnter = 262
@@ -85,6 +171,7 @@ object WizardDefaults {
         totalStep: Int,
         modifier: Modifier = Modifier,
         windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
+        indicatorStepTextTestTag: String = "indicatorText",
         stepName: @Composable () -> Unit,
     ) {
         val renderedStep = remember(currentStep, totalStep) {
@@ -97,7 +184,7 @@ object WizardDefaults {
                         value = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.primary,
                     ) {
-                        Text(renderedStep)
+                        Text(renderedStep, Modifier.testTag(indicatorStepTextTestTag))
                     }
                     stepName()
                 }

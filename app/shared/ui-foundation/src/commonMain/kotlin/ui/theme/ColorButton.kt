@@ -7,13 +7,12 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.app.ui.settings.components
+package me.him188.ani.app.ui.theme
 
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.shape.CircleShape
@@ -49,7 +48,6 @@ fun ColorButton(
 
     Surface(
         modifier = modifier
-            .padding(4.dp)
             .sizeIn(maxHeight = 80.dp, maxWidth = 80.dp, minHeight = 64.dp, minWidth = 64.dp)
             .aspectRatio(1f),
         shape = RoundedCornerShape(16.dp),

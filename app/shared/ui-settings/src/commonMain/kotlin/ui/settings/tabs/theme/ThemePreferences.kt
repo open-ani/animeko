@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.HdrAuto
@@ -25,23 +26,19 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
-import com.materialkolor.hct.Hct
-import me.him188.ani.app.data.models.preference.DEFAULT_SEED_COLOR
+import androidx.compose.ui.unit.dp
 import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.ui.foundation.LocalPlatform
-import me.him188.ani.app.ui.settings.components.ColorButton
+import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.settings.framework.SettingsState
 import me.him188.ani.app.ui.settings.framework.components.DropdownItem
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.SwitchItem
+import me.him188.ani.app.ui.theme.ColorButton
+import me.him188.ani.app.ui.theme.colorList
 import me.him188.ani.utils.platform.isAndroid
 import me.him188.ani.utils.platform.isDesktop
-
-private val colorList =
-    ((4..10) + (1..3)).map { it * 35.0 }.map { Color(Hct.from(it, 40.0, 40.0).toInt()) }.toMutableList().apply {
-        add(5, DEFAULT_SEED_COLOR)
-    }
 
 @Composable
 fun SettingsScope.ThemeGroup(
@@ -150,7 +147,7 @@ fun SettingsScope.ThemeGroup(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center,
             ) {
-                colorList.forEach { color ->
+                AniThemeDefaults.colorList.forEach { color ->
                     ColorButton(
                         color = color,
                         themeSettings = themeSettings,
@@ -167,7 +164,7 @@ private fun ColorButton(
     color: Color, themeSettings: ThemeSettings, state: SettingsState<ThemeSettings>
 ) {
     ColorButton(
-        modifier = Modifier,
+        modifier = Modifier.padding(4.dp),
         selected = color.value == themeSettings.seedColorValue && !themeSettings.useDynamicTheme,
         onClick = {
             state.update(

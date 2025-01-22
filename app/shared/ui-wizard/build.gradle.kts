@@ -15,13 +15,13 @@ plugins {
 
     `ani-mpp-lib-targets`
     kotlin("plugin.serialization")
-    id("org.jetbrains.kotlinx.atomicfu")
 }
 
 kotlin {
     sourceSets.commonMain.dependencies {
         api(projects.app.shared.uiFoundation)
         api(projects.app.shared.uiAdaptive)
+        api(projects.app.shared.uiSettings)
         implementation(compose.components.resources)
     }
     sourceSets.commonTest.dependencies {
