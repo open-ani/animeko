@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -53,14 +53,16 @@ class MediaSelectorAutoSelect(
      * 等待所有数据源查询完成, 然后根据用户的偏好设置自动选择.
      *
      * 返回成功选择的 [Media] 对象. 当用户已经手动选择过一个别的 [Media], 或者没有可选的 [Media] 时返回 `null`.
+     *
+     * @param waitForKind 等待此数据源类型完成后, 才执行选择. 如果为 `null`, 则等待所有数据源查询完成.
      */
     suspend fun awaitCompletedAndSelectDefault(
         mediaFetchSession: MediaFetchSession,
-        preferKind: Flow<MediaSourceKind?> = flowOf(null)
+        waitForKind: Flow<MediaSourceKind?> = flowOf(null)
     ): Media? {
         // 等全部加载完成
         mediaFetchSession.awaitCompletion { completedConditions ->
-            return@awaitCompletion preferKind.first()?.let {
+            return@awaitCompletion waitForKind.first()?.let {
                 completedConditions[it]
             } ?: completedConditions.allCompleted()
         }

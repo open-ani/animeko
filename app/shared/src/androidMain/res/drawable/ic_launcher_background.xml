@@ -1,0 +1,30 @@
+<!--
+  ~ Copyright (C) 2024-2025 OpenAni and contributors.
+  ~
+  ~ 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+  ~ Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+  ~
+  ~ https://github.com/open-ani/ani/blob/main/LICENSE
+  -->
+
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+        android:width="108dp"
+        android:height="108dp"
+        android:viewportWidth="108"
+        android:viewportHeight="108">
+    <path
+            android:fillColor="#2F3943"
+            android:pathData="M0,0h108v108h-108z" />
+    <group
+            android:scaleX="0.6"
+            android:scaleY="0.6"
+            android:translateX="21.6"
+            android:translateY="21.6">
+        <path
+                android:fillColor="#7EBBED"
+                android:pathData="M54,14A40,40 0,1 1,54 94A40,40 0,1 1,54 14" />
+        <path
+                android:fillColor="#FFFFFF"
+                android:pathData="M54,22A32,32 0,1 1,54 86A32,32 0,1 1,54 22" />
+    </group>
+</vector>

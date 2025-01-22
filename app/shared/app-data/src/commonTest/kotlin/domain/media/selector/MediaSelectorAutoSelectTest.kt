@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -12,7 +12,7 @@ package me.him188.ani.app.domain.media.selector
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asFlow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.preference.MediaPreference
@@ -144,6 +144,7 @@ class MediaSelectorAutoSelectTest {
         btEnabled: Boolean,
         webEnabled: Boolean,
         preferKind: MediaSourceKind?,
+        addCache: Boolean = true,
         beforeBtFetch: suspend () -> Unit = {},
         afterBtFetch: suspend () -> Unit = {},
         beforeWebFetch: suspend () -> Unit = {},
@@ -152,8 +153,7 @@ class MediaSelectorAutoSelectTest {
         webFetch: (suspend (MediaFetchRequest) -> SizedSource<MediaMatch>)? = null,
     ): MediaFetchSession {
         val mediaList = mutableListOf<DefaultMedia>()
-        // 至少保持一个 local cache 类型
-        mediaList.addAll(TestMediaList.take(1).map { it.copy(kind = MediaSourceKind.LocalCache) })
+        if (addCache) mediaList.addAll(TestMediaList.take(1).map { it.copy(kind = MediaSourceKind.LocalCache) })
         if (addWebSources) mediaList.addAll(TestMediaList.map { it.copy(kind = MediaSourceKind.WEB) })
         if (addBtSources) mediaList.addAll(TestMediaList.map { it.copy(kind = MediaSourceKind.BitTorrent) })
         this.mediaList.value = mediaList
@@ -325,12 +325,13 @@ class MediaSelectorAutoSelectTest {
             addWebSources = true,
             btEnabled = true,
             webEnabled = true,
+            addCache = false,
             preferKind = MediaSourceKind.BitTorrent,
             beforeWebFetch = {
                 completableDeferred.await()
             },
         )
-        val selected = autoSelect.awaitCompletedAndSelectDefault(session, mediaSelectorSettings.map { it.preferKind })
+        val selected = autoSelect.awaitCompletedAndSelectDefault(session, flowOf(MediaSourceKind.BitTorrent))
         assertNotNull(selected)
         assertEquals(MediaSourceKind.BitTorrent, selected.kind)
     }
@@ -343,6 +344,7 @@ class MediaSelectorAutoSelectTest {
             addWebSources = true,
             btEnabled = true,
             webEnabled = true,
+            addCache = false,
             preferKind = MediaSourceKind.BitTorrent,
             beforeBtFetch = {
                 completableDeferred.await()
@@ -351,7 +353,7 @@ class MediaSelectorAutoSelectTest {
                 completableDeferred.complete(Unit)
             },
         )
-        val selected = autoSelect.awaitCompletedAndSelectDefault(session, mediaSelectorSettings.map { it.preferKind })
+        val selected = autoSelect.awaitCompletedAndSelectDefault(session, flowOf(MediaSourceKind.BitTorrent))
         assertNotNull(selected)
         assertEquals(MediaSourceKind.BitTorrent, selected.kind)
     }
@@ -363,9 +365,10 @@ class MediaSelectorAutoSelectTest {
             addWebSources = true,
             btEnabled = false,
             webEnabled = true,
+            addCache = false,
             preferKind = MediaSourceKind.BitTorrent,
         )
-        val selected = autoSelect.awaitCompletedAndSelectDefault(session, mediaSelectorSettings.map { it.preferKind })
+        val selected = autoSelect.awaitCompletedAndSelectDefault(session, flowOf(MediaSourceKind.BitTorrent))
         val btRes = session.mediaSourceResults[0]
         assertIs<MediaSourceFetchState.Disabled>(btRes.state.value)
         assertNotNull(selected)
@@ -381,6 +384,7 @@ class MediaSelectorAutoSelectTest {
             btEnabled = true,
             webEnabled = true,
             preferKind = null,
+            addCache = false,
             afterBtFetch = {
                 completableDeferred.complete(Unit)
             },
@@ -388,8 +392,9 @@ class MediaSelectorAutoSelectTest {
                 completableDeferred.await()
             },
         )
-        val selected = autoSelect.awaitCompletedAndSelectDefault(session)
+        val selected = autoSelect.awaitCompletedAndSelectDefault(session, flowOf(null))
         assertNotNull(selected)
+        assertEquals(MediaSourceKind.WEB, selected.kind)
     }
 
     @Test
@@ -400,6 +405,7 @@ class MediaSelectorAutoSelectTest {
             addWebSources = true,
             btEnabled = true,
             webEnabled = true,
+            addCache = false,
             preferKind = MediaSourceKind.BitTorrent,
             afterBtFetch = {
                 completableDeferred.complete(Unit)
@@ -414,7 +420,7 @@ class MediaSelectorAutoSelectTest {
             },
         )
 
-        val selected = autoSelect.awaitCompletedAndSelectDefault(session, mediaSelectorSettings.map { it.preferKind })
+        val selected = autoSelect.awaitCompletedAndSelectDefault(session, flowOf(MediaSourceKind.BitTorrent))
         assertNotNull(selected)
         assertEquals(MediaSourceKind.WEB, selected.kind)
     }

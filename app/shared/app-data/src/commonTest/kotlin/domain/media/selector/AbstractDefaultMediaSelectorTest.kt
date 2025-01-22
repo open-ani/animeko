@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -129,7 +129,7 @@ sealed class AbstractDefaultMediaSelectorTest {
             )
     }
 
-    private var mediaId: Int = 0
+    private var mediaIdCounter: Int = 0
     fun media(
         sourceId: String = SOURCE_DMHY,
         resolution: String = "1080P",
@@ -142,13 +142,14 @@ sealed class AbstractDefaultMediaSelectorTest {
         episodeRange: EpisodeRange = EpisodeRange.single(EpisodeSort(1)),
         subtitleKind: SubtitleKind? = null,
         extraFiles: MediaExtraFiles = MediaExtraFiles.EMPTY,
-        id: Int = mediaId++,
+        id: Int = mediaIdCounter++,
         originalTitle: String = "[字幕组] 孤独摇滚 $id",
         subjectName: String? = null,
         episodeName: String? = null,
+        mediaId: String = "$sourceId.$id",
     ): DefaultMedia {
         return createTestDefaultMedia(
-            mediaId = "$sourceId.$id",
+            mediaId = mediaId,
             mediaSourceId = sourceId,
             originalTitle = originalTitle,
             download = ResourceLocation.MagnetLink("magnet:?xt=urn:btih:$id"),

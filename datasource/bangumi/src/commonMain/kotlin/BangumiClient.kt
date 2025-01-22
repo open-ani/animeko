@@ -60,6 +60,7 @@ import me.him188.ani.datasources.bangumi.models.subjects.BangumiLegacySubject
 import me.him188.ani.datasources.bangumi.models.subjects.BangumiSubjectImageSize
 import me.him188.ani.datasources.bangumi.next.apis.SubjectBangumiNextApi
 import me.him188.ani.utils.ktor.HttpTokenChecker
+import me.him188.ani.utils.ktor.getPlatformKtorEngine
 import me.him188.ani.utils.ktor.registerLogging
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.thisLogger
@@ -192,7 +193,7 @@ class BangumiClientImpl(
         isLenient = true
     }
 
-    override val httpClient = HttpClient {
+    override val httpClient = HttpClient(getPlatformKtorEngine()) {
         httpClientConfiguration()
         install(HttpRequestRetry) {
             maxRetries = 3

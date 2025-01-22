@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -122,16 +122,40 @@ sealed class EpisodeRange {
                 yieldAll(second.knownSorts)
             }
 
-        override fun toString(): String = when {
-            second is Single -> "$first+${second.value}"
-            first is Single -> "${first.value}+$second"
-            else -> "$first+$second"
+        override fun toString(): String = buildString {
+            if (first is Single) append(first.value) else append(first)
+            append('+')
+            if (second is Single) append(second.value) else append(second)
+        }
+
+        private fun flatten(): Sequence<EpisodeRange> {
+            return sequence {
+                if (first is Combined) {
+                    yieldAll(first.flatten())
+                } else {
+                    yield(first)
+                }
+                if (second is Combined) {
+                    yieldAll(second.flatten())
+                } else {
+                    yield(second)
+                }
+            }
         }
 
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
             if (other !is EpisodeRange) return false
-            return knownSorts.toList() == other.knownSorts.toList() // TODO: optimize performance EpisodeRange.Combined.equals
+            return when (other) {
+                is Combined -> {
+                    flatten().sequenceEquals(other.flatten())
+                }
+
+                Empty -> false
+                is Range -> knownSorts.sequenceEquals(other.knownSorts)
+                is Season -> first == second && first == other
+                is Single -> first == other && second == other
+            }
         }
 
         override fun hashCode(): Int {
@@ -191,7 +215,14 @@ sealed class EpisodeRange {
          * 将多个 [EpisodeRange] 合并.
          * @see EpisodeRange.plus
          */
-        fun combined(first: EpisodeRange, second: EpisodeRange) = Combined(first, second)
+        fun combined(first: EpisodeRange, second: EpisodeRange): EpisodeRange {
+            // Perform some easy optimizations
+            if (first is Empty && second is Empty) return Empty
+            if (first is Empty) return second
+            if (second is Empty) return first
+            if (first == second) return first
+            return Combined(first, second)
+        }
 
         /**
          * 一系列剧集
@@ -272,3 +303,13 @@ data class Alliance(
     val id: String,
     val name: String,
 )
+
+
+private fun <T> Sequence<T>.sequenceEquals(other: Sequence<T>): Boolean {
+    val iterator = iterator()
+    val otherIterator = other.iterator()
+    while (iterator.hasNext() && otherIterator.hasNext()) {
+        if (iterator.next() != otherIterator.next()) return false
+    }
+    return iterator.hasNext() == otherIterator.hasNext()
+}

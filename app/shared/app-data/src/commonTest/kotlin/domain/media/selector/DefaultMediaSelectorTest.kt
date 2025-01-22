@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -14,10 +14,13 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.yield
+import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
+import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectSeriesInfo
 import me.him188.ani.datasources.api.DefaultMedia
+import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.MediaExtraFiles
 import me.him188.ani.datasources.api.Subtitle
 import me.him188.ani.datasources.api.source.MediaSourceKind
@@ -364,7 +367,7 @@ class DefaultMediaSelectorTest : AbstractDefaultMediaSelectorTest() {
     ///////////////////////////////////////////////////////////////////////////
 
     @Test
-    fun `always show cached even if preferences don't match`() = runTest {
+    fun `always show cached even if preferences dont match`() = runTest {
         val target: DefaultMedia
         addMedia(
             media(alliance = "字幕组1", subtitleLanguages = listOf("CHS")),
@@ -1014,6 +1017,74 @@ class DefaultMediaSelectorTest : AbstractDefaultMediaSelectorTest() {
                 listOf("1", "2"),
                 allowNonPreferred = true,
                 blacklistMediaIds = setOf(media2.mediaId),
+            ),
+        )
+    }
+
+    @Test
+    fun `trySelectFromMediaSources prefers high similarity`() = runTest {
+        mediaSelectorContext.value = createMediaSelectorContextFromEmpty(
+            false,
+            subjectInfo = SubjectInfo.Empty.copy(nameCn = "孤独摇滚", name = "Bocchi The Rock!"),
+            episodeInfo = EpisodeInfo.Empty.copy(sort = EpisodeSort(1)),
+        )
+        mediaSelectorSettings.value = MediaSelectorSettings.Default.copy(preferKind = WEB)
+        savedUserPreference.value = MediaPreference.Any
+        savedDefaultPreference.value = MediaPreference.Any
+        val media1 = media(
+            sourceId = "1",
+            subjectName = "孤独摇滚 第二季",
+            episodeRange = EpisodeRange.single("1"),
+            kind = WEB,
+        )
+        val media2 = media(
+            sourceId = "2",
+            subjectName = "孤独摇滚",
+            episodeRange = EpisodeRange.single("1"),
+            kind = WEB,
+        )
+        addMedia(media1, media2)
+        assertEquals(2, selector.preferredCandidatesMedia.first().size)
+        assertEquals(2, selector.filteredCandidatesMedia.first().size)
+        assertEquals(
+            media2, // 数据源 1 优先级更高, 但是 media2 有更高的相似度, 所以选 media2
+            selector.trySelectFromMediaSources(
+                listOf("1", "2"),
+                allowNonPreferred = true,
+            ),
+        )
+    }
+
+    @Test
+    fun `trySelectFromMediaSources prefers high similarity 2`() = runTest {
+        mediaSelectorContext.value = createMediaSelectorContextFromEmpty(
+            false,
+            subjectInfo = SubjectInfo.Empty.copy(nameCn = "日常", name = "Nichijou"),
+            episodeInfo = EpisodeInfo.Empty.copy(sort = EpisodeSort(1)),
+        )
+        mediaSelectorSettings.value = MediaSelectorSettings.Default.copy(preferKind = WEB)
+        savedUserPreference.value = MediaPreference.Any
+        savedDefaultPreference.value = MediaPreference.Any
+        val media1 = media(
+            sourceId = "1",
+            subjectName = "版本日常",
+            episodeRange = EpisodeRange.single("1"),
+            kind = WEB,
+        )
+        val media2 = media(
+            sourceId = "2",
+            subjectName = "日常",
+            episodeRange = EpisodeRange.single("1"),
+            kind = WEB,
+        )
+        addMedia(media1, media2)
+        assertEquals(2, selector.preferredCandidatesMedia.first().size)
+        assertEquals(2, selector.filteredCandidatesMedia.first().size)
+        assertEquals(
+            media2, // 数据源 1 优先级更高, 但是 media2 有更高的相似度, 所以选 media2
+            selector.trySelectFromMediaSources(
+                listOf("1", "2"),
+                allowNonPreferred = true,
             ),
         )
     }

@@ -35,7 +35,11 @@ actual fun appColorScheme(
 ): ColorScheme {
     return if (useDynamicTheme && Build.VERSION.SDK_INT >= 31) {
         if (isDark) {
-            dynamicDarkColorScheme(LocalContext.current)
+            modifyColorSchemeForBlackBackground(
+                colorScheme = dynamicDarkColorScheme(LocalContext.current),
+                isDark = true,
+                useBlackBackground = useBlackBackground,
+            )
         } else {
             dynamicLightColorScheme(LocalContext.current)
         }
@@ -46,19 +50,7 @@ actual fun appColorScheme(
             isAmoled = useBlackBackground,
             style = PaletteStyle.TonalSpot,
             modifyColorScheme = { colorScheme ->
-                if (useBlackBackground && isDark) {
-                    colorScheme.copy(
-                        background = Color.Black,
-                        onBackground = Color.White,
-
-                        surface = Color.Black,
-                        onSurface = Color.White,
-                        surfaceContainerLowest = Color.Black,
-
-                        surfaceVariant = Color.Black,
-                        onSurfaceVariant = Color.White,
-                    )
-                } else colorScheme
+                modifyColorSchemeForBlackBackground(colorScheme, isDark, useBlackBackground)
             },
         )
     }

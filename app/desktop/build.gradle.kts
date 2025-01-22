@@ -61,7 +61,7 @@ compose.desktop {
             // JCEF
             "--add-opens=java.desktop/java.awt.peer=ALL-UNNAMED",
             "--add-opens=java.desktop/sun.awt=ALL-UNNAMED",
-            "-Xmx256m",
+            "-Xmx512m",
         )
         if (getOs() == Os.MacOS) {
             jvmArgs(

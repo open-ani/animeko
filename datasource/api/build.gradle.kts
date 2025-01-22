@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -9,9 +9,14 @@
 
 plugins {
     kotlin("multiplatform")
+    `android-library`
     kotlin("plugin.serialization")
     `ani-mpp-lib-targets`
     idea
+}
+
+android {
+    namespace = "me.him188.ani.app.datasource.api"
 }
 
 kotlin {
@@ -37,7 +42,7 @@ kotlin {
         }
     }
 
-    sourceSets.jvmMain {
+    sourceSets.getByName("jvmMain") {
         dependencies {
             api(libs.jsoup)
         }
@@ -46,4 +51,8 @@ kotlin {
 
 idea {
     module.generatedSourceDirs.add(file("src/commonTest/kotlin/title/generated"))
+}
+
+junitPlatform {
+    this.instrumentationTests.enabled = true
 }

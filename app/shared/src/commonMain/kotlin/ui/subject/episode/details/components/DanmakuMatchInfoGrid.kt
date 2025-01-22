@@ -1,12 +1,23 @@
+/*
+ * Copyright (C) 2024-2025 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.app.ui.subject.episode.details.components
 
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.FlowRowScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
@@ -14,11 +25,18 @@ import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.QuestionMark
 import androidx.compose.material.icons.outlined.Subtitles
 import androidx.compose.material.icons.outlined.WorkspacePremium
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.ErrorOutline
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardColors
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProvideTextStyle
@@ -28,18 +46,19 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import me.him188.ani.app.domain.episode.DanmakuFetchResultWithConfig
 import me.him188.ani.danmaku.api.DanmakuMatchInfo
 import me.him188.ani.danmaku.api.DanmakuMatchMethod
 
 @Composable
 fun DanmakuMatchInfoGrid(
-    matchInfos: List<DanmakuMatchInfo>,
-    expanded: Boolean,
+    matchInfos: List<DanmakuFetchResultWithConfig>,
     modifier: Modifier = Modifier,
     itemSpacing: Dp = 16.dp,
-    cardColors: CardColors = CardDefaults.cardColors(),
+    item: @Composable FlowRowScope.(result: DanmakuFetchResultWithConfig) -> Unit,
 ) {
     Column(modifier) {
         ProvideTextStyle(MaterialTheme.typography.bodyMedium) {
@@ -62,8 +81,8 @@ fun DanmakuMatchInfoGrid(
                 verticalArrangement = Arrangement.spacedBy(itemSpacing),
                 maxItemsInEachRow = 2,
             ) {
-                for (info in matchInfos) {
-                    DanmakuMatchInfoView(info, expanded, Modifier.weight(1f), colors = cardColors)
+                for (result in matchInfos) {
+                    item(result)
                 }
             }
         }
@@ -71,46 +90,113 @@ fun DanmakuMatchInfoGrid(
 }
 
 @Composable
-private fun DanmakuMatchInfoView(
+fun DanmakuSourceCard(
     info: DanmakuMatchInfo,
+    enabled: Boolean,
     showDetails: Boolean,
+    onClickSettings: () -> Unit,
     modifier: Modifier = Modifier,
-    contentPadding: PaddingValues = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
+    dropdown: @Composable () -> Unit = {},
     colors: CardColors = CardDefaults.cardColors(),
 ) {
     Card(modifier, colors = colors) {
         Column(
-            Modifier.padding(contentPadding),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            Modifier.padding(bottom = 16.dp),
         ) {
-            SelectionContainer {
-                Text(
-                    info.providerId,
-                    Modifier.basicMarquee(),
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1,
+            ListItem(
+                headlineContent = {
+                    SelectionContainer {
+                        Text(
+                            info.providerId,
+                            Modifier.basicMarquee(),
+                            style = MaterialTheme.typography.titleMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Visible,
+                        )
+                    }
+                },
+                trailingContent = {
+                    Box {
+                        IconButton(onClickSettings, Modifier.offset(x = 8.dp)) {
+                            Icon(Icons.Rounded.Settings, "设置 ${info.providerId}")
+                        }
+                        dropdown()
+                    }
+                },
+                colors = ListItemDefaults.colors(
+                    containerColor = colors.containerColor,
+                ),
+            )
+//            Row(Modifier.fillMaxWidth()) {
+//                Box(Modifier.weight(1f)) {
+//                    SelectionContainer {
+//                        Text(
+//                            info.providerId,
+//                            Modifier.basicMarquee(),
+//                            style = MaterialTheme.typography.titleMedium,
+//                            maxLines = 1,
+//                            textDecoration = if (!enabled) TextDecoration.LineThrough else null,
+//                        )
+//                    }
+//                }
+//
+//                IconButton(onClickSettings) {
+//                    Icon(Icons.Rounded.Settings, "设置 ${info.providerId}")
+//                }
+//            }
+
+            if (enabled) {
+                ProvideTextStyle(MaterialTheme.typography.bodyMedium) {
+                    FlowRow(
+                        Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Icon(Icons.Outlined.Subtitles, "弹幕数量")
+                        Text(remember(info.count) { "${info.count}" }, softWrap = false)
+                    }
+                }
+
+                ProvideTextStyle(MaterialTheme.typography.bodyMedium) {
+                    FlowRow(
+                        Modifier.padding(horizontal = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        DanmakuMatchMethodView(info.method, showDetails)
+                    }
+                }
+            } else {
+                ListItem(
+                    headlineContent = { Text("已禁用") },
+                    leadingContent = {
+                        Icon(Icons.Rounded.Close, null)
+                    },
+                    colors = ListItemDefaults.colors(
+                        containerColor = colors.containerColor,
+                    ),
                 )
             }
-
-            ProvideTextStyle(MaterialTheme.typography.bodyMedium) {
-                FlowRow(
-                    verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Icon(Icons.Outlined.Subtitles, "弹幕数量")
-                    Text(remember(info.count) { "${info.count}" }, softWrap = false)
-                }
-            }
-
-            ProvideTextStyle(MaterialTheme.typography.bodyMedium) {
-                FlowRow(
-                    verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    DanmakuMatchMethodView(info.method, showDetails)
-                }
-            }
         }
+    }
+}
+
+@Composable
+fun DanmakuSourceSettingsDropdown(
+    expanded: Boolean,
+    onDismissRequest: () -> Unit,
+    enabled: Boolean,
+    onSetEnabled: (enabled: Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    DropdownMenu(expanded, onDismissRequest, modifier) {
+        DropdownMenuItem(
+            text = { Text(if (enabled) "禁用" else "启用") },
+            onClick = {
+                onSetEnabled(!enabled)
+                onDismissRequest()
+            },
+        )
     }
 }
 

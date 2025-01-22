@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -9,6 +9,7 @@
 
 package me.him188.ani.danmaku.ui
 
+import androidx.compose.runtime.LongState
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
@@ -119,7 +120,8 @@ class DanmakuHostState(
      * The total elapsed frame time in nanoseconds. This value accumulates over time
      * unless [setPaused] is called to pause.
      */
-    private val elapsedFrameTimeNanoState = mutableLongStateOf(0)
+    private val elapsedFrameTimeNanoState =
+        mutableLongStateOf(danmakuTrackProperties.initialFrameTimeNanos) // workaround for emulating frame time.
 
     /**
      * 已经过的帧时间, 在 [setPaused] 设置暂停时此帧时间也会暂停
@@ -157,6 +159,11 @@ class DanmakuHostState(
      */
     internal val presentFixedDanmaku: MutableList<FixedDanmaku<StyledDanmaku>> = mutableListOf()
 
+    private val danmakuRepopulator = DanmakuRepopulator(
+        currentFrameTimeNanosState = elapsedFrameTimeNanoState,
+        onSend = { danmaku, placeFrameTimeNanos -> trySend(danmaku, placeFrameTimeNanos) },
+    )
+    
     /**
      * Sets the [UIContext] required for text layout, styling, and density.
      * Must be called before any layout or rendering logic.
@@ -449,7 +456,7 @@ class DanmakuHostState(
             // Observe dynamic changes in speed.
             launch {
                 snapshotFlow { danmakuConfig.speed }.collect {
-                    currentFloatingTrackSpeed = with(uiContext.density) { danmakuConfig.speed.dp.toPx() }
+                    currentFloatingTrackSpeed = with(uiContext.density) { it.dp.toPx() }
                 }
             }
 
@@ -671,75 +678,17 @@ class DanmakuHostState(
     }
 
     /**
-     * 清空屏幕并填充 [list] 到屏幕.
+     * 清空屏幕并填充[新弹幕列表][list]到屏幕.
      *
-     * **此方法不会重新排序 [list], 所以弹幕必须已经按发送时间排序**.
-     *
-     * **在通常情况下, 此方法假设 [list] 中弹幕是在 repopulate 时的[帧时间][elapsedFrameTimeNanos]之前发送的弹幕**.
-     * 因此, [list] 最后一条浮动弹幕会被放到屏幕的最右侧.
-     * 其他弹幕将以其[发送时间戳][Danmaku.playTimeMillis]为基准依次**向前**排列.
-     *
-     * 但是如果 [list] 中的第一条浮动弹幕是可以显示在最开始 trackDurationMillis 内的时间
-     * (trackDurationMillis 表示一条浮动的那幕从屏幕最右侧滚动到最左侧的时间),
-     * 那么 [list] 中的第一条弹幕会被放到屏幕对应位置来模拟最开始的弹幕滚动过程,
-     * 其他弹幕将以其[发送时间戳][Danmaku.playTimeMillis]为基准依次**向后**排列.
-     *
-     * 例如 trackDurationMillis 为 `10000ms`, [list] 中的第一条弹幕的发送时间为 `5000ms`,
-     * 那么第一条弹幕就会被放置在轨道的中间位置.
-     *
-     * 通过设置 [timeOffsetMillis] 来指定整体的弹幕放置时间偏移.
-     * 若 `timeOffsetMillis < 0L` 则弹幕放置的位置会向左偏移 [timeOffsetMillis] 的[帧时间][elapsedFrameTimeNanos].
-     *
-     * @param timeOffsetMillis 弹幕放置偏移
-     * @param list 要填充到屏幕的弹幕, 必须按发送时间戳排序.
+     * @see DanmakuRepopulator.repopulate
      */
-    suspend fun repopulate(list: List<DanmakuPresentation>, timeOffsetMillis: Long = 0L) {
+    suspend fun repopulate(list: List<DanmakuPresentation>, currentPlayMillis: Long) {
         withContext(Dispatchers.Main.immediate) { clearPresentDanmaku() }
+
         if (list.isEmpty()) return
         uiContext.await()
 
-        val currentElapsedFrameTimeNanos = elapsedFrameTimeNanos // take snapshot
-
-        val isFloatingDanmaku = { danmaku: DanmakuPresentation ->
-            danmaku.danmaku.location == DanmakuLocation.NORMAL
-        }
-
-        val floatingDanmaku = list.filter(isFloatingDanmaku)
-        if (floatingDanmaku.isNotEmpty()) {
-            // 第一条和最后一条浮动弹幕发送时间戳
-            val firstDanmakuTimeMillis = list.first(isFloatingDanmaku).danmaku.playTimeMillis
-            val danmakuDurationMillis = list.last(isFloatingDanmaku).danmaku.playTimeMillis - firstDanmakuTimeMillis
-            // 弹幕从左滑倒右边需要的时间(毫秒)
-            val trackDurationMillis =
-                hostWidth / with(uiContext.density) { danmakuConfig.speed.dp.toPx().toLong() } * 1_000
-
-            val firstDanmakuPlaceTimeNanos = if (firstDanmakuTimeMillis <= trackDurationMillis) {
-                // repopulate 了最开始的弹幕, 要向后排列.
-                // 首条弹幕出现的时间在屏幕对应位置
-                currentElapsedFrameTimeNanos - firstDanmakuTimeMillis * 1_000_000L
-            } else {
-                // 最后一条弹幕在屏幕最右侧, 所以首条弹幕出现的位置在前 danmakuDurationMillis 的帧时间.
-                // 如果超过了 elapsedFrameTimeNanos - trackDurationMillis, 那在 trySend 的时候也不会被放置.
-                currentElapsedFrameTimeNanos - danmakuDurationMillis * 1_000_000L
-            }
-
-            floatingDanmaku.forEach { danmaku ->
-                val playFrameTimeNanos = firstDanmakuPlaceTimeNanos +
-                        (danmaku.danmaku.playTimeMillis - firstDanmakuTimeMillis - timeOffsetMillis) * 1_000_000L
-                if (playFrameTimeNanos >= 0) trySend(danmaku, playFrameTimeNanos)
-            }
-        }
-
-        val fixedDanmaku = list.filterNot(isFloatingDanmaku)
-        if (fixedDanmaku.isNotEmpty()) {
-            val lastDanmakuTimeMillis = fixedDanmaku.last().danmaku.playTimeMillis
-            // 浮动弹幕倒序 place 进 presentDanmaku 里
-            fixedDanmaku.asReversed().forEach { danmaku ->
-                val playFrameTimeNanos = currentElapsedFrameTimeNanos -
-                        (lastDanmakuTimeMillis - danmaku.danmaku.playTimeMillis - timeOffsetMillis) * 1_000_000L
-                if (playFrameTimeNanos >= 0) trySend(danmaku, playFrameTimeNanos)
-            }
-        }
+        danmakuRepopulator.repopulate(list, currentPlayMillis)
     }
 
     /**
@@ -797,6 +746,64 @@ class DanmakuHostState(
          * are initialized before proceeding.
          */
         suspend fun await() = setDeferred.await()
+    }
+}
+
+/**
+ * A class that manages the repopulation of danmakus on the screen.
+ *
+ * @param onSend A callback to send a danmaku to the screen.
+ */
+internal class DanmakuRepopulator(
+    private val currentFrameTimeNanosState: LongState,
+    private val onSend: suspend (DanmakuPresentation, placeFrameTimeNanos: Long) -> Unit
+) {
+    /**
+     * 清空屏幕并填充[新弹幕列表][list]到屏幕.
+     *
+     * 以 [currentPlayMillis] 为放置的基准, 换句话说:
+     * 如果 [list] 中最后一条弹幕的[放置时间][Danmaku.playTimeMillis]等于 [currentPlayMillis] 那它就会被放到屏幕最右侧, 然后立刻出现.
+     *
+     * @param currentPlayMillis 放置到最右侧的弹幕的基准时间戳.
+     * 如果不许需要关联实际播放的时间, 可以传入 [list.last().danmaku.placeTimeMillis], 这将会把最后一条弹幕放到最右侧.
+     * @param list 要填充到屏幕的弹幕, 必须按发送时间戳排序.
+     */
+    suspend fun repopulate(list: List<DanmakuPresentation>, currentPlayMillis: Long) {
+        val currentElapsedFrameTimeNanos = currentFrameTimeNanosState.value // take snapshot
+        val sortedList = list.sortedBy { it.danmaku.playTimeMillis }
+
+        val isFloatingDanmaku = { danmaku: DanmakuPresentation ->
+            danmaku.danmaku.location == DanmakuLocation.NORMAL
+        }
+
+        val floatingDanmaku = sortedList.filter(isFloatingDanmaku)
+        if (floatingDanmaku.isNotEmpty()) {
+            // 第一条和最后一条浮动弹幕发送时间戳
+            val firstDanmakuTimeMillis = floatingDanmaku.first().danmaku.playTimeMillis
+            val firstDanmakuPlaceFrameTimeNanos = currentElapsedFrameTimeNanos -
+                    (currentPlayMillis - firstDanmakuTimeMillis) * 1_000_000L
+
+            floatingDanmaku.forEach { danmaku ->
+                val placeFrameTimeNanos = firstDanmakuPlaceFrameTimeNanos +
+                        (danmaku.danmaku.playTimeMillis - firstDanmakuTimeMillis) * 1_000_000L
+                if (placeFrameTimeNanos >= 0) onSend(danmaku, placeFrameTimeNanos)
+            }
+        }
+
+        val fixedDanmaku = sortedList.filterNot(isFloatingDanmaku)
+        if (fixedDanmaku.isNotEmpty()) {
+            val lastDanmakuTimeMillis = fixedDanmaku.last().danmaku.playTimeMillis
+
+            val lastDanmakuPlaceFrameTimeNanos = currentElapsedFrameTimeNanos -
+                    (currentPlayMillis - lastDanmakuTimeMillis) * 1_000_000L
+
+            // 浮动弹幕倒序 place 进 presentDanmaku 里
+            fixedDanmaku.asReversed().forEach { danmaku ->
+                val placeFrameTimeNanos = lastDanmakuPlaceFrameTimeNanos -
+                        (lastDanmakuTimeMillis - danmaku.danmaku.playTimeMillis) * 1_000_000L
+                if (placeFrameTimeNanos >= 0) onSend(danmaku, placeFrameTimeNanos)
+            }
+        }
     }
 }
 

@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.ui.settings.tabs.theme
 
-import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.FlowRow
@@ -48,7 +47,6 @@ fun SettingsScope.ThemeGroup(
 
     Group(
         title = { Text("主题") },
-        modifier = Modifier.animateContentSize(),
     ) {
         if (LocalPlatform.current.isDesktop() || LocalPlatform.current.isAndroid()) {
             DropdownItem(

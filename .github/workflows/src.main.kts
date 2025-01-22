@@ -28,6 +28,7 @@
 @file:DependsOn("timheuer:base64-to-file:v1.1")
 @file:DependsOn("actions:upload-artifact:v4")
 @file:DependsOn("actions:download-artifact:v4")
+@file:DependsOn("reactivecircus:android-emulator-runner:v2")
 
 // Release
 @file:DependsOn("dawidd6:action-get-tag:v1")
@@ -55,6 +56,7 @@ import io.github.typesafegithub.workflows.actions.dawidd6.ActionGetTag_Untyped
 import io.github.typesafegithub.workflows.actions.gmitch215.SetupJava_Untyped
 import io.github.typesafegithub.workflows.actions.gradle.ActionsSetupGradle
 import io.github.typesafegithub.workflows.actions.nickfields.Retry_Untyped
+import io.github.typesafegithub.workflows.actions.reactivecircus.AndroidEmulatorRunner
 import io.github.typesafegithub.workflows.actions.snowactions.Qrcode_Untyped
 import io.github.typesafegithub.workflows.actions.softprops.ActionGhRelease
 import io.github.typesafegithub.workflows.actions.timheuer.Base64ToFile_Untyped
@@ -78,6 +80,7 @@ import io.github.typesafegithub.workflows.dsl.expressions.expr
 import io.github.typesafegithub.workflows.dsl.workflow
 import io.github.typesafegithub.workflows.yaml.ConsistencyCheckJobConfig
 import org.intellij.lang.annotations.Language
+import kotlin.math.max
 
 check(KotlinVersion.CURRENT.isAtLeast(2, 0, 0)) {
     "This script requires Kotlin 2.0.0 or later"
@@ -155,6 +158,7 @@ class MatrixInstance(
      * 有一台机器是 true 就行
      */
     val uploadApk: Boolean,
+    val runAndroidInstrumentedTests: Boolean = uploadApk,
     /**
      * Compose for Desktop 的 resource 标识符, e.g. `windows-x64`
      */
@@ -197,7 +201,6 @@ class MatrixInstance(
         }
 
         add(quote("--scan"))
-        add(quote("--no-configuration-cache"))
         add(quote("-Porg.gradle.daemon.idletimeout=60000"))
         add(quote("-Pkotlin.native.ignoreDisabledTargets=true"))
         add(quote("-Dfile.encoding=UTF-8"))
@@ -346,58 +349,66 @@ val buildMatrixInstances = listOf(
         runner = Runner.SelfHostedWindows10,
         uploadApk = false,
         composeResourceTriple = "windows-x64",
-        gradleHeap = "6g",
-        kotlinCompilerHeap = "6g",
-        uploadDesktopInstallers = false, // 只有 win server 2019 构建的包才能正常使用 anitorrent
+        uploadDesktopInstallers = false,
         extraGradleArgs = listOf(
             "-P$ANI_ANDROID_ABIS=x86_64",
         ),
-        buildAllAndroidAbis = false,
+        buildAllAndroidAbis = false, // 只有 win server 2019 构建的包才能正常使用 anitorrent
+        gradleHeap = "6g",
+        kotlinCompilerHeap = "6g",
     ),
     MatrixInstance(
         runner = Runner.GithubWindowsServer2019,
         name = "Windows Server 2019 x86_64",
         uploadApk = false,
         composeResourceTriple = "windows-x64",
-        gradleHeap = "4g",
-        gradleParallel = true,
         uploadDesktopInstallers = true,
         extraGradleArgs = listOf(
             "-P$ANI_ANDROID_ABIS=x86_64",
         ),
         buildAllAndroidAbis = false,
+        gradleHeap = "4g",
+        gradleParallel = true,
     ),
-//    MatrixInstance(
-//        runner = Runner.GithubUbuntu2004,
-//        name = "Ubuntu x86_64 (Compile only)",
-//        uploadApk = false,
-//        composeResourceTriple = "linux-x64",
-//        runTests = false,
-//        uploadDesktopInstallers = false,
-//        extraGradleArgs = listOf(),
-//    ),
+    MatrixInstance(
+        runner = Runner.GithubUbuntu2004,
+        uploadApk = false,
+        runAndroidInstrumentedTests = false,
+        composeResourceTriple = "linux-x64",
+        runTests = false,
+        uploadDesktopInstallers = false,
+        extraGradleArgs = listOf(
+            "-P$ANI_ANDROID_ABIS=x86_64",
+        ),
+        buildAllAndroidAbis = false,
+        gradleHeap = "6g",
+        kotlinCompilerHeap = "6g",
+    ),
     MatrixInstance(
         runner = Runner.GithubMacOS13,
         uploadApk = true, // all ABIs
+        runAndroidInstrumentedTests = false,
         composeResourceTriple = "macos-x64",
-        buildIosFramework = false,
-        gradleHeap = "4g",
         uploadDesktopInstallers = true,
-        extraGradleArgs = listOf(),
+        extraGradleArgs = listOf(), 
+        buildIosFramework = false,
         buildAllAndroidAbis = true,
+        gradleHeap = "6g",
+        kotlinCompilerHeap = "6g",
     ),
     MatrixInstance(
         runner = Runner.SelfHostedMacOS15,
         uploadApk = false, // upload arm64-v8a once finished
+        runAndroidInstrumentedTests = true,
         composeResourceTriple = "macos-arm64",
         uploadDesktopInstallers = true,
         extraGradleArgs = listOf(
             "-P$ANI_ANDROID_ABIS=arm64-v8a",
         ),
+        buildAllAndroidAbis = false,
         gradleHeap = "6g",
         kotlinCompilerHeap = "4g",
         gradleParallel = true,
-        buildAllAndroidAbis = false,
     ),
 )
 
@@ -418,25 +429,29 @@ fun getBuildJobBody(matrix: MatrixInstance): JobBuilder<BuildJobOutputs>.() -> U
 
         runGradle(
             name = "Update dev version name",
-            tasks = ["updateDevVersionNameFromGit"],
+            tasks = ["updateDevVersionNameFromGit", "\"--no-configuration-cache\""],
         )
+        if (matrix.isUbuntu) {
+            compileAndAssemble()
+            androidConnectedTests()
+        } else {
+            val prepareSigningKey = prepareSigningKey()
+            compileAndAssemble()
+            prepareSigningKey?.let {
+                buildAndroidApk(it)
+            }
+            gradleCheck()
+            androidConnectedTests()
+            val packageOutputs = packageDesktopAndUpload()
 
-        val prepareSigningKey = prepareSigningKey()
-        compileAndAssemble()
-        prepareSigningKey?.let {
-            buildAndroidApk(it)
+            packageOutputs.macosAarch64DmgOutcome?.let {
+                jobOutputs.macosAarch64DmgSuccess = it.eq(AbstractResult.Status.Success)
+            }
+
+            packageOutputs.windowsX64PortableOutcome?.let {
+                jobOutputs.windowsX64PortableSuccess = it.eq(AbstractResult.Status.Success)
+            }
         }
-        gradleCheck()
-        val packageOutputs = packageDesktopAndUpload()
-
-        packageOutputs.macosAarch64DmgOutcome?.let {
-            jobOutputs.macosAarch64DmgSuccess = it.eq(AbstractResult.Status.Success)
-        }
-
-        packageOutputs.windowsX64PortableOutcome?.let {
-            jobOutputs.windowsX64PortableSuccess = it.eq(AbstractResult.Status.Success)
-        }
-
         cleanupTempFiles()
     }
 }
@@ -734,7 +749,7 @@ workflow(
 
             runGradle(
                 name = "Update Release Version Name",
-                tasks = ["updateReleaseVersionNameFromGit"],
+                tasks = ["updateReleaseVersionNameFromGit", "\"--no-configuration-cache\""],
                 env = mapOf(
                     "GITHUB_TOKEN" to expr { secrets.GITHUB_TOKEN },
                     "GITHUB_REPOSITORY" to expr { secrets.GITHUB_REPOSITORY },
@@ -819,11 +834,15 @@ class WithMatrix(
         `if`: String? = null,
         @Language("shell", prefix = "./gradlew ") vararg tasks: String,
         env: Map<String, String> = emptyMap(),
-    ): CommandStep = run(
-        name = name,
+        maxAttempts: Int = 1,
+        timeoutMinutes: Int = 120,
+    ): ActionStep<Retry_Untyped.Outputs> = uses(
+        name = name, 
         `if` = `if`,
-        command = shell(
-            buildString {
+        action = Retry_Untyped(
+            maxAttempts_Untyped = "$maxAttempts",
+            timeoutMinutes_Untyped = "$timeoutMinutes",
+            command_Untyped = buildString {
                 append("./gradlew ")
                 tasks.joinTo(this, " ")
                 append(' ')
@@ -845,7 +864,7 @@ class WithMatrix(
             )
         }
     }
-    
+
     fun JobBuilder<*>.deleteLocalProperties() {
         run(
             command = shell($$"""rm local.properties"""),
@@ -862,7 +881,7 @@ class WithMatrix(
             val jbrChecksumUrl = "https://cache-redirector.jetbrains.com/intellij-jbr/$filename.checksum"
 
             val jbrFilename = jbrUrl.substringAfterLast('/')
-            
+
             val jbrLocationExpr = run(
                 name = "Resolve JBR location",
                 command = shell(
@@ -912,11 +931,11 @@ class WithMatrix(
                 ),
                 shell = Shell.Bash,
             )
-            
+
             return jbrLocationExpr
         }
 
-        fun downloadJbrWindows(
+        fun downloadJbrUsingPython(
             filename: String,
         ): String {
             // These URLs should remain the same; only the shell commands change.
@@ -933,7 +952,7 @@ class WithMatrix(
                     "JBR_URL" to jbrUrl,
                     "JBR_CHECKSUM_URL" to jbrChecksumUrl,
                 ),
-                shell = Shell.Cmd,
+                shell = if (matrix.isWindows) Shell.Cmd else Shell.Bash,
             )
 
             return step.outputs["jbrLocation"]
@@ -946,7 +965,7 @@ class WithMatrix(
                 } else {
                     downloadJbrUnix("jbrsdk_jcef-21.0.5-osx-x64-b631.8.tar.gz")
                 }
-                
+
                 uses(
                     name = "Setup JBR 21 for macOS ",
                     action = SetupJava_Untyped(
@@ -959,10 +978,9 @@ class WithMatrix(
             }
 
             OS.WINDOWS -> {
-                // For Windows + Ubuntu
-                val jbrLocationExpr = downloadJbrWindows("jbrsdk_jcef-21.0.5-windows-x64-b750.29.tar.gz")
+                val jbrLocationExpr = downloadJbrUsingPython("jbrsdk_jcef-21.0.5-windows-x64-b750.29.tar.gz")
                 uses(
-                    name = "Setup JBR 21 for other OS",
+                    name = "Setup JBR 21 for Windows",
                     action = SetupJava_Untyped(
                         distribution_Untyped = "jdkfile",
                         javaVersion_Untyped = "21",
@@ -972,7 +990,18 @@ class WithMatrix(
                 )
             }
 
-            OS.UBUNTU -> error("Not supported")
+            OS.UBUNTU -> {
+                val jbrLocationExpr = downloadJbrUsingPython("jbrsdk_jcef-21.0.5-linux-x64-b750.29.tar.gz")
+                uses(
+                    name = "Setup JBR 21 for Ubuntu",
+                    action = SetupJava_Untyped(
+                        distribution_Untyped = "jdkfile",
+                        javaVersion_Untyped = "21",
+                        jdkFile_Untyped = expr { jbrLocationExpr },
+                    ),
+                    env = mapOf("GITHUB_TOKEN" to expr { secrets.GITHUB_TOKEN }),
+                )
+            }
         }
 
         run(
@@ -1010,7 +1039,7 @@ class WithMatrix(
 
         run(
             command = shell($$"""cat local.properties"""),
-            shell = Shell.Bash
+            shell = Shell.Bash,
         )
     }
 
@@ -1068,12 +1097,20 @@ class WithMatrix(
             tasks = [
                 "compileKotlin",
                 "compileCommonMainKotlinMetadata",
-                "compileDebugKotlinAndroid",
-                "compileReleaseKotlinAndroid",
                 "compileJvmMainKotlinMetadata",
                 "compileKotlinDesktop",
                 "compileKotlinMetadata",
             ],
+            maxAttempts = 2,
+        )
+        // Run separately to avoid OOM
+        runGradle(
+            name = "Compile Kotlin Android",
+            tasks = [
+                "compileDebugKotlinAndroid",
+                "compileReleaseKotlinAndroid",
+            ],
+            maxAttempts = 2,
         )
     }
 
@@ -1150,6 +1187,47 @@ class WithMatrix(
                     command_Untyped = "./gradlew check " + matrix.gradleArgs,
                 ),
             )
+        }
+    }
+
+    fun JobBuilder<*>.androidConnectedTests() {
+        if (matrix.runAndroidInstrumentedTests && matrix.isUnix) {
+            if (matrix.isUbuntu) {
+                run(
+                    name = "Enable KVM",
+                    command = """
+                  echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+                  sudo udevadm control --reload-rules
+                  sudo udevadm trigger --name-match=kvm
+                """.trimIndent(),
+                )
+            }
+            runGradle(
+                name = "Build Android Instrumented Tests",
+                tasks = [
+                    "assembleDebugAndroidTest",
+                    "\"-Pandroid.min.sdk=30\"",
+                ],
+            )
+            for (arch in listOfNotNull(
+                // test loading anitorrent and other native libraries
+                if (matrix.arch == Arch.AARCH64) AndroidEmulatorRunner.Arch.Arm64V8a else null,
+                if (matrix.arch == Arch.X64) AndroidEmulatorRunner.Arch.X8664 else null,
+            )) {
+                // 30 is min for instrumented test (because we have spaces in func names), 
+                // 35 is our targetSdk
+                for (apiLevel in listOf(30, 35)) {
+                    uses(
+                        name = "Android Instrumented Test (api=$apiLevel, arch=${arch.stringValue})",
+                        action = AndroidEmulatorRunner(
+                            apiLevel = apiLevel,
+                            arch = arch,
+                            script = "./gradlew connectedDebugAndroidTest \"-Pandroid.min.sdk=30\" " + matrix.gradleArgs,
+                            emulatorBootTimeout = 1800,
+                        ),
+                    )
+                }
+            }
         }
     }
 
@@ -1274,7 +1352,7 @@ class WithMatrix(
             if (matrix.uploadApk) {
                 runGradle(
                     name = "Upload Android APK for Release",
-                    tasks = [":ci-helper:uploadAndroidApk"],
+                    tasks = [":ci-helper:uploadAndroidApk", "\"--no-configuration-cache\""],
                     env = ciHelperSecrets,
                 )
             }
@@ -1301,7 +1379,7 @@ class WithMatrix(
                 runGradle(
                     name = "Upload QR code",
                     `if` = condition,
-                    tasks = [":ci-helper:uploadAndroidApkQR"],
+                    tasks = [":ci-helper:uploadAndroidApkQR", "\"--no-configuration-cache\""],
                     env = ciHelperSecrets,
                 )
             }
@@ -1311,7 +1389,7 @@ class WithMatrix(
             if (matrix.uploadDesktopInstallers and (!matrix.isMacOSX64)) {
                 runGradle(
                     name = "Upload Desktop Installers",
-                    tasks = [":ci-helper:uploadDesktopInstallers"],
+                    tasks = [":ci-helper:uploadDesktopInstallers", "\"--no-configuration-cache\""],
                     env = ciHelperSecrets,
                 )
             }

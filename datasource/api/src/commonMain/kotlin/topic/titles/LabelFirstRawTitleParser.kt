@@ -239,6 +239,27 @@ class LabelFirstRawTitleParser : RawTitleParser() {
                 }
                 return true
             }
+            seasonRangePattern.find(str)?.let { result ->
+                val groupValues = result.groupValues
+
+                fun String.seasonStringToIntOrNull(): Int? = dropWhile { it in "-S" }.toIntOrNull()
+
+                if (groupValues.size == 3) {
+                    val start = groupValues[1].seasonStringToIntOrNull()
+                    val end = groupValues[2].seasonStringToIntOrNull()
+                    if (start != null && end != null) {
+                        builder.episodeRange = (start..end).fold(EpisodeRange.empty()) { acc, i ->
+                            EpisodeRange.combined(acc, EpisodeRange.season(i))
+                        }
+                        return true
+                    }
+                } else {
+                    builder.episodeRange = groupValues.drop(1).mapNotNull {
+                        it.seasonStringToIntOrNull()
+                    }.fold(EpisodeRange.empty()) { acc, i -> EpisodeRange.combined(acc, EpisodeRange.season(i)) }
+                    return true
+                }
+            }
             seasonPattern.find(str)?.let { result ->
                 builder.episodeRange = parseSeason(result)
                 return true
@@ -330,6 +351,8 @@ private val collectionPattern = Regex(
 // S1+S2
 // S1E5 // ep 5
 private val seasonPattern = Regex("""(S\d+(?:E\d+)?)(?:(\+S\d+(?:E\d+)?)|(\+S\w)|(\+\w+))*""", RegexOption.IGNORE_CASE)
+
+private val seasonRangePattern = Regex("""(S\d+)(-S\d+)*""", RegexOption.IGNORE_CASE)
 
 private fun String.remove(str: String) = replace(str, "", ignoreCase = true)
 private fun String.remove(regex: Regex) = replace(regex) { "" }

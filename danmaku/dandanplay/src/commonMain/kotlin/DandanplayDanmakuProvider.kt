@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -13,6 +13,7 @@ import io.ktor.client.HttpClientConfig
 import io.ktor.client.plugins.HttpRequestRetry
 import io.ktor.client.plugins.HttpTimeout
 import me.him188.ani.danmaku.api.AbstractDanmakuProvider
+import me.him188.ani.danmaku.api.Danmaku
 import me.him188.ani.danmaku.api.DanmakuEpisode
 import me.him188.ani.danmaku.api.DanmakuFetchResult
 import me.him188.ani.danmaku.api.DanmakuMatchInfo
@@ -64,6 +65,7 @@ class DandanplayDanmakuProvider(
         AcFun("Acfun"),
         Tucao("Tucao"),
         Baha("Baha"),
+        DanDanPlay(ID),
     }
 
     override suspend fun fetch(
@@ -71,29 +73,40 @@ class DandanplayDanmakuProvider(
     ): List<DanmakuFetchResult> {
         val raw = fetchImpl(request)
         val rawList = raw.list.toList()
-        return rawList.groupBy {
-            when {
-                it.senderId.startsWith("[BiliBili]") -> DanmakuOrigin.BiliBili // 这个是确定的, 其他的不确定
-                it.senderId.startsWith("[Acfun]") -> DanmakuOrigin.AcFun
-                it.senderId.startsWith("[Tucao]") -> DanmakuOrigin.Tucao
-
-                it.senderId.startsWith("[Gamer]", ignoreCase = true)
-                        || it.senderId.startsWith("[Gamers]", ignoreCase = true)
-                        || it.senderId.startsWith("[Baha]", ignoreCase = true) -> DanmakuOrigin.Baha
-
-                else -> null
-            }
-        }.map { (origin, list) ->
+        return rawList.groupBy { it.origin }.map { (origin, list) ->
             DanmakuFetchResult(
                 matchInfo = DanmakuMatchInfo(
-                    providerId = origin?.displayName ?: id,
+                    providerId = origin.displayName,
                     count = list.size,
                     method = raw.matchInfo.method,
                 ),
                 list = list.asSequence(),
             )
+        }.let { results ->
+            if (results.none { it.matchInfo.providerId == ID }) {
+                // 保证至少返回 DanDanPlay
+                results + DanmakuFetchResult(
+                    matchInfo = raw.matchInfo,
+                    list = rawList.asSequence().filter { it.origin == DanmakuOrigin.DanDanPlay },
+                )
+            } else {
+                results
+            }
         }
     }
+
+    private val Danmaku.origin
+        get() = when {
+            senderId.startsWith("[BiliBili]") -> DanmakuOrigin.BiliBili // 这个是确定的, 其他的不确定
+            senderId.startsWith("[Acfun]") -> DanmakuOrigin.AcFun
+            senderId.startsWith("[Tucao]") -> DanmakuOrigin.Tucao
+
+            senderId.startsWith("[Gamer]", ignoreCase = true)
+                    || senderId.startsWith("[Gamers]", ignoreCase = true)
+                    || senderId.startsWith("[Baha]", ignoreCase = true) -> DanmakuOrigin.Baha
+
+            else -> DanmakuOrigin.DanDanPlay
+        }
 
     private suspend fun fetchImpl(request: DanmakuSearchRequest): DanmakuFetchResult {
         // 获取剧集流程:

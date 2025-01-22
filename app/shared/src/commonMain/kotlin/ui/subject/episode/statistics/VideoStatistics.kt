@@ -176,8 +176,8 @@ fun DanmakuMatchInfoSummaryRow(
 
             is DanmakuLoadingState.Success -> {
                 Text(
-                    remember(danmakuLoadingState) {
-                        "${danmakuLoadingState.matchInfos.size} 个弹幕源，共计 ${danmakuLoadingState.matchInfos.sumOf { it.count }} 条弹幕"
+                    remember(danmakuStatistics) {
+                        "${danmakuStatistics.fetchResults.size} 个弹幕源，共计 ${danmakuStatistics.fetchResults.sumOf { it.matchInfo.count }} 条弹幕"
                     },
                     Modifier.weight(1f),
                 )

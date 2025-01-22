@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -11,6 +11,7 @@ package me.him188.ani.utils.ktor
 
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
+import io.ktor.client.engine.HttpClientEngineFactory
 import io.ktor.client.plugins.BrowserUserAgent
 import io.ktor.client.plugins.HttpRequestRetry
 import io.ktor.client.plugins.HttpSend
@@ -35,9 +36,12 @@ import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration
 import kotlin.time.measureTimedValue
 
+// 根据不同平台，选择相应的 HttpClientEngine
+expect fun getPlatformKtorEngine(): HttpClientEngineFactory<*>
+
 fun createDefaultHttpClient(
     clientConfig: HttpClientConfig<*>.() -> Unit = {},
-) = HttpClient {
+): HttpClient = HttpClient(getPlatformKtorEngine()) {
     install(HttpRequestRetry) {
         maxRetries = 1
         delayMillis { 1000 }
@@ -45,6 +49,7 @@ fun createDefaultHttpClient(
     install(HttpCookies)
     install(HttpTimeout) {
         requestTimeoutMillis = 30_000
+        connectTimeoutMillis = 15_000
     }
     BrowserUserAgent()
     install(ContentNegotiation) {

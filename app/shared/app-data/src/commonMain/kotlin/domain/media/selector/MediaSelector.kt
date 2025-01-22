@@ -326,6 +326,7 @@ class DefaultMediaSelector(
     private val mediaSelectorSettings = mediaSelectorSettings.cached()
     private val mediaSelectorContext = mediaSelectorContextNotCached.cached()
 
+    @OptIn(UnsafeOriginalMediaAccess::class)
     override val filteredCandidates: Flow<List<MaybeExcludedMedia>> = combine(
         mediaListNotCached.cached(), // cache 是必要的, 当 newPreferences 变更的时候不能重新加载 media list (网络)
         savedDefaultPreference, // 只需要使用 default, 因为目前不能覆盖生肉设置
@@ -335,29 +336,51 @@ class DefaultMediaSelector(
     ) { list, pref, settings, context ->
         filterMediaList(pref, settings, context, list)
             .sortedWith(
-                compareByDescending<MaybeExcludedMedia> { maybe ->
-                    when (maybe) {
-                        is MaybeExcludedMedia.Included -> {
-                            val subtitleKind = maybe.result.properties.subtitleKind
-                            if (context.subtitlePreferences != null && subtitleKind != null) {
-                                if (context.subtitlePreferences[subtitleKind] == SubtitleKindPreference.LOW_PRIORITY) {
-                                    return@compareByDescending 0
-                                }
-                            }
-                            1
-                        }
-
-                        is MaybeExcludedMedia.Excluded -> {
-                            return@compareByDescending -1 // 排除的总是在最后
+                // stable sort, 保证相同的元素顺序不变
+                compareBy<MaybeExcludedMedia> { 0 } // dummy, to use .then* syntax.
+                    // 排除的总是在最后
+                    .thenBy { maybe ->
+                        when (maybe) {
+                            is MaybeExcludedMedia.Included -> 0
+                            is MaybeExcludedMedia.Excluded -> 1
                         }
                     }
-                } // 在这之后, 它肯定是 Included
+                    // 将不能播放的放到后面
+                    .thenBy { maybe ->
+                        val subtitleKind = maybe.original.properties.subtitleKind
+                        if (context.subtitlePreferences != null && subtitleKind != null) {
+                            if (context.subtitlePreferences[subtitleKind] != SubtitleKindPreference.NORMAL) {
+                                return@thenBy 1
+                            }
+                        }
+                        0
+                    }
+                    // 按符合用户选择类型排序. 缓存 > 用户偏好的 > 不偏好的, #1522
+                    .thenByDescending { maybe ->
+                        when (maybe.original.kind) {
+                            // Show cache on top
+                            MediaSourceKind.LocalCache -> {
+                                2
+                            }
+
+                            MediaSourceKind.WEB,
+                            MediaSourceKind.BitTorrent -> {
+                                if (settings.preferKind == null) {
+                                    0
+                                } else {
+                                    if (maybe.original.kind == settings.preferKind) {
+                                        1
+                                    } else {
+                                        0
+                                    }
+                                }
+                            }
+                        }
+                    }
                     .then(
-                        @OptIn(UnsafeOriginalMediaAccess::class)
                         compareBy { it.original.costForDownload },
                     )
                     .thenByDescending {
-                        @OptIn(UnsafeOriginalMediaAccess::class)
                         it.original.publishedTime
                     }
                     .thenByDescending {
@@ -625,7 +648,7 @@ class DefaultMediaSelector(
      * 不会调用 [selectImpl] nor [selectDefault], 也就是说不会更新 [selected]
      */
     private suspend fun findUsingPreferenceFromCandidates(
-        candidates: List<Media>,
+        candidates: List<MaybeExcludedMedia.Included>,
         mergedPreference: MediaPreference,
     ): Media? {
         val selectedSubtitleLanguageId = mergedPreference.subtitleLanguageId
@@ -715,6 +738,9 @@ class DefaultMediaSelector(
             return list.first()
         }
 
+        fun selectAny(candidates: List<MaybeExcludedMedia.Included>) =
+            selectAny(candidates.map { it.result })
+
         // TODO: too complex, should refactor
 
         fun selectImpl(candidates: List<Media>): Media? {
@@ -766,15 +792,25 @@ class DefaultMediaSelector(
             return null
         }
 
+        fun selectImpl(maybeExcludedMedia: List<MaybeExcludedMedia.Included>) =
+            selectImpl(maybeExcludedMedia.map { it.result })
+
         if (preferKind != null) {
-            val web = candidates.filter { it.kind == preferKind }
-            selectImpl(web)?.let {
+            val preferred = candidates.filter { it.result.kind == preferKind }
+            if (preferKind == MediaSourceKind.WEB) {
+                // 如果用户倾向于 WEB, 优先从相似度足够高的项目中选择.
+                //  否则会导致快速选择数据源时选择了高优先数据源中的错误资源, 而放弃了低优先数据源中的正确资源. #1521
+                selectImpl(preferred.filter { it.similarity > 80 })?.let {
+                    return it
+                }
+            }
+            selectImpl(preferred)?.let {
                 return it
             }
         }
 
         if (shouldPreferSeasons) {
-            val seasons = candidates.filter { it.episodeRange?.hasSeason() == true }
+            val seasons = candidates.filter { it.result.episodeRange?.hasSeason() == true }
             selectImpl(seasons)?.let {
                 return it
             }
@@ -785,10 +821,13 @@ class DefaultMediaSelector(
 
     override suspend fun trySelectDefault(): Media? {
         if (selected.value != null) return null
-        val candidates = preferredCandidatesMedia.first()
-        if (candidates.isEmpty()) return null
+        val candidates = preferredCandidates.first()
+        if (candidates.none { it is MaybeExcludedMedia.Included }) return null
         val mergedPreference = newPreferences.first()
-        return findUsingPreferenceFromCandidates(candidates, mergedPreference)?.let {
+        return findUsingPreferenceFromCandidates(
+            candidates.filterIsInstance<MaybeExcludedMedia.Included>(),
+            mergedPreference,
+        )?.let {
             selectDefault(it)
         }
     }
@@ -803,10 +842,14 @@ class DefaultMediaSelector(
 
         val selected = run {
             val mergedPreference = newPreferences.first()
+
+            fun bake(candidates: List<MaybeExcludedMedia.Included>): List<MaybeExcludedMedia.Included> {
+                return candidates.filter { it.result.mediaSourceId in mediaSourceOrder && it.result.mediaId !in blacklistMediaIds }
+                    .sortedBy { mediaSourceOrder.indexOf(it.result.mediaSourceId) }
+            }
+
             findUsingPreferenceFromCandidates(
-                preferredCandidatesMedia.first()
-                    .filter { it.mediaSourceId in mediaSourceOrder && it.mediaId !in blacklistMediaIds }
-                    .sortedBy { mediaSourceOrder.indexOf(it.mediaSourceId) },
+                bake(preferredCandidates.first().filterIsInstance<MaybeExcludedMedia.Included>()),
                 mergedPreference.copy(
                     alliance = ANY_FILTER,
                 ),
@@ -816,9 +859,7 @@ class DefaultMediaSelector(
 
                 // 如果用户偏好里面没有, 并且允许选择非偏好的, 才考虑全部列表
                 findUsingPreferenceFromCandidates(
-                    filteredCandidatesMedia.first()
-                        .filter { it.mediaSourceId in mediaSourceOrder && it.mediaId !in blacklistMediaIds }
-                        .sortedBy { mediaSourceOrder.indexOf(it.mediaSourceId) },
+                    bake(filteredCandidates.first().filterIsInstance<MaybeExcludedMedia.Included>()),
                     mergedPreference.copy(
                         alliance = ANY_FILTER,
                         resolution = ANY_FILTER,

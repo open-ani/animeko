@@ -89,4 +89,20 @@ class TitleParserTest : PatternBasedTitleParserTestSuite() {
         assertEquals("", r.subtitleLanguages.sortedBy { it.id }.joinToString { it.id })
         assertEquals("null", r.resolution.toString())
     }
+
+    @Test
+    fun `S1-S2`() {
+        val r = parse("[H-Enc] 我心里危险的东西 / Boku no Kokoro no Yabai Yatsu S1-S2 (BDRip 1080p HEVC AAC)\n")
+        assertEquals("S1+S2", r.episodeRange.toString())
+        assertEquals("", r.subtitleLanguages.sortedBy { it.id }.joinToString { it.id })
+        assertEquals("1080P", r.resolution.toString())
+    }
+
+    @Test
+    fun `S1-S3`() {
+        val r = parse("[H-Enc] 我心里危险的东西 / Boku no Kokoro no Yabai Yatsu S1-S3 (BDRip 1080p HEVC AAC)\n")
+        assertEquals("S1+S2+S3", r.episodeRange.toString())
+        assertEquals("", r.subtitleLanguages.sortedBy { it.id }.joinToString { it.id })
+        assertEquals("1080P", r.resolution.toString())
+    }
 }

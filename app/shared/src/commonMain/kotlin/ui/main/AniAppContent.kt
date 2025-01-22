@@ -443,7 +443,14 @@ private fun AniAppContentImpl(
                     presentation,
                     onRetry = { vm.refresh() },
                     onClickItem = {
-                        aniNavigator.navigateSubjectDetails(it.subjectId)
+                        aniNavigator.navigateSubjectDetails(
+                            it.subjectId,
+                            placeholder = SubjectDetailPlaceholder(
+                                id = it.subjectId,
+                                nameCN = it.subjectTitle,
+                                coverUrl = it.imageUrl,
+                            ),
+                        )
                     },
                     Modifier.fillMaxSize(),
                     windowInsets = windowInsets,

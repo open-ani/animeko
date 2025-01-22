@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -13,12 +13,14 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.retry
+import kotlinx.coroutines.flow.take
+import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withTimeout
 import me.him188.ani.app.data.network.AniDanmakuProvider
@@ -62,16 +64,11 @@ interface DanmakuManager {
 
     suspend fun fetch(
         request: DanmakuSearchRequest,
-    ): CombinedDanmakuFetchResult
+    ): List<DanmakuFetchResult>
 
     @Throws(SendDanmakuException::class, CancellationException::class)
     suspend fun post(episodeId: Int, danmaku: DanmakuInfo): Danmaku
 }
-
-class CombinedDanmakuFetchResult(
-    val matchInfos: List<DanmakuMatchInfo>,
-    val list: Sequence<Danmaku>,
-)
 
 object DanmakuProviderLoader {
     fun load(
@@ -126,7 +123,7 @@ class DanmakuManagerImpl(
 
     override suspend fun fetch(
         request: DanmakuSearchRequest,
-    ): CombinedDanmakuFetchResult {
+    ): List<DanmakuFetchResult> {
         logger.info { "Search for danmaku with filename='${request.filename}'" }
         val flows = providers.first().map { provider ->
             flow {
@@ -156,18 +153,9 @@ class DanmakuManagerImpl(
                     ),
                 )// 忽略错误, 否则一个源炸了会导致所有弹幕都不发射了
                 // 必须要 emit 一个, 否则下面 .first 会出错
-            }
-        }
-        if (flows.isEmpty()) {
-            return CombinedDanmakuFetchResult(emptyList(), emptySequence())
-        }
-        val results = combine(flows) {
-            it.asSequence().flatten().toList()
-        }.first()
-        return CombinedDanmakuFetchResult(
-            results.map { it.matchInfo },
-            results.asSequence().flatMap { it.list },
-        )
+            }.take(1)
+        }.merge().toList().flatten()
+        return flows
     }
 
     override suspend fun post(episodeId: Int, danmaku: DanmakuInfo): Danmaku {

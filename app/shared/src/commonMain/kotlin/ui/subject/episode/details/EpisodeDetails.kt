@@ -80,6 +80,8 @@ import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollect
 import me.him188.ani.app.ui.subject.details.SubjectDetailsPage
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateLoader
 import me.him188.ani.app.ui.subject.episode.details.components.DanmakuMatchInfoGrid
+import me.him188.ani.app.ui.subject.episode.details.components.DanmakuSourceCard
+import me.him188.ani.app.ui.subject.episode.details.components.DanmakuSourceSettingsDropdown
 import me.him188.ani.app.ui.subject.episode.details.components.EpisodeWatchStatusButton
 import me.him188.ani.app.ui.subject.episode.details.components.PlayingEpisodeItem
 import me.him188.ani.app.ui.subject.episode.details.components.PlayingEpisodeItemDefaults
@@ -128,6 +130,7 @@ fun EpisodeDetails(
     authState: AuthState,
     onSwitchEpisode: (episodeId: Int) -> Unit,
     onRefreshMediaSources: () -> Unit,
+    onSetDanmakuSourceEnabled: (providerId: String, enabled: Boolean) -> Unit,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
 ) {
@@ -318,16 +321,39 @@ fun EpisodeDetails(
         danmakuStatistics = { innerPadding ->
             val danmakuLoadingState = danmakuStatistics.danmakuLoadingState
             if (danmakuLoadingState is DanmakuLoadingState.Success) {
+                val colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    contentColor = contentColorFor(MaterialTheme.colorScheme.surfaceContainer),
+                )
                 DanmakuMatchInfoGrid(
-                    danmakuLoadingState.matchInfos,
-                    expanded = expandDanmakuStatistics,
+                    danmakuStatistics.fetchResults,
                     Modifier.padding(innerPadding),
                     itemSpacing = 16.dp,
-                    cardColors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                        contentColor = contentColorFor(MaterialTheme.colorScheme.surfaceContainer),
-                    ),
-                )
+                ) { source ->
+                    var showDropdown by rememberSaveable { mutableStateOf(false) }
+                    Box(Modifier.weight(1f)) {
+                        DanmakuSourceCard(
+                            source.matchInfo,
+                            enabled = source.config.enabled,
+                            expandDanmakuStatistics,
+                            onClickSettings = {
+                                showDropdown = true
+                            },
+                            Modifier.fillMaxWidth(),
+                            colors = colors,
+                            dropdown = {
+                                DanmakuSourceSettingsDropdown(
+                                    showDropdown,
+                                    onDismissRequest = { showDropdown = false },
+                                    enabled = source.config.enabled,
+                                    onSetEnabled = { enabled ->
+                                        onSetDanmakuSourceEnabled(source.matchInfo.providerId, enabled)
+                                    },
+                                )
+                            },
+                        )
+                    }
+                }
             }
         },
         onShowEpisodes = {

@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.preference.MediaPreference
+import me.him188.ani.app.data.models.preference.MediaSelectorSettings
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.datasources.api.DefaultMedia
 import me.him188.ani.datasources.api.EpisodeSort
@@ -25,12 +26,7 @@ class DefaultMediaSelectorSortingTest : AbstractDefaultMediaSelectorTest() {
 
     @Test
     fun `sort by subjectName similarity`() = runTest {
-        mediaSelectorContext.value = createMediaSelectorContextFromEmpty(
-            subjectInfo = SubjectInfo.Empty.copy(nameCn = "孤独摇滚", name = "Bocchi The Rock!"),
-            episodeInfo = EpisodeInfo.Empty.copy(sort = EpisodeSort(1)),
-        )
-        savedDefaultPreference.value = MediaPreference.Any
-        savedUserPreference.value = MediaPreference.Any
+        preferAnyMedia()
         val expectedSort = listOf(
             media(subjectName = "孤独摇滚", kind = MediaSourceKind.WEB),
             media(subjectName = "Bocchi The Rock!", kind = MediaSourceKind.WEB),
@@ -48,12 +44,7 @@ class DefaultMediaSelectorSortingTest : AbstractDefaultMediaSelectorTest() {
 
     @Test
     fun `sort by subjectName filters out unrelated WEB`() = runTest {
-        mediaSelectorContext.value = createMediaSelectorContextFromEmpty(
-            subjectInfo = SubjectInfo.Empty.copy(nameCn = "孤独摇滚", name = "Bocchi The Rock!"),
-            episodeInfo = EpisodeInfo.Empty.copy(sort = EpisodeSort(1)),
-        )
-        savedDefaultPreference.value = MediaPreference.Any
-        savedUserPreference.value = MediaPreference.Any
+        preferAnyMedia()
         val expectedSort = listOf(
             media(subjectName = "unrelated item unrelated item", kind = MediaSourceKind.WEB),
         )
@@ -66,12 +57,7 @@ class DefaultMediaSelectorSortingTest : AbstractDefaultMediaSelectorTest() {
 
     @Test
     fun `sort by subjectName does not filter out BT`() = runTest {
-        mediaSelectorContext.value = createMediaSelectorContextFromEmpty(
-            subjectInfo = SubjectInfo.Empty.copy(nameCn = "孤独摇滚", name = "Bocchi The Rock!"),
-            episodeInfo = EpisodeInfo.Empty.copy(sort = EpisodeSort(1)),
-        )
-        savedDefaultPreference.value = MediaPreference.Any
-        savedUserPreference.value = MediaPreference.Any
+        preferAnyMedia()
         val expectedSort = listOf(
             media(subjectName = "unrelated item", kind = MediaSourceKind.BitTorrent),
         )
@@ -84,12 +70,7 @@ class DefaultMediaSelectorSortingTest : AbstractDefaultMediaSelectorTest() {
 
     @Test
     fun `sort by subjectName does not filter out Cache`() = runTest {
-        mediaSelectorContext.value = createMediaSelectorContextFromEmpty(
-            subjectInfo = SubjectInfo.Empty.copy(nameCn = "孤独摇滚", name = "Bocchi The Rock!"),
-            episodeInfo = EpisodeInfo.Empty.copy(sort = EpisodeSort(1)),
-        )
-        savedDefaultPreference.value = MediaPreference.Any
-        savedUserPreference.value = MediaPreference.Any
+        preferAnyMedia()
         val expectedSort = listOf(
             media(subjectName = "unrelated item", kind = MediaSourceKind.LocalCache),
         )
@@ -100,4 +81,105 @@ class DefaultMediaSelectorSortingTest : AbstractDefaultMediaSelectorTest() {
         )
     }
 
+    @Test
+    fun `preferKind is null - keep original order`() = runTest {
+        preferAnyMedia()
+        mediaSelectorSettings.value = MediaSelectorSettings.Default.copy(preferKind = null)
+        val expectedSort = listOf(
+            media(kind = MediaSourceKind.WEB),
+            media(kind = MediaSourceKind.BitTorrent),
+            media(kind = MediaSourceKind.WEB),
+            media(kind = MediaSourceKind.BitTorrent),
+            media(kind = MediaSourceKind.WEB),
+            media(kind = MediaSourceKind.BitTorrent),
+        )
+        addMedia(*expectedSort.toTypedArray())
+        assertEquals(
+            expectedSort.indices.toList(),
+            selector.filteredCandidatesMedia.first().map { expectedSort.indexOf(it) },
+        )
+    }
+
+    inner class PreferKindMedias {
+        val cache1 = media(mediaId = "cache1", kind = MediaSourceKind.LocalCache)
+        val cache2 = media(mediaId = "cache2", kind = MediaSourceKind.LocalCache)
+        val web1 = media(mediaId = "web1", kind = MediaSourceKind.WEB)
+        val web2 = media(mediaId = "web2", kind = MediaSourceKind.WEB)
+        val bt1 = media(mediaId = "bt1", kind = MediaSourceKind.BitTorrent)
+        val bt2 = media(mediaId = "bt2", kind = MediaSourceKind.BitTorrent)
+    }
+
+    @Test
+    fun `preferKind is null - cache always on top`() = runTest {
+        preferAnyMedia()
+        mediaSelectorSettings.value = MediaSelectorSettings.Default.copy(preferKind = null)
+        PreferKindMedias().run {
+            addMedia(web1, bt1, cache1)
+            assertEquals(
+                cache1,
+                selector.filteredCandidatesMedia.first()[0],
+            )
+        }
+    }
+
+    @Test
+    fun `preferKind is BT - BT first`() = runTest {
+        preferAnyMedia()
+        mediaSelectorSettings.value = MediaSelectorSettings.Default.copy(preferKind = MediaSourceKind.BitTorrent)
+        PreferKindMedias().run {
+            addMedia(web1, bt1, web2, bt2)
+            assertEquals(
+                listOf(bt1, bt2, web1, web2),
+                selector.filteredCandidatesMedia.first(),
+            )
+        }
+    }
+
+    @Test
+    fun `preferKind is BT - cache on top`() = runTest {
+        preferAnyMedia()
+        mediaSelectorSettings.value = MediaSelectorSettings.Default.copy(preferKind = MediaSourceKind.BitTorrent)
+        PreferKindMedias().run {
+            addMedia(web1, bt1, web2, bt2, cache1)
+            assertEquals(
+                listOf(cache1, bt1, bt2, web1, web2),
+                selector.filteredCandidatesMedia.first(),
+            )
+        }
+    }
+
+    @Test
+    fun `preferKind is WEB - WEB first`() = runTest {
+        preferAnyMedia()
+        mediaSelectorSettings.value = MediaSelectorSettings.Default.copy(preferKind = MediaSourceKind.WEB)
+        PreferKindMedias().run {
+            addMedia(web1, bt1, web2, bt2)
+            assertEquals(
+                listOf(web1, web2, bt1, bt2),
+                selector.filteredCandidatesMedia.first(),
+            )
+        }
+    }
+
+    @Test
+    fun `preferKind is WEB - cache on top`() = runTest {
+        preferAnyMedia()
+        mediaSelectorSettings.value = MediaSelectorSettings.Default.copy(preferKind = MediaSourceKind.WEB)
+        PreferKindMedias().run {
+            addMedia(web1, bt1, web2, bt2)
+            assertEquals(
+                listOf(web1, web2, bt1, bt2),
+                selector.filteredCandidatesMedia.first(),
+            )
+        }
+    }
+
+    private fun preferAnyMedia() {
+        mediaSelectorContext.value = createMediaSelectorContextFromEmpty(
+            subjectInfo = SubjectInfo.Empty.copy(nameCn = "孤独摇滚", name = "Bocchi The Rock!"),
+            episodeInfo = EpisodeInfo.Empty.copy(sort = EpisodeSort(1)),
+        )
+        savedDefaultPreference.value = MediaPreference.Any
+        savedUserPreference.value = MediaPreference.Any
+    }
 }

@@ -27,10 +27,7 @@ fun PreviewSchedulePage() {
     ProvideFoundationCompositionLocalsForPreview {
         Surface(color = MaterialTheme.colorScheme.surfaceContainerLowest) {
             SchedulePage(
-                presentation = SchedulePagePresentation(
-                    airingSchedules = TestSchedulePageData,
-                    null,
-                ),
+                presentation = createTestSchedulePagePresentation(),
                 onRetry = {},
                 onClickItem = {},
                 navigationIcon = {

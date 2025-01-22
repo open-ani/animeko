@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024-2025 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.danmaku.ui
 
 import androidx.compose.runtime.IntState
@@ -29,12 +38,13 @@ internal class FixedDanmakuTrack<T : SizeSpecifiedDanmaku>(
         private set
     internal var pendingDanmaku: T? = null
         private set
-    
-    override fun place(danmaku: T, placeTimeNanos: Long): FixedDanmaku<T> {
-        check(placeTimeNanos == DanmakuTrack.NOT_PLACED || placeTimeNanos >= 0) {
-            "placeTimeNanos must be NOT_PLACED or non-negative, but had $placeTimeNanos"
+
+    override fun place(danmaku: T, placeFrameTimeNanos: Long): FixedDanmaku<T> {
+        check(placeFrameTimeNanos == DanmakuTrack.NOT_PLACED || placeFrameTimeNanos >= 0) {
+            "placeTimeNanos must be NOT_PLACED or non-negative, but had $placeFrameTimeNanos"
         }
-        val upcomingDanmaku = FixedDanmaku(danmaku, placeTimeNanos, trackIndex, trackHeight, hostHeight, fromBottom)
+        val upcomingDanmaku =
+            FixedDanmaku(danmaku, placeFrameTimeNanos, trackIndex, trackHeight, hostHeight, fromBottom)
         currentDanmaku?.let(onRemoveDanmaku)
         currentDanmaku = upcomingDanmaku
         return upcomingDanmaku
@@ -42,17 +52,17 @@ internal class FixedDanmakuTrack<T : SizeSpecifiedDanmaku>(
 
     override fun canPlace(
         danmaku: T,
-        placeTimeNanos: Long
+        placeFrameTimeNanos: Long
     ): Boolean {
-        check(placeTimeNanos == DanmakuTrack.NOT_PLACED || placeTimeNanos >= 0) {
-            "placeTimeNanos must be NOT_PLACED or non-negative, but had $placeTimeNanos"
+        check(placeFrameTimeNanos == DanmakuTrack.NOT_PLACED || placeFrameTimeNanos >= 0) {
+            "placeTimeNanos must be NOT_PLACED or non-negative, but had $placeFrameTimeNanos"
         }
         // 当前如果有正在显示的弹幕或者有等待显示的弹幕则一定不可发送
         if (currentDanmaku != null || pendingDanmaku != null) return false
         // 未放置的弹幕一定可以放置
-        if (placeTimeNanos == DanmakuTrack.NOT_PLACED) return true
+        if (placeFrameTimeNanos == DanmakuTrack.NOT_PLACED) return true
         // 当前没有正在显示的弹幕并且弹幕可以被显示
-        return frameTimeNanosState.value - placeTimeNanos < durationMillis.value
+        return frameTimeNanosState.value - placeFrameTimeNanos < durationMillis.value
     }
 
     /**

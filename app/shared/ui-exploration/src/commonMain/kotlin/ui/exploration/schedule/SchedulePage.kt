@@ -26,6 +26,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PageSize
 import androidx.compose.foundation.pager.PagerState
@@ -51,6 +53,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.window.core.layout.WindowSizeClass
@@ -68,38 +71,48 @@ import me.him188.ani.app.ui.foundation.pagerTabIndicatorOffset
 import me.him188.ani.app.ui.foundation.rememberHorizontalScrollControlState
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.search.LoadErrorCard
-import me.him188.ani.utils.platform.collections.ImmutableEnumMap
 import me.him188.ani.utils.platform.isDesktop
 
-@Stable
-private val dayOfWeekEntries = DayOfWeek.entries
+fun SchedulePageState(
+    daysProvider: () -> List<ScheduleDay>,
+): SchedulePageState {
+    return SchedulePageState(
+        initialSelected = daysProvider().firstOrNull { it.kind == ScheduleDay.Kind.TODAY },
+        daysProvider = daysProvider,
+    )
+}
 
 @Stable
 class SchedulePageState(
-    initialSelectedDay: DayOfWeek = DayOfWeek.MONDAY,
+    initialSelected: ScheduleDay?,
+    daysProvider: () -> List<ScheduleDay>,
 ) {
+    val days by derivedStateOf(daysProvider)
+
     // on mobile
     internal val pagerState = PagerState(
-        currentPage = dayOfWeekEntries.indexOf(initialSelectedDay),
-    ) { dayOfWeekEntries.size }
+        currentPage = days.indexOf(initialSelected).coerceAtLeast(0),
+    ) { days.size }
 
     // on desktop jvm
     val lazyListState = LazyListState(firstVisibleItemIndex = pagerState.currentPage)
 
-    val selectedDay: DayOfWeek by derivedStateOf {
-        dayOfWeekEntries[pagerState.currentPage]
+    val selectedDay: ScheduleDay? by derivedStateOf {
+        days.getOrNull(pagerState.currentPage)
     }
 
-    val scheduleColumnStates = ImmutableEnumMap<DayOfWeek, LazyListState> {
-        LazyListState()
+    val scheduleColumnLazyListStates by derivedStateOf {
+        days.associateWith {
+            LazyListState()
+        }
     }
 
-    suspend fun scrollTo(day: DayOfWeek) {
-        pagerState.scrollToPage(dayOfWeekEntries.indexOf(day))
+    suspend fun scrollTo(day: ScheduleDay) {
+        pagerState.scrollToPage(days.indexOf(day).coerceAtLeast(0))
     }
 
-    suspend fun animateScrollTo(day: DayOfWeek) {
-        pagerState.animateScrollToPage(dayOfWeekEntries.indexOf(day))
+    suspend fun animateScrollTo(day: ScheduleDay) {
+        pagerState.animateScrollToPage(days.indexOf(day).coerceAtLeast(0))
     }
 }
 
@@ -113,7 +126,7 @@ fun SchedulePage(
     layoutParams: SchedulePageLayoutParams = SchedulePageLayoutParams.calculate(),
     colors: SchedulePageColors = SchedulePageDefaults.colors(),
     navigationIcon: @Composable () -> Unit = {},
-    state: SchedulePageState = remember { SchedulePageState() },
+    state: SchedulePageState = remember { SchedulePageState { presentation.days } },
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
 ) {
     Scaffold(
@@ -139,10 +152,10 @@ fun SchedulePage(
             )
         } else {
             SchedulePageContent(
+                state = state,
                 modifier = Modifier.padding(paddingValues),
                 layoutParams = layoutParams,
                 colors = colors,
-                state = state,
             ) { day ->
                 ScheduleDayColumn(
                     onClickItem = onClickItem,
@@ -151,9 +164,9 @@ fun SchedulePage(
                             DayOfWeekHeadline(day)
                         }
                     },
-                    items = presentation.airingSchedules.firstOrNull { it.date.dayOfWeek == day }?.episodes.orEmpty(),
+                    items = presentation.airingSchedules.firstOrNull { it.date == day.date }?.episodes.orEmpty(),
                     layoutParams = layoutParams.columnLayoutParams,
-                    state = state.scheduleColumnStates[day],
+                    state = state.scheduleColumnLazyListStates[day] ?: rememberLazyListState(),
                     itemColors = colors.itemColors,
                 )
             }
@@ -163,11 +176,15 @@ fun SchedulePage(
 
 @Composable
 private fun DayOfWeekHeadline(
-    day: DayOfWeek,
+    day: ScheduleDay,
     modifier: Modifier = Modifier
 ) {
     Column(modifier.width(IntrinsicSize.Min)) {
-        Text(renderDayOfWeek(day), Modifier.width(IntrinsicSize.Max), softWrap = false)
+        Text(
+            renderScheduleDay(day), Modifier.width(IntrinsicSize.Max),
+            softWrap = false, textAlign = TextAlign.Start,
+            color = if (day.kind == ScheduleDay.Kind.TODAY) MaterialTheme.colorScheme.primary else Color.Unspecified,
+        )
 
         // Rounded horizontal divider
         val thickness = 2.dp
@@ -190,11 +207,11 @@ private fun DayOfWeekHeadline(
 
 @Composable
 fun SchedulePageContent(
+    state: SchedulePageState,
     modifier: Modifier = Modifier,
     layoutParams: SchedulePageLayoutParams = SchedulePageLayoutParams.calculate(),
     colors: SchedulePageColors = SchedulePageDefaults.colors(),
-    state: SchedulePageState = remember { SchedulePageState() },
-    pageContent: @Composable (page: DayOfWeek) -> Unit,
+    pageContent: @Composable (page: ScheduleDay) -> Unit,
 ) {
     Column(modifier) {
         val uiScope = rememberCoroutineScope()
@@ -208,7 +225,7 @@ fun SchedulePageContent(
                     )
                 },
             ) {
-                dayOfWeekEntries.forEach { day ->
+                state.days.forEach { day ->
                     Tab(
                         selected = state.selectedDay == day,
                         onClick = {
@@ -216,7 +233,12 @@ fun SchedulePageContent(
                                 state.animateScrollTo(day)
                             }
                         },
-                        text = { Text(renderDayOfWeek(day), softWrap = false) },
+                        text = {
+                            Text(
+                                renderScheduleDay(day), softWrap = false, textAlign = TextAlign.Center,
+                                color = if (day.kind == ScheduleDay.Kind.TODAY) MaterialTheme.colorScheme.primary else Color.Unspecified,
+                            )
+                        },
                         selectedContentColor = colors.tabSelectedContentColor,
                         unselectedContentColor = colors.tabUnselectedContentColor,
                     )
@@ -246,14 +268,14 @@ fun SchedulePageContent(
                     horizontalArrangement = Arrangement.spacedBy(layoutParams.pageSpacing),
                     state = state.lazyListState,
                 ) {
-                    items(dayOfWeekEntries.size) { index ->
+                    items(state.days) { day ->
                         val widthModifier = when (val pageSize = layoutParams.pageSize) {
                             PageSize.Fill -> Modifier.fillMaxWidth()
                             is PageSize.Fixed -> Modifier.width(pageSize.pageSize)
                             else -> Modifier
                         }
                         Box(widthModifier.fillParentMaxHeight().padding(layoutParams.pageContentPadding)) {
-                            pageContent(dayOfWeekEntries[index])
+                            pageContent(day)
                         }
                     }
                 }
@@ -269,7 +291,9 @@ fun SchedulePageContent(
                 key = { it },
             ) { index ->
                 Box(Modifier.fillMaxSize()) { // ensure the page is scrollable
-                    pageContent(dayOfWeekEntries[index])
+                    state.days.getOrNull(index)?.let {
+                        pageContent(it)
+                    }
                 }
             }
         }
@@ -350,13 +374,48 @@ object SchedulePageDefaults {
 
 
 @Stable
-private fun renderDayOfWeek(day: DayOfWeek): String = when (day) {
-    DayOfWeek.MONDAY -> "周一"
-    DayOfWeek.TUESDAY -> "周二"
-    DayOfWeek.WEDNESDAY -> "周三"
-    DayOfWeek.THURSDAY -> "周四"
-    DayOfWeek.FRIDAY -> "周五"
-    DayOfWeek.SATURDAY -> "周六"
-    DayOfWeek.SUNDAY -> "周日"
-    else -> day.toString()
+private fun renderScheduleDay(day: ScheduleDay): String {
+    val date = day.date
+    return """
+        ${date.monthNumber}/${date.dayOfMonth}
+        ${renderDayOfWeek(day.dayOfWeek, day.kind)}
+    """.trimIndent()
+}
+
+@Stable
+private fun renderDayOfWeek(day: DayOfWeek, kind: ScheduleDay.Kind): String = when (kind) {
+    // we manually permute them to make them real constants to avoid runtime allocations.
+    ScheduleDay.Kind.LAST_WEEK -> when (day) {
+        DayOfWeek.MONDAY -> "上周一"
+        DayOfWeek.TUESDAY -> "上周二"
+        DayOfWeek.WEDNESDAY -> "上周三"
+        DayOfWeek.THURSDAY -> "上周四"
+        DayOfWeek.FRIDAY -> "上周五"
+        DayOfWeek.SATURDAY -> "上周六"
+        DayOfWeek.SUNDAY -> "上周日"
+        else -> day.toString()
+    }
+
+    ScheduleDay.Kind.THIS_WEEK,
+    ScheduleDay.Kind.TODAY -> when (day) {
+        DayOfWeek.MONDAY -> "周一"
+        DayOfWeek.TUESDAY -> "周二"
+        DayOfWeek.WEDNESDAY -> "周三"
+        DayOfWeek.THURSDAY -> "周四"
+        DayOfWeek.FRIDAY -> "周五"
+        DayOfWeek.SATURDAY -> "周六"
+        DayOfWeek.SUNDAY -> "周日"
+        else -> day.toString()
+    }
+
+    ScheduleDay.Kind.NEXT_WEEK -> when (day) {
+        DayOfWeek.MONDAY -> "下周一"
+        DayOfWeek.TUESDAY -> "下周二"
+        DayOfWeek.WEDNESDAY -> "下周三"
+        DayOfWeek.THURSDAY -> "下周四"
+        DayOfWeek.FRIDAY -> "下周五"
+        DayOfWeek.SATURDAY -> "下周六"
+        DayOfWeek.SUNDAY -> "下周日"
+        else -> day.toString()
+    }
 }

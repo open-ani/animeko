@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -276,8 +276,8 @@ internal fun SettingsScope.MediaSelectionGroup(
                                 ),
                             )
                         },
-                        title = { Text("最大等待时间") },
-                        description = { Text("每次查询的最大的等待时间。在此时间结束时，将会从已经查询到的数据源中根据你设置的偏好自动选择数据源。如果等待时间太短，可能会忽略你的偏好设置；如果时间更长，可以更好地满足你的偏好设置，但可能会导致每次开播很慢。建议设置 5-10 秒") },
+                        title = { Text("最长等待时间") },
+                        description = { Text("每次查询的最长等待时间。在此时间结束时，将会从已经查询到的数据源中根据你设置的偏好自动选择数据源。如果等待时间太短，可能会忽略你的偏好设置；如果时间更长，可以更好地满足你的偏好设置，但可能会导致每次开播很慢。建议设置 5-10 秒") },
                         enabled = mediaSelectorSettings.fastSelectWebKind,
                     )
 

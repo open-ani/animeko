@@ -38,12 +38,14 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapNotNull
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.retry
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.episode.renderEpisodeEp
+import me.him188.ani.app.data.models.preference.MediaSelectorSettings
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
@@ -104,6 +106,7 @@ import me.him188.ani.app.ui.subject.episode.details.EpisodeDetailsState
 import me.him188.ani.app.ui.subject.episode.mediaFetch.MediaSelectorState
 import me.him188.ani.app.ui.subject.episode.mediaFetch.MediaSourceInfoProvider
 import me.him188.ani.app.ui.subject.episode.mediaFetch.MediaSourceResultsPresentation
+import me.him188.ani.app.ui.subject.episode.mediaFetch.createTestMediaSelectorState
 import me.him188.ani.app.ui.subject.episode.statistics.VideoStatistics
 import me.him188.ani.app.ui.subject.episode.statistics.VideoStatisticsCollector
 import me.him188.ani.app.ui.subject.episode.video.DanmakuStatistics
@@ -123,6 +126,7 @@ import me.him188.ani.utils.coroutines.flows.restartable
 import me.him188.ani.utils.coroutines.sampleWithInitial
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.warn
+import me.him188.ani.utils.platform.annotations.TestOnly
 import org.koin.core.Koin
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -435,6 +439,7 @@ class EpisodeViewModel(
                         event.list
                             .filter { it.text.any { c -> !c.isWhitespace() } }
                             .map { createDanmakuPresentation(it, selfId) },
+                        player.getCurrentPositionMillis(),
                     )
                 }
             }
@@ -520,11 +525,12 @@ class EpisodeViewModel(
 
     val pageState = fetchPlayState.episodeSessionFlow.flatMapLatest { episodeSession ->
         me.him188.ani.utils.coroutines.flows.combine(
-            episodeSession.infoBundleFlow.distinctUntilChanged(),
+            episodeSession.infoBundleFlow.distinctUntilChanged().onStart { emit(null) },
             episodeSession.infoLoadErrorStateFlow,
-            episodeSession.fetchSelectFlow.filterNotNull(),
+            episodeSession.fetchSelectFlow,
             combine(
                 danmakuLoader.danmakuLoadingStateFlow,
+                danmakuLoader.fetchResults,
                 settingsRepository.danmakuEnabled.flow,
                 ::DanmakuStatistics,
             ).distinctUntilChanged(),
@@ -546,16 +552,27 @@ class EpisodeViewModel(
             }
 
             EpisodePageState(
-                mediaSelectorState = MediaSelectorState(
+                mediaSelectorState = if (fetchSelect != null) MediaSelectorState(
                     fetchSelect.mediaSelector,
                     mediaSourceInfoProvider,
                     backgroundScope,
-                ),
+                ) else {
+                    // TODO: 2025/1/22 We should not use createTestMediaSelectorState
+                    @OptIn(TestOnly::class)
+                    createTestMediaSelectorState(backgroundScope)
+                },
                 mediaSourceResultsPresentation = MediaSourceResultsPresentation(
-                    FilteredMediaSourceResults(
-                        results = flowOf(fetchSelect.mediaFetchSession.mediaSourceResults),
-                        settings = settingsRepository.mediaSelectorSettings.flow,
-                    ),
+                    if (fetchSelect != null) {
+                        FilteredMediaSourceResults(
+                            results = flowOf(fetchSelect.mediaFetchSession.mediaSourceResults),
+                            settings = settingsRepository.mediaSelectorSettings.flow,
+                        )
+                    } else {
+                        FilteredMediaSourceResults(
+                            results = flowOf(emptyList()),
+                            settings = flowOf(MediaSelectorSettings.Default),
+                        )
+                    },
                     backgroundScope.coroutineContext,
                 ),
                 danmakuStatistics = danmakuStatistics,
@@ -645,6 +662,10 @@ class EpisodeViewModel(
     }
 
     override fun getKoin(): Koin = koin
+
+    fun setDanmakuSourceEnabled(providerId: String, enabled: Boolean) {
+        danmakuLoader.setEnabled(providerId, enabled)
+    }
 }
 
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -54,7 +54,7 @@ configure<KotlinMultiplatformExtension> {
         jvm("desktop")
         androidTarget {
             @OptIn(ExperimentalKotlinGradlePluginApi::class)
-            instrumentedTestVariant.sourceSetTree.set(KotlinSourceSetTree.instrumentedTest)
+            instrumentedTestVariant.sourceSetTree.set(KotlinSourceSetTree.test)
         }
 
         applyDefaultHierarchyTemplate {
@@ -69,7 +69,15 @@ configure<KotlinMultiplatformExtension> {
                 }
             }
         }
-
+        
+        // This won't work (KT 2.1.0)
+//        sourceSets {
+//            val commonAndroidTest = create("commonAndroidTest") {
+//                dependsOn(getByName("jvmTest"))
+//            }
+//            getByName("androidInstrumentedTest").dependsOn(commonAndroidTest)
+//            getByName("androidUnitTest").dependsOn(commonAndroidTest)
+//        }
     } else {
         jvm()
 
@@ -122,8 +130,9 @@ configure<KotlinMultiplatformExtension> {
         ).forEach { sourceSet ->
             sourceSet.dependencies {
                 // https://developer.android.com/develop/ui/compose/testing#setup
-                implementation("androidx.compose.ui:ui-test-junit4-android:${composeVersion}")
-                implementation("androidx.compose.ui:ui-test-manifest:${composeVersion}")
+//                implementation("androidx.compose.ui:ui-test-junit4-android:${composeVersion}")
+//                implementation("androidx.compose.ui:ui-test-manifest:${composeVersion}")
+                // TODO: this may cause dependency rejection when importing the project in IntelliJ.
             }
         }
 
@@ -131,8 +140,8 @@ configure<KotlinMultiplatformExtension> {
             "debugImplementation"("androidx.compose.ui:ui-test-manifest:${composeVersion}")
         }
     }
-    
-    
+
+
     if (android != null) {
         val androidMainSourceSetDir = projectDir.resolve("androidMain")
         val androidExtension = extensions.findByType(CommonExtension::class)
@@ -184,7 +193,26 @@ if (android != null) {
         defaultConfig {
             minSdk = getIntProperty("android.min.sdk")
             testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+            testInstrumentationRunnerArguments.set("runnerBuilder", "de.mannodermaus.junit5.AndroidJUnit5Builder")
         }
+        packaging { 
+            resources {
+                pickFirsts.add("META-INF/LICENSE.md")
+                pickFirsts.add("META-INF/LICENSE-notice.md")
+            }
+        }
+//        flavorDimensions.add("api")
+//        productFlavors {
+//            create("minApi30") {
+//                dimension = "api"
+//                minSdk = 30
+//                isDefault = false
+//            }
+//            create("default") {
+//                dimension = "api"
+//                isDefault = true
+//            }
+//        }
         buildTypes.getByName("release") {
             isMinifyEnabled = false // shared 不能 minify, 否则构建 app 会失败
             isShrinkResources = false
@@ -199,4 +227,8 @@ if (android != null) {
             }
         }
     }
+}
+
+if (android != null) {
+    apply(plugin = "de.mannodermaus.android-junit5")
 }

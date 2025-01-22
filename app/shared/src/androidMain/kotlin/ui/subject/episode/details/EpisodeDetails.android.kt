@@ -45,8 +45,6 @@ import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberTestMediaSourceRe
 import me.him188.ani.app.ui.subject.episode.statistics.testPlayerStatisticsState
 import me.him188.ani.app.ui.subject.episode.video.DanmakuStatistics
 import me.him188.ani.app.ui.subject.episode.video.createTestDanmakuStatistics
-import me.him188.ani.danmaku.api.DanmakuMatchInfo
-import me.him188.ani.danmaku.api.DanmakuMatchMethod
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.platform.annotations.TestOnly
@@ -176,18 +174,7 @@ private fun PreviewEpisodeDetailsImpl(
     state: EpisodeDetailsState,
     danmakuStatistics: DanmakuStatistics = remember {
         createTestDanmakuStatistics(
-            DanmakuLoadingState.Success(
-                listOf(
-                    DanmakuMatchInfo(
-                        "弹幕源弹幕源弹幕源 A", 100,
-                        DanmakuMatchMethod.Fuzzy("条目标题", "剧集标题"),
-                    ),
-                    DanmakuMatchInfo(
-                        "弹幕源 B", 100,
-                        DanmakuMatchMethod.ExactId(123456, 222222),
-                    ),
-                ),
-            ),
+            DanmakuLoadingState.Success,
         )
     },
     editableSubjectCollectionTypeState: EditableSubjectCollectionTypeState = rememberTestEditableSubjectCollectionTypeState(),
@@ -224,6 +211,7 @@ private fun PreviewEpisodeDetailsImpl(
             authState = authState,
             onSwitchEpisode = {},
             onRefreshMediaSources = {},
+            onSetDanmakuSourceEnabled = { _, _ -> },
             Modifier
                 .padding(bottom = 16.dp, top = 8.dp)
                 .padding(it)

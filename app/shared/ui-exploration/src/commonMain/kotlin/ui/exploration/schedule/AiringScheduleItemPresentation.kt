@@ -10,13 +10,17 @@
 package me.him188.ani.app.ui.exploration.schedule
 
 import androidx.compose.runtime.Immutable
+import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.minus
+import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
 import me.him188.ani.app.data.models.subject.displayName
 import me.him188.ani.app.domain.episode.EpisodeWithAiringTime
+import me.him188.ani.app.domain.episode.GetAnimeScheduleFlowUseCase
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.platform.annotations.TestOnly
@@ -42,6 +46,48 @@ data class AiringSchedule(
     val date: LocalDate,
     val episodes: List<AiringScheduleColumnItem>,
 )
+
+@Immutable
+data class ScheduleDay(
+    val date: LocalDate,
+    val kind: Kind,
+) {
+    val dayOfWeek: DayOfWeek get() = date.dayOfWeek
+
+    enum class Kind {
+        LAST_WEEK,
+        TODAY,
+        THIS_WEEK,
+        NEXT_WEEK,
+    }
+
+    companion object {
+        fun generateForRecentTwoWeeks(
+            today: LocalDate,
+        ): List<ScheduleDay> {
+            // 假设今天是本周三, 返回的是上周三到下周三
+            return SchedulePageDataHelper.OFFSET_DAYS_RANGE.map { offsetDays ->
+                val date = today.plus(DatePeriod(days = offsetDays))
+                val thisWeekRange: ClosedRange<LocalDate> = getWeekRange(today)
+                ScheduleDay(
+                    date = date,
+                    kind = when {
+                        date == today -> Kind.TODAY
+                        date in thisWeekRange -> Kind.THIS_WEEK
+                        date > thisWeekRange.endInclusive -> Kind.NEXT_WEEK
+                        date < thisWeekRange.start -> Kind.LAST_WEEK
+                        else -> error("unreachable")
+                    },
+                )
+            }
+        }
+
+        private fun getWeekRange(date: LocalDate): ClosedRange<LocalDate> {
+            val dayOfWeek = date.dayOfWeek
+            return date.minus(DatePeriod(days = dayOfWeek.ordinal))..date.plus(DatePeriod(days = 6 - dayOfWeek.ordinal))
+        }
+    }
+}
 
 @TestOnly
 val TestAiringScheduleItemPresentations
@@ -93,12 +139,12 @@ val TestSchedulePageData: List<AiringSchedule>
             )
 
 
-        return listOf(
+        return ScheduleDay.generateForRecentTwoWeeks(LocalDate(2025, 12, 10)).map {
             AiringSchedule(
-                date = LocalDate(2024, 1, 1),
+                date = it.date,
                 SchedulePageDataHelper.toColumnItems(list, addIndicator = true, currentTime),
-            ),
-        )
+            )
+        }
     }
 
 fun EpisodeWithAiringTime.toPresentation(timeZone: TimeZone): AiringScheduleItemPresentation {
@@ -119,6 +165,8 @@ fun EpisodeWithAiringTime.toPresentation(timeZone: TimeZone): AiringScheduleItem
 }
 
 object SchedulePageDataHelper {
+    val OFFSET_DAYS_RANGE = GetAnimeScheduleFlowUseCase.OFFSET_DAYS_RANGE
+
     fun toColumnItems(
         list: List<AiringScheduleItemPresentation>,
         addIndicator: Boolean,

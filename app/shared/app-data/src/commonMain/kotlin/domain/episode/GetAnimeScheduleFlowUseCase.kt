@@ -21,7 +21,6 @@ import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.plus
-import kotlinx.datetime.toLocalDateTime
 import me.him188.ani.app.data.models.subject.LightEpisodeInfo
 import me.him188.ani.app.data.models.subject.LightSubjectInfo
 import me.him188.ani.app.data.repository.episode.AnimeScheduleRepository
@@ -45,7 +44,11 @@ data class EpisodeWithAiringTime(
 }
 
 fun interface GetAnimeScheduleFlowUseCase : UseCase {
-    operator fun invoke(now: Instant, timeZone: TimeZone): Flow<List<AiringScheduleForDate>>
+    operator fun invoke(today: LocalDate, timeZone: TimeZone): Flow<List<AiringScheduleForDate>>
+
+    companion object {
+        val OFFSET_DAYS_RANGE = (-7..7)
+    }
 }
 
 class GetAnimeScheduleFlowUseCaseImpl(
@@ -53,7 +56,7 @@ class GetAnimeScheduleFlowUseCaseImpl(
     private val subjectCollectionRepository: SubjectCollectionRepository,
     private val defaultDispatcher: CoroutineContext = Dispatchers.Default,
 ) : GetAnimeScheduleFlowUseCase {
-    override fun invoke(now: Instant, timeZone: TimeZone): Flow<List<AiringScheduleForDate>> =
+    override fun invoke(today: LocalDate, timeZone: TimeZone): Flow<List<AiringScheduleForDate>> =
         animeScheduleRepository.recentSchedulesFlow()
             .flatMapLatest { schedule ->
                 val onAirAnimeInfos = schedule.flatMap { it.list }
@@ -64,8 +67,8 @@ class GetAnimeScheduleFlowUseCaseImpl(
 
                 subjectCollectionRepository.batchLightSubjectAndEpisodesFlow(onAirAnimeInfos.mapToIntList { it.bangumiId })
                     .mapLatest { subjects ->
-                        (0..6).map { offsetDays ->
-                            val date = now.toLocalDateTime(timeZone).date.plus(DatePeriod(days = offsetDays))
+                        GetAnimeScheduleFlowUseCase.OFFSET_DAYS_RANGE.map { offsetDays ->
+                            val date = today.plus(DatePeriod(days = offsetDays))
                             val airingSchedule = AnimeScheduleHelper.buildAiringScheduleForDate(
                                 subjects,
                                 onAirAnimeInfos,

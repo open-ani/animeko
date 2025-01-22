@@ -11,6 +11,8 @@ package me.him188.ani.app.ui.subject.episode.video
 
 import androidx.compose.runtime.Immutable
 import me.him188.ani.app.domain.danmaku.DanmakuLoadingState
+import me.him188.ani.app.domain.episode.DanmakuFetchResultWithConfig
+import me.him188.ani.app.domain.episode.createTestDanmakuFetchResultWithConfig
 import me.him188.ani.danmaku.api.DanmakuMatchInfo
 import me.him188.ani.danmaku.api.DanmakuMatchMethod
 import me.him188.ani.utils.platform.annotations.TestOnly
@@ -18,26 +20,30 @@ import me.him188.ani.utils.platform.annotations.TestOnly
 @Immutable
 data class DanmakuStatistics(
     val danmakuLoadingState: DanmakuLoadingState,
+    val fetchResults: List<DanmakuFetchResultWithConfig>,
     val danmakuEnabled: Boolean,
 )
 
 
 @TestOnly
 fun createTestDanmakuStatistics(
-    state: DanmakuLoadingState = DanmakuLoadingState.Success(
-        listOf(
+    state: DanmakuLoadingState = DanmakuLoadingState.Success,
+    fetchResults: List<DanmakuFetchResultWithConfig> = listOf(
+        createTestDanmakuFetchResultWithConfig(
+            "弹幕源弹幕源弹幕源弹幕源",
             DanmakuMatchInfo(
-                "弹幕源弹幕源弹幕源 A", 100,
-                DanmakuMatchMethod.Fuzzy("条目标题", "剧集标题"),
-            ),
-            DanmakuMatchInfo(
-                "弹幕源 B", 100,
-                DanmakuMatchMethod.ExactId(123456, 222222),
+                "弹幕源弹幕源弹幕源弹幕源",
+                100,
+                DanmakuMatchMethod.Exact(
+                    subjectTitle = "条目标题",
+                    episodeTitle = "剧集标题",
+                ),
             ),
         ),
     ),
     danmakuEnabled: Boolean = true,
 ): DanmakuStatistics = DanmakuStatistics(
     danmakuLoadingState = state,
+    fetchResults = fetchResults,
     danmakuEnabled = danmakuEnabled,
 )

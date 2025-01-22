@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -175,7 +175,7 @@ class AniApplication : Application() {
                 putExtra("app_service_title_text_working", me.him188.ani.R.string.app_service_title_text_working)
                 putExtra("app_service_content_text", me.him188.ani.R.string.app_service_content_text)
                 putExtra("app_service_stop_text", me.him188.ani.R.string.app_service_stop_text)
-                putExtra("app_icon", me.him188.ani.R.mipmap.a_round)
+                putExtra("app_icon", me.him188.ani.R.mipmap.ic_launcher)
                 putExtra("open_activity_intent", Intent(this@AniApplication, MainActivity::class.java))
             },
         )
