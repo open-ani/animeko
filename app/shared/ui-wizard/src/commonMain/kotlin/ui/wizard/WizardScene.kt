@@ -164,6 +164,10 @@ object WizardDefaults {
                     },
         )
     }
+
+    fun renderStepIndicatorText(currentStep: Int, totalStep: Int): String {
+        return "步骤 $currentStep / $totalStep"
+    }
     
     @Composable
     fun StepTopAppBar(
@@ -174,9 +178,6 @@ object WizardDefaults {
         indicatorStepTextTestTag: String = "indicatorText",
         stepName: @Composable () -> Unit,
     ) {
-        val renderedStep = remember(currentStep, totalStep) {
-            "步骤 $currentStep / $totalStep"
-        }
         LargeTopAppBar(
             title = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -184,7 +185,12 @@ object WizardDefaults {
                         value = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.primary,
                     ) {
-                        Text(renderedStep, Modifier.testTag(indicatorStepTextTestTag))
+                        Text(
+                            text = remember(currentStep, totalStep) {
+                                renderStepIndicatorText(currentStep, totalStep)
+                            },
+                            modifier = Modifier.testTag(indicatorStepTextTestTag),
+                        )
                     }
                     stepName()
                 }
