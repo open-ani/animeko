@@ -97,7 +97,7 @@ class WelcomeViewModel : AbstractViewModel(), KoinComponent {
             testRunning = proxyTestRunning.isRunning.produceState(false),
             items = combine(proxyTestCases, proxyTestResults) { cases, results ->
                 cases.map {
-                    ProxyTestItem(it, results.getOrDefault(it.name, ProxyTestCaseState.INIT))
+                    ProxyTestItem(it, results[it.name] ?: ProxyTestCaseState.INIT)
                 }
             }
                 .stateIn(backgroundScope, SharingStarted.Lazily, emptyList())
