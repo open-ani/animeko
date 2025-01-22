@@ -19,74 +19,81 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavController
+import io.ktor.client.request.get
 import kotlinx.collections.immutable.mutate
 import kotlinx.collections.immutable.persistentMapOf
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import me.him188.ani.app.data.models.preference.ProxyMode
 import me.him188.ani.app.data.models.preference.ProxySettings
 import me.him188.ani.app.data.models.preference.ThemeSettings
-import me.him188.ani.app.domain.settings.ProxyProvider
-import me.him188.ani.app.tools.MonoTasker
+import me.him188.ani.app.domain.media.fetch.toClientProxyConfig
+import me.him188.ani.app.domain.settings.ProxySettingsFlowProxyProvider
 import me.him188.ani.app.ui.foundation.AbstractViewModel
+import me.him188.ani.app.ui.foundation.launchInBackground
 import me.him188.ani.app.ui.settings.framework.SettingsState
 import me.him188.ani.app.ui.settings.tabs.network.SystemProxyPresentation
 import me.him188.ani.app.ui.wizard.navigation.WizardController
 import me.him188.ani.app.ui.wizard.step.ProxyTestCaseState
 import me.him188.ani.app.ui.wizard.step.ProxyTestItem
 import me.him188.ani.app.ui.wizard.step.ProxyTestState
-import org.koin.core.component.KoinComponent
-import org.koin.core.component.inject
+import me.him188.ani.utils.coroutines.flows.FlowRunning
+import me.him188.ani.utils.coroutines.update
+import me.him188.ani.utils.ktor.createDefaultHttpClient
+import me.him188.ani.utils.ktor.proxy
 
-class WelcomeViewModel : AbstractViewModel(), KoinComponent {
-    private val proxyProvider: ProxyProvider by inject()
-
-    private val proxyTestTasker = MonoTasker(backgroundScope)
-
+class WelcomeViewModel : AbstractViewModel() {
     private val themeConfig = mutableStateOf(ThemeSettings.Default)
-    private val proxyConfig = mutableStateOf(ProxySettings.Default)
+    private val proxyConfig = MutableStateFlow(ProxySettings.Default)
+
+    private val proxyTestRunning = FlowRunning()
+    private val proxyProvider = ProxySettingsFlowProxyProvider(proxyConfig, backgroundScope)
     private val proxyTestCases: StateFlow<List<ProxyTestCase>> =
         MutableStateFlow(ProxyTestCase.All)
-
-    private val currentProxyTestMode = MutableStateFlow(ProxyMode.DISABLED)
-    private val systemProxy = proxyProvider.proxy
-        .map {
-            if (it == null) SystemProxyPresentation.NotDetected
-            else SystemProxyPresentation.Detected(it)
-        }
-        .onStart { emit(SystemProxyPresentation.Detecting) }
-        .shareInBackground()
-    private val proxyTestResults = proxyTestCases.map { cases ->
-        persistentMapOf<ProxyTestCaseEnums, ProxyTestCaseState>().mutate { map ->
-            map.putAll(cases.associate { it.name to ProxyTestCaseState.INIT })
-        }
-    }
-
-    private val proxyTestState = ProxyTestState(
-        testRunning = proxyTestTasker.isRunning.produceState(false),
-        currentTestMode = currentProxyTestMode.produceState(ProxyMode.DISABLED),
-        items = combine(proxyTestCases, proxyTestResults) { cases, results ->
-            cases.map { ProxyTestItem(it, results.getValue(it.name)) }
-        }
-            .stateIn(backgroundScope, SharingStarted.Lazily, emptyList())
-            .produceState(),
+    private val currentProxyTestMode = proxyConfig.map { it.default.mode }
+    private val proxyTestResults = MutableStateFlow(
+        persistentMapOf<ProxyTestCaseEnums, ProxyTestCaseState>()
+            .mutate { map ->
+                map.putAll(
+                    proxyTestCases.value.associate { it.name to ProxyTestCaseState.INIT },
+                )
+            },
     )
 
-    private val selectProxyState = SelectProxyState(
+    private val systemProxyPresentation =
+        combine(currentProxyTestMode, proxyProvider.proxy) { mode, proxy ->
+            if (mode == ProxyMode.SYSTEM && proxy != null)
+                SystemProxyPresentation.Detected(proxy)
+            else SystemProxyPresentation.NotDetected
+        }
+            .stateIn(backgroundScope, SharingStarted.Lazily, SystemProxyPresentation.Detecting)
+
+    private val configureProxyState = ConfigureProxyState(
         configState = SettingsState(
-            valueState = proxyConfig,
+            valueState = proxyConfig.produceState(),
             onUpdate = { proxyConfig.value = it },
             placeholder = ProxySettings.Default,
             backgroundScope = backgroundScope,
         ),
-        systemProxy = systemProxy.produceState(SystemProxyPresentation.Detecting),
-        testState = proxyTestState,
-        onUpdateProxyTestMode = { currentProxyTestMode.value = it },
+        systemProxy = systemProxyPresentation.produceState(),
+        testState = ProxyTestState(
+            testRunning = proxyTestRunning.isRunning.produceState(false),
+            items = combine(proxyTestCases, proxyTestResults) { cases, results ->
+                cases.map {
+                    ProxyTestItem(it, results.getOrDefault(it.name, ProxyTestCaseState.INIT))
+                }
+            }
+                .stateIn(backgroundScope, SharingStarted.Lazily, emptyList())
+                .produceState(),
+        ),
     )
 
     var welcomeNavController: NavController? by mutableStateOf(null)
@@ -99,22 +106,67 @@ class WelcomeViewModel : AbstractViewModel(), KoinComponent {
             placeholder = ThemeSettings.Default,
             backgroundScope = backgroundScope,
         ),
-        selectProxyState = selectProxyState,
+        configureProxyState = configureProxyState,
     )
+
+    init {
+        launchInBackground {
+            combine(
+                proxyProvider.proxy
+                    .map {
+                        createDefaultHttpClient {
+                            proxy(it?.toClientProxyConfig())
+                            expectSuccess = false
+                        }
+                    },
+                proxyTestCases,
+            ) { client, cases ->
+                client to cases
+            }.collectLatest { (client, cases) ->
+                proxyTestRunning.withRunning {
+                    proxyTestResults.update {
+                        mutate {
+                            it.clear()
+                            cases.forEach { case -> put(case.name, ProxyTestCaseState.RUNNING) }
+                        }
+                    }
+
+                    coroutineScope {
+                        val testDeferred = cases.map { case ->
+                            async {
+                                runCatching {
+                                    client.get(case.url)
+                                }.onSuccess {
+                                    proxyTestResults.update {
+                                        put(case.name, ProxyTestCaseState.SUCCESS)
+                                    }
+                                }.onFailure {
+                                    proxyTestResults.update {
+                                        put(case.name, ProxyTestCaseState.FAILED)
+                                    }
+                                }
+                            }
+                        }
+
+                        testDeferred.awaitAll()
+                    }
+                }
+            }
+        }
+    }
 }
 
 @Stable
 class WizardPresentationState(
     val selectThemeState: SettingsState<ThemeSettings>,
-    val selectProxyState: SelectProxyState,
+    val configureProxyState: ConfigureProxyState,
 )
 
 @Stable
-class SelectProxyState(
+class ConfigureProxyState(
     val configState: SettingsState<ProxySettings>,
     val systemProxy: State<SystemProxyPresentation>,
     val testState: ProxyTestState,
-    val onUpdateProxyTestMode: (ProxyMode) -> Unit
 )
 
 @Immutable

@@ -34,7 +34,7 @@ data class ThemeSettings(
     @Transient
     val seedColor: Color = Color(seedColorValue).let {
         // 4.4.0-alpha01 的默认是 Color.Unspecified, 4.4.0-alpha02 默认是 DEFAULT_SEED_COLOR. 所以要替换一下
-        if (it == Color.Unspecified) DEFAULT_SEED_COLOR else it
+        if (it == Color.Unspecified) DefaultSeedColor else it
     }
 
     companion object {

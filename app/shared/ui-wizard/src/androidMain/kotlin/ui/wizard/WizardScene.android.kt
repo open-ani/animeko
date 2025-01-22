@@ -14,7 +14,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.tooling.preview.Preview
 import kotlinx.coroutines.CoroutineScope
-import me.him188.ani.app.data.models.preference.ProxyMode
 import me.him188.ani.app.data.models.preference.ProxySettings
 import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview
@@ -34,7 +33,6 @@ fun PreviewWizardScene() {
         WizardScene(
             rememberWizardController(),
             remember { createTestWizardPresentationState(scope) },
-            onUpdateProxyTestMode = { },
         )
     }
 }
@@ -47,7 +45,7 @@ internal fun createTestWizardPresentationState(scope: CoroutineScope): WizardPre
             placeholder = ThemeSettings.Default,
             backgroundScope = scope,
         ),
-        selectProxyState = SelectProxyState(
+        configureProxyState = ConfigureProxyState(
             configState = SettingsState(
                 valueState = stateOf(ProxySettings.Default),
                 onUpdate = { },
@@ -57,7 +55,6 @@ internal fun createTestWizardPresentationState(scope: CoroutineScope): WizardPre
             systemProxy = stateOf(SystemProxyPresentation.Detecting),
             testState = ProxyTestState(
                 testRunning = stateOf(false),
-                currentTestMode = stateOf(ProxyMode.DISABLED),
                 items = stateOf(
                     buildList {
                         add(ProxyTestItem(ProxyTestCase.AniDanmakuApi, ProxyTestCaseState.RUNNING))
@@ -66,7 +63,6 @@ internal fun createTestWizardPresentationState(scope: CoroutineScope): WizardPre
                     },
                 ),
             ),
-            onUpdateProxyTestMode = { },
         ),
     )
 }

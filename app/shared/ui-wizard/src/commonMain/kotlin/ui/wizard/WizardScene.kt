@@ -45,13 +45,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import me.him188.ani.app.data.models.preference.ProxyMode
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
 import me.him188.ani.app.ui.foundation.theme.NavigationMotionScheme
 import me.him188.ani.app.ui.wizard.navigation.WizardController
 import me.him188.ani.app.ui.wizard.navigation.WizardNavHost
-import me.him188.ani.app.ui.wizard.step.SelectProxy
+import me.him188.ani.app.ui.wizard.step.ConfigureProxy
 import me.him188.ani.app.ui.wizard.step.SelectTheme
 
 @Composable
@@ -59,7 +58,6 @@ fun WizardScene(
     controller: WizardController,
     state: WizardPresentationState,
     modifier: Modifier = Modifier,
-    onUpdateProxyTestMode: (ProxyMode) -> Unit,
     useEnterAnim: Boolean = true,
     windowInsets: WindowInsets = AniWindowInsets.forPageContent()
 ) {
@@ -105,25 +103,23 @@ fun WizardScene(
                 }
             },
         ) {
-            step("theme", { Text("选择主题") }) {
+            step("select_theme", { Text("选择主题") }) {
                 SelectTheme(
                     config = state.selectThemeState.value,
                     onUpdate = { state.selectThemeState.update(it) },
                     modifier = Modifier.fillMaxSize(),
                 )
             }
-            step("proxy", { Text("网络设置") }) {
-                val selectProxyState = state.selectProxyState
-                SelectProxy(
-                    config = selectProxyState.configState.value,
-                    onUpdate = { mode, config ->
-                        selectProxyState.configState.update(config)
-                        onUpdateProxyTestMode(mode)
+            step("configure_proxy", { Text("设置代理") }) {
+                val configureProxyState = state.configureProxyState
+                ConfigureProxy(
+                    config = configureProxyState.configState.value,
+                    onUpdate = { config ->
+                        configureProxyState.configState.update(config)
                     },
-                    testRunning = selectProxyState.testState.testRunning.value,
-                    currentTestMode = selectProxyState.testState.currentTestMode.value,
-                    systemProxy = selectProxyState.systemProxy.value,
-                    testItems = selectProxyState.testState.items.value,
+                    testRunning = configureProxyState.testState.testRunning.value,
+                    systemProxy = configureProxyState.systemProxy.value,
+                    testItems = configureProxyState.testState.items.value,
                     modifier = Modifier.fillMaxSize(),
                 )
             }

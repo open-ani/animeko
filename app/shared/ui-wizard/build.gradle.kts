@@ -22,6 +22,7 @@ kotlin {
         api(projects.app.shared.uiFoundation)
         api(projects.app.shared.uiAdaptive)
         api(projects.app.shared.uiSettings)
+        implementation(projects.utils.ktorClient)
         implementation(compose.components.resources)
     }
     sourceSets.commonTest.dependencies {

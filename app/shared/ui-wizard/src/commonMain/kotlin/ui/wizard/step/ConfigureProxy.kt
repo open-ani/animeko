@@ -28,7 +28,6 @@ import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
@@ -75,7 +74,6 @@ class ProxyTestItem(
 @Stable
 class ProxyTestState(
     val testRunning: State<Boolean>,
-    val currentTestMode: State<ProxyMode>,
     val items: State<List<ProxyTestItem>>
 )
 
@@ -198,13 +196,13 @@ private fun renderSystemProxyPresentation(systemProxy: SystemProxyPresentation):
 }
 
 @Composable
-private fun SettingsScope.ProxyConfigPresentation(
+private fun SettingsScope.CurrentProxyTextModePresentation(
     config: ProxySettings,
-    currentTestMode: ProxyMode,
     systemProxy: SystemProxyPresentation,
     onClickEdit: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val currentTestMode = config.default.mode
     TextItem(
         modifier = modifier,
         title = {
@@ -240,36 +238,45 @@ private fun SettingsScope.ProxyConfigPresentation(
 @Composable
 private fun SettingsScope.ProxyConfigGroup(
     initialConfig: ProxySettings,
-    initialTestMode: ProxyMode,
     systemProxy: SystemProxyPresentation,
-    onUpdate: (mode: ProxyMode, config: ProxySettings) -> Unit,
+    onUpdate: (config: ProxySettings) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val currentConfig = remember { mutableStateOf(initialConfig) } // todo: rememberSavable
-    var currentMode by remember { mutableStateOf(initialTestMode) }
-
     val scope = rememberCoroutineScope()
-    val currentConfigState = remember {
-        SettingsState(
-            valueState = currentConfig,
-            onUpdate = { currentConfig.value = it },
-            placeholder = ProxySettings.Default,
-            backgroundScope = scope,
-        )
+    val currentConfig = remember {
+        mutableStateOf(initialConfig).let { config ->
+            SettingsState(
+                valueState = config,
+                onUpdate = { config.value = it },
+                placeholder = ProxySettings.Default,
+                backgroundScope = scope,
+            )
+        }
     }
 
     Group(
         title = { Text("代理设置") },
+        actions = {
+            TextButton({ onUpdate(currentConfig.value) }) {
+                Text("保存并测试")
+            }
+        },
         useThinHeader = true,
+        modifier = modifier,
     ) {
         ProxyMode.entries.forEach { mode ->
             val interactionSource = remember { MutableInteractionSource() }
-            ListItem(
-                headlineContent = { Text(renderProxyConfigModeName(mode)) },
-                leadingContent = {
+            val updateCurrentMode = {
+                currentConfig.update(
+                    currentConfig.value.copy(currentConfig.value.default.copy(mode = mode)),
+                )
+            }
+            TextItem(
+                title = { Text(renderProxyConfigModeName(mode)) },
+                icon = {
                     RadioButton(
-                        selected = currentMode == mode,
-                        onClick = { currentMode = mode },
+                        selected = currentConfig.value.default.mode == mode,
+                        onClick = updateCurrentMode,
                         interactionSource = interactionSource,
                     )
                 },
@@ -278,10 +285,10 @@ private fun SettingsScope.ProxyConfigGroup(
                     .clickable(
                         interactionSource = interactionSource,
                         indication = LocalIndication.current,
-                        onClick = { currentMode = mode },
+                        onClick = updateCurrentMode,
                     ),
             )
-            AnimatedVisibility(visible = currentMode == mode) {
+            AnimatedVisibility(visible = currentConfig.value.default.mode == mode) {
                 Column {
                     when (mode) {
                         ProxyMode.DISABLED -> {}
@@ -290,7 +297,7 @@ private fun SettingsScope.ProxyConfigGroup(
                         }
 
                         ProxyMode.CUSTOM -> {
-                            CustomProxyConfig(currentConfig.value, currentConfigState)
+                            CustomProxyConfig(currentConfig.value, currentConfig)
                         }
                     }
                 }
@@ -301,19 +308,18 @@ private fun SettingsScope.ProxyConfigGroup(
 
 
 @Composable
-fun SelectProxy(
+fun ConfigureProxy(
     config: ProxySettings,
     testRunning: Boolean,
-    currentTestMode: ProxyMode,
     systemProxy: SystemProxyPresentation,
     testItems: List<ProxyTestItem>,
-    onUpdate: (mode: ProxyMode, config: ProxySettings) -> Unit,
+    onUpdate: (config: ProxySettings) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var editingProxy by rememberSaveable { mutableStateOf(false) }
 
     SettingsTab(modifier = modifier) {
-        ProxyTestStatusGroup(testRunning, currentTestMode, testItems) {
+        ProxyTestStatusGroup(testRunning, config.default.mode, testItems) {
             testItems.forEach { item ->
                 ProxyTestItemView(item, modifier = Modifier)
             }
@@ -325,16 +331,16 @@ fun SelectProxy(
         ) {
             if (it) ProxyConfigGroup(
                 config,
-                currentTestMode,
                 systemProxy,
-                onUpdate = onUpdate,
-            ) else ProxyConfigPresentation(
+                onUpdate = { config ->
+                    editingProxy = false
+                    onUpdate(config)
+                },
+            ) else CurrentProxyTextModePresentation(
                 config,
-                currentTestMode,
                 systemProxy,
                 onClickEdit = { editingProxy = true },
             )
         }
-
     }
 }

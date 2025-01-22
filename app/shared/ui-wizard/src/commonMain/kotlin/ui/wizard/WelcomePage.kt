@@ -68,9 +68,6 @@ fun WelcomePage(
                     windowInsets = windowInsets,
                     useEnterAnim = true,
                     modifier = Modifier.fillMaxSize(),
-                    onUpdateProxyTestMode = {
-                        wizardState.selectProxyState.onUpdateProxyTestMode(it)
-                    },
                 )
             }
         }
