@@ -52,6 +52,7 @@ import me.him188.ani.app.ui.wizard.step.ProxyTestCaseState
 import me.him188.ani.app.ui.wizard.step.ProxyTestItem
 import me.him188.ani.app.ui.wizard.step.ProxyTestState
 import me.him188.ani.utils.coroutines.flows.FlowRunning
+import me.him188.ani.utils.coroutines.onReplacement
 import me.him188.ani.utils.coroutines.update
 import me.him188.ani.utils.ktor.createDefaultHttpClient
 import me.him188.ani.utils.ktor.proxy
@@ -61,7 +62,6 @@ import org.koin.core.component.inject
 class WelcomeViewModel : AbstractSettingsViewModel(), KoinComponent {
     private val settingsRepository: SettingsRepository by inject()
     private val permissionManager: PermissionManager by inject()
-
 
     private val themeSettings = settingsRepository.themeSettings
         .stateInBackground(ThemeSettings.Default.copy(_placeholder = -1))
@@ -156,6 +156,9 @@ class WelcomeViewModel : AbstractSettingsViewModel(), KoinComponent {
                             proxy(it?.toClientProxyConfig())
                             expectSuccess = false
                         }
+                    }
+                    .onReplacement {
+                        kotlin.runCatching { it.close() }
                     },
                 proxyTestCases,
             ) { client, cases ->
