@@ -10,8 +10,7 @@
 package me.him188.ani.app.ui.wizard.step
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.scrollable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -57,10 +56,7 @@ internal fun SelectTheme(
             modifier = Modifier
                 .padding(horizontal = layoutParams.horizontalPadding)
                 .fillMaxWidth()
-                .scrollable(
-                    rememberScrollState(),
-                    orientation = Orientation.Horizontal,
-                ),
+                .horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
         ) {
             ColorSchemePreviewItem(

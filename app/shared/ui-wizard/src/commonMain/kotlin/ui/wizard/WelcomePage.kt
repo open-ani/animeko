@@ -35,6 +35,7 @@ import me.him188.ani.app.ui.wizard.navigation.WizardController
 @Composable
 fun WelcomePage(
     vm: WelcomeViewModel,
+    contactActions: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
     wizardLayoutParams: WizardLayoutParams =
@@ -60,6 +61,7 @@ fun WelcomePage(
                 navController = navController,
                 wizardController = vm.wizardController,
                 wizardState = vm.wizardState,
+                contactActions = contactActions,
                 modifier = modifier,
                 windowInsets = windowInsets,
                 wizardLayoutParams = wizardLayoutParams,
@@ -73,6 +75,7 @@ fun WelcomePage(
     navController: NavHostController,
     wizardController: WizardController,
     wizardState: WizardPresentationState,
+    contactActions: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
     wizardLayoutParams: WizardLayoutParams = WizardLayoutParams.Default
@@ -86,7 +89,7 @@ fun WelcomePage(
             composable("first_screen") {
                 FirstScreenScene(
                     onLinkStart = { navController.navigate("wizard") },
-                    contactActions = { },
+                    contactActions = contactActions,
                     windowInsets = windowInsets,
                     layoutParams = wizardLayoutParams,
                     modifier = Modifier.fillMaxSize(),

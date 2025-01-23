@@ -64,11 +64,10 @@ import me.him188.ani.app.ui.foundation.theme.LocalNavigationMotionScheme
 import me.him188.ani.app.ui.foundation.theme.NavigationMotionScheme
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.app.ui.profile.BangumiOAuthViewModel
+import me.him188.ani.app.ui.profile.auth.AniContactList
 import me.him188.ani.app.ui.profile.auth.BangumiOAuthScene
 import me.him188.ani.app.ui.profile.auth.BangumiTokenAuthPage
 import me.him188.ani.app.ui.profile.auth.BangumiTokenAuthViewModel
-import me.him188.ani.app.ui.profile.auth.WelcomeScene
-import me.him188.ani.app.ui.profile.auth.WelcomeViewModel
 import me.him188.ani.app.ui.settings.SettingsPage
 import me.him188.ani.app.ui.settings.SettingsViewModel
 import me.him188.ani.app.ui.settings.mediasource.rss.EditRssMediaSourcePage

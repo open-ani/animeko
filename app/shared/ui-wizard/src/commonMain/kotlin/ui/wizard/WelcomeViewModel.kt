@@ -45,6 +45,7 @@ import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.ui.foundation.launchInBackground
 import me.him188.ani.app.ui.settings.framework.AbstractSettingsViewModel
 import me.him188.ani.app.ui.settings.framework.SettingsState
+import me.him188.ani.app.ui.settings.rendering.BangumiNext
 import me.him188.ani.app.ui.settings.tabs.network.SystemProxyPresentation
 import me.him188.ani.app.ui.wizard.navigation.WizardController
 import me.him188.ani.app.ui.wizard.step.NotificationPermissionState
@@ -247,13 +248,13 @@ sealed class ProxyTestCase(
 
     data object BangumiMasterApi : ProxyTestCase(
         name = ProxyTestCaseEnums.BANGUMI_V0,
-        icon = Icons.Default.Preview,
+        icon = Icons.Default.BangumiNext,
         url = "https://api.bgm.tv/",
     )
 
     data object BangumiNextApi : ProxyTestCase(
         name = ProxyTestCaseEnums.BANGUMI_P1,
-        icon = Icons.Default.Preview,
+        icon = Icons.Default.BangumiNext,
         url = "https://next.bgm.tv",
     )
 

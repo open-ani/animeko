@@ -26,7 +26,7 @@ public val Icons.Filled.BangumiNext: ImageVector
             return _bangumiNext!!
         }
         _bangumiNext = Builder(
-            name = "MyCuteIcon",
+            name = "BangumiNext",
             defaultWidth = 24.0.dp,
             defaultHeight = 24.0.dp,
             viewportWidth = 145.0f,

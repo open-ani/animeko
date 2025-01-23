@@ -324,28 +324,30 @@ internal fun ConfigureProxy(
     var editingProxy by rememberSaveable { mutableStateOf(false) }
 
     SettingsTab(modifier = modifier) {
-        ProxyTestStatusGroup(testRunning, config.default.mode, testItems) {
-            testItems.forEach { item ->
-                ProxyTestItemView(item, modifier = Modifier)
+        Column {
+            ProxyTestStatusGroup(testRunning, config.default.mode, testItems) {
+                testItems.forEach { item ->
+                    ProxyTestItemView(item, modifier = Modifier)
+                }
             }
-        }
 
-        Crossfade(
-            editingProxy,
-            modifier = Modifier.animateContentSize(),
-        ) {
-            if (it) ProxyConfigGroup(
-                config,
-                systemProxy,
-                onUpdate = { config ->
-                    editingProxy = false
-                    onUpdate(config)
-                },
-            ) else CurrentProxyTextModePresentation(
-                config,
-                systemProxy,
-                onClickEdit = { editingProxy = true },
-            )
+            Crossfade(
+                editingProxy,
+                modifier = Modifier.animateContentSize(),
+            ) {
+                if (it) ProxyConfigGroup(
+                    config,
+                    systemProxy,
+                    onUpdate = { config ->
+                        editingProxy = false
+                        onUpdate(config)
+                    },
+                ) else CurrentProxyTextModePresentation(
+                    config,
+                    systemProxy,
+                    onClickEdit = { editingProxy = true },
+                )
+            }
         }
     }
 }

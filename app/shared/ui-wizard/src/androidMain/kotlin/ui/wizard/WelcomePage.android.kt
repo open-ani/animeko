@@ -27,6 +27,7 @@ fun PreviewWelcomePage() {
             rememberNavController(),
             rememberWizardController(),
             remember { createTestWizardPresentationState(scope) },
+            contactActions = { },
         )
     }
 }

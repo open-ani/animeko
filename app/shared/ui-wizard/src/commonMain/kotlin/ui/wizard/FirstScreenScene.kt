@@ -80,12 +80,19 @@ internal fun FirstScreenScene(
                     Text("Ani 的目标是提供尽可能简单且舒适的追番体验。")
                 }
             }
-
             Box(modifier = Modifier.fillMaxWidth()) {
                 contactActions()
             }
-
-            Box(modifier = Modifier.padding(horizontal = 64.dp, vertical = 32.dp)) {
+            Text(
+                "点击 \"继续\" 进入首次启动向导",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Box(
+                modifier = Modifier
+                    .padding(horizontal = 64.dp)
+                    .padding(top = 16.dp, bottom = 36.dp),
+            ) {
                 Button(
                     onClick = onLinkStart,
                     modifier = Modifier.widthIn(300.dp),
