@@ -174,6 +174,7 @@ private fun SettingsScope.ProxyTestItemView(
         icon = {
             Icon(
                 item.case.icon,
+                tint = item.case.color,
                 contentDescription = renderTestCaseDescription(item.case),
             )
         },

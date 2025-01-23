@@ -10,12 +10,12 @@
 package me.him188.ani.app.ui.wizard
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Preview
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavController
 import io.ktor.client.request.get
@@ -43,8 +43,11 @@ import me.him188.ani.app.platform.GrantedPermissionManager
 import me.him188.ani.app.platform.PermissionManager
 import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.ui.foundation.launchInBackground
+import me.him188.ani.app.ui.foundation.theme.AnimekoIconColor
+import me.him188.ani.app.ui.foundation.theme.BangumiNextIconColor
 import me.him188.ani.app.ui.settings.framework.AbstractSettingsViewModel
 import me.him188.ani.app.ui.settings.framework.SettingsState
+import me.him188.ani.app.ui.settings.rendering.AnimekoIcon
 import me.him188.ani.app.ui.settings.rendering.BangumiNext
 import me.him188.ani.app.ui.settings.tabs.network.SystemProxyPresentation
 import me.him188.ani.app.ui.wizard.navigation.WizardController
@@ -238,23 +241,27 @@ enum class ProxyTestCaseEnums {
 sealed class ProxyTestCase(
     val name: ProxyTestCaseEnums,
     val icon: ImageVector,
+    val color: Color,
     val url: String
 ) {
     data object AniDanmakuApi : ProxyTestCase(
         name = ProxyTestCaseEnums.ANI_DANMAKU_API,
-        icon = Icons.Default.Preview,
+        icon = Icons.Default.AnimekoIcon,
+        color = AnimekoIconColor,
         url = "https://danmaku-cn.myani.org/status",
     )
 
     data object BangumiMasterApi : ProxyTestCase(
         name = ProxyTestCaseEnums.BANGUMI_V0,
         icon = Icons.Default.BangumiNext,
+        color = BangumiNextIconColor,
         url = "https://api.bgm.tv/",
     )
 
     data object BangumiNextApi : ProxyTestCase(
         name = ProxyTestCaseEnums.BANGUMI_P1,
         icon = Icons.Default.BangumiNext,
+        color = BangumiNextIconColor,
         url = "https://next.bgm.tv",
     )
 

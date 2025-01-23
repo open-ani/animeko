@@ -12,3 +12,5 @@ package me.him188.ani.app.ui.foundation.theme
 import androidx.compose.ui.graphics.Color
 
 val DefaultSeedColor = Color(0xFF4F378B)
+val AnimekoIconColor = Color(0, 88, 160)
+val BangumiNextIconColor = Color(240, 145, 153)

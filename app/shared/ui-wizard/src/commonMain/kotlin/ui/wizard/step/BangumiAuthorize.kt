@@ -28,9 +28,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import me.him188.ani.app.ui.foundation.text.ProvideContentColor
+import me.him188.ani.app.ui.foundation.theme.BangumiNextIconColor
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.rendering.BangumiNext
 import me.him188.ani.app.ui.wizard.WizardLayoutParams
@@ -51,13 +50,12 @@ internal fun BangumiAuthorize(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center,
         ) {
-            ProvideContentColor(Color(240, 145, 153)) {
-                Icon(
-                    imageVector = Icons.Default.BangumiNext,
-                    contentDescription = null,
-                    modifier = Modifier.size(96.dp),
-                )
-            }
+            Icon(
+                imageVector = Icons.Default.BangumiNext,
+                contentDescription = null,
+                modifier = Modifier.size(96.dp),
+                tint = BangumiNextIconColor,
+            )
         }
         Column(
             modifier = Modifier.padding(horizontal = layoutParams.horizontalPadding),
