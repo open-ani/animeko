@@ -471,10 +471,11 @@ private fun DanmakuConfig(
                     mutableFloatStateOf(
                         when (danmakuConfig.displayArea) {
                             0.125f -> 1f
-                            0.25f -> 2f
-                            0.50f -> 3f
-                            0.75f -> 4f
-                            1f -> 5f
+                            1f / 6 -> 2f
+                            0.25f -> 3f
+                            0.50f -> 4f
+                            0.75f -> 5f
+                            1f -> 6f
                             else -> 2f
                         },
                     )
@@ -490,25 +491,27 @@ private fun DanmakuConfig(
                             danmakuConfig.copy(
                                 displayArea = when (displayArea) {
                                     1f -> 0.125f
-                                    2f -> 0.25f
-                                    3f -> 0.50f
-                                    4f -> 0.75f
-                                    5f -> 1f
+                                    2f -> 1f / 6
+                                    3f -> 0.25f
+                                    4f -> 0.50f
+                                    5f -> 0.75f
+                                    6f -> 1f
                                     else -> 0.25f
                                 },
                             ),
                         )
                     },
-                    valueRange = 1f..5f,
-                    steps = 3,
+                    valueRange = 1f..6f,
+                    steps = 4,
                     title = { Text("显示区域") },
                     valueLabel = {
                         when (displayArea) {
                             1f -> Text("1/8 屏")
-                            2f -> Text("1/4 屏")
-                            3f -> Text("半屏")
-                            4f -> Text("3/4 屏")
-                            5f -> Text("全屏")
+                            2f -> Text("1/6 屏")
+                            3f -> Text("1/4 屏")
+                            4f -> Text("半屏")
+                            5f -> Text("3/4 屏")
+                            6f -> Text("全屏")
                         }
                     },
                 )
