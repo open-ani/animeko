@@ -53,6 +53,7 @@ import me.him188.ani.app.ui.foundation.theme.NavigationMotionScheme
 import me.him188.ani.app.ui.settings.tabs.network.SystemProxyPresentation
 import me.him188.ani.app.ui.wizard.navigation.WizardController
 import me.him188.ani.app.ui.wizard.navigation.WizardNavHost
+import me.him188.ani.app.ui.wizard.step.BangumiAuthorize
 import me.him188.ani.app.ui.wizard.step.BitTorrentFeature
 import me.him188.ani.app.ui.wizard.step.ConfigureProxy
 import me.him188.ani.app.ui.wizard.step.NotificationPermissionState
@@ -164,6 +165,14 @@ internal fun WizardScene(
                     onRequestNotificationPermission = {
                         state.bitTorrentFeatureState.onRequestNotificationPermission(context)
                     },
+                    modifier = Modifier.fillMaxSize(),
+                    layoutParams = wizardLayoutParams,
+                )
+            }
+            step("bangumi", { Text("Bangumi 授权") }) {
+                BangumiAuthorize(
+                    onClickAuthorize = { },
+                    onClickNeedHelp = { },
                     modifier = Modifier.fillMaxSize(),
                     layoutParams = wizardLayoutParams,
                 )

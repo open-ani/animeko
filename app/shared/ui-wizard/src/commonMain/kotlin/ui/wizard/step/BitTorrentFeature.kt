@@ -71,10 +71,8 @@ internal fun BitTorrentFeature(
     SettingsTab(modifier = modifier) {
         Row(
             modifier = Modifier
-                .padding(
-                    horizontal = layoutParams.horizontalPadding,
-                    vertical = layoutParams.verticalPadding,
-                )
+                .padding(horizontal = layoutParams.horizontalPadding)
+                .padding(top = 16.dp, bottom = 8.dp)
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center,
@@ -91,7 +89,7 @@ internal fun BitTorrentFeature(
             Column(
                 modifier = Modifier
                     .padding(horizontal = layoutParams.horizontalPadding)
-                    .padding(4.dp)
+                    .padding(horizontal = 4.dp)
                     .fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
