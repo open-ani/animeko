@@ -45,15 +45,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
 import me.him188.ani.app.ui.foundation.theme.NavigationMotionScheme
+import me.him188.ani.app.ui.settings.tabs.network.SystemProxyPresentation
 import me.him188.ani.app.ui.wizard.navigation.WizardController
 import me.him188.ani.app.ui.wizard.navigation.WizardNavHost
 import me.him188.ani.app.ui.wizard.step.BitTorrentFeature
 import me.him188.ani.app.ui.wizard.step.ConfigureProxy
+import me.him188.ani.app.ui.wizard.step.NotificationPermissionState
 import me.him188.ani.app.ui.wizard.step.ProxyTestCaseState
+import me.him188.ani.app.ui.wizard.step.ProxyTestState
 import me.him188.ani.app.ui.wizard.step.SelectTheme
 
 @Composable
@@ -120,35 +124,42 @@ internal fun WizardScene(
                 "proxy",
                 title = { Text("设置代理") },
                 forward = {
+                    val testState by state.configureProxyState.testState
+                        .collectAsStateWithLifecycle(ProxyTestState.Default)
                     WizardDefaults.GoForwardButton(
                         { controller.goForward() },
-                        enabled = state.configureProxyState.testState.items.value
+                        enabled = testState.items
                             .all { it.state == ProxyTestCaseState.SUCCESS },
                     )
                 },
                 skipButton = { WizardDefaults.SkipButton({ controller.goForward() }) },
             ) {
-                val configureProxyState = state.configureProxyState
+                val configState = state.configureProxyState.configState
+                val systemProxy by state.configureProxyState.systemProxy
+                    .collectAsStateWithLifecycle(SystemProxyPresentation.Detecting)
+                val testState by state.configureProxyState.testState
+                    .collectAsStateWithLifecycle(ProxyTestState.Default)
+                
                 ConfigureProxy(
-                    config = configureProxyState.configState.value,
-                    onUpdate = { config ->
-                        configureProxyState.configState.update(config)
-                    },
-                    testRunning = configureProxyState.testState.testRunning.value,
-                    systemProxy = configureProxyState.systemProxy.value,
-                    testItems = configureProxyState.testState.items.value,
+                    config = configState.value,
+                    onUpdate = { config -> configState.update(config) },
+                    testRunning = testState.testRunning,
+                    systemProxy = systemProxy,
+                    testItems = testState.items,
                     modifier = Modifier.fillMaxSize(),
                     layoutParams = wizardLayoutParams,
                 )
             }
             step("bittorrent", { Text("BitTorrent 功能") }) {
+                val configState = state.bitTorrentFeatureState.enabled
+                val notificationPermissionState by state.bitTorrentFeatureState.notificationPermissionState
+                    .collectAsStateWithLifecycle(NotificationPermissionState.Default)
+                
                 BitTorrentFeature(
-                    bitTorrentEnabled = state.bitTorrentFeatureState.enabled.value,
-                    grantedNotificationPermission =
-                    state.bitTorrentFeatureState.notificationPermissionState.granted.value,
-                    lastRequestNotificationPermissionResult =
-                    state.bitTorrentFeatureState.notificationPermissionState.lastRequestResult.value,
-                    onBitTorrentEnableChanged = { state.bitTorrentFeatureState.enabled.update(it) },
+                    bitTorrentEnabled = configState.value,
+                    grantedNotificationPermission = notificationPermissionState.granted,
+                    lastRequestNotificationPermissionResult = notificationPermissionState.lastRequestResult,
+                    onBitTorrentEnableChanged = { configState.update(it) },
                     onRequestNotificationPermission = {
                         state.bitTorrentFeatureState.onRequestNotificationPermission(context)
                     },

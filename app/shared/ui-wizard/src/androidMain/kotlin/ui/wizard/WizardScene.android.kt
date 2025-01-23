@@ -14,6 +14,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.tooling.preview.Preview
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.flowOf
 import me.him188.ani.app.data.models.preference.ProxySettings
 import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview
@@ -53,11 +54,11 @@ internal fun createTestWizardPresentationState(scope: CoroutineScope): WizardPre
                 placeholder = ProxySettings.Default,
                 backgroundScope = scope,
             ),
-            systemProxy = stateOf(SystemProxyPresentation.Detecting),
-            testState = ProxyTestState(
-                testRunning = stateOf(false),
-                items = stateOf(
-                    buildList {
+            systemProxy = flowOf(SystemProxyPresentation.Detecting),
+            testState = flowOf(
+                ProxyTestState(
+                    testRunning = false,
+                    items = buildList {
                         add(ProxyTestItem(ProxyTestCase.AniDanmakuApi, ProxyTestCaseState.RUNNING))
                         add(ProxyTestItem(ProxyTestCase.BangumiMasterApi, ProxyTestCaseState.SUCCESS))
                         add(ProxyTestItem(ProxyTestCase.BangumiNextApi, ProxyTestCaseState.FAILED))
@@ -72,10 +73,12 @@ internal fun createTestWizardPresentationState(scope: CoroutineScope): WizardPre
                 placeholder = true,
                 backgroundScope = scope,
             ),
-            notificationPermissionState = NotificationPermissionState(
-                showGrantNotificationItem = true,
-                granted = stateOf(false),
-                lastRequestResult = stateOf(null),
+            notificationPermissionState = flowOf(
+                NotificationPermissionState(
+                    showGrantNotificationItem = true,
+                    granted = false,
+                    lastRequestResult = null,
+                ),
             ),
             onRequestNotificationPermission = { },
         ),

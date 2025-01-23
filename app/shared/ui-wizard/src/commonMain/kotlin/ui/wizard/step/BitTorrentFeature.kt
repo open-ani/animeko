@@ -29,7 +29,6 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.State
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -42,12 +41,21 @@ import me.him188.ani.app.ui.wizard.WizardLayoutParams
 @Stable
 class NotificationPermissionState(
     val showGrantNotificationItem: Boolean,
-    val granted: State<Boolean>,
+    val granted: Boolean,
     /**
      * `null` 还没请求过, `true` 成功了, `false` 拒绝了
      */
-    val lastRequestResult: State<Boolean?>
-)
+    val lastRequestResult: Boolean?
+) {
+    companion object {
+        @Stable
+        val Default = NotificationPermissionState(
+            showGrantNotificationItem = false,
+            granted = false,
+            lastRequestResult = null,
+        )
+    }
+}
 
 @Composable
 internal fun BitTorrentFeature(

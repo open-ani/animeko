@@ -13,7 +13,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Preview
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -25,6 +24,7 @@ import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -82,8 +82,11 @@ class WelcomeViewModel : AbstractViewModel(), KoinComponent {
             if (mode == ProxyMode.SYSTEM && proxy != null)
                 SystemProxyPresentation.Detected(proxy)
             else SystemProxyPresentation.NotDetected
-        }
-            .stateIn(backgroundScope, SharingStarted.Lazily, SystemProxyPresentation.Detecting)
+        }.stateIn(
+            backgroundScope,
+            SharingStarted.WhileSubscribed(),
+            SystemProxyPresentation.Detecting,
+        )
 
     private val configureProxyState = ConfigureProxyState(
         configState = SettingsState(
@@ -92,17 +95,17 @@ class WelcomeViewModel : AbstractViewModel(), KoinComponent {
             placeholder = ProxySettings.Default,
             backgroundScope = backgroundScope,
         ),
-        systemProxy = systemProxyPresentation.produceState(),
-        testState = ProxyTestState(
-            testRunning = proxyTestRunning.isRunning.produceState(false),
-            items = combine(proxyTestCases, proxyTestResults) { cases, results ->
-                cases.map {
+        systemProxy = systemProxyPresentation,
+        testState = combine(
+            proxyTestRunning.isRunning, proxyTestCases, proxyTestResults,
+        ) { running, cases, results ->
+            ProxyTestState(
+                testRunning = running,
+                items = cases.map {
                     ProxyTestItem(it, results[it.name] ?: ProxyTestCaseState.INIT)
-                }
-            }
-                .stateIn(backgroundScope, SharingStarted.Lazily, emptyList())
-                .produceState(),
-        ),
+                },
+            )
+        }.stateIn(backgroundScope, SharingStarted.WhileSubscribed(), ProxyTestState.Default),
     )
 
     private val notificationPermissionGrant = MutableStateFlow(false)
@@ -116,10 +119,19 @@ class WelcomeViewModel : AbstractViewModel(), KoinComponent {
             placeholder = true,
             backgroundScope = backgroundScope,
         ),
-        notificationPermissionState = NotificationPermissionState(
-            showGrantNotificationItem = permissionManager !is GrantedPermissionManager,
-            granted = notificationPermissionGrant.produceState(),
-            lastRequestResult = lastGrantPermissionResult.produceState(),
+        notificationPermissionState = combine(
+            notificationPermissionGrant,
+            lastGrantPermissionResult,
+        ) { grant, lastResult ->
+            NotificationPermissionState(
+                showGrantNotificationItem = permissionManager !is GrantedPermissionManager,
+                granted = grant,
+                lastRequestResult = lastResult,
+            )
+        }.stateIn(
+            backgroundScope,
+            SharingStarted.WhileSubscribed(),
+            NotificationPermissionState.Default,
         ),
         onRequestNotificationPermission = { requestNotificationPermission(it) },
     )
@@ -210,8 +222,8 @@ class WizardPresentationState(
 @Stable
 class ConfigureProxyState(
     val configState: SettingsState<ProxySettings>,
-    val systemProxy: State<SystemProxyPresentation>,
-    val testState: ProxyTestState,
+    val systemProxy: Flow<SystemProxyPresentation>,
+    val testState: Flow<ProxyTestState>,
 )
 
 @Immutable
@@ -253,6 +265,6 @@ sealed class ProxyTestCase(
 @Stable
 class BitTorrentFeatureState(
     val enabled: SettingsState<Boolean>,
-    val notificationPermissionState: NotificationPermissionState,
+    val notificationPermissionState: Flow<NotificationPermissionState>,
     val onRequestNotificationPermission: (ContextMP) -> Unit,
 )
