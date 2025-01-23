@@ -35,14 +35,15 @@ import kotlinx.coroutines.flow.stateIn
 import me.him188.ani.app.data.models.preference.ProxyMode
 import me.him188.ani.app.data.models.preference.ProxySettings
 import me.him188.ani.app.data.models.preference.ThemeSettings
+import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.media.fetch.toClientProxyConfig
 import me.him188.ani.app.domain.settings.ProxySettingsFlowProxyProvider
 import me.him188.ani.app.platform.ContextMP
 import me.him188.ani.app.platform.GrantedPermissionManager
 import me.him188.ani.app.platform.PermissionManager
 import me.him188.ani.app.tools.MonoTasker
-import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.foundation.launchInBackground
+import me.him188.ani.app.ui.settings.framework.AbstractSettingsViewModel
 import me.him188.ani.app.ui.settings.framework.SettingsState
 import me.him188.ani.app.ui.settings.tabs.network.SystemProxyPresentation
 import me.him188.ani.app.ui.wizard.navigation.WizardController
@@ -57,17 +58,23 @@ import me.him188.ani.utils.ktor.proxy
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
-class WelcomeViewModel : AbstractViewModel(), KoinComponent {
+class WelcomeViewModel : AbstractSettingsViewModel(), KoinComponent {
+    private val settingsRepository: SettingsRepository by inject()
     private val permissionManager: PermissionManager by inject()
-    private val themeConfig = mutableStateOf(ThemeSettings.Default)
-    private val proxyConfig = MutableStateFlow(ProxySettings.Default)
+
+
+    private val themeSettings = settingsRepository.themeSettings
+        .stateInBackground(ThemeSettings.Default.copy(_placeholder = -1))
+    private val proxySettings = settingsRepository.proxySettings
+        .stateInBackground(ProxySettings.Default.copy(_placeHolder = -1))
+    private val proxySettingsFlow = settingsRepository.proxySettings.flow
     private val bitTorrentEnabled = mutableStateOf(true)
 
     private val proxyTestRunning = FlowRunning()
-    private val proxyProvider = ProxySettingsFlowProxyProvider(proxyConfig, backgroundScope)
+    private val proxyProvider = ProxySettingsFlowProxyProvider(proxySettingsFlow, backgroundScope)
     private val proxyTestCases: StateFlow<List<ProxyTestCase>> =
         MutableStateFlow(ProxyTestCase.All)
-    private val currentProxyTestMode = proxyConfig.map { it.default.mode }
+    private val currentProxyTestMode = proxySettingsFlow.map { it.default.mode }
     private val proxyTestResults = MutableStateFlow(
         persistentMapOf<ProxyTestCaseEnums, ProxyTestCaseState>()
             .mutate { map ->
@@ -89,12 +96,7 @@ class WelcomeViewModel : AbstractViewModel(), KoinComponent {
         )
 
     private val configureProxyState = ConfigureProxyState(
-        configState = SettingsState(
-            valueState = proxyConfig.produceState(),
-            onUpdate = { proxyConfig.value = it },
-            placeholder = ProxySettings.Default,
-            backgroundScope = backgroundScope,
-        ),
+        configState = proxySettings,
         systemProxy = systemProxyPresentation,
         testState = combine(
             proxyTestRunning.isRunning, proxyTestCases, proxyTestResults,
@@ -140,14 +142,9 @@ class WelcomeViewModel : AbstractViewModel(), KoinComponent {
 
     val wizardController = WizardController()
     val wizardState = WizardPresentationState(
-        selectThemeState = SettingsState(
-            valueState = themeConfig,
-            onUpdate = { themeConfig.value = it },
-            placeholder = ThemeSettings.Default,
-            backgroundScope = backgroundScope,
-        ),
+        selectThemeState = themeSettings,
         configureProxyState = configureProxyState,
-        bitTorrentFeatureState = bitTorrentFeatureState
+        bitTorrentFeatureState = bitTorrentFeatureState,
     )
 
     init {

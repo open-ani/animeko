@@ -150,6 +150,7 @@ fun SettingsScope.ThemeGroup(
                         color = color,
                         themeSettings = themeSettings,
                         state = state,
+                        modifier = Modifier.padding(4.dp),
                     )
                 }
             }
@@ -159,10 +160,13 @@ fun SettingsScope.ThemeGroup(
 
 @Composable
 private fun ColorButton(
-    color: Color, themeSettings: ThemeSettings, state: SettingsState<ThemeSettings>
+    color: Color,
+    themeSettings: ThemeSettings,
+    state: SettingsState<ThemeSettings>,
+    modifier: Modifier = Modifier,
 ) {
     ColorButton(
-        modifier = Modifier.padding(4.dp),
+        modifier = modifier,
         selected = color.value == themeSettings.seedColorValue && !themeSettings.useDynamicTheme,
         onClick = {
             state.update(

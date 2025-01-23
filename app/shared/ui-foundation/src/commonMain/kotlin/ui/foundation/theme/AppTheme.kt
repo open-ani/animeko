@@ -310,6 +310,12 @@ fun modifyColorSchemeForBlackBackground(
     } else colorScheme
 }
 
+/**
+ * Transform system-bar visual effects.
+ * Currently only takes effect on Android.
+ *
+ * @param isDark system theme, if `true`, system bar will be visually white.
+ */
 @Composable
 expect fun SystemBarColorEffect(
     isDark: Boolean = when (LocalThemeSettings.current.darkMode) {
