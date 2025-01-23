@@ -9,7 +9,12 @@
 
 plugins {
     kotlin("multiplatform")
+    id("com.android.library")
     `ani-mpp-lib-targets`
+}
+
+android {
+    namespace = "me.him188.ani.utils.ip.parser"
 }
 
 kotlin {

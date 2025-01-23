@@ -9,8 +9,13 @@
 
 plugins {
     kotlin("multiplatform")
-    kotlin("plugin.serialization")
+    id("com.android.library")
     `ani-mpp-lib-targets`
+    kotlin("plugin.serialization")
+}
+
+android {
+    namespace = "me.him188.ani.utils.ktor.client"
 }
 
 kotlin {
