@@ -9,15 +9,11 @@
 
 plugins {
     kotlin("multiplatform")
-    id("com.android.library")
+    // no android because commonTest needs resources that are not supported by android
     `ani-mpp-lib-targets`
     kotlin("plugin.serialization")
     id("org.jetbrains.kotlinx.atomicfu")
     `flatten-source-sets`
-}
-
-android {
-    namespace = "me.him188.ani.datasource.bt.mikan"
 }
 
 kotlin {
