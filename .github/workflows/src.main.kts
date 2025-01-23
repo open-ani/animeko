@@ -1226,11 +1226,20 @@ class WithMatrix(
                             emulatorBootTimeout = 1800,
                         ),
                     )
-                    if (!matrix.runner.isSelfHosted) {
+                    if (!matrix.runner.isSelfHosted && matrix.isUnix) {
                         // GitHub hosted runners allow only 14GB space, so we have to remove old emulators before installing new ones
                         run(
                             name = "Uninstall emulators",
                             command = "sdkmanager --uninstall \$(sdkmanager --list | grep emulator | awk '{print \$1}')\n",
+                        )
+                        run(
+                            name = "Remove AVD",
+                            command = $$"""
+                                echo "Removing Emulator binaries..."
+                                rm -rf $ANDROID_HOME/emulator
+                                echo "Removing System Images..."
+                                rm -rf $ANDROID_HOME/system-images
+                            """.trimIndent(),
                         )
                     }
                 }
