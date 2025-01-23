@@ -292,6 +292,17 @@ jobs:
         emulator-boot-timeout: '1800'
         script: './gradlew connectedDebugAndroidTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.android.abis=x86_64"'
     - id: 'step-14'
+      name: 'Uninstall emulators'
+      run: |
+        sdkmanager --uninstall $(sdkmanager --list | grep emulator | awk '{print $1}')
+    - id: 'step-15'
+      name: 'Remove AVD'
+      run: |-
+        echo "Removing Emulator binaries..."
+        rm -rf $ANDROID_HOME/emulator
+        echo "Removing System Images..."
+        rm -rf $ANDROID_HOME/system-images
+    - id: 'step-16'
       name: 'Android Instrumented Test (api=35, arch=x86_64)'
       uses: 'reactivecircus/android-emulator-runner@v2'
       with:
@@ -299,6 +310,17 @@ jobs:
         arch: 'x86_64'
         emulator-boot-timeout: '1800'
         script: './gradlew connectedDebugAndroidTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.android.abis=x86_64"'
+    - id: 'step-17'
+      name: 'Uninstall emulators'
+      run: |
+        sdkmanager --uninstall $(sdkmanager --list | grep emulator | awk '{print $1}')
+    - id: 'step-18'
+      name: 'Remove AVD'
+      run: |-
+        echo "Removing Emulator binaries..."
+        rm -rf $ANDROID_HOME/emulator
+        echo "Removing System Images..."
+        rm -rf $ANDROID_HOME/system-images
   build_github-macos-13:
     name: 'Build (macOS 13 x86_64 (GitHub))'
     runs-on:
