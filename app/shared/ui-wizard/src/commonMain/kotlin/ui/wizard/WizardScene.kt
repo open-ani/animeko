@@ -45,10 +45,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.window.core.layout.WindowSizeClass
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
-import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
 import me.him188.ani.app.ui.foundation.theme.NavigationMotionScheme
 import me.him188.ani.app.ui.wizard.navigation.WizardController
@@ -59,13 +57,13 @@ import me.him188.ani.app.ui.wizard.step.ProxyTestCaseState
 import me.him188.ani.app.ui.wizard.step.SelectTheme
 
 @Composable
-fun WizardScene(
+internal fun WizardScene(
     controller: WizardController,
     state: WizardPresentationState,
     modifier: Modifier = Modifier,
     useEnterAnim: Boolean = true,
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
-    windowSizeClass: WindowSizeClass = currentWindowAdaptiveInfo1().windowSizeClass
+    wizardLayoutParams: WizardLayoutParams = WizardLayoutParams.Default
 ) {
     val context = LocalContext.current
     var barVisible by rememberSaveable { mutableStateOf(!useEnterAnim) }
@@ -115,7 +113,7 @@ fun WizardScene(
                     config = state.selectThemeState.value,
                     onUpdate = { state.selectThemeState.update(it) },
                     modifier = Modifier.fillMaxSize(),
-                    windowSizeClass = windowSizeClass,
+                    layoutParams = wizardLayoutParams,
                 )
             }
             step(
@@ -140,7 +138,7 @@ fun WizardScene(
                     systemProxy = configureProxyState.systemProxy.value,
                     testItems = configureProxyState.testState.items.value,
                     modifier = Modifier.fillMaxSize(),
-                    windowSizeClass = windowSizeClass,
+                    layoutParams = wizardLayoutParams,
                 )
             }
             step("bittorrent", { Text("BitTorrent 功能") }) {
@@ -155,7 +153,7 @@ fun WizardScene(
                         state.bitTorrentFeatureState.onRequestNotificationPermission(context)
                     },
                     modifier = Modifier.fillMaxSize(),
-                    windowSizeClass = windowSizeClass,
+                    layoutParams = wizardLayoutParams,
                 )
             }
         }

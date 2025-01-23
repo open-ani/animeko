@@ -28,21 +28,18 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.window.core.layout.WindowSizeClass
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
-import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
-import me.him188.ani.app.ui.foundation.layout.panePadding
 
 /**
  * 首次启动 APP 的欢迎界面, 在向导之前显示.
  */
 @Composable
-fun FirstScreenScene(
+internal fun FirstScreenScene(
     onLinkStart: () -> Unit,
     contactActions: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
-    windowSizeClass: WindowSizeClass = currentWindowAdaptiveInfo1().windowSizeClass
+    layoutParams: WizardLayoutParams = WizardLayoutParams.Default
 ) {
     Box(
         modifier = modifier,
@@ -51,7 +48,10 @@ fun FirstScreenScene(
         Column(
             modifier = Modifier
                 .windowInsetsPadding(windowInsets)
-                .padding(windowSizeClass.panePadding)
+                .padding(
+                    horizontal = layoutParams.horizontalPadding,
+                    vertical = layoutParams.verticalPadding,
+                )
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.Start,

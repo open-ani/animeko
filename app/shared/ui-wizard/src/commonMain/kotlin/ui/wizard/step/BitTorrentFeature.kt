@@ -33,14 +33,11 @@ import androidx.compose.runtime.State
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.window.core.layout.WindowSizeClass
-import me.him188.ani.app.ui.foundation.layout.cardVerticalPadding
-import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
-import me.him188.ani.app.ui.foundation.layout.paneHorizontalPadding
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.components.TextItem
 import me.him188.ani.app.ui.settings.rendering.P2p
+import me.him188.ani.app.ui.wizard.WizardLayoutParams
 
 @Stable
 class NotificationPermissionState(
@@ -53,7 +50,7 @@ class NotificationPermissionState(
 )
 
 @Composable
-fun BitTorrentFeature(
+internal fun BitTorrentFeature(
     bitTorrentEnabled: Boolean,
     grantedNotificationPermission: Boolean,
     lastRequestNotificationPermissionResult: Boolean? = null,
@@ -61,14 +58,14 @@ fun BitTorrentFeature(
     onRequestNotificationPermission: () -> Unit,
     modifier: Modifier = Modifier,
     showGrantNotificationItem: Boolean = true,
-    windowSizeClass: WindowSizeClass = currentWindowAdaptiveInfo1().windowSizeClass
+    layoutParams: WizardLayoutParams = WizardLayoutParams.Default
 ) {
     SettingsTab(modifier = modifier) {
         Row(
             modifier = Modifier
                 .padding(
-                    horizontal = windowSizeClass.paneHorizontalPadding,
-                    vertical = 16.dp,
+                    horizontal = layoutParams.horizontalPadding,
+                    vertical = layoutParams.verticalPadding,
                 )
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -85,7 +82,7 @@ fun BitTorrentFeature(
         Column {
             Column(
                 modifier = Modifier
-                    .padding(horizontal = windowSizeClass.paneHorizontalPadding)
+                    .padding(horizontal = layoutParams.horizontalPadding)
                     .padding(4.dp)
                     .fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -103,7 +100,9 @@ fun BitTorrentFeature(
                 }
             }
         }
-        Column(modifier = Modifier.padding(bottom = windowSizeClass.cardVerticalPadding)) {
+        Column(
+            modifier = Modifier.padding(bottom = layoutParams.horizontalPadding),
+        ) {
             TextItem(
                 title = { Text("启用 BitTorrent 功能") },
                 action = {

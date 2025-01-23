@@ -184,7 +184,7 @@ class WelcomeViewModel : AbstractViewModel(), KoinComponent {
         }
     }
 
-    fun requestNotificationPermission(context: ContextMP) {
+    private fun requestNotificationPermission(context: ContextMP) {
         requestNotificationPermissionTasker.launch {
             if (permissionManager.checkNotificationPermission(context)) return@launch
             val result = permissionManager.requestNotificationPermission(context)

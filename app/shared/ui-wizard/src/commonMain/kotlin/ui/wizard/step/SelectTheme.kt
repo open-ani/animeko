@@ -32,11 +32,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.window.core.layout.WindowSizeClass
 import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.data.models.preference.ThemeSettings
-import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
-import me.him188.ani.app.ui.foundation.layout.paneHorizontalPadding
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.theme.appColorScheme
 import me.him188.ani.app.ui.settings.SettingsTab
@@ -45,19 +42,20 @@ import me.him188.ani.app.ui.theme.ColorButton
 import me.him188.ani.app.ui.theme.DiagonalMixedThemePreviewPanel
 import me.him188.ani.app.ui.theme.ThemePreviewPanel
 import me.him188.ani.app.ui.theme.colorList
+import me.him188.ani.app.ui.wizard.WizardLayoutParams
 
 
 @Composable
-fun SelectTheme(
+internal fun SelectTheme(
     config: ThemeSettings,
     onUpdate: (ThemeSettings) -> Unit,
     modifier: Modifier = Modifier,
-    windowSizeClass: WindowSizeClass = currentWindowAdaptiveInfo1().windowSizeClass
+    layoutParams: WizardLayoutParams = WizardLayoutParams.Default
 ) {
     SettingsTab(modifier = modifier) {
         Row(
             modifier = Modifier
-                .padding(horizontal = windowSizeClass.paneHorizontalPadding)
+                .padding(horizontal = layoutParams.horizontalPadding)
                 .fillMaxWidth()
                 .scrollable(
                     rememberScrollState(),
@@ -119,7 +117,7 @@ fun SelectTheme(
             )
             FlowRow(
                 modifier = Modifier
-                    .padding(horizontal = windowSizeClass.paneHorizontalPadding, vertical = 16.dp)
+                    .padding(horizontal = layoutParams.horizontalPadding, vertical = 16.dp)
                     .fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center,
             ) {

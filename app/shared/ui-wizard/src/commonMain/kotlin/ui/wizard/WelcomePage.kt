@@ -24,7 +24,6 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import androidx.window.core.layout.WindowSizeClass
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
@@ -38,7 +37,8 @@ fun WelcomePage(
     vm: WelcomeViewModel,
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
-    windowSizeClass: WindowSizeClass = currentWindowAdaptiveInfo1().windowSizeClass
+    wizardLayoutParams: WizardLayoutParams =
+        WizardLayoutParams.fromWindowSizeClass(currentWindowAdaptiveInfo1().windowSizeClass),
 ) {
     val navController = rememberNavController()
     vm.welcomeNavController = navController
@@ -62,6 +62,7 @@ fun WelcomePage(
                 wizardState = vm.wizardState,
                 modifier = modifier,
                 windowInsets = windowInsets,
+                wizardLayoutParams = wizardLayoutParams,
             )
         }
     }
@@ -74,7 +75,7 @@ fun WelcomePage(
     wizardState: WizardPresentationState,
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
-    windowSizeClass: WindowSizeClass = currentWindowAdaptiveInfo1().windowSizeClass
+    wizardLayoutParams: WizardLayoutParams = WizardLayoutParams.Default
 ) {
     Surface {
         NavHost(
@@ -87,7 +88,7 @@ fun WelcomePage(
                     onLinkStart = { navController.navigate("wizard") },
                     contactActions = { },
                     windowInsets = windowInsets,
-                    windowSizeClass = windowSizeClass,
+                    layoutParams = wizardLayoutParams,
                     modifier = Modifier.fillMaxSize(),
                 )
             }
@@ -96,7 +97,7 @@ fun WelcomePage(
                     controller = wizardController,
                     state = wizardState,
                     windowInsets = windowInsets,
-                    windowSizeClass = windowSizeClass,
+                    wizardLayoutParams = wizardLayoutParams,
                     useEnterAnim = true,
                     modifier = Modifier.fillMaxSize(),
                 )
