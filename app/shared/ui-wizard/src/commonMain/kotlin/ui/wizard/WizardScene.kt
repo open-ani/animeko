@@ -14,6 +14,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideIn
+import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOut
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -37,6 +38,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -55,6 +58,7 @@ import me.him188.ani.app.ui.foundation.theme.NavigationMotionScheme
 import me.him188.ani.app.ui.settings.tabs.network.SystemProxyPresentation
 import me.him188.ani.app.ui.wizard.navigation.WizardController
 import me.him188.ani.app.ui.wizard.navigation.WizardNavHost
+import me.him188.ani.app.ui.wizard.step.AuthorizeUIState
 import me.him188.ani.app.ui.wizard.step.BangumiAuthorize
 import me.him188.ani.app.ui.wizard.step.BitTorrentFeature
 import me.him188.ani.app.ui.wizard.step.ConfigureProxy
@@ -75,9 +79,11 @@ internal fun WizardScene(
     val context = LocalContext.current
     var barVisible by rememberSaveable { mutableStateOf(!useEnterAnim) }
 
-    DisposableEffect(Unit) {
+    var notificationErrorScrolledOnce by rememberSaveable { mutableStateOf(false) }
+    var authorizeErrorScrolledOnce by rememberSaveable { mutableStateOf(false) }
+
+    SideEffect {
         barVisible = true
-        onDispose { }
     }
 
     Box(
@@ -158,9 +164,20 @@ internal fun WizardScene(
                 )
             }
             step("bittorrent", { Text("BitTorrent 功能") }) {
+                val scrollState = rememberScrollState()
                 val configState = state.bitTorrentFeatureState.enabled
                 val notificationPermissionState by state.bitTorrentFeatureState.notificationPermissionState
-                    .collectAsStateWithLifecycle(NotificationPermissionState.Default)
+                    .collectAsStateWithLifecycle(NotificationPermissionState.Placeholder)
+
+                LaunchedEffect(notificationPermissionState.lastRequestResult) {
+                    if (notificationPermissionState.placeholder) return@LaunchedEffect
+                    if (notificationPermissionState.lastRequestResult == false) {
+                        if (!notificationErrorScrolledOnce) scrollState.animateScrollTo(scrollState.maxValue)
+                        notificationErrorScrolledOnce = true
+                    } else {
+                        notificationErrorScrolledOnce = false
+                    }
+                }
                 
                 BitTorrentFeature(
                     bitTorrentEnabled = configState.value,
@@ -171,19 +188,44 @@ internal fun WizardScene(
                     onRequestNotificationPermission = {
                         state.bitTorrentFeatureState.onRequestNotificationPermission(context)
                     },
+                    onOpenSystemNotificationSettings = {
+                        state.bitTorrentFeatureState.onOpenSystemNotificationSettings(context)
+                    },
                     modifier = Modifier
                         .fillMaxSize()
-                        .verticalScroll(rememberScrollState()),
+                        .verticalScroll(scrollState),
                     layoutParams = wizardLayoutParams,
                 )
             }
             step("bangumi", { Text("Bangumi 授权") }) {
+                val scrollState = rememberScrollState()
+                val authorizeUiState by state.bangumiAuthorizeState.state
+                    .collectAsStateWithLifecycle(AuthorizeUIState.Idle)
+
+                LaunchedEffect(authorizeUiState) {
+                    if (authorizeUiState is AuthorizeUIState.Placeholder) return@LaunchedEffect
+                    if (authorizeUiState is AuthorizeUIState.Error) {
+                        if (!authorizeErrorScrolledOnce) scrollState.animateScrollTo(scrollState.maxValue)
+                        authorizeErrorScrolledOnce = true
+                    } else {
+                        authorizeErrorScrolledOnce = false
+                    }
+                }
+
+                DisposableEffect(Unit) {
+                    state.bangumiAuthorizeState.onCheckCurrentToken()
+                    onDispose {
+                        state.bangumiAuthorizeState.onCancelAuthorize()
+                    }
+                }
+                
                 BangumiAuthorize(
-                    onClickAuthorize = { },
+                    authorizeState = authorizeUiState,
+                    onClickAuthorize = { state.bangumiAuthorizeState.onClickNavigateAuthorize(context) },
                     onClickNeedHelp = { },
                     modifier = Modifier
                         .fillMaxSize()
-                        .verticalScroll(rememberScrollState()),
+                        .verticalScroll(scrollState),
                     layoutParams = wizardLayoutParams,
                 )
             }
@@ -193,11 +235,15 @@ internal fun WizardScene(
 
 
 object WizardDefaults {
-    val controlBarEnterAnim = fadeIn(animationSpec = tween(200)) +
-            slideIn(animationSpec = tween(200), initialOffset = { IntOffset(0, it.height) })
+    val controlBarEnterAnim = fadeIn(tween(500)) + slideInVertically(
+        tween(600),
+        initialOffsetY = { (-50).coerceAtMost(it) },
+    )
 
-    val indicatorBarEnterAnim = fadeIn(animationSpec = tween(200)) +
-            slideIn(animationSpec = tween(200), initialOffset = { IntOffset(0, -it.height) })
+    val indicatorBarEnterAnim = fadeIn(tween(500)) + slideInVertically(
+        tween(600),
+        initialOffsetY = { 50.coerceAtMost(it) },
+    )
     
     val motionScheme = kotlin.run {
         val slideEnter = 350

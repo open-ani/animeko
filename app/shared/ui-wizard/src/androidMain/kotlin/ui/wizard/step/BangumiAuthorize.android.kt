@@ -15,10 +15,50 @@ import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPrev
 
 @Preview(showBackground = true)
 @Composable
-fun PreviewBangumiAuthorizeStep() {
+fun PreviewBangumiAuthorizeStepInitial() {
     ProvideFoundationCompositionLocalsForPreview {
         BangumiAuthorize(
-            onClickAuthorize = {},
+            authorizeState = AuthorizeUIState.Idle,
+            onClickAuthorize = { },
+            onClickNeedHelp = { },
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewBangumiAuthorizeStepAwaitingResult() {
+    ProvideFoundationCompositionLocalsForPreview {
+        BangumiAuthorize(
+            authorizeState = AuthorizeUIState.AwaitingResult(""),
+            onClickAuthorize = { },
+            onClickNeedHelp = { },
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewBangumiAuthorizeStepError() {
+    ProvideFoundationCompositionLocalsForPreview {
+        BangumiAuthorize(
+            authorizeState = AuthorizeUIState.Error("", "error message"),
+            onClickAuthorize = { },
+            onClickNeedHelp = { },
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewBangumiAuthorizeStepSuccess() {
+    ProvideFoundationCompositionLocalsForPreview {
+        BangumiAuthorize(
+            authorizeState = AuthorizeUIState.Success(
+                "StageGuard has long username",
+                "https://lain.bgm.tv/pic/cover/l/44/7d/467461_HHw4K.jpg",
+            ),
+            onClickAuthorize = { },
             onClickNeedHelp = { },
         )
     }

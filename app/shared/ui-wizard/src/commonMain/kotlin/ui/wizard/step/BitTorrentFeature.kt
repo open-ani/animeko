@@ -10,6 +10,9 @@
 package me.him188.ani.app.ui.wizard.step
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -45,14 +48,16 @@ class NotificationPermissionState(
     /**
      * `null` 还没请求过, `true` 成功了, `false` 拒绝了
      */
-    val lastRequestResult: Boolean?
+    val lastRequestResult: Boolean?,
+    val placeholder: Boolean = false
 ) {
     companion object {
         @Stable
-        val Default = NotificationPermissionState(
+        val Placeholder = NotificationPermissionState(
             showGrantNotificationItem = false,
             granted = false,
             lastRequestResult = null,
+            placeholder = true,
         )
     }
 }
@@ -64,6 +69,7 @@ internal fun BitTorrentFeature(
     lastRequestNotificationPermissionResult: Boolean? = null,
     onBitTorrentEnableChanged: (Boolean) -> Unit,
     onRequestNotificationPermission: () -> Unit,
+    onOpenSystemNotificationSettings: () -> Unit,
     modifier: Modifier = Modifier,
     showGrantNotificationItem: Boolean = true,
     layoutParams: WizardLayoutParams = WizardLayoutParams.Default
@@ -131,7 +137,7 @@ internal fun BitTorrentFeature(
                     },
                     description = {
                         Text(
-                            text = "Ani 需要通知权限来显示 BT 引擎的运行状态、下载进度等信息",
+                            text = "Ani 需要通知权限来显示 BT 引擎的运行状态、下载进度等信息，同时有助于 BT 引擎服务长期运行。",
                             color = if (grantedNotificationPermission) MaterialTheme.colorScheme.onSurfaceVariant
                             else MaterialTheme.colorScheme.onSurface,
                         )
@@ -148,14 +154,22 @@ internal fun BitTorrentFeature(
                         if (!grantedNotificationPermission) onRequestNotificationPermission()
                     },
                 )
-                AnimatedVisibility(lastRequestNotificationPermissionResult == false) {
+                AnimatedVisibility(
+                    lastRequestNotificationPermissionResult == false,
+                    enter = fadeIn(), // don't animate layout
+                    exit = fadeOut() + shrinkVertically(),
+                ) {
                     Item(
                         leadingContent = { Icon(Icons.Filled.Error, null) },
                         headlineContent = {
                             ProvideTextStyle(MaterialTheme.typography.bodyMedium) {
-                                Text(text = "请求通知权限失败，在 Ani 位于后台时 BT 服务可能会被系统终止。")
+                                Text(
+                                    text = "请求通知权限失败，Ani 在后台时 BT 服务可能会被系统终止。" +
+                                            "若非手动拒绝授权，请点击此处打开系统设置进行授权。",
+                                )
                             }
                         },
+                        modifier = Modifier.clickable { onOpenSystemNotificationSettings() },
                     )
                 }
             }

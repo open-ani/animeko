@@ -24,6 +24,7 @@ kotlin {
         api(projects.app.shared.uiSettings)
         implementation(projects.utils.ktorClient)
         implementation(compose.components.resources)
+        implementation(projects.utils.logging)
     }
     sourceSets.commonTest.dependencies {
     }

@@ -10,8 +10,10 @@
 package me.him188.ani.app.platform
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import android.provider.Settings
 import androidx.core.app.NotificationManagerCompat
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
@@ -36,6 +38,14 @@ class AndroidPermissionManager : PermissionManager {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return true
         val activity = context.findActivity() as? BaseComponentActivity ?: return false
         return activity.requestPermission(Manifest.permission.POST_NOTIFICATIONS)
+    }
+
+    override fun openSystemNotificationSettings(context: ContextMP) {
+        val openSystemNotificationIntent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+        }
+        context.startActivity(openSystemNotificationIntent)
     }
 
     override suspend fun requestExternalDocumentTree(context: ContextMP): String? {

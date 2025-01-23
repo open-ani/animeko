@@ -10,6 +10,9 @@
 package me.him188.ani.app.platform
 
 interface PermissionManager {
+    /**
+     * 检查应用是否有通知权限
+     */
     fun checkNotificationPermission(context: ContextMP): Boolean
 
     /**
@@ -18,6 +21,11 @@ interface PermissionManager {
      * @return `true` 成功授权, `false` 拒绝授权或保持现状
      */
     suspend fun requestNotificationPermission(context: ContextMP): Boolean
+
+    /**
+     * 打开系统设置手动授权通知权限
+     */
+    fun openSystemNotificationSettings(context: ContextMP)
 
     /**
      * Android only. 请求一个完全授予可读写权限的外部共享空间路径，返回其 URL string
@@ -32,6 +40,10 @@ object GrantedPermissionManager : PermissionManager {
     
     override suspend fun requestNotificationPermission(context: ContextMP): Boolean {
         return true
+    }
+
+    override fun openSystemNotificationSettings(context: ContextMP) {
+
     }
 
     override suspend fun requestExternalDocumentTree(context: ContextMP): String? {

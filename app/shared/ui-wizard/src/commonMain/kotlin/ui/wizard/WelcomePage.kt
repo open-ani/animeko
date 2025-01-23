@@ -15,10 +15,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -50,6 +53,14 @@ fun WelcomePage(
         lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             vm.checkNotificationPermission(context)
         }
+    }
+
+    val wizardState by vm.wizardController.state.collectAsStateWithLifecycle(null)
+    DisposableEffect(wizardState) {
+        if (wizardState?.currentStep?.key == "bittorrent") {
+            vm.checkNotificationPermission(context)
+        }
+        onDispose { }
     }
 
     CompositionLocalProvider(

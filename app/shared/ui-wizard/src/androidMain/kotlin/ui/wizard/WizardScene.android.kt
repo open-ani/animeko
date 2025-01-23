@@ -22,6 +22,7 @@ import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.settings.framework.SettingsState
 import me.him188.ani.app.ui.settings.tabs.network.SystemProxyPresentation
 import me.him188.ani.app.ui.wizard.navigation.rememberWizardController
+import me.him188.ani.app.ui.wizard.step.AuthorizeUIState
 import me.him188.ani.app.ui.wizard.step.NotificationPermissionState
 import me.him188.ani.app.ui.wizard.step.ProxyTestCaseState
 import me.him188.ani.app.ui.wizard.step.ProxyTestItem
@@ -81,6 +82,13 @@ internal fun createTestWizardPresentationState(scope: CoroutineScope): WizardPre
                 ),
             ),
             onRequestNotificationPermission = { },
+            onOpenSystemNotificationSettings = { },
+        ),
+        bangumiAuthorizeState = BangumiAuthorizeState(
+            state = flowOf(AuthorizeUIState.Idle),
+            onClickNavigateAuthorize = { },
+            onCheckCurrentToken = { },
+            onCancelAuthorize = { },
         ),
     )
 }

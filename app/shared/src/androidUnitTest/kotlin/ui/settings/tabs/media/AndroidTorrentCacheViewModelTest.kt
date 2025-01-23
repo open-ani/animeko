@@ -221,6 +221,10 @@ private fun createTestPermissionManager(
             error("unreachable test")
         }
 
+        override fun openSystemNotificationSettings(context: ContextMP) {
+            error("unreachable test")
+        }
+
         override suspend fun requestNotificationPermission(context: ContextMP): Nothing {
             error("unreachable test")
         }

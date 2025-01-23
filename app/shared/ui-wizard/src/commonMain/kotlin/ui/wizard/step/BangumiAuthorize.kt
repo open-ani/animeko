@@ -9,6 +9,14 @@
 
 package me.him188.ani.app.ui.wizard.step
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -18,24 +26,49 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import me.him188.ani.app.ui.foundation.avatar.AvatarImage
 import me.him188.ani.app.ui.foundation.theme.BangumiNextIconColor
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.rendering.BangumiNext
 import me.him188.ani.app.ui.wizard.WizardLayoutParams
 import me.him188.ani.utils.platform.currentPlatform
 import me.him188.ani.utils.platform.isAndroid
+
+@Stable
+sealed class AuthorizeUIState {
+    sealed class Initial : AuthorizeUIState()
+
+    @Immutable
+    data object Placeholder : Initial()
+    data object Idle : Initial()
+
+    @Stable
+    data class AwaitingResult(val requestId: String) : AuthorizeUIState()
+
+    @Stable
+    data class Error(val requestId: String, val message: String) : AuthorizeUIState()
+
+    @Stable
+    data class Success(val username: String, val avatarUrl: String?) : AuthorizeUIState()
+}
 
 @Composable
 private fun RegisterTip(
@@ -62,6 +95,7 @@ private fun RegisterTip(
 
 @Composable
 internal fun BangumiAuthorize(
+    authorizeState: AuthorizeUIState,
     onClickAuthorize: () -> Unit,
     onClickNeedHelp: () -> Unit,
     modifier: Modifier = Modifier,
@@ -82,6 +116,40 @@ internal fun BangumiAuthorize(
                 modifier = Modifier.size(96.dp),
                 tint = BangumiNextIconColor,
             )
+            AnimatedVisibility(
+                visible = authorizeState is AuthorizeUIState.Success,
+                enter = fadeIn() + expandHorizontally(),
+                exit = fadeOut() + shrinkHorizontally(),
+            ) {
+                Row(
+                    modifier = Modifier.padding(start = 24.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    AvatarImage(
+                        url = (authorizeState as? AuthorizeUIState.Success)?.avatarUrl,
+                        modifier = Modifier.size(36.dp).clip(CircleShape),
+                    )
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Text(
+                            "登录成功",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                        Text(
+                            (authorizeState as? AuthorizeUIState.Success)?.username ?: "",
+                            style = MaterialTheme.typography.bodyMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Visible,
+                            modifier = Modifier
+                                .widthIn(max = 80.dp)
+                                .basicMarquee(),
+                        )
+                    }
+                }
+            }
         }
         Column(
             modifier = Modifier.padding(horizontal = layoutParams.horizontalPadding),
@@ -124,11 +192,47 @@ internal fun BangumiAuthorize(
             Column(modifier = Modifier.fillMaxWidth()) {
                 Button(
                     onClick = onClickAuthorize,
+                    enabled = authorizeState !is AuthorizeUIState.AwaitingResult,
                     modifier = Modifier
                         .fillMaxWidth()
                         .widthIn(max = 720.dp),
                 ) {
-                    Text("启动浏览器授权")
+                    AnimatedContent(authorizeState) {
+                        when (authorizeState) {
+                            is AuthorizeUIState.Initial, is AuthorizeUIState.Error -> {
+                                Text("启动浏览器授权")
+                            }
+
+                            is AuthorizeUIState.AwaitingResult -> {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+                                ) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(16.dp),
+                                        strokeWidth = 3.dp,
+                                    )
+                                    Text("等待授权结果")
+                                }
+                            }
+
+                            is AuthorizeUIState.Success -> {
+                                Text("重新授权其他账号")
+                            }
+                        }
+                    }
+                }
+                AnimatedVisibility(
+                    visible = authorizeState is AuthorizeUIState.Error,
+                    enter = fadeIn(),
+                    exit = fadeOut() + shrinkVertically(),
+                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp),
+                ) {
+                    Text(
+                        "授权登录失败: ${(authorizeState as? AuthorizeUIState.Error)?.message}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error,
+                    )
                 }
                 TextButton(
                     onClick = onClickNeedHelp,

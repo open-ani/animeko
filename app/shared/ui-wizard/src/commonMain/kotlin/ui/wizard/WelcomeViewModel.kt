@@ -18,29 +18,51 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavController
+import io.ktor.client.HttpClient
 import io.ktor.client.request.get
+import io.ktor.http.encodeURLParameter
 import kotlinx.collections.immutable.mutate
 import kotlinx.collections.immutable.persistentMapOf
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.transformLatest
+import kotlinx.coroutines.withContext
+import me.him188.ani.app.data.models.fold
 import me.him188.ani.app.data.models.preference.ProxyMode
 import me.him188.ani.app.data.models.preference.ProxySettings
 import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.media.fetch.toClientProxyConfig
+import me.him188.ani.app.domain.session.AniAuthClient
+import me.him188.ani.app.domain.session.AuthorizationCancelledException
+import me.him188.ani.app.domain.session.AuthorizationException
+import me.him188.ani.app.domain.session.ExternalOAuthRequest
+import me.him188.ani.app.domain.session.OAuthResult
+import me.him188.ani.app.domain.session.SessionManager
+import me.him188.ani.app.domain.session.SessionStatus
 import me.him188.ani.app.domain.settings.ProxySettingsFlowProxyProvider
+import me.him188.ani.app.navigation.BrowserNavigator
 import me.him188.ani.app.platform.ContextMP
 import me.him188.ani.app.platform.GrantedPermissionManager
 import me.him188.ani.app.platform.PermissionManager
+import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.ui.foundation.launchInBackground
 import me.him188.ani.app.ui.foundation.theme.AnimekoIconColor
@@ -51,6 +73,7 @@ import me.him188.ani.app.ui.settings.rendering.AnimekoIcon
 import me.him188.ani.app.ui.settings.rendering.BangumiNext
 import me.him188.ani.app.ui.settings.tabs.network.SystemProxyPresentation
 import me.him188.ani.app.ui.wizard.navigation.WizardController
+import me.him188.ani.app.ui.wizard.step.AuthorizeUIState
 import me.him188.ani.app.ui.wizard.step.NotificationPermissionState
 import me.him188.ani.app.ui.wizard.step.ProxyTestCaseState
 import me.him188.ani.app.ui.wizard.step.ProxyTestItem
@@ -60,12 +83,14 @@ import me.him188.ani.utils.coroutines.onReplacement
 import me.him188.ani.utils.coroutines.update
 import me.him188.ani.utils.ktor.createDefaultHttpClient
 import me.him188.ani.utils.ktor.proxy
+import me.him188.ani.utils.logging.trace
+import me.him188.ani.utils.platform.Uuid
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+import kotlin.time.Duration.Companion.seconds
 
 class WelcomeViewModel : AbstractSettingsViewModel(), KoinComponent {
     private val settingsRepository: SettingsRepository by inject()
-    private val permissionManager: PermissionManager by inject()
 
     private val themeSettings = settingsRepository.themeSettings
         .stateInBackground(ThemeSettings.Default.copy(_placeholder = -1))
@@ -74,11 +99,23 @@ class WelcomeViewModel : AbstractSettingsViewModel(), KoinComponent {
     private val proxySettingsFlow = settingsRepository.proxySettings.flow
     private val bitTorrentEnabled = mutableStateOf(true)
 
+    // region ConfigureProxy
+    private val proxyTestTasker = MonoTasker(backgroundScope)
     private val proxyTestRunning = FlowRunning()
     private val proxyProvider = ProxySettingsFlowProxyProvider(proxySettingsFlow, backgroundScope)
     private val proxyTestCases: StateFlow<List<ProxyTestCase>> =
         MutableStateFlow(ProxyTestCase.All)
     private val currentProxyTestMode = proxySettingsFlow.map { it.default.mode }
+    private val proxyClients = proxyProvider.proxy
+        .map {
+            createDefaultHttpClient {
+                proxy(it?.toClientProxyConfig())
+                expectSuccess = false
+            }
+        }
+        .onReplacement {
+            kotlin.runCatching { it.close() }
+        }
     private val proxyTestResults = MutableStateFlow(
         persistentMapOf<ProxyTestCaseEnums, ProxyTestCaseState>()
             .mutate { map ->
@@ -93,11 +130,11 @@ class WelcomeViewModel : AbstractSettingsViewModel(), KoinComponent {
             if (mode == ProxyMode.SYSTEM && proxy != null)
                 SystemProxyPresentation.Detected(proxy)
             else SystemProxyPresentation.NotDetected
-        }.stateIn(
-            backgroundScope,
-            SharingStarted.WhileSubscribed(),
-            SystemProxyPresentation.Detecting,
-        )
+        }
+            .stateInBackground(
+                SystemProxyPresentation.Detecting,
+                SharingStarted.WhileSubscribed(),
+            )
 
     private val configureProxyState = ConfigureProxyState(
         configState = proxySettings,
@@ -111,12 +148,35 @@ class WelcomeViewModel : AbstractSettingsViewModel(), KoinComponent {
                     ProxyTestItem(it, results[it.name] ?: ProxyTestCaseState.INIT)
                 },
             )
-        }.stateIn(backgroundScope, SharingStarted.WhileSubscribed(), ProxyTestState.Default),
+        }
+            .stateInBackground(
+                ProxyTestState.Default,
+                SharingStarted.WhileSubscribed(),
+            ),
     )
+    // endregion
 
+    // region BitTorrentFeature
+    private val permissionManager: PermissionManager by inject()
     private val notificationPermissionGrant = MutableStateFlow(false)
     private val lastGrantPermissionResult = MutableStateFlow<Boolean?>(null)
     private val requestNotificationPermissionTasker = MonoTasker(backgroundScope)
+
+    private val notificationPermissionState = combine(
+        notificationPermissionGrant,
+        lastGrantPermissionResult,
+    ) { grant, lastResult ->
+        NotificationPermissionState(
+            showGrantNotificationItem = permissionManager !is GrantedPermissionManager,
+            granted = grant,
+            lastRequestResult = lastResult,
+        )
+    }
+        .stateIn(
+            backgroundScope,
+            SharingStarted.WhileSubscribed(),
+            NotificationPermissionState.Placeholder,
+        )
 
     private val bitTorrentFeatureState = BitTorrentFeatureState(
         enabled = SettingsState(
@@ -125,21 +185,55 @@ class WelcomeViewModel : AbstractSettingsViewModel(), KoinComponent {
             placeholder = true,
             backgroundScope = backgroundScope,
         ),
-        notificationPermissionState = combine(
-            notificationPermissionGrant,
-            lastGrantPermissionResult,
-        ) { grant, lastResult ->
-            NotificationPermissionState(
-                showGrantNotificationItem = permissionManager !is GrantedPermissionManager,
-                granted = grant,
-                lastRequestResult = lastResult,
-            )
-        }.stateIn(
-            backgroundScope,
-            SharingStarted.WhileSubscribed(),
-            NotificationPermissionState.Default,
-        ),
+        notificationPermissionState = notificationPermissionState,
         onRequestNotificationPermission = { requestNotificationPermission(it) },
+        onOpenSystemNotificationSettings = { openSystemNotificationSettings(it) },
+    )
+    // endregion
+
+    // region BangumiAuthorize
+    private val sessionManager: SessionManager by inject()
+    private val browserNavigator: BrowserNavigator by inject()
+    private val authClient = AniAuthClient(proxyProvider, backgroundScope.coroutineContext)
+
+    private val authorizeTasker = MonoTasker(backgroundScope)
+    private val currentRequestAuthorizeId = MutableStateFlow<String?>(null)
+    private val authorizeUiState = currentRequestAuthorizeId
+        .transformLatest ui@{ requestId ->
+            if (requestId == null) {
+                emit(AuthorizeUIState.Idle)
+                logger.trace { "[AuthUIState] got null request id, stopped checking" }
+                return@ui
+            } else {
+                emit(AuthorizeUIState.AwaitingResult(requestId))
+            }
+            logger.trace { "[AuthUIState][$requestId] start checking authorization request" }
+
+            sessionManager.state
+                .collectLatest { sessionState ->
+                    if (sessionState !is SessionStatus.NoToken)
+                        return@collectLatest collectFromSessionStatus(requestId, sessionState, null)
+
+                    sessionManager.processingRequest
+                        .filterNotNull()
+                        .collectLatest { processingRequest ->
+                            logger.trace { "[AuthUIState][$requestId] current processing request: $processingRequest" }
+                            processingRequest.state.collectLatest { requestState ->
+                                collectFromSessionStatus(requestId, sessionState, requestState)
+                            }
+                        }
+                }
+        }
+        .stateInBackground(
+            AuthorizeUIState.Placeholder,
+            SharingStarted.WhileSubscribed(),
+        )
+
+    private val bangumiAuthorizeState = BangumiAuthorizeState(
+        authorizeUiState,
+        onClickNavigateAuthorize = { startAuthorize(it) },
+        onCancelAuthorize = { cancelAuthorize() },
+        onCheckCurrentToken = { checkCurrentAuthorizeToken() },
     )
 
     var welcomeNavController: NavController? by mutableStateOf(null)
@@ -149,55 +243,66 @@ class WelcomeViewModel : AbstractSettingsViewModel(), KoinComponent {
         selectThemeState = themeSettings,
         configureProxyState = configureProxyState,
         bitTorrentFeatureState = bitTorrentFeatureState,
+        bangumiAuthorizeState = bangumiAuthorizeState,
     )
+    // endregion
 
     init {
         launchInBackground {
-            combine(
-                proxyProvider.proxy
-                    .map {
-                        createDefaultHttpClient {
-                            proxy(it?.toClientProxyConfig())
-                            expectSuccess = false
-                        }
-                    }
-                    .onReplacement {
-                        kotlin.runCatching { it.close() }
-                    },
-                proxyTestCases,
-            ) { client, cases ->
-                client to cases
-            }.collectLatest { (client, cases) ->
-                proxyTestRunning.withRunning {
-                    proxyTestResults.update {
-                        mutate {
-                            it.clear()
-                            cases.forEach { case -> put(case.name, ProxyTestCaseState.RUNNING) }
-                        }
-                    }
-
-                    coroutineScope {
-                        val testDeferred = cases.map { case ->
-                            async {
-                                runCatching {
-                                    client.get(case.url)
-                                }.onSuccess {
-                                    proxyTestResults.update {
-                                        put(case.name, ProxyTestCaseState.SUCCESS)
-                                    }
-                                }.onFailure {
-                                    proxyTestResults.update {
-                                        put(case.name, ProxyTestCaseState.FAILED)
-                                    }
-                                }
-                            }
-                        }
-
-                        testDeferred.awaitAll()
-                    }
+            combine(proxyClients, proxyTestCases) { client, cases ->
+                proxyTestTasker.launch {
+                    startProxyTestServers(client, cases)
                 }
+            }.collect()
+        }
+        launchInBackground {
+            currentRequestAuthorizeId
+                .filterNotNull()
+                .flatMapLatest { sessionManager.processingRequest }
+                .collectLatest { processingRequest ->
+                    if (processingRequest == null) return@collectLatest
+                    val currentRequestId = currentRequestAuthorizeId.value ?: return@collectLatest
+                    logger.trace {
+                        "[AuthCheckLoop][$currentRequestId] current processing request: $processingRequest"
+                    }
+
+                    checkAuthorizeStatus(currentRequestId, processingRequest)
+                }
+        }
+    }
+
+    private suspend fun startProxyTestServers(
+        client: HttpClient,
+        cases: List<ProxyTestCase>
+    ) = proxyTestRunning.withRunning {
+        proxyTestResults.update {
+            mutate {
+                it.clear()
+                cases.forEach { case -> put(case.name, ProxyTestCaseState.RUNNING) }
             }
         }
+
+        coroutineScope {
+            cases.map { case ->
+                async {
+                    runCatching {
+                        client.get(case.url)
+                    }.onSuccess {
+                        proxyTestResults.update {
+                            put(case.name, ProxyTestCaseState.SUCCESS)
+                        }
+                    }.onFailure {
+                        proxyTestResults.update {
+                            put(case.name, ProxyTestCaseState.FAILED)
+                        }
+                    }
+                }
+            }.awaitAll()
+        }
+    }
+
+    private fun openSystemNotificationSettings(context: ContextMP) {
+        permissionManager.openSystemNotificationSettings(context)
     }
 
     private fun requestNotificationPermission(context: ContextMP) {
@@ -214,6 +319,143 @@ class WelcomeViewModel : AbstractSettingsViewModel(), KoinComponent {
         notificationPermissionGrant.update { result }
         if (result) lastGrantPermissionResult.update { null }
     }
+
+    private suspend fun openBrowserAuthorize(context: ContextMP, requestId: String) {
+        val base = currentAniBuildConfig.aniAuthServerUrl.removeSuffix("/")
+        val url = "${base}/v1/login/bangumi/oauth?requestId=${requestId.encodeURLParameter()}"
+
+        withContext(Dispatchers.Main) {
+            browserNavigator.openBrowser(context, url)
+        }
+    }
+
+    private fun startAuthorize(context: ContextMP) {
+        val newRequestId = Uuid.random().toString()
+        // we want this to launch as quickly as possible
+        authorizeTasker.launch(start = CoroutineStart.UNDISPATCHED) {
+            try {
+                sessionManager.clearSession()
+                sessionManager.requireAuthorize(
+                    onLaunch = { openBrowserAuthorize(context, newRequestId) },
+                    skipOnGuest = false,
+                )
+            } catch (e: AuthorizationCancelledException) {
+                logger.trace { "Authorization request ${currentRequestAuthorizeId.value} is cancelled" }
+            } catch (e: AuthorizationException) {
+                logger.trace(e) { "Authorization request ${currentRequestAuthorizeId.value} failed" }
+            } catch (e: Throwable) {
+                throw IllegalStateException(
+                    "Unknown exception during processing authorization request ${currentRequestAuthorizeId.value}, see cause",
+                    e,
+                )
+            }
+        }
+        // set new id will cause the checkAuthorizeStatus to start
+        currentRequestAuthorizeId.value = newRequestId
+    }
+
+    private fun cancelAuthorize() {
+        authorizeTasker.cancel()
+        currentRequestAuthorizeId.value = null
+    }
+
+    private fun checkCurrentAuthorizeToken() {
+        launchInBackground {
+            // 如果用户第一次进入 APP, 通过向导授权了之后没完成向导, 然后退出 APP 冲进, 会再一次进入向导, 
+            // 这时已经有 token 了, 所以需要 emit 一个 stub request id 让 authorizeUiState 跑起来
+            // 但是我们不启动 authorizeTasker, 因为这个时候不需要真的去授权, 只是为了让 UI 能正确显示目前的授权状态
+            if (sessionManager.state.first() !is SessionStatus.NoToken) {
+                currentRequestAuthorizeId.value = "-1"
+            }
+        }
+    }
+
+    private suspend fun FlowCollector<AuthorizeUIState>.collectFromSessionStatus(
+        requestId: String,
+        sessionState: SessionStatus,
+        requestState: ExternalOAuthRequest.State?,
+    ) {
+        logger.trace {
+            "[AuthUIState][$requestId] " +
+                    "session: ${sessionState::class.simpleName}, " +
+                    "request: ${requestState?.let { it::class.simpleName }}"
+        }
+        when (sessionState) {
+            is SessionStatus.Verified -> {
+                val userInfo = sessionState.userInfo
+                emit(
+                    AuthorizeUIState.Success(
+                        userInfo.username ?: userInfo.id.toString(),
+                        userInfo.avatarUrl,
+                    ),
+                )
+            }
+
+            is SessionStatus.Loading -> {
+                emit(AuthorizeUIState.AwaitingResult(requestId))
+            }
+
+            SessionStatus.NetworkError,
+            SessionStatus.ServiceUnavailable -> {
+                emit(AuthorizeUIState.Error(requestId, "网络错误, 请重试"))
+            }
+
+            SessionStatus.Expired -> {
+                emit(AuthorizeUIState.Error(requestId, "token 已过期，请重试"))
+            }
+
+            SessionStatus.NoToken -> when (requestState) {
+                ExternalOAuthRequest.State.Launching,
+                ExternalOAuthRequest.State.AwaitingCallback,
+                ExternalOAuthRequest.State.Processing -> {
+                    emit(AuthorizeUIState.AwaitingResult(requestId))
+                }
+
+                is ExternalOAuthRequest.State.Failed -> {
+                    emit(AuthorizeUIState.Error(requestId, requestState.toString()))
+                }
+
+                else -> {}
+            }
+
+            SessionStatus.Guest -> {} // 不会进入 Guest 状态
+        }
+    }
+
+    private suspend fun checkAuthorizeStatus(
+        requestId: String,
+        request: ExternalOAuthRequest,
+    ) {
+        while (true) {
+            val resp = authClient.getResult(requestId)
+            resp.fold(
+                onSuccess = {
+                    if (it == null) {
+                        return@fold
+                    }
+                    logger.trace {
+                        "[AuthCheckLoop][$requestId] " +
+                                "Check OAuth result success, request is $request, " +
+                                "token expires in ${it.expiresIn.seconds}"
+                    }
+                    request.onCallback(
+                        Result.success(
+                            OAuthResult(
+                                accessToken = it.accessToken,
+                                refreshToken = it.refreshToken,
+                                expiresIn = it.expiresIn.seconds,
+                            ),
+                        ),
+                    )
+                    return
+                },
+                onKnownFailure = {
+                    logger.trace { "[AuthCheckLoop][$requestId] Check OAuth result failed: $it" }
+                },
+            )
+            delay(1000)
+        }
+    }
 }
 
 @Stable
@@ -221,6 +463,7 @@ class WizardPresentationState(
     val selectThemeState: SettingsState<ThemeSettings>,
     val configureProxyState: ConfigureProxyState,
     val bitTorrentFeatureState: BitTorrentFeatureState,
+    val bangumiAuthorizeState: BangumiAuthorizeState,
 )
 
 @Stable
@@ -275,4 +518,13 @@ class BitTorrentFeatureState(
     val enabled: SettingsState<Boolean>,
     val notificationPermissionState: Flow<NotificationPermissionState>,
     val onRequestNotificationPermission: (ContextMP) -> Unit,
+    val onOpenSystemNotificationSettings: (ContextMP) -> Unit
+)
+
+@Stable
+class BangumiAuthorizeState(
+    val state: Flow<AuthorizeUIState>,
+    val onCheckCurrentToken: () -> Unit,
+    val onClickNavigateAuthorize: (ContextMP) -> Unit,
+    val onCancelAuthorize: () -> Unit,
 )
