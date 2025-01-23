@@ -26,6 +26,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -33,6 +34,31 @@ import me.him188.ani.app.ui.foundation.theme.BangumiNextIconColor
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.rendering.BangumiNext
 import me.him188.ani.app.ui.wizard.WizardLayoutParams
+import me.him188.ani.utils.platform.currentPlatform
+import me.him188.ani.utils.platform.isAndroid
+
+@Composable
+private fun RegisterTip(
+    text: String,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.Start),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.Lightbulb,
+            contentDescription = null,
+            modifier = Modifier.size(24.dp),
+            tint = MaterialTheme.colorScheme.primary,
+        )
+        Text(
+            text,
+            style = MaterialTheme.typography.bodyMedium,
+        )
+    }
+}
 
 @Composable
 internal fun BangumiAuthorize(
@@ -82,37 +108,16 @@ internal fun BangumiAuthorize(
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.primary,
                 )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.Start),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Lightbulb,
-                        contentDescription = null,
-                        modifier = Modifier.size(24.dp),
-                        tint = MaterialTheme.colorScheme.primary,
-                    )
-                    Text(
-                        "建议使用常见邮箱，例如 QQ, 网易, Outlook 等",
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.Start),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Lightbulb,
-                        contentDescription = null,
-                        modifier = Modifier.size(24.dp),
-                        tint = MaterialTheme.colorScheme.primary,
-                    )
-                    Text(
-                        "如果提示激活失败，尝试删除激活码的最后一个字再手动输入",
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
+                remember {
+                    buildList {
+                        add("请使用常见邮箱注册，例如 QQ, 网易, Outlook")
+                        add("如果提示激活失败，请尝试删除激活码的最后一个字再手动输入")
+                        if (currentPlatform().isAndroid()) {
+                            add("如果浏览器提示网站被屏蔽或登录成功后无法跳转，请尝试在系统设置更换默认浏览器")
+                        }
+                    }
+                }.forEach {
+                    RegisterTip(it, modifier = Modifier.fillMaxWidth())
                 }
             }
             Spacer(Modifier.height(8.dp))

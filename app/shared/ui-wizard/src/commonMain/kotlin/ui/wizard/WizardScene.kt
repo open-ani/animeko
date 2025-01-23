@@ -26,6 +26,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LargeTopAppBar
@@ -117,7 +119,9 @@ internal fun WizardScene(
                 SelectTheme(
                     config = state.selectThemeState.value,
                     onUpdate = { state.selectThemeState.update(it) },
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState()),
                     layoutParams = wizardLayoutParams,
                 )
             }
@@ -147,7 +151,9 @@ internal fun WizardScene(
                     testRunning = testState.testRunning,
                     systemProxy = systemProxy,
                     testItems = testState.items,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState()),
                     layoutParams = wizardLayoutParams,
                 )
             }
@@ -165,7 +171,9 @@ internal fun WizardScene(
                     onRequestNotificationPermission = {
                         state.bitTorrentFeatureState.onRequestNotificationPermission(context)
                     },
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState()),
                     layoutParams = wizardLayoutParams,
                 )
             }
@@ -173,7 +181,9 @@ internal fun WizardScene(
                 BangumiAuthorize(
                     onClickAuthorize = { },
                     onClickNeedHelp = { },
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState()),
                     layoutParams = wizardLayoutParams,
                 )
             }
