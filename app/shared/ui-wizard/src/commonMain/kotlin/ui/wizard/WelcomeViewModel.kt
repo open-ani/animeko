@@ -104,9 +104,9 @@ class WelcomeViewModel : AbstractSettingsViewModel(), KoinComponent {
     private val bitTorrentEnabled = mutableStateOf(true)
 
     // region ConfigureProxy
-    private val proxyTestRestarter = FlowRestarter()
     private val proxyTestTasker = MonoTasker(backgroundScope)
     private val proxyTestRunning = FlowRunning()
+    private val proxyTestRestarter = FlowRestarter()
     private val proxyProvider = ProxySettingsFlowProxyProvider(proxySettingsFlow, backgroundScope)
     private val proxyTestCases: StateFlow<List<ProxyTestCase>> =
         MutableStateFlow(ProxyTestCase.All)
@@ -430,7 +430,7 @@ class WelcomeViewModel : AbstractSettingsViewModel(), KoinComponent {
                 else -> {}
             }
 
-            SessionStatus.Guest -> {} // 不会进入 Guest 状态
+            SessionStatus.Guest -> emit(AuthorizeUIState.Idle)
         }
     }
 
