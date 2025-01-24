@@ -91,6 +91,7 @@ private fun SettingsScope.ProxyTestStatusGroup(
     testRunning: Boolean,
     currentTestMode: ProxyMode,
     items: List<ProxyTestItem>,
+    onRequestReTest: () -> Unit,
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit
 ) {
@@ -119,6 +120,13 @@ private fun SettingsScope.ProxyTestStatusGroup(
                     MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
             )
         },
+        actions = if (items.any { it.state == ProxyTestCaseState.FAILED }) {
+            {
+                TextButton(onRequestReTest) {
+                    Text("重新测试")
+                }
+            }
+        } else null,
         useThinHeader = true,
         modifier = modifier,
         content = content,
@@ -323,6 +331,7 @@ internal fun ConfigureProxy(
     systemProxy: SystemProxyPresentation,
     testItems: List<ProxyTestItem>,
     onUpdate: (config: ProxySettings) -> Unit,
+    onRequestReTest: () -> Unit,
     modifier: Modifier = Modifier,
     layoutParams: WizardLayoutParams = WizardLayoutParams.Default
 ) {
@@ -330,7 +339,12 @@ internal fun ConfigureProxy(
 
     SettingsTab(modifier = modifier) {
         Column {
-            ProxyTestStatusGroup(testRunning, config.default.mode, testItems) {
+            ProxyTestStatusGroup(
+                testRunning,
+                config.default.mode,
+                testItems,
+                onRequestReTest = onRequestReTest,
+            ) {
                 testItems.forEach { item ->
                     ProxyTestItemView(item, modifier = Modifier)
                 }

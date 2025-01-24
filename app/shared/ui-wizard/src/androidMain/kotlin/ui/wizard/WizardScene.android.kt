@@ -66,6 +66,7 @@ internal fun createTestWizardPresentationState(scope: CoroutineScope): WizardPre
                     },
                 ),
             ),
+            onRequestReTest = { },
         ),
         bitTorrentFeatureState = BitTorrentFeatureState(
             enabled = SettingsState(

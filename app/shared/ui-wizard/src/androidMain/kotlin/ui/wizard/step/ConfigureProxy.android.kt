@@ -33,6 +33,7 @@ fun PreviewSelectProxyStep() {
             },
             systemProxy = SystemProxyPresentation.NotDetected,
             onUpdate = { },
+            onRequestReTest = { },
         )
     }
 }

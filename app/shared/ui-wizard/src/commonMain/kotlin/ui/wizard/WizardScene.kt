@@ -51,7 +51,9 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.delay
 import me.him188.ani.app.platform.LocalContext
+import me.him188.ani.app.tools.rememberUiMonoTasker
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
 import me.him188.ani.app.ui.foundation.theme.NavigationMotionScheme
@@ -157,6 +159,7 @@ internal fun WizardScene(
                     testRunning = testState.testRunning,
                     systemProxy = systemProxy,
                     testItems = testState.items,
+                    onRequestReTest = { state.configureProxyState.onRequestReTest() },
                     modifier = Modifier
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState()),
@@ -205,9 +208,11 @@ internal fun WizardScene(
             }
             step("bangumi", { Text("Bangumi 授权") }) {
                 val scrollState = rememberScrollState()
+                val monoTasker = rememberUiMonoTasker()
                 val authorizeUiState by state.bangumiAuthorizeState.state
-                    .collectAsStateWithLifecycle(AuthorizeUIState.Idle)
+                    .collectAsStateWithLifecycle(AuthorizeUIState.Placeholder)
 
+                // 作用同上一步 bittorrent 的 LaunchedEffect
                 LaunchedEffect(authorizeUiState) {
                     if (authorizeUiState is AuthorizeUIState.Placeholder) return@LaunchedEffect
                     if (authorizeUiState is AuthorizeUIState.Error) {
@@ -218,6 +223,22 @@ internal fun WizardScene(
                     }
                 }
 
+                // 如果一分钟没等到结果, 那可以认为用户可能遇到了麻烦, 我们自动滚动到底部, 底部有帮助按钮
+                LaunchedEffect(authorizeUiState) {
+                    if (authorizeUiState is AuthorizeUIState.Placeholder) return@LaunchedEffect
+                    val timerRunning = monoTasker.isRunning.value
+                    if (authorizeUiState is AuthorizeUIState.AwaitingResult) {
+                        if (timerRunning) return@LaunchedEffect
+                        monoTasker.launch {
+                            delay(3_000)
+                            scrollState.animateScrollTo(scrollState.maxValue)
+                        }
+                    } else if (timerRunning) {
+                        monoTasker.cancel()
+                    }
+                }
+
+                // 每次进入这一步都会检查 token 是否有效, 以及退出这一步时要取消正在进行的授权请求
                 DisposableEffect(Unit) {
                     state.bangumiAuthorizeState.onCheckCurrentToken()
                     onDispose {

@@ -34,7 +34,6 @@ import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
@@ -78,11 +77,12 @@ import me.him188.ani.app.ui.wizard.step.NotificationPermissionState
 import me.him188.ani.app.ui.wizard.step.ProxyTestCaseState
 import me.him188.ani.app.ui.wizard.step.ProxyTestItem
 import me.him188.ani.app.ui.wizard.step.ProxyTestState
+import me.him188.ani.utils.coroutines.flows.FlowRestarter
 import me.him188.ani.utils.coroutines.flows.FlowRunning
-import me.him188.ani.utils.coroutines.onReplacement
+import me.him188.ani.utils.coroutines.flows.restartable
 import me.him188.ani.utils.coroutines.update
 import me.him188.ani.utils.ktor.createDefaultHttpClient
-import me.him188.ani.utils.ktor.proxy
+import me.him188.ani.utils.ktor.setProxy
 import me.him188.ani.utils.logging.trace
 import me.him188.ani.utils.platform.Uuid
 import org.koin.core.component.KoinComponent
@@ -100,22 +100,16 @@ class WelcomeViewModel : AbstractSettingsViewModel(), KoinComponent {
     private val bitTorrentEnabled = mutableStateOf(true)
 
     // region ConfigureProxy
+    private val proxyTestRestarter = FlowRestarter()
     private val proxyTestTasker = MonoTasker(backgroundScope)
     private val proxyTestRunning = FlowRunning()
     private val proxyProvider = ProxySettingsFlowProxyProvider(proxySettingsFlow, backgroundScope)
     private val proxyTestCases: StateFlow<List<ProxyTestCase>> =
         MutableStateFlow(ProxyTestCase.All)
     private val currentProxyTestMode = proxySettingsFlow.map { it.default.mode }
-    private val proxyClients = proxyProvider.proxy
-        .map {
-            createDefaultHttpClient {
-                proxy(it?.toClientProxyConfig())
-                expectSuccess = false
-            }
-        }
-        .onReplacement {
-            kotlin.runCatching { it.close() }
-        }
+    private val proxyClient = createDefaultHttpClient {
+        expectSuccess = false
+    }
     private val proxyTestResults = MutableStateFlow(
         persistentMapOf<ProxyTestCaseEnums, ProxyTestCaseState>()
             .mutate { map ->
@@ -153,6 +147,7 @@ class WelcomeViewModel : AbstractSettingsViewModel(), KoinComponent {
                 ProxyTestState.Default,
                 SharingStarted.WhileSubscribed(),
             ),
+        onRequestReTest = { proxyTestRestarter.restart() },
     )
     // endregion
 
@@ -249,11 +244,16 @@ class WelcomeViewModel : AbstractSettingsViewModel(), KoinComponent {
 
     init {
         launchInBackground {
-            combine(proxyClients, proxyTestCases) { client, cases ->
-                proxyTestTasker.launch {
-                    startProxyTestServers(client, cases)
+            proxyProvider.proxy.combine(proxyTestCases) { config, cases ->
+                proxyClient.engineConfig.setProxy(config?.toClientProxyConfig())
+                cases
+            }
+                .restartable(restarter = proxyTestRestarter)
+                .collectLatest { cases ->
+                    proxyTestTasker.launch {
+                        startProxyTestServers(proxyClient, cases)
+                    }
                 }
-            }.collect()
         }
         launchInBackground {
             currentRequestAuthorizeId
@@ -456,6 +456,10 @@ class WelcomeViewModel : AbstractSettingsViewModel(), KoinComponent {
             delay(1000)
         }
     }
+
+    override fun onCleared() {
+        proxyClient.close()
+    }
 }
 
 @Stable
@@ -471,6 +475,7 @@ class ConfigureProxyState(
     val configState: SettingsState<ProxySettings>,
     val systemProxy: Flow<SystemProxyPresentation>,
     val testState: Flow<ProxyTestState>,
+    val onRequestReTest: () -> Unit,
 )
 
 @Immutable
