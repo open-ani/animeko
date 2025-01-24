@@ -261,21 +261,27 @@ class SubjectCollectionRepositoryImpl(
                 }
             }
 
-            emit(
-                existing.asFlow()
-                    .flatMapMerge(concurrency = 4) { entity ->
-                        episodeCollectionRepository.subjectEpisodeCollectionInfosFlow(entity.subjectId)
-                            .take(1)
-                            .map { episodes ->
-                                LightSubjectAndEpisodes(
-                                    entity.toLightSubjectInfo(),
-                                    episodes.map { it.episodeInfo.toLightEpisodeInfo() },
-                                )
-                            }
-                    }
-                    .toList()
-                    .plus(batchGetLightSubjectEpisodes(missingIds)), // TODO: 2025/1/14 batchGetLightSubjectEpisodes 没有按 epType 过滤
-            )
+            coroutineScope {
+                val fromExistingDeferred = async {
+                    existing.asFlow()
+                        .flatMapMerge(concurrency = 4) { entity ->
+                            episodeCollectionRepository
+                                .subjectEpisodeCollectionInfosFlow(entity.subjectId)
+                                .take(1)
+                                .map { episodes ->
+                                    LightSubjectAndEpisodes(
+                                        entity.toLightSubjectInfo(),
+                                        episodes.map { it.episodeInfo.toLightEpisodeInfo() },
+                                    )
+                                }
+                        }
+                        .toList()
+                }
+                val fromMissingDeferred = async {
+                    batchGetLightSubjectEpisodes(missingIds) // TODO: 2025/1/14 batchGetLightSubjectEpisodes 没有按 epType 过滤
+                }
+                emit(fromExistingDeferred.await() + fromMissingDeferred.await())
+            }
         }
     }
 

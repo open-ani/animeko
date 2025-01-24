@@ -214,8 +214,8 @@ class RemoteBangumiSubjectService(
                             SubjectInfo.Empty.copy(
                                 subjectId = subjectId,
                                 subjectType = SubjectType.ANIME,
-                                nameCn = "此条目已被隐藏 $subjectId",
-                                name = "此条目已被隐藏 $subjectId",
+                                nameCn = "账号注册满四个月后可看 $subjectId",
+                                name = "账号注册满四个月后可看 $subjectId",
                                 summary = "此条目已被隐藏, 请尝试登录后再次尝试. 如已登录, 请等待注册时间满四个月后再看.",
                                 nsfw = true,
                             ),

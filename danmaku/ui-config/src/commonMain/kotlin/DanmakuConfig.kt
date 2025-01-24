@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024-2025 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.danmaku.ui
 
 import androidx.compose.runtime.Immutable
@@ -57,8 +66,9 @@ data class DanmakuConfig(
     val enableFloating: Boolean = true,
     /**
      * @since 3.1.0-beta04
+     * 4.4.0 改为默认关闭
      */
-    val enableBottom: Boolean = true,
+    val enableBottom: Boolean = false,
     /**
      * 调试模式, 启用发送弹幕的信息和弹幕处理信息.
      */

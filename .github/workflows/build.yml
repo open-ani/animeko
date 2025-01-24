@@ -201,10 +201,10 @@ jobs:
         path: 'app/desktop/build/compose/binaries/main-release/app'
         if-no-files-found: 'error'
         overwrite: 'true'
-  build_github-ubuntu-2004:
-    name: 'Build (Ubuntu 20.04 x86_64 (GitHub))'
+  build_github-ubuntu-2404:
+    name: 'Build (Ubuntu 24.04 x86_64 (GitHub))'
     runs-on:
-    - 'ubuntu-20.04'
+    - 'ubuntu-24.04'
     permissions:
       actions: 'write'
     steps:
@@ -270,6 +270,57 @@ jobs:
         timeout_minutes: '120'
         max_attempts: '2'
         command: './gradlew compileDebugKotlinAndroid compileReleaseKotlinAndroid "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.android.abis=x86_64"'
+    - id: 'step-11'
+      name: 'Enable KVM'
+      run: |-
+        echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+        sudo udevadm control --reload-rules
+        sudo udevadm trigger --name-match=kvm
+    - id: 'step-12'
+      name: 'Build Android Instrumented Tests'
+      uses: 'nick-fields/retry@v3'
+      with:
+        timeout_minutes: '120'
+        max_attempts: '1'
+        command: './gradlew assembleDebugAndroidTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.android.abis=x86_64"'
+    - id: 'step-13'
+      name: 'Android Instrumented Test (api=30, arch=x86_64)'
+      uses: 'reactivecircus/android-emulator-runner@v2'
+      with:
+        api-level: '30'
+        arch: 'x86_64'
+        emulator-boot-timeout: '1800'
+        script: './gradlew connectedDebugAndroidTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.android.abis=x86_64"'
+    - id: 'step-14'
+      name: 'Uninstall emulators'
+      run: |
+        sdkmanager --uninstall $(sdkmanager --list | grep emulator | awk '{print $1}')
+    - id: 'step-15'
+      name: 'Remove AVD'
+      run: |-
+        echo "Removing Emulator binaries..."
+        rm -rf $ANDROID_HOME/emulator
+        echo "Removing System Images..."
+        rm -rf $ANDROID_HOME/system-images
+    - id: 'step-16'
+      name: 'Android Instrumented Test (api=35, arch=x86_64)'
+      uses: 'reactivecircus/android-emulator-runner@v2'
+      with:
+        api-level: '35'
+        arch: 'x86_64'
+        emulator-boot-timeout: '1800'
+        script: './gradlew connectedDebugAndroidTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.android.abis=x86_64"'
+    - id: 'step-17'
+      name: 'Uninstall emulators'
+      run: |
+        sdkmanager --uninstall $(sdkmanager --list | grep emulator | awk '{print $1}')
+    - id: 'step-18'
+      name: 'Remove AVD'
+      run: |-
+        echo "Removing Emulator binaries..."
+        rm -rf $ANDROID_HOME/emulator
+        echo "Removing System Images..."
+        rm -rf $ANDROID_HOME/system-images
   build_github-macos-13:
     name: 'Build (macOS 13 x86_64 (GitHub))'
     runs-on:

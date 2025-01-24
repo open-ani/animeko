@@ -9,7 +9,8 @@
   ~ https://github.com/open-ani/ani/blob/main/LICENSE
   -->
 
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.VIBRATE" />
@@ -18,6 +19,7 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!--    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"-->
     <!--            tools:ignore="ScopedStorage" />-->
@@ -41,29 +43,26 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <intent-filter android:autoVerify="true">
+            <intent-filter android:autoVerify="false">
                 <action android:name="android.intent.action.VIEW" />
 
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
 
-                <!-- If a user clicks on a shared link that uses the "http" scheme, your
-                     app should be able to delegate that traffic to "https". -->
-                <data android:scheme="ani" />
-
-                <!-- Include one or more domains that should be verified. -->
-                <data android:host="bangumi-oauth-callback" />
+                <data
+                        android:scheme="ani"
+                        android:host="bangumi-oauth-callback" />
             </intent-filter>
 
-            <intent-filter android:autoVerify="true">
+            <intent-filter android:autoVerify="false">
                 <action android:name="android.intent.action.VIEW" />
 
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
 
-                <data android:scheme="ani" />
-
-                <data android:host="subjects" />
+                <data
+                        android:scheme="ani"
+                        android:host="subjects" />
             </intent-filter>
         </activity>
 
@@ -87,11 +86,21 @@
         </provider>
 
         <service
-                android:name="me.him188.ani.app.domain.torrent.service.AniTorrentService"
+                android:name="me.him188.ani.app.domain.torrent.service.AniTorrentServiceApi34"
+                android:description="@string/service_torrent_engine_description"
+                android:enabled="true"
+                android:exported="false"
+                tools:targetApi="34"
+                android:foregroundServiceType="mediaPlayback"
+                android:process=":torrent_service" />
+
+        <service
+                android:name="me.him188.ani.app.domain.torrent.service.AniTorrentServiceApiDefault"
                 android:description="@string/service_torrent_engine_description"
                 android:enabled="true"
                 android:exported="false"
                 android:foregroundServiceType="dataSync"
                 android:process=":torrent_service" />
+
     </application>
 </manifest>
