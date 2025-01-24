@@ -50,6 +50,7 @@ import me.him188.ani.app.data.models.fold
 import me.him188.ani.app.data.models.preference.ProxyMode
 import me.him188.ani.app.data.models.preference.ProxySettings
 import me.him188.ani.app.data.models.preference.ThemeSettings
+import me.him188.ani.app.data.repository.user.AccessTokenSession
 import me.him188.ani.app.data.repository.user.GuestSession
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.media.fetch.toClientProxyConfig
@@ -89,8 +90,10 @@ import me.him188.ani.utils.ktor.createDefaultHttpClient
 import me.him188.ani.utils.ktor.setProxy
 import me.him188.ani.utils.logging.trace
 import me.him188.ani.utils.platform.Uuid
+import me.him188.ani.utils.platform.currentTimeMillis
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.seconds
 
 class WelcomeViewModel : AbstractSettingsViewModel(), KoinComponent {
@@ -233,7 +236,11 @@ class WelcomeViewModel : AbstractSettingsViewModel(), KoinComponent {
         onClickNavigateAuthorize = { startAuthorize(it) },
         onCancelAuthorize = { cancelAuthorize() },
         onCheckCurrentToken = { checkCurrentAuthorizeToken() },
+        onClickNavigateToBangumiDev = {
+            browserNavigator.openBrowser(it, "https://next.bgm.tv/demo/access-token/create")
+        },
         onUseGuestMode = { setGuestSession() },
+        onAuthorizeViaToken = { setAuthorizationToken(it) },
     )
 
     var welcomeNavController: NavController? by mutableStateOf(null)
@@ -372,6 +379,19 @@ class WelcomeViewModel : AbstractSettingsViewModel(), KoinComponent {
             if (sessionManager.state.first() !is SessionStatus.NoToken) {
                 currentRequestAuthorizeId.value = "-1"
             }
+        }
+    }
+
+    private fun setAuthorizationToken(token: String) {
+        launchInBackground {
+            sessionManager.setSession(
+                AccessTokenSession(
+                    accessToken = token,
+                    expiresAtMillis = currentTimeMillis() + 365.days.inWholeMilliseconds,
+                ),
+            )
+            // trigger ui update
+            currentRequestAuthorizeId.value = "-1"
         }
     }
 
@@ -544,5 +564,7 @@ class BangumiAuthorizeState(
     val onCheckCurrentToken: () -> Unit,
     val onClickNavigateAuthorize: (ContextMP) -> Unit,
     val onCancelAuthorize: () -> Unit,
+    val onAuthorizeViaToken: (String) -> Unit,
+    val onClickNavigateToBangumiDev: (ContextMP) -> Unit,
     val onUseGuestMode: () -> Unit,
 )

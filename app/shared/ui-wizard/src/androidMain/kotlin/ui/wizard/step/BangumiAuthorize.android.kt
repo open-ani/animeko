@@ -19,8 +19,11 @@ fun PreviewBangumiAuthorizeStepInitial() {
     ProvideFoundationCompositionLocalsForPreview {
         BangumiAuthorize(
             authorizeState = AuthorizeUIState.Idle,
+            contactActions = { },
             onClickAuthorize = { },
-            onClickNeedHelp = { },
+            onCancelAuthorize = { },
+            onAuthorizeViaToken = { },
+            onClickNavigateToBangumiDev = { },
         )
     }
 }
@@ -31,8 +34,11 @@ fun PreviewBangumiAuthorizeStepAwaitingResult() {
     ProvideFoundationCompositionLocalsForPreview {
         BangumiAuthorize(
             authorizeState = AuthorizeUIState.AwaitingResult(""),
+            contactActions = { },
             onClickAuthorize = { },
-            onClickNeedHelp = { },
+            onCancelAuthorize = { },
+            onAuthorizeViaToken = { },
+            onClickNavigateToBangumiDev = { },
         )
     }
 }
@@ -43,8 +49,11 @@ fun PreviewBangumiAuthorizeStepError() {
     ProvideFoundationCompositionLocalsForPreview {
         BangumiAuthorize(
             authorizeState = AuthorizeUIState.Error("", "error message"),
+            contactActions = { },
             onClickAuthorize = { },
-            onClickNeedHelp = { },
+            onCancelAuthorize = { },
+            onAuthorizeViaToken = { },
+            onClickNavigateToBangumiDev = { },
         )
     }
 }
@@ -59,7 +68,10 @@ fun PreviewBangumiAuthorizeStepSuccess() {
                 "https://lain.bgm.tv/pic/cover/l/44/7d/467461_HHw4K.jpg",
             ),
             onClickAuthorize = { },
-            onClickNeedHelp = { },
+            onAuthorizeViaToken = { },
+            onCancelAuthorize = { },
+            contactActions = { },
+            onClickNavigateToBangumiDev = { },
         )
     }
 }

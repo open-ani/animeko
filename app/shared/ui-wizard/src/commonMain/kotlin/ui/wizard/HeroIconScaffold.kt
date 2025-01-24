@@ -50,14 +50,10 @@ object HeroIconDefaults {
     val iconSize: Dp = 96.dp
 
     @Composable
-    fun contentPadding(
-        layoutParams: WizardLayoutParams = WizardLayoutParams.Default,
-    ): PaddingValues {
+    fun contentPadding(): PaddingValues {
         return PaddingValues(
             top = 16.dp,
             bottom = 8.dp,
-            start = layoutParams.horizontalPadding,
-            end = layoutParams.horizontalPadding,
         )
     }
 }

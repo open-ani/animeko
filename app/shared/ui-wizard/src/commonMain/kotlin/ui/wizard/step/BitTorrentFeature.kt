@@ -84,7 +84,8 @@ internal fun BitTorrentFeature(
                 )
             },
             modifier = Modifier
-                .padding(HeroIconDefaults.contentPadding(layoutParams))
+                .padding(HeroIconDefaults.contentPadding())
+                .padding(horizontal = layoutParams.horizontalPadding)
                 .fillMaxWidth(),
         )
         Column {

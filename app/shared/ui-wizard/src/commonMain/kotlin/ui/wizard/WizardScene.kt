@@ -77,6 +77,7 @@ import me.him188.ani.app.ui.wizard.step.SelectTheme
 internal fun WizardScene(
     controller: WizardController,
     state: WizardPresentationState,
+    contactActions: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     useEnterAnim: Boolean = true,
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
@@ -270,8 +271,13 @@ internal fun WizardScene(
                 
                 BangumiAuthorize(
                     authorizeState = authorizeUiState,
+                    contactActions = contactActions,
                     onClickAuthorize = { state.bangumiAuthorizeState.onClickNavigateAuthorize(context) },
-                    onClickNeedHelp = { },
+                    onCancelAuthorize = { state.bangumiAuthorizeState.onCancelAuthorize() },
+                    onAuthorizeViaToken = { state.bangumiAuthorizeState.onAuthorizeViaToken(it) },
+                    onClickNavigateToBangumiDev = {
+                        state.bangumiAuthorizeState.onClickNavigateToBangumiDev(context)
+                    },
                     modifier = Modifier
                         .fillMaxSize()
                         .verticalScroll(scrollState),

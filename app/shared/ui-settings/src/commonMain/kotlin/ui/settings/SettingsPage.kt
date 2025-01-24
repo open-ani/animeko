@@ -71,7 +71,6 @@ import me.him188.ani.app.ui.adaptive.PaneScope
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
-import me.him188.ani.app.ui.foundation.layout.cardVerticalPadding
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.paneVerticalPadding
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
@@ -410,9 +409,7 @@ fun SettingsTab(
 ) {
     Column(
         modifier,
-        verticalArrangement = Arrangement.spacedBy(
-            currentWindowAdaptiveInfo1().windowSizeClass.cardVerticalPadding,
-        ),
+        verticalArrangement = Arrangement.spacedBy(SettingsScope.itemVerticalSpace),
     ) {
         val scope = remember(this) {
             object : SettingsScope(), ColumnScope by this@Column {}

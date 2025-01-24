@@ -111,6 +111,7 @@ fun WelcomePage(
                     controller = wizardController,
                     state = wizardState,
                     windowInsets = windowInsets,
+                    contactActions = contactActions,
                     wizardLayoutParams = wizardLayoutParams,
                     useEnterAnim = true,
                     modifier = Modifier.fillMaxSize(),

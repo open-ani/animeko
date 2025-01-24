@@ -36,6 +36,7 @@ fun PreviewWizardScene() {
         WizardScene(
             rememberWizardController(),
             remember { createTestWizardPresentationState(scope) },
+            contactActions = { },
         )
     }
 }
@@ -90,6 +91,8 @@ internal fun createTestWizardPresentationState(scope: CoroutineScope): WizardPre
             onClickNavigateAuthorize = { },
             onCheckCurrentToken = { },
             onCancelAuthorize = { },
+            onClickNavigateToBangumiDev = { },
+            onAuthorizeViaToken = { },
             onUseGuestMode = { },
         ),
     )
