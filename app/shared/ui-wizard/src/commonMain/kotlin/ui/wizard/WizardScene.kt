@@ -275,6 +275,7 @@ internal fun WizardScene(
                     onClickAuthorize = { state.bangumiAuthorizeState.onClickNavigateAuthorize(context) },
                     onCancelAuthorize = { state.bangumiAuthorizeState.onCancelAuthorize() },
                     onAuthorizeViaToken = { state.bangumiAuthorizeState.onAuthorizeViaToken(it) },
+                    onRefreshAuthorizeStatus = { state.bangumiAuthorizeState.onCheckCurrentToken() },
                     onClickNavigateToBangumiDev = {
                         state.bangumiAuthorizeState.onClickNavigateToBangumiDev(context)
                     },

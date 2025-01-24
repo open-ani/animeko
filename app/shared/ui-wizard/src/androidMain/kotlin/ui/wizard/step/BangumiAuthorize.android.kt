@@ -24,6 +24,7 @@ fun PreviewBangumiAuthorizeStepInitial() {
             onCancelAuthorize = { },
             onAuthorizeViaToken = { },
             onClickNavigateToBangumiDev = { },
+            onRefreshAuthorizeStatus = { },
         )
     }
 }
@@ -39,6 +40,7 @@ fun PreviewBangumiAuthorizeStepAwaitingResult() {
             onCancelAuthorize = { },
             onAuthorizeViaToken = { },
             onClickNavigateToBangumiDev = { },
+            onRefreshAuthorizeStatus = { },
         )
     }
 }
@@ -54,6 +56,7 @@ fun PreviewBangumiAuthorizeStepError() {
             onCancelAuthorize = { },
             onAuthorizeViaToken = { },
             onClickNavigateToBangumiDev = { },
+            onRefreshAuthorizeStatus = { },
         )
     }
 }
@@ -72,6 +75,7 @@ fun PreviewBangumiAuthorizeStepSuccess() {
             onCancelAuthorize = { },
             contactActions = { },
             onClickNavigateToBangumiDev = { },
+            onRefreshAuthorizeStatus = { },
         )
     }
 }

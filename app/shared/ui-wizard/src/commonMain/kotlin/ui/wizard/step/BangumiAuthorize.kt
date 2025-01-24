@@ -55,6 +55,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.text.font.FontWeight
@@ -62,6 +63,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.avatar.AvatarImage
+import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.theme.BangumiNextIconColor
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
@@ -141,6 +143,10 @@ private fun SettingsScope.DefaultAuthorize(
                     exit = fadeOut() + shrinkHorizontally(),
                 ) {
                     Row(
+                        modifier = Modifier
+                            .ifThen(authorizeState !is AuthorizeUIState.Success) {
+                                Modifier.alpha(0f)
+                            },
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -292,9 +298,7 @@ private fun TokenAuthorizeStep(
 ) {
     Column(modifier = modifier) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(4.dp),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
@@ -330,7 +334,7 @@ private fun TokenAuthorizeHelp(
             Text("可以尝试使用令牌登录，请按如下步骤操作")
             Column(
                 modifier = Modifier.padding(vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 TokenAuthorizeStep(1, { Text("前往 Bangumi 开发者测试页面") }) {
                     Button(
@@ -448,12 +452,12 @@ private fun SettingsScope.AlternativeHelp(
                         HelpOption.TOKEN_AUTH -> TokenAuthorizeHelp(
                             onAuthorizeViaToken = onAuthorizeViaToken,
                             onClickNavigateToBangumiDev = onClickNavigateToBangumiDev,
-                            modifier = Modifier.padding(8.dp),
+                            modifier = Modifier.padding(vertical = 8.dp),
                         )
 
                         HelpOption.MORE_HELP -> MoreHelp(
                             contactActions = contactActions,
-                            modifier = Modifier.padding(8.dp),
+                            modifier = Modifier.padding(vertical = 8.dp),
                         )
                     }
                 }
@@ -469,6 +473,7 @@ internal fun BangumiAuthorize(
     contactActions: @Composable () -> Unit,
     onClickAuthorize: () -> Unit,
     onCancelAuthorize: () -> Unit,
+    onRefreshAuthorizeStatus: () -> Unit,
     onClickNavigateToBangumiDev: () -> Unit,
     onAuthorizeViaToken: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -486,7 +491,10 @@ internal fun BangumiAuthorize(
         ) {
             if (it) AlternativeHelp(
                 contactActions = contactActions,
-                onClickBack = { showHelpPage = false },
+                onClickBack = {
+                    showHelpPage = false
+                    onRefreshAuthorizeStatus()
+                },
                 onClickNavigateToBangumiDev = onClickNavigateToBangumiDev,
                 onAuthorizeViaToken = { token ->
                     onAuthorizeViaToken(token)
