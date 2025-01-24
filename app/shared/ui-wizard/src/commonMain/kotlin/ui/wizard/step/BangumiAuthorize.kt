@@ -63,12 +63,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.avatar.AvatarImage
+import me.him188.ani.app.ui.foundation.icons.BangumiNext
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.theme.BangumiNextIconColor
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.TextItem
-import me.him188.ani.app.ui.settings.rendering.BangumiNext
 import me.him188.ani.app.ui.wizard.HeroIconDefaults
 import me.him188.ani.app.ui.wizard.HeroIconScaffold
 import me.him188.ani.app.ui.wizard.WizardLayoutParams

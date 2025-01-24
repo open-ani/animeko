@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.app.ui.settings.rendering
+package me.him188.ani.app.ui.foundation.icons
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.ui.graphics.Color
