@@ -29,8 +29,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -83,6 +87,7 @@ internal fun WizardScene(
 
     var notificationErrorScrolledOnce by rememberSaveable { mutableStateOf(false) }
     var authorizeErrorScrolledOnce by rememberSaveable { mutableStateOf(false) }
+    var bangumiAuthorizeSkipClicked by rememberSaveable { mutableStateOf(false) }
 
     SideEffect {
         barVisible = true
@@ -206,7 +211,24 @@ internal fun WizardScene(
                     layoutParams = wizardLayoutParams,
                 )
             }
-            step("bangumi", { Text("Bangumi 授权") }) {
+            step(
+                "bangumi",
+                { Text("Bangumi 授权") },
+                forward = {
+                    val authorizeState by state.bangumiAuthorizeState.state
+                        .collectAsStateWithLifecycle(AuthorizeUIState.Placeholder)
+                    WizardDefaults.GoForwardButton(
+                        { controller.goForward() },
+                        enabled = authorizeState is AuthorizeUIState.Success,
+                    )
+                },
+                skipButton = {
+                    WizardDefaults.SkipButton(
+                        { bangumiAuthorizeSkipClicked = true },
+                        "游客模式",
+                    )
+                },
+            ) {
                 val scrollState = rememberScrollState()
                 val monoTasker = rememberUiMonoTasker()
                 val authorizeUiState by state.bangumiAuthorizeState.state
@@ -223,14 +245,14 @@ internal fun WizardScene(
                     }
                 }
 
-                // 如果一分钟没等到结果, 那可以认为用户可能遇到了麻烦, 我们自动滚动到底部, 底部有帮助按钮
+                // 如果 45 秒没等到结果, 那可以认为用户可能遇到了麻烦, 我们自动滚动到底部, 底部有帮助按钮
                 LaunchedEffect(authorizeUiState) {
                     if (authorizeUiState is AuthorizeUIState.Placeholder) return@LaunchedEffect
                     val timerRunning = monoTasker.isRunning.value
                     if (authorizeUiState is AuthorizeUIState.AwaitingResult) {
                         if (timerRunning) return@LaunchedEffect
                         monoTasker.launch {
-                            delay(3_000)
+                            delay(45_000)
                             scrollState.animateScrollTo(scrollState.maxValue)
                         }
                     } else if (timerRunning) {
@@ -255,6 +277,35 @@ internal fun WizardScene(
                         .verticalScroll(scrollState),
                     layoutParams = wizardLayoutParams,
                 )
+
+                if (bangumiAuthorizeSkipClicked) {
+                    AlertDialog(
+                        { bangumiAuthorizeSkipClicked = false },
+                        icon = {
+                            Icon(
+                                Icons.Rounded.Person,
+                                contentDescription = null,
+                            )
+                        },
+                        title = { Text("使用游客模式") },
+                        text = {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text("确认要使用游客模式吗？")
+                                Text("游客模式可以免登录进入 Ani，但无法使用同步收藏、管理追番进度、发送评论等功能")
+                            }
+                        },
+                        confirmButton = {
+                            TextButton({ controller.goForward() }) {
+                                Text("确认")
+                            }
+                        },
+                        dismissButton = {
+                            TextButton({ bangumiAuthorizeSkipClicked = false }) {
+                                Text("取消")
+                            }
+                        },
+                    )
+                }
             }
         }
     }
