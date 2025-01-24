@@ -14,12 +14,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.window.WindowScope
+import me.him188.ani.app.platform.window.TitleBarWindowProc
 
 actual open class PlatformWindow(
     val windowHandle: Long,
     val windowScope: WindowScope? = null
 ) {
     internal var savedWindowsWindowState: SavedWindowsWindowState? = null
+
+    internal var titleBarWindowProc by mutableStateOf<TitleBarWindowProc?>(null)
 
     var isUndecoratedFullscreen by mutableStateOf(false)
 }

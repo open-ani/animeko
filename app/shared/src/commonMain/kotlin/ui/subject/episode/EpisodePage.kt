@@ -100,6 +100,7 @@ import me.him188.ani.app.ui.foundation.ImageViewer
 import me.him188.ani.app.ui.foundation.LocalImageViewerHandler
 import me.him188.ani.app.ui.foundation.LocalIsPreviewing
 import me.him188.ani.app.ui.foundation.LocalPlatform
+import me.him188.ani.app.ui.foundation.effects.DarkCaptionButtonAppearance
 import me.him188.ani.app.ui.foundation.effects.DarkStatusBarAppearance
 import me.him188.ani.app.ui.foundation.effects.OnLifecycleEvent
 import me.him188.ani.app.ui.foundation.effects.ScreenOnEffect
@@ -238,6 +239,12 @@ private fun EpisodeSceneContent(
             windowSizeClass.windowWidthSizeClass >= WindowWidthSizeClass.EXPANDED -> true // #932
             else -> false
         }
+
+        // only show dark caption button on compact ui and full screen mode(windows only).
+        if (vm.isFullscreen || !showExpandedUI) {
+            DarkCaptionButtonAppearance()
+        }
+        
         val pageState = vm.pageState.collectAsStateWithLifecycle()
 
         when (val page = pageState.value) {

@@ -41,6 +41,8 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import me.him188.ani.app.navigation.LocalNavigator
@@ -59,6 +61,7 @@ import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
+import me.him188.ani.app.ui.foundation.layout.desktopCaptionButton
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBarPadding
 import me.him188.ani.app.ui.foundation.layout.isAtLeastMedium
@@ -171,9 +174,11 @@ private fun MainSceneContent(
                 fadeIn(snap()) togetherWith fadeOut(snap())
             },
         ) { page ->
+            val isRightCaptionButton =
+                WindowInsets.desktopCaptionButton.getRight(LocalDensity.current, LocalLayoutDirection.current) > 0
             TabContent(
                 layoutType = navigationLayoutType,
-                Modifier.ifThen(navigationLayoutType != NavigationSuiteType.NavigationBar) {
+                Modifier.ifThen(navigationLayoutType != NavigationSuiteType.NavigationBar && !isRightCaptionButton) {
                     // macos 标题栏只会在 NavigationRail 的区域内, TabContent 区域无需这些 padding.
                     consumeWindowInsets(WindowInsets.desktopTitleBar())
                 },

@@ -17,11 +17,15 @@ import com.sun.jna.platform.win32.WinReg
 import me.him188.ani.app.platform.PlatformWindow
 import me.him188.ani.utils.platform.Platform
 import me.him188.ani.utils.platform.currentPlatformDesktop
+import org.jetbrains.skiko.SkiaLayer
+import java.awt.Container
 import java.awt.Cursor
 import java.awt.GraphicsEnvironment
 import java.awt.Point
 import java.awt.Toolkit
+import java.awt.Window
 import java.awt.image.BufferedImage
+import javax.swing.JComponent
 
 
 /**
@@ -49,7 +53,7 @@ interface WindowUtils {
 
     companion object : WindowUtils by (when (me.him188.ani.utils.platform.currentPlatformDesktop()) {
         is Platform.MacOS -> MacosWindowUtils()
-        is Platform.Windows -> WindowsWindowUtils()
+        is Platform.Windows -> WindowsWindowUtils.instance
         is Platform.Linux -> LinuxWindowUtils()
     })
 }
@@ -100,3 +104,23 @@ fun ComposeWindow.setTitleBar(color: Color, dark: Boolean) {
         }
     }
 }
+
+//Find Skia layer in ComposeWindow, fork from https://github.com/MayakaApps/ComposeWindowStyler/blob/02d220cd719eaebaf911bb0acf4d41d4908805c5/window-styler/src/jvmMain/kotlin/com/mayakapps/compose/windowstyler/TransparencyUtils.kt#L38
+fun Window.findSkiaLayer() = findComponent<SkiaLayer>()
+
+private fun <T : JComponent> findComponent(
+    container: Container,
+    klass: Class<T>,
+): T? {
+    val componentSequence = container.components.asSequence()
+    return componentSequence
+        .filter { klass.isInstance(it) }
+        .ifEmpty {
+            componentSequence
+                .filterIsInstance<Container>()
+                .mapNotNull { findComponent(it, klass) }
+        }.map { klass.cast(it) }
+        .firstOrNull()
+}
+
+private inline fun <reified T : JComponent> Container.findComponent() = findComponent(this, T::class.java)
