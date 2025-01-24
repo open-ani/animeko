@@ -169,6 +169,12 @@ internal fun WizardScene(
                 val notificationPermissionState by state.bitTorrentFeatureState.notificationPermissionState
                     .collectAsStateWithLifecycle(NotificationPermissionState.Placeholder)
 
+                // 用于在请求权限失败时滚动底部的错误信息位置, 
+                // 因为错误信息显示在最底部, 手机屏幕可能显示不下, 所以需要在错误发生时自动滚动到底部让用户看到信息
+                // 每次只有 lastRequestResult 从别的状态变成 false 时, 才会滚动
+                // notificationErrorScrolledOnce 用于标记是否已经滚动过一次, 避免每次进入这一 step 都会滚动
+                // collectAsStateWithLifecycle 的默认值也会触发一次 LaunchedEffect scope, 不能处理这种情况
+                // 下面的 bangumi 授权步骤也是同理
                 LaunchedEffect(notificationPermissionState.lastRequestResult) {
                     if (notificationPermissionState.placeholder) return@LaunchedEffect
                     if (notificationPermissionState.lastRequestResult == false) {

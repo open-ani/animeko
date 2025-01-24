@@ -44,12 +44,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.avatar.AvatarImage
 import me.him188.ani.app.ui.foundation.theme.BangumiNextIconColor
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.rendering.BangumiNext
+import me.him188.ani.app.ui.wizard.HeroIconDefaults
+import me.him188.ani.app.ui.wizard.HeroIconScaffold
 import me.him188.ani.app.ui.wizard.WizardLayoutParams
-import me.him188.ani.utils.platform.currentPlatform
 import me.him188.ani.utils.platform.isAndroid
 
 @Stable
@@ -102,55 +104,54 @@ internal fun BangumiAuthorize(
     layoutParams: WizardLayoutParams = WizardLayoutParams.Default
 ) {
     SettingsTab(modifier) {
-        Row(
-            modifier = Modifier
-                .padding(horizontal = layoutParams.horizontalPadding)
-                .padding(top = 16.dp, bottom = 8.dp)
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center,
-        ) {
-            Icon(
-                imageVector = Icons.Default.BangumiNext,
-                contentDescription = null,
-                modifier = Modifier.size(96.dp),
-                tint = BangumiNextIconColor,
-            )
-            AnimatedVisibility(
-                visible = authorizeState is AuthorizeUIState.Success,
-                enter = fadeIn() + expandHorizontally(),
-                exit = fadeOut() + shrinkHorizontally(),
-            ) {
-                Row(
-                    modifier = Modifier.padding(start = 24.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+        HeroIconScaffold(
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.BangumiNext,
+                    contentDescription = null,
+                    modifier = Modifier.size(HeroIconDefaults.iconSize),
+                    tint = BangumiNextIconColor,
+                )
+            },
+            content = {
+                AnimatedVisibility(
+                    visible = authorizeState is AuthorizeUIState.Success,
+                    enter = fadeIn() + expandHorizontally(),
+                    exit = fadeOut() + shrinkHorizontally(),
                 ) {
-                    AvatarImage(
-                        url = (authorizeState as? AuthorizeUIState.Success)?.avatarUrl,
-                        modifier = Modifier.size(36.dp).clip(CircleShape),
-                    )
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(
-                            "登录成功",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.primary,
+                        AvatarImage(
+                            url = (authorizeState as? AuthorizeUIState.Success)?.avatarUrl,
+                            modifier = Modifier.size(36.dp).clip(CircleShape),
                         )
-                        Text(
-                            (authorizeState as? AuthorizeUIState.Success)?.username ?: "",
-                            style = MaterialTheme.typography.bodyMedium,
-                            maxLines = 1,
-                            overflow = TextOverflow.Visible,
-                            modifier = Modifier
-                                .widthIn(max = 80.dp)
-                                .basicMarquee(),
-                        )
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            Text(
+                                "授权成功",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                            Text(
+                                (authorizeState as? AuthorizeUIState.Success)?.username ?: "",
+                                style = MaterialTheme.typography.bodyMedium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Visible,
+                                modifier = Modifier
+                                    .widthIn(max = 80.dp)
+                                    .basicMarquee(),
+                            )
+                        }
                     }
                 }
-            }
-        }
+            },
+            modifier = Modifier
+                .padding(HeroIconDefaults.contentPadding(layoutParams))
+                .fillMaxWidth(),
+        )
         Column(
             modifier = Modifier.padding(horizontal = layoutParams.horizontalPadding),
             verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
@@ -176,11 +177,12 @@ internal fun BangumiAuthorize(
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.primary,
                 )
+                val currentPlatform = LocalPlatform.current
                 remember {
                     buildList {
                         add("请使用常见邮箱注册，例如 QQ, 网易, Outlook")
                         add("如果提示激活失败，请尝试删除激活码的最后一个字再手动输入")
-                        if (currentPlatform().isAndroid()) {
+                        if (currentPlatform.isAndroid()) {
                             add("如果浏览器提示网站被屏蔽或登录成功后无法跳转，请尝试在系统设置更换默认浏览器")
                         }
                     }

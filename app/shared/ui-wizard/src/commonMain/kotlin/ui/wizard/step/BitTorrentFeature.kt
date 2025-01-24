@@ -16,7 +16,6 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -32,13 +31,13 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import me.him188.ani.app.ui.foundation.text.ProvideContentColor
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.components.TextItem
 import me.him188.ani.app.ui.settings.rendering.P2p
+import me.him188.ani.app.ui.wizard.HeroIconDefaults
+import me.him188.ani.app.ui.wizard.HeroIconScaffold
 import me.him188.ani.app.ui.wizard.WizardLayoutParams
 
 @Stable
@@ -66,7 +65,7 @@ class NotificationPermissionState(
 internal fun BitTorrentFeature(
     bitTorrentEnabled: Boolean,
     grantedNotificationPermission: Boolean,
-    lastRequestNotificationPermissionResult: Boolean? = null,
+    lastRequestNotificationPermissionResult: Boolean?,
     onBitTorrentEnableChanged: (Boolean) -> Unit,
     onRequestNotificationPermission: () -> Unit,
     onOpenSystemNotificationSettings: () -> Unit,
@@ -75,22 +74,19 @@ internal fun BitTorrentFeature(
     layoutParams: WizardLayoutParams = WizardLayoutParams.Default
 ) {
     SettingsTab(modifier = modifier) {
-        Row(
-            modifier = Modifier
-                .padding(horizontal = layoutParams.horizontalPadding)
-                .padding(top = 16.dp, bottom = 8.dp)
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center,
-        ) {
-            ProvideContentColor(MaterialTheme.colorScheme.primary) {
+        HeroIconScaffold(
+            icon = {
                 Icon(
                     imageVector = Icons.Default.P2p,
                     contentDescription = null,
-                    modifier = Modifier.size(96.dp),
+                    modifier = Modifier.size(HeroIconDefaults.iconSize),
+                    tint = HeroIconDefaults.iconColor,
                 )
-            }
-        }
+            },
+            modifier = Modifier
+                .padding(HeroIconDefaults.contentPadding(layoutParams))
+                .fillMaxWidth(),
+        )
         Column {
             Column(
                 modifier = Modifier

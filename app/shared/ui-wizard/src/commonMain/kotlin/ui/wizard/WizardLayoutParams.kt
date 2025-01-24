@@ -22,7 +22,8 @@ import me.him188.ani.app.ui.foundation.layout.paneVerticalPadding
 @Immutable
 data class WizardLayoutParams(
     val horizontalPadding: Dp,
-    val verticalPadding: Dp
+    val verticalPadding: Dp,
+    val descHorizontalPadding: Dp = 4.dp,
 ) {
     companion object {
         @Composable
