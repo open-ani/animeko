@@ -24,7 +24,9 @@ import io.ktor.http.encodeURLParameter
 import kotlinx.collections.immutable.mutate
 import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -42,11 +44,13 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transformLatest
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.fold
 import me.him188.ani.app.data.models.preference.ProxyMode
 import me.him188.ani.app.data.models.preference.ProxySettings
 import me.him188.ani.app.data.models.preference.ThemeSettings
+import me.him188.ani.app.data.repository.user.GuestSession
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.media.fetch.toClientProxyConfig
 import me.him188.ani.app.domain.session.AniAuthClient
@@ -229,6 +233,7 @@ class WelcomeViewModel : AbstractSettingsViewModel(), KoinComponent {
         onClickNavigateAuthorize = { startAuthorize(it) },
         onCancelAuthorize = { cancelAuthorize() },
         onCheckCurrentToken = { checkCurrentAuthorizeToken() },
+        onUseGuestMode = { setGuestSession() },
     )
 
     var welcomeNavController: NavController? by mutableStateOf(null)
@@ -368,6 +373,13 @@ class WelcomeViewModel : AbstractSettingsViewModel(), KoinComponent {
                 currentRequestAuthorizeId.value = "-1"
             }
         }
+    }
+
+    private fun setGuestSession() {
+        // 因为设置 GuestSession 之后会马上进入主界面, backgroundScope 会被取消
+        // 所以这里使用 GlobalScope 确保这个任务能完成, 
+        @OptIn(DelicateCoroutinesApi::class)
+        GlobalScope.launch { sessionManager.setSession(GuestSession) }
     }
 
     private suspend fun FlowCollector<AuthorizeUIState>.collectFromSessionStatus(
@@ -532,4 +544,5 @@ class BangumiAuthorizeState(
     val onCheckCurrentToken: () -> Unit,
     val onClickNavigateAuthorize: (ContextMP) -> Unit,
     val onCancelAuthorize: () -> Unit,
+    val onUseGuestMode: () -> Unit,
 )

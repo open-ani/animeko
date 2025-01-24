@@ -291,11 +291,16 @@ internal fun WizardScene(
                         text = {
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Text("确认要使用游客模式吗？")
-                                Text("游客模式可以免登录进入 Ani，但无法使用同步收藏、管理追番进度、发送评论等功能")
+                                Text("使用游客模式可以免登录进入 Ani，但无法使用同步收藏、管理追番进度、发送评论等功能")
                             }
                         },
                         confirmButton = {
-                            TextButton({ controller.goForward() }) {
+                            TextButton(
+                                {
+                                    state.bangumiAuthorizeState.onUseGuestMode()
+                                    controller.goForward()
+                                },
+                            ) {
                                 Text("确认")
                             }
                         },

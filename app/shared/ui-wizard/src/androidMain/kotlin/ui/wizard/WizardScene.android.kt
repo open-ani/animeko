@@ -90,6 +90,7 @@ internal fun createTestWizardPresentationState(scope: CoroutineScope): WizardPre
             onClickNavigateAuthorize = { },
             onCheckCurrentToken = { },
             onCancelAuthorize = { },
+            onUseGuestMode = { },
         ),
     )
 }
