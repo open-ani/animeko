@@ -99,7 +99,11 @@ internal fun SelectTheme(
             useThinHeader = true,
         ) {
             TextItem(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        onUpdate(config.copy(useDynamicTheme = !config.useDynamicTheme))
+                    },
                 title = { Text("动态色彩") },
                 description = { Text("使用桌面壁纸动态生成主题颜色") },
                 action = {
