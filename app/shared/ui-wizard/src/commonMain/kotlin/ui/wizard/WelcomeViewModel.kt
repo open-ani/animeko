@@ -42,7 +42,6 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -174,10 +173,9 @@ class WelcomeViewModel : AbstractSettingsViewModel(), KoinComponent {
             lastRequestResult = lastResult,
         )
     }
-        .stateIn(
-            backgroundScope,
-            SharingStarted.WhileSubscribed(),
+        .stateInBackground(
             NotificationPermissionState.Placeholder,
+            SharingStarted.WhileSubscribed(),
         )
 
     private val bitTorrentFeatureState = BitTorrentFeatureState(
