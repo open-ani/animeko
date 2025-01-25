@@ -70,7 +70,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.RectangleShape
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalUriHandler
@@ -78,8 +77,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.compose.collectAsLazyPagingItemsWithLifecycle
+import coil3.Image
 import coil3.compose.AsyncImagePainter
-import coil3.toBitmap
 import com.kmpalette.color
 import com.kmpalette.rememberPaletteState
 import com.materialkolor.PaletteStyle
@@ -318,7 +317,7 @@ private fun SubjectDetailsPage(
             navigationIcon = navigationIcon,
             onImageSuccess = { success ->
                 if (themeSettings.dynamicSubjectPageTheme) {
-                    bitmap = success.result.image.toBitmap().asImageBitmap()
+                    bitmap = success.result.image.toComposeImageBitmap()
                 }
             },
         ) { paddingValues ->
@@ -831,3 +830,6 @@ private fun renderSubjectDetailsTab(tab: SubjectDetailsTab): String {
         SubjectDetailsTab.DISCUSSIONS -> "讨论"
     }
 }
+
+expect fun Image.toComposeImageBitmap(): ImageBitmap
+// use Image.asComposeImageBitmap here may cause failed builds on Android
