@@ -58,8 +58,7 @@ class AniDanmakuProvider(
     override val id: String get() = ID
 
     override suspend fun fetch(request: DanmakuSearchRequest): List<DanmakuFetchResult> {
-        val resp = client.use { get("${baseUrl}/v1/danmaku/${request.episodeId}") }
-        val list = resp.body<DanmakuGetResponse>().danmakuList
+        val list = client.use { get("$baseUrl/v1/danmaku/${request.episodeId}").body<DanmakuGetResponse>().danmakuList }
         logger.info { "$ID Fetched danmaku list: ${list.size}" }
         return listOf(
             DanmakuFetchResult(
