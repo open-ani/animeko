@@ -30,9 +30,8 @@ import coil3.compose.LocalPlatformContext
 import io.ktor.client.HttpClient
 import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.data.repository.user.SettingsRepository
+import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.settings.ProxyProvider
-import me.him188.ani.app.domain.settings.collectProxyTo
-import me.him188.ani.app.platform.getAniUserAgent
 import me.him188.ani.app.tools.LocalTimeFormatter
 import me.him188.ani.app.tools.TimeFormatter
 import me.him188.ani.app.ui.foundation.AbstractViewModel
@@ -40,12 +39,9 @@ import me.him188.ani.app.ui.foundation.LocalImageLoader
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.createDefaultImageLoader
 import me.him188.ani.app.ui.foundation.ifThen
-import me.him188.ani.app.ui.foundation.launchInBackground
 import me.him188.ani.app.ui.foundation.theme.AniTheme
 import me.him188.ani.app.ui.foundation.theme.LocalThemeSettings
-import me.him188.ani.datasources.api.source.asAutoCloseable
-import me.him188.ani.utils.ktor.createDefaultHttpClient
-import me.him188.ani.utils.ktor.userAgent
+import me.him188.ani.utils.ktor.UnsafeWrapperHttpClientApi
 import me.him188.ani.utils.platform.isMobile
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -54,18 +50,12 @@ import org.koin.core.component.inject
 class AniAppViewModel : AbstractViewModel(), KoinComponent {
     private val settings: SettingsRepository by inject()
     private val proxyProvider: ProxyProvider by inject()
+    private val httpClientProvider: HttpClientProvider by inject()
     val themeSettings: ThemeSettings? by settings.themeSettings.flow.produceState(null)
-    val imageLoaderClient by lazy {
-        createDefaultHttpClient {
-            userAgent(getAniUserAgent())
-            followRedirects = true
-        }.apply {
-            launchInBackground {
-                proxyProvider.collectProxyTo(this@apply)
-            }
-            addCloseable(this.asAutoCloseable())
-        }
-    }
+
+    @OptIn(UnsafeWrapperHttpClientApi::class)
+    val imageLoaderClient
+        get() = httpClientProvider.get().borrowForever() // This client is needed throughout the app's lifecycle
 }
 
 @Composable
@@ -103,13 +93,13 @@ fun AniApp(
             Box(
                 modifier = modifier.ifThen(LocalPlatform.current.isMobile()) {
                     focusable(false).clickable(
-                                remember { MutableInteractionSource() },
-                                null,
-                            ) {
-                                keyboard?.hide()
-                                focusManager.clearFocus()
-                            }
-                    },
+                        remember { MutableInteractionSource() },
+                        null,
+                    ) {
+                        keyboard?.hide()
+                        focusManager.clearFocus()
+                    }
+                },
             ) {
                 Column {
                     content()

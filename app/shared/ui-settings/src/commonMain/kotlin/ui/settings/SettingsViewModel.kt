@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -11,7 +11,6 @@ package me.him188.ani.app.ui.settings
 
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.get
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
@@ -33,6 +32,7 @@ import me.him188.ani.app.data.repository.media.MediaSourceInstanceRepository
 import me.him188.ani.app.data.repository.media.MediaSourceSubscriptionRepository
 import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
+import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceCodecManager
 import me.him188.ani.app.domain.mediasource.codec.serializeSubscriptionToString
@@ -55,9 +55,7 @@ import me.him188.ani.app.ui.settings.tabs.media.source.MediaSourceLoader
 import me.him188.ani.app.ui.settings.tabs.media.source.MediaSourceSubscriptionGroupState
 import me.him188.ani.app.ui.settings.tabs.network.SystemProxyPresentation
 import me.him188.ani.datasources.api.source.ConnectionStatus
-import me.him188.ani.datasources.api.source.asAutoCloseable
 import me.him188.ani.datasources.bangumi.BangumiClient
-import me.him188.ani.utils.ktor.createDefaultHttpClient
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
@@ -73,6 +71,7 @@ class SettingsViewModel : AbstractSettingsViewModel(), KoinComponent {
     private val mediaSourceSubscriptionUpdater: MediaSourceSubscriptionUpdater by inject()
     private val mediaSourceCodecManager: MediaSourceCodecManager by inject()
     private val proxyProvider: ProxyProvider by inject()
+    private val clientProvider: HttpClientProvider by inject()
 
     val softwareUpdateGroupState: SoftwareUpdateGroupState = SoftwareUpdateGroupState(
         updateSettings = settingsRepository.updateSettings.stateInBackground(UpdateSettings.Default.copy(_placeholder = -1)),
@@ -84,7 +83,7 @@ class SettingsViewModel : AbstractSettingsViewModel(), KoinComponent {
 
     val themeSettings: SettingsState<ThemeSettings> =
         settingsRepository.themeSettings.stateInBackground(ThemeSettings.Default.copy(_placeholder = -1))
-    
+
     val videoScaffoldConfig: SettingsState<VideoScaffoldConfig> =
         settingsRepository.videoScaffoldConfig.stateInBackground(VideoScaffoldConfig.Default.copy(_placeholder = -1))
 
@@ -118,15 +117,6 @@ class SettingsViewModel : AbstractSettingsViewModel(), KoinComponent {
         debugSettingsState.value.enabled
     }
 
-
-    private val httpClient = createDefaultHttpClient {
-        install(HttpTimeout) {
-            requestTimeoutMillis = 30_000
-            connectTimeoutMillis = 30_000
-        }
-    }.also {
-        addCloseable(it.asAutoCloseable())
-    }
 
     val proxySettingsState =
         settingsRepository.proxySettings.stateInBackground(ProxySettings.Default.copy(_placeHolder = -1))
@@ -169,7 +159,9 @@ class SettingsViewModel : AbstractSettingsViewModel(), KoinComponent {
     val danmakuServerTesters = DefaultConnectionTesterRunner(
         AniBangumiSeverBaseUrls.list.map {
             ConnectionTester(id = it) {
-                httpClient.get("$it/status")
+                clientProvider.get().use {
+                    get("$it/status")
+                }
                 ConnectionTestResult.SUCCESS
             }
         },

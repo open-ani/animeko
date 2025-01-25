@@ -1,7 +1,17 @@
+/*
+ * Copyright (C) 2024-2025 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.danmaku.dandanplay
 
-import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.plugins.timeout
+import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.accept
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
@@ -18,18 +28,24 @@ import me.him188.ani.danmaku.dandanplay.data.DandanplayGetBangumiResponse
 import me.him188.ani.danmaku.dandanplay.data.DandanplayMatchVideoResponse
 import me.him188.ani.danmaku.dandanplay.data.DandanplaySearchEpisodeResponse
 import me.him188.ani.danmaku.dandanplay.data.DandanplaySeasonSearchResponse
+import me.him188.ani.utils.ktor.WrapperHttpClient
 import kotlin.time.Duration
 
 internal class DandanplayClient(
-    private val client: HttpClient,
+    private val client: WrapperHttpClient,
 ) {
+
+
     suspend fun getSeasonAnimeList(
         year: Int,
         month: Int,
     ): DandanplaySeasonSearchResponse {
         // https://api.dandanplay.net/api/v2/bangumi/season/anime/2024/04
-        val response = client.get("https://api.dandanplay.net/api/v2/bangumi/season/anime/$year/$month") {
-            accept(ContentType.Application.Json)
+        val response = client.use {
+            get("https://api.dandanplay.net/api/v2/bangumi/season/anime/$year/$month") {
+                configureTimeout()
+                accept(ContentType.Application.Json)
+            }
         }
 
         return response.body<DandanplaySeasonSearchResponse>()
@@ -38,9 +54,12 @@ internal class DandanplayClient(
     suspend fun searchSubject(
         subjectName: String,
     ): DandanplaySearchEpisodeResponse {
-        val response = client.get("https://api.dandanplay.net/api/v2/search/subject") {
-            accept(ContentType.Application.Json)
-            parameter("keyword", subjectName)
+        val response = client.use {
+            get("https://api.dandanplay.net/api/v2/search/subject") {
+                configureTimeout()
+                accept(ContentType.Application.Json)
+                parameter("keyword", subjectName)
+            }
         }
 
         if (response.status == HttpStatusCode.NotFound) {
@@ -54,10 +73,13 @@ internal class DandanplayClient(
         subjectName: String,
         episodeName: String?,
     ): DandanplaySearchEpisodeResponse {
-        val response = client.get("https://api.dandanplay.net/api/v2/search/episodes") {
-            accept(ContentType.Application.Json)
-            parameter("anime", subjectName)
-            parameter("episode", episodeName)
+        val response = client.use {
+            get("https://api.dandanplay.net/api/v2/search/episodes") {
+                configureTimeout()
+                accept(ContentType.Application.Json)
+                parameter("anime", subjectName)
+                parameter("episode", episodeName)
+            }
         }
 
         return response.body<DandanplaySearchEpisodeResponse>()
@@ -66,8 +88,11 @@ internal class DandanplayClient(
     suspend fun getBangumiEpisodes(
         bangumiId: Int, // 注意, 这是 dandanplay 的 id, 不是 Bangumi.tv 的 id
     ): DandanplayGetBangumiResponse {
-        val response = client.get("https://api.dandanplay.net/api/v2/bangumi/$bangumiId") {
-            accept(ContentType.Application.Json)
+        val response = client.use {
+            get("https://api.dandanplay.net/api/v2/bangumi/$bangumiId") {
+                configureTimeout()
+                accept(ContentType.Application.Json)
+            }
         }
 
         return response.body<DandanplayGetBangumiResponse>()
@@ -79,18 +104,21 @@ internal class DandanplayClient(
         fileSize: Long?,
         videoDuration: Duration
     ): DandanplayMatchVideoResponse {
-        val response = client.post("https://api.dandanplay.net/api/v2/match") {
-            contentType(ContentType.Application.Json)
-            accept(ContentType.Application.Json)
-            setBody(
-                buildJsonObject {
-                    put("fileName", filename)
-                    put("fileHash", fileHash)
-                    put("fileSize", fileSize)
-                    put("videoDuration", videoDuration.inWholeSeconds)
-                    put("matchMode", "hashAndFileName")
-                },
-            )
+        val response = client.use {
+            post("https://api.dandanplay.net/api/v2/match") {
+                configureTimeout()
+                contentType(ContentType.Application.Json)
+                accept(ContentType.Application.Json)
+                setBody(
+                    buildJsonObject {
+                        put("fileName", filename)
+                        put("fileHash", fileHash)
+                        put("fileSize", fileSize)
+                        put("videoDuration", videoDuration.inWholeSeconds)
+                        put("matchMode", "hashAndFileName")
+                    },
+                )
+            }
         }
 
         return response.body<DandanplayMatchVideoResponse>()
@@ -106,11 +134,22 @@ internal class DandanplayClient(
 //            null -> 0
 //        }
         val chConvert = 0
-        val response =
-            client.get("https://api.dandanplay.net/api/v2/comment/${episodeId}?chConvert=$chConvert&withRelated=true") {
+        val response = client.use {
+            get("https://api.dandanplay.net/api/v2/comment/${episodeId}?chConvert=$chConvert&withRelated=true") {
+                configureTimeout()
                 accept(ContentType.Application.Json)
             }.body<DandanplayDanmakuListResponse>()
+        }
         return response.comments
+    }
+
+
+    private fun HttpRequestBuilder.configureTimeout() {
+        timeout {
+            requestTimeoutMillis = 50_000 // 弹弹服务器请求比较慢
+            connectTimeoutMillis = 10_000 // 弹弹服务器请求比较慢
+            socketTimeoutMillis = 10_000 // 弹弹服务器请求比较慢
+        }
     }
 
     enum class ChineseVariant {

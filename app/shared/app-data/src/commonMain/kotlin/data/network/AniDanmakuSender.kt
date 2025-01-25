@@ -178,14 +178,6 @@ class AniDanmakuSenderImpl(
         }.first()
     }
 
-    init {
-        launchInBackground {
-            kotlin.runCatching { login() }.onFailure {
-                logger.error(it) { "Failed to login to danmaku sever (on startup). Will try later when sending danmaku." }
-            }
-        }
-    }
-
     override val selfId = session.map { it?.selfInfo?.id }
 
     private val sendLock = Mutex()
@@ -203,6 +195,14 @@ class AniDanmakuSenderImpl(
             text = info.text,
             color = info.color,
         )
+    }
+
+    init {
+        launchInBackground {
+            kotlin.runCatching { login() }.onFailure {
+                logger.error(it) { "Failed to login to danmaku sever (on startup). Will try later when sending danmaku." }
+            }
+        }
     }
 
     override fun close() {
