@@ -210,15 +210,6 @@ private fun SubjectDetailsPage(
     val browserNavigator = LocalUriHandler.current
 
     var showSelectEpisode by rememberSaveable { mutableStateOf(false) }
-    if (showSelectEpisode) {
-        EpisodeListDialog(
-            state.episodeListState,
-            title = {
-                Text(state.info?.displayName ?: "")
-            },
-            onDismissRequest = { showSelectEpisode = false },
-        )
-    }
     val connectedScrollState = rememberConnectedScrollState()
 
     // image viewer
@@ -262,6 +253,16 @@ private fun SubjectDetailsPage(
     MaterialTheme(
         colorScheme = MaterialTheme.colorScheme.animate(colorScheme ?: MaterialTheme.colorScheme),
     ) {
+        if (showSelectEpisode) {
+            EpisodeListDialog(
+                state.episodeListState,
+                title = {
+                    Text(state.info?.displayName ?: "")
+                },
+                onDismissRequest = { showSelectEpisode = false },
+            )
+        }
+
         SubjectDetailsPageLayout(
             subjectId = state.subjectId,
             info = state.info,
