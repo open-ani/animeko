@@ -316,8 +316,9 @@ private fun SubjectDetailsPage(
             windowInsets = windowInsets,
             navigationIcon = navigationIcon,
             onImageSuccess = { success ->
-                bitmap = success.result.image.toBitmap()
-                    .asImageBitmap()
+                if (themeSettings.dynamicSubjectPageTheme) {
+                    bitmap = success.result.image.toBitmap().asImageBitmap()
+                }
             },
         ) { paddingValues ->
             Box {

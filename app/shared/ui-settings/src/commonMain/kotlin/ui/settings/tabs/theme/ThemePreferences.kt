@@ -38,9 +38,10 @@ import me.him188.ani.utils.platform.isAndroid
 import me.him188.ani.utils.platform.isDesktop
 
 private val colorList =
-    ((4..10) + (1..3)).map { it * 35.0 }.map { Color(Hct.from(it, 40.0, 40.0).toInt()) }.toMutableList().apply {
-        add(5, DEFAULT_SEED_COLOR)
-    }
+    ((4..10) + (1..3)).map { it * 35.0 }.map { Color(Hct.from(it, 40.0, 40.0).toInt()) }
+        .toMutableList().apply {
+            add(5, DEFAULT_SEED_COLOR)
+        }
 
 @Composable
 fun SettingsScope.ThemeGroup(
@@ -137,6 +138,15 @@ fun SettingsScope.ThemeGroup(
             },
             title = { Text("高对比度深色主题") },
             description = { Text("深色模式使用纯黑背景，在 AMOLED 屏幕使用纯黑背景可以省电") },
+        )
+
+        SwitchItem(
+            checked = themeSettings.dynamicSubjectPageTheme,
+            onCheckedChange = { checked ->
+                state.update(themeSettings.copy(dynamicSubjectPageTheme = checked))
+            },
+            title = { Text("条目详情页使用动态主题") },
+            description = { Text("根据条目的图片，使用自适应颜色") },
         )
     }
 

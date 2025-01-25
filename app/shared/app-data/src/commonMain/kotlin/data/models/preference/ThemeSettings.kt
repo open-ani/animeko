@@ -29,6 +29,7 @@ data class ThemeSettings(
     val useDynamicTheme: Boolean = false, // only supported on Android with Build.VERSION.SDK_INT >= 31
     // TODO: Default "true" if supported (on Android, Build.VERSION.SDK_INT >= 31)
     val useBlackBackground: Boolean = false,
+    val dynamicSubjectPageTheme: Boolean = true,
     val seedColorValue: ULong = DEFAULT_SEED_COLOR.value,
     @Suppress("PropertyName") @Transient val _placeholder: Int = 0,
 ) {
