@@ -193,7 +193,13 @@ class EpisodeViewModel(
                     if (currentIndex == -1) {
                         null
                     } else {
-                        list.getOrNull(currentIndex + 1)?.episodeId
+                        val nextEpisode = list.getOrNull(currentIndex + 1) ?: return@Factory null
+
+                        if (!nextEpisode.episodeInfo.isKnownBroadcast) {
+                            null
+                        } else {
+                            nextEpisode.episodeId
+                        }
                     }
                 },
             ),
@@ -225,17 +231,21 @@ class EpisodeViewModel(
             .distinctUntilChanged()
 
     @UnsafeEpisodeSessionApi
-    private val subjectInfoFlow = subjectCollectionFlow.map { it.subjectInfo }.distinctUntilChanged()
+    private val subjectInfoFlow =
+        subjectCollectionFlow.map { it.subjectInfo }.distinctUntilChanged()
 
     @UnsafeEpisodeSessionApi
-    private val episodeCollectionFlow = subjectEpisodeInfoBundleFlow.map { it?.episodeCollectionInfo }
-        .distinctUntilChanged()
+    private val episodeCollectionFlow =
+        subjectEpisodeInfoBundleFlow.map { it?.episodeCollectionInfo }
+            .distinctUntilChanged()
 
-    private val episodeCollectionsFlow = episodeCollectionRepository.subjectEpisodeCollectionInfosFlow(subjectId)
-        .shareInBackground()
+    private val episodeCollectionsFlow =
+        episodeCollectionRepository.subjectEpisodeCollectionInfosFlow(subjectId)
+            .shareInBackground()
 
     @UnsafeEpisodeSessionApi
-    private val episodeInfoFlow = episodeCollectionFlow.map { it?.episodeInfo }.distinctUntilChanged()
+    private val episodeInfoFlow =
+        episodeCollectionFlow.map { it?.episodeInfo }.distinctUntilChanged()
     // endregion
 
 
@@ -294,11 +304,19 @@ class EpisodeViewModel(
             airingLabelState = AiringLabelState(
                 subjectCollectionFlow.map { it.airingInfo }.produceState(null),
                 subjectCollectionFlow.map {
-                    SubjectProgressInfo.compute(it.subjectInfo, it.episodes, getCurrentDate(), it.recurrence)
+                    SubjectProgressInfo.compute(
+                        it.subjectInfo,
+                        it.episodes,
+                        getCurrentDate(),
+                        it.recurrence
+                    )
                 }
                     .produceState(null),
             ),
-            subjectDetailsStateLoader = SubjectDetailsStateLoader(subjectDetailsStateFactory, backgroundScope),
+            subjectDetailsStateLoader = SubjectDetailsStateLoader(
+                subjectDetailsStateFactory,
+                backgroundScope
+            ),
         )
     }
 
@@ -363,10 +381,16 @@ class EpisodeViewModel(
                 .map { it.collectionType },
             hasAnyUnwatched = {
                 val collections =
-                    episodeCollectionsFlow.firstOrNull() ?: return@EditableSubjectCollectionTypeState true
+                    episodeCollectionsFlow.firstOrNull()
+                        ?: return@EditableSubjectCollectionTypeState true
                 collections.any { !it.collectionType.isDoneOrDropped() }
             },
-            onSetSelfCollectionType = { subjectCollectionRepository.setSubjectCollectionTypeOrDelete(subjectId, it) },
+            onSetSelfCollectionType = {
+                subjectCollectionRepository.setSubjectCollectionTypeOrDelete(
+                    subjectId,
+                    it
+                )
+            },
             onSetAllEpisodesWatched = {
                 episodeCollectionRepository.setAllEpisodesWatched(subjectId)
             },
