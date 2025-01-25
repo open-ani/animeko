@@ -119,6 +119,7 @@ fun FrameWindowScope.WindowsWindowFrame(
         }
         Box(modifier = Modifier.fillMaxSize()) {
             val isFullScreen = isSystemInFullscreen()
+            //Control the visibility of the title bar. initial value is !isFullScreen.
             val isTitleBarVisible = remember(isFullScreen) { mutableStateOf(!isFullScreen) }
             val captionButtonThemeController = remember(platformWindow) { TitleBarThemeController() }
             CompositionLocalProvider(

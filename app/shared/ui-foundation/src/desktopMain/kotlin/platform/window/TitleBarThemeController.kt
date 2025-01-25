@@ -20,5 +20,6 @@ import org.jetbrains.skiko.currentSystemTheme
 val LocalTitleBarThemeController = compositionLocalOf<TitleBarThemeController?> { null }
 
 class TitleBarThemeController {
+    // We use state, because it can trigger recomposition that make CaptionButton color change.
     var isDark: Boolean by mutableStateOf(currentSystemTheme == SystemTheme.DARK)
 }
