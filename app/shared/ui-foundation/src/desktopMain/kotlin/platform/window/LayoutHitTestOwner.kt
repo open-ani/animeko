@@ -33,7 +33,6 @@ sealed interface LayoutHitTestOwner {
 fun rememberLayoutHitTestOwner(): LayoutHitTestOwner? {
     val scene = LocalComposeScene.current ?: return null
     return remember(scene) {
-        println(scene::class.qualifiedName)
         when (scene::class.qualifiedName) {
             "androidx.compose.ui.scene.CanvasLayersComposeSceneImpl" -> {
                 CanvasLayersLayoutHitTestOwner(scene)
