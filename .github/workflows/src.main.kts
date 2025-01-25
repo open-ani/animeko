@@ -47,6 +47,8 @@ import Secrets.SIGNING_RELEASE_KEYALIAS
 import Secrets.SIGNING_RELEASE_KEYPASSWORD
 import Secrets.SIGNING_RELEASE_STOREFILE
 import Secrets.SIGNING_RELEASE_STOREPASSWORD
+import Secrets.DANDANPLAY_APP_ID
+import Secrets.DANDANPLAY_APP_SECRET
 import io.github.typesafegithub.workflows.actions.actions.Checkout
 import io.github.typesafegithub.workflows.actions.actions.DownloadArtifact
 import io.github.typesafegithub.workflows.actions.actions.GithubScript
@@ -212,6 +214,8 @@ class MatrixInstance(
 
         add(quote("-Dorg.gradle.jvmargs=-Xmx${gradleHeap}"))
         add(quote("-Dkotlin.daemon.jvm.options=-Xmx${kotlinCompilerHeap}"))
+        add(quote("-Pani.dandanplay.app.id=${expr { secrets.DANDANPLAY_APP_ID }}"))
+        add(quote("-Pani.dandanplay.app.secret=${expr { secrets.DANDANPLAY_APP_SECRET }}"))
 
         if (gradleParallel) {
             add(quote("--parallel"))
@@ -1179,13 +1183,11 @@ class WithMatrix(
 
     fun JobBuilder<*>.gradleCheck() {
         if (matrix.runTests) {
-            uses(
+            runGradle(
                 name = "Check",
-                action = Retry_Untyped(
-                    maxAttempts_Untyped = "2",
-                    timeoutMinutes_Untyped = "60",
-                    command_Untyped = "./gradlew check " + matrix.gradleArgs,
-                ),
+                tasks = ["check"],
+                maxAttempts = 2,
+                timeoutMinutes = 60,
             )
         }
     }
@@ -1427,8 +1429,9 @@ object Secrets {
     val SecretsContext.AWS_BASEURL by SecretsContext.propertyToExprPath
     val SecretsContext.AWS_REGION by SecretsContext.propertyToExprPath
     val SecretsContext.AWS_BUCKET by SecretsContext.propertyToExprPath
+    val SecretsContext.DANDANPLAY_APP_ID by SecretsContext.propertyToExprPath
+    val SecretsContext.DANDANPLAY_APP_SECRET by SecretsContext.propertyToExprPath
 }
-
 
 /// EXTENSIONS
 
