@@ -16,9 +16,10 @@ import me.him188.ani.app.data.models.runApiRequest
 import me.him188.ani.client.apis.BangumiOAuthAniApi
 import me.him188.ani.client.models.AniBangumiUserToken
 import me.him188.ani.client.models.AniRefreshBangumiTokenRequest
+import me.him188.ani.utils.ktor.ApiInvoker
 
 class AniAuthClient(
-    private val oauthApiInvoker: AniApiInvoker<BangumiOAuthAniApi>,
+    private val oauthApiInvoker: ApiInvoker<BangumiOAuthAniApi>,
 ) {
     suspend fun getResult(requestId: String) = runApiRequest {
         try {

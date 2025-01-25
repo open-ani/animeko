@@ -19,15 +19,15 @@ import me.him188.ani.app.data.models.trending.TrendingSubjectInfo
 import me.him188.ani.app.data.models.trending.TrendsInfo
 import me.him188.ani.app.data.repository.Repository
 import me.him188.ani.app.data.repository.runWrappingExceptionAsLoadResult
-import me.him188.ani.app.domain.session.AniApiInvoker
 import me.him188.ani.app.tools.paging.SinglePagePagingSource
 import me.him188.ani.client.apis.TrendsAniApi
 import me.him188.ani.client.models.AniTrends
 import me.him188.ani.utils.coroutines.IO_
+import me.him188.ani.utils.ktor.ApiInvoker
 import kotlin.coroutines.CoroutineContext
 
 class TrendsRepository(
-    private val trendsApi: AniApiInvoker<TrendsAniApi>,
+    private val trendsApi: ApiInvoker<TrendsAniApi>,
     private val ioDispatcher: CoroutineContext = Dispatchers.IO_
 ) : Repository() {
     suspend fun getTrendsInfo(): TrendsInfo {

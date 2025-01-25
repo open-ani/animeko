@@ -25,7 +25,6 @@ import me.him188.ani.app.data.models.schedule.AnimeSeasonId
 import me.him188.ani.app.data.models.schedule.OnAirAnimeInfo
 import me.him188.ani.app.data.models.subject.SubjectRecurrence
 import me.him188.ani.app.data.repository.RepositoryException
-import me.him188.ani.app.domain.session.AniApiInvoker
 import me.him188.ani.client.apis.ScheduleAniApi
 import me.him188.ani.client.models.AniAnimeRecurrence
 import me.him188.ani.client.models.AniAnimeSeason
@@ -33,11 +32,12 @@ import me.him188.ani.client.models.AniAnimeSeasonId
 import me.him188.ani.client.models.AniLatestAnimeSchedules
 import me.him188.ani.client.models.AniOnAirAnimeInfo
 import me.him188.ani.utils.coroutines.IO_
+import me.him188.ani.utils.ktor.ApiInvoker
 import kotlin.coroutines.CoroutineContext
 import kotlin.time.Duration.Companion.milliseconds
 
 class AnimeScheduleService(
-    private val scheduleApi: AniApiInvoker<ScheduleAniApi>,
+    private val scheduleApi: ApiInvoker<ScheduleAniApi>,
     private val ioDispatcher: CoroutineContext = Dispatchers.IO_
 ) {
     suspend fun getSeasonIds(): List<AnimeSeasonId> {

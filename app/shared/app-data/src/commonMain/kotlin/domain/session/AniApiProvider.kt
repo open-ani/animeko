@@ -9,39 +9,23 @@
 
 package me.him188.ani.app.domain.session
 
-import io.ktor.client.HttpClient
 import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.client.apis.BangumiOAuthAniApi
 import me.him188.ani.client.apis.ScheduleAniApi
 import me.him188.ani.client.apis.SubjectRelationsAniApi
 import me.him188.ani.client.apis.TrendsAniApi
+import me.him188.ani.utils.ktor.ApiInvoker
 import me.him188.ani.utils.ktor.WrapperHttpClient
 
 class AniApiProvider(
     @PublishedApi
     internal val client: WrapperHttpClient,
 ) {
-    val trendsApi = AniApiInvoker(client) { TrendsAniApi(baseurl, it) }
-    val scheduleApi = AniApiInvoker(client) { ScheduleAniApi(baseurl, it) }
-    val oauthApi = AniApiInvoker(client) { BangumiOAuthAniApi(baseurl, it) }
-    val subjectRelationsApi = AniApiInvoker(client) { SubjectRelationsAniApi(baseurl, it) }
+    val trendsApi = ApiInvoker(client) { TrendsAniApi(baseurl, it) }
+    val scheduleApi = ApiInvoker(client) { ScheduleAniApi(baseurl, it) }
+    val oauthApi = ApiInvoker(client) { BangumiOAuthAniApi(baseurl, it) }
+    val subjectRelationsApi = ApiInvoker(client) { SubjectRelationsAniApi(baseurl, it) }
 
     @PublishedApi
     internal val baseurl = currentAniBuildConfig.aniAuthServerUrl
-}
-
-interface AniApiInvoker<Api> {
-    suspend operator fun <R> invoke(action: suspend Api.() -> R): R
-}
-
-fun <Api> AniApiInvoker(
-    client: WrapperHttpClient,
-    getApi: (HttpClient) -> Api,
-): AniApiInvoker<Api> = object : AniApiInvoker<Api> {
-    override suspend fun <R> invoke(action: suspend Api.() -> R): R =
-        client.use {
-            action(
-                getApi(this),
-            )
-        }
 }

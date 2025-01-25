@@ -12,16 +12,16 @@ package me.him188.ani.app.data.network
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.repository.RepositoryException
-import me.him188.ani.app.domain.session.AniApiInvoker
 import me.him188.ani.client.apis.SubjectRelationsAniApi
 import me.him188.ani.utils.coroutines.IO_
+import me.him188.ani.utils.ktor.ApiInvoker
 import kotlin.coroutines.CoroutineContext
 
 
 // For 查询第一季时自动排除第二季的资源 #1324
 // Server-side: https://github.com/open-ani/ani-api-server/commit/5b513e607eca222c6352d3e4243df43de83469ba
 class AniSubjectRelationIndexService(
-    private val relationsApi: AniApiInvoker<SubjectRelationsAniApi>,
+    private val relationsApi: ApiInvoker<SubjectRelationsAniApi>,
     private val ioDispatcher: CoroutineContext = Dispatchers.IO_,
 ) {
     suspend fun getSubjectRelationIndex(subjectId: Int) = withContext(ioDispatcher) {
