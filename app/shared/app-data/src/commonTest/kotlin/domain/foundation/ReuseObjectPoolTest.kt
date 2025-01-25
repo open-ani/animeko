@@ -171,7 +171,7 @@ internal class ReuseObjectPoolTest {
 
 
     @Test
-    fun `releasing key that doesn't exist throws`() {
+    fun `releasing key that does not exist throws`() {
         val pool = ReuseObjectPool<String, String>(
             newInstance = { "client_for_$it" },
         )
@@ -190,7 +190,7 @@ internal class ReuseObjectPoolTest {
     }
 
     @Test
-    fun `releasing value that doesn't match the stored value throws`() {
+    fun `releasing value that does not match the stored value throws`() {
         val pool = ReuseObjectPool<String, String>(
             newInstance = { "client_for_$it" },
         )
