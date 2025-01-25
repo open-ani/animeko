@@ -41,61 +41,64 @@ internal class DandanplayClient(
         month: Int,
     ): DandanplaySeasonSearchResponse {
         // https://api.dandanplay.net/api/v2/bangumi/season/anime/2024/04
-        val response = client.use {
-            get("https://api.dandanplay.net/api/v2/bangumi/season/anime/$year/$month") {
-                configureTimeout()
-                accept(ContentType.Application.Json)
-            }
-        }
+        client.use {
+            val response =
+                get("https://api.dandanplay.net/api/v2/bangumi/season/anime/$year/$month") {
+                    configureTimeout()
+                    accept(ContentType.Application.Json)
+                }
 
-        return response.body<DandanplaySeasonSearchResponse>()
+            return response.body<DandanplaySeasonSearchResponse>()
+        }
     }
 
     suspend fun searchSubject(
         subjectName: String,
     ): DandanplaySearchEpisodeResponse {
-        val response = client.use {
-            get("https://api.dandanplay.net/api/v2/search/subject") {
+        client.use {
+            val response = get("https://api.dandanplay.net/api/v2/search/subject") {
                 configureTimeout()
                 accept(ContentType.Application.Json)
                 parameter("keyword", subjectName)
             }
-        }
 
-        if (response.status == HttpStatusCode.NotFound) {
-            return DandanplaySearchEpisodeResponse()
-        }
+            if (response.status == HttpStatusCode.NotFound) {
+                return DandanplaySearchEpisodeResponse()
+            }
 
-        return response.body<DandanplaySearchEpisodeResponse>()
+            return response.body<DandanplaySearchEpisodeResponse>()
+        }
     }
 
     suspend fun searchEpisode(
         subjectName: String,
         episodeName: String?,
     ): DandanplaySearchEpisodeResponse {
-        val response = client.use {
-            get("https://api.dandanplay.net/api/v2/search/episodes") {
-                configureTimeout()
-                accept(ContentType.Application.Json)
-                parameter("anime", subjectName)
-                parameter("episode", episodeName)
-            }
-        }
+        client.use {
+            val response =
+                get("https://api.dandanplay.net/api/v2/search/episodes") {
+                    configureTimeout()
+                    accept(ContentType.Application.Json)
+                    parameter("anime", subjectName)
+                    parameter("episode", episodeName)
+                }
 
-        return response.body<DandanplaySearchEpisodeResponse>()
+            return response.body<DandanplaySearchEpisodeResponse>()
+        }
     }
 
     suspend fun getBangumiEpisodes(
         bangumiId: Int, // 注意, 这是 dandanplay 的 id, 不是 Bangumi.tv 的 id
     ): DandanplayGetBangumiResponse {
-        val response = client.use {
-            get("https://api.dandanplay.net/api/v2/bangumi/$bangumiId") {
-                configureTimeout()
-                accept(ContentType.Application.Json)
-            }
-        }
+        client.use {
+            val response =
+                get("https://api.dandanplay.net/api/v2/bangumi/$bangumiId") {
+                    configureTimeout()
+                    accept(ContentType.Application.Json)
+                }
 
-        return response.body<DandanplayGetBangumiResponse>()
+            return response.body<DandanplayGetBangumiResponse>()
+        }
     }
 
     suspend fun matchVideo(
@@ -104,24 +107,25 @@ internal class DandanplayClient(
         fileSize: Long?,
         videoDuration: Duration
     ): DandanplayMatchVideoResponse {
-        val response = client.use {
-            post("https://api.dandanplay.net/api/v2/match") {
-                configureTimeout()
-                contentType(ContentType.Application.Json)
-                accept(ContentType.Application.Json)
-                setBody(
-                    buildJsonObject {
-                        put("fileName", filename)
-                        put("fileHash", fileHash)
-                        put("fileSize", fileSize)
-                        put("videoDuration", videoDuration.inWholeSeconds)
-                        put("matchMode", "hashAndFileName")
-                    },
-                )
-            }
-        }
+        client.use {
+            val response =
+                post("https://api.dandanplay.net/api/v2/match") {
+                    configureTimeout()
+                    contentType(ContentType.Application.Json)
+                    accept(ContentType.Application.Json)
+                    setBody(
+                        buildJsonObject {
+                            put("fileName", filename)
+                            put("fileHash", fileHash)
+                            put("fileSize", fileSize)
+                            put("videoDuration", videoDuration.inWholeSeconds)
+                            put("matchMode", "hashAndFileName")
+                        },
+                    )
+                }
 
-        return response.body<DandanplayMatchVideoResponse>()
+            return response.body<DandanplayMatchVideoResponse>()
+        }
     }
 
     suspend fun getDanmakuList(
@@ -134,13 +138,14 @@ internal class DandanplayClient(
 //            null -> 0
 //        }
         val chConvert = 0
-        val response = client.use {
-            get("https://api.dandanplay.net/api/v2/comment/${episodeId}?chConvert=$chConvert&withRelated=true") {
-                configureTimeout()
-                accept(ContentType.Application.Json)
-            }.body<DandanplayDanmakuListResponse>()
+        client.use {
+            val response =
+                get("https://api.dandanplay.net/api/v2/comment/${episodeId}?chConvert=$chConvert&withRelated=true") {
+                    configureTimeout()
+                    accept(ContentType.Application.Json)
+                }.body<DandanplayDanmakuListResponse>()
+            return response.comments
         }
-        return response.comments
     }
 
 

@@ -87,8 +87,8 @@ class AniDanmakuSenderImpl(
                     configureTimeout()
                     bearerAuth(token)
                 }
-            }
-        }.body<AniUser>()
+            }.body<AniUser>()
+        }
     }
 
     private fun HttpRequestBuilder.configureTimeout() {
