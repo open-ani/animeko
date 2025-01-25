@@ -19,6 +19,7 @@ import io.ktor.client.statement.HttpResponse
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asFlow
@@ -206,5 +207,6 @@ class AniDanmakuSenderImpl(
 
     override fun close() {
         client.close()
+        backgroundScope.cancel()
     }
 }

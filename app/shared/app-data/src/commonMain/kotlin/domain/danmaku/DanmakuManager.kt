@@ -44,6 +44,7 @@ import me.him188.ani.danmaku.api.DanmakuProvider
 import me.him188.ani.danmaku.api.DanmakuProviderConfig
 import me.him188.ani.danmaku.api.DanmakuSearchRequest
 import me.him188.ani.danmaku.dandanplay.DandanplayDanmakuProvider
+import me.him188.ani.utils.coroutines.closeOnReplacement
 import me.him188.ani.utils.coroutines.mapAutoClose
 import me.him188.ani.utils.coroutines.mapAutoCloseCollection
 import me.him188.ani.utils.logging.error
@@ -113,7 +114,8 @@ class DanmakuManagerImpl(
             sessionManager.verifiedAccessToken, // TODO: Handle danmaku sender errors 
             backgroundScope.coroutineContext,
         )
-    }.shareInBackground(started = SharingStarted.Lazily)
+    }.closeOnReplacement()
+        .shareInBackground(started = SharingStarted.Lazily)
 
     private companion object {
         private val logger = logger<DanmakuManagerImpl>()
