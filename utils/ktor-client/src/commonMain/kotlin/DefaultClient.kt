@@ -42,7 +42,7 @@ import kotlin.time.measureTimedValue
 expect fun getPlatformKtorEngine(): HttpClientEngineFactory<*>
 
 /**
- * Note: 尽可能使用 `HttpClientProvider` 来共享 [HttpClient] 示例. 因为每个示例都潜在地会有一个线程池.
+ * Note: 尽可能使用 `HttpClientProvider` 来共享 [HttpClient] 实例. 因为每个实例都潜在地会有一个线程池.
  */
 fun createDefaultHttpClient(
     clientConfig: HttpClientConfig<*>.() -> Unit = {},
