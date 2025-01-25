@@ -411,30 +411,7 @@ fun KoinApplication.startCommonKoinModule(coroutineScope: CoroutineScope): KoinA
         // We have to block here to read the saved proxy settings
         when (val proxyProvider = koin.get<HttpClientProvider>()) {
             // compile-safe type cast
-            is DefaultHttpClientProvider -> proxyProvider.startProxyListening(
-                sequence {
-                    for (userAgent in ScopedHttpClientUserAgent.entries) {
-                        yield(
-                            HoldingInstanceMatrix(
-                                setOf(
-                                    UserAgentFeature.withValue(userAgent),
-                                    UseBangumiTokenFeature.withValue(false),
-                                ),
-                            ),
-                        )
-                    }
-
-                    yield(
-                        HoldingInstanceMatrix(
-                            setOf(
-                                UserAgentFeature.withValue(ScopedHttpClientUserAgent.ANI),
-                                UseBangumiTokenFeature.withValue(true),
-                            ),
-                        ),
-                    )
-
-                },
-            )
+            is DefaultHttpClientProvider -> proxyProvider.startProxyListening(holdingInstanceMatrixSequence())
         }
     }
     // Now, the proxy settings is ready. Other components can use http clients.
@@ -493,6 +470,31 @@ fun KoinApplication.startCommonKoinModule(coroutineScope: CoroutineScope): KoinA
     }
 
     return this
+}
+
+/**
+ * 需要一直持有的 http client 实例列表
+ */
+private fun holdingInstanceMatrixSequence() = sequence {
+    for (userAgent in ScopedHttpClientUserAgent.entries) {
+        yield(
+            HoldingInstanceMatrix(
+                setOf(
+                    UserAgentFeature.withValue(userAgent),
+                    UseBangumiTokenFeature.withValue(false),
+                ),
+            ),
+        )
+    }
+
+    yield(
+        HoldingInstanceMatrix(
+            setOf(
+                UserAgentFeature.withValue(ScopedHttpClientUserAgent.ANI),
+                UseBangumiTokenFeature.withValue(true),
+            ),
+        ),
+    )
 }
 
 
