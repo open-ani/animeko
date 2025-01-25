@@ -24,7 +24,6 @@ import kotlinx.coroutines.withContext
 import kotlinx.io.IOException
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.foundation.HttpClientProvider
-import me.him188.ani.app.domain.settings.ProxyProvider
 import me.him188.ani.app.domain.update.UpdateManager
 import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.tools.MonoTasker
@@ -49,7 +48,6 @@ import kotlin.coroutines.cancellation.CancellationException
  */
 @Stable
 class AutoUpdateViewModel : AbstractViewModel(), KoinComponent {
-    private val proxyProvider: ProxyProvider by inject()
     private val settingsRepository: SettingsRepository by inject()
     private val updateSettings = settingsRepository.updateSettings.flow
     private val updateManager: UpdateManager by inject()
@@ -59,10 +57,11 @@ class AutoUpdateViewModel : AbstractViewModel(), KoinComponent {
 
     private val client by lazy { clientProvider.get() }
 
-    @OptIn(UnsafeWrapperHttpClientApi::class)
+    @OptIn(UnsafeWrapperHttpClientApi::class) // returned in onCleared
     private val borrowedClient = lazy { clientProvider.get().borrow() }
 
-    private val fileDownloader by lazy { DefaultFileDownloader(borrowedClient.value) }
+    @OptIn(UnsafeWrapperHttpClientApi::class)
+    private val fileDownloader by lazy { DefaultFileDownloader(borrowedClient.value.client) }
 
     /**
      * 新版本下载进度

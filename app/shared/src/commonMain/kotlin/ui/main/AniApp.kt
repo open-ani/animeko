@@ -27,11 +27,10 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.ImageLoader
 import coil3.compose.LocalPlatformContext
-import io.ktor.client.HttpClient
 import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.foundation.HttpClientProvider
-import me.him188.ani.app.domain.settings.ProxyProvider
+import me.him188.ani.app.domain.foundation.HttpClientUserAgent
 import me.him188.ani.app.tools.LocalTimeFormatter
 import me.him188.ani.app.tools.TimeFormatter
 import me.him188.ani.app.ui.foundation.AbstractViewModel
@@ -41,7 +40,7 @@ import me.him188.ani.app.ui.foundation.createDefaultImageLoader
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.theme.AniTheme
 import me.him188.ani.app.ui.foundation.theme.LocalThemeSettings
-import me.him188.ani.utils.ktor.UnsafeWrapperHttpClientApi
+import me.him188.ani.utils.ktor.WrapperHttpClient
 import me.him188.ani.utils.platform.isMobile
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -49,13 +48,42 @@ import org.koin.core.component.inject
 @Stable
 class AniAppViewModel : AbstractViewModel(), KoinComponent {
     private val settings: SettingsRepository by inject()
-    private val proxyProvider: ProxyProvider by inject()
     private val httpClientProvider: HttpClientProvider by inject()
     val themeSettings: ThemeSettings? by settings.themeSettings.flow.produceState(null)
 
-    @OptIn(UnsafeWrapperHttpClientApi::class)
-    val imageLoaderClient =
-        httpClientProvider.get().borrowForever() // This client is needed throughout the app's lifecycle
+    val imageLoaderClient = httpClientProvider.get(HttpClientUserAgent.ANI)
+
+//    /**
+//     * 跟随代理设置等配置变化而变化的 [HttpClient] 实例. 用于 coil ImageLoader.
+//     */
+//    @OptIn(UnsafeWrapperHttpClientApi::class)
+//    val imageLoaderClientFlow: StateFlow<HttpClient> = MutableStateFlow<HttpClient?>(null).let { flow ->
+//        // The flow was initialized with `null`, but we will set it to a non-null value immediately, before exposing it to the field.
+//
+//        val scopedClient = httpClientProvider.get()
+//        var currentTicket = scopedClient.borrow()
+//        flow.value = currentTicket.client
+//        // Now the flow is not null.
+//
+//        launchInBackground {
+//            httpClientProvider.configurationFlow.collect {
+//                // We are not using collectLatest, as this replacement operation must be atomic, i.e. not interruptible.
+//
+//                // Save the previous ticket to return it later
+//                val previousTicket = currentTicket
+//
+//                // Update a new client first
+//                currentTicket = scopedClient.borrow()
+//                flow.value = currentTicket.client
+//
+//                // Now the collector of this flow won't see the old client. We are safe to release it.
+//                scopedClient.returnClient(previousTicket)
+//            }
+//        }
+//
+//        @Suppress("UNCHECKED_CAST")
+//        flow as StateFlow<HttpClient> // wipes out nullability. It's safe because we know it's never null since now.
+//    }
 }
 
 @Composable
@@ -110,7 +138,7 @@ fun AniApp(
 }
 
 @Composable
-private fun rememberImageLoader(client: HttpClient): ImageLoader {
+private fun rememberImageLoader(client: WrapperHttpClient): ImageLoader {
     val coilContext = LocalPlatformContext.current
     return remember(coilContext, client) {
         derivedStateOf {

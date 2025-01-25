@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.data.network.AniSubjectRelationIndexService
 import me.him188.ani.app.data.network.AnimeScheduleService
@@ -394,6 +395,17 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
  * 会在非 preview 环境调用. 用来初始化一些模块
  */
 fun KoinApplication.startCommonKoinModule(coroutineScope: CoroutineScope): KoinApplication {
+    // Start the proxy provider very soon (before initialization of any other components)
+    runBlocking {
+        // We have to block here to read the saved proxy settings
+        when (val proxyProvider = koin.get<HttpClientProvider>()) {
+            // compile-safe type cast
+            is DefaultHttpClientProvider -> proxyProvider.startProxyListening()
+        }
+    }
+    // Now, the proxy settings is ready. Other components can use http clients.
+
+
     koin.get<MediaAutoCacheService>().startRegularCheck(coroutineScope)
 
     coroutineScope.launch {
@@ -444,11 +456,6 @@ fun KoinApplication.startCommonKoinModule(coroutineScope: CoroutineScope): KoinA
             themeSettings.update { newThemeSettings }
             uiSettings.update { uiSettingsContent.copy(theme = null) }
         }
-    }
-
-
-    when (val proxyProvider = koin.get<HttpClientProvider>()) {
-        is DefaultHttpClientProvider -> proxyProvider.startProxyListening()
     }
 
     return this

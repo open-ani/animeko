@@ -17,6 +17,8 @@ import kotlinx.coroutines.test.runTest
 import me.him188.ani.app.domain.media.fetch.AtomicInteger
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertNotSame
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
@@ -161,5 +163,106 @@ internal class ReuseObjectPoolTest {
                 }
             }.joinAll()
         }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Error cases
+    ///////////////////////////////////////////////////////////////////////////
+
+
+    @Test
+    fun `releasing key that doesn't exist throws`() {
+        val pool = ReuseObjectPool<String, String>(
+            newInstance = { "client_for_$it" },
+        )
+        // Borrow and release a valid key
+        val instance = pool.borrow("matrixA")
+        pool.release("matrixA", instance)
+
+        // Attempt to release a non-existent key
+        val ex = assertFailsWith<IllegalStateException> {
+            pool.release("unknownKey", "fakeClient")
+        }
+        assertTrue(
+            ex.message?.contains("not found in the map") == true,
+            "Expected error about key not found",
+        )
+    }
+
+    @Test
+    fun `releasing value that doesn't match the stored value throws`() {
+        val pool = ReuseObjectPool<String, String>(
+            newInstance = { "client_for_$it" },
+        )
+        val instance = pool.borrow("matrixA")
+
+        // Attempt to release a different (incorrect) value for the same key
+        val ex = assertFailsWith<IllegalStateException> {
+            pool.release("matrixA", "not_the_same_instance")
+        }
+        assertTrue(
+            ex.message?.contains("does not equal to releasing value") == true,
+            "Expected error about mismatched value",
+        )
+    }
+
+    @Test
+    fun `borrow after fully released returns a brand new instance`() {
+        val pool = ReuseObjectPool<String, Any>(
+            newInstance = { Any() }, // Use Any() to easily verify brand new instances
+        )
+        // Borrow
+        val instance1 = pool.borrow("matrixA")
+        // Release (refCount -> 0)
+        pool.release("matrixA", instance1)
+
+        // Borrow again after fully released
+        val instance2 = pool.borrow("matrixA")
+
+        // Verify that it's a new instance (not the same reference)
+        assertNotSame(instance1, instance2, "Should be a new instance after refCount reached 0")
+    }
+
+    @Test
+    fun `releasing multiple times with one borrow triggers an exception on the second release`() {
+        val pool = ReuseObjectPool<String, String>(
+            newInstance = { "client_for_$it" },
+        )
+        val instance = pool.borrow("matrixA")
+
+        // Release it once
+        pool.release("matrixA", instance)
+
+        // Attempting to release again should fail because the refCount was already 0
+        val ex = assertFailsWith<IllegalStateException> {
+            pool.release("matrixA", instance)
+        }
+        assertTrue(
+            ex.message?.contains("Value client_for_matrixA (for matrix matrixA) not found in the map") == true,
+            "Expected error about value not found (since it was already removed)",
+        )
+    }
+
+    /**
+     * Demonstrates behavior when the onRelease callback might throw an exception.
+     * The pool doesn't catch or handle it, so the caller sees the exception.
+     */
+    @Test
+    fun `onRelease throws exception does not corrupt pool`() = runTest {
+        var onReleaseCalled = false
+        val pool = ReuseObjectPool<String, String>(
+            newInstance = { "client_for_$it" },
+            onRelease = {
+                onReleaseCalled = true
+                error("Simulated failure in onRelease")
+            },
+        )
+
+        val instance = pool.borrow("matrixA")
+        val ex = assertFailsWith<IllegalStateException> {
+            pool.release("matrixA", instance)
+        }
+        assertEquals("Simulated failure in onRelease", ex.message)
+        assertTrue(onReleaseCalled)
     }
 }

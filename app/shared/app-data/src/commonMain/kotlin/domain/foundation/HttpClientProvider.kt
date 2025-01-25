@@ -14,28 +14,50 @@ import io.ktor.client.plugins.BrowserUserAgent
 import kotlinx.atomicfu.atomic
 import kotlinx.atomicfu.locks.ReentrantLock
 import kotlinx.atomicfu.locks.withLock
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
+import me.him188.ani.app.data.models.preference.ProxyConfig
 import me.him188.ani.app.domain.media.fetch.toClientProxyConfig
 import me.him188.ani.app.domain.settings.ProxyProvider
 import me.him188.ani.app.platform.getAniUserAgent
+import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.ktor.UnsafeWrapperHttpClientApi
 import me.him188.ani.utils.ktor.WrapperHttpClient
 import me.him188.ani.utils.ktor.createDefaultHttpClient
+import me.him188.ani.utils.ktor.proxy
 import me.him188.ani.utils.ktor.registerLogging
 import me.him188.ani.utils.ktor.setProxy
 import me.him188.ani.utils.ktor.userAgent
 import me.him188.ani.utils.logging.logger
+import me.him188.ani.utils.platform.annotations.TestOnly
 import kotlin.concurrent.Volatile
 
 /**
  * 用户提供在 APP 生命周期中持久存在的 [HttpClient] 实例, 以减少实例数量.
  */
 sealed class HttpClientProvider {
+    /**
+     * 用于监听 [HttpClientProvider] 的配置变化的 flow.
+     *
+     * 此 flow emit 的值仅作为配置变化的通知, 不应当被使用.
+     *
+     * 当此 flow emit 后, [WrapperHttpClient.borrow] 一定可以拿到一个新实例.
+     */
+    abstract val configurationFlow: Flow<*>
+
     /**
      * 获取一个满足需求的 [WrapperHttpClient] 实例.
      */
@@ -56,57 +78,127 @@ class DefaultHttpClientProvider(
     // must have stable `equals`
     private data class Matrix(
         val userAgent: HttpClientUserAgent,
+        val proxyConfig: ProxyConfig?,
     )
 
     private val clientLogger = logger<HttpClientProvider>()
 
     private val pool = ReuseObjectPool<Matrix, HttpClient>(
-        newInstance = { createClient(it.userAgent) },
+        newInstance = { createClient(it.userAgent, it.proxyConfig) },
         onRelease = { it.close() },
     )
 
-    private fun createClient(userAgent: HttpClientUserAgent): HttpClient {
+    private fun createClient(userAgent: HttpClientUserAgent, proxyConfig: ProxyConfig?): HttpClient {
         return createDefaultHttpClient {
             when (userAgent) {
                 HttpClientUserAgent.ANI -> userAgent(getAniUserAgent())
                 HttpClientUserAgent.BROWSER -> BrowserUserAgent()
             }
+            proxy(proxyConfig?.toClientProxyConfig())
         }.apply {
             registerLogging(clientLogger)
         }
     }
 
     private val proxyListeningStarted = atomic(false)
-    fun startProxyListening() {
+    private var proxyListeningJob: Job? = null
+
+    @TestOnly
+    fun getProxyListeningStarted(): Boolean = proxyListeningStarted.value
+
+    private val currentProxyConfig = MutableStateFlow<ProxyConfig?>(null)
+
+    @TestOnly
+    fun getCurrentProxyConfig(): ProxyConfig? = currentProxyConfig.value
+
+    /**
+     * 启动代理监听, 当代理配置发生变化时, 会自动更新 [HttpClient] 实例的代理配置.
+     *
+     * 此函数只能调用一次.
+     * 此函数会挂起并读取第一个代理配置.
+     */
+    suspend fun startProxyListening() {
         if (!proxyListeningStarted.compareAndSet(expect = false, update = true)) {
-            return
+            error("Proxy listening already started")
         }
-        proxyProvider.proxy.mapLatest {
-            coroutineScope {
-                for (userAgent in HttpClientUserAgent.entries) {
-                    launch {
-                        get(userAgent).use {
-                            this.engineConfig.setProxy(it?.toClientProxyConfig())
-                            awaitCancellation() // hold the instance until the scope is cancelled (i.e. until next proxy)
+
+        val flowScope = backgroundScope.coroutineContext.childScope(CoroutineName("HttpClientProvider.ProxyListening"))
+        try {
+            val proxyConfigFlow = proxyProvider.proxy.stateIn(flowScope) // suspends until the first proxy is ready
+            val firstValueReady = CompletableDeferred<Unit>()
+
+            flowScope.launch {
+                proxyConfigFlow.collectLatest {
+                    // When this function ends, we should have a proxy set to currentProxyConfig.
+                    currentProxyConfig.value = it
+                    firstValueReady.complete(Unit)
+
+                    coroutineScope {
+                        // We hold references to all permutations of matrix params.
+                        for (userAgent in HttpClientUserAgent.entries) {
+                            launch {
+                                get(userAgent).use {
+                                    this.engineConfig.setProxy(it?.toClientProxyConfig())
+                                    awaitCancellation() // hold the instance until the scope is cancelled (i.e. until next proxy)
+                                }
+                            }
                         }
                     }
                 }
             }
-        }.launchIn(backgroundScope)
+            firstValueReady.await()
+        } catch (e: Throwable) {
+            // In the very unlikely case of an exception, we cancel the scope to avoid memory leak.
+            flowScope.cancel(CancellationException("Failed to start proxy listening, cancelling premature scope", e))
+            throw e
+            // proxyListeningStarted is still true - further calls to startProxyListening will fail.
+        }
+        proxyListeningJob = flowScope.coroutineContext.job
     }
 
-    override fun get(userAgent: HttpClientUserAgent): WrapperHttpClient = WrapperHttpClientImpl(Matrix(userAgent))
+    override val configurationFlow: Flow<*> = currentProxyConfig
+
+    override fun get(userAgent: HttpClientUserAgent): WrapperHttpClient =
+        WrapperHttpClientImpl(userAgent)
 
     private inner class WrapperHttpClientImpl(
-        private val matrix: Matrix,
+        private val ua: HttpClientUserAgent,
     ) : WrapperHttpClient() {
         @UnsafeWrapperHttpClientApi
-        override fun borrow(): HttpClient = pool.borrow(matrix)
+        override fun borrow(): Ticket {
+            val myMatrix = Matrix(ua, currentProxyConfig.value)
+            return TicketImpl(myMatrix, pool.borrow(myMatrix))
+        }
 
         @UnsafeWrapperHttpClientApi
-        override fun returnClient(client: HttpClient) = pool.release(matrix, client)
+        override fun returnClient(ticket: Ticket) {
+            check(ticket is TicketImpl) { "Ticket must be an instance of TicketImpl. Do not implement the Ticket interface. Do not use delegation (`by`) keyword for this type." }
+            return pool.release(ticket.matrix, ticket.client)
+        }
 
-        override fun toString(): String = "WrapperHttpClientImpl(matrix=$matrix)"
+        override fun toString(): String = "WrapperHttpClientImpl(matrix=$ua)"
+    }
+
+    /**
+     * @see WrapperHttpClientImpl.borrow
+     */
+    @UnsafeWrapperHttpClientApi
+    private data class TicketImpl(
+        val matrix: Matrix,
+        override val client: HttpClient,
+    ) : WrapperHttpClient.Ticket // `data` class to generate `toString`
+
+    /**
+     * Releases all background jobs to unblock test scope when test finished.
+     */
+    @TestOnly
+    suspend fun forceReleaseAll() {
+        // Wait for the coroutines to return clients. 
+        // If we `forceReleaseAll` before the coroutines return the clients, [ReuseObjectPool.release] will fail because the matrix don't exist in the pool.
+        proxyListeningJob?.cancelAndJoin()
+        proxyListeningJob = null
+        @OptIn(TestOnly::class)
+        pool.forceReleaseAll()
     }
 }
 
@@ -160,6 +252,11 @@ internal class ReuseObjectPool<K : Any, V>(
         }
     }
 
+    /**
+     * Borrows an object matching the key [matrix]. If no object is available, a new one is created.
+     *
+     * Is mut be released by calling [release] when no longer needed.
+     */
     fun borrow(matrix: K): V {
         borrowExisting(matrix)?.let { return it }
         mapLock.withLock {
@@ -187,10 +284,6 @@ internal class ReuseObjectPool<K : Any, V>(
         releaseOneReference(existing, matrix)
         return
     }
-
-    fun releaseOneReference(
-        matrix: K,
-    ) = releaseOneReference(map[matrix]!!, matrix)
 
     private fun releaseOneReference(
         store: Store<V>,
@@ -220,6 +313,24 @@ internal class ReuseObjectPool<K : Any, V>(
             } else {
                 // Failed race, retry CAS
             }
+        }
+    }
+
+    /**
+     * Forcibly releases all clients in the pool, even if someone is still using them.
+     * This breaks algorithm invariants and should only be used for testing.
+     * This is useful for cleanup in unit testing.
+     */
+    @TestOnly
+    fun forceReleaseAll() {
+        mapLock.withLock {
+            map.forEach { (_, store) ->
+                if (store.refCounter.value != 0) {
+                    store.refCounter.value = 0
+                    onRelease(store.value)
+                }
+            }
+            map = emptyMap()
         }
     }
 }
