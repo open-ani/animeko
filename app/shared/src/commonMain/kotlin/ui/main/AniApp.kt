@@ -54,8 +54,8 @@ class AniAppViewModel : AbstractViewModel(), KoinComponent {
     val themeSettings: ThemeSettings? by settings.themeSettings.flow.produceState(null)
 
     @OptIn(UnsafeWrapperHttpClientApi::class)
-    val imageLoaderClient
-        get() = httpClientProvider.get().borrowForever() // This client is needed throughout the app's lifecycle
+    val imageLoaderClient =
+        httpClientProvider.get().borrowForever() // This client is needed throughout the app's lifecycle
 }
 
 @Composable
