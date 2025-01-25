@@ -43,20 +43,37 @@ abstract class ScopedHttpClientFeatureHandler<V>(
     open fun apply(client: HttpClient, value: V) {}
 }
 
+/**
+ * 为一个特性 [this] 指定一个值.
+ * @see HttpClientProvider.get
+ */
 fun <T> ScopedHttpClientFeatureKey<T>.withValue(value: T): ScopedHttpClientFeatureKeyValue<T> =
     ScopedHttpClientFeatureKeyValue.create(this, value)
 
+/**
+ * 为一个特性 [key] 指定的值.
+ * @see HttpClientProvider.get
+ */
 @ConsistentCopyVisibility
 data class ScopedHttpClientFeatureKeyValue<V> private constructor(
     val key: ScopedHttpClientFeatureKey<V>,
     internal val value: Any?,
 ) {
     companion object {
-        fun <V> create(key: ScopedHttpClientFeatureKey<V>, value: V): ScopedHttpClientFeatureKeyValue<V> {
+        /**
+         * 为 [key] 指定值为 [value].
+         */
+        fun <V> create(
+            key: ScopedHttpClientFeatureKey<V>,
+            value: V,
+        ): ScopedHttpClientFeatureKeyValue<V> {
             require(value != FEATURE_NOT_SET) { "Value must not be FEATURE_NOT_SET" }
             return ScopedHttpClientFeatureKeyValue(key, value)
         }
 
+        /**
+         * 为 [key] 采用默认值.
+         */
         fun <V> createNotSet(key: ScopedHttpClientFeatureKey<V>): ScopedHttpClientFeatureKeyValue<V> {
             return ScopedHttpClientFeatureKeyValue(key, FEATURE_NOT_SET)
         }
@@ -70,7 +87,8 @@ internal val FEATURE_NOT_SET = Symbol("NOT_REQUESTED")
 // region UserAgent
 val UserAgentFeature = ScopedHttpClientFeatureKey<ScopedHttpClientUserAgent>("UserAgent")
 
-object UserAgentFeatureHandler : ScopedHttpClientFeatureHandler<ScopedHttpClientUserAgent>(UserAgentFeature) {
+object UserAgentFeatureHandler :
+    ScopedHttpClientFeatureHandler<ScopedHttpClientUserAgent>(UserAgentFeature) {
     override fun apply(config: HttpClientConfig<*>, value: ScopedHttpClientUserAgent) {
         when (value) {
             ScopedHttpClientUserAgent.ANI -> config.userAgent(getAniUserAgent())

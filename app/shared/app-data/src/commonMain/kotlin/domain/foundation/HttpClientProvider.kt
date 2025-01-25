@@ -56,19 +56,30 @@ sealed class HttpClientProvider {
     abstract val configurationFlow: Flow<*>
 
     /**
-     * 获取一个可复用的 [WrapperHttpClient]；它会根据 [features] 和当前 [ProxyConfig] 组合从对象池中借用或新建。
+     * 获取一个可复用的 [WrapperHttpClient]；它会根据 [features] 从对象池中借用或新建。
      *
      * 常见用法：
      * ```kotlin
-     * val result = httpClientProvider.get(HttpClientUserAgent.ANI).use {
+     * val result = httpClientProvider.get(setOf(UserAgentFeature.withValue(ANI))).use {
      *     get("https://example.com")
      * }
      * ```
      *
-     * @param userAgent 指定用户代理类型，默认为 [ScopedHttpClientUserAgent.ANI]。
+     * 一般也可以使用扩展方法, 直接用参数名提供目前支持的特性类型.
+     * ```kotlin
+     * val result = httpClientProvider.get(userAgent = ANI).use {
+     *     get("https://example.com")
+     * }
+     * ```
+     *
+     * 建议将 [get] 到的实例缓存在一个变量中, 以避免频繁检查 feature 是否变化.
+     *
+     * @param features 请求的特性列表. 对于未指定的特性, 会使用默认值.
+     *
+     * @see get
      */
     abstract fun get(
-        features: Set<ScopedHttpClientFeatureKeyValue<*>>
+        features: Set<ScopedHttpClientFeatureKeyValue<*>>,
     ): WrapperHttpClient
 
 }
@@ -78,16 +89,14 @@ sealed class HttpClientProvider {
  *
  * 常见用法：
  * ```kotlin
- * val result = httpClientProvider.get(HttpClientUserAgent.ANI).use {
+ * val result = httpClientProvider.get(userAgent = HttpClientUserAgent.ANI).use {
  *     get("https://example.com")
  * }
  * ```
- *
- * @param userAgent 指定用户代理类型，默认为 [ScopedHttpClientUserAgent.ANI]。
  */
 fun HttpClientProvider.get(
     userAgent: ScopedHttpClientUserAgent = ScopedHttpClientUserAgent.ANI,
-    useBangumiToken: Boolean = false
+    useBangumiToken: Boolean = false,
 ): WrapperHttpClient = get(
     setOf(
         UserAgentFeature.withValue(userAgent),
@@ -144,7 +153,7 @@ class DefaultHttpClientProvider(
 
     private fun createClient(
         features: Set<ScopedHttpClientFeatureKeyValue<*>>,
-        proxyConfig: ProxyConfig?
+        proxyConfig: ProxyConfig?,
     ): HttpClient {
         return createDefaultHttpClient {
             for (feature in features) {
@@ -175,15 +184,17 @@ class DefaultHttpClientProvider(
      * @throws IllegalStateException 如果已经被调用过一次。
      */
     suspend fun startProxyListening(
-        holdReferences: Sequence<HoldingInstanceMatrix>
+        holdReferences: Sequence<HoldingInstanceMatrix>,
     ) {
         if (!proxyListeningStarted.compareAndSet(expect = false, update = true)) {
             error("Proxy listening already started")
         }
 
-        val flowScope = backgroundScope.coroutineContext.childScope(CoroutineName("HttpClientProvider.ProxyListening"))
+        val flowScope =
+            backgroundScope.coroutineContext.childScope(CoroutineName("HttpClientProvider.ProxyListening"))
         try {
-            val proxyConfigFlow = proxyProvider.proxy.stateIn(flowScope) // suspends until the first proxy is ready
+            val proxyConfigFlow =
+                proxyProvider.proxy.stateIn(flowScope) // suspends until the first proxy is ready
             val firstValueReady = CompletableDeferred<Unit>()
 
             flowScope.launch {
@@ -208,7 +219,12 @@ class DefaultHttpClientProvider(
             firstValueReady.await()
         } catch (e: Throwable) {
             // In the very unlikely case of an exception, we cancel the scope to avoid memory leak.
-            flowScope.cancel(CancellationException("Failed to start proxy listening, cancelling premature scope", e))
+            flowScope.cancel(
+                CancellationException(
+                    "Failed to start proxy listening, cancelling premature scope",
+                    e
+                )
+            )
             throw e
             // proxyListeningStarted is still true - further calls to startProxyListening will fail.
         }
@@ -331,7 +347,8 @@ internal class ReuseObjectPool<K : Any, V>(
             val newClient = newInstance(matrix)
             val store = Store(newClient)
             store.refCounter.incrementAndGet()
-            map = map + (matrix to store) // Note: this may replace a existing store (which has refCount == 0).
+            map =
+                map + (matrix to store) // Note: this may replace a existing store (which has refCount == 0).
             return newClient
         }
     }
@@ -351,7 +368,7 @@ internal class ReuseObjectPool<K : Any, V>(
 
     private fun releaseOneReference(
         store: Store<V>,
-        matrix: K
+        matrix: K,
     ) {
         while (true) {
             val curr = store.refCounter.value
