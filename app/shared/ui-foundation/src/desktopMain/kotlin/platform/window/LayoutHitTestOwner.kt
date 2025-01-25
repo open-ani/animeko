@@ -66,7 +66,9 @@ private abstract class ReflectLayoutHitTestOwner : LayoutHitTestOwner {
                 trySetAccessible()
             }
 
-    private val hitTestResultClass = classLoader.loadClass("androidx.compose.ui.node.HitTestResult")
+    private val hitTestResultConstructor = classLoader
+        .loadClass("androidx.compose.ui.node.HitTestResult")
+        .getDeclaredConstructor()
 
     private val layoutNodeHitTestMethod =
         classLoader
@@ -84,7 +86,7 @@ private abstract class ReflectLayoutHitTestOwner : LayoutHitTestOwner {
         y: Float,
     ): Boolean {
         // result type is List<Modifier.Node> (compose 1.7)
-        val result = hitTestResultClass.getDeclaredConstructor().newInstance() as List<*>
+        val result = hitTestResultConstructor.newInstance() as List<*>
         layoutNodeHitTestMethod.invoke(this, packFloats(x, y), result, false, true)
         // pointer input modifier node detection for Material 3 components
         for (index in result.lastIndex downTo result.lastIndex - 1) {
