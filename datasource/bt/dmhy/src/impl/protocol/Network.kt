@@ -1,35 +1,26 @@
 /*
- * Ani
- * Copyright (C) 2022-2024 Him188
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
 package me.him188.ani.datasources.dmhy.impl.protocol
 
-import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.http.URLProtocol
 import io.ktor.http.appendPathSegments
-import me.him188.ani.datasources.api.source.bodyAsDocument
 import me.him188.ani.datasources.dmhy.DmhyTopic
 import me.him188.ani.datasources.dmhy.impl.cache.Cache
 import me.him188.ani.datasources.dmhy.impl.cache.CacheImpl
+import me.him188.ani.utils.ktor.WrapperHttpClient
+import me.him188.ani.utils.ktor.bodyAsDocument
 
 class Network(
-    private val client: HttpClient,
+    private val client: WrapperHttpClient,
 ) {
     private object Paths {
         const val host: String = "www.dmhy.org"
@@ -57,28 +48,30 @@ class Network(
         orderId: String? = null,
     ): ListResponse {
         require(page == null || page >= 1) { "page must be >= 1" }
-        val resp = client.get {
-            url {
-                protocol = URLProtocol.HTTP
-                host = Paths.host
-                appendPathSegments("topics", "list")
-                if (page != null && page != 1) {
-                    appendPathSegments("page", page.toString())
+        client.use {
+            val resp = get {
+                url {
+                    protocol = URLProtocol.HTTP
+                    host = Paths.host
+                    appendPathSegments("topics", "list")
+                    if (page != null && page != 1) {
+                        appendPathSegments("page", page.toString())
+                    }
                 }
+                parameter("keyword", keyword)
+                parameter("sort_id", sortId)
+                parameter("team_id", teamId)
+                parameter("order", orderId)
             }
-            parameter("keyword", keyword)
-            parameter("sort_id", sortId)
-            parameter("team_id", teamId)
-            parameter("order", orderId)
+            val document = resp.bodyAsDocument()
+            val context = CacheImpl()
+            return ListResponse(
+                context = context,
+                list = ListParser.parseList(context, document).orEmpty(),
+                currentPage = 0,
+                hasPreviousPage = false,
+                hasNextPage = false,
+            )
         }
-        val document = resp.bodyAsDocument()
-        val context = CacheImpl()
-        return ListResponse(
-            context = context,
-            list = ListParser.parseList(context, document).orEmpty(),
-            currentPage = 0,
-            hasPreviousPage = false,
-            hasNextPage = false,
-        )
     }
 }

@@ -21,8 +21,9 @@ import kotlinx.io.files.Path
 import me.him188.ani.android.activity.MainActivity
 import me.him188.ani.android.navigation.AndroidBrowserNavigator
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
-import me.him188.ani.app.data.models.preference.ProxyConfig
 import me.him188.ani.app.data.repository.user.SettingsRepository
+import me.him188.ani.app.domain.foundation.HttpClientProvider
+import me.him188.ani.app.domain.foundation.HttpClientUserAgent
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.resolver.AndroidWebMediaResolver
 import me.him188.ani.app.domain.media.resolver.HttpStreamingMediaResolver
@@ -56,6 +57,7 @@ import me.him188.ani.utils.io.inSystem
 import me.him188.ani.utils.io.isDirectory
 import me.him188.ani.utils.io.list
 import me.him188.ani.utils.io.resolve
+import me.him188.ani.utils.ktor.WrapperHttpClient
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
 import org.koin.android.ext.koin.androidContext
@@ -176,7 +178,7 @@ fun getAndroidModules(
         DefaultTorrentManager.create(
             coroutineScope.coroutineContext,
             get(),
-            proxyProvider = get<ProxyProvider>().proxy,
+            client = get<HttpClientProvider>().get(HttpClientUserAgent.ANI),
             get(),
             get(),
             baseSaveDir = { Path(cacheDir).inSystem },
@@ -185,14 +187,14 @@ fun getAndroidModules(
                     override fun createTorrentEngine(
                         parentCoroutineContext: CoroutineContext,
                         config: Flow<AnitorrentConfig>,
-                        proxyConfig: Flow<ProxyConfig?>,
+                        client: WrapperHttpClient,
                         peerFilterSettings: Flow<PeerFilterSettings>,
                         saveDir: SystemPath
                     ): TorrentEngine {
                         return RemoteAnitorrentEngine(
                             get(),
                             config,
-                            proxyConfig,
+                            get<ProxyProvider>().proxy,
                             peerFilterSettings,
                             saveDir,
                             parentCoroutineContext,

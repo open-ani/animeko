@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -10,7 +10,8 @@
 package me.him188.ani.app.data.network
 
 import io.ktor.client.call.body
-import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.plugins.timeout
+import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.get
 import io.ktor.client.request.post
@@ -38,10 +39,8 @@ import me.him188.ani.app.ui.foundation.HasBackgroundScope
 import me.him188.ani.app.ui.foundation.launchInBackground
 import me.him188.ani.danmaku.api.Danmaku
 import me.him188.ani.danmaku.api.DanmakuProviderConfig
-import me.him188.ani.danmaku.api.applyDanmakuProviderConfig
 import me.him188.ani.utils.coroutines.retryWithBackoffDelay
-import me.him188.ani.utils.ktor.createDefaultHttpClient
-import me.him188.ani.utils.ktor.registerLogging
+import me.him188.ani.utils.ktor.WrapperHttpClient
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.platform.currentPlatform
@@ -70,6 +69,7 @@ class RequestFailedException(
 class NetworkErrorException(override val cause: Throwable?) : SendDanmakuException()
 
 class AniDanmakuSenderImpl(
+    private val client: WrapperHttpClient,
     private val config: DanmakuProviderConfig,
     private val bangumiToken: Flow<String?>,
     parentCoroutineContext: CoroutineContext = EmptyCoroutineContext,
@@ -80,24 +80,22 @@ class AniDanmakuSenderImpl(
         private val logger = logger<AniDanmakuSenderImpl>()
     }
 
-    private val client = createDefaultHttpClient {
-        applyDanmakuProviderConfig(config)
-        followRedirects = true
-        expectSuccess = false
-        install(HttpTimeout) {
+    private suspend fun getUserInfo(token: String): AniUser {
+        return client.use {
+            invokeRequest {
+                get("${getBaseUrl()}/v1/me") {
+                    configureTimeout()
+                    bearerAuth(token)
+                }
+            }
+        }.body<AniUser>()
+    }
+
+    private fun HttpRequestBuilder.configureTimeout() {
+        timeout {
             connectTimeoutMillis = 20_000
             requestTimeoutMillis = 30_000
         }
-    }.apply {
-        registerLogging(logger)
-    }
-
-    private suspend fun getUserInfo(token: String): AniUser {
-        return invokeRequest {
-            client.get("${getBaseUrl()}/v1/me") {
-                bearerAuth(token)
-            }
-        }.body<AniUser>()
     }
 
     private inline fun invokeRequest(
@@ -120,19 +118,21 @@ class AniDanmakuSenderImpl(
     private suspend fun authByBangumiToken(
         bangumiToken: String
     ): String {
-        return invokeRequest {
-            client.post("${getBaseUrl()}/v1/login/bangumi") {
-                contentType(ContentType.Application.Json)
-                setBody(
-                    BangumiLoginRequest(
-                        bangumiToken,
-                        clientVersion = currentAniBuildConfig.versionName,
-                        clientOS = currentPlatform().name,
-                        clientArch = currentPlatform().arch.displayName,
-                    ),
-                )
-            }
-        }.body<BangumiLoginResponse>().token
+        return client.use {
+            invokeRequest {
+                post("${getBaseUrl()}/v1/login/bangumi") {
+                    contentType(ContentType.Application.Json)
+                    setBody(
+                        BangumiLoginRequest(
+                            bangumiToken,
+                            clientVersion = currentAniBuildConfig.versionName,
+                            clientOS = currentPlatform().name,
+                            clientArch = currentPlatform().arch.displayName,
+                        ),
+                    )
+                }
+            }.body<BangumiLoginResponse>().token
+        }
     }
 
     private suspend fun sendDanmaku(
@@ -140,11 +140,13 @@ class AniDanmakuSenderImpl(
         info: DanmakuInfo,
     ) {
         val token = requireSession().token
-        invokeRequest {
-            client.post("${getBaseUrl()}/v1/danmaku/$episodeId") {
-                bearerAuth(token)
-                contentType(ContentType.Application.Json)
-                setBody(DanmakuPostRequest(info))
+        client.use {
+            invokeRequest {
+                post("${getBaseUrl()}/v1/danmaku/$episodeId") {
+                    bearerAuth(token)
+                    contentType(ContentType.Application.Json)
+                    setBody(DanmakuPostRequest(info))
+                }
             }
         }
     }
@@ -206,7 +208,6 @@ class AniDanmakuSenderImpl(
     }
 
     override fun close() {
-        client.close()
         backgroundScope.cancel()
     }
 }

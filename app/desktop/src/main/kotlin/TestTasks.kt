@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -9,8 +9,9 @@
 
 package me.him188.ani.app.desktop
 
-import io.ktor.client.plugins.HttpTimeout
 import kotlinx.coroutines.runBlocking
+import me.him188.ani.app.domain.foundation.HttpClientProvider
+import me.him188.ani.app.domain.foundation.HttpClientUserAgent
 import me.him188.ani.app.platform.DesktopContext
 import me.him188.ani.app.tools.update.DefaultFileDownloader
 import me.him188.ani.app.tools.update.InstallationResult
@@ -18,17 +19,20 @@ import me.him188.ani.app.tools.update.UpdateInstaller
 import me.him188.ani.app.torrent.anitorrent.AnitorrentLibraryLoader
 import me.him188.ani.utils.io.inSystem
 import me.him188.ani.utils.io.toKtPath
-import me.him188.ani.utils.ktor.createDefaultHttpClient
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.platform.Platform
 import me.him188.ani.utils.platform.currentPlatformDesktop
+import org.koin.core.context.GlobalContext
 import org.koin.mp.KoinPlatform
 import java.io.File
 import kotlin.system.exitProcess
 
 object TestTasks {
+    private val koin = GlobalContext.get()
+    private val clientProvider by koin.inject<HttpClientProvider>()
+
     private val logger = logger<TestTasks>()
     fun handleTestTask(taskName: String, args: List<String>, context: DesktopContext): Nothing {
         when (taskName) {
@@ -53,15 +57,10 @@ object TestTasks {
     private fun downloadUpdateAndInstall(args: List<String>, context: DesktopContext): Nothing {
         val url = args[0]
 
-        val result = createDefaultHttpClient {
-            expectSuccess = true
-            install(HttpTimeout) {
-                requestTimeoutMillis = 1_000_000
-            }
-        }.use { client ->
-            runBlocking {
+        val result = runBlocking {
+            clientProvider.get(HttpClientUserAgent.ANI).use {
                 logger.info { "Downloading update from $url" }
-                DefaultFileDownloader(client).download(
+                DefaultFileDownloader(this).download(
                     listOf(url),
                     saveDir = File(".").toKtPath().inSystem,
                 ).also {

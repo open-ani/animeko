@@ -19,10 +19,12 @@ import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.cookies.HttpCookies
 import io.ktor.client.plugins.plugin
+import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.isSuccess
+import io.ktor.serialization.ContentConverter
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.io.IOException
 import kotlinx.serialization.json.Json
@@ -39,6 +41,9 @@ import kotlin.time.measureTimedValue
 // 根据不同平台，选择相应的 HttpClientEngine
 expect fun getPlatformKtorEngine(): HttpClientEngineFactory<*>
 
+/**
+ * Note: 尽可能使用 `HttpClientProvider` 来共享 [HttpClient] 示例. 因为每个示例都潜在地会有一个线程池.
+ */
 fun createDefaultHttpClient(
     clientConfig: HttpClientConfig<*>.() -> Unit = {},
 ): HttpClient = HttpClient(getPlatformKtorEngine()) {
@@ -53,13 +58,18 @@ fun createDefaultHttpClient(
     }
     BrowserUserAgent()
     install(ContentNegotiation) {
+        val xmlConverter = getXmlConverter()
         json(
             Json {
                 ignoreUnknownKeys = true
+                isLenient = true
             },
         )
+        register(ContentType.Text.Html, xmlConverter)
+        register(ContentType.Text.Xml, xmlConverter)
     }
     followRedirects = true
+    expectSuccess = true // All clients actually expect success by default in clientConfig, so we move them here
     clientConfig()
 }
 
@@ -144,3 +154,6 @@ object HttpLogger {
         }
     }
 }
+
+
+internal expect fun getXmlConverter(): ContentConverter

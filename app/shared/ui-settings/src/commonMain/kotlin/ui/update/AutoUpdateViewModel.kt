@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -17,29 +17,25 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.UriHandler
-import io.ktor.client.plugins.HttpTimeout
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import kotlinx.io.IOException
 import me.him188.ani.app.data.repository.user.SettingsRepository
+import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.settings.ProxyProvider
-import me.him188.ani.app.domain.settings.collectProxyTo
 import me.him188.ani.app.domain.update.UpdateManager
 import me.him188.ani.app.platform.currentAniBuildConfig
-import me.him188.ani.app.platform.getAniUserAgent
 import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.tools.update.DefaultFileDownloader
 import me.him188.ani.app.tools.update.FileDownloaderState
 import me.him188.ani.app.ui.foundation.AbstractViewModel
-import me.him188.ani.app.ui.foundation.launchInBackground
 import me.him188.ani.utils.io.createDirectories
 import me.him188.ani.utils.io.exists
 import me.him188.ani.utils.io.inSystem
 import me.him188.ani.utils.io.list
-import me.him188.ani.utils.ktor.createDefaultHttpClient
-import me.him188.ani.utils.ktor.userAgent
+import me.him188.ani.utils.ktor.UnsafeWrapperHttpClientApi
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.warn
 import me.him188.ani.utils.platform.annotations.TestOnly
@@ -57,23 +53,16 @@ class AutoUpdateViewModel : AbstractViewModel(), KoinComponent {
     private val settingsRepository: SettingsRepository by inject()
     private val updateSettings = settingsRepository.updateSettings.flow
     private val updateManager: UpdateManager by inject()
+    private val clientProvider: HttpClientProvider by inject()
 
     private val updateChecker: UpdateChecker by lazy { UpdateChecker() }
-    private val client by lazy {
-        createDefaultHttpClient {
-            userAgent(getAniUserAgent())
-            expectSuccess = true
-            install(HttpTimeout) {
-                requestTimeoutMillis = 1_000_000
-            }
-            followRedirects = true
-        }.apply {
-            launchInBackground {
-                proxyProvider.collectProxyTo(this@apply)
-            }
-        }
-    }
-    private val fileDownloader by lazy { DefaultFileDownloader(client) }
+
+    private val client by lazy { clientProvider.get() }
+
+    @OptIn(UnsafeWrapperHttpClientApi::class)
+    private val borrowedClient = lazy { clientProvider.get().borrow() }
+
+    private val fileDownloader by lazy { DefaultFileDownloader(borrowedClient.value) }
 
     /**
      * 新版本下载进度
@@ -220,9 +209,12 @@ class AutoUpdateViewModel : AbstractViewModel(), KoinComponent {
         latestVersion?.let { startDownload(it, uriHandler) }
     }
 
+    @OptIn(UnsafeWrapperHttpClientApi::class)
     override fun onCleared() {
         super.onCleared()
-        client.close()
+        if (borrowedClient.isInitialized()) {
+            client.returnClient(borrowedClient.value)
+        }
     }
 }
 

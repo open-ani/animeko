@@ -34,6 +34,7 @@ kotlin {
     sourceSets.getByName("jvmMain") {
         dependencies {
             api(libs.ktor.client.okhttp)
+            implementation(libs.jsoup)
         }
     }
 

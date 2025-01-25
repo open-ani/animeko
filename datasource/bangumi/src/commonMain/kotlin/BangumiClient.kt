@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -14,9 +14,7 @@ import io.ktor.client.HttpClientConfig
 import io.ktor.client.call.body
 import io.ktor.client.plugins.HttpRequestRetry
 import io.ktor.client.plugins.HttpSend
-import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.UserAgent
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.plugin
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.get
@@ -30,7 +28,6 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.appendPathSegments
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
-import io.ktor.serialization.kotlinx.json.json
 import io.ktor.utils.io.core.Closeable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -60,7 +57,7 @@ import me.him188.ani.datasources.bangumi.models.subjects.BangumiLegacySubject
 import me.him188.ani.datasources.bangumi.models.subjects.BangumiSubjectImageSize
 import me.him188.ani.datasources.bangumi.next.apis.SubjectBangumiNextApi
 import me.him188.ani.utils.ktor.HttpTokenChecker
-import me.him188.ani.utils.ktor.getPlatformKtorEngine
+import me.him188.ani.utils.ktor.createDefaultHttpClient
 import me.him188.ani.utils.ktor.registerLogging
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.thisLogger
@@ -193,18 +190,12 @@ class BangumiClientImpl(
         isLenient = true
     }
 
-    override val httpClient = HttpClient(getPlatformKtorEngine()) {
+    override val httpClient: HttpClient = createDefaultHttpClient {
         httpClientConfiguration()
         install(HttpRequestRetry) {
             maxRetries = 3
             delayMillis { 2000 }
         }
-        install(HttpTimeout)
-        install(ContentNegotiation) {
-            json(json)
-        }
-        followRedirects = true
-        expectSuccess = true
     }.apply {
         registerLogging(logger)
         plugin(HttpSend).intercept { request ->

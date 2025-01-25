@@ -1,32 +1,26 @@
+/*
+ * Copyright (C) 2024-2025 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.datasources.api.test.codegen.main
 
-import io.ktor.client.HttpClient
 import io.ktor.client.plugins.UserAgent
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.client.plugins.cookies.HttpCookies
-import io.ktor.http.ContentType
-import io.ktor.http.content.OutgoingContent
-import io.ktor.serialization.ContentConverter
-import io.ktor.serialization.kotlinx.json.json
-import io.ktor.util.reflect.TypeInfo
-import io.ktor.utils.io.ByteReadChannel
-import io.ktor.utils.io.charsets.Charset
-import io.ktor.utils.io.charsets.decode
-import io.ktor.utils.io.jvm.javaio.toInputStream
-import io.ktor.utils.io.streams.asInput
 import kotlinx.coroutines.flow.toList
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import me.him188.ani.datasources.api.source.DownloadSearchQuery
 import me.him188.ani.datasources.api.test.codegen.json
 import me.him188.ani.datasources.api.topic.Topic
 import me.him188.ani.datasources.api.topic.TopicCategory
 import me.him188.ani.datasources.dmhy.impl.DmhyPagedSourceImpl
 import me.him188.ani.datasources.dmhy.impl.protocol.Network
-import me.him188.ani.utils.ktor.getPlatformKtorEngine
-import org.jsoup.Jsoup
-import org.jsoup.nodes.Document
+import me.him188.ani.utils.ktor.asWrapperHttpClient
+import me.him188.ani.utils.ktor.createDefaultHttpClient
 import java.io.File
 
 
@@ -59,44 +53,10 @@ class TopicFetcher(
     private val dataSource: String,
 ) {
     suspend fun fetchTopics(name: String): List<Topic> {
-        HttpClient(getPlatformKtorEngine()) {
+        createDefaultHttpClient {
             followRedirects = true
-
             install(UserAgent) {
                 agent = "open-ani/ani/3.0.0-beta01 (debug) (https://github.com/open-ani/ani)"
-            }
-
-            install(HttpCookies)
-
-            install(ContentNegotiation) {
-                json(
-                    Json {
-                        ignoreUnknownKeys = true
-                    },
-                )
-                register(
-                    ContentType.Text.Html,
-                    object : ContentConverter {
-                        override suspend fun deserialize(
-                            charset: Charset,
-                            typeInfo: TypeInfo,
-                            content: ByteReadChannel
-                        ): Any? {
-                            if (typeInfo.type.qualifiedName != Document::class.qualifiedName) return null
-                            content.awaitContent()
-                            val decoder = Charsets.UTF_8.newDecoder()
-                            val string = decoder.decode(content.toInputStream().asInput())
-                            return Jsoup.parse(string, charset.name())
-                        }
-
-                        override suspend fun serializeNullable(
-                            contentType: ContentType,
-                            charset: Charset,
-                            typeInfo: TypeInfo,
-                            value: Any?
-                        ): OutgoingContent? = null
-                    },
-                ) {}
             }
 
         }.use { http ->
@@ -106,7 +66,7 @@ class TopicFetcher(
                     category = TopicCategory.ANIME,
                     allowAny = true,
                 ),
-                Network(http),
+                Network(http.asWrapperHttpClient()),
             ).results.toList()
             println(topics)
             return topics

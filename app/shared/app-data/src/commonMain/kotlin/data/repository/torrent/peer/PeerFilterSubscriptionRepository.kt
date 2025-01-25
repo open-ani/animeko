@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -10,7 +10,6 @@
 package me.him188.ani.app.data.repository.torrent.peer
 
 import androidx.datastore.core.DataStore
-import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import kotlinx.collections.immutable.PersistentMap
@@ -37,6 +36,7 @@ import me.him188.ani.utils.io.delete
 import me.him188.ani.utils.io.exists
 import me.him188.ani.utils.io.resolve
 import me.him188.ani.utils.io.writeText
+import me.him188.ani.utils.ktor.WrapperHttpClient
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
@@ -44,7 +44,7 @@ import me.him188.ani.utils.logging.warn
 class PeerFilterSubscriptionRepository(
     private val dataStore: DataStore<PeerFilterSubscriptionsSaveData>,
     private val ruleSaveDir: SystemPath,
-    private val httpClient: Flow<HttpClient>
+    private val httpClient: WrapperHttpClient,
 ) {
     private val logger = logger<PeerFilterSubscriptionRepository>()
 
@@ -131,9 +131,10 @@ class PeerFilterSubscriptionRepository(
         try {
             val url = if (sub.subscriptionId == PeerFilterSubscription.BUILTIN_SUBSCRIPTION_ID)
                 PeerFilterSubscription.builtinSubscriptionUrl else sub.url
-            val resp = httpClient.first().get(url)
+            val respText = httpClient.use {
+                get(url).bodyAsText()
+            }
 
-            val respText = resp.bodyAsText()
             resolveSaveFile(subscriptionId).writeText(respText)
 
             if (sub.enabled) {

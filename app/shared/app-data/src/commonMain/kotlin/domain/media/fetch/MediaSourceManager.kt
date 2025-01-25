@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -29,6 +29,8 @@ import me.him188.ani.app.data.repository.media.MediaSourceInstanceRepository
 import me.him188.ani.app.data.repository.media.MikanIndexCacheRepository
 import me.him188.ani.app.data.repository.media.SelectorMediaSourceEpisodeCacheRepository
 import me.him188.ani.app.data.repository.media.updateConfig
+import me.him188.ani.app.domain.foundation.HttpClientProvider
+import me.him188.ani.app.domain.foundation.HttpClientUserAgent
 import me.him188.ani.app.domain.media.cache.MediaCacheManager.Companion.LOCAL_FS_MEDIA_SOURCE_ID
 import me.him188.ani.app.domain.mediasource.instance.MediaSourceInstance
 import me.him188.ani.app.domain.mediasource.instance.MediaSourceSave
@@ -49,6 +51,7 @@ import me.him188.ani.datasources.mikan.MikanCNMediaSource
 import me.him188.ani.datasources.mikan.MikanMediaSource
 import me.him188.ani.utils.coroutines.onReplacement
 import me.him188.ani.utils.ktor.ClientProxyConfig
+import me.him188.ani.utils.ktor.WrapperHttpClient
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.logger
 import org.koin.core.component.KoinComponent
@@ -189,6 +192,7 @@ class MediaSourceManagerImpl(
     private val mikanIndexCacheRepository: MikanIndexCacheRepository by inject()
     private val instances: MediaSourceInstanceRepository by inject()
     private val selectorMediaSourceEpisodeCacheRepository: SelectorMediaSourceEpisodeCacheRepository by inject()
+    private val clientProvider: HttpClientProvider by inject()
 
     private val scope = CoroutineScope(
         CoroutineExceptionHandler { _, throwable ->
@@ -235,7 +239,12 @@ class MediaSourceManagerImpl(
                 factoryId = save.factoryId,
                 isEnabled = save.isEnabled,
                 config = save.config,
-                source = factory.create(config, save.mediaSourceId, save.config),
+                source = factory.create(
+                    config,
+                    save.mediaSourceId,
+                    save.config,
+                    clientProvider.get(HttpClientUserAgent.BROWSER),
+                ),
             )
         }
     }
@@ -306,15 +315,16 @@ class MediaSourceManagerImpl(
         proxyConfig: ProxyConfig?,
         mediaSourceId: String,
         config: MediaSourceConfig,
+        client: WrapperHttpClient,
     ): MediaSource {
         val mediaSourceConfig = config.copy(
             proxy = config.proxy ?: proxyConfig?.toClientProxyConfig(),
             userAgent = getAniUserAgent(),
         )
         return when (this) {
-            is MikanMediaSource.Factory -> create(mediaSourceConfig, mikanIndexCacheRepository)
-            is MikanCNMediaSource.Factory -> create(mediaSourceConfig, mikanIndexCacheRepository)
-            else -> create(mediaSourceId, mediaSourceConfig)
+            is MikanMediaSource.Factory -> create(mediaSourceConfig, mikanIndexCacheRepository, client)
+            is MikanCNMediaSource.Factory -> create(mediaSourceConfig, mikanIndexCacheRepository, client)
+            else -> create(mediaSourceId, mediaSourceConfig, client)
         }
     }
 

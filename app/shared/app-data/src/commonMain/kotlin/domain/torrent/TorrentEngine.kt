@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -26,7 +26,6 @@ import kotlinx.coroutines.flow.retry
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
-import me.him188.ani.app.data.models.preference.ProxyConfig
 import me.him188.ani.app.domain.torrent.peer.PeerFilterSettings
 import me.him188.ani.app.torrent.api.TorrentDownloader
 import me.him188.ani.app.torrent.api.peer.PeerFilter
@@ -34,6 +33,7 @@ import me.him188.ani.app.torrent.api.peer.PeerInfo
 import me.him188.ani.datasources.api.source.MediaSourceLocation
 import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.coroutines.onReplacement
+import me.him188.ani.utils.ktor.WrapperHttpClient
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
@@ -95,7 +95,7 @@ class TorrentDownloaderInitializationException(
 abstract class AbstractTorrentEngine<Downloader : TorrentDownloader, Config : Any>(
     final override val type: TorrentEngineType,
     protected val config: Flow<Config>,
-    protected val proxyProvider: Flow<ProxyConfig?>,
+    protected val client: WrapperHttpClient,
     protected val peerFilterSettings: Flow<PeerFilterSettings>,
     parentCoroutineContext: CoroutineContext,
 ) : TorrentEngine {
@@ -113,7 +113,7 @@ abstract class AbstractTorrentEngine<Downloader : TorrentDownloader, Config : An
             //  目前没有必要在 proxySettings 变更时重新创建 downloader, 因为 downloader 不会使用代理.
             initialized.await()
 
-            newInstance(config, proxyProvider).also { downloader ->
+            newInstance(config).also { downloader ->
                 scope.coroutineContext.job.invokeOnCompletion {
                     downloader.close()
                 }
@@ -149,7 +149,7 @@ abstract class AbstractTorrentEngine<Downloader : TorrentDownloader, Config : An
         }
     }
 
-    protected abstract suspend fun newInstance(config: Config, proxyProvider: Flow<ProxyConfig?>): Downloader
+    protected abstract suspend fun newInstance(config: Config): Downloader
 
     protected abstract suspend fun Downloader.applyConfig(config: Config)
 

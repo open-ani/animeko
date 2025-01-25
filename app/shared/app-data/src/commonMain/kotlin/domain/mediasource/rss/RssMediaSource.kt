@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -39,7 +39,7 @@ import me.him188.ani.datasources.api.source.MediaSourceInfo
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.source.MediaSourceLocation
 import me.him188.ani.datasources.api.source.deserializeArgumentsOrNull
-import me.him188.ani.datasources.api.source.useHttpClient
+import me.him188.ani.utils.ktor.WrapperHttpClient
 
 /**
  * [RssMediaSource] 的用户侧配置, 用于创建 [RssMediaSource] 实例.
@@ -80,6 +80,7 @@ class RssMediaSource(
     override val mediaSourceId: String,
     config: MediaSourceConfig,
     override val kind: MediaSourceKind = MediaSourceKind.BitTorrent,
+    private val client: WrapperHttpClient,
 ) : HttpMediaSource() {
     companion object {
         val FactoryId = FactoryId("rss")
@@ -91,7 +92,6 @@ class RssMediaSource(
 
     private val usePaging = searchConfig.searchUrl.contains("{page}")
 
-    private val client by lazy { useHttpClient(config) }
     private val engine by lazy { DefaultRssMediaSourceEngine(flowOf(client)) }
 
     override val location: MediaSourceLocation get() = MediaSourceLocation.Online
@@ -107,14 +107,16 @@ class RssMediaSource(
         )
 
         override val allowMultipleInstances: Boolean get() = true
-        override fun create(mediaSourceId: String, config: MediaSourceConfig): MediaSource =
-            RssMediaSource(mediaSourceId, config)
+        override fun create(mediaSourceId: String, config: MediaSourceConfig, client: WrapperHttpClient): MediaSource =
+            RssMediaSource(mediaSourceId, config, client = client)
     }
 
     override suspend fun checkConnection(): ConnectionStatus {
         return kotlin.runCatching {
             runApiRequest {
-                client.get(searchConfig.searchUrl) // 提交一个请求, 只要它不是因为网络错误就行
+                client.use {
+                    get(searchConfig.searchUrl) // 提交一个请求, 只要它不是因为网络错误就行
+                }
             }.fold(
                 onSuccess = { ConnectionStatus.SUCCESS },
                 onKnownFailure = {

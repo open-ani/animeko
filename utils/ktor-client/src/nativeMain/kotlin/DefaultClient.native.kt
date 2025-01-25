@@ -7,5 +7,10 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.datasources.api.source
+package me.him188.ani.utils.ktor
 
+import io.ktor.serialization.ContentConverter
+
+internal actual fun getXmlConverter(): ContentConverter {
+    TODO("Not yet implemented")
+}

@@ -46,6 +46,9 @@ import me.him188.ani.datasources.api.topic.FileSize.Companion.kiloBytes
 import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.coroutines.sampleWithInitial
 import me.him188.ani.utils.io.inSystem
+import me.him188.ani.utils.ktor.asWrapperHttpClient
+import me.him188.ani.utils.ktor.createDefaultHttpClient
+import me.him188.ani.utils.ktor.registerLogging
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import kotlin.coroutines.CoroutineContext
@@ -86,6 +89,13 @@ sealed class AniTorrentService : LifecycleService(), CoroutineScope {
         (getSystemService(Context.POWER_SERVICE) as PowerManager)
             .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "AniTorrentService::wake_lock")
     }
+    private val httpClient by lazy {
+        createDefaultHttpClient {}
+            .apply {
+                registerLogging(logger)
+                // TODO: proxy not set, because the proxy foundation is already broken. We will do this before 4.4.0-alpha04
+            }
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -97,7 +107,7 @@ sealed class AniTorrentService : LifecycleService(), CoroutineScope {
                     anitorrentConfig.combine(meteredNetworkDetector.isMeteredNetworkFlow) { config, isMetered ->
                         if (isMetered) config.copy(uploadRateLimit = 1.kiloBytes) else config
                     },
-                    proxyConfig = proxyConfig,
+                    httpClient.asWrapperHttpClient(),
                     torrentPeerConfig,
                     Path(saveDirDeferred.await()).inSystem,
                     coroutineContext,

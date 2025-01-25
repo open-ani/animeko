@@ -18,7 +18,6 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -76,6 +75,9 @@ import me.him188.ani.app.data.repository.user.TokenRepository
 import me.him188.ani.app.data.repository.user.TokenRepositoryImpl
 import me.him188.ani.app.domain.danmaku.DanmakuManager
 import me.him188.ani.app.domain.danmaku.DanmakuManagerImpl
+import me.him188.ani.app.domain.foundation.DefaultHttpClientProvider
+import me.him188.ani.app.domain.foundation.HttpClientProvider
+import me.him188.ani.app.domain.foundation.HttpClientUserAgent
 import me.him188.ani.app.domain.media.cache.DefaultMediaAutoCacheService
 import me.him188.ani.app.domain.media.cache.MediaAutoCacheService
 import me.him188.ani.app.domain.media.cache.MediaCacheManager
@@ -89,6 +91,7 @@ import me.him188.ani.app.domain.media.fetch.MediaSourceManagerImpl
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceCodecManager
 import me.him188.ani.app.domain.mediasource.subscription.MediaSourceSubscriptionRequesterImpl
 import me.him188.ani.app.domain.mediasource.subscription.MediaSourceSubscriptionUpdater
+import me.him188.ani.app.domain.session.AniApiProvider
 import me.him188.ani.app.domain.session.AniAuthClient
 import me.him188.ani.app.domain.session.BangumiSessionManager
 import me.him188.ani.app.domain.session.OpaqueSession
@@ -110,9 +113,6 @@ import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.coroutines.childScopeContext
 import me.him188.ani.utils.io.resolve
-import me.him188.ani.utils.ktor.createDefaultHttpClient
-import me.him188.ani.utils.ktor.registerLogging
-import me.him188.ani.utils.ktor.userAgent
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
 import org.koin.core.KoinApplication
@@ -131,11 +131,10 @@ fun KoinApplication.getCommonKoinModule(getContext: () -> Context, coroutineScop
 private fun KoinApplication.otherModules(getContext: () -> Context, coroutineScope: CoroutineScope) = module {
     // Repositories
     single<ProxyProvider> { SettingsBasedProxyProvider(get(), coroutineScope) }
+    single<HttpClientProvider> { DefaultHttpClientProvider(coroutineScope, get()) }
+    single<AniApiProvider> { AniApiProvider(get<HttpClientProvider>().get()) }
     single<AniAuthClient> {
-        AniAuthClient(
-            get<ProxyProvider>(),
-            parentCoroutineContext = coroutineScope.coroutineContext,
-        )
+        AniAuthClient(get<AniApiProvider>().oauthApi)
     }
     single<TokenRepository> { TokenRepositoryImpl(getContext().dataStores.tokenStore) }
     single<EpisodePreferencesRepository> { EpisodePreferencesRepositoryImpl(getContext().dataStores.preferredAllianceStore) }
@@ -275,29 +274,21 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
         EpisodePlayHistoryRepositoryImpl(getContext().dataStores.episodeHistoryStore)
     }
     single<AniSubjectRelationIndexService> {
-        AniSubjectRelationIndexService(lazy { get<AniAuthClient>().subjectRelationsApi })
+        val provider = get<AniApiProvider>()
+        AniSubjectRelationIndexService(provider.subjectRelationsApi)
     }
 
     single<PeerFilterSubscriptionRepository> {
-        val settings = koin.get<ProxyProvider>()
-        val client = createDefaultHttpClient {
-            userAgent(getAniUserAgent())
-            expectSuccess = true
-        }.apply {
-            registerLogging(logger<PeerFilterSubscriptionRepository>())
-            coroutineScope.launch {
-                settings.collectProxyTo(this@apply)
-            }
-        }
+        val client = koin.get<HttpClientProvider>().get(HttpClientUserAgent.ANI)
         PeerFilterSubscriptionRepository(
             dataStore = getContext().dataStores.peerFilterSubscriptionStore,
             ruleSaveDir = getContext().files.dataDir.resolve("peerfilter-subs"),
-            httpClient = flowOf(client),
+            httpClient = client,
         )
     }
     single<BangumiProfileService> { BangumiProfileService() }
-    single<AnimeScheduleService> { AnimeScheduleService(lazy { get<AniAuthClient>().scheduleApi }) }
-    single<TrendsRepository> { TrendsRepository(lazy { get<AniAuthClient>().trendsApi }) }
+    single<AnimeScheduleService> { AnimeScheduleService(get<AniApiProvider>().scheduleApi) }
+    single<TrendsRepository> { TrendsRepository(get<AniApiProvider>().trendsApi) }
 
     single<DanmakuManager> {
         DanmakuManagerImpl(
@@ -373,20 +364,12 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
     }
     single<MediaSourceSubscriptionUpdater> {
         val settings = koin.get<ProxyProvider>()
-        val client = createDefaultHttpClient {
-            userAgent(getAniUserAgent())
-            expectSuccess = true
-        }.apply {
-            registerLogging(logger<MediaSourceSubscriptionUpdater>())
-            coroutineScope.launch {
-                settings.collectProxyTo(this@apply)
-            }
-        }
+        val client = get<HttpClientProvider>().get(HttpClientUserAgent.ANI)
         MediaSourceSubscriptionUpdater(
             get<MediaSourceSubscriptionRepository>(),
             get<MediaSourceManager>(),
             get<MediaSourceCodecManager>(),
-            requester = MediaSourceSubscriptionRequesterImpl(flowOf(client)),
+            requester = MediaSourceSubscriptionRequesterImpl(client),
         )
     }
     single<SelectorMediaSourceEpisodeCacheRepository> {

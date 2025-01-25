@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -9,7 +9,6 @@
 
 package me.him188.ani.datasources.ikaros
 
-import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
@@ -39,6 +38,7 @@ import me.him188.ani.datasources.ikaros.models.IkarosEpisodeGroup
 import me.him188.ani.datasources.ikaros.models.IkarosEpisodeRecord
 import me.him188.ani.datasources.ikaros.models.IkarosSubjectSync
 import me.him188.ani.datasources.ikaros.models.IkarosVideoSubtitle
+import me.him188.ani.utils.ktor.WrapperHttpClient
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.logger
 import models.IkarosAttachment
@@ -46,7 +46,8 @@ import java.util.Collections
 
 class IkarosClient(
     private val baseUrl: String,
-    private val client: HttpClient,
+    private val client: WrapperHttpClient,
+    private val addAuthorizationHeaders: io.ktor.http.HttpMessageBuilder.() -> Unit,
 ) {
     companion object {
         private val logger = logger<IkarosClient>()
@@ -55,8 +56,12 @@ class IkarosClient(
 
     suspend fun checkConnection(): HttpStatusCode {
         return try {
-            client.get(baseUrl).run {
-                check(status.isSuccess()) { "Request failed: $this" }
+            client.use {
+                get(baseUrl) {
+                    addAuthorizationHeaders()
+                }.run {
+                    check(status.isSuccess()) { "Request failed: $this" }
+                }
             }
             HttpStatusCode.OK
         } catch (e: Exception) {
@@ -71,7 +76,11 @@ class IkarosClient(
             return Collections.emptyList()
         }
         val url = "$baseUrl/api/v1alpha1/subject/syncs/platform?platform=BGM_TV&platformId=$bgmTvSubjectId"
-        val responseText = client.get(url).bodyAsText()
+        val responseText = client.use {
+            get(url) {
+                addAuthorizationHeaders()
+            }.bodyAsText()
+        }
         return json.decodeFromString(responseText)
     }
 
@@ -144,20 +153,32 @@ class IkarosClient(
             return Collections.emptyList()
         }
         val url = "$baseUrl/api/v1alpha1/episode/records/subjectId/$subjectId"
-        val responseText = client.get(url).bodyAsText()
+        val responseText = client.use {
+            get(url) {
+                addAuthorizationHeaders()
+            }.bodyAsText()
+        }
         return json.decodeFromString(responseText)
     }
 
     private suspend fun getAttachmentById(attId: Long): IkarosAttachment? {
         if (attId <= 0) return null
         val url = baseUrl.plus("/api/v1alpha1/attachment/").plus(attId)
-        return client.get(url).body<IkarosAttachment>()
+        return client.use {
+            get(url) {
+                addAuthorizationHeaders()
+            }.body<IkarosAttachment>()
+        }
     }
 
     private suspend fun getAttachmentVideoSubtitlesById(attId: Long): List<IkarosVideoSubtitle>? {
         if (attId <= 0) return null
         val url = baseUrl.plus("/api/v1alpha1/attachment/relation/videoSubtitle/subtitles/").plus(attId)
-        val responseText = client.get(url).bodyAsText()
+        val responseText = client.use {
+            get(url) {
+                addAuthorizationHeaders()
+            }.bodyAsText()
+        }
         return json.decodeFromString(responseText)
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.domain.mediasource.web
 
-import io.ktor.client.HttpClient
 import io.ktor.client.plugins.ClientRequestException
 import io.ktor.client.request.accept
 import io.ktor.client.request.get
@@ -20,8 +19,6 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.URLBuilder
 import io.ktor.http.Url
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonPrimitive
@@ -50,6 +47,7 @@ import me.him188.ani.datasources.api.topic.ResourceLocation
 import me.him188.ani.datasources.api.topic.SubtitleLanguage
 import me.him188.ani.datasources.api.topic.titles.LabelFirstRawTitleParser
 import me.him188.ani.utils.coroutines.IO_
+import me.him188.ani.utils.ktor.WrapperHttpClient
 import me.him188.ani.utils.xml.Document
 import me.him188.ani.utils.xml.Element
 import me.him188.ani.utils.xml.Html
@@ -356,7 +354,7 @@ class DefaultSelectorMediaSourceEngine(
     /**
      * Engine 自己不会 cache 实例, 每次都调用 `.first()`.
      */
-    private val client: Flow<HttpClient>,
+    private val client: WrapperHttpClient,
     private val ioDispatcher: CoroutineContext = Dispatchers.IO_,
 ) : SelectorMediaSourceEngine() {
     override suspend fun searchImpl(
@@ -364,10 +362,12 @@ class DefaultSelectorMediaSourceEngine(
     ): SearchSubjectResult = withContext(ioDispatcher) {
         try {
             val document = try {
-                client.first().get(finalUrl) {
-                    accept(ContentType.Text.Html)
-                }.let { resp ->
-                    parseResp(resp)
+                client.use {
+                    get(finalUrl) {
+                        accept(ContentType.Text.Html)
+                    }.let { resp ->
+                        parseResp(resp)
+                    }
                 }
             } catch (e: ClientRequestException) {
                 if (e.response.status == HttpStatusCode.NotFound) {
@@ -393,10 +393,12 @@ class DefaultSelectorMediaSourceEngine(
     @Throws(RepositoryException::class, CancellationException::class)
     public override suspend fun doHttpGet(uri: String): Document = withContext(ioDispatcher) {
         try {
-            client.first().get(uri) {
-                accept(ContentType.Text.Html)
-            }.let { resp ->
-                parseResp(resp)
+            client.use {
+                get(uri) {
+                    accept(ContentType.Text.Html)
+                }.let { resp ->
+                    parseResp(resp)
+                }
             }
         } catch (e: Exception) {
             throw RepositoryException.wrapOrThrowCancellation(e)

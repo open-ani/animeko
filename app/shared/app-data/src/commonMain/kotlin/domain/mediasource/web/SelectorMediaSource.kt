@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -19,7 +19,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flattenConcat
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import me.him188.ani.app.data.models.ApiFailure
@@ -50,7 +49,7 @@ import me.him188.ani.datasources.api.source.MediaSourceInfo
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.source.MediaSourceLocation
 import me.him188.ani.datasources.api.source.deserializeArgumentsOrNull
-import me.him188.ani.datasources.api.source.useHttpClient
+import me.him188.ani.utils.ktor.WrapperHttpClient
 import kotlin.time.Duration
 
 @Suppress("unused") // bug
@@ -95,6 +94,7 @@ class SelectorMediaSource(
     config: MediaSourceConfig,
     val repository: SelectorMediaSourceEpisodeCacheRepository,
     override val kind: MediaSourceKind = MediaSourceKind.WEB,
+    private val client: WrapperHttpClient,
 ) : HttpMediaSource(), WebVideoMatcherProvider {
     companion object {
         val FactoryId = FactoryId("web-selector")
@@ -105,8 +105,7 @@ class SelectorMediaSource(
             ?: SelectorMediaSourceArguments.Default
     private val searchConfig = arguments.searchConfig
 
-    private val client by lazy { useHttpClient(config) }
-    private val engine by lazy { EngineType(flowOf(client)) }
+    private val engine by lazy { EngineType(client) }
 
     override val location: MediaSourceLocation get() = MediaSourceLocation.Online
 
@@ -122,14 +121,20 @@ class SelectorMediaSource(
         )
 
         override val allowMultipleInstances: Boolean get() = true
-        override fun create(mediaSourceId: String, config: MediaSourceConfig): MediaSource =
-            SelectorMediaSource(mediaSourceId, config, repository)
+        override fun create(
+            mediaSourceId: String,
+            config: MediaSourceConfig,
+            client: WrapperHttpClient
+        ): MediaSource =
+            SelectorMediaSource(mediaSourceId, config, repository, client = client)
     }
 
     override suspend fun checkConnection(): ConnectionStatus {
         return kotlin.runCatching {
             runApiRequest {
-                client.get(searchConfig.searchUrl) // 提交一个请求, 只要它不是因为网络错误就行
+                client.use {
+                    get(searchConfig.searchUrl) // 提交一个请求, 只要它不是因为网络错误就行
+                }
             }.fold(
                 onSuccess = { ConnectionStatus.SUCCESS },
                 onKnownFailure = {
