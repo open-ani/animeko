@@ -11,15 +11,9 @@ package me.him188.ani.app.ui.foundation
 
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import coil3.Image
 import coil3.asImage
-import coil3.toBitmap
 
 actual fun ImageBitmap.asCoilImage(): Image {
     return this.asAndroidBitmap().asImage()
-}
-
-actual fun Image.toComposeImageBitmap(): ImageBitmap {
-    return this.toBitmap().asImageBitmap()
 }

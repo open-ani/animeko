@@ -186,5 +186,3 @@ fun createDefaultImageLoader(
 }
 
 expect fun ImageBitmap.asCoilImage(): Image
-
-expect fun Image.toComposeImageBitmap(): ImageBitmap

@@ -832,4 +832,3 @@ private fun renderSubjectDetailsTab(tab: SubjectDetailsTab): String {
 }
 
 expect fun Image.toComposeImageBitmap(): ImageBitmap
-// use Image.asComposeImageBitmap here may cause failed builds on Android
