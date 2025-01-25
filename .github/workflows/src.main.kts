@@ -521,6 +521,10 @@ fun getVerifyJobBody(
             name = "anitorrent-load-test",
             step = "Check that Anitorrent can be loaded",
         ),
+        VerifyTask(
+            name = "dandanplay-app-id",
+            step = "Check that Dandanplay APP ID is valid",
+        ),
     )
 
     when (runner.os to runner.arch) {
