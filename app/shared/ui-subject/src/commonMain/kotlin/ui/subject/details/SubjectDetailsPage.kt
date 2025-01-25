@@ -16,6 +16,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -41,6 +42,7 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -54,6 +56,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -65,7 +68,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalUriHandler
@@ -74,8 +79,14 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.compose.collectAsLazyPagingItemsWithLifecycle
 import coil3.compose.AsyncImagePainter
+import coil3.toBitmap
+import com.kmpalette.color
+import com.kmpalette.rememberPaletteState
+import com.materialkolor.PaletteStyle
+import com.materialkolor.dynamicColorScheme
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.episode.findCacheStatus
+import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.data.models.subject.SubjectCollectionStats
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.domain.foundation.LoadError
@@ -100,6 +111,9 @@ import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.pagerTabIndicatorOffset
 import me.him188.ani.app.ui.foundation.rememberImageViewerHandler
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
+import me.him188.ani.app.ui.foundation.theme.LocalThemeSettings
+import me.him188.ani.app.ui.foundation.theme.animate
+import me.him188.ani.app.ui.foundation.theme.modifyColorSchemeForBlackBackground
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.richtext.RichTextDefaults
 import me.him188.ani.app.ui.search.LoadErrorCard
@@ -194,7 +208,6 @@ private fun SubjectDetailsPage(
 ) {
     val toaster = LocalToaster.current
     val browserNavigator = LocalUriHandler.current
-    val scope = rememberCoroutineScope()
 
     var showSelectEpisode by rememberSaveable { mutableStateOf(false) }
     if (showSelectEpisode) {
@@ -214,131 +227,175 @@ private fun SubjectDetailsPage(
 
     val placeholderModifier = Modifier.placeholder(state.showPlaceholder)
     val presentation by state.presentationFlow.collectAsStateWithLifecycle()
-    SubjectDetailsPageLayout(
-        subjectId = state.subjectId,
-        info = state.info,
-        seasonTags = {
-            SubjectDetailsDefaults.SeasonTag(
-                airDate = state.info?.airDate ?: PackedDate.Invalid,
-                airingLabelState = state.airingLabelState,
-                placeholderModifier,
-            )
-        },
-        collectionData = {
-            SubjectDetailsDefaults.CollectionData(
-                collectionStats = state.info?.collectionStats ?: SubjectCollectionStats.Zero,
-                placeholderModifier,
-            )
-        },
-        collectionActions = {
-            if (state.authState.isKnownExpired) {
-                val navigator = LocalNavigator.current
-                OutlinedButton(
-                    onClick = { state.authState.launchAuthorize(navigator) },
-                    modifier = placeholderModifier,
-                ) {
-                    Text("登录后可收藏")
-                }
-            } else {
-                EditableSubjectCollectionTypeButton(
-                    state.editableSubjectCollectionTypeState,
-                    placeholderModifier,
-                )
-            }
-        },
-        rating = {
-            EditableRating(
-                state.editableRatingState,
-                placeholderModifier,
-            )
-        },
-        selectEpisodeButton = {
-            SubjectDetailsDefaults.SelectEpisodeButtons(
-                state.subjectProgressState,
-                episodeCacheStatus = { presentation.episodeCacheInfo.findCacheStatus(it) },
-                onShowEpisodeList = { showSelectEpisode = true },
-                onPlay = onPlay,
-                placeholderModifier,
-            )
-        },
-        connectedScrollState = connectedScrollState,
-        modifier,
-        showTopBar = showTopBar,
-        showBlurredBackground = showBlurredBackground,
-        windowInsets = windowInsets,
-        navigationIcon = navigationIcon,
-        onImageSuccess = { success ->
-            scope.launch {
-                switchColorScheme()
-            }
-        },
-    ) { paddingValues ->
-        Box {
-            AnimatedVisibility(
-                visible = state.showPlaceholder,
-                enter = EnterTransition.None,
-                exit = fadeOut(AniThemeDefaults.feedItemFadeOutSpec),
-            ) {
-                PlaceholderSubjectDetailsContentPager(paddingValues)
-            }
-            if (state.showPlaceholder) return@SubjectDetailsPageLayout
 
-            SubjectDetailsContentPager(
-                paddingValues,
-                connectedScrollState,
-                detailsTab = { contentPadding ->
-                    if (state.info == null) return@SubjectDetailsContentPager
-                    SubjectDetailsDefaults.DetailsTab(
-                        info = state.info,
-                        staff = state.staffPager.collectAsLazyPagingItemsWithLifecycle(),
-                        exposedStaff = state.exposedStaffPager.collectAsLazyPagingItemsWithLifecycle(),
-                        totalStaffCount = state.totalStaffCountState.value,
-                        characters = state.charactersPager.collectAsLazyPagingItemsWithLifecycle(),
-                        exposedCharacters = state.exposedCharactersPager.collectAsLazyPagingItemsWithLifecycle(),
-                        totalCharactersCount = state.totalCharactersCountState.value,
-                        relatedSubjects = state.relatedSubjectsPager.collectAsLazyPagingItemsWithLifecycle(),
-                        Modifier
-                            .nestedScrollWorkaround(state.detailsTabLazyListState, connectedScrollState)
-                            .nestedScroll(connectedScrollState.nestedScrollConnection),
-                        state.detailsTabLazyListState,
-                        contentPadding = contentPadding,
+    val themeSettings = LocalThemeSettings.current
+    val isDark = when (themeSettings.darkMode) {
+        DarkMode.LIGHT -> false
+        DarkMode.DARK -> true
+        DarkMode.AUTO -> isSystemInDarkTheme()
+    }
+    val useBlackBackground = themeSettings.useBlackBackground
+    var bitmap by remember { mutableStateOf<ImageBitmap?>(null) }
+    val paletteState = rememberPaletteState()
+    var colorScheme by remember { mutableStateOf<ColorScheme?>(null) }
+
+    LaunchedEffect(bitmap) {
+        bitmap?.let {
+            paletteState.generate(it)
+
+            colorScheme = dynamicColorScheme(
+                primary = paletteState.palette?.vibrantSwatch?.color ?: themeSettings.seedColor,
+                isDark = isDark,
+                isAmoled = useBlackBackground,
+                style = PaletteStyle.TonalSpot,
+                modifyColorScheme = { colorScheme ->
+                    modifyColorSchemeForBlackBackground(
+                        colorScheme,
+                        isDark,
+                        useBlackBackground
                     )
-                },
-                commentsTab = { contentPadding ->
-                    SubjectDetailsDefaults.SubjectCommentColumn(
-                        state = state.subjectCommentState,
-                        onClickUrl = {
-                            RichTextDefaults.checkSanityAndOpen(it, browserNavigator, toaster)
-                        },
-                        onClickImage = { imageViewer.viewImage(it) },
-                        connectedScrollState,
-                        Modifier.fillMaxSize(),
-                        lazyStaggeredGridState = state.commentTabLazyStaggeredGridState,
-                        contentPadding = contentPadding,
-                    )
-                },
-                discussionsTab = {
-                    LazyColumn(
-                        Modifier.fillMaxSize()
-                            // TODO: Add nestedScrollWorkaround when we implement this tab
-                            .nestedScroll(connectedScrollState.nestedScrollConnection),
-                    ) {
-                        item {
-                            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                                Text("即将上线, 敬请期待", Modifier.padding(16.dp))
-                            }
-                        }
-                    }
                 },
             )
         }
     }
 
-    ImageViewer(imageViewer) { imageViewer.clear() }
-}
+    MaterialTheme(
+        colorScheme = MaterialTheme.colorScheme.animate(colorScheme ?: MaterialTheme.colorScheme),
+    ) {
+        SubjectDetailsPageLayout(
+            subjectId = state.subjectId,
+            info = state.info,
+            seasonTags = {
+                SubjectDetailsDefaults.SeasonTag(
+                    airDate = state.info?.airDate ?: PackedDate.Invalid,
+                    airingLabelState = state.airingLabelState,
+                    placeholderModifier,
+                )
+            },
+            collectionData = {
+                SubjectDetailsDefaults.CollectionData(
+                    collectionStats = state.info?.collectionStats ?: SubjectCollectionStats.Zero,
+                    placeholderModifier,
+                )
+            },
+            collectionActions = {
+                if (state.authState.isKnownExpired) {
+                    val navigator = LocalNavigator.current
+                    OutlinedButton(
+                        onClick = { state.authState.launchAuthorize(navigator) },
+                        modifier = placeholderModifier,
+                    ) {
+                        Text("登录后可收藏")
+                    }
+                } else {
+                    EditableSubjectCollectionTypeButton(
+                        state.editableSubjectCollectionTypeState,
+                        placeholderModifier,
+                    )
+                }
+            },
+            rating = {
+                EditableRating(
+                    state.editableRatingState,
+                    placeholderModifier,
+                )
+            },
+            selectEpisodeButton = {
+                SubjectDetailsDefaults.SelectEpisodeButtons(
+                    state.subjectProgressState,
+                    episodeCacheStatus = { presentation.episodeCacheInfo.findCacheStatus(it) },
+                    onShowEpisodeList = { showSelectEpisode = true },
+                    onPlay = onPlay,
+                    placeholderModifier,
+                )
+            },
+            connectedScrollState = connectedScrollState,
+            modifier,
+            showTopBar = showTopBar,
+            showBlurredBackground = showBlurredBackground,
+            windowInsets = windowInsets,
+            navigationIcon = navigationIcon,
+            onImageSuccess = { success ->
+                bitmap = success.result.image.toBitmap()
+                    .asImageBitmap()
+            },
+        ) { paddingValues ->
+            Box {
+                AnimatedVisibility(
+                    visible = state.showPlaceholder,
+                    enter = EnterTransition.None,
+                    exit = fadeOut(AniThemeDefaults.feedItemFadeOutSpec),
+                ) {
+                    PlaceholderSubjectDetailsContentPager(paddingValues)
+                }
+                if (state.showPlaceholder) return@SubjectDetailsPageLayout
 
-private fun switchColorScheme() {
-    TODO("Not yet implemented")
+                SubjectDetailsContentPager(
+                    paddingValues,
+                    connectedScrollState,
+                    detailsTab = { contentPadding ->
+                        if (state.info == null) return@SubjectDetailsContentPager
+                        SubjectDetailsDefaults.DetailsTab(
+                            info = state.info,
+                            staff = state.staffPager.collectAsLazyPagingItemsWithLifecycle(),
+                            exposedStaff = state.exposedStaffPager.collectAsLazyPagingItemsWithLifecycle(),
+                            totalStaffCount = state.totalStaffCountState.value,
+                            characters = state.charactersPager.collectAsLazyPagingItemsWithLifecycle(),
+                            exposedCharacters = state.exposedCharactersPager.collectAsLazyPagingItemsWithLifecycle(),
+                            totalCharactersCount = state.totalCharactersCountState.value,
+                            relatedSubjects = state.relatedSubjectsPager.collectAsLazyPagingItemsWithLifecycle(),
+                            Modifier
+                                .nestedScrollWorkaround(
+                                    state.detailsTabLazyListState,
+                                    connectedScrollState
+                                )
+                                .nestedScroll(connectedScrollState.nestedScrollConnection),
+                            state.detailsTabLazyListState,
+                            contentPadding = contentPadding,
+                        )
+                    },
+                    commentsTab = { contentPadding ->
+                        SubjectDetailsDefaults.SubjectCommentColumn(
+                            state = state.subjectCommentState,
+                            onClickUrl = {
+                                RichTextDefaults.checkSanityAndOpen(
+                                    it,
+                                    browserNavigator,
+                                    toaster
+                                )
+                            },
+                            onClickImage = { imageViewer.viewImage(it) },
+                            connectedScrollState,
+                            Modifier.fillMaxSize(),
+                            lazyStaggeredGridState = state.commentTabLazyStaggeredGridState,
+                            contentPadding = contentPadding,
+                        )
+                    },
+                    discussionsTab = {
+                        LazyColumn(
+                            Modifier.fillMaxSize()
+                                // TODO: Add nestedScrollWorkaround when we implement this tab
+                                .nestedScroll(connectedScrollState.nestedScrollConnection),
+                        ) {
+                            item {
+                                Box(
+                                    Modifier.fillMaxWidth(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        "即将上线, 敬请期待",
+                                        Modifier.padding(16.dp)
+                                    )
+                                }
+                            }
+                        }
+                    },
+                )
+            }
+        }
+    }
+
+    ImageViewer(imageViewer) { imageViewer.clear() }
 }
 
 @Composable
@@ -428,15 +485,23 @@ fun SubjectDetailsPageLayout(
                             navigationIcon = navigationIcon,
                             actions = {
                                 IconButton(onClickOpenExternal) {
-                                    Icon(Icons.AutoMirrored.Outlined.OpenInNew, null)
+                                    Icon(
+                                        Icons.AutoMirrored.Outlined.OpenInNew,
+                                        null
+                                    )
                                 }
                             },
-                            colors = AniThemeDefaults.topAppBarColors().copy(containerColor = Color.Transparent),
+                            colors = AniThemeDefaults.topAppBarColors()
+                                .copy(containerColor = Color.Transparent),
                             windowInsets = windowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top),
                         )
 
                         // 有背景, 仅在滚动一段距离后使用
-                        AnimatedVisibility(connectedScrollState.isScrolledTop, enter = fadeIn(), exit = fadeOut()) {
+                        AnimatedVisibility(
+                            connectedScrollState.isScrolledTop,
+                            enter = fadeIn(),
+                            exit = fadeOut()
+                        ) {
                             TopAppBar(
                                 title = {
                                     Text(
@@ -448,7 +513,10 @@ fun SubjectDetailsPageLayout(
                                 navigationIcon = navigationIcon,
                                 actions = {
                                     IconButton(onClickOpenExternal) {
-                                        Icon(Icons.AutoMirrored.Outlined.OpenInNew, null)
+                                        Icon(
+                                            Icons.AutoMirrored.Outlined.OpenInNew,
+                                            null
+                                        )
                                     }
                                 },
                                 colors = AniThemeDefaults.topAppBarColors(containerColor = stickyTopBarColor),
@@ -466,15 +534,20 @@ fun SubjectDetailsPageLayout(
         // 这个页面比较特殊. 背景需要绘制到 TopBar 等区域以内, 也就是要无视 scaffoldPadding.
 
         // 在背景之上显示的封面和标题等信息
-        val headerContentPadding = scaffoldPadding.only(PaddingValuesSides.Horizontal + PaddingValuesSides.Top)
+        val headerContentPadding =
+            scaffoldPadding.only(PaddingValuesSides.Horizontal + PaddingValuesSides.Top)
         // 从 tab row 开始的区域
-        val remainingContentPadding = scaffoldPadding.only(PaddingValuesSides.Horizontal + PaddingValuesSides.Bottom)
+        val remainingContentPadding =
+            scaffoldPadding.only(PaddingValuesSides.Horizontal + PaddingValuesSides.Bottom)
 
         Box(
             Modifier.fillMaxSize(),
             contentAlignment = Alignment.TopCenter,
         ) {
-            Column(Modifier.widthIn(max = 1300.dp).fillMaxHeight()) {
+            Column(
+                Modifier.widthIn(max = 1300.dp)
+                    .fillMaxHeight()
+            ) {
                 Box(Modifier.connectedScrollContainer(connectedScrollState)) {
                     // 虚化渐变背景, 需要绘制到 scaffoldPadding 以外区域
                     if (showBlurredBackground) {
@@ -557,7 +630,10 @@ private fun SubjectDetailsContentPager(
                 modifier = Modifier.widthIn(max = SubjectDetailsDefaults.TabRowWidth),
                 indicator = @Composable { tabPositions ->
                     TabRowDefaults.PrimaryIndicator(
-                        Modifier.pagerTabIndicatorOffset(pagerState, tabPositions),
+                        Modifier.pagerTabIndicatorOffset(
+                            pagerState,
+                            tabPositions
+                        ),
                     )
                 },
                 containerColor = tabContainerColor,
@@ -626,7 +702,8 @@ private fun PlaceholderSubjectDetailsContentPager(paddingValues: PaddingValues) 
         Spacer(Modifier.height(16.dp))
 
         // 条目描述
-        val bodyMediumTextHeight = with(density) { MaterialTheme.typography.bodyMedium.lineHeight.toDp() }
+        val bodyMediumTextHeight =
+            with(density) { MaterialTheme.typography.bodyMedium.lineHeight.toDp() }
         val timesDot8TextHeight = (bodyMediumTextHeight.value * 0.8).dp
         val timesDot8TextLinePadding = (bodyMediumTextHeight.value * 0.2).dp
 
@@ -637,14 +714,18 @@ private fun PlaceholderSubjectDetailsContentPager(paddingValues: PaddingValues) 
                     .padding(bottom = timesDot8TextLinePadding)
                     .fillMaxWidth()
                     .height(timesDot8TextHeight)
-                    .placeholder(true, shape = RectangleShape),
+                    .placeholder(
+                        true,
+                        shape = RectangleShape
+                    ),
             )
         }
 
         Spacer(Modifier.height(12.dp))
 
         // 标签
-        val labelMediumTextHeight = with(density) { MaterialTheme.typography.labelMedium.lineHeight.toDp() }
+        val labelMediumTextHeight =
+            with(density) { MaterialTheme.typography.labelMedium.lineHeight.toDp() }
 
         FlowRow(
             modifier = Modifier.padding(horizontal = windowSizeClass.paneHorizontalPadding),
@@ -667,17 +748,26 @@ private fun PlaceholderSubjectDetailsContentPager(paddingValues: PaddingValues) 
             }
         }
 
-        Spacer(Modifier.fillMaxWidth().height(20.dp))
+        Spacer(
+            Modifier.fillMaxWidth()
+                .height(20.dp)
+        )
 
         Spacer(
             Modifier
                 .padding(horizontal = windowSizeClass.paneHorizontalPadding)
                 .width(48.dp)
                 .height(with(density) { MaterialTheme.typography.titleMedium.lineHeight.toDp() })
-                .placeholder(true, shape = RectangleShape),
+                .placeholder(
+                    true,
+                    shape = RectangleShape
+                ),
         )
 
-        Spacer(Modifier.fillMaxWidth().height(20.dp))
+        Spacer(
+            Modifier.fillMaxWidth()
+                .height(20.dp)
+        )
 
         @Composable
         fun PlaceholderPersonCard(modifier: Modifier = Modifier) {
@@ -697,13 +787,19 @@ private fun PlaceholderSubjectDetailsContentPager(paddingValues: PaddingValues) 
                             Modifier
                                 .width(96.dp)
                                 .height(bodyMediumTextHeight)
-                                .placeholder(true, shape = RectangleShape),
+                                .placeholder(
+                                    true,
+                                    shape = RectangleShape
+                                ),
                         )
                         Spacer(
                             Modifier
                                 .width(96.dp)
                                 .height(labelMediumTextHeight)
-                                .placeholder(true, shape = RectangleShape),
+                                .placeholder(
+                                    true,
+                                    shape = RectangleShape
+                                ),
                         )
                     }
                 }
