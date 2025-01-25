@@ -131,7 +131,7 @@ fun KoinApplication.getCommonKoinModule(getContext: () -> Context, coroutineScop
 private fun KoinApplication.otherModules(getContext: () -> Context, coroutineScope: CoroutineScope) = module {
     // Repositories
     single<ProxyProvider> { SettingsBasedProxyProvider(get(), coroutineScope) }
-    single<HttpClientProvider> { DefaultHttpClientProvider(coroutineScope, get()) }
+    single<HttpClientProvider> { DefaultHttpClientProvider(get(), coroutineScope) }
     single<AniApiProvider> { AniApiProvider(get<HttpClientProvider>().get()) }
     single<AniAuthClient> {
         AniAuthClient(get<AniApiProvider>().oauthApi)
@@ -444,6 +444,11 @@ fun KoinApplication.startCommonKoinModule(coroutineScope: CoroutineScope): KoinA
             themeSettings.update { newThemeSettings }
             uiSettings.update { uiSettingsContent.copy(theme = null) }
         }
+    }
+
+
+    when (val proxyProvider = koin.get<HttpClientProvider>()) {
+        is DefaultHttpClientProvider -> proxyProvider.startProxyListening()
     }
 
     return this

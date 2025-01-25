@@ -15,14 +15,19 @@ import kotlinx.atomicfu.atomic
 import kotlinx.atomicfu.locks.ReentrantLock
 import kotlinx.atomicfu.locks.withLock
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.launch
+import me.him188.ani.app.domain.media.fetch.toClientProxyConfig
 import me.him188.ani.app.domain.settings.ProxyProvider
-import me.him188.ani.app.domain.settings.collectProxyTo
 import me.him188.ani.app.platform.getAniUserAgent
 import me.him188.ani.utils.ktor.UnsafeWrapperHttpClientApi
 import me.him188.ani.utils.ktor.WrapperHttpClient
 import me.him188.ani.utils.ktor.createDefaultHttpClient
 import me.him188.ani.utils.ktor.registerLogging
+import me.him188.ani.utils.ktor.setProxy
 import me.him188.ani.utils.ktor.userAgent
 import me.him188.ani.utils.logging.logger
 import kotlin.concurrent.Volatile
@@ -30,34 +35,13 @@ import kotlin.concurrent.Volatile
 /**
  * 用户提供在 APP 生命周期中持久存在的 [HttpClient] 实例, 以减少实例数量.
  */
-abstract class HttpClientProvider {
+sealed class HttpClientProvider {
     /**
      * 获取一个满足需求的 [WrapperHttpClient] 实例.
      */
     abstract fun get(
         userAgent: HttpClientUserAgent = HttpClientUserAgent.ANI,
     ): WrapperHttpClient
-
-//    /**
-//     * 使用一个满足需求的 [HttpClient] 实例.
-//     *
-//     * 在调用此方法时, client 一定会有效. 但是在调用结束后, client 可能会被销毁, 因此不要将对 client 的引用带出此方法.
-//     */
-//    fun <R> use(
-//        userAgent: HttpClientUserAgent,
-//        action: (client: HttpClient) -> R,
-//    ): R {
-//        contract {
-//            callsInPlace(action, kotlin.contracts.InvocationKind.EXACTLY_ONCE)
-//        }
-//        get(userAgent).use(action)
-//        return useTempImpl(userAgent, action)
-//    }
-//
-//    protected abstract fun <R> useTempImpl(
-//        userAgent: HttpClientUserAgent,
-//        action: (client: HttpClient) -> R,
-//    ): R
 }
 
 enum class HttpClientUserAgent {
@@ -66,8 +50,8 @@ enum class HttpClientUserAgent {
 }
 
 class DefaultHttpClientProvider(
-    private val parentCoroutineScope: CoroutineScope,
     private val proxyProvider: ProxyProvider,
+    private val backgroundScope: CoroutineScope,
 ) : HttpClientProvider() {
     // must have stable `equals`
     private data class Matrix(
@@ -89,11 +73,29 @@ class DefaultHttpClientProvider(
             }
         }.apply {
             registerLogging(clientLogger)
-            parentCoroutineScope.launch {
-                proxyProvider.collectProxyTo(this@apply)
-            }
         }
     }
+
+    private val proxyListeningStarted = atomic(false)
+    fun startProxyListening() {
+        if (!proxyListeningStarted.compareAndSet(expect = false, update = true)) {
+            return
+        }
+        proxyProvider.proxy.mapLatest {
+            coroutineScope {
+                for (userAgent in HttpClientUserAgent.entries) {
+                    launch {
+                        get(userAgent).use {
+                            this.engineConfig.setProxy(it?.toClientProxyConfig())
+                            awaitCancellation() // hold the instance until the scope is cancelled (i.e. until next proxy)
+                        }
+                    }
+                }
+            }
+        }.launchIn(backgroundScope)
+    }
+
+    override fun get(userAgent: HttpClientUserAgent): WrapperHttpClient = WrapperHttpClientImpl(Matrix(userAgent))
 
     private inner class WrapperHttpClientImpl(
         private val matrix: Matrix,
@@ -106,8 +108,6 @@ class DefaultHttpClientProvider(
 
         override fun toString(): String = "WrapperHttpClientImpl(matrix=$matrix)"
     }
-
-    override fun get(userAgent: HttpClientUserAgent): WrapperHttpClient = WrapperHttpClientImpl(Matrix(userAgent))
 }
 
 
