@@ -30,7 +30,8 @@ import coil3.compose.LocalPlatformContext
 import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.foundation.HttpClientProvider
-import me.him188.ani.app.domain.foundation.HttpClientUserAgent
+import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
+import me.him188.ani.app.domain.foundation.get
 import me.him188.ani.app.tools.LocalTimeFormatter
 import me.him188.ani.app.tools.TimeFormatter
 import me.him188.ani.app.ui.foundation.AbstractViewModel
@@ -51,7 +52,7 @@ class AniAppViewModel : AbstractViewModel(), KoinComponent {
     private val httpClientProvider: HttpClientProvider by inject()
     val themeSettings: ThemeSettings? by settings.themeSettings.flow.produceState(null)
 
-    val imageLoaderClient = httpClientProvider.get(HttpClientUserAgent.ANI)
+    val imageLoaderClient = httpClientProvider.get(ScopedHttpClientUserAgent.ANI)
 
 //    /**
 //     * 跟随代理设置等配置变化而变化的 [HttpClient] 实例. 用于 coil ImageLoader.

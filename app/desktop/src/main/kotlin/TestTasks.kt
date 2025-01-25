@@ -11,7 +11,8 @@ package me.him188.ani.app.desktop
 
 import kotlinx.coroutines.runBlocking
 import me.him188.ani.app.domain.foundation.HttpClientProvider
-import me.him188.ani.app.domain.foundation.HttpClientUserAgent
+import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
+import me.him188.ani.app.domain.foundation.get
 import me.him188.ani.app.platform.DesktopContext
 import me.him188.ani.app.tools.update.DefaultFileDownloader
 import me.him188.ani.app.tools.update.InstallationResult
@@ -58,7 +59,7 @@ object TestTasks {
         val url = args[0]
 
         val result = runBlocking {
-            clientProvider.get(HttpClientUserAgent.ANI).use {
+            clientProvider.get(ScopedHttpClientUserAgent.ANI).use {
                 logger.info { "Downloading update from $url" }
                 DefaultFileDownloader(this).download(
                     listOf(url),

@@ -24,6 +24,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.io.IOException
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.foundation.HttpClientProvider
+import me.him188.ani.app.domain.foundation.get
 import me.him188.ani.app.domain.update.UpdateManager
 import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.tools.MonoTasker

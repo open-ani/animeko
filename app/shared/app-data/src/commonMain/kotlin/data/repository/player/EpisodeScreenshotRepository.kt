@@ -17,7 +17,8 @@ import me.him188.ani.app.data.models.ApiResponse
 import me.him188.ani.app.data.models.runApiRequest
 import me.him188.ani.app.data.repository.Repository
 import me.him188.ani.app.domain.foundation.HttpClientProvider
-import me.him188.ani.app.domain.foundation.HttpClientUserAgent
+import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
+import me.him188.ani.app.domain.foundation.get
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
@@ -29,7 +30,7 @@ sealed class EpisodeScreenshotRepository : Repository() {
 // 这玩意虽然能跑但是限制阈值有点太低了, 估计实际使用的时候会很容易被限调用速度, 得考虑别的方案
 class WhatslinkEpisodeScreenshotRepository : EpisodeScreenshotRepository(), KoinComponent {
     private val clientProvider: HttpClientProvider by inject()
-    private val client = clientProvider.get(HttpClientUserAgent.BROWSER)
+    private val client = clientProvider.get(ScopedHttpClientUserAgent.BROWSER)
 
     @Serializable
     private data class WhatslinkResponse(

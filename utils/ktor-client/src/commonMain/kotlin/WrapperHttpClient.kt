@@ -10,8 +10,14 @@
 package me.him188.ani.utils.ktor
 
 import io.ktor.client.HttpClient
+import io.ktor.client.statement.HttpResponse
 import kotlin.contracts.contract
 
+/**
+ * 拥有作用域控制的 [HttpClient].
+ *
+ * 简而言之所有的 http 操作必须在 [use] block 内完成. [use] block 的返回值不能依赖 client, 包括 [HttpResponse].
+ */
 abstract class WrapperHttpClient {
     /**
      * 使用一个满足需求的 [HttpClient] 实例.

@@ -30,7 +30,8 @@ import me.him188.ani.app.data.repository.media.MikanIndexCacheRepository
 import me.him188.ani.app.data.repository.media.SelectorMediaSourceEpisodeCacheRepository
 import me.him188.ani.app.data.repository.media.updateConfig
 import me.him188.ani.app.domain.foundation.HttpClientProvider
-import me.him188.ani.app.domain.foundation.HttpClientUserAgent
+import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
+import me.him188.ani.app.domain.foundation.get
 import me.him188.ani.app.domain.media.cache.MediaCacheManager.Companion.LOCAL_FS_MEDIA_SOURCE_ID
 import me.him188.ani.app.domain.mediasource.instance.MediaSourceInstance
 import me.him188.ani.app.domain.mediasource.instance.MediaSourceSave
@@ -243,7 +244,7 @@ class MediaSourceManagerImpl(
                     config,
                     save.mediaSourceId,
                     save.config,
-                    clientProvider.get(HttpClientUserAgent.BROWSER),
+                    clientProvider.get(ScopedHttpClientUserAgent.BROWSER),
                 ),
             )
         }

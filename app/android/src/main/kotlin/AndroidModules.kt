@@ -23,7 +23,8 @@ import me.him188.ani.android.navigation.AndroidBrowserNavigator
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.foundation.HttpClientProvider
-import me.him188.ani.app.domain.foundation.HttpClientUserAgent
+import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
+import me.him188.ani.app.domain.foundation.get
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.resolver.AndroidWebMediaResolver
 import me.him188.ani.app.domain.media.resolver.HttpStreamingMediaResolver
@@ -178,7 +179,7 @@ fun getAndroidModules(
         DefaultTorrentManager.create(
             coroutineScope.coroutineContext,
             get(),
-            client = get<HttpClientProvider>().get(HttpClientUserAgent.ANI),
+            client = get<HttpClientProvider>().get(ScopedHttpClientUserAgent.ANI),
             get(),
             get(),
             baseSaveDir = { Path(cacheDir).inSystem },

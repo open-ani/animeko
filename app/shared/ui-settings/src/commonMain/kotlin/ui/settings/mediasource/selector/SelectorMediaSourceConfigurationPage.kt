@@ -28,7 +28,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.foundation.HttpClientProvider
-import me.him188.ani.app.domain.foundation.HttpClientUserAgent
+import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
+import me.him188.ani.app.domain.foundation.get
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.fetch.updateMediaSourceArguments
 import me.him188.ani.app.domain.media.resolver.WebViewVideoExtractor
@@ -101,7 +102,7 @@ class EditSelectorMediaSourceViewModel(
                         isSavingFlow = saveTasker.isRunning,
                     ),
                     allowEditState = allowEdit,
-                    engine = DefaultSelectorMediaSourceEngine(clientProvider.get(HttpClientUserAgent.BROWSER)),
+                    engine = DefaultSelectorMediaSourceEngine(clientProvider.get(ScopedHttpClientUserAgent.BROWSER)),
                     webViewVideoExtractor = combine(
                         proxyProvider.proxy,
                         settingsRepository.videoResolverSettings.flow.distinctUntilChanged(),

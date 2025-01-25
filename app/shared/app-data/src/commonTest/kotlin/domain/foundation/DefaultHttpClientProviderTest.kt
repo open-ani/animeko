@@ -20,6 +20,7 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import me.him188.ani.app.data.models.preference.ProxyConfig
+import me.him188.ani.app.domain.foundation.DefaultHttpClientProvider.HoldingInstanceMatrix
 import me.him188.ani.app.domain.settings.ProxyProvider
 import me.him188.ani.utils.ktor.UnsafeWrapperHttpClientApi
 import kotlin.test.Test
@@ -58,20 +59,34 @@ internal class DefaultHttpClientProviderTest {
         }
     }
 
+    private suspend fun DefaultHttpClientProvider.startProxyListening() {
+        startProxyListening(
+            sequence {
+                for (userAgent in ScopedHttpClientUserAgent.entries) {
+                    HoldingInstanceMatrix(
+                        setOf(
+                            UserAgentFeature.withValue(userAgent),
+                        ),
+                    )
+                }
+            },
+        )
+    }
+
     @Test
     fun `test get with same user agent reuses same client`() = runTest {
         val testProxyProvider = FakeProxyProvider()
         val provider = createProvider(testProxyProvider)
 
-        val client1 = provider.get(HttpClientUserAgent.ANI).borrow()
-        val client2 = provider.get(HttpClientUserAgent.ANI).borrow()
+        val client1 = provider.get(ScopedHttpClientUserAgent.ANI).borrow()
+        val client2 = provider.get(ScopedHttpClientUserAgent.ANI).borrow()
 
         // They should be the same underlying reference because of the pool reuse
         assertEquals(client1, client2, "Expected equal HttpClient instance for the same user agent")
 
         // Clean up
-        provider.get(HttpClientUserAgent.ANI).returnClient(client1)
-        provider.get(HttpClientUserAgent.ANI).returnClient(client2)
+        provider.get(ScopedHttpClientUserAgent.ANI).returnClient(client1)
+        provider.get(ScopedHttpClientUserAgent.ANI).returnClient(client2)
         provider.forceReleaseAll()
     }
 
@@ -82,8 +97,8 @@ internal class DefaultHttpClientProviderTest {
             proxyProvider = testProxyProvider,
         )
 
-        val aniClient = provider.get(HttpClientUserAgent.ANI).borrow()
-        val browserClient = provider.get(HttpClientUserAgent.BROWSER).borrow()
+        val aniClient = provider.get(ScopedHttpClientUserAgent.ANI).borrow()
+        val browserClient = provider.get(ScopedHttpClientUserAgent.BROWSER).borrow()
 
         // They should not be the same reference
         assertNotSame(
@@ -93,8 +108,8 @@ internal class DefaultHttpClientProviderTest {
         )
 
         // Clean up
-        provider.get(HttpClientUserAgent.ANI).returnClient(aniClient)
-        provider.get(HttpClientUserAgent.BROWSER).returnClient(browserClient)
+        provider.get(ScopedHttpClientUserAgent.ANI).returnClient(aniClient)
+        provider.get(ScopedHttpClientUserAgent.BROWSER).returnClient(browserClient)
         provider.forceReleaseAll()
     }
 
@@ -159,7 +174,7 @@ internal class DefaultHttpClientProviderTest {
         assertEquals(null, provider.getCurrentProxyConfig())
 
         // Borrow a client so that it is subscribed to the proxy flow
-        val aniWrapper = provider.get(HttpClientUserAgent.ANI)
+        val aniWrapper = provider.get(ScopedHttpClientUserAgent.ANI)
         val aniClientBefore = aniWrapper.borrow()
 
         // Now let's emit a new proxy config; the existing borrowed client
@@ -196,7 +211,7 @@ internal class DefaultHttpClientProviderTest {
         // Start listening so that it subscribes to the proxy flow
         provider.startProxyListening()
 
-        val wrapper = provider.get(HttpClientUserAgent.ANI)
+        val wrapper = provider.get(ScopedHttpClientUserAgent.ANI)
         val firstClient = wrapper.borrow()
 
         // Emit first change

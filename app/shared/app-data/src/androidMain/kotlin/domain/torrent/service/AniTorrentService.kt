@@ -37,6 +37,7 @@ import kotlinx.io.files.Path
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
 import me.him188.ani.app.data.models.preference.ProxyConfig
 import me.him188.ani.app.domain.foundation.DefaultHttpClientProvider
+import me.him188.ani.app.domain.foundation.get
 import me.him188.ani.app.domain.settings.FlowProxyProvider
 import me.him188.ani.app.domain.torrent.engines.AnitorrentEngine
 import me.him188.ani.app.domain.torrent.peer.PeerFilterSettings

@@ -24,7 +24,8 @@ import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.domain.foundation.HttpClientProvider
-import me.him188.ani.app.domain.foundation.HttpClientUserAgent
+import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
+import me.him188.ani.app.domain.foundation.get
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.fetch.updateMediaSourceArguments
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceCodecManager
@@ -103,7 +104,7 @@ class EditRssMediaSourceViewModel(
         // 这里用的是序列化之后的配置, 也就是只有保存成功之后, 才会更新测试 (和触发重新查询)
         searchConfigState = arguments.map { it.searchConfig }.produceState(RssSearchConfig.Empty),
         engine = DefaultRssMediaSourceEngine(
-            flowOf(httpClientProvider.get(HttpClientUserAgent.BROWSER)),
+            flowOf(httpClientProvider.get(ScopedHttpClientUserAgent.BROWSER)),
             parser = RssParser(includeOrigin = true),
         ),
         backgroundScope,
