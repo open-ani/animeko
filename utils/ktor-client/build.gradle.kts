@@ -25,6 +25,7 @@ kotlin {
             api(libs.ktor.client.core)
             api(libs.ktor.client.content.negotiation)
             api(libs.ktor.serialization.kotlinx.json)
+            implementation(projects.utils.xml)
             api(projects.utils.logging)
             implementation(projects.utils.platform)
             api(projects.utils.io)
