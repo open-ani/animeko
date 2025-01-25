@@ -73,6 +73,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.compose.collectAsLazyPagingItemsWithLifecycle
+import coil3.compose.AsyncImagePainter
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.episode.findCacheStatus
 import me.him188.ani.app.data.models.subject.SubjectCollectionStats
@@ -193,6 +194,7 @@ private fun SubjectDetailsPage(
 ) {
     val toaster = LocalToaster.current
     val browserNavigator = LocalUriHandler.current
+    val scope = rememberCoroutineScope()
 
     var showSelectEpisode by rememberSaveable { mutableStateOf(false) }
     if (showSelectEpisode) {
@@ -213,8 +215,8 @@ private fun SubjectDetailsPage(
     val placeholderModifier = Modifier.placeholder(state.showPlaceholder)
     val presentation by state.presentationFlow.collectAsStateWithLifecycle()
     SubjectDetailsPageLayout(
-        state.subjectId,
-        state.info,
+        subjectId = state.subjectId,
+        info = state.info,
         seasonTags = {
             SubjectDetailsDefaults.SeasonTag(
                 airDate = state.info?.airDate ?: PackedDate.Invalid,
@@ -265,6 +267,11 @@ private fun SubjectDetailsPage(
         showBlurredBackground = showBlurredBackground,
         windowInsets = windowInsets,
         navigationIcon = navigationIcon,
+        onImageSuccess = { success ->
+            scope.launch {
+                switchColorScheme()
+            }
+        },
     ) { paddingValues ->
         Box {
             AnimatedVisibility(
@@ -328,6 +335,10 @@ private fun SubjectDetailsPage(
     }
 
     ImageViewer(imageViewer) { imageViewer.clear() }
+}
+
+private fun switchColorScheme() {
+    TODO("Not yet implemented")
 }
 
 @Composable
@@ -396,6 +407,7 @@ fun SubjectDetailsPageLayout(
     showBlurredBackground: Boolean = true,
     windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
     navigationIcon: @Composable () -> Unit = {},
+    onImageSuccess: (AsyncImagePainter.State.Success) -> Unit = {},
     content: @Composable (contentPadding: PaddingValues) -> Unit,
 ) {
     val backgroundColor = AniThemeDefaults.pageContentBackgroundColor
@@ -490,11 +502,12 @@ fun SubjectDetailsPageLayout(
                             collectionAction = collectionActions,
                             selectEpisodeButton = selectEpisodeButton,
                             rating = rating,
-                            Modifier
+                            modifier = Modifier
                                 .connectedScrollTarget(connectedScrollState)
                                 .fillMaxWidth()
                                 .ifThen(!showTopBar) { padding(top = windowSizeClass.paneVerticalPadding) }
                                 .padding(horizontal = windowSizeClass.paneHorizontalPadding),
+                            onImageSuccess = onImageSuccess,
                         )
                     }
                 }
