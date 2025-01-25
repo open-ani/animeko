@@ -721,6 +721,17 @@ internal class TitleBarWindowProc(
                 if (wParam.toInt() == 0) {
                     user32.CallWindowProc(defaultWindowProc, hWnd, uMsg, wParam, lParam)
                 } else {
+                    // this behavior is call full screen mode
+                    val style = user32.GetWindowLong(hWnd, WinUser.GWL_STYLE)
+                    if (style and (WinUser.WS_CAPTION or WinUser.WS_THICKFRAME) == 0) {
+                        frameX = 0
+                        frameY = 0
+                        edgeX = 0
+                        edgeY = 0
+                        padding = 0
+                        isMaximized = user32.isWindowInMaximized(hWnd)
+                        return LRESULT(0)
+                    }
 
                     dpi = user32.GetDpiForWindow(hWnd)
                     frameX = user32.GetSystemMetricsForDpi(WinUser.SM_CXFRAME, dpi)
@@ -732,27 +743,14 @@ internal class TitleBarWindowProc(
                     val params = Structure.newInstance(NCCalcSizeParams::class.java, Pointer(lParam.toLong()))
                     params.read()
                     params.rgrc[0]?.apply {
-                        left += if (isMaximized) {
-                            frameX + padding
-                        } else {
-                            frameX + padding
-                        }
-                        right -= if (isMaximized) {
-                            frameX + padding
-                        } else {
-                            frameX + padding
-                        }
+                        left += frameX + padding
+                        right -= frameX + padding
+                        bottom -= frameY + padding
                         top += if (isMaximized) {
                             padding
                         } else {
                             0
                         }
-                        bottom -= if (isMaximized) {
-                            frameY + padding
-                        } else {
-                            frameY + padding
-                        }
-
                     }
                     params.write()
                     LRESULT(0)
