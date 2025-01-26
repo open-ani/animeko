@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -25,15 +25,22 @@ import java.awt.Window
 import java.awt.image.BufferedImage
 import javax.swing.JComponent
 
+@RequiresOptIn(
+    message = "This is unsafe platform API, use [ComposeWindow.setTitleBar] instead.",
+    level = RequiresOptIn.Level.ERROR,
+)
+annotation class UnsafePlatformWindowApi
 
 /**
  * @see AwtWindowUtils
  */
 interface WindowUtils {
+    @UnsafePlatformWindowApi
     fun setTitleBarColor(hwnd: Long, color: Color): Boolean {
         return false
     }
 
+    @UnsafePlatformWindowApi
     fun setDarkTitleBar(hwnd: Long, dark: Boolean): Boolean {
         return false
     }
@@ -84,6 +91,7 @@ abstract class AwtWindowUtils : WindowUtils {
  * * 在 Windows 10 仅设置暗色或亮色, Windows 10 不支持自定义标题栏颜色
  * * 在 Linux 上没有作用, 因为 ani 现在不支持 Linux
  */
+@OptIn(UnsafePlatformWindowApi::class)
 fun ComposeWindow.setTitleBar(color: Color, dark: Boolean) {
     if (currentPlatformDesktop() is Platform.Windows) {
         val winBuild = WindowsWindowUtils.instance.windowsBuildNumber()
