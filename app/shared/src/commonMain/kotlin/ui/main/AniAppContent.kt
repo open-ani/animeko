@@ -64,10 +64,11 @@ import me.him188.ani.app.ui.foundation.theme.LocalNavigationMotionScheme
 import me.him188.ani.app.ui.foundation.theme.NavigationMotionScheme
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.app.ui.profile.BangumiOAuthViewModel
-import me.him188.ani.app.ui.profile.auth.AniContactList
 import me.him188.ani.app.ui.profile.auth.BangumiOAuthScene
 import me.him188.ani.app.ui.profile.auth.BangumiTokenAuthPage
 import me.him188.ani.app.ui.profile.auth.BangumiTokenAuthViewModel
+import me.him188.ani.app.ui.profile.auth.WelcomeScene
+import me.him188.ani.app.ui.profile.auth.WelcomeViewModel
 import me.him188.ani.app.ui.settings.SettingsPage
 import me.him188.ani.app.ui.settings.SettingsViewModel
 import me.him188.ani.app.ui.settings.mediasource.rss.EditRssMediaSourcePage
@@ -120,7 +121,7 @@ private fun AniAppContentImpl(
     val navMotionScheme by rememberUpdatedState(NavigationMotionScheme.current)
 
     SharedTransitionLayout {
-        NavHost(navController, startDestination = NavRoutes.Welcome, modifier) {
+        NavHost(navController, startDestination = initialRoute, modifier) {
             val enterTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition? =
                 { navMotionScheme.enterTransition }
             val exitTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition? =
@@ -136,12 +137,7 @@ private fun AniAppContentImpl(
                 popEnterTransition = popEnterTransition,
                 popExitTransition = popExitTransition,
             ) { // 由 SessionManager.requireAuthorize 跳转到
-                // WelcomeScene(viewModel { WelcomeViewModel() }, Modifier.fillMaxSize())
-                me.him188.ani.app.ui.wizard.WelcomePage(
-                    viewModel { me.him188.ani.app.ui.wizard.WelcomeViewModel() },
-                    contactActions = { AniContactList() },
-                    windowInsets = windowInsets,
-                )
+                WelcomeScene(viewModel { WelcomeViewModel() }, Modifier.fillMaxSize())
             }
             composable<NavRoutes.Main>(
                 enterTransition = enterTransition,
