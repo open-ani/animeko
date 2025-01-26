@@ -19,7 +19,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -429,12 +428,10 @@ private fun FrameWindowScope.MainWindowContent(
         val themeSettings = LocalThemeSettings.current
         val titleBarThemeController = LocalTitleBarThemeController.current
         val systemTheme = LocalSystemTheme.current
-        LaunchedEffect(themeSettings.darkMode, titleBarThemeController, systemTheme) {
-            titleBarThemeController?.isDark = when (themeSettings.darkMode) {
-                DarkMode.AUTO -> systemTheme == SystemTheme.Dark
-                DarkMode.LIGHT -> false
-                DarkMode.DARK -> true
-            }
+        titleBarThemeController?.isDark = when (themeSettings.darkMode) {
+            DarkMode.AUTO -> systemTheme == SystemTheme.Dark
+            DarkMode.LIGHT -> false
+            DarkMode.DARK -> true
         }
         Box(
             Modifier
