@@ -12,6 +12,7 @@
 package me.him188.ani.app.desktop.window
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -150,6 +151,15 @@ fun FrameWindowScope.WindowsWindowFrame(
                 isTitleBarVisible.value = false
             }
         }
+        val isActive = remember { mutableStateOf(false) }
+        //Draw the caption button
+        val platformWindow = LocalPlatformWindow.current
+        LaunchedEffect(platformWindow) {
+            windowUtils.windowIsActive(platformWindow)
+                .collect {
+                    isActive.value = it != false
+                }
+        }
         AnimatedVisibility(
             visible = isTitleBarVisible.value,
             modifier = Modifier
@@ -193,6 +203,7 @@ fun FrameWindowScope.WindowsWindowFrame(
                         windowsWindowUtils = windowUtils,
                         windowState = windowState,
                         isMaximize = windowState.placement == WindowPlacement.Maximized,
+                        isActive = isActive.value,
                         onCloseRequest = onCloseRequest,
                         onMaximizeButtonRectUpdate = {
                             buttonRects[1] = it
@@ -206,6 +217,18 @@ fun FrameWindowScope.WindowsWindowFrame(
                     )
                 }
             }
+        }
+
+        val winBuild = remember { WindowsWindowUtils.instance.windowsBuildNumber() }
+        //Fake top border workaround for Windows version less than 22000 (Windows 11).
+        if (winBuild != null && winBuild < 22000 && !isActive.value && !isFullScreen) {
+            Spacer(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(color = Color(0x66757575))
+                    .zIndex(3f),
+            )
         }
 
         //Auto hoverable area that can be used to show title bar when title bar is hidden.
@@ -230,6 +253,7 @@ fun FrameWindowScope.WindowsWindowFrame(
 private fun FrameWindowScope.CaptionButtonRow(
     windowsWindowUtils: WindowsWindowUtils,
     isMaximize: Boolean,
+    isActive: Boolean,
     windowState: WindowState,
     onCloseRequest: () -> Unit,
     modifier: Modifier = Modifier,
@@ -237,15 +261,7 @@ private fun FrameWindowScope.CaptionButtonRow(
     onMaximizeButtonRectUpdate: (Rect) -> Unit,
     onCloseButtonRectUpdate: (Rect) -> Unit,
 ) {
-    val isActive = remember { mutableStateOf(false) }
-    //Draw the caption button
     val platformWindow = LocalPlatformWindow.current
-    LaunchedEffect(platformWindow) {
-        windowsWindowUtils.windowIsActive(platformWindow)
-            .collect {
-                isActive.value = it != false
-            }
-    }
     Row(
         horizontalArrangement = Arrangement.aligned(AbsoluteAlignment.Right),
         modifier = modifier
@@ -256,7 +272,7 @@ private fun FrameWindowScope.CaptionButtonRow(
                 windowsWindowUtils.minimizeWindow(window.windowHandle)
             },
             icon = CaptionButtonIcon.Minimize,
-            isActive = isActive.value,
+            isActive = isActive,
             modifier = Modifier.onGloballyPositioned { onMinimizeButtonRectUpdate(it.boundsInWindow()) },
         )
         val isFullScreen = isSystemInFullscreen()
@@ -288,7 +304,7 @@ private fun FrameWindowScope.CaptionButtonRow(
                 isMaximize -> CaptionButtonIcon.Restore
                 else -> CaptionButtonIcon.Maximize
             },
-            isActive = isActive.value,
+            isActive = isActive,
             modifier = Modifier.onGloballyPositioned {
                 onMaximizeButtonRectUpdate(it.boundsInWindow())
             },
@@ -296,7 +312,7 @@ private fun FrameWindowScope.CaptionButtonRow(
         CaptionButton(
             icon = CaptionButtonIcon.Close,
             onClick = onCloseRequest,
-            isActive = isActive.value,
+            isActive = isActive,
             colors = CaptionButtonDefaults.closeColors(),
             modifier = Modifier.onGloballyPositioned { onCloseButtonRectUpdate(it.boundsInWindow()) },
         )

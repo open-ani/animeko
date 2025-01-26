@@ -12,8 +12,6 @@ package me.him188.ani.app.platform.window
 import androidx.compose.ui.awt.ComposeWindow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.window.WindowState
-import com.sun.jna.platform.win32.Advapi32Util
-import com.sun.jna.platform.win32.WinReg
 import me.him188.ani.app.platform.PlatformWindow
 import me.him188.ani.utils.platform.Platform
 import me.him188.ani.utils.platform.currentPlatformDesktop
@@ -88,13 +86,7 @@ abstract class AwtWindowUtils : WindowUtils {
  */
 fun ComposeWindow.setTitleBar(color: Color, dark: Boolean) {
     if (currentPlatformDesktop() is Platform.Windows) {
-        val winBuild = kotlin.runCatching {
-            Advapi32Util.registryGetStringValue(
-                WinReg.HKEY_LOCAL_MACHINE,
-                "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion",
-                "CurrentBuildNumber",
-            ).toIntOrNull()
-        }.getOrElse { null }
+        val winBuild = WindowsWindowUtils.instance.windowsBuildNumber()
 
         if (winBuild == null) return
         if (winBuild >= 22000) {

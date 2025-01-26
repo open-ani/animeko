@@ -186,6 +186,14 @@ class WindowsWindowUtils : AwtWindowUtils() {
         platformWindow.titleBarWindowProc = null
     }
 
+    fun windowsBuildNumber(): Int? = kotlin.runCatching {
+        Advapi32Util.registryGetStringValue(
+            WinReg.HKEY_LOCAL_MACHINE,
+            "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion",
+            "CurrentBuildNumber",
+        ).toIntOrNull()
+    }.getOrElse { null }
+
     // https://learn.microsoft.com/en-us/windows/win32/winmsg/extended-window-styles
     override suspend fun setUndecoratedFullscreen(
         window: PlatformWindow,
