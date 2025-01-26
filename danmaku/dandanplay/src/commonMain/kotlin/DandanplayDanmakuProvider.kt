@@ -29,6 +29,7 @@ import me.him188.ani.utils.logging.info
 import kotlin.coroutines.cancellation.CancellationException
 
 class DandanplayDanmakuProvider(
+    config: DanmakuProviderConfig,
     client: ScopedHttpClient,
 ) : AbstractDanmakuProvider() {
     companion object {
@@ -39,7 +40,7 @@ class DandanplayDanmakuProvider(
         override val id: String get() = ID
 
         override fun create(config: DanmakuProviderConfig, client: ScopedHttpClient): DandanplayDanmakuProvider =
-            DandanplayDanmakuProvider(client)
+            DandanplayDanmakuProvider(config, client)
     }
 
     override val id: String get() = ID
