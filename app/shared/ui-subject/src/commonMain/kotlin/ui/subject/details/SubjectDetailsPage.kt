@@ -219,39 +219,8 @@ private fun SubjectDetailsPage(
     val presentation by state.presentationFlow.collectAsStateWithLifecycle()
 
     val themeSettings = LocalThemeSettings.current
-    val isDark = when (themeSettings.darkMode) {
-        DarkMode.LIGHT -> false
-        DarkMode.DARK -> true
-        DarkMode.AUTO -> isSystemInDarkTheme()
-    }
-    val useBlackBackground = themeSettings.useBlackBackground
     var bitmap by remember { mutableStateOf<ImageBitmap?>(null) }
-    val paletteState = rememberPaletteState()
-    var colorScheme by remember { mutableStateOf<ColorScheme?>(null) }
-
-    LaunchedEffect(bitmap) {
-        bitmap?.let {
-            paletteState.generate(it)
-
-            colorScheme = dynamicColorScheme(
-                primary = paletteState.palette?.vibrantSwatch?.color ?: themeSettings.seedColor,
-                isDark = isDark,
-                isAmoled = useBlackBackground,
-                style = PaletteStyle.TonalSpot,
-                modifyColorScheme = { colorScheme ->
-                    modifyColorSchemeForBlackBackground(
-                        colorScheme,
-                        isDark,
-                        useBlackBackground
-                    )
-                },
-            )
-        }
-    }
-
-    MaterialTheme(
-        colorScheme = MaterialTheme.colorScheme.animate(colorScheme ?: MaterialTheme.colorScheme),
-    ) {
+    MaterialThemeFromImage(bitmap) {
         if (showSelectEpisode) {
             EpisodeListDialog(
                 state.episodeListState,
@@ -348,7 +317,7 @@ private fun SubjectDetailsPage(
                             Modifier
                                 .nestedScrollWorkaround(
                                     state.detailsTabLazyListState,
-                                    connectedScrollState
+                                    connectedScrollState,
                                 )
                                 .nestedScroll(connectedScrollState.nestedScrollConnection),
                             state.detailsTabLazyListState,
@@ -362,7 +331,7 @@ private fun SubjectDetailsPage(
                                 RichTextDefaults.checkSanityAndOpen(
                                     it,
                                     browserNavigator,
-                                    toaster
+                                    toaster,
                                 )
                             },
                             onClickImage = { imageViewer.viewImage(it) },
@@ -381,11 +350,11 @@ private fun SubjectDetailsPage(
                             item {
                                 Box(
                                     Modifier.fillMaxWidth(),
-                                    contentAlignment = Alignment.Center
+                                    contentAlignment = Alignment.Center,
                                 ) {
                                     Text(
                                         "即将上线, 敬请期待",
-                                        Modifier.padding(16.dp)
+                                        Modifier.padding(16.dp),
                                     )
                                 }
                             }
@@ -488,7 +457,7 @@ fun SubjectDetailsPageLayout(
                                 IconButton(onClickOpenExternal) {
                                     Icon(
                                         Icons.AutoMirrored.Outlined.OpenInNew,
-                                        null
+                                        null,
                                     )
                                 }
                             },
@@ -501,7 +470,7 @@ fun SubjectDetailsPageLayout(
                         AnimatedVisibility(
                             connectedScrollState.isScrolledTop,
                             enter = fadeIn(),
-                            exit = fadeOut()
+                            exit = fadeOut(),
                         ) {
                             TopAppBar(
                                 title = {
@@ -516,7 +485,7 @@ fun SubjectDetailsPageLayout(
                                     IconButton(onClickOpenExternal) {
                                         Icon(
                                             Icons.AutoMirrored.Outlined.OpenInNew,
-                                            null
+                                            null,
                                         )
                                     }
                                 },
@@ -547,7 +516,7 @@ fun SubjectDetailsPageLayout(
         ) {
             Column(
                 Modifier.widthIn(max = 1300.dp)
-                    .fillMaxHeight()
+                    .fillMaxHeight(),
             ) {
                 Box(Modifier.connectedScrollContainer(connectedScrollState)) {
                     // 虚化渐变背景, 需要绘制到 scaffoldPadding 以外区域
@@ -633,7 +602,7 @@ private fun SubjectDetailsContentPager(
                     TabRowDefaults.PrimaryIndicator(
                         Modifier.pagerTabIndicatorOffset(
                             pagerState,
-                            tabPositions
+                            tabPositions,
                         ),
                     )
                 },
@@ -717,7 +686,7 @@ private fun PlaceholderSubjectDetailsContentPager(paddingValues: PaddingValues) 
                     .height(timesDot8TextHeight)
                     .placeholder(
                         true,
-                        shape = RectangleShape
+                        shape = RectangleShape,
                     ),
             )
         }
@@ -751,7 +720,7 @@ private fun PlaceholderSubjectDetailsContentPager(paddingValues: PaddingValues) 
 
         Spacer(
             Modifier.fillMaxWidth()
-                .height(20.dp)
+                .height(20.dp),
         )
 
         Spacer(
@@ -761,13 +730,13 @@ private fun PlaceholderSubjectDetailsContentPager(paddingValues: PaddingValues) 
                 .height(with(density) { MaterialTheme.typography.titleMedium.lineHeight.toDp() })
                 .placeholder(
                     true,
-                    shape = RectangleShape
+                    shape = RectangleShape,
                 ),
         )
 
         Spacer(
             Modifier.fillMaxWidth()
-                .height(20.dp)
+                .height(20.dp),
         )
 
         @Composable
@@ -790,7 +759,7 @@ private fun PlaceholderSubjectDetailsContentPager(paddingValues: PaddingValues) 
                                 .height(bodyMediumTextHeight)
                                 .placeholder(
                                     true,
-                                    shape = RectangleShape
+                                    shape = RectangleShape,
                                 ),
                         )
                         Spacer(
@@ -799,7 +768,7 @@ private fun PlaceholderSubjectDetailsContentPager(paddingValues: PaddingValues) 
                                 .height(labelMediumTextHeight)
                                 .placeholder(
                                     true,
-                                    shape = RectangleShape
+                                    shape = RectangleShape,
                                 ),
                         )
                     }
@@ -829,6 +798,47 @@ private fun renderSubjectDetailsTab(tab: SubjectDetailsTab): String {
         SubjectDetailsTab.COMMENTS -> "评论"
         SubjectDetailsTab.DISCUSSIONS -> "讨论"
     }
+}
+
+@Composable
+private fun MaterialThemeFromImage(
+    bitmap: ImageBitmap?,
+    content: @Composable () -> Unit,
+) {
+    val themeSettings = LocalThemeSettings.current
+    val isDark = when (themeSettings.darkMode) {
+        DarkMode.LIGHT -> false
+        DarkMode.DARK -> true
+        DarkMode.AUTO -> isSystemInDarkTheme()
+    }
+    val useBlackBackground = themeSettings.useBlackBackground
+    val paletteState = rememberPaletteState()
+    var colorScheme by remember { mutableStateOf<ColorScheme?>(null) }
+
+    LaunchedEffect(bitmap) {
+        bitmap?.let {
+            paletteState.generate(it)
+
+            colorScheme = dynamicColorScheme(
+                primary = paletteState.palette?.vibrantSwatch?.color ?: themeSettings.seedColor,
+                isDark = isDark,
+                isAmoled = useBlackBackground,
+                style = PaletteStyle.TonalSpot,
+                modifyColorScheme = { colorScheme ->
+                    modifyColorSchemeForBlackBackground(
+                        colorScheme,
+                        isDark,
+                        useBlackBackground,
+                    )
+                },
+            )
+        }
+    }
+
+    MaterialTheme(
+        colorScheme = MaterialTheme.colorScheme.animate(colorScheme ?: MaterialTheme.colorScheme),
+        content = content,
+    )
 }
 
 expect fun Image.toComposeImageBitmap(): ImageBitmap
