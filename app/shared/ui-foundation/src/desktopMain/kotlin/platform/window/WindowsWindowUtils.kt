@@ -299,15 +299,6 @@ class WindowsWindowUtils : AwtWindowUtils() {
     }
 
     companion object {
-        val hitClient: Int get() = HTCLIENT
-
-        val hitMaxButton: Int get() = HTMAXBUTTON
-
-        val hitMinimize: Int get() = HTMINBUTTON
-
-        val hitClose: Int get() = HTCLOSE
-
-        val hitCaption: Int get() = HTCAPTION
 
         val instance: WindowsWindowUtils by lazy { WindowsWindowUtils() }
     }
