@@ -34,8 +34,7 @@ actual fun Image.toComposeImageBitmap(): ImageBitmap {
 @Composable
 internal fun PreviewSubjectDetails() = ProvideFoundationCompositionLocalsForPreview {
     val scope = rememberCoroutineScope()
-    val state =
-        remember { SubjectDetailsStateLoader.LoadState.Ok(createTestSubjectDetailsState(scope)) }
+    val state = remember { SubjectDetailsStateLoader.LoadState.Ok(createTestSubjectDetailsState(scope)) }
     SubjectDetailsPage(
         state,
         onPlay = { },
@@ -51,12 +50,7 @@ internal fun PreviewSubjectDetails() = ProvideFoundationCompositionLocalsForPrev
 internal fun PreviewPlaceholderSubjectDetails() = ProvideFoundationCompositionLocalsForPreview {
     val scope = rememberCoroutineScope()
     val state = remember {
-        SubjectDetailsStateLoader.LoadState.Ok(
-            createTestSubjectDetailsState(
-                scope,
-                isPlaceholder = true
-            )
-        )
+        SubjectDetailsStateLoader.LoadState.Ok(createTestSubjectDetailsState(scope, isPlaceholder = true))
     }
     SubjectDetailsPage(
         state,
@@ -73,11 +67,7 @@ internal fun PreviewPlaceholderSubjectDetails() = ProvideFoundationCompositionLo
 @Composable
 internal fun PreviewErrorSubjectDetails() = ProvideFoundationCompositionLocalsForPreview {
     val state = remember {
-        SubjectDetailsStateLoader.LoadState.Err(
-            TestSubjectInfo.subjectId,
-            TestSubjectInfo,
-            LoadError.NetworkError
-        )
+        SubjectDetailsStateLoader.LoadState.Err(TestSubjectInfo.subjectId, TestSubjectInfo, LoadError.NetworkError)
     }
     SubjectDetailsPage(
         state,

@@ -155,48 +155,40 @@ object AniThemeDefaults {
     )
 
     @Stable
-    val feedItemFadeOutSpec: FiniteAnimationSpec<Float> = tween(
-        EasingDurations.standardDecelerate,
-        easing = StandardDecelerate
-    )
+    val feedItemFadeOutSpec: FiniteAnimationSpec<Float> =
+        tween(EasingDurations.standardDecelerate, easing = StandardDecelerate)
 
     /**
      * 适用中小型组件.
      */
     @Stable
-    val standardAnimatedContentTransition: AnimatedContentTransitionScope<*>.() -> ContentTransform =
-        {
-            // Follow M3 Clean fades
-            val fadeIn = fadeIn(
-                tween(
-                    EasingDurations.standardAccelerate,
-                    delayMillis = EasingDurations.standardDecelerate,
-                    easing = StandardAccelerate,
-                ),
-            )
-            val fadeOut = fadeOut(feedItemFadeOutSpec)
-            fadeIn.togetherWith(fadeOut)
-        }
+    val standardAnimatedContentTransition: AnimatedContentTransitionScope<*>.() -> ContentTransform = {
+        // Follow M3 Clean fades
+        val fadeIn = fadeIn(
+            tween(
+                EasingDurations.standardAccelerate,
+                delayMillis = EasingDurations.standardDecelerate,
+                easing = StandardAccelerate,
+            ),
+        )
+        val fadeOut = fadeOut(feedItemFadeOutSpec)
+        fadeIn.togetherWith(fadeOut)
+    }
 
     @Stable
-    val emphasizedAnimatedContentTransition: AnimatedContentTransitionScope<*>.() -> ContentTransform =
-        {
-            // Follow M3 Clean fades
-            val fadeIn = fadeIn(
-                animationSpec = tween(
-                    EasingDurations.emphasizedAccelerate,
-                    delayMillis = EasingDurations.emphasizedDecelerate,
-                    easing = EmphasizedAccelerateEasing,
-                ),
-            )
-            val fadeOut = fadeOut(
-                animationSpec = tween(
-                    EasingDurations.emphasizedDecelerate,
-                    easing = EmphasizedDecelerateEasing
-                )
-            )
-            fadeIn.togetherWith(fadeOut)
-        }
+    val emphasizedAnimatedContentTransition: AnimatedContentTransitionScope<*>.() -> ContentTransform = {
+        // Follow M3 Clean fades
+        val fadeIn = fadeIn(
+            animationSpec = tween(
+                EasingDurations.emphasizedAccelerate,
+                delayMillis = EasingDurations.emphasizedDecelerate,
+                easing = EmphasizedAccelerateEasing,
+            ),
+        )
+        val fadeOut =
+            fadeOut(animationSpec = tween(EasingDurations.emphasizedDecelerate, easing = EmphasizedDecelerateEasing))
+        fadeIn.togetherWith(fadeOut)
+    }
 }
 
 /**
@@ -248,58 +240,26 @@ data class NavigationMotionScheme(
                         ),
                         initialOffsetX = { (it * (1f / 5)).roundToInt() },
                     )
-                    val fadeIn = fadeIn(
-                        tween(
-                            enterDuration,
-                            easing = enterEasing
-                        )
-                    )
+                    val fadeIn = fadeIn(tween(enterDuration, easing = enterEasing))
                     slideIn.plus(fadeIn)
                 } else {
-                    fadeIn(
-                        tween(
-                            enterDuration,
-                            delayMillis = exitDuration,
-                            easing = enterEasing
-                        )
-                    )
+                    fadeIn(tween(enterDuration, delayMillis = exitDuration, easing = enterEasing))
                 }
             }
 
-            val exitTransition: ExitTransition = fadeOut(
-                tween(
-                    exitDuration,
-                    easing = exitEasing
-                )
-            )
+            val exitTransition: ExitTransition = fadeOut(tween(exitDuration, easing = exitEasing))
 
             val popEnterTransition = run {
                 if (useSlide) {
-                    fadeIn(
-                        tween(
-                            enterDuration,
-                            easing = enterEasing
-                        )
-                    )
+                    fadeIn(tween(enterDuration, easing = enterEasing))
                 } else {
-                    fadeIn(
-                        tween(
-                            enterDuration,
-                            delayMillis = exitDuration,
-                            easing = enterEasing
-                        )
-                    ) // clean fade
+                    fadeIn(tween(enterDuration, delayMillis = exitDuration, easing = enterEasing)) // clean fade
                 }
             }
 
             // 从页面 A 回到上一个页面 B, 切走页面 A 的动画
             val popExitTransition: ExitTransition = run {
-                val fadeOut = fadeOut(
-                    tween(
-                        exitDuration,
-                        easing = exitEasing
-                    )
-                )
+                val fadeOut = fadeOut(tween(exitDuration, easing = exitEasing))
                 if (useSlide) {
                     val slide = slideOutHorizontally(
                         tween(
@@ -361,11 +321,11 @@ fun ColorScheme.animate(
     return ColorScheme(
         primary = animateColorAsState(
             targetColorScheme?.primary ?: primary,
-            animationSpec
+            animationSpec,
         ).value,
         onPrimary = animateColorAsState(
             targetColorScheme?.onPrimary ?: onPrimary,
-            animationSpec
+            animationSpec,
         ).value,
         primaryContainer = animateColorAsState(
             targetColorScheme?.primaryContainer ?: primaryContainer,
@@ -377,15 +337,15 @@ fun ColorScheme.animate(
         ).value,
         inversePrimary = animateColorAsState(
             targetColorScheme?.inversePrimary ?: inversePrimary,
-            animationSpec
+            animationSpec,
         ).value,
         secondary = animateColorAsState(
             targetColorScheme?.secondary ?: secondary,
-            animationSpec
+            animationSpec,
         ).value,
         onSecondary = animateColorAsState(
             targetColorScheme?.onSecondary ?: onSecondary,
-            animationSpec
+            animationSpec,
         ).value,
         secondaryContainer = animateColorAsState(
             targetColorScheme?.secondaryContainer ?: secondaryContainer,
@@ -397,11 +357,11 @@ fun ColorScheme.animate(
         ).value,
         tertiary = animateColorAsState(
             targetColorScheme?.tertiary ?: tertiary,
-            animationSpec
+            animationSpec,
         ).value,
         onTertiary = animateColorAsState(
             targetColorScheme?.onTertiary ?: onTertiary,
-            animationSpec
+            animationSpec,
         ).value,
         tertiaryContainer = animateColorAsState(
             targetColorScheme?.tertiaryContainer ?: tertiaryContainer,
@@ -413,23 +373,23 @@ fun ColorScheme.animate(
         ).value,
         background = animateColorAsState(
             targetColorScheme?.background ?: background,
-            animationSpec
+            animationSpec,
         ).value,
         onBackground = animateColorAsState(
             targetColorScheme?.onBackground ?: onBackground,
-            animationSpec
+            animationSpec,
         ).value,
         surface = animateColorAsState(
             targetColorScheme?.surface ?: surface,
-            animationSpec
+            animationSpec,
         ).value,
         onSurface = animateColorAsState(
             targetColorScheme?.onSurface ?: onSurface,
-            animationSpec
+            animationSpec,
         ).value,
         surfaceVariant = animateColorAsState(
             targetColorScheme?.surfaceVariant ?: surfaceVariant,
-            animationSpec
+            animationSpec,
         ).value,
         onSurfaceVariant = animateColorAsState(
             targetColorScheme?.onSurfaceVariant ?: onSurfaceVariant,
@@ -437,11 +397,11 @@ fun ColorScheme.animate(
         ).value,
         surfaceTint = animateColorAsState(
             targetColorScheme?.surfaceTint ?: surfaceTint,
-            animationSpec
+            animationSpec,
         ).value,
         inverseSurface = animateColorAsState(
             targetColorScheme?.inverseSurface ?: inverseSurface,
-            animationSpec
+            animationSpec,
         ).value,
         inverseOnSurface = animateColorAsState(
             targetColorScheme?.inverseOnSurface ?: inverseOnSurface,
@@ -449,11 +409,11 @@ fun ColorScheme.animate(
         ).value,
         surfaceBright = animateColorAsState(
             targetColorScheme?.surfaceBright ?: surfaceBright,
-            animationSpec
+            animationSpec,
         ).value,
         surfaceDim = animateColorAsState(
             targetColorScheme?.surfaceDim ?: surfaceDim,
-            animationSpec
+            animationSpec,
         ).value,
         surfaceContainer = animateColorAsState(
             targetColorScheme?.surfaceContainer ?: surfaceContainer,
@@ -477,15 +437,15 @@ fun ColorScheme.animate(
         ).value,
         error = animateColorAsState(
             targetColorScheme?.error ?: error,
-            animationSpec
+            animationSpec,
         ).value,
         onError = animateColorAsState(
             targetColorScheme?.onError ?: onError,
-            animationSpec
+            animationSpec,
         ).value,
         errorContainer = animateColorAsState(
             targetColorScheme?.errorContainer ?: errorContainer,
-            animationSpec
+            animationSpec,
         ).value,
         onErrorContainer = animateColorAsState(
             targetColorScheme?.onErrorContainer ?: onErrorContainer,
@@ -497,11 +457,11 @@ fun ColorScheme.animate(
         ).value,
         outlineVariant = animateColorAsState(
             targetColorScheme?.outlineVariant ?: outlineVariant,
-            animationSpec
+            animationSpec,
         ).value,
         scrim = animateColorAsState(
             targetColorScheme?.scrim ?: scrim,
-            animationSpec
+            animationSpec,
         ).value,
     )
 }

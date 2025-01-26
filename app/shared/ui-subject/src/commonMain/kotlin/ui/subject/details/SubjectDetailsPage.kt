@@ -455,23 +455,15 @@ fun SubjectDetailsPageLayout(
                             navigationIcon = navigationIcon,
                             actions = {
                                 IconButton(onClickOpenExternal) {
-                                    Icon(
-                                        Icons.AutoMirrored.Outlined.OpenInNew,
-                                        null,
-                                    )
+                                    Icon(Icons.AutoMirrored.Outlined.OpenInNew, null)
                                 }
                             },
-                            colors = AniThemeDefaults.topAppBarColors()
-                                .copy(containerColor = Color.Transparent),
+                            colors = AniThemeDefaults.topAppBarColors().copy(containerColor = Color.Transparent),
                             windowInsets = windowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top),
                         )
 
                         // 有背景, 仅在滚动一段距离后使用
-                        AnimatedVisibility(
-                            connectedScrollState.isScrolledTop,
-                            enter = fadeIn(),
-                            exit = fadeOut(),
-                        ) {
+                        AnimatedVisibility(connectedScrollState.isScrolledTop, enter = fadeIn(), exit = fadeOut()) {
                             TopAppBar(
                                 title = {
                                     Text(
@@ -483,10 +475,7 @@ fun SubjectDetailsPageLayout(
                                 navigationIcon = navigationIcon,
                                 actions = {
                                     IconButton(onClickOpenExternal) {
-                                        Icon(
-                                            Icons.AutoMirrored.Outlined.OpenInNew,
-                                            null,
-                                        )
+                                        Icon(Icons.AutoMirrored.Outlined.OpenInNew, null)
                                     }
                                 },
                                 colors = AniThemeDefaults.topAppBarColors(containerColor = stickyTopBarColor),
@@ -504,20 +493,15 @@ fun SubjectDetailsPageLayout(
         // 这个页面比较特殊. 背景需要绘制到 TopBar 等区域以内, 也就是要无视 scaffoldPadding.
 
         // 在背景之上显示的封面和标题等信息
-        val headerContentPadding =
-            scaffoldPadding.only(PaddingValuesSides.Horizontal + PaddingValuesSides.Top)
+        val headerContentPadding = scaffoldPadding.only(PaddingValuesSides.Horizontal + PaddingValuesSides.Top)
         // 从 tab row 开始的区域
-        val remainingContentPadding =
-            scaffoldPadding.only(PaddingValuesSides.Horizontal + PaddingValuesSides.Bottom)
+        val remainingContentPadding = scaffoldPadding.only(PaddingValuesSides.Horizontal + PaddingValuesSides.Bottom)
 
         Box(
             Modifier.fillMaxSize(),
             contentAlignment = Alignment.TopCenter,
         ) {
-            Column(
-                Modifier.widthIn(max = 1300.dp)
-                    .fillMaxHeight(),
-            ) {
+            Column(Modifier.widthIn(max = 1300.dp).fillMaxHeight()) {
                 Box(Modifier.connectedScrollContainer(connectedScrollState)) {
                     // 虚化渐变背景, 需要绘制到 scaffoldPadding 以外区域
                     if (showBlurredBackground) {
@@ -600,10 +584,7 @@ private fun SubjectDetailsContentPager(
                 modifier = Modifier.widthIn(max = SubjectDetailsDefaults.TabRowWidth),
                 indicator = @Composable { tabPositions ->
                     TabRowDefaults.PrimaryIndicator(
-                        Modifier.pagerTabIndicatorOffset(
-                            pagerState,
-                            tabPositions,
-                        ),
+                        Modifier.pagerTabIndicatorOffset(pagerState, tabPositions),
                     )
                 },
                 containerColor = tabContainerColor,
@@ -672,8 +653,7 @@ private fun PlaceholderSubjectDetailsContentPager(paddingValues: PaddingValues) 
         Spacer(Modifier.height(16.dp))
 
         // 条目描述
-        val bodyMediumTextHeight =
-            with(density) { MaterialTheme.typography.bodyMedium.lineHeight.toDp() }
+        val bodyMediumTextHeight = with(density) { MaterialTheme.typography.bodyMedium.lineHeight.toDp() }
         val timesDot8TextHeight = (bodyMediumTextHeight.value * 0.8).dp
         val timesDot8TextLinePadding = (bodyMediumTextHeight.value * 0.2).dp
 
@@ -684,18 +664,14 @@ private fun PlaceholderSubjectDetailsContentPager(paddingValues: PaddingValues) 
                     .padding(bottom = timesDot8TextLinePadding)
                     .fillMaxWidth()
                     .height(timesDot8TextHeight)
-                    .placeholder(
-                        true,
-                        shape = RectangleShape,
-                    ),
+                    .placeholder(true, shape = RectangleShape),
             )
         }
 
         Spacer(Modifier.height(12.dp))
 
         // 标签
-        val labelMediumTextHeight =
-            with(density) { MaterialTheme.typography.labelMedium.lineHeight.toDp() }
+        val labelMediumTextHeight = with(density) { MaterialTheme.typography.labelMedium.lineHeight.toDp() }
 
         FlowRow(
             modifier = Modifier.padding(horizontal = windowSizeClass.paneHorizontalPadding),
@@ -718,26 +694,17 @@ private fun PlaceholderSubjectDetailsContentPager(paddingValues: PaddingValues) 
             }
         }
 
-        Spacer(
-            Modifier.fillMaxWidth()
-                .height(20.dp),
-        )
+        Spacer(Modifier.fillMaxWidth().height(20.dp))
 
         Spacer(
             Modifier
                 .padding(horizontal = windowSizeClass.paneHorizontalPadding)
                 .width(48.dp)
                 .height(with(density) { MaterialTheme.typography.titleMedium.lineHeight.toDp() })
-                .placeholder(
-                    true,
-                    shape = RectangleShape,
-                ),
+                .placeholder(true, shape = RectangleShape),
         )
 
-        Spacer(
-            Modifier.fillMaxWidth()
-                .height(20.dp),
-        )
+        Spacer(Modifier.fillMaxWidth().height(20.dp))
 
         @Composable
         fun PlaceholderPersonCard(modifier: Modifier = Modifier) {
@@ -757,19 +724,13 @@ private fun PlaceholderSubjectDetailsContentPager(paddingValues: PaddingValues) 
                             Modifier
                                 .width(96.dp)
                                 .height(bodyMediumTextHeight)
-                                .placeholder(
-                                    true,
-                                    shape = RectangleShape,
-                                ),
+                                .placeholder(true, shape = RectangleShape),
                         )
                         Spacer(
                             Modifier
                                 .width(96.dp)
                                 .height(labelMediumTextHeight)
-                                .placeholder(
-                                    true,
-                                    shape = RectangleShape,
-                                ),
+                                .placeholder(true, shape = RectangleShape),
                         )
                     }
                 }

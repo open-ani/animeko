@@ -38,10 +38,9 @@ import me.him188.ani.utils.platform.isAndroid
 import me.him188.ani.utils.platform.isDesktop
 
 private val colorList =
-    ((4..10) + (1..3)).map { it * 35.0 }.map { Color(Hct.from(it, 40.0, 40.0).toInt()) }
-        .toMutableList().apply {
-            add(5, DEFAULT_SEED_COLOR)
-        }
+    ((4..10) + (1..3)).map { it * 35.0 }.map { Color(Hct.from(it, 40.0, 40.0).toInt()) }.toMutableList().apply {
+        add(5, DEFAULT_SEED_COLOR)
+    }
 
 @Composable
 fun SettingsScope.ThemeGroup(
