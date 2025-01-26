@@ -182,9 +182,9 @@ internal class DandanplayClient(
 
     private fun HttpRequestBuilder.configureTimeout() {
         timeout {
-            requestTimeoutMillis = 50_000 // 弹弹服务器请求比较慢
-            connectTimeoutMillis = 10_000 // 弹弹服务器请求比较慢
-            socketTimeoutMillis = 10_000 // 弹弹服务器请求比较慢
+            requestTimeoutMillis = 60_000 // 弹弹服务器请求比较慢
+            connectTimeoutMillis = 60_000 // 弹弹服务器请求比较慢
+            socketTimeoutMillis = 60_000 // 弹弹服务器请求比较慢
         }
     }
 
