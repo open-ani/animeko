@@ -52,7 +52,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapConcat
-import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import me.him188.ani.app.platform.PlatformWindow
 import me.him188.ani.app.platform.SavedWindowsWindowState
 import me.him188.ani.app.platform.window.ExtendedUser32.Companion.HTBOTTOM
@@ -161,14 +161,12 @@ class WindowsWindowUtils : AwtWindowUtils() {
 
     fun windowIsActive(platformWindow: PlatformWindow): Flow<Boolean?> {
         return snapshotFlow { platformWindow.titleBarWindowProc }
-            .flatMapConcat {
-                it?.windowIsActive ?: flow<Boolean?> { emit(null) }
-            }
+            .flatMapConcat { it?.windowIsActive ?: flowOf(null) }
     }
 
     fun windowAccentColor(platformWindow: PlatformWindow): Flow<Color> {
         return snapshotFlow { platformWindow.titleBarWindowProc }
-            .flatMapConcat { it?.systemColor ?: flow { emit(Color.Unspecified) } }
+            .flatMapConcat { it?.systemColor ?: flowOf(Color.Unspecified) }
     }
 
     fun restoreWindow(windowHandle: Long) {
