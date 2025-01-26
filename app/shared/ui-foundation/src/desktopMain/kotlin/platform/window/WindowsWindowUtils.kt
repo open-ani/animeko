@@ -657,9 +657,8 @@ internal class TitleBarWindowProc(
 
     private var hitTestResult: Int = HTCLIENT
 
-    private val skiaLayer: SkiaLayer? = window.findSkiaLayer()
     private val skiaLayerWindowProc: SkiaLayerHitTestWindowProc? =
-        skiaLayer?.let { SkiaLayerHitTestWindowProc(it, user32, ::hitTest) }
+        window.findSkiaLayer()?.let { SkiaLayerHitTestWindowProc(it, user32, ::hitTest) }
 
     private val defaultWindowProc =
         user32.SetWindowLongPtr(windowHandle, WinUser.GWL_WNDPROC, CallbackReference.getFunctionPointer(this))
@@ -823,8 +822,8 @@ internal class TitleBarWindowProc(
                     _windowIsActive.tryEmit(wParam.toInt() != WA_INACTIVE)
                 }
                 if (uMsg == WM_NCMOUSEMOVE) {
-                    skiaLayer?.let {
-                        user32.PostMessage(HWND(Pointer(it.contentHandle)), uMsg, wParam, lParam)
+                    skiaLayerWindowProc?.let {
+                        user32.PostMessage(it.contentHandle, uMsg, wParam, lParam)
                     }
                 }
                 user32.CallWindowProc(defaultWindowProc, hWnd, uMsg, wParam, lParam)
@@ -899,13 +898,13 @@ internal class TitleBarWindowProc(
     }
 }
 
-private class SkiaLayerHitTestWindowProc(
+internal class SkiaLayerHitTestWindowProc(
     skiaLayer: SkiaLayer,
     private val user32: ExtendedUser32,
     private val hitTest: (x: Int, y: Int) -> Int,
 ) : WindowProc {
     private val windowHandle = HWND(Pointer(skiaLayer.windowHandle))
-    private val contentHandle = HWND(skiaLayer.canvas.let(Native::getComponentPointer))
+    internal val contentHandle = HWND(skiaLayer.canvas.let(Native::getComponentPointer))
 
     private val defaultWindowProc =
         user32.SetWindowLongPtr(contentHandle, WinUser.GWL_WNDPROC, CallbackReference.getFunctionPointer(this))
