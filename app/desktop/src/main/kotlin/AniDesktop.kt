@@ -10,7 +10,6 @@
 package me.him188.ani.app.desktop
 
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -424,15 +423,25 @@ private fun FrameWindowScope.MainWindowContent(
 ) {
     val settingsRepository = KoinPlatform.getKoin().get<SettingsRepository>()
     AniApp {
-        window.setTitleBar(AniThemeDefaults.navigationContainerColor, isSystemInDarkTheme())
         val themeSettings = LocalThemeSettings.current
         val titleBarThemeController = LocalTitleBarThemeController.current
         val systemTheme = LocalSystemTheme.current
-        titleBarThemeController?.isDark = when (themeSettings.darkMode) {
-            DarkMode.AUTO -> systemTheme == SystemTheme.Dark
-            DarkMode.LIGHT -> false
-            DarkMode.DARK -> true
+        val navContainerColor = AniThemeDefaults.navigationContainerColor
+
+        val isTitleBarDark = remember(themeSettings, systemTheme) {
+            when (themeSettings.darkMode) {
+                DarkMode.AUTO -> systemTheme == SystemTheme.Dark
+                DarkMode.LIGHT -> false
+                DarkMode.DARK -> true
+            }
         }
+
+        DisposableEffect(isTitleBarDark, titleBarThemeController) {
+            window.setTitleBar(navContainerColor, isTitleBarDark)
+            titleBarThemeController?.isDark = isTitleBarDark
+            onDispose { }
+        }
+
         Box(
             Modifier
                 .ifThen(!isSystemInFullscreen()) {
