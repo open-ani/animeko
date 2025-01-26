@@ -46,7 +46,7 @@ class DandanplayDanmakuProvider(
 
     override val id: String get() = ID
 
-    private val dandanplayClient = DandanplayClient(client)
+    private val dandanplayClient = DandanplayClient(client, config.dandanplayAppId, config.dandanplayAppSecret)
 
     override fun HttpClientConfig<*>.configureClient() {
         install(HttpRequestRetry) {

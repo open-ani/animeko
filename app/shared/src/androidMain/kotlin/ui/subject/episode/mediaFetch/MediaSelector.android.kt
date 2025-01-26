@@ -87,13 +87,15 @@ private fun rememberTestMediaSelectorPresentation(previewMediaList: List<Media>)
         )
     }
 
-@OptIn(TestOnly::class, MediaGroupBuilderApi::class)
+@OptIn(TestOnly::class)
 @PreviewLightDark
 @Composable
 private fun PreviewMediaItemIncluded(modifier: Modifier = Modifier) = ProvideFoundationCompositionLocalsForPreview {
     MediaSelectorItem(
-        MediaGroup("Test").apply {
-            add(previewMediaList[0].let { MaybeExcludedMedia.Included(it, similarity = 90) })
+        remember {
+            MediaGroupBuilder("Test").apply {
+                add(previewMediaList[0].let { MaybeExcludedMedia.Included(it, similarity = 90) })
+            }.build()
         },
         remember { MediaGroupState("test") },
         rememberTestMediaSourceInfoProvider(),
@@ -107,13 +109,15 @@ private fun PreviewMediaItemIncluded(modifier: Modifier = Modifier) = ProvideFou
     )
 }
 
-@OptIn(TestOnly::class, MediaGroupBuilderApi::class)
+@OptIn(TestOnly::class)
 @PreviewLightDark
 @Composable
 private fun PreviewMediaItemExcluded(modifier: Modifier = Modifier) = ProvideFoundationCompositionLocalsForPreview {
     MediaSelectorItem(
-        MediaGroup("Test").apply {
-            add(previewMediaList[0].let { MaybeExcludedMedia.Excluded(it, MediaExclusionReason.FromSequelSeason) })
+        remember {
+            MediaGroupBuilder("Test").apply {
+                add(previewMediaList[0].let { MaybeExcludedMedia.Excluded(it, MediaExclusionReason.FromSequelSeason) })
+            }.build()
         },
         remember { MediaGroupState("test") },
         rememberTestMediaSourceInfoProvider(),
