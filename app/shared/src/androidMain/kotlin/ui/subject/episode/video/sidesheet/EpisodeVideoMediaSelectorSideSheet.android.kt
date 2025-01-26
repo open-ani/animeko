@@ -15,7 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.preview.PreviewTabletLightDark
-import me.him188.ani.app.ui.subject.episode.mediaFetch.emptyMediaSourceResultsPresentation
+import me.him188.ani.app.ui.subject.episode.mediaFetch.TestMediaSourceResultListPresentation
 import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberTestMediaSelectorState
 import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheets
 import me.him188.ani.utils.platform.annotations.TestOnly
@@ -27,9 +27,10 @@ fun PreviewEpisodeVideoMediaSelectorSideSheet() {
     ProvideCompositionLocalsForPreview {
         EpisodeVideoSideSheets.MediaSelectorSheet(
             mediaSelectorState = rememberTestMediaSelectorState(),
-            mediaSourceResultsPresentation = emptyMediaSourceResultsPresentation(),
+            mediaSourceResultListPresentation = TestMediaSourceResultListPresentation,
             onDismissRequest = {},
             onRefresh = {},
+            onRestartSource = {},
         )
     }
 }

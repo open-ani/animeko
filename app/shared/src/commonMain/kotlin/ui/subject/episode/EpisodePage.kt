@@ -398,7 +398,7 @@ private fun EpisodeSceneTabletVeryWide(
                                     page.danmakuStatistics,
                                     vm.videoStatisticsFlow,
                                     page.mediaSelectorState,
-                                    page.mediaSourceResultsPresentation,
+                                    page.mediaSourceResultListPresentation,
                                     vm.authState,
                                     onSwitchEpisode = { episodeId ->
                                         if (!vm.episodeSelectorState.selectEpisodeId(episodeId)) {
@@ -406,6 +406,7 @@ private fun EpisodeSceneTabletVeryWide(
                                         }
                                     },
                                     onRefreshMediaSources = { vm.refreshFetch() },
+                                    onRestartSource = { vm.restartSource(it.instanceId) },
                                     onSetDanmakuSourceEnabled = { providerId, enabled ->
                                         vm.setDanmakuSourceEnabled(providerId, enabled)
                                     },
@@ -512,7 +513,7 @@ private fun EpisodeSceneContentPhone(
                     page.danmakuStatistics,
                     vm.videoStatisticsFlow,
                     page.mediaSelectorState,
-                    page.mediaSourceResultsPresentation,
+                    page.mediaSourceResultListPresentation,
                     vm.authState,
                     onSwitchEpisode = { episodeId ->
                         if (!vm.episodeSelectorState.selectEpisodeId(episodeId)) {
@@ -520,6 +521,7 @@ private fun EpisodeSceneContentPhone(
                         }
                     },
                     onRefreshMediaSources = { vm.refreshFetch() },
+                    onRestartSource = { vm.restartSource(it.instanceId) },
                     onSetDanmakuSourceEnabled = { providerId, enabled ->
                         vm.setDanmakuSourceEnabled(providerId, enabled)
                     },
@@ -838,9 +840,10 @@ private fun EpisodeVideo(
                     pageState?.let { page ->
                         EpisodeVideoSideSheets.MediaSelectorSheet(
                             page.mediaSelectorState,
-                            page.mediaSourceResultsPresentation,
+                            page.mediaSourceResultListPresentation,
                             onDismissRequest = { goBack() },
                             onRefresh = { vm.refreshFetch() },
+                            onRestartSource = { vm.restartSource(it.instanceId) },
                         )
                     }
                 },

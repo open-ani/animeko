@@ -44,8 +44,8 @@ import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.framework.AniComposeUiTest
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import me.him188.ani.app.ui.settings.danmaku.createTestDanmakuRegexFilterState
+import me.him188.ani.app.ui.subject.episode.mediaFetch.TestMediaSourceResultListPresentation
 import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberTestMediaSelectorState
-import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberTestMediaSourceResults
 import me.him188.ani.app.ui.subject.episode.video.components.DanmakuSettingsSheet
 import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheetPage
 import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheets
@@ -228,9 +228,10 @@ class EpisodeVideoControllerTest {
                         mediaSelectorPage = {
                             EpisodeVideoSideSheets.MediaSelectorSheet(
                                 mediaSelectorState = rememberTestMediaSelectorState(),
-                                mediaSourceResultsPresentation = rememberTestMediaSourceResults(),
+                                mediaSourceResultListPresentation = TestMediaSourceResultListPresentation,
                                 onDismissRequest = { goBack() },
                                 onRefresh = {},
+                                onRestartSource = {},
                             )
                         },
                         episodeSelectorPage = {

@@ -17,7 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview
-import me.him188.ani.app.ui.subject.episode.mediaFetch.emptyMediaSourceResultsPresentation
+import me.him188.ani.app.ui.subject.episode.mediaFetch.TestMediaSourceResultListPresentation
 import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberTestMediaSelectorState
 import me.him188.ani.utils.platform.annotations.TestOnly
 
@@ -26,9 +26,10 @@ import me.him188.ani.utils.platform.annotations.TestOnly
 private fun PreviewEpisodePlayMediaSelectorSheet() = ProvideFoundationCompositionLocalsForPreview {
     EpisodePlayMediaSelector(
         rememberTestMediaSelectorState(),
-        emptyMediaSourceResultsPresentation(),
+        TestMediaSourceResultListPresentation,
         onDismissRequest = {},
         onRefresh = {},
+        onRestartSource = {},
         Modifier.background(MaterialTheme.colorScheme.surface),
     )
 }
@@ -38,9 +39,10 @@ private fun PreviewEpisodePlayMediaSelectorSheet() = ProvideFoundationCompositio
 private fun PreviewEpisodePlayMediaSelectorSheet2() = ProvideFoundationCompositionLocalsForPreview {
     EpisodePlayMediaSelector(
         rememberTestMediaSelectorState(),
-        emptyMediaSourceResultsPresentation(),
+        TestMediaSourceResultListPresentation,
         onDismissRequest = {},
         onRefresh = {},
+        onRestartSource = {},
         Modifier.background(MaterialTheme.colorScheme.surface),
     )
 }
@@ -50,9 +52,10 @@ private fun PreviewEpisodePlayMediaSelectorSheet2() = ProvideFoundationCompositi
 private fun PreviewEpisodePlayMediaSelectorSheet3() = ProvideFoundationCompositionLocalsForPreview {
     EpisodePlayMediaSelector(
         rememberTestMediaSelectorState(),
-        emptyMediaSourceResultsPresentation(),
+        TestMediaSourceResultListPresentation,
         onDismissRequest = {},
         onRefresh = {},
+        onRestartSource = {},
         Modifier.background(MaterialTheme.colorScheme.surface),
     )
 }
