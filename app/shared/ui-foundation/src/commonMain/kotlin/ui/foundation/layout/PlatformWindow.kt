@@ -32,6 +32,8 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
@@ -69,6 +71,9 @@ val LocalCaptionButtonInsets = compositionLocalOf { ZeroInsets }
 operator fun WindowInsets.plus(other: WindowInsets): WindowInsets {
     return PlusWindowInsets(this, other) { a, b -> a + b }
 }
+
+@Composable
+inline fun WindowInsets.isTopRight() = getRight(LocalDensity.current, LocalLayoutDirection.current) > 0
 
 @Immutable
 private class PlusWindowInsets(
