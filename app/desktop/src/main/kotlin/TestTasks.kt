@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -12,6 +12,7 @@ package me.him188.ani.app.desktop
 import io.ktor.client.plugins.HttpTimeout
 import kotlinx.coroutines.runBlocking
 import me.him188.ani.app.platform.DesktopContext
+import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.tools.update.DefaultFileDownloader
 import me.him188.ani.app.tools.update.InstallationResult
 import me.him188.ani.app.tools.update.UpdateInstaller
@@ -39,6 +40,18 @@ object TestTasks {
 
             "download-update-and-install" -> {
                 downloadUpdateAndInstall(args, context)
+            }
+
+            "dandanplay-app-id" -> {
+                if (currentAniBuildConfig.dandanplayAppId.isBlank()) {
+                    logger.error { "dandanplayAppId is empty" }
+                    exitProcess(1)
+                }
+                if (currentAniBuildConfig.dandanplayAppSecret.isBlank()) {
+                    logger.error { "dandanplayAppSecret is empty" }
+                    exitProcess(1)
+                }
+                exitProcess(0)
             }
 
             else -> {

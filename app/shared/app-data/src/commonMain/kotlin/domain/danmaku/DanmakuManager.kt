@@ -33,6 +33,7 @@ import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.session.OpaqueSession
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.session.verifiedAccessToken
+import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.platform.getAniUserAgent
 import me.him188.ani.app.ui.foundation.BackgroundScope
 import me.him188.ani.app.ui.foundation.HasBackgroundScope
@@ -96,6 +97,8 @@ class DanmakuManagerImpl(
         DanmakuProviderConfig(
             userAgent = getAniUserAgent(),
             useGlobal = config.useGlobal,
+            dandanplayAppId = currentAniBuildConfig.dandanplayAppId,
+            dandanplayAppSecret = currentAniBuildConfig.dandanplayAppSecret,
         )
     }
 
