@@ -514,6 +514,7 @@ fun getVerifyJobBody(
         val name: String,
         val step: String,
         val timeoutMinutes: Int = 5,
+        val `if`: String? = null,
     )
 
     val tasksToExecute = listOf(
@@ -524,6 +525,7 @@ fun getVerifyJobBody(
         VerifyTask(
             name = "dandanplay-app-id",
             step = "Check that Dandanplay APP ID is valid",
+            `if` = expr { github.isAnimekoRepository and !github.isPullRequest }
         ),
     )
 
@@ -545,6 +547,7 @@ fun getVerifyJobBody(
                         powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$${expr { github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "$${expr { github.workspace }}\ci-helper\verify" "$${task.name}"
                         """.trimIndent(),
                     ),
+                    `if` = task.`if`,
                     timeoutMinutes = 5,
                 )
             }

@@ -711,6 +711,7 @@ jobs:
       timeout-minutes: 5
       shell: 'powershell'
       run: 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${{ github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "${{ github.workspace }}\ci-helper\verify" "dandanplay-app-id"'
+      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
   verify_github-windows-2022:
     name: 'Verify (Windows Server 2022 x86_64 (GitHub))'
     runs-on:
@@ -746,6 +747,7 @@ jobs:
       timeout-minutes: 5
       shell: 'powershell'
       run: 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${{ github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "${{ github.workspace }}\ci-helper\verify" "dandanplay-app-id"'
+      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
   verify_self-hosted-windows-10:
     name: 'Verify (Windows 10 x86_64 (Self-Hosted))'
     runs-on:
@@ -776,6 +778,7 @@ jobs:
       timeout-minutes: 5
       shell: 'powershell'
       run: 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${{ github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "${{ github.workspace }}\ci-helper\verify" "dandanplay-app-id"'
+      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
   verify_self-hosted-macos-15:
     name: 'Verify (macOS 15 AArch64 (Self-Hosted))'
     runs-on:
