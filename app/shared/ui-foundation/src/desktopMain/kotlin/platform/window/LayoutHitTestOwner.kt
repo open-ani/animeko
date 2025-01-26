@@ -114,11 +114,11 @@ private class CanvasLayersLayoutHitTestOwner(
             it.get(scene) as RootNodeOwner
         }
 
-    private val layersRef =
-        sceneClass.getDeclaredField("layers").let {
+    private val layersCopyCacheRef =
+        sceneClass.getDeclaredField("_layersCopyCache").let {
             it.trySetAccessible()
             it.get(scene)
-        } as MutableList<*>
+        } as CopiedList<*>
 
     private val focusedLayerField =
         sceneClass.getDeclaredField("focusedLayer").apply {
@@ -140,18 +140,11 @@ private class CanvasLayersLayoutHitTestOwner(
                 trySetAccessible()
             }
 
-    private val layers =
-        CopiedList {
-            for (layer in layersRef) {
-                it.add(layer)
-            }
-        }
-
     override fun hitTest(
         x: Float,
         y: Float,
     ): Boolean {
-        layers.withCopy {
+        layersCopyCacheRef.withCopy {
             it.fastForEachReversed { layer ->
                 if (layerIsInBoundMethod.invoke(layer, packFloats(x, y)) == true) {
                     return (layerOwnerField.get(layer) as RootNodeOwner).layoutNodeHitTest(x, y)
