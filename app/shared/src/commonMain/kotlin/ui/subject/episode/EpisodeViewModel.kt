@@ -195,7 +195,7 @@ class EpisodeViewModel(
                     } else {
                         val nextEpisode = list.getOrNull(currentIndex + 1) ?: return@Factory null
 
-                        if (!nextEpisode.episodeInfo.isKnownBroadcast) {
+                        if (!nextEpisode.episodeInfo.isKnownCompleted) {
                             null
                         } else {
                             nextEpisode.episodeId

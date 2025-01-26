@@ -54,7 +54,7 @@ data class EpisodeInfo(
         val Empty = EpisodeInfo(0, null)
     }
 
-    val isKnownBroadcast: Boolean
+    val isKnownCompleted: Boolean
         get() = isKnownCompleted(null)
 }
 
