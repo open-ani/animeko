@@ -1,15 +1,28 @@
+/*
+ * Copyright (C) 2024-2025 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.danmaku.dandanplay
 
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.accept
 import io.ktor.client.request.get
+import io.ktor.client.request.header
 import io.ktor.client.request.parameter
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
+import io.ktor.http.encodedPath
+import kotlinx.io.bytestring.encodeToByteString
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import me.him188.ani.danmaku.dandanplay.data.DandanplayDanmaku
@@ -18,11 +31,35 @@ import me.him188.ani.danmaku.dandanplay.data.DandanplayGetBangumiResponse
 import me.him188.ani.danmaku.dandanplay.data.DandanplayMatchVideoResponse
 import me.him188.ani.danmaku.dandanplay.data.DandanplaySearchEpisodeResponse
 import me.him188.ani.danmaku.dandanplay.data.DandanplaySeasonSearchResponse
+import me.him188.ani.utils.io.DigestAlgorithm
+import me.him188.ani.utils.io.digest
+import me.him188.ani.utils.platform.currentTimeMillis
+import kotlin.io.encoding.Base64
+import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.time.Duration
+
 
 internal class DandanplayClient(
     private val client: HttpClient,
+    private val appId: String,
+    private val appSecret: String,
 ) {
+    /**
+     * Must be used at the last step of building the request.
+     */
+    private fun HttpRequestBuilder.addAuthorizationHeaders() {
+        header("X-AppId", appId)
+        val time = currentTimeMillis() / 1000
+        header("X-Timestamp", time)
+        header("X-Signature", generateSignature(appId, time, url.encodedPath, appSecret))
+    }
+
+    @OptIn(ExperimentalEncodingApi::class)
+    private fun generateSignature(appId: String, timestamp: Long, path: String, appSecret: String): String {
+        val data = appId + timestamp + path + appSecret
+        return Base64.encode(data.encodeToByteString().digest(DigestAlgorithm.SHA256))
+    }
+
     suspend fun getSeasonAnimeList(
         year: Int,
         month: Int,
@@ -30,6 +67,7 @@ internal class DandanplayClient(
         // https://api.dandanplay.net/api/v2/bangumi/season/anime/2024/04
         val response = client.get("https://api.dandanplay.net/api/v2/bangumi/season/anime/$year/$month") {
             accept(ContentType.Application.Json)
+            addAuthorizationHeaders()
         }
 
         return response.body<DandanplaySeasonSearchResponse>()
@@ -41,6 +79,7 @@ internal class DandanplayClient(
         val response = client.get("https://api.dandanplay.net/api/v2/search/subject") {
             accept(ContentType.Application.Json)
             parameter("keyword", subjectName)
+            addAuthorizationHeaders()
         }
 
         if (response.status == HttpStatusCode.NotFound) {
@@ -58,6 +97,7 @@ internal class DandanplayClient(
             accept(ContentType.Application.Json)
             parameter("anime", subjectName)
             parameter("episode", episodeName)
+            addAuthorizationHeaders()
         }
 
         return response.body<DandanplaySearchEpisodeResponse>()
@@ -68,6 +108,7 @@ internal class DandanplayClient(
     ): DandanplayGetBangumiResponse {
         val response = client.get("https://api.dandanplay.net/api/v2/bangumi/$bangumiId") {
             accept(ContentType.Application.Json)
+            addAuthorizationHeaders()
         }
 
         return response.body<DandanplayGetBangumiResponse>()
@@ -91,6 +132,7 @@ internal class DandanplayClient(
                     put("matchMode", "hashAndFileName")
                 },
             )
+            addAuthorizationHeaders()
         }
 
         return response.body<DandanplayMatchVideoResponse>()
@@ -109,6 +151,7 @@ internal class DandanplayClient(
         val response =
             client.get("https://api.dandanplay.net/api/v2/comment/${episodeId}?chConvert=$chConvert&withRelated=true") {
                 accept(ContentType.Application.Json)
+                addAuthorizationHeaders()
             }.body<DandanplayDanmakuListResponse>()
         return response.comments
     }
