@@ -46,8 +46,8 @@ Animeko 支持云同步观看记录 ([Bangumi][Bangumi])、多视频数据源、
 
 ### 参与开发
 
-欢迎你提交 PR 参与开发, 也欢迎加入 open-ani 组织。
-有关项目技术细节请参考 [CONTRIBUTING](CONTRIBUTING.md)。
+欢迎你提交 PR 参与开发，
+有关项目技术细节请参考 [CONTRIBUTING](docs/contributing/README.md)。
 
 ## 下载
 
