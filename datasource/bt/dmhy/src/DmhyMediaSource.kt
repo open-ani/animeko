@@ -22,11 +22,11 @@ import me.him188.ani.datasources.api.source.TopicMediaSource
 import me.him188.ani.datasources.api.topic.Topic
 import me.him188.ani.datasources.dmhy.impl.DmhyPagedSourceImpl
 import me.him188.ani.datasources.dmhy.impl.protocol.Network
-import me.him188.ani.utils.ktor.WrapperHttpClient
+import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.logging.error
 
 class DmhyMediaSource(
-    private val client: WrapperHttpClient,
+    private val client: ScopedHttpClient,
 ) : TopicMediaSource() {
     class Factory : MediaSourceFactory {
         override val factoryId: FactoryId = FactoryId(ID)
@@ -34,7 +34,7 @@ class DmhyMediaSource(
         override fun create(
             mediaSourceId: String,
             config: MediaSourceConfig,
-            client: WrapperHttpClient
+            client: ScopedHttpClient
         ): MediaSource = DmhyMediaSource(client)
     }
 

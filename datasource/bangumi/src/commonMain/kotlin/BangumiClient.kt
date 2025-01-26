@@ -45,7 +45,7 @@ import me.him188.ani.datasources.bangumi.models.subjects.BangumiSubjectImageSize
 import me.him188.ani.datasources.bangumi.next.apis.SubjectBangumiNextApi
 import me.him188.ani.utils.ktor.ApiInvoker
 import me.him188.ani.utils.ktor.HttpTokenChecker
-import me.him188.ani.utils.ktor.WrapperHttpClient
+import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.thisLogger
 import me.him188.ani.utils.serialization.toJsonArray
@@ -72,7 +72,7 @@ private const val BANGUMI_NEXT_API_HOST = "https://next.bgm.tv" // dev.bgm38.com
 private const val BANGUMI_HOST = "https://bgm.tv"
 
 class BangumiClientImpl(
-    private val client: WrapperHttpClient,
+    private val client: ScopedHttpClient,
 ) : BangumiClient {
     private val logger = thisLogger()
 

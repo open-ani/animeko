@@ -20,7 +20,7 @@ import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceCodecManager
 import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.utils.coroutines.withExceptionCollector
-import me.him188.ani.utils.ktor.WrapperHttpClient
+import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.ktor.toSource
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -32,7 +32,7 @@ fun interface MediaSourceSubscriptionRequester {
 }
 
 class MediaSourceSubscriptionRequesterImpl(
-    private val client: WrapperHttpClient
+    private val client: ScopedHttpClient
 ) : MediaSourceSubscriptionRequester {
     /**
      * 执行网络请求, 下载新订阅数据.

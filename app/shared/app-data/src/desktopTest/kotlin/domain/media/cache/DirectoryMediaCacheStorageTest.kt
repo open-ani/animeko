@@ -48,7 +48,7 @@ import me.him188.ani.utils.io.readText
 import me.him188.ani.utils.io.resolve
 import me.him188.ani.utils.io.toKtPath
 import me.him188.ani.utils.io.writeText
-import me.him188.ani.utils.ktor.asWrapperHttpClient
+import me.him188.ani.utils.ktor.asScopedHttpClient
 import me.him188.ani.utils.ktor.createDefaultHttpClient
 import me.him188.ani.utils.serialization.putAll
 import org.intellij.lang.annotations.Language
@@ -96,7 +96,7 @@ class DirectoryMediaCacheStorageTest {
             CACHE_MEDIA_SOURCE_ID,
             AnitorrentEngine(
                 config = flowOf(AnitorrentConfig()),
-                client = client.asWrapperHttpClient(),
+                client = client.asScopedHttpClient(),
                 peerFilterSettings = flowOf(PeerFilterSettings.Empty),
                 saveDir = dir.toKtPath().inSystem,
                 parentCoroutineContext = coroutineContext,

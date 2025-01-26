@@ -29,14 +29,14 @@ import me.him188.ani.app.torrent.api.peer.PeerFilter
 import me.him188.ani.datasources.api.source.MediaSourceLocation
 import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.utils.io.SystemPath
-import me.him188.ani.utils.ktor.WrapperHttpClient
+import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import kotlin.coroutines.CoroutineContext
 
 class AnitorrentEngine(
     config: Flow<AnitorrentConfig>,
-    client: WrapperHttpClient,
+    client: ScopedHttpClient,
     peerFilterSettings: Flow<PeerFilterSettings>,
     private val saveDir: SystemPath,
     parentCoroutineContext: CoroutineContext,
@@ -122,7 +122,7 @@ private fun computeTorrentUserAgent(
     versionCode: String = currentAniBuildConfig.fourDigitVersionCode,
 ): String = "ani_libtorrent/${versionCode}"
 
-private fun WrapperHttpClient.asHttpFileDownloader(): HttpFileDownloader = object : HttpFileDownloader {
+private fun ScopedHttpClient.asHttpFileDownloader(): HttpFileDownloader = object : HttpFileDownloader {
     override suspend fun download(url: String): ByteArray = this@asHttpFileDownloader.use { get(url).readBytes() }
     override fun close() {}
 

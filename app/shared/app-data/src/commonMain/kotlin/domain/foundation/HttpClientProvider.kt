@@ -30,8 +30,8 @@ import me.him188.ani.app.data.models.preference.ProxyConfig
 import me.him188.ani.app.domain.media.fetch.toClientProxyConfig
 import me.him188.ani.app.domain.settings.ProxyProvider
 import me.him188.ani.utils.coroutines.childScope
-import me.him188.ani.utils.ktor.UnsafeWrapperHttpClientApi
-import me.him188.ani.utils.ktor.WrapperHttpClient
+import me.him188.ani.utils.ktor.ScopedHttpClient
+import me.him188.ani.utils.ktor.UnsafeScopedHttpClientApi
 import me.him188.ani.utils.ktor.createDefaultHttpClient
 import me.him188.ani.utils.ktor.proxy
 import me.him188.ani.utils.ktor.registerLogging
@@ -48,12 +48,12 @@ sealed class HttpClientProvider {
      *
      * 此 flow emit 的值仅作为配置变化的通知, 不应当被使用.
      *
-     * 当此 flow emit 后, [WrapperHttpClient.borrow] 一定可以拿到一个新实例.
+     * 当此 flow emit 后, [ScopedHttpClient.borrow] 一定可以拿到一个新实例.
      */
     abstract val configurationFlow: Flow<*>
 
     /**
-     * 获取一个可复用的 [WrapperHttpClient]；它会根据 [features] 从对象池中借用或新建。
+     * 获取一个可复用的 [ScopedHttpClient]；它会根据 [features] 从对象池中借用或新建。
      *
      * 常见用法：
      * ```kotlin
@@ -77,12 +77,12 @@ sealed class HttpClientProvider {
      */
     abstract fun get(
         features: Set<ScopedHttpClientFeatureKeyValue<*>>,
-    ): WrapperHttpClient
+    ): ScopedHttpClient
 
 }
 
 /**
- * 获取一个可复用的 [WrapperHttpClient]；它会根据 [userAgent] 和当前 [ProxyConfig] 组合从对象池中借用或新建。
+ * 获取一个可复用的 [ScopedHttpClient]；它会根据 [userAgent] 和当前 [ProxyConfig] 组合从对象池中借用或新建。
  *
  * 常见用法：
  * ```kotlin
@@ -94,7 +94,7 @@ sealed class HttpClientProvider {
 fun HttpClientProvider.get(
     userAgent: ScopedHttpClientUserAgent = ScopedHttpClientUserAgent.ANI,
     useBangumiToken: Boolean = false,
-): WrapperHttpClient = get(
+): ScopedHttpClient = get(
     setOf(
         UserAgentFeature.withValue(userAgent),
         UseBangumiTokenFeature.withValue(useBangumiToken),
@@ -233,8 +233,8 @@ class DefaultHttpClientProvider(
         proxyListeningJob = flowScope.coroutineContext.job
     }
 
-    override fun get(features: Set<ScopedHttpClientFeatureKeyValue<*>>): WrapperHttpClient {
-        return WrapperHttpClientImpl(features.extendWithNotSet())
+    override fun get(features: Set<ScopedHttpClientFeatureKeyValue<*>>): ScopedHttpClient {
+        return ScopedHttpClientImpl(features.extendWithNotSet())
     }
 
     private fun Set<ScopedHttpClientFeatureKeyValue<*>>.extendWithNotSet(): Set<ScopedHttpClientFeatureKeyValue<*>> {
@@ -243,16 +243,16 @@ class DefaultHttpClientProvider(
         }
     }
 
-    private inner class WrapperHttpClientImpl(
+    private inner class ScopedHttpClientImpl(
         private val features: Set<ScopedHttpClientFeatureKeyValue<*>>,
-    ) : WrapperHttpClient() {
-        @UnsafeWrapperHttpClientApi
+    ) : ScopedHttpClient() {
+        @UnsafeScopedHttpClientApi
         override fun borrow(): Ticket {
             val myMatrix = Matrix(features, currentProxyConfig.value)
             return TicketImpl(myMatrix, pool.borrow(myMatrix))
         }
 
-        @UnsafeWrapperHttpClientApi
+        @UnsafeScopedHttpClientApi
         override fun returnClient(ticket: Ticket) {
             check(ticket is TicketImpl) { "Ticket must be an instance of TicketImpl. Do not implement the Ticket interface. Do not use delegation (`by`) keyword for this type." }
             return pool.release(ticket.matrix, ticket.client)
@@ -262,13 +262,13 @@ class DefaultHttpClientProvider(
     }
 
     /**
-     * @see WrapperHttpClientImpl.borrow
+     * @see ScopedHttpClientImpl.borrow
      */
-    @UnsafeWrapperHttpClientApi
+    @UnsafeScopedHttpClientApi
     private data class TicketImpl(
         val matrix: Matrix,
         override val client: HttpClient,
-    ) : WrapperHttpClient.Ticket // `data` class to generate `toString`
+    ) : ScopedHttpClient.Ticket // `data` class to generate `toString`
 
     /**
      * Releases all background jobs to unblock test scope when test finished.

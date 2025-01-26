@@ -22,7 +22,7 @@ import me.him188.ani.datasources.api.topic.FileSize.Companion.kiloBytes
 import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.io.resolve
-import me.him188.ani.utils.ktor.WrapperHttpClient
+import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.logging.debug
 import me.him188.ani.utils.logging.logger
 import kotlin.coroutines.CoroutineContext
@@ -48,7 +48,7 @@ class DefaultTorrentManager(
     parentCoroutineContext: CoroutineContext,
     factory: TorrentEngineFactory,
     private val saveDir: (type: TorrentEngineType) -> SystemPath,
-    private val client: WrapperHttpClient,
+    private val client: ScopedHttpClient,
     private val anitorrentConfigFlow: Flow<AnitorrentConfig>,
     private val isMeteredNetworkFlow: Flow<Boolean>,
     private val peerFilterSettings: Flow<PeerFilterSettings>
@@ -85,7 +85,7 @@ class DefaultTorrentManager(
         fun create(
             parentCoroutineContext: CoroutineContext,
             settingsRepository: SettingsRepository,
-            client: WrapperHttpClient,
+            client: ScopedHttpClient,
             subscriptionRepository: PeerFilterSubscriptionRepository,
             meteredNetworkDetector: MeteredNetworkDetector,
             baseSaveDir: () -> SystemPath,

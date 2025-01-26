@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-@file:OptIn(UnsafeWrapperHttpClientApi::class)
+@file:OptIn(UnsafeScopedHttpClientApi::class)
 
 package me.him188.ani.app.domain.foundation
 
@@ -23,7 +23,7 @@ import me.him188.ani.app.data.models.preference.ProxyConfig
 import me.him188.ani.app.domain.foundation.DefaultHttpClientProvider.HoldingInstanceMatrix
 import me.him188.ani.app.domain.settings.ProxyProvider
 import me.him188.ani.test.DisabledOnAndroid
-import me.him188.ani.utils.ktor.UnsafeWrapperHttpClientApi
+import me.him188.ani.utils.ktor.UnsafeScopedHttpClientApi
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith

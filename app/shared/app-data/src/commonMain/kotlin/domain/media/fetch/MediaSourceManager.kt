@@ -52,7 +52,7 @@ import me.him188.ani.datasources.mikan.MikanCNMediaSource
 import me.him188.ani.datasources.mikan.MikanMediaSource
 import me.him188.ani.utils.coroutines.onReplacement
 import me.him188.ani.utils.ktor.ClientProxyConfig
-import me.him188.ani.utils.ktor.WrapperHttpClient
+import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.logger
 import org.koin.core.component.KoinComponent
@@ -316,7 +316,7 @@ class MediaSourceManagerImpl(
         proxyConfig: ProxyConfig?,
         mediaSourceId: String,
         config: MediaSourceConfig,
-        client: WrapperHttpClient,
+        client: ScopedHttpClient,
     ): MediaSource {
         val mediaSourceConfig = config.copy(
             proxy = config.proxy ?: proxyConfig?.toClientProxyConfig(),

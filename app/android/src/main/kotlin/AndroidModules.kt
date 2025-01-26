@@ -58,7 +58,7 @@ import me.him188.ani.utils.io.inSystem
 import me.him188.ani.utils.io.isDirectory
 import me.him188.ani.utils.io.list
 import me.him188.ani.utils.io.resolve
-import me.him188.ani.utils.ktor.WrapperHttpClient
+import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
 import org.koin.android.ext.koin.androidContext
@@ -188,7 +188,7 @@ fun getAndroidModules(
                     override fun createTorrentEngine(
                         parentCoroutineContext: CoroutineContext,
                         config: Flow<AnitorrentConfig>,
-                        client: WrapperHttpClient,
+                        client: ScopedHttpClient,
                         peerFilterSettings: Flow<PeerFilterSettings>,
                         saveDir: SystemPath
                     ): TorrentEngine {

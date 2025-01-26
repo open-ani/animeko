@@ -36,7 +36,7 @@ import me.him188.ani.utils.io.delete
 import me.him188.ani.utils.io.exists
 import me.him188.ani.utils.io.resolve
 import me.him188.ani.utils.io.writeText
-import me.him188.ani.utils.ktor.WrapperHttpClient
+import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
@@ -44,7 +44,7 @@ import me.him188.ani.utils.logging.warn
 class PeerFilterSubscriptionRepository(
     private val dataStore: DataStore<PeerFilterSubscriptionsSaveData>,
     private val ruleSaveDir: SystemPath,
-    private val httpClient: WrapperHttpClient,
+    private val httpClient: ScopedHttpClient,
 ) {
     private val logger = logger<PeerFilterSubscriptionRepository>()
 

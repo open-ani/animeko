@@ -48,7 +48,7 @@ import me.him188.ani.datasources.api.topic.titles.RawTitleParser
 import me.him188.ani.datasources.api.topic.titles.parse
 import me.him188.ani.datasources.api.topic.titles.toTopicDetails
 import me.him188.ani.datasources.api.topic.toTopicCriteria
-import me.him188.ani.utils.ktor.WrapperHttpClient
+import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.ktor.toSource
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.warn
@@ -59,7 +59,7 @@ import kotlin.coroutines.cancellation.CancellationException
 class MikanCNMediaSource(
     config: MediaSourceConfig,
     indexCacheProvider: MikanIndexCacheProvider = MemoryMikanIndexCacheProvider(),
-    client: WrapperHttpClient,
+    client: ScopedHttpClient,
 ) : AbstractMikanMediaSource(ID, BASE_URL, indexCacheProvider, client) {
     class Factory : MediaSourceFactory {
         override val factoryId: FactoryId get() = FactoryId(ID)
@@ -69,14 +69,14 @@ class MikanCNMediaSource(
         override fun create(
             mediaSourceId: String,
             config: MediaSourceConfig,
-            client: WrapperHttpClient
+            client: ScopedHttpClient
         ): MediaSource =
             MikanCNMediaSource(config, client = client)
 
         fun create(
             config: MediaSourceConfig,
             indexCacheProvider: MikanIndexCacheProvider = MemoryMikanIndexCacheProvider(),
-            client: WrapperHttpClient,
+            client: ScopedHttpClient,
         ): MediaSource = MikanCNMediaSource(config, indexCacheProvider, client)
     }
 
@@ -97,7 +97,7 @@ class MikanCNMediaSource(
 class MikanMediaSource(
     config: MediaSourceConfig,
     indexCacheProvider: MikanIndexCacheProvider = MemoryMikanIndexCacheProvider(),
-    client: WrapperHttpClient,
+    client: ScopedHttpClient,
 ) : AbstractMikanMediaSource(ID, BASE_URL, indexCacheProvider, client) {
     class Factory : MediaSourceFactory {
         override val factoryId: FactoryId get() = FactoryId(ID)
@@ -106,14 +106,14 @@ class MikanMediaSource(
         override fun create(
             mediaSourceId: String,
             config: MediaSourceConfig,
-            client: WrapperHttpClient
+            client: ScopedHttpClient
         ): MediaSource = MikanMediaSource(config, client = client)
 
         // TODO: this is actually not so good. We should generalize how MS can access caches.
         fun create(
             config: MediaSourceConfig,
             indexCacheProvider: MikanIndexCacheProvider = MemoryMikanIndexCacheProvider(),
-            client: WrapperHttpClient,
+            client: ScopedHttpClient,
         ): MediaSource = MikanMediaSource(config, indexCacheProvider, client = client)
     }
 
@@ -135,7 +135,7 @@ abstract class AbstractMikanMediaSource(
     override val mediaSourceId: String,
     baseUrl: String,
     private val indexCacheProvider: MikanIndexCacheProvider,
-    private val client: WrapperHttpClient,
+    private val client: ScopedHttpClient,
 ) : HttpMediaSource() {
     override val kind: MediaSourceKind get() = MediaSourceKind.BitTorrent
 

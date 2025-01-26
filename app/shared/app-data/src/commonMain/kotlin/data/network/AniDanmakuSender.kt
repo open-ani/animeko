@@ -40,7 +40,7 @@ import me.him188.ani.app.ui.foundation.launchInBackground
 import me.him188.ani.danmaku.api.Danmaku
 import me.him188.ani.danmaku.api.DanmakuProviderConfig
 import me.him188.ani.utils.coroutines.retryWithBackoffDelay
-import me.him188.ani.utils.ktor.WrapperHttpClient
+import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.platform.currentPlatform
@@ -69,7 +69,7 @@ class RequestFailedException(
 class NetworkErrorException(override val cause: Throwable?) : SendDanmakuException()
 
 class AniDanmakuSenderImpl(
-    private val client: WrapperHttpClient,
+    private val client: ScopedHttpClient,
     private val config: DanmakuProviderConfig,
     private val bangumiToken: Flow<String?>,
     parentCoroutineContext: CoroutineContext = EmptyCoroutineContext,

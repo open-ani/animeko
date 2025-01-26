@@ -20,7 +20,7 @@ import me.him188.ani.danmaku.api.DanmakuProvider
 import me.him188.ani.danmaku.api.DanmakuProviderConfig
 import me.him188.ani.danmaku.api.DanmakuProviderFactory
 import me.him188.ani.danmaku.api.DanmakuSearchRequest
-import me.him188.ani.utils.ktor.WrapperHttpClient
+import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.logging.info
 import kotlin.coroutines.CoroutineContext
 import me.him188.ani.app.data.network.protocol.DanmakuLocation as ProtocolDanmakuLocation
@@ -38,7 +38,7 @@ object AniBangumiSeverBaseUrls {
 
 class AniDanmakuProvider(
     config: DanmakuProviderConfig,
-    private val client: WrapperHttpClient,
+    private val client: ScopedHttpClient,
 ) : AbstractDanmakuProvider() {
     // don't keep reference to `config` which will leak memory
     private val sessionCoroutineContext: CoroutineContext = config.coroutineContext
@@ -51,7 +51,7 @@ class AniDanmakuProvider(
     class Factory : DanmakuProviderFactory {
         override val id: String get() = ID
 
-        override fun create(config: DanmakuProviderConfig, client: WrapperHttpClient): DanmakuProvider =
+        override fun create(config: DanmakuProviderConfig, client: ScopedHttpClient): DanmakuProvider =
             AniDanmakuProvider(config, client)
     }
 

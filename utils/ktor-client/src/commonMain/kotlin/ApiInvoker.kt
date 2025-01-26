@@ -17,7 +17,7 @@ interface ApiInvoker<Api> {
 }
 
 fun <Api> ApiInvoker(
-    client: WrapperHttpClient,
+    client: ScopedHttpClient,
     getApi: (HttpClient) -> Api,
 ): ApiInvoker<Api> = object : ApiInvoker<Api> {
     override suspend fun <R> invoke(action: suspend Api.() -> R): R =

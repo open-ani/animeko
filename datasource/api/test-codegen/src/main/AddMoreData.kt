@@ -19,7 +19,7 @@ import me.him188.ani.datasources.api.topic.Topic
 import me.him188.ani.datasources.api.topic.TopicCategory
 import me.him188.ani.datasources.dmhy.impl.DmhyPagedSourceImpl
 import me.him188.ani.datasources.dmhy.impl.protocol.Network
-import me.him188.ani.utils.ktor.asWrapperHttpClient
+import me.him188.ani.utils.ktor.asScopedHttpClient
 import me.him188.ani.utils.ktor.createDefaultHttpClient
 import java.io.File
 
@@ -66,7 +66,7 @@ class TopicFetcher(
                     category = TopicCategory.ANIME,
                     allowAny = true,
                 ),
-                Network(http.asWrapperHttpClient()),
+                Network(http.asScopedHttpClient()),
             ).results.toList()
             println(topics)
             return topics

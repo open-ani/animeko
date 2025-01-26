@@ -38,7 +38,7 @@ import me.him188.ani.datasources.ikaros.models.IkarosEpisodeGroup
 import me.him188.ani.datasources.ikaros.models.IkarosEpisodeRecord
 import me.him188.ani.datasources.ikaros.models.IkarosSubjectSync
 import me.him188.ani.datasources.ikaros.models.IkarosVideoSubtitle
-import me.him188.ani.utils.ktor.WrapperHttpClient
+import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.logger
 import models.IkarosAttachment
@@ -46,7 +46,7 @@ import java.util.Collections
 
 class IkarosClient(
     private val baseUrl: String,
-    private val client: WrapperHttpClient,
+    private val client: ScopedHttpClient,
     private val addAuthorizationHeaders: io.ktor.http.HttpMessageBuilder.() -> Unit,
 ) {
     companion object {

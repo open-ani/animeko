@@ -49,7 +49,7 @@ import me.him188.ani.danmaku.api.DanmakuSearchRequest
 import me.him188.ani.danmaku.dandanplay.DandanplayDanmakuProvider
 import me.him188.ani.utils.coroutines.closeOnReplacement
 import me.him188.ani.utils.coroutines.mapAutoClose
-import me.him188.ani.utils.ktor.WrapperHttpClient
+import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
@@ -76,7 +76,7 @@ interface DanmakuManager {
 
 object DanmakuProviderLoader {
     fun load(
-        client: WrapperHttpClient,
+        client: ScopedHttpClient,
         config: (id: String) -> DanmakuProviderConfig,
     ): List<DanmakuProvider> {
         // 待 https://youtrack.jetbrains.com/issue/KT-65362/Cannot-resolve-declarations-from-a-dependency-when-there-are-multiple-JVM-only-project-dependencies-in-a-JVM-Android-MPP

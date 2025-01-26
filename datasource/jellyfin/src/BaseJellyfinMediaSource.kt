@@ -43,10 +43,10 @@ import me.him188.ani.datasources.api.source.matches
 import me.him188.ani.datasources.api.topic.EpisodeRange
 import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.ResourceLocation
-import me.him188.ani.utils.ktor.WrapperHttpClient
+import me.him188.ani.utils.ktor.ScopedHttpClient
 
 abstract class BaseJellyfinMediaSource(
-    private val client: WrapperHttpClient,
+    private val client: ScopedHttpClient,
 ) : HttpMediaSource() {
     abstract val baseUrl: String
     abstract val userId: String

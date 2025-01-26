@@ -27,14 +27,14 @@ import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.source.get
 import me.him188.ani.datasources.api.source.parameter.MediaSourceParameters
 import me.him188.ani.datasources.api.source.parameter.MediaSourceParametersBuilder
-import me.him188.ani.utils.ktor.WrapperHttpClient
+import me.him188.ani.utils.ktor.ScopedHttpClient
 import java.nio.charset.StandardCharsets
 import java.util.Base64
 
 class IkarosMediaSource(
     override val mediaSourceId: String,
     config: MediaSourceConfig,
-    httpClient: WrapperHttpClient,
+    httpClient: ScopedHttpClient,
 ) : HttpMediaSource() {
     companion object {
         const val ID = "ikaros"
@@ -78,7 +78,7 @@ class IkarosMediaSource(
         override fun create(
             mediaSourceId: String,
             config: MediaSourceConfig,
-            client: WrapperHttpClient
+            client: ScopedHttpClient
         ): MediaSource =
             IkarosMediaSource(mediaSourceId, config, client)
 

@@ -39,7 +39,7 @@ import me.him188.ani.datasources.api.source.MediaSourceInfo
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.source.MediaSourceLocation
 import me.him188.ani.datasources.api.source.deserializeArgumentsOrNull
-import me.him188.ani.utils.ktor.WrapperHttpClient
+import me.him188.ani.utils.ktor.ScopedHttpClient
 
 /**
  * [RssMediaSource] 的用户侧配置, 用于创建 [RssMediaSource] 实例.
@@ -80,7 +80,7 @@ class RssMediaSource(
     override val mediaSourceId: String,
     config: MediaSourceConfig,
     override val kind: MediaSourceKind = MediaSourceKind.BitTorrent,
-    private val client: WrapperHttpClient,
+    private val client: ScopedHttpClient,
 ) : HttpMediaSource() {
     companion object {
         val FactoryId = FactoryId("rss")
@@ -107,7 +107,7 @@ class RssMediaSource(
         )
 
         override val allowMultipleInstances: Boolean get() = true
-        override fun create(mediaSourceId: String, config: MediaSourceConfig, client: WrapperHttpClient): MediaSource =
+        override fun create(mediaSourceId: String, config: MediaSourceConfig, client: ScopedHttpClient): MediaSource =
             RssMediaSource(mediaSourceId, config, client = client)
     }
 

@@ -16,11 +16,11 @@ import io.ktor.http.appendPathSegments
 import me.him188.ani.datasources.dmhy.DmhyTopic
 import me.him188.ani.datasources.dmhy.impl.cache.Cache
 import me.him188.ani.datasources.dmhy.impl.cache.CacheImpl
-import me.him188.ani.utils.ktor.WrapperHttpClient
+import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.ktor.bodyAsDocument
 
 class Network(
-    private val client: WrapperHttpClient,
+    private val client: ScopedHttpClient,
 ) {
     private object Paths {
         const val host: String = "www.dmhy.org"

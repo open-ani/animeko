@@ -37,7 +37,7 @@ import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
 import me.him188.ani.datasources.api.topic.Resolution
 import me.him188.ani.datasources.api.topic.titles.RawTitleParser
 import me.him188.ani.datasources.api.topic.titles.parse
-import me.him188.ani.utils.ktor.WrapperHttpClient
+import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.ktor.toSource
 import me.him188.ani.utils.xml.Document
 import me.him188.ani.utils.xml.Xml
@@ -165,7 +165,7 @@ class DefaultRssMediaSourceEngine(
     /**
      * Engine 自己不会 cache 实例, 每次都调用 `.first()`.
      */
-    private val client: Flow<WrapperHttpClient>,
+    private val client: Flow<ScopedHttpClient>,
     private val parser: RssParser = RssParser(includeOrigin = false),
 ) : RssMediaSourceEngine() {
     @Throws(RepositoryException::class, CancellationException::class)

@@ -23,13 +23,13 @@ import me.him188.ani.danmaku.dandanplay.data.SearchEpisodesAnime
 import me.him188.ani.danmaku.dandanplay.data.toDanmakuOrNull
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.seasonMonth
-import me.him188.ani.utils.ktor.WrapperHttpClient
+import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import kotlin.coroutines.cancellation.CancellationException
 
 class DandanplayDanmakuProvider(
-    client: WrapperHttpClient,
+    client: ScopedHttpClient,
 ) : AbstractDanmakuProvider() {
     companion object {
         const val ID = "弹弹play"
@@ -38,7 +38,7 @@ class DandanplayDanmakuProvider(
     class Factory : DanmakuProviderFactory {
         override val id: String get() = ID
 
-        override fun create(config: DanmakuProviderConfig, client: WrapperHttpClient): DandanplayDanmakuProvider =
+        override fun create(config: DanmakuProviderConfig, client: ScopedHttpClient): DandanplayDanmakuProvider =
             DandanplayDanmakuProvider(client)
     }
 

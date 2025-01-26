@@ -29,7 +29,7 @@ import coil3.network.NetworkFetcher
 import coil3.request.CachePolicy
 import coil3.request.crossfade
 import coil3.svg.SvgDecoder
-import me.him188.ani.utils.ktor.WrapperHttpClient
+import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.platform.currentPlatform
 import me.him188.ani.utils.platform.isDesktop
 
@@ -152,7 +152,7 @@ fun AsyncImage(
 @OptIn(ExperimentalCoilApi::class)
 fun createDefaultImageLoader(
     context: PlatformContext,
-    client: WrapperHttpClient,
+    client: ScopedHttpClient,
     config: ImageLoader.Builder.() -> Unit = {}
 ): ImageLoader {
     return ImageLoader.Builder(context).apply {

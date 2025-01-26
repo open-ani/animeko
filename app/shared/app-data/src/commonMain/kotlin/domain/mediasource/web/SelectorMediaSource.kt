@@ -49,7 +49,7 @@ import me.him188.ani.datasources.api.source.MediaSourceInfo
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.source.MediaSourceLocation
 import me.him188.ani.datasources.api.source.deserializeArgumentsOrNull
-import me.him188.ani.utils.ktor.WrapperHttpClient
+import me.him188.ani.utils.ktor.ScopedHttpClient
 import kotlin.time.Duration
 
 @Suppress("unused") // bug
@@ -94,7 +94,7 @@ class SelectorMediaSource(
     config: MediaSourceConfig,
     val repository: SelectorMediaSourceEpisodeCacheRepository,
     override val kind: MediaSourceKind = MediaSourceKind.WEB,
-    private val client: WrapperHttpClient,
+    private val client: ScopedHttpClient,
 ) : HttpMediaSource(), WebVideoMatcherProvider {
     companion object {
         val FactoryId = FactoryId("web-selector")
@@ -124,7 +124,7 @@ class SelectorMediaSource(
         override fun create(
             mediaSourceId: String,
             config: MediaSourceConfig,
-            client: WrapperHttpClient
+            client: ScopedHttpClient
         ): MediaSource =
             SelectorMediaSource(mediaSourceId, config, repository, client = client)
     }

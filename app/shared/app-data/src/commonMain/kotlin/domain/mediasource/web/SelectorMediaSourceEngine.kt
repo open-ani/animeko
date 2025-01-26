@@ -47,7 +47,7 @@ import me.him188.ani.datasources.api.topic.ResourceLocation
 import me.him188.ani.datasources.api.topic.SubtitleLanguage
 import me.him188.ani.datasources.api.topic.titles.LabelFirstRawTitleParser
 import me.him188.ani.utils.coroutines.IO_
-import me.him188.ani.utils.ktor.WrapperHttpClient
+import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.xml.Document
 import me.him188.ani.utils.xml.Element
 import me.him188.ani.utils.xml.Html
@@ -354,7 +354,7 @@ class DefaultSelectorMediaSourceEngine(
     /**
      * Engine 自己不会 cache 实例, 每次都调用 `.first()`.
      */
-    private val client: WrapperHttpClient,
+    private val client: ScopedHttpClient,
     private val ioDispatcher: CoroutineContext = Dispatchers.IO_,
 ) : SelectorMediaSourceEngine() {
     override suspend fun searchImpl(

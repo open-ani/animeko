@@ -12,7 +12,7 @@ package me.him188.ani.danmaku.api
 import io.ktor.client.HttpClientConfig
 import kotlinx.coroutines.Dispatchers
 import me.him188.ani.utils.ktor.ClientProxyConfig
-import me.him188.ani.utils.ktor.WrapperHttpClient
+import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.ktor.proxy
 import me.him188.ani.utils.ktor.userAgent
 import kotlin.coroutines.CoroutineContext
@@ -25,7 +25,7 @@ interface DanmakuProviderFactory { // SPI interface
 
     fun create(
         config: DanmakuProviderConfig,
-        client: WrapperHttpClient,
+        client: ScopedHttpClient,
     ): DanmakuProvider
 }
 

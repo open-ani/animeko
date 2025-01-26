@@ -14,14 +14,14 @@ import me.him188.ani.app.data.models.preference.AnitorrentConfig
 import me.him188.ani.app.domain.torrent.engines.AnitorrentEngine
 import me.him188.ani.app.domain.torrent.peer.PeerFilterSettings
 import me.him188.ani.utils.io.SystemPath
-import me.him188.ani.utils.ktor.WrapperHttpClient
+import me.him188.ani.utils.ktor.ScopedHttpClient
 import kotlin.coroutines.CoroutineContext
 
 interface TorrentEngineFactory {
     fun createTorrentEngine(
         parentCoroutineContext: CoroutineContext,
         config: Flow<AnitorrentConfig>,
-        client: WrapperHttpClient,
+        client: ScopedHttpClient,
         peerFilterSettings: Flow<PeerFilterSettings>,
         saveDir: SystemPath,
     ): TorrentEngine
@@ -31,7 +31,7 @@ object LocalAnitorrentEngineFactory : TorrentEngineFactory {
     override fun createTorrentEngine(
         parentCoroutineContext: CoroutineContext,
         config: Flow<AnitorrentConfig>,
-        client: WrapperHttpClient,
+        client: ScopedHttpClient,
         peerFilterSettings: Flow<PeerFilterSettings>,
         saveDir: SystemPath
     ): TorrentEngine {

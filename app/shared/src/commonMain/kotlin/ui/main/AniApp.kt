@@ -41,7 +41,7 @@ import me.him188.ani.app.ui.foundation.createDefaultImageLoader
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.theme.AniTheme
 import me.him188.ani.app.ui.foundation.theme.LocalThemeSettings
-import me.him188.ani.utils.ktor.WrapperHttpClient
+import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.platform.isMobile
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -139,7 +139,7 @@ fun AniApp(
 }
 
 @Composable
-private fun rememberImageLoader(client: WrapperHttpClient): ImageLoader {
+private fun rememberImageLoader(client: ScopedHttpClient): ImageLoader {
     val coilContext = LocalPlatformContext.current
     return remember(coilContext, client) {
         derivedStateOf {

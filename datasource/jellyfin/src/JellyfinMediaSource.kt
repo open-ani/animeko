@@ -18,9 +18,9 @@ import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.source.get
 import me.him188.ani.datasources.api.source.parameter.MediaSourceParameters
 import me.him188.ani.datasources.api.source.parameter.MediaSourceParametersBuilder
-import me.him188.ani.utils.ktor.WrapperHttpClient
+import me.him188.ani.utils.ktor.ScopedHttpClient
 
-class JellyfinMediaSource(config: MediaSourceConfig, client: WrapperHttpClient) :
+class JellyfinMediaSource(config: MediaSourceConfig, client: ScopedHttpClient) :
     BaseJellyfinMediaSource(client) {
     companion object {
         const val ID = "jellyfin"
@@ -57,7 +57,7 @@ class JellyfinMediaSource(config: MediaSourceConfig, client: WrapperHttpClient) 
         override fun create(
             mediaSourceId: String,
             config: MediaSourceConfig,
-            client: WrapperHttpClient
+            client: ScopedHttpClient
         ): MediaSource = JellyfinMediaSource(config, client)
     }
 

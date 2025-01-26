@@ -33,7 +33,7 @@ import me.him188.ani.app.torrent.api.peer.PeerInfo
 import me.him188.ani.datasources.api.source.MediaSourceLocation
 import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.coroutines.onReplacement
-import me.him188.ani.utils.ktor.WrapperHttpClient
+import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
@@ -95,7 +95,7 @@ class TorrentDownloaderInitializationException(
 abstract class AbstractTorrentEngine<Downloader : TorrentDownloader, Config : Any>(
     final override val type: TorrentEngineType,
     protected val config: Flow<Config>,
-    protected val client: WrapperHttpClient,
+    protected val client: ScopedHttpClient,
     protected val peerFilterSettings: Flow<PeerFilterSettings>,
     parentCoroutineContext: CoroutineContext,
 ) : TorrentEngine {

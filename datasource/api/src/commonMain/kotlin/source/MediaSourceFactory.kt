@@ -18,7 +18,7 @@ import kotlinx.serialization.json.JsonElement
 import me.him188.ani.datasources.api.source.parameter.MediaSourceParameter
 import me.him188.ani.datasources.api.source.parameter.MediaSourceParameters
 import me.him188.ani.utils.ktor.ClientProxyConfig
-import me.him188.ani.utils.ktor.WrapperHttpClient
+import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.ktor.proxy
 import me.him188.ani.utils.ktor.userAgent
 import kotlin.jvm.JvmInline
@@ -70,7 +70,7 @@ interface MediaSourceFactory { // SPI service load
     fun create(
         mediaSourceId: String,
         config: MediaSourceConfig,
-        client: WrapperHttpClient,
+        client: ScopedHttpClient,
     ): MediaSource
 }
 

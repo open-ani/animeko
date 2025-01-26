@@ -35,7 +35,7 @@ import me.him188.ani.utils.io.createDirectories
 import me.him188.ani.utils.io.exists
 import me.him188.ani.utils.io.inSystem
 import me.him188.ani.utils.io.list
-import me.him188.ani.utils.ktor.UnsafeWrapperHttpClientApi
+import me.him188.ani.utils.ktor.UnsafeScopedHttpClientApi
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.warn
 import me.him188.ani.utils.platform.annotations.TestOnly
@@ -58,10 +58,10 @@ class AutoUpdateViewModel : AbstractViewModel(), KoinComponent {
 
     private val client by lazy { clientProvider.get() }
 
-    @OptIn(UnsafeWrapperHttpClientApi::class) // returned in onCleared
+    @OptIn(UnsafeScopedHttpClientApi::class) // returned in onCleared
     private val borrowedClient = lazy { clientProvider.get().borrow() }
 
-    @OptIn(UnsafeWrapperHttpClientApi::class)
+    @OptIn(UnsafeScopedHttpClientApi::class)
     private val fileDownloader by lazy { DefaultFileDownloader(borrowedClient.value.client) }
 
     /**
@@ -209,7 +209,7 @@ class AutoUpdateViewModel : AbstractViewModel(), KoinComponent {
         latestVersion?.let { startDownload(it, uriHandler) }
     }
 
-    @OptIn(UnsafeWrapperHttpClientApi::class)
+    @OptIn(UnsafeScopedHttpClientApi::class)
     override fun onCleared() {
         super.onCleared()
         if (borrowedClient.isInitialized()) {

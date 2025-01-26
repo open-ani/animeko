@@ -33,7 +33,7 @@ import me.him188.ani.danmaku.dandanplay.data.DandanplaySearchEpisodeResponse
 import me.him188.ani.danmaku.dandanplay.data.DandanplaySeasonSearchResponse
 import me.him188.ani.utils.io.DigestAlgorithm
 import me.him188.ani.utils.io.digest
-import me.him188.ani.utils.ktor.WrapperHttpClient
+import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.platform.currentTimeMillis
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
@@ -41,7 +41,7 @@ import kotlin.time.Duration
 
 
 internal class DandanplayClient(
-    private val client: WrapperHttpClient,
+    private val client: ScopedHttpClient,
     private val appId: String,
     private val appSecret: String,
 ) {

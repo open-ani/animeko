@@ -30,7 +30,7 @@ import io.ktor.http.HttpMethod
 import io.ktor.http.takeFrom
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.cancel
-import me.him188.ani.utils.ktor.WrapperHttpClient
+import me.him188.ani.utils.ktor.ScopedHttpClient
 import okio.Buffer
 import okio.BufferedSink
 import okio.FileSystem
@@ -42,7 +42,7 @@ import kotlin.jvm.JvmInline
  * but with support for [scopedClient]
  */
 class ScopedHttpClientNetworkFetcher(
-    private val scopedClient: WrapperHttpClient,
+    private val scopedClient: ScopedHttpClient,
 ) : NetworkClient {
     override suspend fun <T> executeRequest(
         request: NetworkRequest,

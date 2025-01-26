@@ -15,11 +15,11 @@ import me.him188.ani.client.apis.ScheduleAniApi
 import me.him188.ani.client.apis.SubjectRelationsAniApi
 import me.him188.ani.client.apis.TrendsAniApi
 import me.him188.ani.utils.ktor.ApiInvoker
-import me.him188.ani.utils.ktor.WrapperHttpClient
+import me.him188.ani.utils.ktor.ScopedHttpClient
 
 class AniApiProvider(
     @PublishedApi
-    internal val client: WrapperHttpClient,
+    internal val client: ScopedHttpClient,
 ) {
     val trendsApi = ApiInvoker(client) { TrendsAniApi(baseurl, it) }
     val scheduleApi = ApiInvoker(client) { ScheduleAniApi(baseurl, it) }

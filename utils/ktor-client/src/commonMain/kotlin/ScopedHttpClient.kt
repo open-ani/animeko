@@ -18,13 +18,13 @@ import kotlin.contracts.contract
  *
  * 简而言之所有的 http 操作必须在 [use] block 内完成. [use] block 的返回值不能依赖 client, 包括 [HttpResponse].
  */
-abstract class WrapperHttpClient {
+abstract class ScopedHttpClient {
     /**
      * 使用一个满足需求的 [HttpClient] 实例.
      *
      * 在调用此方法时, client 一定会有效. 但是在调用结束后, client 可能会被销毁, 因此不要将对 client 的引用带出此方法.
      */
-    @OptIn(UnsafeWrapperHttpClientApi::class)
+    @OptIn(UnsafeScopedHttpClientApi::class)
     inline fun <R> use(
         action: HttpClient.() -> R,
     ): R {
@@ -42,7 +42,7 @@ abstract class WrapperHttpClient {
     /**
      * 借用一个 [HttpClient] 实例. 返回一个 [Ticket], 可从中获取 [HttpClient] 实例. 在归还时需要调用 [returnClient] 并传入相同的 ticket.
      */
-    @UnsafeWrapperHttpClientApi
+    @UnsafeScopedHttpClientApi
     abstract fun borrow(): Ticket
 
     /**
@@ -54,52 +54,52 @@ abstract class WrapperHttpClient {
      * - 如果你未来会归还此实例, 请使用 [borrow].
      * - 如果你确保不会归还此实例, 请使用 [borrowForever].
      */
-    @UnsafeWrapperHttpClientApi
+    @UnsafeScopedHttpClientApi
     fun borrowForever(): Ticket = borrow()
 
     /**
      * 归还一个 [HttpClient] 实例. 确保传入的 ticket 是由 [borrow] 返回的.
      */
-    @UnsafeWrapperHttpClientApi
+    @UnsafeScopedHttpClientApi
     abstract fun returnClient(ticket: Ticket)
 
     /**
-     * 由 [WrapperHttpClient] 实现类实现的接口, 它会包含借用的 [HttpClient] 实例以及在借用时刻的一些信息, 用于处理归还.
+     * 由 [ScopedHttpClient] 实现类实现的接口, 它会包含借用的 [HttpClient] 实例以及在借用时刻的一些信息, 用于处理归还.
      * 不要自行实现此接口 (包括通过 `by` 关键字委托).
      */
-    @SubclassOptInRequired(UnsafeWrapperHttpClientApi::class)
-    @UnsafeWrapperHttpClientApi
+    @SubclassOptInRequired(UnsafeScopedHttpClientApi::class)
+    @UnsafeScopedHttpClientApi
     interface Ticket {
         val client: HttpClient
     }
 }
 
 /**
- * 用于标记 [WrapperHttpClient] 的 API 是不安全的, 使用不当可能导致内存泄漏.
+ * 用于标记 [ScopedHttpClient] 的 API 是不安全的, 使用不当可能导致内存泄漏.
  */
 @RequiresOptIn(
     message = "This operates on unsafe reference counter. Incorrect usage may cause memory leak.",
     level = RequiresOptIn.Level.ERROR,
 )
-annotation class UnsafeWrapperHttpClientApi
+annotation class UnsafeScopedHttpClientApi
 
 /**
- * 将 [HttpClient] 封装为 [WrapperHttpClient].
+ * 将 [HttpClient] 封装为 [ScopedHttpClient].
  *
- * 为了性能考虑, 借用总是返回相同的 [this] 的 ticket, 归还时不做任何操作吗, 也就是说归还多次是被允许的 (与 [WrapperHttpClient] 的其他实现可能不同).
+ * 为了性能考虑, 借用总是返回相同的 [this] 的 ticket, 归还时不做任何操作吗, 也就是说归还多次是被允许的 (与 [ScopedHttpClient] 的其他实现可能不同).
  */
-fun HttpClient.asWrapperHttpClient(): WrapperHttpClient = object : WrapperHttpClient() {
-    @UnsafeWrapperHttpClientApi
+fun HttpClient.asScopedHttpClient(): ScopedHttpClient = object : ScopedHttpClient() {
+    @UnsafeScopedHttpClientApi
     private val ticket = object : Ticket {
-        override val client = this@asWrapperHttpClient
+        override val client = this@asScopedHttpClient
     }
 
-    @UnsafeWrapperHttpClientApi
+    @UnsafeScopedHttpClientApi
     override fun borrow(): Ticket {
         return ticket
     }
 
-    @UnsafeWrapperHttpClientApi
+    @UnsafeScopedHttpClientApi
     override fun returnClient(ticket: Ticket) {
     }
 }
