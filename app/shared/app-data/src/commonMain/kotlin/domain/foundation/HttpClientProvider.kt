@@ -156,7 +156,7 @@ class DefaultHttpClientProvider(
             for (feature in features) {
                 val handler = featureHandlers[feature.key]
                     ?: error("No handler for feature ${feature.key}")
-                handler.apply(this, feature.value)
+                handler.applyToConfig(this, feature.value)
             }
             proxy(proxyConfig?.toClientProxyConfig())
         }.apply {
@@ -165,7 +165,7 @@ class DefaultHttpClientProvider(
             for (feature in features) {
                 val handler = featureHandlers[feature.key]
                     ?: error("No handler for feature ${feature.key}")
-                handler.apply(this, feature.value)
+                handler.applyToClient(this, feature.value)
             }
         }
     }

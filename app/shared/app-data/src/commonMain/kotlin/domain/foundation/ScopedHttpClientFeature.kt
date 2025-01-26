@@ -32,15 +32,25 @@ data class ScopedHttpClientFeatureKey<V>(
     val id: String,
 )
 
+/**
+ * 用于在 [HttpClientProvider] 构造新的 [HttpClient] 时，根据请求的 [ScopedHttpClientFeatureKeyValue] 来配置 [HttpClient] 的特性.
+ *
+ * 有两个 [applyToConfig] 方法，接受 [HttpClientConfig] 参数的会被优先调用.
+ * 待所有 [handler][ScopedHttpClientFeatureHandler] 的 [applyToConfig] 方法调用完毕后，
+ * 才会分别调用它们的 [applyToClient] 方法.
+ */
 abstract class ScopedHttpClientFeatureHandler<V>(
     val key: ScopedHttpClientFeatureKey<V>,
 ) {
     /**
-     * Applies the feature to the [HttpClientConfig].
+     * 如果这个 feature 是在 client 之前就可以设置 (修改 [HttpClientConfig]), 则应该重写这个方法.
      */
-    open fun apply(config: HttpClientConfig<*>, value: V) {}
+    open fun applyToConfig(config: HttpClientConfig<*>, value: V) {}
 
-    open fun apply(client: HttpClient, value: V) {}
+    /**
+     * 如果这个 feature 是在 client 创建后才可以设置, 则应该重写这个方法.
+     */
+    open fun applyToClient(client: HttpClient, value: V) {}
 }
 
 /**
@@ -89,7 +99,7 @@ val UserAgentFeature = ScopedHttpClientFeatureKey<ScopedHttpClientUserAgent>("Us
 
 object UserAgentFeatureHandler :
     ScopedHttpClientFeatureHandler<ScopedHttpClientUserAgent>(UserAgentFeature) {
-    override fun apply(config: HttpClientConfig<*>, value: ScopedHttpClientUserAgent) {
+    override fun applyToConfig(config: HttpClientConfig<*>, value: ScopedHttpClientUserAgent) {
         when (value) {
             ScopedHttpClientUserAgent.ANI -> config.userAgent(getAniUserAgent())
             ScopedHttpClientUserAgent.BROWSER -> config.BrowserUserAgent()
@@ -110,7 +120,7 @@ val UseBangumiTokenFeature = ScopedHttpClientFeatureKey<Boolean>("UseBangumiToke
 class UseBangumiTokenFeatureHandler(
     private val bearerToken: Flow<String?>,
 ) : ScopedHttpClientFeatureHandler<Boolean>(UseBangumiTokenFeature) {
-    override fun apply(client: HttpClient, value: Boolean) {
+    override fun applyToClient(client: HttpClient, value: Boolean) {
         if (!value) return
         client.plugin(HttpSend).intercept { request ->
             if (!request.headers.contains(HttpHeaders.Authorization)) {
