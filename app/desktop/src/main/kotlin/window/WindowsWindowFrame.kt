@@ -93,133 +93,133 @@ fun FrameWindowScope.WindowsWindowFrame(
 ) {
     val layoutHitTestOwner = rememberLayoutHitTestOwner()
     val platformWindow = LocalPlatformWindow.current
-    if (layoutHitTestOwner != null) {
-        val titleBarInsets = remember { MutableWindowInsets() }
-        val captionButtonsInsets = remember { MutableWindowInsets() }
-        val buttonRects = remember { Array(3) { Rect.Zero } }
-        val density = LocalDensity.current
-        val windowUtils = WindowsWindowUtils.instance
-        DisposableEffect(window.windowHandle, density, layoutHitTestOwner, platformWindow, this) {
-            windowUtils.extendToTitleBar(platformWindow, this@WindowsWindowFrame) { x, y ->
-                when {
-                    buttonRects[0].contains(x, y) -> WindowsWindowUtils.hitMinimize
-                    buttonRects[1].contains(x, y) -> WindowsWindowUtils.hitMaxButton
-                    buttonRects[2].contains(x, y) -> WindowsWindowUtils.hitClose
-                    y <= titleBarInsets.insets.getTop(density) && !layoutHitTestOwner.hitTest(
-                        x,
-                        y,
-                    ) -> WindowsWindowUtils.hitCaption
+    if (layoutHitTestOwner == null) {
+        content()
+        return
+    }
+    val titleBarInsets = remember { MutableWindowInsets() }
+    val captionButtonsInsets = remember { MutableWindowInsets() }
+    val buttonRects = remember { Array(3) { Rect.Zero } }
+    val density = LocalDensity.current
+    val windowUtils = WindowsWindowUtils.instance
+    DisposableEffect(window.windowHandle, density, layoutHitTestOwner, platformWindow, this) {
+        windowUtils.extendToTitleBar(platformWindow, this@WindowsWindowFrame) { x, y ->
+            when {
+                buttonRects[0].contains(x, y) -> WindowsWindowUtils.hitMinimize
+                buttonRects[1].contains(x, y) -> WindowsWindowUtils.hitMaxButton
+                buttonRects[2].contains(x, y) -> WindowsWindowUtils.hitClose
+                y <= titleBarInsets.insets.getTop(density) && !layoutHitTestOwner.hitTest(
+                    x,
+                    y,
+                ) -> WindowsWindowUtils.hitCaption
 
-                    else -> WindowsWindowUtils.hitClient
-                }
-            }
-            onDispose {
-                windowUtils.removeExtendToTitleBar(platformWindow)
+                else -> WindowsWindowUtils.hitClient
             }
         }
-        Box(modifier = Modifier.fillMaxSize()) {
-            val isFullScreen = isSystemInFullscreen()
-            //Control the visibility of the title bar. initial value is !isFullScreen.
-            val isTitleBarVisible = remember(isFullScreen) { mutableStateOf(!isFullScreen) }
-            val captionButtonThemeController = remember(platformWindow) { TitleBarThemeController() }
-            CompositionLocalProvider(
-                LocalTitleBarInsets provides if (isTitleBarVisible.value) {
-                    titleBarInsets
-                } else {
-                    ZeroInsets
-                },
-                LocalCaptionButtonInsets provides if (isTitleBarVisible.value) {
-                    captionButtonsInsets
-                } else {
-                    ZeroInsets
-                },
-                LocalTitleBarThemeController provides captionButtonThemeController,
-                content = content,
-            )
-            val titleBarInteractionSource = remember(isFullScreen) { MutableInteractionSource() }
-            val titleBarHovered by titleBarInteractionSource.collectIsHoveredAsState()
-            LaunchedEffect(titleBarInteractionSource, titleBarHovered, isFullScreen) {
-                if (!titleBarHovered && isFullScreen) {
-                    delay(VIDEO_GESTURE_MOUSE_MOVE_SHOW_CONTROLLER_DURATION)
-                    isTitleBarVisible.value = false
-                }
+        onDispose {
+            windowUtils.removeExtendToTitleBar(platformWindow)
+        }
+    }
+    Box(modifier = Modifier.fillMaxSize()) {
+        val isFullScreen = isSystemInFullscreen()
+        //Control the visibility of the title bar. initial value is !isFullScreen.
+        val isTitleBarVisible = remember(isFullScreen) { mutableStateOf(!isFullScreen) }
+        val captionButtonThemeController = remember(platformWindow) { TitleBarThemeController() }
+        CompositionLocalProvider(
+            LocalTitleBarInsets provides if (isTitleBarVisible.value) {
+                titleBarInsets
+            } else {
+                ZeroInsets
+            },
+            LocalCaptionButtonInsets provides if (isTitleBarVisible.value) {
+                captionButtonsInsets
+            } else {
+                ZeroInsets
+            },
+            LocalTitleBarThemeController provides captionButtonThemeController,
+            content = content,
+        )
+        val titleBarInteractionSource = remember(isFullScreen) { MutableInteractionSource() }
+        val titleBarHovered by titleBarInteractionSource.collectIsHoveredAsState()
+        LaunchedEffect(titleBarInteractionSource, titleBarHovered, isFullScreen) {
+            if (!titleBarHovered && isFullScreen) {
+                delay(VIDEO_GESTURE_MOUSE_MOVE_SHOW_CONTROLLER_DURATION)
+                isTitleBarVisible.value = false
             }
-            AnimatedVisibility(
-                visible = isTitleBarVisible.value,
-                modifier = Modifier
-                    .ifThen(isTitleBarVisible.value && isFullScreen) { hoverable(titleBarInteractionSource) }
-                    .fillMaxWidth()
-                    .onSizeChanged { titleBarInsets.insets = WindowInsets(top = it.height) }
-                    .wrapContentWidth(AbsoluteAlignment.Right),
+        }
+        AnimatedVisibility(
+            visible = isTitleBarVisible.value,
+            modifier = Modifier
+                .ifThen(isTitleBarVisible.value && isFullScreen) { hoverable(titleBarInteractionSource) }
+                .fillMaxWidth()
+                .onSizeChanged { titleBarInsets.insets = WindowInsets(top = it.height) }
+                .wrapContentWidth(AbsoluteAlignment.Right),
+        ) {
+            Row(
+                modifier = Modifier.onSizeChanged {
+                    captionButtonsInsets.insets = WindowInsets(right = it.width, top = it.height)
+                },
             ) {
-                Row(
-                    modifier = Modifier.onSizeChanged {
-                        captionButtonsInsets.insets = WindowInsets(right = it.width, top = it.height)
+                val fontIconFamily = remember { mutableStateOf<FontFamily?>(null) }
+                // Get windows system font icon, if get failed fall back to fluent svg icon.
+                val fontFamilyResolver = LocalFontFamilyResolver.current
+                LaunchedEffect(fontFamilyResolver) {
+                    fontIconFamily.value = sequenceOf("Segoe Fluent Icons", "Segoe MDL2 Assets")
+                        .mapNotNull {
+                            val fontFamily = FontFamily(it)
+                            runCatching {
+                                val result = fontFamilyResolver.resolve(fontFamily).value as FontLoadResult
+                                if (result.typeface == null || result.typeface?.familyName != it) {
+                                    null
+                                } else {
+                                    fontFamily
+                                }
+                            }.getOrNull()
+                        }
+                        .firstOrNull()
+                }
+                CompositionLocalProvider(
+                    LocalCaptionIconFamily provides fontIconFamily.value,
+                    LocalWindowsColorScheme provides if (captionButtonThemeController.isDark) {
+                        WindowsColorScheme.dark()
+                    } else {
+                        WindowsColorScheme.light()
                     },
                 ) {
-                    val fontIconFamily = remember { mutableStateOf<FontFamily?>(null) }
-                    // Get windows system font icon, if get failed fall back to fluent svg icon.
-                    val fontFamilyResolver = LocalFontFamilyResolver.current
-                    LaunchedEffect(fontFamilyResolver) {
-                        fontIconFamily.value = sequenceOf("Segoe Fluent Icons", "Segoe MDL2 Assets")
-                            .mapNotNull {
-                                val fontFamily = FontFamily(it)
-                                runCatching {
-                                    val result = fontFamilyResolver.resolve(fontFamily).value as FontLoadResult
-                                    if (result.typeface == null || result.typeface?.familyName != it) {
-                                        null
-                                    } else {
-                                        fontFamily
-                                    }
-                                }.getOrNull()
-                            }
-                            .firstOrNull()
-                    }
-                    CompositionLocalProvider(
-                        LocalCaptionIconFamily provides fontIconFamily.value,
-                        LocalWindowsColorScheme provides if (captionButtonThemeController.isDark) {
-                            WindowsColorScheme.dark()
-                        } else {
-                            WindowsColorScheme.light()
+                    CaptionButtonRow(
+                        windowsWindowUtils = windowUtils,
+                        windowState = windowState,
+                        isMaximize = windowState.placement == WindowPlacement.Maximized,
+                        onCloseRequest = onCloseRequest,
+                        onMaximizeButtonRectUpdate = {
+                            buttonRects[1] = it
                         },
-                    ) {
-                        CaptionButtonRow(
-                            windowsWindowUtils = windowUtils,
-                            windowState = windowState,
-                            isMaximize = windowState.placement == WindowPlacement.Maximized,
-                            onCloseRequest = onCloseRequest,
-                            onMaximizeButtonRectUpdate = {
-                                buttonRects[1] = it
-                            },
-                            onMinimizeButtonRectUpdate = {
-                                buttonRects[0] = it
-                            },
-                            onCloseButtonRectUpdate = {
-                                buttonRects[2] = it
-                            },
-                        )
-                    }
+                        onMinimizeButtonRectUpdate = {
+                            buttonRects[0] = it
+                        },
+                        onCloseButtonRectUpdate = {
+                            buttonRects[2] = it
+                        },
+                    )
                 }
-            }
-
-            //Auto hoverable area that can be used to show title bar when title bar is hidden.
-            if (!isTitleBarVisible.value) {
-                val awareAreaInteractionSource = remember { MutableInteractionSource() }
-                val isAwareHovered by awareAreaInteractionSource.collectIsHoveredAsState()
-                LaunchedEffect(isAwareHovered) {
-                    if (isAwareHovered) {
-                        isTitleBarVisible.value = true
-                    }
-                }
-                Spacer(
-                    modifier = Modifier.hoverable(awareAreaInteractionSource)
-                        .fillMaxWidth()
-                        .height(16.dp),
-                )
             }
         }
-    } else {
-        content()
+
+        //Auto hoverable area that can be used to show title bar when title bar is hidden.
+        if (!isTitleBarVisible.value) {
+            val awareAreaInteractionSource = remember { MutableInteractionSource() }
+            val isAwareHovered by awareAreaInteractionSource.collectIsHoveredAsState()
+            LaunchedEffect(isAwareHovered) {
+                if (isAwareHovered) {
+                    isTitleBarVisible.value = true
+                }
+            }
+            Spacer(
+                modifier = Modifier.hoverable(awareAreaInteractionSource)
+                    .fillMaxWidth()
+                    .height(16.dp),
+            )
+        }
     }
 }
 
