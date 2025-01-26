@@ -34,6 +34,8 @@ class DanmakuProviderConfig(
     val userAgent: String? = null,
     val useGlobal: Boolean = false,
     val coroutineContext: CoroutineContext = Dispatchers.Default,
+    val dandanplayAppId: String,
+    val dandanplayAppSecret: String,
 )
 
 fun HttpClientConfig<*>.applyDanmakuProviderConfig(

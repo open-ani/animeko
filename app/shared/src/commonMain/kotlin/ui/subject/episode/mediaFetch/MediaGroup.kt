@@ -18,34 +18,35 @@ import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.source.MediaSourceKind
 
 @Immutable // only after build
-class MediaGroup @MediaGroupBuilderApi internal constructor(
+class MediaGroup(
     val groupId: MediaGroupId,
+    val list: List<MaybeExcludedMedia>,
 ) {
-    // 原地 build, 节约内存
+    @Stable
+    val first: MaybeExcludedMedia = list.first()
+
+    @Stable
+    val isExcluded = list.all { it is MaybeExcludedMedia.Excluded }
+
+    @Stable
+    val exclusionReason: MediaExclusionReason? = list.firstOrNull { it.exclusionReason != null }?.exclusionReason
+
+}
+
+class MediaGroupBuilder(
+    val id: String,
+) {
     private val _list: ArrayList<MaybeExcludedMedia> = ArrayList(4)
-    val list: List<MaybeExcludedMedia> get() = _list
 
-    @Stable
-    val first get() = list.first()
-
-    @Stable
-    val isExcluded by lazy(LazyThreadSafetyMode.NONE) { list.all { it is MaybeExcludedMedia.Excluded } }
-
-    @Stable
-    val exclusionReason: MediaExclusionReason? by lazy(LazyThreadSafetyMode.NONE) { list.firstOrNull { it.exclusionReason != null }?.exclusionReason }
-
-    @MediaGroupBuilderApi
-    internal fun add(media: MaybeExcludedMedia) {
+    fun add(media: MaybeExcludedMedia) {
         _list.add(media)
     }
+
+    fun build(): MediaGroup = MediaGroup(id, _list) // we don't copy it to save memory. This is called very frequently.
 }
 
 internal typealias MediaGroupId = String
 
-@RequiresOptIn
-internal annotation class MediaGroupBuilderApi
-
-@OptIn(MediaGroupBuilderApi::class)
 object MediaGrouper {
     fun getGroupId(media: Media): String {
         return when (media.kind) {
@@ -79,12 +80,12 @@ object MediaGrouper {
 
     @OptIn(UnsafeOriginalMediaAccess::class)
     fun buildGroups(list: List<MaybeExcludedMedia>): List<MediaGroup> {
-        val groups = LinkedHashMap<String, MediaGroup>() // keep order
+        val groups = LinkedHashMap<String, MediaGroupBuilder>() // keep order
         for (media in list) {
             val groupId = getGroupId(media.original)
-            groups.getOrPut(groupId) { MediaGroup(groupId) }
+            groups.getOrPut(groupId) { MediaGroupBuilder(groupId) }
                 .add(media)
         }
-        return groups.values.toList()
+        return groups.values.map { it.build() }
     }
 }

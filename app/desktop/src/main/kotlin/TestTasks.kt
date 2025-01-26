@@ -14,6 +14,7 @@ import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
 import me.him188.ani.app.domain.foundation.get
 import me.him188.ani.app.platform.DesktopContext
+import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.tools.update.DefaultFileDownloader
 import me.him188.ani.app.tools.update.InstallationResult
 import me.him188.ani.app.tools.update.UpdateInstaller
@@ -44,6 +45,18 @@ object TestTasks {
 
             "download-update-and-install" -> {
                 downloadUpdateAndInstall(args, context)
+            }
+
+            "dandanplay-app-id" -> {
+                if (currentAniBuildConfig.dandanplayAppId.isBlank()) {
+                    logger.error { "dandanplayAppId is empty" }
+                    exitProcess(1)
+                }
+                if (currentAniBuildConfig.dandanplayAppSecret.isBlank()) {
+                    logger.error { "dandanplayAppSecret is empty" }
+                    exitProcess(1)
+                }
+                exitProcess(0)
             }
 
             else -> {

@@ -53,6 +53,9 @@ fun rememberMediaSelectorState(
     }
 }
 
+/**
+ * @param backgroundScope only used for flow stateIn (with SharingStarted.WhileSubscribed)
+ */
 @Stable
 class MediaPreferenceItemState<T : Any>(
     @PublishedApi internal val item: MediaPreferenceItem<T>,
@@ -206,7 +209,7 @@ class MediaGroupState(
 
 @Composable
 @TestOnly
-fun rememberTestMediaSelectorPresentation(): MediaSelectorState {
+fun rememberTestMediaSelectorState(): MediaSelectorState {
     val backgroundScope = rememberBackgroundScope()
     return remember(backgroundScope) { createTestMediaSelectorState(backgroundScope.backgroundScope) }
 }

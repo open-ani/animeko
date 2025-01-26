@@ -44,7 +44,7 @@ class DandanplayDanmakuProvider(
 
     override val id: String get() = ID
 
-    private val dandanplayClient = DandanplayClient(client)
+    private val dandanplayClient = DandanplayClient(client, config.dandanplayAppId, config.dandanplayAppSecret)
 
     private enum class DanmakuOrigin(val displayName: String) {
         BiliBili("哔哩哔哩"),
