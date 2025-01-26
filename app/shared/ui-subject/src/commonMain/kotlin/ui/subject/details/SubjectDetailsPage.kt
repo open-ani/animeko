@@ -284,7 +284,7 @@ private fun SubjectDetailsPage(
             showBlurredBackground = showBlurredBackground,
             windowInsets = windowInsets,
             navigationIcon = navigationIcon,
-            onImageSuccess = { success ->
+            onCoverImageSuccess = { success ->
                 if (themeSettings.dynamicSubjectPageTheme) {
                     bitmap = success.result.image.toComposeImageBitmap()
                 }
@@ -434,7 +434,7 @@ fun SubjectDetailsPageLayout(
     showBlurredBackground: Boolean = true,
     windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
     navigationIcon: @Composable () -> Unit = {},
-    onImageSuccess: (AsyncImagePainter.State.Success) -> Unit = {},
+    onCoverImageSuccess: (AsyncImagePainter.State.Success) -> Unit = {},
     content: @Composable (contentPadding: PaddingValues) -> Unit,
 ) {
     val backgroundColor = AniThemeDefaults.pageContentBackgroundColor
@@ -550,7 +550,7 @@ fun SubjectDetailsPageLayout(
                                 .fillMaxWidth()
                                 .ifThen(!showTopBar) { padding(top = windowSizeClass.paneVerticalPadding) }
                                 .padding(horizontal = windowSizeClass.paneHorizontalPadding),
-                            onImageSuccess = onImageSuccess,
+                            onCoverImageSuccess = onCoverImageSuccess,
                         )
                     }
                 }

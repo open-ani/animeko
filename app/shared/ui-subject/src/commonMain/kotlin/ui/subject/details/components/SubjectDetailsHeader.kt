@@ -66,7 +66,7 @@ internal fun SubjectDetailsHeader(
     collectionAction: @Composable () -> Unit,
     selectEpisodeButton: @Composable BoxScope.() -> Unit,
     rating: @Composable () -> Unit,
-    onImageSuccess: (AsyncImagePainter.State.Success) -> Unit = {},
+    onCoverImageSuccess: (AsyncImagePainter.State.Success) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val clipboardManager = LocalClipboardManager.current
@@ -110,7 +110,7 @@ internal fun SubjectDetailsHeader(
             collectionAction = collectionAction,
             selectEpisodeButton = selectEpisodeButton,
             rating = rating,
-            onSuccess = onImageSuccess,
+            onCoverImageSuccess = onCoverImageSuccess,
             modifier = modifier,
         )
     } else {
@@ -124,7 +124,7 @@ internal fun SubjectDetailsHeader(
             collectionAction = collectionAction,
             selectEpisodeButton = selectEpisodeButton,
             rating = rating,
-            onSuccess = onImageSuccess,
+            onSuccess = onCoverImageSuccess,
             modifier = modifier,
         )
     }
@@ -229,7 +229,7 @@ fun SubjectDetailsHeaderWide(
     collectionAction: @Composable () -> Unit,
     selectEpisodeButton: @Composable BoxScope.() -> Unit,
     rating: @Composable () -> Unit,
-    onSuccess: (AsyncImagePainter.State.Success) -> Unit,
+    onCoverImageSuccess: (AsyncImagePainter.State.Success) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier) {
@@ -248,7 +248,7 @@ fun SubjectDetailsHeaderWide(
                         .height(imageWidth / COVER_WIDTH_TO_HEIGHT_RATIO),
                     contentScale = ContentScale.Crop,
                     placeholder = if (currentAniBuildConfig.isDebug) remember { ColorPainter(Color.Gray) } else null,
-                    onSuccess = onSuccess,
+                    onSuccess = onCoverImageSuccess,
                 )
             }
 
