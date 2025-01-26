@@ -57,8 +57,10 @@ import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.danmaku.DanmakuManager
 import me.him188.ani.app.domain.danmaku.SetDanmakuEnabledUseCase
+import me.him188.ani.app.domain.episode.EpisodeCompletionContext.isKnownCompleted
 import me.him188.ani.app.domain.episode.EpisodeDanmakuLoader
 import me.him188.ani.app.domain.episode.EpisodeFetchSelectPlayState
+import me.him188.ani.app.domain.episode.SubjectEpisodeInfoBundle
 import me.him188.ani.app.domain.episode.UnsafeEpisodeSessionApi
 import me.him188.ani.app.domain.episode.episodeIdFlow
 import me.him188.ani.app.domain.episode.getCurrentEpisodeId
@@ -181,6 +183,7 @@ class EpisodeViewModel(
     val player: MediampPlayer =
         playerStateFactory.create(context, backgroundScope.coroutineContext)
 
+    @OptIn(UnsafeEpisodeSessionApi::class)
     private val fetchPlayState = EpisodeFetchSelectPlayState(
         subjectId, initialEpisodeId, player, backgroundScope,
         extensions = listOf(
@@ -189,13 +192,14 @@ class EpisodeViewModel(
             SwitchNextEpisodeExtension.Factory(
                 getNextEpisode = { currentEpisodeId ->
                     val list = episodeCollectionsFlow.first()
+                    val subject = subjectCollectionFlow.first()
                     val currentIndex = list.indexOfFirst { it.episodeId == currentEpisodeId }
                     if (currentIndex == -1) {
                         null
                     } else {
                         val nextEpisode = list.getOrNull(currentIndex + 1) ?: return@Factory null
 
-                        if (!nextEpisode.episodeInfo.isKnownCompleted) {
+                        if (!nextEpisode.episodeInfo.isKnownCompleted(subject.recurrence)) {
                             null
                         } else {
                             nextEpisode.episodeId
@@ -218,7 +222,7 @@ class EpisodeViewModel(
     private val episodeIdFlow get() = fetchPlayState.episodeIdFlow
 
     @UnsafeEpisodeSessionApi
-    private val subjectEpisodeInfoBundleFlow get() = fetchPlayState.infoBundleFlow
+    private val subjectEpisodeInfoBundleFlow: Flow<SubjectEpisodeInfoBundle?> get() = fetchPlayState.infoBundleFlow
 
     @UnsafeEpisodeSessionApi
     private val subjectEpisodeInfoBundleLoadErrorFlow = fetchPlayState.infoLoadErrorFlow
