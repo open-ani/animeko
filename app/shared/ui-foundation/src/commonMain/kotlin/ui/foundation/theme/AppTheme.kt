@@ -318,150 +318,44 @@ fun ColorScheme.animate(
     targetColorScheme: ColorScheme?,
     animationSpec: AnimationSpec<Color> = tween(EasingDurations.standard),
 ): ColorScheme {
+    if (targetColorScheme == null) return this
+
     return ColorScheme(
-        primary = animateColorAsState(
-            targetColorScheme?.primary ?: primary,
-            animationSpec,
-        ).value,
-        onPrimary = animateColorAsState(
-            targetColorScheme?.onPrimary ?: onPrimary,
-            animationSpec,
-        ).value,
-        primaryContainer = animateColorAsState(
-            targetColorScheme?.primaryContainer ?: primaryContainer,
-            animationSpec,
-        ).value,
-        onPrimaryContainer = animateColorAsState(
-            targetColorScheme?.onPrimaryContainer ?: onPrimaryContainer,
-            animationSpec,
-        ).value,
-        inversePrimary = animateColorAsState(
-            targetColorScheme?.inversePrimary ?: inversePrimary,
-            animationSpec,
-        ).value,
-        secondary = animateColorAsState(
-            targetColorScheme?.secondary ?: secondary,
-            animationSpec,
-        ).value,
-        onSecondary = animateColorAsState(
-            targetColorScheme?.onSecondary ?: onSecondary,
-            animationSpec,
-        ).value,
-        secondaryContainer = animateColorAsState(
-            targetColorScheme?.secondaryContainer ?: secondaryContainer,
-            animationSpec,
-        ).value,
-        onSecondaryContainer = animateColorAsState(
-            targetColorScheme?.onSecondaryContainer ?: onSecondaryContainer,
-            animationSpec,
-        ).value,
-        tertiary = animateColorAsState(
-            targetColorScheme?.tertiary ?: tertiary,
-            animationSpec,
-        ).value,
-        onTertiary = animateColorAsState(
-            targetColorScheme?.onTertiary ?: onTertiary,
-            animationSpec,
-        ).value,
-        tertiaryContainer = animateColorAsState(
-            targetColorScheme?.tertiaryContainer ?: tertiaryContainer,
-            animationSpec,
-        ).value,
-        onTertiaryContainer = animateColorAsState(
-            targetColorScheme?.onTertiaryContainer ?: onTertiaryContainer,
-            animationSpec,
-        ).value,
-        background = animateColorAsState(
-            targetColorScheme?.background ?: background,
-            animationSpec,
-        ).value,
-        onBackground = animateColorAsState(
-            targetColorScheme?.onBackground ?: onBackground,
-            animationSpec,
-        ).value,
-        surface = animateColorAsState(
-            targetColorScheme?.surface ?: surface,
-            animationSpec,
-        ).value,
-        onSurface = animateColorAsState(
-            targetColorScheme?.onSurface ?: onSurface,
-            animationSpec,
-        ).value,
-        surfaceVariant = animateColorAsState(
-            targetColorScheme?.surfaceVariant ?: surfaceVariant,
-            animationSpec,
-        ).value,
-        onSurfaceVariant = animateColorAsState(
-            targetColorScheme?.onSurfaceVariant ?: onSurfaceVariant,
-            animationSpec,
-        ).value,
-        surfaceTint = animateColorAsState(
-            targetColorScheme?.surfaceTint ?: surfaceTint,
-            animationSpec,
-        ).value,
-        inverseSurface = animateColorAsState(
-            targetColorScheme?.inverseSurface ?: inverseSurface,
-            animationSpec,
-        ).value,
-        inverseOnSurface = animateColorAsState(
-            targetColorScheme?.inverseOnSurface ?: inverseOnSurface,
-            animationSpec,
-        ).value,
-        surfaceBright = animateColorAsState(
-            targetColorScheme?.surfaceBright ?: surfaceBright,
-            animationSpec,
-        ).value,
-        surfaceDim = animateColorAsState(
-            targetColorScheme?.surfaceDim ?: surfaceDim,
-            animationSpec,
-        ).value,
-        surfaceContainer = animateColorAsState(
-            targetColorScheme?.surfaceContainer ?: surfaceContainer,
-            animationSpec,
-        ).value,
-        surfaceContainerHigh = animateColorAsState(
-            targetColorScheme?.surfaceContainerHigh ?: surfaceContainerHigh,
-            animationSpec,
-        ).value,
-        surfaceContainerHighest = animateColorAsState(
-            targetColorScheme?.surfaceContainerHighest ?: surfaceContainerHighest,
-            animationSpec,
-        ).value,
-        surfaceContainerLow = animateColorAsState(
-            targetColorScheme?.surfaceContainerLow ?: surfaceContainerLow,
-            animationSpec,
-        ).value,
-        surfaceContainerLowest = animateColorAsState(
-            targetColorScheme?.surfaceContainerLowest ?: surfaceContainerLowest,
-            animationSpec,
-        ).value,
-        error = animateColorAsState(
-            targetColorScheme?.error ?: error,
-            animationSpec,
-        ).value,
-        onError = animateColorAsState(
-            targetColorScheme?.onError ?: onError,
-            animationSpec,
-        ).value,
-        errorContainer = animateColorAsState(
-            targetColorScheme?.errorContainer ?: errorContainer,
-            animationSpec,
-        ).value,
-        onErrorContainer = animateColorAsState(
-            targetColorScheme?.onErrorContainer ?: onErrorContainer,
-            animationSpec,
-        ).value,
-        outline = animateColorAsState(
-            targetColorScheme?.outline ?: outline,
-            animationSpec,
-        ).value,
-        outlineVariant = animateColorAsState(
-            targetColorScheme?.outlineVariant ?: outlineVariant,
-            animationSpec,
-        ).value,
-        scrim = animateColorAsState(
-            targetColorScheme?.scrim ?: scrim,
-            animationSpec,
-        ).value,
+        primary = animateColorAsState(targetColorScheme.primary, animationSpec).value,
+        onPrimary = animateColorAsState(targetColorScheme.onPrimary, animationSpec).value,
+        primaryContainer = animateColorAsState(targetColorScheme.primaryContainer, animationSpec).value,
+        onPrimaryContainer = animateColorAsState(targetColorScheme.onPrimaryContainer, animationSpec).value,
+        inversePrimary = animateColorAsState(targetColorScheme.inversePrimary, animationSpec).value,
+        secondary = animateColorAsState(targetColorScheme.secondary, animationSpec).value,
+        onSecondary = animateColorAsState(targetColorScheme.onSecondary, animationSpec).value,
+        secondaryContainer = animateColorAsState(targetColorScheme.secondaryContainer, animationSpec).value,
+        onSecondaryContainer = animateColorAsState(targetColorScheme.onSecondaryContainer, animationSpec).value,
+        tertiary = animateColorAsState(targetColorScheme.tertiary, animationSpec).value,
+        onTertiary = animateColorAsState(targetColorScheme.onTertiary, animationSpec).value,
+        tertiaryContainer = animateColorAsState(targetColorScheme.tertiaryContainer, animationSpec).value,
+        onTertiaryContainer = animateColorAsState(targetColorScheme.onTertiaryContainer, animationSpec).value,
+        background = animateColorAsState(targetColorScheme.background, animationSpec).value,
+        onBackground = animateColorAsState(targetColorScheme.onBackground, animationSpec).value,
+        surface = animateColorAsState(targetColorScheme.surface, animationSpec).value,
+        onSurface = animateColorAsState(targetColorScheme.onSurface, animationSpec).value,
+        surfaceVariant = animateColorAsState(targetColorScheme.surfaceVariant, animationSpec).value,
+        onSurfaceVariant = animateColorAsState(targetColorScheme.onSurfaceVariant, animationSpec).value,
+        surfaceTint = animateColorAsState(targetColorScheme.surfaceTint, animationSpec).value,
+        inverseSurface = animateColorAsState(targetColorScheme.inverseSurface, animationSpec).value,
+        inverseOnSurface = animateColorAsState(targetColorScheme.inverseOnSurface, animationSpec).value,
+        surfaceBright = animateColorAsState(targetColorScheme.surfaceBright, animationSpec).value,
+        surfaceDim = animateColorAsState(targetColorScheme.surfaceDim, animationSpec).value,
+        surfaceContainer = animateColorAsState(targetColorScheme.surfaceContainer, animationSpec).value,
+        surfaceContainerHigh = animateColorAsState(targetColorScheme.surfaceContainerHigh, animationSpec).value,
+        surfaceContainerHighest = animateColorAsState(targetColorScheme.surfaceContainerHighest, animationSpec).value,
+        surfaceContainerLow = animateColorAsState(targetColorScheme.surfaceContainerLow, animationSpec).value,
+        surfaceContainerLowest = animateColorAsState(targetColorScheme.surfaceContainerLowest, animationSpec).value,
+        error = animateColorAsState(targetColorScheme.error, animationSpec).value,
+        onError = animateColorAsState(targetColorScheme.onError, animationSpec).value,
+        errorContainer = animateColorAsState(targetColorScheme.errorContainer, animationSpec).value,
+        onErrorContainer = animateColorAsState(targetColorScheme.onErrorContainer, animationSpec).value,
+        outline = animateColorAsState(targetColorScheme.outline, animationSpec).value,
+        outlineVariant = animateColorAsState(targetColorScheme.outlineVariant, animationSpec).value,
+        scrim = animateColorAsState(targetColorScheme.scrim, animationSpec).value,
     )
 }
