@@ -139,6 +139,9 @@ class DefaultHttpClientProvider(
     private val proxyListeningStarted = atomic(false)
     private var proxyListeningJob: Job? = null
 
+    /**
+     * 当前的代理配置, 只会在 [startProxyListening] 里赋值.
+     */
     private val currentProxyConfig = MutableStateFlow<ProxyConfig?>(null)
     override val configurationFlow: Flow<*> get() = currentProxyConfig
 
@@ -203,9 +206,10 @@ class DefaultHttpClientProvider(
 
                     coroutineScope {
                         // We hold references to all permutations of matrix params.
-                        for ((userAgent) in holdReferences) {
+                        for ((features) in holdReferences) {
                             launch {
-                                get(userAgent).use {
+                                // `get` here always create a new instance with the latest proxy config, because 
+                                get(features).use {
                                     this.engineConfig.setProxy(it?.toClientProxyConfig())
                                     awaitCancellation() // hold the instance until the scope is cancelled (i.e. until next proxy)
                                 }
