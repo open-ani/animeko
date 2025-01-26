@@ -30,7 +30,6 @@ class MediaSourceResultsFilterer(
     /**
      * 根据设置, 过滤掉禁用的数据源, 并按照查询到的数量降序排序.
      */
-    // Not shared
     val filteredSourceResults: Flow<List<MediaSourceFetchResult>> = results.flatMapLatest { results ->
         settings.flatMapLatest inner@{ settings ->
             // 过滤掉禁用的
