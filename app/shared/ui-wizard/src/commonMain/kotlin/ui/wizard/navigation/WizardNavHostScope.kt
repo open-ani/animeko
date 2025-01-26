@@ -10,6 +10,9 @@
 package me.him188.ani.app.ui.wizard.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.app.ui.wizard.WizardDefaults
 
 @DslMarker
@@ -24,25 +27,51 @@ class WizardNavHostScope(
     fun step(
         key: String,
         title: @Composable () -> Unit,
-        forward: @Composable () -> Unit = {
-            WizardDefaults.GoForwardButton({ controller.goForward() }, true)
+        forwardButton: @Composable () -> Unit = {
+            WizardDefaults.GoForwardButton(
+                { controller.goForward() },
+                enabled = true,
+                modifier = Modifier.testTag("buttonNextStep"),
+            )
         },
-        backward: @Composable () -> Unit = {
-            WizardDefaults.GoBackwardButton({ controller.goBackward() })
+        backwardButton: @Composable () -> Unit = {
+            BackNavigationIconButton(
+                { controller.goBackward() },
+                modifier = Modifier.testTag("buttonPrevStep"),
+            )
         },
-        skipButton: @Composable () -> Unit = {},
+        skipButton: @Composable () -> Unit = {
+            WizardDefaults.SkipButton({ controller.goForward() })
+        },
+        indicatorBar: @Composable (WizardIndicatorState) -> Unit = {
+            WizardDefaults.StepTopAppBar(
+                currentStep = it.currentStep,
+                totalStep = it.totalStep,
+                backwardButton = backwardButton,
+                skipButton = skipButton,
+                scrollBehavior = it.scrollBehavior,
+            ) {
+                title()
+            }
+        },
+        controlBar: @Composable () -> Unit = {
+            WizardDefaults.StepControlBar(
+                forwardAction = forwardButton,
+            )
+        },
         content: @Composable () -> Unit,
     ) {
         if (steps[key] != null) {
             throw IllegalArgumentException("Duplicate step key: $key")
         }
         steps[key] = WizardStep(
-            key,
-            title,
-            forward,
-            backward,
-            skipButton,
-            content,
+            key = key,
+            stepName = title,
+            backwardButton = backwardButton,
+            skipButton = skipButton,
+            indicatorBar = indicatorBar,
+            controlBar = controlBar,
+            content = content,
         )
     }
 

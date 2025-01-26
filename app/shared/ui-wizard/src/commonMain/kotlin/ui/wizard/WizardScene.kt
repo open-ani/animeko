@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.ui.wizard
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -40,10 +39,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -54,7 +53,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.delay
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.tools.rememberUiMonoTasker
@@ -79,20 +81,14 @@ internal fun WizardScene(
     state: WizardPresentationState,
     contactActions: @Composable () -> Unit,
     modifier: Modifier = Modifier,
-    useEnterAnim: Boolean = true,
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
     wizardLayoutParams: WizardLayoutParams = WizardLayoutParams.Default
 ) {
     val context = LocalContext.current
-    var barVisible by rememberSaveable { mutableStateOf(!useEnterAnim) }
 
     var notificationErrorScrolledOnce by rememberSaveable { mutableStateOf(false) }
     var authorizeErrorScrolledOnce by rememberSaveable { mutableStateOf(false) }
     var bangumiAuthorizeSkipClicked by rememberSaveable { mutableStateOf(false) }
-
-    SideEffect {
-        barVisible = true
-    }
 
     Box(
         modifier = modifier,
@@ -103,31 +99,6 @@ internal fun WizardScene(
             modifier = Modifier
                 .windowInsetsPadding(windowInsets)
                 .fillMaxSize(),
-            indicatorBar = {
-                AnimatedVisibility(
-                    barVisible,
-                    enter = WizardDefaults.indicatorBarEnterAnim,
-                ) {
-                    WizardDefaults.StepTopAppBar(
-                        currentStep = it.currentStepIndex + 1,
-                        totalStep = it.stepCount,
-                    ) {
-                        it.currentStep.stepName.invoke()
-                    }
-                }
-            },
-            controlBar = {
-                AnimatedVisibility(
-                    barVisible,
-                    enter = WizardDefaults.controlBarEnterAnim,
-                ) {
-                    WizardDefaults.StepControlBar(
-                        forwardAction = { it.currentStep.forwardButton.invoke() },
-                        backwardAction = { it.currentStep.backwardButton.invoke() },
-                        tertiaryAction = { it.currentStep.skipButton.invoke() },
-                    )
-                }
-            },
         ) {
             step("theme", { Text("选择主题") }) {
                 SelectTheme(
@@ -142,7 +113,7 @@ internal fun WizardScene(
             step(
                 "proxy",
                 title = { Text("设置代理") },
-                forward = {
+                forwardButton = {
                     val testState by state.configureProxyState.testState
                         .collectAsStateWithLifecycle(ProxyTestState.Default)
                     WizardDefaults.GoForwardButton(
@@ -178,6 +149,19 @@ internal fun WizardScene(
                 val notificationPermissionState by state.bitTorrentFeatureState.notificationPermissionState
                     .collectAsStateWithLifecycle(NotificationPermissionState.Placeholder)
 
+
+                val lifecycle = LocalLifecycleOwner.current
+                LaunchedEffect(lifecycle) {
+                    lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                        state.bitTorrentFeatureState.onCheckPermissionState(context)
+                    }
+                }
+
+                DisposableEffect(Unit) {
+                    state.bitTorrentFeatureState.onCheckPermissionState(context)
+                    onDispose { }
+                }
+                
                 // 用于在请求权限失败时滚动底部的错误信息位置, 
                 // 因为错误信息显示在最底部, 手机屏幕可能显示不下, 所以需要在错误发生时自动滚动到底部让用户看到信息
                 // 每次只有 lastRequestResult 从别的状态变成 false 时, 才会滚动
@@ -215,7 +199,7 @@ internal fun WizardScene(
             step(
                 "bangumi",
                 { Text("Bangumi 授权") },
-                forward = {
+                forwardButton = {
                     val authorizeState by state.bangumiAuthorizeState.state
                         .collectAsStateWithLifecycle(AuthorizeUIState.Placeholder)
                     WizardDefaults.GoForwardButton(
@@ -369,9 +353,12 @@ object WizardDefaults {
     fun StepTopAppBar(
         currentStep: Int,
         totalStep: Int,
+        backwardButton: @Composable () -> Unit,
+        skipButton: @Composable () -> Unit,
         modifier: Modifier = Modifier,
         windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
         indicatorStepTextTestTag: String = "indicatorText",
+        scrollBehavior: TopAppBarScrollBehavior? = null,
         stepName: @Composable () -> Unit,
     ) {
         LargeTopAppBar(
@@ -392,17 +379,17 @@ object WizardDefaults {
                 }
             },
             modifier = modifier,
+            navigationIcon = backwardButton,
+            actions = { skipButton() },
+            scrollBehavior = scrollBehavior,
             windowInsets = windowInsets,
-
-            )
+        )
     }
 
     @Composable
     fun StepControlBar(
         forwardAction: @Composable () -> Unit,
-        backwardAction: @Composable () -> Unit,
         modifier: Modifier = Modifier,
-        tertiaryAction: @Composable () -> Unit = {},
         windowInsets: WindowInsets = AniWindowInsets.forNavigationBar(),
     ) {
         Box(modifier = modifier) {
@@ -419,16 +406,9 @@ object WizardDefaults {
                         .padding(24.dp)
                         .fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                    horizontalArrangement = Arrangement.End,
                 ) {
-                    backwardAction()
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        tertiaryAction()
-                        forwardAction()
-                    }
+                    forwardAction()
                 }
             }
         }
@@ -438,22 +418,14 @@ object WizardDefaults {
     fun GoForwardButton(
         onClick: () -> Unit,
         enabled: Boolean,
-        text: String = "继续"
+        modifier: Modifier = Modifier,
+        text: String = "下一步"
     ) {
         Button(
             onClick = onClick,
             enabled = enabled,
+            modifier = modifier,
         ) {
-            Text(text)
-        }
-    }
-
-    @Composable
-    fun GoBackwardButton(
-        onClick: () -> Unit,
-        text: String = "上一步"
-    ) {
-        TextButton(onClick = onClick) {
             Text(text)
         }
     }

@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.ui.wizard.navigation
 
+import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
@@ -16,11 +17,15 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
 import androidx.navigation.NavHostController
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import me.him188.ani.utils.coroutines.update
 
 
@@ -37,27 +42,26 @@ fun rememberWizardController(): WizardController {
 @Stable
 class WizardController() {
     private val _controller = MutableStateFlow<NavHostController?>(null)
+    private val _scrollBehavior = MutableStateFlow<TopAppBarScrollBehavior?>(null)
 
     private val steps = MutableStateFlow(emptyMap<String, WizardStep>())
     private val currentStepKey: MutableStateFlow<String?> = MutableStateFlow(null)
 
     val navController: StateFlow<NavHostController?> = _controller
+    val scrollBehavior: StateFlow<TopAppBarScrollBehavior?> = _scrollBehavior
 
-    val state: Flow<WizardState?> = combine(
-        steps,
-        currentStepKey,
-    ) { steps, currentStepKey ->
-        val currentStep = steps[currentStepKey] ?: return@combine null
+    val state: Flow<WizardState?> = steps.map { step ->
         WizardState(
-            steps = steps.map { it.value },
-            currentStep = currentStep,
-            currentStepIndex = steps.entries.indexOfFirst { it.key == currentStepKey },
-            stepCount = steps.size,
+            steps = step.map { it.value },
         )
     }
 
     fun setNavController(controller: NavHostController) {
         _controller.update { controller }
+    }
+
+    fun setIndicatorBarScrollBehavior(scrollBehavior: TopAppBarScrollBehavior?) {
+        _scrollBehavior.update { scrollBehavior }
     }
 
     fun setupSteps(steps: Map<String, WizardStep>) {
@@ -75,6 +79,18 @@ class WizardController() {
         }
     }
 
+    internal suspend fun subscribeNavDestChanges() {
+        snapshotFlow { navController.value }
+            .filterNotNull()
+            .flatMapLatest { it.currentBackStackEntryFlow }
+            .collectLatest { entry ->
+                val stepKey = entry.destination.route
+                if (steps.value[stepKey] != null) {
+                    currentStepKey.update { stepKey }
+                }
+            }
+    }
+
     fun goForward() {
         move(forward = true)
     }
@@ -89,14 +105,9 @@ class WizardController() {
         val stepEntries = steps.value.entries.toList()
         val currentStepIndex = stepEntries.indexOfFirst { it.key == currentStepKey }
 
-        if (currentStepIndex == 0 && !forward) return
-        if (currentStepIndex == stepEntries.size - 1 && forward) return
-
         val targetStepKey = stepEntries
             .getOrNull(currentStepIndex + (if (forward) 1 else -1))?.value?.key ?: return
         val targetStep = steps.value[targetStepKey] ?: return
-
-        this.currentStepKey.update { targetStepKey }
 
         val prevBackEntry = navController.previousBackStackEntry
         if (!forward
@@ -112,8 +123,5 @@ class WizardController() {
 
 @Stable
 class WizardState(
-    val steps: List<WizardStep>,
-    val currentStep: WizardStep,
-    val currentStepIndex: Int,
-    val stepCount: Int,
+    val steps: List<WizardStep>
 )

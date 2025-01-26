@@ -14,9 +14,12 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -35,27 +38,14 @@ import me.him188.ani.app.ui.wizard.WizardDefaults
 fun WizardNavHost(
     controller: WizardController,
     modifier: Modifier = Modifier,
-    indicatorBar: @Composable (WizardState) -> Unit = {
-        WizardDefaults.StepTopAppBar(
-            currentStep = it.currentStepIndex + 1,
-            totalStep = it.stepCount,
-        ) {
-            it.currentStep.stepName.invoke()
-        }
-    },
-    controlBar: @Composable (WizardState) -> Unit = {
-        WizardDefaults.StepControlBar(
-            forwardAction = { it.currentStep.forwardButton.invoke() },
-            backwardAction = { it.currentStep.backwardButton.invoke() },
-            tertiaryAction = { it.currentStep.skipButton.invoke() },
-        )
-    },
     motionScheme: NavigationMotionScheme = WizardDefaults.motionScheme,
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
+    indicatorBarScrollBehavior: TopAppBarScrollBehavior? = null,
     content: WizardNavHostScope.() -> Unit,
 ) {
     val navController = rememberNavController()
     controller.setNavController(navController)
+    controller.setIndicatorBarScrollBehavior(indicatorBarScrollBehavior)
 
     DisposableEffect(controller, content) {
         val steps = WizardNavHostScope(controller).apply(content).build()
@@ -63,33 +53,47 @@ fun WizardNavHost(
         onDispose { }
     }
 
+    LaunchedEffect(Unit) {
+        controller.subscribeNavDestChanges()
+    }
+
     val wizardState = controller.state.collectAsState(null).value ?: return
+    val currentNavController = controller.navController.collectAsState().value ?: return
+    val currentScrollBehavior = controller.scrollBehavior.collectAsState().value
+    val startDestination = controller.startDestinationAsState().value ?: return
 
-    Scaffold(
-        topBar = { indicatorBar(wizardState) },
-        bottomBar = { controlBar(wizardState) },
+    NavHost(
+        currentNavController,
+        startDestination = startDestination,
         modifier = modifier,
-        contentWindowInsets = windowInsets,
-    ) { contentPadding ->
-        val currentNavController =
-            controller.navController.collectAsState().value ?: return@Scaffold
-        val startDestination = controller.startDestinationAsState().value ?: return@Scaffold
+        enterTransition = { motionScheme.enterTransition },
+        exitTransition = { motionScheme.exitTransition },
+        popEnterTransition = { motionScheme.popEnterTransition },
+        popExitTransition = { motionScheme.popExitTransition },
+    ) {
+        val stepCount = wizardState.steps.size
+        wizardState.steps.forEachIndexed { index, step ->
+            composable(step.key) {
+                val indicatorState = remember(stepCount, index, currentScrollBehavior) {
+                    WizardIndicatorState(
+                        currentStep = index + 1,
+                        totalStep = stepCount,
+                        scrollBehavior = currentScrollBehavior,
+                    )
+                }
 
-        NavHost(
-            currentNavController,
-            startDestination = startDestination,
-            modifier = Modifier
-                .padding(contentPadding)
-                .fillMaxSize(),
-            enterTransition = { motionScheme.enterTransition },
-            exitTransition = { motionScheme.exitTransition },
-            popEnterTransition = { motionScheme.popEnterTransition },
-            popExitTransition = { motionScheme.popExitTransition },
-        ) {
-            wizardState.steps.forEach { step ->
-                composable(step.key) {
-                    Column(Modifier.fillMaxSize()) {
-                        step.content.invoke()
+                Scaffold(
+                    topBar = { step.indicatorBar(indicatorState) },
+                    modifier = modifier,
+                    contentWindowInsets = windowInsets,
+                ) { contentPadding ->
+                    Column(
+                        modifier = Modifier
+                            .padding(contentPadding)
+                            .fillMaxSize(),
+                    ) {
+                        step.content()
+                        step.controlBar()
                     }
                 }
             }

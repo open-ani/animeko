@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.ui.wizard.navigation
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -51,29 +50,6 @@ class WizardNavHostTest {
         WizardNavHost(
             wizardController,
             modifier = Modifier.fillMaxSize(),
-            indicatorBar = {
-                WizardDefaults.StepTopAppBar(
-                    currentStep = it.currentStepIndex + 1,
-                    totalStep = it.stepCount,
-                    indicatorStepTextTestTag = TAG_INDICATOR_TEXT,
-                ) {
-                    it.currentStep.stepName.invoke()
-                }
-            },
-            controlBar = {
-                WizardDefaults.StepControlBar(
-                    forwardAction = {
-                        Box(Modifier.testTag(TAG_BUTTON_NEXT_STEP)) {
-                            it.currentStep.forwardButton.invoke()
-                        }
-                    },
-                    backwardAction = {
-                        Box(Modifier.testTag(TAG_BUTTON_PREV_STEP)) {
-                            it.currentStep.backwardButton.invoke()
-                        }
-                    },
-                )
-            },
         ) {
             step(
                 "step_1",

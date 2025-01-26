@@ -83,6 +83,7 @@ internal fun createTestWizardPresentationState(scope: CoroutineScope): WizardPre
                     lastRequestResult = null,
                 ),
             ),
+            onCheckPermissionState = { },
             onRequestNotificationPermission = { },
             onOpenSystemNotificationSettings = { },
         ),

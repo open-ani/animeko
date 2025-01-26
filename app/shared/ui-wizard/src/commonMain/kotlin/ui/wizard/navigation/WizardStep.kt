@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.ui.wizard.navigation
 
+import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 
 /**
@@ -16,11 +17,19 @@ import androidx.compose.runtime.Composable
  *
  * @param key Unique key for this step, used to build navigation graph.
  */
+@Suppress("unused")
 class WizardStep(
     val key: String,
     val stepName: @Composable () -> Unit,
-    val forwardButton: @Composable () -> Unit,
     val backwardButton: @Composable () -> Unit,
     val skipButton: @Composable () -> Unit,
+    val indicatorBar: @Composable (WizardIndicatorState) -> Unit,
+    val controlBar: @Composable () -> Unit,
     val content: @Composable () -> Unit,
+)
+
+class WizardIndicatorState(
+    val currentStep: Int,
+    val totalStep: Int,
+    val scrollBehavior: TopAppBarScrollBehavior?,
 )

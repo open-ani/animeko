@@ -186,6 +186,7 @@ class WelcomeViewModel : AbstractSettingsViewModel(), KoinComponent {
             backgroundScope = backgroundScope,
         ),
         notificationPermissionState = notificationPermissionState,
+        onCheckPermissionState = { checkNotificationPermission(it) },
         onRequestNotificationPermission = { requestNotificationPermission(it) },
         onOpenSystemNotificationSettings = { openSystemNotificationSettings(it) },
     )
@@ -324,7 +325,7 @@ class WelcomeViewModel : AbstractSettingsViewModel(), KoinComponent {
         }
     }
 
-    fun checkNotificationPermission(context: ContextMP) {
+    private fun checkNotificationPermission(context: ContextMP) {
         val result = permissionManager.checkNotificationPermission(context)
         notificationPermissionGrant.update { result }
         if (result) lastGrantPermissionResult.update { null }
@@ -552,8 +553,9 @@ sealed class ProxyTestCase(
 class BitTorrentFeatureState(
     val enabled: SettingsState<Boolean>,
     val notificationPermissionState: Flow<NotificationPermissionState>,
+    val onCheckPermissionState: (ContextMP) -> Unit,
     val onRequestNotificationPermission: (ContextMP) -> Unit,
-    val onOpenSystemNotificationSettings: (ContextMP) -> Unit
+    val onOpenSystemNotificationSettings: (ContextMP) -> Unit,
 )
 
 @Stable

@@ -120,7 +120,7 @@ private fun AniAppContentImpl(
     val navMotionScheme by rememberUpdatedState(NavigationMotionScheme.current)
 
     SharedTransitionLayout {
-        NavHost(navController, startDestination = initialRoute, modifier) {
+        NavHost(navController, startDestination = NavRoutes.Welcome, modifier) {
             val enterTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition? =
                 { navMotionScheme.enterTransition }
             val exitTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition? =
@@ -136,7 +136,12 @@ private fun AniAppContentImpl(
                 popEnterTransition = popEnterTransition,
                 popExitTransition = popExitTransition,
             ) { // 由 SessionManager.requireAuthorize 跳转到
-                WelcomeScene(viewModel { WelcomeViewModel() }, Modifier.fillMaxSize())
+                // WelcomeScene(viewModel { WelcomeViewModel() }, Modifier.fillMaxSize())
+                me.him188.ani.app.ui.wizard.WelcomePage(
+                    viewModel { me.him188.ani.app.ui.wizard.WelcomeViewModel() },
+                    contactActions = { AniContactList() },
+                    windowInsets = windowInsets,
+                )
             }
             composable<NavRoutes.Main>(
                 enterTransition = enterTransition,
