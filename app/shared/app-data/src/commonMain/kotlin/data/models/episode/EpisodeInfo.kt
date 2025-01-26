@@ -12,7 +12,6 @@ package me.him188.ani.app.data.models.episode
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import kotlinx.serialization.Serializable
-import me.him188.ani.app.domain.episode.EpisodeCompletionContext.isKnownCompleted
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.EpisodeType
 import me.him188.ani.datasources.api.PackedDate
@@ -53,9 +52,6 @@ data class EpisodeInfo(
     companion object {
         val Empty = EpisodeInfo(0, null)
     }
-
-    val isKnownCompleted: Boolean
-        get() = isKnownCompleted(null)
 }
 
 @Stable
