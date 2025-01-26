@@ -15,10 +15,8 @@ import me.him188.ani.app.platform.window.LocalTitleBarThemeController
 
 @Composable
 actual fun DarkCaptionButtonAppearance() {
-    val titleBarController = LocalTitleBarThemeController.current
+    val titleBarController = LocalTitleBarThemeController.current ?: return
     DisposableEffect(titleBarController) {
-        if (titleBarController == null) return@DisposableEffect onDispose { }
-
         var oldDarkMode = titleBarController.isDark
         titleBarController.isDark = true
         onDispose {
