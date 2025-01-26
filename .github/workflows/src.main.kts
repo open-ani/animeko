@@ -548,7 +548,7 @@ fun getVerifyJobBody(
                         """.trimIndent(),
                     ),
                     `if` = task.`if`,
-                    timeoutMinutes = 5,
+                    timeoutMinutes = task.timeoutMinutes,
                 )
             }
         }
