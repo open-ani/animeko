@@ -19,6 +19,7 @@ import org.jetbrains.skiko.currentSystemTheme
 //This controller should only be created and passed when the caption button is in the top end position.
 val LocalTitleBarThemeController = compositionLocalOf<TitleBarThemeController?> { null }
 
+//This controller only used in Windows transparent window frame.
 class TitleBarThemeController {
     // We use state, because it can trigger recomposition that make CaptionButton color change.
     var isDark: Boolean by mutableStateOf(currentSystemTheme == SystemTheme.DARK)
