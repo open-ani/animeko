@@ -173,6 +173,7 @@ class DefaultHttpClientProvider(
     /**
      * 启动代理监听，在协程中持续订阅 [proxyProvider] 提供的代理流：
      * 1. 第一次调用会挂起，直到拿到首个代理配置。
+     *    调用方 (APP 初始化时) 需要阻塞并且等待此函数返回, 否则可能会导致有异步请求不经过代理而失败.
      * 2. 只能调用一次，若重复调用将抛出异常。
      * 3. 若获取期间发生异常，会取消内部协程并向上抛出。
      *
@@ -219,8 +220,8 @@ class DefaultHttpClientProvider(
             flowScope.cancel(
                 CancellationException(
                     "Failed to start proxy listening, cancelling premature scope",
-                    e
-                )
+                    e,
+                ),
             )
             throw e
             // proxyListeningStarted is still true - further calls to startProxyListening will fail.
