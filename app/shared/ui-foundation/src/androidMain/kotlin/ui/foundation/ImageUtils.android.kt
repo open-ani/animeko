@@ -7,13 +7,13 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.app.ui.subject.details
+package me.him188.ani.app.ui.foundation
 
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asComposeImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import coil3.Image
 import coil3.toBitmap
 
 actual fun Image.toComposeImageBitmap(): ImageBitmap {
-    return this.toBitmap().asComposeImageBitmap()
+    return this.toBitmap().asImageBitmap()
 }

@@ -77,7 +77,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.compose.collectAsLazyPagingItemsWithLifecycle
-import coil3.Image
 import coil3.compose.AsyncImagePainter
 import com.kmpalette.color
 import com.kmpalette.rememberPaletteState
@@ -113,6 +112,7 @@ import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.theme.LocalThemeSettings
 import me.him188.ani.app.ui.foundation.theme.animate
 import me.him188.ani.app.ui.foundation.theme.modifyColorSchemeForBlackBackground
+import me.him188.ani.app.ui.foundation.toComposeImageBitmap
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.richtext.RichTextDefaults
 import me.him188.ani.app.ui.search.LoadErrorCard
@@ -801,5 +801,3 @@ private fun MaterialThemeFromImage(
         content = content,
     )
 }
-
-expect fun Image.toComposeImageBitmap(): ImageBitmap

@@ -12,21 +12,13 @@ package me.him188.ani.app.ui.subject.details
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.tooling.preview.Preview
-import coil3.Image
-import coil3.toBitmap
 import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateLoader
 import me.him188.ani.app.ui.subject.details.state.createTestSubjectDetailsState
 import me.him188.ani.utils.platform.annotations.TestOnly
-
-actual fun Image.toComposeImageBitmap(): ImageBitmap {
-    return this.toBitmap().asImageBitmap()
-}
 
 @OptIn(TestOnly::class)
 @Preview
