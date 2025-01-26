@@ -37,6 +37,7 @@ fun PreviewWizardScene() {
             rememberWizardController(),
             remember { createTestWizardPresentationState(scope) },
             contactActions = { },
+            onNavigateBack = { },
         )
     }
 }

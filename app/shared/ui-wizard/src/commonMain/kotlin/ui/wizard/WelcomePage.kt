@@ -86,10 +86,10 @@ fun WelcomePage(
                 WizardScene(
                     controller = wizardController,
                     state = wizardState,
-                    windowInsets = windowInsets,
+                    onNavigateBack = { navController.navigateUp() },
+                    modifier = Modifier.fillMaxSize(),
                     contactActions = contactActions,
                     wizardLayoutParams = wizardLayoutParams,
-                    modifier = Modifier.fillMaxSize(),
                 )
             }
         }

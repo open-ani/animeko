@@ -50,6 +50,7 @@ class WizardNavHostScope(
                 backwardButton = backwardButton,
                 skipButton = skipButton,
                 scrollBehavior = it.scrollBehavior,
+                scrollCollapsedFraction = it.scrollCollapsedFraction,
             ) {
                 title()
             }

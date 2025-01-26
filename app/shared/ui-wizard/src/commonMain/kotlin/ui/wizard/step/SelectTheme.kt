@@ -55,6 +55,7 @@ internal fun SelectTheme(
         Row(
             modifier = Modifier
                 .padding(horizontal = layoutParams.horizontalPadding)
+                .padding(top = 16.dp)
                 .fillMaxWidth()
                 .horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),

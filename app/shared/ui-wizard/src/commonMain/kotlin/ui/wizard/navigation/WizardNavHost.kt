@@ -9,18 +9,27 @@
 
 package me.him188.ani.app.ui.wizard.navigation
 
-import androidx.compose.foundation.layout.Column
+import androidx.compose.animation.core.AnimationState
+import androidx.compose.animation.core.animateTo
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.TopAppBarScrollBehavior
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -40,13 +49,22 @@ fun WizardNavHost(
     modifier: Modifier = Modifier,
     motionScheme: NavigationMotionScheme = WizardDefaults.motionScheme,
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
-    indicatorBarScrollBehavior: TopAppBarScrollBehavior? = null,
     content: WizardNavHostScope.() -> Unit,
 ) {
     val navController = rememberNavController()
     controller.setNavController(navController)
-    controller.setIndicatorBarScrollBehavior(indicatorBarScrollBehavior)
 
+    val topAppBarState = rememberTopAppBarState()
+    val lazyListState = rememberLazyListState()
+    val indicatorBarScrollable by derivedStateOf {
+        (lazyListState.canScrollForward && lazyListState.canScrollBackward) ||
+                topAppBarState.collapsedFraction != 0f
+
+    }
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
+        state = topAppBarState,
+        canScroll = { indicatorBarScrollable },
+    )
     DisposableEffect(controller, content) {
         val steps = WizardNavHostScope(controller).apply(content).build()
         controller.setupSteps(steps)
@@ -54,12 +72,17 @@ fun WizardNavHost(
     }
 
     LaunchedEffect(Unit) {
-        controller.subscribeNavDestChanges()
+        controller.subscribeNavDestChanges {
+            if (topAppBarState.heightOffset == 0f) return@subscribeNavDestChanges
+            val animation = AnimationState(topAppBarState.heightOffset)
+            animation.animateTo(0f) {
+                topAppBarState.heightOffset = value
+            }
+        }
     }
 
     val wizardState = controller.state.collectAsState(null).value ?: return
     val currentNavController = controller.navController.collectAsState().value ?: return
-    val currentScrollBehavior = controller.scrollBehavior.collectAsState().value
     val startDestination = controller.startDestinationAsState().value ?: return
 
     NavHost(
@@ -74,26 +97,35 @@ fun WizardNavHost(
         val stepCount = wizardState.steps.size
         wizardState.steps.forEachIndexed { index, step ->
             composable(step.key) {
-                val indicatorState = remember(stepCount, index, currentScrollBehavior) {
+                val indicatorState = key(
+                    stepCount,
+                    index,
+                    scrollBehavior,
+                    topAppBarState.collapsedFraction,
+                ) {
                     WizardIndicatorState(
                         currentStep = index + 1,
                         totalStep = stepCount,
-                        scrollBehavior = currentScrollBehavior,
+                        scrollBehavior = scrollBehavior,
+                        scrollCollapsedFraction = topAppBarState.collapsedFraction,
                     )
                 }
 
                 Scaffold(
                     topBar = { step.indicatorBar(indicatorState) },
-                    modifier = modifier,
+                    modifier = Modifier.fillMaxSize(),
                     contentWindowInsets = windowInsets,
                 ) { contentPadding ->
-                    Column(
+                    LazyColumn(
+                        state = lazyListState,
                         modifier = Modifier
                             .padding(contentPadding)
-                            .fillMaxSize(),
+                            .fillMaxSize()
+                            .nestedScroll(scrollBehavior.nestedScrollConnection),
                     ) {
-                        step.content()
-                        step.controlBar()
+                        item { step.content() }
+                        item { HorizontalDivider(Modifier.fillMaxWidth()) }
+                        item { step.controlBar() }
                     }
                 }
             }

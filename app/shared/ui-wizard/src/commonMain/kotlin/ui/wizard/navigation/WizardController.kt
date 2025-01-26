@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.ui.wizard.navigation
 
-import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
@@ -42,13 +41,11 @@ fun rememberWizardController(): WizardController {
 @Stable
 class WizardController() {
     private val _controller = MutableStateFlow<NavHostController?>(null)
-    private val _scrollBehavior = MutableStateFlow<TopAppBarScrollBehavior?>(null)
 
     private val steps = MutableStateFlow(emptyMap<String, WizardStep>())
     private val currentStepKey: MutableStateFlow<String?> = MutableStateFlow(null)
 
     val navController: StateFlow<NavHostController?> = _controller
-    val scrollBehavior: StateFlow<TopAppBarScrollBehavior?> = _scrollBehavior
 
     val state: Flow<WizardState?> = steps.map { step ->
         WizardState(
@@ -58,10 +55,6 @@ class WizardController() {
 
     fun setNavController(controller: NavHostController) {
         _controller.update { controller }
-    }
-
-    fun setIndicatorBarScrollBehavior(scrollBehavior: TopAppBarScrollBehavior?) {
-        _scrollBehavior.update { scrollBehavior }
     }
 
     fun setupSteps(steps: Map<String, WizardStep>) {
@@ -79,7 +72,9 @@ class WizardController() {
         }
     }
 
-    internal suspend fun subscribeNavDestChanges() {
+    internal suspend fun subscribeNavDestChanges(
+        onUpdate: suspend (String?) -> Unit = { }
+    ) {
         snapshotFlow { navController.value }
             .filterNotNull()
             .flatMapLatest { it.currentBackStackEntryFlow }
@@ -87,6 +82,7 @@ class WizardController() {
                 val stepKey = entry.destination.route
                 if (steps.value[stepKey] != null) {
                     currentStepKey.update { stepKey }
+                    onUpdate(stepKey)
                 }
             }
     }

@@ -31,5 +31,6 @@ class WizardStep(
 class WizardIndicatorState(
     val currentStep: Int,
     val totalStep: Int,
-    val scrollBehavior: TopAppBarScrollBehavior?,
+    val scrollBehavior: TopAppBarScrollBehavior,
+    val scrollCollapsedFraction: Float,
 )
