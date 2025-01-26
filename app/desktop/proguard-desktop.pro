@@ -116,4 +116,29 @@
 -keep class com.jthemedetecor.** { *; } #1404 OsThemeDetector
 -keep class oshi.** { *; } #1404 OsThemeDetector
 
+# LayoutHitTestOwner ProGuard rules
+# 保持被反射调用的类
+-keep class androidx.compose.foundation.HoverableNode { *; }
+-keep class androidx.compose.foundation.gestures.ScrollableNode { *; }
+
+-keep class androidx.compose.ui.scene.PlatformLayersComposeSceneImpl { *; }
+-keep class androidx.compose.ui.scene.CanvasLayersComposeSceneImpl { *; }
+-keep class androidx.compose.ui.scene.CanvasLayersComposeSceneImpl$AttachedComposeSceneLayer { *; }
+
+# 保持被反射访问的字段和方法
+-keepclassmembers class androidx.compose.ui.scene.PlatformLayersComposeSceneImpl {
+    private *** getMainOwner();  # 反射调用的方法
+}
+
+-keepclassmembers class androidx.compose.ui.scene.CanvasLayersComposeSceneImpl {
+    private *** mainOwner;       # 反射访问的字段
+    private *** _layersCopyCache;
+    private *** focusedLayer;
+}
+
+-keepclassmembers class androidx.compose.ui.scene.CanvasLayersComposeSceneImpl$AttachedComposeSceneLayer {
+    private *** owner;           # 反射访问的字段
+    private *** isInBounds(...); # 反射调用的方法
+}
+
 -verbose

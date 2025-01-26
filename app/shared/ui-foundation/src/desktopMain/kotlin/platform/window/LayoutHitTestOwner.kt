@@ -11,6 +11,7 @@
 
 package me.him188.ani.app.platform.window
 
+import androidx.compose.foundation.AbstractClickableNode
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.InternalComposeUiApi
@@ -64,6 +65,10 @@ private abstract class ReflectLayoutHitTestOwner : LayoutHitTestOwner {
         // pointer input modifier node detection for Material 3 components
         for (index in result.lastIndex downTo result.lastIndex - 1) {
             val node = result.getOrNull(index) ?: return false
+            //SelectableNode, ClickableNode, CombinedClickableNode, ToggleableNode, TriStateToggleableNode
+            if (node is AbstractClickableNode) {
+                return true
+            }
             val nodeClassName = node.javaClass.name
             return excludeNodeNames.any { nodeClassName.contains(it) }
         }
@@ -72,9 +77,8 @@ private abstract class ReflectLayoutHitTestOwner : LayoutHitTestOwner {
 
     private val excludeNodeNames =
         listOf(
-            "ClickableNode",
-            "SelectableNode",
             "ScrollableNode",
+            "HoverableNode",
         )
 
 }
