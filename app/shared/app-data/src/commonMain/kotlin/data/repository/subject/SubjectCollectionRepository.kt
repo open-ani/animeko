@@ -86,6 +86,7 @@ import me.him188.ani.datasources.bangumi.processing.toCollectionType
 import me.him188.ani.datasources.bangumi.processing.toSubjectCollectionType
 import me.him188.ani.utils.coroutines.combine
 import me.him188.ani.utils.coroutines.flows.flowOfEmptyList
+import me.him188.ani.utils.ktor.ApiInvoker
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.platform.collections.toIntArray
 import me.him188.ani.utils.platform.currentTimeMillis
@@ -163,7 +164,7 @@ sealed class SubjectCollectionRepository(
 }
 
 class SubjectCollectionRepositoryImpl(
-    private val api: Flow<BangumiSubjectApi>,
+    private val api: ApiInvoker<DefaultApi>,
     private val bangumiSubjectService: BangumiSubjectService,
     private val subjectCollectionDao: SubjectCollectionDao,
     private val subjectRelationsDao: SubjectRelationsDao,
@@ -556,7 +557,7 @@ class SubjectCollectionRepositoryImpl(
         payload: BangumiUserSubjectCollectionModifyPayload,
     ) {
         withContext(defaultDispatcher) {
-            api.first().postUserCollection(subjectId, payload)
+            api { postUserCollection(subjectId, payload) }
             subjectCollectionDao.updateType(subjectId, payload.type.toCollectionType())
         }
     }
@@ -656,8 +657,8 @@ internal fun BatchSubjectDetails.toEntity(
             nsfw = nsfw,
             imageLarge = imageLarge,
             totalEpisodes =
-                @Suppress("DEPRECATION")
-                totalEpisodes,
+            @Suppress("DEPRECATION")
+            totalEpisodes,
             airDate = airDate,
             tags = tags,
             aliases = aliases,

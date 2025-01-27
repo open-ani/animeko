@@ -30,7 +30,7 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.window.core.layout.WindowWidthSizeClass
+import androidx.window.core.layout.WindowSizeClass
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
 import me.him188.ani.app.ui.foundation.theme.appColorScheme
 
@@ -152,7 +152,7 @@ object CarouselItemDefaults {
     @Composable
     fun itemSize(): CarouselItemSize {
         val windowSizeClass = currentWindowAdaptiveInfo1().windowSizeClass
-        val preferredWidth = if (windowSizeClass.windowWidthSizeClass >= WindowWidthSizeClass.MEDIUM) {
+        val preferredWidth = if (windowSizeClass.containsWidthDp(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)) {
             300.dp
         } else {
             240.dp

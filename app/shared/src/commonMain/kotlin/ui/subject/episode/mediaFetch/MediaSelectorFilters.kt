@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -26,6 +26,8 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.InputChip
+import androidx.compose.material3.InputChipDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
@@ -142,8 +144,9 @@ private fun <T : Any> MediaSelectorFilterChip(
     val selectedState by rememberUpdatedState(selected)
 
     Box {
+        val chipSelected = isSingleValue || selected != null
         InputChip(
-            selected = isSingleValue || selected != null,
+            selected = chipSelected,
             onClick = {
                 if (!isSingleValue) {
                     showDropdown = true
@@ -181,6 +184,11 @@ private fun <T : Any> MediaSelectorFilterChip(
                 }
             },
             modifier = modifier.heightIn(min = 40.dp),
+            border = InputChipDefaults.inputChipBorder(
+                enabled = true, chipSelected,
+                // M3 spec is outlineVariant, but we use outline for prominent visual
+                borderColor = MaterialTheme.colorScheme.outline,
+            ),
         )
 
         DropdownMenu(

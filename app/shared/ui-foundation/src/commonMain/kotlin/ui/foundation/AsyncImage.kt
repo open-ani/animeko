@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -22,13 +22,14 @@ import androidx.compose.ui.layout.ContentScale
 import coil3.Image
 import coil3.ImageLoader
 import coil3.PlatformContext
+import coil3.annotation.ExperimentalCoilApi
 import coil3.compose.AsyncImagePainter
 import coil3.memory.MemoryCache
-import coil3.network.ktor2.KtorNetworkFetcherFactory
+import coil3.network.NetworkFetcher
 import coil3.request.CachePolicy
 import coil3.request.crossfade
 import coil3.svg.SvgDecoder
-import io.ktor.client.HttpClient
+import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.platform.currentPlatform
 import me.him188.ani.utils.platform.isDesktop
 
@@ -148,9 +149,10 @@ fun AsyncImage(
     )
 }
 
+@OptIn(ExperimentalCoilApi::class)
 fun createDefaultImageLoader(
     context: PlatformContext,
-    client: HttpClient,
+    client: ScopedHttpClient,
     config: ImageLoader.Builder.() -> Unit = {}
 ): ImageLoader {
     return ImageLoader.Builder(context).apply {
@@ -173,9 +175,9 @@ fun createDefaultImageLoader(
             add(SvgDecoder.Factory())
 
             add(
-                KtorNetworkFetcherFactory(
-                    httpClient = {
-                        client
+                NetworkFetcher.Factory(
+                    networkClient = {
+                        ScopedHttpClientNetworkFetcher(client)
                     },
                 ),
             )

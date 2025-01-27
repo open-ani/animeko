@@ -74,35 +74,35 @@ jobs:
       with:
         timeout_minutes: '60'
         max_attempts: '3'
-        command: './gradlew "--stacktrace" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "--parallel" "-Pani.android.abis=x86_64"'
+        command: './gradlew "--stacktrace" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "--parallel" "-Pani.android.abis=x86_64"'
     - id: 'step-7'
       name: 'Update dev version name'
       uses: 'nick-fields/retry@v3'
       with:
         timeout_minutes: '120'
         max_attempts: '1'
-        command: './gradlew updateDevVersionNameFromGit "--no-configuration-cache" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "--parallel" "-Pani.android.abis=x86_64"'
+        command: './gradlew updateDevVersionNameFromGit "--no-configuration-cache" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "--parallel" "-Pani.android.abis=x86_64"'
     - id: 'step-8'
       name: 'Compile Kotlin'
       uses: 'nick-fields/retry@v3'
       with:
         timeout_minutes: '120'
         max_attempts: '2'
-        command: './gradlew compileKotlin compileCommonMainKotlinMetadata compileJvmMainKotlinMetadata compileKotlinDesktop compileKotlinMetadata "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "--parallel" "-Pani.android.abis=x86_64"'
+        command: './gradlew compileKotlin compileCommonMainKotlinMetadata compileJvmMainKotlinMetadata compileKotlinDesktop compileKotlinMetadata "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "--parallel" "-Pani.android.abis=x86_64"'
     - id: 'step-9'
       name: 'Compile Kotlin Android'
       uses: 'nick-fields/retry@v3'
       with:
         timeout_minutes: '120'
         max_attempts: '2'
-        command: './gradlew compileDebugKotlinAndroid compileReleaseKotlinAndroid "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "--parallel" "-Pani.android.abis=x86_64"'
+        command: './gradlew compileDebugKotlinAndroid compileReleaseKotlinAndroid "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "--parallel" "-Pani.android.abis=x86_64"'
     - id: 'step-10'
       name: 'Check'
       uses: 'nick-fields/retry@v3'
       with:
         timeout_minutes: '60'
         max_attempts: '2'
-        command: './gradlew check "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "--parallel" "-Pani.android.abis=x86_64"'
+        command: './gradlew check "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "--parallel" "-Pani.android.abis=x86_64"'
   build_github-windows-2019:
     name: 'Build (Windows Server 2019 x86_64)'
     runs-on:
@@ -150,42 +150,42 @@ jobs:
       with:
         timeout_minutes: '60'
         max_attempts: '3'
-        command: './gradlew "--stacktrace" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=x86_64"'
+        command: './gradlew "--stacktrace" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "--parallel" "-Pani.android.abis=x86_64"'
     - id: 'step-7'
       name: 'Update dev version name'
       uses: 'nick-fields/retry@v3'
       with:
         timeout_minutes: '120'
         max_attempts: '1'
-        command: './gradlew updateDevVersionNameFromGit "--no-configuration-cache" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=x86_64"'
+        command: './gradlew updateDevVersionNameFromGit "--no-configuration-cache" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "--parallel" "-Pani.android.abis=x86_64"'
     - id: 'step-8'
       name: 'Compile Kotlin'
       uses: 'nick-fields/retry@v3'
       with:
         timeout_minutes: '120'
         max_attempts: '2'
-        command: './gradlew compileKotlin compileCommonMainKotlinMetadata compileJvmMainKotlinMetadata compileKotlinDesktop compileKotlinMetadata "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=x86_64"'
+        command: './gradlew compileKotlin compileCommonMainKotlinMetadata compileJvmMainKotlinMetadata compileKotlinDesktop compileKotlinMetadata "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "--parallel" "-Pani.android.abis=x86_64"'
     - id: 'step-9'
       name: 'Compile Kotlin Android'
       uses: 'nick-fields/retry@v3'
       with:
         timeout_minutes: '120'
         max_attempts: '2'
-        command: './gradlew compileDebugKotlinAndroid compileReleaseKotlinAndroid "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=x86_64"'
+        command: './gradlew compileDebugKotlinAndroid compileReleaseKotlinAndroid "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "--parallel" "-Pani.android.abis=x86_64"'
     - id: 'step-10'
       name: 'Check'
       uses: 'nick-fields/retry@v3'
       with:
         timeout_minutes: '60'
         max_attempts: '2'
-        command: './gradlew check "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=x86_64"'
+        command: './gradlew check "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "--parallel" "-Pani.android.abis=x86_64"'
     - id: 'step-11'
       name: 'Package Desktop'
       uses: 'nick-fields/retry@v3'
       with:
         timeout_minutes: '120'
         max_attempts: '1'
-        command: './gradlew createReleaseDistributable "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=x86_64"'
+        command: './gradlew createReleaseDistributable "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "--parallel" "-Pani.android.abis=x86_64"'
     - id: 'step-12'
       name: 'Upload compose logs'
       uses: 'actions/upload-artifact@v4'
@@ -248,28 +248,28 @@ jobs:
       with:
         timeout_minutes: '60'
         max_attempts: '3'
-        command: './gradlew "--stacktrace" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.android.abis=x86_64"'
+        command: './gradlew "--stacktrace" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "-Pani.android.abis=x86_64"'
     - id: 'step-8'
       name: 'Update dev version name'
       uses: 'nick-fields/retry@v3'
       with:
         timeout_minutes: '120'
         max_attempts: '1'
-        command: './gradlew updateDevVersionNameFromGit "--no-configuration-cache" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.android.abis=x86_64"'
+        command: './gradlew updateDevVersionNameFromGit "--no-configuration-cache" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "-Pani.android.abis=x86_64"'
     - id: 'step-9'
       name: 'Compile Kotlin'
       uses: 'nick-fields/retry@v3'
       with:
         timeout_minutes: '120'
         max_attempts: '2'
-        command: './gradlew compileKotlin compileCommonMainKotlinMetadata compileJvmMainKotlinMetadata compileKotlinDesktop compileKotlinMetadata "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.android.abis=x86_64"'
+        command: './gradlew compileKotlin compileCommonMainKotlinMetadata compileJvmMainKotlinMetadata compileKotlinDesktop compileKotlinMetadata "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "-Pani.android.abis=x86_64"'
     - id: 'step-10'
       name: 'Compile Kotlin Android'
       uses: 'nick-fields/retry@v3'
       with:
         timeout_minutes: '120'
         max_attempts: '2'
-        command: './gradlew compileDebugKotlinAndroid compileReleaseKotlinAndroid "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.android.abis=x86_64"'
+        command: './gradlew compileDebugKotlinAndroid compileReleaseKotlinAndroid "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "-Pani.android.abis=x86_64"'
     - id: 'step-11'
       name: 'Enable KVM'
       run: |-
@@ -282,7 +282,7 @@ jobs:
       with:
         timeout_minutes: '120'
         max_attempts: '1'
-        command: './gradlew assembleDebugAndroidTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.android.abis=x86_64"'
+        command: './gradlew assembleDebugAndroidTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "-Pani.android.abis=x86_64"'
     - id: 'step-13'
       name: 'Android Instrumented Test (api=30, arch=x86_64)'
       uses: 'reactivecircus/android-emulator-runner@v2'
@@ -290,7 +290,7 @@ jobs:
         api-level: '30'
         arch: 'x86_64'
         emulator-boot-timeout: '1800'
-        script: './gradlew connectedDebugAndroidTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.android.abis=x86_64"'
+        script: './gradlew connectedDebugAndroidTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "-Pani.android.abis=x86_64"'
     - id: 'step-14'
       name: 'Uninstall emulators'
       run: |
@@ -309,7 +309,7 @@ jobs:
         api-level: '35'
         arch: 'x86_64'
         emulator-boot-timeout: '1800'
-        script: './gradlew connectedDebugAndroidTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.android.abis=x86_64"'
+        script: './gradlew connectedDebugAndroidTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "-Pani.android.abis=x86_64"'
     - id: 'step-17'
       name: 'Uninstall emulators'
       run: |
@@ -402,14 +402,14 @@ jobs:
       with:
         timeout_minutes: '60'
         max_attempts: '3'
-        command: './gradlew "--stacktrace" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g"'
+        command: './gradlew "--stacktrace" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}"'
     - id: 'step-10'
       name: 'Update dev version name'
       uses: 'nick-fields/retry@v3'
       with:
         timeout_minutes: '120'
         max_attempts: '1'
-        command: './gradlew updateDevVersionNameFromGit "--no-configuration-cache" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g"'
+        command: './gradlew updateDevVersionNameFromGit "--no-configuration-cache" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}"'
     - id: 'step-11'
       name: 'Prepare signing key'
       continue-on-error: true
@@ -425,21 +425,21 @@ jobs:
       with:
         timeout_minutes: '120'
         max_attempts: '2'
-        command: './gradlew compileKotlin compileCommonMainKotlinMetadata compileJvmMainKotlinMetadata compileKotlinDesktop compileKotlinMetadata "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g"'
+        command: './gradlew compileKotlin compileCommonMainKotlinMetadata compileJvmMainKotlinMetadata compileKotlinDesktop compileKotlinMetadata "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}"'
     - id: 'step-13'
       name: 'Compile Kotlin Android'
       uses: 'nick-fields/retry@v3'
       with:
         timeout_minutes: '120'
         max_attempts: '2'
-        command: './gradlew compileDebugKotlinAndroid compileReleaseKotlinAndroid "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g"'
+        command: './gradlew compileDebugKotlinAndroid compileReleaseKotlinAndroid "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}"'
     - id: 'step-14'
       name: 'Build Android Debug APKs'
       uses: 'nick-fields/retry@v3'
       with:
         timeout_minutes: '120'
         max_attempts: '1'
-        command: './gradlew assembleDebug "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g"'
+        command: './gradlew assembleDebug "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}"'
     - id: 'step-15'
       name: 'Upload Android Debug APK arm64-v8a'
       uses: 'actions/upload-artifact@v4'
@@ -474,7 +474,7 @@ jobs:
       with:
         timeout_minutes: '120'
         max_attempts: '1'
-        command: './gradlew assembleRelease "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g"'
+        command: './gradlew assembleRelease "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}"'
       env:
         signing_release_storeFileFromRoot: '${{ steps.step-11.outputs.filePath }}'
         signing_release_storePassword: '${{ secrets.SIGNING_RELEASE_STOREPASSWORD }}'
@@ -515,7 +515,7 @@ jobs:
       with:
         timeout_minutes: '60'
         max_attempts: '2'
-        command: './gradlew check "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g"'
+        command: './gradlew check "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}"'
   build_self-hosted-macos-15:
     name: 'Build (macOS 15 AArch64 (Self-Hosted))'
     runs-on:
@@ -598,42 +598,42 @@ jobs:
       with:
         timeout_minutes: '60'
         max_attempts: '3'
-        command: './gradlew "--stacktrace" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=arm64-v8a"'
+        command: './gradlew "--stacktrace" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "--parallel" "-Pani.android.abis=arm64-v8a"'
     - id: 'step-9'
       name: 'Update dev version name'
       uses: 'nick-fields/retry@v3'
       with:
         timeout_minutes: '120'
         max_attempts: '1'
-        command: './gradlew updateDevVersionNameFromGit "--no-configuration-cache" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=arm64-v8a"'
+        command: './gradlew updateDevVersionNameFromGit "--no-configuration-cache" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "--parallel" "-Pani.android.abis=arm64-v8a"'
     - id: 'step-10'
       name: 'Compile Kotlin'
       uses: 'nick-fields/retry@v3'
       with:
         timeout_minutes: '120'
         max_attempts: '2'
-        command: './gradlew compileKotlin compileCommonMainKotlinMetadata compileJvmMainKotlinMetadata compileKotlinDesktop compileKotlinMetadata "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=arm64-v8a"'
+        command: './gradlew compileKotlin compileCommonMainKotlinMetadata compileJvmMainKotlinMetadata compileKotlinDesktop compileKotlinMetadata "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "--parallel" "-Pani.android.abis=arm64-v8a"'
     - id: 'step-11'
       name: 'Compile Kotlin Android'
       uses: 'nick-fields/retry@v3'
       with:
         timeout_minutes: '120'
         max_attempts: '2'
-        command: './gradlew compileDebugKotlinAndroid compileReleaseKotlinAndroid "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=arm64-v8a"'
+        command: './gradlew compileDebugKotlinAndroid compileReleaseKotlinAndroid "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "--parallel" "-Pani.android.abis=arm64-v8a"'
     - id: 'step-12'
       name: 'Check'
       uses: 'nick-fields/retry@v3'
       with:
         timeout_minutes: '60'
         max_attempts: '2'
-        command: './gradlew check "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=arm64-v8a"'
+        command: './gradlew check "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "--parallel" "-Pani.android.abis=arm64-v8a"'
     - id: 'step-13'
       name: 'Build Android Instrumented Tests'
       uses: 'nick-fields/retry@v3'
       with:
         timeout_minutes: '120'
         max_attempts: '1'
-        command: './gradlew assembleDebugAndroidTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=arm64-v8a"'
+        command: './gradlew assembleDebugAndroidTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "--parallel" "-Pani.android.abis=arm64-v8a"'
     - id: 'step-14'
       name: 'Android Instrumented Test (api=30, arch=arm64-v8a)'
       uses: 'reactivecircus/android-emulator-runner@v2'
@@ -641,7 +641,7 @@ jobs:
         api-level: '30'
         arch: 'arm64-v8a'
         emulator-boot-timeout: '1800'
-        script: './gradlew connectedDebugAndroidTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=arm64-v8a"'
+        script: './gradlew connectedDebugAndroidTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "--parallel" "-Pani.android.abis=arm64-v8a"'
     - id: 'step-15'
       name: 'Android Instrumented Test (api=35, arch=arm64-v8a)'
       uses: 'reactivecircus/android-emulator-runner@v2'
@@ -649,14 +649,14 @@ jobs:
         api-level: '35'
         arch: 'arm64-v8a'
         emulator-boot-timeout: '1800'
-        script: './gradlew connectedDebugAndroidTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=arm64-v8a"'
+        script: './gradlew connectedDebugAndroidTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "--parallel" "-Pani.android.abis=arm64-v8a"'
     - id: 'step-16'
       name: 'Package Desktop'
       uses: 'nick-fields/retry@v3'
       with:
         timeout_minutes: '120'
         max_attempts: '1'
-        command: './gradlew packageReleaseDistributionForCurrentOS "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=arm64-v8a"'
+        command: './gradlew packageReleaseDistributionForCurrentOS "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "--parallel" "-Pani.android.abis=arm64-v8a"'
     - id: 'step-17'
       name: 'Upload compose logs'
       uses: 'actions/upload-artifact@v4'
@@ -706,6 +706,12 @@ jobs:
       timeout-minutes: 5
       shell: 'powershell'
       run: 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${{ github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "${{ github.workspace }}\ci-helper\verify" "anitorrent-load-test"'
+    - id: 'step-4'
+      name: 'Check that Dandanplay APP ID is valid'
+      timeout-minutes: 5
+      shell: 'powershell'
+      run: 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${{ github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "${{ github.workspace }}\ci-helper\verify" "dandanplay-app-id"'
+      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
   verify_github-windows-2022:
     name: 'Verify (Windows Server 2022 x86_64 (GitHub))'
     runs-on:
@@ -736,6 +742,12 @@ jobs:
       timeout-minutes: 5
       shell: 'powershell'
       run: 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${{ github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "${{ github.workspace }}\ci-helper\verify" "anitorrent-load-test"'
+    - id: 'step-4'
+      name: 'Check that Dandanplay APP ID is valid'
+      timeout-minutes: 5
+      shell: 'powershell'
+      run: 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${{ github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "${{ github.workspace }}\ci-helper\verify" "dandanplay-app-id"'
+      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
   verify_self-hosted-windows-10:
     name: 'Verify (Windows 10 x86_64 (Self-Hosted))'
     runs-on:
@@ -761,6 +773,12 @@ jobs:
       timeout-minutes: 5
       shell: 'powershell'
       run: 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${{ github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "${{ github.workspace }}\ci-helper\verify" "anitorrent-load-test"'
+    - id: 'step-3'
+      name: 'Check that Dandanplay APP ID is valid'
+      timeout-minutes: 5
+      shell: 'powershell'
+      run: 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${{ github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "${{ github.workspace }}\ci-helper\verify" "dandanplay-app-id"'
+      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
   verify_self-hosted-macos-15:
     name: 'Verify (macOS 15 AArch64 (Self-Hosted))'
     runs-on:
@@ -784,6 +802,11 @@ jobs:
       name: 'Check that Anitorrent can be loaded'
       timeout-minutes: 5
       run: '"$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" "$GITHUB_WORKSPACE"/*.dmg anitorrent-load-test'
+    - id: 'step-3'
+      name: 'Check that Dandanplay APP ID is valid'
+      timeout-minutes: 5
+      run: '"$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" "$GITHUB_WORKSPACE"/*.dmg dandanplay-app-id'
+      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
   verify_github-macos-14:
     name: 'Verify (macOS 14 AArch64 (GitHub))'
     runs-on:
@@ -813,6 +836,11 @@ jobs:
       name: 'Check that Anitorrent can be loaded'
       timeout-minutes: 5
       run: '"$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" "$GITHUB_WORKSPACE"/*.dmg anitorrent-load-test'
+    - id: 'step-4'
+      name: 'Check that Dandanplay APP ID is valid'
+      timeout-minutes: 5
+      run: '"$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" "$GITHUB_WORKSPACE"/*.dmg dandanplay-app-id'
+      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
   verify_github-macos-15:
     name: 'Verify (macOS 15 AArch64 (GitHub))'
     runs-on:
@@ -842,3 +870,8 @@ jobs:
       name: 'Check that Anitorrent can be loaded'
       timeout-minutes: 5
       run: '"$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" "$GITHUB_WORKSPACE"/*.dmg anitorrent-load-test'
+    - id: 'step-4'
+      name: 'Check that Dandanplay APP ID is valid'
+      timeout-minutes: 5
+      run: '"$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" "$GITHUB_WORKSPACE"/*.dmg dandanplay-app-id'
+      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'

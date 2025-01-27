@@ -56,6 +56,10 @@ data class ConstantProxyProvider(
     override val proxy: Flow<ProxyConfig?> = flowOf(value)
 }
 
+data class FlowProxyProvider(
+    override val proxy: Flow<ProxyConfig?>,
+) : ProxyProvider
+
 class SystemProxyProvider(
     backgroundScope: CoroutineScope,
 ) : ProxyProvider {

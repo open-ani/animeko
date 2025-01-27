@@ -56,6 +56,7 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -63,6 +64,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.launch
 import me.him188.ani.app.ui.adaptive.AniListDetailPaneScaffold
 import me.him188.ani.app.ui.adaptive.AniTopAppBar
 import me.him188.ani.app.ui.adaptive.AniTopAppBarDefaults
@@ -94,7 +97,7 @@ import me.him188.ani.app.ui.settings.tabs.theme.ThemeGroup
 import me.him188.ani.utils.platform.hasScrollingBug
 
 /**
- * @see renderPreferenceTab 查看名称
+ * @see getName 查看名称
  */
 typealias SettingsTab = me.him188.ani.app.navigation.SettingsTab
 
@@ -219,6 +222,8 @@ internal fun SettingsPageLayout(
 ) = Surface(color = containerColor) {
     val layoutParametersState by rememberUpdatedState(layoutParameters)
 
+    val coroutineScope = rememberCoroutineScope()
+
     @Stable
     fun SettingsTab?.orDefault(): SettingsTab? {
         return if (layoutParametersState.isSinglePane) {
@@ -232,7 +237,7 @@ internal fun SettingsPageLayout(
 
     val currentTab by remember(navigator) {
         derivedStateOf {
-            navigator.currentDestination?.content.orDefault()
+            navigator.currentDestination?.contentKey.orDefault()
         }
     }
 
@@ -250,7 +255,13 @@ internal fun SettingsPageLayout(
                 title = { AniTopAppBarDefaults.Title("设置") },
                 navigationIcon = {
                     if (navigator.canNavigateBack()) {
-                        BackNavigationIconButton({ navigator.navigateBack() })
+                        BackNavigationIconButton(
+                            onNavigateBack = {
+                                coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                                    navigator.navigateBack()
+                                }
+                            },
+                        )
                     } else {
                         navigationIcon()
                     }
@@ -280,7 +291,11 @@ internal fun SettingsPageLayout(
                                 icon = { Icon(getIcon(item), contentDescription = null) },
                                 label = { Text(getName(item)) },
                                 selected = item == currentTab,
-                                onClick = { navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, item) },
+                                onClick = {
+                                    coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                                        navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, item)
+                                    }
+                                },
                             )
                         }
                     }
@@ -297,7 +312,7 @@ internal fun SettingsPageLayout(
         // empty because our detailPaneContent already has it
         detailPane = {
             AnimatedContent(
-                navigator.currentDestination?.content,
+                navigator.currentDestination?.contentKey,
                 Modifier
                     .fillMaxSize(),
                 transitionSpec = AniThemeDefaults.standardAnimatedContentTransition,
@@ -312,7 +327,11 @@ internal fun SettingsPageLayout(
                             navigationIcon = {
                                 if (listDetailLayoutParameters.isSinglePane) {
                                     BackNavigationIconButton(
-                                        { navigator.navigateBack(BackNavigationBehavior.PopUntilScaffoldValueChange) },
+                                        {
+                                            coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                                                navigator.navigateBack(BackNavigationBehavior.PopUntilScaffoldValueChange)
+                                            }
+                                        },
                                     )
                                 }
                             },

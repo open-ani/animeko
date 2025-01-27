@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -11,18 +11,10 @@
 
 package me.him188.ani.app.ui.foundation.layout
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
-import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
-import androidx.compose.material3.adaptive.layout.PaneAdaptedValue
-import androidx.compose.material3.adaptive.layout.ThreePaneScaffoldScope
-import androidx.compose.material3.adaptive.layout.ThreePaneScaffoldValue
+import androidx.compose.material3.adaptive.layout.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
@@ -32,13 +24,17 @@ import me.him188.ani.app.ui.foundation.theme.EasingDurations
 import me.him188.ani.app.ui.foundation.theme.NavigationMotionScheme
 
 // 把过渡动画改为 fade 而不是带有回弹的 spring
+/**
+ * @see AnimatedPane
+ */
 @ExperimentalMaterial3AdaptiveApi
 @Composable
-fun ThreePaneScaffoldScope.ListDetailAnimatedPane(
+fun ThreePaneScaffoldPaneScope.ListDetailAnimatedPane(
     modifier: Modifier = Modifier,
     useSharedTransition: Boolean = false, // changed: for shared transitions
     content: (@Composable AnimatedVisibilityScope.() -> Unit),
 ) {
+    val role = paneRole
     val keepShowing =
         scaffoldStateTransition.currentState[role] != PaneAdaptedValue.Hidden &&
                 scaffoldStateTransition.targetState[role] != PaneAdaptedValue.Hidden
@@ -47,7 +43,7 @@ fun ThreePaneScaffoldScope.ListDetailAnimatedPane(
     scaffoldStateTransition.AnimatedVisibility(
         visible = { value: ThreePaneScaffoldValue -> value[role] != PaneAdaptedValue.Hidden },
         modifier =
-        modifier
+            modifier
 //            .animateBounds(
 //                animateFraction = animateFraction,
 //                positionAnimationSpec = tween(500, easing = EmphasizedEasing), // changed: custom animation spec
@@ -55,7 +51,7 @@ fun ThreePaneScaffoldScope.ListDetailAnimatedPane(
 //                lookaheadScope = this,
 //                enabled = keepShowing,
 //            )
-            .then(if (keepShowing) Modifier else Modifier.clipToBounds()),
+                .then(if (keepShowing) Modifier else Modifier.clipToBounds()),
         enter = when {
             useSharedTransition -> {
                 fadeIn() + expandVertically()

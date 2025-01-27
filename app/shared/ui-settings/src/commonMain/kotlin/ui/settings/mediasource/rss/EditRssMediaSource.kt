@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -41,10 +41,12 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.window.core.layout.WindowWidthSizeClass
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceCodecManager
 import me.him188.ani.app.domain.mediasource.rss.RssMediaSource
 import me.him188.ani.app.domain.mediasource.rss.RssMediaSourceArguments
@@ -55,6 +57,7 @@ import me.him188.ani.app.ui.foundation.layout.PaddingValuesSides
 import me.him188.ani.app.ui.foundation.layout.ThreePaneScaffoldValueConverter.ExtraPaneForNestedDetails
 import me.him188.ani.app.ui.foundation.layout.convert
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
+import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.only
 import me.him188.ani.app.ui.foundation.layout.panePadding
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
@@ -162,13 +165,15 @@ fun EditRssMediaSourcePage(
     testState: RssTestPaneState,
     mediaDetailsColumn: @Composable (Media) -> Unit,
     modifier: Modifier = Modifier,
-    navigator: ThreePaneScaffoldNavigator<Nothing> = rememberListDetailPaneScaffoldNavigator(),
+    navigator: ThreePaneScaffoldNavigator<*> = rememberListDetailPaneScaffoldNavigator(),
     windowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
     navigationIcon: @Composable () -> Unit = {},
 ) {
     LaunchedEffect(Unit) {
         testState.searcher.observeTestDataChanges(testState.testDataState)
     }
+
+    val coroutineScope = rememberCoroutineScope()
 
     Scaffold(
         modifier
@@ -191,7 +196,13 @@ fun EditRssMediaSourcePage(
                     },
                     navigationIcon = {
                         if (navigator.canNavigateBack()) {
-                            BackNavigationIconButton({ navigator.navigateBack() })
+                            BackNavigationIconButton(
+                                onNavigateBack = {
+                                    coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                                        navigator.navigateBack()
+                                    }
+                                },
+                            )
                         } else {
                             navigationIcon()
                         }
@@ -200,7 +211,13 @@ fun EditRssMediaSourcePage(
                     windowInsets = windowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top),
                     actions = {
                         if (navigator.scaffoldValue[ListDetailPaneScaffoldRole.Detail] == PaneAdaptedValue.Hidden) {
-                            TextButton({ navigator.navigateTo(ListDetailPaneScaffoldRole.Detail) }) {
+                            TextButton(
+                                onClick = {
+                                    coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                                        navigator.navigateTo(ListDetailPaneScaffoldRole.Detail)
+                                    }
+                                },
+                            ) {
                                 Text("测试")
                             }
                         }
@@ -230,7 +247,9 @@ fun EditRssMediaSourcePage(
         contentWindowInsets = windowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
     ) { paddingValues ->
         BackHandler(navigator.canNavigateBack()) {
-            navigator.navigateBack()
+            coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                navigator.navigateBack()
+            }
         }
 
         val panePadding = currentWindowAdaptiveInfo1().windowSizeClass.panePadding
@@ -251,7 +270,11 @@ fun EditRssMediaSourcePage(
                 ListDetailAnimatedPane {
                     RssTestPane(
                         testState,
-                        { navigator.navigateTo(ListDetailPaneScaffoldRole.Extra) },
+                        onNavigateToDetails = {
+                            coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                                navigator.navigateTo(ListDetailPaneScaffoldRole.Extra)
+                            }
+                        },
                         Modifier.fillMaxSize(),
                         contentPadding = panePaddingVertical,
                     )
@@ -265,9 +288,13 @@ fun EditRssMediaSourcePage(
                 ListDetailAnimatedPane {
                     Crossfade(testState.viewingItem) { item ->
                         item ?: return@Crossfade
-                        if (currentWindowAdaptiveInfo1().windowSizeClass.windowWidthSizeClass != WindowWidthSizeClass.COMPACT) {
+                        if (currentWindowAdaptiveInfo1().windowSizeClass.isWidthAtLeastMedium) {
                             SideSheetPane(
-                                onClose = { navigator.navigateBack() },
+                                onClose = {
+                                    coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                                        navigator.navigateBack()
+                                    }
+                                },
                                 Modifier.padding(panePaddingVertical),
                             ) {
                                 RssDetailPane(

@@ -27,7 +27,7 @@ import androidx.compose.material.icons.outlined.Subtitles
 import androidx.compose.material.icons.outlined.WorkspacePremium
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.ErrorOutline
-import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardColors
 import androidx.compose.material3.CardDefaults
@@ -118,7 +118,7 @@ fun DanmakuSourceCard(
                 trailingContent = {
                     Box {
                         IconButton(onClickSettings, Modifier.offset(x = 8.dp)) {
-                            Icon(Icons.Rounded.Settings, "设置 ${info.providerId}")
+                            Icon(Icons.Rounded.MoreVert, "设置 ${info.providerId}")
                         }
                         dropdown()
                     }

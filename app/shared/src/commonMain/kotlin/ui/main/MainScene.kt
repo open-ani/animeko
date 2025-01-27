@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -37,12 +37,15 @@ import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.launch
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.MainScenePage
 import me.him188.ani.app.navigation.getIcon
@@ -61,7 +64,7 @@ import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBarPadding
-import me.him188.ani.app.ui.foundation.layout.isAtLeastMedium
+import me.him188.ani.app.ui.foundation.layout.isHeightAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.setRequestFullScreen
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
@@ -119,7 +122,7 @@ private fun MainSceneContent(
                         { onNavigateToPage(MainScenePage.Search) },
                         Modifier
                             .desktopTitleBarPadding()
-                            .ifThen(currentWindowAdaptiveInfo1().windowSizeClass.windowHeightSizeClass.isAtLeastMedium) {
+                            .ifThen(currentWindowAdaptiveInfo1().windowSizeClass.isHeightAtLeastMedium) {
                                 // 移动端横屏不增加额外 padding
                                 padding(vertical = 48.dp)
                             },
@@ -131,7 +134,7 @@ private fun MainSceneContent(
                 navigationRailFooter = {
                     NavigationRailItem(
                         modifier = Modifier.padding(bottom = itemSpacing)
-                            .ifThen(currentWindowAdaptiveInfo1().windowSizeClass.windowHeightSizeClass.isAtLeastMedium) {
+                            .ifThen(currentWindowAdaptiveInfo1().windowSizeClass.isHeightAtLeastMedium) {
                                 // 移动端横屏不增加额外 padding
                                 padding(vertical = 16.dp)
                             },
@@ -159,6 +162,7 @@ private fun MainSceneContent(
         modifier,
         layoutType = navigationLayoutType,
     ) {
+        val coroutineScope = rememberCoroutineScope()
         val navigator by rememberUpdatedState(LocalNavigator.current)
         AnimatedContent(
             page,
@@ -237,8 +241,10 @@ private fun MainSceneContent(
                                         // 只有在单面板模式下才显示返回按钮
                                         if (listDetailLayoutParameters.isSinglePane) {
                                             BackNavigationIconButton(
-                                                {
-                                                    listDetailNavigator.navigateBack()
+                                                onNavigateBack = {
+                                                    coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                                                        listDetailNavigator.navigateBack()
+                                                    }
                                                 },
                                             )
                                         }
@@ -249,7 +255,9 @@ private fun MainSceneContent(
                             onSelect = { index, item ->
                                 vm.searchPageState.selectedItemIndex = index
                                 vm.viewSubjectDetails(item)
-                                listDetailNavigator.navigateTo(ListDetailPaneScaffoldRole.Detail)
+                                coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                                    listDetailNavigator.navigateTo(ListDetailPaneScaffoldRole.Detail)
+                                }
                             },
                             navigator = listDetailNavigator,
                             contentWindowInsets = WindowInsets.safeDrawing, // 不包含 macos 标题栏, 因为左侧有 navigation rail

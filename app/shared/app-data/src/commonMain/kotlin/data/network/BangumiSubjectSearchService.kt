@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -11,8 +11,6 @@ package me.him188.ani.app.data.network
 
 import androidx.collection.IntList
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.repository.RepositoryRateLimitedException
 import me.him188.ani.app.domain.mediasource.MediaListFilters
@@ -23,11 +21,12 @@ import me.him188.ani.datasources.bangumi.models.BangumiSubjectType
 import me.him188.ani.datasources.bangumi.models.subjects.BangumiLegacySubject
 import me.him188.ani.datasources.bangumi.models.subjects.BangumiSubjectImageSize
 import me.him188.ani.utils.coroutines.IO_
+import me.him188.ani.utils.ktor.ApiInvoker
 import me.him188.ani.utils.platform.collections.mapToIntList
 import kotlin.coroutines.CoroutineContext
 
 class BangumiSubjectSearchService(
-    private val searchApi: Flow<BangumiSearchApi>,
+    private val searchApi: ApiInvoker<BangumiSearchApi>,
     private val ioDispatcher: CoroutineContext = Dispatchers.IO_,
 ) {
     suspend fun searchSubjectIds(
@@ -80,11 +79,10 @@ class BangumiSubjectSearchService(
         useNewApi: Boolean,
         offset: Int? = null,
         limit: Int? = null,
-    ): Either<List<BangumiSearchSubjectNewApi>?, List<BangumiLegacySubject>> {
-        val api = searchApi.first()
+    ): Either<List<BangumiSearchSubjectNewApi>?, List<BangumiLegacySubject>> = searchApi {
         if (useNewApi) {
-            return Either.Left(
-                api.searchSubjectByKeywords(
+            Either.Left(
+                searchSubjectByKeywords(
                     keyword,
                     offset = offset,
                     limit = limit,
@@ -93,8 +91,8 @@ class BangumiSubjectSearchService(
             )
         } else {
             try {
-                return Either.Right(
-                    api.searchSubjectsByKeywordsWithOldApi(
+                Either.Right(
+                    searchSubjectsByKeywordsWithOldApi(
                         keyword,
                         type = BangumiSubjectType.Anime,
                         responseGroup = BangumiSubjectImageSize.SMALL,

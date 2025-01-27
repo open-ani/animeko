@@ -30,9 +30,12 @@ import me.him188.ani.app.data.network.SendDanmakuException
 import me.him188.ani.app.data.network.protocol.DanmakuInfo
 import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.data.repository.user.SettingsRepository
+import me.him188.ani.app.domain.foundation.HttpClientProvider
+import me.him188.ani.app.domain.foundation.get
 import me.him188.ani.app.domain.session.OpaqueSession
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.session.verifiedAccessToken
+import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.platform.getAniUserAgent
 import me.him188.ani.app.ui.foundation.BackgroundScope
 import me.him188.ani.app.ui.foundation.HasBackgroundScope
@@ -44,8 +47,9 @@ import me.him188.ani.danmaku.api.DanmakuProvider
 import me.him188.ani.danmaku.api.DanmakuProviderConfig
 import me.him188.ani.danmaku.api.DanmakuSearchRequest
 import me.him188.ani.danmaku.dandanplay.DandanplayDanmakuProvider
+import me.him188.ani.utils.coroutines.closeOnReplacement
 import me.him188.ani.utils.coroutines.mapAutoClose
-import me.him188.ani.utils.coroutines.mapAutoCloseCollection
+import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
@@ -72,6 +76,7 @@ interface DanmakuManager {
 
 object DanmakuProviderLoader {
     fun load(
+        client: ScopedHttpClient,
         config: (id: String) -> DanmakuProviderConfig,
     ): List<DanmakuProvider> {
         // 待 https://youtrack.jetbrains.com/issue/KT-65362/Cannot-resolve-declarations-from-a-dependency-when-there-are-multiple-JVM-only-project-dependencies-in-a-JVM-Android-MPP
@@ -82,7 +87,7 @@ object DanmakuProviderLoader {
             AniDanmakuProvider.Factory(),
         )
         return factories
-            .map { factory -> factory.create(config(factory.id)) }
+            .map { factory -> factory.create(config(factory.id), client) }
     }
 }
 
@@ -91,29 +96,34 @@ class DanmakuManagerImpl(
 ) : DanmakuManager, KoinComponent, HasBackgroundScope by BackgroundScope(parentCoroutineContext) {
     private val settingsRepository: SettingsRepository by inject()
     private val sessionManager: SessionManager by inject()
+    private val httpClientProvider: HttpClientProvider by inject()
 
     private val config = settingsRepository.danmakuSettings.flow.map { config ->
         DanmakuProviderConfig(
             userAgent = getAniUserAgent(),
             useGlobal = config.useGlobal,
+            dandanplayAppId = currentAniBuildConfig.dandanplayAppId,
+            dandanplayAppSecret = currentAniBuildConfig.dandanplayAppSecret,
         )
     }
 
     /**
      * @see DanmakuProviderLoader
      */
-    private val providers: Flow<List<DanmakuProvider>> = config.mapAutoCloseCollection { config ->
-        DanmakuProviderLoader.load { config }
+    private val providers: Flow<List<DanmakuProvider>> = config.map { config ->
+        DanmakuProviderLoader.load(httpClientProvider.get()) { config }
     }.shareInBackground(started = SharingStarted.Lazily)
 
     @OptIn(OpaqueSession::class)
     private val sender: Flow<AniDanmakuSender> = config.mapAutoClose { config ->
         AniDanmakuSenderImpl(
+            httpClientProvider.get(),
             config,
             sessionManager.verifiedAccessToken, // TODO: Handle danmaku sender errors 
             backgroundScope.coroutineContext,
         )
-    }.shareInBackground(started = SharingStarted.Lazily)
+    }.closeOnReplacement()
+        .shareInBackground(started = SharingStarted.Lazily)
 
     private companion object {
         private val logger = logger<DanmakuManagerImpl>()
