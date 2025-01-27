@@ -85,7 +85,6 @@ import me.him188.ani.utils.coroutines.flows.FlowRestarter
 import me.him188.ani.utils.coroutines.flows.FlowRunning
 import me.him188.ani.utils.coroutines.flows.restartable
 import me.him188.ani.utils.coroutines.update
-import me.him188.ani.utils.ktor.UnsafeScopedHttpClientApi
 import me.him188.ani.utils.logging.trace
 import me.him188.ani.utils.platform.Uuid
 import me.him188.ani.utils.platform.currentTimeMillis
@@ -253,17 +252,14 @@ class WelcomeViewModel : AbstractSettingsViewModel(), KoinComponent {
     init {
         launchInBackground {
             clientProvider.configurationFlow
-                .combine(proxyTestCases) { _, cases -> cases }
+                .combine(proxyTestCases) { _, cases ->
+                    clientProvider.get(emptySet()) to cases
+                }
                 .restartable(restarter = proxyTestRestarter)
-                .collectLatest { cases ->
-                    val scoped = clientProvider.get(emptySet())
-                    @OptIn(UnsafeScopedHttpClientApi::class)
+                .collectLatest { (scoped, cases) ->
                     proxyTestTasker.launch {
-                        val ticket = scoped.borrow()
-                        try {
-                            startProxyTestServers(ticket.client, cases)
-                        } finally {
-                            scoped.returnClient(ticket)
+                        scoped.use {
+                            startProxyTestServers(this, cases)
                         }
                     }
                 }
