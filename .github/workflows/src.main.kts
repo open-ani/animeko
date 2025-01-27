@@ -562,6 +562,7 @@ fun getVerifyJobBody(
                 run(
                     name = task.step,
                     command = shell($$""""$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" "$GITHUB_WORKSPACE"/*.dmg $${task.name}"""),
+                    `if` = task.`if`,
                     timeoutMinutes = task.timeoutMinutes,
                 )
             }

@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepository
+import me.him188.ani.app.domain.episode.EpisodeSession
 import me.him188.ani.app.domain.episode.UnsafeEpisodeSessionApi
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
@@ -35,7 +36,7 @@ class RememberPlayProgressExtension(
 ) : PlayerExtension(name = "SaveProgressExtension") {
     private val playProgressRepository: EpisodePlayHistoryRepository by koin.inject()
 
-    override fun onStart(backgroundTaskScope: ExtensionBackgroundTaskScope) {
+    override fun onStart(episodeSession: EpisodeSession, backgroundTaskScope: ExtensionBackgroundTaskScope) {
         backgroundTaskScope.launch("MediaSelectorListener") {
             context.sessionFlow.collectLatest { session ->
                 session.fetchSelectFlow.collectLatest inner@{ fetchSelect ->
@@ -53,13 +54,10 @@ class RememberPlayProgressExtension(
         backgroundTaskScope.launch("PlaybackStateListener") {
             val player = context.player
             player.playbackState.collect { playbackState ->
-                @OptIn(UnsafeEpisodeSessionApi::class)
-                val episodeId = context.getCurrentEpisodeId()
-
                 when (playbackState) {
                     // 加载播放进度
                     PlaybackState.READY -> {
-                        val positionMillis = playProgressRepository.getPositionMillisByEpisodeId(episodeId)
+                        val positionMillis = playProgressRepository.getPositionMillisByEpisodeId(episodeSession.episodeId)
                         if (positionMillis == null) {
                             logger.info { "Did not find saved position" }
                         } else {
@@ -73,11 +71,11 @@ class RememberPlayProgressExtension(
                     }
 
                     PlaybackState.PAUSED -> {
-                        savePlayProgressOrRemove(episodeId)
+                        savePlayProgressOrRemove(episodeSession.episodeId)
                     }
 
                     PlaybackState.FINISHED -> {
-                        savePlayProgressOrRemove(episodeId)
+                        savePlayProgressOrRemove(episodeSession.episodeId)
                     }
 
                     else -> Unit

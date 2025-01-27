@@ -22,7 +22,6 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import kotlinx.io.files.Path
 import me.him188.ani.app.data.persistent.MemoryDataStore
 import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepository
 import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepositoryImpl
@@ -31,13 +30,10 @@ import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.media.resolver.HttpStreamingMediaResolver
 import me.him188.ani.app.domain.media.resolver.LocalFileMediaResolver
 import me.him188.ani.app.domain.media.resolver.MediaResolver
-import me.him188.ani.app.domain.media.resolver.TorrentMediaResolver
 import me.him188.ani.app.domain.session.PreviewSessionManager
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.settings.NoProxyProvider
 import me.him188.ani.app.domain.settings.ProxyProvider
-import me.him188.ani.app.domain.torrent.DefaultTorrentManager
-import me.him188.ani.app.domain.torrent.TorrentManager
 import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.navigation.BrowserNavigator
 import me.him188.ani.app.navigation.LocalNavigator
@@ -47,7 +43,6 @@ import me.him188.ani.app.platform.PermissionManager
 import me.him188.ani.app.ui.foundation.theme.AniTheme
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.Toaster
-import me.him188.ani.utils.io.inSystem
 import me.him188.ani.utils.platform.annotations.TestOnly
 import org.koin.core.context.startKoin
 import org.koin.core.context.stopKoin
@@ -81,20 +76,10 @@ fun ProvideCompositionLocalsForPreview(
                     single<SessionManager> { PreviewSessionManager }
                     factory<MediaResolver> {
                         MediaResolver.from(
-                            get<TorrentManager>().engines
-                                .map { TorrentMediaResolver(it) }
-                                .plus(LocalFileMediaResolver())
-                                .plus(HttpStreamingMediaResolver()),
-                        )
-                    }
-                    single<TorrentManager> {
-                        DefaultTorrentManager.create(
-                            coroutineScope.coroutineContext,
-                            get(),
-                            proxyProvider = get<ProxyProvider>().proxy,
-                            get(),
-                            get(),
-                            baseSaveDir = { Path("preview-cache").inSystem },
+                            listOf(
+                                LocalFileMediaResolver(),
+                                HttpStreamingMediaResolver(),
+                            ),
                         )
                     }
                     single<PermissionManager> { GrantedPermissionManager }

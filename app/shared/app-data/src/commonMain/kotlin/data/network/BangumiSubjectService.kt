@@ -62,6 +62,7 @@ import me.him188.ani.datasources.bangumi.models.BangumiUserSubjectCollectionModi
 import me.him188.ani.datasources.bangumi.processing.toCollectionType
 import me.him188.ani.datasources.bangumi.processing.toSubjectCollectionType
 import me.him188.ani.utils.coroutines.IO_
+import me.him188.ani.utils.ktor.ApiInvoker
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.platform.collections.associateWithTo
 import me.him188.ani.utils.platform.collections.mapToIntList
@@ -134,7 +135,7 @@ suspend inline fun BangumiSubjectService.setSubjectCollectionTypeOrDelete(
 
 class RemoteBangumiSubjectService(
     private val client: BangumiClient,
-    private val api: Flow<DefaultApi>,
+    private val api: ApiInvoker<DefaultApi>,
     private val sessionManager: SessionManager,
     private val usernameProvider: RepositoryUsernameProvider,
     private val ioDispatcher: CoroutineContext = Dispatchers.IO_,
@@ -142,7 +143,7 @@ class RemoteBangumiSubjectService(
     private val logger = logger<RemoteBangumiSubjectService>()
 
     override suspend fun getSubject(id: Int): BangumiSubject = withContext(ioDispatcher) {
-        client.getApi().getSubjectById(id).body()
+        api { getSubjectById(id).body() }
     }
 
     override suspend fun getSubjectCollections(
@@ -152,13 +153,15 @@ class RemoteBangumiSubjectService(
     ): List<BatchSubjectCollection> = withContext(ioDispatcher) {
         val username = usernameProvider.getOrThrow()
         val collections = try {
-            api.first().getUserCollectionsByUsername(
-                username,
-                subjectType = BangumiSubjectType.Anime,
-                type = type,
-                limit = limit,
-                offset = offset,
-            ).body().data.orEmpty()
+            api {
+                getUserCollectionsByUsername(
+                    username,
+                    subjectType = BangumiSubjectType.Anime,
+                    type = type,
+                    limit = limit,
+                    offset = offset,
+                ).body().data.orEmpty()
+            }
         } catch (e: ClientRequestException) {
             // invalid: 400 . Text: "{"title":"Bad Request","details":{"path":"/v0/users/him188/collections","method":"GET","query_string":"subject_type=2&type=1&limit=30&offset=35"},"request_id":".","description":"offset should be less than or equal to 34"}
             if (e.response.status == HttpStatusCode.BadRequest) {
@@ -268,7 +271,7 @@ class RemoteBangumiSubjectService(
                     async {
                         actorConcurrency.withPermit {
                             mutableIntObjectMapOf<List<BangumiPerson>>().apply {
-                                for (character in api.first().getRelatedCharactersBySubjectId(id).body()) {
+                                for (character in api { getRelatedCharactersBySubjectId(id).body() }) {
                                     put(character.id, character.actors.orEmpty())
                                 }
                             }
@@ -380,7 +383,7 @@ class RemoteBangumiSubjectService(
 
     override suspend fun patchSubjectCollection(subjectId: Int, payload: BangumiUserSubjectCollectionModifyPayload) {
         withContext(ioDispatcher) {
-            client.getApi().postUserCollection(subjectId, payload)
+            api { postUserCollection(subjectId, payload) }
         }
     }
 
@@ -393,12 +396,14 @@ class RemoteBangumiSubjectService(
         return sessionManager.username.filterNotNull().map { username ->
             val types = UnifiedCollectionType.entries - UnifiedCollectionType.NOT_COLLECTED
             val totals = IntArray(types.size) { type ->
-                client.getApi().getUserCollectionsByUsername(
-                    username,
-                    subjectType = BangumiSubjectType.Anime,
-                    type = types[type].toSubjectCollectionType(),
-                    limit = 1, // we only need the total count. API requires at least 1
-                ).body().total ?: 0
+                api {
+                    getUserCollectionsByUsername(
+                        username,
+                        subjectType = BangumiSubjectType.Anime,
+                        type = types[type].toSubjectCollectionType(),
+                        limit = 1, // we only need the total count. API requires at least 1
+                    ).body().total ?: 0
+                }
             }
             SubjectCollectionCounts(
                 wish = totals[UnifiedCollectionType.WISH.ordinal],
@@ -416,7 +421,7 @@ class RemoteBangumiSubjectService(
             emit(
                 try {
                     @OptIn(OpaqueSession::class)
-                    client.getApi().getUserCollection(sessionManager.username.first() ?: "-", subjectId).body()
+                    api { getUserCollection(sessionManager.username.first() ?: "-", subjectId).body() }
                 } catch (e: ResponseException) {
                     if (e.response.status == HttpStatusCode.NotFound) {
                         null
@@ -434,7 +439,7 @@ class RemoteBangumiSubjectService(
                 try {
                     @OptIn(OpaqueSession::class)
                     val username = sessionManager.username.first() ?: "-"
-                    client.getApi().getUserCollection(username, subjectId).body().type.toCollectionType()
+                    api { getUserCollection(username, subjectId).body().type.toCollectionType() }
                 } catch (e: ResponseException) {
                     if (e.response.status == HttpStatusCode.NotFound) {
                         UnifiedCollectionType.NOT_COLLECTED

@@ -48,7 +48,7 @@ import me.him188.ani.app.ui.foundation.animation.EmphasizedDecelerateEasing
 import me.him188.ani.app.ui.foundation.animation.StandardAccelerate
 import me.him188.ani.app.ui.foundation.animation.StandardDecelerate
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
-import me.him188.ani.app.ui.foundation.layout.isCompact
+import me.him188.ani.app.ui.foundation.layout.isWidthCompact
 import kotlin.math.roundToInt
 
 /**
@@ -226,7 +226,7 @@ data class NavigationMotionScheme(
 
         @Composable
         fun calculate(windowSizeClass: WindowSizeClass = currentWindowAdaptiveInfo1().windowSizeClass): NavigationMotionScheme {
-            val useSlide = windowSizeClass.windowWidthSizeClass.isCompact
+            val useSlide = windowSizeClass.isWidthCompact
 
             val enterTransition: EnterTransition = run {
                 if (useSlide) {

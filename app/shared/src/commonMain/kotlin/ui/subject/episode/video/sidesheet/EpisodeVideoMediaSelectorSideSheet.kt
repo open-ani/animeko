@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -25,7 +25,8 @@ import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.subject.episode.TAG_MEDIA_SELECTOR_SHEET
 import me.him188.ani.app.ui.subject.episode.mediaFetch.MediaSelectorState
 import me.him188.ani.app.ui.subject.episode.mediaFetch.MediaSelectorView
-import me.him188.ani.app.ui.subject.episode.mediaFetch.MediaSourceResultsPresentation
+import me.him188.ani.app.ui.subject.episode.mediaFetch.MediaSourceResultListPresentation
+import me.him188.ani.app.ui.subject.episode.mediaFetch.MediaSourceResultPresentation
 import me.him188.ani.app.ui.subject.episode.mediaFetch.MediaSourceResultsView
 import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheets
 import me.him188.ani.app.ui.subject.episode.video.settings.SideSheetLayout
@@ -34,9 +35,10 @@ import me.him188.ani.app.ui.subject.episode.video.settings.SideSheetLayout
 @Composable
 fun EpisodeVideoSideSheets.MediaSelectorSheet(
     mediaSelectorState: MediaSelectorState,
-    mediaSourceResultsPresentation: MediaSourceResultsPresentation,
+    mediaSourceResultListPresentation: MediaSourceResultListPresentation,
     onDismissRequest: () -> Unit,
     onRefresh: () -> Unit,
+    onRestartSource: (MediaSourceResultPresentation) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     SideSheetLayout(
@@ -52,7 +54,12 @@ fun EpisodeVideoSideSheets.MediaSelectorSheet(
         MediaSelectorView(
             mediaSelectorState,
             sourceResults = {
-                MediaSourceResultsView(mediaSourceResultsPresentation, mediaSelectorState, onRefresh)
+                MediaSourceResultsView(
+                    mediaSourceResultListPresentation,
+                    mediaSelectorState,
+                    onRefresh,
+                    onRestartSource,
+                )
             },
             modifier.padding(horizontal = 16.dp)
                 .fillMaxWidth()

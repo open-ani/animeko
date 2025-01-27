@@ -51,6 +51,9 @@ import me.him188.ani.app.data.repository.WindowStateRepositoryImpl
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.desktop.storage.AppFolderResolver
 import me.him188.ani.app.desktop.storage.AppInfo
+import me.him188.ani.app.domain.foundation.HttpClientProvider
+import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
+import me.him188.ani.app.domain.foundation.get
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.resolver.DesktopWebMediaResolver
 import me.him188.ani.app.domain.media.resolver.HttpStreamingMediaResolver
@@ -245,7 +248,7 @@ object AniDesktop {
                         DefaultTorrentManager.create(
                             coroutineScope.coroutineContext,
                             get(),
-                            proxyProvider = get<ProxyProvider>().proxy,
+                            client = get<HttpClientProvider>().get(ScopedHttpClientUserAgent.ANI),
                             get(),
                             get(),
                             baseSaveDir = {

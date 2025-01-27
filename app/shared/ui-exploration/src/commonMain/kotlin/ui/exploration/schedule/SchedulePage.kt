@@ -57,7 +57,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.window.core.layout.WindowSizeClass
-import androidx.window.core.layout.WindowWidthSizeClass
 import kotlinx.coroutines.launch
 import kotlinx.datetime.DayOfWeek
 import me.him188.ani.app.ui.adaptive.AniTopAppBar
@@ -65,8 +64,8 @@ import me.him188.ani.app.ui.adaptive.HorizontalScrollControlScaffoldOnDesktop
 import me.him188.ani.app.ui.foundation.HorizontalScrollControlState
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
-import me.him188.ani.app.ui.foundation.layout.compareTo
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
+import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
 import me.him188.ani.app.ui.foundation.pagerTabIndicatorOffset
 import me.him188.ani.app.ui.foundation.rememberHorizontalScrollControlState
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
@@ -337,7 +336,7 @@ data class SchedulePageLayoutParams private constructor(
 
         @Composable
         fun calculate(windowSizeClass: WindowSizeClass = currentWindowAdaptiveInfo1().windowSizeClass): SchedulePageLayoutParams {
-            return if (windowSizeClass.windowWidthSizeClass >= WindowWidthSizeClass.MEDIUM) {
+            return if (windowSizeClass.isWidthAtLeastMedium) {
                 Medium
             } else {
                 Compact

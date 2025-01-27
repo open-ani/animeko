@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -37,7 +36,7 @@ object SubjectCollectionTypeButtonDefaults {
     )
 
     @Composable
-    fun collectedBorder() = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(0.612f))
+    fun collectedBorder() = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
 }
 
 /**
@@ -56,8 +55,6 @@ fun SubjectCollectionTypeButton(
     onEdit: (newType: UnifiedCollectionType) -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    collectedColors: ButtonColors = SubjectCollectionTypeButtonDefaults.collectedButtonColors(),
-    collectedBorder: BorderStroke = SubjectCollectionTypeButtonDefaults.collectedBorder(),
 ) {
     val action = remember(type) {
         SubjectCollectionActionsForCollect.find { it.type == type }
@@ -72,9 +69,15 @@ fun SubjectCollectionTypeButton(
         if (type != UnifiedCollectionType.NOT_COLLECTED) {
             OutlinedButton(
                 onClick = onClick,
-                colors = collectedColors,
-                border = collectedBorder,
                 enabled = enabled,
+//                border = BorderStroke(
+//                    width = 1.dp,
+//                    color = if (enabled) {
+//                        MaterialTheme.colorScheme.outline
+//                    } else {
+//                        MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
+//                    },
+//                ),
             ) {
                 if (action != null) {
                     action.icon()

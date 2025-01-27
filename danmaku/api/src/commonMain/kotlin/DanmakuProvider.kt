@@ -9,12 +9,9 @@
 
 package me.him188.ani.danmaku.api
 
-import io.ktor.client.HttpClientConfig
 import kotlinx.serialization.Serializable
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.PackedDate
-import me.him188.ani.utils.ktor.createDefaultHttpClient
-import me.him188.ani.utils.ktor.registerLogging
 import me.him188.ani.utils.logging.thisLogger
 import kotlin.jvm.JvmStatic
 import kotlin.time.Duration
@@ -24,7 +21,7 @@ import kotlin.time.Duration
  *
  * @see DanmakuProviderFactory
  */
-interface DanmakuProvider : AutoCloseable {
+interface DanmakuProvider {
     val id: String
 
     /**
@@ -166,21 +163,6 @@ object DanmakuMatchers {
 }
 
 
-abstract class AbstractDanmakuProvider(
-    config: DanmakuProviderConfig,
-) : DanmakuProvider {
+abstract class AbstractDanmakuProvider : DanmakuProvider {
     protected val logger = thisLogger()
-
-    protected val client = createDefaultHttpClient {
-        applyDanmakuProviderConfig(config)
-        configureClient()
-    }.apply {
-        registerLogging(logger)
-    }
-
-    protected open fun HttpClientConfig<*>.configureClient() {}
-
-    override fun close() {
-        client.close()
-    }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -10,103 +10,55 @@
 package me.him188.ani.app.ui.subject.episode.mediaFetch
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import kotlinx.atomicfu.atomic
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
 import me.him188.ani.app.domain.media.TestMediaList
-import me.him188.ani.app.domain.media.fetch.FilteredMediaSourceResults
 import me.him188.ani.app.domain.media.fetch.MediaSourceFetchResult
 import me.him188.ani.app.domain.media.fetch.MediaSourceFetchState
-import me.him188.ani.app.domain.media.fetch.emptyMediaSourceResults
+import me.him188.ani.app.domain.media.fetch.MediaSourceResultsFilterer
 import me.him188.ani.app.domain.media.fetch.isDisabled
 import me.him188.ani.app.domain.media.fetch.isFailedOrAbandoned
 import me.him188.ani.app.domain.media.fetch.isWorking
-import me.him188.ani.app.ui.foundation.BackgroundScope
-import me.him188.ani.app.ui.foundation.HasBackgroundScope
-import me.him188.ani.app.ui.foundation.rememberBackgroundScope
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.source.MediaSourceInfo
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.mikan.MikanCNMediaSource
 import me.him188.ani.datasources.mikan.MikanMediaSource
-import me.him188.ani.utils.coroutines.onReplacement
 import me.him188.ani.utils.platform.annotations.TestOnly
-import kotlin.coroutines.CoroutineContext
-import kotlin.coroutines.EmptyCoroutineContext
+
 
 /**
  * 单个数据源的搜索结果.
  *
- * @see MediaSourceResultsPresentation
+ * @see MediaSourceResultListPresentation
  */
 @Stable
-class MediaSourceResultPresentation(
-    private val delegate: MediaSourceFetchResult,
-    parentCoroutineContext: CoroutineContext,
-) : AutoCloseable, HasBackgroundScope by BackgroundScope(parentCoroutineContext) {
-    val instanceId get() = delegate.instanceId
-    val mediaSourceId get() = delegate.mediaSourceId
-    val state: MediaSourceFetchState by delegate.state.produceState()
-    val isWorking by derivedStateOf { state.isWorking }
-    val isDisabled by derivedStateOf { state.isDisabled }
-    val isFailedOrAbandoned by derivedStateOf { state.isFailedOrAbandoned }
-
-    val info: MediaSourceInfo get() = delegate.sourceInfo
-
-    val kind = delegate.kind
-
-    val totalCount: Int by delegate.resultsIfEnabled
-        .map { it.size }
-        .produceState(0)
-
-    fun restart() = delegate.restart()
-    override fun close() {
-        backgroundScope.cancel()
-    }
-}
-
-@Composable
-fun rememberMediaSourceResultPresentation(
-    delegate: () -> MediaSourceFetchResult, // will not update
-): MediaSourceResultPresentation {
-    val background = rememberBackgroundScope() // bind to current composition
-    return remember {
-        MediaSourceResultPresentation(delegate(), background.backgroundScope.coroutineContext)
-    }
-}
-
-@Composable
-fun rememberMediaSourceResultsPresentation(
-    mediaSourceResults: () -> Flow<List<MediaSourceFetchResult>>,// will not update
-    settings: () -> Flow<MediaSelectorSettings>, // will not update
-    shareMillis: Long = 0L,
-): MediaSourceResultsPresentation {
-    val backgroundScope = rememberBackgroundScope()
-    return remember {
-        MediaSourceResultsPresentation(
-            FilteredMediaSourceResults(
-                mediaSourceResults(),
-                settings(),
-                shareMillis = shareMillis,
-            ),
-            backgroundScope.backgroundScope.coroutineContext,
-        )
-    }
+data class MediaSourceResultPresentation(
+    val instanceId: String,
+    val mediaSourceId: String,
+    val state: MediaSourceFetchState,
+    val info: MediaSourceInfo,
+    val kind: MediaSourceKind,
+    val totalCount: Int,
+) {
+    val isWorking: Boolean get() = state.isWorking
+    val isDisabled: Boolean get() = state.isDisabled
+    val isFailedOrAbandoned: Boolean get() = state.isFailedOrAbandoned
 }
 
 /**
@@ -114,43 +66,52 @@ fun rememberMediaSourceResultsPresentation(
  *
  * 对应 UI 是 "BT" 和 "WEB" 的两行列表, 列表包含 [MediaSourceResultPresentation]
  */
-@Stable
-class MediaSourceResultsPresentation(
-    results: FilteredMediaSourceResults,
-    parentCoroutineContext: CoroutineContext,
-    flowDispatcher: CoroutineContext = Dispatchers.Default,
-) : HasBackgroundScope by BackgroundScope(parentCoroutineContext) {
-    val list: List<MediaSourceResultPresentation> by results.filteredSourceResults
-        .map { list ->
-            list.map {
-                MediaSourceResultPresentation(it, backgroundScope.coroutineContext)
+@Immutable
+data class MediaSourceResultListPresentation(
+    val list: List<MediaSourceResultPresentation>,
+) {
+    val anyLoading: Boolean = list.any { it.isWorking }
+    val webSources: List<MediaSourceResultPresentation> = list.filter { it.kind == MediaSourceKind.WEB }
+    val btSources: List<MediaSourceResultPresentation> = list.filter { it.kind == MediaSourceKind.BitTorrent }
+    val enabledSourceCount: Int = list.count { !it.isDisabled && it.kind != MediaSourceKind.LocalCache }
+    val totalSourceCount: Int = list.count { it.kind != MediaSourceKind.LocalCache } // 缓存数据源属于内部的, 用户应当无感
+
+    companion object {
+        val Empty = MediaSourceResultListPresentation(emptyList())
+    }
+}
+
+class MediaSourceResultListPresenter(
+    resultListFlow: Flow<List<MediaSourceFetchResult>>,
+    flowScope: CoroutineScope,
+) {
+    val presentationFlow: Flow<List<MediaSourceResultPresentation>> = resultListFlow
+        .flatMapLatest { list ->
+            combine(
+                list.map { source ->
+                    combine(source.state, source.results) { state, results ->
+                        source.toPresentation(state, results.size)
+                    }
+                },
+            ) {
+                it.toList()
             }
         }
-        .onReplacement { list ->
-            list.forEach { it.close() }
-        }
-        .flowOn(flowDispatcher)
-        .produceState(emptyList())
+        .shareIn(flowScope, SharingStarted.WhileSubscribed(), replay = 1)
 
-    val anyLoading by derivedStateOf { list.any { it.isWorking } }
-
-    val webSources: List<MediaSourceResultPresentation> by derivedStateOf {
-        list.filter { it.kind == MediaSourceKind.WEB }
-    }
-    val btSources: List<MediaSourceResultPresentation> by derivedStateOf {
-        list.filter { it.kind == MediaSourceKind.BitTorrent }
-    }
-
-    val enabledSourceCount by derivedStateOf { list.count { !it.isDisabled && it.kind != MediaSourceKind.LocalCache } }
-    val totalSourceCount by derivedStateOf { list.count { it.kind != MediaSourceKind.LocalCache } } // 缓存数据源属于内部的, 用户应当无感
+    private fun MediaSourceFetchResult.toPresentation(
+        state: MediaSourceFetchState,
+        totalCount: Int
+    ): MediaSourceResultPresentation =
+        MediaSourceResultPresentation(
+            instanceId = instanceId,
+            mediaSourceId = mediaSourceId,
+            state = state,
+            info = sourceInfo,
+            kind = kind,
+            totalCount = totalCount,
+        )
 }
-
-private val EmptyMediaSourceResultsPresentation by lazy {
-    MediaSourceResultsPresentation(emptyMediaSourceResults(), EmptyCoroutineContext)
-}
-
-@Stable
-fun emptyMediaSourceResultsPresentation() = EmptyMediaSourceResultsPresentation
 
 
 ///////////////////////////////////////////////////////////////////////////
@@ -159,9 +120,11 @@ fun emptyMediaSourceResultsPresentation() = EmptyMediaSourceResultsPresentation
 
 @TestOnly
 @Composable
-fun rememberTestMediaSourceResults(): MediaSourceResultsPresentation = remember {
-    MediaSourceResultsPresentation(
-        FilteredMediaSourceResults(
+fun createTestMediaSourceResultsPresenter(
+    flowScope: CoroutineScope,
+): MediaSourceResultListPresenter {
+    return MediaSourceResultListPresenter(
+        MediaSourceResultsFilterer(
             results = flowOf(
                 listOf(
                     TestMediaSourceResult(
@@ -202,10 +165,58 @@ fun rememberTestMediaSourceResults(): MediaSourceResultsPresentation = remember 
                 ),
             ),
             settings = flowOf(MediaSelectorSettings.Default),
-        ),
-        EmptyCoroutineContext,
+            flowScope = flowScope,
+        ).filteredSourceResults,
+        flowScope = flowScope,
     )
 }
+
+@TestOnly
+val TestMediaSourceResultListPresentation
+    get() = MediaSourceResultListPresentation(
+        listOf(
+            MediaSourceResultPresentation(
+                instanceId = MikanMediaSource.ID,
+                mediaSourceId = MikanMediaSource.ID,
+                state = MediaSourceFetchState.Working,
+                info = MikanMediaSource.INFO,
+                kind = MediaSourceKind.BitTorrent,
+                totalCount = TestMediaList.size,
+            ),
+            MediaSourceResultPresentation(
+                instanceId = "dmhy",
+                mediaSourceId = "dmhy",
+                state = MediaSourceFetchState.Succeed(1),
+                info = MediaSourceInfo("dmhy"),
+                kind = MediaSourceKind.BitTorrent,
+                totalCount = TestMediaList.size,
+            ),
+            MediaSourceResultPresentation(
+                instanceId = "acg.rip",
+                mediaSourceId = "acg.rip",
+                state = MediaSourceFetchState.Disabled,
+                info = MediaSourceInfo("acg.rip"),
+                kind = MediaSourceKind.BitTorrent,
+                totalCount = TestMediaList.size,
+            ),
+            MediaSourceResultPresentation(
+                instanceId = "nyafun",
+                mediaSourceId = "nyafun",
+                state = MediaSourceFetchState.Succeed(1),
+                info = MediaSourceInfo("nyafun"),
+                kind = MediaSourceKind.WEB,
+                totalCount = TestMediaList.size,
+            ),
+            MediaSourceResultPresentation(
+                instanceId = MikanCNMediaSource.ID,
+                mediaSourceId = MikanCNMediaSource.ID,
+                state = MediaSourceFetchState.Failed(IllegalStateException(), 1),
+                info = MikanCNMediaSource.INFO,
+                kind = MediaSourceKind.BitTorrent,
+                totalCount = 0,
+            ),
+        ),
+    )
 
 private class TestMediaSourceResult(
     override val mediaSourceId: String,

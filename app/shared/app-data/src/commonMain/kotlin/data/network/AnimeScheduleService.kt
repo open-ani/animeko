@@ -32,20 +32,21 @@ import me.him188.ani.client.models.AniAnimeSeasonId
 import me.him188.ani.client.models.AniLatestAnimeSchedules
 import me.him188.ani.client.models.AniOnAirAnimeInfo
 import me.him188.ani.utils.coroutines.IO_
+import me.him188.ani.utils.ktor.ApiInvoker
 import kotlin.coroutines.CoroutineContext
 import kotlin.time.Duration.Companion.milliseconds
 
 class AnimeScheduleService(
-    apiLazy: Lazy<ScheduleAniApi>,
+    private val scheduleApi: ApiInvoker<ScheduleAniApi>,
     private val ioDispatcher: CoroutineContext = Dispatchers.IO_
 ) {
-    private val api by apiLazy
-
     suspend fun getSeasonIds(): List<AnimeSeasonId> {
         return withContext(ioDispatcher) {
             try {
-                api.getAnimeSeasons().body().list.map {
-                    it.toAnimeSeasonId()
+                scheduleApi {
+                    getAnimeSeasons().body().list.map {
+                        it.toAnimeSeasonId()
+                    }
                 }
             } catch (e: Exception) {
                 throw RepositoryException.wrapOrThrowCancellation(e)
@@ -58,7 +59,9 @@ class AnimeScheduleService(
      */
     suspend fun getScheduleInfo(seasonId: AnimeSeasonId): AnimeScheduleInfo? = withContext(ioDispatcher) {
         val resp = try {
-            api.getAnimeSeason(seasonId.id).body()
+            scheduleApi {
+                getAnimeSeason(seasonId.id).body()
+            }
         } catch (e: ClientRequestException) {
             if (e.response.status == HttpStatusCode.NotFound) {
                 return@withContext null
@@ -84,9 +87,11 @@ class AnimeScheduleService(
         }
         return withContext(ioDispatcher) {
             try {
-                val resp = api.getSubjectRecurrences(subjectIds)
-                resp.typedBody<AniBatchGetSubjectRecurrenceResponse>(typeInfo<AniBatchGetSubjectRecurrenceResponse>()).recurrences.map {
-                    it?.toAnimeRecurrence()
+                scheduleApi {
+                    val resp = getSubjectRecurrences(subjectIds)
+                    resp.typedBody<AniBatchGetSubjectRecurrenceResponse>(typeInfo<AniBatchGetSubjectRecurrenceResponse>()).recurrences.map {
+                        it?.toAnimeRecurrence()
+                    }
                 }
             } catch (e: Exception) {
                 throw RepositoryException.wrapOrThrowCancellation(e)
@@ -96,9 +101,11 @@ class AnimeScheduleService(
 
     suspend fun getLatestAnimeScheduleInfos(): List<AnimeScheduleInfo> = withContext(ioDispatcher) {
         try {
-            val resp = api.getLatestAnimeSeasons()
-            resp.typedBody<AniLatestAnimeSchedules>(typeInfo<AniLatestAnimeSchedules>()).list.map { item ->
-                AnimeScheduleInfo(item.seasonId.toAnimeSeasonId(), item.list.map { it.toAnimeScheduleInfo() })
+            scheduleApi {
+                val resp = getLatestAnimeSeasons()
+                resp.typedBody<AniLatestAnimeSchedules>(typeInfo<AniLatestAnimeSchedules>()).list.map { item ->
+                    AnimeScheduleInfo(item.seasonId.toAnimeSeasonId(), item.list.map { it.toAnimeScheduleInfo() })
+                }
             }
         } catch (e: Exception) {
             throw RepositoryException.wrapOrThrowCancellation(e)

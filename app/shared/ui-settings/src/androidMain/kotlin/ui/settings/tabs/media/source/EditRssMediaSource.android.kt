@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -14,7 +14,7 @@ import android.content.res.Configuration.UI_MODE_TYPE_NORMAL
 import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
 import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -104,7 +104,7 @@ fun PreviewEditRssMediaSourcePagePhoneTest() = ProvideFoundationCompositionLocal
         edit, test, {},
         navigator = navigator,
     )
-    SideEffect {
+    LaunchedEffect(Unit) {
         navigator.navigateTo(ListDetailPaneScaffoldRole.Detail)
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -48,7 +48,6 @@ import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemContentType
 import androidx.paging.compose.itemKey
-import androidx.window.core.layout.WindowWidthSizeClass
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -61,8 +60,8 @@ import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.interaction.keyboardDirectionToSelectItem
 import me.him188.ani.app.ui.foundation.interaction.keyboardPageToScroll
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
-import me.him188.ani.app.ui.foundation.layout.compareTo
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
+import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.paneHorizontalPadding
 import me.him188.ani.app.ui.foundation.layout.paneVerticalPadding
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
@@ -84,8 +83,11 @@ fun SearchPage(
     contentWindowInsets: WindowInsets = AniWindowInsets.forPageContent(),
     navigationIcon: @Composable () -> Unit = {},
 ) {
+    val coroutineScope = rememberCoroutineScope()
     BackHandler(navigator.canNavigateBack()) {
-        navigator.navigateBack()
+        coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
+            navigator.navigateBack()
+        }
     }
 
     val items = state.items
@@ -96,7 +98,7 @@ fun SearchPage(
                 state.suggestionSearchBarState,
                 Modifier
                     .ifThen(
-                        currentWindowAdaptiveInfo1().windowSizeClass.windowWidthSizeClass >= WindowWidthSizeClass.MEDIUM
+                        currentWindowAdaptiveInfo1().windowSizeClass.isWidthAtLeastMedium
                                 || !state.suggestionSearchBarState.expanded,
                     ) { contentPadding },
                 placeholder = { Text("搜索") },
@@ -141,7 +143,13 @@ fun SearchPage(
         modifier,
         navigationIcon = {
             if (navigator.canNavigateBack()) {
-                BackNavigationIconButton({ navigator.navigateBack() })
+                BackNavigationIconButton(
+                    {
+                        coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                            navigator.navigateBack()
+                        }
+                    },
+                )
             } else {
                 navigationIcon()
             }
@@ -293,6 +301,7 @@ internal fun SearchPageLayout(
     contentWindowInsets: WindowInsets = AniWindowInsets.forPageContent(),
     searchBarHeight: Dp = 64.dp,
 ) {
+    val coroutineScope = rememberCoroutineScope()
     AniListDetailPaneScaffold(
         navigator,
         listPaneTopAppBar = {
@@ -301,7 +310,13 @@ internal fun SearchPageLayout(
                 Modifier.fillMaxWidth(),
                 navigationIcon = {
                     if (navigator.canNavigateBack()) {
-                        BackNavigationIconButton({ navigator.navigateBack() })
+                        BackNavigationIconButton(
+                            onNavigateBack = {
+                                coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                                    navigator.navigateBack()
+                                }
+                            },
+                        )
                     } else {
                         navigationIcon()
                     }

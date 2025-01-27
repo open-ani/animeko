@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -12,6 +12,7 @@ package me.him188.ani.app.tools.update
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.ClientRequestException
+import io.ktor.client.plugins.timeout
 import io.ktor.client.request.get
 import io.ktor.client.request.prepareRequest
 import io.ktor.client.statement.bodyAsChannel
@@ -233,7 +234,11 @@ class DefaultFileDownloader(
         cancellableCoroutineScope {
             logger.info { "Attempting download: $url" }
             try {
-                client.prepareRequest(url).execute { resp ->
+                client.prepareRequest(url) {
+                    timeout {
+                        requestTimeoutMillis = 1_000_000
+                    }
+                }.execute { resp ->
                     val length = resp.contentLength()
                     logger.info { "Downloading $url to ${file.absolutePath}, length=${(length ?: 0).bytes}" }
 

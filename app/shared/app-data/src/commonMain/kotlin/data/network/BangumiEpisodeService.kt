@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -113,17 +113,18 @@ class BangumiEpisodeServiceImpl(
         episodeType: BangumiEpType?
     ): Paged<EpisodeCollectionInfo> {
         return withContext(ioDispatcher) {
-            client.getApi().getUserSubjectEpisodeCollection(
-                subjectId,
-                episodeType = episodeType,
-                offset = offset,
-                limit = limit,
-            ).body()
-                .run {
-                    Paged.processPagedResponse(total, limit ?: 100, data)
-                }.map {
-                    it.toEpisodeCollectionInfo()
-                }
+            client.api {
+                getUserSubjectEpisodeCollection(
+                    subjectId,
+                    episodeType = episodeType,
+                    offset = offset,
+                    limit = limit,
+                ).body()
+            }.run {
+                Paged.processPagedResponse(total, limit ?: 100, data)
+            }.map {
+                it.toEpisodeCollectionInfo()
+            }
         }
     }
 
@@ -131,7 +132,7 @@ class BangumiEpisodeServiceImpl(
         val episodes = PageBasedPagedSource { page ->
             withContext(ioDispatcher) {
                 try {
-                    client.getApi().getEpisodes(subjectId, type, offset = page * 100, limit = 100).body().run {
+                    client.api { getEpisodes(subjectId, type, offset = page * 100, limit = 100).body() }.run {
                         Paged(this.total ?: 0, !this.data.isNullOrEmpty(), this.data.orEmpty())
                     }
                 } catch (e: ClientRequestException) {
@@ -153,12 +154,14 @@ class BangumiEpisodeServiceImpl(
     ): Flow<BangumiUserEpisodeCollection>? {
         val firstPage = try {
             withContext(ioDispatcher) {
-                client.getApi().getUserSubjectEpisodeCollection(
-                    subjectId,
-                    episodeType = type,
-                    offset = 0,
-                    limit = 100,
-                ).body()
+                client.api {
+                    getUserSubjectEpisodeCollection(
+                        subjectId,
+                        episodeType = type,
+                        offset = 0,
+                        limit = 100,
+                    ).body()
+                }
             }
         } catch (e: ClientRequestException) {
             if (e.response.status == HttpStatusCode.NotFound
@@ -180,12 +183,14 @@ class BangumiEpisodeServiceImpl(
             } else {
                 try {
                     withContext(ioDispatcher) {
-                        client.getApi().getUserSubjectEpisodeCollection(
-                            subjectId,
-                            episodeType = type,
-                            offset = page * 100,
-                            limit = 100,
-                        ).body()
+                        client.api {
+                            getUserSubjectEpisodeCollection(
+                                subjectId,
+                                episodeType = type,
+                                offset = page * 100,
+                                limit = 100,
+                            ).body()
+                        }
                     }
                 } catch (e: ClientRequestException) {
                     if (e.response.status == HttpStatusCode.BadRequest // #1031
@@ -202,7 +207,7 @@ class BangumiEpisodeServiceImpl(
 
     override suspend fun getEpisodeCollectionById(episodeId: Int): EpisodeCollectionInfo? = withContext(ioDispatcher) {
         kotlin.runCatching {
-            client.getApi().getUserEpisodeCollection(episodeId).body().toEpisodeCollectionInfo()
+            client.api { getUserEpisodeCollection(episodeId).body().toEpisodeCollectionInfo() }
         }.recoverCatching { e ->
             if (e is ClientRequestException) {
                 if (e.response.status != HttpStatusCode.NotFound && !e.response.status.isUnauthorized()) {
@@ -210,7 +215,7 @@ class BangumiEpisodeServiceImpl(
                 }
             }
 
-            client.getApi().getEpisodeById(episodeId).body().toEpisodeInfo().createNotCollected()
+            client.api { getEpisodeById(episodeId).body().toEpisodeInfo().createNotCollected() }
         }.fold(
             onSuccess = { it },
             onFailure = { e ->
@@ -228,13 +233,15 @@ class BangumiEpisodeServiceImpl(
         type: UnifiedCollectionType
     ): Boolean = withContext(ioDispatcher) {
         try {
-            client.getApi().patchUserSubjectEpisodeCollection(
-                subjectId,
-                BangumiPatchUserSubjectEpisodeCollectionRequest(
-                    episodeId,
-                    type.toEpisodeCollectionType(),
-                ),
-            ).body()
+            client.api {
+                patchUserSubjectEpisodeCollection(
+                    subjectId,
+                    BangumiPatchUserSubjectEpisodeCollectionRequest(
+                        episodeId,
+                        type.toEpisodeCollectionType(),
+                    ),
+                ).body()
+            }
             true
         } catch (e: ClientRequestException) {
             if (e.response.status == HttpStatusCode.NotFound) {

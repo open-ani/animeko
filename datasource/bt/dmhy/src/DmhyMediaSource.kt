@@ -1,19 +1,10 @@
 /*
- * Ani
- * Copyright (C) 2022-2024 Him188
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
 package me.him188.ani.datasources.dmhy
@@ -28,19 +19,23 @@ import me.him188.ani.datasources.api.source.MediaSourceConfig
 import me.him188.ani.datasources.api.source.MediaSourceFactory
 import me.him188.ani.datasources.api.source.MediaSourceInfo
 import me.him188.ani.datasources.api.source.TopicMediaSource
-import me.him188.ani.datasources.api.source.useHttpClient
 import me.him188.ani.datasources.api.topic.Topic
 import me.him188.ani.datasources.dmhy.impl.DmhyPagedSourceImpl
 import me.him188.ani.datasources.dmhy.impl.protocol.Network
+import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.logging.error
 
 class DmhyMediaSource(
-    config: MediaSourceConfig,
+    private val client: ScopedHttpClient,
 ) : TopicMediaSource() {
     class Factory : MediaSourceFactory {
         override val factoryId: FactoryId = FactoryId(ID)
         override val info: MediaSourceInfo get() = INFO
-        override fun create(mediaSourceId: String, config: MediaSourceConfig): MediaSource = DmhyMediaSource(config)
+        override fun create(
+            mediaSourceId: String,
+            config: MediaSourceConfig,
+            client: ScopedHttpClient
+        ): MediaSource = DmhyMediaSource(client)
     }
 
     companion object {
@@ -55,7 +50,7 @@ class DmhyMediaSource(
 
     override val info: MediaSourceInfo get() = INFO
     private val network by lazy {
-        Network(useHttpClient(config))
+        Network(client)
     }
 
     override val mediaSourceId: String get() = ID
