@@ -751,7 +751,7 @@ internal class TitleBarWindowProc(
                         right -= frameX + padding
                         bottom -= frameY + padding
                         top += if (isMaximized) {
-                            padding
+                            padding + frameX
                         } else {
                             0
                         }
