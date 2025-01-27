@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -53,12 +53,12 @@ import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemContentType
 import androidx.paging.compose.itemKey
-import androidx.window.core.layout.WindowWidthSizeClass
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
+import me.him188.ani.app.ui.foundation.layout.isWidthCompact
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.search.LoadErrorCard
@@ -84,7 +84,7 @@ fun SubjectCollectionsColumn(
     gridState: LazyGridState = rememberLazyGridState(),
     enableAnimation: Boolean = true,
 ) {
-    val isCompact = currentWindowAdaptiveInfo1().windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.COMPACT
+    val isCompact = currentWindowAdaptiveInfo1().windowSizeClass.isWidthCompact
     val spacedBy = if (isCompact) 16.dp else 24.dp
 
     LazyVerticalGrid(

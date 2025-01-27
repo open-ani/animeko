@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.job
 import kotlinx.coroutines.test.TestScope
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
@@ -47,6 +48,8 @@ import me.him188.ani.utils.io.readText
 import me.him188.ani.utils.io.resolve
 import me.him188.ani.utils.io.toKtPath
 import me.him188.ani.utils.io.writeText
+import me.him188.ani.utils.ktor.asScopedHttpClient
+import me.him188.ani.utils.ktor.createDefaultHttpClient
 import me.him188.ani.utils.serialization.putAll
 import org.intellij.lang.annotations.Language
 import org.junit.jupiter.api.io.TempDir
@@ -85,11 +88,15 @@ class DirectoryMediaCacheStorageTest {
     private fun TestScope.createEngine(
         onDownloadStarted: suspend (session: AnitorrentDownloadSession) -> Unit = {},
     ): TorrentMediaCacheEngine {
+        val client = createDefaultHttpClient()
+        this.coroutineContext.job.invokeOnCompletion {
+            client.close()
+        }
         return TorrentMediaCacheEngine(
             CACHE_MEDIA_SOURCE_ID,
             AnitorrentEngine(
                 config = flowOf(AnitorrentConfig()),
-                proxyConfig = flowOf(null),
+                client = client.asScopedHttpClient(),
                 peerFilterSettings = flowOf(PeerFilterSettings.Empty),
                 saveDir = dir.toKtPath().inSystem,
                 parentCoroutineContext = coroutineContext,

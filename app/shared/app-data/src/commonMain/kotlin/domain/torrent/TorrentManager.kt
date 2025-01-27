@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -14,7 +14,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
-import me.him188.ani.app.data.models.preference.ProxyConfig
 import me.him188.ani.app.data.repository.torrent.peer.PeerFilterSubscriptionRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.torrent.peer.PeerFilterSettings
@@ -23,6 +22,7 @@ import me.him188.ani.datasources.api.topic.FileSize.Companion.kiloBytes
 import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.io.resolve
+import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.logging.debug
 import me.him188.ani.utils.logging.logger
 import kotlin.coroutines.CoroutineContext
@@ -48,7 +48,7 @@ class DefaultTorrentManager(
     parentCoroutineContext: CoroutineContext,
     factory: TorrentEngineFactory,
     private val saveDir: (type: TorrentEngineType) -> SystemPath,
-    private val proxyConfig: Flow<ProxyConfig?>,
+    private val client: ScopedHttpClient,
     private val anitorrentConfigFlow: Flow<AnitorrentConfig>,
     private val isMeteredNetworkFlow: Flow<Boolean>,
     private val peerFilterSettings: Flow<PeerFilterSettings>
@@ -65,7 +65,7 @@ class DefaultTorrentManager(
                 logger.debug { "Anitorrent upload rate limit: $limit/s" }
                 config.copy(uploadRateLimit = limit)
             },
-            proxyConfig = proxyConfig,
+            client = client,
             peerFilterSettings,
             saveDir(TorrentEngineType.Anitorrent),
         )
@@ -85,7 +85,7 @@ class DefaultTorrentManager(
         fun create(
             parentCoroutineContext: CoroutineContext,
             settingsRepository: SettingsRepository,
-            proxyProvider: Flow<ProxyConfig?>,
+            client: ScopedHttpClient,
             subscriptionRepository: PeerFilterSubscriptionRepository,
             meteredNetworkDetector: MeteredNetworkDetector,
             baseSaveDir: () -> SystemPath,
@@ -98,7 +98,7 @@ class DefaultTorrentManager(
                 { type ->
                     saveDirLazy.resolve(type.id)
                 },
-                proxyProvider,
+                client,
                 settingsRepository.anitorrentConfig.flow,
                 meteredNetworkDetector.isMeteredNetworkFlow.distinctUntilChanged(),
                 combine(settingsRepository.torrentPeerConfig.flow, subscriptionRepository.rulesFlow) { config, rules ->

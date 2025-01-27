@@ -43,8 +43,6 @@ import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemContentType
 import androidx.paging.compose.itemKey
-import androidx.window.core.layout.WindowHeightSizeClass
-import androidx.window.core.layout.WindowWidthSizeClass
 import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.models.subject.FollowedSubjectInfo
 import me.him188.ani.app.data.models.subject.hasNewEpisodeToPlay
@@ -53,8 +51,10 @@ import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.layout.BasicCarouselItem
 import me.him188.ani.app.ui.foundation.layout.CarouselItemDefaults
-import me.him188.ani.app.ui.foundation.layout.compareTo
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
+import me.him188.ani.app.ui.foundation.layout.isHeightAtLeastMedium
+import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastExpanded
+import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.minimumHairlineSize
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.foundation.widgets.NsfwMask
@@ -219,12 +219,12 @@ data class FollowedSubjectsLayoutParameters(
 object FollowedSubjectsDefaults {
     @Composable
     fun layoutParameters(windowAdaptiveInfo: WindowAdaptiveInfo = currentWindowAdaptiveInfo1()): FollowedSubjectsLayoutParameters {
-        val width = windowAdaptiveInfo.windowSizeClass.windowWidthSizeClass
+        val windowSizeClass = windowAdaptiveInfo.windowSizeClass
         return FollowedSubjectsLayoutParameters(
             imageSize = imageSize(windowAdaptiveInfo),
             horizontalArrangement = when {
-                width >= WindowWidthSizeClass.EXPANDED -> Arrangement.spacedBy(16.dp)
-                width >= WindowWidthSizeClass.MEDIUM -> Arrangement.spacedBy(12.dp)
+                windowSizeClass.isWidthAtLeastExpanded -> Arrangement.spacedBy(16.dp)
+                windowSizeClass.isWidthAtLeastMedium -> Arrangement.spacedBy(12.dp)
                 else -> Arrangement.spacedBy(8.dp)
             },
             shape = MaterialTheme.shapes.large,
@@ -233,11 +233,9 @@ object FollowedSubjectsDefaults {
 
     private fun imageSize(windowAdaptiveInfo: WindowAdaptiveInfo): DpSize {
         val windowSizeClass = windowAdaptiveInfo.windowSizeClass
-        val height = windowSizeClass.windowHeightSizeClass
-        val width = windowSizeClass.windowWidthSizeClass
         val baseSize = when {
-            height >= WindowHeightSizeClass.MEDIUM && width >= WindowWidthSizeClass.EXPANDED -> 160.dp
-            height >= WindowHeightSizeClass.MEDIUM && width >= WindowWidthSizeClass.MEDIUM -> 140.dp
+            windowSizeClass.isHeightAtLeastMedium && windowSizeClass.isWidthAtLeastExpanded -> 160.dp
+            windowSizeClass.isHeightAtLeastMedium && windowSizeClass.isWidthAtLeastMedium -> 140.dp
             else -> 120.dp
         }
         return DpSize(baseSize, (baseSize) / 9 * 16)

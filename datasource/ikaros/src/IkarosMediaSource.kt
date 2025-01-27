@@ -1,6 +1,14 @@
+/*
+ * Copyright (C) 2024-2025 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.datasources.ikaros
 
-import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.request.header
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
@@ -19,13 +27,14 @@ import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.source.get
 import me.him188.ani.datasources.api.source.parameter.MediaSourceParameters
 import me.him188.ani.datasources.api.source.parameter.MediaSourceParametersBuilder
-import me.him188.ani.datasources.api.source.useHttpClient
+import me.him188.ani.utils.ktor.ScopedHttpClient
 import java.nio.charset.StandardCharsets
 import java.util.Base64
 
 class IkarosMediaSource(
     override val mediaSourceId: String,
-    config: MediaSourceConfig
+    config: MediaSourceConfig,
+    httpClient: ScopedHttpClient,
 ) : HttpMediaSource() {
     companion object {
         const val ID = "ikaros"
@@ -37,22 +46,21 @@ class IkarosMediaSource(
         )
     }
 
-    internal val client = IkarosClient(
+    private val client = IkarosClient(
         config[Parameters.baseUrl],
-        useHttpClient(config) {
-            defaultRequest {
-                val username = config[Parameters.username]
-                val password = config[Parameters.password]
-                header(
-                    HttpHeaders.Authorization,
-                    "Basic " + Base64.getEncoder()
-                        .encodeToString(
-                            "$username:$password".toByteArray(
-                                StandardCharsets.UTF_8,
-                            ),
+        httpClient,
+        addAuthorizationHeaders = {
+            val username = config[Parameters.username]
+            val password = config[Parameters.password]
+            header(
+                HttpHeaders.Authorization,
+                "Basic " + Base64.getEncoder()
+                    .encodeToString(
+                        "$username:$password".toByteArray(
+                            StandardCharsets.UTF_8,
                         ),
-                )
-            }
+                    ),
+            )
         },
     )
 
@@ -67,8 +75,12 @@ class IkarosMediaSource(
 
         override val parameters: MediaSourceParameters = Parameters.build()
         override val allowMultipleInstances: Boolean get() = true
-        override fun create(mediaSourceId: String, config: MediaSourceConfig): MediaSource =
-            IkarosMediaSource(mediaSourceId, config)
+        override fun create(
+            mediaSourceId: String,
+            config: MediaSourceConfig,
+            client: ScopedHttpClient
+        ): MediaSource =
+            IkarosMediaSource(mediaSourceId, config, client)
 
         override val info: MediaSourceInfo get() = INFO
     }

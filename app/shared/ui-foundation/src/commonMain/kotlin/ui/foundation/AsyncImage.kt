@@ -22,13 +22,14 @@ import androidx.compose.ui.layout.ContentScale
 import coil3.Image
 import coil3.ImageLoader
 import coil3.PlatformContext
+import coil3.annotation.ExperimentalCoilApi
 import coil3.compose.AsyncImagePainter
 import coil3.memory.MemoryCache
-import coil3.network.ktor2.KtorNetworkFetcherFactory
+import coil3.network.NetworkFetcher
 import coil3.request.CachePolicy
 import coil3.request.crossfade
 import coil3.svg.SvgDecoder
-import io.ktor.client.HttpClient
+import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.platform.currentPlatform
 import me.him188.ani.utils.platform.isDesktop
 
@@ -148,9 +149,10 @@ fun AsyncImage(
     )
 }
 
+@OptIn(ExperimentalCoilApi::class)
 fun createDefaultImageLoader(
     context: PlatformContext,
-    client: HttpClient,
+    client: ScopedHttpClient,
     config: ImageLoader.Builder.() -> Unit = {}
 ): ImageLoader {
     return ImageLoader.Builder(context).apply {
@@ -173,9 +175,9 @@ fun createDefaultImageLoader(
             add(SvgDecoder.Factory())
 
             add(
-                KtorNetworkFetcherFactory(
-                    httpClient = {
-                        client
+                NetworkFetcher.Factory(
+                    networkClient = {
+                        ScopedHttpClientNetworkFetcher(client)
                     },
                 ),
             )

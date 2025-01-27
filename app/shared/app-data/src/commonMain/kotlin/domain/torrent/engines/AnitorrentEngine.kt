@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -9,23 +9,17 @@
 
 package me.him188.ani.app.domain.torrent.engines
 
-import io.ktor.client.HttpClient
-import io.ktor.client.plugins.UserAgent
 import io.ktor.client.request.get
 import io.ktor.client.statement.readBytes
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
-import me.him188.ani.app.data.models.preference.ProxyConfig
-import me.him188.ani.app.domain.media.fetch.toClientProxyConfig
 import me.him188.ani.app.domain.torrent.AbstractTorrentEngine
 import me.him188.ani.app.domain.torrent.TorrentEngineType
 import me.him188.ani.app.domain.torrent.peer.PeerFilterSettings
 import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.platform.fourDigitVersionCode
-import me.him188.ani.app.platform.getAniUserAgent
 import me.him188.ani.app.torrent.anitorrent.AnitorrentDownloaderFactory
 import me.him188.ani.app.torrent.anitorrent.AnitorrentTorrentDownloader
 import me.him188.ani.app.torrent.api.HttpFileDownloader
@@ -35,15 +29,14 @@ import me.him188.ani.app.torrent.api.peer.PeerFilter
 import me.him188.ani.datasources.api.source.MediaSourceLocation
 import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.utils.io.SystemPath
-import me.him188.ani.utils.ktor.createDefaultHttpClient
-import me.him188.ani.utils.ktor.setProxy
+import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import kotlin.coroutines.CoroutineContext
 
 class AnitorrentEngine(
     config: Flow<AnitorrentConfig>,
-    proxyConfig: Flow<ProxyConfig?>,
+    client: ScopedHttpClient,
     peerFilterSettings: Flow<PeerFilterSettings>,
     private val saveDir: SystemPath,
     parentCoroutineContext: CoroutineContext,
@@ -51,7 +44,7 @@ class AnitorrentEngine(
 ) : AbstractTorrentEngine<AnitorrentTorrentDownloader<*, *>, AnitorrentConfig>(
     type = TorrentEngineType.Anitorrent,
     config = config,
-    proxyConfig,
+    client,
     peerFilterSettings = peerFilterSettings,
     parentCoroutineContext = parentCoroutineContext,
 ) {
@@ -76,24 +69,8 @@ class AnitorrentEngine(
 
     override suspend fun testConnection(): Boolean = isSupported.first()
 
-    private fun createTorrentFileDownloader(proxyProvider: Flow<ProxyConfig?>): HttpFileDownloader {
-        return createDefaultHttpClient {
-            install(UserAgent) {
-                agent = getAniUserAgent()
-            }
-            expectSuccess = true
-        }.apply {
-            scope.launch(coroutineContext) {
-                proxyProvider.collect {
-                    this@apply.engineConfig.setProxy(it?.toClientProxyConfig())
-                }
-            }
-        }.asHttpFileDownloader()
-    }
-
     override suspend fun newInstance(
-        config: AnitorrentConfig,
-        proxyProvider: Flow<ProxyConfig?>
+        config: AnitorrentConfig
     ): AnitorrentTorrentDownloader<*, *> {
         if (!isSupported.first()) {
             logger.error { "Anitorrent is disabled because it is not built. Read `/torrent/anitorrent/README.md` for more information." }
@@ -101,7 +78,7 @@ class AnitorrentEngine(
         }
         return anitorrentFactory.createDownloader(
             rootDataDirectory = saveDir,
-            createTorrentFileDownloader(proxyProvider),
+            client.asHttpFileDownloader(),
             config.toTorrentDownloaderConfig(),
             parentCoroutineContext = scope.coroutineContext,
         ) as AnitorrentTorrentDownloader<*, *>
@@ -145,11 +122,9 @@ private fun computeTorrentUserAgent(
     versionCode: String = currentAniBuildConfig.fourDigitVersionCode,
 ): String = "ani_libtorrent/${versionCode}"
 
-private fun HttpClient.asHttpFileDownloader(): HttpFileDownloader = object : HttpFileDownloader {
-    override suspend fun download(url: String): ByteArray = get(url).readBytes()
-    override fun close() {
-        this@asHttpFileDownloader.close()
-    }
+private fun ScopedHttpClient.asHttpFileDownloader(): HttpFileDownloader = object : HttpFileDownloader {
+    override suspend fun download(url: String): ByteArray = this@asHttpFileDownloader.use { get(url).readBytes() }
+    override fun close() {}
 
     override fun toString(): String {
         return "HttpClientAsHttpFileDownloader(client=$this@asHttpFileDownloader)"

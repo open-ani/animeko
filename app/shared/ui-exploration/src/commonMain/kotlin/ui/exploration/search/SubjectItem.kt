@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -43,12 +43,11 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
-import androidx.window.core.layout.WindowHeightSizeClass
 import androidx.window.core.layout.WindowSizeClass
-import androidx.window.core.layout.WindowWidthSizeClass
 import me.him188.ani.app.ui.foundation.AsyncImage
-import me.him188.ani.app.ui.foundation.layout.compareTo
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
+import me.him188.ani.app.ui.foundation.layout.isHeightAtLeastMedium
+import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
 
 /**
  * Design: [SubjectItem on Figma](https://www.figma.com/design/LET1n9mmDa6npDTIlUuJjU/Main?node-id=101-877&t=gmFJS6LFQudIIXfK-4)
@@ -171,9 +170,7 @@ class SubjectItemTypography(
     companion object {
         @Composable
         fun calculate(windowSizeClass: WindowSizeClass): SubjectItemTypography {
-            if (windowSizeClass.windowWidthSizeClass > WindowWidthSizeClass.COMPACT
-                && windowSizeClass.windowHeightSizeClass > WindowHeightSizeClass.COMPACT
-            ) {
+            if (windowSizeClass.isWidthAtLeastMedium && windowSizeClass.isHeightAtLeastMedium) {
                 // medium
                 return SubjectItemTypography(
                     titleStyle = MaterialTheme.typography.titleLarge,
@@ -232,9 +229,7 @@ class SubjectItemLayoutParameters(
         @Composable
         @Stable
         fun calculate(windowSizeClass: WindowSizeClass): SubjectItemLayoutParameters {
-            if (windowSizeClass.windowWidthSizeClass > WindowWidthSizeClass.COMPACT
-                && windowSizeClass.windowHeightSizeClass > WindowHeightSizeClass.COMPACT
-            ) {
+            if (windowSizeClass.isWidthAtLeastMedium && windowSizeClass.isHeightAtLeastMedium) {
                 return MEDIUM
             }
             return COMPACT

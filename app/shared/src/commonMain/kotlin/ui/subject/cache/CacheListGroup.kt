@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -63,10 +63,13 @@ import androidx.compose.ui.util.fastForEachIndexed
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
 import me.him188.ani.app.domain.media.cache.EpisodeCacheStatus
+import me.him188.ani.app.domain.media.fetch.MediaSourceResultsFilterer
+import me.him188.ani.app.domain.media.fetch.restart
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.PermissionManager
 import me.him188.ani.app.tools.getOrZero
@@ -78,9 +81,10 @@ import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.TextItem
 import me.him188.ani.app.ui.subject.episode.mediaFetch.MediaSelectorView
 import me.him188.ani.app.ui.subject.episode.mediaFetch.MediaSourceInfoProvider
+import me.him188.ani.app.ui.subject.episode.mediaFetch.MediaSourceResultListPresentation
+import me.him188.ani.app.ui.subject.episode.mediaFetch.MediaSourceResultListPresenter
 import me.him188.ani.app.ui.subject.episode.mediaFetch.MediaSourceResultsView
 import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberMediaSelectorState
-import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberMediaSourceResultsPresentation
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
@@ -144,12 +148,21 @@ fun SettingsScope.EpisodeCacheListGroup(
         val attemptedTrySelect by task.attemptedTrySelect.collectAsStateWithLifecycle(false)
         if (!attemptedTrySelect) return@let
 
+        val scope = rememberCoroutineScope()
         // 注意, 这里会一直 collect mediaSourceResults
-        val sourceResults = rememberMediaSourceResultsPresentation(
-            mediaSourceResults = { flowOf(task.fetchSession.mediaSourceResults) },
-            settings = mediaSelectorSettingsProvider,
-            shareMillis = 1500, // 关闭窗口一段时间后才停止查询
-        )
+        val sourceResults by remember(task.fetchSession.mediaSourceResults, mediaSelectorSettingsProvider, scope) {
+            // TODO: shit
+            MediaSourceResultListPresenter(
+                MediaSourceResultsFilterer(
+                    MutableStateFlow(task.fetchSession.mediaSourceResults),
+                    settings = mediaSelectorSettingsProvider(),
+                    flowScope = scope,
+                ).filteredSourceResults,
+                scope,
+            ).presentationFlow.map {
+                MediaSourceResultListPresentation(it)
+            }
+        }.collectAsStateWithLifecycle(MediaSourceResultListPresentation.Empty)
         if (!hideMediaSelector) {
             ModalBottomSheet(
                 onDismissRequest = {
@@ -170,6 +183,7 @@ fun SettingsScope.EpisodeCacheListGroup(
                             sourceResults,
                             selectorPresentation,
                             onRefresh = { task.fetchSession.restartAll() },
+                            onRestartSource = { task.fetchSession.restart(it.instanceId) },
                         )
                     },
                     stickyHeaderBackgroundColor = BottomSheetDefaults.ContainerColor,

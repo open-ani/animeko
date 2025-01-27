@@ -36,6 +36,9 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.io.files.Path
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
 import me.him188.ani.app.data.models.preference.ProxyConfig
+import me.him188.ani.app.domain.foundation.DefaultHttpClientProvider
+import me.him188.ani.app.domain.foundation.get
+import me.him188.ani.app.domain.settings.FlowProxyProvider
 import me.him188.ani.app.domain.torrent.engines.AnitorrentEngine
 import me.him188.ani.app.domain.torrent.peer.PeerFilterSettings
 import me.him188.ani.app.domain.torrent.service.proxy.TorrentEngineProxy
@@ -48,13 +51,14 @@ import me.him188.ani.utils.coroutines.sampleWithInitial
 import me.him188.ani.utils.io.inSystem
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
-import kotlin.coroutines.CoroutineContext
 
-sealed class AniTorrentService : LifecycleService(), CoroutineScope {
-    private val logger = logger<AniTorrentService>()
-    override val coroutineContext: CoroutineContext =
+sealed class AniTorrentService : LifecycleService() {
+    private val scope = CoroutineScope(
         Dispatchers.Default + CoroutineName("AniTorrentService") +
-                SupervisorJob(lifecycleScope.coroutineContext[Job])
+                SupervisorJob(lifecycleScope.coroutineContext[Job]),
+    )
+
+    private val logger = logger<AniTorrentService>()
 
     // config flow for constructing torrent engine.
     private val saveDirDeferred: CompletableDeferred<String> = CompletableDeferred()
@@ -76,7 +80,7 @@ sealed class AniTorrentService : LifecycleService(), CoroutineScope {
             anitorrentConfig,
             anitorrent,
             isClientBound,
-            coroutineContext,
+            scope.coroutineContext,
         )
     }
 
@@ -87,17 +91,20 @@ sealed class AniTorrentService : LifecycleService(), CoroutineScope {
             .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "AniTorrentService::wake_lock")
     }
 
+    private val httpClientProvider = DefaultHttpClientProvider(FlowProxyProvider(proxyConfig), scope)
+    private val httpClient = httpClientProvider.get()
+
     override fun onCreate() {
         super.onCreate()
 
-        launch {
+        scope.launch {
             // try to initialize anitorrent engine.
             anitorrent.complete(
                 AnitorrentEngine(
                     anitorrentConfig.combine(meteredNetworkDetector.isMeteredNetworkFlow) { config, isMetered ->
                         if (isMetered) config.copy(uploadRateLimit = 1.kiloBytes) else config
                     },
-                    proxyConfig = proxyConfig,
+                    httpClient,
                     torrentPeerConfig,
                     Path(saveDirDeferred.await()).inSystem,
                     coroutineContext,
@@ -107,7 +114,7 @@ sealed class AniTorrentService : LifecycleService(), CoroutineScope {
             logger.info { "anitorrent is initialized." }
         }
 
-        launch {
+        scope.launch {
             val anitorrentDownloader = anitorrent.await().getDownloader()
             anitorrentDownloader.openSessions
             anitorrentDownloader.totalStats.sampleWithInitial(5000).collect { stat ->
@@ -205,8 +212,8 @@ sealed class AniTorrentService : LifecycleService(), CoroutineScope {
             }
             downloader.close()
         }
-        // cancel lifecycle scope
-        this.cancel()
+        // cancel background scope
+        scope.cancel()
         // release wake lock if held
         if (wakeLock.isHeld) {
             wakeLock.release()

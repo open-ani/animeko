@@ -23,7 +23,7 @@ koin = "3.5.6" # https://github.com/InsertKoinIO/koin/releases
 slf4j = "2.0.16"
 jsoup = "1.18.1" # https://github.com/jhy/jsoup/releases 
 android-gradle-plugin = "8.6.1"
-datastore = "1.1.1" # https://developer.android.com/jetpack/androidx/releases/datastore
+datastore = "1.1.2" # https://developer.android.com/jetpack/androidx/releases/datastore
 coil = "3.0.4" # https://github.com/coil-kt/coil/releases
 logback = "1.5.8"
 ksp = "2.1.0-1.0.29" # https://github.com/google/ksp/releases
@@ -35,7 +35,7 @@ antlr-kotlin = "1.0.0"
 oshai-kotlin-logging = "7.0.0" # Only for native. On JVM we use slf4j directly.
 ipaddress-parser = "5.5.1"
 androidx-annotation = "1.9.1"
-androidx-media3 = "1.4.1"
+androidx-media3 = "1.5.1"
 androidx-lifecycle = "2.8.7"
 paging = "3.3.5" # https://developer.android.com/jetpack/androidx/releases/paging
 turbine = "1.2.0" # https://github.com/cashapp/turbine/releases/
@@ -51,14 +51,14 @@ aws = "2.25.49"
 
 # Compose
 # https://developer.android.com/jetpack/androidx/releases/compose-material3
-compose-material3 = "1.3.1"
-jetpack-compose = "1.7.6"
+compose-material3 = "1.4.0-alpha04"
+jetpack-compose = "1.8.0-alpha07"
 # https://github.com/JetBrains/compose-multiplatform/releases
 # https://www.jetbrains.com/help/kotlin-multiplatform-dev/compose-compatibility-and-versioning.html#use-a-developer-version-of-compose-multiplatform-compiler
-compose-multiplatform = "1.7.1"
-compose-lifecycle = "2.8.4"
-compose-navigation = "2.8.0-alpha10"
-compose-material3-adaptive = "1.0.1"
+compose-multiplatform = "1.8.0-alpha02"
+compose-lifecycle = "2.9.0-alpha02"
+compose-navigation = "2.8.0-alpha12"
+compose-material3-adaptive = "1.1.0-alpha02"
 
 # https://maven.pkg.jetbrains.space/public/p/compose/dev/org/jetbrains/compose/compiler/compiler/
 #compose-multiplatform-compiler = "1.5.11-kt-2.0.0-RC1" # used by buildscript, don't remove

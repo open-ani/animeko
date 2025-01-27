@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -26,9 +26,7 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffold
 import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldDefaults
-import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
 import androidx.compose.material3.adaptive.layout.PaneScaffoldDirective
-import androidx.compose.material3.adaptive.layout.ThreePaneScaffoldRole
 import androidx.compose.material3.adaptive.navigation.ThreePaneScaffoldNavigator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -36,6 +34,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.RectangleShape
@@ -43,6 +42,8 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.launch
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.layout.ListDetailAnimatedPane
 import me.him188.ani.app.ui.foundation.layout.LocalSharedTransitionScopeProvider
@@ -105,8 +106,11 @@ fun <T> AniListDetailPaneScaffold(
     listPanePreferredWidth: Dp = Dp.Unspecified,
     layoutParameters: ListDetailLayoutParameters = ListDetailLayoutParameters.calculate(navigator.scaffoldDirective),
 ) {
+    val coroutineScope = rememberCoroutineScope()
     BackHandler(navigator.canNavigateBack()) {
-        navigator.navigateBack()
+        coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) { // start immediately to change state
+            navigator.navigateBack()
+        }
     }
     val layoutParametersState by rememberUpdatedState(layoutParameters)
     val contentWindowInsetsState by rememberUpdatedState(contentWindowInsets)
@@ -124,8 +128,6 @@ fun <T> AniListDetailPaneScaffold(
                                 object : PaneScope {
                                     override val listDetailLayoutParameters: ListDetailLayoutParameters
                                         get() = layoutParametersState
-                                    override val role: ThreePaneScaffoldRole
-                                        get() = threePaneScaffoldScope.role
 
                                     override val paneContentWindowInsets: WindowInsets
                                         get() = when {
@@ -191,8 +193,6 @@ fun <T> AniListDetailPaneScaffold(
                                 object : PaneScope {
                                     override val listDetailLayoutParameters: ListDetailLayoutParameters
                                         get() = layoutParametersState
-                                    override val role: ThreePaneScaffoldRole
-                                        get() = threePaneScaffoldScope.role
 
                                     override val paneContentWindowInsets: WindowInsets
                                         get() = when {
@@ -242,12 +242,6 @@ interface PaneScope {
      */
     @Stable
     val listDetailLayoutParameters: ListDetailLayoutParameters
-
-    /**
-     * @see ListDetailPaneScaffoldRole
-     */
-    @Stable
-    val role: ThreePaneScaffoldRole
 
     /**
      * @see ListDetailLayoutParameters.isSinglePane
