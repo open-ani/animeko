@@ -52,7 +52,7 @@ import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.data.repository.user.AccessTokenSession
 import me.him188.ani.app.data.repository.user.GuestSession
 import me.him188.ani.app.data.repository.user.SettingsRepository
-import me.him188.ani.app.domain.media.fetch.toClientProxyConfig
+import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.session.AniAuthClient
 import me.him188.ani.app.domain.session.AuthorizationCancelledException
 import me.him188.ani.app.domain.session.AuthorizationException
@@ -85,8 +85,7 @@ import me.him188.ani.utils.coroutines.flows.FlowRestarter
 import me.him188.ani.utils.coroutines.flows.FlowRunning
 import me.him188.ani.utils.coroutines.flows.restartable
 import me.him188.ani.utils.coroutines.update
-import me.him188.ani.utils.ktor.createDefaultHttpClient
-import me.him188.ani.utils.ktor.setProxy
+import me.him188.ani.utils.ktor.UnsafeScopedHttpClientApi
 import me.him188.ani.utils.logging.trace
 import me.him188.ani.utils.platform.Uuid
 import me.him188.ani.utils.platform.currentTimeMillis
@@ -113,9 +112,7 @@ class WelcomeViewModel : AbstractSettingsViewModel(), KoinComponent {
     private val proxyTestCases: StateFlow<List<ProxyTestCase>> =
         MutableStateFlow(ProxyTestCase.All)
     private val currentProxyTestMode = proxySettingsFlow.map { it.default.mode }
-    private val proxyClient = createDefaultHttpClient {
-        expectSuccess = false
-    }
+    private val clientProvider: HttpClientProvider by inject()
     private val proxyTestResults = MutableStateFlow(
         persistentMapOf<ProxyTestCaseEnums, ProxyTestCaseState>()
             .mutate { map ->
@@ -195,7 +192,7 @@ class WelcomeViewModel : AbstractSettingsViewModel(), KoinComponent {
     // region BangumiAuthorize
     private val sessionManager: SessionManager by inject()
     private val browserNavigator: BrowserNavigator by inject()
-    private val authClient = AniAuthClient(proxyProvider, backgroundScope.coroutineContext)
+    private val authClient: AniAuthClient by inject()
 
     private val authorizeTasker = MonoTasker(backgroundScope)
     private val currentRequestAuthorizeId = MutableStateFlow<String?>(null)
@@ -255,14 +252,19 @@ class WelcomeViewModel : AbstractSettingsViewModel(), KoinComponent {
 
     init {
         launchInBackground {
-            proxyProvider.proxy.combine(proxyTestCases) { config, cases ->
-                proxyClient.engineConfig.setProxy(config?.toClientProxyConfig())
-                cases
-            }
+            clientProvider.configurationFlow
+                .combine(proxyTestCases) { _, cases -> cases }
                 .restartable(restarter = proxyTestRestarter)
                 .collectLatest { cases ->
+                    val scoped = clientProvider.get(emptySet())
+                    @OptIn(UnsafeScopedHttpClientApi::class)
                     proxyTestTasker.launch {
-                        startProxyTestServers(proxyClient, cases)
+                        val ticket = scoped.borrow()
+                        try {
+                            startProxyTestServers(ticket.client, cases)
+                        } finally {
+                            scoped.returnClient(ticket)
+                        }
                     }
                 }
         }
@@ -486,10 +488,6 @@ class WelcomeViewModel : AbstractSettingsViewModel(), KoinComponent {
             )
             delay(1000)
         }
-    }
-
-    override fun onCleared() {
-        proxyClient.close()
     }
 }
 
