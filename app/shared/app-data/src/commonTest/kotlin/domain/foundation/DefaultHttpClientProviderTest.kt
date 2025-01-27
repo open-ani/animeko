@@ -14,6 +14,7 @@ package me.him188.ani.app.domain.foundation
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
@@ -23,6 +24,7 @@ import me.him188.ani.app.data.models.preference.ProxyConfig
 import me.him188.ani.app.domain.foundation.DefaultHttpClientProvider.HoldingInstanceMatrix
 import me.him188.ani.app.domain.settings.ProxyProvider
 import me.him188.ani.test.DisabledOnAndroid
+import me.him188.ani.test.TestContainer
 import me.him188.ani.utils.ktor.UnsafeScopedHttpClientApi
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -32,12 +34,46 @@ import kotlin.test.assertNotSame
 import kotlin.test.assertTrue
 
 @DisabledOnAndroid // Need Android permission but we don't have such foundational support
-internal class DefaultHttpClientProviderTest {
+@Suppress("CanSealedSubClassBeObject")
+sealed class DefaultHttpClientProviderTest {
+    @TestContainer
+    class SingleFeature : DefaultHttpClientProviderTest() {
+        override fun TestScope.createProvider(proxyProvider: FakeProxyProvider): DefaultHttpClientProvider {
+            return DefaultHttpClientProvider(
+                proxyProvider = proxyProvider,
+                backgroundScope = this,
+                featureHandlers = listOf(UserAgentFeatureHandler),
+            ).apply {
+                backgroundScope.coroutineContext.job.invokeOnCompletion {
+                    launch(NonCancellable) {
+                        forceReleaseAll()
+                    }
+                }
+            }
+        }
+    }
+
+    @TestContainer
+    class HasUnsetFeatures : DefaultHttpClientProviderTest() {
+        override fun TestScope.createProvider(proxyProvider: FakeProxyProvider): DefaultHttpClientProvider {
+            return DefaultHttpClientProvider(
+                proxyProvider = proxyProvider,
+                backgroundScope = this,
+                featureHandlers = listOf(UserAgentFeatureHandler, UseBangumiTokenFeatureHandler(flowOf(null))),
+            ).apply {
+                backgroundScope.coroutineContext.job.invokeOnCompletion {
+                    launch(NonCancellable) {
+                        forceReleaseAll()
+                    }
+                }
+            }
+        }
+    }
 
     /**
      * A fake [ProxyProvider] that you can manually control by setting [proxyState].
      */
-    private class FakeProxyProvider : ProxyProvider {
+    protected class FakeProxyProvider : ProxyProvider {
         private val _proxy = MutableStateFlow<ProxyConfig?>(null)
         override val proxy: Flow<ProxyConfig?> = _proxy
 
@@ -46,20 +82,9 @@ internal class DefaultHttpClientProviderTest {
         }
     }
 
-    private fun TestScope.createProvider(
-        proxyProvider: FakeProxyProvider
-    ): DefaultHttpClientProvider {
-        return DefaultHttpClientProvider(
-            proxyProvider = proxyProvider,
-            backgroundScope = this,
-        ).apply {
-            backgroundScope.coroutineContext.job.invokeOnCompletion {
-                launch(NonCancellable) {
-                    forceReleaseAll()
-                }
-            }
-        }
-    }
+    protected abstract fun TestScope.createProvider(
+        proxyProvider: FakeProxyProvider,
+    ): DefaultHttpClientProvider
 
     private suspend fun DefaultHttpClientProvider.startProxyListening() {
         startProxyListening(
