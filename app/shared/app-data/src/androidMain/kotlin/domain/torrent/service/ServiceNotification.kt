@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.domain.torrent.service
 
-import android.app.ForegroundServiceStartNotAllowedException
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -25,8 +24,6 @@ import android.os.Parcelable
 import kotlinx.parcelize.Parcelize
 import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
-import me.him188.ani.utils.logging.logger
-import me.him188.ani.utils.logging.warn
 
 class ServiceNotification(
     private val context: Context
@@ -39,7 +36,7 @@ class ServiceNotification(
     private val stopServiceIntent by lazy {
         PendingIntent.getService(
             context, 0,
-            Intent(context, TorrentServiceConnection.anitorrentServiceClass).apply { putExtra("stopService", true) },
+            Intent(context, AniTorrentService::class.java).apply { putExtra("stopService", true) },
             PendingIntent.FLAG_IMMUTABLE,
         )
     }
@@ -96,27 +93,15 @@ class ServiceNotification(
     /**
      * create notification with initial state idle.
      */
-    fun createNotification(service: Service): Boolean {
+    fun createNotification(service: Service) {
         val currentNotification = notificationService.activeNotifications.find { it.id == NOTIFICATION_ID }
-        if (currentNotification != null) return true
+        if (currentNotification != null) return
 
         val notification = buildNotification(
             notificationAppearance,
             NotificationDisplayStrategy.Idle(0.bytes, 0.bytes),
         )
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            try {
-                service.startForeground(NOTIFICATION_ID, notification)
-                return true
-            } catch (e: ForegroundServiceStartNotAllowedException) {
-                // Android 15 limitation: https://developer.android.com/about/versions/15/behavior-changes-15#datasync-timeout
-                logger.warn { "Foreground service start not allowed (possibly due to system limitations): $e" } // we intend to only log exception messages without stacktrace
-                return false
-            }
-        } else {
-            service.startForeground(NOTIFICATION_ID, notification)
-            return true
-        }
+        service.startForeground(NOTIFICATION_ID, notification)
     }
 
     /**
@@ -191,7 +176,6 @@ class ServiceNotification(
     companion object {
         private const val NOTIFICATION_ID = 114
         private const val NOTIFICATION_CHANNEL_ID = "me.him188.ani.app.domain.torrent.service.AniTorrentService"
-        private val logger = logger<ServiceNotification>()
 
         private val defaultNotificationAppearance = NotificationAppearance(
             name = "Animeko BT 引擎服务",

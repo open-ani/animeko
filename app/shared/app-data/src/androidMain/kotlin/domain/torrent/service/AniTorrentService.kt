@@ -17,7 +17,6 @@ import android.os.IBinder
 import android.os.PowerManager
 import android.os.Process
 import android.os.SystemClock
-import androidx.annotation.RequiresApi
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.CompletableDeferred
@@ -52,14 +51,13 @@ import me.him188.ani.utils.io.inSystem
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 
-sealed class AniTorrentService : LifecycleService() {
+class AniTorrentService : LifecycleService() {
     private val scope = CoroutineScope(
-        Dispatchers.Default + CoroutineName("AniTorrentService") +
+        Dispatchers.Default + CoroutineName("AniTorrentService") + 
                 SupervisorJob(lifecycleScope.coroutineContext[Job]),
     )
 
     private val logger = logger<AniTorrentService>()
-
     // config flow for constructing torrent engine.
     private val saveDirDeferred: CompletableDeferred<String> = CompletableDeferred()
     private val proxyConfig: MutableSharedFlow<ProxyConfig?> = MutableSharedFlow(1)
@@ -93,7 +91,6 @@ sealed class AniTorrentService : LifecycleService() {
 
     private val httpClientProvider = DefaultHttpClientProvider(FlowProxyProvider(proxyConfig), scope)
     private val httpClient = httpClientProvider.get()
-
     override fun onCreate() {
         super.onCreate()
 
@@ -140,18 +137,17 @@ sealed class AniTorrentService : LifecycleService() {
         }
 
         notification.parseNotificationStrategyFromIntent(intent)
-        if (notification.createNotification(this)) {
-            // 启动完成的广播
-            sendBroadcast(
-                Intent().apply {
-                    setPackage(packageName)
-                    setAction(INTENT_STARTUP)
-                },
-            )
-            return START_STICKY
-        } else {
-            return START_NOT_STICKY
-        }
+        notification.createNotification(this)
+
+        // 启动完成的广播
+        sendBroadcast(
+            Intent().apply {
+                setPackage(packageName)
+                setAction(INTENT_STARTUP)
+            },
+        )
+
+        return START_STICKY
     }
 
 
@@ -227,8 +223,3 @@ sealed class AniTorrentService : LifecycleService() {
         const val INTENT_STARTUP = "me.him188.ani.android.ANI_TORRENT_SERVICE_STARTUP"
     }
 }
-
-@RequiresApi(34)
-class AniTorrentServiceApi34 : AniTorrentService()
-
-class AniTorrentServiceApiDefault : AniTorrentService()
