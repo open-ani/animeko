@@ -169,6 +169,11 @@ class WindowsWindowUtils : AwtWindowUtils() {
             .flatMapConcat { it?.systemColor ?: flowOf(Color.Unspecified) }
     }
 
+    fun frameIsColorful(platformWindow: PlatformWindow): Flow<Boolean> {
+        return snapshotFlow { platformWindow.titleBarWindowProc }
+            .flatMapConcat { it?.frameIsColorful ?: flowOf(false) }
+    }
+
     fun restoreWindow(windowHandle: Long) {
         extendedUser32.ShowWindow(HWND(Pointer(windowHandle)), WinUser.SW_RESTORE)
     }
@@ -663,6 +668,9 @@ internal class TitleBarWindowProc(
     private val _windowIsActive: MutableStateFlow<Boolean> = MutableStateFlow(user32.GetActiveWindow() == windowHandle)
     val windowIsActive: StateFlow<Boolean> = _windowIsActive.asStateFlow()
 
+    private val _frameIsColorful: MutableStateFlow<Boolean> = MutableStateFlow(isAccentColorWindowFrame())
+    val frameIsColorful: StateFlow<Boolean> = _frameIsColorful.asStateFlow()
+
     private var hitTestResult: Int = HTCLIENT
 
     private val skiaLayerWindowProc: SkiaLayerHitTestWindowProc? =
@@ -821,6 +829,7 @@ internal class TitleBarWindowProc(
                 if (changedKey == "ImmersiveColorSet") {
                     _systemTheme.tryEmit(currentSystemTheme)
                     _systemColor.tryEmit(currentAccentColor())
+                    _frameIsColorful.tryEmit(isAccentColorWindowFrame())
                 }
                 user32.CallWindowProc(defaultWindowProc, hWnd, uMsg, wParam, lParam)
             }
@@ -861,6 +870,14 @@ internal class TitleBarWindowProc(
         val blue = (value and 0xFF00)
         val red = (value and 0xFF0000).shr(16)
         return Color((alpha or green or blue or red).toInt())
+    }
+    
+    fun isAccentColorWindowFrame(): Boolean {
+        return Advapi32Util.registryGetIntValue(
+            WinReg.HKEY_CURRENT_USER,
+            "SOFTWARE\\Microsoft\\Windows\\DWM",
+            "ColorPrevalence",
+        ) != 0
     }
 
     fun User32.isWindowInMaximized(hWnd: HWND): Boolean {

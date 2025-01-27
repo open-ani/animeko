@@ -12,7 +12,6 @@
 package me.him188.ani.app.desktop.window
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -28,6 +27,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.material3.Icon
@@ -38,6 +38,8 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,6 +49,8 @@ import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.InternalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
@@ -129,6 +133,8 @@ fun FrameWindowScope.WindowsWindowFrame(
         //Control the visibility of the title bar. initial value is !isFullScreen.
         val isTitleBarVisible = remember(isFullScreen) { mutableStateOf(!isFullScreen) }
         val captionButtonThemeController = remember(platformWindow) { TitleBarThemeController() }
+        // workaround for top border in windows 10
+        val topBorderFixedInsets = remember { MutableWindowInsets() }
         CompositionLocalProvider(
             LocalTitleBarInsets provides if (isTitleBarVisible.value) {
                 titleBarInsets
@@ -141,7 +147,7 @@ fun FrameWindowScope.WindowsWindowFrame(
                 ZeroInsets
             },
             LocalTitleBarThemeController provides captionButtonThemeController,
-            content = content,
+            content = { Box(modifier = Modifier.windowInsetsPadding(topBorderFixedInsets)) { content() } },
         )
         val titleBarInteractionSource = remember(isFullScreen) { MutableInteractionSource() }
         val titleBarHovered by titleBarInteractionSource.collectIsHoveredAsState()
@@ -153,7 +159,6 @@ fun FrameWindowScope.WindowsWindowFrame(
         }
         val isActive = remember { mutableStateOf(false) }
         //Draw the caption button
-        val platformWindow = LocalPlatformWindow.current
         LaunchedEffect(platformWindow) {
             windowUtils.windowIsActive(platformWindow)
                 .collect {
@@ -214,6 +219,7 @@ fun FrameWindowScope.WindowsWindowFrame(
                         onCloseButtonRectUpdate = {
                             buttonRects[2] = it
                         },
+                        modifier = Modifier.windowInsetsPadding(topBorderFixedInsets),
                     )
                 }
             }
@@ -221,12 +227,39 @@ fun FrameWindowScope.WindowsWindowFrame(
 
         val winBuild = remember { WindowsWindowUtils.instance.windowsBuildNumber() }
         //Fake top border workaround for Windows version less than 22000 (Windows 11).
-        if (winBuild != null && winBuild < 22000 && !isActive.value && !isFullScreen) {
+        val enabledTopBorder = remember { 
+            derivedStateOf { winBuild != null && winBuild < 22000 && !isFullScreen  }
+        }
+        LaunchedEffect(enabledTopBorder.value) {
+            topBorderFixedInsets.insets = if (enabledTopBorder.value) {
+                WindowInsets(top = 1)
+            } else {
+                ZeroInsets
+            }
+        }
+        if (enabledTopBorder.value) {
+            val windowIsColorful = remember(platformWindow) { WindowsWindowUtils.instance.frameIsColorful(platformWindow) }
+                .collectAsState(false)
+            val accentColor = remember(platformWindow) { WindowsWindowUtils.instance.windowAccentColor(platformWindow) }
+                .collectAsState(Color.Unspecified)
+            val targetColor = remember { 
+                derivedStateOf { 
+                    when {
+                        windowIsColorful.value && isActive.value -> accentColor.value.copy(1f)
+                        isActive.value -> Color(0x66757575)
+                        else -> Color(0x66757575)
+                    }
+                }
+            }
             Spacer(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .drawWithCache { 
+                        onDrawBehind { 
+                            drawLine(color = targetColor.value, Offset(0.5f, 0.5f), Offset(size.width - 0.5f, 0.5f), 1f)
+                        }
+                    }
                     .height(1.dp)
-                    .background(color = Color(0x66757575))
                     .zIndex(3f),
             )
         }
@@ -243,6 +276,7 @@ fun FrameWindowScope.WindowsWindowFrame(
             Spacer(
                 modifier = Modifier.hoverable(awareAreaInteractionSource)
                     .fillMaxWidth()
+                    .windowInsetsPadding(topBorderFixedInsets)
                     .height(16.dp),
             )
         }
