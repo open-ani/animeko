@@ -15,8 +15,11 @@ ani.dandanplay.app.secret=aaaaaaaaaaaaaaa
 
 ### 打包 Android APP
 
-在 IDE 中双击 Ctrl, 执行 `./gradlew assembleRelease` 或 `./gradlew assembleDebug`
-，分别编译发布版或测试版。使用 `./gradlew installRelease` 或 `./gradlew installDebug` 还可以构建应用并安装到模拟器。
+在 IDE 中双击 Ctrl，可用的命令：
+- `./gradlew assembleRelease` - 编译发布版
+- `./gradlew assembleDebug` - 编译测试版
+- `./gradlew installRelease` - 构建发布版并安装到模拟器
+- `./gradlew installDebug` - 构建测试版并安装到模拟器
 
 在 IDE 上也可以选择 `Build -> Build Bundle(s) / APK(s) -> Build APK(s)` 来构建 APK.
 

@@ -75,13 +75,13 @@ Compose Multiplatform 在 `desktop` 和 `ios` 均使用 [Skiko][Skiko] 渲染，
 ### 如何增加多平台功能
 
 在 `common` 内可以使用 `expect fun` 定义一个没有函数体的函数，然后在 `android` 或 `desktop` 内使用
-`actual fun` 实现它，这样就可以在 common 内间接访问到平台相关的功能。
+`actual fun` 实现它，这样就可以在 `common` 内间接访问到平台相关的功能。
 
 要开发一个适配各个平台的功能的流程通常是如下所示。
 
 以增加视频播放器为例:
 
-1. 在 `commonMain` 中增加 `expect fun VideoPlayer(state:  ediampPlayer)`。该函数没有函数体,
+1. 在 `commonMain` 中增加 `expect fun VideoPlayer(state: MediampPlayer)`。该函数没有函数体,
    各个平台分别实现函数体；
 2. 考虑该功能应当如何在各个平台实现。对于视频播放器，我们需要在三个平台分别实现；
 3. 在 `androidMain`、`desktopMain`、`appleMain` 中分别增加
