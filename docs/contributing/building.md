@@ -46,19 +46,19 @@ iOS 测试。
 >
 > 可使用 `./gradlew clean check` 清空缓存并重新运行所有测试。
 
-### 常见构建和运行问题
+## 常见构建和运行问题
 
-#### 编译报错找不到 `Res.*`
+### 编译报错找不到 `Res.*`
 
 这是 Compose 的 bug，请生成 Compose Multiplatform 资源：
 
 执行 `./gradlew generateComposeResClass` 即可生成一个 `Res` 类，用于在 `:app:shared` 访问资源文件。
 
-#### Android 触发断点恢复运行后，APP 无响应
+### Android 触发断点恢复运行后，APP 无响应
 
 打开 `app.android` 的配置，将 Debugger -> Debug type 改为 Java only。
 
-#### 启动 PC 版时报错 `ClassNotDefFoundError`
+### 启动 PC 版时报错 `ClassNotDefFoundError`
 
 打开 `Run Desktop` 的配置，复制一份，将 "Use classpath of module" 改为 `ani.app.desktop.test`。
 如果又遇到了，则改回来 `ani.app.desktop.main`。
