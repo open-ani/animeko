@@ -11,7 +11,7 @@
     <configuration default="false" name="Run Desktop" type="JetRunConfigurationType">
         <option name="MAIN_CLASS_NAME" value="me.him188.ani.app.desktop.AniDesktop" />
         <module name="animeko.app.desktop.main" />
-        <shortenClasspath name="ARGS_FILE" />
+        <shortenClasspath name="NONE" />
         <option name="VM_PARAMETERS"
                 value="-XX:+UseZGC -Dorg.slf4j.simpleLogger.defaultLogLevel=TRACE -Dkotlinx.coroutines.debug=on -Dani.debug=true -Xmx256m" />
         <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/app/desktop/test-sandbox" />
