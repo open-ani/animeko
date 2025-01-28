@@ -55,6 +55,7 @@ kotlin {
         api(libs.koin.core)
 
         api(libs.materialkolor)
+        api(libs.kmpalette.core)
     }
     sourceSets.commonTest.dependencies {
         api(projects.utils.uiTesting)

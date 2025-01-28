@@ -16,7 +16,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -42,7 +41,6 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
-import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -56,7 +54,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -78,13 +75,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.compose.collectAsLazyPagingItemsWithLifecycle
 import coil3.compose.AsyncImagePainter
-import com.kmpalette.color
-import com.kmpalette.rememberPaletteState
-import com.materialkolor.PaletteStyle
-import com.materialkolor.dynamicColorScheme
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.episode.findCacheStatus
-import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.data.models.subject.SubjectCollectionStats
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.domain.foundation.LoadError
@@ -110,8 +102,7 @@ import me.him188.ani.app.ui.foundation.pagerTabIndicatorOffset
 import me.him188.ani.app.ui.foundation.rememberImageViewerHandler
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.theme.LocalThemeSettings
-import me.him188.ani.app.ui.foundation.theme.animate
-import me.him188.ani.app.ui.foundation.theme.modifyColorSchemeForBlackBackground
+import me.him188.ani.app.ui.foundation.theme.VibrantMaterialTheme
 import me.him188.ani.app.ui.foundation.toComposeImageBitmap
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.richtext.RichTextDefaults
@@ -220,7 +211,7 @@ private fun SubjectDetailsPage(
 
     val themeSettings = LocalThemeSettings.current
     var bitmap by remember { mutableStateOf<ImageBitmap?>(null) }
-    MaterialThemeFromImage(bitmap) {
+    VibrantMaterialTheme(bitmap) {
         if (showSelectEpisode) {
             EpisodeListDialog(
                 state.episodeListState,
@@ -759,46 +750,4 @@ private fun renderSubjectDetailsTab(tab: SubjectDetailsTab): String {
         SubjectDetailsTab.COMMENTS -> "评论"
         SubjectDetailsTab.DISCUSSIONS -> "讨论"
     }
-}
-
-@Composable
-private fun MaterialThemeFromImage(
-    bitmap: ImageBitmap?,
-    content: @Composable () -> Unit,
-) {
-    val themeSettings = LocalThemeSettings.current
-    val isDark = when (themeSettings.darkMode) {
-        DarkMode.LIGHT -> false
-        DarkMode.DARK -> true
-        DarkMode.AUTO -> isSystemInDarkTheme()
-    }
-    val useBlackBackground = themeSettings.useBlackBackground
-    val paletteState = rememberPaletteState()
-    var colorScheme by remember { mutableStateOf<ColorScheme?>(null) }
-
-    LaunchedEffect(bitmap) {
-        if (bitmap == null) return@LaunchedEffect
-        bitmap.let {
-            paletteState.generate(it)
-
-            colorScheme = dynamicColorScheme(
-                primary = paletteState.palette?.vibrantSwatch?.color ?: themeSettings.seedColor,
-                isDark = isDark,
-                isAmoled = useBlackBackground,
-                style = PaletteStyle.TonalSpot,
-                modifyColorScheme = { colorScheme ->
-                    modifyColorSchemeForBlackBackground(
-                        colorScheme,
-                        isDark,
-                        useBlackBackground,
-                    )
-                },
-            )
-        }
-    }
-
-    MaterialTheme(
-        colorScheme = MaterialTheme.colorScheme.animate(colorScheme ?: MaterialTheme.colorScheme),
-        content = content,
-    )
 }
