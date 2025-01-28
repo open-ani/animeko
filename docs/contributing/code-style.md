@@ -7,6 +7,9 @@
 
 <img src="images/formatting.png" alt="commit-settings" width="300"/>
 
+> [!IMPORTANT]
+> 确保 IDE 设置中 `Editor -> Code Style -> Enable EditorConfig support` 是勾选的。
+
 ## 代码规范
 
 我们力求打造一个高质量的项目。
