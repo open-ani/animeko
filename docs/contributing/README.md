@@ -1,9 +1,3 @@
-[Compose for Desktop]: https://www.jetbrains.com/lp/compose-desktop/
-
-[动漫花园]: https://www.dmhy.org/
-
-[KMP]: https://kotlinlang.org/docs/multiplatform.html
-
 # 参与开发
 
 欢迎你提交 PR 参与开发。
