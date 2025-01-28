@@ -140,9 +140,9 @@ fun SettingsScope.ThemeGroup(
         )
 
         SwitchItem(
-            checked = themeSettings.dynamicSubjectPageTheme,
+            checked = themeSettings.useDynamicSubjectPageTheme,
             onCheckedChange = { checked ->
-                state.update(themeSettings.copy(dynamicSubjectPageTheme = checked))
+                state.update(themeSettings.copy(useDynamicSubjectPageTheme = checked))
             },
             title = { Text("条目详情页使用动态主题") },
             description = { Text("根据条目的图片，使用自适应颜色") },

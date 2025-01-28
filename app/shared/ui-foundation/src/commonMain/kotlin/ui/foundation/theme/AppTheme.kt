@@ -51,6 +51,7 @@ import me.him188.ani.app.ui.foundation.animation.StandardAccelerate
 import me.him188.ani.app.ui.foundation.animation.StandardDecelerate
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.isWidthCompact
+import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults.pageContentBackgroundColor
 import kotlin.math.roundToInt
 
 /**
@@ -314,11 +315,9 @@ fun modifyColorSchemeForBlackBackground(
 
 @Composable
 fun ColorScheme.animate(
-    targetColorScheme: ColorScheme?,
+    targetColorScheme: ColorScheme,
     animationSpec: AnimationSpec<Color> = tween(EasingDurations.standard),
 ): ColorScheme {
-    if (targetColorScheme == null) return this
-
     return ColorScheme(
         primary = animateColorAsState(targetColorScheme.primary, animationSpec).value,
         onPrimary = animateColorAsState(targetColorScheme.onPrimary, animationSpec).value,

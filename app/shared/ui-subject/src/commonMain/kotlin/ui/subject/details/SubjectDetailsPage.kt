@@ -285,7 +285,7 @@ private fun SubjectDetailsPage(
             windowInsets = windowInsets,
             navigationIcon = navigationIcon,
             onCoverImageSuccess = { success ->
-                if (themeSettings.dynamicSubjectPageTheme) {
+                if (themeSettings.useDynamicSubjectPageTheme) {
                     bitmap = success.result.image.toComposeImageBitmap()
                 }
             },
@@ -777,7 +777,8 @@ private fun MaterialThemeFromImage(
     var colorScheme by remember { mutableStateOf<ColorScheme?>(null) }
 
     LaunchedEffect(bitmap) {
-        bitmap?.let {
+        if (bitmap == null) return@LaunchedEffect
+        bitmap.let {
             paletteState.generate(it)
 
             colorScheme = dynamicColorScheme(
