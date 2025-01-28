@@ -24,7 +24,7 @@
 
 ### 如何找到我想修改的页面/功能?
 
-从 UI 入手, 全局搜索页面上会显示的文字的字符串最简单。
+从 UI 入手，全局搜索页面上会显示的文字的字符串最简单。
 
 你也可以用遍历的方式：
 
@@ -36,6 +36,6 @@
 1. 在 `app/shared/` 目录下创建一个对应的目录 `ui-xxx`，可以从已有的页面模块中复制一个；
 2. 在 `settings.gradle.kts` 中添加 `includeProject(":app:shared:ui-xxx")`；
 3. 在 IDE 刷新 Gradle，导入项目；
-4. 在 `app/shared/build.gradle.kts` 中仿照现有代码,
+4. 在 `app/shared/build.gradle.kts` 中仿照现有代码，
    添加一行 `api(projects.app.shared.uiXxx)`；
 5. 删除复制过来的代码，开始编写新页面。

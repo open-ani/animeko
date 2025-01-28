@@ -88,7 +88,7 @@ PR 的 CI 总是会运行 instrumented test，如果 CI 报错才需要本地运
 
 ### 运行调试版本 Android APP
 
-在 Android Studio 或 IntelliJ IDEA 中, 选择运行配置 `app.android`, 点击按钮运行或调试即可。
+在 Android Studio 或 IntelliJ IDEA 中，选择运行配置 `app.android`，点击按钮运行或调试即可。
 
 > [!TIP]
 > **Android 调试版本 (Debug) 的性能远低于发布版本 (Release)**

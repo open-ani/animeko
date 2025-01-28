@@ -248,7 +248,7 @@ Ani UI 100% 使用 [Compose Multiplatform][CMP]（CMP）编写。
 我们将 Ani 的部分组件独立为单独的项目开发，并采用宽松的 Apache 2.0 协议开源 (相对于 Ani 的 AGPL
 协议)。如果你需要修改相关功能，请查看以下项目:
 
-- [Mediamp][Mediamp]: 多媒体播放器库，用于播放音频和视频. 。
+- [Mediamp][Mediamp]: 多媒体播放器库，用于播放音频和视频。
   注意，Mediamp 只包含播放器内核实现。播放器 UI 和控制部分仍然在 Ani 客户端 (当前) 项目中。
 
 - [anitorrent][anitorrent]: 封装 libtorrent 的 BitTorrent 引擎，用于下载番剧。
