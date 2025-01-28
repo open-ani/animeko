@@ -102,7 +102,7 @@ import me.him188.ani.app.ui.foundation.pagerTabIndicatorOffset
 import me.him188.ani.app.ui.foundation.rememberImageViewerHandler
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.theme.LocalThemeSettings
-import me.him188.ani.app.ui.foundation.theme.VibrantMaterialTheme
+import me.him188.ani.app.ui.foundation.theme.MaterialThemeFromImage
 import me.him188.ani.app.ui.foundation.toComposeImageBitmap
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.richtext.RichTextDefaults
@@ -211,7 +211,7 @@ private fun SubjectDetailsPage(
 
     val themeSettings = LocalThemeSettings.current
     var bitmap by remember { mutableStateOf<ImageBitmap?>(null) }
-    VibrantMaterialTheme(bitmap) {
+    MaterialThemeFromImage(bitmap) {
         if (showSelectEpisode) {
             EpisodeListDialog(
                 state.episodeListState,

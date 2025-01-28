@@ -34,17 +34,17 @@ import me.him188.ani.app.data.models.preference.ThemeSettings
 import kotlin.coroutines.CoroutineContext
 
 @Composable
-fun rememberVibrantThemeState(
+fun rememberMTFIState(
     initialColorScheme: ColorScheme,
     coroutineContext: CoroutineContext = Dispatchers.Default
-): VibrantThemeState {
+): MTFIState {
     return remember(coroutineContext) {
-        VibrantThemeState(initialColorScheme, coroutineContext)
+        MTFIState(initialColorScheme, coroutineContext)
     }
 }
 
 @Stable
-class VibrantThemeState(
+class MTFIState(
     initialColorScheme: ColorScheme,
     private val coroutineContext: CoroutineContext = Dispatchers.Default
 ) {
@@ -104,8 +104,8 @@ class VibrantThemeState(
  * Apply dynamic vibrant color to the material 3 theme.
  */
 @Composable
-fun VibrantMaterialTheme(
-    state: VibrantThemeState,
+fun MaterialThemeFromImage(
+    state: MTFIState,
     content: @Composable () -> Unit
 ) {
     val prev by remember {
@@ -160,14 +160,14 @@ fun VibrantMaterialTheme(
 }
 
 /**
- * Apply dynamic vibrant color to the material 3 theme.
+ * Generate a MaterialTheme from an image
  */
 @Composable
-fun VibrantMaterialTheme(
+fun MaterialThemeFromImage(
     bitmap: ImageBitmap?,
     content: @Composable () -> Unit
 ) {
-    val state = rememberVibrantThemeState(MaterialTheme.colorScheme)
+    val state = rememberMTFIState(MaterialTheme.colorScheme)
     val themeSettings = LocalThemeSettings.current
     val useDarkTheme = when (themeSettings.darkMode) {
         DarkMode.LIGHT -> false
@@ -180,5 +180,5 @@ fun VibrantMaterialTheme(
         state.applyPalette(bitmap, themeSettings, useDarkTheme)
     }
 
-    VibrantMaterialTheme(state, content)
+    MaterialThemeFromImage(state, content)
 }
