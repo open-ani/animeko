@@ -382,7 +382,7 @@ run {
     val ghUbuntu2404 = MatrixInstance(
         runner = Runner.GithubUbuntu2404,
         uploadApk = false,
-        runAndroidInstrumentedTests = true,
+        runAndroidInstrumentedTests = true, // 这其实有问题, GH 没有足够的空间安装 7GB 模拟器
         composeResourceTriple = "linux-x64",
         runTests = false,
         uploadDesktopInstallers = false,
@@ -423,7 +423,7 @@ run {
     buildMatrixInstances = listOf(
         selfWin10,
         ghWin2019,
-        ghUbuntu2404,
+//        ghUbuntu2404,
         ghMac13,
         selfMac15,
     )
