@@ -1248,15 +1248,6 @@ class WithMatrix(
                 // 30 is min for instrumented test (because we have spaces in func names), 
                 // 35 is our targetSdk
                 for (apiLevel in listOf(30, 35)) {
-                    uses(
-                        name = "Android Instrumented Test (api=$apiLevel, arch=${arch.stringValue})",
-                        action = AndroidEmulatorRunner(
-                            apiLevel = apiLevel,
-                            arch = arch,
-                            script = "./gradlew connectedDebugAndroidTest \"-Pandroid.min.sdk=30\" " + matrix.gradleArgs,
-                            emulatorBootTimeout = 1800,
-                        ),
-                    )
                     if (!matrix.runner.isSelfHosted && matrix.isUnix) {
                         // GitHub hosted runners allow only 14GB space, so we have to remove old emulators before installing new ones
                         run(
@@ -1273,6 +1264,15 @@ class WithMatrix(
                             """.trimIndent(),
                         )
                     }
+                    uses(
+                        name = "Android Instrumented Test (api=$apiLevel, arch=${arch.stringValue})",
+                        action = AndroidEmulatorRunner(
+                            apiLevel = apiLevel,
+                            arch = arch,
+                            script = "./gradlew connectedDebugAndroidTest \"-Pandroid.min.sdk=30\" " + matrix.gradleArgs,
+                            emulatorBootTimeout = 1800,
+                        ),
+                    )
                 }
             }
         }
