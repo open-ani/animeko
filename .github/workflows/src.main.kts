@@ -905,6 +905,7 @@ class WithMatrix(
                     // https://github.com/marketplace/actions/free-disk-space-ubuntu
                     toolCache_Untyped = "false",
                     android_Untyped = "false",
+                    largePackages_Untyped = "false",
                     // others are true
                 )
             )
