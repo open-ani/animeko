@@ -11,13 +11,22 @@
 
 package me.him188.ani.app.ui.foundation.layout
 
-import androidx.compose.animation.*
+import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
-import androidx.compose.material3.adaptive.layout.*
+import androidx.compose.material3.adaptive.layout.AnimatedPane
+import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
+import androidx.compose.material3.adaptive.layout.ThreePaneScaffoldPaneScope
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clipToBounds
 import me.him188.ani.app.ui.foundation.animation.StandardAccelerate
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults.feedItemFadeOutSpec
 import me.him188.ani.app.ui.foundation.theme.EasingDurations
@@ -34,65 +43,54 @@ fun ThreePaneScaffoldPaneScope.ListDetailAnimatedPane(
     useSharedTransition: Boolean = false, // changed: for shared transitions
     content: (@Composable AnimatedVisibilityScope.() -> Unit),
 ) {
-    val role = paneRole
-    val keepShowing =
-        scaffoldStateTransition.currentState[role] != PaneAdaptedValue.Hidden &&
-                scaffoldStateTransition.targetState[role] != PaneAdaptedValue.Hidden
-//    val animateFraction = { scaffoldStateTransitionFraction }
-    val navMotionScheme = NavigationMotionScheme.current
-    scaffoldStateTransition.AnimatedVisibility(
-        visible = { value: ThreePaneScaffoldValue -> value[role] != PaneAdaptedValue.Hidden },
-        modifier =
-            modifier
-//            .animateBounds(
-//                animateFraction = animateFraction,
-//                positionAnimationSpec = tween(500, easing = EmphasizedEasing), // changed: custom animation spec
-//                sizeAnimationSpec = tween(500, easing = EmphasizedEasing), // changed: custom animation spec
-//                lookaheadScope = this,
-//                enabled = keepShowing,
-//            )
-                .then(if (keepShowing) Modifier else Modifier.clipToBounds()),
-        enter = when {
-            useSharedTransition -> {
-                fadeIn() + expandVertically()
-            }
+    val navMotionScheme by rememberUpdatedState(NavigationMotionScheme.current)
+    val enterTransition by remember(useSharedTransition) {
+        derivedStateOf {
+            when {
+                useSharedTransition -> {
+                    fadeIn() + expandVertically()
+                }
 
-            role == ListDetailPaneScaffoldRole.List -> {
-                navMotionScheme.popEnterTransition
-            }
+                paneRole == ListDetailPaneScaffoldRole.List -> {
+                    navMotionScheme.popEnterTransition
+                }
 
-            role == ListDetailPaneScaffoldRole.Detail -> {
-                navMotionScheme.enterTransition
-            }
+                paneRole == ListDetailPaneScaffoldRole.Detail -> {
+                    navMotionScheme.enterTransition
+                }
 
-            else -> {
-                fadeIn(
-                    tween(
-                        EasingDurations.standardAccelerate,
-                        delayMillis = EasingDurations.standardDecelerate,
-                        easing = StandardAccelerate,
-                    ),
-                )
+                else -> {
+                    fadeIn(
+                        tween(
+                            EasingDurations.standardAccelerate,
+                            delayMillis = EasingDurations.standardDecelerate,
+                            easing = StandardAccelerate,
+                        ),
+                    )
+                }
             }
-        }, // changed 原生的动画会回弹, 与目前的整个 APP 设计风格相差太多了
-        exit = when {
-            useSharedTransition -> {
-                fadeOut() + shrinkVertically()
-            }
-
-            role == ListDetailPaneScaffoldRole.List -> {
-                navMotionScheme.exitTransition
-            }
-
-            role == ListDetailPaneScaffoldRole.Detail -> {
-                navMotionScheme.popExitTransition
-            }
-
-            else -> {
-                fadeOut(feedItemFadeOutSpec)
-            }
-        }, // changed
-    ) {
-        this.content()
+        }
     }
+    val exitTransition by remember(useSharedTransition) {
+        derivedStateOf {
+            when {
+                useSharedTransition -> {
+                    fadeOut() + shrinkVertically()
+                }
+
+                paneRole == ListDetailPaneScaffoldRole.List -> {
+                    navMotionScheme.exitTransition
+                }
+
+                paneRole == ListDetailPaneScaffoldRole.Detail -> {
+                    navMotionScheme.popExitTransition
+                }
+
+                else -> {
+                    fadeOut(feedItemFadeOutSpec)
+                }
+            }
+        }
+    }
+    return AnimatedPane(modifier, enterTransition, exitTransition, content = content)
 }
