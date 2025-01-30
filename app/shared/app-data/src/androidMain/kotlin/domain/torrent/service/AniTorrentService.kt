@@ -13,6 +13,7 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
 import android.os.Process
@@ -225,6 +226,12 @@ sealed class AniTorrentService : LifecycleService() {
 
     companion object {
         const val INTENT_STARTUP = "me.him188.ani.android.ANI_TORRENT_SERVICE_STARTUP"
+
+        val actualServiceClass = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            AniTorrentServiceApi34::class.java
+        } else {
+            AniTorrentServiceApiDefault::class.java
+        }
     }
 }
 

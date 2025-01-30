@@ -39,6 +39,7 @@ import me.him188.ani.app.domain.torrent.TorrentEngineFactory
 import me.him188.ani.app.domain.torrent.TorrentManager
 import me.him188.ani.app.domain.torrent.client.RemoteAnitorrentEngine
 import me.him188.ani.app.domain.torrent.peer.PeerFilterSettings
+import me.him188.ani.app.domain.torrent.service.AniTorrentService
 import me.him188.ani.app.domain.torrent.service.TorrentServiceConnection
 import me.him188.ani.app.navigation.BrowserNavigator
 import me.him188.ani.app.platform.AndroidPermissionManager
@@ -230,7 +231,7 @@ fun getAndroidModules(
                 runBlocking(Dispatchers.Main.immediate) {
                     (context.findActivity() as? BaseComponentActivity)?.finishAffinity()
                     context.startService(
-                        Intent(context, TorrentServiceConnection.anitorrentServiceClass)
+                        Intent(context, AniTorrentService.actualServiceClass)
                             .apply { putExtra("stopService", true) },
                     )
                     exitProcess(status)

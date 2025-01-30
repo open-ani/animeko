@@ -39,7 +39,7 @@ class ServiceNotification(
     private val stopServiceIntent by lazy {
         PendingIntent.getService(
             context, 0,
-            Intent(context, TorrentServiceConnection.anitorrentServiceClass).apply { putExtra("stopService", true) },
+            Intent(context, AniTorrentService.actualServiceClass).apply { putExtra("stopService", true) },
             PendingIntent.FLAG_IMMUTABLE,
         )
     }
