@@ -17,6 +17,7 @@ import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineName
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -197,6 +198,12 @@ abstract class LifecycleAwareTorrentServiceConnection<T : Any>(
             }
         }
         logger.error { "Failed to start service after $maxAttempts retries." }
+    }
+
+    fun close() {
+        scope.cancel()
+        isServiceConnected.value = false
+        binderDeferred.cancel(CancellationException("TorrentServiceConnection closed."))
     }
 
     /**
