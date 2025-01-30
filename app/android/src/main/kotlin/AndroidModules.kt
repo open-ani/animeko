@@ -33,14 +33,16 @@ import me.him188.ani.app.domain.media.resolver.MediaResolver
 import me.him188.ani.app.domain.media.resolver.TorrentMediaResolver
 import me.him188.ani.app.domain.settings.ProxyProvider
 import me.him188.ani.app.domain.torrent.DefaultTorrentManager
+import me.him188.ani.app.domain.torrent.IRemoteAniTorrentEngine
 import me.him188.ani.app.domain.torrent.LocalAnitorrentEngineFactory
 import me.him188.ani.app.domain.torrent.TorrentEngine
 import me.him188.ani.app.domain.torrent.TorrentEngineFactory
 import me.him188.ani.app.domain.torrent.TorrentManager
+import me.him188.ani.app.domain.torrent.TorrentServiceConnection
 import me.him188.ani.app.domain.torrent.client.RemoteAnitorrentEngine
 import me.him188.ani.app.domain.torrent.peer.PeerFilterSettings
+import me.him188.ani.app.domain.torrent.service.AndroidTorrentServiceConnection
 import me.him188.ani.app.domain.torrent.service.AniTorrentService
-import me.him188.ani.app.domain.torrent.service.TorrentServiceConnection
 import me.him188.ani.app.navigation.BrowserNavigator
 import me.him188.ani.app.platform.AndroidPermissionManager
 import me.him188.ani.app.platform.AppTerminator
@@ -76,7 +78,7 @@ import kotlin.system.exitProcess
 
 fun getAndroidModules(
     defaultTorrentCacheDir: File,
-    torrentServiceConnection: TorrentServiceConnection,
+    torrentServiceConnection: AndroidTorrentServiceConnection,
     coroutineScope: CoroutineScope,
 ) = module {
     single<PermissionManager> {
@@ -100,7 +102,7 @@ fun getAndroidModules(
     }
     single<BrowserNavigator> { AndroidBrowserNavigator() }
 
-    single<TorrentServiceConnection> { torrentServiceConnection }
+    single<TorrentServiceConnection<IRemoteAniTorrentEngine>> { torrentServiceConnection }
 
     single<TorrentManager> {
         val context = androidContext()

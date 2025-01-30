@@ -23,8 +23,8 @@ import kotlinx.coroutines.launch
 import me.him188.ani.android.activity.MainActivity
 import me.him188.ani.app.domain.media.cache.MediaCacheNotificationTask
 import me.him188.ani.app.domain.torrent.TorrentManager
+import me.him188.ani.app.domain.torrent.service.AndroidTorrentServiceConnection
 import me.him188.ani.app.domain.torrent.service.AniTorrentService
-import me.him188.ani.app.domain.torrent.service.TorrentServiceConnection
 import me.him188.ani.app.platform.AndroidLoggingConfigurator
 import me.him188.ani.app.platform.JvmLogHelper
 import me.him188.ani.app.platform.createAppRootCoroutineScope
@@ -86,7 +86,7 @@ class AniApplication : Application() {
 
 
         val scope = createAppRootCoroutineScope()
-        val torrentServiceConnection = TorrentServiceConnection(
+        val torrentServiceConnection = AndroidTorrentServiceConnection(
             this,
             onRequiredRestartService = { startAniTorrentService() },
             scope.coroutineContext,

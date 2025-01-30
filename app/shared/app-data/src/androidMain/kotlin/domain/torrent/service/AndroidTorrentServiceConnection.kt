@@ -20,8 +20,9 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
-import me.him188.ani.app.domain.torrent.AbstractTorrentServiceConnection
 import me.him188.ani.app.domain.torrent.IRemoteAniTorrentEngine
+import me.him188.ani.app.domain.torrent.LifecycleAwareTorrentServiceConnection
+import me.him188.ani.app.domain.torrent.TorrentServiceConnection
 import me.him188.ani.utils.logging.debug
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.warn
@@ -38,18 +39,19 @@ import kotlin.time.Duration.Companion.minutes
  * 或其他可以涵盖 app 全局生命周期的自定义 [LifecycleOwner] 来管理服务连接.
  * 不能使用 [Activity][android.app.Activity] (例如 [ComponentActivity][androidx.core.app.ComponentActivity])
  * 的生命周期, 因为在屏幕旋转 (例如竖屏转全屏播放) 的时候 Activity 可能会摧毁并重新创建,
- * 这会导致 [TorrentServiceConnection] 错误地重新绑定服务或重启服务.
+ * 这会导致 [AndroidTorrentServiceConnection] 错误地重新绑定服务或重启服务.
  *
  * @see androidx.lifecycle.ProcessLifecycleOwner
  * @see ServiceConnection
  * @see AniTorrentService.onStartCommand
  * @see me.him188.ani.android.AniApplication
  */
-class TorrentServiceConnection(
+class AndroidTorrentServiceConnection(
     private val context: Context,
     private val onRequiredRestartService: () -> ComponentName?,
     coroutineContext: CoroutineContext = Dispatchers.Default,
-) : ServiceConnection, AbstractTorrentServiceConnection<IRemoteAniTorrentEngine>(coroutineContext) {
+) : ServiceConnection,
+    LifecycleAwareTorrentServiceConnection<IRemoteAniTorrentEngine>(coroutineContext) {
     private val startupIntentFilter by lazy { IntentFilter(AniTorrentService.INTENT_STARTUP) }
     private val acquireWakeLockIntent by lazy {
         Intent(context, AniTorrentService.actualServiceClass).apply {
@@ -57,7 +59,7 @@ class TorrentServiceConnection(
         }
     }
 
-    override suspend fun startService(): StartResult {
+    override suspend fun startService(): TorrentServiceConnection.StartResult {
         return suspendCancellableCoroutine { cont ->
             val receiver = object : BroadcastReceiver() {
                 override fun onReceive(c: Context?, intent: Intent?) {
@@ -69,14 +71,14 @@ class TorrentServiceConnection(
                             context,
                             AniTorrentService.actualServiceClass,
                         ),
-                        this@TorrentServiceConnection,
+                        this@AndroidTorrentServiceConnection,
                         Context.BIND_ABOVE_CLIENT,
                     )
                     if (!bindResult) {
                         logger.error { "Failed to bind service, context.bindService returns false." }
-                        cont.resume(StartResult.FAILED)
+                        cont.resume(TorrentServiceConnection.StartResult.FAILED)
                     } else {
-                        cont.resume(StartResult.STARTED)
+                        cont.resume(TorrentServiceConnection.StartResult.STARTED)
                     }
                 }
             }
@@ -90,7 +92,7 @@ class TorrentServiceConnection(
 
             val result = onRequiredRestartService()
             if (result == null) {
-                cont.resume(StartResult.FAILED)
+                cont.resume(TorrentServiceConnection.StartResult.FAILED)
                 logger.error { "Failed to start service, context.startForegroundService returns null component info." }
             } else {
                 logger.debug { "Service started, component name: $result" }
@@ -106,10 +108,6 @@ class TorrentServiceConnection(
         onServiceConnected(binder)
     }
 
-    override fun onServiceDisconnected(name: ComponentName?) {
-        onServiceDisconnected()
-    }
-
     override fun onPause(owner: LifecycleOwner) {
         try {
             // 请求 wake lock, 如果在 app 中息屏可以保证 service 正常跑 [acquireWakeLockIntent] 分钟.
@@ -119,5 +117,9 @@ class TorrentServiceConnection(
             logger.warn(ex) { "Failed to acquire wake lock. Service has already died." }
         }
         super.onPause(owner)
+    }
+
+    override fun onServiceDisconnected(name: ComponentName?) {
+        onServiceDisconnected()
     }
 }

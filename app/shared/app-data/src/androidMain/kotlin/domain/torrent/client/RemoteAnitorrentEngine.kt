@@ -29,11 +29,11 @@ import me.him188.ani.app.data.models.preference.ProxyConfig
 import me.him188.ani.app.domain.torrent.IRemoteAniTorrentEngine
 import me.him188.ani.app.domain.torrent.TorrentEngine
 import me.him188.ani.app.domain.torrent.TorrentEngineType
+import me.him188.ani.app.domain.torrent.TorrentServiceConnection
 import me.him188.ani.app.domain.torrent.parcel.PAnitorrentConfig
 import me.him188.ani.app.domain.torrent.parcel.PProxyConfig
 import me.him188.ani.app.domain.torrent.parcel.toParceled
 import me.him188.ani.app.domain.torrent.peer.PeerFilterSettings
-import me.him188.ani.app.domain.torrent.service.TorrentServiceConnection
 import me.him188.ani.app.torrent.api.TorrentDownloader
 import me.him188.ani.datasources.api.source.MediaSourceLocation
 import me.him188.ani.utils.coroutines.IO_
@@ -45,7 +45,7 @@ import kotlin.coroutines.CoroutineContext
 
 @RequiresApi(Build.VERSION_CODES.O_MR1)
 class RemoteAnitorrentEngine(
-    private val connection: TorrentServiceConnection,
+    private val connection: TorrentServiceConnection<IRemoteAniTorrentEngine>,
     anitorrentConfigFlow: Flow<AnitorrentConfig>,
     proxyConfig: Flow<ProxyConfig?>,
     peerFilterConfig: Flow<PeerFilterSettings>,

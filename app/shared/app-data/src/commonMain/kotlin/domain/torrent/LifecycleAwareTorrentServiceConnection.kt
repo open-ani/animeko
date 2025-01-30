@@ -31,21 +31,66 @@ import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 
 /**
- * 管理与服务的连接. [T] 代表与服务进行通信的c.
- *
- * 这个类通过 [Lifecycle] 来约束与服务的连接状态, 保证了:
+ * torrent 服务与 APP 通信接口.
+ */
+interface TorrentServiceConnection<T : Any> {
+    /**
+     * 当前服务是否已连接, 只有在已连接的状态才能获取通信接口.
+     *
+     * 若变为 `false`, 则服务通信接口将变得不可用, 调用任何通信接口的方法将会导致不可预测的结果.
+     * 此时需要再次调用 [startService] 来重新启动服务.
+     */
+    val connected: StateFlow<Boolean>
+
+    /**
+     * 启动服务. 调用此方法后, 服务将会启动并尽快连接.
+     *
+     * 若返回了 [StartResult.STARTED] 或 [StartResult.FAILED],
+     * [connected] 将在未来变为 `true`, 届时 [getBinder] 将会立刻返回服务通信接口.
+     */
+    suspend fun startService(): StartResult
+
+    /**
+     * 获取通信接口. 如果服务未连接, 则会挂起直到服务连接成功.
+     */
+    suspend fun getBinder(): T
+
+    /**
+     * Start result of [startService]
+     */
+    enum class StartResult {
+        /**
+         * Service is started, binder should be later retrieved by [onServiceConnected]
+         */
+        STARTED,
+
+        /**
+         * Service is already running
+         */
+        ALREADY_RUNNING,
+
+        /**
+         * Service started failed.
+         */
+        FAILED
+    }
+}
+
+/**
+ * 通过 [Lifecycle] 来约束与服务的连接状态, 保证了:
  * - 在 [RESUMED][Lifecycle.State.RESUMED] 状态下, 根据[文档](https://developer.android.com/guide/components/activities/activity-lifecycle#onresume), APP 被视为在前台.
  * 服务未连接或终止, 则会立刻启动或重启服务保证可用性.
  * - 在 [CREATED][Lifecycle.State.CREATED] 和 [STARTED][Lifecycle.State.STARTED] 状态下,
  * 若服务终止, 不会立刻重启服务, 直到再次进入 [RESUMED][Lifecycle.State.RESUMED] 状态.
  *
  * 实现细节:
- * - 实现 [startService] 方法, 用于实际的启动服务.
- * - 服务启动完成后，通过具体实现的监听方式调用 [onServiceConnected] 或 [onServiceDisconnected] 方法.
+ * - 实现 [startService] 方法, 用于实际的启动服务, 并且要连接服务.
+ * - 服务连接完成，调用 [onServiceConnected] 传入服务通信接口对象.
+ * - 如果服务断开连接了, 调用 [onServiceDisconnected], 会自动判断是否需要重连.
  */
-abstract class AbstractTorrentServiceConnection<T : Any>(
+abstract class LifecycleAwareTorrentServiceConnection<T : Any>(
     coroutineContext: CoroutineContext = EmptyCoroutineContext,
-) : DefaultLifecycleObserver {
+) : DefaultLifecycleObserver, TorrentServiceConnection<T> {
     protected val logger = logger(this::class.simpleName ?: "TorrentServiceConnection")
     private val scope = coroutineContext.childScope()
 
@@ -55,7 +100,7 @@ abstract class AbstractTorrentServiceConnection<T : Any>(
     private val isAtForeground: MutableStateFlow<Boolean> = MutableStateFlow(false)
     private val isServiceConnected: MutableStateFlow<Boolean> = MutableStateFlow(false)
 
-    val connected: StateFlow<Boolean> = isServiceConnected
+    override val connected: StateFlow<Boolean> = isServiceConnected
 
     /**
      * 启动服务并返回启动结果.
@@ -67,7 +112,7 @@ abstract class AbstractTorrentServiceConnection<T : Any>(
      *
      * @return `true` if the service is started successfully, `false` otherwise.
      */
-    abstract suspend fun startService(): StartResult
+    abstract override suspend fun startService(): TorrentServiceConnection.StartResult
 
     /**
      * 服务已连接, 服务通信对象一定可用.
@@ -93,7 +138,9 @@ abstract class AbstractTorrentServiceConnection<T : Any>(
      */
     protected fun onServiceDisconnected() {
         scope.launch(CoroutineName("TorrentServiceConnection - On Service Disconnected")) {
+            if (!isServiceConnected.value) return@launch
             lock.withLock {
+                if (!isServiceConnected.value) return@launch
                 isServiceConnected.value = false
 
                 binderDeferred.cancel(CancellationException("Service disconnected."))
@@ -102,21 +149,12 @@ abstract class AbstractTorrentServiceConnection<T : Any>(
                 if (isAtForeground.value) {
                     logger.info { "Service is disconnected while app is at foreground, restarting." }
                     val startResult = startService()
-                    if (startResult == StartResult.FAILED) {
+                    if (startResult == TorrentServiceConnection.StartResult.FAILED) {
                         logger.warn { "Failed to start service, all binder getter will suspended." }
                     }
                 }
             }
         }
-    }
-
-    /**
-     * 获取当前 binder 对象.
-     * 如果服务未连接, 则会挂起直到服务连接成功.
-     */
-    suspend fun getBinder(): T {
-        isServiceConnected.first { it }
-        return binderDeferred.await()
     }
 
     /**
@@ -134,7 +172,7 @@ abstract class AbstractTorrentServiceConnection<T : Any>(
 
                 logger.info { "Service is not started, starting." }
                 val startResult = startService()
-                if (startResult == StartResult.FAILED) {
+                if (startResult == TorrentServiceConnection.StartResult.FAILED) {
                     logger.warn { "Failed to start service, all binder getter will suspended." }
                 }
             }
@@ -151,22 +189,11 @@ abstract class AbstractTorrentServiceConnection<T : Any>(
     }
 
     /**
-     * Start result of [startService]
+     * 获取当前 binder 对象.
+     * 如果服务未连接, 则会挂起直到服务连接成功.
      */
-    enum class StartResult {
-        /**
-         * Service is started, binder should be later retrieved by [onServiceConnected]
-         */
-        STARTED,
-
-        /**
-         * Service is already running
-         */
-        ALREADY_RUNNING,
-
-        /**
-         * Service started failed.
-         */
-        FAILED
+    override suspend fun getBinder(): T {
+        isServiceConnected.first { it }
+        return binderDeferred.await()
     }
 }
