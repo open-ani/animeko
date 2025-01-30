@@ -54,8 +54,20 @@ class AndroidTorrentServiceConnection(
     LifecycleAwareTorrentServiceConnection<IRemoteAniTorrentEngine>(coroutineContext) {
     private val startupIntentFilter by lazy { IntentFilter(AniTorrentService.INTENT_STARTUP) }
     private val acquireWakeLockIntent by lazy {
-        Intent(context, AniTorrentService.actualServiceClass).apply {
+        Intent(context, AniTorrentService::class.java).apply {
             putExtra("acquireWakeLock", 1.minutes.inWholeMilliseconds)
+        }
+    }
+
+    /**
+     * Android 15 限制了 `dataSync` 和 `mediaProcessing` 的 FGS 后台运行时间限制
+     */
+    private var registered = false
+    private val timeExceedLimitIntentFilter by lazy { IntentFilter(AniTorrentService.INTENT_BACKGROUND_TIMEOUT) }
+    private val timeExceedLimitReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            logger.warn { "Service background time exceeded." }
+            onServiceDisconnected()
         }
     }
 
@@ -66,10 +78,15 @@ class AndroidTorrentServiceConnection(
                     logger.debug { "Received service startup broadcast: $intent, starting bind service." }
                     context.unregisterReceiver(this)
 
+                    if (intent?.getBooleanExtra("success", false) != true) {
+                        cont.resume(TorrentServiceConnection.StartResult.FAILED)
+                        return
+                    }
+
                     val bindResult = context.bindService(
                         Intent(
                             context,
-                            AniTorrentService.actualServiceClass,
+                            AniTorrentService::class.java,
                         ),
                         this@AndroidTorrentServiceConnection,
                         Context.BIND_ABOVE_CLIENT,
@@ -102,13 +119,23 @@ class AndroidTorrentServiceConnection(
 
     override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
         if (service == null) {
-            logger.warn { "Service is connected, but got null binder!" }
+            logger.error { "Service is connected, but got null binder!" }
         }
         val binder = IRemoteAniTorrentEngine.Stub.asInterface(service)
         onServiceConnected(binder)
     }
 
     override fun onPause(owner: LifecycleOwner) {
+        // app 到后台的时候注册监听
+        if (!registered) {
+            ContextCompat.registerReceiver(
+                context,
+                timeExceedLimitReceiver,
+                timeExceedLimitIntentFilter,
+                ContextCompat.RECEIVER_NOT_EXPORTED,
+            )
+            registered = true
+        }
         try {
             // 请求 wake lock, 如果在 app 中息屏可以保证 service 正常跑 [acquireWakeLockIntent] 分钟.
             context.startService(acquireWakeLockIntent)
@@ -117,6 +144,15 @@ class AndroidTorrentServiceConnection(
             logger.warn(ex) { "Failed to acquire wake lock. Service has already died." }
         }
         super.onPause(owner)
+    }
+
+    override fun onResume(owner: LifecycleOwner) {
+        // app 到前台的时候取消监听
+        if (registered) {
+            context.unregisterReceiver(timeExceedLimitReceiver)
+            registered = false
+        }
+        super.onResume(owner)
     }
 
     override fun onServiceDisconnected(name: ComponentName?) {

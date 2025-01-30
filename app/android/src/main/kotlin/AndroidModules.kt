@@ -233,7 +233,7 @@ fun getAndroidModules(
                 runBlocking(Dispatchers.Main.immediate) {
                     (context.findActivity() as? BaseComponentActivity)?.finishAffinity()
                     context.startService(
-                        Intent(context, AniTorrentService.actualServiceClass)
+                        Intent(context, AniTorrentService::class.java)
                             .apply { putExtra("stopService", true) },
                     )
                     exitProcess(status)

@@ -13,12 +13,10 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
 import android.os.Process
 import android.os.SystemClock
-import androidx.annotation.RequiresApi
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.CompletableDeferred
@@ -53,7 +51,7 @@ import me.him188.ani.utils.io.inSystem
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 
-sealed class AniTorrentService : LifecycleService() {
+class AniTorrentService : LifecycleService() {
     private val scope = CoroutineScope(
         Dispatchers.Default + CoroutineName("AniTorrentService") +
                 SupervisorJob(lifecycleScope.coroutineContext[Job]),
@@ -144,13 +142,19 @@ sealed class AniTorrentService : LifecycleService() {
         if (notification.createNotification(this)) {
             // 启动完成的广播
             sendBroadcast(
-                Intent().apply {
+                Intent(INTENT_STARTUP).apply { 
                     setPackage(packageName)
-                    setAction(INTENT_STARTUP)
+                    putExtra("success", true)
                 },
             )
             return START_STICKY
         } else {
+            sendBroadcast(
+                Intent(INTENT_STARTUP).apply {
+                    setPackage(packageName)
+                    putExtra("false", true)
+                },
+            )
             return START_NOT_STICKY
         }
     }
@@ -200,6 +204,13 @@ sealed class AniTorrentService : LifecycleService() {
         super.onTaskRemoved(rootIntent)
     }
 
+    override fun onTimeout(startId: Int, fgsType: Int) {
+        super.onTimeout(startId, fgsType)
+        // 发送后台执行超时广播
+        sendBroadcast(Intent(INTENT_BACKGROUND_TIMEOUT).apply { setPackage(packageName) })
+        stopSelf()
+    }
+
     override fun onDestroy() {
         logger.info { "AniTorrentService is stopping." }
         meteredNetworkDetector.dispose()
@@ -226,16 +237,6 @@ sealed class AniTorrentService : LifecycleService() {
 
     companion object {
         const val INTENT_STARTUP = "me.him188.ani.android.ANI_TORRENT_SERVICE_STARTUP"
-
-        val actualServiceClass = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            AniTorrentServiceApi34::class.java
-        } else {
-            AniTorrentServiceApiDefault::class.java
-        }
+        const val INTENT_BACKGROUND_TIMEOUT = "me.him188.ani.android.ANI_TORRENT_SERVICE_BACKGROUND_TIMEOUT"
     }
 }
-
-@RequiresApi(34)
-class AniTorrentServiceApi34 : AniTorrentService()
-
-class AniTorrentServiceApiDefault : AniTorrentService()

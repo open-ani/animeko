@@ -17,6 +17,7 @@ import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineName
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -24,7 +25,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import me.him188.ani.utils.coroutines.childScope
-import me.him188.ani.utils.logging.info
+import me.him188.ani.utils.logging.debug
+import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
 import kotlin.coroutines.CoroutineContext
@@ -121,7 +123,7 @@ abstract class LifecycleAwareTorrentServiceConnection<T : Any>(
     protected fun onServiceConnected(binder: T) {
         scope.launch(CoroutineName("TorrentServiceConnection - On Service Connected")) {
             lock.withLock {
-                logger.info { "Service is connected, got binder $binder" }
+                logger.debug { "Service is connected, got binder $binder" }
                 if (binderDeferred.isCompleted) {
                     binderDeferred = CompletableDeferred(binder)
                 } else {
@@ -147,11 +149,8 @@ abstract class LifecycleAwareTorrentServiceConnection<T : Any>(
                 binderDeferred = CompletableDeferred()
 
                 if (isAtForeground.value) {
-                    logger.info { "Service is disconnected while app is at foreground, restarting." }
-                    val startResult = startService()
-                    if (startResult == TorrentServiceConnection.StartResult.FAILED) {
-                        logger.warn { "Failed to start service, all binder getter will suspended." }
-                    }
+                    logger.debug { "Service is disconnected while app is at foreground, restarting." }
+                    startServiceWithRetry()
                 }
             }
         }
@@ -170,11 +169,8 @@ abstract class LifecycleAwareTorrentServiceConnection<T : Any>(
             lock.withLock {
                 if (isServiceConnected.value) return@launch
 
-                logger.info { "Service is not started, starting." }
-                val startResult = startService()
-                if (startResult == TorrentServiceConnection.StartResult.FAILED) {
-                    logger.warn { "Failed to start service, all binder getter will suspended." }
-                }
+                logger.debug { "Service is not started, starting." }
+                startServiceWithRetry()
             }
         }
     }
@@ -186,6 +182,21 @@ abstract class LifecycleAwareTorrentServiceConnection<T : Any>(
                 isAtForeground.value = false
             }
         }
+    }
+
+    private suspend fun startServiceWithRetry(maxAttempts: Int = 15) {
+        var retries = 0
+        while (retries <= maxAttempts) {
+            val startResult = startService()
+            if (startResult == TorrentServiceConnection.StartResult.FAILED) {
+                logger.warn { "[#$retries] Failed to start service." }
+                retries++
+                delay(7500)
+            } else {
+                return
+            }
+        }
+        logger.error { "Failed to start service after $maxAttempts retries." }
     }
 
     /**

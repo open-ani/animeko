@@ -151,7 +151,7 @@ class AniApplication : Application() {
 
     private fun startAniTorrentService(): ComponentName? {
         return startForegroundService(
-            Intent(this, AniTorrentService.actualServiceClass).apply {
+            Intent(this, AniTorrentService::class.java).apply {
                 putExtra("app_name", me.him188.ani.R.string.app_name)
                 putExtra("app_service_title_text_idle", me.him188.ani.R.string.app_service_title_text_idle)
                 putExtra("app_service_title_text_working", me.him188.ani.R.string.app_service_title_text_working)
