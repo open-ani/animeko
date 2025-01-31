@@ -49,9 +49,9 @@ import kotlin.time.Duration.Companion.minutes
 class AndroidTorrentServiceConnection(
     private val context: Context,
     private val onRequiredRestartService: () -> ComponentName?,
-    coroutineContext: CoroutineContext = Dispatchers.Default,
+    parentCoroutineContext: CoroutineContext = Dispatchers.Default,
 ) : ServiceConnection,
-    LifecycleAwareTorrentServiceConnection<IRemoteAniTorrentEngine>(coroutineContext) {
+    LifecycleAwareTorrentServiceConnection<IRemoteAniTorrentEngine>(parentCoroutineContext) {
     private val startupIntentFilter by lazy { IntentFilter(AniTorrentService.INTENT_STARTUP) }
     private val acquireWakeLockIntent by lazy {
         Intent(context, AniTorrentService::class.java).apply {

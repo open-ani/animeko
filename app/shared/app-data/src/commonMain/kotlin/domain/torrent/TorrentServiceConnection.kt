@@ -92,10 +92,10 @@ interface TorrentServiceConnection<T : Any> {
  * - 如果服务断开连接了, 调用 [onServiceDisconnected], 会自动判断是否需要重连.
  */
 abstract class LifecycleAwareTorrentServiceConnection<T : Any>(
-    coroutineContext: CoroutineContext = EmptyCoroutineContext,
+    parentCoroutineContext: CoroutineContext = EmptyCoroutineContext,
 ) : DefaultLifecycleObserver, TorrentServiceConnection<T> {
     protected val logger = logger(this::class.simpleName ?: "TorrentServiceConnection")
-    private val scope = coroutineContext.childScope()
+    private val scope = parentCoroutineContext.childScope()
 
     private val lock = Mutex()
     private var binderDeferred by atomic(CompletableDeferred<T>())
