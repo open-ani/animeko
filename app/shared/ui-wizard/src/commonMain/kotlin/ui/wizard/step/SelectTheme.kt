@@ -33,6 +33,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.data.models.preference.ThemeSettings
+import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.theme.appColorScheme
 import me.him188.ani.app.ui.settings.SettingsTab
@@ -42,6 +43,7 @@ import me.him188.ani.app.ui.theme.DiagonalMixedThemePreviewPanel
 import me.him188.ani.app.ui.theme.ThemePreviewPanel
 import me.him188.ani.app.ui.theme.colorList
 import me.him188.ani.app.ui.wizard.WizardLayoutParams
+import me.him188.ani.utils.platform.isAndroid
 
 
 @Composable
@@ -51,6 +53,7 @@ internal fun SelectTheme(
     modifier: Modifier = Modifier,
     layoutParams: WizardLayoutParams = WizardLayoutParams.Default
 ) {
+    val platform = LocalPlatform.current
     SettingsTab(modifier = modifier) {
         Row(
             modifier = Modifier
@@ -99,7 +102,7 @@ internal fun SelectTheme(
             title = { Text("色彩") },
             useThinHeader = true,
         ) {
-            TextItem(
+            if (platform.isAndroid()) TextItem(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable {
