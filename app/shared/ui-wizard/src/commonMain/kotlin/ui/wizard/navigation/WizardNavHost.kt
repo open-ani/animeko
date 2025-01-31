@@ -28,6 +28,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.navigation.compose.NavHost
@@ -116,6 +117,10 @@ fun WizardNavHost(
                     modifier = Modifier.fillMaxSize(),
                     contentWindowInsets = windowInsets,
                 ) { contentPadding ->
+                    val scope = remember(lazyListState) {
+                        WizardStepScope(lazyListState, 3)
+                    }
+                    
                     LazyColumn(
                         state = lazyListState,
                         modifier = Modifier
@@ -123,7 +128,7 @@ fun WizardNavHost(
                             .fillMaxSize()
                             .nestedScroll(scrollBehavior.nestedScrollConnection),
                     ) {
-                        item { step.content() }
+                        item { step.content(scope) }
                         item { HorizontalDivider(Modifier.fillMaxWidth()) }
                         item { step.controlBar() }
                     }

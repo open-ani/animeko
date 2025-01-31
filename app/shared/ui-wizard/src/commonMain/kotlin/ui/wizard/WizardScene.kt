@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material3.AlertDialog
@@ -129,7 +128,6 @@ internal fun WizardScene(
             )
         }
         step("bittorrent", { Text("BitTorrent 功能") }) {
-            val scrollState = rememberScrollState()
             val configState = state.bitTorrentFeatureState.enabled
             val notificationPermissionState by state.bitTorrentFeatureState.notificationPermissionState
                 .collectAsStateWithLifecycle(NotificationPermissionState.Placeholder)
@@ -156,7 +154,7 @@ internal fun WizardScene(
             LaunchedEffect(notificationPermissionState.lastRequestResult) {
                 if (notificationPermissionState.placeholder) return@LaunchedEffect
                 if (notificationPermissionState.lastRequestResult == false) {
-                    if (!notificationErrorScrolledOnce) scrollState.animateScrollTo(scrollState.maxValue)
+                    if (!notificationErrorScrolledOnce) wizardListState.scrollToItem(controlBarIndex)
                     notificationErrorScrolledOnce = true
                 } else {
                     notificationErrorScrolledOnce = false
@@ -196,7 +194,6 @@ internal fun WizardScene(
                 )
             },
         ) {
-            val scrollState = rememberScrollState()
             val monoTasker = rememberUiMonoTasker()
             val authorizeUiState by state.bangumiAuthorizeState.state
                 .collectAsStateWithLifecycle(AuthorizeUIState.Placeholder)
@@ -205,7 +202,7 @@ internal fun WizardScene(
             LaunchedEffect(authorizeUiState) {
                 if (authorizeUiState is AuthorizeUIState.Placeholder) return@LaunchedEffect
                 if (authorizeUiState is AuthorizeUIState.Error) {
-                    if (!authorizeErrorScrolledOnce) scrollState.animateScrollTo(scrollState.maxValue)
+                    if (!authorizeErrorScrolledOnce) wizardListState.scrollToItem(controlBarIndex)
                     authorizeErrorScrolledOnce = true
                 } else {
                     authorizeErrorScrolledOnce = false
@@ -220,7 +217,7 @@ internal fun WizardScene(
                     if (timerRunning) return@LaunchedEffect
                     monoTasker.launch {
                         delay(45_000)
-                        scrollState.animateScrollTo(scrollState.maxValue)
+                        wizardListState.scrollToItem(controlBarIndex)
                     }
                 } else if (timerRunning) {
                     monoTasker.cancel()

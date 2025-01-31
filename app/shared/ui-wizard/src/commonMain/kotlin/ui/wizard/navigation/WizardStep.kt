@@ -25,7 +25,7 @@ class WizardStep(
     val skipButton: @Composable () -> Unit,
     val indicatorBar: @Composable (WizardIndicatorState) -> Unit,
     val controlBar: @Composable () -> Unit,
-    val content: @Composable () -> Unit,
+    val content: @Composable WizardStepScope.() -> Unit,
 )
 
 class WizardIndicatorState(

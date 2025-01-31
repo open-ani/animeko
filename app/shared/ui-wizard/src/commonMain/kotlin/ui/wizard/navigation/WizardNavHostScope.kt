@@ -60,7 +60,7 @@ class WizardNavHostScope(
                 forwardAction = forwardButton,
             )
         },
-        content: @Composable () -> Unit,
+        content: @Composable WizardStepScope.() -> Unit,
     ) {
         if (steps[key] != null) {
             throw IllegalArgumentException("Duplicate step key: $key")
