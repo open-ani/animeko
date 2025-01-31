@@ -412,7 +412,10 @@ private fun SettingsScope.TokenAuthorize(
     var token by rememberSaveable { mutableStateOf("") }
     
     BackHandler(onBack = onClickBack)
-    Column(modifier) {
+    Group(
+        modifier = Modifier,
+        title = { Text("令牌 (token) 登录指南") }
+    ) {
         TextItem(
             icon = { TokenAuthorizeStepIcon(1) },
             title = { Text("登录 Bangumi 开发者后台") },
