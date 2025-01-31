@@ -16,7 +16,6 @@ import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.FiniteAnimationSpec
-import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.core.spring
@@ -30,6 +29,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.CardColors
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TopAppBarColors
 import androidx.compose.material3.TopAppBarDefaults
@@ -216,41 +216,57 @@ data class NavigationMotionScheme(
             @Composable get() = LocalNavigationMotionScheme.current
 
         // https://m3.material.io/styles/motion/easing-and-duration/applying-easing-and-duration#e5b958f0-435d-4e84-aed4-8d1ea395fa5c
-        private const val enterDuration = 500
-        private const val exitDuration = 200
+        private const val enterDuration = EasingDurations.emphasizedDecelerate
+        private const val exitDuration = EasingDurations.emphasizedAccelerate
 
         // https://m3.material.io/styles/motion/easing-and-duration/applying-easing-and-duration#26a169fb-caf3-445e-8267-4f1254e3e8bb
         // https://developer.android.com/develop/ui/compose/animation/shared-elements
         private val enterEasing = EmphasizedDecelerateEasing
-        private val exitEasing = LinearOutSlowInEasing
+        private val exitEasing = EmphasizedAccelerateEasing
 
+        @OptIn(ExperimentalMaterial3ExpressiveApi::class)
         @Composable
         fun calculate(windowSizeClass: WindowSizeClass = currentWindowAdaptiveInfo1().windowSizeClass): NavigationMotionScheme {
             val useSlide = windowSizeClass.isWidthCompact
 
+            val slideInMargin = 1f / 16
+            val slideOutMargin = 1f / 16
+
             val enterTransition: EnterTransition = run {
                 if (useSlide) {
+                    val delay = exitDuration
                     val slideIn = slideInHorizontally(
-                        tween(
-                            enterDuration,
-                            easing = enterEasing,
-                        ),
-                        initialOffsetX = { (it * (1f / 5)).roundToInt() },
+                        tween(enterDuration, delayMillis = delay, easing = enterEasing),
+                        initialOffsetX = { (it * slideInMargin).roundToInt() },
                     )
-                    val fadeIn = fadeIn(tween(enterDuration, easing = enterEasing))
+                    val fadeIn = fadeIn(tween(enterDuration, delayMillis = exitDuration, easing = enterEasing))
                     slideIn.plus(fadeIn)
                 } else {
                     fadeIn(tween(enterDuration, delayMillis = exitDuration, easing = enterEasing))
                 }
             }
 
-            val exitTransition: ExitTransition = fadeOut(tween(exitDuration, easing = exitEasing))
+            val exitTransition: ExitTransition = kotlin.run {
+                val fadeOut = fadeOut(tween(exitDuration, easing = exitEasing))
+                if (useSlide) {
+                    slideOutHorizontally(
+                        tween(exitDuration, easing = exitEasing),
+                        targetOffsetX = { -(it * slideOutMargin).roundToInt() },
+                    ).plus(fadeOut)
+                } else {
+                    fadeOut
+                }
+            }
 
             val popEnterTransition = run {
+                val fadeIn = fadeIn(tween(enterDuration, delayMillis = exitDuration, easing = enterEasing))
                 if (useSlide) {
-                    fadeIn(tween(enterDuration, easing = enterEasing))
+                    slideInHorizontally(
+                        tween(enterDuration, delayMillis = exitDuration, easing = enterEasing),
+                        initialOffsetX = { -(it * slideInMargin).roundToInt() },
+                    ) + fadeIn
                 } else {
-                    fadeIn(tween(enterDuration, delayMillis = exitDuration, easing = enterEasing)) // clean fade
+                    fadeIn // clean fade
                 }
             }
 
@@ -259,11 +275,8 @@ data class NavigationMotionScheme(
                 val fadeOut = fadeOut(tween(exitDuration, easing = exitEasing))
                 if (useSlide) {
                     val slide = slideOutHorizontally(
-                        tween(
-                            exitDuration,
-                            easing = exitEasing,
-                        ),
-                        targetOffsetX = { (it * (1f / 7)).roundToInt() },
+                        tween(exitDuration, easing = exitEasing),
+                        targetOffsetX = { (it * slideOutMargin).roundToInt() },
                     )
                     slide.plus(fadeOut)
                 } else {
