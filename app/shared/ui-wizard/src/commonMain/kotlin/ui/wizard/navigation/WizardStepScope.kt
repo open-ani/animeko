@@ -10,6 +10,7 @@
 package me.him188.ani.app.ui.wizard.navigation
 
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.material3.TopAppBarState
 import androidx.compose.runtime.Stable
 
 @Stable
@@ -22,4 +23,12 @@ class WizardStepScope(
      * Used to scroll to bottom with [LazyListState.scrollToItem].
      */
     val controlBarIndex: Int,
-)
+    /**
+     * Access scrolling top app bar.
+     */
+    private val scrollUpTopAppBar: suspend () -> Unit,
+) {
+    suspend fun scrollUpTopAppBar() {
+        scrollUpTopAppBar.invoke()
+    }
+}

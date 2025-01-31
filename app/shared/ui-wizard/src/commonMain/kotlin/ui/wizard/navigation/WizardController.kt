@@ -9,6 +9,10 @@
 
 package me.him188.ani.app.ui.wizard.navigation
 
+import androidx.annotation.UiThread
+import androidx.compose.animation.core.AnimationState
+import androidx.compose.animation.core.animateTo
+import androidx.compose.material3.TopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
@@ -85,6 +89,15 @@ class WizardController() {
                     onUpdate(stepKey)
                 }
             }
+    }
+    
+    @UiThread
+    suspend fun scrollUpTopAppBar(topAppBarState: TopAppBarState) {
+        if (topAppBarState.heightOffset == 0f) return
+        val animation = AnimationState(topAppBarState.heightOffset)
+        animation.animateTo(0f) {
+            topAppBarState.heightOffset = value
+        }
     }
 
     fun goForward() {

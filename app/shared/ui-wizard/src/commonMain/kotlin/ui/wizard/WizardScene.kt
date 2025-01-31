@@ -39,6 +39,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -50,9 +51,12 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import me.him188.ani.app.data.models.preference.ProxySettings
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.tools.rememberUiMonoTasker
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
+import me.him188.ani.app.ui.foundation.navigation.LocalBackDispatcher
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.app.ui.settings.tabs.network.SystemProxyPresentation
@@ -77,6 +81,7 @@ internal fun WizardScene(
     wizardLayoutParams: WizardLayoutParams = WizardLayoutParams.Default
 ) {
     val context = LocalContext.current
+    val backDispatcher = LocalBackDispatcher.current
 
     var notificationErrorScrolledOnce by rememberSaveable { mutableStateOf(false) }
     var authorizeErrorScrolledOnce by rememberSaveable { mutableStateOf(false) }
@@ -111,19 +116,22 @@ internal fun WizardScene(
             },
             skipButton = { WizardDefaults.SkipButton({ controller.goForward() }) },
         ) {
-            val configState = state.configureProxyState.configState
-            val systemProxy by state.configureProxyState.systemProxy
+            val configureProxyState = state.configureProxyState
+            
+            val currProxy by configureProxyState.config
+                .collectAsStateWithLifecycle(ProxySettings.Default)
+            val systemProxy by configureProxyState.systemProxy
                 .collectAsStateWithLifecycle(SystemProxyPresentation.Detecting)
-            val testState by state.configureProxyState.testState
+            val testState by configureProxyState.testState
                 .collectAsStateWithLifecycle(ProxyTestState.Default)
 
             ConfigureProxy(
-                config = configState.value,
-                onUpdate = { config -> configState.update(config) },
+                config = currProxy,
+                onUpdate = { configureProxyState.onUpdateConfig(it) },
                 testRunning = testState.testRunning,
                 systemProxy = systemProxy,
                 testItems = testState.items,
-                onRequestReTest = { state.configureProxyState.onRequestReTest() },
+                onRequestReTest = { configureProxyState.onRequestReTest() },
                 layoutParams = wizardLayoutParams,
             )
         }
@@ -187,6 +195,12 @@ internal fun WizardScene(
                     enabled = authorizeState is AuthorizeUIState.Success,
                 )
             },
+            backwardButton = {
+                BackNavigationIconButton(
+                    { backDispatcher.onBackPressed() },
+                    modifier = Modifier.testTag("buttonPrevStep"),
+                )
+            },
             skipButton = {
                 WizardDefaults.SkipButton(
                     { bangumiAuthorizeSkipClicked = true },
@@ -194,35 +208,9 @@ internal fun WizardScene(
                 )
             },
         ) {
-            val monoTasker = rememberUiMonoTasker()
+            val scope = rememberCoroutineScope()
             val authorizeUiState by state.bangumiAuthorizeState.state
                 .collectAsStateWithLifecycle(AuthorizeUIState.Placeholder)
-
-            // 作用同上一步 bittorrent 的 LaunchedEffect
-            LaunchedEffect(authorizeUiState) {
-                if (authorizeUiState is AuthorizeUIState.Placeholder) return@LaunchedEffect
-                if (authorizeUiState is AuthorizeUIState.Error) {
-                    if (!authorizeErrorScrolledOnce) wizardListState.scrollToItem(controlBarIndex)
-                    authorizeErrorScrolledOnce = true
-                } else {
-                    authorizeErrorScrolledOnce = false
-                }
-            }
-
-            // 如果 45 秒没等到结果, 那可以认为用户可能遇到了麻烦, 我们自动滚动到底部, 底部有帮助按钮
-            LaunchedEffect(authorizeUiState) {
-                if (authorizeUiState is AuthorizeUIState.Placeholder) return@LaunchedEffect
-                val timerRunning = monoTasker.isRunning.value
-                if (authorizeUiState is AuthorizeUIState.AwaitingResult) {
-                    if (timerRunning) return@LaunchedEffect
-                    monoTasker.launch {
-                        delay(45_000)
-                        wizardListState.scrollToItem(controlBarIndex)
-                    }
-                } else if (timerRunning) {
-                    monoTasker.cancel()
-                }
-            }
 
             // 每次进入这一步都会检查 token 是否有效, 以及退出这一步时要取消正在进行的授权请求
             DisposableEffect(Unit) {
@@ -241,6 +229,12 @@ internal fun WizardScene(
                 onRefreshAuthorizeStatus = { state.bangumiAuthorizeState.onCheckCurrentToken() },
                 onClickNavigateToBangumiDev = {
                     state.bangumiAuthorizeState.onClickNavigateToBangumiDev(context)
+                },
+                onScrollToTop = { 
+                    scope.launch {
+                        scrollUpTopAppBar()
+                        wizardListState.animateScrollToItem(0)
+                    }
                 },
                 layoutParams = wizardLayoutParams,
             )

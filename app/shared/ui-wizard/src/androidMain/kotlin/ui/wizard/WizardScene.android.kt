@@ -51,12 +51,7 @@ internal fun createTestWizardPresentationState(scope: CoroutineScope): WizardPre
             backgroundScope = scope,
         ),
         configureProxyState = ConfigureProxyState(
-            configState = SettingsState(
-                valueState = stateOf(ProxySettings.Default),
-                onUpdate = { },
-                placeholder = ProxySettings.Default,
-                backgroundScope = scope,
-            ),
+            config = flowOf(ProxySettings.Default),
             systemProxy = flowOf(SystemProxyPresentation.Detecting),
             testState = flowOf(
                 ProxyTestState(
@@ -68,6 +63,7 @@ internal fun createTestWizardPresentationState(scope: CoroutineScope): WizardPre
                     },
                 ),
             ),
+            onUpdateConfig = { },
             onRequestReTest = { },
         ),
         bitTorrentFeatureState = BitTorrentFeatureState(

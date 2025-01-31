@@ -85,6 +85,7 @@ import me.him188.ani.utils.coroutines.flows.FlowRestarter
 import me.him188.ani.utils.coroutines.flows.FlowRunning
 import me.him188.ani.utils.coroutines.flows.restartable
 import me.him188.ani.utils.coroutines.update
+import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.trace
 import me.him188.ani.utils.platform.Uuid
 import me.him188.ani.utils.platform.currentTimeMillis
@@ -99,18 +100,14 @@ class WelcomeViewModel : AbstractSettingsViewModel(), KoinComponent {
     private val themeSettings = settingsRepository.themeSettings
         .stateInBackground(ThemeSettings.Default.copy(_placeholder = -1))
     private val proxySettings = settingsRepository.proxySettings
-        .stateInBackground(ProxySettings.Default.copy(_placeHolder = -1))
-    private val proxySettingsFlow = settingsRepository.proxySettings.flow
     private val bitTorrentEnabled = mutableStateOf(true)
 
     // region ConfigureProxy
-    private val proxyTestTasker = MonoTasker(backgroundScope)
     private val proxyTestRunning = FlowRunning()
     private val proxyTestRestarter = FlowRestarter()
-    private val proxyProvider = ProxySettingsFlowProxyProvider(proxySettingsFlow, backgroundScope)
+    private val proxyProvider = ProxySettingsFlowProxyProvider(proxySettings.flow, backgroundScope)
     private val proxyTestCases: StateFlow<List<ProxyTestCase>> =
         MutableStateFlow(ProxyTestCase.All)
-    private val currentProxyTestMode = proxySettingsFlow.map { it.default.mode }
     private val clientProvider: HttpClientProvider by inject()
     private val proxyTestResults = MutableStateFlow(
         persistentMapOf<ProxyTestCaseEnums, ProxyTestCaseState>()
@@ -122,8 +119,8 @@ class WelcomeViewModel : AbstractSettingsViewModel(), KoinComponent {
     )
 
     private val systemProxyPresentation =
-        combine(currentProxyTestMode, proxyProvider.proxy) { mode, proxy ->
-            if (mode == ProxyMode.SYSTEM && proxy != null)
+        combine(proxySettings.flow, proxyProvider.proxy) { settings, proxy ->
+            if (settings.default.mode == ProxyMode.SYSTEM && proxy != null)
                 SystemProxyPresentation.Detected(proxy)
             else SystemProxyPresentation.NotDetected
         }
@@ -133,7 +130,7 @@ class WelcomeViewModel : AbstractSettingsViewModel(), KoinComponent {
             )
 
     private val configureProxyState = ConfigureProxyState(
-        configState = proxySettings,
+        config = proxySettings.flow,
         systemProxy = systemProxyPresentation,
         testState = combine(
             proxyTestRunning.isRunning, proxyTestCases, proxyTestResults,
@@ -149,6 +146,14 @@ class WelcomeViewModel : AbstractSettingsViewModel(), KoinComponent {
                 ProxyTestState.Default,
                 SharingStarted.WhileSubscribed(),
             ),
+        onUpdateConfig = { newConfig ->
+            launchInBackground { 
+                if (shouldRerunProxyTestManually(proxySettings.flow.first(), newConfig)) {
+                    proxyTestRestarter.restart()
+                }
+                proxySettings.update { newConfig }
+            }
+        },
         onRequestReTest = { proxyTestRestarter.restart() },
     )
     // endregion
@@ -252,15 +257,11 @@ class WelcomeViewModel : AbstractSettingsViewModel(), KoinComponent {
     init {
         launchInBackground {
             clientProvider.configurationFlow
-                .combine(proxyTestCases) { _, cases ->
-                    clientProvider.get(emptySet()) to cases
-                }
+                .combine(proxyTestCases) { _, cases -> cases }
                 .restartable(restarter = proxyTestRestarter)
-                .collectLatest { (scoped, cases) ->
-                    proxyTestTasker.launch {
-                        scoped.use {
-                            startProxyTestServers(this, cases)
-                        }
+                .collectLatest { cases ->
+                    clientProvider.get(emptySet()).use {
+                        startProxyTestServers(this, cases)
                     }
                 }
         }
@@ -278,6 +279,28 @@ class WelcomeViewModel : AbstractSettingsViewModel(), KoinComponent {
                     checkAuthorizeStatus(currentRequestId, processingRequest)
                 }
         }
+    }
+
+    /**
+     * 在 [proxySettings] 更新后, [clientProvider] 可能不会 emit 新 client:
+     * - 在系统代理为 null 情况下, 从 禁用代理 设置为 系统代理 或反之.
+     * 
+     * 另外没改也要测试
+     */
+    private fun shouldRerunProxyTestManually(prev: ProxySettings, curr: ProxySettings): Boolean {
+        if (prev == curr) return true
+        
+        val prevMode = prev.default.mode
+        val currMode = curr.default.mode
+        val noSystemProxy = systemProxyPresentation.value is SystemProxyPresentation.NotDetected
+        
+        if (prevMode == ProxyMode.SYSTEM && currMode == ProxyMode.DISABLED && noSystemProxy) {
+            return true
+        }
+        if (prevMode == ProxyMode.DISABLED && currMode == ProxyMode.SYSTEM && noSystemProxy) {
+            return true
+        }
+        return false
     }
 
     private suspend fun startProxyTestServers(
@@ -497,9 +520,10 @@ class WizardPresentationState(
 
 @Stable
 class ConfigureProxyState(
-    val configState: SettingsState<ProxySettings>,
+    val config: Flow<ProxySettings>,
     val systemProxy: Flow<SystemProxyPresentation>,
     val testState: Flow<ProxyTestState>,
+    val onUpdateConfig: (ProxySettings) -> Unit,
     val onRequestReTest: () -> Unit,
 )
 

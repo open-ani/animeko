@@ -25,17 +25,14 @@ import androidx.compose.ui.unit.dp
 @Composable
 internal fun HeroIconScaffold(
     icon: @Composable () -> Unit,
-    modifier: Modifier = Modifier,
-    content: @Composable () -> Unit = { }
+    modifier: Modifier = Modifier
 ) {
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(24.dp, Alignment.CenterHorizontally),
     ) {
-        TextFieldDefaults.colors()
         icon()
-        content()
     }
 }
 

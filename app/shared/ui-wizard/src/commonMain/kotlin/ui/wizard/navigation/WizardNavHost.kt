@@ -74,11 +74,7 @@ fun WizardNavHost(
 
     LaunchedEffect(Unit) {
         controller.subscribeNavDestChanges {
-            if (topAppBarState.heightOffset == 0f) return@subscribeNavDestChanges
-            val animation = AnimationState(topAppBarState.heightOffset)
-            animation.animateTo(0f) {
-                topAppBarState.heightOffset = value
-            }
+            controller.scrollUpTopAppBar(topAppBarState)
         }
     }
 
@@ -117,8 +113,12 @@ fun WizardNavHost(
                     modifier = Modifier.fillMaxSize(),
                     contentWindowInsets = windowInsets,
                 ) { contentPadding ->
-                    val scope = remember(lazyListState) {
-                        WizardStepScope(lazyListState, 3)
+                    val scope = remember(lazyListState, topAppBarState) {
+                        WizardStepScope(
+                            lazyListState, 
+                            3,
+                            scrollUpTopAppBar = { controller.scrollUpTopAppBar(topAppBarState) }
+                        )
                     }
                     
                     LazyColumn(

@@ -134,17 +134,14 @@ internal fun BitTorrentFeature(
                     },
                     description = {
                         Text(
-                            text = "Ani 需要通知权限来显示 BT 引擎的运行状态、下载进度等信息，同时有助于 BT 引擎服务长期运行。",
+                            text = "显示 BT 引擎的运行状态、下载进度等信息",
                             color = if (grantedNotificationPermission) MaterialTheme.colorScheme.onSurfaceVariant
                             else MaterialTheme.colorScheme.onSurface,
                         )
                     },
                     action = {
                         if (!grantedNotificationPermission) {
-                            Column {
-                                Spacer(Modifier.height(16.dp))
-                                Icon(Icons.Rounded.ArrowOutward, null)
-                            }
+                            Icon(Icons.Rounded.ArrowOutward, null)
                         }
                     },
                     modifier = Modifier.clickable {
