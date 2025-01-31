@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.ui.wizard
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
@@ -16,9 +17,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -50,11 +53,9 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.preference.ProxySettings
 import me.him188.ani.app.platform.LocalContext
-import me.him188.ani.app.tools.rememberUiMonoTasker
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.navigation.LocalBackDispatcher
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
@@ -84,8 +85,10 @@ internal fun WizardScene(
     val backDispatcher = LocalBackDispatcher.current
 
     var notificationErrorScrolledOnce by rememberSaveable { mutableStateOf(false) }
-    var authorizeErrorScrolledOnce by rememberSaveable { mutableStateOf(false) }
     var bangumiAuthorizeSkipClicked by rememberSaveable { mutableStateOf(false) }
+    
+    val authorizeState by state.bangumiAuthorizeState.state
+        .collectAsStateWithLifecycle(AuthorizeUIState.Placeholder)
 
     WizardNavHost(
         controller,
@@ -184,17 +187,17 @@ internal fun WizardScene(
                 layoutParams = wizardLayoutParams,
             )
         }
+        
+        val bangumiAuthorizeForwardAction: @Composable () -> Unit = {
+            WizardDefaults.GoForwardButton(
+                { controller.goForward() },
+                enabled = authorizeState is AuthorizeUIState.Success,
+            )
+        }
         step(
             "bangumi",
             { Text("Bangumi 授权") },
-            forwardButton = {
-                val authorizeState by state.bangumiAuthorizeState.state
-                    .collectAsStateWithLifecycle(AuthorizeUIState.Placeholder)
-                WizardDefaults.GoForwardButton(
-                    { controller.goForward() },
-                    enabled = authorizeState is AuthorizeUIState.Success,
-                )
-            },
+            forwardButton = bangumiAuthorizeForwardAction,
             backwardButton = {
                 BackNavigationIconButton(
                     { backDispatcher.onBackPressed() },
@@ -207,11 +210,16 @@ internal fun WizardScene(
                     "游客模式",
                 )
             },
+            controlBar = {
+                AnimatedVisibility(authorizeState !is AuthorizeUIState.Success) {
+                    WizardDefaults.StepControlBar(
+                        forwardAction = bangumiAuthorizeForwardAction,
+                    )
+                }
+                Spacer(Modifier.height(1.dp))
+            }
         ) {
             val scope = rememberCoroutineScope()
-            val authorizeUiState by state.bangumiAuthorizeState.state
-                .collectAsStateWithLifecycle(AuthorizeUIState.Placeholder)
-
             // 每次进入这一步都会检查 token 是否有效, 以及退出这一步时要取消正在进行的授权请求
             DisposableEffect(Unit) {
                 state.bangumiAuthorizeState.onCheckCurrentToken()
@@ -221,8 +229,9 @@ internal fun WizardScene(
             }
 
             BangumiAuthorize(
-                authorizeState = authorizeUiState,
+                authorizeState = authorizeState,
                 contactActions = contactActions,
+                forwardAction = { WizardDefaults.StepControlBar(bangumiAuthorizeForwardAction) },
                 onClickAuthorize = { state.bangumiAuthorizeState.onClickNavigateAuthorize(context) },
                 onCancelAuthorize = { state.bangumiAuthorizeState.onCancelAuthorize() },
                 onAuthorizeViaToken = { state.bangumiAuthorizeState.onAuthorizeViaToken(it) },
@@ -287,11 +296,6 @@ private fun BangumiUseGuestModeDialog(
 
 
 object WizardDefaults {
-    val controlBarEnterAnim = fadeIn(tween(500)) + slideInVertically(
-        tween(600),
-        initialOffsetY = { (-50).coerceAtMost(it) },
-    )
-
     val indicatorBarEnterAnim = fadeIn(tween(500)) + slideInVertically(
         tween(600),
         initialOffsetY = { 50.coerceAtMost(it) },

@@ -12,6 +12,7 @@ package me.him188.ani.app.ui.wizard.step
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview
+import me.him188.ani.app.ui.wizard.WizardDefaults
 
 @Preview(showBackground = true)
 @Composable
@@ -20,6 +21,11 @@ fun PreviewBangumiAuthorizeStepInitial() {
         BangumiAuthorize(
             authorizeState = AuthorizeUIState.Idle,
             contactActions = { },
+            forwardAction = {
+                WizardDefaults.StepControlBar({
+                    WizardDefaults.GoForwardButton({ }, true)
+                })
+            },
             onClickAuthorize = { },
             onCancelAuthorize = { },
             onAuthorizeViaToken = { },
@@ -36,6 +42,11 @@ fun PreviewBangumiAuthorizeStepAwaitingResult() {
         BangumiAuthorize(
             authorizeState = AuthorizeUIState.AwaitingResult(""),
             contactActions = { },
+            forwardAction = {
+                WizardDefaults.StepControlBar({
+                    WizardDefaults.GoForwardButton({ }, true)
+                })
+            },
             onClickAuthorize = { },
             onCancelAuthorize = { },
             onAuthorizeViaToken = { },
@@ -52,6 +63,11 @@ fun PreviewBangumiAuthorizeStepError() {
         BangumiAuthorize(
             authorizeState = AuthorizeUIState.Error("", "error message"),
             contactActions = { },
+            forwardAction = {
+                WizardDefaults.StepControlBar({
+                    WizardDefaults.GoForwardButton({ }, true)
+                })
+            },
             onClickAuthorize = { },
             onCancelAuthorize = { },
             onAuthorizeViaToken = { },
@@ -71,6 +87,11 @@ fun PreviewBangumiAuthorizeStepSuccess() {
                 "https://lain.bgm.tv/pic/cover/l/44/7d/467461_HHw4K.jpg",
             ),
             onClickAuthorize = { },
+            forwardAction = {
+                WizardDefaults.StepControlBar({
+                    WizardDefaults.GoForwardButton({ }, true)
+                })
+            },
             onAuthorizeViaToken = { },
             onCancelAuthorize = { },
             contactActions = { },

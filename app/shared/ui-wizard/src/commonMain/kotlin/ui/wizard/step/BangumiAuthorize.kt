@@ -24,16 +24,19 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material.icons.rounded.ArrowBackIosNew
+import androidx.compose.material.icons.rounded.ArrowOutward
 import androidx.compose.material3.Badge
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -44,6 +47,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.ProvideTextStyle
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -59,6 +63,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import me.him188.ani.app.ui.foundation.IconButton
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.icons.BangumiNext
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
@@ -68,6 +73,7 @@ import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.TextItem
 import me.him188.ani.app.ui.wizard.HeroIconDefaults
 import me.him188.ani.app.ui.wizard.HeroIconScaffold
+import me.him188.ani.app.ui.wizard.WizardDefaults
 import me.him188.ani.app.ui.wizard.WizardLayoutParams
 import me.him188.ani.utils.platform.isAndroid
 
@@ -273,6 +279,7 @@ private fun SettingsScope.DefaultAuthorize(
     onClickAuthorize: () -> Unit,
     onClickTokenAuthorize: () -> Unit,
     contactActions: @Composable () -> Unit,
+    forwardAction: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     layoutParams: WizardLayoutParams = WizardLayoutParams.Default,
 ) {
@@ -358,6 +365,9 @@ private fun SettingsScope.DefaultAuthorize(
                     )
                 }
             }
+            AnimatedVisibility(authorizeState is AuthorizeUIState.Success) {
+                forwardAction()
+            }
             Spacer(Modifier.height(8.dp))
             AuthorizeHelpQA(
                 onClickTokenAuthorize = onClickTokenAuthorize,
@@ -368,33 +378,26 @@ private fun SettingsScope.DefaultAuthorize(
     }
 }
 
+// has fixed size
 @Composable
-private fun TokenAuthorizeStep(
-    step: Int,
-    text: @Composable () -> Unit,
-    modifier: Modifier = Modifier,
-    content: @Composable () -> Unit,
+private fun TokenAuthorizeStepIcon(
+    step: Int
 ) {
-    Column(modifier = modifier) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+    Surface(
+        modifier = Modifier.size(36.dp),
+        color = MaterialTheme.colorScheme.primaryContainer,
+        shape = CircleShape
+    ) { 
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center,
         ) {
-            Badge(
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-            ) {
-                Text(
-                    "$step",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
-            ProvideTextStyle(MaterialTheme.typography.bodyMedium) {
-                text()
-            }
+            Text(
+                text = step.toString(),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary
+            )
         }
-        content()
     }
 }
 
@@ -410,41 +413,46 @@ private fun SettingsScope.TokenAuthorize(
     
     BackHandler(onBack = onClickBack)
     Column(modifier) {
-        ProvideTextStyle(MaterialTheme.typography.bodyMedium) {
-            Column(
-                modifier = Modifier.padding(horizontal = layoutParams.horizontalPadding),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+        TextItem(
+            icon = { TokenAuthorizeStepIcon(1) },
+            title = { Text("登录 Bangumi 开发者后台") },
+            description = { Text("点击跳转到 Bangumi 开发后台，使用邮箱登录") },
+            action = {
+                IconButton(onClickNavigateToBangumiDev) {
+                    Icon(Icons.Rounded.ArrowOutward, null)
+                }
+            },
+            modifier = Modifier.clickable(onClick = onClickNavigateToBangumiDev)
+        )
+        TextItem(
+            icon = { TokenAuthorizeStepIcon(2) },
+            title = { Text("创建令牌 (token)") },
+            description = { Text("任意名称，有效期 365 天") },
+        )
+        TextItem(
+            icon = { TokenAuthorizeStepIcon(3) },
+            title = { Text("复制令牌到下方输入框中") },
+        )
+        Column(
+            modifier = Modifier
+                .padding(horizontal = layoutParams.horizontalPadding, vertical = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            OutlinedTextField(
+                value = token,
+                onValueChange = { token = it },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                label = { Text("令牌 (token)") }
+            )
+            Button(
+                onClick = { onAuthorizeViaToken(token) },
+                enabled = token.isNotBlank(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = 720.dp)
             ) {
-                TokenAuthorizeStep(1, { Text("前往 Bangumi 开发者测试页面") }) {
-                    Button(
-                        onClickNavigateToBangumiDev,
-                        modifier = Modifier.padding(top = 8.dp),
-                    ) {
-                        Text("点击打开浏览器")
-                    }
-                }
-                TokenAuthorizeStep(2, { Text("如果提示输入邮箱 (Email), 请使用你的 Bangumi 账号登录") }) { }
-                TokenAuthorizeStep(3, { Text("创建一个令牌 (token), 名称随意, 有效期 365 天") }) { }
-                TokenAuthorizeStep(4, { Text("复制创建好的 token, 粘贴至下方输入框，点击授权登录") }) {
-                    Column(
-                        modifier = Modifier.padding(top = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        OutlinedTextField(
-                            value = token,
-                            onValueChange = { token = it },
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true,
-                            placeholder = { Text("粘贴 token 到此处") },
-                        )
-                        Button(
-                            onClick = { onAuthorizeViaToken(token) },
-                            enabled = token.isNotBlank(),
-                        ) {
-                            Text("授权登录")
-                        }
-                    }
-                }
+                Text("授权登录")
             }
         }
     }
@@ -455,6 +463,7 @@ private fun SettingsScope.TokenAuthorize(
 internal fun BangumiAuthorize(
     authorizeState: AuthorizeUIState,
     contactActions: @Composable () -> Unit,
+    forwardAction: @Composable () -> Unit,
     onClickAuthorize: () -> Unit,
     onCancelAuthorize: () -> Unit,
     onRefreshAuthorizeStatus: () -> Unit,
@@ -488,6 +497,7 @@ internal fun BangumiAuthorize(
             ) else DefaultAuthorize(
                 authorizeState = authorizeState,
                 contactActions = contactActions,
+                forwardAction = forwardAction,
                 onClickAuthorize = onClickAuthorize,
                 onClickTokenAuthorize = {
                     onCancelAuthorize()
