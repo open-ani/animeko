@@ -179,7 +179,11 @@ data class ServerListFeatureConfig(
          * 如果请求的 host 为其中任何一个, 则替换为 ani 服务器地址, 并依次重试.
          */
         val hostMatches: Set<String>,
-    )
+    ) {
+        init {
+            require(hostMatches.isNotEmpty()) { "hostMatches must not be empty" }
+        }
+    }
 
     companion object {
         const val MAGIC_ANI_SERVER_HOST = "MAGIC_ANI_SERVER"
