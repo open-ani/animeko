@@ -11,10 +11,7 @@ package me.him188.ani.app.ui.wizard
 
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideIn
 import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOut
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -48,7 +45,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -59,7 +55,6 @@ import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.tools.rememberUiMonoTasker
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
-import me.him188.ani.app.ui.foundation.theme.NavigationMotionScheme
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.app.ui.settings.tabs.network.SystemProxyPresentation
 import me.him188.ani.app.ui.wizard.navigation.WizardController
@@ -310,32 +305,6 @@ object WizardDefaults {
         tween(600),
         initialOffsetY = { 50.coerceAtMost(it) },
     )
-    
-    val motionScheme = kotlin.run {
-        val slideEnter = 350
-        val fadeEnter = 350
-        val slideExit = 200
-        val fadeExit = 200
-
-        NavigationMotionScheme(
-            enterTransition = fadeIn(animationSpec = tween(fadeEnter, slideEnter - fadeEnter)) +
-                    slideIn(tween(slideEnter)) {
-                        IntOffset((it.width * 0.15).toInt(), 0)
-                    },
-            exitTransition = fadeOut(animationSpec = tween(fadeExit, slideExit - fadeExit)) +
-                    slideOut(tween(slideExit)) {
-                        IntOffset(-(it.width * 0.15).toInt(), 0)
-                    },
-            popEnterTransition = fadeIn(animationSpec = tween(fadeEnter, slideEnter - fadeEnter)) +
-                    slideIn(tween(slideEnter)) {
-                        IntOffset(-(it.width * 0.15).toInt(), 0)
-                    },
-            popExitTransition = fadeOut(animationSpec = tween(fadeExit, slideExit - fadeExit)) +
-                    slideOut(tween(slideExit)) {
-                        IntOffset((it.width * 0.15).toInt(), 0)
-                    },
-        )
-    }
 
     fun renderStepIndicatorText(currentStep: Int, totalStep: Int): String {
         return "步骤 $currentStep / $totalStep"

@@ -34,8 +34,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
+import me.him188.ani.app.ui.foundation.theme.LocalNavigationMotionScheme
 import me.him188.ani.app.ui.foundation.theme.NavigationMotionScheme
-import me.him188.ani.app.ui.wizard.WizardDefaults
 
 /**
  * A wrapper around [NavHost] that provides a wizard-like experience.
@@ -47,7 +47,7 @@ import me.him188.ani.app.ui.wizard.WizardDefaults
 fun WizardNavHost(
     controller: WizardController,
     modifier: Modifier = Modifier,
-    motionScheme: NavigationMotionScheme = WizardDefaults.motionScheme,
+    motionScheme: NavigationMotionScheme = LocalNavigationMotionScheme.current,
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
     content: WizardNavHostScope.() -> Unit,
 ) {
