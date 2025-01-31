@@ -9,7 +9,7 @@
 
 package me.him188.ani.app.domain.session
 
-import me.him188.ani.app.platform.currentAniBuildConfig
+import me.him188.ani.app.domain.foundation.ServerListFeatureConfig
 import me.him188.ani.client.apis.BangumiOAuthAniApi
 import me.him188.ani.client.apis.ScheduleAniApi
 import me.him188.ani.client.apis.SubjectRelationsAniApi
@@ -26,6 +26,5 @@ class AniApiProvider(
     val oauthApi = ApiInvoker(client) { BangumiOAuthAniApi(baseurl, it) }
     val subjectRelationsApi = ApiInvoker(client) { SubjectRelationsAniApi(baseurl, it) }
 
-    @PublishedApi
-    internal val baseurl = currentAniBuildConfig.aniAuthServerUrl
+    private inline val baseurl get() = ServerListFeatureConfig.MAGIC_ANI_SERVER
 }

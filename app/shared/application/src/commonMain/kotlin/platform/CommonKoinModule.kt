@@ -80,6 +80,7 @@ import me.him188.ani.app.domain.foundation.DefaultHttpClientProvider
 import me.him188.ani.app.domain.foundation.DefaultHttpClientProvider.HoldingInstanceMatrix
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
+import me.him188.ani.app.domain.foundation.ServerListFeatureHandler
 import me.him188.ani.app.domain.foundation.UseBangumiTokenFeature
 import me.him188.ani.app.domain.foundation.UseBangumiTokenFeatureHandler
 import me.him188.ani.app.domain.foundation.UserAgentFeature
@@ -158,6 +159,15 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
                             BearerTokens(it, "")
                         }.also {
                             logger.info("Result: ${it?.accessToken}")
+                        }
+                    },
+                ),
+                ServerListFeatureHandler(
+                    settingsRepository.danmakuSettings.flow.map { danmakuSettings ->
+                        if (danmakuSettings.useGlobal) {
+                            AniServers.optimizedForGlobal
+                        } else {
+                            AniServers.optimizedForCN
                         }
                     },
                 ),

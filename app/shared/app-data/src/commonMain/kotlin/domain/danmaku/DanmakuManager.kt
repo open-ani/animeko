@@ -31,6 +31,7 @@ import me.him188.ani.app.data.network.protocol.DanmakuInfo
 import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.foundation.HttpClientProvider
+import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
 import me.him188.ani.app.domain.foundation.get
 import me.him188.ani.app.domain.session.OpaqueSession
 import me.him188.ani.app.domain.session.SessionManager
@@ -117,7 +118,9 @@ class DanmakuManagerImpl(
     @OptIn(OpaqueSession::class)
     private val sender: Flow<AniDanmakuSender> = config.mapAutoClose { config ->
         AniDanmakuSenderImpl(
-            httpClientProvider.get(),
+            httpClientProvider.get(
+                userAgent = ScopedHttpClientUserAgent.ANI,
+            ),
             config,
             sessionManager.verifiedAccessToken, // TODO: Handle danmaku sender errors 
             backgroundScope.coroutineContext,
