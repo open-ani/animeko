@@ -227,7 +227,7 @@ private fun SettingsScope.AuthorizeHelpQA(
                             style = MaterialTheme.typography.titleMedium
                         )
                     },
-                    icon = {
+                    action = {
                         Icon(
                             Icons.Default.ArrowDropDown,
                             contentDescription = null,
