@@ -64,6 +64,7 @@ import me.him188.ani.app.platform.window.ExtendedUser32.Companion.HTCLOSE
 import me.him188.ani.app.platform.window.ExtendedUser32.Companion.HTLEFT
 import me.him188.ani.app.platform.window.ExtendedUser32.Companion.HTMAXBUTTON
 import me.him188.ani.app.platform.window.ExtendedUser32.Companion.HTMINBUTTON
+import me.him188.ani.app.platform.window.ExtendedUser32.Companion.HTNOWHERE
 import me.him188.ani.app.platform.window.ExtendedUser32.Companion.HTRIGHT
 import me.him188.ani.app.platform.window.ExtendedUser32.Companion.HTTOP
 import me.him188.ani.app.platform.window.ExtendedUser32.Companion.HTTOPLEFT
@@ -693,13 +694,10 @@ internal class TitleBarWindowProc(
         dwmapi.DwmExtendFrameIntoClientArea(windowHandle, Dwmapi.WindowMargins(0, 0, -1, -1))
     }
 
-    private fun hitTest(x: Int, y: Int): Int {
-
+    private fun hitTestWindowResizerBorder(x: Int, y: Int): Int {
         val horizontalPadding = frameX
         val verticalPadding = frameY
-        hitTestResult = when {
-            // skip resizer border hit test if window is maximized
-            isMaximized -> childHitTest(x.toFloat(), y.toFloat())
+        return when {
             x <= horizontalPadding && y > verticalPadding && y < height - verticalPadding -> HTLEFT
             x <= horizontalPadding && y <= verticalPadding -> HTTOPLEFT
             x <= horizontalPadding -> HTBOTTOMLEFT
@@ -709,11 +707,19 @@ internal class TitleBarWindowProc(
             x >= width - horizontalPadding -> HTBOTTOMRIGHT
             y >= height - verticalPadding && x > horizontalPadding && x < width - horizontalPadding -> HTBOTTOM
             y >= height - verticalPadding -> HTBOTTOMRIGHT
+            else -> HTNOWHERE
+        }
+    }
 
-            else -> {
-                childHitTest(x.toFloat(), y.toFloat())
+    private fun hitTest(x: Int, y: Int): Int {
+        // skip resizer border hit test if window is maximized
+        if (!isMaximized) {
+            hitTestResult = hitTestWindowResizerBorder(x, y)
+            if (hitTestResult != HTNOWHERE) {
+                return hitTestResult
             }
         }
+        hitTestResult = childHitTest(x.toFloat(), y.toFloat())
         return hitTestResult
     }
 
@@ -762,7 +768,16 @@ internal class TitleBarWindowProc(
             }
 
             WM_NCHITTEST -> {
-                // Hit test result return
+                // skip resizer border hit test if window is maximized
+                if (!isMaximized) {
+                    val callResult = user32.CallWindowProc(defaultWindowProc, hWnd, uMsg, wParam, lParam)
+                    when (val result = callResult.toInt()) {
+                        HTTOP, HTLEFT, HTRIGHT, HTBOTTOM,
+                        HTTOPLEFT, HTTOPRIGHT, HTBOTTOMLEFT, HTBOTTOMRIGHT -> {
+                            hitTestResult = result
+                        }
+                    }
+                }
                 return LRESULT(hitTestResult.toLong())
             }
 
