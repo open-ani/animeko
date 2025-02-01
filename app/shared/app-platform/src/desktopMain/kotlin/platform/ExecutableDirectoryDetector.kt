@@ -41,7 +41,7 @@ object SystemPropertyExecutableDirectoryDetector : ExecutableDirectoryDetector {
     }
 }
 
-object WindowsExecutableDirectoryDetector : ExecutableDirectoryDetector() {
+object WindowsExecutableDirectoryDetector : ExecutableDirectoryDetector {
     @Suppress("FunctionName")
     interface MyKernel32 : Kernel32 {
 
