@@ -101,7 +101,7 @@ object WindowsUpdateInstaller : DesktopUpdateInstaller {
     }
 
     override fun deleteOldUpdater() {
-        val appDir = File(System.getProperty("user.dir") ?: throw IllegalStateException("Cannot get app directory"))
+        val appDir = ExecutableDirectoryDetector.INSTANCE.getExecutableDirectory()
         val updateExecutable = appDir.resolve("ani_update.exe")
         if (updateExecutable.exists()) {
             updateExecutable.delete()
