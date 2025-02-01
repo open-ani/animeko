@@ -23,8 +23,10 @@ class AniAuthClient(
 ) {
     suspend fun getResult(requestId: String) = runApiRequest {
         try {
-            oauthApiInvoker { getBangumiToken(requestId) }
-                .typedBody<AniBangumiUserToken>(typeInfo<AniBangumiUserToken>())
+            oauthApiInvoker {
+                getBangumiToken(requestId)
+                    .typedBody<AniBangumiUserToken>(typeInfo<AniBangumiUserToken>())
+            }
         } catch (e: ClientRequestException) {
             if (e.response.status == HttpStatusCode.NotFound) {
                 return@runApiRequest null

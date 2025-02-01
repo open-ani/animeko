@@ -49,8 +49,7 @@ class AnitorrentEngine(
     parentCoroutineContext = parentCoroutineContext,
 ) {
     override val location: MediaSourceLocation get() = MediaSourceLocation.Local
-    override val isSupported: Flow<Boolean>
-        get() = flowOf(tryLoadLibraries())
+    override val isSupported: Flow<Boolean> by lazy { flowOf(tryLoadLibraries()) }
 
     init {
         initialized.complete(Unit)

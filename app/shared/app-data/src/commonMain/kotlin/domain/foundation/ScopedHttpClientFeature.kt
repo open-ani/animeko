@@ -13,9 +13,10 @@ import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.plugins.BrowserUserAgent
 import io.ktor.client.plugins.HttpSend
+import io.ktor.client.plugins.auth.Auth
+import io.ktor.client.plugins.auth.providers.BearerTokens
+import io.ktor.client.plugins.auth.providers.bearer
 import io.ktor.client.plugins.plugin
-import io.ktor.client.request.bearerAuth
-import io.ktor.http.HttpHeaders
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import me.him188.ani.app.platform.getAniUserAgent
@@ -119,15 +120,29 @@ val UseBangumiTokenFeature = ScopedHttpClientFeatureKey<Boolean>("UseBangumiToke
 
 class UseBangumiTokenFeatureHandler(
     private val bearerToken: Flow<String?>,
+    private val onRefresh: suspend () -> BearerTokens?,
 ) : ScopedHttpClientFeatureHandler<Boolean>(UseBangumiTokenFeature) {
+
+    override fun applyToConfig(config: HttpClientConfig<*>, value: Boolean) {
+        if (!value) return
+        config.install(Auth) {
+            bearer {
+                loadTokens {
+                    bearerToken.first()?.let {
+                        BearerTokens(it, "")
+                    }
+                }
+
+                refreshTokens {
+                    onRefresh()
+                }
+            }
+        }
+    }
+
     override fun applyToClient(client: HttpClient, value: Boolean) {
         if (!value) return
         client.plugin(HttpSend).intercept { request ->
-            if (!request.headers.contains(HttpHeaders.Authorization)) {
-                bearerToken.first()?.let {
-                    request.bearerAuth(it)
-                }
-            }
             val originalCall = execute(request)
             if (originalCall.response.status.value !in 100..399) {
                 execute(request)

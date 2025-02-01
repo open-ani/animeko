@@ -29,6 +29,7 @@
 @file:DependsOn("actions:upload-artifact:v4")
 @file:DependsOn("actions:download-artifact:v4")
 @file:DependsOn("reactivecircus:android-emulator-runner:v2")
+@file:DependsOn("jlumbroso:free-disk-space:v1.3.1")
 
 // Release
 @file:DependsOn("dawidd6:action-get-tag:v1")
@@ -57,6 +58,7 @@ import io.github.typesafegithub.workflows.actions.bhowell2.GithubSubstringAction
 import io.github.typesafegithub.workflows.actions.dawidd6.ActionGetTag_Untyped
 import io.github.typesafegithub.workflows.actions.gmitch215.SetupJava_Untyped
 import io.github.typesafegithub.workflows.actions.gradle.ActionsSetupGradle
+import io.github.typesafegithub.workflows.actions.jlumbroso.FreeDiskSpace_Untyped
 import io.github.typesafegithub.workflows.actions.nickfields.Retry_Untyped
 import io.github.typesafegithub.workflows.actions.reactivecircus.AndroidEmulatorRunner
 import io.github.typesafegithub.workflows.actions.snowactions.Qrcode_Untyped
@@ -125,7 +127,7 @@ object AndroidArch {
 
 // Build 和 Release 共享这个
 // Configuration for a Runner
-class MatrixInstance(
+data class MatrixInstance(
     // 定义属性为 val, 就会生成到 yml 的 `matrix` 里.
 
     /**
@@ -182,12 +184,12 @@ class MatrixInstance(
     val buildAllAndroidAbis: Boolean = true,
 
     // Gradle command line args
-    gradleHeap: String = "4g",
-    kotlinCompilerHeap: String = "4g",
+    private val gradleHeap: String = "4g",
+    private val kotlinCompilerHeap: String = "4g",
     /**
      * 只能在内存比较大的时候用.
      */
-    gradleParallel: Boolean = selfHosted,
+    private val gradleParallel: Boolean = selfHosted,
 ) {
     @Suppress("unused")
     val gradleArgs = buildList {
@@ -348,8 +350,11 @@ val Runner.isSelfHosted: Boolean
     get() = this is Runner.SelfHosted
 
 // Machines for Build and Release
-val buildMatrixInstances = listOf(
-    MatrixInstance(
+lateinit var buildMatrixInstances: List<MatrixInstance>
+lateinit var releaseMatrixInstances: List<MatrixInstance>
+
+run {
+    val selfWin10 = MatrixInstance(
         runner = Runner.SelfHostedWindows10,
         uploadApk = false,
         composeResourceTriple = "windows-x64",
@@ -360,8 +365,8 @@ val buildMatrixInstances = listOf(
         buildAllAndroidAbis = false, // 只有 win server 2019 构建的包才能正常使用 anitorrent
         gradleHeap = "6g",
         kotlinCompilerHeap = "6g",
-    ),
-    MatrixInstance(
+    )
+    val ghWin2019 = MatrixInstance(
         runner = Runner.GithubWindowsServer2019,
         name = "Windows Server 2019 x86_64",
         uploadApk = false,
@@ -373,11 +378,11 @@ val buildMatrixInstances = listOf(
         buildAllAndroidAbis = false,
         gradleHeap = "4g",
         gradleParallel = true,
-    ),
-    MatrixInstance(
+    )
+    val ghUbuntu2404 = MatrixInstance(
         runner = Runner.GithubUbuntu2404,
         uploadApk = false,
-        runAndroidInstrumentedTests = true,
+        runAndroidInstrumentedTests = true, // 这其实有问题, GH 没有足够的空间安装 7GB 模拟器
         composeResourceTriple = "linux-x64",
         runTests = false,
         uploadDesktopInstallers = false,
@@ -387,20 +392,20 @@ val buildMatrixInstances = listOf(
         buildAllAndroidAbis = false,
         gradleHeap = "6g",
         kotlinCompilerHeap = "6g",
-    ),
-    MatrixInstance(
+    )
+    val ghMac13 = MatrixInstance(
         runner = Runner.GithubMacOS13,
         uploadApk = true, // all ABIs
         runAndroidInstrumentedTests = false,
         composeResourceTriple = "macos-x64",
         uploadDesktopInstallers = true,
-        extraGradleArgs = listOf(), 
+        extraGradleArgs = listOf(),
         buildIosFramework = false,
         buildAllAndroidAbis = true,
         gradleHeap = "6g",
         kotlinCompilerHeap = "6g",
-    ),
-    MatrixInstance(
+    )
+    val selfMac15 = MatrixInstance(
         runner = Runner.SelfHostedMacOS15,
         uploadApk = false, // upload arm64-v8a once finished
         runAndroidInstrumentedTests = true,
@@ -413,8 +418,26 @@ val buildMatrixInstances = listOf(
         gradleHeap = "6g",
         kotlinCompilerHeap = "4g",
         gradleParallel = true,
-    ),
-)
+    )
+    
+    buildMatrixInstances = listOf(
+        selfWin10,
+        ghWin2019,
+//        ghUbuntu2404,
+        ghMac13,
+        selfMac15,
+    )
+    
+    releaseMatrixInstances = listOf(
+        ghWin2019, // win installer
+        selfMac15.copy(
+            buildAllAndroidAbis = true,
+            uploadApk = true,
+            extraGradleArgs = selfMac15.extraGradleArgs.filterNot { it.startsWith("-P$ANI_ANDROID_ABIS=") }
+        ), // macos installer, android apks
+    )
+}
+
 
 class BuildJobOutputs : JobOutputs() {
     var macosAarch64DmgSuccess by output()
@@ -745,7 +768,7 @@ workflow(
         jobOutputs.id = createRelease.outputs.id
     }
 
-    val matrixInstancesForRelease = buildMatrixInstances.filterNot { it.os == OS.UBUNTU }
+    val matrixInstancesForRelease = releaseMatrixInstances
 
     fun addJob(matrix: MatrixInstance) = with(WithMatrix(matrix)) {
         val jobBody: JobBuilder<JobOutputs.EMPTY>.() -> Unit = {
@@ -846,7 +869,7 @@ class WithMatrix(
         `if`: String? = null,
         @Language("shell", prefix = "./gradlew ") vararg tasks: String,
         env: Map<String, String> = emptyMap(),
-        maxAttempts: Int = 1,
+        maxAttempts: Int = 2,
         timeoutMinutes: Int = 120,
     ): ActionStep<Retry_Untyped.Outputs> = uses(
         name = name, 
@@ -873,6 +896,18 @@ class WithMatrix(
                 name = "Free space for macOS",
                 command = shell($$"""chmod +x ./ci-helper/free-space-macos.sh && ./ci-helper/free-space-macos.sh"""),
                 continueOnError = true,
+            )
+        }
+        if (matrix.isUbuntu && !matrix.selfHosted) {
+            uses(
+                name = "Free space for Ubuntu",
+                action = FreeDiskSpace_Untyped(
+                    // https://github.com/marketplace/actions/free-disk-space-ubuntu
+                    toolCache_Untyped = "false",
+                    android_Untyped = "false",
+                    largePackages_Untyped = "false",
+                    // others are true
+                )
             )
         }
     }
