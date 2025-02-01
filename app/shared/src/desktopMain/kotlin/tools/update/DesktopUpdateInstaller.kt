@@ -9,11 +9,8 @@
 
 package me.him188.ani.app.tools.update
 
-import com.sun.jna.Native
-import com.sun.jna.platform.win32.Kernel32
-import com.sun.jna.platform.win32.WinDef
-import com.sun.jna.win32.W32APIOptions
 import me.him188.ani.app.platform.ContextMP
+import me.him188.ani.app.platform.ExecutableDirectoryDetector
 import me.him188.ani.app.platform.FileOpener
 import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.io.absolutePath
@@ -71,7 +68,7 @@ object WindowsUpdateInstaller : DesktopUpdateInstaller {
 
     override fun install(file: SystemPath, context: ContextMP): InstallationResult {
         logger.info { "Installing update for Windows" }
-        val appDir = getExecutableDirectory()
+        val appDir = ExecutableDirectoryDetector.INSTANCE.getExecutableDirectory()
         logger.info { "Current app dir: ${appDir.absolutePath}" }
         if (!appDir.resolve("Ani.exe").exists()) {
             logger.info { "Current app dir does not have 'Ani.exe'. Fallback to manual update" }
@@ -109,48 +106,6 @@ object WindowsUpdateInstaller : DesktopUpdateInstaller {
         if (updateExecutable.exists()) {
             updateExecutable.delete()
         }
-    }
-
-    @Suppress("FunctionName")
-    interface MyKernel32 : Kernel32 {
-
-        /**
-         * Retrieves the fully qualified path for the file that contains the specified module.
-         * If this parameter is null, GetModuleFileName retrieves the path of the executable file
-         * of the current process.
-         *
-         * @param hModule A handle to the loaded module whose path is being requested. If null,
-         *                this function returns the path of the current process's executable.
-         * @param lpFilename A buffer that receives the fully qualified path of the module.
-         * @param nSize The size of the lpFilename buffer, in characters.
-         * @return The length of the string copied to lpFilename.
-         *
-         * @see <a href="https://learn.microsoft.com/en-us/windows/win32/api/libloaderapi/nf-libloaderapi-getmodulefilenamew">
-         *      Microsoft Docs: GetModuleFileNameW</a>
-         */
-        fun GetModuleFileNameW(
-            hModule: WinDef.HMODULE?,
-            lpFilename: CharArray,
-            nSize: Int
-        ): Int
-
-        companion object {
-            val INSTANCE: MyKernel32 = Native.load(
-                "kernel32",
-                MyKernel32::class.java,
-                W32APIOptions.DEFAULT_OPTIONS,
-            )
-        }
-    }
-
-    /**
-     * Returns the absolute directory containing the actual .exe on Windows.
-     */
-    fun getExecutableDirectory(): File {
-        val buffer = CharArray(1024)
-        val length = MyKernel32.INSTANCE.GetModuleFileNameW(null, buffer, buffer.size)
-        val fullPath = String(buffer, 0, length)
-        return File(fullPath).parentFile
     }
 
     @Language("cmd")
