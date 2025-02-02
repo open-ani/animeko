@@ -35,7 +35,7 @@ import me.him188.ani.app.ui.settings.framework.components.DropdownItem
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.SwitchItem
 import me.him188.ani.app.ui.theme.ColorButton
-import me.him188.ani.app.ui.theme.colorList
+import me.him188.ani.app.ui.theme.themeColorOptions
 import me.him188.ani.utils.platform.isAndroid
 import me.him188.ani.utils.platform.isDesktop
 
@@ -145,7 +145,7 @@ fun SettingsScope.ThemeGroup(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center,
             ) {
-                AniThemeDefaults.colorList.forEach { color ->
+                AniThemeDefaults.themeColorOptions.forEach { color ->
                     ColorButton(
                         color = color,
                         themeSettings = themeSettings,

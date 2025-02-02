@@ -21,5 +21,9 @@ private val colorList = ((4..10) + (1..3))
         add(5, DefaultSeedColor)
     }
 
-val AniThemeDefaults.colorList: List<Color>
-    get() = me.him188.ani.app.ui.theme.colorList
+/**
+ * All available seed colors of color scheme for app.
+ */
+@Suppress("UnusedReceiverParameter")
+val AniThemeDefaults.themeColorOptions: List<Color>
+    get() = colorList

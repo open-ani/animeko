@@ -41,7 +41,7 @@ import me.him188.ani.app.ui.settings.framework.components.TextItem
 import me.him188.ani.app.ui.theme.ColorButton
 import me.him188.ani.app.ui.theme.DiagonalMixedThemePreviewPanel
 import me.him188.ani.app.ui.theme.ThemePreviewPanel
-import me.him188.ani.app.ui.theme.colorList
+import me.him188.ani.app.ui.theme.themeColorOptions
 import me.him188.ani.app.ui.wizard.WizardLayoutParams
 import me.him188.ani.utils.platform.isAndroid
 
@@ -125,7 +125,7 @@ internal fun SelectTheme(
                     .fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center,
             ) {
-                AniThemeDefaults.colorList.forEach {
+                AniThemeDefaults.themeColorOptions.forEach {
                     ColorButton(
                         onClick = {
                             onUpdate(

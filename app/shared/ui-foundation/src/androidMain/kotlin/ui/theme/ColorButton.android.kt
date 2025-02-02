@@ -24,8 +24,8 @@ import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 fun PreviewColorButton() {
     ProvideFoundationCompositionLocalsForPreview {
         FlowRow {
-            var currentColor by remember { mutableStateOf(AniThemeDefaults.colorList[0]) }
-            AniThemeDefaults.colorList.forEach {
+            var currentColor by remember { mutableStateOf(AniThemeDefaults.themeColorOptions[0]) }
+            AniThemeDefaults.themeColorOptions.forEach {
                 ColorButton(
                     onClick = { currentColor = it },
                     baseColor = it,
