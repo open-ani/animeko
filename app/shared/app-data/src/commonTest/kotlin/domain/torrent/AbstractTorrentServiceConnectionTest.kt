@@ -90,31 +90,55 @@ private class TestLifecycle(private val owner: LifecycleOwner) : Lifecycle() {
             when (state) {
                 State.INITIALIZED -> error("cannot move to INITIALIZED state")
                 State.CREATED -> when (_currentState.value) {
-                    State.INITIALIZED -> { it.onCreate(owner) }
-                    State.CREATED -> {  }
-                    State.STARTED -> { it.onStop(owner) }
-                    State.RESUMED -> { it.onPause(owner); it.onStop(owner) }
+                    State.INITIALIZED -> it.onCreate(owner)
+                    State.CREATED -> {}
+                    State.STARTED -> it.onStop(owner)
+                    State.RESUMED -> {
+                        it.onPause(owner)
+                        it.onStop(owner)
+                    }
                     State.DESTROYED -> error("state is DESTROYED and cannot move to others")
                 }
                 State.STARTED -> when (_currentState.value) {
-                    State.INITIALIZED -> { it.onCreate(owner); it.onStart(owner) }
-                    State.CREATED -> { it.onStart(owner) }
-                    State.STARTED -> {  }
-                    State.RESUMED -> { it.onPause(owner) }
+                    State.INITIALIZED -> {
+                        it.onCreate(owner)
+                        it.onStart(owner)
+                    }
+
+                    State.CREATED -> it.onStart(owner)
+                    State.STARTED -> {}
+                    State.RESUMED -> it.onPause(owner)
                     State.DESTROYED -> error("state is DESTROYED and cannot move to others")
                 }
                 State.RESUMED -> when (_currentState.value) {
-                    State.INITIALIZED -> { it.onCreate(owner); it.onStart(owner); it.onResume(owner) }
-                    State.CREATED -> { it.onStart(owner); it.onResume(owner) }
-                    State.STARTED -> { it.onResume(owner) }
-                    State.RESUMED -> {  }
+                    State.INITIALIZED -> {
+                        it.onCreate(owner)
+                        it.onStart(owner)
+                        it.onResume(owner)
+                    }
+
+                    State.CREATED -> {
+                        it.onStart(owner)
+                        it.onResume(owner)
+                    }
+
+                    State.STARTED -> it.onResume(owner)
+                    State.RESUMED -> {}
                     State.DESTROYED -> error("state is DESTROYED and cannot move to others")
                 }
                 State.DESTROYED -> when (_currentState.value) {
                     State.INITIALIZED -> { }
-                    State.CREATED -> { it.onDestroy(owner) }
-                    State.STARTED -> { it.onStop(owner); it.onDestroy(owner) }
-                    State.RESUMED -> { it.onPause(owner); it.onStop(owner); it.onDestroy(owner) }
+                    State.CREATED -> it.onDestroy(owner)
+                    State.STARTED -> {
+                        it.onStop(owner)
+                        it.onDestroy(owner)
+                    }
+
+                    State.RESUMED -> {
+                        it.onPause(owner)
+                        it.onStop(owner)
+                        it.onDestroy(owner)
+                    }
                     State.DESTROYED -> error("state is DESTROYED and cannot move to others")
                 }
             }
