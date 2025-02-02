@@ -64,18 +64,6 @@ internal fun SelectTheme(
             horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
         ) {
             ColorSchemePreviewItem(
-                onClick = { onUpdate(config.copy(darkMode = DarkMode.AUTO)) },
-                text = { Text("自动") },
-                panel = {
-                    DiagonalMixedThemePreviewPanel(
-                        leftTopColorScheme = appColorScheme(isDark = false),
-                        rightBottomColorScheme = appColorScheme(isDark = true),
-                        modifier = Modifier.size(96.dp, 146.dp),
-                    )
-                },
-                selected = config.darkMode == DarkMode.AUTO,
-            )
-            ColorSchemePreviewItem(
                 onClick = { onUpdate(config.copy(darkMode = DarkMode.LIGHT)) },
                 panel = {
                     ThemePreviewPanel(
@@ -96,6 +84,18 @@ internal fun SelectTheme(
                 },
                 text = { Text("暗色") },
                 selected = config.darkMode == DarkMode.DARK,
+            )
+            ColorSchemePreviewItem(
+                onClick = { onUpdate(config.copy(darkMode = DarkMode.AUTO)) },
+                text = { Text("自动") },
+                panel = {
+                    DiagonalMixedThemePreviewPanel(
+                        leftTopColorScheme = appColorScheme(isDark = false),
+                        rightBottomColorScheme = appColorScheme(isDark = true),
+                        modifier = Modifier.size(96.dp, 146.dp),
+                    )
+                },
+                selected = config.darkMode == DarkMode.AUTO,
             )
         }
         Group(
