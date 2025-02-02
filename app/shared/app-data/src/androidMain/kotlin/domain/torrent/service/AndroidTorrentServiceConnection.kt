@@ -54,7 +54,7 @@ class AndroidTorrentServiceConnection(
     LifecycleAwareTorrentServiceConnection<IRemoteAniTorrentEngine>(parentCoroutineContext) {
     private val startupIntentFilter by lazy { IntentFilter(AniTorrentService.INTENT_STARTUP) }
     private val acquireWakeLockIntent by lazy {
-        Intent(context, AniTorrentService::class.java).apply {
+        Intent(context, AniTorrentService.actualServiceClass).apply {
             putExtra("acquireWakeLock", 1.minutes.inWholeMilliseconds)
         }
     }
@@ -84,10 +84,7 @@ class AndroidTorrentServiceConnection(
                     }
 
                     val bindResult = context.bindService(
-                        Intent(
-                            context,
-                            AniTorrentService::class.java,
-                        ),
+                        Intent(context, AniTorrentService.actualServiceClass),
                         this@AndroidTorrentServiceConnection,
                         Context.BIND_ABOVE_CLIENT,
                     )

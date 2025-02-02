@@ -13,6 +13,7 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
 import android.os.Process
@@ -51,7 +52,7 @@ import me.him188.ani.utils.io.inSystem
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 
-class AniTorrentService : LifecycleService() {
+sealed class AniTorrentService : LifecycleService() {
     private val scope = CoroutineScope(
         Dispatchers.Default + CoroutineName("AniTorrentService") +
                 SupervisorJob(lifecycleScope.coroutineContext[Job]),
@@ -238,5 +239,25 @@ class AniTorrentService : LifecycleService() {
     companion object {
         const val INTENT_STARTUP = "me.him188.ani.android.ANI_TORRENT_SERVICE_STARTUP"
         const val INTENT_BACKGROUND_TIMEOUT = "me.him188.ani.android.ANI_TORRENT_SERVICE_BACKGROUND_TIMEOUT"
+        
+        val actualServiceClass = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            AniTorrentServiceApi34::class.java
+        } else {
+            AniTorrentServiceApiDefault::class.java
+        }
     }
 }
+
+/**
+ * Android 34 或以上使用
+ *
+ * 在 manifest 的 fgsType 是 mediaPlayback, 没被限制运行
+ */
+class AniTorrentServiceApi34 : AniTorrentService()
+
+/**
+ * Android 34 以下使用
+ * 
+ * 在 manifest 的 fgsType 是 dataSync
+ */
+class AniTorrentServiceApiDefault : AniTorrentService()

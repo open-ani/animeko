@@ -9,7 +9,8 @@
   ~ https://github.com/open-ani/ani/blob/main/LICENSE
   -->
 
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.VIBRATE" />
@@ -85,7 +86,16 @@
         </provider>
 
         <service
-                android:name="me.him188.ani.app.domain.torrent.service.AniTorrentService"
+                android:name="me.him188.ani.app.domain.torrent.service.AniTorrentServiceApi34"
+                android:description="@string/service_torrent_engine_description"
+                android:enabled="true"
+                android:exported="false"
+                tools:targetApi="34"
+                android:foregroundServiceType="mediaPlayback"
+                android:process=":torrent_service" />
+
+        <service
+                android:name="me.him188.ani.app.domain.torrent.service.AniTorrentServiceApiDefault"
                 android:description="@string/service_torrent_engine_description"
                 android:enabled="true"
                 android:exported="false"

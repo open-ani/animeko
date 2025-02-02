@@ -17,7 +17,9 @@ import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineName
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -109,7 +111,7 @@ abstract class LifecycleAwareTorrentServiceConnection<T : Any>(
      * 启动服务并返回启动结果.
      *
      * 注意：此处同步返回的结果仅代表服务是否成功启动, 不代表服务是否已连接.
-     * 换句话说, 此方法返回 [StartResult.STARTED] 或 [StartResult.ALREADY_RUNNING] 后,
+     * 换句话说, 此方法返回 [StartResult.STARTED][TorrentServiceConnection.StartResult.STARTED] 或 [StartResult.ALREADY_RUNNING][TorrentServiceConnection.StartResult.ALREADY_RUNNING] 后,
      * 实现类必须尽快调用 [onServiceConnected] 并传入服务通信接口对象.
      *
      *
@@ -185,7 +187,7 @@ abstract class LifecycleAwareTorrentServiceConnection<T : Any>(
         }
     }
 
-    private suspend fun startServiceWithRetry(maxAttempts: Int = 15) {
+    private suspend fun startServiceWithRetry(maxAttempts: Int = Int.MAX_VALUE) {
         var retries = 0
         while (retries <= maxAttempts) {
             val startResult = startService()
@@ -208,10 +210,13 @@ abstract class LifecycleAwareTorrentServiceConnection<T : Any>(
 
     /**
      * 获取当前 binder 对象.
-     * 如果服务未连接, 则会挂起直到服务连接成功.
+     * 如果服务未连接, 则会挂起直到服务连接成功; 如果连接已[关闭][close], 则直接抛出 [CancellationException].
      */
     override suspend fun getBinder(): T {
-        isServiceConnected.first { it }
+        // track cancellation of [scope]
+        scope.async { 
+            isServiceConnected.first { it } 
+        }.await()
         return binderDeferred.await()
     }
 }
