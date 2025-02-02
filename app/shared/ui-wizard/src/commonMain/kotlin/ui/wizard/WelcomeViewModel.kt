@@ -45,6 +45,8 @@ import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.fold
+import me.him188.ani.app.data.models.preference.MediaSourceProxySettings
+import me.him188.ani.app.data.models.preference.ProxyAuthorization
 import me.him188.ani.app.data.models.preference.ProxyMode
 import me.him188.ani.app.data.models.preference.ProxySettings
 import me.him188.ani.app.data.models.preference.ThemeSettings
@@ -81,6 +83,8 @@ import me.him188.ani.app.ui.wizard.step.NotificationPermissionState
 import me.him188.ani.app.ui.wizard.step.ProxyTestCaseState
 import me.him188.ani.app.ui.wizard.step.ProxyTestItem
 import me.him188.ani.app.ui.wizard.step.ProxyTestState
+import me.him188.ani.app.ui.wizard.step.ProxyUIConfig
+import me.him188.ani.app.ui.wizard.step.ProxyUIMode
 import me.him188.ani.utils.coroutines.flows.FlowRestarter
 import me.him188.ani.utils.coroutines.flows.FlowRunning
 import me.him188.ani.utils.coroutines.flows.restartable
@@ -125,7 +129,7 @@ class WelcomeViewModel : AbstractSettingsViewModel(), KoinComponent {
         proxyTestResults,
     ) { settings, proxy, running, cases, results ->
         ConfigureProxyUIState(
-            config = settings,
+            config = settings.toUIConfig(),
             systemProxy = if (settings.default.mode == ProxyMode.SYSTEM && proxy != null) {
                 SystemProxyPresentation.Detected(proxy)
             } else {
@@ -147,11 +151,11 @@ class WelcomeViewModel : AbstractSettingsViewModel(), KoinComponent {
     private val configureProxyState = ConfigureProxyState(
         state = configureProxyUiState,
         onUpdateConfig = { newConfig ->
-            launchInBackground { 
-                if (shouldRerunProxyTestManually(proxySettings.flow.first(), newConfig)) {
+            launchInBackground {
+                if (shouldRerunProxyTestManually(proxySettings.flow.first().toUIConfig(), newConfig)) {
                     proxyTestRestarter.restart()
                 }
-                proxySettings.update { newConfig }
+                proxySettings.update { newConfig.toDataSettings() }
             }
         },
         onRequestReTest = { proxyTestRestarter.restart() },
@@ -287,17 +291,17 @@ class WelcomeViewModel : AbstractSettingsViewModel(), KoinComponent {
      * 
      * 另外没改也要测试
      */
-    private fun shouldRerunProxyTestManually(prev: ProxySettings, curr: ProxySettings): Boolean {
+    private fun shouldRerunProxyTestManually(prev: ProxyUIConfig, curr: ProxyUIConfig): Boolean {
         if (prev == curr) return true
-        
-        val prevMode = prev.default.mode
-        val currMode = curr.default.mode
+
+        val prevMode = prev.mode
+        val currMode = curr.mode
         val noSystemProxy = configureProxyUiState.value.systemProxy is SystemProxyPresentation.NotDetected
-        
-        if (prevMode == ProxyMode.SYSTEM && currMode == ProxyMode.DISABLED && noSystemProxy) {
+
+        if (prevMode == ProxyUIMode.SYSTEM && currMode == ProxyUIMode.DISABLED && noSystemProxy) {
             return true
         }
-        if (prevMode == ProxyMode.DISABLED && currMode == ProxyMode.SYSTEM && noSystemProxy) {
+        if (prevMode == ProxyUIMode.DISABLED && currMode == ProxyUIMode.SYSTEM && noSystemProxy) {
             return true
         }
         return false
@@ -521,7 +525,7 @@ class WizardPresentationState(
 @Stable
 class ConfigureProxyState(
     val state: Flow<ConfigureProxyUIState>,
-    val onUpdateConfig: (ProxySettings) -> Unit,
+    val onUpdateConfig: (ProxyUIConfig) -> Unit,
     val onRequestReTest: () -> Unit,
 )
 
@@ -584,3 +588,46 @@ class BangumiAuthorizeState(
     val onClickNavigateToBangumiDev: (ContextMP) -> Unit,
     val onUseGuestMode: () -> Unit,
 )
+
+// region transform between ui ProxyUIConfig and data ProxySettings
+
+internal fun ProxyMode.toUIMode(): ProxyUIMode {
+    return when (this) {
+        ProxyMode.DISABLED -> ProxyUIMode.DISABLED
+        ProxyMode.SYSTEM -> ProxyUIMode.SYSTEM
+        ProxyMode.CUSTOM -> ProxyUIMode.CUSTOM
+    }
+}
+
+internal fun ProxyUIMode.toDataMode(): ProxyMode {
+    return when (this) {
+        ProxyUIMode.DISABLED -> ProxyMode.DISABLED
+        ProxyUIMode.SYSTEM -> ProxyMode.SYSTEM
+        ProxyUIMode.CUSTOM -> ProxyMode.CUSTOM
+    }
+}
+
+internal fun ProxySettings.toUIConfig(): ProxyUIConfig {
+    return ProxyUIConfig(
+        mode = default.mode.toUIMode(),
+        manualUrl = default.customConfig.url,
+        manualUsername = default.customConfig.authorization?.username,
+        manualPassword = default.customConfig.authorization?.password,
+    )
+}
+
+internal fun ProxyUIConfig.toDataSettings(): ProxySettings {
+    return ProxySettings(
+        default = MediaSourceProxySettings(
+            mode = mode.toDataMode(),
+            customConfig = MediaSourceProxySettings.Default.customConfig.copy(
+                url = manualUrl,
+                authorization = if (manualUsername != null && manualPassword != null) {
+                    ProxyAuthorization(manualUsername, manualPassword)
+                } else null,
+            ),
+        ),
+    )
+}
+
+// endregion

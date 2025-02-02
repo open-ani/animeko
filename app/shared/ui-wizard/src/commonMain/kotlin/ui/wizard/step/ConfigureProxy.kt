@@ -44,7 +44,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import me.him188.ani.app.data.models.preference.ProxyMode
 import me.him188.ani.app.data.models.preference.ProxySettings
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
@@ -58,29 +57,24 @@ import me.him188.ani.app.ui.settings.tabs.network.SystemProxyPresentation
 import me.him188.ani.app.ui.wizard.ProxyTestCase
 import me.him188.ani.app.ui.wizard.ProxyTestCaseEnums
 import me.him188.ani.app.ui.wizard.WizardLayoutParams
+import me.him188.ani.app.ui.wizard.toDataSettings
+import me.him188.ani.app.ui.wizard.toUIConfig
 
 @Immutable
-enum class ProxyTestCaseState {
-    INIT,
-    RUNNING,
-    SUCCESS,
-    FAILED
+enum class ProxyUIMode {
+    DISABLED, SYSTEM, CUSTOM
 }
 
-@Stable
-class ProxyTestItem(
-    val case: ProxyTestCase,
-    val state: ProxyTestCaseState,
-)
-
-@Stable
-class ProxyTestState(
-    val testRunning: Boolean,
-    val items: List<ProxyTestItem>
+@Immutable
+data class ProxyUIConfig(
+    val mode: ProxyUIMode,
+    val manualUrl: String,
+    val manualUsername: String?,
+    val manualPassword: String?,
 ) {
     companion object {
         @Stable
-        val Default = ProxyTestState(false, emptyList())
+        val Default = ProxyUIConfig(ProxyUIMode.DISABLED, "", "", "")
     }
 }
 
@@ -94,8 +88,33 @@ enum class ProxyOverallTestState {
 }
 
 @Immutable
+enum class ProxyTestCaseState {
+    INIT,
+    RUNNING,
+    SUCCESS,
+    FAILED
+}
+
+@Immutable
+class ProxyTestItem(
+    val case: ProxyTestCase,
+    val state: ProxyTestCaseState,
+)
+
+@Immutable
+class ProxyTestState(
+    val testRunning: Boolean,
+    val items: List<ProxyTestItem>
+) {
+    companion object {
+        @Stable
+        val Default = ProxyTestState(false, emptyList())
+    }
+}
+
+@Immutable
 class ConfigureProxyUIState(
-    val config: ProxySettings,
+    val config: ProxyUIConfig,
     val systemProxy: SystemProxyPresentation,
     val testState: ProxyTestState,
 ) {
@@ -105,7 +124,7 @@ class ConfigureProxyUIState(
         if (testState.testRunning) {
             ProxyOverallTestState.RUNNING
         } else if (testState.items.any { it.state == ProxyTestCaseState.FAILED }) {
-            if (config.default.mode == ProxyMode.DISABLED) {
+            if (config.mode == ProxyUIMode.DISABLED) {
                 ProxyOverallTestState.FAILED_NOT_PROXIED
             } else {
                 ProxyOverallTestState.FAILED_PROXIED
@@ -124,7 +143,7 @@ class ConfigureProxyUIState(
     companion object {
         @Stable
         val Default = ConfigureProxyUIState(
-            ProxySettings.Default,
+            ProxyUIConfig.Default,
             SystemProxyPresentation.Detecting,
             ProxyTestState.Default,
         )
@@ -232,11 +251,11 @@ private fun SettingsScope.ProxyTestItemView(
 }
 
 @Composable
-private fun renderProxyConfigModeName(mode: ProxyMode): String {
+private fun renderProxyConfigModeName(mode: ProxyUIMode): String {
     return when (mode) {
-        ProxyMode.DISABLED -> "不使用代理"
-        ProxyMode.SYSTEM -> "系统代理"
-        ProxyMode.CUSTOM -> "自定义代理"
+        ProxyUIMode.DISABLED -> "不使用代理"
+        ProxyUIMode.SYSTEM -> "系统代理"
+        ProxyUIMode.CUSTOM -> "自定义代理"
     }
 }
 
@@ -255,23 +274,23 @@ private fun SettingsScope.CurrentProxyTextModePresentation(
     onClickEdit: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val currentTestMode = state.config.default.mode
     TextItem(
         modifier = modifier,
         title = {
             Text(
-                if (currentTestMode == ProxyMode.DISABLED)
-                    "未启用代理" else "正在使用${renderProxyConfigModeName(currentTestMode)}",
+                if (state.config.mode == ProxyUIMode.DISABLED)
+                    "未启用代理" else "正在使用${renderProxyConfigModeName(state.config.mode)}",
             )
         },
-        description = when (currentTestMode) {
-            ProxyMode.DISABLED -> null
-            ProxyMode.SYSTEM -> {
+        description = when (state.config.mode) {
+            ProxyUIMode.DISABLED -> null
+
+            ProxyUIMode.SYSTEM -> {
                 { Text(renderSystemProxyPresentation(state.systemProxy)) }
             }
 
-            ProxyMode.CUSTOM -> {
-                { Text(state.config.default.customConfig.url) }
+            ProxyUIMode.CUSTOM -> {
+                { Text(state.config.manualUrl) }
             }
         },
         action = {
@@ -291,7 +310,7 @@ private fun SettingsScope.CurrentProxyTextModePresentation(
 @Composable
 private fun SettingsScope.ProxyConfigGroup(
     state: ConfigureProxyUIState,
-    onUpdate: (config: ProxySettings) -> Unit,
+    onUpdate: (config: ProxyUIConfig) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val scope = rememberCoroutineScope()
@@ -301,7 +320,7 @@ private fun SettingsScope.ProxyConfigGroup(
             SettingsState(
                 valueState = config,
                 onUpdate = { config.value = it },
-                placeholder = ProxySettings.Default,
+                placeholder = ProxyUIConfig.Default,
                 backgroundScope = scope,
             )
         }
@@ -317,18 +336,14 @@ private fun SettingsScope.ProxyConfigGroup(
         useThinHeader = true,
         modifier = modifier,
     ) {
-        ProxyMode.entries.forEach { mode ->
+        ProxyUIMode.entries.forEach { mode ->
             val interactionSource = remember { MutableInteractionSource() }
-            val updateCurrentMode = {
-                currentConfig.update(
-                    currentConfig.value.copy(currentConfig.value.default.copy(mode = mode)),
-                )
-            }
+            val updateCurrentMode = { currentConfig.update(currentConfig.value.copy(mode = mode)) }
             TextItem(
                 title = { Text(renderProxyConfigModeName(mode)) },
                 icon = {
                     RadioButton(
-                        selected = currentConfig.value.default.mode == mode,
+                        selected = currentConfig.value.mode == mode,
                         onClick = updateCurrentMode,
                         interactionSource = interactionSource,
                     )
@@ -342,19 +357,28 @@ private fun SettingsScope.ProxyConfigGroup(
                     ),
             )
             AnimatedVisibility(
-                visible = currentConfig.value.default.mode == mode,
+                visible = currentConfig.value.mode == mode,
                 enter = motionScheme.animatedVisibility.columnEnter,
                 exit = motionScheme.animatedVisibility.columnExit,
             ) {
                 Column {
                     when (mode) {
-                        ProxyMode.DISABLED -> {}
-                        ProxyMode.SYSTEM -> {
+                        ProxyUIMode.DISABLED -> {}
+                        ProxyUIMode.SYSTEM -> {
                             SystemProxyConfig(state.systemProxy)
                         }
 
-                        ProxyMode.CUSTOM -> {
-                            CustomProxyConfig(currentConfig.value, currentConfig)
+                        ProxyUIMode.CUSTOM -> {
+                            // workaround for re-use CustomProxyConfig: Settings UI has no data layer of UI.
+                            val workaroundDataConfig = remember {
+                                SettingsState(
+                                    valueState = derivedStateOf { currentConfig.value.toDataSettings() },
+                                    onUpdate = { currentConfig.update(it.toUIConfig()) },
+                                    placeholder = ProxySettings.Default,
+                                    backgroundScope = scope,
+                                )
+                            }
+                            CustomProxyConfig(workaroundDataConfig.value, workaroundDataConfig)
                         }
                     }
                 }
@@ -367,7 +391,7 @@ private fun SettingsScope.ProxyConfigGroup(
 @Composable
 internal fun ConfigureProxy(
     state: ConfigureProxyUIState,
-    onUpdate: (config: ProxySettings) -> Unit,
+    onUpdate: (config: ProxyUIConfig) -> Unit,
     onRequestReTest: () -> Unit,
     modifier: Modifier = Modifier,
     layoutParams: WizardLayoutParams = WizardLayoutParams.Default

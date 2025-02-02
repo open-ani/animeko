@@ -15,7 +15,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.tooling.preview.Preview
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.flowOf
-import me.him188.ani.app.data.models.preference.ProxySettings
 import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.stateOf
@@ -28,6 +27,7 @@ import me.him188.ani.app.ui.wizard.step.NotificationPermissionState
 import me.him188.ani.app.ui.wizard.step.ProxyTestCaseState
 import me.him188.ani.app.ui.wizard.step.ProxyTestItem
 import me.him188.ani.app.ui.wizard.step.ProxyTestState
+import me.him188.ani.app.ui.wizard.step.ProxyUIConfig
 
 @Preview
 @Composable
@@ -54,7 +54,7 @@ internal fun createTestWizardPresentationState(scope: CoroutineScope): WizardPre
         configureProxyState = ConfigureProxyState(
             state = flowOf(
                 ConfigureProxyUIState(
-                    config = ProxySettings.Default,
+                    config = ProxyUIConfig.Default,
                     systemProxy = SystemProxyPresentation.Detecting,
                     testState = ProxyTestState(
                         testRunning = false,
