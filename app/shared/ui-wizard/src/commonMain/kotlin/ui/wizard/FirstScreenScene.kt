@@ -103,11 +103,6 @@ internal fun FirstScreenScene(
                 Box(modifier = Modifier.fillMaxWidth()) {
                     contactActions()
                 }
-                Text(
-                    "点击 \"继续\" 进入首次启动向导",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                )
                 Box(
                     modifier = Modifier
                         .padding(horizontal = 64.dp)
