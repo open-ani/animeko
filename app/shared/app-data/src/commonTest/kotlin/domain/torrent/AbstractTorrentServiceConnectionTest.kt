@@ -18,9 +18,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
+import me.him188.ani.utils.coroutines.childScope
 import kotlin.coroutines.CoroutineContext
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
@@ -41,20 +43,20 @@ class TestTorrentServiceConnection(
     private val shouldStartServiceSucceed: Boolean = true,
     coroutineContext: CoroutineContext = Dispatchers.Default,
 ) : LifecycleAwareTorrentServiceConnection<String>(coroutineContext) {
-
+    private val scope = coroutineContext.childScope()
     private val fakeBinder = "FAKE_BINDER_OBJECT"
 
     override suspend fun startService(): TorrentServiceConnection.StartResult {
         delay(100)
         return if (shouldStartServiceSucceed) {
+            scope.launch { // simulate automatic connection after start service succeeded.
+                delay(500)
+                onServiceConnected(fakeBinder)
+            }
             TorrentServiceConnection.StartResult.STARTED
         } else {
             TorrentServiceConnection.StartResult.FAILED
         }
-    }
-
-    fun triggerServiceConnected() {
-        onServiceConnected(fakeBinder)
     }
 
     fun triggerServiceDisconnected() {
@@ -78,7 +80,7 @@ private class TestLifecycle(private val owner: LifecycleOwner) : Lifecycle() {
 
     override fun removeObserver(observer: LifecycleObserver) {
         check(observer is DefaultLifecycleObserver) {
-            "$observer must implement androidx.lifecycle.DefaultLifecycleObserver."
+            "$observer must implement androidx.lifecycle.DefaultLifecycleObserver"
         }
         observers.update { it.remove(observer) }
     }
@@ -86,13 +88,38 @@ private class TestLifecycle(private val owner: LifecycleOwner) : Lifecycle() {
     fun moveToState(state: State) {
         observers.value.forEach {
             when (state) {
-                State.INITIALIZED -> {}
-                State.CREATED -> it.onCreate(owner)
-                State.STARTED -> it.onStart(owner)
-                State.RESUMED -> it.onResume(owner)
-                State.DESTROYED -> it.onDestroy(owner)
+                State.INITIALIZED -> error("cannot move to INITIALIZED state")
+                State.CREATED -> when (_currentState.value) {
+                    State.INITIALIZED -> { it.onCreate(owner) }
+                    State.CREATED -> {  }
+                    State.STARTED -> { it.onStop(owner) }
+                    State.RESUMED -> { it.onPause(owner); it.onStop(owner) }
+                    State.DESTROYED -> error("state is DESTROYED and cannot move to others")
+                }
+                State.STARTED -> when (_currentState.value) {
+                    State.INITIALIZED -> { it.onCreate(owner); it.onStart(owner) }
+                    State.CREATED -> { it.onStart(owner) }
+                    State.STARTED -> {  }
+                    State.RESUMED -> { it.onPause(owner) }
+                    State.DESTROYED -> error("state is DESTROYED and cannot move to others")
+                }
+                State.RESUMED -> when (_currentState.value) {
+                    State.INITIALIZED -> { it.onCreate(owner); it.onStart(owner); it.onResume(owner) }
+                    State.CREATED -> { it.onStart(owner); it.onResume(owner) }
+                    State.STARTED -> { it.onResume(owner) }
+                    State.RESUMED -> {  }
+                    State.DESTROYED -> error("state is DESTROYED and cannot move to others")
+                }
+                State.DESTROYED -> when (_currentState.value) {
+                    State.INITIALIZED -> { }
+                    State.CREATED -> { it.onDestroy(owner) }
+                    State.STARTED -> { it.onStop(owner); it.onDestroy(owner) }
+                    State.RESUMED -> { it.onPause(owner); it.onStop(owner); it.onDestroy(owner) }
+                    State.DESTROYED -> error("state is DESTROYED and cannot move to others")
+                }
             }
         }
+        _currentState.value = state
     }
 }
 

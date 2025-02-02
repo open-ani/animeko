@@ -11,6 +11,8 @@ package me.him188.ani.app.domain.torrent
 
 import androidx.lifecycle.Lifecycle
 import app.cash.turbine.test
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceTimeBy
@@ -27,27 +29,21 @@ class LifecycleAwareTorrentServiceConnectionTest : AbstractTorrentServiceConnect
         val testLifecycle = TestLifecycleOwner()
         val connection = TestTorrentServiceConnection(
             shouldStartServiceSucceed = true,
-            coroutineContext = coroutineContext,
+            coroutineContext = backgroundScope.coroutineContext,
         )
 
         testLifecycle.lifecycle.addObserver(connection)
 
-        assertFalse(connection.connected.value)
-        val connectedFlowJob = backgroundScope.launch {
-            connection.connected.test {
-                assertFalse(awaitItem(), "Initially, connected should be false.")
-                // trigger on resumed
-                testLifecycle.moveTo(Lifecycle.State.RESUMED)
-                // not started immediately, async.
-                assertFalse(awaitItem(), "Service not connected until onServiceConnected is invoked.")
-                // trigger connected
-                connection.triggerServiceConnected()
-                assertTrue(awaitItem(), "After service is connected, connected should become true.")
-            }
-        }
+        connection.connected.test {
+            assertFalse(awaitItem(), "Initially, connected should be false.")
 
-        advanceUntilIdle()
-        connectedFlowJob.join()
+            // trigger on resumed
+            testLifecycle.moveTo(Lifecycle.State.RESUMED)
+            assertTrue(awaitItem(), "After service is connected, connected should become true.")
+
+            // completed
+            expectNoEvents()
+        }
     }
 
     @Test
@@ -55,42 +51,38 @@ class LifecycleAwareTorrentServiceConnectionTest : AbstractTorrentServiceConnect
         val testLifecycle = TestLifecycleOwner()
         val connection = TestTorrentServiceConnection(
             shouldStartServiceSucceed = false, // Force a failure
-            coroutineContext = coroutineContext,
+            coroutineContext = backgroundScope.coroutineContext,
         )
 
         testLifecycle.lifecycle.addObserver(connection)
 
         // The .connected flow should remain false, even after we move to resumed,
         // because startService() always fails, no successful onServiceConnected() is triggered.
-        val connectedFlowJob = backgroundScope.launch {
-            connection.connected.test {
-                val initial = awaitItem()
-                assertFalse(initial)
+        connection.connected.test {
+            assertFalse(awaitItem(), "Initially, connected should be false.")
 
-                // Move to RESUMED
-                testLifecycle.moveTo(Lifecycle.State.RESUMED)
+            // Move to RESUMED
+            testLifecycle.moveTo(Lifecycle.State.RESUMED)
 
-                // Because startService() fails repeatedly in the retry loop, connected never becomes true
-                // We'll watch for a short while and confirm it does not become true
-                repeat(3) {
-                    val next = expectMostRecentItem()
-                    assertFalse(next)
-                    advanceTimeBy(8000) // Let the internal retry happen
-                }
+            // Because startService() fails repeatedly in the retry loop, connected never becomes true
+            // We'll watch for a short while and confirm it does not become true
+            repeat(3) {
+                expectNoEvents()
+                advanceTimeBy(8000) // Let the internal retry happen
             }
         }
-
-        advanceUntilIdle()
-        connectedFlowJob.cancel()
     }
 
     @Test
     fun `getBinder suspends until service is connected`() = runTest {
+        val testLifecycle = TestLifecycleOwner()
         val connection = TestTorrentServiceConnection(
             shouldStartServiceSucceed = true,
-            coroutineContext = coroutineContext,
+            coroutineContext = backgroundScope.coroutineContext,
         )
-
+        
+        testLifecycle.lifecycle.addObserver(connection)
+        
         // Start a coroutine that calls getBinder
         val binderDeferred = async {
             connection.getBinder() // Should suspend
@@ -99,9 +91,8 @@ class LifecycleAwareTorrentServiceConnectionTest : AbstractTorrentServiceConnect
         // The call hasn't returned yet, because we haven't simulated connect
         advanceTimeBy(200) // Enough to start the service, but not connect
         assertTrue(!binderDeferred.isCompleted)
-
-        // Now simulate connected
-        connection.triggerServiceConnected()
+        
+        testLifecycle.moveTo(Lifecycle.State.RESUMED)
 
         // Once connected, getBinder should complete with the fake binder
         val binder = binderDeferred.await()
@@ -113,28 +104,31 @@ class LifecycleAwareTorrentServiceConnectionTest : AbstractTorrentServiceConnect
         val testLifecycle = TestLifecycleOwner()
         val connection = TestTorrentServiceConnection(
             shouldStartServiceSucceed = true,
-            coroutineContext = coroutineContext,
+            coroutineContext = backgroundScope.coroutineContext,
         )
 
         testLifecycle.lifecycle.addObserver(connection)
-        testLifecycle.moveTo(Lifecycle.State.RESUMED)
+        
+        connection.connected.test {
+            assertFalse(awaitItem(), "Initially, connected should be false.")
+            // Wait for the startService invocation
+            testLifecycle.moveTo(Lifecycle.State.RESUMED)
+            advanceTimeBy(200)
+            // Now it’s connected
+            assertTrue(awaitItem(), "Service should be connected.")
 
-        // Wait for the startService invocation
-        advanceTimeBy(200)
-        // Next, simulate the service connected
-        connection.triggerServiceConnected()
-        // Now it’s connected
-        assertTrue(connection.connected.value)
+            // Disconnect:
+            connection.triggerServiceDisconnected()
+            assertFalse(awaitItem(), "Service should be disconnected since we triggered disconnection.")
 
-        // Disconnect:
-        connection.triggerServiceDisconnected()
-
-        // Because the lifecycle is still in RESUMED,
-        // it should attempt to startService again automatically
-        // We can wait a bit, then connect again:
-        advanceTimeBy(200) // let the startService happen
-        connection.triggerServiceConnected()
-        assertTrue(connection.connected.value)
+            // Because the lifecycle is still in RESUMED,
+            // it should attempt to startService again automatically
+            // We can wait a bit, then connect again:
+            advanceTimeBy(200) // let the startService happen
+            assertTrue(awaitItem(), "Service should be reconnected since lifecycle state is RESUMED.")
+            
+            expectNoEvents()
+        }
     }
 
     @Test
@@ -142,47 +136,53 @@ class LifecycleAwareTorrentServiceConnectionTest : AbstractTorrentServiceConnect
         val testLifecycle = TestLifecycleOwner()
         val connection = TestTorrentServiceConnection(
             shouldStartServiceSucceed = true,
-            coroutineContext = coroutineContext,
+            coroutineContext = backgroundScope.coroutineContext,
         )
         testLifecycle.lifecycle.addObserver(connection)
+        
+        connection.connected.test {
+            assertFalse(awaitItem(), "Initially, connected should be false.")
 
-        // Move to RESUMED, wait a bit, and connect service
-        testLifecycle.moveTo(Lifecycle.State.RESUMED)
-        advanceTimeBy(200)
-        connection.triggerServiceConnected()
-        assertTrue(connection.connected.value)
+            // Wait for the startService invocation
+            testLifecycle.moveTo(Lifecycle.State.RESUMED)
+            advanceTimeBy(200)
+            // Now it’s connected
+            assertTrue(awaitItem(), "Service should be connected.")
 
-        // Move lifecycle to CREATED
-        testLifecycle.moveTo(Lifecycle.State.CREATED)
-        // Now simulate a service disconnect
-        connection.triggerServiceDisconnected()
+            // Move lifecycle to CREATED
+            testLifecycle.moveTo(Lifecycle.State.CREATED)
+            // Now simulate a service disconnect
+            connection.triggerServiceDisconnected()
 
-        // Should remain disconnected, no auto retry because we are no longer in RESUMED
-        advanceTimeBy(2000)
-        assertFalse(connection.connected.value)
+            // Should remain disconnected, no auto retry because we are no longer in RESUMED
+            advanceTimeBy(2000)
+            assertFalse(awaitItem(), "Service should not be connected because current lifecycle state is not RESUMED.")
+        }
     }
 
     @Test
     fun `close cancels all coroutines and flows`() = runTest {
         val connection = TestTorrentServiceConnection(
             shouldStartServiceSucceed = true,
-            coroutineContext = coroutineContext,
+            coroutineContext = backgroundScope.coroutineContext,
         )
-
-        connection.triggerServiceConnected()
-        advanceUntilIdle()
-        assertTrue(connection.connected.value)
-
-        connection.close()
         advanceUntilIdle()
         assertFalse(connection.connected.value)
 
         // Attempt to call getBinder() after close => should never succeed
-        val binderDeferred = async {
-            connection.getBinder()
+        val cancelled = CompletableDeferred<Boolean>()
+        launch {
+            try {
+                connection.getBinder()
+            } catch (ex: CancellationException) {
+                cancelled.complete(true)
+            }
         }
+        
+        advanceUntilIdle()
+        connection.close()
 
-        advanceTimeBy(500)
-        assertTrue(binderDeferred.isCancelled, "getBinder() should be cancelled because connection is closed.")
+        advanceUntilIdle()
+        assertTrue(cancelled.await(), "getBinder() should be cancelled because connection is closed.")
     }
 }
