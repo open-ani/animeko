@@ -126,6 +126,7 @@ internal fun SelectTheme(
                     .padding(horizontal = layoutParams.horizontalPadding, vertical = 16.dp)
                     .fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center,
+                maxItemsInEachRow = 4,
             ) {
                 AniThemeDefaults.themeColorOptions.forEach {
                     ColorButton(
