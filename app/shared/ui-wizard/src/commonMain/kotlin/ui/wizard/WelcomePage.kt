@@ -57,6 +57,10 @@ fun WelcomeScreen(
     }
 }
 
+/**
+ * TODO: 把这两个页面直接添加到 app root NavHost
+ *  在一切 UI 工作完成之后.
+ */
 @Composable
 fun WelcomePage(
     navController: NavHostController,
