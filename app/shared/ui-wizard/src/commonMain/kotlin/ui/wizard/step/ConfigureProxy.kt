@@ -219,12 +219,12 @@ private fun ProxyTestStatusIcon(
 
             ProxyTestCaseState.SUCCESS ->
                 ProvideContentColor(MaterialTheme.colorScheme.onSurfaceVariant) {
-                    Icon(Icons.Default.Check, null)
+                    Icon(Icons.Default.Check, "使用 ${state.name} 连接成功")
                 }
 
             ProxyTestCaseState.FAILED ->
                 ProvideContentColor(MaterialTheme.colorScheme.error) {
-                    Icon(Icons.Default.Close, null)
+                    Icon(Icons.Default.Close, "使用 ${state.name} 连接失败")
                 }
         }
     }
