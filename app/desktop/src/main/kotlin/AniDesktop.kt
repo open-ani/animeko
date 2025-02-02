@@ -39,6 +39,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
@@ -301,10 +302,17 @@ object AniDesktop {
             }
             TestTasks.handleTestTask(taskName, args, context)
         }
+        
+        val loadAnitorrentJob = coroutineScope.launch {
+            AnitorrentLibraryLoader.loadLibraries()
+        }
 
         // Initialize CEF application.
         coroutineScope.launch {
-            AnitorrentLibraryLoader.loadLibraries() 
+            try {
+                loadAnitorrentJob.join()
+            } catch (_: Throwable) {
+            }
             // Load anitorrent libraries before JCEF, so they won't load at the same time.
             // We suspect concurrent loading of native libraries may cause some issues #1121.
             

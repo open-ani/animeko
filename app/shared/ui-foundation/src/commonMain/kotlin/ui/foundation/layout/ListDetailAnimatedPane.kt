@@ -27,10 +27,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
-import me.him188.ani.app.ui.foundation.animation.StandardAccelerate
-import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults.feedItemFadeOutSpec
+import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
+import me.him188.ani.app.ui.foundation.animation.NavigationMotionScheme
+import me.him188.ani.app.ui.foundation.animation.StandardAccelerateEasing
 import me.him188.ani.app.ui.foundation.theme.EasingDurations
-import me.him188.ani.app.ui.foundation.theme.NavigationMotionScheme
 
 // 把过渡动画改为 fade 而不是带有回弹的 spring
 /**
@@ -64,14 +64,15 @@ fun ThreePaneScaffoldPaneScope.ListDetailAnimatedPane(
                         tween(
                             EasingDurations.standardAccelerate,
                             delayMillis = EasingDurations.standardDecelerate,
-                            easing = StandardAccelerate,
+                            easing = StandardAccelerateEasing,
                         ),
                     )
                 }
             }
         }
     }
-    val exitTransition by remember(useSharedTransition) {
+    val aniMotionScheme = LocalAniMotionScheme.current
+    val exitTransition by remember(useSharedTransition, aniMotionScheme) {
         derivedStateOf {
             when {
                 useSharedTransition -> {
@@ -87,7 +88,7 @@ fun ThreePaneScaffoldPaneScope.ListDetailAnimatedPane(
                 }
 
                 else -> {
-                    fadeOut(feedItemFadeOutSpec)
+                    fadeOut(aniMotionScheme.feedItemFadeOutSpec)
                 }
             }
         }

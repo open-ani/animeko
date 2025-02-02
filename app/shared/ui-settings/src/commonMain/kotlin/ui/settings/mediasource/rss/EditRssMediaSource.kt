@@ -51,6 +51,7 @@ import me.him188.ani.app.domain.mediasource.codec.MediaSourceCodecManager
 import me.him188.ani.app.domain.mediasource.rss.RssMediaSource
 import me.him188.ani.app.domain.mediasource.rss.RssMediaSourceArguments
 import me.him188.ani.app.domain.mediasource.rss.RssSearchConfig
+import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.interaction.WindowDragArea
 import me.him188.ani.app.ui.foundation.layout.ListDetailAnimatedPane
 import me.him188.ani.app.ui.foundation.layout.PaddingValuesSides
@@ -144,7 +145,7 @@ class EditRssMediaSourceState(
 }
 
 @Composable
-fun EditRssMediaSourcePage(
+fun EditRssMediaSourceScreen(
     viewModel: EditRssMediaSourceViewModel,
     mediaDetailsColumn: @Composable (Media) -> Unit,
     modifier: Modifier = Modifier,
@@ -152,7 +153,7 @@ fun EditRssMediaSourcePage(
     navigationIcon: @Composable () -> Unit,
 ) {
     viewModel.state.collectAsStateWithLifecycle(null).value?.let {
-        EditRssMediaSourcePage(
+        EditRssMediaSourceScreen(
             it, viewModel.testState, mediaDetailsColumn, modifier, windowInsets = windowInsets,
             navigationIcon = navigationIcon,
         )
@@ -160,7 +161,7 @@ fun EditRssMediaSourcePage(
 }
 
 @Composable
-fun EditRssMediaSourcePage(
+fun EditRssMediaSourceScreen(
     state: EditRssMediaSourceState,
     testState: RssTestPaneState,
     mediaDetailsColumn: @Composable (Media) -> Unit,
@@ -184,7 +185,7 @@ fun EditRssMediaSourcePage(
                     title = {
                         AnimatedContent(
                             navigator.currentDestination?.pane,
-                            transitionSpec = AniThemeDefaults.standardAnimatedContentTransition,
+                            transitionSpec = LocalAniMotionScheme.current.animatedContent.standard,
                         ) {
                             when (it) {
                                 ListDetailPaneScaffoldRole.List -> Text(state.displayName)

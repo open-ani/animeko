@@ -33,6 +33,7 @@ import me.him188.ani.app.data.network.protocol.BangumiLoginRequest
 import me.him188.ani.app.data.network.protocol.BangumiLoginResponse
 import me.him188.ani.app.data.network.protocol.DanmakuInfo
 import me.him188.ani.app.data.network.protocol.DanmakuPostRequest
+import me.him188.ani.app.domain.foundation.ServerListFeatureConfig.Companion.MAGIC_ANI_SERVER
 import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.ui.foundation.BackgroundScope
 import me.him188.ani.app.ui.foundation.HasBackgroundScope
@@ -74,7 +75,7 @@ class AniDanmakuSenderImpl(
     private val bangumiToken: Flow<String?>,
     parentCoroutineContext: CoroutineContext = EmptyCoroutineContext,
 ) : AniDanmakuSender, HasBackgroundScope by BackgroundScope(parentCoroutineContext) {
-    private fun getBaseUrl() = AniBangumiSeverBaseUrls.getBaseUrl(config.useGlobal)
+    private fun getBaseUrl() = MAGIC_ANI_SERVER
 
     companion object {
         private val logger = logger<AniDanmakuSenderImpl>()

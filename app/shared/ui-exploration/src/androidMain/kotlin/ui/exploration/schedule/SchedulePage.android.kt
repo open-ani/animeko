@@ -26,7 +26,7 @@ import me.him188.ani.utils.platform.annotations.TestOnly
 fun PreviewSchedulePage() {
     ProvideFoundationCompositionLocalsForPreview {
         Surface(color = MaterialTheme.colorScheme.surfaceContainerLowest) {
-            SchedulePage(
+            ScheduleScreen(
                 presentation = createTestSchedulePagePresentation(),
                 onRetry = {},
                 onClickItem = {},

@@ -33,7 +33,7 @@ import me.him188.ani.app.domain.mediasource.rss.RssSearchQuery
 import me.him188.ani.app.domain.rss.RssParser
 import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.stateOf
-import me.him188.ani.app.ui.settings.mediasource.rss.EditRssMediaSourcePage
+import me.him188.ani.app.ui.settings.mediasource.rss.EditRssMediaSourceScreen
 import me.him188.ani.app.ui.settings.mediasource.rss.EditRssMediaSourceState
 import me.him188.ani.app.ui.settings.mediasource.rss.SaveableStorage
 import me.him188.ani.app.ui.settings.mediasource.rss.test.RssTestPaneState
@@ -91,7 +91,7 @@ internal object TestRssMediaSourceEngine : RssMediaSourceEngine() {
 @PreviewLightDark
 fun PreviewEditRssMediaSourcePagePhone() = ProvideFoundationCompositionLocalsForPreview {
     val (edit, test) = rememberTestEditRssMediaSourceStateAndRssTestPaneState()
-    EditRssMediaSourcePage(edit, test, {})
+    EditRssMediaSourceScreen(edit, test, {})
 }
 
 @OptIn(TestOnly::class)
@@ -100,7 +100,7 @@ fun PreviewEditRssMediaSourcePagePhone() = ProvideFoundationCompositionLocalsFor
 fun PreviewEditRssMediaSourcePagePhoneTest() = ProvideFoundationCompositionLocalsForPreview {
     val navigator = rememberListDetailPaneScaffoldNavigator()
     val (edit, test) = rememberTestEditRssMediaSourceStateAndRssTestPaneState()
-    EditRssMediaSourcePage(
+    EditRssMediaSourceScreen(
         edit, test, {},
         navigator = navigator,
     )
@@ -115,7 +115,7 @@ fun PreviewEditRssMediaSourcePagePhoneTest() = ProvideFoundationCompositionLocal
 @Preview(device = Devices.PIXEL_TABLET, uiMode = UI_MODE_NIGHT_YES or UI_MODE_TYPE_NORMAL)
 fun PreviewEditRssMediaSourcePageLaptop() = ProvideFoundationCompositionLocalsForPreview {
     val (edit, test) = rememberTestEditRssMediaSourceStateAndRssTestPaneState()
-    EditRssMediaSourcePage(edit, test, {})
+    EditRssMediaSourceScreen(edit, test, {})
 }
 
 @TestOnly

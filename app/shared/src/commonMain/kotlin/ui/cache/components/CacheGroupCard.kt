@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.ui.cache.components
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.clickable
@@ -49,6 +48,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.navigation.LocalNavigator
+import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.datasources.api.CachedMedia
@@ -237,7 +237,7 @@ fun CacheGroupCard(
                         }
 
                         state.subjectId?.let { subjectId ->
-                            IconButton({ navigator.navigateSubjectDetails(subjectId) }) {
+                            IconButton({ navigator.navigateSubjectDetails(subjectId, placeholder = null) }) {
                                 Icon(Icons.Outlined.ArrowOutward, "查看条目详情")
                             }
                         }
@@ -285,7 +285,7 @@ fun CacheGroupCard(
             }
         }
 
-        AnimatedVisibility(state.expanded) {
+        AniAnimatedVisibility(state.expanded) {
             Column(
                 Modifier
                     .padding(

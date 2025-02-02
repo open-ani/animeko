@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.ui.settings.tabs.media.source
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateDpAsState
@@ -76,6 +75,7 @@ import me.him188.ani.app.domain.mediasource.rss.RssMediaSource
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSource
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.ui.foundation.LocalPlatform
+import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.interaction.onRightClickIfSupported
 import me.him188.ani.app.ui.settings.framework.ConnectionTesterResultIndicator
@@ -153,7 +153,7 @@ internal fun SettingsScope.MediaSourceGroup(
         title = { Text("数据源列表 (${state.mediaSources.size})") },
         description = { Text("在播放时，禁用的数据源不会自动查询，但可手动点击临时启用。注意，排序将优先采用云端顺序，同数据源订阅之内的手动排序可能无效") },
         actions = {
-            AnimatedVisibility(
+            AniAnimatedVisibility(
                 visible = sorter.isSorting,
             ) {
                 Row {
@@ -162,7 +162,7 @@ internal fun SettingsScope.MediaSourceGroup(
                     }
                 }
             }
-            AnimatedVisibility(
+            AniAnimatedVisibility(
                 visible = !sorter.isSorting,
             ) {
                 Row {

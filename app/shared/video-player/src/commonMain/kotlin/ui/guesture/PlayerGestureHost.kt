@@ -10,7 +10,6 @@
 package me.him188.ani.app.videoplayer.ui.guesture
 
 import androidx.annotation.UiThread
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -85,6 +84,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import me.him188.ani.app.tools.rememberUiMonoTasker
 import me.him188.ani.app.ui.foundation.LocalPlatform
+import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.effects.ComposeKey
 import me.him188.ani.app.ui.foundation.effects.onKey
 import me.him188.ani.app.ui.foundation.effects.onPointerEventMultiplatform
@@ -253,7 +253,7 @@ fun GestureIndicator(
         mutableIntStateOf(state.deltaSeconds)
     }
 
-    AnimatedVisibility(
+    AniAnimatedVisibility(
         visible = state.visible,
         enter = fadeIn(spring(stiffness = Spring.StiffnessMedium)),
         exit = fadeOut(tween(durationMillis = 500)),

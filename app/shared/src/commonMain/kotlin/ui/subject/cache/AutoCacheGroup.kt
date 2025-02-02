@@ -1,6 +1,14 @@
+/*
+ * Copyright (C) 2024-2025 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.app.ui.subject.cache
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ViewList
@@ -15,6 +23,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.settings.framework.components.RowButtonItem
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.SliderItem
@@ -41,7 +50,7 @@ fun SettingsScope.AutoCacheGroup(
             enabled = false,
         )
 
-        AnimatedVisibility(!useGlobalSettings) {
+        AniAnimatedVisibility(!useGlobalSettings) {
             var sliderValue by remember { mutableFloatStateOf(0f) }
             SliderItem(
                 title = { Text("最大自动缓存话数") },
@@ -65,7 +74,7 @@ fun SettingsScope.AutoCacheGroup(
             HorizontalDividerItem()
         }
 
-        AnimatedVisibility(useGlobalSettings) {
+        AniAnimatedVisibility(useGlobalSettings) {
             RowButtonItem(
                 onClick = onClickGlobalCacheSettings,
                 icon = { Icon(Icons.Rounded.ArrowOutward, null) },

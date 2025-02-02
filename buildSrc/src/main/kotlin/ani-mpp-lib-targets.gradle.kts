@@ -55,6 +55,7 @@ configure<KotlinMultiplatformExtension> {
         androidTarget {
             @OptIn(ExperimentalKotlinGradlePluginApi::class)
             instrumentedTestVariant.sourceSetTree.set(KotlinSourceSetTree.test)
+            unitTestVariant.sourceSetTree.set(KotlinSourceSetTree.unitTest)
         }
 
         applyDefaultHierarchyTemplate {

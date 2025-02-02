@@ -7,13 +7,13 @@
 - `commonTest`
     - `jvmTest`
         - `desktopTest`
-        - `androidUnitTest`
         - `androidInstrumentedTest`
     - `nativeTest`
         - `appleTest`
             - `iosTest`
                 - `iosSimulatorArm64Test`
     - `skikoTest` (由 `desktopTest` 和 `iosTest` 共享)
+- `androidUnitTest` (独立于其他所有测试)
 
 提示：
 
@@ -110,3 +110,12 @@ PR 的 CI 总是会运行 instrumented test，如果 CI 报错才需要本地运
 
 在 Android Studio 中，选择运行配置 `Run iOS Debug`，点击按钮运行即可。
 
+
+----
+
+## UI Testing
+
+在 `commonTest` 中可以编写 UI 测试。UI 测试使用 Compose Multiplatform 的测试框架，可以在所有平台运行。API
+非常类似 Jetpack Compose 的测试框架。
+
+示例：[me.him188.ani.app.ui.foundation.layout.CarouselAutoAdvanceEffectTest](https://github.com/open-ani/animeko/blob/e87c190fbe7078cfe461ae4176017174608e64bf/app/shared/ui-foundation/src/commonTest/kotlin/ui/foundation/layout/CarouselAutoAdvanceEffectTest.kt#L45)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -11,6 +11,9 @@ package me.him188.ani.app.ui.exploration.trends
 
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -23,6 +26,7 @@ import androidx.compose.material3.carousel.HorizontalMultiBrowseCarousel
 import androidx.compose.material3.carousel.rememberCarouselState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -32,6 +36,7 @@ import androidx.paging.compose.LazyPagingItems
 import me.him188.ani.app.data.models.trending.TrendingSubjectInfo
 import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.AsyncImage
+import me.him188.ani.app.ui.foundation.layout.CarouselAutoAdvanceEffect
 import me.him188.ani.app.ui.foundation.layout.CarouselItem
 import me.him188.ani.app.ui.foundation.layout.CarouselItemDefaults
 import me.him188.ani.app.ui.foundation.layout.minimumHairlineSize
@@ -52,7 +57,9 @@ fun TrendingSubjectsCarousel(
     }
 ) {
     val size = CarouselItemDefaults.itemSize()
-    Box(modifier.padding(contentPadding)) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
+    Box(modifier.padding(contentPadding).hoverable(interactionSource)) {
         HorizontalMultiBrowseCarousel(
             carouselState,
             preferredItemWidth = size.preferredWidth,
@@ -82,6 +89,7 @@ fun TrendingSubjectsCarousel(
                 }
             }
         }
+        CarouselAutoAdvanceEffect(enabled = !isHovered, carouselState)
 
         if (items.loadState.hasError) {
             Box(Modifier.height(size.imageHeight).fillMaxWidth(), contentAlignment = Alignment.TopCenter) {

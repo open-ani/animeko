@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.ui.settings.tabs.media
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material.icons.Icons
@@ -26,6 +25,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import me.him188.ani.app.data.models.preference.MediaCacheSettings
 import me.him188.ani.app.navigation.LocalNavigator
+import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.settings.framework.SettingsState
 import me.him188.ani.app.ui.settings.framework.components.RowButtonItem
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
@@ -50,7 +50,7 @@ internal fun SettingsScope.AutoCacheGroup(
             title = { Text("启用自动缓存") },
         )
 
-        AnimatedVisibility(mediaCacheSettings.enabled) {
+        AniAnimatedVisibility(mediaCacheSettings.enabled) {
             Column {
                 HorizontalDividerItem()
 
@@ -94,7 +94,7 @@ internal fun SettingsScope.AutoCacheGroup(
                     title = { Text("仅缓存最近看过的番剧") },
                 )
 
-                AnimatedVisibility(mostRecentOnly) {
+                AniAnimatedVisibility(mostRecentOnly) {
                     SubGroup {
                         var mostRecentCount by remember(mediaCacheSettings) { mutableFloatStateOf(mediaCacheSettings.mostRecentCount.toFloat()) }
                         SliderItem(

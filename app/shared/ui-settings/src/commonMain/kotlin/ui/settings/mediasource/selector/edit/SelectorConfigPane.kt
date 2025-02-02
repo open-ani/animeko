@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -56,10 +56,10 @@ import me.him188.ani.app.domain.mediasource.web.format.SelectorSubjectFormat
 import me.him188.ani.app.domain.mediasource.web.format.SelectorSubjectFormatA
 import me.him188.ani.app.domain.mediasource.web.format.SelectorSubjectFormatIndexed
 import me.him188.ani.app.domain.mediasource.web.format.SelectorSubjectFormatJsonPathIndexed
+import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.animation.StandardEasing
 import me.him188.ani.app.ui.foundation.effects.moveFocusOnEnter
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
-import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.theme.EasingDurations
 import me.him188.ani.app.ui.settings.mediasource.rss.edit.MediaSourceHeadline
 import me.him188.ani.datasources.api.topic.Resolution
@@ -267,7 +267,7 @@ internal fun SelectorConfigurationPane(
                     .padding(vertical = 16.dp)
                     .fillMaxWidth()
                     .animateContentSize(tween(EasingDurations.standard, easing = StandardEasing)),
-                transitionSpec = AniThemeDefaults.standardAnimatedContentTransition,
+                transitionSpec = LocalAniMotionScheme.current.animatedContent.standard,
             ) { format ->
                 SelectorSubjectConfigurationColumn(
                     format, state,
@@ -297,7 +297,7 @@ internal fun SelectorConfigurationPane(
                     .padding(vertical = 16.dp)
                     .fillMaxWidth()
                     .animateContentSize(tween(EasingDurations.standard, easing = StandardEasing)),
-                transitionSpec = AniThemeDefaults.standardAnimatedContentTransition,
+                transitionSpec = LocalAniMotionScheme.current.animatedContent.standard,
             ) { formatId ->
                 SelectorChannelFormatColumn(formatId, state, Modifier.fillMaxWidth())
             }
