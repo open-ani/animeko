@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.ui.wizard.step
 
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -20,6 +21,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
@@ -29,6 +32,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.data.models.preference.ThemeSettings
@@ -88,7 +92,8 @@ internal fun SelectTheme(
                 .padding(horizontal = layoutParams.horizontalPadding)
                 .padding(top = 16.dp)
                 .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
+                .horizontalScroll(rememberScrollState())
+                .selectableGroup(),
             horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
         ) {
             themePanelItem(DarkMode.LIGHT)
@@ -152,19 +157,26 @@ private fun ColorSchemePreviewItem(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     Column(
-        modifier = modifier.clickable(
-            interactionSource = interactionSource,
-            indication = null,
-            onClick = onClick,
-        ),
-        horizontalAlignment = Alignment.Start,
+        modifier = modifier
+            .selectable(
+                selected = selected,
+                interactionSource = interactionSource,
+                indication = LocalIndication.current,
+                role = Role.RadioButton,
+                onClick = onClick,
+            ),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         panel()
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             RadioButton(
                 selected = selected,
-                onClick = onClick,
                 interactionSource = interactionSource,
+                onClick = null,
             )
             ProvideContentColor(MaterialTheme.colorScheme.onSurface) {
                 text()
