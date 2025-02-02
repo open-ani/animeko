@@ -11,7 +11,6 @@ package me.him188.ani.app.ui.wizard.step
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -144,20 +143,18 @@ private fun AuthorizeButton(
             }
         }
     }
-    
-    Crossfade(authorizeState is AuthorizeUIState.Success) {
-        if (it) OutlinedButton(
-            onClick = onClick,
-            enabled = authorizeState !is AuthorizeUIState.AwaitingResult,
-            modifier = modifier,
-            content = content
-        ) else Button(
-            onClick = onClick,
-            enabled = authorizeState !is AuthorizeUIState.AwaitingResult,
-            modifier = modifier,
-            content = content
-        )
-    }
+
+    if (authorizeState is AuthorizeUIState.Success) OutlinedButton(
+        onClick = onClick,
+        enabled = authorizeState !is AuthorizeUIState.AwaitingResult,
+        modifier = modifier,
+        content = content,
+    ) else Button(
+        onClick = onClick,
+        enabled = authorizeState !is AuthorizeUIState.AwaitingResult,
+        modifier = modifier,
+        content = content,
+    )
 }
 
 @Stable
