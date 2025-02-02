@@ -13,6 +13,7 @@ import android.os.Build
 import android.os.IInterface
 import androidx.annotation.RequiresApi
 import kotlinx.coroutines.CoroutineName
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
@@ -22,6 +23,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.newFixedThreadPoolContext
 import kotlinx.serialization.builtins.nullable
 import kotlinx.serialization.json.Json
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
@@ -54,28 +56,30 @@ class RemoteAnitorrentEngine(
 ) : TorrentEngine {
     private val logger = logger<RemoteAnitorrentEngine>()
 
-    private val scope = parentCoroutineContext.childScope()
+    @OptIn(DelicateCoroutinesApi::class)
+    private val dispatcher = newFixedThreadPoolContext(2, "RemoteAnitorrentEngine")
+    private val scope = parentCoroutineContext.childScope(dispatcher)
     private val fetchRemoteScope = parentCoroutineContext.childScope(
         CoroutineName("RemoteAnitorrentEngineFetchRemote") + Dispatchers.IO_,
     )
-    
+
     private val connectivityAware = DefaultConnectivityAware(
         parentCoroutineContext.childScope(),
         connection.connected,
     )
-    
+
     override val type: TorrentEngineType = TorrentEngineType.RemoteAnitorrent
 
-    override val isSupported: Flow<Boolean> 
+    override val isSupported: Flow<Boolean>
         get() = flowOf(true)
 
     override val location: MediaSourceLocation = MediaSourceLocation.Local
-    
-    private val json = Json { 
+
+    private val json = Json {
         ignoreUnknownKeys = true
         encodeDefaults = true
     }
-    
+
     init {
         // transfer from app to service.
         collectSettingsToRemote(
@@ -103,7 +107,7 @@ class RemoteAnitorrentEngine(
     override suspend fun testConnection(): Boolean {
         return connection.connected.value
     }
-    
+
     override suspend fun getDownloader(): TorrentDownloader {
         return RemoteTorrentDownloader(
             fetchRemoteScope,
@@ -118,6 +122,7 @@ class RemoteAnitorrentEngine(
 
     override fun close() {
         scope.cancel()
+        dispatcher.close()
         fetchRemoteScope.cancel()
     }
 

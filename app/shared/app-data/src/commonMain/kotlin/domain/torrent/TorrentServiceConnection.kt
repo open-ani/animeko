@@ -17,14 +17,15 @@ import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineName
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.newFixedThreadPoolContext
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import me.him188.ani.utils.coroutines.childScope
@@ -97,7 +98,10 @@ abstract class LifecycleAwareTorrentServiceConnection<T : Any>(
     parentCoroutineContext: CoroutineContext = EmptyCoroutineContext,
 ) : DefaultLifecycleObserver, TorrentServiceConnection<T> {
     protected val logger = logger(this::class.simpleName ?: "TorrentServiceConnection")
-    private val scope = parentCoroutineContext.childScope()
+
+    @OptIn(DelicateCoroutinesApi::class)
+    private val dispatcher = newFixedThreadPoolContext(2, "LifecycleAwareTorrentServiceConnection")
+    private val scope = parentCoroutineContext.childScope(dispatcher)
 
     private val lock = Mutex()
     private var binderDeferred by atomic(CompletableDeferred<T>())
@@ -204,6 +208,7 @@ abstract class LifecycleAwareTorrentServiceConnection<T : Any>(
 
     fun close() {
         scope.cancel()
+        dispatcher.close()
         isServiceConnected.value = false
         binderDeferred.cancel(CancellationException("TorrentServiceConnection closed."))
     }
@@ -214,8 +219,8 @@ abstract class LifecycleAwareTorrentServiceConnection<T : Any>(
      */
     override suspend fun getBinder(): T {
         // track cancellation of [scope]
-        scope.async { 
-            isServiceConnected.first { it } 
+        scope.async {
+            isServiceConnected.first { it }
         }.await()
         return binderDeferred.await()
     }
