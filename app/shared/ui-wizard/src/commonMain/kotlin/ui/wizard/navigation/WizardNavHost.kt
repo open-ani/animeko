@@ -32,6 +32,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import kotlinx.coroutines.launch
 import me.him188.ani.app.ui.foundation.animation.LocalNavigationMotionScheme
 import me.him188.ani.app.ui.foundation.animation.NavigationMotionScheme
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
@@ -72,7 +73,8 @@ fun WizardNavHost(
 
     LaunchedEffect(Unit) {
         controller.subscribeNavDestChanges {
-            controller.scrollUpTopAppBar(topAppBarState)
+            launch { controller.animateScrollUpTopAppBar(topAppBarState) }
+            launch { lazyListState.animateScrollToItem(0) }
         }
     }
 
@@ -113,9 +115,9 @@ fun WizardNavHost(
                 ) { contentPadding ->
                     val scope = remember(lazyListState, topAppBarState) {
                         WizardStepScope(
-                            lazyListState, 
+                            lazyListState,
                             3,
-                            scrollUpTopAppBar = { controller.scrollUpTopAppBar(topAppBarState) }
+                            scrollUpTopAppBar = { controller.animateScrollUpTopAppBar(topAppBarState) },
                         )
                     }
                     

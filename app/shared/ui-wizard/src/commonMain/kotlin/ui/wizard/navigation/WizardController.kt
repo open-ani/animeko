@@ -92,7 +92,7 @@ class WizardController() {
     }
     
     @UiThread
-    suspend fun scrollUpTopAppBar(topAppBarState: TopAppBarState) {
+    suspend fun animateScrollUpTopAppBar(topAppBarState: TopAppBarState) {
         if (topAppBarState.heightOffset == 0f) return
         val animation = AnimationState(topAppBarState.heightOffset)
         animation.animateTo(0f) {
