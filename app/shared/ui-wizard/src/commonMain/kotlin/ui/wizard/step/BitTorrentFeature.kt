@@ -15,10 +15,9 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
@@ -31,13 +30,13 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.components.TextItem
 import me.him188.ani.app.ui.settings.rendering.P2p
 import me.him188.ani.app.ui.wizard.HeroIconDefaults
-import me.him188.ani.app.ui.wizard.HeroIconScaffold
 import me.him188.ani.app.ui.wizard.WizardLayoutParams
 
 @Stable
@@ -74,20 +73,20 @@ internal fun BitTorrentFeature(
     layoutParams: WizardLayoutParams = WizardLayoutParams.Default
 ) {
     SettingsTab(modifier = modifier) {
-        HeroIconScaffold(
-            icon = {
-                Icon(
-                    imageVector = Icons.Default.P2p,
-                    contentDescription = null,
-                    modifier = Modifier.size(HeroIconDefaults.iconSize),
-                    tint = HeroIconDefaults.iconColor,
-                )
-            },
+        Box(
             modifier = Modifier
                 .padding(HeroIconDefaults.contentPadding())
                 .padding(horizontal = layoutParams.horizontalPadding)
                 .fillMaxWidth(),
-        )
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Default.P2p,
+                contentDescription = null,
+                modifier = Modifier.size(HeroIconDefaults.iconSize),
+                tint = HeroIconDefaults.iconColor,
+            )
+        }
         Column {
             Column(
                 modifier = Modifier

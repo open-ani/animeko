@@ -32,14 +32,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.outlined.Lightbulb
-import androidx.compose.material.icons.rounded.ArrowBackIosNew
 import androidx.compose.material.icons.rounded.ArrowOutward
-import androidx.compose.material3.Badge
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -49,7 +45,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
@@ -72,8 +67,6 @@ import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.TextItem
 import me.him188.ani.app.ui.wizard.HeroIconDefaults
-import me.him188.ani.app.ui.wizard.HeroIconScaffold
-import me.him188.ani.app.ui.wizard.WizardDefaults
 import me.him188.ani.app.ui.wizard.WizardLayoutParams
 import me.him188.ani.utils.platform.isAndroid
 
@@ -287,20 +280,20 @@ private fun SettingsScope.DefaultAuthorize(
         modifier,
         verticalArrangement = Arrangement.spacedBy(SettingsScope.itemVerticalSpace),
     ) {
-        HeroIconScaffold(
-            icon = {
-                Icon(
-                    imageVector = Icons.Default.BangumiNext,
-                    contentDescription = null,
-                    modifier = Modifier.size(HeroIconDefaults.iconSize),
-                    tint = BangumiNextIconColor,
-                )
-            },
+        Box(
             modifier = Modifier
                 .padding(horizontal = layoutParams.horizontalPadding)
                 .padding(HeroIconDefaults.contentPadding())
                 .fillMaxWidth(),
-        )
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Default.BangumiNext,
+                contentDescription = null,
+                modifier = Modifier.size(HeroIconDefaults.iconSize),
+                tint = BangumiNextIconColor,
+            )
+        }
         Column(
             verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
         ) {
@@ -413,8 +406,8 @@ private fun SettingsScope.TokenAuthorize(
     
     BackHandler(onBack = onClickBack)
     Group(
-        modifier = Modifier,
-        title = { Text("令牌 (token) 登录指南") }
+        modifier = modifier,
+        title = { Text("令牌 (token) 登录指南") },
     ) {
         TextItem(
             icon = { TokenAuthorizeStepIcon(1) },
