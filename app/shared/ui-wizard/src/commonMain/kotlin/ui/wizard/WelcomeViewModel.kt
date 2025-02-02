@@ -99,7 +99,7 @@ import kotlin.time.Duration.Companion.seconds
 
 /**
  * Todo: 这些页面的 view model 逻辑实际上互不相关
- *  所以可以考虑拆分逻辑, 与设置页面 view model 对应的逻辑合并
+ *  所以可以考虑拆分逻辑 至 use case, 与设置页面 view model 对应的逻辑合并
  */
 class WelcomeViewModel : AbstractSettingsViewModel(), KoinComponent {
     private val settingsRepository: SettingsRepository by inject()
