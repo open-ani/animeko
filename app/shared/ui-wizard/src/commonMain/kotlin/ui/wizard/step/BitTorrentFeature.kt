@@ -29,6 +29,7 @@ import androidx.compose.runtime.Stable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import me.him188.ani.app.ui.foundation.IconButton
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.components.SwitchItem
@@ -122,7 +123,9 @@ internal fun BitTorrentFeature(
                     description = { Text("显示 BT 引擎的运行状态、下载进度等信息") },
                     action = {
                         if (!grantedNotificationPermission) {
-                            Icon(Icons.Rounded.ArrowOutward, null)
+                            IconButton(onRequestNotificationPermission) {
+                                Icon(Icons.Rounded.ArrowOutward, "请求通知权限")
+                            }
                         }
                     },
                     modifier = Modifier.clickable {
@@ -134,9 +137,9 @@ internal fun BitTorrentFeature(
                     enter = motionScheme.animatedVisibility.standardEnter, // don't animate layout
                     exit = motionScheme.animatedVisibility.columnExit,
                 ) {
-                    Item(
-                        leadingContent = { Icon(Icons.Filled.Error, null) },
-                        headlineContent = {
+                    TextItem(
+                        icon = { Icon(Icons.Filled.Error, null) },
+                        title = {
                             ProvideTextStyle(MaterialTheme.typography.bodyMedium) {
                                 Text(
                                     text = "请求通知权限失败，Ani 在后台时 BT 服务可能会被系统终止。" +
@@ -144,7 +147,7 @@ internal fun BitTorrentFeature(
                                 )
                             }
                         },
-                        modifier = Modifier.clickable { onOpenSystemNotificationSettings() },
+                        onClick = onOpenSystemNotificationSettings,
                     )
                 }
             }
