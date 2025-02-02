@@ -68,7 +68,7 @@ import me.him188.ani.app.ui.wizard.step.BitTorrentFeature
 import me.him188.ani.app.ui.wizard.step.ConfigureProxy
 import me.him188.ani.app.ui.wizard.step.ConfigureProxyUIState
 import me.him188.ani.app.ui.wizard.step.NotificationPermissionState
-import me.him188.ani.app.ui.wizard.step.ProxyTestCaseState
+import me.him188.ani.app.ui.wizard.step.ProxyOverallTestState
 import me.him188.ani.app.ui.wizard.step.SelectTheme
 
 @Composable
@@ -112,8 +112,7 @@ internal fun WizardScene(
             forwardButton = {
                 WizardDefaults.GoForwardButton(
                     { controller.goForward() },
-                    enabled = proxyState.testState.items
-                        .all { it.state == ProxyTestCaseState.SUCCESS },
+                    enabled = proxyState.overallState == ProxyOverallTestState.SUCCESS,
                 )
             },
             skipButton = { WizardDefaults.SkipButton({ controller.goForward() }) },
