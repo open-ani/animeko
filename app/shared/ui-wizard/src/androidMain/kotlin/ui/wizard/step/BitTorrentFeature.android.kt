@@ -20,7 +20,7 @@ fun PreviewBitTorrentFeatureStep() {
         BitTorrentFeature(
             bitTorrentEnabled = true,
             grantedNotificationPermission = false,
-            lastRequestNotificationPermissionResult = false,
+            showPermissionError = false,
             onBitTorrentEnableChanged = { },
             onRequestNotificationPermission = { },
             onOpenSystemNotificationSettings = { },

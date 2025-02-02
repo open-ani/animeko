@@ -164,7 +164,7 @@ internal fun WizardScene(
             BitTorrentFeature(
                 bitTorrentEnabled = configState.value,
                 grantedNotificationPermission = notificationPermissionState.granted,
-                lastRequestNotificationPermissionResult = notificationPermissionState.lastRequestResult,
+                showPermissionError = notificationPermissionState.lastRequestResult == false,
                 onBitTorrentEnableChanged = { configState.update(it) },
                 showGrantNotificationItem = notificationPermissionState.showGrantNotificationItem,
                 onRequestNotificationPermission = {

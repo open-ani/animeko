@@ -62,7 +62,7 @@ class NotificationPermissionState(
 internal fun BitTorrentFeature(
     bitTorrentEnabled: Boolean,
     grantedNotificationPermission: Boolean,
-    lastRequestNotificationPermissionResult: Boolean?,
+    showPermissionError: Boolean,
     onBitTorrentEnableChanged: (Boolean) -> Unit,
     onRequestNotificationPermission: () -> Unit,
     onOpenSystemNotificationSettings: () -> Unit,
@@ -147,7 +147,7 @@ internal fun BitTorrentFeature(
                     },
                 )
                 AnimatedVisibility(
-                    lastRequestNotificationPermissionResult == false,
+                    showPermissionError,
                     enter = motionScheme.animatedVisibility.standardEnter, // don't animate layout
                     exit = motionScheme.animatedVisibility.columnExit,
                 ) {
