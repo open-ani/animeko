@@ -37,27 +37,6 @@ import me.him188.ani.app.ui.settings.rendering.P2p
 import me.him188.ani.app.ui.wizard.HeroIconDefaults
 import me.him188.ani.app.ui.wizard.WizardLayoutParams
 
-@Stable
-class NotificationPermissionState(
-    val showGrantNotificationItem: Boolean,
-    val granted: Boolean,
-    /**
-     * `null` 还没请求过, `true` 成功了, `false` 拒绝了
-     */
-    val lastRequestResult: Boolean?,
-    val placeholder: Boolean = false
-) {
-    companion object {
-        @Stable
-        val Placeholder = NotificationPermissionState(
-            showGrantNotificationItem = false,
-            granted = false,
-            lastRequestResult = null,
-            placeholder = true,
-        )
-    }
-}
-
 @Composable
 internal fun BitTorrentFeature(
     bitTorrentEnabled: Boolean,
@@ -149,5 +128,27 @@ internal fun BitTorrentFeature(
                 }
             }
         }
+    }
+}
+
+
+@Stable
+class NotificationPermissionState(
+    val showGrantNotificationItem: Boolean,
+    val granted: Boolean,
+    /**
+     * `null` 还没请求过, `true` 成功了, `false` 拒绝了
+     */
+    val lastRequestResult: Boolean?,
+    val placeholder: Boolean = false
+) {
+    companion object {
+        @Stable
+        val Placeholder = NotificationPermissionState(
+            showGrantNotificationItem = false,
+            granted = false,
+            lastRequestResult = null,
+            placeholder = true,
+        )
     }
 }

@@ -65,22 +65,162 @@ import me.him188.ani.app.ui.wizard.HeroIconDefaults
 import me.him188.ani.app.ui.wizard.WizardLayoutParams
 import me.him188.ani.utils.platform.isAndroid
 
-@Stable
-sealed class AuthorizeUIState {
-    sealed class Initial : AuthorizeUIState()
+@Composable
+internal fun BangumiAuthorize(
+    authorizeState: AuthorizeUIState,
+    contactActions: @Composable () -> Unit,
+    forwardAction: @Composable () -> Unit,
+    onClickAuthorize: () -> Unit,
+    onCancelAuthorize: () -> Unit,
+    onRefreshAuthorizeStatus: () -> Unit,
+    onClickNavigateToBangumiDev: () -> Unit,
+    onAuthorizeViaToken: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    onScrollToTop: () -> Unit = { },
+    layoutParams: WizardLayoutParams = WizardLayoutParams.Default
+) {
+    var showTokenAuthorizePage by remember { mutableStateOf(false) }
 
-    @Immutable
-    data object Placeholder : Initial()
-    data object Idle : Initial()
+    SettingsTab(modifier) {
+        AnimatedContent(
+            showTokenAuthorizePage,
+            transitionSpec = LocalAniMotionScheme.current.animatedContent.topLevel,
+        ) {
+            if (!it) DefaultAuthorize(
+                authorizeState = authorizeState,
+                contactActions = contactActions,
+                forwardAction = forwardAction,
+                onClickAuthorize = onClickAuthorize,
+                onClickTokenAuthorize = {
+                    onCancelAuthorize()
+                    onScrollToTop()
+                    showTokenAuthorizePage = true
+                },
+                layoutParams = layoutParams,
+            ) else TokenAuthorize(
+                onClickBack = {
+                    showTokenAuthorizePage = false
+                    onRefreshAuthorizeStatus()
+                },
+                onClickNavigateToBangumiDev = onClickNavigateToBangumiDev,
+                onAuthorizeViaToken = { token ->
+                    onAuthorizeViaToken(token)
+                    showTokenAuthorizePage = false
+                },
+                layoutParams = layoutParams,
+            )
+        }
+    }
+}
 
-    @Stable
-    data class AwaitingResult(val requestId: String) : AuthorizeUIState()
-
-    @Stable
-    data class Error(val requestId: String, val message: String) : AuthorizeUIState()
-
-    @Stable
-    data class Success(val username: String, val avatarUrl: String?) : AuthorizeUIState()
+@Composable
+private fun SettingsScope.DefaultAuthorize(
+    authorizeState: AuthorizeUIState,
+    onClickAuthorize: () -> Unit,
+    onClickTokenAuthorize: () -> Unit,
+    contactActions: @Composable () -> Unit,
+    forwardAction: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+    layoutParams: WizardLayoutParams = WizardLayoutParams.Default,
+) {
+    val motionScheme = LocalAniMotionScheme.current
+    Column(
+        modifier,
+        verticalArrangement = Arrangement.spacedBy(SettingsScope.itemVerticalSpacing),
+    ) {
+        Box(
+            modifier = Modifier
+                .padding(horizontal = layoutParams.horizontalPadding)
+                .padding(HeroIconDefaults.contentPadding())
+                .fillMaxWidth(),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Default.BangumiNext,
+                contentDescription = null,
+                modifier = Modifier.size(HeroIconDefaults.iconSize),
+                tint = BangumiNextIconColor,
+            )
+        }
+        Column(
+            verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(horizontal = layoutParams.horizontalPadding)
+                    .padding(horizontal = 4.dp)
+                    .fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    "Ani 的追番进度管理服务由 Bangumi 提供",
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                Text(
+                    "Bangumi 番组计划 是一个中文 ACGN 互联网分享与交流项目，不提供资源下载。" +
+                            "登录 Bangumi 账号方可使用收藏、记录观看进度等功能。",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "Bangumi 注册提示",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                val currentPlatform = LocalPlatform.current
+                remember {
+                    buildList {
+                        add("请使用常见邮箱注册，例如 QQ, 网易, Outlook")
+                        add("如果提示激活失败，请尝试删除激活码的最后一个字再手动输入")
+                        if (currentPlatform.isAndroid()) {
+                            add("如果浏览器提示网站被屏蔽或登录成功后无法跳转，请尝试在系统设置更换默认浏览器")
+                        }
+                    }
+                }.forEach {
+                    RegisterTip(it, modifier = Modifier.fillMaxWidth())
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            Column(
+                modifier = Modifier
+                    .padding(horizontal = layoutParams.horizontalPadding)
+                    .fillMaxWidth(),
+            ) {
+                AuthorizeButton(
+                    authorizeState,
+                    onClick = onClickAuthorize,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .widthIn(max = 720.dp),
+                )
+                AnimatedVisibility(
+                    visible = authorizeState is AuthorizeUIState.Error,
+                    enter = motionScheme.animatedVisibility.standardEnter,
+                    exit = motionScheme.animatedVisibility.columnExit,
+                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp),
+                ) {
+                    Text(
+                        "授权登录失败: ${(authorizeState as? AuthorizeUIState.Error)?.message}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            }
+            AnimatedVisibility(
+                authorizeState is AuthorizeUIState.Success,
+                enter = motionScheme.animatedVisibility.columnEnter,
+                exit = motionScheme.animatedVisibility.columnExit,
+            ) {
+                forwardAction()
+            }
+            Spacer(Modifier.height(8.dp))
+            AuthorizeHelpQA(
+                onClickTokenAuthorize = onClickTokenAuthorize,
+                contactActions = contactActions,
+                layoutParams = layoutParams,
+            )
+        }
+    }
 }
 
 @Composable
@@ -195,15 +335,15 @@ private fun SettingsScope.AuthorizeHelpQA(
         Column(
             modifier = Modifier
                 .padding(horizontal = layoutParams.horizontalPadding, vertical = 16.dp),
-            horizontalAlignment = Alignment.Start
+            horizontalAlignment = Alignment.Start,
         ) {
             Text(
                 "帮助",
-                style = MaterialTheme.typography.headlineSmall
+                style = MaterialTheme.typography.headlineSmall,
             )
         }
         Column(modifier = Modifier.fillMaxWidth()) {
-            val contentModifier = remember { 
+            val contentModifier = remember {
                 Modifier
                     .padding(horizontal = layoutParams.horizontalPadding, vertical = 8.dp)
                     .fillMaxWidth()
@@ -214,7 +354,7 @@ private fun SettingsScope.AuthorizeHelpQA(
                         Text(
                             renderHelpOptionTitle(option),
                             fontWeight = if (currentSelected == option) FontWeight.SemiBold else null,
-                            style = MaterialTheme.typography.titleMedium
+                            style = MaterialTheme.typography.titleMedium,
                         )
                     },
                     action = {
@@ -238,21 +378,29 @@ private fun SettingsScope.AuthorizeHelpQA(
                         when (option) {
                             HelpOption.BANGUMI_REGISTER_CHOOSE ->
                                 Text("管理 ACG 收藏与收视进度，分享交流", contentModifier)
+
                             HelpOption.LOGIN_SUCCESS_NO_RESPONSE -> Row(contentModifier) {
                                 Text("可以尝试使用")
                                 Text(
                                     "令牌登录",
                                     color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.clickable(onClick = onClickTokenAuthorize)
+                                    modifier = Modifier.clickable(onClick = onClickTokenAuthorize),
                                 )
                             }
+
                             HelpOption.CANT_RECEIVE_REGISTER_EMAIL ->
                                 Text("请检查垃圾邮件，并尝试使用常见邮箱如 QQ、Gmail、网易", contentModifier)
+
                             HelpOption.REGISTER_ACTIVATION_FAILED ->
                                 Text("删除激活码的最后一个字，然后手动输入这个字", contentModifier)
+
                             HelpOption.REGISTER_TYPE_WRONG_CAPTCHA ->
                                 Text("如果输错了验证码，需要刷新页面再登录", contentModifier)
-                            HelpOption.OTHERS -> Column(contentModifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+
+                            HelpOption.OTHERS -> Column(
+                                contentModifier,
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
                                 Text("无法解决你的问题？还可以通过以下渠道获取帮助")
                                 contactActions()
                             }
@@ -268,139 +416,6 @@ private fun SettingsScope.AuthorizeHelpQA(
 }
 
 @Composable
-private fun SettingsScope.DefaultAuthorize(
-    authorizeState: AuthorizeUIState,
-    onClickAuthorize: () -> Unit,
-    onClickTokenAuthorize: () -> Unit,
-    contactActions: @Composable () -> Unit,
-    forwardAction: @Composable () -> Unit,
-    modifier: Modifier = Modifier,
-    layoutParams: WizardLayoutParams = WizardLayoutParams.Default,
-) {
-    val motionScheme = LocalAniMotionScheme.current
-    Column(
-        modifier,
-        verticalArrangement = Arrangement.spacedBy(SettingsScope.itemVerticalSpacing),
-    ) {
-        Box(
-            modifier = Modifier
-                .padding(horizontal = layoutParams.horizontalPadding)
-                .padding(HeroIconDefaults.contentPadding())
-                .fillMaxWidth(),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = Icons.Default.BangumiNext,
-                contentDescription = null,
-                modifier = Modifier.size(HeroIconDefaults.iconSize),
-                tint = BangumiNextIconColor,
-            )
-        }
-        Column(
-            verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
-        ) {
-            Column(
-                modifier = Modifier
-                    .padding(horizontal = layoutParams.horizontalPadding)
-                    .padding(horizontal = 4.dp)
-                    .fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Text(
-                    "Ani 的追番进度管理服务由 Bangumi 提供",
-                    style = MaterialTheme.typography.titleMedium,
-                )
-                Text(
-                    "Bangumi 番组计划 是一个中文 ACGN 互联网分享与交流项目，不提供资源下载。" +
-                            "登录 Bangumi 账号方可使用收藏、记录观看进度等功能。",
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    "Bangumi 注册提示",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-                val currentPlatform = LocalPlatform.current
-                remember {
-                    buildList {
-                        add("请使用常见邮箱注册，例如 QQ, 网易, Outlook")
-                        add("如果提示激活失败，请尝试删除激活码的最后一个字再手动输入")
-                        if (currentPlatform.isAndroid()) {
-                            add("如果浏览器提示网站被屏蔽或登录成功后无法跳转，请尝试在系统设置更换默认浏览器")
-                        }
-                    }
-                }.forEach {
-                    RegisterTip(it, modifier = Modifier.fillMaxWidth())
-                }
-            }
-            Spacer(Modifier.height(8.dp))
-            Column(
-                modifier = Modifier
-                    .padding(horizontal = layoutParams.horizontalPadding)
-                    .fillMaxWidth()
-            ) {
-                AuthorizeButton(
-                    authorizeState,
-                    onClick = onClickAuthorize,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .widthIn(max = 720.dp)
-                )
-                AnimatedVisibility(
-                    visible = authorizeState is AuthorizeUIState.Error,
-                    enter = motionScheme.animatedVisibility.standardEnter,
-                    exit = motionScheme.animatedVisibility.columnExit,
-                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp),
-                ) {
-                    Text(
-                        "授权登录失败: ${(authorizeState as? AuthorizeUIState.Error)?.message}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                }
-            }
-            AnimatedVisibility(
-                authorizeState is AuthorizeUIState.Success,
-                enter = motionScheme.animatedVisibility.columnEnter,
-                exit = motionScheme.animatedVisibility.columnExit,
-            ) {
-                forwardAction()
-            }
-            Spacer(Modifier.height(8.dp))
-            AuthorizeHelpQA(
-                onClickTokenAuthorize = onClickTokenAuthorize,
-                contactActions = contactActions,
-                layoutParams = layoutParams
-            )
-        }
-    }
-}
-
-// has fixed size
-@Composable
-private fun TokenAuthorizeStepIcon(
-    step: Int
-) {
-    Surface(
-        modifier = Modifier.size(36.dp),
-        color = MaterialTheme.colorScheme.primaryContainer,
-        shape = CircleShape
-    ) { 
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = step.toString(),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.primary
-            )
-        }
-    }
-}
-
-@Composable
 private fun SettingsScope.TokenAuthorize(
     onClickBack: () -> Unit,
     onClickNavigateToBangumiDev: () -> Unit,
@@ -409,7 +424,7 @@ private fun SettingsScope.TokenAuthorize(
     layoutParams: WizardLayoutParams = WizardLayoutParams.Default,
 ) {
     var token by rememberSaveable { mutableStateOf("") }
-    
+
     BackHandler(onBack = onClickBack)
     Group(
         modifier = modifier,
@@ -424,7 +439,7 @@ private fun SettingsScope.TokenAuthorize(
                     Icon(Icons.Rounded.ArrowOutward, null)
                 }
             },
-            modifier = Modifier.clickable(onClick = onClickNavigateToBangumiDev)
+            modifier = Modifier.clickable(onClick = onClickNavigateToBangumiDev),
         )
         TextItem(
             icon = { TokenAuthorizeStepIcon(2) },
@@ -438,21 +453,21 @@ private fun SettingsScope.TokenAuthorize(
         Column(
             modifier = Modifier
                 .padding(horizontal = layoutParams.horizontalPadding, vertical = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             OutlinedTextField(
                 value = token,
                 onValueChange = { token = it },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                label = { Text("令牌 (token)") }
+                label = { Text("令牌 (token)") },
             )
             Button(
                 onClick = { onAuthorizeViaToken(token) },
                 enabled = token.isNotBlank(),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .widthIn(max = 720.dp)
+                    .widthIn(max = 720.dp),
             ) {
                 Text("授权登录")
             }
@@ -460,51 +475,43 @@ private fun SettingsScope.TokenAuthorize(
     }
 }
 
-
+// has fixed size
 @Composable
-internal fun BangumiAuthorize(
-    authorizeState: AuthorizeUIState,
-    contactActions: @Composable () -> Unit,
-    forwardAction: @Composable () -> Unit,
-    onClickAuthorize: () -> Unit,
-    onCancelAuthorize: () -> Unit,
-    onRefreshAuthorizeStatus: () -> Unit,
-    onClickNavigateToBangumiDev: () -> Unit,
-    onAuthorizeViaToken: (String) -> Unit,
-    modifier: Modifier = Modifier,
-    onScrollToTop: () -> Unit = { },
-    layoutParams: WizardLayoutParams = WizardLayoutParams.Default
+private fun TokenAuthorizeStepIcon(
+    step: Int
 ) {
-    var showTokenAuthorizePage by remember { mutableStateOf(false) }
-
-    SettingsTab(modifier) {
-        AnimatedContent(
-            showTokenAuthorizePage,
-            transitionSpec = LocalAniMotionScheme.current.animatedContent.topLevel,
+    Surface(
+        modifier = Modifier.size(36.dp),
+        color = MaterialTheme.colorScheme.primaryContainer,
+        shape = CircleShape,
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center,
         ) {
-            if (it) TokenAuthorize(
-                onClickBack = {
-                    showTokenAuthorizePage = false
-                    onRefreshAuthorizeStatus()
-                },
-                onClickNavigateToBangumiDev = onClickNavigateToBangumiDev,
-                onAuthorizeViaToken = { token ->
-                    onAuthorizeViaToken(token)
-                    showTokenAuthorizePage = false
-                },
-                layoutParams = layoutParams
-            ) else DefaultAuthorize(
-                authorizeState = authorizeState,
-                contactActions = contactActions,
-                forwardAction = forwardAction,
-                onClickAuthorize = onClickAuthorize,
-                onClickTokenAuthorize = {
-                    onCancelAuthorize()
-                    onScrollToTop()
-                    showTokenAuthorizePage = true
-                },
-                layoutParams = layoutParams
+            Text(
+                text = step.toString(),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary,
             )
         }
     }
+}
+
+@Stable
+sealed class AuthorizeUIState {
+    sealed class Initial : AuthorizeUIState()
+
+    @Immutable
+    data object Placeholder : Initial()
+    data object Idle : Initial()
+
+    @Stable
+    data class AwaitingResult(val requestId: String) : AuthorizeUIState()
+
+    @Stable
+    data class Error(val requestId: String, val message: String) : AuthorizeUIState()
+
+    @Stable
+    data class Success(val username: String, val avatarUrl: String?) : AuthorizeUIState()
 }

@@ -60,93 +60,45 @@ import me.him188.ani.app.ui.wizard.WizardLayoutParams
 import me.him188.ani.app.ui.wizard.toDataSettings
 import me.him188.ani.app.ui.wizard.toUIConfig
 
-@Immutable
-enum class ProxyUIMode {
-    DISABLED, SYSTEM, CUSTOM
-}
-
-@Immutable
-data class ProxyUIConfig(
-    val mode: ProxyUIMode,
-    val manualUrl: String,
-    val manualUsername: String?,
-    val manualPassword: String?,
+@Composable
+internal fun ConfigureProxy(
+    state: ConfigureProxyUIState,
+    onUpdate: (config: ProxyUIConfig) -> Unit,
+    onRequestReTest: () -> Unit,
+    modifier: Modifier = Modifier,
+    layoutParams: WizardLayoutParams = WizardLayoutParams.Default
 ) {
-    companion object {
-        @Stable
-        val Default = ProxyUIConfig(ProxyUIMode.DISABLED, "", "", "")
-    }
-}
+    val motionScheme = LocalAniMotionScheme.current
+    var editingProxy by rememberSaveable { mutableStateOf(false) }
 
-@Immutable
-enum class ProxyOverallTestState {
-    INIT,
-    RUNNING,
-    FAILED_NOT_PROXIED,
-    FAILED_PROXIED,
-    SUCCESS
-}
-
-@Immutable
-enum class ProxyTestCaseState {
-    INIT,
-    RUNNING,
-    SUCCESS,
-    FAILED
-}
-
-@Immutable
-class ProxyTestItem(
-    val case: ProxyTestCase,
-    val state: ProxyTestCaseState,
-)
-
-@Immutable
-class ProxyTestState(
-    val testRunning: Boolean,
-    val items: List<ProxyTestItem>
-) {
-    companion object {
-        @Stable
-        val Default = ProxyTestState(false, emptyList())
-    }
-}
-
-@Immutable
-class ConfigureProxyUIState(
-    val config: ProxyUIConfig,
-    val systemProxy: SystemProxyPresentation,
-    val testState: ProxyTestState,
-) {
-    // when any of params in constructor changes, this will always be recalculated
-    // since this class is immutable
-    val overallState by derivedStateOf {
-        if (testState.testRunning) {
-            ProxyOverallTestState.RUNNING
-        } else if (testState.items.any { it.state == ProxyTestCaseState.FAILED }) {
-            if (config.mode == ProxyUIMode.DISABLED) {
-                ProxyOverallTestState.FAILED_NOT_PROXIED
-            } else {
-                ProxyOverallTestState.FAILED_PROXIED
+    SettingsTab(modifier = modifier) {
+        Column {
+            ProxyTestStatusGroup(
+                state,
+                onRequestReTest = onRequestReTest,
+            ) {
+                state.testState.items.forEach { item ->
+                    ProxyTestItemView(item, modifier = Modifier)
+                }
             }
-        } else if (testState.items.all { it.state == ProxyTestCaseState.SUCCESS }) {
-            ProxyOverallTestState.SUCCESS
-        } else {
-            ProxyOverallTestState.INIT
+
+            AnimatedContent(
+                editingProxy,
+                modifier = Modifier.animateContentSize(),
+                transitionSpec = motionScheme.animatedContent.standard,
+            ) { editing ->
+                if (!editing) CurrentProxyTextModePresentation(
+                    state,
+                    onClickEdit = { editingProxy = true },
+                ) else ProxyConfigGroup(
+                    state,
+                    onUpdate = { config ->
+                        editingProxy = false
+                        onUpdate(config)
+                    },
+                )
+            }
         }
-    }
-
-    val hasError by derivedStateOf {
-        !testState.testRunning && testState.items.any { it.state == ProxyTestCaseState.FAILED }
-    }
-
-    companion object {
-        @Stable
-        val Default = ConfigureProxyUIState(
-            ProxyUIConfig.Default,
-            SystemProxyPresentation.Detecting,
-            ProxyTestState.Default,
-        )
     }
 }
 
@@ -208,6 +160,26 @@ private fun renderTestCaseDescription(case: ProxyTestCase): String {
 }
 
 @Composable
+private fun SettingsScope.ProxyTestItemView(
+    item: ProxyTestItem,
+    modifier: Modifier = Modifier
+) {
+    TextItem(
+        modifier = modifier,
+        title = { Text(renderTestCaseName(item.case)) },
+        description = { Text(renderTestCaseDescription(item.case)) },
+        icon = {
+            Icon(
+                item.case.icon,
+                tint = item.case.color,
+                contentDescription = renderTestCaseDescription(item.case),
+            )
+        },
+        action = { ProxyTestStatusIcon(item.state) },
+    )
+}
+
+@Composable
 private fun ProxyTestStatusIcon(
     state: ProxyTestCaseState,
     modifier: Modifier = Modifier,
@@ -228,26 +200,6 @@ private fun ProxyTestStatusIcon(
                 }
         }
     }
-}
-
-@Composable
-private fun SettingsScope.ProxyTestItemView(
-    item: ProxyTestItem,
-    modifier: Modifier = Modifier
-) {
-    TextItem(
-        modifier = modifier,
-        title = { Text(renderTestCaseName(item.case)) },
-        description = { Text(renderTestCaseDescription(item.case)) },
-        icon = {
-            Icon(
-                item.case.icon,
-                tint = item.case.color,
-                contentDescription = renderTestCaseDescription(item.case),
-            )
-        },
-        action = { ProxyTestStatusIcon(item.state) },
-    )
 }
 
 @Composable
@@ -387,45 +339,92 @@ private fun SettingsScope.ProxyConfigGroup(
     }
 }
 
+@Immutable
+enum class ProxyUIMode {
+    DISABLED, SYSTEM, CUSTOM
+}
 
-@Composable
-internal fun ConfigureProxy(
-    state: ConfigureProxyUIState,
-    onUpdate: (config: ProxyUIConfig) -> Unit,
-    onRequestReTest: () -> Unit,
-    modifier: Modifier = Modifier,
-    layoutParams: WizardLayoutParams = WizardLayoutParams.Default
+@Immutable
+data class ProxyUIConfig(
+    val mode: ProxyUIMode,
+    val manualUrl: String,
+    val manualUsername: String?,
+    val manualPassword: String?,
 ) {
-    val motionScheme = LocalAniMotionScheme.current
-    var editingProxy by rememberSaveable { mutableStateOf(false) }
+    companion object {
+        @Stable
+        val Default = ProxyUIConfig(ProxyUIMode.DISABLED, "", "", "")
+    }
+}
 
-    SettingsTab(modifier = modifier) {
-        Column {
-            ProxyTestStatusGroup(
-                state,
-                onRequestReTest = onRequestReTest,
-            ) {
-                state.testState.items.forEach { item ->
-                    ProxyTestItemView(item, modifier = Modifier)
-                }
-            }
+@Immutable
+enum class ProxyOverallTestState {
+    INIT,
+    RUNNING,
+    FAILED_NOT_PROXIED,
+    FAILED_PROXIED,
+    SUCCESS
+}
 
-            AnimatedContent(
-                editingProxy,
-                modifier = Modifier.animateContentSize(),
-                transitionSpec = motionScheme.animatedContent.standard,
-            ) { editing ->
-                if (editing) ProxyConfigGroup(
-                    state,
-                    onUpdate = { config ->
-                        editingProxy = false
-                        onUpdate(config)
-                    },
-                ) else CurrentProxyTextModePresentation(
-                    state,
-                    onClickEdit = { editingProxy = true },
-                )
+@Immutable
+enum class ProxyTestCaseState {
+    INIT,
+    RUNNING,
+    SUCCESS,
+    FAILED
+}
+
+@Immutable
+class ProxyTestItem(
+    val case: ProxyTestCase,
+    val state: ProxyTestCaseState,
+)
+
+@Immutable
+class ProxyTestState(
+    val testRunning: Boolean,
+    val items: List<ProxyTestItem>
+) {
+    companion object {
+        @Stable
+        val Default = ProxyTestState(false, emptyList())
+    }
+}
+
+@Immutable
+class ConfigureProxyUIState(
+    val config: ProxyUIConfig,
+    val systemProxy: SystemProxyPresentation,
+    val testState: ProxyTestState,
+) {
+    // when any of params in constructor changes, this will always be recalculated
+    // since this class is immutable
+    val overallState by derivedStateOf {
+        if (testState.testRunning) {
+            ProxyOverallTestState.RUNNING
+        } else if (testState.items.any { it.state == ProxyTestCaseState.FAILED }) {
+            if (config.mode == ProxyUIMode.DISABLED) {
+                ProxyOverallTestState.FAILED_NOT_PROXIED
+            } else {
+                ProxyOverallTestState.FAILED_PROXIED
             }
+        } else if (testState.items.all { it.state == ProxyTestCaseState.SUCCESS }) {
+            ProxyOverallTestState.SUCCESS
+        } else {
+            ProxyOverallTestState.INIT
         }
+    }
+
+    val hasError by derivedStateOf {
+        !testState.testRunning && testState.items.any { it.state == ProxyTestCaseState.FAILED }
+    }
+
+    companion object {
+        @Stable
+        val Default = ConfigureProxyUIState(
+            ProxyUIConfig.Default,
+            SystemProxyPresentation.Detecting,
+            ProxyTestState.Default,
+        )
     }
 }
