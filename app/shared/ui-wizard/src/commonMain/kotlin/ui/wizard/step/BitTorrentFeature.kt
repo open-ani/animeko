@@ -10,7 +10,6 @@
 package me.him188.ani.app.ui.wizard.step
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -128,9 +127,7 @@ internal fun BitTorrentFeature(
                             }
                         }
                     },
-                    modifier = Modifier.clickable {
-                        if (!grantedNotificationPermission) onRequestNotificationPermission()
-                    },
+                    onClick = if (!grantedNotificationPermission) onRequestNotificationPermission else null,
                 )
                 AnimatedVisibility(
                     showPermissionError,
