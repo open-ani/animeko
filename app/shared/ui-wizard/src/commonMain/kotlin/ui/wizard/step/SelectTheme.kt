@@ -45,6 +45,14 @@ import me.him188.ani.app.ui.theme.themeColorOptions
 import me.him188.ani.app.ui.wizard.WizardLayoutParams
 import me.him188.ani.utils.platform.isAndroid
 
+@Composable
+private fun renderThemeModeText(mode: DarkMode): String {
+    return when (mode) {
+        DarkMode.LIGHT -> "亮色"
+        DarkMode.DARK -> "暗色"
+        DarkMode.AUTO -> "自动"
+    }
+}
 
 @Composable
 internal fun SelectTheme(
@@ -54,6 +62,26 @@ internal fun SelectTheme(
     layoutParams: WizardLayoutParams = WizardLayoutParams.Default
 ) {
     val platform = LocalPlatform.current
+
+    val panelModifier = remember { Modifier.size(96.dp, 146.dp) }
+    val themePanelItem: @Composable (DarkMode) -> Unit = {
+        ColorSchemePreviewItem(
+            onClick = { onUpdate(config.copy(darkMode = it)) },
+            panel = {
+                if (it != DarkMode.AUTO) ThemePreviewPanel(
+                    colorScheme = appColorScheme(isDark = it == DarkMode.DARK),
+                    modifier = panelModifier,
+                ) else DiagonalMixedThemePreviewPanel(
+                    leftTopColorScheme = appColorScheme(isDark = false),
+                    rightBottomColorScheme = appColorScheme(isDark = true),
+                    modifier = panelModifier,
+                )
+            },
+            text = { Text(renderThemeModeText(it)) },
+            selected = config.darkMode == it,
+        )
+    }
+    
     SettingsTab(modifier = modifier) {
         Row(
             modifier = Modifier
@@ -63,40 +91,9 @@ internal fun SelectTheme(
                 .horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
         ) {
-            ColorSchemePreviewItem(
-                onClick = { onUpdate(config.copy(darkMode = DarkMode.LIGHT)) },
-                panel = {
-                    ThemePreviewPanel(
-                        colorScheme = appColorScheme(isDark = false),
-                        modifier = Modifier.size(96.dp, 146.dp),
-                    )
-                },
-                text = { Text("亮色") },
-                selected = config.darkMode == DarkMode.LIGHT,
-            )
-            ColorSchemePreviewItem(
-                onClick = { onUpdate(config.copy(darkMode = DarkMode.DARK)) },
-                panel = {
-                    ThemePreviewPanel(
-                        colorScheme = appColorScheme(isDark = true),
-                        modifier = Modifier.size(96.dp, 146.dp),
-                    )
-                },
-                text = { Text("暗色") },
-                selected = config.darkMode == DarkMode.DARK,
-            )
-            ColorSchemePreviewItem(
-                onClick = { onUpdate(config.copy(darkMode = DarkMode.AUTO)) },
-                text = { Text("自动") },
-                panel = {
-                    DiagonalMixedThemePreviewPanel(
-                        leftTopColorScheme = appColorScheme(isDark = false),
-                        rightBottomColorScheme = appColorScheme(isDark = true),
-                        modifier = Modifier.size(96.dp, 146.dp),
-                    )
-                },
-                selected = config.darkMode == DarkMode.AUTO,
-            )
+            themePanelItem(DarkMode.LIGHT)
+            themePanelItem(DarkMode.DARK)
+            themePanelItem(DarkMode.AUTO)
         }
         Group(
             title = { Text("色彩") },
