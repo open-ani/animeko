@@ -41,7 +41,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -70,11 +69,11 @@ import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.ui.foundation.icons.AnimekoIcon
 import me.him188.ani.app.ui.foundation.icons.BangumiNext
 import me.him188.ani.app.ui.foundation.launchInBackground
-import me.him188.ani.app.ui.foundation.theme.AnimekoIconColor
-import me.him188.ani.app.ui.foundation.theme.BangumiNextIconColor
 import me.him188.ani.app.ui.settings.framework.AbstractSettingsViewModel
 import me.him188.ani.app.ui.settings.framework.SettingsState
 import me.him188.ani.app.ui.settings.tabs.network.SystemProxyPresentation
+import me.him188.ani.app.ui.theme.AnimekoIconColor
+import me.him188.ani.app.ui.theme.BangumiNextIconColor
 import me.him188.ani.app.ui.wizard.navigation.WizardController
 import me.him188.ani.app.ui.wizard.step.AuthorizeUIState
 import me.him188.ani.app.ui.wizard.step.NotificationPermissionState
@@ -85,7 +84,6 @@ import me.him188.ani.utils.coroutines.flows.FlowRestarter
 import me.him188.ani.utils.coroutines.flows.FlowRunning
 import me.him188.ani.utils.coroutines.flows.restartable
 import me.him188.ani.utils.coroutines.update
-import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.trace
 import me.him188.ani.utils.platform.Uuid
 import me.him188.ani.utils.platform.currentTimeMillis

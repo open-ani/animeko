@@ -14,7 +14,7 @@ import androidx.compose.runtime.Stable
 import androidx.compose.ui.graphics.Color
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
-import me.him188.ani.app.ui.foundation.theme.DefaultSeedColor
+import me.him188.ani.app.ui.theme.DefaultSeedColor
 
 @Serializable
 enum class DarkMode {

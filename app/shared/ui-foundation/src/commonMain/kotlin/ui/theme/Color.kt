@@ -12,7 +12,6 @@ package me.him188.ani.app.ui.theme
 import androidx.compose.ui.graphics.Color
 import com.materialkolor.hct.Hct
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
-import me.him188.ani.app.ui.foundation.theme.DefaultSeedColor
 
 private val colorList = ((4..10) + (1..3))
     .map { it * 35.0 }

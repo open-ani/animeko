@@ -62,10 +62,10 @@ import me.him188.ani.app.ui.foundation.IconButton
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.icons.BangumiNext
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
-import me.him188.ani.app.ui.foundation.theme.BangumiNextIconColor
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.TextItem
+import me.him188.ani.app.ui.theme.BangumiNextIconColor
 import me.him188.ani.app.ui.wizard.HeroIconDefaults
 import me.him188.ani.app.ui.wizard.WizardLayoutParams
 import me.him188.ani.utils.platform.isAndroid
