@@ -23,7 +23,6 @@ import androidx.compose.material.icons.rounded.ArrowOutward
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProvideTextStyle
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
@@ -32,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.settings.SettingsTab
+import me.him188.ani.app.ui.settings.framework.components.SwitchItem
 import me.him188.ani.app.ui.settings.framework.components.TextItem
 import me.him188.ani.app.ui.settings.rendering.P2p
 import me.him188.ani.app.ui.wizard.HeroIconDefaults
@@ -110,15 +110,10 @@ internal fun BitTorrentFeature(
         Column(
             modifier = Modifier.padding(bottom = layoutParams.horizontalPadding),
         ) {
-            TextItem(
+            SwitchItem(
+                checked = bitTorrentEnabled,
+                onCheckedChange = onBitTorrentEnableChanged,
                 title = { Text("启用 BitTorrent 功能") },
-                action = {
-                    Switch(
-                        checked = bitTorrentEnabled,
-                        onCheckedChange = onBitTorrentEnableChanged,
-                    )
-                },
-                onClick = { onBitTorrentEnableChanged(!bitTorrentEnabled) },
             )
 
             if (showGrantNotificationItem) {
