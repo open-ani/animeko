@@ -85,8 +85,8 @@ internal fun BangumiAuthorize(
         AnimatedContent(
             showTokenAuthorizePage,
             transitionSpec = LocalAniMotionScheme.current.animatedContent.topLevel,
-        ) {
-            if (!it) DefaultAuthorize(
+        ) { show ->
+            if (!show) DefaultAuthorize(
                 authorizeState = authorizeState,
                 contactActions = contactActions,
                 forwardAction = forwardAction,
