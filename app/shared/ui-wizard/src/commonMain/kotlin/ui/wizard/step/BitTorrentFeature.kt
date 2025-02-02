@@ -118,20 +118,8 @@ internal fun BitTorrentFeature(
 
             if (showGrantNotificationItem) {
                 TextItem(
-                    title = {
-                        Text(
-                            text = if (grantedNotificationPermission) "已授权通知权限" else "请求通知权限",
-                            color = if (grantedNotificationPermission) MaterialTheme.colorScheme.onSurfaceVariant
-                            else MaterialTheme.colorScheme.onSurface,
-                        )
-                    },
-                    description = {
-                        Text(
-                            text = "显示 BT 引擎的运行状态、下载进度等信息",
-                            color = if (grantedNotificationPermission) MaterialTheme.colorScheme.onSurfaceVariant
-                            else MaterialTheme.colorScheme.onSurface,
-                        )
-                    },
+                    title = { Text(if (grantedNotificationPermission) "已授权通知权限" else "请求通知权限") },
+                    description = { Text("显示 BT 引擎的运行状态、下载进度等信息") },
                     action = {
                         if (!grantedNotificationPermission) {
                             Icon(Icons.Rounded.ArrowOutward, null)
