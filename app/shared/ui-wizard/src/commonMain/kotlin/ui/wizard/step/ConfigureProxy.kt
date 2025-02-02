@@ -12,10 +12,6 @@ package me.him188.ani.app.ui.wizard.step
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -49,6 +45,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.data.models.preference.ProxyMode
 import me.him188.ani.app.data.models.preference.ProxySettings
+import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.SettingsState
@@ -260,6 +257,7 @@ private fun SettingsScope.ProxyConfigGroup(
     modifier: Modifier = Modifier,
 ) {
     val scope = rememberCoroutineScope()
+    val motionScheme = LocalAniMotionScheme.current
     val currentConfig = remember {
         mutableStateOf(initialConfig).let { config ->
             SettingsState(
@@ -305,7 +303,11 @@ private fun SettingsScope.ProxyConfigGroup(
                         onClick = updateCurrentMode,
                     ),
             )
-            AnimatedVisibility(visible = currentConfig.value.default.mode == mode) {
+            AnimatedVisibility(
+                visible = currentConfig.value.default.mode == mode,
+                enter = motionScheme.animatedVisibility.columnEnter,
+                exit = motionScheme.animatedVisibility.columnExit,
+            ) {
                 Column {
                     when (mode) {
                         ProxyMode.DISABLED -> {}
@@ -335,6 +337,7 @@ internal fun ConfigureProxy(
     modifier: Modifier = Modifier,
     layoutParams: WizardLayoutParams = WizardLayoutParams.Default
 ) {
+    val motionScheme = LocalAniMotionScheme.current
     var editingProxy by rememberSaveable { mutableStateOf(false) }
 
     SettingsTab(modifier = modifier) {
@@ -353,10 +356,7 @@ internal fun ConfigureProxy(
             AnimatedContent(
                 editingProxy,
                 modifier = Modifier.animateContentSize(),
-                transitionSpec = {
-                    fadeIn(animationSpec = tween(220, delayMillis = 90))
-                        .togetherWith(fadeOut(animationSpec = tween(90)))
-                },
+                transitionSpec = motionScheme.animatedContent.standard,
             ) {
                 if (it) ProxyConfigGroup(
                     config,

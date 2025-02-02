@@ -56,6 +56,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.preference.ProxySettings
 import me.him188.ani.app.platform.LocalContext
+import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.navigation.LocalBackDispatcher
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
@@ -211,13 +212,18 @@ internal fun WizardScene(
                 )
             },
             controlBar = {
-                AnimatedVisibility(authorizeState !is AuthorizeUIState.Success) {
+                val motionScheme = LocalAniMotionScheme.current
+                AnimatedVisibility(
+                    authorizeState !is AuthorizeUIState.Success,
+                    enter = motionScheme.animatedVisibility.columnEnter,
+                    exit = motionScheme.animatedVisibility.columnExit,
+                ) {
                     WizardDefaults.StepControlBar(
                         forwardAction = bangumiAuthorizeForwardAction,
                     )
                 }
                 Spacer(Modifier.height(1.dp))
-            }
+            },
         ) {
             val scope = rememberCoroutineScope()
             // 每次进入这一步都会检查 token 是否有效, 以及退出这一步时要取消正在进行的授权请求

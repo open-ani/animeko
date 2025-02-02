@@ -9,8 +9,6 @@
 
 package me.him188.ani.app.ui.wizard.navigation
 
-import androidx.compose.animation.core.AnimationState
-import androidx.compose.animation.core.animateTo
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -34,9 +32,9 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import me.him188.ani.app.ui.foundation.animation.LocalNavigationMotionScheme
+import me.him188.ani.app.ui.foundation.animation.NavigationMotionScheme
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
-import me.him188.ani.app.ui.foundation.theme.LocalNavigationMotionScheme
-import me.him188.ani.app.ui.foundation.theme.NavigationMotionScheme
 
 /**
  * A wrapper around [NavHost] that provides a wizard-like experience.

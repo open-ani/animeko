@@ -12,11 +12,6 @@ package me.him188.ani.app.ui.wizard.step
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -60,6 +55,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.IconButton
 import me.him188.ani.app.ui.foundation.LocalPlatform
+import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.icons.BangumiNext
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.settings.SettingsTab
@@ -119,7 +115,10 @@ private fun AuthorizeButton(
 ) {
     val content: @Composable RowScope.() -> Unit = remember(authorizeState) {
         {
-            AnimatedContent(authorizeState) {
+            AnimatedContent(
+                targetState = authorizeState,
+                transitionSpec = LocalAniMotionScheme.current.animatedContent.standard,
+            ) {
                 when (authorizeState) {
                     is AuthorizeUIState.Initial, is AuthorizeUIState.Error -> {
                         Text("启动浏览器授权")
@@ -190,6 +189,7 @@ private fun SettingsScope.AuthorizeHelpQA(
     modifier: Modifier = Modifier,
     layoutParams: WizardLayoutParams = WizardLayoutParams.Default,
 ) {
+    val motionScheme = LocalAniMotionScheme.current
     var currentSelected by rememberSaveable { mutableStateOf<HelpOption?>(null) }
 
     Column(
@@ -232,7 +232,11 @@ private fun SettingsScope.AuthorizeHelpQA(
                         .fillMaxWidth()
                         .clickable { currentSelected = if (currentSelected == option) null else option },
                 )
-                AnimatedVisibility(currentSelected == option) {
+                AnimatedVisibility(
+                    currentSelected == option,
+                    enter = motionScheme.animatedVisibility.columnEnter,
+                    exit = motionScheme.animatedVisibility.columnExit,
+                ) {
                     ProvideTextStyle(MaterialTheme.typography.bodyMedium) {
                         when (option) {
                             HelpOption.BANGUMI_REGISTER_CHOOSE ->
@@ -276,6 +280,7 @@ private fun SettingsScope.DefaultAuthorize(
     modifier: Modifier = Modifier,
     layoutParams: WizardLayoutParams = WizardLayoutParams.Default,
 ) {
+    val motionScheme = LocalAniMotionScheme.current
     Column(
         modifier,
         verticalArrangement = Arrangement.spacedBy(SettingsScope.itemVerticalSpace),
@@ -347,8 +352,8 @@ private fun SettingsScope.DefaultAuthorize(
                 )
                 AnimatedVisibility(
                     visible = authorizeState is AuthorizeUIState.Error,
-                    enter = fadeIn(),
-                    exit = fadeOut() + shrinkVertically(),
+                    enter = motionScheme.animatedVisibility.standardEnter,
+                    exit = motionScheme.animatedVisibility.columnExit,
                     modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp),
                 ) {
                     Text(
@@ -358,7 +363,11 @@ private fun SettingsScope.DefaultAuthorize(
                     )
                 }
             }
-            AnimatedVisibility(authorizeState is AuthorizeUIState.Success) {
+            AnimatedVisibility(
+                authorizeState is AuthorizeUIState.Success,
+                enter = motionScheme.animatedVisibility.columnEnter,
+                exit = motionScheme.animatedVisibility.columnExit,
+            ) {
                 forwardAction()
             }
             Spacer(Modifier.height(8.dp))
@@ -474,10 +483,7 @@ internal fun BangumiAuthorize(
     SettingsTab(modifier) {
         AnimatedContent(
             showTokenAuthorizePage,
-            transitionSpec = {
-                fadeIn(animationSpec = tween(220, delayMillis = 90))
-                    .togetherWith(fadeOut(animationSpec = tween(90)))
-            },
+            transitionSpec = LocalAniMotionScheme.current.animatedContent.topLevel,
         ) {
             if (it) TokenAuthorize(
                 onClickBack = {

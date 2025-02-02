@@ -10,9 +10,6 @@
 package me.him188.ani.app.ui.wizard.step
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -33,6 +30,7 @@ import androidx.compose.runtime.Stable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.components.TextItem
 import me.him188.ani.app.ui.settings.rendering.P2p
@@ -72,6 +70,7 @@ internal fun BitTorrentFeature(
     showGrantNotificationItem: Boolean = true,
     layoutParams: WizardLayoutParams = WizardLayoutParams.Default
 ) {
+    val motionScheme = LocalAniMotionScheme.current
     SettingsTab(modifier = modifier) {
         Box(
             modifier = Modifier
@@ -149,8 +148,8 @@ internal fun BitTorrentFeature(
                 )
                 AnimatedVisibility(
                     lastRequestNotificationPermissionResult == false,
-                    enter = fadeIn(), // don't animate layout
-                    exit = fadeOut() + shrinkVertically(),
+                    enter = motionScheme.animatedVisibility.standardEnter, // don't animate layout
+                    exit = motionScheme.animatedVisibility.columnExit,
                 ) {
                     Item(
                         leadingContent = { Icon(Icons.Filled.Error, null) },

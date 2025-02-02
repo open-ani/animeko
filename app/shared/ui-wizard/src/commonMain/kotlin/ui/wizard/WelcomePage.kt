@@ -28,7 +28,7 @@ import me.him188.ani.app.ui.foundation.theme.appColorScheme
 import me.him188.ani.app.ui.wizard.navigation.WizardController
 
 @Composable
-fun WelcomePage(
+fun WelcomeScreen(
     vm: WelcomeViewModel,
     contactActions: @Composable () -> Unit,
     modifier: Modifier = Modifier,
