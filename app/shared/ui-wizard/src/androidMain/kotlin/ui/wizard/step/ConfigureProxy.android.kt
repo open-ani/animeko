@@ -10,28 +10,15 @@
 package me.him188.ani.app.ui.wizard.step
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.tooling.preview.Preview
-import me.him188.ani.app.data.models.preference.ProxySettings
 import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview
-import me.him188.ani.app.ui.settings.tabs.network.SystemProxyPresentation
-import me.him188.ani.app.ui.wizard.ProxyTestCase
 
 @Preview(showBackground = true)
 @Composable
 fun PreviewSelectProxyStep() {
     ProvideFoundationCompositionLocalsForPreview {
         ConfigureProxy(
-            config = ProxySettings.Default,
-            testRunning = true,
-            testItems = remember {
-                buildList {
-                    add(ProxyTestItem(ProxyTestCase.AniDanmakuApi, ProxyTestCaseState.RUNNING))
-                    add(ProxyTestItem(ProxyTestCase.BangumiMasterApi, ProxyTestCaseState.SUCCESS))
-                    add(ProxyTestItem(ProxyTestCase.BangumiNextApi, ProxyTestCaseState.FAILED))
-                }
-            },
-            systemProxy = SystemProxyPresentation.NotDetected,
+            state = ConfigureProxyUIState.Default,
             onUpdate = { },
             onRequestReTest = { },
         )

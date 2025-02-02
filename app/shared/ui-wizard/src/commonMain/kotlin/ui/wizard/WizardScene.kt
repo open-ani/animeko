@@ -54,23 +54,21 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.launch
-import me.him188.ani.app.data.models.preference.ProxySettings
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.navigation.LocalBackDispatcher
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
-import me.him188.ani.app.ui.settings.tabs.network.SystemProxyPresentation
 import me.him188.ani.app.ui.wizard.navigation.WizardController
 import me.him188.ani.app.ui.wizard.navigation.WizardNavHost
 import me.him188.ani.app.ui.wizard.step.AuthorizeUIState
 import me.him188.ani.app.ui.wizard.step.BangumiAuthorize
 import me.him188.ani.app.ui.wizard.step.BitTorrentFeature
 import me.him188.ani.app.ui.wizard.step.ConfigureProxy
+import me.him188.ani.app.ui.wizard.step.ConfigureProxyUIState
 import me.him188.ani.app.ui.wizard.step.NotificationPermissionState
 import me.him188.ani.app.ui.wizard.step.ProxyTestCaseState
-import me.him188.ani.app.ui.wizard.step.ProxyTestState
 import me.him188.ani.app.ui.wizard.step.SelectTheme
 
 @Composable
@@ -90,6 +88,8 @@ internal fun WizardScene(
     
     val authorizeState by state.bangumiAuthorizeState.state
         .collectAsStateWithLifecycle(AuthorizeUIState.Placeholder)
+    val proxyState by state.configureProxyState.state
+        .collectAsStateWithLifecycle(ConfigureProxyUIState.Default)
 
     WizardNavHost(
         controller,
@@ -110,31 +110,19 @@ internal fun WizardScene(
             "proxy",
             title = { Text("设置代理") },
             forwardButton = {
-                val testState by state.configureProxyState.testState
-                    .collectAsStateWithLifecycle(ProxyTestState.Default)
                 WizardDefaults.GoForwardButton(
                     { controller.goForward() },
-                    enabled = testState.items
+                    enabled = proxyState.testState.items
                         .all { it.state == ProxyTestCaseState.SUCCESS },
                 )
             },
             skipButton = { WizardDefaults.SkipButton({ controller.goForward() }) },
         ) {
             val configureProxyState = state.configureProxyState
-            
-            val currProxy by configureProxyState.config
-                .collectAsStateWithLifecycle(ProxySettings.Default)
-            val systemProxy by configureProxyState.systemProxy
-                .collectAsStateWithLifecycle(SystemProxyPresentation.Detecting)
-            val testState by configureProxyState.testState
-                .collectAsStateWithLifecycle(ProxyTestState.Default)
 
             ConfigureProxy(
-                config = currProxy,
+                state = proxyState,
                 onUpdate = { configureProxyState.onUpdateConfig(it) },
-                testRunning = testState.testRunning,
-                systemProxy = systemProxy,
-                testItems = testState.items,
                 onRequestReTest = { configureProxyState.onRequestReTest() },
                 layoutParams = wizardLayoutParams,
             )

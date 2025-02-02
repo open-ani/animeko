@@ -76,6 +76,7 @@ import me.him188.ani.app.ui.theme.AnimekoIconColor
 import me.him188.ani.app.ui.theme.BangumiNextIconColor
 import me.him188.ani.app.ui.wizard.navigation.WizardController
 import me.him188.ani.app.ui.wizard.step.AuthorizeUIState
+import me.him188.ani.app.ui.wizard.step.ConfigureProxyUIState
 import me.him188.ani.app.ui.wizard.step.NotificationPermissionState
 import me.him188.ani.app.ui.wizard.step.ProxyTestCaseState
 import me.him188.ani.app.ui.wizard.step.ProxyTestItem
@@ -116,34 +117,35 @@ class WelcomeViewModel : AbstractSettingsViewModel(), KoinComponent {
             },
     )
 
-    private val systemProxyPresentation =
-        combine(proxySettings.flow, proxyProvider.proxy) { settings, proxy ->
-            if (settings.default.mode == ProxyMode.SYSTEM && proxy != null)
+    private val configureProxyUiState = combine(
+        proxySettings.flow,
+        proxyProvider.proxy,
+        proxyTestRunning.isRunning,
+        proxyTestCases,
+        proxyTestResults,
+    ) { settings, proxy, running, cases, results ->
+        ConfigureProxyUIState(
+            config = settings,
+            systemProxy = if (settings.default.mode == ProxyMode.SYSTEM && proxy != null) {
                 SystemProxyPresentation.Detected(proxy)
-            else SystemProxyPresentation.NotDetected
-        }
-            .stateInBackground(
-                SystemProxyPresentation.Detecting,
-                SharingStarted.WhileSubscribed(),
-            )
-
-    private val configureProxyState = ConfigureProxyState(
-        config = proxySettings.flow,
-        systemProxy = systemProxyPresentation,
-        testState = combine(
-            proxyTestRunning.isRunning, proxyTestCases, proxyTestResults,
-        ) { running, cases, results ->
-            ProxyTestState(
+            } else {
+                SystemProxyPresentation.NotDetected
+            },
+            testState = ProxyTestState(
                 testRunning = running,
                 items = cases.map {
                     ProxyTestItem(it, results[it.name] ?: ProxyTestCaseState.INIT)
                 },
-            )
-        }
-            .stateInBackground(
-                ProxyTestState.Default,
-                SharingStarted.WhileSubscribed(),
             ),
+        )
+    }
+        .stateInBackground(
+            ConfigureProxyUIState.Default,
+            SharingStarted.WhileSubscribed(),
+        )
+    
+    private val configureProxyState = ConfigureProxyState(
+        state = configureProxyUiState,
         onUpdateConfig = { newConfig ->
             launchInBackground { 
                 if (shouldRerunProxyTestManually(proxySettings.flow.first(), newConfig)) {
@@ -290,7 +292,7 @@ class WelcomeViewModel : AbstractSettingsViewModel(), KoinComponent {
         
         val prevMode = prev.default.mode
         val currMode = curr.default.mode
-        val noSystemProxy = systemProxyPresentation.value is SystemProxyPresentation.NotDetected
+        val noSystemProxy = configureProxyUiState.value.systemProxy is SystemProxyPresentation.NotDetected
         
         if (prevMode == ProxyMode.SYSTEM && currMode == ProxyMode.DISABLED && noSystemProxy) {
             return true
@@ -518,9 +520,7 @@ class WizardPresentationState(
 
 @Stable
 class ConfigureProxyState(
-    val config: Flow<ProxySettings>,
-    val systemProxy: Flow<SystemProxyPresentation>,
-    val testState: Flow<ProxyTestState>,
+    val state: Flow<ConfigureProxyUIState>,
     val onUpdateConfig: (ProxySettings) -> Unit,
     val onRequestReTest: () -> Unit,
 )

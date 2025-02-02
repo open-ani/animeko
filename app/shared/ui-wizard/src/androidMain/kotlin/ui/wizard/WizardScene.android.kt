@@ -23,6 +23,7 @@ import me.him188.ani.app.ui.settings.framework.SettingsState
 import me.him188.ani.app.ui.settings.tabs.network.SystemProxyPresentation
 import me.him188.ani.app.ui.wizard.navigation.rememberWizardController
 import me.him188.ani.app.ui.wizard.step.AuthorizeUIState
+import me.him188.ani.app.ui.wizard.step.ConfigureProxyUIState
 import me.him188.ani.app.ui.wizard.step.NotificationPermissionState
 import me.him188.ani.app.ui.wizard.step.ProxyTestCaseState
 import me.him188.ani.app.ui.wizard.step.ProxyTestItem
@@ -51,16 +52,18 @@ internal fun createTestWizardPresentationState(scope: CoroutineScope): WizardPre
             backgroundScope = scope,
         ),
         configureProxyState = ConfigureProxyState(
-            config = flowOf(ProxySettings.Default),
-            systemProxy = flowOf(SystemProxyPresentation.Detecting),
-            testState = flowOf(
-                ProxyTestState(
-                    testRunning = false,
-                    items = buildList {
-                        add(ProxyTestItem(ProxyTestCase.AniDanmakuApi, ProxyTestCaseState.RUNNING))
-                        add(ProxyTestItem(ProxyTestCase.BangumiMasterApi, ProxyTestCaseState.SUCCESS))
-                        add(ProxyTestItem(ProxyTestCase.BangumiNextApi, ProxyTestCaseState.FAILED))
-                    },
+            state = flowOf(
+                ConfigureProxyUIState(
+                    config = ProxySettings.Default,
+                    systemProxy = SystemProxyPresentation.Detecting,
+                    testState = ProxyTestState(
+                        testRunning = false,
+                        items = buildList {
+                            add(ProxyTestItem(ProxyTestCase.AniDanmakuApi, ProxyTestCaseState.RUNNING))
+                            add(ProxyTestItem(ProxyTestCase.BangumiMasterApi, ProxyTestCaseState.SUCCESS))
+                            add(ProxyTestItem(ProxyTestCase.BangumiNextApi, ProxyTestCaseState.FAILED))
+                        },
+                    ),
                 ),
             ),
             onUpdateConfig = { },

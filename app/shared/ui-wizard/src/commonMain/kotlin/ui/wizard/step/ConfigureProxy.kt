@@ -35,6 +35,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -83,41 +84,80 @@ class ProxyTestState(
     }
 }
 
+@Immutable
+enum class ProxyOverallTestState {
+    INIT,
+    RUNNING,
+    FAILED_NOT_PROXIED,
+    FAILED_PROXIED,
+    SUCCESS
+}
+
+@Immutable
+class ConfigureProxyUIState(
+    val config: ProxySettings,
+    val systemProxy: SystemProxyPresentation,
+    val testState: ProxyTestState,
+) {
+    // when any of params in constructor changes, this will always be recalculated
+    // since this class is immutable
+    val overallState by derivedStateOf {
+        if (testState.testRunning) {
+            ProxyOverallTestState.RUNNING
+        } else if (testState.items.any { it.state == ProxyTestCaseState.FAILED }) {
+            if (config.default.mode == ProxyMode.DISABLED) {
+                ProxyOverallTestState.FAILED_NOT_PROXIED
+            } else {
+                ProxyOverallTestState.FAILED_PROXIED
+            }
+        } else if (testState.items.all { it.state == ProxyTestCaseState.SUCCESS }) {
+            ProxyOverallTestState.SUCCESS
+        } else {
+            ProxyOverallTestState.INIT
+        }
+    }
+
+    val hasError by derivedStateOf {
+        !testState.testRunning && testState.items.any { it.state == ProxyTestCaseState.FAILED }
+    }
+
+    companion object {
+        @Stable
+        val Default = ConfigureProxyUIState(
+            ProxySettings.Default,
+            SystemProxyPresentation.Detecting,
+            ProxyTestState.Default,
+        )
+    }
+}
+
+@Composable
+private fun renderOverallTestText(state: ProxyOverallTestState): String {
+    return when (state) {
+        ProxyOverallTestState.INIT -> "正在检测连接，请稍后"
+        ProxyOverallTestState.RUNNING -> "正在检测连接，请稍后"
+        ProxyOverallTestState.FAILED_NOT_PROXIED -> "部分服务连接失败，请考虑启用代理"
+        ProxyOverallTestState.FAILED_PROXIED -> "部分服务连接失败，请更换代理模式或代理地址"
+        ProxyOverallTestState.SUCCESS -> "所有服务连接正常"
+    }
+}
+
 @Composable
 private fun SettingsScope.ProxyTestStatusGroup(
-    testRunning: Boolean,
-    currentTestMode: ProxyMode,
-    items: List<ProxyTestItem>,
+    state: ConfigureProxyUIState,
     onRequestReTest: () -> Unit,
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    val text = remember(testRunning, currentTestMode, items) {
-        if (testRunning) {
-            "正在检测连接，请稍后"
-        } else if (items.any { it.state == ProxyTestCaseState.FAILED }) {
-            if (currentTestMode == ProxyMode.DISABLED) {
-                "部分服务连接失败，请考虑启用代理"
-            } else {
-                "部分服务连接失败，请更换代理模式或代理地址"
-            }
-        } else {
-            "所有服务连接正常"
-        }
-    }
-    val useErrorColor = remember(testRunning, items) {
-        !testRunning && items.any { it.state == ProxyTestCaseState.FAILED }
-    }
-
     Group(
         title = {
             Text(
-                text = text,
-                color = if (useErrorColor)
+                text = renderOverallTestText(state.overallState),
+                color = if (state.hasError)
                     MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
             )
         },
-        actions = if (items.any { it.state == ProxyTestCaseState.FAILED }) {
+        actions = if (state.hasError) {
             {
                 TextButton(onRequestReTest) {
                     Text("重新测试")
@@ -211,12 +251,11 @@ private fun renderSystemProxyPresentation(systemProxy: SystemProxyPresentation):
 
 @Composable
 private fun SettingsScope.CurrentProxyTextModePresentation(
-    config: ProxySettings,
-    systemProxy: SystemProxyPresentation,
+    state: ConfigureProxyUIState,
     onClickEdit: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val currentTestMode = config.default.mode
+    val currentTestMode = state.config.default.mode
     TextItem(
         modifier = modifier,
         title = {
@@ -228,11 +267,11 @@ private fun SettingsScope.CurrentProxyTextModePresentation(
         description = when (currentTestMode) {
             ProxyMode.DISABLED -> null
             ProxyMode.SYSTEM -> {
-                { Text(renderSystemProxyPresentation(systemProxy)) }
+                { Text(renderSystemProxyPresentation(state.systemProxy)) }
             }
 
             ProxyMode.CUSTOM -> {
-                { Text(config.default.customConfig.url) }
+                { Text(state.config.default.customConfig.url) }
             }
         },
         action = {
@@ -251,15 +290,14 @@ private fun SettingsScope.CurrentProxyTextModePresentation(
 
 @Composable
 private fun SettingsScope.ProxyConfigGroup(
-    initialConfig: ProxySettings,
-    systemProxy: SystemProxyPresentation,
+    state: ConfigureProxyUIState,
     onUpdate: (config: ProxySettings) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val scope = rememberCoroutineScope()
     val motionScheme = LocalAniMotionScheme.current
     val currentConfig = remember {
-        mutableStateOf(initialConfig).let { config ->
+        mutableStateOf(state.config).let { config ->
             SettingsState(
                 valueState = config,
                 onUpdate = { config.value = it },
@@ -312,7 +350,7 @@ private fun SettingsScope.ProxyConfigGroup(
                     when (mode) {
                         ProxyMode.DISABLED -> {}
                         ProxyMode.SYSTEM -> {
-                            SystemProxyConfig(systemProxy)
+                            SystemProxyConfig(state.systemProxy)
                         }
 
                         ProxyMode.CUSTOM -> {
@@ -328,10 +366,7 @@ private fun SettingsScope.ProxyConfigGroup(
 
 @Composable
 internal fun ConfigureProxy(
-    config: ProxySettings,
-    testRunning: Boolean,
-    systemProxy: SystemProxyPresentation,
-    testItems: List<ProxyTestItem>,
+    state: ConfigureProxyUIState,
     onUpdate: (config: ProxySettings) -> Unit,
     onRequestReTest: () -> Unit,
     modifier: Modifier = Modifier,
@@ -343,12 +378,10 @@ internal fun ConfigureProxy(
     SettingsTab(modifier = modifier) {
         Column {
             ProxyTestStatusGroup(
-                testRunning,
-                config.default.mode,
-                testItems,
+                state,
                 onRequestReTest = onRequestReTest,
             ) {
-                testItems.forEach { item ->
+                state.testState.items.forEach { item ->
                     ProxyTestItemView(item, modifier = Modifier)
                 }
             }
@@ -357,17 +390,15 @@ internal fun ConfigureProxy(
                 editingProxy,
                 modifier = Modifier.animateContentSize(),
                 transitionSpec = motionScheme.animatedContent.standard,
-            ) {
-                if (it) ProxyConfigGroup(
-                    config,
-                    systemProxy,
+            ) { editing ->
+                if (editing) ProxyConfigGroup(
+                    state,
                     onUpdate = { config ->
                         editingProxy = false
                         onUpdate(config)
                     },
                 ) else CurrentProxyTextModePresentation(
-                    config,
-                    systemProxy,
+                    state,
                     onClickEdit = { editingProxy = true },
                 )
             }
