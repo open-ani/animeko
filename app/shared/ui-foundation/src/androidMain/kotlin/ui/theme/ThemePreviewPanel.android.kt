@@ -24,15 +24,15 @@ import me.him188.ani.app.ui.foundation.theme.appColorScheme
 fun PreviewThemePreviewPanel() {
     ProvideFoundationCompositionLocalsForPreview {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            ThemePreviewPanel(
+            me.him188.ani.app.ui.settings.tabs.theme.ThemePreviewPanel(
                 colorScheme = appColorScheme(isDark = false),
                 modifier = Modifier.size(96.dp, 146.dp),
             )
-            ThemePreviewPanel(
+            me.him188.ani.app.ui.settings.tabs.theme.ThemePreviewPanel(
                 colorScheme = appColorScheme(isDark = true),
                 modifier = Modifier.size(96.dp, 146.dp),
             )
-            DiagonalMixedThemePreviewPanel(
+            me.him188.ani.app.ui.settings.tabs.theme.DiagonalMixedThemePreviewPanel(
                 leftTopColorScheme = appColorScheme(isDark = false),
                 rightBottomColorScheme = appColorScheme(isDark = true),
                 modifier = Modifier.size(96.dp, 146.dp),

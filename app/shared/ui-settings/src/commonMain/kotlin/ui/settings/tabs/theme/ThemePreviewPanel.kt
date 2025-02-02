@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.app.ui.theme
+package me.him188.ani.app.ui.settings.tabs.theme
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement

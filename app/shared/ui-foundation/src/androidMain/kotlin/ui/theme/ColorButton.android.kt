@@ -26,7 +26,7 @@ fun PreviewColorButton() {
         FlowRow {
             var currentColor by remember { mutableStateOf(AniThemeDefaults.themeColorOptions[0]) }
             AniThemeDefaults.themeColorOptions.forEach {
-                ColorButton(
+                me.him188.ani.app.ui.settings.tabs.theme.ColorButton(
                     onClick = { currentColor = it },
                     baseColor = it,
                     selected = currentColor == it,

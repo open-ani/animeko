@@ -42,9 +42,9 @@ import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.theme.appColorScheme
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.components.TextItem
-import me.him188.ani.app.ui.theme.ColorButton
-import me.him188.ani.app.ui.theme.DiagonalMixedThemePreviewPanel
-import me.him188.ani.app.ui.theme.ThemePreviewPanel
+import me.him188.ani.app.ui.settings.tabs.theme.ColorButton
+import me.him188.ani.app.ui.settings.tabs.theme.DiagonalMixedThemePreviewPanel
+import me.him188.ani.app.ui.settings.tabs.theme.ThemePreviewPanel
 import me.him188.ani.app.ui.theme.themeColorOptions
 import me.him188.ani.app.ui.wizard.WizardLayoutParams
 import me.him188.ani.utils.platform.isAndroid
