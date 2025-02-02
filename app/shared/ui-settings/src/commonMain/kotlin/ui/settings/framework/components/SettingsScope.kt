@@ -83,7 +83,7 @@ abstract class SettingsScope {
         val itemExtraHorizontalPadding = 8.dp
 
         @Stable
-        val itemVerticalSpace: Dp
+        val itemVerticalSpacing: Dp
             @Composable
             get() = currentWindowAdaptiveInfo1().windowSizeClass.cardVerticalPadding
     }

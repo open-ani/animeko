@@ -283,7 +283,7 @@ private fun SettingsScope.DefaultAuthorize(
     val motionScheme = LocalAniMotionScheme.current
     Column(
         modifier,
-        verticalArrangement = Arrangement.spacedBy(SettingsScope.itemVerticalSpace),
+        verticalArrangement = Arrangement.spacedBy(SettingsScope.itemVerticalSpacing),
     ) {
         Box(
             modifier = Modifier

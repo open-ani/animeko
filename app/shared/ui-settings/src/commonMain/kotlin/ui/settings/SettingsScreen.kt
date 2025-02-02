@@ -429,7 +429,7 @@ fun SettingsTab(
 ) {
     Column(
         modifier,
-        verticalArrangement = Arrangement.spacedBy(SettingsScope.itemVerticalSpace),
+        verticalArrangement = Arrangement.spacedBy(SettingsScope.itemVerticalSpacing),
     ) {
         val scope = remember(this) {
             object : SettingsScope(), ColumnScope by this@Column {}
