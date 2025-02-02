@@ -40,6 +40,7 @@ import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.NoopBrowserNavigator
 import me.him188.ani.app.platform.GrantedPermissionManager
 import me.him188.ani.app.platform.PermissionManager
+import me.him188.ani.app.ui.foundation.animation.ProvideAniMotionCompositionLocals
 import me.him188.ani.app.ui.foundation.theme.AniTheme
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.Toaster
@@ -119,7 +120,7 @@ fun ProvideCompositionLocalsForPreview(
             NavHost(navController, startDestination = "test") { // provide ViewModelStoreOwner
                 composable("test") {
                     AniTheme(isDark = isDark) {
-                        content()
+                        ProvideAniMotionCompositionLocals(content)
                     }
                 }
             }

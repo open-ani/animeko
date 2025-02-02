@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024-2025 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.app.ui.foundation.interaction
 
 import androidx.compose.animation.core.tween
@@ -11,7 +20,7 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.PointerType
 import kotlinx.coroutines.launch
-import me.him188.ani.app.ui.foundation.animation.StandardDecelerate
+import me.him188.ani.app.ui.foundation.animation.StandardDecelerateEasing
 import me.him188.ani.app.ui.foundation.effects.onPointerEventMultiplatform
 import me.him188.ani.app.ui.foundation.layout.ConnectedScrollState
 
@@ -49,7 +58,7 @@ fun Modifier.nestedScrollWorkaround(
                             // 直接滑到顶部
                             connectedScrollState.scrollableState.animateScrollBy(
                                 -connectedScrollState.scrolledOffset,
-                                tween(500, easing = StandardDecelerate),
+                                tween(500, easing = StandardDecelerateEasing),
                             )
                         } finally {
                             isInProgress = false

@@ -9,9 +9,6 @@
 
 package me.him188.ani.app.videoplayer.ui
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.layout.Arrangement
@@ -46,6 +43,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
+import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
+import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.theme.slightlyWeaken
 import me.him188.ani.app.videoplayer.ui.guesture.PlayerGestureHost
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerBar
@@ -100,6 +99,8 @@ fun VideoScaffold(
         .withGestureLocked(gestureLocked)
         .withExpanded(expanded)
 
+    val enterTransition = LocalAniMotionScheme.current.animatedVisibility.standardEnter
+    val exitTransition = LocalAniMotionScheme.current.animatedVisibility.standardExit
     BoxWithConstraints(
         modifier.then(if (expanded) Modifier.fillMaxHeight() else Modifier.fillMaxWidth()),
         contentAlignment = Alignment.Center,
@@ -144,10 +145,10 @@ fun VideoScaffold(
             Box(Modifier) {
                 Column(Modifier.fillMaxSize().background(Color.Transparent)) {
                     // 顶部控制栏: 返回键, 标题, 设置
-                    AnimatedVisibility(
+                    me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility(
                         visible = controllerVisibility.topBar,
-                        enter = fadeIn(),
-                        exit = fadeOut(),
+                        enter = enterTransition,
+                        exit = exitTransition,
                     ) {
                         Box {
                             Box(
@@ -186,10 +187,10 @@ fun VideoScaffold(
 
                     Column {
                         // 底部控制栏: 播放/暂停, 进度条, 切换全屏
-                        AnimatedVisibility(
+                        AniAnimatedVisibility(
                             visible = controllerVisibility.bottomBar,
-                            enter = fadeIn(),
-                            exit = fadeOut(),
+                            enter = enterTransition,
+                            exit = exitTransition,
                         ) {
                             val alwaysOnRequester = rememberAlwaysOnRequester(controllerState, "bottomBar")
                             Column(
@@ -231,10 +232,10 @@ fun VideoScaffold(
                             }
 
                         }
-                        AnimatedVisibility(
+                        AniAnimatedVisibility(
                             visible = controllerVisibility.detachedSlider,
-                            enter = fadeIn(),
-                            exit = fadeOut(),
+                            enter = enterTransition,
+                            exit = exitTransition,
                         ) {
                             Row(
                                 Modifier.padding(horizontal = 4.dp, vertical = 12.dp)
@@ -245,11 +246,11 @@ fun VideoScaffold(
                         }
                     }
                 }
-                AnimatedVisibility(
+                AniAnimatedVisibility(
                     controllerVisibility.floatingBottomEnd && !expanded,
                     Modifier.align(Alignment.BottomEnd),
-                    enter = fadeIn(),
-                    exit = fadeOut(),
+                    enter = enterTransition,
+                    exit = exitTransition,
                 ) {
                     Row(
                         Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
@@ -272,19 +273,19 @@ fun VideoScaffold(
                         Modifier.padding(end = 16.dp).align(Alignment.CenterEnd),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        AnimatedVisibility(
+                        AniAnimatedVisibility(
                             visible = controllerVisibility.rhsBar,
-                            enter = fadeIn(),
-                            exit = fadeOut(),
+                            enter = enterTransition,
+                            exit = exitTransition,
                         ) {
                             rhsButtons()
                         }
 
                         // Separate from controllers, to fix position when controllers are/aren't hidden
-                        AnimatedVisibility(
+                        AniAnimatedVisibility(
                             visible = controllerVisibility.gestureLock,
-                            enter = fadeIn(),
-                            exit = fadeOut(),
+                            enter = enterTransition,
+                            exit = exitTransition,
                         ) {
                             gestureLock()
                         }

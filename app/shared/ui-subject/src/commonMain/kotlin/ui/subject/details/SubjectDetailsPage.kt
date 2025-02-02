@@ -9,12 +9,9 @@
 
 package me.him188.ani.app.ui.subject.details
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -83,6 +80,8 @@ import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.ImageViewer
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.Tag
+import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
+import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.interaction.WindowDragArea
 import me.him188.ani.app.ui.foundation.interaction.nestedScrollWorkaround
@@ -119,7 +118,7 @@ import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.utils.platform.isMobile
 
 @Composable
-fun SubjectDetailsPage(
+fun SubjectDetailsScreen(
     vm: SubjectDetailsViewModel,
     onPlay: (episodeId: Int) -> Unit,
     onLoadErrorRetry: () -> Unit,
@@ -129,7 +128,7 @@ fun SubjectDetailsPage(
     windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
     navigationIcon: @Composable () -> Unit = {},
 ) {
-    SubjectDetailsPage(
+    SubjectDetailsScreen(
         vm.result,
         onPlay,
         onLoadErrorRetry,
@@ -142,7 +141,7 @@ fun SubjectDetailsPage(
 }
 
 @Composable
-fun SubjectDetailsPage(
+fun SubjectDetailsScreen(
     state: SubjectDetailsStateLoader.LoadState,
     onPlay: (episodeId: Int) -> Unit,
     onLoadErrorRetry: () -> Unit,
@@ -153,7 +152,7 @@ fun SubjectDetailsPage(
     navigationIcon: @Composable () -> Unit = {},
 ) {
     when (state) {
-        is SubjectDetailsStateLoader.LoadState.Ok -> SubjectDetailsPage(
+        is SubjectDetailsStateLoader.LoadState.Ok -> SubjectDetailsScreen(
             state.value,
             onPlay = onPlay,
             modifier,
@@ -182,7 +181,7 @@ fun SubjectDetailsPage(
 }
 
 @Composable
-private fun SubjectDetailsPage(
+private fun SubjectDetailsScreen(
     state: SubjectDetailsState,
     onPlay: (episodeId: Int) -> Unit,
     modifier: Modifier = Modifier,
@@ -212,9 +211,10 @@ private fun SubjectDetailsPage(
 
     val placeholderModifier = Modifier.placeholder(state.showPlaceholder)
     val presentation by state.presentationFlow.collectAsStateWithLifecycle()
-    SubjectDetailsPageLayout(
+    SubjectDetailsScreenLayout(
         state.subjectId,
         state.info,
+        isPlaceholder = state.showPlaceholder,
         seasonTags = {
             SubjectDetailsDefaults.SeasonTag(
                 airDate = state.info?.airDate ?: PackedDate.Invalid,
@@ -265,17 +265,10 @@ private fun SubjectDetailsPage(
         showBlurredBackground = showBlurredBackground,
         windowInsets = windowInsets,
         navigationIcon = navigationIcon,
-    ) { paddingValues ->
-        Box {
-            AnimatedVisibility(
-                visible = state.showPlaceholder,
-                enter = EnterTransition.None,
-                exit = fadeOut(AniThemeDefaults.feedItemFadeOutSpec),
-            ) {
-                PlaceholderSubjectDetailsContentPager(paddingValues)
-            }
-            if (state.showPlaceholder) return@SubjectDetailsPageLayout
-
+    ) { isPlaceholder, paddingValues ->
+        if (isPlaceholder) {
+            PlaceholderSubjectDetailsContentPager(paddingValues)
+        } else {
             SubjectDetailsContentPager(
                 paddingValues,
                 connectedScrollState,
@@ -341,9 +334,10 @@ private fun ErrorSubjectDetailsPage(
     windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
     navigationIcon: @Composable () -> Unit = {},
 ) {
-    SubjectDetailsPageLayout(
+    SubjectDetailsScreenLayout(
         subjectId = subjectId,
         info = placeholderSubjectInfo,
+        isPlaceholder = false,
         seasonTags = { },
         collectionData = { },
         collectionActions = { },
@@ -355,7 +349,7 @@ private fun ErrorSubjectDetailsPage(
         showBlurredBackground = false,
         windowInsets,
         navigationIcon,
-    ) { paddingValues ->
+    ) { _, paddingValues ->
         LoadErrorCard(
             problem = error,
             onRetry = onRetry,
@@ -382,9 +376,10 @@ enum class SubjectDetailsTab {
  * @param info `null` 表示正在加载中
  */
 @Composable
-fun SubjectDetailsPageLayout(
+fun SubjectDetailsScreenLayout(
     subjectId: Int,
     info: SubjectInfo?,
+    isPlaceholder: Boolean,
     seasonTags: @Composable () -> Unit,
     collectionData: @Composable () -> Unit,
     collectionActions: @Composable () -> Unit,
@@ -396,7 +391,7 @@ fun SubjectDetailsPageLayout(
     showBlurredBackground: Boolean = true,
     windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
     navigationIcon: @Composable () -> Unit = {},
-    content: @Composable (contentPadding: PaddingValues) -> Unit,
+    content: @Composable (isPlaceholder: Boolean, contentPadding: PaddingValues) -> Unit,
 ) {
     val backgroundColor = AniThemeDefaults.pageContentBackgroundColor
     val stickyTopBarColor = AniThemeDefaults.navigationContainerColor
@@ -424,7 +419,7 @@ fun SubjectDetailsPageLayout(
                         )
 
                         // 有背景, 仅在滚动一段距离后使用
-                        AnimatedVisibility(connectedScrollState.isScrolledTop, enter = fadeIn(), exit = fadeOut()) {
+                        AniAnimatedVisibility(connectedScrollState.isScrolledTop) {
                             TopAppBar(
                                 title = {
                                     Text(
@@ -499,7 +494,12 @@ fun SubjectDetailsPageLayout(
                     }
                 }
 
-                content(remainingContentPadding)
+                AnimatedContent(
+                    isPlaceholder,
+                    transitionSpec = LocalAniMotionScheme.current.animatedContent.topLevel,
+                ) { targetIsPlaceholder ->
+                    content(targetIsPlaceholder, remainingContentPadding)
+                }
             }
         }
     }

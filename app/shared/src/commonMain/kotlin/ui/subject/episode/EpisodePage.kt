@@ -9,9 +9,6 @@
 
 package me.him188.ani.app.ui.subject.episode
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -98,6 +95,7 @@ import me.him188.ani.app.ui.foundation.ImageViewer
 import me.him188.ani.app.ui.foundation.LocalImageViewerHandler
 import me.him188.ani.app.ui.foundation.LocalIsPreviewing
 import me.him188.ani.app.ui.foundation.LocalPlatform
+import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.effects.DarkStatusBarAppearance
 import me.him188.ani.app.ui.foundation.effects.OnLifecycleEvent
 import me.him188.ani.app.ui.foundation.effects.ScreenOnEffect
@@ -149,7 +147,7 @@ import org.openani.mediamp.features.Screenshots
  * 番剧详情 (播放) 页面
  */
 @Composable
-fun EpisodeScene(
+fun EpisodeScreen(
     viewModel: EpisodeViewModel,
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
@@ -158,7 +156,7 @@ fun EpisodeScene(
         Scaffold(
             contentWindowInsets = WindowInsets(0.dp),
         ) {
-            EpisodeSceneContent(
+            EpisodeScreenContent(
                 viewModel,
                 Modifier,
                 windowInsets = windowInsets,
@@ -168,7 +166,7 @@ fun EpisodeScene(
 }
 
 @Composable
-private fun EpisodeSceneContent(
+private fun EpisodeScreenContent(
     vm: EpisodeViewModel,
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
@@ -269,7 +267,7 @@ private fun EpisodeSceneContent(
                 CompositionLocalProvider(LocalImageViewerHandler provides imageViewer) {
                     when {
                         showExpandedUI || isSystemInFullscreen() ->
-                            EpisodeSceneTabletVeryWide(
+                            EpisodeScreenTabletVeryWide(
                                 vm,
                                 page,
                                 danmakuHostState,
@@ -281,7 +279,7 @@ private fun EpisodeSceneContent(
                                 windowInsets,
                             )
 
-                        else -> EpisodeSceneContentPhone(
+                        else -> EpisodeScreenContentPhone(
                             vm,
                             page,
                             danmakuHostState,
@@ -321,7 +319,7 @@ private fun EpisodeSceneContent(
 }
 
 @Composable
-private fun EpisodeSceneTabletVeryWide(
+private fun EpisodeScreenTabletVeryWide(
     vm: EpisodeViewModel,
     page: EpisodePageState,
     danmakuHostState: DanmakuHostState,
@@ -479,7 +477,7 @@ private fun TabRow(
 }
 
 @Composable
-private fun EpisodeSceneContentPhone(
+private fun EpisodeScreenContentPhone(
     vm: EpisodeViewModel,
     page: EpisodePageState,
     danmakuHostState: DanmakuHostState,
@@ -492,7 +490,7 @@ private fun EpisodeSceneContentPhone(
 ) {
     var showDanmakuEditor by rememberSaveable { mutableStateOf(false) }
 
-    EpisodeSceneContentPhoneScaffold(
+    EpisodeScreenContentPhoneScaffold(
         videoOnly = vm.isFullscreen,
         commentCount = { vm.episodeCommentState.count },
         video = {
@@ -611,7 +609,7 @@ private fun DetachedDanmakuEditorLayout(
 }
 
 @Composable
-fun EpisodeSceneContentPhoneScaffold(
+fun EpisodeScreenContentPhoneScaffold(
     videoOnly: Boolean,
     commentCount: () -> Int?,
     video: @Composable () -> Unit,
@@ -797,10 +795,8 @@ private fun EpisodeVideo(
             }
         }.value,
         leftBottomTips = {
-            AnimatedVisibility(
+            AniAnimatedVisibility(
                 visible = vm.playerSkipOpEdState.showSkipTips,
-                enter = fadeIn(),
-                exit = fadeOut(),
             ) {
                 PlayerControllerDefaults.LeftBottomTips(
                     onClick = {

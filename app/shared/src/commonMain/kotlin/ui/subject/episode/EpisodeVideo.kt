@@ -9,10 +9,6 @@
 
 package me.him188.ani.app.ui.subject.episode
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
@@ -48,6 +44,7 @@ import me.him188.ani.app.tools.rememberUiMonoTasker
 import me.him188.ani.app.ui.foundation.LocalIsPreviewing
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.TextWithBorder
+import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.effects.cursorVisibility
 import me.him188.ani.app.ui.foundation.icons.AniIcons
 import me.him188.ani.app.ui.foundation.icons.Forward85
@@ -223,10 +220,8 @@ internal fun EpisodeVideoImpl(
                 }
             },
             danmakuHost = {
-                AnimatedVisibility(
+                AniAnimatedVisibility(
                     danmakuEnabled,
-                    enter = fadeIn(tween(200)),
-                    exit = fadeOut(tween(200)),
                 ) {
                     Box(Modifier.matchParentSize()) {
                         danmakuHost()

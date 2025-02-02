@@ -34,8 +34,8 @@ import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
-import me.him188.ani.app.ui.doesNotExist
-import me.him188.ani.app.ui.exists
+import me.him188.ani.app.ui.framework.doesNotExist
+import me.him188.ani.app.ui.framework.exists
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import kotlin.test.Test
 

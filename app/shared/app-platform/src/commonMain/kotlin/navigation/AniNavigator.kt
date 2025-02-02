@@ -67,7 +67,7 @@ interface AniNavigator {
 
     fun navigateSubjectDetails(
         subjectId: Int,
-        placeholder: SubjectDetailPlaceholder? = null
+        placeholder: SubjectDetailPlaceholder?,
     ) {
         navigator.navigate(
             NavRoutes.SubjectDetail(subjectId, placeholder),
@@ -88,7 +88,7 @@ interface AniNavigator {
     }
 
     fun navigateMain(
-        page: MainScenePage,
+        page: MainScreenPage,
         requestFocus: Boolean = false
     ) {
         navigator.popBackStack<NavRoutes.Main>(inclusive = false)

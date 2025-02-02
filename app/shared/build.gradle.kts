@@ -115,7 +115,7 @@ kotlin {
         api(libs.ktor.serialization.kotlinx.json)
 
         // Others
-        api(libs.koin.core) 
+        api(libs.koin.core)
         api(libs.coil.core)
         api(libs.coil.svg)
         api(libs.coil.compose.core)
@@ -136,6 +136,14 @@ kotlin {
     }
 
     sourceSets.commonTest.dependencies {
+        implementation(libs.kotlinx.coroutines.test)
+        implementation(projects.utils.testing)
+        implementation(projects.utils.uiTesting)
+        implementation(libs.turbine)
+    }
+
+    // androidUnitTest is apart from the commonTest tree so we have to do it again
+    sourceSets.androidUnitTest.dependencies {
         implementation(libs.kotlinx.coroutines.test)
         implementation(projects.utils.testing)
         implementation(projects.utils.uiTesting)

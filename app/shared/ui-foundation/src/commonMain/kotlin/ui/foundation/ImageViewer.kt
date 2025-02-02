@@ -1,8 +1,14 @@
+/*
+ * Copyright (C) 2024-2025 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.app.ui.foundation
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -28,6 +34,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import me.him188.ani.app.imageviewer.zoomable.ZoomableGestureScope
 import me.him188.ani.app.imageviewer.zoomable.rememberZoomableState
+import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
+import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 
 interface ImageViewerHandler {
     val imageModel: StateFlow<Any?>
@@ -80,10 +88,10 @@ fun ImageViewer(
         zoomableState.contentSize = contentSize
     }
 
-    AnimatedVisibility(
+    AniAnimatedVisibility(
         visible = handler.viewing.value,
-        enter = fadeIn(),
-        exit = fadeOut(),
+        enter = LocalAniMotionScheme.current.animatedVisibility.standardEnter,
+        exit = LocalAniMotionScheme.current.animatedVisibility.standardExit,
         modifier = Modifier.fillMaxSize(),
     ) {
         me.him188.ani.app.imageviewer.ImageViewer(

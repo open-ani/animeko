@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -27,7 +27,7 @@ import me.him188.ani.utils.platform.annotations.TestOnly
 internal fun PreviewSubjectDetails() = ProvideFoundationCompositionLocalsForPreview {
     val scope = rememberCoroutineScope()
     val state = remember { SubjectDetailsStateLoader.LoadState.Ok(createTestSubjectDetailsState(scope)) }
-    SubjectDetailsPage(
+    SubjectDetailsScreen(
         state,
         onPlay = { },
         onLoadErrorRetry = { },
@@ -44,7 +44,7 @@ internal fun PreviewPlaceholderSubjectDetails() = ProvideFoundationCompositionLo
     val state = remember {
         SubjectDetailsStateLoader.LoadState.Ok(createTestSubjectDetailsState(scope, isPlaceholder = true))
     }
-    SubjectDetailsPage(
+    SubjectDetailsScreen(
         state,
         onPlay = { },
         onLoadErrorRetry = { },
@@ -61,7 +61,7 @@ internal fun PreviewErrorSubjectDetails() = ProvideFoundationCompositionLocalsFo
     val state = remember {
         SubjectDetailsStateLoader.LoadState.Err(TestSubjectInfo.subjectId, TestSubjectInfo, LoadError.NetworkError)
     }
-    SubjectDetailsPage(
+    SubjectDetailsScreen(
         state,
         onPlay = { },
         onLoadErrorRetry = { },

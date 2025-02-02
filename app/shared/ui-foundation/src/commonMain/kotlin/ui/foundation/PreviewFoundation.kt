@@ -28,6 +28,7 @@ import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.tools.LocalTimeFormatter
 import me.him188.ani.app.tools.TimeFormatter
+import me.him188.ani.app.ui.foundation.animation.ProvideAniMotionCompositionLocals
 import me.him188.ani.app.ui.foundation.navigation.LocalOnBackPressedDispatcherOwner
 import me.him188.ani.app.ui.foundation.navigation.OnBackPressedDispatcher
 import me.him188.ani.app.ui.foundation.navigation.OnBackPressedDispatcherOwner
@@ -91,7 +92,9 @@ inline fun ProvideFoundationCompositionLocalsForPreview(
         }
         ProvidePlatformCompositionLocalsForPreview {
             AniTheme(isDark = isDark) {
-                content()
+                ProvideAniMotionCompositionLocals {
+                    content()
+                }
             }
         }
     }
@@ -125,3 +128,20 @@ data object TestGlobalLifecycle : Lifecycle() {
 internal expect inline fun ProvidePlatformCompositionLocalsForPreview(
     crossinline content: @Composable () -> Unit
 )
+
+
+/**
+ * 用于 UI test. 固定主题颜色.
+ */
+@TestOnly
+@Composable
+fun ProvideFoundationCompositionLocalsForTest(
+    isDark: Boolean = false,
+    content: @Composable () -> Unit,
+) {
+    ProvideFoundationCompositionLocalsForPreview(
+        isDark,
+    ) {
+        content()
+    }
+}

@@ -56,11 +56,11 @@ import androidx.paging.compose.itemKey
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.ui.foundation.AsyncImage
+import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.isWidthCompact
 import me.him188.ani.app.ui.foundation.stateOf
-import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.search.LoadErrorCard
 import me.him188.ani.app.ui.search.isLoadingNextPage
 import me.him188.ani.app.ui.subject.AiringLabel
@@ -116,9 +116,9 @@ fun SubjectCollectionsColumn(
                         .padding(all = spacedBy / 2)
                         .ifThen(enableAnimation) {
                             animateItem(
-                                fadeInSpec = AniThemeDefaults.feedItemFadeInSpec,
-                                placementSpec = AniThemeDefaults.feedItemPlacementSpec,
-                                fadeOutSpec = AniThemeDefaults.feedItemFadeOutSpec,
+                                fadeInSpec = LocalAniMotionScheme.current.feedItemFadeInSpec,
+                                placementSpec = LocalAniMotionScheme.current.feedItemPlacementSpec,
+                                fadeOutSpec = LocalAniMotionScheme.current.feedItemFadeOutSpec,
                             )
                         },
                 ) {

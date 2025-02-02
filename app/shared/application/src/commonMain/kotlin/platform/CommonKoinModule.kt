@@ -10,6 +10,7 @@
 package me.him188.ani.app.platform
 
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import io.ktor.client.plugins.auth.providers.BearerTokens
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -79,6 +80,7 @@ import me.him188.ani.app.domain.foundation.DefaultHttpClientProvider
 import me.him188.ani.app.domain.foundation.DefaultHttpClientProvider.HoldingInstanceMatrix
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
+import me.him188.ani.app.domain.foundation.ServerListFeatureHandler
 import me.him188.ani.app.domain.foundation.UseBangumiTokenFeature
 import me.him188.ani.app.domain.foundation.UseBangumiTokenFeatureHandler
 import me.him188.ani.app.domain.foundation.UserAgentFeature
@@ -106,6 +108,7 @@ import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.session.SessionStatus
 import me.him188.ani.app.domain.session.finalState
 import me.him188.ani.app.domain.session.unverifiedAccessToken
+import me.him188.ani.app.domain.session.unverifiedAccessTokenOrNull
 import me.him188.ani.app.domain.settings.ProxyProvider
 import me.him188.ani.app.domain.settings.SettingsBasedProxyProvider
 import me.him188.ani.app.domain.torrent.TorrentManager
@@ -146,6 +149,27 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
                 UseBangumiTokenFeatureHandler(
                     @OptIn(OpaqueSession::class)
                     sessionManager.unverifiedAccessToken,
+                    onRefresh = {
+                        logger.info("Ktor believes Bangumi token is invalid. Refreshing.")
+                        sessionManager.retry()
+                        logger.info("Retry started. Now waiting for session to be verified.")
+                        // `finalState.first()` wait for `retry` to complete.
+                        // If `retry` succeeds, `finalState` will receive SessionStatus.Verified with a valid token.
+                        sessionManager.finalState.first().unverifiedAccessTokenOrNull?.let {
+                            BearerTokens(it, "")
+                        }.also {
+                            logger.info("Result: ${it?.accessToken}")
+                        }
+                    },
+                ),
+                ServerListFeatureHandler(
+                    settingsRepository.danmakuSettings.flow.map { danmakuSettings ->
+                        if (danmakuSettings.useGlobal) {
+                            AniServers.optimizedForGlobal
+                        } else {
+                            AniServers.optimizedForCN
+                        }
+                    },
                 ),
             ),
         )

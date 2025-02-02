@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -124,20 +124,24 @@ fun <T : Any> SearchResultLazyVerticalStaggeredGrid(
 @Stable
 object SearchDefaults {
     @Composable
-    fun SearchSummaryItem(items: LazyPagingItems<*>, modifier: Modifier = Modifier) {
+    fun SearchSummaryItem(
+        items: LazyPagingItems<*>,
+        modifier: Modifier = Modifier,
+        containerColor: Color = Color.Unspecified,
+    ) {
         Box(modifier) {
             when {
                 items.isFinishedAndEmpty -> {
                     ListItem(
                         headlineContent = { Text("无搜索结果") },
-                        colors = ListItemDefaults.colors(containerColor = Color.Unspecified),
+                        colors = ListItemDefaults.colors(containerColor = containerColor),
                     )
                 }
 
                 items.hasFirstPage -> {
                     ListItem(
                         headlineContent = { Text("搜索到 ${items.itemCount} 个结果") },
-                        colors = ListItemDefaults.colors(containerColor = Color.Unspecified),
+                        colors = ListItemDefaults.colors(containerColor = containerColor),
                     )
                 }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.ui.settings.mediasource.selector.edit
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -28,6 +27,7 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.effects.moveFocusOnEnter
 import me.him188.ani.app.ui.foundation.layout.cardVerticalPadding
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
@@ -76,7 +76,7 @@ internal fun SelectorConfigurationDefaults.MatchVideoSection(
             colors = ListItemDefaults.colors(containerColor = Transparent),
         )
 
-        AnimatedVisibility(visible = matchVideoConfig.enableNestedUrl) {
+        AniAnimatedVisibility(visible = matchVideoConfig.enableNestedUrl) {
             OutlinedTextField(
                 matchVideoConfig.matchNestedUrl, { matchVideoConfig.matchNestedUrl = it },
                 Modifier

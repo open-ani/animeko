@@ -1,9 +1,9 @@
 name: 新增数据源
-description: 请求添加一个新数据源的支持
+description: 请求添加一个新数据源的支持. 注意, 我们只接受 Jellyfin/Emby/Ikaros 等偏开放的平台, 不接受视频网站.
 labels:
   - "t: feature"
   - "s: media/new-source"
-  - "N"
+  - "P2"
 
 body:
   - type: markdown
@@ -12,14 +12,12 @@ body:
   - type: textarea
     id: issue-description
     attributes:
-      label: 数据源站点和截图
-      description: 网站地址, 截图, 以及描述
+      label: 官网和截图
+      description: 官网地址, 截图, 以及描述
       placeholder: |
         https://example.com
         
         *我是一张截图*
-        
-        资源比较全面
     validations:
       required: true
 
@@ -27,8 +25,8 @@ body:
     id: version-ani
     attributes:
       label: 当前 Ani 版本号
-      description: 你正在使用的 Ani 版本号，可在 "设置-界面与应用" 中找到，如 `3.0.0`。
-      placeholder: "例如: 3.0.0"
+      description: 你正在使用的 Ani 版本号，可在 "设置-界面与应用" 中找到，如 `4.0.0`。
+      placeholder: "例如: 4.0.0"
     validations:
       required: true
 
@@ -39,7 +37,7 @@ body:
       multiple: true
       options:
         - BT 论坛
-        - 在线视频网站
+        - 开源软件
         - 其他 (请在上方描述中补充)
     validations:
       required: true

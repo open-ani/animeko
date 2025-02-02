@@ -28,7 +28,7 @@ import kotlinx.coroutines.flow.Flow
 import me.him188.ani.app.data.models.preference.ProxyConfig
 import me.him188.ani.app.data.models.preference.ProxyMode
 import me.him188.ani.app.data.models.preference.ProxySettings
-import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
+import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.settings.framework.SettingsState
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.TextFieldItem
@@ -101,7 +101,7 @@ internal fun SettingsScope.GlobalProxyGroup(
 
         AnimatedContent(
             selectedMode,
-            transitionSpec = AniThemeDefaults.standardAnimatedContentTransition,
+            transitionSpec = LocalAniMotionScheme.current.animatedContent.standard,
         ) { mode ->
             Column {
                 when (mode) {

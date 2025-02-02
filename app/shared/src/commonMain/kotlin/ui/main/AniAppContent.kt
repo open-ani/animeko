@@ -42,47 +42,46 @@ import me.him188.ani.app.domain.mediasource.rss.RssMediaSource
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSource
 import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.navigation.LocalNavigator
-import me.him188.ani.app.navigation.MainScenePage
+import me.him188.ani.app.navigation.MainScreenPage
 import me.him188.ani.app.navigation.NavRoutes
 import me.him188.ani.app.navigation.OverrideNavigation
 import me.him188.ani.app.navigation.SettingsTab
 import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.ui.adaptive.navigation.AniNavigationSuiteDefaults
-import me.him188.ani.app.ui.cache.CacheManagementPage
+import me.him188.ani.app.ui.cache.CacheManagementScreen
 import me.him188.ani.app.ui.cache.CacheManagementViewModel
-import me.him188.ani.app.ui.cache.details.MediaCacheDetailsPage
 import me.him188.ani.app.ui.cache.details.MediaCacheDetailsPageViewModel
+import me.him188.ani.app.ui.cache.details.MediaCacheDetailsScreen
 import me.him188.ani.app.ui.cache.details.MediaDetailsLazyGrid
-import me.him188.ani.app.ui.exploration.schedule.SchedulePage
-import me.him188.ani.app.ui.exploration.schedule.SchedulePageViewModel
+import me.him188.ani.app.ui.exploration.schedule.ScheduleScreen
+import me.him188.ani.app.ui.exploration.schedule.ScheduleViewModel
+import me.him188.ani.app.ui.foundation.animation.NavigationMotionScheme
+import me.him188.ani.app.ui.foundation.animation.ProvideAniMotionCompositionLocals
 import me.him188.ani.app.ui.foundation.layout.LocalSharedTransitionScopeProvider
 import me.him188.ani.app.ui.foundation.layout.SharedTransitionScopeProvider
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
-import me.him188.ani.app.ui.foundation.theme.LocalNavigationMotionScheme
-import me.him188.ani.app.ui.foundation.theme.NavigationMotionScheme
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.app.ui.profile.BangumiOAuthViewModel
-import me.him188.ani.app.ui.profile.auth.AniContactList
-import me.him188.ani.app.ui.profile.auth.BangumiOAuthScene
-import me.him188.ani.app.ui.profile.auth.BangumiTokenAuthPage
+import me.him188.ani.app.ui.profile.auth.BangumiOAuthScreen
+import me.him188.ani.app.ui.profile.auth.BangumiTokenAuthScreen
 import me.him188.ani.app.ui.profile.auth.BangumiTokenAuthViewModel
 import me.him188.ani.app.ui.profile.auth.WelcomeScene
 import me.him188.ani.app.ui.profile.auth.WelcomeViewModel
-import me.him188.ani.app.ui.settings.SettingsPage
+import me.him188.ani.app.ui.settings.SettingsScreen
 import me.him188.ani.app.ui.settings.SettingsViewModel
-import me.him188.ani.app.ui.settings.mediasource.rss.EditRssMediaSourcePage
+import me.him188.ani.app.ui.settings.mediasource.rss.EditRssMediaSourceScreen
 import me.him188.ani.app.ui.settings.mediasource.rss.EditRssMediaSourceViewModel
-import me.him188.ani.app.ui.settings.mediasource.selector.EditSelectorMediaSourcePage
+import me.him188.ani.app.ui.settings.mediasource.selector.EditSelectorMediaSourceScreen
 import me.him188.ani.app.ui.settings.mediasource.selector.EditSelectorMediaSourceViewModel
-import me.him188.ani.app.ui.settings.tabs.media.torrent.peer.PeerFilterSettingsPage
+import me.him188.ani.app.ui.settings.tabs.media.torrent.peer.PeerFilterSettingsScreen
 import me.him188.ani.app.ui.settings.tabs.media.torrent.peer.PeerFilterSettingsViewModel
-import me.him188.ani.app.ui.subject.cache.SubjectCacheScene
+import me.him188.ani.app.ui.subject.cache.SubjectCacheScreen
 import me.him188.ani.app.ui.subject.cache.SubjectCacheViewModelImpl
-import me.him188.ani.app.ui.subject.details.SubjectDetailsPage
+import me.him188.ani.app.ui.subject.details.SubjectDetailsScreen
 import me.him188.ani.app.ui.subject.details.SubjectDetailsViewModel
-import me.him188.ani.app.ui.subject.episode.EpisodeScene
+import me.him188.ani.app.ui.subject.episode.EpisodeScreen
 import me.him188.ani.app.ui.subject.episode.EpisodeViewModel
 import me.him188.ani.datasources.api.source.FactoryId
 import kotlin.reflect.typeOf
@@ -101,9 +100,10 @@ fun AniAppContent(
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         CompositionLocalProvider(
             LocalNavigator provides aniNavigator,
-            LocalNavigationMotionScheme provides NavigationMotionScheme.calculate(),
         ) {
-            AniAppContentImpl(aniNavigator, initialRoute, Modifier.fillMaxSize())
+            ProvideAniMotionCompositionLocals {
+                AniAppContentImpl(aniNavigator, initialRoute, Modifier.fillMaxSize())
+            }
         }
     }
 }
@@ -122,7 +122,7 @@ private fun AniAppContentImpl(
     val navMotionScheme by rememberUpdatedState(NavigationMotionScheme.current)
 
     SharedTransitionLayout {
-        NavHost(navController, startDestination = NavRoutes.Welcome, modifier) {
+        NavHost(navController, startDestination = initialRoute, modifier) {
             val enterTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition? =
                 { navMotionScheme.enterTransition }
             val exitTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition? =
@@ -138,12 +138,7 @@ private fun AniAppContentImpl(
                 popEnterTransition = popEnterTransition,
                 popExitTransition = popExitTransition,
             ) { // 由 SessionManager.requireAuthorize 跳转到
-                if (false) WelcomeScene(viewModel { WelcomeViewModel() }, Modifier.fillMaxSize())
-                me.him188.ani.app.ui.wizard.WelcomePage(
-                    viewModel { me.him188.ani.app.ui.wizard.WelcomeViewModel() },
-                    contactActions = { AniContactList() },
-                    windowInsets = windowInsets,
-                )
+                WelcomeScene(viewModel { WelcomeViewModel() }, Modifier.fillMaxSize())
             }
             composable<NavRoutes.Main>(
                 enterTransition = enterTransition,
@@ -151,7 +146,7 @@ private fun AniAppContentImpl(
                 popEnterTransition = popEnterTransition,
                 popExitTransition = popExitTransition,
                 typeMap = mapOf(
-                    typeOf<MainScenePage>() to MainScenePage.NavType,
+                    typeOf<MainScreenPage>() to MainScreenPage.NavType,
                 ),
             ) { backStack ->
                 val route = backStack.toRoute<NavRoutes.Main>()
@@ -164,7 +159,7 @@ private fun AniAppContentImpl(
                 OverrideNavigation(
                     {
                         object : AniNavigator by it {
-                            override fun navigateMain(page: MainScenePage, requestFocus: Boolean) {
+                            override fun navigateMain(page: MainScreenPage, requestFocus: Boolean) {
                                 currentPage = page
                             }
                         }
@@ -175,7 +170,7 @@ private fun AniAppContentImpl(
                             this@SharedTransitionLayout, this,
                         ),
                     ) {
-                        MainScene(
+                        MainScreen(
                             page = currentPage,
                             onNavigateToPage = { currentPage = it },
                             onNavigateToSettings = { aniNavigator.navigateSettings() },
@@ -190,7 +185,7 @@ private fun AniAppContentImpl(
                 popEnterTransition = popEnterTransition,
                 popExitTransition = popExitTransition,
             ) {
-                BangumiOAuthScene(
+                BangumiOAuthScreen(
                     viewModel { BangumiOAuthViewModel() },
                     navigationIcon = {
                         BackNavigationIconButton(
@@ -208,7 +203,7 @@ private fun AniAppContentImpl(
                 popEnterTransition = popEnterTransition,
                 popExitTransition = popExitTransition,
             ) {
-                BangumiTokenAuthPage(
+                BangumiTokenAuthScreen(
                     viewModel { BangumiTokenAuthViewModel() },
                     Modifier.fillMaxSize(),
                     windowInsets,
@@ -243,7 +238,7 @@ private fun AniAppContentImpl(
                         this@SharedTransitionLayout, this,
                     ),
                 ) {
-                    SubjectDetailsPage(
+                    SubjectDetailsScreen(
                         vm,
                         onPlay = { aniNavigator.navigateEpisodeDetails(details.subjectId, it) },
                         onLoadErrorRetry = { vm.reload() },
@@ -276,7 +271,7 @@ private fun AniAppContentImpl(
                         context,
                     )
                 }
-                EpisodeScene(vm, Modifier.fillMaxSize(), windowInsets)
+                EpisodeScreen(vm, Modifier.fillMaxSize(), windowInsets)
             }
             composable<NavRoutes.Settings>(
                 enterTransition = enterTransition,
@@ -288,7 +283,7 @@ private fun AniAppContentImpl(
                 ),
             ) { backStackEntry ->
                 val route = backStackEntry.toRoute<NavRoutes.Settings>()
-                SettingsPage(
+                SettingsScreen(
                     viewModel {
                         SettingsViewModel()
                     },
@@ -310,7 +305,7 @@ private fun AniAppContentImpl(
                 popExitTransition = popExitTransition,
             ) { backStackEntry ->
                 val route = backStackEntry.toRoute<NavRoutes.Caches>()
-                CacheManagementPage(
+                CacheManagementScreen(
                     viewModel { CacheManagementViewModel(aniNavigator) },
                     navigationIcon = {
                         BackNavigationIconButton(
@@ -329,7 +324,7 @@ private fun AniAppContentImpl(
                 popExitTransition = popExitTransition,
             ) { backStackEntry ->
                 val route = backStackEntry.toRoute<NavRoutes.CacheDetail>()
-                MediaCacheDetailsPage(
+                MediaCacheDetailsScreen(
                     viewModel(key = route.toString()) { MediaCacheDetailsPageViewModel(route.cacheId) },
                     navigationIcon = {
                         BackNavigationIconButton(
@@ -351,7 +346,7 @@ private fun AniAppContentImpl(
                 val route = backStackEntry.toRoute<NavRoutes.SubjectCaches>()
                 // Don't use rememberViewModel to save memory
                 val vm = remember(route.subjectId) { SubjectCacheViewModelImpl(route.subjectId) }
-                SubjectCacheScene(
+                SubjectCacheScreen(
                     vm, Modifier.fillMaxSize(), windowInsets,
                     navigationIcon = {
                         BackNavigationIconButton(
@@ -372,7 +367,7 @@ private fun AniAppContentImpl(
                 val factoryId = FactoryId(route.factoryId)
                 val mediaSourceInstanceId = route.mediaSourceInstanceId
                 when (factoryId) {
-                    RssMediaSource.FactoryId -> EditRssMediaSourcePage(
+                    RssMediaSource.FactoryId -> EditRssMediaSourceScreen(
                         viewModel<EditRssMediaSourceViewModel>(key = mediaSourceInstanceId) {
                             EditRssMediaSourceViewModel(mediaSourceInstanceId)
                         },
@@ -397,7 +392,7 @@ private fun AniAppContentImpl(
 
                     SelectorMediaSource.FactoryId -> {
                         val context = LocalContext.current
-                        EditSelectorMediaSourcePage(
+                        EditSelectorMediaSourceScreen(
                             viewModel<EditSelectorMediaSourceViewModel>(key = mediaSourceInstanceId) {
                                 EditSelectorMediaSourceViewModel(mediaSourceInstanceId, context)
                             },
@@ -424,7 +419,7 @@ private fun AniAppContentImpl(
             ) { backStackEntry ->
                 val route = backStackEntry.toRoute<NavRoutes.TorrentPeerSettings>()
                 val viewModel = viewModel { PeerFilterSettingsViewModel() }
-                PeerFilterSettingsPage(
+                PeerFilterSettingsScreen(
                     viewModel.state,
                     navigationIcon = {
                         BackNavigationIconButton(
@@ -443,9 +438,9 @@ private fun AniAppContentImpl(
             ) { backStackEntry ->
                 val route = backStackEntry.toRoute<NavRoutes.Schedule>()
 
-                val vm = viewModel { SchedulePageViewModel() }
+                val vm = viewModel { ScheduleViewModel() }
                 val presentation by vm.presentationFlow.collectAsStateWithLifecycle()
-                SchedulePage(
+                ScheduleScreen(
                     presentation,
                     onRetry = { vm.refresh() },
                     onClickItem = {

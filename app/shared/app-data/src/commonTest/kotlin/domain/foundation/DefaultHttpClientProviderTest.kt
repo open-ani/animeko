@@ -59,7 +59,10 @@ sealed class DefaultHttpClientProviderTest {
             return DefaultHttpClientProvider(
                 proxyProvider = proxyProvider,
                 backgroundScope = this,
-                featureHandlers = listOf(UserAgentFeatureHandler, UseBangumiTokenFeatureHandler(flowOf(null))),
+                featureHandlers = listOf(
+                    UserAgentFeatureHandler,
+                    UseBangumiTokenFeatureHandler(flowOf(null), onRefresh = { null }),
+                ),
             ).apply {
                 backgroundScope.coroutineContext.job.invokeOnCompletion {
                     launch(NonCancellable) {

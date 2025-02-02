@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -9,12 +9,6 @@
 
 package me.him188.ani.app.ui.cache.details
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.snap
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -43,6 +37,8 @@ import kotlinx.coroutines.flow.map
 import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.ui.foundation.AbstractViewModel
+import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
+import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.interaction.WindowDragArea
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.datasources.api.Media
@@ -78,13 +74,13 @@ class MediaCacheDetailsPageViewModel(
 }
 
 @Composable
-fun MediaCacheDetailsPage(
+fun MediaCacheDetailsScreen(
     vm: MediaCacheDetailsPageViewModel,
     navigationIcon: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
 ) {
-    MediaCacheDetailsPage(
+    MediaCacheDetailsScreen(
         media = vm.media,
         sourceInfo = vm.sourceInfo,
         navigationIcon = navigationIcon,
@@ -94,7 +90,7 @@ fun MediaCacheDetailsPage(
 }
 
 @Composable
-fun MediaCacheDetailsPage(
+fun MediaCacheDetailsScreen(
     media: Media?,
     sourceInfo: MediaSourceInfo?,
     navigationIcon: @Composable () -> Unit,
@@ -123,13 +119,10 @@ fun MediaCacheDetailsPage(
                     .widthIn(max = BottomSheetDefaults.SheetMaxWidth),
             ) {
                 Surface(Modifier.fillMaxHeight()) {
-                    AnimatedVisibility(
+                    AniAnimatedVisibility(
                         visible = media != null,
-                        enter = fadeIn(tween(500)) + slideInVertically(
-                            tween(600),
-                            initialOffsetY = { 50.coerceAtMost(it) },
-                        ),
-                        exit = fadeOut(snap()),
+                        enter = LocalAniMotionScheme.current.animatedVisibility.screenEnter,
+                        exit = LocalAniMotionScheme.current.animatedVisibility.screenExit,
                     ) {
                         media?.let {
                             Surface(

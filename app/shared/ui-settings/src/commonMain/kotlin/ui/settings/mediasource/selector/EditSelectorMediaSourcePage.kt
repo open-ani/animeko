@@ -144,7 +144,7 @@ class EditSelectorMediaSourcePageState(
 }
 
 @Composable
-fun EditSelectorMediaSourcePage(
+fun EditSelectorMediaSourceScreen(
     vm: EditSelectorMediaSourceViewModel,
     modifier: Modifier = Modifier,
     navigator: ThreePaneScaffoldNavigator<*> = rememberListDetailPaneScaffoldNavigator(),
@@ -153,7 +153,7 @@ fun EditSelectorMediaSourcePage(
 ) {
     val state by vm.state.collectAsStateWithLifecycle(null)
     state?.let {
-        EditSelectorMediaSourcePage(
+        EditSelectorMediaSourceScreen(
             it, modifier, navigator, windowInsets,
             navigationIcon,
         )
@@ -161,7 +161,7 @@ fun EditSelectorMediaSourcePage(
 }
 
 @Composable
-fun EditSelectorMediaSourcePage(
+fun EditSelectorMediaSourceScreen(
     state: EditSelectorMediaSourcePageState,
     modifier: Modifier = Modifier,
     navigator: ThreePaneScaffoldNavigator<*> = rememberListDetailPaneScaffoldNavigator(),
