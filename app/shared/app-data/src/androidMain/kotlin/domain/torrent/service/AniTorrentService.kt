@@ -18,6 +18,7 @@ import android.os.IBinder
 import android.os.PowerManager
 import android.os.Process
 import android.os.SystemClock
+import androidx.annotation.RequiresApi
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.CompletableDeferred
@@ -253,6 +254,7 @@ sealed class AniTorrentService : LifecycleService() {
  *
  * 在 manifest 的 fgsType 是 mediaPlayback, 没被限制运行
  */
+@RequiresApi(34)
 class AniTorrentServiceApi34 : AniTorrentService()
 
 /**
