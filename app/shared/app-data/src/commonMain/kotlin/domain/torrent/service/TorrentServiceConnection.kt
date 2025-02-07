@@ -12,6 +12,8 @@ package me.him188.ani.app.domain.torrent.service
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.atomicfu.atomic
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineDispatcher
@@ -83,24 +85,35 @@ class LifecycleAwareTorrentServiceConnection<T : Any>(
     private val isServiceConnected: MutableStateFlow<Boolean> = MutableStateFlow(false)
     private val startServiceLock = Mutex()
 
+    private var lifecycleLoopLock = SynchronizedObject()
+    private var started = false
+
     override val connected: StateFlow<Boolean> = isServiceConnected
 
     fun startLifecycleLoop() {
-        scope.launch {
-            lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-                isAtForeground.value = true
-                try {
-                    if (!isServiceConnected.value) {
-                        logger.debug { "Lifecycle resume: Service is not connected, start connecting..." }
-                        startServiceWithRetry()
-                    }
+        if (started) return
 
-                    awaitCancellation()
-                } catch (_: CancellationException) {
-                    isAtForeground.value = false
-                    logger.debug { "Lifecycle pause: App moved to background." }
+        synchronized(lifecycleLoopLock) {
+            if (started) return
+
+            scope.launch {
+                lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                    isAtForeground.value = true
+                    try {
+                        if (!isServiceConnected.value) {
+                            logger.debug { "Lifecycle resume: Service is not connected, start connecting..." }
+                            startServiceWithRetry()
+                        }
+
+                        awaitCancellation()
+                    } catch (_: CancellationException) {
+                        isAtForeground.value = false
+                        logger.debug { "Lifecycle pause: App moved to background." }
+                    }
                 }
             }
+
+            started = true
         }
     }
     
@@ -157,6 +170,7 @@ class LifecycleAwareTorrentServiceConnection<T : Any>(
             }
             binderDeferred.complete(binder)
             isServiceConnected.value = true
+
             return
         }
         if (!isServiceConnected.value) {
