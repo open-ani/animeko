@@ -9,15 +9,8 @@
 
 package me.him188.ani.app.domain.torrent
 
-import androidx.lifecycle.DefaultLifecycleObserver
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleObserver
-import androidx.lifecycle.LifecycleOwner
-import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -61,99 +54,5 @@ class TestTorrentServiceConnection(
 
     fun triggerServiceDisconnected() {
         onServiceDisconnected()
-    }
-}
-
-private class TestLifecycle(private val owner: LifecycleOwner) : Lifecycle() {
-    private val observers = MutableStateFlow(persistentListOf<DefaultLifecycleObserver>())
-    private val _currentState = MutableStateFlow(State.INITIALIZED)
-
-    override val currentState: State
-        get() = _currentState.value
-
-    override fun addObserver(observer: LifecycleObserver) {
-        check(observer is DefaultLifecycleObserver) {
-            "$observer must implement androidx.lifecycle.DefaultLifecycleObserver."
-        }
-        observers.update { it.add(observer) }
-    }
-
-    override fun removeObserver(observer: LifecycleObserver) {
-        check(observer is DefaultLifecycleObserver) {
-            "$observer must implement androidx.lifecycle.DefaultLifecycleObserver"
-        }
-        observers.update { it.remove(observer) }
-    }
-
-    fun moveToState(state: State) {
-        observers.value.forEach {
-            when (state) {
-                State.INITIALIZED -> error("cannot move to INITIALIZED state")
-                State.CREATED -> when (_currentState.value) {
-                    State.INITIALIZED -> it.onCreate(owner)
-                    State.CREATED -> {}
-                    State.STARTED -> it.onStop(owner)
-                    State.RESUMED -> {
-                        it.onPause(owner)
-                        it.onStop(owner)
-                    }
-                    State.DESTROYED -> error("state is DESTROYED and cannot move to others")
-                }
-                State.STARTED -> when (_currentState.value) {
-                    State.INITIALIZED -> {
-                        it.onCreate(owner)
-                        it.onStart(owner)
-                    }
-
-                    State.CREATED -> it.onStart(owner)
-                    State.STARTED -> {}
-                    State.RESUMED -> it.onPause(owner)
-                    State.DESTROYED -> error("state is DESTROYED and cannot move to others")
-                }
-                State.RESUMED -> when (_currentState.value) {
-                    State.INITIALIZED -> {
-                        it.onCreate(owner)
-                        it.onStart(owner)
-                        it.onResume(owner)
-                    }
-
-                    State.CREATED -> {
-                        it.onStart(owner)
-                        it.onResume(owner)
-                    }
-
-                    State.STARTED -> it.onResume(owner)
-                    State.RESUMED -> {}
-                    State.DESTROYED -> error("state is DESTROYED and cannot move to others")
-                }
-                State.DESTROYED -> when (_currentState.value) {
-                    State.INITIALIZED -> { }
-                    State.CREATED -> it.onDestroy(owner)
-                    State.STARTED -> {
-                        it.onStop(owner)
-                        it.onDestroy(owner)
-                    }
-
-                    State.RESUMED -> {
-                        it.onPause(owner)
-                        it.onStop(owner)
-                        it.onDestroy(owner)
-                    }
-                    State.DESTROYED -> error("state is DESTROYED and cannot move to others")
-                }
-            }
-        }
-        _currentState.value = state
-    }
-}
-
-class TestLifecycleOwner : LifecycleOwner {
-    private val lifecycleRegistry = TestLifecycle(this)
-
-    override val lifecycle: Lifecycle
-        get() = lifecycleRegistry
-
-    fun moveTo(state: Lifecycle.State) {
-        lifecycleRegistry.moveToState(state)
     }
 }

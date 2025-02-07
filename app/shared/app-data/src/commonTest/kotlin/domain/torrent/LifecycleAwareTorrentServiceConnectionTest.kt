@@ -10,6 +10,7 @@
 package me.him188.ani.app.domain.torrent
 
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.testing.TestLifecycleOwner
 import app.cash.turbine.test
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -38,7 +39,7 @@ class LifecycleAwareTorrentServiceConnectionTest : AbstractTorrentServiceConnect
             assertFalse(awaitItem(), "Initially, connected should be false.")
 
             // trigger on resumed
-            testLifecycle.moveTo(Lifecycle.State.RESUMED)
+            testLifecycle.setCurrentState(Lifecycle.State.RESUMED)
             assertTrue(awaitItem(), "After service is connected, connected should become true.")
 
             // completed
@@ -62,7 +63,7 @@ class LifecycleAwareTorrentServiceConnectionTest : AbstractTorrentServiceConnect
             assertFalse(awaitItem(), "Initially, connected should be false.")
 
             // Move to RESUMED
-            testLifecycle.moveTo(Lifecycle.State.RESUMED)
+            testLifecycle.setCurrentState(Lifecycle.State.RESUMED)
 
             // Because startService() fails repeatedly in the retry loop, connected never becomes true
             // We'll watch for a short while and confirm it does not become true
@@ -91,8 +92,8 @@ class LifecycleAwareTorrentServiceConnectionTest : AbstractTorrentServiceConnect
         // The call hasn't returned yet, because we haven't simulated connect
         advanceTimeBy(200) // Enough to start the service, but not connect
         assertTrue(!binderDeferred.isCompleted)
-        
-        testLifecycle.moveTo(Lifecycle.State.RESUMED)
+
+        testLifecycle.setCurrentState(Lifecycle.State.RESUMED)
 
         // Once connected, getBinder should complete with the fake binder
         val binder = binderDeferred.await()
@@ -112,7 +113,7 @@ class LifecycleAwareTorrentServiceConnectionTest : AbstractTorrentServiceConnect
         connection.connected.test {
             assertFalse(awaitItem(), "Initially, connected should be false.")
             // Wait for the startService invocation
-            testLifecycle.moveTo(Lifecycle.State.RESUMED)
+            testLifecycle.setCurrentState(Lifecycle.State.RESUMED)
             advanceTimeBy(200)
             // Now it’s connected
             assertTrue(awaitItem(), "Service should be connected.")
@@ -144,13 +145,13 @@ class LifecycleAwareTorrentServiceConnectionTest : AbstractTorrentServiceConnect
             assertFalse(awaitItem(), "Initially, connected should be false.")
 
             // Wait for the startService invocation
-            testLifecycle.moveTo(Lifecycle.State.RESUMED)
+            testLifecycle.setCurrentState(Lifecycle.State.RESUMED)
             advanceTimeBy(200)
             // Now it’s connected
             assertTrue(awaitItem(), "Service should be connected.")
 
             // Move lifecycle to CREATED
-            testLifecycle.moveTo(Lifecycle.State.CREATED)
+            testLifecycle.setCurrentState(Lifecycle.State.CREATED)
             // Now simulate a service disconnect
             connection.triggerServiceDisconnected()
 
