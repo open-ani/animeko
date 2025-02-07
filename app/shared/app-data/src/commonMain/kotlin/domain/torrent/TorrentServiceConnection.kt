@@ -34,9 +34,9 @@ import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 
 /**
- * torrent 服务与 APP 通信接口.
+ * torrent 服务与 APP 通信接口. T 为通信接口的类型
  *
- * 此接口仅负责服务与 APP 之间的通信, 不负责服务的启动和终止
+ * 此接口仅负责服务与 APP 之间的通信, 不负责服务的启动和终止.
  */
 interface TorrentServiceConnection<T : Any> {
     /**
