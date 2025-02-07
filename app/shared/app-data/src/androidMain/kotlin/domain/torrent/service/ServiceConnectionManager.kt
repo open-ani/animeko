@@ -28,8 +28,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.newSingleThreadContext
 import kotlinx.coroutines.suspendCancellableCoroutine
 import me.him188.ani.app.domain.torrent.IRemoteAniTorrentEngine
-import me.him188.ani.app.domain.torrent.LifecycleAwareTorrentServiceConnection
-import me.him188.ani.app.domain.torrent.TorrentServiceConnection
 import me.him188.ani.utils.logging.debug
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.logger
