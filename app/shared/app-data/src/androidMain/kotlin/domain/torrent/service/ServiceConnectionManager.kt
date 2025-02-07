@@ -159,6 +159,12 @@ class ServiceConnectionManager<T : Any>(
     }
 }
 
+/**
+ * According to [documentation](https://developer.android.com/about/versions/15/behavior-changes-15#datasync-timeout):
+ * in Android 15, foreground service with type `dataSync` or `mediaProcessing` is limited to run in background for 6 hours.
+ *
+ * This observer will listen to the time limit exceeded broadcast and update service connection state of app.
+ */
 private class ForegroundServiceTimeLimitObserver(
     private val context: Context,
     onServiceTimeLimitExceeded: () -> Unit
