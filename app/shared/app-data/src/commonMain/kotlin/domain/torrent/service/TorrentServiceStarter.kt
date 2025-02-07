@@ -25,9 +25,9 @@ interface TorrentServiceStarter<T : Any> {
 
 sealed class ServiceStartException : Exception() {
     /**
-     * 详情查看 `Context.startForegroundService` 的返回值.
+     * 详情查看 `Context.startForegroundService`.
      */
-    data object ServiceNotExisted : ServiceStartException()
+    data class StartFailed(override val cause: Throwable? = null) : ServiceStartException()
 
     /**
      * 服务启动了, 但服务回应了启动失败, 详情查看 [AniTorrentService][me.him188.ani.app.domain.torrent.service.AniTorrentService] 中的 `INTENT_STARTUP`.

@@ -67,12 +67,20 @@ class AniTorrentServiceStarter(
                 context.unregisterReceiver(receiver)
             }
 
-            val result = onRequiredRestartService()
-            if (result == null) {
+            val startResult = try {
+                onRequiredRestartService()
+            } catch (e: Exception) {
                 context.unregisterReceiver(receiver)
-                cont.resumeWithException(ServiceStartException.ServiceNotExisted)
+
+                cont.resumeWithException(ServiceStartException.StartFailed(e))
+                return@suspendCancellableCoroutine
+            }
+
+            if (startResult == null) {
+                context.unregisterReceiver(receiver)
+                cont.resumeWithException(ServiceStartException.StartFailed())
             } else {
-                logger.debug { "[1/4] Started service, component name: $result" }
+                logger.debug { "[1/4] Started service, result: $startResult" }
             }
         }
 
