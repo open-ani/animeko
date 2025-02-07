@@ -22,9 +22,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import me.him188.ani.android.activity.MainActivity
 import me.him188.ani.app.domain.media.cache.MediaCacheNotificationTask
+import me.him188.ani.app.domain.torrent.IRemoteAniTorrentEngine
 import me.him188.ani.app.domain.torrent.TorrentManager
-import me.him188.ani.app.domain.torrent.service.AndroidTorrentServiceConnection
 import me.him188.ani.app.domain.torrent.service.AniTorrentService
+import me.him188.ani.app.domain.torrent.service.ServiceConnectionManager
 import me.him188.ani.app.platform.AndroidLoggingConfigurator
 import me.him188.ani.app.platform.JvmLogHelper
 import me.him188.ani.app.platform.createAppRootCoroutineScope
@@ -86,15 +87,18 @@ class AniApplication : Application() {
 
 
         val scope = createAppRootCoroutineScope()
-        val torrentServiceConnection = AndroidTorrentServiceConnection(
+        val connectionManager = ServiceConnectionManager(
             this,
             ::startAniTorrentService,
+            { IRemoteAniTorrentEngine.Stub.asInterface(it) },
             scope.coroutineContext,
+            ProcessLifecycleOwner.get().lifecycle,
         )
-        if (FEATURE_USE_TORRENT_SERVICE) {
-            ProcessLifecycleOwner.get().lifecycle.addObserver(torrentServiceConnection)
-        }
         instance = Instance()
+
+        if (FEATURE_USE_TORRENT_SERVICE) {
+            connectionManager.startLifecycleLoop()
+        }
 
         scope.launch(Dispatchers.IO_) {
             runCatching {
@@ -112,7 +116,8 @@ class AniApplication : Application() {
         startKoin {
             androidContext(this@AniApplication)
             modules(getCommonKoinModule({ this@AniApplication }, scope))
-            modules(getAndroidModules(defaultTorrentCacheDir, torrentServiceConnection, scope))
+
+            modules(getAndroidModules(defaultTorrentCacheDir, connectionManager.connection, scope))
         }.startCommonKoinModule(scope)
 
         val koin = getKoin()

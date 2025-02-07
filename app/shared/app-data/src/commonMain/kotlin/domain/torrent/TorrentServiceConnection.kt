@@ -9,15 +9,14 @@
 
 package me.him188.ani.app.domain.torrent
 
-import androidx.annotation.CallSuper
-import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineName
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -64,12 +63,16 @@ interface TorrentServiceConnection<T : Any> {
  * 实现细节:
  * - 实现 [startService] 方法, 用于实际的启动服务, 并且要连接服务.
  *
+ * @param startService 启动服务并返回[服务通信对象][T]接口, 若返回 null 代表启动失败.
+ *   这个方法将在 `singleThreadDispatcher` 执行, 并且同时只有一个在执行.
  * @param singleThreadDispatcher 用于执行内部逻辑的调度器, 需要使用单线程来保证内部逻辑的线程安全.
  */
-abstract class LifecycleAwareTorrentServiceConnection<T : Any>(
+class LifecycleAwareTorrentServiceConnection<T : Any>(
     parentCoroutineContext: CoroutineContext = EmptyCoroutineContext,
     singleThreadDispatcher: CoroutineDispatcher,
-) : DefaultLifecycleObserver, TorrentServiceConnection<T> {
+    private val lifecycle: Lifecycle,
+    private val startService: suspend () -> T?,
+) : TorrentServiceConnection<T> {
     private val logger = logger(this::class.simpleName ?: "TorrentServiceConnection")
 
     // we assert it is a single thread dispatcher
@@ -83,19 +86,31 @@ abstract class LifecycleAwareTorrentServiceConnection<T : Any>(
 
     override val connected: StateFlow<Boolean> = isServiceConnected
 
-    /**
-     * 启动服务并返回[服务通信对象][T]接口, 若返回 null 代表启动失败.
-     *
-     * 这个方法将在 `singleThreadDispatcher` 执行, 并且同时只有一个在执行.
-     */
-    abstract suspend fun startService(): T?
+    fun startLifecycleLoop() {
+        scope.launch {
+            lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                isAtForeground.value = true
+                try {
+                    if (!isServiceConnected.value) {
+                        logger.debug { "Lifecycle resume: Service is not connected, start connecting..." }
+                        startServiceWithRetry()
+                    }
+
+                    awaitCancellation()
+                } catch (_: CancellationException) {
+                    isAtForeground.value = false
+                    logger.debug { "Lifecycle pause: App moved to background." }
+                }
+            }
+        }
+    }
     
     /**
      * 服务已断开连接, 通信对象变为不可用.
      * 如果目前 APP 还在前台, 就要尝试重启并重连服务.
      */
     fun onServiceDisconnected() {
-        scope.launch(CoroutineName("TorrentServiceConnection - On Service Disconnected")) {
+        scope.launch(CoroutineName("TorrentServiceConnection - Lifecycle")) {
             if (!isServiceConnected.value) {
                 // 已经是断开状态，直接忽略
                 return@launch
@@ -107,33 +122,10 @@ abstract class LifecycleAwareTorrentServiceConnection<T : Any>(
             // 若应用仍想要连接，则重新启动
             if (isAtForeground.value) {
                 logger.debug { "Service is disconnected and app is in foreground, restarting service connection in 3s..." }
-                delay(3000)
                 startServiceWithRetry()
             } else {
                 logger.debug { "Service is disconnected and app is in background." }
             }
-        }
-    }
-
-    /**
-     * APP 已进入前台, 此时需要保证服务可用.
-     */
-    @CallSuper
-    override fun onResume(owner: LifecycleOwner) {
-        scope.launch(CoroutineName("TorrentServiceConnection - Lifecycle Resume")) {
-            isAtForeground.value = true
-            if (!isServiceConnected.value) {
-                logger.debug { "Lifecycle resume: Service is not connected, start connecting..." }
-                startServiceWithRetry()
-            }
-        }
-    }
-
-    @CallSuper
-    override fun onPause(owner: LifecycleOwner) {
-        scope.launch(CoroutineName("TorrentServiceConnection - Lifecycle Pause")) {
-            isAtForeground.value = false
-            logger.debug { "Lifecycle pause: App moved to background." }
         }
     }
 

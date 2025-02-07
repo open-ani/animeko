@@ -43,7 +43,6 @@ import me.him188.ani.app.domain.torrent.TorrentManager
 import me.him188.ani.app.domain.torrent.TorrentServiceConnection
 import me.him188.ani.app.domain.torrent.client.RemoteAnitorrentEngine
 import me.him188.ani.app.domain.torrent.peer.PeerFilterSettings
-import me.him188.ani.app.domain.torrent.service.AndroidTorrentServiceConnection
 import me.him188.ani.app.domain.torrent.service.AniTorrentService
 import me.him188.ani.app.navigation.BrowserNavigator
 import me.him188.ani.app.platform.AndroidPermissionManager
@@ -80,7 +79,7 @@ import kotlin.system.exitProcess
 
 fun getAndroidModules(
     defaultTorrentCacheDir: File,
-    torrentServiceConnection: AndroidTorrentServiceConnection,
+    torrentServiceConnection: TorrentServiceConnection<IRemoteAniTorrentEngine>,
     coroutineScope: CoroutineScope,
 ) = module {
     single<PermissionManager> {

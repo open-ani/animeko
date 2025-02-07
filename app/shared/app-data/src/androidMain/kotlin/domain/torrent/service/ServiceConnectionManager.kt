@@ -19,6 +19,8 @@ import android.content.ServiceConnection
 import android.os.IBinder
 import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -29,6 +31,7 @@ import kotlinx.coroutines.newSingleThreadContext
 import kotlinx.coroutines.suspendCancellableCoroutine
 import me.him188.ani.app.domain.torrent.IRemoteAniTorrentEngine
 import me.him188.ani.app.domain.torrent.LifecycleAwareTorrentServiceConnection
+import me.him188.ani.app.domain.torrent.TorrentServiceConnection
 import me.him188.ani.utils.logging.debug
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.logger
@@ -45,7 +48,7 @@ import kotlin.time.Duration.Companion.minutes
  * 或其他可以涵盖 app 全局生命周期的自定义 [LifecycleOwner] 来管理服务连接.
  * 不能使用 [Activity][android.app.Activity] (例如 [ComponentActivity][androidx.core.app.ComponentActivity])
  * 的生命周期, 因为在屏幕旋转 (例如竖屏转全屏播放) 的时候 Activity 可能会摧毁并重新创建,
- * 这会导致 [AndroidTorrentServiceConnection] 错误地重新绑定服务或重启服务.
+ * 这会导致 [ServiceConnectionManager] 错误地重新绑定服务或重启服务.
  *
  * @see androidx.lifecycle.ProcessLifecycleOwner
  * @see ServiceConnection
@@ -53,32 +56,38 @@ import kotlin.time.Duration.Companion.minutes
  * @see me.him188.ani.android.AniApplication
  */
 @OptIn(DelicateCoroutinesApi::class)
-class AndroidTorrentServiceConnection(
+class ServiceConnectionManager<T : Any>(
     private val context: Context,
     private val onRequiredRestartService: () -> ComponentName?,
+    private val mapBinder: (IBinder?) -> T?,
     parentCoroutineContext: CoroutineContext = Dispatchers.Default,
-) : ServiceConnection, LifecycleAwareTorrentServiceConnection<IRemoteAniTorrentEngine>(
-    parentCoroutineContext = parentCoroutineContext,
-    singleThreadDispatcher = newSingleThreadContext("AndroidTorrentServiceConnection"),
-) {
-    private val logger = logger<AndroidTorrentServiceConnection>()
+    private val lifecycle: Lifecycle,
+) : ServiceConnection {
+    private val logger = logger<ServiceConnectionManager<*>>()
 
     private val startupIntentFilter = IntentFilter(AniTorrentService.INTENT_STARTUP)
-    private val binderDeferred = MutableStateFlow(CompletableDeferred<IRemoteAniTorrentEngine?>())
+    private val binderDeferred = MutableStateFlow(CompletableDeferred<T?>())
 
-    private val acquireWakeLockIntent = Intent(context, AniTorrentService.actualServiceClass).apply {
-        putExtra("acquireWakeLock", 1.minutes.inWholeMilliseconds)
-    }
-    private var registered = false
-    private val timeExceedLimitIntentFilter = IntentFilter(AniTorrentService.INTENT_BACKGROUND_TIMEOUT)
-    private val timeExceedLimitReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            logger.warn { "Service background time exceeded." }
-            onServiceDisconnected()
-        }
+    private val _connection = LifecycleAwareTorrentServiceConnection(
+        parentCoroutineContext = parentCoroutineContext,
+        singleThreadDispatcher = newSingleThreadContext("AndroidTorrentServiceConnection"),
+        lifecycle = lifecycle,
+        startService = ::startService,
+    )
+
+    val connection: TorrentServiceConnection<T> get() = _connection
+
+    private val serviceTimeLimitObserver = ForegroundServiceTimeLimitObserver(context) {
+        logger.warn { "Service background time exceeded." }
+        _connection.onServiceDisconnected()
     }
 
-    override suspend fun startService(): IRemoteAniTorrentEngine? {
+    fun startLifecycleLoop() {
+        _connection.startLifecycleLoop()
+        lifecycle.addObserver(serviceTimeLimitObserver)
+    }
+
+    private suspend fun startService(): T? {
         val startResult = suspendCancellableCoroutine { cont ->
             val receiver = object : BroadcastReceiver() {
                 override fun onReceive(c: Context?, intent: Intent?) {
@@ -119,12 +128,12 @@ class AndroidTorrentServiceConnection(
         if (!currentDeferred.isCompleted) {
             currentDeferred.cancel()
         }
-        val newDeferred = CompletableDeferred<IRemoteAniTorrentEngine?>()
+        val newDeferred = CompletableDeferred<T?>()
         binderDeferred.value = newDeferred
 
         val bindResult = context.bindService(
             Intent(context, AniTorrentService.actualServiceClass),
-            this@AndroidTorrentServiceConnection,
+            this@ServiceConnectionManager,
             Context.BIND_ABOVE_CLIENT,
         )
         if (!bindResult) return null
@@ -141,12 +150,30 @@ class AndroidTorrentServiceConnection(
         if (service == null) {
             logger.error { "Service is connected, but got null binder!" }
         }
-        binderDeferred.value.complete(IRemoteAniTorrentEngine.Stub.asInterface(service))
+        binderDeferred.value.complete(mapBinder(service))
     }
 
     override fun onServiceDisconnected(name: ComponentName?) {
         binderDeferred.value.cancel(CancellationException("Service disconnected."))
-        onServiceDisconnected()
+        _connection.onServiceDisconnected()
+    }
+}
+
+private class ForegroundServiceTimeLimitObserver(
+    private val context: Context,
+    onServiceTimeLimitExceeded: () -> Unit
+) : DefaultLifecycleObserver {
+    private val logger = logger<ForegroundServiceTimeLimitObserver>()
+
+    private val acquireWakeLockIntent = Intent(context, AniTorrentService.actualServiceClass).apply {
+        putExtra("acquireWakeLock", 1.minutes.inWholeMilliseconds)
+    }
+    private var registered = false
+    private val timeExceedLimitIntentFilter = IntentFilter(AniTorrentService.INTENT_BACKGROUND_TIMEOUT)
+    private val timeExceedLimitReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            onServiceTimeLimitExceeded()
+        }
     }
 
     @RequiresApi(31)

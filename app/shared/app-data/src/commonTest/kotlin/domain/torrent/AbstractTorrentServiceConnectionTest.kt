@@ -14,11 +14,22 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
-import kotlin.coroutines.CoroutineContext
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 
 abstract class AbstractTorrentServiceConnectionTest {
+    protected val fakeBinder = "FAKE_BINDER_OBJECT"
+
+    protected val startServiceWithSuccess: suspend () -> String? = {
+        delay(300)
+        fakeBinder
+    }
+
+    protected val startServiceWithFail: suspend () -> String? = {
+        delay(100)
+        null
+    }
+    
     @BeforeTest
     fun installDispatcher() {
         Dispatchers.setMain(StandardTestDispatcher())
@@ -27,26 +38,5 @@ abstract class AbstractTorrentServiceConnectionTest {
     @AfterTest
     fun resetDispatcher() {
         Dispatchers.resetMain()
-    }
-}
-
-class TestLifecycleTorrentServiceConnection(
-    private val shouldStartServiceSucceed: Boolean = true,
-    coroutineContext: CoroutineContext = Dispatchers.Default,
-) : LifecycleAwareTorrentServiceConnection<String>(coroutineContext, Dispatchers.Default) {
-    private val fakeBinder = "FAKE_BINDER_OBJECT"
-
-    override suspend fun startService(): String? {
-        delay(100)
-        return if (shouldStartServiceSucceed) {
-            delay(500)
-            return fakeBinder
-        } else {
-            null
-        }
-    }
-
-    fun triggerServiceDisconnected() {
-        onServiceDisconnected()
     }
 }
