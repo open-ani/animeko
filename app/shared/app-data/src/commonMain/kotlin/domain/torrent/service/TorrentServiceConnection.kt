@@ -16,6 +16,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineName
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
@@ -164,7 +165,7 @@ class LifecycleAwareTorrentServiceConnection<T : Any>(
     }
 
     fun close() {
-        scope.launch {
+        scope.launch(NonCancellable) {
             logger.debug { "close(): Cancel scope, mark disconnected." }
             isServiceConnected.value = false
             binderDeferred.cancel(CancellationException("Connection closed."))
