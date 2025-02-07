@@ -88,7 +88,7 @@ class AniApplication : Application() {
         val scope = createAppRootCoroutineScope()
         val torrentServiceConnection = AndroidTorrentServiceConnection(
             this,
-            onRequiredRestartService = { startAniTorrentService() },
+            ::startAniTorrentService,
             scope.coroutineContext,
         )
         if (FEATURE_USE_TORRENT_SERVICE) {

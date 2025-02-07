@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.domain.torrent.service
 
+import android.app.ForegroundServiceStartNotAllowedException
 import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
@@ -16,6 +17,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.ServiceConnection
 import android.os.IBinder
+import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
 import kotlinx.coroutines.CancellationException
@@ -146,6 +148,7 @@ class AndroidTorrentServiceConnection(
         binderDeferred.value.cancel(CancellationException("Service disconnected."))
     }
 
+    @RequiresApi(31)
     override fun onPause(owner: LifecycleOwner) {
         super.onPause(owner)
 
@@ -162,7 +165,7 @@ class AndroidTorrentServiceConnection(
         try {
             // 请求 wake lock, 如果在 app 中息屏可以保证 service 正常跑 [acquireWakeLockIntent] 分钟.
             context.startService(acquireWakeLockIntent)
-        } catch (ex: IllegalStateException) {
+        } catch (ex: ForegroundServiceStartNotAllowedException) {
             // 大概率是 ServiceStartForegroundException, 服务已经终止了, 不需要再请求 wakelock.
             logger.warn(ex) { "Failed to acquire wake lock. Service has already died." }
         }
