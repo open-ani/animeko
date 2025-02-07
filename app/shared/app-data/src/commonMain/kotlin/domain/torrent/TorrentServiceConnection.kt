@@ -100,15 +100,17 @@ abstract class LifecycleAwareTorrentServiceConnection<T : Any>(
                 // 已经是断开状态，直接忽略
                 return@launch
             }
-            logger.debug { "Service disconnected. Marking state as disconnected." }
             isServiceConnected.value = false
             binderDeferred.cancel(CancellationException("Service disconnected."))
             binderDeferred = CompletableDeferred()
 
             // 若应用仍想要连接，则重新启动
             if (isAtForeground.value) {
-                logger.debug { "App is in foreground, restarting service connection..." }
+                logger.debug { "Service is disconnected and app is in foreground, restarting service connection in 3s..." }
+                delay(3000)
                 startServiceWithRetry()
+            } else {
+                logger.debug { "Service is disconnected and app is in background." }
             }
         }
     }
@@ -136,7 +138,7 @@ abstract class LifecycleAwareTorrentServiceConnection<T : Any>(
     }
 
     private suspend fun startServiceWithRetry(
-        maxAttempts: Int = 3, // 可根据需求设置
+        maxAttempts: Int = Int.MAX_VALUE, // 可根据需求设置
         delayMillisBetweenAttempts: Long = 2500
     ) {
         var attempt = 0
@@ -154,11 +156,11 @@ abstract class LifecycleAwareTorrentServiceConnection<T : Any>(
                 delay(delayMillisBetweenAttempts)
             } else {
                 logger.debug { "Service connected successfully: $binder" }
-                isServiceConnected.value = true
                 if (binderDeferred.isCompleted) {
                     binderDeferred = CompletableDeferred()
                 }
                 binderDeferred.complete(binder)
+                isServiceConnected.value = true
                 return
             }
         }
