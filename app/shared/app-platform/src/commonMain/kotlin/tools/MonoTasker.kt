@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -32,16 +32,25 @@ import kotlinx.coroutines.launch
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 
+/**
+ * Note: This function is not thread safe. For thread-safe variant, you may consider `SingleTaskExecutor`.
+ */
 @Stable
 interface MonoTasker {
     val isRunning: StateFlow<Boolean>
 
+    /**
+     * Note: This function is not thread safe.
+     */
     fun launch(
         context: CoroutineContext = EmptyCoroutineContext,
         start: CoroutineStart = CoroutineStart.DEFAULT,
         block: suspend CoroutineScope.() -> Unit
     ): Job
 
+    /**
+     * Note: This function is not thread safe.
+     */
     fun <R> async(
         context: CoroutineContext = EmptyCoroutineContext,
         start: CoroutineStart = CoroutineStart.DEFAULT,
@@ -50,6 +59,8 @@ interface MonoTasker {
 
     /**
      * 等待上一个任务完成后再执行
+     *
+     * Note: This function is not thread safe.
      */
     fun launchNext(
         context: CoroutineContext = EmptyCoroutineContext,
@@ -57,10 +68,19 @@ interface MonoTasker {
         block: suspend CoroutineScope.() -> Unit
     )
 
+    /**
+     * Note: This function is not thread safe.
+     */
     fun cancel(cause: CancellationException? = null)
 
+    /**
+     * Note: This function is not thread safe.
+     */
     suspend fun cancelAndJoin()
 
+    /**
+     * Note: This function is not thread safe.
+     */
     suspend fun join()
 }
 
