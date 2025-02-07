@@ -84,6 +84,8 @@ class ServiceConnectionManager<T : Any>(
         lifecycle.addObserver(serviceTimeLimitObserver)
     }
 
+    // This method is only called at TorrentServiceConnection which ensures thread-safe.
+    // It is not necessary to enforce thread-safe here.
     private suspend fun startService(): T? {
         val startResult = suspendCancellableCoroutine { cont ->
             val receiver = object : BroadcastReceiver() {
