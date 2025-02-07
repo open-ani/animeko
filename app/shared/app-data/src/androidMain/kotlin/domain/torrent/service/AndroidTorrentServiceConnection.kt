@@ -74,7 +74,7 @@ class AndroidTorrentServiceConnection(
     private val timeExceedLimitReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             logger.warn { "Service background time exceeded." }
-
+            onServiceDisconnected()
         }
     }
 
@@ -146,6 +146,7 @@ class AndroidTorrentServiceConnection(
 
     override fun onServiceDisconnected(name: ComponentName?) {
         binderDeferred.value.cancel(CancellationException("Service disconnected."))
+        onServiceDisconnected()
     }
 
     @RequiresApi(31)
