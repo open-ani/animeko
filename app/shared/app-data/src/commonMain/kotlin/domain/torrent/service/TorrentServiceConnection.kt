@@ -32,15 +32,15 @@ import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 
 /**
- * torrent 服务与 APP 通信接口. T 为通信接口的类型
+ * Torrent 服务与 APP 通信接口. [T] 为通信接口的类型
  *
  * 此接口仅负责服务与 APP 之间的通信, 不负责服务的启动和终止.
  */
 interface TorrentServiceConnection<T : Any> {
     /**
-     * 当前服务是否已连接, 只有在已连接的状态才能获取通信接口.
+     * 当前服务是否已连接.
      *
-     * 若变为 `false`, 则服务通信接口将变得不可用, 可能需要实现类重新启动服务.
+     * 若变为 `false`, 则服务通信接口将变得不可用, 接口的实现类 可能需要重启服务, 例如 [LifecycleAwareTorrentServiceConnection].
      */
     val connected: StateFlow<Boolean>
 
@@ -61,7 +61,7 @@ interface TorrentServiceConnection<T : Any> {
  *
  * 实现细节:
  *
- * @param serviceStarter 启动服务并返回[服务通信对象][T]接口, 若返回 null 代表启动失败.
+ * @param starter 启动服务并返回[服务通信对象][T]接口, 若返回 null 代表启动失败.
  *   这个方法将在 `singleThreadDispatcher` 执行, 并且同时只有一个在执行.
  * @param singleThreadDispatcher 用于执行内部逻辑的调度器, 需要使用单线程来保证内部逻辑的线程安全.
  */
