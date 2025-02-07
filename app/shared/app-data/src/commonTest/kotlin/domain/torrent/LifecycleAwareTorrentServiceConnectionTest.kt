@@ -28,7 +28,7 @@ class LifecycleAwareTorrentServiceConnectionTest : AbstractTorrentServiceConnect
     @Test
     fun `service starts on resume - success`() = runTest {
         val testLifecycle = TestLifecycleOwner()
-        val connection = TestTorrentServiceConnection(
+        val connection = TestLifecycleTorrentServiceConnection(
             shouldStartServiceSucceed = true,
             coroutineContext = backgroundScope.coroutineContext,
         )
@@ -50,7 +50,7 @@ class LifecycleAwareTorrentServiceConnectionTest : AbstractTorrentServiceConnect
     @Test
     fun `service starts on resume - fails to start service`() = runTest {
         val testLifecycle = TestLifecycleOwner()
-        val connection = TestTorrentServiceConnection(
+        val connection = TestLifecycleTorrentServiceConnection(
             shouldStartServiceSucceed = false, // Force a failure
             coroutineContext = backgroundScope.coroutineContext,
         )
@@ -77,7 +77,7 @@ class LifecycleAwareTorrentServiceConnectionTest : AbstractTorrentServiceConnect
     @Test
     fun `getBinder suspends until service is connected`() = runTest {
         val testLifecycle = TestLifecycleOwner()
-        val connection = TestTorrentServiceConnection(
+        val connection = TestLifecycleTorrentServiceConnection(
             shouldStartServiceSucceed = true,
             coroutineContext = backgroundScope.coroutineContext,
         )
@@ -103,7 +103,7 @@ class LifecycleAwareTorrentServiceConnectionTest : AbstractTorrentServiceConnect
     @Test
     fun `service disconnect triggers automatic restart if lifecycle is RESUMED`() = runTest {
         val testLifecycle = TestLifecycleOwner()
-        val connection = TestTorrentServiceConnection(
+        val connection = TestLifecycleTorrentServiceConnection(
             shouldStartServiceSucceed = true,
             coroutineContext = backgroundScope.coroutineContext,
         )
@@ -135,7 +135,7 @@ class LifecycleAwareTorrentServiceConnectionTest : AbstractTorrentServiceConnect
     @Test
     fun `service disconnect does not restart if lifecycle is only CREATED`() = runTest {
         val testLifecycle = TestLifecycleOwner()
-        val connection = TestTorrentServiceConnection(
+        val connection = TestLifecycleTorrentServiceConnection(
             shouldStartServiceSucceed = true,
             coroutineContext = backgroundScope.coroutineContext,
         )
@@ -163,7 +163,7 @@ class LifecycleAwareTorrentServiceConnectionTest : AbstractTorrentServiceConnect
 
     @Test
     fun `close cancels all coroutines and flows`() = runTest {
-        val connection = TestTorrentServiceConnection(
+        val connection = TestLifecycleTorrentServiceConnection(
             shouldStartServiceSucceed = true,
             coroutineContext = backgroundScope.coroutineContext,
         )

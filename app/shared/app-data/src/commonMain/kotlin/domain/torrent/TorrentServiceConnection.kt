@@ -16,14 +16,12 @@ import androidx.lifecycle.LifecycleOwner
 import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineName
-import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -37,48 +35,23 @@ import kotlin.coroutines.EmptyCoroutineContext
 
 /**
  * torrent 服务与 APP 通信接口.
+ *
+ * 此接口仅负责服务与 APP 之间的通信, 不负责服务的启动和终止
  */
 interface TorrentServiceConnection<T : Any> {
     /**
      * 当前服务是否已连接, 只有在已连接的状态才能获取通信接口.
      *
-     * 若变为 `false`, 则服务通信接口将变得不可用, 调用任何通信接口的方法将会导致不可预测的结果.
-     * 此时需要再次调用 [startService] 来重新启动服务.
+     * 若变为 `false`, 则服务通信接口将变得不可用, 可能需要实现类重新启动服务.
      */
     val connected: StateFlow<Boolean>
 
     /**
-     * 启动服务. 调用此方法后, 服务将会启动并尽快连接.
-     *
-     * 若返回了 [StartResult.STARTED] 或 [StartResult.FAILED],
-     * [connected] 将在未来变为 `true`, 届时 [getBinder] 将会立刻返回服务通信接口.
-     */
-    suspend fun startService(): StartResult
-
-    /**
      * 获取通信接口. 如果服务未连接, 则会挂起直到服务连接成功.
+     *
+     * 这个函数是线程安全的.
      */
     suspend fun getBinder(): T
-
-    /**
-     * Start result of [startService]
-     */
-    enum class StartResult {
-        /**
-         * Service is started, binder should be later retrieved by [onServiceConnected]
-         */
-        STARTED,
-
-        /**
-         * Service is already running
-         */
-        ALREADY_RUNNING,
-
-        /**
-         * Service started failed.
-         */
-        FAILED
-    }
 }
 
 /**
@@ -90,71 +63,52 @@ interface TorrentServiceConnection<T : Any> {
  *
  * 实现细节:
  * - 实现 [startService] 方法, 用于实际的启动服务, 并且要连接服务.
- * - 服务连接完成，调用 [onServiceConnected] 传入服务通信接口对象.
- * - 如果服务断开连接了, 调用 [onServiceDisconnected], 会自动判断是否需要重连.
+ *
+ * @param singleThreadDispatcher 用于执行内部逻辑的调度器, 需要使用单线程来保证内部逻辑的线程安全.
  */
 abstract class LifecycleAwareTorrentServiceConnection<T : Any>(
     parentCoroutineContext: CoroutineContext = EmptyCoroutineContext,
+    singleThreadDispatcher: CoroutineDispatcher,
 ) : DefaultLifecycleObserver, TorrentServiceConnection<T> {
-    protected val logger = logger(this::class.simpleName ?: "TorrentServiceConnection")
-    private val scope = parentCoroutineContext.childScope()
+    private val logger = logger(this::class.simpleName ?: "TorrentServiceConnection")
 
-    private val lock = Mutex()
+    // we assert it is a single thread dispatcher
+    private val scope = parentCoroutineContext.childScope(singleThreadDispatcher)
+    
     private var binderDeferred by atomic(CompletableDeferred<T>())
 
     private val isAtForeground: MutableStateFlow<Boolean> = MutableStateFlow(false)
     private val isServiceConnected: MutableStateFlow<Boolean> = MutableStateFlow(false)
+    private val startServiceLock = Mutex()
 
     override val connected: StateFlow<Boolean> = isServiceConnected
 
     /**
-     * 启动服务并返回启动结果.
+     * 启动服务并返回[服务通信对象][T]接口, 若返回 null 代表启动失败.
      *
-     * 注意：此处同步返回的结果仅代表服务是否成功启动, 不代表服务是否已连接.
-     * 换句话说, 此方法返回 [StartResult.STARTED][TorrentServiceConnection.StartResult.STARTED] 或 [StartResult.ALREADY_RUNNING][TorrentServiceConnection.StartResult.ALREADY_RUNNING] 后,
-     * 实现类必须尽快调用 [onServiceConnected] 并传入服务通信接口对象.
-     *
-     *
-     * @return `true` if the service is started successfully, `false` otherwise.
+     * 这个方法将在 `singleThreadDispatcher` 执行, 并且同时只有一个在执行.
      */
-    abstract override suspend fun startService(): TorrentServiceConnection.StartResult
-
-    /**
-     * 服务已连接, 服务通信对象一定可用.
-     * 无论当前 [Lifecycle] 什么状态都要应用新的 [binder].
-     */
-    protected fun onServiceConnected(binder: T) {
-        scope.launch(CoroutineName("TorrentServiceConnection - On Service Connected")) {
-            lock.withLock {
-                logger.debug { "Service is connected, got binder $binder" }
-                if (binderDeferred.isCompleted) {
-                    binderDeferred = CompletableDeferred(binder)
-                } else {
-                    binderDeferred.complete(binder)
-                }
-                isServiceConnected.value = true
-            }
-        }
-    }
-
+    abstract suspend fun startService(): T?
+    
     /**
      * 服务已断开连接, 通信对象变为不可用.
      * 如果目前 APP 还在前台, 就要尝试重启并重连服务.
      */
-    protected fun onServiceDisconnected() {
+    fun onServiceDisconnected() {
         scope.launch(CoroutineName("TorrentServiceConnection - On Service Disconnected")) {
-            if (!isServiceConnected.value) return@launch
-            lock.withLock {
-                if (!isServiceConnected.value) return@launch
-                isServiceConnected.value = false
+            if (!isServiceConnected.value) {
+                // 已经是断开状态，直接忽略
+                return@launch
+            }
+            logger.debug { "Service disconnected. Marking state as disconnected." }
+            isServiceConnected.value = false
+            binderDeferred.cancel(CancellationException("Service disconnected."))
+            binderDeferred = CompletableDeferred()
 
-                binderDeferred.cancel(CancellationException("Service disconnected."))
-                binderDeferred = CompletableDeferred()
-
-                if (isAtForeground.value) {
-                    logger.debug { "Service is disconnected while app is at foreground, restarting." }
-                    startServiceWithRetry()
-                }
+            // 若应用仍想要连接，则重新启动
+            if (isAtForeground.value) {
+                logger.debug { "App is in foreground, restarting service connection..." }
+                startServiceWithRetry()
             }
         }
     }
@@ -166,13 +120,8 @@ abstract class LifecycleAwareTorrentServiceConnection<T : Any>(
     override fun onResume(owner: LifecycleOwner) {
         scope.launch(CoroutineName("TorrentServiceConnection - Lifecycle Resume")) {
             isAtForeground.value = true
-            // 服务已经连接了, 不需要再次处理
-            if (isServiceConnected.value) return@launch
-
-            lock.withLock {
-                if (isServiceConnected.value) return@launch
-
-                logger.debug { "Service is not started, starting." }
+            if (!isServiceConnected.value) {
+                logger.debug { "Lifecycle resume: Service is not connected, start connecting..." }
                 startServiceWithRetry()
             }
         }
@@ -181,42 +130,59 @@ abstract class LifecycleAwareTorrentServiceConnection<T : Any>(
     @CallSuper
     override fun onPause(owner: LifecycleOwner) {
         scope.launch(CoroutineName("TorrentServiceConnection - Lifecycle Pause")) {
-            lock.withLock {
-                isAtForeground.value = false
-            }
+            isAtForeground.value = false
+            logger.debug { "Lifecycle pause: App moved to background." }
         }
     }
 
-    private suspend fun startServiceWithRetry(maxAttempts: Int = Int.MAX_VALUE) {
-        var retries = 0
-        while (retries <= maxAttempts) {
-            val startResult = startService()
-            if (startResult == TorrentServiceConnection.StartResult.FAILED) {
-                logger.warn { "[#$retries] Failed to start service." }
-                retries++
-                delay(7500)
+    private suspend fun startServiceWithRetry(
+        maxAttempts: Int = 3, // 可根据需求设置
+        delayMillisBetweenAttempts: Long = 2500
+    ) {
+        var attempt = 0
+        while (attempt < maxAttempts && isAtForeground.value && !isServiceConnected.value) {
+            val binder = startServiceLock.withLock {
+                if (!isAtForeground.value || isServiceConnected.value) {
+                    logger.debug { "Service is already connected or app is not at foreground." }
+                    return
+                }
+                startService()
+            }
+            if (binder == null) {
+                logger.warn { "[#$attempt] startService() returned null binder, retry after $delayMillisBetweenAttempts ms" }
+                attempt++
+                delay(delayMillisBetweenAttempts)
             } else {
+                logger.debug { "Service connected successfully: $binder" }
+                isServiceConnected.value = true
+                if (binderDeferred.isCompleted) {
+                    binderDeferred = CompletableDeferred()
+                }
+                binderDeferred.complete(binder)
                 return
             }
         }
-        logger.error { "Failed to start service after $maxAttempts retries." }
+        if (!isServiceConnected.value) {
+            logger.error { "Failed to connect service after $maxAttempts retries." }
+        }
     }
 
     fun close() {
-        scope.cancel()
-        isServiceConnected.value = false
-        binderDeferred.cancel(CancellationException("TorrentServiceConnection closed."))
+        scope.launch {
+            logger.debug { "close(): Cancel scope, mark disconnected." }
+            isServiceConnected.value = false
+            binderDeferred.cancel(CancellationException("Connection closed."))
+            scope.cancel()
+        }
     }
 
     /**
      * 获取当前 binder 对象.
-     * 如果服务未连接, 则会挂起直到服务连接成功; 如果连接已[关闭][close], 则直接抛出 [CancellationException].
+     *
+     * - 如果服务还未连接, 此函数将挂起.
      */
     override suspend fun getBinder(): T {
         // track cancellation of [scope]
-        scope.async { 
-            isServiceConnected.first { it } 
-        }.await()
         return binderDeferred.await()
     }
 }

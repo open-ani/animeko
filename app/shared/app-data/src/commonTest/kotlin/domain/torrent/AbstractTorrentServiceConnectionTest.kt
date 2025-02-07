@@ -11,11 +11,9 @@ package me.him188.ani.app.domain.torrent
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
-import me.him188.ani.utils.coroutines.childScope
 import kotlin.coroutines.CoroutineContext
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
@@ -32,23 +30,19 @@ abstract class AbstractTorrentServiceConnectionTest {
     }
 }
 
-class TestTorrentServiceConnection(
+class TestLifecycleTorrentServiceConnection(
     private val shouldStartServiceSucceed: Boolean = true,
     coroutineContext: CoroutineContext = Dispatchers.Default,
-) : LifecycleAwareTorrentServiceConnection<String>(coroutineContext) {
-    private val scope = coroutineContext.childScope()
+) : LifecycleAwareTorrentServiceConnection<String>(coroutineContext, Dispatchers.Default) {
     private val fakeBinder = "FAKE_BINDER_OBJECT"
 
-    override suspend fun startService(): TorrentServiceConnection.StartResult {
+    override suspend fun startService(): String? {
         delay(100)
         return if (shouldStartServiceSucceed) {
-            scope.launch { // simulate automatic connection after start service succeeded.
-                delay(500)
-                onServiceConnected(fakeBinder)
-            }
-            TorrentServiceConnection.StartResult.STARTED
+            delay(500)
+            return fakeBinder
         } else {
-            TorrentServiceConnection.StartResult.FAILED
+            null
         }
     }
 
