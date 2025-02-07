@@ -68,11 +68,21 @@ class ServiceConnectionManager(
         _connection.onServiceDisconnected()
     }
 
+    private var started = false
+
     val connection: TorrentServiceConnection<IRemoteAniTorrentEngine> get() = _connection
 
     fun startLifecycleLoop() {
-        _connection.startLifecycleLoop()
-        lifecycle.addObserver(serviceTimeLimitObserver)
+        if (started) return
+        
+        synchronized(this) {
+            if (started) return
+
+            _connection.startLifecycleLoop()
+            lifecycle.addObserver(serviceTimeLimitObserver)
+
+            started = true
+        }
     }
 
     private fun onServiceDisconnected() {
