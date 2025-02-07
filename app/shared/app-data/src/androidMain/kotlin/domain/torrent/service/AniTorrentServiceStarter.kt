@@ -22,7 +22,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
 import me.him188.ani.app.domain.torrent.IRemoteAniTorrentEngine
 import me.him188.ani.utils.logging.debug
-import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.logger
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -94,13 +93,13 @@ class AniTorrentServiceStarter(
 
         val result = newDeferred.await()
         logger.debug { "[4/4] Got service binder: $result" }
-        return newDeferred.await()
+        return result
     }
 
 
     override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
         if (service == null) {
-            logger.error { "Service is connected, but got null binder!" }
+            binderDeferred.value?.completeExceptionally(ServiceStartException.NullBinder)
         }
         val result = IRemoteAniTorrentEngine.Stub.asInterface(service)
         binderDeferred.value?.complete(result)
