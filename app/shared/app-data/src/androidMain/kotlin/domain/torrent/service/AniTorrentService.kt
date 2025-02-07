@@ -141,24 +141,17 @@ sealed class AniTorrentService : LifecycleService() {
         }
 
         notification.parseNotificationStrategyFromIntent(intent)
-        if (notification.createNotification(this)) {
-            // 启动完成的广播
-            sendBroadcast(
-                Intent(INTENT_STARTUP).apply { 
-                    setPackage(packageName)
-                    putExtra("success", true)
-                },
-            )
-            return START_STICKY
-        } else {
-            sendBroadcast(
-                Intent(INTENT_STARTUP).apply {
-                    setPackage(packageName)
-                    putExtra("false", true)
-                },
-            )
-            return START_NOT_STICKY
-        }
+        val notificationResult = notification.createNotification(this)
+
+        // 启动完成的广播
+        sendBroadcast(
+            Intent(INTENT_STARTUP).apply {
+                setPackage(packageName)
+                putExtra(INTENT_STARTUP_EXTRA, notificationResult)
+            },
+        )
+
+        return if (notificationResult) START_STICKY else START_NOT_STICKY
     }
 
 
@@ -238,7 +231,13 @@ sealed class AniTorrentService : LifecycleService() {
     }
 
     companion object {
+        /**
+         * Broadcast intent for result of starting service.
+         * Push extra [INTENT_STARTUP_EXTRA] with boolean value, or app will assume failure on start.
+         */
         const val INTENT_STARTUP = "me.him188.ani.android.ANI_TORRENT_SERVICE_STARTUP"
+        const val INTENT_STARTUP_EXTRA = "success"
+        
         const val INTENT_BACKGROUND_TIMEOUT = "me.him188.ani.android.ANI_TORRENT_SERVICE_BACKGROUND_TIMEOUT"
         
         val actualServiceClass = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {

@@ -94,7 +94,7 @@ class ServiceConnectionManager<T : Any>(
                     logger.debug { "Received service startup broadcast: $intent, starting bind service." }
                     context.unregisterReceiver(this)
 
-                    val result = intent?.getBooleanExtra("success", false) == true
+                    val result = intent?.getBooleanExtra(AniTorrentService.INTENT_STARTUP_EXTRA, false) == true
                     if (!result) {
                         logger.error { "Failed to start service, service responded start result with false." }
                     }
