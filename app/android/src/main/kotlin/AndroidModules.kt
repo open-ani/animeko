@@ -13,9 +13,11 @@ import android.content.Intent
 import android.widget.Toast
 import androidx.core.app.NotificationManagerCompat
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.newSingleThreadContext
 import kotlinx.coroutines.runBlocking
 import kotlinx.io.files.Path
 import me.him188.ani.android.activity.MainActivity
@@ -202,6 +204,8 @@ fun getAndroidModules(
                             peerFilterSettings,
                             saveDir,
                             parentCoroutineContext,
+                            @OptIn(DelicateCoroutinesApi::class)
+                            newSingleThreadContext("RemoteAnitorrentEngine"),
                         )
                     }
                 }

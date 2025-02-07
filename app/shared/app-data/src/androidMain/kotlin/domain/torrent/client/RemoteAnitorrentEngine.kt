@@ -12,6 +12,7 @@ package me.him188.ani.app.domain.torrent.client
 import android.os.Build
 import android.os.IInterface
 import androidx.annotation.RequiresApi
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
@@ -43,6 +44,13 @@ import me.him188.ani.utils.io.absolutePath
 import me.him188.ani.utils.logging.logger
 import kotlin.coroutines.CoroutineContext
 
+/**
+ * Create a remote torrent engine based on Android RPC services.
+ *
+ * @param singleThreadDispatcher Dispatcher for collecting client settings to remote.
+ *   If this dispatcher has risk of being blocked, settings collector will not work.
+ *   This may leading to endless blocking for whole app.
+ */
 @RequiresApi(Build.VERSION_CODES.O_MR1)
 class RemoteAnitorrentEngine(
     private val connection: TorrentServiceConnection<IRemoteAniTorrentEngine>,
@@ -51,10 +59,11 @@ class RemoteAnitorrentEngine(
     peerFilterConfig: Flow<PeerFilterSettings>,
     saveDir: SystemPath,
     parentCoroutineContext: CoroutineContext,
+    singleThreadDispatcher: CoroutineDispatcher,
 ) : TorrentEngine {
     private val logger = logger<RemoteAnitorrentEngine>()
 
-    private val scope = parentCoroutineContext.childScope()
+    private val scope = parentCoroutineContext.childScope(singleThreadDispatcher)
     private val fetchRemoteScope = parentCoroutineContext.childScope(
         CoroutineName("RemoteAnitorrentEngineFetchRemote") + Dispatchers.IO_,
     )
@@ -70,8 +79,8 @@ class RemoteAnitorrentEngine(
         get() = flowOf(true)
 
     override val location: MediaSourceLocation = MediaSourceLocation.Local
-    
-    private val json = Json { 
+
+    private val json = Json {
         ignoreUnknownKeys = true
         encodeDefaults = true
     }
