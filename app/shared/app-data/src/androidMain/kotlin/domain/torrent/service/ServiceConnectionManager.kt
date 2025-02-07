@@ -42,7 +42,6 @@ import kotlin.coroutines.CoroutineContext
  * @see AniTorrentService.onStartCommand
  * @see me.him188.ani.android.AniApplication
  */
-@OptIn(DelicateCoroutinesApi::class)
 class ServiceConnectionManager(
     context: Context,
     onRequiredRestartService: () -> ComponentName?,
@@ -56,19 +55,20 @@ class ServiceConnectionManager(
         onRequiredRestartService = onRequiredRestartService,
         onServiceDisconnected = ::onServiceDisconnected,
     )
+
+    @OptIn(DelicateCoroutinesApi::class)
     private val _connection = LifecycleAwareTorrentServiceConnection(
         parentCoroutineContext = parentCoroutineContext,
         singleThreadDispatcher = newSingleThreadContext("AndroidTorrentServiceConnection"),
         lifecycle = lifecycle,
         serviceStarter,
     )
-
-    val connection: TorrentServiceConnection<IRemoteAniTorrentEngine> get() = _connection
-
     private val serviceTimeLimitObserver = ForegroundServiceTimeLimitObserver(context) {
         logger.warn { "Service background time exceeded." }
         _connection.onServiceDisconnected()
     }
+
+    val connection: TorrentServiceConnection<IRemoteAniTorrentEngine> get() = _connection
 
     fun startLifecycleLoop() {
         _connection.startLifecycleLoop()
