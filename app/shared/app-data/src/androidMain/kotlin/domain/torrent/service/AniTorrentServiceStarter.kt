@@ -44,7 +44,7 @@ class AniTorrentServiceStarter(
         suspendCancellableCoroutine { cont ->
             val receiver = object : BroadcastReceiver() {
                 override fun onReceive(c: Context?, intent: Intent?) {
-                    logger.debug { "Received service startup broadcast: $intent, starting bind service." }
+                    logger.debug { "[2/4] Received service startup result broadcast: $intent" }
                     context.unregisterReceiver(this)
 
                     val result = intent?.getBooleanExtra(AniTorrentService.INTENT_STARTUP_EXTRA, false) == true
@@ -73,7 +73,7 @@ class AniTorrentServiceStarter(
                 context.unregisterReceiver(receiver)
                 cont.resumeWithException(ServiceStartException.ServiceNotExisted)
             } else {
-                logger.debug { "Service started, component name: $result" }
+                logger.debug { "[1/4] Started service, component name: $result" }
             }
         }
 
@@ -90,7 +90,10 @@ class AniTorrentServiceStarter(
             Context.BIND_ABOVE_CLIENT,
         )
         if (!bindResult) throw ServiceStartException.BindServiceFailed
+        logger.debug { "[3/4] Bound service successfully." }
 
+        val result = newDeferred.await()
+        logger.debug { "[4/4] Got service binder: $result" }
         return newDeferred.await()
     }
 
