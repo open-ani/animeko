@@ -31,7 +31,7 @@ import kotlin.coroutines.resumeWithException
  */
 class AniTorrentServiceStarter(
     private val context: Context,
-    private val onRequiredRestartService: () -> ComponentName?,
+    private val startServiceImpl: () -> ComponentName?,
     private val onServiceDisconnected: () -> Unit = { },
 ) : ServiceConnection, TorrentServiceStarter<IRemoteAniTorrentEngine> {
     private val logger = logger<AniTorrentServiceStarter>()
@@ -68,7 +68,7 @@ class AniTorrentServiceStarter(
             }
 
             val startResult = try {
-                onRequiredRestartService()
+                startServiceImpl()
             } catch (e: Exception) {
                 context.unregisterReceiver(receiver)
 

@@ -44,7 +44,7 @@ import kotlin.coroutines.CoroutineContext
  */
 class ServiceConnectionManager(
     context: Context,
-    onRequiredRestartService: () -> ComponentName?,
+    startServiceImpl: () -> ComponentName?,
     parentCoroutineContext: CoroutineContext = Dispatchers.Default,
     private val lifecycle: Lifecycle,
 ) {
@@ -52,7 +52,7 @@ class ServiceConnectionManager(
 
     private val serviceStarter = AniTorrentServiceStarter(
         context = context,
-        onRequiredRestartService = onRequiredRestartService,
+        startServiceImpl = startServiceImpl,
         onServiceDisconnected = ::onServiceDisconnected,
     )
 
