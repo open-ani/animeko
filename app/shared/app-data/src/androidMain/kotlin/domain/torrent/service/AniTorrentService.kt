@@ -215,8 +215,8 @@ sealed class AniTorrentService : LifecycleService() {
 
     companion object {
         /**
-         * Broadcast intent for result of starting service.
-         * Push extra [INTENT_STARTUP_EXTRA] with boolean value, or app will assume failure on start.
+         * 启动服务后的广播 Intent 动作, 通知启动结果. 服务必须在 `onStartCommand` 报告每一次启动结果.
+         * Intent 必须传递 [INTENT_STARTUP_EXTRA] boolean 值作为启动结果, 如果没传 app 会认为启动失败.
          */
         const val INTENT_STARTUP = "me.him188.ani.android.ANI_TORRENT_SERVICE_STARTUP"
         const val INTENT_STARTUP_EXTRA = "success"

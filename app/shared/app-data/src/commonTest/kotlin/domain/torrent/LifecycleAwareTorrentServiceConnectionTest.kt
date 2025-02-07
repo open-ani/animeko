@@ -35,7 +35,7 @@ class LifecycleAwareTorrentServiceConnectionTest : AbstractTorrentServiceConnect
             parentCoroutineContext = backgroundScope.coroutineContext,
             singleThreadDispatcher = Dispatchers.Default,
             lifecycle = testLifecycle.lifecycle,
-            startService = startServiceWithSuccess,
+            starter = startServiceWithSuccess,
         ).also { it.startLifecycleLoop() }
 
         connection.connected.test {
@@ -57,7 +57,7 @@ class LifecycleAwareTorrentServiceConnectionTest : AbstractTorrentServiceConnect
             parentCoroutineContext = backgroundScope.coroutineContext,
             singleThreadDispatcher = Dispatchers.Default,
             lifecycle = testLifecycle.lifecycle,
-            startService = startServiceWithFail,
+            starter = startServiceWithFail,
         ).also { it.startLifecycleLoop() }
 
         // The .connected flow should remain false, even after we move to resumed,
@@ -84,7 +84,7 @@ class LifecycleAwareTorrentServiceConnectionTest : AbstractTorrentServiceConnect
             parentCoroutineContext = backgroundScope.coroutineContext,
             singleThreadDispatcher = Dispatchers.Default,
             lifecycle = testLifecycle.lifecycle,
-            startService = startServiceWithSuccess,
+            starter = startServiceWithSuccess,
         ).also { it.startLifecycleLoop() }
         
         // Start a coroutine that calls getBinder
@@ -110,7 +110,7 @@ class LifecycleAwareTorrentServiceConnectionTest : AbstractTorrentServiceConnect
             parentCoroutineContext = backgroundScope.coroutineContext,
             singleThreadDispatcher = Dispatchers.Default,
             lifecycle = testLifecycle.lifecycle,
-            startService = startServiceWithSuccess,
+            starter = startServiceWithSuccess,
         ).also { it.startLifecycleLoop() }
         
         connection.connected.test {
@@ -142,7 +142,7 @@ class LifecycleAwareTorrentServiceConnectionTest : AbstractTorrentServiceConnect
             parentCoroutineContext = backgroundScope.coroutineContext,
             singleThreadDispatcher = Dispatchers.Default,
             lifecycle = testLifecycle.lifecycle,
-            startService = startServiceWithSuccess,
+            starter = startServiceWithSuccess,
         ).also { it.startLifecycleLoop() }
         
         connection.connected.test {
@@ -172,7 +172,7 @@ class LifecycleAwareTorrentServiceConnectionTest : AbstractTorrentServiceConnect
             parentCoroutineContext = backgroundScope.coroutineContext,
             singleThreadDispatcher = Dispatchers.Default,
             lifecycle = testLifecycle.lifecycle,
-            startService = startServiceWithSuccess,
+            starter = startServiceWithSuccess,
         ).also { it.startLifecycleLoop() }
         
         advanceUntilIdle()

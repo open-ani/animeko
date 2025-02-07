@@ -15,25 +15,17 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.ServiceConnection
-import android.os.IBinder
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.newSingleThreadContext
-import kotlinx.coroutines.suspendCancellableCoroutine
 import me.him188.ani.app.domain.torrent.IRemoteAniTorrentEngine
-import me.him188.ani.utils.logging.debug
-import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
 import kotlin.coroutines.CoroutineContext
-import kotlin.coroutines.resume
 
 /**
  * 管理与 [AniTorrentService] 的连接并获取 [IRemoteAniTorrentEngine] 远程访问接口.
@@ -51,26 +43,27 @@ import kotlin.coroutines.resume
  * @see me.him188.ani.android.AniApplication
  */
 @OptIn(DelicateCoroutinesApi::class)
-class ServiceConnectionManager<T : Any>(
-    private val context: Context,
-    private val onRequiredRestartService: () -> ComponentName?,
-    private val mapBinder: (IBinder?) -> T?,
+class ServiceConnectionManager(
+    context: Context,
+    onRequiredRestartService: () -> ComponentName?,
     parentCoroutineContext: CoroutineContext = Dispatchers.Default,
     private val lifecycle: Lifecycle,
-) : ServiceConnection {
-    private val logger = logger<ServiceConnectionManager<*>>()
+) {
+    private val logger = logger<ServiceConnectionManager>()
 
-    private val startupIntentFilter = IntentFilter(AniTorrentService.INTENT_STARTUP)
-    private val binderDeferred = MutableStateFlow(CompletableDeferred<T?>())
-
+    private val serviceStarter = AniTorrentServiceStarter(
+        context = context,
+        onRequiredRestartService = onRequiredRestartService,
+        onServiceDisconnected = ::onServiceDisconnected,
+    )
     private val _connection = LifecycleAwareTorrentServiceConnection(
         parentCoroutineContext = parentCoroutineContext,
         singleThreadDispatcher = newSingleThreadContext("AndroidTorrentServiceConnection"),
         lifecycle = lifecycle,
-        startService = ::startService,
+        serviceStarter,
     )
 
-    val connection: TorrentServiceConnection<T> get() = _connection
+    val connection: TorrentServiceConnection<IRemoteAniTorrentEngine> get() = _connection
 
     private val serviceTimeLimitObserver = ForegroundServiceTimeLimitObserver(context) {
         logger.warn { "Service background time exceeded." }
@@ -82,76 +75,7 @@ class ServiceConnectionManager<T : Any>(
         lifecycle.addObserver(serviceTimeLimitObserver)
     }
 
-    // This method is only called at TorrentServiceConnection which ensures thread-safe.
-    // It is not necessary to enforce thread-safe here.
-    private suspend fun startService(): T? {
-        val startResult = suspendCancellableCoroutine { cont ->
-            val receiver = object : BroadcastReceiver() {
-                override fun onReceive(c: Context?, intent: Intent?) {
-                    logger.debug { "Received service startup broadcast: $intent, starting bind service." }
-                    context.unregisterReceiver(this)
-
-                    val result = intent?.getBooleanExtra(AniTorrentService.INTENT_STARTUP_EXTRA, false) == true
-                    if (!result) {
-                        logger.error { "Failed to start service, service responded start result with false." }
-                    }
-
-                    cont.resume(result)
-                    return
-                }
-            }
-
-            ContextCompat.registerReceiver(
-                context,
-                receiver,
-                startupIntentFilter,
-                ContextCompat.RECEIVER_NOT_EXPORTED,
-            )
-
-            val result = onRequiredRestartService()
-            if (result == null) {
-                logger.error { "Failed to start service, context.startForegroundService returns null component info." }
-                context.unregisterReceiver(receiver)
-                cont.resume(false)
-            } else {
-                logger.debug { "Service started, component name: $result" }
-            }
-        }
-        if (!startResult) {
-            return null
-        }
-
-        val currentDeferred = binderDeferred.value
-        if (!currentDeferred.isCompleted) {
-            currentDeferred.cancel()
-        }
-        val newDeferred = CompletableDeferred<T?>()
-        binderDeferred.value = newDeferred
-
-        val bindResult = context.bindService(
-            Intent(context, AniTorrentService.actualServiceClass),
-            this@ServiceConnectionManager,
-            Context.BIND_ABOVE_CLIENT,
-        )
-        if (!bindResult) return null
-
-        return try {
-            newDeferred.await()
-        } catch (ex: CancellationException) {
-            // onServiceDisconnected will cancel the deferred
-            null
-        }
-    }
-
-    override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
-        if (service == null) {
-            logger.error { "Service is connected, but got null binder!" }
-        }
-        binderDeferred.value.complete(mapBinder(service))
-    }
-
-    override fun onServiceDisconnected(name: ComponentName?) {
-        binderDeferred.value.cancel(CancellationException("Service disconnected."))
+    private fun onServiceDisconnected() {
         _connection.onServiceDisconnected()
     }
 }

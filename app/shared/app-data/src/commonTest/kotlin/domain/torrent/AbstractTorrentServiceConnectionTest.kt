@@ -14,20 +14,26 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
+import me.him188.ani.app.domain.torrent.service.ServiceStartException
+import me.him188.ani.app.domain.torrent.service.TorrentServiceStarter
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 
 abstract class AbstractTorrentServiceConnectionTest {
     protected val fakeBinder = "FAKE_BINDER_OBJECT"
 
-    protected val startServiceWithSuccess: suspend () -> String? = {
-        delay(300)
-        fakeBinder
+    protected val startServiceWithSuccess = object : TorrentServiceStarter<String> {
+        override suspend fun start(): String {
+            delay(300)
+            return fakeBinder
+        }
     }
 
-    protected val startServiceWithFail: suspend () -> String? = {
-        delay(100)
-        null
+    protected val startServiceWithFail = object : TorrentServiceStarter<String> {
+        override suspend fun start(): String {
+            delay(100)
+            throw ServiceStartException.NullBinder
+        }
     }
     
     @BeforeTest

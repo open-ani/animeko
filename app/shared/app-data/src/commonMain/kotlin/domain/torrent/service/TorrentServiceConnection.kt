@@ -28,7 +28,6 @@ import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.logging.debug
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.logger
-import me.him188.ani.utils.logging.warn
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 
@@ -61,9 +60,8 @@ interface TorrentServiceConnection<T : Any> {
  * 若服务终止, 不会立刻重启服务, 直到再次进入 [RESUMED][Lifecycle.State.RESUMED] 状态.
  *
  * 实现细节:
- * - 实现 [startService] 方法, 用于实际的启动服务, 并且要连接服务.
  *
- * @param startService 启动服务并返回[服务通信对象][T]接口, 若返回 null 代表启动失败.
+ * @param serviceStarter 启动服务并返回[服务通信对象][T]接口, 若返回 null 代表启动失败.
  *   这个方法将在 `singleThreadDispatcher` 执行, 并且同时只有一个在执行.
  * @param singleThreadDispatcher 用于执行内部逻辑的调度器, 需要使用单线程来保证内部逻辑的线程安全.
  */
@@ -71,7 +69,7 @@ class LifecycleAwareTorrentServiceConnection<T : Any>(
     parentCoroutineContext: CoroutineContext = EmptyCoroutineContext,
     singleThreadDispatcher: CoroutineDispatcher,
     private val lifecycle: Lifecycle,
-    private val startService: suspend () -> T?,
+    private val starter: TorrentServiceStarter<T>,
 ) : TorrentServiceConnection<T> {
     private val logger = logger(this::class.simpleName ?: "TorrentServiceConnection")
 
@@ -135,26 +133,30 @@ class LifecycleAwareTorrentServiceConnection<T : Any>(
     ) {
         var attempt = 0
         while (attempt < maxAttempts && isAtForeground.value && !isServiceConnected.value) {
-            val binder = startServiceLock.withLock {
-                if (!isAtForeground.value || isServiceConnected.value) {
-                    logger.debug { "Service is already connected or app is not at foreground." }
-                    return
+            val binder = try {
+                startServiceLock.withLock {
+                    if (!isAtForeground.value || isServiceConnected.value) {
+                        logger.debug { "Service is already connected or app is not at foreground." }
+                        return
+                    }
+                    starter.start()
                 }
-                startService()
-            }
-            if (binder == null) {
-                logger.warn { "[#$attempt] startService() returned null binder, retry after $delayMillisBetweenAttempts ms" }
+            } catch (ex: ServiceStartException) {
+                logger.error(ex) { "[#$attempt] Failed to start service, retry after $delayMillisBetweenAttempts ms" }
+
                 attempt++
                 delay(delayMillisBetweenAttempts)
-            } else {
-                logger.debug { "Service connected successfully: $binder" }
-                if (binderDeferred.isCompleted) {
-                    binderDeferred = CompletableDeferred()
-                }
-                binderDeferred.complete(binder)
-                isServiceConnected.value = true
-                return
+
+                continue
             }
+
+            logger.debug { "Service connected successfully: $binder" }
+            if (binderDeferred.isCompleted) {
+                binderDeferred = CompletableDeferred()
+            }
+            binderDeferred.complete(binder)
+            isServiceConnected.value = true
+            return
         }
         if (!isServiceConnected.value) {
             logger.error { "Failed to connect service after $maxAttempts retries." }

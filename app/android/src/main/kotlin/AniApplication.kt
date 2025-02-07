@@ -22,7 +22,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import me.him188.ani.android.activity.MainActivity
 import me.him188.ani.app.domain.media.cache.MediaCacheNotificationTask
-import me.him188.ani.app.domain.torrent.IRemoteAniTorrentEngine
 import me.him188.ani.app.domain.torrent.TorrentManager
 import me.him188.ani.app.domain.torrent.service.AniTorrentService
 import me.him188.ani.app.domain.torrent.service.ServiceConnectionManager
@@ -90,7 +89,6 @@ class AniApplication : Application() {
         val connectionManager = ServiceConnectionManager(
             this,
             ::startAniTorrentService,
-            { IRemoteAniTorrentEngine.Stub.asInterface(it) },
             scope.coroutineContext,
             ProcessLifecycleOwner.get().lifecycle,
         )
