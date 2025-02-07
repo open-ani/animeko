@@ -83,11 +83,7 @@ class AniTorrentServiceStarter(
                 logger.debug { "[1/4] Started service, result: $startResult" }
             }
         }
-
-        val currentDeferred = binderDeferred.value
-        if (currentDeferred != null && currentDeferred.isCompleted) {
-            currentDeferred.cancel()
-        }
+    
         val newDeferred = CompletableDeferred<IRemoteAniTorrentEngine>()
         binderDeferred.value = newDeferred
 
