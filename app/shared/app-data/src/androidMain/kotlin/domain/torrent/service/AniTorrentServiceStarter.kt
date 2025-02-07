@@ -38,7 +38,7 @@ class AniTorrentServiceStarter(
     private val logger = logger<AniTorrentServiceStarter>()
 
     private val startupIntentFilter = IntentFilter(AniTorrentService.INTENT_STARTUP)
-    private val binderDeferred = MutableStateFlow(CompletableDeferred<IRemoteAniTorrentEngine>())
+    private val binderDeferred = MutableStateFlow<CompletableDeferred<IRemoteAniTorrentEngine>?>(null)
 
     override suspend fun start(): IRemoteAniTorrentEngine {
         suspendCancellableCoroutine { cont ->
@@ -78,7 +78,7 @@ class AniTorrentServiceStarter(
         }
 
         val currentDeferred = binderDeferred.value
-        if (!currentDeferred.isCompleted) {
+        if (currentDeferred != null && currentDeferred.isCompleted) {
             currentDeferred.cancel()
         }
         val newDeferred = CompletableDeferred<IRemoteAniTorrentEngine>()
@@ -100,11 +100,11 @@ class AniTorrentServiceStarter(
             logger.error { "Service is connected, but got null binder!" }
         }
         val result = IRemoteAniTorrentEngine.Stub.asInterface(service)
-        binderDeferred.value.complete(result)
+        binderDeferred.value?.complete(result)
     }
 
     override fun onServiceDisconnected(name: ComponentName?) {
-        binderDeferred.value.completeExceptionally(ServiceStartException.DisconnectedUnexpectedly)
+        binderDeferred.value?.completeExceptionally(ServiceStartException.DisconnectedUnexpectedly)
         onServiceDisconnected()
     }
 }
