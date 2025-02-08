@@ -36,13 +36,13 @@ import kotlin.coroutines.EmptyCoroutineContext
 /**
  * Torrent 服务与 APP 通信接口. [T] 为通信接口的类型
  *
- * 此接口仅负责服务与 APP 之间的通信, 不负责服务的启动和终止.
+ * 此接口仅负责与 Torrent 服务的通信, 启动与终止服务的逻辑可能需要在 接口的实现类(implementations) 或其他外部实现.
  */
 interface TorrentServiceConnection<T : Any> {
     /**
      * 当前服务是否已连接.
      *
-     * 若变为 `false`, 则服务通信接口将变得不可用, 接口的实现类 可能需要重启服务, 例如 [LifecycleAwareTorrentServiceConnection].
+     * 若变为 `false`, 则服务通信接口将变得不可用, 接口的实现类(implementations) 可能需要重启服务, 例如 [LifecycleAwareTorrentServiceConnection].
      */
     val connected: StateFlow<Boolean>
 
