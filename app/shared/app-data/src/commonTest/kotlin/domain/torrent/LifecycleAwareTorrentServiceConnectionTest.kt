@@ -14,7 +14,6 @@ import androidx.lifecycle.testing.TestLifecycleOwner
 import app.cash.turbine.test
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceTimeBy
@@ -33,7 +32,6 @@ class LifecycleAwareTorrentServiceConnectionTest : AbstractTorrentServiceConnect
         val testLifecycle = TestLifecycleOwner()
         val connection = LifecycleAwareTorrentServiceConnection(
             parentCoroutineContext = backgroundScope.coroutineContext,
-            singleThreadDispatcher = Dispatchers.Default,
             lifecycle = testLifecycle.lifecycle,
             starter = startServiceWithSuccess,
         ).also { it.startLifecycleLoop() }
@@ -55,7 +53,6 @@ class LifecycleAwareTorrentServiceConnectionTest : AbstractTorrentServiceConnect
         val testLifecycle = TestLifecycleOwner()
         val connection = LifecycleAwareTorrentServiceConnection(
             parentCoroutineContext = backgroundScope.coroutineContext,
-            singleThreadDispatcher = Dispatchers.Default,
             lifecycle = testLifecycle.lifecycle,
             starter = startServiceWithFail,
         ).also { it.startLifecycleLoop() }
@@ -82,7 +79,6 @@ class LifecycleAwareTorrentServiceConnectionTest : AbstractTorrentServiceConnect
         val testLifecycle = TestLifecycleOwner()
         val connection = LifecycleAwareTorrentServiceConnection(
             parentCoroutineContext = backgroundScope.coroutineContext,
-            singleThreadDispatcher = Dispatchers.Default,
             lifecycle = testLifecycle.lifecycle,
             starter = startServiceWithSuccess,
         ).also { it.startLifecycleLoop() }
@@ -108,7 +104,6 @@ class LifecycleAwareTorrentServiceConnectionTest : AbstractTorrentServiceConnect
         val testLifecycle = TestLifecycleOwner()
         val connection = LifecycleAwareTorrentServiceConnection(
             parentCoroutineContext = backgroundScope.coroutineContext,
-            singleThreadDispatcher = Dispatchers.Default,
             lifecycle = testLifecycle.lifecycle,
             starter = startServiceWithSuccess,
         ).also { it.startLifecycleLoop() }
@@ -140,7 +135,6 @@ class LifecycleAwareTorrentServiceConnectionTest : AbstractTorrentServiceConnect
         val testLifecycle = TestLifecycleOwner()
         val connection = LifecycleAwareTorrentServiceConnection(
             parentCoroutineContext = backgroundScope.coroutineContext,
-            singleThreadDispatcher = Dispatchers.Default,
             lifecycle = testLifecycle.lifecycle,
             starter = startServiceWithSuccess,
         ).also { it.startLifecycleLoop() }
@@ -170,7 +164,6 @@ class LifecycleAwareTorrentServiceConnectionTest : AbstractTorrentServiceConnect
         val testLifecycle = TestLifecycleOwner()
         val connection = LifecycleAwareTorrentServiceConnection(
             parentCoroutineContext = backgroundScope.coroutineContext,
-            singleThreadDispatcher = Dispatchers.Default,
             lifecycle = testLifecycle.lifecycle,
             starter = startServiceWithSuccess,
         ).also { it.startLifecycleLoop() }

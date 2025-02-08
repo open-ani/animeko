@@ -20,7 +20,6 @@ import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.newSingleThreadContext
 import me.him188.ani.app.domain.torrent.IRemoteAniTorrentEngine
 import me.him188.ani.utils.logging.logger
@@ -45,7 +44,7 @@ import kotlin.coroutines.CoroutineContext
 class ServiceConnectionManager(
     context: Context,
     startServiceImpl: () -> ComponentName?,
-    parentCoroutineContext: CoroutineContext = Dispatchers.Default,
+    parentCoroutineContext: CoroutineContext,
     private val lifecycle: Lifecycle,
 ) {
     private val logger = logger<ServiceConnectionManager>()
@@ -56,10 +55,11 @@ class ServiceConnectionManager(
         onServiceDisconnected = ::onServiceDisconnected,
     )
 
+    // TorrentServiceConnection 无论如何都不能被阻塞, 单独为它的逻辑创建一个线程.
     @OptIn(DelicateCoroutinesApi::class)
     private val _connection = LifecycleAwareTorrentServiceConnection(
-        parentCoroutineContext = parentCoroutineContext,
-        singleThreadDispatcher = newSingleThreadContext("AndroidTorrentServiceConnection"),
+        parentCoroutineContext = parentCoroutineContext +
+                newSingleThreadContext("AndroidTorrentServiceConnection"),
         lifecycle = lifecycle,
         serviceStarter,
     )

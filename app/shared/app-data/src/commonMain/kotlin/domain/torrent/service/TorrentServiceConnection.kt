@@ -16,7 +16,6 @@ import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.awaitCancellation
@@ -65,19 +64,17 @@ interface TorrentServiceConnection<T : Any> {
  * 实现细节:
  *
  * @param starter 启动服务并返回[服务通信对象][T]接口, 若返回 null 代表启动失败.
- *   这个方法将在 `singleThreadDispatcher` 执行, 并且同时只有一个在执行.
- * @param singleThreadDispatcher 用于执行内部逻辑的调度器, 需要使用单线程来保证内部逻辑的线程安全.
+ * @param parentCoroutineContext 执行内部逻辑的协程上下文.
  */
 class LifecycleAwareTorrentServiceConnection<T : Any>(
     parentCoroutineContext: CoroutineContext = EmptyCoroutineContext,
-    singleThreadDispatcher: CoroutineDispatcher,
     private val lifecycle: Lifecycle,
     private val starter: TorrentServiceStarter<T>,
 ) : TorrentServiceConnection<T> {
     private val logger = logger(this::class.simpleName ?: "TorrentServiceConnection")
 
     // we assert it is a single thread dispatcher
-    private val scope = parentCoroutineContext.childScope(singleThreadDispatcher)
+    private val scope = parentCoroutineContext.childScope()
     
     private var binderDeferred by atomic(CompletableDeferred<T>())
 
