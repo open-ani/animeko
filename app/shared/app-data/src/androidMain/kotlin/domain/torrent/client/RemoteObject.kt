@@ -75,7 +75,7 @@ class RetryRemoteObject<I : IInterface>(
                 if (retryCount > 2) throw doe
 
                 retryCount += 1
-                logger.warn(Exception("Show stacktrace")) {
+                logger.warn {
                     "Remote interface $currentRemote is dead, attempt to fetch new remote. retryCount = $retryCount"
                 }
 
