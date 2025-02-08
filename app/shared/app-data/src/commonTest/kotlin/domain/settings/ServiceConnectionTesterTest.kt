@@ -71,7 +71,6 @@ class ServiceConnectionTesterTest {
         val tester = ServiceConnectionTester(
             services = listOf(service),
             defaultDispatcher = testScheduler, // or Dispatchers.Default
-            parentCoroutineContext = coroutineContext,
         )
 
         tester.testAll() // should complete without throwing
@@ -88,7 +87,6 @@ class ServiceConnectionTesterTest {
         val tester = ServiceConnectionTester(
             services = listOf(service),
             defaultDispatcher = testScheduler,
-            parentCoroutineContext = coroutineContext,
         )
 
         tester.testAll()
@@ -104,7 +102,6 @@ class ServiceConnectionTesterTest {
         val tester = ServiceConnectionTester(
             services = listOf(service),
             defaultDispatcher = testScheduler,
-            parentCoroutineContext = coroutineContext,
         )
 
         tester.testAll()
@@ -128,7 +125,6 @@ class ServiceConnectionTesterTest {
         val tester = ServiceConnectionTester(
             services = listOf(okService, failService, errorService),
             defaultDispatcher = testScheduler,
-            parentCoroutineContext = coroutineContext,
         )
 
         tester.testAll()
@@ -159,7 +155,6 @@ class ServiceConnectionTesterTest {
         val tester = ServiceConnectionTester(
             services = listOf(longRunningService),
             defaultDispatcher = coroutineContext[ContinuationInterceptor]!!,
-            parentCoroutineContext = coroutineContext,
         )
 
         val job = launch(start = CoroutineStart.UNDISPATCHED) {
@@ -191,7 +186,6 @@ class ServiceConnectionTesterTest {
         val tester = ServiceConnectionTester(
             services = listOf(service1, service2),
             defaultDispatcher = testScheduler,
-            parentCoroutineContext = coroutineContext,
         )
 
         tester.testAll()
@@ -216,7 +210,6 @@ class ServiceConnectionTesterTest {
         val tester = ServiceConnectionTester(
             services = listOf(service),
             defaultDispatcher = testScheduler,
-            parentCoroutineContext = coroutineContext,
         )
 
         // We'll collect from the shared flow using Turbine.
@@ -268,7 +261,6 @@ class ServiceConnectionTesterTest {
         val tester = ServiceConnectionTester(
             services = listOf(service),
             defaultDispatcher = customDispatcher,
-            parentCoroutineContext = coroutineContext,
         )
 
         tester.testAll()

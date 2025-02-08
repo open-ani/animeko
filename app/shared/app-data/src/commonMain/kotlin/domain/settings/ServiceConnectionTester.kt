@@ -31,7 +31,6 @@ import me.him188.ani.datasources.bangumi.BangumiClient
 import me.him188.ani.utils.coroutines.SingleTaskExecutor
 import me.him188.ani.utils.ktor.ApiInvoker
 import kotlin.coroutines.CoroutineContext
-import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration
 import kotlin.time.measureTimedValue
@@ -51,16 +50,12 @@ import kotlin.time.measureTimedValue
  * This class is **thread-safe** and can be called from multiple coroutines/threads concurrently.
  *
  * @param defaultDispatcher coroutine dispatcher to run the tests ([Service.test]) and results aggregation.
- * @param parentCoroutineContext parent coroutine context for the background scope.
- * It can be safely set to [EmptyCoroutineContext] because the lifecycle of [Service.test] is bounded by [testAll].
- * That is, when you cancel [testAll], all testing coroutines are also canceled.
  *
  * @see ServiceConnectionTesters.createDefault
  */
 class ServiceConnectionTester(
     services: List<Service>,
     private val defaultDispatcher: CoroutineContext = Dispatchers.Default,
-    parentCoroutineContext: CoroutineContext = EmptyCoroutineContext, // this can safely be Empty. Lifecycle handled by `testAll`
 ) {
     private val services = services.map { ServiceImpl(it) }
 
@@ -75,9 +70,8 @@ class ServiceConnectionTester(
             started = SharingStarted.WhileSubscribed(), replay = 0,
         )
 
-    private val backgroundScope = CoroutineScope(parentCoroutineContext) // this may essentially be GlobalScope.
     private val singleTaskExecutor =
-        SingleTaskExecutor(CoroutineScope(backgroundScope.coroutineContext + defaultDispatcher))
+        SingleTaskExecutor(CoroutineScope(defaultDispatcher)) // This scope has no Job! It's okay because the lifecycle is bound by [testAll].
 
     /**
      * Start testing all services and suspend until all services are tested.
@@ -195,7 +189,6 @@ object ServiceConnectionTesters {
         bangumiClient: BangumiClient,
         aniClient: ApiInvoker<TrendsAniApi>,
         defaultDispatcher: CoroutineContext = Dispatchers.Default,
-        parentCoroutineContext: CoroutineContext = EmptyCoroutineContext,
     ): ServiceConnectionTester {
         return ServiceConnectionTester(
             listOf(
@@ -216,7 +209,6 @@ object ServiceConnectionTesters {
                 },
             ),
             defaultDispatcher,
-            parentCoroutineContext,
         )
 
     }
