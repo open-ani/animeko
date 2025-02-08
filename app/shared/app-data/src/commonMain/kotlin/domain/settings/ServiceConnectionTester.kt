@@ -9,17 +9,10 @@
 
 package me.him188.ani.app.domain.settings
 
-import io.ktor.http.isSuccess
+import io.ktor.http.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.shareIn
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -70,8 +63,7 @@ class ServiceConnectionTester(
             started = SharingStarted.WhileSubscribed(), replay = 0,
         )
 
-    private val singleTaskExecutor =
-        SingleTaskExecutor(CoroutineScope(defaultDispatcher)) // This scope has no Job! It's okay because the lifecycle is bound by [testAll].
+    private val singleTaskExecutor = SingleTaskExecutor(defaultDispatcher)
 
     /**
      * Start testing all services and suspend until all services are tested.

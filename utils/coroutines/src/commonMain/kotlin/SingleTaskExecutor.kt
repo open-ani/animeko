@@ -25,9 +25,6 @@ interface SingleTaskExecutor {
     /**
      * Invokes [block] in a coroutine. Suspends until [block] completes, and returns its result.
      * Previous [invoke] will be canceled when [invoke] is called again.
-     *
-     * This function is similar to calling `backgroundScope.launch { }.join()` using the scope provided in the constructor [SingleTaskExecutor],
-     * but this function ensures only one [invoke] is running at a time.
      */
     suspend operator fun <R> invoke(
         coroutineContext: CoroutineContext = EmptyCoroutineContext,
@@ -38,24 +35,26 @@ interface SingleTaskExecutor {
 }
 
 /**
- * Creates a [SingleTaskExecutor] that uses the provided [backgroundScope].
+ * Creates a [SingleTaskExecutor] that uses the provided [parentCoroutineContext].
  *
- * @param backgroundScope The scope to run tasks in. If the scope is canceled, [SingleTaskExecutor.invoke] will be cancelled,
+ * @param parentCoroutineContext The context to run tasks with. If the scope is canceled, [SingleTaskExecutor.invoke] will be cancelled,
  * and further tasks will not be started (also throws [CancellationException]).
- * BackgroundScope could either have a [Job] or a `SupervisorJob`, or no job, and the implementation will always throw [CancellationException] if the scope is canceled.
+ * This could either have a [Job] or a `SupervisorJob`, or no job, and the implementation will always throw [CancellationException] if the scope is canceled.
  */
-fun SingleTaskExecutor(backgroundScope: CoroutineScope): SingleTaskExecutor = AtomicSingleTaskExecutor(backgroundScope)
+fun SingleTaskExecutor(parentCoroutineContext: CoroutineContext = EmptyCoroutineContext): SingleTaskExecutor =
+    AtomicSingleTaskExecutor(parentCoroutineContext)
 
 /**
  * A task executor that ensures only one task is running at a time.
  * Previous tasks will be canceled if a new task is submitted.
  *
- * This class is thread-safe and optimized for low contention environments.
+ * This class is **thread-safe** and optimized for **low contention** environments.
  */
 class AtomicSingleTaskExecutor(
-    private val scope: CoroutineScope,
+    coroutineContext: CoroutineContext = EmptyCoroutineContext,
 ) : SingleTaskExecutor {
     private val _job = atomic<Job?>(null)
+    private val scope = CoroutineScope(coroutineContext) // This scope may not have a Job.
 
     @TestOnly
     internal fun getJob(): Job? = _job.value
@@ -64,13 +63,6 @@ class AtomicSingleTaskExecutor(
         coroutineContext: CoroutineContext,
         block: suspend CoroutineScope.() -> R,
     ): R {
-        scope.coroutineContext[Job]?.let { scopeJob ->
-            if (scopeJob.isCancelled) {
-                // Fast path: the scope is already cancelled, no need to start a new job.
-                scopeJob.checkCancelledAndThrowCancellation()
-            }
-        }
-
         // Atomically, create a new job and start it.
 
         // 1. Cancel previous job

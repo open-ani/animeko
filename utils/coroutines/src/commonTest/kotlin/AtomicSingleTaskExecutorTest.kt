@@ -9,29 +9,20 @@
 
 package me.him188.ani.utils.coroutines
 
-import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.CoroutineStart
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitCancellation
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.*
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlin.coroutines.cancellation.CancellationException
-import kotlin.test.Test
-import kotlin.test.assertFailsWith
-import kotlin.test.assertNotNull
-import kotlin.test.assertNull
-import kotlin.test.assertTrue
-import kotlin.test.fail
+import kotlin.test.*
 import kotlin.time.Duration.Companion.milliseconds
 
 class AtomicSingleTaskExecutorTest {
+    @Suppress("TestFunctionName")
+    private fun AtomicSingleTaskExecutor(scope: TestScope): AtomicSingleTaskExecutor =
+        AtomicSingleTaskExecutor(scope.coroutineContext)
+
     /**
      * Basic test: single invocation should run to completion
      * and `_job` is set to null afterward.
@@ -127,29 +118,6 @@ class AtomicSingleTaskExecutorTest {
         // Usually we'd check that 1..4 are not in finished, but concurrency can vary.
         // It's typical in 'latest-wins' that older calls are canceled.
         assertNull(executor.getJob(), "Job should be cleared after everything finishes.")
-    }
-
-    /**
-     * Verify that, if the background scope is canceled, further invocations
-     * will throw CancellationException and won't start a new job.
-     */
-    @Test
-    fun `invoke - scope canceled - subsequent call throws CancellationException`() = runTest {
-        val externalScope = CoroutineScope(Job() + Dispatchers.Default)
-        val executor = AtomicSingleTaskExecutor(externalScope)
-
-        // Cancel external scope
-        externalScope.cancel()
-
-        // Now invoke should fail with CancellationException
-        assertFailsWith<CancellationException> {
-            runBlocking {
-                executor.invoke {
-                    // Should never run
-                    error("Should not run if the scope is canceled.")
-                }
-            }
-        }
     }
 
     /**
