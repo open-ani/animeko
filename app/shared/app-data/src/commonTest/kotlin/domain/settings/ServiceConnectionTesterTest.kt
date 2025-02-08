@@ -12,20 +12,10 @@
 package me.him188.ani.app.domain.settings
 
 import app.cash.turbine.test
-import kotlinx.coroutines.CoroutineStart
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.job
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.advanceTimeBy
-import kotlinx.coroutines.test.advanceUntilIdle
-import kotlinx.coroutines.test.runCurrent
-import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.*
 import kotlin.coroutines.ContinuationInterceptor
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -46,7 +36,7 @@ class ServiceConnectionTesterTest {
         testDelay: Duration = Duration.ZERO,
         shouldThrow: Boolean = false,
         shouldFail: Boolean = false,
-        onTestCalled: (ContinuationInterceptor) -> Unit = {}
+        onTestCalled: (ContinuationInterceptor) -> Unit = {},
     ): ServiceConnectionTester.Service {
         return ServiceConnectionTester.Service(
             id = id,
@@ -233,6 +223,50 @@ class ServiceConnectionTesterTest {
 
             val final = awaitItem()
             assertTrue(final.states[service] is ServiceConnectionTester.TestState.Success)
+
+            job.join()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `results flow - verifies multiple states update in real-time`() = runTest(StandardTestDispatcher()) {
+        val service1 = createService("service", testDelay = 100.milliseconds)
+        val service2 = createService("service2", testDelay = 300.milliseconds)
+        val tester = ServiceConnectionTester(
+            services = listOf(service1, service2),
+            defaultDispatcher = testScheduler,
+        )
+
+        // We'll collect from the shared flow using Turbine.
+        // Then we call testAll and observe the progression of states.
+        tester.results.test {
+            // Initially, we should see Idle.
+            val initialEmission = awaitItem()
+            assertEquals(ServiceConnectionTester.TestState.Idle, initialEmission.states[service1])
+            assertEquals(ServiceConnectionTester.TestState.Idle, initialEmission.states[service2])
+
+            // Start the testAll
+            val job = launch { tester.testAll() }
+
+            // Next emission: Testing
+            val next = awaitItem()
+            assertEquals(ServiceConnectionTester.TestState.Testing, next.states[service1])
+            assertEquals(ServiceConnectionTester.TestState.Testing, next.states[service2])
+
+            advanceTimeBy(200) // service1 should complete, while service2 is still testing
+            runCurrent()
+
+            val next2 = awaitItem()
+            assertTrue(next2.states[service1] is ServiceConnectionTester.TestState.Success)
+            assertTrue(next2.states[service2] is ServiceConnectionTester.TestState.Testing)
+
+            advanceTimeBy(200) // service2 should complete
+            runCurrent()
+
+            val final = awaitItem()
+            assertTrue(final.states[service1] is ServiceConnectionTester.TestState.Success)
+            assertTrue(final.states[service2] is ServiceConnectionTester.TestState.Success)
 
             job.join()
             cancelAndIgnoreRemainingEvents()
