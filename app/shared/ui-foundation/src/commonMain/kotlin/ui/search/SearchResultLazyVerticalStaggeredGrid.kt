@@ -48,12 +48,12 @@ import me.him188.ani.app.ui.foundation.widgets.FastLinearProgressIndicator
 /**
  * 显示搜索结果的 [LazyVerticalStaggeredGrid]. 支持显示加载中的进度条, 错误时显示错误卡片.
  *
- * @param problem 当有错误时调用. 内容可以是 [LoadErrorCard].
+ * @param error 当有错误时调用. 内容可以是 [LoadErrorCard].
  */
 @Composable
 fun <T : Any> SearchResultLazyVerticalStaggeredGrid(
     items: LazyPagingItems<T>,
-    problem: @Composable (problem: LoadError?) -> Unit,
+    error: @Composable (error: LoadError?) -> Unit,
     modifier: Modifier = Modifier,
     cells: StaggeredGridCells.Adaptive = StaggeredGridCells.Adaptive(300.dp),
     lazyStaggeredGridState: LazyStaggeredGridState = rememberLazyStaggeredGridState(),
@@ -81,7 +81,7 @@ fun <T : Any> SearchResultLazyVerticalStaggeredGrid(
                         .padding(vertical = 8.dp),
                 ) {
                     val value = items.rememberLoadErrorState().value
-                    problem(value)
+                    error(value)
                 }
             }
 

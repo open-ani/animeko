@@ -95,7 +95,6 @@ internal fun createTestCacheEpisode(
         onPause = { state.value = CacheEpisodePaused.PAUSED },
         onResume = { state.value = CacheEpisodePaused.IN_PROGRESS },
         onDelete = {},
-        onPlay = {},
         backgroundScope = GlobalScope,
     )
 }

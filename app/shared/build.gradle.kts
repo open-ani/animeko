@@ -184,6 +184,7 @@ kotlin {
     sourceSets.named("desktopMain").dependencies {
         api(compose.desktop.currentOs) {
             exclude(compose.material) // We use material3
+            exclude("org.jetbrains.compose.ui:ui-tooling-preview")
         }
         api(compose.material3)
         api("org.jetbrains.compose.ui:ui-graphics-desktop:${libs.versions.compose.multiplatform.get()}")

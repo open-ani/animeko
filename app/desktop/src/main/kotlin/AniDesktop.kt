@@ -39,7 +39,6 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
@@ -84,7 +83,6 @@ import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.PermissionManager
 import me.him188.ani.app.platform.PlatformWindow
 import me.him188.ani.app.platform.createAppRootCoroutineScope
-import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.platform.getCommonKoinModule
 import me.him188.ani.app.platform.notification.NoopNotifManager
 import me.him188.ani.app.platform.notification.NotifManager
@@ -114,7 +112,6 @@ import me.him188.ani.utils.io.toKtPath
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
-import me.him188.ani.utils.platform.currentPlatform
 import me.him188.ani.utils.platform.currentPlatformDesktop
 import me.him188.ani.utils.platform.isMacOS
 import org.jetbrains.compose.resources.painterResource
@@ -188,7 +185,7 @@ object AniDesktop {
         if (AniBuildConfigDesktop.isDebug) {
             logger.info { "Debug mode enabled" }
         }
-        logger.info { "Ani platform: ${currentPlatform()}, version: ${currentAniBuildConfig.versionName}" }
+        AppStartupTasks.printVersions()
 
         logger.info { "dataDir: file://${dataDir.absolutePathString().replace(" ", "%20")}" }
         logger.info { "cacheDir: file://${cacheDir.absolutePathString().replace(" ", "%20")}" }

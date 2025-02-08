@@ -160,7 +160,8 @@ private fun MainScreenContent(
         layoutType = navigationLayoutType,
     ) {
         val coroutineScope = rememberCoroutineScope()
-        val navigator by rememberUpdatedState(LocalNavigator.current)
+        val navigatorState = rememberUpdatedState(LocalNavigator.current)
+        val navigator by navigatorState
         TabContent(
             layoutType = navigationLayoutType,
             Modifier.ifThen(navigationLayoutType != NavigationSuiteType.NavigationBar) {
@@ -206,7 +207,7 @@ private fun MainScreenContent(
                     }
 
                     MainScreenPage.CacheManagement -> CacheManagementScreen(
-                        viewModel { CacheManagementViewModel(navigator) },
+                        viewModel { CacheManagementViewModel() },
                         navigationIcon = { },
                         Modifier.fillMaxSize(),
                     )

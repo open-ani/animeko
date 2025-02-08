@@ -281,7 +281,7 @@ internal fun EpisodeVideoImpl(
                     )
                     val debugViewModel = rememberDebugSettingsViewModel()
                     @OptIn(TestOnly::class)
-                    if (debugViewModel.isAppInDebugMode && debugViewModel.debugSettings.value.showControllerAlwaysOnRequesters) {
+                    if (debugViewModel.isAppInDebugMode && debugViewModel.showControllerAlwaysOnRequesters) {
                         TextWithBorder(
                             "Always on requesters: \n" +
                                     playerControllerState.getAlwaysOnRequesters().joinToString("\n"),

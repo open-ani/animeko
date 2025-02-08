@@ -16,14 +16,14 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview
+import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.subject.collection.components.SubjectCollectionTypeButton
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 
 
 @Composable
 @Preview
-fun PreviewCollectionActionButton() = ProvideFoundationCompositionLocalsForPreview {
+fun PreviewCollectionActionButton() = ProvideCompositionLocalsForPreview {
     Surface {
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             Column {

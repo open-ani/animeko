@@ -351,7 +351,7 @@ private fun ErrorSubjectDetailsPage(
         navigationIcon,
     ) { _, paddingValues ->
         LoadErrorCard(
-            problem = error,
+            error = error,
             onRetry = onRetry,
             modifier = Modifier
                 .padding(paddingValues)

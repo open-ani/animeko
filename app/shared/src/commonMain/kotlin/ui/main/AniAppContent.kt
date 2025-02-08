@@ -114,7 +114,7 @@ private fun AniAppContentImpl(
     initialRoute: NavRoutes,
     modifier: Modifier = Modifier,
 ) {
-    val navController = aniNavigator.navigator
+    val navController by aniNavigator.collectNavigatorAsState()
     // 必须传给所有 Scaffold 和 TopAppBar. 注意, 如果你不传, 你的 UI 很可能会在 macOS 不工作.
     val windowInsetsWithoutTitleBar = ScaffoldDefaults.contentWindowInsets
     val windowInsets = ScaffoldDefaults.contentWindowInsets
@@ -306,7 +306,7 @@ private fun AniAppContentImpl(
             ) { backStackEntry ->
                 val route = backStackEntry.toRoute<NavRoutes.Caches>()
                 CacheManagementScreen(
-                    viewModel { CacheManagementViewModel(aniNavigator) },
+                    viewModel { CacheManagementViewModel() },
                     navigationIcon = {
                         BackNavigationIconButton(
                             {
@@ -467,7 +467,7 @@ private fun AniAppContentImpl(
             }
         }
 
-        LaunchedEffect(true) {
+        LaunchedEffect(true, navController) {
             navController.currentBackStack.collect { list ->
                 if (list.isEmpty()) { // workaround for 快速点击左上角返回键会白屏.
                     navController.navigate(initialRoute)

@@ -51,7 +51,6 @@ import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.cache.MediaCacheState
 import me.him188.ani.app.domain.media.cache.engine.MediaStats
 import me.him188.ani.app.domain.media.cache.engine.sum
-import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.torrent.api.files.averageRate
 import me.him188.ani.app.ui.adaptive.AniTopAppBar
 import me.him188.ani.app.ui.adaptive.AniTopAppBarDefaults
@@ -85,9 +84,7 @@ import kotlin.time.Duration.Companion.seconds
 typealias CacheGroupGridLayoutState = LazyStaggeredGridState
 
 @Stable
-class CacheManagementViewModel(
-    private val navigator: AniNavigator,
-) : AbstractViewModel(), KoinComponent {
+class CacheManagementViewModel : AbstractViewModel(), KoinComponent {
     private val cacheManager: MediaCacheManager by inject()
     private val subjectCollectionRepository: SubjectCollectionRepository by inject()
 
@@ -211,12 +208,6 @@ class CacheManagementViewModel(
             onPause = { mediaCache.pause() },
             onResume = { mediaCache.resume() },
             onDelete = { cacheManager.deleteCache(mediaCache) },
-            onPlay = {
-                navigator.navigateEpisodeDetails(
-                    mediaCache.metadata.subjectIdInt,
-                    mediaCache.metadata.episodeIdInt,
-                )
-            },
             backgroundScope = this + CoroutineName("CacheEpisode-${mediaCache.metadata.episodeIdInt}"),
         )
     }

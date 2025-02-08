@@ -218,7 +218,7 @@ fun CacheGroupCard(
                             .weight(1f)
                             .align(Alignment.CenterVertically),
                     ) {
-                        ProvideTextStyle(MaterialTheme.typography.headlineSmall) {
+                        ProvideTextStyle(MaterialTheme.typography.titleLarge) {
                             Crossfade(
                                 state.cardTitle,
                                 Modifier.animateContentSize(),
@@ -284,6 +284,7 @@ fun CacheGroupCard(
                 }
             }
         }
+        val navigator = LocalNavigator.current
 
         AniAnimatedVisibility(state.expanded) {
             Column(
@@ -296,7 +297,13 @@ fun CacheGroupCard(
                 verticalArrangement = Arrangement.spacedBy(layoutProperties.episodeItemSpacing), // each item already has inner paddings
             ) {
                 for (episode in state.episodes) {
-                    CacheEpisodeItem(episode, containerColor = outerCardColors.containerColor)
+                    CacheEpisodeItem(
+                        episode,
+                        containerColor = outerCardColors.containerColor,
+                        onPlay = { subjectId, episodeId ->
+                            navigator.navigateEpisodeDetails(subjectId, episodeId)
+                        },
+                    )
                 }
             }
         }

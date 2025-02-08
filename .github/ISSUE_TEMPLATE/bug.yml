@@ -63,7 +63,6 @@ body:
       placeholder: |
         请在拖拽文件到这里，或者粘贴日志 (全部) 内容。
         请同时说明问题的发生时间，最好精确到分钟 (例如 19:43 左右)。
-      value: "
-      "
+      value: "..."
     validations:
       required: false

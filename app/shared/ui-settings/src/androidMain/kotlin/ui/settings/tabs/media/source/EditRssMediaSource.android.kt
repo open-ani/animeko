@@ -31,7 +31,7 @@ import me.him188.ani.app.domain.mediasource.rss.RssMediaSourceEngine
 import me.him188.ani.app.domain.mediasource.rss.RssSearchConfig
 import me.him188.ani.app.domain.mediasource.rss.RssSearchQuery
 import me.him188.ani.app.domain.rss.RssParser
-import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview
+import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.settings.mediasource.rss.EditRssMediaSourceScreen
 import me.him188.ani.app.ui.settings.mediasource.rss.EditRssMediaSourceState
@@ -89,7 +89,7 @@ internal object TestRssMediaSourceEngine : RssMediaSourceEngine() {
 @OptIn(TestOnly::class)
 @Composable
 @PreviewLightDark
-fun PreviewEditRssMediaSourcePagePhone() = ProvideFoundationCompositionLocalsForPreview {
+fun PreviewEditRssMediaSourcePagePhone() = ProvideCompositionLocalsForPreview {
     val (edit, test) = rememberTestEditRssMediaSourceStateAndRssTestPaneState()
     EditRssMediaSourceScreen(edit, test, {})
 }
@@ -97,7 +97,7 @@ fun PreviewEditRssMediaSourcePagePhone() = ProvideFoundationCompositionLocalsFor
 @OptIn(TestOnly::class)
 @Composable
 @PreviewLightDark
-fun PreviewEditRssMediaSourcePagePhoneTest() = ProvideFoundationCompositionLocalsForPreview {
+fun PreviewEditRssMediaSourcePagePhoneTest() = ProvideCompositionLocalsForPreview {
     val navigator = rememberListDetailPaneScaffoldNavigator()
     val (edit, test) = rememberTestEditRssMediaSourceStateAndRssTestPaneState()
     EditRssMediaSourceScreen(
@@ -113,7 +113,7 @@ fun PreviewEditRssMediaSourcePagePhoneTest() = ProvideFoundationCompositionLocal
 @Composable
 @Preview(device = Devices.PIXEL_TABLET)
 @Preview(device = Devices.PIXEL_TABLET, uiMode = UI_MODE_NIGHT_YES or UI_MODE_TYPE_NORMAL)
-fun PreviewEditRssMediaSourcePageLaptop() = ProvideFoundationCompositionLocalsForPreview {
+fun PreviewEditRssMediaSourcePageLaptop() = ProvideCompositionLocalsForPreview {
     val (edit, test) = rememberTestEditRssMediaSourceStateAndRssTestPaneState()
     EditRssMediaSourceScreen(edit, test, {})
 }

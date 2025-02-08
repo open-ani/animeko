@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -31,6 +31,7 @@ import me.him188.ani.app.videoplayer.ui.VideoSideSheetsController
 import me.him188.ani.app.videoplayer.ui.hasPageAsState
 import me.him188.ani.app.videoplayer.ui.rememberAlwaysOnRequester
 import me.him188.ani.app.videoplayer.ui.rememberVideoSideSheetsController
+import me.him188.ani.danmaku.ui.DanmakuConfig
 
 /**
  * See extensions on [EpisodeVideoSideSheets] for sheet implementations.
@@ -101,6 +102,39 @@ fun EpisodeVideoSideSheets.DanmakuSettingsSheet(
         EpisodeVideoSettings(
             remember { EpisodeVideoSettingsViewModel() }, // TODO: Extract EpisodeVideoSettingsViewModel from DanmakuSettingsSheet
             onNavigateToFilterSettings = onNavigateToFilterSettings,
+        )
+    }
+}
+
+// todo: shit
+@Suppress("UnusedReceiverParameter")
+@Composable
+fun EpisodeVideoSideSheets.DanmakuSettingsSheet(
+    danmakuConfig: DanmakuConfig,
+    setDanmakuConfig: (config: DanmakuConfig) -> Unit,
+    enableRegexFilter: Boolean,
+    onNavigateToFilterSettings: () -> Unit,
+    switchDanmakuRegexFilterCompletely: () -> Unit,
+
+    onDismissRequest: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    SideSheetLayout(
+        title = { Text(text = "弹幕设置") },
+        onDismissRequest = onDismissRequest,
+        modifier,
+        closeButton = {
+            IconButton(onClick = onDismissRequest) {
+                Icon(Icons.Rounded.Close, contentDescription = "关闭")
+            }
+        },
+    ) {
+        EpisodeVideoSettings(
+            danmakuConfig,
+            setDanmakuConfig,
+            enableRegexFilter,
+            onNavigateToFilterSettings,
+            switchDanmakuRegexFilterCompletely,
         )
     }
 }

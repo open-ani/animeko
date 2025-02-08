@@ -512,7 +512,7 @@ jobs:
       uses: 'nick-fields/retry@v3'
       with:
         timeout_minutes: '120'
-        max_attempts: '2'
+        max_attempts: '3'
         command: './gradlew assembleDebugAndroidTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "--parallel" "-Pani.android.abis=arm64-v8a"'
     - id: 'step-14'
       name: 'Android Instrumented Test (api=30, arch=arm64-v8a)'

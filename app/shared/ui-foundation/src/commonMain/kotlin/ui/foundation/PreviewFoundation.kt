@@ -12,12 +12,15 @@ package me.him188.ani.app.ui.foundation
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleObserver
 import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.LifecycleRegistry
+import androidx.lifecycle.ViewModelStore
+import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.navigation.compose.rememberNavController
 import coil3.ImageLoader
 import coil3.compose.LocalPlatformContext
@@ -47,7 +50,7 @@ import org.jetbrains.compose.resources.imageResource
 // @TestOnly // 这里就不标记了, 名字已经足够明显了
 @OptIn(TestOnly::class)
 @Composable
-inline fun ProvideFoundationCompositionLocalsForPreview(
+inline fun ProvideCompositionLocalsForPreview(
     isDark: Boolean = isSystemInDarkTheme(),
     crossinline content: @Composable () -> Unit,
 ) {
@@ -56,6 +59,16 @@ inline fun ProvideFoundationCompositionLocalsForPreview(
     val coilContext = LocalPlatformContext.current
     val coilImage by lazy(LazyThreadSafetyMode.NONE) {
         previewImage.asCoilImage()
+    }
+    val viewModelStoreOwner = remember {
+        object : ViewModelStoreOwner {
+            override val viewModelStore: ViewModelStore = ViewModelStore()
+        }
+    }
+    DisposableEffect(viewModelStoreOwner) {
+        onDispose {
+            viewModelStoreOwner.viewModelStore.clear()
+        }
     }
     CompositionLocalProvider(
         LocalIsPreviewing provides true,
@@ -74,22 +87,19 @@ inline fun ProvideFoundationCompositionLocalsForPreview(
         LocalOnBackPressedDispatcherOwner provides remember {
             object : OnBackPressedDispatcherOwner {
                 override val onBackPressedDispatcher: OnBackPressedDispatcher = OnBackPressedDispatcher(null)
-                override val lifecycle: Lifecycle get() = TestGlobalLifecycle
+                override val lifecycle: Lifecycle get() = TestGlobalLifecycleOwner.lifecycle
             }
         },
         LocalLifecycleOwner providesDefault remember {
-            object : LifecycleOwner {
-                override val lifecycle: Lifecycle get() = TestGlobalLifecycle
-            }
+            TestGlobalLifecycleOwner
         },
         LocalThemeSettings providesDefault ThemeSettings.Default.copy(
             darkMode = if (isDark) DarkMode.DARK else DarkMode.LIGHT,
         ),
+        LocalViewModelStoreOwner provides viewModelStoreOwner,
     ) {
         val navController = rememberNavController()
-        SideEffect {
-            aniNavigator.setNavController(navController)
-        }
+        aniNavigator.setNavController(navController)
         ProvidePlatformCompositionLocalsForPreview {
             AniTheme(isDark = isDark) {
                 ProvideAniMotionCompositionLocals {
@@ -101,25 +111,12 @@ inline fun ProvideFoundationCompositionLocalsForPreview(
 }
 
 @TestOnly
-data object TestGlobalLifecycle : Lifecycle() {
-    private val owner = object : LifecycleOwner {
-        override val lifecycle get() = this@TestGlobalLifecycle
+data object TestGlobalLifecycleOwner : LifecycleOwner {
+    override val lifecycle: Lifecycle by lazy {
+        LifecycleRegistry.createUnsafe(this).apply {
+            this.currentState = Lifecycle.State.RESUMED
+        }
     }
-
-    override val currentState get() = State.RESUMED
-
-    override fun addObserver(observer: LifecycleObserver) {
-//        require(observer is DefaultLifecycleObserver) {
-//            "$observer must implement androidx.lifecycle.DefaultLifecycleObserver."
-//        }
-//
-//        // Call the lifecycle methods in order and do not hold a reference to the observer.
-//        observer.onCreate(owner)
-//        observer.onStart(owner)
-//        observer.onResume(owner)
-    }
-
-    override fun removeObserver(observer: LifecycleObserver) {}
 }
 
 @TestOnly
@@ -128,6 +125,19 @@ data object TestGlobalLifecycle : Lifecycle() {
 internal expect inline fun ProvidePlatformCompositionLocalsForPreview(
     crossinline content: @Composable () -> Unit
 )
+
+
+// kept for developer convenience, remove in 4.8.0.
+@Composable
+@Deprecated(
+    "Replaced with ProvideCompositionLocalsForPreview",
+    ReplaceWith("ProvideCompositionLocalsForPreview(isDark, content)"),
+    level = DeprecationLevel.ERROR,
+)
+inline fun ProvideFoundationCompositionLocalsForPreview(
+    isDark: Boolean = isSystemInDarkTheme(),
+    crossinline content: @Composable () -> Unit,
+) = ProvideCompositionLocalsForPreview(isDark, content)
 
 
 /**
@@ -139,7 +149,7 @@ fun ProvideFoundationCompositionLocalsForTest(
     isDark: Boolean = false,
     content: @Composable () -> Unit,
 ) {
-    ProvideFoundationCompositionLocalsForPreview(
+    ProvideCompositionLocalsForPreview(
         isDark,
     ) {
         content()

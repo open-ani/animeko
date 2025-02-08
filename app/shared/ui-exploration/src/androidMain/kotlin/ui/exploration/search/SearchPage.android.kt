@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -24,7 +24,7 @@ import androidx.paging.LoadStates
 import androidx.paging.PagingData
 import kotlinx.coroutines.flow.MutableStateFlow
 import me.him188.ani.app.data.repository.RepositoryNetworkException
-import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview
+import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.layout.CarouselItemDefaults.Text
 import me.him188.ani.app.ui.foundation.preview.PreviewSizeClasses
 import me.him188.ani.app.ui.search.TestSearchState
@@ -34,7 +34,7 @@ import me.him188.ani.utils.platform.annotations.TestOnly
 @Composable
 @PreviewSizeClasses
 @Preview
-fun PreviewSearchPage() = ProvideFoundationCompositionLocalsForPreview {
+fun PreviewSearchPage() = ProvideCompositionLocalsForPreview {
     PreviewImpl()
 }
 
@@ -42,7 +42,7 @@ fun PreviewSearchPage() = ProvideFoundationCompositionLocalsForPreview {
 @Composable
 @PreviewSizeClasses
 @PreviewLightDark
-fun PreviewSearchPageEmptyResult() = ProvideFoundationCompositionLocalsForPreview {
+fun PreviewSearchPageEmptyResult() = ProvideCompositionLocalsForPreview {
     PreviewImpl(
         createTestSearchPageState(
             rememberCoroutineScope(),
@@ -60,7 +60,7 @@ fun PreviewSearchPageEmptyResult() = ProvideFoundationCompositionLocalsForPrevie
 @Composable
 @PreviewSizeClasses
 @PreviewLightDark
-fun PreviewSearchPageError() = ProvideFoundationCompositionLocalsForPreview {
+fun PreviewSearchPageError() = ProvideCompositionLocalsForPreview {
     PreviewImpl(
         createTestSearchPageState(
             rememberCoroutineScope(),
@@ -91,7 +91,7 @@ fun PreviewSearchPageError() = ProvideFoundationCompositionLocalsForPreview {
 
 @Composable
 @PreviewLightDark
-fun PreviewSearchPageResultColumn() = ProvideFoundationCompositionLocalsForPreview {
+fun PreviewSearchPageResultColumn() = ProvideCompositionLocalsForPreview {
     Surface(color = MaterialTheme.colorScheme.surfaceContainerLowest) {
         val state = createTestFinishedSubjectSearchState()
         SearchPageResultColumn(

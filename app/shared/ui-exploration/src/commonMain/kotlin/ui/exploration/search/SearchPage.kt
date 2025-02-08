@@ -175,9 +175,9 @@ internal fun SearchPageResultColumn(
 
     SearchResultLazyVerticalStaggeredGrid(
         items,
-        problem = {
+        error = {
             LoadErrorCard(
-                problem = it,
+                error = it,
                 onRetry = { items.retry() },
                 modifier = Modifier.fillMaxWidth(), // noop
             )

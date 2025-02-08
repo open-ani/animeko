@@ -72,6 +72,7 @@ import me.him188.ani.app.videoplayer.ui.progress.TAG_SELECT_EPISODE_ICON_BUTTON
 import me.him188.ani.app.videoplayer.ui.progress.TAG_SPEED_SWITCHER_DROPDOWN_MENU
 import me.him188.ani.app.videoplayer.ui.progress.TAG_SPEED_SWITCHER_TEXT_BUTTON
 import me.him188.ani.app.videoplayer.ui.top.PlayerTopBar
+import me.him188.ani.danmaku.ui.DanmakuConfig
 import org.openani.mediamp.DummyMediampPlayer
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -152,9 +153,7 @@ class EpisodeVideoControllerTest {
 
     @Composable
     private fun Player(gestureFamily: GestureFamily, playerControllerState: PlayerControllerState = controllerState) {
-        ProvideCompositionLocalsForPreview(
-            isDark = true,
-        ) {
+        ProvideCompositionLocalsForPreview(isDark = true) {
             val scope = rememberCoroutineScope()
             val playerState = remember {
                 DummyMediampPlayer(scope.coroutineContext)
@@ -216,10 +215,14 @@ class EpisodeVideoControllerTest {
                         playerControllerState,
                         playerSettingsPage = {
                             EpisodeVideoSideSheets.DanmakuSettingsSheet(
-                                onDismissRequest = { goBack() },
+                                danmakuConfig = DanmakuConfig.Default,
+                                setDanmakuConfig = {},
+                                enableRegexFilter = true,
                                 onNavigateToFilterSettings = {
                                     sheetsController.navigateTo(EpisodeVideoSideSheetPage.EDIT_DANMAKU_REGEX_FILTER)
                                 },
+                                switchDanmakuRegexFilterCompletely = {},
+                                onDismissRequest = { goBack() },
                                 Modifier.testTag(TAG_DANMAKU_SETTINGS_SHEET),
                             )
                         },
@@ -903,6 +906,7 @@ class EpisodeVideoControllerTest {
                 root.performMouseInput {
                     moveTo(centerRight)
                 }
+                waitForIdle()
                 waitForSideSheetOpen()
                 runOnIdle {
                     assertEquals(true, controllerState.alwaysOn)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -60,7 +60,7 @@ fun <T : Any> LazyPagingItems<T>.rememberLoadErrorState(): State<LoadError?> {
  *
  * 提供按钮来解决错误, 例如 [onRetry].
  *
- * @param problem See [rememberLoadErrorState]
+ * @param error See [rememberLoadErrorState]
  * @param onRetry 当用户点击重试时调用. 只会在 [LoadError.NetworkError], [LoadError.ServiceUnavailable], [LoadError.UnknownError] 时调用.
  * @param onLogin 当用户点击登录时调用. 只会在 [LoadError.RequiresLogin] 时调用. 如果你的功能不需要登录, 可以传递一个空函数给此参数.
  *
@@ -68,7 +68,7 @@ fun <T : Any> LazyPagingItems<T>.rememberLoadErrorState(): State<LoadError?> {
  */ // https://www.figma.com/design/LET1n9mmDa6npDTIlUuJjU/Main?node-id=239-2230&node-type=section&t=moZBMAKgeQpptXRI-0
 @Composable
 fun LoadErrorCard(
-    problem: LoadError?,
+    error: LoadError?,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
     onLogin: () -> Unit = run {
@@ -80,8 +80,8 @@ fun LoadErrorCard(
     shape: Shape = MaterialTheme.shapes.large, // behave like Dialogs.
     containerColor: Color = LoadErrorDefaults.containerColor,
 ) {
-    if (problem == null) return
-    val role = LoadErrorCardRole.from(problem)
+    if (error == null) return
+    val role = LoadErrorCardRole.from(error)
 
     val retryButton = @Composable {
         SearchDefaults.IconTextButton(
@@ -104,7 +104,7 @@ fun LoadErrorCard(
             headlineColor = cardColors.contentColor,
         )
 
-        when (problem) {
+        when (error) {
             LoadError.NetworkError -> {
                 ListItem(
                     leadingContent = { Icon(Icons.Rounded.WifiOff, null) },
@@ -167,7 +167,7 @@ fun LoadErrorCard(
                     trailingContent = {
                         Row {
                             if (currentAniBuildConfig.isDebug) {
-                                TextButton({ problem.throwable?.printStackTrace() }) {
+                                TextButton({ error.throwable?.printStackTrace() }) {
                                     Text("Dump Trace", fontStyle = FontStyle.Italic)
                                 }
                             }

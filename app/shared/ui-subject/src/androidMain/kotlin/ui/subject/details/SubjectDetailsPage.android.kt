@@ -14,7 +14,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.tooling.preview.Preview
 import me.him188.ani.app.domain.foundation.LoadError
-import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview
+import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateLoader
 import me.him188.ani.app.ui.subject.details.state.createTestSubjectDetailsState
@@ -24,7 +24,7 @@ import me.him188.ani.utils.platform.annotations.TestOnly
 @Preview
 @Preview(device = "spec:width=1280dp,height=800dp,dpi=240")
 @Composable
-internal fun PreviewSubjectDetails() = ProvideFoundationCompositionLocalsForPreview {
+internal fun PreviewSubjectDetails() = ProvideCompositionLocalsForPreview {
     val scope = rememberCoroutineScope()
     val state = remember { SubjectDetailsStateLoader.LoadState.Ok(createTestSubjectDetailsState(scope)) }
     SubjectDetailsScreen(
@@ -39,7 +39,7 @@ internal fun PreviewSubjectDetails() = ProvideFoundationCompositionLocalsForPrev
 @Preview
 @Preview(device = "spec:width=1280dp,height=800dp,dpi=240")
 @Composable
-internal fun PreviewPlaceholderSubjectDetails() = ProvideFoundationCompositionLocalsForPreview {
+internal fun PreviewPlaceholderSubjectDetails() = ProvideCompositionLocalsForPreview {
     val scope = rememberCoroutineScope()
     val state = remember {
         SubjectDetailsStateLoader.LoadState.Ok(createTestSubjectDetailsState(scope, isPlaceholder = true))
@@ -57,7 +57,7 @@ internal fun PreviewPlaceholderSubjectDetails() = ProvideFoundationCompositionLo
 @Preview
 @Preview(device = "spec:width=1280dp,height=800dp,dpi=240")
 @Composable
-internal fun PreviewErrorSubjectDetails() = ProvideFoundationCompositionLocalsForPreview {
+internal fun PreviewErrorSubjectDetails() = ProvideCompositionLocalsForPreview {
     val state = remember {
         SubjectDetailsStateLoader.LoadState.Err(TestSubjectInfo.subjectId, TestSubjectInfo, LoadError.NetworkError)
     }

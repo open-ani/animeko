@@ -29,7 +29,6 @@ import me.him188.ani.app.torrent.api.pieces.PieceList
 import me.him188.ani.app.torrent.api.pieces.PieceState
 import me.him188.ani.app.torrent.api.pieces.forEach
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
-import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview
 import me.him188.ani.app.videoplayer.ui.progress.MediaProgressSlider
 import me.him188.ani.app.videoplayer.ui.progress.PlayerProgressSliderState
 import kotlin.time.Duration.Companion.seconds
@@ -92,7 +91,7 @@ private fun buildPiecesWithStep(
 @Composable
 fun PreviewMediaProgressSliderNonConsecutiveCacheImpl(
     pieces: PieceList,
-) = ProvideFoundationCompositionLocalsForPreview(isDark = true) {
+) = ProvideCompositionLocalsForPreview(isDark = true) {
     val cacheProgress = remember {
         TorrentMediaCacheProgressProvider(
             pieces,

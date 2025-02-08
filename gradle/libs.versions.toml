@@ -1,89 +1,85 @@
 [versions]
-gluegen-rt = "2.5.0"
-jna = "5.13.0" # 不要轻易改这个版本, 它可能导致 VLC 兼容性问题
-jsonpathkt-kotlinx = "3.0.2"
 kotlin = "2.1.0"
-# kotlinx
-coroutines = "1.9.0" # https://github.com/Kotlin/kotlinx.coroutines/releases
-serialization = "1.7.3" # https://github.com/Kotlin/kotlinx.serialization/releases
-datetime = "0.6.1" # https://github.com/Kotlin/kotlinx-datetime/releases
-atomicfu = "0.26.1" # https://github.com/Kotlin/kotlinx-atomicfu/releases
+android-gradle-plugin = "8.6.1"
+
+### KOTLINX ###
+kotlinx-coroutines = "1.9.0" # https://github.com/Kotlin/kotlinx.coroutines/releases
+kotlinx-serialization = "1.7.3" # https://github.com/Kotlin/kotlinx.serialization/releases
+kotlinx-datetime = "0.6.1" # https://github.com/Kotlin/kotlinx-datetime/releases
+kotlinx-atomicfu = "0.26.1" # https://github.com/Kotlin/kotlinx-atomicfu/releases
 kotlinx-io = "0.6.0" # https://github.com/Kotlin/kotlinx-io/releases
 kotlinx-collections-immutable = "0.3.8" # https://github.com/Kotlin/kotlinx.collections.immutable/releases
-#
+
+### ANDROIDX ###
+androidx-annotation = "1.9.1"
+androidx-media3 = "1.5.1"
+androidx-lifecycle = "2.8.7"
+paging = "3.3.5" # https://developer.android.com/jetpack/androidx/releases/paging
+datastore = "1.1.2" # https://developer.android.com/jetpack/androidx/releases/datastore
+ksp = "2.1.0-1.0.29" # https://github.com/google/ksp/releases
+room = "2.7.0-alpha12" # https://developer.android.com/jetpack/androidx/releases/room#declaring_dependencies
+sqlite = "2.5.0-alpha12"
+androidx-activity = "1.9.2"
+androidx-core = "1.13.1"
+
+### COMPOSE ###
+# How to upgrade them? Check compose multiplatform release notes and find the corresponding versions for each library.
+
+# https://github.com/JetBrains/compose-multiplatform/releases
+compose-multiplatform = "1.8.0-alpha02"
+
+# JetBrains compose libraries. Follow the release notes for main Compose Multiplatform for versoins.
+compose-lifecycle = "2.9.0-alpha02"
+compose-navigation = "2.8.0-alpha12"
+compose-material3-adaptive = "1.1.0-alpha02"
+
+# Jetpack Compose libraries. Use the exact version mentioned from Compose Multiplatfrom release notes.
+# https://developer.android.com/jetpack/androidx/releases/compose-material3
+compose-material3 = "1.4.0-alpha04"
+jetpack-compose = "1.8.0-alpha07"
+androidx-compose-material3-adaptive = "1.1.0-alpha07"
+
+### OTHERS ###
+
+jna = "5.13.0" # 不要轻易改这个版本, 它可能导致 VLC 兼容性问题
+jsonpathkt-kotlinx = "3.0.2"
 ksoup = "0.1.4"
 filekit = "0.8.1" # https://github.com/vinceglb/FileKit/releases
 kotlinpoet = "1.18.1" # https://github.com/square/kotlinpoet/releases
 log4j-core = "2.20.0"
 korlibs = "6.0.0"
-playwright = "1.44.0"
-reorderable = "0.9.6" # 这个没用了, 我们 composite build fork
 ktor = "2.3.12"
 koin = "3.5.6" # https://github.com/InsertKoinIO/koin/releases
 slf4j = "2.0.16"
-jsoup = "1.18.1" # https://github.com/jhy/jsoup/releases 
-android-gradle-plugin = "8.6.1"
-datastore = "1.1.2" # https://developer.android.com/jetpack/androidx/releases/datastore
-coil = "3.0.4" # https://github.com/coil-kt/coil/releases
-logback = "1.5.8"
-ksp = "2.1.0-1.0.29" # https://github.com/google/ksp/releases
-room = "2.7.0-alpha12" # https://developer.android.com/jetpack/androidx/releases/room#declaring_dependencies
+jsoup = "1.18.1" # https://github.com/jhy/jsoup/releases
 snakeyaml = "2.2"
-sqlite = "2.5.0-alpha12"
+coil = "3.0.4" # https://github.com/coil-kt/coil/releases
 constraintlayout-compose = "0.4.0"
 antlr-kotlin = "1.0.0"
 oshai-kotlin-logging = "7.0.0" # Only for native. On JVM we use slf4j directly.
 ipaddress-parser = "5.5.1"
-androidx-annotation = "1.9.1"
-androidx-media3 = "1.5.1"
-androidx-lifecycle = "2.8.7"
-paging = "3.3.5" # https://developer.android.com/jetpack/androidx/releases/paging
 turbine = "1.2.0" # https://github.com/cashapp/turbine/releases/
 junit4 = "4.13.2"
 junit5 = "5.11.4"
 mannodermaus-junit5 = "1.6.0" # https://github.com/mannodermaus/android-junit5
-
+stately-common = "2.0.7"
+vlcj = "4.8.2"
+jsystemthemedetector = "3.8"
+materialkolor = "2.0.0"
 mockito = "5.12.0"
 mockito-kotlin = "5.4.0"
 
-# CI helper
-aws = "2.25.49"
-
-# Compose
-# https://developer.android.com/jetpack/androidx/releases/compose-material3
-compose-material3 = "1.4.0-alpha04"
-jetpack-compose = "1.8.0-alpha07"
-# https://github.com/JetBrains/compose-multiplatform/releases
-# https://www.jetbrains.com/help/kotlin-multiplatform-dev/compose-compatibility-and-versioning.html#use-a-developer-version-of-compose-multiplatform-compiler
-compose-multiplatform = "1.8.0-alpha02"
-compose-lifecycle = "2.9.0-alpha02"
-compose-navigation = "2.8.0-alpha12"
-compose-material3-adaptive = "1.1.0-alpha02"
-
-# https://maven.pkg.jetbrains.space/public/p/compose/dev/org/jetbrains/compose/compiler/compiler/
-#compose-multiplatform-compiler = "1.5.11-kt-2.0.0-RC1" # used by buildscript, don't remove
-stately-common = "2.0.7"
-vlcj = "4.8.2"
-
-jsystemthemedetector = "3.8"
-
-materialkolor = "2.0.0"
-
 [libraries]
-# Build
+# Gradle plugins
 android-gradle-plugin = { module = "com.android.tools.build:gradle", version.ref = "android-gradle-plugin" }
 android-library-gradle-plugin = { module = "com.android.library:com.android.library.gradle.plugin", version.ref = "android-gradle-plugin" }
 android-application-gradle-plugin = { module = "com.android.application:com.android.application.gradle.plugin", version.ref = "android-gradle-plugin" }
-filekit-compose = { module = "io.github.vinceglb:filekit-compose", version.ref = "filekit" }
-filekit-core = { module = "io.github.vinceglb:filekit-core", version.ref = "filekit" }
-
-jsonpathkt-kotlinx = { module = "com.eygraber:jsonpathkt-kotlinx", version.ref = "jsonpathkt-kotlinx" }
 kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
-atomicfu-gradle-plugin = { module = "org.jetbrains.kotlinx:atomicfu-gradle-plugin", version.ref = "atomicfu" }
+atomicfu-gradle-plugin = { module = "org.jetbrains.kotlinx:atomicfu-gradle-plugin", version.ref = "kotlinx-atomicfu" }
 compose-multiplatfrom-gradle-plugin = { module = "org.jetbrains.compose:org.jetbrains.compose.gradle.plugin", version.ref = "compose-multiplatform" }
 kotlin-compose-compiler-gradle-plugin = { module = "org.jetbrains.kotlin:compose-compiler-gradle-plugin", version.ref = "kotlin" }
-#compose-multiplatfrom-compiler-plugin = { module = "org.jetbrains.compose:org.jetbrains.compose.compiler", version.ref = "compose-multiplatform-compiler" }
 
+# JUnit
 # These are used dynamically
 junit5-jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit5" }
 junit5-jupiter-api = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junit5" }
@@ -94,30 +90,20 @@ junit5-android-test-runner = { module = "de.mannodermaus.junit5:android-test-run
 junit4 = { module = "junit:junit", version.ref = "junit4" }
 
 # Kotlinx
-ksoup = { module = "com.fleeksoft.ksoup:ksoup", version.ref = "ksoup" }
-oshai-kotlin-logging = { module = "io.github.oshai:kotlin-logging", version.ref = "oshai-kotlin-logging" }
-kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "datetime" }
+kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinx-datetime" }
 kotlinx-io-core = { module = "org.jetbrains.kotlinx:kotlinx-io-core", version.ref = "kotlinx-io" }
 kotlinx-io-bytestring = { module = "org.jetbrains.kotlinx:kotlinx-io-bytestring", version.ref = "kotlinx-io" }
-kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
-kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
-kotlinx-coroutines-swing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "coroutines" }
-kotlinx-coroutines-debug = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-debug", version.ref = "coroutines" }
-kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
-kotlinx-serialization-core = { module = "org.jetbrains.kotlinx:kotlinx-serialization-core", version.ref = "serialization" }
-kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
-kotlinx-serialization-protobuf = { module = "org.jetbrains.kotlinx:kotlinx-serialization-protobuf", version.ref = "serialization" }
-kotlinx-serialization-json-io = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json-io", version.ref = "serialization" }
+kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
+kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "kotlinx-coroutines" }
+kotlinx-coroutines-swing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "kotlinx-coroutines" }
+kotlinx-coroutines-debug = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-debug", version.ref = "kotlinx-coroutines" }
+kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
+kotlinx-serialization-core = { module = "org.jetbrains.kotlinx:kotlinx-serialization-core", version.ref = "kotlinx-serialization" }
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
+kotlinx-serialization-protobuf = { module = "org.jetbrains.kotlinx:kotlinx-serialization-protobuf", version.ref = "kotlinx-serialization" }
+kotlinx-serialization-json-io = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json-io", version.ref = "kotlinx-serialization" }
 kotlinx-collections-immutable = { module = "org.jetbrains.kotlinx:kotlinx-collections-immutable", version.ref = "kotlinx-collections-immutable" }
-atomicfu = { module = "org.jetbrains.kotlinx:atomicfu", version.ref = "atomicfu" }
-#kotlinx-serialization-protobuf = { module = "org.jetbrains.kotlinx:kotlinx-serialization-protobuf", version.ref = "serialization" }
-
-kotlinpoet = { module = "com.squareup:kotlinpoet", version.ref = "kotlinpoet" }
-
-jetbrains-annotations = { module = "org.jetbrains:annotations", version = "23.0.0" }
-
-# Korlibs
-korlibs-crypto = { module = "com.soywiz:korlibs-crypto", version.ref = "korlibs" }
+atomicfu = { module = "org.jetbrains.kotlinx:atomicfu", version.ref = "kotlinx-atomicfu" }
 
 # Ktor
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
@@ -139,22 +125,16 @@ koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin" }
 koin-android = { module = "io.insert-koin:koin-android", version.ref = "koin" }
 koin-test = { module = "io.insert-koin:koin-test", version.ref = "koin" }
 
-# Yamlkt
-directories = { module = "dev.dirs:directories", version = "26" }
-snakeyaml = { module = "org.yaml:snakeyaml", version.ref = "snakeyaml" }
-
 # Logging
 log4j-core = { module = "org.apache.logging.log4j:log4j-core", version.ref = "log4j-core" }
 log4j-slf4j-impl = { module = "org.apache.logging.log4j:log4j-slf4j2-impl", version.ref = "log4j-core" }
-playwright = { module = "com.microsoft.playwright:playwright", version.ref = "playwright" }
 slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
 slf4j-simple = { module = "org.slf4j:slf4j-simple", version.ref = "slf4j" }
 logback-android = { module = "com.github.tony19:logback-android", version = "3.0.0" }
-logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
 
+# Coil 
 # https://github.com/coil-kt/coil
 coil = { module = "io.coil-kt.coil3:coil", version.ref = "coil" }
-#coil-network-ktor = { module = "io.coil-kt.coil:coil-network-ktor", version.ref = "coil" }
 coil-core = { module = "io.coil-kt.coil3:coil-core", version.ref = "coil" }
 coil-compose-core = { module = "io.coil-kt.coil3:coil-compose-core", version.ref = "coil" }
 coil-svg = { module = "io.coil-kt.coil3:coil-svg", version.ref = "coil" }
@@ -163,39 +143,23 @@ coil-network-okhttp = { module = "io.coil-kt.coil3:coil-network-okhttp", version
 coil-network-ktor2 = { module = "io.coil-kt.coil3:coil-network-ktor2", version.ref = "coil" }
 coil-network-ktor3 = { module = "io.coil-kt.coil3:coil-network-ktor3", version.ref = "coil" }
 
-# Jsoup - HTML parsing (for dmhy)
-jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
-
-antlr-kotlin-runtime = { module = "com.strumenta:antlr-kotlin-runtime", version.ref = "antlr-kotlin" }
-
-# IP Address parser for JVM
-ipaddress-parser = { module = "com.github.seancfoley:ipaddress", version.ref = "ipaddress-parser" }
-
 # Android Datastore
 datastore = { module = "androidx.datastore:datastore", version.ref = "datastore" }
 datastore-core = { module = "androidx.datastore:datastore-core", version.ref = "datastore" }
 datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }
 datastore-preferences-core = { module = "androidx.datastore:datastore-preferences-core", version.ref = "datastore" }
 
-# Multi-platform Android Room and implemention
+# Room, SQLite, and Paging
 androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
 androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 androidx-room-paging = { group = "androidx.room", name = "room-paging", version.ref = "room" }
 androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 sqlite = { module = "androidx.sqlite:sqlite", version.ref = "sqlite" }
 sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "sqlite" }
-
 paging-common = { module = "androidx.paging:paging-common", version.ref = "paging" }
 paging-compose-android = { module = "androidx.paging:paging-compose", version.ref = "paging" }
 
-# Navigation
-precompose = { module = "moe.tlaster:precompose", version = "1.5.10" }
-precompose-koin = { module = "moe.tlaster:precompose-koin", version = "1.5.10" }
-precompose-viewmodel = { module = "moe.tlaster:precompose-viewmodel", version = "1.5.10" }
-
-# Compose Multiplatform
-reorderable = { module = "org.burnoutcrew.composereorderable:reorderable", version.ref = "reorderable" }
-constraintlayout-compose = { module = "tech.annexflow.compose:constraintlayout-compose-multiplatform", version.ref = "constraintlayout-compose" }
+# JetBrains Compose Multiplatform
 compose-lifecycle-runtime = { module = "org.jetbrains.androidx.lifecycle:lifecycle-runtime", version.ref = "compose-lifecycle" }
 compose-lifecycle-runtime-compose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose", version.ref = "compose-lifecycle" }
 compose-lifecycle-viewmodel = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel", version.ref = "compose-lifecycle" }
@@ -207,35 +171,7 @@ compose-material3-adaptive-layout = { module = "org.jetbrains.compose.material3.
 compose-material3-adaptive-navigation0 = { module = "org.jetbrains.compose.material3.adaptive:adaptive-navigation", version.ref = "compose-material3-adaptive" }
 compose-material3-adaptive-navigation-suite = { module = "org.jetbrains.compose.material3:material3-adaptive-navigation-suite", version.ref = "compose-multiplatform" }
 
-# Android-only libraries
-# Each library has its own version, so we don't use `Versions` here.
-androidx-core-ktx = { module = "androidx.core:core-ktx", version = "1.13.1" }
-androidx-activity-compose = { module = "androidx.activity:activity-compose", version = "1.9.2" }
-androidx-activity-ktx = { module = "androidx.activity:activity-ktx", version = "1.9.0" }
-androidx-appcompat = { module = "androidx.appcompat:appcompat", version = "1.7.0" }
-androidx-material = { module = "com.google.android.material:material", version = "1.12.0" }
-androidx-material3-window-size-class0 = { module = "androidx.compose.material3:material3-window-size-class", version = "1.2.1" }
-androidx-browser = { module = "androidx.browser:browser", version = "1.8.0" }
-androidx-media = { module = "androidx.media:media", version = "1.7.0" }
-androidx-lifecycle-runtime-ktx = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version.ref = "androidx-lifecycle" }
-androidx-lifecycle-service = { module = "androidx.lifecycle:lifecycle-service", version.ref = "androidx-lifecycle" }
-androidx-lifecycle-process = { module = "androidx.lifecycle:lifecycle-process", version.ref = "androidx-lifecycle" }
-androidx-lifecycle-runtime-testing = { module = "androidx.lifecycle:lifecycle-runtime-testing", version = "androidx-lifecycle" }
-androidx-collection = { module = "androidx.collection:collection", version = "1.4.5" }
-androidx-test-runner = { module = "androidx.test:runner", version = "1.5.0" }
-
-#androidx-navigation-compose = { module = "androidx.navigation:navigation-compose", version = "2.7.6" }
-slf4j-android = { module = "uk.uuid.slf4j:slf4j-android", version = "2.0.7-0" }
-
-# Android unit test
-mockito = { module = "org.mockito:mockito-core", version.ref = "mockito" }
-mockito-kotlin = { module = "org.mockito.kotlin:mockito-kotlin", version.ref = "mockito-kotlin" }
-
-androidx-media3-ui = { module = "androidx.media3:media3-ui", version.ref = "androidx-media3" }
-androidx-media3-exoplayer = { module = "androidx.media3:media3-exoplayer", version.ref = "androidx-media3" }
-androidx-media3-exoplayer-dash = { module = "androidx.media3:media3-exoplayer-dash", version.ref = "androidx-media3" }
-androidx-media3-exoplayer-hls = { module = "androidx.media3:media3-exoplayer-hls", version.ref = "androidx-media3" }
-
+# Jetpack Compose
 androidx-compose-ui = { module = "androidx.compose.ui:ui", version.ref = "jetpack-compose" }
 androidx-compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling", version.ref = "jetpack-compose" }
 androidx-compose-ui-viewbinding = { module = "androidx.compose.ui:ui-viewbinding", version.ref = "jetpack-compose" }
@@ -244,33 +180,64 @@ androidx-compose-material = { module = "androidx.compose.material:material", ver
 androidx-compose-material3 = { module = "androidx.compose.material3:material3", version.ref = "compose-material3" }
 androidx-compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview", version.ref = "jetpack-compose" }
 androidx-annotation = { module = "androidx.annotation:annotation", version.ref = "androidx-annotation" }
-# compose-runtime-livedata = { module = "androidx.compose.runtime:runtime-livedata", version.ref = "jetpackCompose" }
+androidx-compose-material3-adaptive = { module = "androidx.compose.material3.adaptive:adaptive", version.ref = "androidx-compose-material3-adaptive" }
+androidx-compose-material3-adaptive-layout = { module = "androidx.compose.material3.adaptive:adaptive-layout", version.ref = "androidx-compose-material3-adaptive" }
+androidx-compose-material3-adaptive-navigation = { module = "androidx.compose.material3.adaptive:adaptive-navigation", version.ref = "androidx-compose-material3-adaptive" }
 
-stately-common = { module = "co.touchlab:stately-common", version.ref = "stately-common" }
+# Androidx
+# Each library has its own version, so we don't use `Versions` here.
+androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidx-core" }
+androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activity" }
+androidx-activity-ktx = { module = "androidx.activity:activity-ktx", version.ref = "androidx-activity" }
+androidx-appcompat = { module = "androidx.appcompat:appcompat", version = "1.7.0" }
+androidx-material = { module = "com.google.android.material:material", version = "1.12.0" }
+#androidx-material3-window-size-class0 = { module = "androidx.compose.material3:material3-window-size-class", version = "1.2.1" }
+androidx-browser = { module = "androidx.browser:browser", version = "1.8.0" }
+androidx-media = { module = "androidx.media:media", version = "1.7.0" }
+androidx-lifecycle-runtime-ktx = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version.ref = "androidx-lifecycle" }
+androidx-lifecycle-service = { module = "androidx.lifecycle:lifecycle-service", version.ref = "androidx-lifecycle" }
+androidx-lifecycle-process = { module = "androidx.lifecycle:lifecycle-process", version.ref = "androidx-lifecycle" }
+androidx-lifecycle-runtime-testing = { module = "androidx.lifecycle:lifecycle-runtime-testing", version.ref = "androidx-lifecycle" }
+androidx-collection = { module = "androidx.collection:collection", version = "1.4.5" }
+# Used dynamically, don't remove.
+androidx-test-runner = { module = "androidx.test:runner", version = "1.5.0" }
 
-#javafx-controls = { module = "org.openjfx:javafx-controls", version = "17.0.11", classifier = "mac" }
-#javafx-graphics = { module = "org.openjfx:javafx-graphics", version = "17.0.11", classifier = "mac" }
+# Android unit test
+mockito = { module = "org.mockito:mockito-core", version.ref = "mockito" }
+mockito-kotlin = { module = "org.mockito.kotlin:mockito-kotlin", version.ref = "mockito-kotlin" }
 
+# Media3 (ExoPlayer)
+androidx-media3-ui = { module = "androidx.media3:media3-ui", version.ref = "androidx-media3" }
+androidx-media3-exoplayer = { module = "androidx.media3:media3-exoplayer", version.ref = "androidx-media3" }
+androidx-media3-exoplayer-dash = { module = "androidx.media3:media3-exoplayer-dash", version.ref = "androidx-media3" }
+androidx-media3-exoplayer-hls = { module = "androidx.media3:media3-exoplayer-hls", version.ref = "androidx-media3" }
+
+
+### All other libraries ###
+
+
+kotlinpoet = { module = "com.squareup:kotlinpoet", version.ref = "kotlinpoet" }
+korlibs-crypto = { module = "com.soywiz:korlibs-crypto", version.ref = "korlibs" }
+jetbrains-annotations = { module = "org.jetbrains:annotations", version = "23.0.0" }
+directories = { module = "dev.dirs:directories", version = "26" }
+snakeyaml = { module = "org.yaml:snakeyaml", version.ref = "snakeyaml" }
+antlr-kotlin-runtime = { module = "com.strumenta:antlr-kotlin-runtime", version.ref = "antlr-kotlin" }
+ipaddress-parser = { module = "com.github.seancfoley:ipaddress", version.ref = "ipaddress-parser" }
 # VLC
 # NOTE: YOU WILL NEVER WANT TO CHANGE VLCJ AND JNA VERSIONS.
 # ONLY VLC 3.0.18 IS SUPPORTED.
 vlcj = { module = "uk.co.caprica:vlcj", version.ref = "vlcj" }
-vlcj-javafx = { module = "uk.co.caprica:vlcj-javafx", version = "1.2.0" }
 jna = { module = "net.java.dev.jna:jna", version.ref = "jna" }
 jna-platform = { module = "net.java.dev.jna:jna-platform", version.ref = "jna" }
-
-
-#// https://mvnrepository.com/artifact/software.amazon.awssdk/s3
-#testImplementation("software.amazon.awssdk:s3:2.25.49")
-
-# S3
-aws-s3 = { module = "software.amazon.awssdk:s3", version.ref = "aws" }
-aws-sts = { module = "software.amazon.awssdk:sts", version.ref = "aws" }
-aws-s3control = { module = "software.amazon.awssdk:s3control", version.ref = "aws" }
-aws-secretsmanager = { module = "software.amazon.awssdk:secretsmanager", version.ref = "aws" }
-
-#htmlunit = { group = "net.sourceforge.htmlunit", name = "htmlunit", version = "2.70.0" }
-
+jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
+ksoup = { module = "com.fleeksoft.ksoup:ksoup", version.ref = "ksoup" }
+oshai-kotlin-logging = { module = "io.github.oshai:kotlin-logging", version.ref = "oshai-kotlin-logging" }
+jsonpathkt-kotlinx = { module = "com.eygraber:jsonpathkt-kotlinx", version.ref = "jsonpathkt-kotlinx" }
+filekit-compose = { module = "io.github.vinceglb:filekit-compose", version.ref = "filekit" }
+filekit-core = { module = "io.github.vinceglb:filekit-core", version.ref = "filekit" }
+# Workaround for Kotlin compiler bug
+stately-common = { module = "co.touchlab:stately-common", version.ref = "stately-common" }
 jsystemthemedetector = { module = "org.openani.jsystemthemedetector:jSystemThemeDetector", version.ref = "jsystemthemedetector" }
 turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
 materialkolor = { module = "com.materialkolor:material-kolor", version.ref = "materialkolor" }
+constraintlayout-compose = { module = "tech.annexflow.compose:constraintlayout-compose-multiplatform", version.ref = "constraintlayout-compose" }

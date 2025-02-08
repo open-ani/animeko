@@ -22,6 +22,7 @@ kotlin {
     sourceSets.commonMain.dependencies {
         api(projects.app.shared.appData)
         api(projects.app.shared.appPlatform)
+        api(projects.utils.uiPreview)
         api(projects.utils.platform)
         api(libs.kotlinx.coroutines.core)
         implementation(projects.danmaku.danmakuApi)

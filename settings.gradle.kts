@@ -70,6 +70,7 @@ includeProject(":utils:bbcode:test-codegen")
 includeProject(":utils:ip-parser", "utils/ip-parser")
 includeProject(":utils:ui-testing")
 includeProject(":utils:androidx-lifecycle-runtime-testing")
+includeProject(":utils:ui-preview")
 
 
 includeProject(":torrent:torrent-api", "torrent/api") // Torrent 系统 API
