@@ -10,26 +10,24 @@
 package me.him188.ani.utils.coroutines
 
 import kotlinx.atomicfu.atomic
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.CoroutineStart
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.async
-import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.*
 import me.him188.ani.utils.platform.annotations.TestOnly
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 
 /**
- * A task executor that ensures only one task is running at a time.
+ * A task executor that ensures there will be only one 'instance' of [invoke] running at a time.
  * Previous tasks will be canceled if a new task is submitted.
  *
  * This class is thread-safe.
  */
 interface SingleTaskExecutor {
     /**
-     * Invokes [block] in a coroutine. If a task is already running, it will be canceled.
+     * Invokes [block] in a coroutine. Suspends until [block] completes, and returns its result.
+     * Previous [invoke] will be canceled when [invoke] is called again.
      *
-     * The cancellation semantics of this function is similar to `backgroundScope.launch().join()` using the scope provided in the constructor [SingleTaskExecutor].
+     * This function is similar to calling `backgroundScope.launch { }.join()` using the scope provided in the constructor [SingleTaskExecutor],
+     * but this function ensures only one [invoke] is running at a time.
      */
     suspend operator fun <R> invoke(
         coroutineContext: CoroutineContext = EmptyCoroutineContext,
