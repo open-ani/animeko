@@ -35,6 +35,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -245,6 +246,21 @@ private fun FrameWindowScope.CaptionButtonRow(
     onCloseButtonRectUpdate: (Rect) -> Unit,
 ) {
     val platformWindow = LocalPlatformWindow.current
+    val isPlatformAccentColorFrameEnabled = remember(platformWindow) {
+        windowsWindowUtils.frameIsColorful(platformWindow)
+    }.collectAsState(false)
+    val captionButtonColors = if (!isPlatformAccentColorFrameEnabled.value) {
+        CaptionButtonDefaults.defaultColors()
+    } else {
+        val accentColor = remember(platformWindow) {
+            windowsWindowUtils.windowAccentColor(platformWindow)
+        }.collectAsState(Color.Unspecified)
+        if (accentColor.value != Color.Unspecified) {
+            CaptionButtonDefaults.accentColors(seedColor = accentColor.value)
+        } else {
+            CaptionButtonDefaults.defaultColors()
+        }
+    }
     Row(
         horizontalArrangement = Arrangement.aligned(AbsoluteAlignment.Right),
         modifier = modifier
@@ -256,6 +272,7 @@ private fun FrameWindowScope.CaptionButtonRow(
             },
             icon = CaptionButtonIcon.Minimize,
             isActive = isActive,
+            colors = captionButtonColors,
             modifier = Modifier.onGloballyPositioned { onMinimizeButtonRectUpdate(it.boundsInWindow()) },
         )
         val isFullScreen = isSystemInFullscreen()
@@ -288,6 +305,7 @@ private fun FrameWindowScope.CaptionButtonRow(
                 else -> CaptionButtonIcon.Maximize
             },
             isActive = isActive,
+            colors = captionButtonColors,
             modifier = Modifier.onGloballyPositioned {
                 onMaximizeButtonRectUpdate(it.boundsInWindow())
             },
@@ -406,7 +424,12 @@ private object CaptionButtonDefaults {
 
     @Composable
     @Stable
-    fun closeColors(
+    fun closeColors() = accentColors(seedColor = LocalWindowsColorScheme.current.shellCloseColor)
+
+    @Composable
+    @Stable
+    fun accentColors(
+        seedColor: Color,
         default: CaptionButtonColor =
             CaptionButtonColor(
                 background = LocalWindowsColorScheme.current.fillSubtleTransparentColor,
@@ -416,16 +439,16 @@ private object CaptionButtonDefaults {
             ),
         hovered: CaptionButtonColor =
             default.copy(
-                background = LocalWindowsColorScheme.current.shellCloseColor,
+                background = seedColor,
                 foreground = Color.White,
-                inactiveBackground = LocalWindowsColorScheme.current.shellCloseColor,
+                inactiveBackground = seedColor,
                 inactiveForeground = Color.White,
             ),
         pressed: CaptionButtonColor =
             default.copy(
-                background = LocalWindowsColorScheme.current.shellCloseColor.copy(0.9f),
+                background = seedColor.copy(0.9f),
                 foreground = Color.White.copy(0.7f),
-                inactiveBackground = LocalWindowsColorScheme.current.shellCloseColor.copy(0.9f),
+                inactiveBackground = seedColor.copy(0.9f),
                 inactiveForeground = Color.White.copy(0.7f),
             ),
         disabled: CaptionButtonColor =
