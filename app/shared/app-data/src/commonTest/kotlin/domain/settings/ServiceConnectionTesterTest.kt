@@ -36,12 +36,12 @@ class ServiceConnectionTesterTest {
         testDelay: Duration = Duration.ZERO,
         shouldThrow: Boolean = false,
         shouldFail: Boolean = false,
-        onTestCalled: (ContinuationInterceptor) -> Unit = {},
+        onTestCalled: suspend (ContinuationInterceptor) -> Unit = {},
     ): ServiceConnectionTester.Service {
         return ServiceConnectionTester.Service(
             id = id,
             test = {
-                onTestCalled(currentCoroutineContext()[ContinuationInterceptor]!!)
+                onTestCalled(currentContinuationInterceptor())
                 if (testDelay > Duration.ZERO) {
                     delay(testDelay)
                 }
@@ -60,7 +60,7 @@ class ServiceConnectionTesterTest {
         val service = createService("service-id")
         val tester = ServiceConnectionTester(
             services = listOf(service),
-            defaultDispatcher = testScheduler, // or Dispatchers.Default
+            defaultDispatcher = currentContinuationInterceptor(), // or Dispatchers.Default
         )
 
         tester.testAll() // should complete without throwing
@@ -76,7 +76,7 @@ class ServiceConnectionTesterTest {
         val service = createService("fail-service", shouldFail = true)
         val tester = ServiceConnectionTester(
             services = listOf(service),
-            defaultDispatcher = testScheduler,
+            defaultDispatcher = currentContinuationInterceptor(),
         )
 
         tester.testAll()
@@ -91,7 +91,7 @@ class ServiceConnectionTesterTest {
         val service = createService("error-service", shouldThrow = true)
         val tester = ServiceConnectionTester(
             services = listOf(service),
-            defaultDispatcher = testScheduler,
+            defaultDispatcher = currentContinuationInterceptor(),
         )
 
         tester.testAll()
@@ -114,7 +114,7 @@ class ServiceConnectionTesterTest {
 
         val tester = ServiceConnectionTester(
             services = listOf(okService, failService, errorService),
-            defaultDispatcher = testScheduler,
+            defaultDispatcher = currentContinuationInterceptor(),
         )
 
         tester.testAll()
@@ -144,7 +144,7 @@ class ServiceConnectionTesterTest {
 
         val tester = ServiceConnectionTester(
             services = listOf(longRunningService),
-            defaultDispatcher = coroutineContext[ContinuationInterceptor]!!,
+            defaultDispatcher = currentContinuationInterceptor(),
         )
 
         val job = launch(start = CoroutineStart.UNDISPATCHED) {
@@ -161,7 +161,7 @@ class ServiceConnectionTesterTest {
         job.cancel()
         job.join()
 
-        assertEquals(currentCoroutineContext()[ContinuationInterceptor]!!, interceptorFlow.value)
+        assertEquals(currentContinuationInterceptor(), interceptorFlow.value)
         // The service was in progress, but got cancelled => revert to Idle
         val results = tester.results.first()
         val state = results.states[longRunningService]
@@ -175,7 +175,7 @@ class ServiceConnectionTesterTest {
 
         val tester = ServiceConnectionTester(
             services = listOf(service1, service2),
-            defaultDispatcher = testScheduler,
+            defaultDispatcher = currentContinuationInterceptor(),
         )
 
         tester.testAll()
@@ -199,7 +199,7 @@ class ServiceConnectionTesterTest {
         val service = createService("service", testDelay = 100.milliseconds)
         val tester = ServiceConnectionTester(
             services = listOf(service),
-            defaultDispatcher = testScheduler,
+            defaultDispatcher = currentContinuationInterceptor(),
         )
 
         // We'll collect from the shared flow using Turbine.
@@ -230,12 +230,12 @@ class ServiceConnectionTesterTest {
     }
 
     @Test
-    fun `results flow - verifies multiple states update in real-time`() = runTest(StandardTestDispatcher()) {
+    fun `results flow - verifies multiple states update in real-time`() = runTest {
         val service1 = createService("service", testDelay = 100.milliseconds)
         val service2 = createService("service2", testDelay = 300.milliseconds)
         val tester = ServiceConnectionTester(
             services = listOf(service1, service2),
-            defaultDispatcher = testScheduler,
+            defaultDispatcher = currentContinuationInterceptor(),
         )
 
         // We'll collect from the shared flow using Turbine.
@@ -251,8 +251,9 @@ class ServiceConnectionTesterTest {
 
             // Next emission: Testing
             val next = awaitItem()
-            assertEquals(ServiceConnectionTester.TestState.Testing, next.states[service1])
-            assertEquals(ServiceConnectionTester.TestState.Testing, next.states[service2])
+            assertEquals(0, testScope.currentTime)
+            assertTrue(next.states[service1] is ServiceConnectionTester.TestState.Testing)
+            assertTrue(next.states[service2] is ServiceConnectionTester.TestState.Testing)
 
             advanceTimeBy(200) // service1 should complete, while service2 is still testing
             runCurrent()
@@ -272,6 +273,8 @@ class ServiceConnectionTesterTest {
             cancelAndIgnoreRemainingEvents()
         }
     }
+
+    private suspend fun currentContinuationInterceptor() = currentCoroutineContext()[ContinuationInterceptor]!!
 
     // endregion
 
@@ -304,6 +307,8 @@ class ServiceConnectionTesterTest {
         // Confirm the service ran on 'customDispatcher'
         assertEquals(customDispatcher, interceptorFlow.value)
     }
+
+    private val TestScope.testScope get() = this
 
     // endregion
 }
