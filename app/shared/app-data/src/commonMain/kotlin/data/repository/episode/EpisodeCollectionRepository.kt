@@ -19,6 +19,7 @@ import androidx.paging.map
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
@@ -99,38 +100,41 @@ class EpisodeCollectionRepository(
         subjectId: Int,
         allowCached: Boolean = true,
     ): Flow<List<EpisodeCollectionInfo>> = epTypeFilter.flatMapLatest { epType ->
-        episodeCollectionDao.filterBySubjectId(subjectId, epType).transformLatest { cachedEpisodes ->
-            if (shouldUseCache(allowCached, cachedEpisodes, subjectId)) {
-                // 有有效缓存则直接返回
-                emit(cachedEpisodes.map { it.toEpisodeCollectionInfo() })
-                return@transformLatest
-            }
+        episodeCollectionDao
+            .filterBySubjectId(subjectId, epType)
+            .distinctUntilChanged()
+            .transformLatest { cachedEpisodes ->
+                if (shouldUseCache(allowCached, cachedEpisodes, subjectId)) {
+                    // 有有效缓存则直接返回
+                    emit(cachedEpisodes.map { it.toEpisodeCollectionInfo() })
+                    return@transformLatest
+                }
 
-            try {
-                emit(
-                    bangumiEpisodeService.getEpisodeCollectionInfosBySubjectId(subjectId, null) // 总是缓存所有类型
-                        .toList() // 目前先直接全拿了, 反正一般情况下剧集数量很少
-                        .also { list ->
-                            if (subjectDao.findById(subjectId).first() != null) {
-                                // 插入后会立即触发 filterBySubjectId 更新 (emit 新的)
-                                episodeCollectionDao.upsert(list.map { it.toEntity(subjectId) })
+                try {
+                    emit(
+                        bangumiEpisodeService.getEpisodeCollectionInfosBySubjectId(subjectId, null) // 总是缓存所有类型
+                            .toList() // 目前先直接全拿了, 反正一般情况下剧集数量很少
+                            .also { list ->
+                                if (subjectDao.findById(subjectId).first() != null) {
+                                    // 插入后会立即触发 filterBySubjectId 更新 (emit 新的)
+                                    episodeCollectionDao.upsert(list.map { it.toEntity(subjectId) })
+                                }
                             }
-                        }
-                        // 过滤需要的类型
-                        .let { list ->
-                            if (epType == null) list
-                            else list.filter { it.episodeInfo.type == epType }
-                        },
-                )
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                // 失败则返回缓存
-                logger.error(e) { "Failed to get episode collection infos for subject $subjectId" }
-                emit(cachedEpisodes.map { it.toEpisodeCollectionInfo() })
-                return@transformLatest
+                            // 过滤需要的类型
+                            .let { list ->
+                                if (epType == null) list
+                                else list.filter { it.episodeInfo.type == epType }
+                            },
+                    )
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    // 失败则返回缓存
+                    logger.error(e) { "Failed to get episode collection infos for subject $subjectId" }
+                    emit(cachedEpisodes.map { it.toEpisodeCollectionInfo() })
+                    return@transformLatest
+                }
             }
-        }
     }.flowOn(defaultDispatcher)
 
     private suspend fun shouldUseCache(

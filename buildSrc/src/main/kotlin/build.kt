@@ -41,6 +41,7 @@ import org.jetbrains.kotlin.gradle.targets.jvm.KotlinJvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 import java.io.File
+import kotlin.jvm.optionals.getOrNull
 
 fun Project.sharedAndroidProguardRules(): Array<File> {
     val dir = project(":app:shared").projectDir
@@ -120,6 +121,9 @@ private fun Project.versionCatalogLibs(): VersionCatalog =
     project.extensions.getByType<VersionCatalogsExtension>().named("libs")
 
 private operator fun VersionCatalog.get(name: String): String = findVersion(name).get().displayName
+
+private fun VersionCatalog.getLibrary(name: String): String = findLibrary(name).getOrNull()?.orNull?.toString()
+    ?: error("Library $name not found in version catalog")
 
 private fun Project.kotlinCommonCompilerOptions(): KotlinCommonCompilerOptions = when (val ext = kotlinExtension) {
     is KotlinJvmProjectExtension -> ext.compilerOptions
@@ -219,12 +223,12 @@ fun Project.configureEncoding() {
     }
 }
 
-const val JUNIT_VERSION = "5.7.2"
-
 fun Project.configureKotlinTestSettings() {
     tasks.withType(Test::class) {
         useJUnitPlatform()
     }
+
+    val libs = versionCatalogLibs()
 
     allKotlinTargets().all {
         if (this !is KotlinJvmTarget) return@all
@@ -237,12 +241,25 @@ fun Project.configureKotlinTestSettings() {
             dependencies {
                 "testImplementation"(kotlin("test-junit5"))?.because(b)
 
-                "testApi"("org.junit.jupiter:junit-jupiter-api:$JUNIT_VERSION")?.because(b)
-                "testRuntimeOnly"("org.junit.jupiter:junit-jupiter-engine:${JUNIT_VERSION}")?.because(b)
+                "testImplementation"(libs.getLibrary("junit5-jupiter-api"))?.because(b)
+                "testRuntimeOnly"(libs.getLibrary("junit5-jupiter-engine"))?.because(b)
             }
         }
 
         isKotlinMpp -> {
+            if (allKotlinTargets().any { it.platformType == KotlinPlatformType.androidJvm }) {
+                // has android target, configure instrumented test
+                // this must be added to `androidTest`, instead of just `androidInstrumentedTest`
+                project.dependencies {
+                    "androidTestImplementation"(libs.getLibrary("androidx-test-runner"))
+                    "androidTestImplementation"(libs.getLibrary("junit5-android-test-core"))
+                    "androidTestRuntimeOnly"(libs.getLibrary("junit5-android-test-runner"))
+
+                    "androidTestImplementation"(libs.getLibrary("junit5-jupiter-api"))
+                    "androidTestRuntimeOnly"(libs.getLibrary("junit5-jupiter-engine"))
+                }
+            }
+
             kotlinSourceSets?.all {
                 val sourceSet = this
 
@@ -262,13 +279,10 @@ fun Project.configureKotlinTestSettings() {
                             }
                         }
 
-                        target?.platformType == KotlinPlatformType.androidJvm 
+                        target?.platformType == KotlinPlatformType.androidJvm
                                 || sourceSet.name == "androidInstrumentedTest"
                                 || sourceSet.name == "androidUnitTest" -> {
-                            sourceSet.dependencies {
-                                implementation(kotlin("test-junit5"))?.because(b)
-//                                implementation("junit:junit:4.13")?.because(b)
-                            }
+                            sourceSet.configureJvmTest(b)
                         }
                     }
                 }
@@ -278,11 +292,17 @@ fun Project.configureKotlinTestSettings() {
 }
 
 fun KotlinSourceSet.configureJvmTest(because: String) {
+    val libs = project.versionCatalogLibs()
     dependencies {
         implementation(kotlin("test-junit5"))?.because(because)
 
-        implementation("org.junit.jupiter:junit-jupiter-api:${JUNIT_VERSION}")?.because(because)
-        runtimeOnly("org.junit.jupiter:junit-jupiter-engine:${JUNIT_VERSION}")?.because(because)
+        // also see above for androidInstrumentedTest
+        implementation(libs.getLibrary("junit5-jupiter-api"))?.because(because)
+        runtimeOnly(libs.getLibrary("junit5-jupiter-engine"))?.because(because)
+
+        // TODO: if we need to run junit4 tests (especially ui tests), add this.
+//        runtimeOnly("junit:junit:4.13.2")?.because(because)
+//        runtimeOnly("org.junit.vintage:junit-vintage-engine:${JUNIT_VERSION}")?.because(because)
     }
 }
 

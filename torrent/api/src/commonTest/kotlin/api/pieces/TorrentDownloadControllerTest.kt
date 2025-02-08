@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -176,7 +176,7 @@ internal class TorrentDownloadControllerTest {
     }
 
     @Test
-    fun `sequence download don't request downloaded piece`() {
+    fun `sequence download dont request downloaded piece`() {
         var currentDownloadingHighPriorityPieces: List<Int> = emptyList()
         var currentDownloadingNormalPriorityPieces: List<Int> = emptyList()
 
@@ -291,7 +291,7 @@ internal class TorrentDownloadControllerTest {
     }
 
     @Test
-    fun `seek don't request downloaded piece`() {
+    fun `seek dont request downloaded piece`() {
         var currentDownloadingHighPriorityPieces: List<Int> = emptyList()
         var currentDownloadingNormalPriorityPieces: List<Int> = emptyList()
 
@@ -391,7 +391,7 @@ internal class TorrentDownloadControllerTest {
     }
 
     @Test
-    fun `piece count = 1`() {
+    fun `piece count is 1`() {
         var currentDownloadingHighPriorityPieces: List<Int> = emptyList()
         var currentDownloadingNormalPriorityPieces: List<Int> = emptyList()
 
@@ -415,7 +415,7 @@ internal class TorrentDownloadControllerTest {
     }
 
     @Test
-    fun `piece count = 2 - header and footer is smaller than piece size`() {
+    fun `piece count is 2 - header and footer is smaller than piece size`() {
         var currentDownloadingHighPriorityPieces: List<Int> = emptyList()
         var currentDownloadingNormalPriorityPieces: List<Int> = emptyList()
 
@@ -438,7 +438,7 @@ internal class TorrentDownloadControllerTest {
     }
 
     @Test
-    fun `piece count = 2 - header and footer is bigger than piece size`() {
+    fun `piece count is 2 - header and footer is bigger than piece size`() {
         var currentDownloadingHighPriorityPieces: List<Int> = emptyList()
         var currentDownloadingNormalPriorityPieces: List<Int> = emptyList()
 
@@ -461,7 +461,7 @@ internal class TorrentDownloadControllerTest {
     }
 
     @Test
-    fun `piece count = 3 - header + footer overlap whole piece data size`() {
+    fun `piece count is 3 - header and footer overlap whole piece data size`() {
         var currentDownloadingHighPriorityPieces: List<Int> = emptyList()
         var currentDownloadingNormalPriorityPieces: List<Int> = emptyList()
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -36,9 +36,7 @@ import me.him188.ani.datasources.api.source.MediaSourceConfig
 import me.him188.ani.datasources.api.source.MediaSourceFactory
 import me.him188.ani.datasources.api.source.MediaSourceInfo
 import me.him188.ani.datasources.api.source.MediaSourceKind
-import me.him188.ani.datasources.api.source.asAutoCloseable
 import me.him188.ani.datasources.api.source.toOnlineMedia
-import me.him188.ani.datasources.api.source.useHttpClient
 import me.him188.ani.datasources.api.topic.FileSize.Companion.Zero
 import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
 import me.him188.ani.datasources.api.topic.ResourceLocation
@@ -50,6 +48,7 @@ import me.him188.ani.datasources.api.topic.titles.RawTitleParser
 import me.him188.ani.datasources.api.topic.titles.parse
 import me.him188.ani.datasources.api.topic.titles.toTopicDetails
 import me.him188.ani.datasources.api.topic.toTopicCriteria
+import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.ktor.toSource
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.warn
@@ -60,19 +59,25 @@ import kotlin.coroutines.cancellation.CancellationException
 class MikanCNMediaSource(
     config: MediaSourceConfig,
     indexCacheProvider: MikanIndexCacheProvider = MemoryMikanIndexCacheProvider(),
-) : AbstractMikanMediaSource(ID, config, BASE_URL, indexCacheProvider) {
+    client: ScopedHttpClient,
+) : AbstractMikanMediaSource(ID, BASE_URL, indexCacheProvider, client) {
     class Factory : MediaSourceFactory {
         override val factoryId: FactoryId get() = FactoryId(ID)
 
         override val info: MediaSourceInfo get() = INFO
 
-        override fun create(mediaSourceId: String, config: MediaSourceConfig): MediaSource =
-            MikanCNMediaSource(config)
+        override fun create(
+            mediaSourceId: String,
+            config: MediaSourceConfig,
+            client: ScopedHttpClient
+        ): MediaSource =
+            MikanCNMediaSource(config, client = client)
 
         fun create(
             config: MediaSourceConfig,
-            indexCacheProvider: MikanIndexCacheProvider = MemoryMikanIndexCacheProvider()
-        ): MediaSource = MikanCNMediaSource(config, indexCacheProvider)
+            indexCacheProvider: MikanIndexCacheProvider = MemoryMikanIndexCacheProvider(),
+            client: ScopedHttpClient,
+        ): MediaSource = MikanCNMediaSource(config, indexCacheProvider, client)
     }
 
     companion object {
@@ -92,18 +97,24 @@ class MikanCNMediaSource(
 class MikanMediaSource(
     config: MediaSourceConfig,
     indexCacheProvider: MikanIndexCacheProvider = MemoryMikanIndexCacheProvider(),
-) : AbstractMikanMediaSource(ID, config, BASE_URL, indexCacheProvider) {
+    client: ScopedHttpClient,
+) : AbstractMikanMediaSource(ID, BASE_URL, indexCacheProvider, client) {
     class Factory : MediaSourceFactory {
         override val factoryId: FactoryId get() = FactoryId(ID)
 
         override val info: MediaSourceInfo get() = INFO
-        override fun create(mediaSourceId: String, config: MediaSourceConfig): MediaSource = MikanMediaSource(config)
+        override fun create(
+            mediaSourceId: String,
+            config: MediaSourceConfig,
+            client: ScopedHttpClient
+        ): MediaSource = MikanMediaSource(config, client = client)
 
         // TODO: this is actually not so good. We should generalize how MS can access caches.
         fun create(
             config: MediaSourceConfig,
-            indexCacheProvider: MikanIndexCacheProvider = MemoryMikanIndexCacheProvider()
-        ): MediaSource = MikanMediaSource(config, indexCacheProvider)
+            indexCacheProvider: MikanIndexCacheProvider = MemoryMikanIndexCacheProvider(),
+            client: ScopedHttpClient,
+        ): MediaSource = MikanMediaSource(config, indexCacheProvider, client = client)
     }
 
     companion object {
@@ -122,19 +133,20 @@ class MikanMediaSource(
 
 abstract class AbstractMikanMediaSource(
     override val mediaSourceId: String,
-    private val config: MediaSourceConfig,
     baseUrl: String,
     private val indexCacheProvider: MikanIndexCacheProvider,
+    private val client: ScopedHttpClient,
 ) : HttpMediaSource() {
     override val kind: MediaSourceKind get() = MediaSourceKind.BitTorrent
 
     private val baseUrl = baseUrl.removeSuffix("/")
-    private val client by lazy { useHttpClient(config).also { addCloseable(it.asAutoCloseable()) } }
 
     override suspend fun checkConnection(): ConnectionStatus {
         return try {
-            client.get(baseUrl).run {
-                check(status.isSuccess()) { "Request failed: $this" }
+            client.use {
+                get(baseUrl).run {
+                    check(status.isSuccess()) { "Request failed: $this" }
+                }
             }
             ConnectionStatus.SUCCESS
         } catch (e: Exception) {
@@ -145,15 +157,18 @@ abstract class AbstractMikanMediaSource(
 
     override suspend fun fetch(query: MediaFetchRequest): SizedSource<MediaMatch> =
         SinglePagePagedSource {
-            val list = try {
-                client.searchByIndexOrNull(query)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Throwable) {
-                logger.error(e) { "Failed to search by index for query=$query" }
-                null
-            } ?: client.searchByKeyword(query)
-            list.asFlow()
+            client.use {
+                val list = try {
+
+                    searchByIndexOrNull(query)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Throwable) {
+                    logger.error(e) { "Failed to search by index for query=$query" }
+                    null
+                } ?: searchByKeyword(query)
+                list.asFlow()
+            }
         }
 
     private suspend fun HttpClient.searchByKeyword(query: MediaFetchRequest): List<MediaMatch> {

@@ -17,7 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview
+import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.subject.episode.details.components.DanmakuSourceCard
 import me.him188.ani.app.ui.subject.episode.statistics.fuzzy
 import me.him188.ani.danmaku.api.DanmakuMatchInfo
@@ -26,7 +26,7 @@ import me.him188.ani.utils.platform.annotations.TestOnly
 @Composable
 @Preview
 fun PreviewDanmakuSourceCard() {
-    ProvideFoundationCompositionLocalsForPreview {
+    ProvideCompositionLocalsForPreview {
         Box(Modifier.width(240.dp)) {
             DanmakuSourceCard(
                 info = DanmakuMatchInfo.fuzzy(),
@@ -41,7 +41,7 @@ fun PreviewDanmakuSourceCard() {
 @Composable
 @Preview
 fun PreviewDanmakuSourceCardDetails() {
-    ProvideFoundationCompositionLocalsForPreview {
+    ProvideCompositionLocalsForPreview {
         Box(Modifier.width(240.dp)) {
             DanmakuSourceCard(
                 info = DanmakuMatchInfo.fuzzy(),
@@ -56,7 +56,7 @@ fun PreviewDanmakuSourceCardDetails() {
 @Composable
 @Preview
 fun PreviewDanmakuSourceCardDisabled() {
-    ProvideFoundationCompositionLocalsForPreview {
+    ProvideCompositionLocalsForPreview {
         Box(Modifier.width(240.dp)) {
             DanmakuSourceCard(
                 info = DanmakuMatchInfo.fuzzy(),

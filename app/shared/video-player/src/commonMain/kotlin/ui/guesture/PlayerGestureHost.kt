@@ -10,7 +10,6 @@
 package me.him188.ani.app.videoplayer.ui.guesture
 
 import androidx.annotation.UiThread
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -82,14 +81,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import me.him188.ani.app.tools.rememberUiMonoTasker
 import me.him188.ani.app.ui.foundation.LocalPlatform
+import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.effects.ComposeKey
 import me.him188.ani.app.ui.foundation.effects.onKey
 import me.him188.ani.app.ui.foundation.effects.onPointerEventMultiplatform
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.isSystemInFullscreen
 import me.him188.ani.app.utils.fixToString
+import me.him188.ani.app.videoplayer.ui.ControllerVisibility
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
 import me.him188.ani.app.videoplayer.ui.guesture.GestureIndicatorState.State.BRIGHTNESS
 import me.him188.ani.app.videoplayer.ui.guesture.GestureIndicatorState.State.FAST_BACKWARD
@@ -251,7 +253,7 @@ fun GestureIndicator(
         mutableIntStateOf(state.deltaSeconds)
     }
 
-    AnimatedVisibility(
+    AniAnimatedVisibility(
         visible = state.visible,
         enter = fadeIn(spring(stiffness = Spring.StiffnessMedium)),
         exit = fadeOut(tween(durationMillis = 500)),
@@ -523,11 +525,10 @@ fun PlayerGestureHost(
                         val scope = rememberUiMonoTasker()
                         // 没有人请求 alwaysOn 时自动隐藏控制器
                         LaunchedEffect(true) {
-                            snapshotFlow { controllerState.alwaysOn }.collect {
-                                if (!it) {
-                                    controllerState.toggleFullVisible(true)
-                                    keyboardFocus.requestFocus()
-                                    scope.launch {
+                            snapshotFlow { controllerState.alwaysOn }.collectLatest { alwaysOn ->
+                                if (alwaysOn) return@collectLatest
+                                snapshotFlow { controllerState.visibility != ControllerVisibility.Invisible }.collectLatest {
+                                    if (!it) {
                                         delay(VIDEO_GESTURE_MOUSE_MOVE_SHOW_CONTROLLER_DURATION)
                                         controllerState.toggleFullVisible(false)
                                     }

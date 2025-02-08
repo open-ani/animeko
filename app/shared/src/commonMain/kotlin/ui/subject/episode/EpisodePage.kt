@@ -9,9 +9,6 @@
 
 package me.him188.ani.app.ui.subject.episode
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -76,8 +73,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.window.core.layout.WindowHeightSizeClass
-import androidx.window.core.layout.WindowWidthSizeClass
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -100,16 +95,21 @@ import me.him188.ani.app.ui.foundation.ImageViewer
 import me.him188.ani.app.ui.foundation.LocalImageViewerHandler
 import me.him188.ani.app.ui.foundation.LocalIsPreviewing
 import me.him188.ani.app.ui.foundation.LocalPlatform
+import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.effects.DarkCaptionButtonAppearance
 import me.him188.ani.app.ui.foundation.effects.DarkStatusBarAppearance
 import me.him188.ani.app.ui.foundation.effects.OnLifecycleEvent
 import me.him188.ani.app.ui.foundation.effects.ScreenOnEffect
 import me.him188.ani.app.ui.foundation.effects.ScreenRotationEffect
 import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
-import me.him188.ani.app.ui.foundation.layout.compareTo
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBarPadding
+import me.him188.ani.app.ui.foundation.layout.isHeightAtLeastMedium
+import me.him188.ani.app.ui.foundation.layout.isHeightCompact
 import me.him188.ani.app.ui.foundation.layout.isSystemInFullscreen
+import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastExpanded
+import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
+import me.him188.ani.app.ui.foundation.layout.isWidthCompact
 import me.him188.ani.app.ui.foundation.layout.setRequestFullScreen
 import me.him188.ani.app.ui.foundation.layout.setSystemBarVisible
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
@@ -148,7 +148,7 @@ import org.openani.mediamp.features.Screenshots
  * 番剧详情 (播放) 页面
  */
 @Composable
-fun EpisodeScene(
+fun EpisodeScreen(
     viewModel: EpisodeViewModel,
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
@@ -157,7 +157,7 @@ fun EpisodeScene(
         Scaffold(
             contentWindowInsets = WindowInsets(0.dp),
         ) {
-            EpisodeSceneContent(
+            EpisodeScreenContent(
                 viewModel,
                 Modifier,
                 windowInsets = windowInsets,
@@ -167,7 +167,7 @@ fun EpisodeScene(
 }
 
 @Composable
-private fun EpisodeSceneContent(
+private fun EpisodeScreenContent(
     vm: EpisodeViewModel,
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
@@ -229,14 +229,12 @@ private fun EpisodeSceneContent(
 
     BoxWithConstraints(modifier) {
         val windowSizeClass = currentWindowAdaptiveInfo1().windowSizeClass
-        val width = windowSizeClass.windowWidthSizeClass
-        val height = windowSizeClass.windowHeightSizeClass
 
         val showExpandedUI = when {
-            width == WindowWidthSizeClass.COMPACT && height == WindowHeightSizeClass.COMPACT -> false
-            width == WindowWidthSizeClass.COMPACT && height > WindowHeightSizeClass.COMPACT -> false
-            width > WindowWidthSizeClass.COMPACT && height == WindowHeightSizeClass.COMPACT -> true // #1279
-            windowSizeClass.windowWidthSizeClass >= WindowWidthSizeClass.EXPANDED -> true // #932
+            windowSizeClass.isWidthCompact && windowSizeClass.isHeightCompact -> false
+            windowSizeClass.isWidthCompact && windowSizeClass.isHeightAtLeastMedium -> false
+            windowSizeClass.isWidthAtLeastMedium && windowSizeClass.isHeightCompact -> true // #1279
+            windowSizeClass.isWidthAtLeastExpanded -> true // #932
             else -> false
         }
 
@@ -276,7 +274,7 @@ private fun EpisodeSceneContent(
                 CompositionLocalProvider(LocalImageViewerHandler provides imageViewer) {
                     when {
                         showExpandedUI || isSystemInFullscreen() ->
-                            EpisodeSceneTabletVeryWide(
+                            EpisodeScreenTabletVeryWide(
                                 vm,
                                 page,
                                 danmakuHostState,
@@ -288,7 +286,7 @@ private fun EpisodeSceneContent(
                                 windowInsets,
                             )
 
-                        else -> EpisodeSceneContentPhone(
+                        else -> EpisodeScreenContentPhone(
                             vm,
                             page,
                             danmakuHostState,
@@ -328,7 +326,7 @@ private fun EpisodeSceneContent(
 }
 
 @Composable
-private fun EpisodeSceneTabletVeryWide(
+private fun EpisodeScreenTabletVeryWide(
     vm: EpisodeViewModel,
     page: EpisodePageState,
     danmakuHostState: DanmakuHostState,
@@ -405,7 +403,7 @@ private fun EpisodeSceneTabletVeryWide(
                                     page.danmakuStatistics,
                                     vm.videoStatisticsFlow,
                                     page.mediaSelectorState,
-                                    page.mediaSourceResultsPresentation,
+                                    page.mediaSourceResultListPresentation,
                                     vm.authState,
                                     onSwitchEpisode = { episodeId ->
                                         if (!vm.episodeSelectorState.selectEpisodeId(episodeId)) {
@@ -413,6 +411,7 @@ private fun EpisodeSceneTabletVeryWide(
                                         }
                                     },
                                     onRefreshMediaSources = { vm.refreshFetch() },
+                                    onRestartSource = { vm.restartSource(it.instanceId) },
                                     onSetDanmakuSourceEnabled = { providerId, enabled ->
                                         vm.setDanmakuSourceEnabled(providerId, enabled)
                                     },
@@ -485,7 +484,7 @@ private fun TabRow(
 }
 
 @Composable
-private fun EpisodeSceneContentPhone(
+private fun EpisodeScreenContentPhone(
     vm: EpisodeViewModel,
     page: EpisodePageState,
     danmakuHostState: DanmakuHostState,
@@ -498,7 +497,7 @@ private fun EpisodeSceneContentPhone(
 ) {
     var showDanmakuEditor by rememberSaveable { mutableStateOf(false) }
 
-    EpisodeSceneContentPhoneScaffold(
+    EpisodeScreenContentPhoneScaffold(
         videoOnly = vm.isFullscreen,
         commentCount = { vm.episodeCommentState.count },
         video = {
@@ -519,7 +518,7 @@ private fun EpisodeSceneContentPhone(
                     page.danmakuStatistics,
                     vm.videoStatisticsFlow,
                     page.mediaSelectorState,
-                    page.mediaSourceResultsPresentation,
+                    page.mediaSourceResultListPresentation,
                     vm.authState,
                     onSwitchEpisode = { episodeId ->
                         if (!vm.episodeSelectorState.selectEpisodeId(episodeId)) {
@@ -527,6 +526,7 @@ private fun EpisodeSceneContentPhone(
                         }
                     },
                     onRefreshMediaSources = { vm.refreshFetch() },
+                    onRestartSource = { vm.restartSource(it.instanceId) },
                     onSetDanmakuSourceEnabled = { providerId, enabled ->
                         vm.setDanmakuSourceEnabled(providerId, enabled)
                     },
@@ -616,7 +616,7 @@ private fun DetachedDanmakuEditorLayout(
 }
 
 @Composable
-fun EpisodeSceneContentPhoneScaffold(
+fun EpisodeScreenContentPhoneScaffold(
     videoOnly: Boolean,
     commentCount: () -> Int?,
     video: @Composable () -> Unit,
@@ -802,10 +802,8 @@ private fun EpisodeVideo(
             }
         }.value,
         leftBottomTips = {
-            AnimatedVisibility(
+            AniAnimatedVisibility(
                 visible = vm.playerSkipOpEdState.showSkipTips,
-                enter = fadeIn(),
-                exit = fadeOut(),
             ) {
                 PlayerControllerDefaults.LeftBottomTips(
                     onClick = {
@@ -845,9 +843,10 @@ private fun EpisodeVideo(
                     pageState?.let { page ->
                         EpisodeVideoSideSheets.MediaSelectorSheet(
                             page.mediaSelectorState,
-                            page.mediaSourceResultsPresentation,
+                            page.mediaSourceResultListPresentation,
                             onDismissRequest = { goBack() },
                             onRefresh = { vm.refreshFetch() },
+                            onRestartSource = { vm.restartSource(it.instanceId) },
                         )
                     }
                 },

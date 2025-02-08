@@ -1,0 +1,11 @@
+prefix=/usr
+exec_prefix=${prefix}
+libdir=${prefix}/lib/x86_64-linux-gnu
+includedir=${prefix}/include
+
+Name: LibVLC control API
+Description: VLC media player external control library
+Version: 3.0.20
+Cflags: -I${includedir}
+Libs: -L${libdir} -lvlc
+Libs.private: -lvlccore 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -32,6 +32,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -40,6 +41,8 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.launch
 import me.him188.ani.app.ui.adaptive.AniListDetailPaneScaffold
 import me.him188.ani.app.ui.adaptive.AniTopAppBar
 import me.him188.ani.app.ui.adaptive.AniTopAppBarDefaults
@@ -50,12 +53,13 @@ import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 
 @Composable
-fun PeerFilterSettingsPage(
+fun PeerFilterSettingsScreen(
     state: PeerFilterSettingsState,
     modifier: Modifier = Modifier,
-    navigator: ThreePaneScaffoldNavigator<Nothing> = rememberListDetailPaneScaffoldNavigator(),
+    navigator: ThreePaneScaffoldNavigator<Any> = rememberListDetailPaneScaffoldNavigator(),
     navigationIcon: @Composable () -> Unit = {},
 ) {
+    val coroutineScope = rememberCoroutineScope()
     Surface(color = AniThemeDefaults.pageContentBackgroundColor) {
         AniListDetailPaneScaffold(
             navigator = navigator,
@@ -67,7 +71,13 @@ fun PeerFilterSettingsPage(
                     windowInsets = paneContentWindowInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
                     navigationIcon = {
                         if (navigator.canNavigateBack()) {
-                            BackNavigationIconButton({ navigator.navigateBack() })
+                            BackNavigationIconButton(
+                                onNavigateBack = {
+                                    coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                                        navigator.navigateBack()
+                                    }
+                                },
+                            )
                         } else {
                             navigationIcon()
                         }
@@ -78,7 +88,11 @@ fun PeerFilterSettingsPage(
                 PeerFilterEditPane(
                     state = state,
                     showIpBlockingItem = listDetailLayoutParameters.isSinglePane,
-                    onClickIpBlockSettings = { navigator.navigateTo(ThreePaneScaffoldRole.Primary) },
+                    onClickIpBlockSettings = {
+                        coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                            navigator.navigateTo(ThreePaneScaffoldRole.Primary)
+                        }
+                    },
                     modifier = Modifier
                         .paneContentPadding(
                             extraStart = -SettingsScope.itemHorizontalPadding,
@@ -98,9 +112,11 @@ fun PeerFilterSettingsPage(
                         state = state,
                         navigationIcon = {
                             BackNavigationIconButton(
-                                {
-                                    if (navigator.canNavigateBack()) {
-                                        navigator.navigateBack()
+                                onNavigateBack = {
+                                    coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                                        if (navigator.canNavigateBack()) {
+                                            navigator.navigateBack()
+                                        }
                                     }
                                 },
                             )

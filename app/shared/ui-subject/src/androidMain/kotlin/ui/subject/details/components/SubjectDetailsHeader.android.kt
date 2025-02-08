@@ -19,7 +19,7 @@ import me.him188.ani.app.data.models.subject.SubjectAiringInfo
 import me.him188.ani.app.data.models.subject.SubjectAiringKind
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
-import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview
+import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.subject.AiringLabelState
 import me.him188.ani.app.ui.subject.TestSubjectAiringInfo
@@ -115,7 +115,7 @@ fun PreviewSubjectDetailsHeader(
     airingInfo: SubjectAiringInfo,
     progressInfo: SubjectProgressInfo,
     subjectInfo: SubjectInfo = TestSubjectInfo,
-) = ProvideFoundationCompositionLocalsForPreview {
+) = ProvideCompositionLocalsForPreview {
     SubjectDetailsHeader(
         subjectInfo.subjectId,
         subjectInfo,

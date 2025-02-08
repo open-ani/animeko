@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -48,12 +48,12 @@ import me.him188.ani.app.ui.foundation.widgets.FastLinearProgressIndicator
 /**
  * 显示搜索结果的 [LazyVerticalStaggeredGrid]. 支持显示加载中的进度条, 错误时显示错误卡片.
  *
- * @param problem 当有错误时调用. 内容可以是 [LoadErrorCard].
+ * @param error 当有错误时调用. 内容可以是 [LoadErrorCard].
  */
 @Composable
 fun <T : Any> SearchResultLazyVerticalStaggeredGrid(
     items: LazyPagingItems<T>,
-    problem: @Composable (problem: LoadError?) -> Unit,
+    error: @Composable (error: LoadError?) -> Unit,
     modifier: Modifier = Modifier,
     cells: StaggeredGridCells.Adaptive = StaggeredGridCells.Adaptive(300.dp),
     lazyStaggeredGridState: LazyStaggeredGridState = rememberLazyStaggeredGridState(),
@@ -81,7 +81,7 @@ fun <T : Any> SearchResultLazyVerticalStaggeredGrid(
                         .padding(vertical = 8.dp),
                 ) {
                     val value = items.rememberLoadErrorState().value
-                    problem(value)
+                    error(value)
                 }
             }
 
@@ -124,20 +124,24 @@ fun <T : Any> SearchResultLazyVerticalStaggeredGrid(
 @Stable
 object SearchDefaults {
     @Composable
-    fun SearchSummaryItem(items: LazyPagingItems<*>, modifier: Modifier = Modifier) {
+    fun SearchSummaryItem(
+        items: LazyPagingItems<*>,
+        modifier: Modifier = Modifier,
+        containerColor: Color = Color.Unspecified,
+    ) {
         Box(modifier) {
             when {
                 items.isFinishedAndEmpty -> {
                     ListItem(
                         headlineContent = { Text("无搜索结果") },
-                        colors = ListItemDefaults.colors(containerColor = Color.Unspecified),
+                        colors = ListItemDefaults.colors(containerColor = containerColor),
                     )
                 }
 
                 items.hasFirstPage -> {
                     ListItem(
                         headlineContent = { Text("搜索到 ${items.itemCount} 个结果") },
-                        colors = ListItemDefaults.colors(containerColor = Color.Unspecified),
+                        colors = ListItemDefaults.colors(containerColor = containerColor),
                     )
                 }
 

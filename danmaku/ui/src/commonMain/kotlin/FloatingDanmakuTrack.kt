@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024-2025 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.danmaku.ui
 
 import androidx.compose.runtime.FloatState
@@ -39,19 +48,19 @@ internal class FloatingDanmakuTrack<T : SizeSpecifiedDanmaku>(
      * 
      * 无论如何弹幕都不可以放到轨道长度之外.
      */
-    override fun canPlace(danmaku: T, placeTimeNanos: Long): Boolean {
-        return checkPlaceableImpl(danmaku, placeTimeNanos) != null
+    override fun canPlace(danmaku: T, placeFrameTimeNanos: Long): Boolean {
+        return checkPlaceableImpl(danmaku, placeFrameTimeNanos) != null
     }
 
-    override fun tryPlace(danmaku: T, placeTimeNanos: Long): FloatingDanmaku<T>? {
-        val (upcomingDanmaku, insertionIndex) = checkPlaceableImpl(danmaku, placeTimeNanos) ?: return null
+    override fun tryPlace(danmaku: T, placeFrameTimeNanos: Long): FloatingDanmaku<T>? {
+        val (upcomingDanmaku, insertionIndex) = checkPlaceableImpl(danmaku, placeFrameTimeNanos) ?: return null
         if (insertionIndex < 0) danmakuList.add(upcomingDanmaku) else danmakuList.add(insertionIndex, upcomingDanmaku)
         
         return upcomingDanmaku
     }
 
-    override fun place(danmaku: T, placeTimeNanos: Long): FloatingDanmaku<T> {
-        val upcomingDanmaku = danmaku.createFloating(placeTimeNanos)
+    override fun place(danmaku: T, placeFrameTimeNanos: Long): FloatingDanmaku<T> {
+        val upcomingDanmaku = danmaku.createFloating(placeFrameTimeNanos)
         
         val insertionIndex = upcomingDanmaku.isNonOverlapping(danmakuList)
         if (insertionIndex < 0) danmakuList.add(upcomingDanmaku) else danmakuList.add(insertionIndex, upcomingDanmaku)
@@ -76,18 +85,18 @@ internal class FloatingDanmakuTrack<T : SizeSpecifiedDanmaku>(
     /**
      * check if placeable, return insertionIndex and corresponding upcoming danmaku
      */
-    private fun checkPlaceableImpl(danmaku: T, placeTimeNanos: Long): Pair<FloatingDanmaku<T>, Int>? {
-        check(placeTimeNanos == DanmakuTrack.NOT_PLACED || placeTimeNanos >= 0) {
-            "placeTimeNanos must be NOT_PLACED or non-negative, but had $placeTimeNanos"
+    private fun checkPlaceableImpl(danmaku: T, placeFrameTimeNanos: Long): Pair<FloatingDanmaku<T>, Int>? {
+        check(placeFrameTimeNanos == DanmakuTrack.NOT_PLACED || placeFrameTimeNanos >= 0) {
+            "placeFrameTimeNanos must be NOT_PLACED or non-negative, but had $placeFrameTimeNanos"
         }
         // 弹幕轨道宽度为 0 一定不能放
         if (trackWidth.value <= 0) return null
         // 无论如何都不能放置在轨道最右侧之外
-        if (placeTimeNanos != DanmakuTrack.NOT_PLACED && frameTimeNanosState.value - placeTimeNanos < 0)
+        if (placeFrameTimeNanos != DanmakuTrack.NOT_PLACED && frameTimeNanosState.value - placeFrameTimeNanos < 0)
             return null
 
         // 如果指定了放置时间, 则需要计算划过的距离
-        val upcomingDanmaku = danmaku.createFloating(placeTimeNanos)
+        val upcomingDanmaku = danmaku.createFloating(placeFrameTimeNanos)
 
         // 弹幕缓存为空, 那就判断是否 gone 了, 如果 gone 了就不放置
         if (danmakuList.isEmpty()) return if (upcomingDanmaku.isGone()) null else Pair(upcomingDanmaku, 0)
@@ -97,16 +106,16 @@ internal class FloatingDanmakuTrack<T : SizeSpecifiedDanmaku>(
         val insertionIndex = upcomingDanmaku.isNonOverlapping(danmakuList)
         return if (insertionIndex == -1) null else Pair(upcomingDanmaku, insertionIndex)
     }
-    
-    private fun T.createFloating(placeTimeNanos: Long): FloatingDanmaku<T> {
+
+    private fun T.createFloating(placeFrameTimeNanos: Long): FloatingDanmaku<T> {
         require(danmakuWidth > 0) { "danmaku width must be positive." }
         val speedMultiplier = this@FloatingDanmakuTrack.speedMultiplier.value
             .pow(log(danmakuWidth.toFloat() / baseSpeedTextWidth, 2f))
             .coerceAtLeast(1f)
         
         // 避免浮点数的量级过大
-        val upcomingDistanceX = if (placeTimeNanos == DanmakuTrack.NOT_PLACED) 0f else
-            ((frameTimeNanosState.value - placeTimeNanos) / 1_000L) / 1_000_000f * (baseSpeedPxPerSecond * speedMultiplier)
+        val upcomingDistanceX = if (placeFrameTimeNanos == DanmakuTrack.NOT_PLACED) 0f else
+            ((frameTimeNanosState.value - placeFrameTimeNanos) / 1_000L) / 1_000_000f * (baseSpeedPxPerSecond * speedMultiplier)
         
         return FloatingDanmaku(this, upcomingDistanceX, trackIndex, trackHeight, speedMultiplier)
     }

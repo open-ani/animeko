@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -11,17 +11,21 @@ package me.him188.ani.utils.ktor
 
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
+import io.ktor.client.engine.HttpClientEngineFactory
 import io.ktor.client.plugins.BrowserUserAgent
+import io.ktor.client.plugins.HttpRedirect
 import io.ktor.client.plugins.HttpRequestRetry
 import io.ktor.client.plugins.HttpSend
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.cookies.HttpCookies
 import io.ktor.client.plugins.plugin
+import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.isSuccess
+import io.ktor.serialization.ContentConverter
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.io.IOException
 import kotlinx.serialization.json.Json
@@ -35,9 +39,15 @@ import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration
 import kotlin.time.measureTimedValue
 
+// 根据不同平台，选择相应的 HttpClientEngine
+expect fun getPlatformKtorEngine(): HttpClientEngineFactory<*>
+
+/**
+ * Note: 尽可能使用 `HttpClientProvider` 来共享 [HttpClient] 实例. 因为每个实例都潜在地会有一个线程池.
+ */
 fun createDefaultHttpClient(
     clientConfig: HttpClientConfig<*>.() -> Unit = {},
-) = HttpClient {
+): HttpClient = HttpClient(getPlatformKtorEngine()) {
     install(HttpRequestRetry) {
         maxRetries = 1
         delayMillis { 1000 }
@@ -45,16 +55,26 @@ fun createDefaultHttpClient(
     install(HttpCookies)
     install(HttpTimeout) {
         requestTimeoutMillis = 30_000
+        connectTimeoutMillis = 30_000
     }
     BrowserUserAgent()
     install(ContentNegotiation) {
+        val xmlConverter = getXmlConverter()
         json(
             Json {
                 ignoreUnknownKeys = true
+                isLenient = true
             },
         )
+        register(ContentType.Text.Html, xmlConverter)
+        register(ContentType.Text.Xml, xmlConverter)
     }
     followRedirects = true
+    install(HttpRedirect) {
+        checkHttpMethod = false
+        allowHttpsDowngrade = true
+    }
+    expectSuccess = true // All clients actually expect success by default in clientConfig, so we move them here
     clientConfig()
 }
 
@@ -139,3 +159,6 @@ object HttpLogger {
         }
     }
 }
+
+
+internal expect fun getXmlConverter(): ContentConverter

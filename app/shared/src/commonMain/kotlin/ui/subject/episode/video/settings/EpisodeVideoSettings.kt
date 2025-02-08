@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -38,7 +38,6 @@ import me.him188.ani.app.data.models.danmaku.DanmakuRegexFilter
 import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.ui.foundation.LocalPlatform
-import me.him188.ani.app.ui.foundation.launchInBackground
 import me.him188.ani.app.ui.foundation.rememberDebugSettingsViewModel
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.AbstractSettingsViewModel
@@ -306,48 +305,27 @@ fun EpisodeVideoSettings(
             )
 
 
-            var displayArea by remember(danmakuConfig) {
-                mutableFloatStateOf(
-                    when (danmakuConfig.displayArea) {
-                        0.125f -> 1f
-                        0.25f -> 2f
-                        0.50f -> 3f
-                        0.75f -> 4f
-                        1f -> 5f
-                        else -> 2f
-                    },
-                )
-            }
             SliderItem(
-                value = displayArea,
+                value = danmakuConfig.displayArea,
                 onValueChange = {
-                    displayArea = it
-                },
-                // 这个会导致 repopulate, 所以改完了才更新
-                onValueChangeFinished = {
                     setDanmakuConfig(
                         danmakuConfig.copy(
-                            displayArea = when (displayArea) {
-                                1f -> 0.125f
-                                2f -> 0.25f
-                                3f -> 0.50f
-                                4f -> 0.75f
-                                5f -> 1f
-                                else -> 0.25f
-                            },
+                            displayArea = it.coerceIn(0f, 1f),
                         ),
                     )
                 },
-                valueRange = 1f..5f,
-                steps = 3,
+                valueRange = 0f..1f,
                 title = { Text("显示区域") },
                 valueLabel = {
-                    when (displayArea) {
-                        1f -> Text("1/8 屏")
-                        2f -> Text("1/4 屏")
-                        3f -> Text("半屏")
-                        4f -> Text("3/4 屏")
-                        5f -> Text("全屏")
+                    val v = danmakuConfig.displayArea
+                    when {
+                        v == 0f -> Text("关闭")
+                        v <= 1 / 8f -> Text("1/8 屏")
+                        v <= 1 / 6f -> Text("1/6 屏")
+                        v <= 1 / 4f -> Text("1/4 屏")
+                        v <= 1 / 2f -> Text("半屏")
+                        v <= 3 / 4f -> Text("3/4 屏")
+                        v == 1f -> Text("全屏")
                     }
                 },
                 useThinSlider = useThinSlider,
@@ -384,9 +362,7 @@ fun EpisodeVideoSettings(
                 SwitchItem(
                     debugSettings.showControllerAlwaysOnRequesters,
                     onCheckedChange = {
-                        debugViewModel.launchInBackground {
-                            updateDebugSettings(debugSettings.copy(showControllerAlwaysOnRequesters = it))
-                        }
+                        debugViewModel.updateDebugSettings(debugSettings.copy(showControllerAlwaysOnRequesters = it))
                     },
                     title = { Text("showControllerAlwaysOnRequesters") },
                 )

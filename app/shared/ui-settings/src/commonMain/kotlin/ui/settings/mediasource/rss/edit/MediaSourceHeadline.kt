@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -28,10 +28,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
-import androidx.window.core.layout.WindowWidthSizeClass
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.LocalIsPreviewing
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
+import me.him188.ani.app.ui.foundation.layout.isWidthCompact
 
 @Immutable
 internal class MediaSourceHeadlineStyle(
@@ -42,8 +42,9 @@ internal class MediaSourceHeadlineStyle(
 
 @Composable
 internal fun computeMediaSourceHeadlineStyle(): MediaSourceHeadlineStyle {
-    return when (currentWindowAdaptiveInfo1().windowSizeClass.windowWidthSizeClass) {
-        WindowWidthSizeClass.COMPACT -> {
+    val windowSizeClass = currentWindowAdaptiveInfo1().windowSizeClass
+    return when {
+        windowSizeClass.isWidthCompact -> {
             MediaSourceHeadlineStyle(
                 imageSize = DpSize(96.dp, 96.dp),
                 titleTextStyle = MaterialTheme.typography.headlineMedium,

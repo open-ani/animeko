@@ -33,15 +33,15 @@ import me.him188.ani.app.domain.media.cache.EpisodeCacheStatus
 import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.domain.session.AuthState
 import me.him188.ani.app.domain.session.SessionStatus
-import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview
+import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.rememberBackgroundScope
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeState
 import me.him188.ani.app.ui.subject.collection.components.rememberTestEditableSubjectCollectionTypeState
 import me.him188.ani.app.ui.subject.createTestAiringLabelState
 import me.him188.ani.app.ui.subject.details.state.createTestSubjectDetailsLoader
 import me.him188.ani.app.ui.subject.episode.mediaFetch.MediaSelectorState
-import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberTestMediaSelectorPresentation
-import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberTestMediaSourceResults
+import me.him188.ani.app.ui.subject.episode.mediaFetch.TestMediaSourceResultListPresentation
+import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberTestMediaSelectorState
 import me.him188.ani.app.ui.subject.episode.statistics.testPlayerStatisticsState
 import me.him188.ani.app.ui.subject.episode.video.DanmakuStatistics
 import me.him188.ani.app.ui.subject.episode.video.createTestDanmakuStatistics
@@ -52,7 +52,7 @@ import me.him188.ani.utils.platform.annotations.TestOnly
 
 @Composable
 @PreviewLightDark
-fun PreviewEpisodeDetailsLongTitle() = ProvideFoundationCompositionLocalsForPreview {
+fun PreviewEpisodeDetailsLongTitle() = ProvideCompositionLocalsForPreview {
     val state = rememberTestEpisodeDetailsState(
         remember {
             SubjectInfo.Empty.copy(
@@ -65,7 +65,7 @@ fun PreviewEpisodeDetailsLongTitle() = ProvideFoundationCompositionLocalsForPrev
 
 @Composable
 @PreviewLightDark
-fun PreviewEpisodeDetailsShortTitle() = ProvideFoundationCompositionLocalsForPreview {
+fun PreviewEpisodeDetailsShortTitle() = ProvideCompositionLocalsForPreview {
     val state = rememberTestEpisodeDetailsState(
         remember {
             SubjectInfo.Empty.copy(
@@ -78,7 +78,7 @@ fun PreviewEpisodeDetailsShortTitle() = ProvideFoundationCompositionLocalsForPre
 
 @Composable
 @PreviewLightDark
-fun PreviewEpisodeDetailsScroll() = ProvideFoundationCompositionLocalsForPreview {
+fun PreviewEpisodeDetailsScroll() = ProvideCompositionLocalsForPreview {
     val state = rememberTestEpisodeDetailsState(
         remember {
             SubjectInfo.Empty.copy(
@@ -93,7 +93,7 @@ fun PreviewEpisodeDetailsScroll() = ProvideFoundationCompositionLocalsForPreview
 
 @Composable
 @PreviewLightDark
-fun PreviewEpisodeDetailsDoing() = ProvideFoundationCompositionLocalsForPreview {
+fun PreviewEpisodeDetailsDoing() = ProvideCompositionLocalsForPreview {
     val state = rememberTestEpisodeDetailsState(
         remember {
             SubjectInfo.Empty.copy(
@@ -109,7 +109,7 @@ fun PreviewEpisodeDetailsDoing() = ProvideFoundationCompositionLocalsForPreview 
 
 @Composable
 @PreviewLightDark
-fun PreviewEpisodeDetailsDanmakuFailed() = ProvideFoundationCompositionLocalsForPreview {
+fun PreviewEpisodeDetailsDanmakuFailed() = ProvideCompositionLocalsForPreview {
     val state = rememberTestEpisodeDetailsState()
     PreviewEpisodeDetailsImpl(
         state,
@@ -121,7 +121,7 @@ fun PreviewEpisodeDetailsDanmakuFailed() = ProvideFoundationCompositionLocalsFor
 
 @Composable
 @PreviewLightDark
-fun PreviewEpisodeDetailsNotAuthorized() = ProvideFoundationCompositionLocalsForPreview {
+fun PreviewEpisodeDetailsNotAuthorized() = ProvideCompositionLocalsForPreview {
     val state = rememberTestEpisodeDetailsState()
     PreviewEpisodeDetailsImpl(
         state,
@@ -131,7 +131,7 @@ fun PreviewEpisodeDetailsNotAuthorized() = ProvideFoundationCompositionLocalsFor
 
 @Composable
 @PreviewLightDark
-fun PreviewEpisodeDetailsDanmakuLoading() = ProvideFoundationCompositionLocalsForPreview {
+fun PreviewEpisodeDetailsDanmakuLoading() = ProvideCompositionLocalsForPreview {
     val state = rememberTestEpisodeDetailsState()
     PreviewEpisodeDetailsImpl(
         state,
@@ -143,7 +143,7 @@ fun PreviewEpisodeDetailsDanmakuLoading() = ProvideFoundationCompositionLocalsFo
 
 @Composable
 @PreviewLightDark
-fun PreviewEpisodeDetailsNotSelected() = ProvideFoundationCompositionLocalsForPreview {
+fun PreviewEpisodeDetailsNotSelected() = ProvideCompositionLocalsForPreview {
     val state = rememberTestEpisodeDetailsState()
     PreviewEpisodeDetailsImpl(
         state,
@@ -178,7 +178,7 @@ private fun PreviewEpisodeDetailsImpl(
         )
     },
     editableSubjectCollectionTypeState: EditableSubjectCollectionTypeState = rememberTestEditableSubjectCollectionTypeState(),
-    mediaSelectorState: MediaSelectorState = rememberTestMediaSelectorPresentation(),
+    mediaSelectorState: MediaSelectorState = rememberTestMediaSelectorState(),
     playingMedia: Media? = TestMediaList.first(),
     authState: AuthState = rememberTestAuthState(),
 ) {
@@ -207,10 +207,11 @@ private fun PreviewEpisodeDetailsImpl(
                 )
             },
             mediaSelectorState = mediaSelectorState,
-            mediaSourceResultsPresentation = rememberTestMediaSourceResults(),
+            mediaSourceResultListPresentation = TestMediaSourceResultListPresentation,
             authState = authState,
             onSwitchEpisode = {},
             onRefreshMediaSources = {},
+            onRestartSource = {},
             onSetDanmakuSourceEnabled = { _, _ -> },
             Modifier
                 .padding(bottom = 16.dp, top = 8.dp)

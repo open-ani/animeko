@@ -14,6 +14,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
@@ -145,7 +146,9 @@ class EpisodeDanmakuLoader(
         )
     }.shareIn(flowScope, started = sharingStarted, replay = 1)
 
-    val danmakuLoadingStateFlow: Flow<DanmakuLoadingState> = danmakuLoader.danmakuLoadingStateFlow
+    val danmakuLoadingStateFlow: StateFlow<DanmakuLoadingState> = danmakuLoader.danmakuLoadingStateFlow
+    
+    // this flow must emit a value quickly when started, otherwise it will block ui
     val fetchResults: Flow<List<DanmakuFetchResultWithConfig>> = combine(
         danmakuLoader.fetchResultFlow.onStart { emit(null) },
         configFlow,

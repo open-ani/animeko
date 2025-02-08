@@ -1,14 +1,15 @@
 name: Bug 报告
 description: 提交一个 bug
 labels:
-  - "N"
+  - "P2"
 type: Bug
 
 body:
   - type: markdown
     attributes:
       value: |
-        欢迎反馈 bug！在提交之前，请确保你已经搜索过已有的 issues，确保没有重复问题。
+        欢迎反馈 bug！
+        在提交之前，请确保你已经搜索过已有的 issues，确保没有重复问题。
         请尽量提供多的信息，这将帮助问题更快解决。
 
   - type: textarea
@@ -31,8 +32,8 @@ body:
     id: version-ani
     attributes:
       label: Ani 版本号
-      description: 你使用的 Ani 版本号，可在 "设置-界面与应用" 中找到，如 `4.0.0`。
-      placeholder: "例如: 3.0.0"
+      description: 你正在使用的 Ani 版本号，可在 "设置-软件更新" 中找到，如 `4.0.0`。`4.4.0-beta01` 也可以简写为 `440b1`。
+      placeholder: "例如: 4.0.0"
     validations:
       required: true
 
@@ -43,11 +44,12 @@ body:
       description: 不选择表示可能均受影响
       multiple: true
       options:
-        - Android
-        - macOS (Intel)
-        - macOS (M 系列芯片)
+        - Android 手机/平板
         - Windows
-        - Linux
+        - macOS (M 系列芯片)
+        - Ubuntu
+        - Android TV
+        - macOS (Intel)
     validations:
       required: false
 
@@ -56,15 +58,11 @@ body:
     attributes:
       label: 应用日志
       description: |
-        对于 PC 端用户，在 "设置-关于" 中点击打开日志目录，把 `app.log` 复制粘贴或拖到这里。
-        对于 Android 用户，目前不支持收集日志，可以跳过此步骤。
+        对于 PC 端用户，在 "设置-关于" 中点击打开日志目录，把 `app.log` 复制拖到这里。
+        对于 Android 用户，在 "设置-关于" 中分享日志，可以分享到 Telegram 群内获取链接，或者自行上传到这里或者 pastebin 等网站。
       placeholder: |
-        请在这里粘贴日志内容，或拖拽文件到这里。
+        请在拖拽文件到这里，或者粘贴日志 (全部) 内容。
         请同时说明问题的发生时间，最好精确到分钟 (例如 19:43 左右)。
-      value: |
-        ```
-        
-        
-        ```
+      value: "..."
     validations:
       required: false

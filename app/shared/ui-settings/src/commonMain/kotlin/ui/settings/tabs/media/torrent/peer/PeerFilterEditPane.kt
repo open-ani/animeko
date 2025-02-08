@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -10,7 +10,6 @@
 package me.him188.ani.app.ui.settings.tabs.media.torrent.peer
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -39,8 +38,9 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.him188.ani.app.domain.torrent.peer.PeerFilterSubscription
+import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
+import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
-import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.richtext.RichText
 import me.him188.ani.app.ui.richtext.rememberBBCodeRichTextState
 import me.him188.ani.app.ui.settings.SettingsTab
@@ -122,7 +122,7 @@ fun PeerFilterEditPane(
                 val updatingSubs by state.updatingSubs.collectAsStateWithLifecycle(false)
                 AnimatedContent(
                     updatingSubs,
-                    transitionSpec = AniThemeDefaults.standardAnimatedContentTransition,
+                    transitionSpec = LocalAniMotionScheme.current.animatedContent.standard,
                     contentAlignment = Alignment.CenterEnd,
                 ) {
                     if (it) {
@@ -162,10 +162,10 @@ fun PeerFilterEditPane(
                 checked = state.ipFilterEnabled,
                 onCheckedChange = { state.ipFilterEnabled = it },
             )
-            AnimatedVisibility(visible = state.ipFilterEnabled) {
+            AniAnimatedVisibility(visible = state.ipFilterEnabled) {
                 RuleEditItem(
                     content = state.ipFiltersPattern,
-                    enabled = state.ipFilterEnabled,
+                    enabled = true,
                     supportingTextBBCode = """
                         每行一条过滤规则，支持 IPv4 和 IPv6
                         支持以下格式：
@@ -188,11 +188,11 @@ fun PeerFilterEditPane(
                 checked = state.idFilterEnabled,
                 onCheckedChange = { state.idFilterEnabled = it },
             )
-            AnimatedVisibility(visible = state.idFilterEnabled) {
+            AniAnimatedVisibility(visible = state.idFilterEnabled) {
                 Column {
                     RuleEditItem(
                         content = state.idFiltersRegex,
-                        enabled = state.idFilterEnabled,
+                        enabled = true,
                         supportingTextBBCode = """
                         每行一条过滤规则，仅支持使用正则表达式过滤
                         例如：[code]\-HP\d{4}\-[/code] 将封禁具有 -HPxxxx- 指纹的客户端
@@ -215,10 +215,10 @@ fun PeerFilterEditPane(
                 checked = state.clientFilterEnabled,
                 onCheckedChange = { state.clientFilterEnabled = it },
             )
-            AnimatedVisibility(visible = state.clientFilterEnabled) {
+            AniAnimatedVisibility(visible = state.clientFilterEnabled) {
                 RuleEditItem(
                     content = state.clientFiltersRegex,
-                    enabled = state.clientFilterEnabled,
+                    enabled = true,
                     supportingTextBBCode = """
                         每行一条过滤规则，仅支持使用正则表达式过滤
                         例如：[code]go\.torrent(\sdev)?[/code] 将封禁百度网盘的离线下载客户端
@@ -227,7 +227,7 @@ fun PeerFilterEditPane(
                 )
             }
 
-            AnimatedVisibility(visible = showIpBlockingItem) {
+            AniAnimatedVisibility(visible = showIpBlockingItem) {
                 Group(
                     title = { Text("黑名单") },
                     description = { Text("黑名单中的 Peer 总是被屏蔽，无论是否匹配过滤规则") },

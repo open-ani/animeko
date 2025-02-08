@@ -42,6 +42,16 @@ kotlin {
 
 android {
     namespace = "me.him188.ani.app.ui.settings"
+    packaging {
+        resources {
+            excludes.add("win32-x86-64/attach_hotspot_windows.dll")
+            excludes.add("win32-x86/attach_hotspot_windows.dll")
+            pickFirsts.add("META-INF/AL2.0")
+            pickFirsts.add("META-INF/LGPL2.1")
+            excludes.add("META-INF/DEPENDENCIES")
+            excludes.add("META-INF/licenses/ASM")
+        }
+    }
 }
 
 compose.resources {

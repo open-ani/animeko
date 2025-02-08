@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -42,12 +42,12 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
 import androidx.window.core.layout.WindowSizeClass
-import androidx.window.core.layout.WindowWidthSizeClass
 import me.him188.ani.app.ui.foundation.interaction.WindowDragArea
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
-import me.him188.ani.app.ui.foundation.layout.compareTo
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
-import me.him188.ani.app.ui.foundation.layout.isAtLeastMedium
+import me.him188.ani.app.ui.foundation.layout.isHeightAtLeastMedium
+import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastExpanded
+import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.paddingIfNotEmpty
 import me.him188.ani.app.ui.foundation.layout.paneHorizontalPadding
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
@@ -92,7 +92,7 @@ fun AniTopAppBar(
     val windowSizeClass = currentWindowAdaptiveInfo1().windowSizeClass
     WindowDragArea {
         val additionalPadding =
-            if (windowSizeClass.windowWidthSizeClass.isAtLeastMedium && windowSizeClass.windowHeightSizeClass.isAtLeastMedium) {
+            if (windowSizeClass.isWidthAtLeastMedium && windowSizeClass.isHeightAtLeastMedium) {
                 8.dp
             } else {
                 0.dp
@@ -127,8 +127,8 @@ fun AniTopAppBar(
                         ),
                 ) {
                     val minSize =
-                        if (windowSizeClass.windowWidthSizeClass.isAtLeastMedium
-                            && windowSizeClass.windowHeightSizeClass.isAtLeastMedium
+                        if (windowSizeClass.isWidthAtLeastMedium
+                            && windowSizeClass.isHeightAtLeastMedium
                         ) {
                             48.dp
                         } else {
@@ -175,7 +175,7 @@ private fun AdaptiveSearchBarLayout(
 ) {
     BoxWithConstraints(modifier) {
         AnimatedContent(
-            calculateSearchBarSize(windowSizeClass.windowWidthSizeClass, maxWidth),
+            calculateSearchBarSize(windowSizeClass, maxWidth),
             Modifier.animateContentSize(),
             transitionSpec = { expandHorizontally(snap()) togetherWith shrinkHorizontally(snap()) },
             contentAlignment = Alignment.CenterEnd,
@@ -217,14 +217,14 @@ private enum class SearchBarSize {
 }
 
 private fun calculateSearchBarSize(
-    windowWidthSizeClass: WindowWidthSizeClass,
+    windowSizeClass: WindowSizeClass,
     maxWidth: Dp,
 ): SearchBarSize {
     return when {
-        windowWidthSizeClass >= WindowWidthSizeClass.EXPANDED && maxWidth >= 360.dp
+        windowSizeClass.isWidthAtLeastExpanded && maxWidth >= 360.dp
             -> SearchBarSize.EXPANDED
 
-        windowWidthSizeClass >= WindowWidthSizeClass.MEDIUM && maxWidth >= 240.dp -> SearchBarSize.MEDIUM
+        windowSizeClass.isWidthAtLeastMedium && maxWidth >= 240.dp -> SearchBarSize.MEDIUM
         else -> SearchBarSize.ICON_BUTTON
     }
 }

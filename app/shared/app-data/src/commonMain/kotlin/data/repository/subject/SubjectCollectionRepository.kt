@@ -22,16 +22,19 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flatMapMerge
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.retry
+import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
@@ -83,6 +86,7 @@ import me.him188.ani.datasources.bangumi.processing.toCollectionType
 import me.him188.ani.datasources.bangumi.processing.toSubjectCollectionType
 import me.him188.ani.utils.coroutines.combine
 import me.him188.ani.utils.coroutines.flows.flowOfEmptyList
+import me.him188.ani.utils.ktor.ApiInvoker
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.platform.collections.toIntArray
 import me.him188.ani.utils.platform.currentTimeMillis
@@ -160,7 +164,7 @@ sealed class SubjectCollectionRepository(
 }
 
 class SubjectCollectionRepositoryImpl(
-    private val api: Flow<BangumiSubjectApi>,
+    private val api: ApiInvoker<DefaultApi>,
     private val bangumiSubjectService: BangumiSubjectService,
     private val subjectCollectionDao: SubjectCollectionDao,
     private val subjectRelationsDao: SubjectRelationsDao,
@@ -258,18 +262,27 @@ class SubjectCollectionRepositoryImpl(
                 }
             }
 
-            emit(
-                existing.map { subjectCollectionEntity ->
-                    LightSubjectAndEpisodes(
-                        subjectCollectionEntity.toLightSubjectInfo(),
-                        episodeCollectionRepository.subjectEpisodeCollectionInfosFlow(subjectCollectionEntity.subjectId)
-                            .first().map {
-                                it.episodeInfo.toLightEpisodeInfo()
-                            },
-                    )
+            coroutineScope {
+                val fromExistingDeferred = async {
+                    existing.asFlow()
+                        .flatMapMerge(concurrency = 4) { entity ->
+                            episodeCollectionRepository
+                                .subjectEpisodeCollectionInfosFlow(entity.subjectId)
+                                .take(1)
+                                .map { episodes ->
+                                    LightSubjectAndEpisodes(
+                                        entity.toLightSubjectInfo(),
+                                        episodes.map { it.episodeInfo.toLightEpisodeInfo() },
+                                    )
+                                }
+                        }
+                        .toList()
                 }
-                    .plus(batchGetLightSubjectEpisodes(missingIds)),// TODO: 2025/1/14 batchGetLightSubjectEpisodes 没有按 epType 过滤 
-            )
+                val fromMissingDeferred = async {
+                    batchGetLightSubjectEpisodes(missingIds) // TODO: 2025/1/14 batchGetLightSubjectEpisodes 没有按 epType 过滤
+                }
+                emit(fromExistingDeferred.await() + fromMissingDeferred.await())
+            }
         }
     }
 
@@ -544,7 +557,7 @@ class SubjectCollectionRepositoryImpl(
         payload: BangumiUserSubjectCollectionModifyPayload,
     ) {
         withContext(defaultDispatcher) {
-            api.first().postUserCollection(subjectId, payload)
+            api { postUserCollection(subjectId, payload) }
             subjectCollectionDao.updateType(subjectId, payload.type.toCollectionType())
         }
     }
@@ -644,8 +657,8 @@ internal fun BatchSubjectDetails.toEntity(
             nsfw = nsfw,
             imageLarge = imageLarge,
             totalEpisodes =
-                @Suppress("DEPRECATION")
-                totalEpisodes,
+            @Suppress("DEPRECATION")
+            totalEpisodes,
             airDate = airDate,
             tags = tags,
             aliases = aliases,

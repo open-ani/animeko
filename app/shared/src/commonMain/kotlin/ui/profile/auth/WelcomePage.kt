@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -9,10 +9,6 @@
 
 package me.him188.ani.app.ui.profile.auth
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -63,6 +59,8 @@ import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.foundation.AuthState
+import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
+import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.icons.AniIcons
 import me.him188.ani.app.ui.foundation.icons.GithubMark
 import me.him188.ani.app.ui.foundation.icons.QqRoundedOutline
@@ -169,14 +167,12 @@ fun WelcomePage(
             LaunchedEffect(true) {
                 isContentReady = true
             }
-            AnimatedVisibility(
+            AniAnimatedVisibility(
                 isContentReady,
                 Modifier.wrapContentSize(),
                 // 从中间往上滑
-                enter = fadeIn(tween(500)) + slideInVertically(
-                    tween(600),
-                    initialOffsetY = { 50.coerceAtMost(it) },
-                ),
+                enter = LocalAniMotionScheme.current.animatedVisibility.screenEnter,
+                exit = LocalAniMotionScheme.current.animatedVisibility.screenExit,
             ) {
                 LazyColumn(
                     Modifier.padding(contentPadding).widthIn(max = 1000.dp).fillMaxHeight(),

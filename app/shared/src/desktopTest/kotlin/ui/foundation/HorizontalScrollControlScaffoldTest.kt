@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -34,8 +34,8 @@ import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
-import me.him188.ani.app.ui.doesNotExist
-import me.him188.ani.app.ui.exists
+import me.him188.ani.app.ui.framework.doesNotExist
+import me.him188.ani.app.ui.framework.exists
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import kotlin.test.Test
 
@@ -103,7 +103,7 @@ class HorizontalScrollControlScaffoldTest {
     }
 
     @Test
-    fun `too many items - left button - invisible when can't scroll forward`() = runAniComposeUiTest {
+    fun `too many items - left button - invisible when cant scroll forward`() = runAniComposeUiTest {
         val listState = LazyListState()
 
         setContent {

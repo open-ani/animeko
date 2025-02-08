@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.ui.settings.tabs.app
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowOutward
@@ -38,11 +37,12 @@ import me.him188.ani.app.data.models.preference.UISettings
 import me.him188.ani.app.data.models.preference.UpdateSettings
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.data.network.protocol.ReleaseClass
-import me.him188.ani.app.navigation.MainScenePage
+import me.him188.ani.app.navigation.MainScreenPage
 import me.him188.ani.app.navigation.getIcon
 import me.him188.ani.app.navigation.getText
 import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.ui.foundation.LocalPlatform
+import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.danmaku.DanmakuRegexFilterGroup
 import me.him188.ani.app.ui.settings.danmaku.DanmakuRegexFilterState
@@ -110,7 +110,7 @@ fun SettingsScope.AppearanceGroup(
 
     DropdownItem(
         selected = { uiSettings.mainSceneInitialPage },
-        values = { MainScenePage.visibleEntries },
+        values = { MainScreenPage.visibleEntries },
         itemText = { Text(it.getText()) },
         onSelect = {
             state.update(uiSettings.copy(mainSceneInitialPage = it))
@@ -302,7 +302,7 @@ fun SettingsScope.SoftwareUpdateGroup(
                 },
                 enabled = updateSettings.autoCheckUpdate,
             )
-            AnimatedVisibility(updateSettings.inAppDownload) {
+            AniAnimatedVisibility(updateSettings.inAppDownload) {
                 Column {
                     HorizontalDividerItem()
                     SwitchItem(
@@ -354,7 +354,7 @@ fun SettingsScope.SoftwareUpdateGroup(
                 }
             },
         )
-        AnimatedVisibility(
+        AniAnimatedVisibility(
             state.updateCheckerTester.tester.result is CheckVersionResult.HasNewVersion // 在设置里检查的
                     || autoUpdate.hasUpdate, // 在主页自动检查的
         ) {

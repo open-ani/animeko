@@ -28,7 +28,7 @@ actual fun appColorScheme(
         isAmoled = useBlackBackground,
         style = PaletteStyle.TonalSpot,
         modifyColorScheme = { colorScheme ->
-            modifyColorSchemeForBlackBackground(colorScheme, useBlackBackground)
+            modifyColorSchemeForBlackBackground(colorScheme, isDark, useBlackBackground)
         },
     )
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -64,6 +64,8 @@ android {
 val aniAuthServerUrlDebug =
     getPropertyOrNull("ani.auth.server.url.debug") ?: "https://auth.myani.org"
 val aniAuthServerUrlRelease = getPropertyOrNull("ani.auth.server.url.release") ?: "https://auth.myani.org"
+val dandanplayAppId = getPropertyOrNull("ani.dandanplay.app.id") ?: ""
+val dandanplayAppSecret = getPropertyOrNull("ani.dandanplay.app.secret") ?: ""
 
 //if (bangumiClientDesktopAppId == null || bangumiClientDesktopSecret == null) {
 //    logger.warn("bangumi.oauth.client.desktop.appId or bangumi.oauth.client.desktop.secret is not set. Bangumi authorization will not work. Get a token from https://bgm.tv/dev/app and set them in local.properties.")
@@ -72,6 +74,8 @@ val aniAuthServerUrlRelease = getPropertyOrNull("ani.auth.server.url.release") ?
 android {
     defaultConfig {
         buildConfigField("String", "VERSION_NAME", "\"${getProperty("version.name")}\"")
+        buildConfigField("String", "DANDANPLAY_APP_ID", "\"$dandanplayAppId\"")
+        buildConfigField("String", "DANDANPLAY_APP_SECRET", "\"$dandanplayAppSecret\"")
     }
     buildTypes.getByName("release") {
         isMinifyEnabled = false
@@ -124,6 +128,8 @@ val generateAniBuildConfigDesktop = tasks.register("generateAniBuildConfigDeskto
                 override val versionName = "${project.version}"
                 override val isDebug = System.getenv("ANI_DEBUG") == "true" || System.getProperty("ani.debug") == "true"
                 override val aniAuthServerUrl = if (isDebug) "$aniAuthServerUrlDebug" else "$aniAuthServerUrlRelease"
+                override val dandanplayAppId = "$dandanplayAppId"
+                override val dandanplayAppSecret = "$dandanplayAppSecret"
             }
             """.trimIndent()
 
@@ -156,6 +162,8 @@ if (enableIos) {
                 override val versionName = "${project.version}"
                 override val isDebug = false
                 override val aniAuthServerUrl = if (isDebug) "$aniAuthServerUrlDebug" else "$aniAuthServerUrlRelease"
+                override val dandanplayAppId = "$dandanplayAppId"
+                override val dandanplayAppSecret = "$dandanplayAppSecret"
             }
             """.trimIndent()
 

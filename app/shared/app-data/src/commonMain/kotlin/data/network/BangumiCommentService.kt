@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -54,9 +54,10 @@ class BangumiBangumiCommentServiceImpl(
     override suspend fun getSubjectReviews(subjectId: Int, offset: Int, limit: Int): Paged<SubjectReview>? {
         return withContext(ioDispatcher) {
             val response = try {
-                client.getNextApi()
-                    .getSubjectComments(subjectId, null, limit, offset)
-                    .body()
+                client.nextApi {
+                    getSubjectComments(subjectId, null, limit, offset)
+                        .body()
+                }
             } catch (e: ClientRequestException) {
                 if (e.response.status == HttpStatusCode.NotFound || e.response.status == HttpStatusCode.BadRequest) {
                     return@withContext null
@@ -75,24 +76,28 @@ class BangumiBangumiCommentServiceImpl(
         replyToCommentId: Int?
     ) {
         withContext(ioDispatcher) {
-            client.getNextApi().createSubjectEpComment(
-                episodeId,
-                BangumiNextCreateSubjectEpCommentRequest(
-                    cfTurnstileResponse,
-                    content,
-                    replyToCommentId,
-                ),
-            )
+            client.nextApi {
+                createSubjectEpComment(
+                    episodeId,
+                    BangumiNextCreateSubjectEpCommentRequest(
+                        cfTurnstileResponse,
+                        content,
+                        replyToCommentId,
+                    ),
+                )
+                Unit // suppress inspection
+            }
         }
     }
 
     override suspend fun getSubjectEpisodeComments(subjectId: Int): List<EpisodeComment>? {
         return withContext(ioDispatcher) {
             val response = try {
-                client.getNextApi()
-                    .getSubjectEpisodeComments(subjectId)
-                    .body()
-                    .map(BangumiNextGetSubjectEpisodeComments200ResponseInner::toEpisodeComment)
+                client.nextApi {
+                    getSubjectEpisodeComments(subjectId)
+                        .body()
+                        .map(BangumiNextGetSubjectEpisodeComments200ResponseInner::toEpisodeComment)
+                }
             } catch (e: ClientRequestException) {
                 if (e.response.status == HttpStatusCode.NotFound || e.response.status == HttpStatusCode.BadRequest) {
                     return@withContext null

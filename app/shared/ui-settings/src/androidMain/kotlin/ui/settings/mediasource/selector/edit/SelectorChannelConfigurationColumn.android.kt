@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -19,7 +19,7 @@ import me.him188.ani.app.domain.mediasource.web.SelectorMediaSourceArguments
 import me.him188.ani.app.domain.mediasource.web.format.SelectorChannelFormatIndexGrouped
 import me.him188.ani.app.domain.mediasource.web.format.SelectorChannelFormatNoChannel
 import me.him188.ani.app.domain.mediasource.web.format.SelectorFormatId
-import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview
+import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.settings.mediasource.rss.createTestSaveableStorage
 import me.him188.ani.utils.platform.annotations.TestOnly
@@ -41,7 +41,7 @@ fun rememberTestSelectorConfigurationState(
 
 @Composable
 @Preview
-private fun PreviewSelectorChannelConfigurationColumnNotFound() = ProvideFoundationCompositionLocalsForPreview {
+private fun PreviewSelectorChannelConfigurationColumnNotFound() = ProvideCompositionLocalsForPreview {
     Surface {
         SelectorChannelFormatColumn(SelectorFormatId("dummy"), rememberTestSelectorConfigurationState())
     }
@@ -49,7 +49,7 @@ private fun PreviewSelectorChannelConfigurationColumnNotFound() = ProvideFoundat
 
 @Composable
 @Preview
-private fun PreviewSelectorChannelConfigurationColumnFlattened() = ProvideFoundationCompositionLocalsForPreview {
+private fun PreviewSelectorChannelConfigurationColumnFlattened() = ProvideCompositionLocalsForPreview {
     Surface {
         SelectorChannelFormatColumn(SelectorChannelFormatIndexGrouped.id, rememberTestSelectorConfigurationState())
     }
@@ -57,7 +57,7 @@ private fun PreviewSelectorChannelConfigurationColumnFlattened() = ProvideFounda
 
 @Composable
 @Preview
-private fun PreviewSelectorChannelConfigurationColumnNoChannel() = ProvideFoundationCompositionLocalsForPreview {
+private fun PreviewSelectorChannelConfigurationColumnNoChannel() = ProvideCompositionLocalsForPreview {
     Surface {
         SelectorChannelFormatColumn(SelectorChannelFormatNoChannel.id, rememberTestSelectorConfigurationState())
     }

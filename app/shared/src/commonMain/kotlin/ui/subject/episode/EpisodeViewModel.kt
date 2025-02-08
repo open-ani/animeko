@@ -18,8 +18,11 @@ import androidx.paging.cachedIn
 import androidx.paging.map
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineName
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -38,6 +41,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapNotNull
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.retry
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transformLatest
@@ -55,8 +59,11 @@ import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.danmaku.DanmakuManager
 import me.him188.ani.app.domain.danmaku.SetDanmakuEnabledUseCase
+import me.him188.ani.app.domain.episode.EpisodeCompletionContext.isKnownCompleted
 import me.him188.ani.app.domain.episode.EpisodeDanmakuLoader
 import me.him188.ani.app.domain.episode.EpisodeFetchSelectPlayState
+import me.him188.ani.app.domain.episode.EpisodeSession
+import me.him188.ani.app.domain.episode.SubjectEpisodeInfoBundle
 import me.him188.ani.app.domain.episode.UnsafeEpisodeSessionApi
 import me.him188.ani.app.domain.episode.episodeIdFlow
 import me.him188.ani.app.domain.episode.getCurrentEpisodeId
@@ -66,8 +73,8 @@ import me.him188.ani.app.domain.episode.mediaSelectorFlow
 import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.domain.media.cache.EpisodeCacheStatus
 import me.him188.ani.app.domain.media.cache.MediaCacheManager
-import me.him188.ani.app.domain.media.fetch.FilteredMediaSourceResults
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
+import me.him188.ani.app.domain.media.fetch.MediaSourceResultsFilterer
 import me.him188.ani.app.domain.media.resolver.MediaResolver
 import me.him188.ani.app.domain.player.CacheProgressProvider
 import me.him188.ani.app.domain.player.extension.AutoSelectExtension
@@ -103,7 +110,9 @@ import me.him188.ani.app.ui.subject.episode.details.EpisodeCarouselState
 import me.him188.ani.app.ui.subject.episode.details.EpisodeDetailsState
 import me.him188.ani.app.ui.subject.episode.mediaFetch.MediaSelectorState
 import me.him188.ani.app.ui.subject.episode.mediaFetch.MediaSourceInfoProvider
-import me.him188.ani.app.ui.subject.episode.mediaFetch.MediaSourceResultsPresentation
+import me.him188.ani.app.ui.subject.episode.mediaFetch.MediaSourceResultListPresentation
+import me.him188.ani.app.ui.subject.episode.mediaFetch.MediaSourceResultListPresenter
+import me.him188.ani.app.ui.subject.episode.mediaFetch.createTestMediaSelectorState
 import me.him188.ani.app.ui.subject.episode.statistics.VideoStatistics
 import me.him188.ani.app.ui.subject.episode.statistics.VideoStatisticsCollector
 import me.him188.ani.app.ui.subject.episode.video.DanmakuStatistics
@@ -123,6 +132,7 @@ import me.him188.ani.utils.coroutines.flows.restartable
 import me.him188.ani.utils.coroutines.sampleWithInitial
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.warn
+import me.him188.ani.utils.platform.annotations.TestOnly
 import org.koin.core.Koin
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -135,7 +145,7 @@ import kotlin.time.Duration.Companion.milliseconds
 @Stable
 data class EpisodePageState(
     val mediaSelectorState: MediaSelectorState,
-    val mediaSourceResultsPresentation: MediaSourceResultsPresentation,
+    val mediaSourceResultListPresentation: MediaSourceResultListPresentation,
     val danmakuStatistics: DanmakuStatistics,
     val subjectPresentation: SubjectPresentation,
     val episodePresentation: EpisodePresentation,
@@ -177,6 +187,7 @@ class EpisodeViewModel(
     val player: MediampPlayer =
         playerStateFactory.create(context, backgroundScope.coroutineContext)
 
+    @OptIn(UnsafeEpisodeSessionApi::class)
     private val fetchPlayState = EpisodeFetchSelectPlayState(
         subjectId, initialEpisodeId, player, backgroundScope,
         extensions = listOf(
@@ -185,11 +196,18 @@ class EpisodeViewModel(
             SwitchNextEpisodeExtension.Factory(
                 getNextEpisode = { currentEpisodeId ->
                     val list = episodeCollectionsFlow.first()
+                    val subject = subjectCollectionFlow.first()
                     val currentIndex = list.indexOfFirst { it.episodeId == currentEpisodeId }
                     if (currentIndex == -1) {
                         null
                     } else {
-                        list.getOrNull(currentIndex + 1)?.episodeId
+                        val nextEpisode = list.getOrNull(currentIndex + 1) ?: return@Factory null
+
+                        if (!nextEpisode.episodeInfo.isKnownCompleted(subject.recurrence)) {
+                            null
+                        } else {
+                            nextEpisode.episodeId
+                        }
                     }
                 },
             ),
@@ -208,7 +226,7 @@ class EpisodeViewModel(
     private val episodeIdFlow get() = fetchPlayState.episodeIdFlow
 
     @UnsafeEpisodeSessionApi
-    private val subjectEpisodeInfoBundleFlow get() = fetchPlayState.infoBundleFlow
+    private val subjectEpisodeInfoBundleFlow: Flow<SubjectEpisodeInfoBundle?> get() = fetchPlayState.infoBundleFlow
 
     @UnsafeEpisodeSessionApi
     private val subjectEpisodeInfoBundleLoadErrorFlow = fetchPlayState.infoLoadErrorFlow
@@ -435,6 +453,9 @@ class EpisodeViewModel(
                         event.list
                             .filter { it.text.any { c -> !c.isWhitespace() } }
                             .map { createDanmakuPresentation(it, selfId) },
+                        withContext(Dispatchers.Main) {
+                            player.getCurrentPositionMillis()
+                        },
                     )
                 }
             }
@@ -518,11 +539,28 @@ class EpisodeViewModel(
             .produceState(0.milliseconds),
     )
 
-    val pageState = fetchPlayState.episodeSessionFlow.flatMapLatest { episodeSession ->
-        me.him188.ani.utils.coroutines.flows.combine(
-            episodeSession.infoBundleFlow.distinctUntilChanged(),
+    val pageState = fetchPlayState.episodeSessionFlow.transformLatest { episodeSession ->
+        coroutineScope {
+            emitAll(createPageStateFlow(episodeSession))
+            awaitCancellation()
+        }
+    }.stateIn(backgroundScope, started = SharingStarted.WhileSubscribed(5_000), null)
+
+    private fun CoroutineScope.createPageStateFlow(episodeSession: EpisodeSession): Flow<EpisodePageState> {
+        val mediaSourceResultsFlow = MediaSourceResultListPresenter(
+            MediaSourceResultsFilterer(
+                results = episodeSession.fetchSelectFlow.map {
+                    it?.mediaFetchSession?.mediaSourceResults ?: emptyList()
+                },
+                settings = settingsRepository.mediaSelectorSettings.flow,
+                flowScope = this,
+            ).filteredSourceResults,
+            flowScope = this,
+        ).presentationFlow
+        return me.him188.ani.utils.coroutines.flows.combine(
+            episodeSession.infoBundleFlow.distinctUntilChanged().onStart { emit(null) },
             episodeSession.infoLoadErrorStateFlow,
-            episodeSession.fetchSelectFlow.filterNotNull(),
+            episodeSession.fetchSelectFlow,
             combine(
                 danmakuLoader.danmakuLoadingStateFlow,
                 danmakuLoader.fetchResults,
@@ -531,7 +569,8 @@ class EpisodeViewModel(
             ).distinctUntilChanged(),
             settingsRepository.danmakuEnabled.flow,
             settingsRepository.danmakuConfig.flow,
-        ) { subjectEpisodeBundle, loadError, fetchSelect, danmakuStatistics, danmakuEnabled, danmakuConfig ->
+            mediaSourceResultsFlow,
+        ) { subjectEpisodeBundle, loadError, fetchSelect, danmakuStatistics, danmakuEnabled, danmakuConfig, mediaSourceResultsPresentation ->
 
             val (subject, episode) = if (subjectEpisodeBundle == null) {
                 SubjectPresentation.Placeholder to EpisodePresentation.Placeholder
@@ -547,18 +586,16 @@ class EpisodeViewModel(
             }
 
             EpisodePageState(
-                mediaSelectorState = MediaSelectorState(
+                mediaSelectorState = if (fetchSelect != null) MediaSelectorState(
                     fetchSelect.mediaSelector,
                     mediaSourceInfoProvider,
                     backgroundScope,
-                ),
-                mediaSourceResultsPresentation = MediaSourceResultsPresentation(
-                    FilteredMediaSourceResults(
-                        results = flowOf(fetchSelect.mediaFetchSession.mediaSourceResults),
-                        settings = settingsRepository.mediaSelectorSettings.flow,
-                    ),
-                    backgroundScope.coroutineContext,
-                ),
+                ) else {
+                    // TODO: 2025/1/22 We should not use createTestMediaSelectorState
+                    @OptIn(TestOnly::class)
+                    createTestMediaSelectorState(backgroundScope)
+                },
+                mediaSourceResultListPresentation = MediaSourceResultListPresentation(mediaSourceResultsPresentation),
                 danmakuStatistics = danmakuStatistics,
                 subjectPresentation = subject,
                 episodePresentation = episode,
@@ -568,7 +605,7 @@ class EpisodeViewModel(
                 loadError = loadError,
             )
         }
-    }.stateIn(backgroundScope, started = SharingStarted.WhileSubscribed(5_000), null)
+    }
 
     suspend fun switchEpisode(episodeId: Int) {
         // 关闭弹窗
@@ -603,6 +640,18 @@ class EpisodeViewModel(
                 .filterNotNull()
                 .firstOrNull()
                 ?.restartAll()
+        }
+    }
+
+    fun restartSource(instanceId: String) {
+        launchInBackground {
+            fetchPlayState.episodeSessionFlow.flatMapLatest { it.fetchSelectFlow }
+                .map { it?.mediaFetchSession }
+                .filterNotNull()
+                .firstOrNull()
+                ?.mediaSourceResults
+                ?.find { it.instanceId == instanceId }
+                ?.restart()
         }
     }
 

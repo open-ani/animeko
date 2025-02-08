@@ -50,7 +50,6 @@ import me.him188.ani.app.domain.media.selector.MediaExclusionReason
 import me.him188.ani.app.domain.media.selector.UnsafeOriginalMediaAccess
 import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.tools.formatDateTime
-import me.him188.ani.app.ui.foundation.theme.weaken
 import me.him188.ani.app.ui.media.renderSubtitleLanguage
 import me.him188.ani.app.ui.settings.rendering.MediaSourceIcon
 import me.him188.ani.app.ui.settings.rendering.MediaSourceIcons
@@ -189,7 +188,7 @@ fun MediaSelectorItemLayout(
             containerColor = if (selected) {
                 MaterialTheme.colorScheme.secondaryContainer
             } else {
-                Color.Transparent
+                MaterialTheme.colorScheme.surface
             },
         ),
         border = if (!selected) BorderStroke(

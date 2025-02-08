@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.domain.mediasource.rss
 
-import io.ktor.client.HttpClient
 import io.ktor.client.plugins.ClientRequestException
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsChannel
@@ -38,6 +37,7 @@ import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
 import me.him188.ani.datasources.api.topic.Resolution
 import me.him188.ani.datasources.api.topic.titles.RawTitleParser
 import me.him188.ani.datasources.api.topic.titles.parse
+import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.ktor.toSource
 import me.him188.ani.utils.xml.Document
 import me.him188.ani.utils.xml.Xml
@@ -165,7 +165,7 @@ class DefaultRssMediaSourceEngine(
     /**
      * Engine 自己不会 cache 实例, 每次都调用 `.first()`.
      */
-    private val client: Flow<HttpClient>,
+    private val client: Flow<ScopedHttpClient>,
     private val parser: RssParser = RssParser(includeOrigin = false),
 ) : RssMediaSourceEngine() {
     @Throws(RepositoryException::class, CancellationException::class)
@@ -178,8 +178,10 @@ class DefaultRssMediaSourceEngine(
     ): Result {
         return try {
             val document = try {
-                client.first().get(finalUrl).let { resp ->
-                    Xml.parse(resp.bodyAsChannel().toSource())
+                client.first().use {
+                    get(finalUrl).let { resp ->
+                        Xml.parse(resp.bodyAsChannel().toSource())
+                    }
                 }
             } catch (e: ClientRequestException) {
                 if (e.response.status == HttpStatusCode.NotFound) {

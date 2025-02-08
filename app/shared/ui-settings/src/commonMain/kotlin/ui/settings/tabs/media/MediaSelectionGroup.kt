@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.ui.settings.tabs.media
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Hd
@@ -26,6 +25,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.util.fastAll
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
+import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.media.renderResolution
 import me.him188.ani.app.ui.media.renderSubtitleLanguage
 import me.him188.ani.app.ui.settings.framework.SettingsState
@@ -227,7 +227,7 @@ internal fun SettingsScope.MediaSelectionGroup(
 
             HorizontalDividerItem()
 
-            AnimatedVisibility(mediaSelectorSettings.preferKind == MediaSourceKind.WEB) {
+            AniAnimatedVisibility(mediaSelectorSettings.preferKind == MediaSourceKind.WEB) {
                 SubGroup {
                     SwitchItem(
                         checked = mediaSelectorSettings.fastSelectWebKind,

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -23,9 +23,9 @@ import kotlinx.coroutines.launch
 import me.him188.ani.android.activity.MainActivity
 import me.him188.ani.app.domain.media.cache.MediaCacheNotificationTask
 import me.him188.ani.app.domain.torrent.TorrentManager
-import me.him188.ani.app.domain.torrent.service.AniTorrentService
 import me.him188.ani.app.domain.torrent.service.TorrentServiceConnection
 import me.him188.ani.app.platform.AndroidLoggingConfigurator
+import me.him188.ani.app.platform.AppStartupTasks
 import me.him188.ani.app.platform.JvmLogHelper
 import me.him188.ani.app.platform.createAppRootCoroutineScope
 import me.him188.ani.app.platform.getCommonKoinModule
@@ -33,6 +33,7 @@ import me.him188.ani.app.platform.startCommonKoinModule
 import me.him188.ani.app.ui.settings.tabs.getLogsDir
 import me.him188.ani.app.ui.settings.tabs.media.DEFAULT_TORRENT_CACHE_DIR_NAME
 import me.him188.ani.utils.coroutines.IO_
+import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.logger
 import org.koin.android.ext.android.getKoin
@@ -71,6 +72,7 @@ class AniApplication : Application() {
 
         val logsDir = applicationContext.getLogsDir().absolutePath
         AndroidLoggingConfigurator.configure(logsDir)
+        AppStartupTasks.printVersions()
 
         val defaultUEH = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { t, e ->
@@ -85,11 +87,15 @@ class AniApplication : Application() {
         }
 
 
+        val scope = createAppRootCoroutineScope()
         val torrentServiceConnection = TorrentServiceConnection(
             this,
             onRequiredRestartService = { startAniTorrentService() },
+            scope.childScope(CoroutineName("TorrentServiceConnection")),
+            lifecycle = ProcessLifecycleOwner.get().lifecycle,
         )
         if (FEATURE_USE_TORRENT_SERVICE) {
+            torrentServiceConnection.startLifecycleJob()
             try {
                 startAniTorrentService()
                 torrentServiceConnection.startServiceResultWhileAppStartup = true
@@ -107,7 +113,6 @@ class AniApplication : Application() {
 
         instance = Instance()
 
-        val scope = createAppRootCoroutineScope()
         scope.launch(Dispatchers.IO_) {
             runCatching {
                 JvmLogHelper.deleteOldLogs(Paths.get(logsDir))
@@ -133,12 +138,6 @@ class AniApplication : Application() {
         }
         scope.launch(CoroutineName("MediaCacheNotificationTask")) {
             MediaCacheNotificationTask(koin.get(), koin.get()).run()
-        }
-
-        // use lifecycle of application process
-        if (FEATURE_USE_TORRENT_SERVICE) {
-            val connection = koin.get<TorrentServiceConnection>()
-            ProcessLifecycleOwner.get().lifecycle.addObserver(connection)
         }
     }
 
@@ -169,13 +168,13 @@ class AniApplication : Application() {
 
     private fun startAniTorrentService(): ComponentName? {
         return startForegroundService(
-            Intent(this, AniTorrentService::class.java).apply {
+            Intent(this, TorrentServiceConnection.anitorrentServiceClass).apply {
                 putExtra("app_name", me.him188.ani.R.string.app_name)
                 putExtra("app_service_title_text_idle", me.him188.ani.R.string.app_service_title_text_idle)
                 putExtra("app_service_title_text_working", me.him188.ani.R.string.app_service_title_text_working)
                 putExtra("app_service_content_text", me.him188.ani.R.string.app_service_content_text)
                 putExtra("app_service_stop_text", me.him188.ani.R.string.app_service_stop_text)
-                putExtra("app_icon", me.him188.ani.R.mipmap.a_round)
+                putExtra("app_icon", me.him188.ani.R.mipmap.ic_launcher)
                 putExtra("open_activity_intent", Intent(this@AniApplication, MainActivity::class.java))
             },
         )

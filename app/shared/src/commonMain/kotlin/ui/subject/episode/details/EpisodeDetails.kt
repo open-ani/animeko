@@ -77,7 +77,7 @@ import me.him188.ani.app.ui.subject.AiringLabelState
 import me.him188.ani.app.ui.subject.collection.SubjectCollectionTypeSuggestions
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeDialogsHost
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeState
-import me.him188.ani.app.ui.subject.details.SubjectDetailsPage
+import me.him188.ani.app.ui.subject.details.SubjectDetailsScreen
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateLoader
 import me.him188.ani.app.ui.subject.episode.details.components.DanmakuMatchInfoGrid
 import me.him188.ani.app.ui.subject.episode.details.components.DanmakuSourceCard
@@ -86,7 +86,8 @@ import me.him188.ani.app.ui.subject.episode.details.components.EpisodeWatchStatu
 import me.him188.ani.app.ui.subject.episode.details.components.PlayingEpisodeItem
 import me.him188.ani.app.ui.subject.episode.details.components.PlayingEpisodeItemDefaults
 import me.him188.ani.app.ui.subject.episode.mediaFetch.MediaSelectorState
-import me.him188.ani.app.ui.subject.episode.mediaFetch.MediaSourceResultsPresentation
+import me.him188.ani.app.ui.subject.episode.mediaFetch.MediaSourceResultListPresentation
+import me.him188.ani.app.ui.subject.episode.mediaFetch.MediaSourceResultPresentation
 import me.him188.ani.app.ui.subject.episode.statistics.DanmakuMatchInfoSummaryRow
 import me.him188.ani.app.ui.subject.episode.statistics.VideoLoadingSummary
 import me.him188.ani.app.ui.subject.episode.statistics.VideoStatistics
@@ -126,10 +127,11 @@ fun EpisodeDetails(
     danmakuStatistics: DanmakuStatistics,
     videoStatisticsFlow: Flow<VideoStatistics>,
     mediaSelectorState: MediaSelectorState,
-    mediaSourceResultsPresentation: MediaSourceResultsPresentation,
+    mediaSourceResultListPresentation: MediaSourceResultListPresentation,
     authState: AuthState,
     onSwitchEpisode: (episodeId: Int) -> Unit,
     onRefreshMediaSources: () -> Unit,
+    onRestartSource: (MediaSourceResultPresentation) -> Unit,
     onSetDanmakuSourceEnabled: (providerId: String, enabled: Boolean) -> Unit,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
@@ -147,7 +149,7 @@ fun EpisodeDetails(
                 modifier = Modifier.desktopTitleBarPadding().statusBarsPadding(),
                 contentWindowInsets = { BottomSheetDefaults.windowInsets.add(WindowInsets.desktopTitleBar()) },
             ) {
-                SubjectDetailsPage(
+                SubjectDetailsScreen(
                     subjectDetailsState,
                     onPlay = onSwitchEpisode,
                     onLoadErrorRetry = { state.subjectDetailsStateLoader.reload(state.subjectId) },
@@ -293,9 +295,10 @@ fun EpisodeDetails(
                                 ) {
                                     EpisodePlayMediaSelector(
                                         mediaSelectorState,
-                                        mediaSourceResultsPresentation,
+                                        mediaSourceResultListPresentation,
                                         onDismissRequest = { showMediaSelector = false },
                                         onRefresh = onRefreshMediaSources,
+                                        onRestartSource = onRestartSource,
                                         onSelected = { showMediaSelector = false },
                                         stickyHeaderBackgroundColor = BottomSheetDefaults.ContainerColor,
                                     )

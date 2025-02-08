@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -216,12 +216,13 @@ class EpisodeFetchSelectPlayState(
         if (sessionScopeTasksStarted.getAndUpdate { true }) {
             return // already started
         }
+        val episodeSession = this
 
         // We've set backgroundTasksStarted = true, so we must ensure tasks are launched (i.e. this coroutine not cancelled)
         withContext(NonCancellable) {
             // Start all extensions in session's scope.
             extensionManager.call { extension ->
-                extension.onStart(ExtensionBackgroundTaskScopeImpl(extension, sessionScope))
+                extension.onStart(episodeSession, ExtensionBackgroundTaskScopeImpl(extension, sessionScope))
             }
         }
     }
@@ -255,7 +256,7 @@ class EpisodeFetchSelectPlayState(
      * This extension calls [PlayerSession.loadMedia] when a new media is selected.
      */
     private inner class LoadMediaOnSelectExtension : PlayerExtension("LoadMediaOnSelect") {
-        override fun onStart(backgroundTaskScope: ExtensionBackgroundTaskScope) {
+        override fun onStart(episodeSession: EpisodeSession, backgroundTaskScope: ExtensionBackgroundTaskScope) {
             backgroundTaskScope.launch("LoadMediaOnSelect") {
                 episodeSessionFlow.collectLatest { episodeSession ->
                     episodeSession.fetchSelectFlow.collectLatest fetchSelect@{ fetchSelect ->

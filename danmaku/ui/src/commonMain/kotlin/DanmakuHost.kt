@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024-2025 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.danmaku.ui
 
 import androidx.compose.foundation.Canvas
@@ -25,7 +34,7 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.launch
 
 @Composable
@@ -57,19 +66,9 @@ fun DanmakuHost(
     }
 
     BoxWithConstraints(modifier) {
-        val screenWidth by rememberUpdatedState(constraints.maxWidth)
-        val screenHeight by rememberUpdatedState(constraints.maxHeight)
-
-        LaunchedEffect(true) {
-            coroutineScope {
-                launch {
-                    snapshotFlow { screenWidth }.collect { state.hostWidth = it }
-                }
-                launch {
-                    snapshotFlow { screenHeight }.debounce(1000 / 30).collect { state.hostHeight = it }
-                }
-            }
-        }
+        val hostWidth = constraints.maxWidth
+        state.hostWidth = hostWidth
+        state.hostHeight = constraints.maxHeight
 
         // Canvas only subscribes `danmakuUpdateSubscription` and `hostHeight` to re-draw.
         Canvas(
@@ -78,12 +77,11 @@ fun DanmakuHost(
                 .alpha(state.canvasAlpha),
         ) {
             state.danmakuUpdateSubscription // subscribe changes
-            val hostWidth = screenWidth
 
             for (danmaku in state.presentFloatingDanmaku) {
                 // don't draw uninitialized danmaku
                 if (danmaku.y.isNaN()) continue
-                
+
                 with(danmaku.danmaku) {
                     draw(
                         screenPosX = hostWidth - danmaku.distanceX,
@@ -94,7 +92,7 @@ fun DanmakuHost(
             for (danmaku in state.presentFixedDanmaku) {
                 // don't draw uninitialized danmaku
                 if (danmaku.y.isNaN()) continue
-                
+
                 with(danmaku.danmaku) {
                     draw(
                         screenPosX = (hostWidth - danmaku.danmaku.danmakuWidth) / 2f,
@@ -103,7 +101,7 @@ fun DanmakuHost(
                 }
             }
         }
-        
+
         if (state.isDebug) {
             CompositionLocalProvider(LocalTextStyle provides MaterialTheme.typography.bodySmall) {
                 Column(modifier = Modifier.padding(4.dp).fillMaxSize()) {

@@ -10,18 +10,18 @@
 package me.him188.ani.app.platform
 
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import io.ktor.client.plugins.auth.providers.BearerTokens
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.data.network.AniSubjectRelationIndexService
 import me.him188.ani.app.data.network.AnimeScheduleService
@@ -76,6 +76,17 @@ import me.him188.ani.app.data.repository.user.TokenRepository
 import me.him188.ani.app.data.repository.user.TokenRepositoryImpl
 import me.him188.ani.app.domain.danmaku.DanmakuManager
 import me.him188.ani.app.domain.danmaku.DanmakuManagerImpl
+import me.him188.ani.app.domain.foundation.DefaultHttpClientProvider
+import me.him188.ani.app.domain.foundation.DefaultHttpClientProvider.HoldingInstanceMatrix
+import me.him188.ani.app.domain.foundation.HttpClientProvider
+import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
+import me.him188.ani.app.domain.foundation.ServerListFeatureHandler
+import me.him188.ani.app.domain.foundation.UseBangumiTokenFeature
+import me.him188.ani.app.domain.foundation.UseBangumiTokenFeatureHandler
+import me.him188.ani.app.domain.foundation.UserAgentFeature
+import me.him188.ani.app.domain.foundation.UserAgentFeatureHandler
+import me.him188.ani.app.domain.foundation.get
+import me.him188.ani.app.domain.foundation.withValue
 import me.him188.ani.app.domain.media.cache.DefaultMediaAutoCacheService
 import me.him188.ani.app.domain.media.cache.MediaAutoCacheService
 import me.him188.ani.app.domain.media.cache.MediaCacheManager
@@ -89,6 +100,7 @@ import me.him188.ani.app.domain.media.fetch.MediaSourceManagerImpl
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceCodecManager
 import me.him188.ani.app.domain.mediasource.subscription.MediaSourceSubscriptionRequesterImpl
 import me.him188.ani.app.domain.mediasource.subscription.MediaSourceSubscriptionUpdater
+import me.him188.ani.app.domain.session.AniApiProvider
 import me.him188.ani.app.domain.session.AniAuthClient
 import me.him188.ani.app.domain.session.BangumiSessionManager
 import me.him188.ani.app.domain.session.OpaqueSession
@@ -96,23 +108,20 @@ import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.session.SessionStatus
 import me.him188.ani.app.domain.session.finalState
 import me.him188.ani.app.domain.session.unverifiedAccessToken
+import me.him188.ani.app.domain.session.unverifiedAccessTokenOrNull
 import me.him188.ani.app.domain.settings.ProxyProvider
 import me.him188.ani.app.domain.settings.SettingsBasedProxyProvider
-import me.him188.ani.app.domain.settings.collectProxyTo
 import me.him188.ani.app.domain.torrent.TorrentManager
 import me.him188.ani.app.domain.update.UpdateManager
 import me.him188.ani.app.domain.usecase.useCaseModules
 import me.him188.ani.app.ui.subject.details.state.DefaultSubjectDetailsStateFactory
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateFactory
 import me.him188.ani.datasources.bangumi.BangumiClient
-import me.him188.ani.datasources.bangumi.createBangumiClient
+import me.him188.ani.datasources.bangumi.BangumiClientImpl
 import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.coroutines.childScopeContext
 import me.him188.ani.utils.io.resolve
-import me.him188.ani.utils.ktor.createDefaultHttpClient
-import me.him188.ani.utils.ktor.registerLogging
-import me.him188.ani.utils.ktor.userAgent
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
 import org.koin.core.KoinApplication
@@ -131,28 +140,54 @@ fun KoinApplication.getCommonKoinModule(getContext: () -> Context, coroutineScop
 private fun KoinApplication.otherModules(getContext: () -> Context, coroutineScope: CoroutineScope) = module {
     // Repositories
     single<ProxyProvider> { SettingsBasedProxyProvider(get(), coroutineScope) }
-    single<AniAuthClient> {
-        AniAuthClient(
-            get<ProxyProvider>(),
-            parentCoroutineContext = coroutineScope.coroutineContext,
+    single<HttpClientProvider> {
+        val sessionManager by inject<SessionManager>()
+        DefaultHttpClientProvider(
+            get(), coroutineScope,
+            featureHandlers = listOf(
+                UserAgentFeatureHandler,
+                UseBangumiTokenFeatureHandler(
+                    @OptIn(OpaqueSession::class)
+                    sessionManager.unverifiedAccessToken,
+                    onRefresh = {
+                        logger.info("Ktor believes Bangumi token is invalid. Refreshing.")
+                        sessionManager.retry()
+                        logger.info("Retry started. Now waiting for session to be verified.")
+                        // `finalState.first()` wait for `retry` to complete.
+                        // If `retry` succeeds, `finalState` will receive SessionStatus.Verified with a valid token.
+                        sessionManager.finalState.first().unverifiedAccessTokenOrNull?.let {
+                            BearerTokens(it, "")
+                        }.also {
+                            logger.info("Result: ${it?.accessToken}")
+                        }
+                    },
+                ),
+                ServerListFeatureHandler(
+                    settingsRepository.danmakuSettings.flow.map { danmakuSettings ->
+                        if (danmakuSettings.useGlobal) {
+                            AniServers.optimizedForGlobal
+                        } else {
+                            AniServers.optimizedForCN
+                        }
+                    },
+                ),
+            ),
         )
+    }
+    single<AniApiProvider> { AniApiProvider(get<HttpClientProvider>().get()) }
+    single<AniAuthClient> {
+        AniAuthClient(get<AniApiProvider>().oauthApi)
     }
     single<TokenRepository> { TokenRepositoryImpl(getContext().dataStores.tokenStore) }
     single<EpisodePreferencesRepository> { EpisodePreferencesRepositoryImpl(getContext().dataStores.preferredAllianceStore) }
     single<SessionManager> { BangumiSessionManager(koin, coroutineScope.coroutineContext) }
     single<BangumiClient> {
-        val proxyProvider = get<ProxyProvider>()
-        val sessionManager by inject<SessionManager>()
-        createBangumiClient(
-            @OptIn(OpaqueSession::class)
-            sessionManager.unverifiedAccessToken,
-            coroutineScope.coroutineContext,
-            userAgent = getAniUserAgent(currentAniBuildConfig.versionName),
-        ).apply {
-            coroutineScope.launch {
-                proxyProvider.collectProxyTo(this@apply.httpClient)
-            }
-        }
+        BangumiClientImpl(
+            get<HttpClientProvider>().get(
+                userAgent = ScopedHttpClientUserAgent.ANI,
+                useBangumiToken = true,
+            ),
+        )
     }
 
     single<RepositoryUsernameProvider> {
@@ -171,7 +206,7 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
     }
     single<SubjectCollectionRepository> {
         SubjectCollectionRepositoryImpl(
-            api = suspend { client.getApi() }.asFlow(),
+            api = client.api,
             bangumiSubjectService = get(),
             subjectCollectionDao = database.subjectCollection(),
 //            characterDao = database.character(),
@@ -199,7 +234,7 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
     }
     single<BangumiSubjectSearchService> {
         BangumiSubjectSearchService(
-            searchApi = suspend { client.getSearchApi() }.asFlow(),
+            searchApi = client.searchApi,
         )
     }
     single<SubjectSearchRepository> {
@@ -231,7 +266,7 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
     single<BangumiSubjectService> {
         RemoteBangumiSubjectService(
             client,
-            suspend { client.getApi() }.asFlow(),
+            client.api,
             sessionManager = get(),
             usernameProvider = get(),
         )
@@ -275,29 +310,21 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
         EpisodePlayHistoryRepositoryImpl(getContext().dataStores.episodeHistoryStore)
     }
     single<AniSubjectRelationIndexService> {
-        AniSubjectRelationIndexService(lazy { get<AniAuthClient>().subjectRelationsApi })
+        val provider = get<AniApiProvider>()
+        AniSubjectRelationIndexService(provider.subjectRelationsApi)
     }
 
     single<PeerFilterSubscriptionRepository> {
-        val settings = koin.get<ProxyProvider>()
-        val client = createDefaultHttpClient {
-            userAgent(getAniUserAgent())
-            expectSuccess = true
-        }.apply {
-            registerLogging(logger<PeerFilterSubscriptionRepository>())
-            coroutineScope.launch {
-                settings.collectProxyTo(this@apply)
-            }
-        }
+        val client = koin.get<HttpClientProvider>().get(ScopedHttpClientUserAgent.ANI)
         PeerFilterSubscriptionRepository(
             dataStore = getContext().dataStores.peerFilterSubscriptionStore,
             ruleSaveDir = getContext().files.dataDir.resolve("peerfilter-subs"),
-            httpClient = flowOf(client),
+            httpClient = client,
         )
     }
     single<BangumiProfileService> { BangumiProfileService() }
-    single<AnimeScheduleService> { AnimeScheduleService(lazy { get<AniAuthClient>().scheduleApi }) }
-    single<TrendsRepository> { TrendsRepository(lazy { get<AniAuthClient>().trendsApi }) }
+    single<AnimeScheduleService> { AnimeScheduleService(get<AniApiProvider>().scheduleApi) }
+    single<TrendsRepository> { TrendsRepository(get<AniApiProvider>().trendsApi) }
 
     single<DanmakuManager> {
         DanmakuManagerImpl(
@@ -373,20 +400,12 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
     }
     single<MediaSourceSubscriptionUpdater> {
         val settings = koin.get<ProxyProvider>()
-        val client = createDefaultHttpClient {
-            userAgent(getAniUserAgent())
-            expectSuccess = true
-        }.apply {
-            registerLogging(logger<MediaSourceSubscriptionUpdater>())
-            coroutineScope.launch {
-                settings.collectProxyTo(this@apply)
-            }
-        }
+        val client = get<HttpClientProvider>().get(ScopedHttpClientUserAgent.ANI)
         MediaSourceSubscriptionUpdater(
             get<MediaSourceSubscriptionRepository>(),
             get<MediaSourceManager>(),
             get<MediaSourceCodecManager>(),
-            requester = MediaSourceSubscriptionRequesterImpl(flowOf(client)),
+            requester = MediaSourceSubscriptionRequesterImpl(client),
         )
     }
     single<SelectorMediaSourceEpisodeCacheRepository> {
@@ -411,6 +430,17 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
  * 会在非 preview 环境调用. 用来初始化一些模块
  */
 fun KoinApplication.startCommonKoinModule(coroutineScope: CoroutineScope): KoinApplication {
+    // Start the proxy provider very soon (before initialization of any other components)
+    runBlocking {
+        // We have to block here to read the saved proxy settings
+        when (val proxyProvider = koin.get<HttpClientProvider>()) {
+            // compile-safe type cast
+            is DefaultHttpClientProvider -> proxyProvider.startProxyListening(holdingInstanceMatrixSequence())
+        }
+    }
+    // Now, the proxy settings is ready. Other components can use http clients.
+
+
     koin.get<MediaAutoCacheService>().startRegularCheck(coroutineScope)
 
     coroutineScope.launch {
@@ -464,6 +494,31 @@ fun KoinApplication.startCommonKoinModule(coroutineScope: CoroutineScope): KoinA
     }
 
     return this
+}
+
+/**
+ * 需要一直持有的 http client 实例列表
+ */
+private fun holdingInstanceMatrixSequence() = sequence {
+    for (userAgent in ScopedHttpClientUserAgent.entries) {
+        yield(
+            HoldingInstanceMatrix(
+                setOf(
+                    UserAgentFeature.withValue(userAgent),
+                    UseBangumiTokenFeature.withValue(false),
+                ),
+            ),
+        )
+    }
+
+    yield(
+        HoldingInstanceMatrix(
+            setOf(
+                UserAgentFeature.withValue(ScopedHttpClientUserAgent.ANI),
+                UseBangumiTokenFeature.withValue(true),
+            ),
+        ),
+    )
 }
 
 

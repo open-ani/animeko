@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -21,8 +21,10 @@ import kotlinx.io.files.Path
 import me.him188.ani.android.activity.MainActivity
 import me.him188.ani.android.navigation.AndroidBrowserNavigator
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
-import me.him188.ani.app.data.models.preference.ProxyConfig
 import me.him188.ani.app.data.repository.user.SettingsRepository
+import me.him188.ani.app.domain.foundation.HttpClientProvider
+import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
+import me.him188.ani.app.domain.foundation.get
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.resolver.AndroidWebMediaResolver
 import me.him188.ani.app.domain.media.resolver.HttpStreamingMediaResolver
@@ -37,7 +39,6 @@ import me.him188.ani.app.domain.torrent.TorrentEngineFactory
 import me.him188.ani.app.domain.torrent.TorrentManager
 import me.him188.ani.app.domain.torrent.client.RemoteAnitorrentEngine
 import me.him188.ani.app.domain.torrent.peer.PeerFilterSettings
-import me.him188.ani.app.domain.torrent.service.AniTorrentService
 import me.him188.ani.app.domain.torrent.service.TorrentServiceConnection
 import me.him188.ani.app.navigation.BrowserNavigator
 import me.him188.ani.app.platform.AndroidPermissionManager
@@ -57,6 +58,7 @@ import me.him188.ani.utils.io.inSystem
 import me.him188.ani.utils.io.isDirectory
 import me.him188.ani.utils.io.list
 import me.him188.ani.utils.io.resolve
+import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
 import org.koin.android.ext.koin.androidContext
@@ -177,7 +179,7 @@ fun getAndroidModules(
         DefaultTorrentManager.create(
             coroutineScope.coroutineContext,
             get(),
-            proxyProvider = get<ProxyProvider>().proxy,
+            client = get<HttpClientProvider>().get(ScopedHttpClientUserAgent.ANI),
             get(),
             get(),
             baseSaveDir = { Path(cacheDir).inSystem },
@@ -186,14 +188,14 @@ fun getAndroidModules(
                     override fun createTorrentEngine(
                         parentCoroutineContext: CoroutineContext,
                         config: Flow<AnitorrentConfig>,
-                        proxyConfig: Flow<ProxyConfig?>,
+                        client: ScopedHttpClient,
                         peerFilterSettings: Flow<PeerFilterSettings>,
                         saveDir: SystemPath
                     ): TorrentEngine {
                         return RemoteAnitorrentEngine(
                             get(),
                             config,
-                            proxyConfig,
+                            get<ProxyProvider>().proxy,
                             peerFilterSettings,
                             saveDir,
                             parentCoroutineContext,
@@ -228,7 +230,7 @@ fun getAndroidModules(
                 runBlocking(Dispatchers.Main.immediate) {
                     (context.findActivity() as? BaseComponentActivity)?.finishAffinity()
                     context.startService(
-                        Intent(context, AniTorrentService::class.java)
+                        Intent(context, TorrentServiceConnection.anitorrentServiceClass)
                             .apply { putExtra("stopService", true) },
                     )
                     exitProcess(status)

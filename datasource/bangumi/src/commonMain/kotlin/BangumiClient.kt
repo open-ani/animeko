@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -10,14 +10,7 @@
 package me.him188.ani.datasources.bangumi
 
 import io.ktor.client.HttpClient
-import io.ktor.client.HttpClientConfig
 import io.ktor.client.call.body
-import io.ktor.client.plugins.HttpRequestRetry
-import io.ktor.client.plugins.HttpSend
-import io.ktor.client.plugins.HttpTimeout
-import io.ktor.client.plugins.UserAgent
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.client.plugins.plugin
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
@@ -25,21 +18,12 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
-import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.appendPathSegments
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
-import io.ktor.serialization.kotlinx.json.json
-import io.ktor.utils.io.core.Closeable
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
@@ -59,27 +43,19 @@ import me.him188.ani.datasources.bangumi.models.search.BangumiSort
 import me.him188.ani.datasources.bangumi.models.subjects.BangumiLegacySubject
 import me.him188.ani.datasources.bangumi.models.subjects.BangumiSubjectImageSize
 import me.him188.ani.datasources.bangumi.next.apis.SubjectBangumiNextApi
+import me.him188.ani.utils.ktor.ApiInvoker
 import me.him188.ani.utils.ktor.HttpTokenChecker
-import me.him188.ani.utils.ktor.registerLogging
+import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.thisLogger
 import me.him188.ani.utils.serialization.toJsonArray
-import kotlin.coroutines.CoroutineContext
 
-interface BangumiClient : Closeable {
+interface BangumiClient {
     // Bangumi open API: https://github.com/bangumi/api/blob/master/open-api/api.yml
-    val httpClient: HttpClient
 
-    /*
-    {
-    "access_token":"YOUR_ACCESS_TOKEN",
-    "expires_in":604800,
-    "token_type":"Bearer",
-    "scope":null,
-    "refresh_token":"YOUR_REFRESH_TOKEN"
-    "user_id" : USER_ID
-    }
-     */
+    val api: ApiInvoker<DefaultApi>
+    val nextApi: ApiInvoker<SubjectBangumiNextApi>
+    val searchApi: ApiInvoker<BangumiSearchApi>
 
     /**
      * @param actionName 本次操作的调试名称. 用于在日志中记录. 方便在安卓等协程无法正确显示调用栈的地方定位问题
@@ -89,36 +65,6 @@ interface BangumiClient : Closeable {
     suspend fun getSelfInfoByToken(accessToken: String?): BangumiUser?
 
     suspend fun testConnection(): ConnectionStatus
-
-    suspend fun getApi(): DefaultApi
-    suspend fun getNextApi(): SubjectBangumiNextApi
-
-    suspend fun getSearchApi(): BangumiSearchApi
-
-    companion object Factory {
-        fun create(
-            bearerToken: Flow<String?>,
-            parentCoroutineContext: CoroutineContext,
-            httpClientConfiguration: HttpClientConfig<*>.() -> Unit = {}
-        ): BangumiClient =
-            BangumiClientImpl(bearerToken, parentCoroutineContext, httpClientConfiguration)
-    }
-
-}
-
-fun createBangumiClient(
-    bearerToken: Flow<String?>,
-    parentCoroutineContext: CoroutineContext,
-    userAgent: String,
-): BangumiClient {
-    return BangumiClient.create(
-        bearerToken,
-        parentCoroutineContext,
-    ) {
-        install(UserAgent) {
-            agent = userAgent
-        }
-    }
 }
 
 private const val BANGUMI_API_HOST = "https://api.bgm.tv"
@@ -126,26 +72,24 @@ private const val BANGUMI_NEXT_API_HOST = "https://next.bgm.tv" // dev.bgm38.com
 private const val BANGUMI_HOST = "https://bgm.tv"
 
 class BangumiClientImpl(
-    private val bearerToken: Flow<String?>,
-    parentCoroutineContext: CoroutineContext,
-    httpClientConfiguration: HttpClientConfig<*>.() -> Unit = {},
+    private val client: ScopedHttpClient,
 ) : BangumiClient {
-    private val scope = CoroutineScope(parentCoroutineContext + SupervisorJob(parentCoroutineContext[Job]))
-
     private val logger = thisLogger()
 
     override suspend fun executeGraphQL(actionName: String, query: String, variables: JsonObject?): JsonObject {
-        val resp = try {
-            httpClient.post("$BANGUMI_API_HOST/v0/graphql") {
-                contentType(ContentType.Application.Json)
-                setBody(
-                    buildJsonObject {
-                        put("query", query)
-                        if (variables != null) {
-                            put("variables", variables)
-                        }
-                    },
-                )
+        return try {
+            client.use {
+                post("$BANGUMI_API_HOST/v0/graphql") {
+                    contentType(ContentType.Application.Json)
+                    setBody(
+                        buildJsonObject {
+                            put("query", query)
+                            if (variables != null) {
+                                put("variables", variables)
+                            }
+                        },
+                    )
+                }.body<JsonObject>()
             }
         } catch (e: Exception) {
             // POST https://api.bgm.tv/v0/graphql [Authorized]: 400  in 317.809375ms
@@ -153,8 +97,6 @@ class BangumiClientImpl(
                 addSuppressed(IllegalStateException("Failed to execute GraphQL query action'$actionName', the query is: \n$query"))
             }
         }
-
-        return resp.body()
     }
 
     override suspend fun getSelfInfoByToken(accessToken: String?): BangumiUser? {
@@ -166,10 +108,11 @@ class BangumiClientImpl(
             return null
         }
         try {
-            val resp = httpClient.get("$BANGUMI_API_HOST/v0/me") {
-                bearerAuth(accessToken)
+            return client.use {
+                get("$BANGUMI_API_HOST/v0/me") {
+                    bearerAuth(accessToken)
+                }.body<BangumiUser>()
             }
-            return resp.body<BangumiUser>()
         } catch (e: IllegalStateException) {
             val message = e.message ?: throw e
             if (message.contains("Unexpected char") && message.contains("in Authorization value")) {
@@ -180,52 +123,18 @@ class BangumiClientImpl(
     }
 
     override suspend fun testConnection(): ConnectionStatus {
-        return httpClient.get(BANGUMI_API_HOST).run {
-            if (status.isSuccess() || status == HttpStatusCode.NotFound)
-                ConnectionStatus.SUCCESS
-            else ConnectionStatus.FAILED
-        }
-    }
-
-    private val json = Json {
-        ignoreUnknownKeys = true
-        isLenient = true
-    }
-
-    override val httpClient = HttpClient {
-        httpClientConfiguration()
-        install(HttpRequestRetry) {
-            maxRetries = 3
-            delayMillis { 2000 }
-        }
-        install(HttpTimeout)
-        install(ContentNegotiation) {
-            json(json)
-        }
-        followRedirects = true
-        expectSuccess = true
-    }.apply {
-        registerLogging(logger)
-        plugin(HttpSend).intercept { request ->
-            if (!request.headers.contains(HttpHeaders.Authorization)) {
-                bearerToken.first()?.let {
-                    request.bearerAuth(it)
-                }
-            }
-            val originalCall = execute(request)
-            if (originalCall.response.status.value !in 100..399) {
-                execute(request)
-            } else {
-                originalCall
+        return client.use {
+            get(BANGUMI_API_HOST).run {
+                if (status.isSuccess() || status == HttpStatusCode.NotFound)
+                    ConnectionStatus.SUCCESS
+                else ConnectionStatus.FAILED
             }
         }
     }
 
-    private val api = DefaultApi(BANGUMI_API_HOST, httpClient)
-    override suspend fun getApi() = api
-
-    private val nextApi = SubjectBangumiNextApi(BANGUMI_NEXT_API_HOST, httpClient)
-    override suspend fun getNextApi(): SubjectBangumiNextApi = nextApi
+    override val api = ApiInvoker(client) { DefaultApi(BANGUMI_API_HOST, it) }
+    override val nextApi = ApiInvoker(client) { SubjectBangumiNextApi(BANGUMI_NEXT_API_HOST, it) }
+    override val searchApi: ApiInvoker<BangumiSearchApi> = ApiInvoker(client) { BangumiSearchApiImpl(it) }
 
     @Serializable
     private data class SearchSubjectByKeywordsResponse(
@@ -233,7 +142,9 @@ class BangumiClientImpl(
         val data: List<BangumiSearchSubjectNewApi>? = null,
     )
 
-    private val subjects = object : BangumiSearchApi {
+    private class BangumiSearchApiImpl(
+        private val httpClient: HttpClient,
+    ) : BangumiSearchApi {
         override suspend fun searchSubjectByKeywords(
             keyword: String,
             offset: Int?,
@@ -327,17 +238,17 @@ class BangumiClientImpl(
                 }
             }
 
-            val json = resp.body<JsonObject>()
-            return@withContext json.run {
+            val jsonObj = resp.body<JsonObject>()
+            return@withContext jsonObj.run {
                 // results: subject total
-                val results: Int = json["results"]?.toString()?.toInt() ?: 0
+                val results: Int = jsonObj["results"]?.toString()?.toInt() ?: 0
                 // code: exception code
-                val code: String = json["code"]?.toString() ?: "-1"
+                val code: String = jsonObj["code"]?.toString() ?: "-1"
                 // return empty when code exists and not -1 and is 404
                 if ("-1" != code && "404" == code) return@run Paged.empty()
-                val legacySubjectsJson: String = json["list"].toString()
+                val legacySubjectsJson: String = jsonObj["list"].toString()
                 val legacySubjects: List<BangumiLegacySubject> =
-                    this@BangumiClientImpl.json.decodeFromString(legacySubjectsJson)
+                    json.decodeFromString(legacySubjectsJson)
                 Paged(
                     results,
                     results > legacySubjects.size,
@@ -351,19 +262,18 @@ class BangumiClientImpl(
         }
     }
 
-    override suspend fun getSearchApi(): BangumiSearchApi = subjects
-
-    override fun close() {
-        httpClient.close()
-        scope.cancel()
-    }
-
     companion object {
         fun getSubjectImageUrl(id: Int, size: BangumiSubjectImageSize): String {
             return "$BANGUMI_API_HOST/v0/subjects/${id}/image?type=${size.id.lowercase()}"
         }
     }
 }
+
+private val json = Json {
+    ignoreUnknownKeys = true
+    isLenient = true
+}
+
 
 class BangumiRateLimitedException : Exception("Rate limited by Bangumi API")
 

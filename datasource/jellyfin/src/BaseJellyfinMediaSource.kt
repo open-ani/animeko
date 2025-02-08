@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -10,7 +10,7 @@
 package me.him188.ani.datasources.jellyfin
 
 import io.ktor.client.call.body
-import io.ktor.client.plugins.defaultRequest
+import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.parameter
@@ -37,28 +37,20 @@ import me.him188.ani.datasources.api.source.HttpMediaSource
 import me.him188.ani.datasources.api.source.MatchKind
 import me.him188.ani.datasources.api.source.MediaFetchRequest
 import me.him188.ani.datasources.api.source.MediaMatch
-import me.him188.ani.datasources.api.source.MediaSourceConfig
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.source.MediaSourceLocation
 import me.him188.ani.datasources.api.source.matches
-import me.him188.ani.datasources.api.source.useHttpClient
 import me.him188.ani.datasources.api.topic.EpisodeRange
 import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.ResourceLocation
+import me.him188.ani.utils.ktor.ScopedHttpClient
 
-abstract class BaseJellyfinMediaSource(config: MediaSourceConfig) : HttpMediaSource() {
+abstract class BaseJellyfinMediaSource(
+    private val client: ScopedHttpClient,
+) : HttpMediaSource() {
     abstract val baseUrl: String
     abstract val userId: String
     abstract val apiKey: String
-
-    protected val client = useHttpClient(config) {
-        defaultRequest {
-            header(
-                HttpHeaders.Authorization,
-                "MediaBrowser Token=\"$apiKey\"",
-            )
-        }
-    }
 
     override suspend fun checkConnection(): ConnectionStatus {
         try {
@@ -119,8 +111,8 @@ abstract class BaseJellyfinMediaSource(config: MediaSourceConfig) : HttpMediaSou
                             originalTitle = originalTitle,
                             publishedTime = 0,
                             properties = MediaProperties(
-                                subjectName = null,
-                                episodeName = null, // TODO: Maybe we can get the names from Jellyfin
+                                subjectName = item.SeasonName,
+                                episodeName = item.Name,
                                 subtitleLanguageIds = listOf("CHS"),
                                 resolution = "1080P",
                                 alliance = mediaSourceId,
@@ -169,15 +161,25 @@ abstract class BaseJellyfinMediaSource(config: MediaSourceConfig) : HttpMediaSou
         subjectName: String? = null,
         recursive: Boolean = true,
         parentId: String? = null,
-    ) = client.get("$baseUrl/Items") {
-        parameter("userId", userId)
-        parameter("enableImages", false)
-        parameter("recursive", recursive)
-        parameter("searchTerm", subjectName)
-        parameter("fields", "CanDownload")
-        parameter("fields", "MediaStreams")
-        parameter("parentId", parentId)
-    }.body<SearchResponse>()
+    ) = client.use {
+        get("$baseUrl/Items") {
+            configureAuthorizationHeaders()
+            parameter("userId", userId)
+            parameter("enableImages", false)
+            parameter("recursive", recursive)
+            parameter("searchTerm", subjectName)
+            parameter("fields", "CanDownload")
+            parameter("fields", "MediaStreams")
+            parameter("parentId", parentId)
+        }.body<SearchResponse>()
+    }
+
+    private fun HttpRequestBuilder.configureAuthorizationHeaders() {
+        header(
+            HttpHeaders.Authorization,
+            "MediaBrowser Token=\"$apiKey\"",
+        )
+    }
 }
 
 @Serializable
@@ -201,6 +203,7 @@ private data class MediaStream(
 @Suppress("PropertyName")
 private data class Item(
     val Name: String,
+    val SeasonName: String? = null,
     val Id: String,
     val OriginalTitle: String? = null, // 日文
     val IndexNumber: Int? = null,

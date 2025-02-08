@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -36,6 +36,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -43,7 +44,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavHostController
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.media.resolver.WebViewVideoExtractor
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceCodecManager
 import me.him188.ani.app.domain.mediasource.test.web.SelectorMediaSourceTester
@@ -56,7 +59,6 @@ import me.him188.ani.app.ui.foundation.layout.ListDetailAnimatedPane
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.isWidthCompact
 import me.him188.ani.app.ui.foundation.layout.materialWindowMarginPadding
-import me.him188.ani.app.ui.foundation.layout.rememberConnectedScrollState
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
@@ -142,16 +144,16 @@ class EditSelectorMediaSourcePageState(
 }
 
 @Composable
-fun EditSelectorMediaSourcePage(
+fun EditSelectorMediaSourceScreen(
     vm: EditSelectorMediaSourceViewModel,
     modifier: Modifier = Modifier,
-    navigator: ThreePaneScaffoldNavigator<Nothing> = rememberListDetailPaneScaffoldNavigator(),
+    navigator: ThreePaneScaffoldNavigator<*> = rememberListDetailPaneScaffoldNavigator(),
     windowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
     navigationIcon: @Composable () -> Unit = {},
 ) {
     val state by vm.state.collectAsStateWithLifecycle(null)
     state?.let {
-        EditSelectorMediaSourcePage(
+        EditSelectorMediaSourceScreen(
             it, modifier, navigator, windowInsets,
             navigationIcon,
         )
@@ -159,22 +161,28 @@ fun EditSelectorMediaSourcePage(
 }
 
 @Composable
-fun EditSelectorMediaSourcePage(
+fun EditSelectorMediaSourceScreen(
     state: EditSelectorMediaSourcePageState,
     modifier: Modifier = Modifier,
-    navigator: ThreePaneScaffoldNavigator<Nothing> = rememberListDetailPaneScaffoldNavigator(),
+    navigator: ThreePaneScaffoldNavigator<*> = rememberListDetailPaneScaffoldNavigator(),
     windowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
     navigationIcon: @Composable () -> Unit = {},
 ) {
     val episodePaneLayout = SelectorEpisodePaneLayout.calculate(navigator.scaffoldValue)
-    val testConnectedScrollState = rememberConnectedScrollState()
+    val coroutineScope = rememberCoroutineScope()
     Scaffold(
         modifier,
         topBar = {
             WindowDragArea {
                 val myNavigationIcon = @Composable {
                     if (navigator.canNavigateBack()) {
-                        BackNavigationIconButton({ navigator.navigateBack() })
+                        BackNavigationIconButton(
+                            onNavigateBack = {
+                                coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                                    navigator.navigateBack()
+                                }
+                            },
+                        )
                     } else {
                         navigationIcon()
                     }
@@ -199,7 +207,13 @@ fun EditSelectorMediaSourcePage(
                         navigationIcon = myNavigationIcon,
                         actions = {
                             if (currentWindowAdaptiveInfo1().isWidthCompact && navigator.currentDestination?.pane != ListDetailPaneScaffoldRole.Detail) {
-                                TextButton({ navigator.navigateTo(ListDetailPaneScaffoldRole.Detail) }) {
+                                TextButton(
+                                    onClick = {
+                                        coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                                            navigator.navigateTo(ListDetailPaneScaffoldRole.Detail)
+                                        }
+                                    },
+                                ) {
                                     Text("测试")
                                 }
                             }
@@ -233,7 +247,9 @@ fun EditSelectorMediaSourcePage(
         contentWindowInsets = windowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
     ) { paddingValues ->
         BackHandler(navigator.canNavigateBack()) {
-            navigator.navigateBack()
+            coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                navigator.navigateBack()
+            }
         }
 
         // 在外面启动, 避免在切换页面后重新启动导致刷新

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -23,17 +23,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.ComposeUIViewController
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.CoroutineScope
 import me.him188.ani.app.data.repository.user.SettingsRepository
+import me.him188.ani.app.domain.foundation.HttpClientProvider
+import me.him188.ani.app.domain.foundation.get
 import me.him188.ani.app.domain.media.resolver.HttpStreamingMediaResolver
 import me.him188.ani.app.domain.media.resolver.LocalFileMediaResolver
 import me.him188.ani.app.domain.media.resolver.MediaResolver
 import me.him188.ani.app.domain.media.resolver.TorrentMediaResolver
-import me.him188.ani.app.domain.settings.ProxyProvider
 import me.him188.ani.app.domain.torrent.DefaultTorrentManager
 import me.him188.ani.app.domain.torrent.TorrentManager
 import me.him188.ani.app.navigation.AniNavigator
@@ -41,6 +40,7 @@ import me.him188.ani.app.navigation.BrowserNavigator
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.NavRoutes
 import me.him188.ani.app.navigation.NoopBrowserNavigator
+import me.him188.ani.app.platform.AppStartupTasks
 import me.him188.ani.app.platform.GrantedPermissionManager
 import me.him188.ani.app.platform.IosContext
 import me.him188.ani.app.platform.IosContextFiles
@@ -54,7 +54,7 @@ import me.him188.ani.app.platform.notification.NotifManager
 import me.him188.ani.app.platform.startCommonKoinModule
 import me.him188.ani.app.tools.update.IosUpdateInstaller
 import me.him188.ani.app.tools.update.UpdateInstaller
-import me.him188.ani.app.ui.foundation.TestGlobalLifecycle
+import me.him188.ani.app.ui.foundation.TestGlobalLifecycleOwner
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
 import me.him188.ani.app.ui.foundation.layout.isSystemInFullscreen
@@ -88,6 +88,7 @@ fun MainViewController(): UIViewController {
             dataDir = SystemDocumentDir.apply { createDirectories() },
         ),
     )
+    AppStartupTasks.printVersions()
 
     val koin = startKoin {
         modules(getCommonKoinModule({ context }, scope))
@@ -100,10 +101,7 @@ fun MainViewController(): UIViewController {
     val onBackPressedDispatcherOwner = SkikoOnBackPressedDispatcherOwner(
         aniNavigator,
         @OptIn(TestOnly::class)
-        object : LifecycleOwner {
-            override val lifecycle: Lifecycle
-                get() = TestGlobalLifecycle // TODO: ios lifecycle
-        },
+        TestGlobalLifecycleOwner, // TODO: ios lifecycle
     )
     val settingsRepository = koin.get<SettingsRepository>()
     return ComposeUIViewController {
@@ -170,7 +168,7 @@ fun getIosModules(
         DefaultTorrentManager.create(
             coroutineScope.coroutineContext,
             settingsRepository = get(),
-            proxyProvider = get<ProxyProvider>().proxy,
+            client = get<HttpClientProvider>().get(),
             subscriptionRepository = get(),
             meteredNetworkDetector = get(),
             baseSaveDir = { defaultTorrentCacheDir },

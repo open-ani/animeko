@@ -17,6 +17,7 @@ import android.os.IBinder
 import android.os.PowerManager
 import android.os.Process
 import android.os.SystemClock
+import androidx.annotation.RequiresApi
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.CompletableDeferred
@@ -35,6 +36,9 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.io.files.Path
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
 import me.him188.ani.app.data.models.preference.ProxyConfig
+import me.him188.ani.app.domain.foundation.DefaultHttpClientProvider
+import me.him188.ani.app.domain.foundation.get
+import me.him188.ani.app.domain.settings.FlowProxyProvider
 import me.him188.ani.app.domain.torrent.engines.AnitorrentEngine
 import me.him188.ani.app.domain.torrent.peer.PeerFilterSettings
 import me.him188.ani.app.domain.torrent.service.proxy.TorrentEngineProxy
@@ -47,14 +51,15 @@ import me.him188.ani.utils.coroutines.sampleWithInitial
 import me.him188.ani.utils.io.inSystem
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
-import kotlin.coroutines.CoroutineContext
 
-class AniTorrentService : LifecycleService(), CoroutineScope {
+sealed class AniTorrentService : LifecycleService() {
+    private val scope = CoroutineScope(
+        Dispatchers.Default + CoroutineName("AniTorrentService") +
+                SupervisorJob(lifecycleScope.coroutineContext[Job]),
+    )
+
     private val logger = logger<AniTorrentService>()
-    override val coroutineContext: CoroutineContext =
-        Dispatchers.Default + CoroutineName("AniTorrentService") + 
-                SupervisorJob(lifecycleScope.coroutineContext[Job])
-    
+
     // config flow for constructing torrent engine.
     private val saveDirDeferred: CompletableDeferred<String> = CompletableDeferred()
     private val proxyConfig: MutableSharedFlow<ProxyConfig?> = MutableSharedFlow(1)
@@ -75,7 +80,7 @@ class AniTorrentService : LifecycleService(), CoroutineScope {
             anitorrentConfig,
             anitorrent,
             isClientBound,
-            coroutineContext,
+            scope.coroutineContext,
         )
     }
 
@@ -85,18 +90,21 @@ class AniTorrentService : LifecycleService(), CoroutineScope {
         (getSystemService(Context.POWER_SERVICE) as PowerManager)
             .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "AniTorrentService::wake_lock")
     }
-    
+
+    private val httpClientProvider = DefaultHttpClientProvider(FlowProxyProvider(proxyConfig), scope)
+    private val httpClient = httpClientProvider.get()
+
     override fun onCreate() {
         super.onCreate()
-        
-        launch {
+
+        scope.launch {
             // try to initialize anitorrent engine.
             anitorrent.complete(
                 AnitorrentEngine(
                     anitorrentConfig.combine(meteredNetworkDetector.isMeteredNetworkFlow) { config, isMetered ->
                         if (isMetered) config.copy(uploadRateLimit = 1.kiloBytes) else config
                     },
-                    proxyConfig = proxyConfig,
+                    httpClient,
                     torrentPeerConfig,
                     Path(saveDirDeferred.await()).inSystem,
                     coroutineContext,
@@ -106,7 +114,7 @@ class AniTorrentService : LifecycleService(), CoroutineScope {
             logger.info { "anitorrent is initialized." }
         }
 
-        launch {
+        scope.launch {
             val anitorrentDownloader = anitorrent.await().getDownloader()
             anitorrentDownloader.openSessions
             anitorrentDownloader.totalStats.sampleWithInitial(5000).collect { stat ->
@@ -122,7 +130,7 @@ class AniTorrentService : LifecycleService(), CoroutineScope {
             stopSelf()
             return super.onStartCommand(intent, flags, startId)
         }
-        
+
         // acquire wake lock when app is stopped.
         val acquireWakeLock = intent?.getLongExtra("acquireWakeLock", -1L) ?: -1L
         if (acquireWakeLock != -1L) {
@@ -132,20 +140,21 @@ class AniTorrentService : LifecycleService(), CoroutineScope {
         }
 
         notification.parseNotificationStrategyFromIntent(intent)
-        notification.createNotification(this)
-
-        // 启动完成的广播
-        sendBroadcast(
-            Intent().apply {
-                setPackage(packageName)
-                setAction(INTENT_STARTUP)
-            },
-        )
-        
-        return START_STICKY
+        if (notification.createNotification(this)) {
+            // 启动完成的广播
+            sendBroadcast(
+                Intent().apply {
+                    setPackage(packageName)
+                    setAction(INTENT_STARTUP)
+                },
+            )
+            return START_STICKY
+        } else {
+            return START_NOT_STICKY
+        }
     }
-    
-    
+
+
     override fun onBind(intent: Intent): IBinder {
         super.onBind(intent)
         logger.info { "client bind anitorrent." }
@@ -203,8 +212,8 @@ class AniTorrentService : LifecycleService(), CoroutineScope {
             }
             downloader.close()
         }
-        // cancel lifecycle scope
-        this.cancel()
+        // cancel background scope
+        scope.cancel()
         // release wake lock if held
         if (wakeLock.isHeld) {
             wakeLock.release()
@@ -218,3 +227,8 @@ class AniTorrentService : LifecycleService(), CoroutineScope {
         const val INTENT_STARTUP = "me.him188.ani.android.ANI_TORRENT_SERVICE_STARTUP"
     }
 }
+
+@RequiresApi(34)
+class AniTorrentServiceApi34 : AniTorrentService()
+
+class AniTorrentServiceApiDefault : AniTorrentService()

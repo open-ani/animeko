@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -69,7 +69,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.datasource.LoremIpsum
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
-import androidx.window.core.layout.WindowWidthSizeClass
+import androidx.window.core.layout.WindowSizeClass
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
@@ -88,7 +88,7 @@ private class DummyDanmakuGeneratorState(
 ) {
     private var emitted = 0
     private var counter = 0
-    
+
     fun generate(
         playTimeMillis: Long = currentTimeMillis() - startTime
     ): Danmaku {
@@ -102,7 +102,7 @@ private class DummyDanmakuGeneratorState(
             Color.Black.value.toInt(),
         )
     }
-    
+
     fun generateSelf(): Danmaku {
         return Danmaku(
             "self${Random.Default.nextLong(100000000L..999999999L)}",
@@ -114,15 +114,15 @@ private class DummyDanmakuGeneratorState(
             0xfe1010,
         )
     }
-    
+
     fun generateRepopulate(
         lastTimeMillis: Long = Random.nextLong(0L..(1000L * 60 * 25))
     ): List<Danmaku> {
         if (lastTimeMillis < 0) return emptyList()
-        
+
         val list = mutableListOf<Danmaku>()
         var current = lastTimeMillis
-        
+
         kotlin.run {
             repeat(Random.nextInt(10..100)) {
                 list.add(generate(current))
@@ -130,10 +130,10 @@ private class DummyDanmakuGeneratorState(
                 if (current < 0) return@run
             }
         }
-        
+
         return list.asReversed()
     }
-    
+
     fun flow() = flow {
         emit(generate())
         emit(generate())
@@ -164,7 +164,7 @@ internal fun PreviewDanmakuHost() {
         )
     }
     val state = remember { DanmakuHostState(config) }
-    
+
     val generator = remember { DummyDanmakuGeneratorState() }
     val scope = rememberCoroutineScope()
     LaunchedEffect(true) {
@@ -177,25 +177,33 @@ internal fun PreviewDanmakuHost() {
     fun Editor(modifier: Modifier) {
         LazyRow(
             modifier,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             item {
-                Button({
-                    scope.launch {
-                        state.send(DanmakuPresentation(generator.generateSelf(), isSelf = true))
-                    }
-                }) {
+                Button(
+                    {
+                        scope.launch {
+                            state.send(DanmakuPresentation(generator.generateSelf(), isSelf = true))
+                        }
+                    },
+                ) {
                     Text("Send self")
                 }
             }
-            item { 
-                Button(onClick = { 
-                    scope.launch { 
-                        state.repopulate(generator.generateRepopulate().map { 
-                            DanmakuPresentation(it, isSelf = false)
-                        })
-                    }
-                }) {
+            item {
+                Button(
+                    onClick = {
+                        scope.launch {
+                            val generated = generator.generateRepopulate().map {
+                                DanmakuPresentation(it, isSelf = false)
+                            }
+                            state.repopulate(
+                                generated,
+                                generated.last().danmaku.playTimeMillis,
+                            )
+                        }
+                    },
+                ) {
                     Text("Repopulate")
                 }
             }
@@ -213,7 +221,7 @@ internal fun PreviewDanmakuHost() {
                             .background(Color.Transparent),
                     )
                 }
-                Editor(Modifier.padding(8.dp),)
+                Editor(Modifier.padding(8.dp))
             }
             VerticalDivider()
             DanmakuConfig(
@@ -241,7 +249,7 @@ internal fun PreviewDanmakuHost() {
                     .fillMaxWidth()
                     .weight(1f),
             )
-            
+
         }
     }
 }
@@ -418,7 +426,7 @@ private fun DanmakuConfig(
                 )
 
                 val isDesktop =
-                    currentWindowAdaptiveInfo().windowSizeClass.windowWidthSizeClass != WindowWidthSizeClass.COMPACT
+                    currentWindowAdaptiveInfo().windowSizeClass.containsWidthDp(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
                 val displayDensityRange = remember(isDesktop) {
                     // 100% .. 0%
                     36.dp..(if (isDesktop) 720.dp else 240.dp)
@@ -463,10 +471,11 @@ private fun DanmakuConfig(
                     mutableFloatStateOf(
                         when (danmakuConfig.displayArea) {
                             0.125f -> 1f
-                            0.25f -> 2f
-                            0.50f -> 3f
-                            0.75f -> 4f
-                            1f -> 5f
+                            1f / 6 -> 2f
+                            0.25f -> 3f
+                            0.50f -> 4f
+                            0.75f -> 5f
+                            1f -> 6f
                             else -> 2f
                         },
                     )
@@ -482,25 +491,27 @@ private fun DanmakuConfig(
                             danmakuConfig.copy(
                                 displayArea = when (displayArea) {
                                     1f -> 0.125f
-                                    2f -> 0.25f
-                                    3f -> 0.50f
-                                    4f -> 0.75f
-                                    5f -> 1f
+                                    2f -> 1f / 6
+                                    3f -> 0.25f
+                                    4f -> 0.50f
+                                    5f -> 0.75f
+                                    6f -> 1f
                                     else -> 0.25f
                                 },
                             ),
                         )
                     },
-                    valueRange = 1f..5f,
-                    steps = 3,
+                    valueRange = 1f..6f,
+                    steps = 4,
                     title = { Text("显示区域") },
                     valueLabel = {
                         when (displayArea) {
                             1f -> Text("1/8 屏")
-                            2f -> Text("1/4 屏")
-                            3f -> Text("半屏")
-                            4f -> Text("3/4 屏")
-                            5f -> Text("全屏")
+                            2f -> Text("1/6 屏")
+                            3f -> Text("1/4 屏")
+                            4f -> Text("半屏")
+                            5f -> Text("3/4 屏")
+                            6f -> Text("全屏")
                         }
                     },
                 )
@@ -527,10 +538,10 @@ private fun SliderItem(
     },
     description: @Composable (() -> Unit)? = null,
     drawTick: DrawScope.(Offset, Color) -> Unit = { offset, color ->
-        with(this) { drawCircle(color = color, center = offset, radius = androidx.compose.material3.SliderDefaults.TickSize.toPx() / 2f) }
+        with(this) { drawCircle(color = color, center = offset, radius = SliderDefaults.TickSize.toPx() / 2f) }
     },
 
-) {
+    ) {
     ListItem(
         headlineContent = {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -551,7 +562,7 @@ private fun SliderItem(
         supportingContent = {
             Column(
                 modifier = Modifier.padding(top = 6.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 description?.invoke()
 
@@ -583,6 +594,6 @@ private fun SliderItem(
                 )
             }
         },
-        colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+        colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
     )
 }

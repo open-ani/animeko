@@ -62,6 +62,8 @@ uploaded.
 
 [macos-intel-issue]: https://github.com/open-ani/animeko/issues/1345
 
+[linux-issue]: https://github.com/open-ani/animeko/issues/944
+
 - macOS 安装后如果无法打开: [解决方案][macos解决方案]
 - Windows 打开时如果显示异常: [解决方案][windows解决方案]
 - **Windows 解压目录不要带中文, 尽量不要有空格**
@@ -71,6 +73,7 @@ uploaded.
 | Windows          | [主线][cf-win-x64] / [备线][ghproxy-win-x64] / [GitHub][github-win-x64]             |
 | macOS (M 系列芯片)   | [主线][cf-mac-aarch64] / [备线][ghproxy-mac-aarch64] / [GitHub][github-mac-aarch64] |
 | macOS (Intel 芯片) | 不再支持. 如有需要, 请为此 issue 点赞: [#1345][macos-intel-issue]                            |
+| Ubuntu           | 如有需要, 请为此 issue 点赞: [#944][linux-issue]                                         |
 
 ### 适用于 Android 手机和平板
 

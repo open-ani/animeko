@@ -52,6 +52,9 @@ import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.desktop.storage.AppFolderResolver
 import me.him188.ani.app.desktop.storage.AppInfo
 import me.him188.ani.app.desktop.window.WindowFrame
+import me.him188.ani.app.domain.foundation.HttpClientProvider
+import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
+import me.him188.ani.app.domain.foundation.get
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.resolver.DesktopWebMediaResolver
 import me.him188.ani.app.domain.media.resolver.HttpStreamingMediaResolver
@@ -81,7 +84,6 @@ import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.PermissionManager
 import me.him188.ani.app.platform.PlatformWindow
 import me.him188.ani.app.platform.createAppRootCoroutineScope
-import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.platform.getCommonKoinModule
 import me.him188.ani.app.platform.notification.NoopNotifManager
 import me.him188.ani.app.platform.notification.NotifManager
@@ -112,6 +114,8 @@ import me.him188.ani.utils.io.toKtPath
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
+import me.him188.ani.utils.platform.currentPlatformDesktop
+import me.him188.ani.utils.platform.isMacOS
 import me.him188.ani.utils.platform.currentPlatform
 import org.jetbrains.compose.resources.painterResource
 import org.koin.core.context.startKoin
@@ -184,7 +188,7 @@ object AniDesktop {
         if (AniBuildConfigDesktop.isDebug) {
             logger.info { "Debug mode enabled" }
         }
-        logger.info { "Ani platform: ${currentPlatform()}, version: ${currentAniBuildConfig.versionName}" }
+        AppStartupTasks.printVersions()
 
         logger.info { "dataDir: file://${dataDir.absolutePathString().replace(" ", "%20")}" }
         logger.info { "cacheDir: file://${cacheDir.absolutePathString().replace(" ", "%20")}" }
@@ -245,7 +249,7 @@ object AniDesktop {
                         DefaultTorrentManager.create(
                             coroutineScope.coroutineContext,
                             get(),
-                            proxyProvider = get<ProxyProvider>().proxy,
+                            client = get<HttpClientProvider>().get(ScopedHttpClientUserAgent.ANI),
                             get(),
                             get(),
                             baseSaveDir = {
@@ -298,10 +302,17 @@ object AniDesktop {
             }
             TestTasks.handleTestTask(taskName, args, context)
         }
+        
+        val loadAnitorrentJob = coroutineScope.launch {
+            AnitorrentLibraryLoader.loadLibraries()
+        }
 
         // Initialize CEF application.
         coroutineScope.launch {
-            AnitorrentLibraryLoader.loadLibraries() 
+            try {
+                loadAnitorrentJob.join()
+            } catch (_: Throwable) {
+            }
             // Load anitorrent libraries before JCEF, so they won't load at the same time.
             // We suspect concurrent loading of native libraries may cause some issues #1121.
             

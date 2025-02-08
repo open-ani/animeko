@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -53,6 +53,9 @@ fun rememberMediaSelectorState(
     }
 }
 
+/**
+ * @param backgroundScope only used for flow stateIn (with SharingStarted.WhileSubscribed)
+ */
 @Stable
 class MediaPreferenceItemState<T : Any>(
     @PublishedApi internal val item: MediaPreferenceItem<T>,
@@ -206,13 +209,13 @@ class MediaGroupState(
 
 @Composable
 @TestOnly
-fun rememberTestMediaSelectorPresentation(): MediaSelectorState {
+fun rememberTestMediaSelectorState(): MediaSelectorState {
     val backgroundScope = rememberBackgroundScope()
-    return remember(backgroundScope) { createState(backgroundScope.backgroundScope) }
+    return remember(backgroundScope) { createTestMediaSelectorState(backgroundScope.backgroundScope) }
 }
 
-@OptIn(TestOnly::class)
-private fun createState(backgroundScope: CoroutineScope) =
+@TestOnly
+fun createTestMediaSelectorState(backgroundScope: CoroutineScope) =
     MediaSelectorState(
         DefaultMediaSelector(
             mediaSelectorContextNotCached = flowOf(MediaSelectorContext.EmptyForPreview),

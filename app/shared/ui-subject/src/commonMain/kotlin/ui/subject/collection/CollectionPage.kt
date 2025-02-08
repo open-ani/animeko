@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.ui.subject.collection
 
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,6 +29,7 @@ import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.pager.PagerState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.HowToReg
 import androidx.compose.material.icons.rounded.Refresh
@@ -41,13 +43,12 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.SecondaryScrollableTabRow
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRowDefaults
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
@@ -93,7 +94,7 @@ import me.him188.ani.app.ui.adaptive.AniTopAppBarDefaults
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
-import me.him188.ani.app.ui.foundation.layout.isAtLeastMedium
+import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.paneHorizontalPadding
 import me.him188.ani.app.ui.foundation.session.SelfAvatar
 import me.him188.ani.app.ui.foundation.session.SessionTipsArea
@@ -171,6 +172,8 @@ class UserCollectionsState(
 
     val collectionCounts: SubjectCollectionCounts? by collectionCountsState
 
+    val tabRowScrollState = ScrollState(selectedTypeIndex)
+
     private fun updateQuery(query: CollectionsFilterQuery.() -> CollectionsFilterQuery) {
         val current = filterQueryPair
         filterQueryPair = current.copy(current.first, current.second.let(query))
@@ -198,7 +201,7 @@ fun CollectionPage(
     CollectionPageLayout(
         settingsIcon = {
             if (state.authState.isKnownGuest // #1269 游客模式下无法打开设置界面
-                || currentWindowAdaptiveInfo1().windowSizeClass.windowWidthSizeClass.isAtLeastMedium
+                || currentWindowAdaptiveInfo1().windowSizeClass.isWidthAtLeastMedium
             ) {
                 IconButton(onClick = onClickSettings) {
                     Icon(Icons.Rounded.Settings, "设置")
@@ -217,39 +220,41 @@ fun CollectionPage(
                 selectedIndex = state.selectedTypeIndex,
                 onSelect = { index -> state.selectTypeIndex(index) },
                 Modifier.padding(horizontal = currentWindowAdaptiveInfo1().windowSizeClass.paneHorizontalPadding),
-            ) { type ->
-                val size = state.collectionCounts
-                if (size == null) {
-                    Text(
-                        text = type.displayText(),
-                        Modifier.width(IntrinsicSize.Max),
-                        softWrap = false,
-                    )
-                } else {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
+                { type ->
+                    val size = state.collectionCounts
+                    if (size == null) {
                         Text(
                             text = type.displayText(),
+                            Modifier.width(IntrinsicSize.Max),
                             softWrap = false,
                         )
-                        Badge(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                            contentColor = MaterialTheme.colorScheme.onSurface,
+                    } else {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
-                                text = size.getCount(type).toString(),
-                                modifier = Modifier
-                                    .padding(horizontal = 2.dp)
-                                    .wrapContentSize(align = Alignment.Center),
-                                style = MaterialTheme.typography.labelLarge,
-                                textAlign = TextAlign.Center,
+                                text = type.displayText(),
+                                softWrap = false,
                             )
+                            Badge(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                                contentColor = MaterialTheme.colorScheme.onSurface,
+                            ) {
+                                Text(
+                                    text = size.getCount(type).toString(),
+                                    modifier = Modifier
+                                        .padding(horizontal = 2.dp)
+                                        .wrapContentSize(align = Alignment.Center),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    textAlign = TextAlign.Center,
+                                )
+                            }
                         }
                     }
-                }
-            }
+                },
+                scrollState = state.tabRowScrollState,
+            )
         },
         isRefreshing = { items.loadState.refresh is LoadState.Loading },
         onRefresh = {
@@ -391,14 +396,14 @@ object CollectionPageFilters {
         itemLabel: @Composable (UnifiedCollectionType) -> Unit = { type ->
             Text(type.displayText(), softWrap = false)
         },
+        scrollState: ScrollState = rememberScrollState(),
     ) {
-        val uiScope = rememberCoroutineScope()
         val widths = remember { mutableStateListOf(*COLLECTION_TABS_SORTED.map { 24.dp }.toTypedArray()) }
-        ScrollableTabRow(
+        SecondaryScrollableTabRow(
             selectedTabIndex = selectedIndex,
-            indicator = @Composable { tabPositions ->
+            indicator = @Composable {
                 TabRowDefaults.PrimaryIndicator(
-                    Modifier.tabIndicatorOffset(tabPositions[selectedIndex]),
+                    Modifier.tabIndicatorOffset(selectedIndex, matchContentSize = false),
                     width = widths[selectedIndex],
                 )
             },
@@ -406,6 +411,7 @@ object CollectionPageFilters {
             contentColor = MaterialTheme.colorScheme.onSurface,
             divider = {},
             modifier = modifier.fillMaxWidth(),
+            scrollState = scrollState,
         ) {
             COLLECTION_TABS_SORTED.forEachIndexed { index, collectionType ->
                 Tab(

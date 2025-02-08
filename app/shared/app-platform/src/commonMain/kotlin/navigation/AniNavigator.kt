@@ -12,6 +12,8 @@ package me.him188.ani.app.navigation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisallowComposableCalls
+import androidx.compose.runtime.State
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -26,7 +28,7 @@ import me.him188.ani.datasources.api.source.FactoryId
 /**
  * Supports navigation to any page in the app.
  *
- * 应当总是使用 [AniNavigator], 而不要访问 [navigator].
+ * 应当总是使用 [AniNavigator], 而不要访问 [currentNavigator].
  *
  * @see LocalNavigator
  */
@@ -39,14 +41,18 @@ interface AniNavigator {
 
     suspend fun awaitNavController(): NavHostController
 
-    val navigator: NavHostController
+    // Not @Stable
+    val currentNavigator: NavHostController
+
+    @Composable
+    fun collectNavigatorAsState(): State<NavHostController>
 
     fun popBackStack() {
-        navigator.popBackStack()
+        currentNavigator.popBackStack()
     }
 
     fun popBackStack(route: NavRoutes, inclusive: Boolean, saveState: Boolean = false) {
-        navigator.popBackStack(route, inclusive, saveState)
+        currentNavigator.popBackStack(route, inclusive, saveState)
     }
 
 //    fun popBackStack(
@@ -57,54 +63,54 @@ interface AniNavigator {
 //    }
 
     fun popUntilNotWelcome() {
-        navigator.popBackStack(NavRoutes.Welcome, inclusive = true)
+        currentNavigator.popBackStack(NavRoutes.Welcome, inclusive = true)
     }
 
     fun popUntilNotAuth() {
-        navigator.popBackStack(NavRoutes.BangumiTokenAuth, inclusive = true)
-        navigator.popBackStack(NavRoutes.BangumiOAuth, inclusive = true)
+        currentNavigator.popBackStack(NavRoutes.BangumiTokenAuth, inclusive = true)
+        currentNavigator.popBackStack(NavRoutes.BangumiOAuth, inclusive = true)
     }
 
     fun navigateSubjectDetails(
         subjectId: Int,
-        placeholder: SubjectDetailPlaceholder? = null
+        placeholder: SubjectDetailPlaceholder?,
     ) {
-        navigator.navigate(
+        currentNavigator.navigate(
             NavRoutes.SubjectDetail(subjectId, placeholder),
         )
     }
 
     fun navigateSubjectCaches(subjectId: Int) {
-        navigator.navigate(NavRoutes.SubjectCaches(subjectId))
+        currentNavigator.navigate(NavRoutes.SubjectCaches(subjectId))
     }
 
     fun navigateEpisodeDetails(subjectId: Int, episodeId: Int, fullscreen: Boolean = false) {
-        navigator.popBackStack(NavRoutes.EpisodeDetail(subjectId, episodeId), inclusive = true)
-        navigator.navigate(NavRoutes.EpisodeDetail(subjectId, episodeId))
+        currentNavigator.popBackStack(NavRoutes.EpisodeDetail(subjectId, episodeId), inclusive = true)
+        currentNavigator.navigate(NavRoutes.EpisodeDetail(subjectId, episodeId))
     }
 
     fun navigateWelcome() {
-        navigator.navigate(NavRoutes.Welcome)
+        currentNavigator.navigate(NavRoutes.Welcome)
     }
 
     fun navigateMain(
-        page: MainScenePage,
+        page: MainScreenPage,
         requestFocus: Boolean = false
     ) {
-        navigator.popBackStack<NavRoutes.Main>(inclusive = false)
+        currentNavigator.popBackStack<NavRoutes.Main>(inclusive = false)
     }
 
     /**
      * 登录页面
      */
     fun navigateBangumiOAuthOrTokenAuth() {
-        navigator.navigate(NavRoutes.BangumiOAuth) {
+        currentNavigator.navigate(NavRoutes.BangumiOAuth) {
             launchSingleTop = true
         }
     }
 
     fun navigateBangumiTokenAuth() {
-        navigator.navigate(
+        currentNavigator.navigate(
             NavRoutes.BangumiTokenAuth,
         ) {
             launchSingleTop = true
@@ -115,32 +121,32 @@ interface AniNavigator {
     }
 
     fun navigateSettings(tab: SettingsTab? = null) {
-        navigator.navigate(NavRoutes.Settings(tab))
+        currentNavigator.navigate(NavRoutes.Settings(tab))
     }
 
     fun navigateEditMediaSource(
         factoryId: FactoryId,
         mediaSourceInstanceId: String,
     ) {
-        navigator.navigate(
+        currentNavigator.navigate(
             NavRoutes.EditMediaSource(factoryId.value, mediaSourceInstanceId),
         )
     }
 
     fun navigateTorrentPeerSettings() {
-        navigator.navigate(NavRoutes.TorrentPeerSettings)
+        currentNavigator.navigate(NavRoutes.TorrentPeerSettings)
     }
 
     fun navigateCaches() {
-        navigator.navigate(NavRoutes.Caches)
+        currentNavigator.navigate(NavRoutes.Caches)
     }
 
     fun navigateCacheDetails(cacheId: String) {
-        navigator.navigate(NavRoutes.CacheDetail(cacheId))
+        currentNavigator.navigate(NavRoutes.CacheDetail(cacheId))
     }
 
     fun navigateSchedule() {
-        navigator.navigate(NavRoutes.Schedule)
+        currentNavigator.navigate(NavRoutes.Schedule)
     }
 }
 
@@ -153,11 +159,16 @@ private class AniNavigatorImpl : AniNavigator {
             onBufferOverflow = BufferOverflow.DROP_OLDEST,
         )
 
-    override val navigator: NavHostController
+    override val currentNavigator: NavHostController
         get() = _navigator.replayCache.firstOrNull() ?: error("Navigator is not yet set")
 
+    @Composable
+    override fun collectNavigatorAsState(): State<NavHostController> = _navigator.collectAsState(currentNavigator)
+
     override fun setNavController(controller: NavHostController) {
-        this._navigator.tryEmit(controller)
+        check(this._navigator.tryEmit(controller)) {
+            "Failed to set NavController"
+        }
     }
 
     override fun isNavControllerReady(): Boolean = _navigator.replayCache.isNotEmpty()
@@ -179,11 +190,11 @@ inline fun OverrideNavigation(
     noinline newNavigator: @DisallowComposableCalls (AniNavigator) -> AniNavigator,
     crossinline content: @Composable () -> Unit
 ) {
-    val current by rememberUpdatedState(LocalNavigator.current)
-    val newNavigatorUpdated by rememberUpdatedState(newNavigator)
+    val currentState = rememberUpdatedState(LocalNavigator.current)
+    val newNavigatorState = rememberUpdatedState(newNavigator)
     val new by remember {
         derivedStateOf {
-            newNavigatorUpdated(current)
+            newNavigatorState.value(currentState.value)
         }
     }
     CompositionLocalProvider(LocalNavigator provides new) {

@@ -9,9 +9,6 @@
 
 package me.him188.ani.danmaku.dandanplay
 
-import io.ktor.client.HttpClientConfig
-import io.ktor.client.plugins.HttpRequestRetry
-import io.ktor.client.plugins.HttpTimeout
 import me.him188.ani.danmaku.api.AbstractDanmakuProvider
 import me.him188.ani.danmaku.api.Danmaku
 import me.him188.ani.danmaku.api.DanmakuEpisode
@@ -26,13 +23,15 @@ import me.him188.ani.danmaku.dandanplay.data.SearchEpisodesAnime
 import me.him188.ani.danmaku.dandanplay.data.toDanmakuOrNull
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.seasonMonth
+import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import kotlin.coroutines.cancellation.CancellationException
 
 class DandanplayDanmakuProvider(
     config: DanmakuProviderConfig,
-) : AbstractDanmakuProvider(config) {
+    client: ScopedHttpClient,
+) : AbstractDanmakuProvider() {
     companion object {
         const val ID = "弹弹play"
     }
@@ -40,25 +39,13 @@ class DandanplayDanmakuProvider(
     class Factory : DanmakuProviderFactory {
         override val id: String get() = ID
 
-        override fun create(config: DanmakuProviderConfig): DandanplayDanmakuProvider =
-            DandanplayDanmakuProvider(config)
+        override fun create(config: DanmakuProviderConfig, client: ScopedHttpClient): DandanplayDanmakuProvider =
+            DandanplayDanmakuProvider(config, client)
     }
 
     override val id: String get() = ID
 
-    private val dandanplayClient = DandanplayClient(client)
-
-    override fun HttpClientConfig<*>.configureClient() {
-        install(HttpRequestRetry) {
-            maxRetries = 1
-            delayMillis { 2000 }
-        }
-        install(HttpTimeout) {
-            requestTimeoutMillis = 50_000 // 弹弹服务器请求比较慢
-            connectTimeoutMillis = 10_000 // 弹弹服务器请求比较慢
-            socketTimeoutMillis = 10_000 // 弹弹服务器请求比较慢
-        }
-    }
+    private val dandanplayClient = DandanplayClient(client, config.dandanplayAppId, config.dandanplayAppSecret)
 
     private enum class DanmakuOrigin(val displayName: String) {
         BiliBili("哔哩哔哩"),

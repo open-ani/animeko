@@ -1,25 +1,21 @@
 /*
- * Ani
- * Copyright (C) 2022-2024 Him188
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
 plugins {
     kotlin("multiplatform")
-    kotlin("plugin.serialization")
+    id("com.android.library")
     `ani-mpp-lib-targets`
+    kotlin("plugin.serialization")
+}
+
+android {
+    namespace = "me.him188.ani.utils.ktor.client"
 }
 
 kotlin {
@@ -29,15 +25,17 @@ kotlin {
             api(libs.ktor.client.core)
             api(libs.ktor.client.content.negotiation)
             api(libs.ktor.serialization.kotlinx.json)
+            implementation(projects.utils.xml)
             api(projects.utils.logging)
             implementation(projects.utils.platform)
             api(projects.utils.io)
         }
     }
 
-    sourceSets.jvmMain {
+    sourceSets.getByName("jvmMain") {
         dependencies {
             api(libs.ktor.client.okhttp)
+            implementation(libs.jsoup)
         }
     }
 

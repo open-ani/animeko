@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -12,6 +12,7 @@ package me.him188.ani.app.data.network
 import io.ktor.client.call.body
 import io.ktor.client.request.get
 import me.him188.ani.app.data.network.protocol.DanmakuGetResponse
+import me.him188.ani.app.domain.foundation.ServerListFeatureConfig
 import me.him188.ani.danmaku.api.AbstractDanmakuProvider
 import me.him188.ani.danmaku.api.DanmakuFetchResult
 import me.him188.ani.danmaku.api.DanmakuMatchInfo
@@ -20,8 +21,8 @@ import me.him188.ani.danmaku.api.DanmakuProvider
 import me.him188.ani.danmaku.api.DanmakuProviderConfig
 import me.him188.ani.danmaku.api.DanmakuProviderFactory
 import me.him188.ani.danmaku.api.DanmakuSearchRequest
+import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.logging.info
-import kotlin.coroutines.CoroutineContext
 import me.him188.ani.app.data.network.protocol.DanmakuLocation as ProtocolDanmakuLocation
 import me.him188.ani.danmaku.api.Danmaku as ApiDanmaku
 import me.him188.ani.danmaku.api.DanmakuLocation as ApiDanmakuLocation
@@ -37,10 +38,9 @@ object AniBangumiSeverBaseUrls {
 
 class AniDanmakuProvider(
     config: DanmakuProviderConfig,
-) : AbstractDanmakuProvider(config) {
-    // don't keep reference to `config` which will leak memory
-    private val sessionCoroutineContext: CoroutineContext = config.coroutineContext
-    private val baseUrl = AniBangumiSeverBaseUrls.getBaseUrl(config.useGlobal)
+    private val client: ScopedHttpClient,
+) : AbstractDanmakuProvider() {
+    private val baseUrl = ServerListFeatureConfig.MAGIC_ANI_SERVER
 
     companion object {
         const val ID = "ani"
@@ -49,15 +49,14 @@ class AniDanmakuProvider(
     class Factory : DanmakuProviderFactory {
         override val id: String get() = ID
 
-        override fun create(config: DanmakuProviderConfig): DanmakuProvider =
-            AniDanmakuProvider(config)
+        override fun create(config: DanmakuProviderConfig, client: ScopedHttpClient): DanmakuProvider =
+            AniDanmakuProvider(config, client)
     }
 
     override val id: String get() = ID
 
     override suspend fun fetch(request: DanmakuSearchRequest): List<DanmakuFetchResult> {
-        val resp = client.get("${baseUrl}/v1/danmaku/${request.episodeId}")
-        val list = resp.body<DanmakuGetResponse>().danmakuList
+        val list = client.use { get("$baseUrl/v1/danmaku/${request.episodeId}").body<DanmakuGetResponse>().danmakuList }
         logger.info { "$ID Fetched danmaku list: ${list.size}" }
         return listOf(
             DanmakuFetchResult(

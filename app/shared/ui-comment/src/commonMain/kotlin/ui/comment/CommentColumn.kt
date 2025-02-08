@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -10,6 +10,7 @@
 package me.him188.ani.app.ui.comment
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -62,9 +63,9 @@ fun CommentColumn(
     ) {
         SearchResultLazyVerticalStaggeredGrid(
             items,
-            problem = {
+            error = {
                 LoadErrorCard(
-                    problem = it,
+                    error = it,
                     onRetry = { items.retry() },
                     modifier = Modifier.fillMaxWidth(), // noop
                 )
@@ -87,14 +88,16 @@ fun CommentColumn(
                 key = items.itemKey { it.id },
                 contentType = items.itemContentType(),
             ) { index ->
-                val item = items[index] ?: return@items
-                commentItem(index, item)
+                Column {
+                    val item = items[index] ?: return@items
+                    commentItem(index, item)
 
-                if (hasDividerLine && index != items.itemCount - 1) {
-                    HorizontalDivider(
-                        modifier = Modifier.fillMaxWidth(),
-                        color = DividerDefaults.color.stronglyWeaken(),
-                    )
+                    if (hasDividerLine && index != items.itemCount - 1) {
+                        HorizontalDivider(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = DividerDefaults.color.stronglyWeaken(),
+                        )
+                    }
                 }
             }
 

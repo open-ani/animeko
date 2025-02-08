@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -26,6 +26,7 @@ import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
 import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.navigation.ThreePaneScaffoldNavigator
 import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
@@ -48,7 +49,6 @@ import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemContentType
 import androidx.paging.compose.itemKey
-import androidx.window.core.layout.WindowWidthSizeClass
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -57,16 +57,16 @@ import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.ui.adaptive.AniListDetailPaneScaffold
 import me.him188.ani.app.ui.adaptive.AniTopAppBar
 import me.him188.ani.app.ui.adaptive.PaneScope
+import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.interaction.keyboardDirectionToSelectItem
 import me.him188.ani.app.ui.foundation.interaction.keyboardPageToScroll
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
-import me.him188.ani.app.ui.foundation.layout.compareTo
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
+import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.paneHorizontalPadding
 import me.him188.ani.app.ui.foundation.layout.paneVerticalPadding
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
-import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.app.ui.foundation.widgets.NsfwMask
 import me.him188.ani.app.ui.search.LoadErrorCard
@@ -84,8 +84,11 @@ fun SearchPage(
     contentWindowInsets: WindowInsets = AniWindowInsets.forPageContent(),
     navigationIcon: @Composable () -> Unit = {},
 ) {
+    val coroutineScope = rememberCoroutineScope()
     BackHandler(navigator.canNavigateBack()) {
-        navigator.navigateBack()
+        coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
+            navigator.navigateBack()
+        }
     }
 
     val items = state.items
@@ -96,7 +99,7 @@ fun SearchPage(
                 state.suggestionSearchBarState,
                 Modifier
                     .ifThen(
-                        currentWindowAdaptiveInfo1().windowSizeClass.windowWidthSizeClass >= WindowWidthSizeClass.MEDIUM
+                        currentWindowAdaptiveInfo1().windowSizeClass.isWidthAtLeastMedium
                                 || !state.suggestionSearchBarState.expanded,
                     ) { contentPadding },
                 placeholder = { Text("搜索") },
@@ -141,7 +144,13 @@ fun SearchPage(
         modifier,
         navigationIcon = {
             if (navigator.canNavigateBack()) {
-                BackNavigationIconButton({ navigator.navigateBack() })
+                BackNavigationIconButton(
+                    {
+                        coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                            navigator.navigateBack()
+                        }
+                    },
+                )
             } else {
                 navigationIcon()
             }
@@ -166,9 +175,9 @@ internal fun SearchPageResultColumn(
 
     SearchResultLazyVerticalStaggeredGrid(
         items,
-        problem = {
+        error = {
             LoadErrorCard(
-                problem = it,
+                error = it,
                 onRetry = { items.retry() },
                 modifier = Modifier.fillMaxWidth(), // noop
             )
@@ -193,10 +202,11 @@ internal fun SearchPageResultColumn(
                 SearchDefaults.SearchSummaryItem(
                     items,
                     Modifier.animateItem(
-                        fadeInSpec = AniThemeDefaults.feedItemFadeInSpec,
-                        placementSpec = AniThemeDefaults.feedItemPlacementSpec,
-                        fadeOutSpec = AniThemeDefaults.feedItemFadeOutSpec,
+                        fadeInSpec = LocalAniMotionScheme.current.feedItemFadeInSpec,
+                        placementSpec = LocalAniMotionScheme.current.feedItemPlacementSpec,
+                        fadeOutSpec = LocalAniMotionScheme.current.feedItemFadeOutSpec,
                     ),
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
                 )
             }
         }
@@ -236,9 +246,9 @@ internal fun SearchPageResultColumn(
 //                            animatedVisibilityScope,
 //                        )
                             .animateItem(
-                                fadeInSpec = AniThemeDefaults.feedItemFadeInSpec,
-                                placementSpec = AniThemeDefaults.feedItemPlacementSpec,
-                                fadeOutSpec = AniThemeDefaults.feedItemFadeOutSpec,
+                                fadeInSpec = LocalAniMotionScheme.current.feedItemFadeInSpec,
+                                placementSpec = LocalAniMotionScheme.current.feedItemPlacementSpec,
+                                fadeOutSpec = LocalAniMotionScheme.current.feedItemFadeOutSpec,
                             )
                             .fillMaxWidth()
                             .bringIntoViewRequester(requester)
@@ -293,6 +303,7 @@ internal fun SearchPageLayout(
     contentWindowInsets: WindowInsets = AniWindowInsets.forPageContent(),
     searchBarHeight: Dp = 64.dp,
 ) {
+    val coroutineScope = rememberCoroutineScope()
     AniListDetailPaneScaffold(
         navigator,
         listPaneTopAppBar = {
@@ -301,7 +312,13 @@ internal fun SearchPageLayout(
                 Modifier.fillMaxWidth(),
                 navigationIcon = {
                     if (navigator.canNavigateBack()) {
-                        BackNavigationIconButton({ navigator.navigateBack() })
+                        BackNavigationIconButton(
+                            onNavigateBack = {
+                                coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                                    navigator.navigateBack()
+                                }
+                            },
+                        )
                     } else {
                         navigationIcon()
                     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.domain.torrent.service
 
+import android.app.ForegroundServiceStartNotAllowedException
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -24,6 +25,8 @@ import android.os.Parcelable
 import kotlinx.parcelize.Parcelize
 import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
+import me.him188.ani.utils.logging.logger
+import me.him188.ani.utils.logging.warn
 
 class ServiceNotification(
     private val context: Context
@@ -36,7 +39,7 @@ class ServiceNotification(
     private val stopServiceIntent by lazy {
         PendingIntent.getService(
             context, 0,
-            Intent(context, AniTorrentService::class.java).apply { putExtra("stopService", true) },
+            Intent(context, TorrentServiceConnection.anitorrentServiceClass).apply { putExtra("stopService", true) },
             PendingIntent.FLAG_IMMUTABLE,
         )
     }
@@ -59,7 +62,7 @@ class ServiceNotification(
             notificationAppearance = appearance
             return
         }
-        
+
         val name = intent.getStringOrDefault("app_name") {
             defaultNotificationAppearance.name
         }
@@ -79,7 +82,7 @@ class ServiceNotification(
         val icon = (intent?.getIntExtra("app_icon", -1) ?: -1)
             .let { if (it == -1) defaultNotificationAppearance.icon else Icon.createWithResource(context, it) }
         notificationOpenActivityIntent = intent?.getParcelable<Intent>("open_activity_intent")
-        
+
         notificationAppearance = NotificationAppearance(
             name = name,
             titleIdle = titleIdle,
@@ -93,15 +96,27 @@ class ServiceNotification(
     /**
      * create notification with initial state idle.
      */
-    fun createNotification(service: Service) {
+    fun createNotification(service: Service): Boolean {
         val currentNotification = notificationService.activeNotifications.find { it.id == NOTIFICATION_ID }
-        if (currentNotification != null) return
+        if (currentNotification != null) return true
 
         val notification = buildNotification(
             notificationAppearance,
             NotificationDisplayStrategy.Idle(0.bytes, 0.bytes),
         )
-        service.startForeground(NOTIFICATION_ID, notification)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            try {
+                service.startForeground(NOTIFICATION_ID, notification)
+                return true
+            } catch (e: ForegroundServiceStartNotAllowedException) {
+                // Android 15 limitation: https://developer.android.com/about/versions/15/behavior-changes-15#datasync-timeout
+                logger.warn { "Foreground service start not allowed (possibly due to system limitations): $e" } // we intend to only log exception messages without stacktrace
+                return false
+            }
+        } else {
+            service.startForeground(NOTIFICATION_ID, notification)
+            return true
+        }
     }
 
     /**
@@ -176,6 +191,7 @@ class ServiceNotification(
     companion object {
         private const val NOTIFICATION_ID = 114
         private const val NOTIFICATION_CHANNEL_ID = "me.him188.ani.app.domain.torrent.service.AniTorrentService"
+        private val logger = logger<ServiceNotification>()
 
         private val defaultNotificationAppearance = NotificationAppearance(
             name = "Animeko BT 引擎服务",
