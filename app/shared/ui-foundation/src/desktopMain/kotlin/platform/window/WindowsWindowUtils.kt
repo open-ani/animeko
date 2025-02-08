@@ -38,8 +38,11 @@ import com.sun.jna.platform.win32.WinDef.UINT
 import com.sun.jna.platform.win32.WinReg
 import com.sun.jna.platform.win32.WinUser
 import com.sun.jna.platform.win32.WinUser.MONITORINFO
+import com.sun.jna.platform.win32.WinUser.SWP_ASYNCWINDOWPOS
 import com.sun.jna.platform.win32.WinUser.SWP_FRAMECHANGED
+import com.sun.jna.platform.win32.WinUser.SWP_HIDEWINDOW
 import com.sun.jna.platform.win32.WinUser.SWP_NOZORDER
+import com.sun.jna.platform.win32.WinUser.SWP_SHOWWINDOW
 import com.sun.jna.platform.win32.WinUser.WM_DESTROY
 import com.sun.jna.platform.win32.WinUser.WM_SIZE
 import com.sun.jna.platform.win32.WinUser.WS_SYSMENU
@@ -97,6 +100,7 @@ import me.him188.ani.app.platform.window.ExtendedUser32.Companion.WS_EX_DLGMODAL
 import me.him188.ani.app.platform.window.ExtendedUser32.Companion.WS_EX_STATICEDGE
 import me.him188.ani.app.platform.window.ExtendedUser32.Companion.WS_EX_WINDOWEDGE
 import me.him188.ani.app.platform.window.ExtendedUser32.MENUITEMINFO
+import me.him188.ani.app.platform.window.TitleBarWindowProc.NCCalcSizeParams
 import org.jetbrains.skiko.SkiaLayer
 import org.jetbrains.skiko.SystemTheme
 import org.jetbrains.skiko.currentSystemTheme
@@ -701,7 +705,13 @@ internal class TitleBarWindowProc(
     private var padding: Int = 0
 
     init {
-        dwmapi.DwmExtendFrameIntoClientArea(windowHandle, Dwmapi.WindowMargins(0, 0, -1, -1))
+        dwmapi.DwmExtendFrameIntoClientArea(windowHandle, Dwmapi.WindowMargins(-1, -1, -1, -1))
+        val flag = SWP_NOZORDER or SWP_NOACTIVATE or SWP_FRAMECHANGED or SWP_ASYNCWINDOWPOS
+
+        //workaround for background erase.
+        user32.SetWindowPos(windowHandle, null, 0, 0, 0, 0, flag or SWP_HIDEWINDOW)
+        user32.SetWindowPos(windowHandle, null, 0, 0, 0, 0, flag or SWP_SHOWWINDOW)
+
     }
 
     private fun hitTestWindowResizerBorder(x: Int, y: Int): Int {
@@ -763,9 +773,21 @@ internal class TitleBarWindowProc(
                     val params = Structure.newInstance(NCCalcSizeParams::class.java, Pointer(lParam.toLong()))
                     params.read()
                     params.rgrc[0]?.apply {
-                        left += frameX + padding
-                        right -= frameX + padding
-                        bottom -= frameY + padding
+                        left += if (isMaximized) {
+                            frameX + padding
+                        } else {
+                            edgeX
+                        }
+                        right -= if (isMaximized) {
+                            frameX + padding
+                        } else {
+                            edgeX
+                        }
+                        bottom -= if (isMaximized) {
+                            padding + frameX
+                        } else {
+                            edgeY
+                        }
                         top += if (isMaximized) {
                             padding + frameX
                         } else {
@@ -896,23 +918,13 @@ internal class TitleBarWindowProc(
         val red = (value and 0xFF0000).shr(16)
         return Color((alpha or green or blue or red).toInt())
     }
-    
+
     fun isAccentColorWindowFrame(): Boolean {
         return Advapi32Util.registryGetIntValue(
             WinReg.HKEY_CURRENT_USER,
             "SOFTWARE\\Microsoft\\Windows\\DWM",
             "ColorPrevalence",
         ) != 0
-    }
-
-    fun User32.isWindowInMaximized(hWnd: HWND): Boolean {
-        val placement = WinUser.WINDOWPLACEMENT()
-        val result =
-            GetWindowPlacement(hWnd, placement)
-                .booleanValue() &&
-                    placement.showCmd == WinUser.SW_SHOWMAXIMIZED
-        placement.clear()
-        return result
     }
 
     @Structure.FieldOrder("rgrc", "lppos")
@@ -959,8 +971,16 @@ internal class SkiaLayerHitTestWindowProc(
     private val defaultWindowProc =
         user32.SetWindowLongPtr(contentHandle, WinUser.GWL_WNDPROC, CallbackReference.getFunctionPointer(this))
 
-    private var hitResult = 1
+    private var hitResult = HTCLIENT
 
+    private var isMaximized: Boolean = user32.isWindowInMaximized(windowHandle)
+    private var dpi: UINT = UINT(0)
+    private var frameX: Int = 0
+    private var frameY: Int = 0
+    private var edgeX: Int = 0
+    private var edgeY: Int = 0
+    private var padding: Int = 0
+    
     override fun callback(
         hwnd: HWND,
         uMsg: Int,
@@ -968,6 +988,43 @@ internal class SkiaLayerHitTestWindowProc(
         lParam: WinDef.LPARAM,
     ): LRESULT {
         return when (uMsg) {
+            WM_NCCALCSIZE -> {
+                if (wParam.toInt() == 0) {
+                    user32.CallWindowProc(defaultWindowProc, hwnd, uMsg, wParam, lParam)
+                } else {
+                    // this behavior is call full screen mode
+                    val style = user32.GetWindowLong(windowHandle, WinUser.GWL_STYLE)
+                    if (style and (WinUser.WS_CAPTION or WinUser.WS_THICKFRAME) == 0) {
+                        frameX = 0
+                        frameY = 0
+                        edgeX = 0
+                        edgeY = 0
+                        padding = 0
+                        isMaximized = user32.isWindowInMaximized(windowHandle)
+                        return LRESULT(0)
+                    }
+
+                    dpi = user32.GetDpiForWindow(windowHandle)
+                    frameX = user32.GetSystemMetricsForDpi(WinUser.SM_CXFRAME, dpi)
+                    frameY = user32.GetSystemMetricsForDpi(WinUser.SM_CYFRAME, dpi)
+                    edgeX = user32.GetSystemMetricsForDpi(WinUser.SM_CXEDGE, dpi)
+                    edgeY = user32.GetSystemMetricsForDpi(WinUser.SM_CYEDGE, dpi)
+                    padding = user32.GetSystemMetricsForDpi(WinUser.SM_CXPADDEDBORDER, dpi)
+                    isMaximized = user32.isWindowInMaximized(windowHandle)
+                    val params = Structure.newInstance(NCCalcSizeParams::class.java, Pointer(lParam.toLong()))
+                    params.read()
+                    params.rgrc[0]?.apply {
+                        top += if (isMaximized) {
+                            0
+                        } else {
+                            1
+                        }
+                    }
+                    params.write()
+                    LRESULT(0)
+                }
+            }
+            
             WM_NCHITTEST -> {
                 val x = lParam.toInt() and 0xFFFF
                 val y = (lParam.toInt() shr 16) and 0xFFFF
@@ -1010,4 +1067,14 @@ internal class SkiaLayerHitTestWindowProc(
     fun dispose() {
         user32.SetWindowLongPtr(contentHandle, WinUser.GWL_WNDPROC, defaultWindowProc)
     }
+}
+
+private fun User32.isWindowInMaximized(hWnd: HWND): Boolean {
+    val placement = WinUser.WINDOWPLACEMENT()
+    val result =
+        GetWindowPlacement(hWnd, placement)
+            .booleanValue() &&
+                placement.showCmd == WinUser.SW_SHOWMAXIMIZED
+    placement.clear()
+    return result
 }
