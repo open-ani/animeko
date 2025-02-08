@@ -41,6 +41,7 @@ kotlin {
         implementation(projects.utils.coroutines)
         api(projects.danmaku.danmakuUiConfig)
         api(projects.utils.xml)
+        api(projects.utils.coroutines)
         api(projects.client)
         api(projects.utils.ipParser)
         api(projects.utils.jsonpath)
