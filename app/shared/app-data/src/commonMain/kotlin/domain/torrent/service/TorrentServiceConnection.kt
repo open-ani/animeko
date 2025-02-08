@@ -206,6 +206,6 @@ class LifecycleAwareTorrentServiceConnection<T : Any>(
     override suspend fun getBinder(): T {
         // 如果 isServiceDisconnected 为 false, 那 binderDeferred 一定是未完成的, 见 onServiceDisconnected
         // 如果 isServiceDisconnected 为 true, 那 binderDeferred 一定是已完成的, 见 startServiceWithRetry
-        return binderDeferred.await()
+        return startServiceLock.withLock { binderDeferred }.await()
     }
 }
