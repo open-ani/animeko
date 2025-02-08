@@ -210,7 +210,7 @@ class ServiceConnectionTesterTest {
             assertEquals(ServiceConnectionTester.TestState.Idle, initialEmission.states[service])
 
             // Start the testAll
-            val job = launch { tester.testAll() }
+            val job = launch(start = CoroutineStart.UNDISPATCHED) { tester.testAll() }
 
             // Next emission: Testing
             val next = awaitItem()
@@ -247,7 +247,7 @@ class ServiceConnectionTesterTest {
             assertEquals(ServiceConnectionTester.TestState.Idle, initialEmission.states[service2])
 
             // Start the testAll
-            val job = launch { tester.testAll() }
+            val job = launch(start = CoroutineStart.UNDISPATCHED) { tester.testAll() }
 
             // Next emission: Testing
             val next = awaitItem()
