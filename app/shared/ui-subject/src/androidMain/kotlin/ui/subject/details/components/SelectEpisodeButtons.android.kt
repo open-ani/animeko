@@ -16,7 +16,7 @@ import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
 import me.him188.ani.app.data.models.subject.TestSubjectProgressInfos
-import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview
+import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.subject.collection.progress.rememberTestSubjectProgressState
 import me.him188.ani.utils.platform.annotations.TestOnly
 
@@ -38,7 +38,7 @@ class PreviewSubjectProgressInfoProvider : PreviewParameterProvider<SubjectProgr
 private fun PreviewSelectEpisodeButtons(
     @PreviewParameter(PreviewSubjectProgressInfoProvider::class) progressInfo: SubjectProgressInfo,
 ) {
-    ProvideFoundationCompositionLocalsForPreview {
+    ProvideCompositionLocalsForPreview {
         Surface {
             SubjectDetailsDefaults.SelectEpisodeButtons(
                 state = rememberTestSubjectProgressState(

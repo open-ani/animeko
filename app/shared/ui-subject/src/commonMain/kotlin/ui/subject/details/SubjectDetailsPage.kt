@@ -9,11 +9,11 @@
 
 package me.him188.ani.app.ui.subject.details
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -85,6 +85,8 @@ import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.ImageViewer
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.Tag
+import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
+import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.interaction.WindowDragArea
 import me.him188.ani.app.ui.foundation.interaction.nestedScrollWorkaround
@@ -124,7 +126,7 @@ import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.utils.platform.isMobile
 
 @Composable
-fun SubjectDetailsPage(
+fun SubjectDetailsScreen(
     vm: SubjectDetailsViewModel,
     onPlay: (episodeId: Int) -> Unit,
     onLoadErrorRetry: () -> Unit,
@@ -134,7 +136,7 @@ fun SubjectDetailsPage(
     windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
     navigationIcon: @Composable () -> Unit = {},
 ) {
-    SubjectDetailsPage(
+    SubjectDetailsScreen(
         vm.result,
         onPlay,
         onLoadErrorRetry,
@@ -147,7 +149,7 @@ fun SubjectDetailsPage(
 }
 
 @Composable
-fun SubjectDetailsPage(
+fun SubjectDetailsScreen(
     state: SubjectDetailsStateLoader.LoadState,
     onPlay: (episodeId: Int) -> Unit,
     onLoadErrorRetry: () -> Unit,
@@ -158,7 +160,7 @@ fun SubjectDetailsPage(
     navigationIcon: @Composable () -> Unit = {},
 ) {
     when (state) {
-        is SubjectDetailsStateLoader.LoadState.Ok -> SubjectDetailsPage(
+        is SubjectDetailsStateLoader.LoadState.Ok -> SubjectDetailsScreen(
             state.value,
             onPlay = onPlay,
             modifier,
@@ -187,7 +189,7 @@ fun SubjectDetailsPage(
 }
 
 @Composable
-private fun SubjectDetailsPage(
+private fun SubjectDetailsScreen(
     state: SubjectDetailsState,
     onPlay: (episodeId: Int) -> Unit,
     modifier: Modifier = Modifier,
@@ -222,9 +224,10 @@ private fun SubjectDetailsPage(
             )
         }
 
-        SubjectDetailsPageLayout(
+        SubjectDetailsScreenLayout(
             subjectId = state.subjectId,
             info = state.info,
+            isPlaceholder = state.showPlaceholder,
             seasonTags = {
                 SubjectDetailsDefaults.SeasonTag(
                     airDate = state.info?.airDate ?: PackedDate.Invalid,
@@ -280,78 +283,69 @@ private fun SubjectDetailsPage(
                     bitmap = success.result.image.toComposeImageBitmap()
                 }
             },
-        ) { paddingValues ->
-            Box {
-                AnimatedVisibility(
-                    visible = state.showPlaceholder,
-                    enter = EnterTransition.None,
-                    exit = fadeOut(AniThemeDefaults.feedItemFadeOutSpec),
-                ) {
-                    PlaceholderSubjectDetailsContentPager(paddingValues)
-                }
-                if (state.showPlaceholder) return@SubjectDetailsPageLayout
+        ) { isPlaceholder, paddingValues ->
+            if (isPlaceholder) {
+                PlaceholderSubjectDetailsContentPager(paddingValues)
+            } else {
+                Box {
+                    AnimatedVisibility(
+                        visible = state.showPlaceholder,
+                        enter = EnterTransition.None,
+                        exit = fadeOut(LocalAniMotionScheme.current.feedItemFadeOutSpec),
+                    ) {
+                        PlaceholderSubjectDetailsContentPager(paddingValues)
+                    }
+                    if (state.showPlaceholder) return@SubjectDetailsScreenLayout
 
-                SubjectDetailsContentPager(
-                    paddingValues,
-                    connectedScrollState,
-                    detailsTab = { contentPadding ->
-                        if (state.info == null) return@SubjectDetailsContentPager
-                        SubjectDetailsDefaults.DetailsTab(
-                            info = state.info,
-                            staff = state.staffPager.collectAsLazyPagingItemsWithLifecycle(),
-                            exposedStaff = state.exposedStaffPager.collectAsLazyPagingItemsWithLifecycle(),
-                            totalStaffCount = state.totalStaffCountState.value,
-                            characters = state.charactersPager.collectAsLazyPagingItemsWithLifecycle(),
-                            exposedCharacters = state.exposedCharactersPager.collectAsLazyPagingItemsWithLifecycle(),
-                            totalCharactersCount = state.totalCharactersCountState.value,
-                            relatedSubjects = state.relatedSubjectsPager.collectAsLazyPagingItemsWithLifecycle(),
-                            Modifier
-                                .nestedScrollWorkaround(
-                                    state.detailsTabLazyListState,
-                                    connectedScrollState,
-                                )
-                                .nestedScroll(connectedScrollState.nestedScrollConnection),
-                            state.detailsTabLazyListState,
-                            contentPadding = contentPadding,
-                        )
-                    },
-                    commentsTab = { contentPadding ->
-                        SubjectDetailsDefaults.SubjectCommentColumn(
-                            state = state.subjectCommentState,
-                            onClickUrl = {
-                                RichTextDefaults.checkSanityAndOpen(
-                                    it,
-                                    browserNavigator,
-                                    toaster,
-                                )
-                            },
-                            onClickImage = { imageViewer.viewImage(it) },
-                            connectedScrollState,
-                            Modifier.fillMaxSize(),
-                            lazyStaggeredGridState = state.commentTabLazyStaggeredGridState,
-                            contentPadding = contentPadding,
-                        )
-                    },
-                    discussionsTab = {
-                        LazyColumn(
-                            Modifier.fillMaxSize()
-                                // TODO: Add nestedScrollWorkaround when we implement this tab
-                                .nestedScroll(connectedScrollState.nestedScrollConnection),
-                        ) {
-                            item {
-                                Box(
-                                    Modifier.fillMaxWidth(),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Text(
-                                        "即将上线, 敬请期待",
-                                        Modifier.padding(16.dp),
-                                    )
+                    SubjectDetailsContentPager(
+                        paddingValues,
+                        connectedScrollState,
+                        detailsTab = { contentPadding ->
+                            if (state.info == null) return@SubjectDetailsContentPager
+                            SubjectDetailsDefaults.DetailsTab(
+                                info = state.info,
+                                staff = state.staffPager.collectAsLazyPagingItemsWithLifecycle(),
+                                exposedStaff = state.exposedStaffPager.collectAsLazyPagingItemsWithLifecycle(),
+                                totalStaffCount = state.totalStaffCountState.value,
+                                characters = state.charactersPager.collectAsLazyPagingItemsWithLifecycle(),
+                                exposedCharacters = state.exposedCharactersPager.collectAsLazyPagingItemsWithLifecycle(),
+                                totalCharactersCount = state.totalCharactersCountState.value,
+                                relatedSubjects = state.relatedSubjectsPager.collectAsLazyPagingItemsWithLifecycle(),
+                                Modifier
+                                    .nestedScrollWorkaround(state.detailsTabLazyListState, connectedScrollState)
+                                    .nestedScroll(connectedScrollState.nestedScrollConnection),
+                                state.detailsTabLazyListState,
+                                contentPadding = contentPadding,
+                            )
+                        },
+                        commentsTab = { contentPadding ->
+                            SubjectDetailsDefaults.SubjectCommentColumn(
+                                state = state.subjectCommentState,
+                                onClickUrl = {
+                                    RichTextDefaults.checkSanityAndOpen(it, browserNavigator, toaster)
+                                },
+                                onClickImage = { imageViewer.viewImage(it) },
+                                connectedScrollState,
+                                Modifier.fillMaxSize(),
+                                lazyStaggeredGridState = state.commentTabLazyStaggeredGridState,
+                                contentPadding = contentPadding,
+                            )
+                        },
+                        discussionsTab = {
+                            LazyColumn(
+                                Modifier.fillMaxSize()
+                                    // TODO: Add nestedScrollWorkaround when we implement this tab
+                                    .nestedScroll(connectedScrollState.nestedScrollConnection),
+                            ) {
+                                item {
+                                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                        Text("即将上线, 敬请期待", Modifier.padding(16.dp))
+                                    }
                                 }
                             }
-                        }
-                    },
-                )
+                        },
+                    )
+                }
             }
         }
     }
@@ -370,9 +364,10 @@ private fun ErrorSubjectDetailsPage(
     windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
     navigationIcon: @Composable () -> Unit = {},
 ) {
-    SubjectDetailsPageLayout(
+    SubjectDetailsScreenLayout(
         subjectId = subjectId,
         info = placeholderSubjectInfo,
+        isPlaceholder = false,
         seasonTags = { },
         collectionData = { },
         collectionActions = { },
@@ -384,9 +379,9 @@ private fun ErrorSubjectDetailsPage(
         showBlurredBackground = false,
         windowInsets,
         navigationIcon,
-    ) { paddingValues ->
+    ) { _, paddingValues ->
         LoadErrorCard(
-            problem = error,
+            error = error,
             onRetry = onRetry,
             modifier = Modifier
                 .padding(paddingValues)
@@ -411,9 +406,10 @@ enum class SubjectDetailsTab {
  * @param info `null` 表示正在加载中
  */
 @Composable
-fun SubjectDetailsPageLayout(
+fun SubjectDetailsScreenLayout(
     subjectId: Int,
     info: SubjectInfo?,
+    isPlaceholder: Boolean,
     seasonTags: @Composable () -> Unit,
     collectionData: @Composable () -> Unit,
     collectionActions: @Composable () -> Unit,
@@ -426,7 +422,7 @@ fun SubjectDetailsPageLayout(
     windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
     navigationIcon: @Composable () -> Unit = {},
     onCoverImageSuccess: (AsyncImagePainter.State.Success) -> Unit = {},
-    content: @Composable (contentPadding: PaddingValues) -> Unit,
+    content: @Composable (isPlaceholder: Boolean, contentPadding: PaddingValues) -> Unit,
 ) {
     val backgroundColor = AniThemeDefaults.pageContentBackgroundColor
     val stickyTopBarColor = AniThemeDefaults.navigationContainerColor
@@ -454,7 +450,7 @@ fun SubjectDetailsPageLayout(
                         )
 
                         // 有背景, 仅在滚动一段距离后使用
-                        AnimatedVisibility(connectedScrollState.isScrolledTop, enter = fadeIn(), exit = fadeOut()) {
+                        AniAnimatedVisibility(connectedScrollState.isScrolledTop) {
                             TopAppBar(
                                 title = {
                                     Text(
@@ -530,7 +526,12 @@ fun SubjectDetailsPageLayout(
                     }
                 }
 
-                content(remainingContentPadding)
+                AnimatedContent(
+                    isPlaceholder,
+                    transitionSpec = LocalAniMotionScheme.current.animatedContent.topLevel,
+                ) { targetIsPlaceholder ->
+                    content(targetIsPlaceholder, remainingContentPadding)
+                }
             }
         }
     }

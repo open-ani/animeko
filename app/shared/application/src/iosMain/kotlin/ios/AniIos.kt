@@ -23,8 +23,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.ComposeUIViewController
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.CoroutineScope
@@ -42,6 +40,7 @@ import me.him188.ani.app.navigation.BrowserNavigator
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.NavRoutes
 import me.him188.ani.app.navigation.NoopBrowserNavigator
+import me.him188.ani.app.platform.AppStartupTasks
 import me.him188.ani.app.platform.GrantedPermissionManager
 import me.him188.ani.app.platform.IosContext
 import me.him188.ani.app.platform.IosContextFiles
@@ -55,7 +54,7 @@ import me.him188.ani.app.platform.notification.NotifManager
 import me.him188.ani.app.platform.startCommonKoinModule
 import me.him188.ani.app.tools.update.IosUpdateInstaller
 import me.him188.ani.app.tools.update.UpdateInstaller
-import me.him188.ani.app.ui.foundation.TestGlobalLifecycle
+import me.him188.ani.app.ui.foundation.TestGlobalLifecycleOwner
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
 import me.him188.ani.app.ui.foundation.layout.isSystemInFullscreen
@@ -89,6 +88,7 @@ fun MainViewController(): UIViewController {
             dataDir = SystemDocumentDir.apply { createDirectories() },
         ),
     )
+    AppStartupTasks.printVersions()
 
     val koin = startKoin {
         modules(getCommonKoinModule({ context }, scope))
@@ -101,10 +101,7 @@ fun MainViewController(): UIViewController {
     val onBackPressedDispatcherOwner = SkikoOnBackPressedDispatcherOwner(
         aniNavigator,
         @OptIn(TestOnly::class)
-        object : LifecycleOwner {
-            override val lifecycle: Lifecycle
-                get() = TestGlobalLifecycle // TODO: ios lifecycle
-        },
+        TestGlobalLifecycleOwner, // TODO: ios lifecycle
     )
     val settingsRepository = koin.get<SettingsRepository>()
     return ComposeUIViewController {

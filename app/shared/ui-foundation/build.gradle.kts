@@ -22,6 +22,7 @@ kotlin {
     sourceSets.commonMain.dependencies {
         api(projects.app.shared.appData)
         api(projects.app.shared.appPlatform)
+        api(projects.utils.uiPreview)
         api(projects.utils.platform)
         api(libs.kotlinx.coroutines.core)
         implementation(projects.danmaku.danmakuApi)
@@ -59,6 +60,7 @@ kotlin {
     }
     sourceSets.commonTest.dependencies {
         api(projects.utils.uiTesting)
+        api(projects.utils.androidxLifecycleRuntimeTesting)
     }
     sourceSets.androidMain.dependencies {
         api(libs.androidx.compose.ui.tooling.preview)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -90,7 +90,6 @@ class CacheEpisodeState(
     private val onPause: suspend () -> Unit, // background scope
     private val onResume: suspend () -> Unit, // background scope
     private val onDelete: suspend () -> Unit, // background scope
-    private val onPlay: () -> Unit, // ui scope
     backgroundScope: CoroutineScope,
 ) {
     @Immutable
@@ -173,10 +172,6 @@ class CacheEpisodeState(
         }
     }
 
-    fun play() {
-        onPlay()
-    }
-
     companion object {
         /**
          * @sample me.him188.ani.app.ui.cache.components.CacheEpisodeStateTest.CalculateSizeTextTest
@@ -214,6 +209,7 @@ enum class CacheEpisodePaused {
 @Composable
 fun CacheEpisodeItem(
     state: CacheEpisodeState,
+    onPlay: (subjectId: Int, episodeId: Int) -> Unit,
     modifier: Modifier = Modifier,
     containerColor: Color = MaterialTheme.colorScheme.surface,
 ) {
@@ -352,6 +348,7 @@ fun CacheEpisodeItem(
             Dropdown(
                 showDropdown, { showDropdown = false },
                 state,
+                onPlay = { onPlay(state.subjectId, state.episodeId) }, 
             )
         },
         colors = listItemColors,
@@ -363,6 +360,7 @@ private fun Dropdown(
     showDropdown: Boolean,
     onDismissRequest: () -> Unit,
     state: CacheEpisodeState,
+    onPlay: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var showConfirm by rememberSaveable { mutableStateOf(false) }
@@ -422,7 +420,7 @@ private fun Dropdown(
                     }
                 },
                 onClick = {
-                    state.play()
+                    onPlay()
                     onDismissRequest()
                 },
             )

@@ -22,7 +22,7 @@ import androidx.compose.ui.test.hasTextExactly
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
-import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview
+import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import me.him188.ani.app.ui.wizard.WizardDefaults
 import kotlin.test.Test
@@ -99,7 +99,7 @@ class WizardNavHostTest {
         val wizardController = WizardController()
 
         setContent {
-            ProvideFoundationCompositionLocalsForPreview {
+            ProvideCompositionLocalsForPreview {
                 View(wizardController)
             }
         }

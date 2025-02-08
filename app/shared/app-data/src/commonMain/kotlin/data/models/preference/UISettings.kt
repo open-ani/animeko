@@ -13,7 +13,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
-import me.him188.ani.app.navigation.MainScenePage
+import me.him188.ani.app.navigation.MainScreenPage
 
 @Serializable
 @Immutable
@@ -21,7 +21,7 @@ data class UISettings(
     /**
      * 启动 App 时的初始页面
      */
-    val mainSceneInitialPage: MainScenePage = MainScenePage.Exploration,
+    val mainSceneInitialPage: MainScreenPage = MainScreenPage.Exploration,
 
     @Suppress("DEPRECATION") @Deprecated(
         "For migration. Use themeSettings instead",

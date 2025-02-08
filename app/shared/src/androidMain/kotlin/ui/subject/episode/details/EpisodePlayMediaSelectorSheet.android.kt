@@ -16,14 +16,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
-import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview
+import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.subject.episode.mediaFetch.TestMediaSourceResultListPresentation
 import me.him188.ani.app.ui.subject.episode.mediaFetch.rememberTestMediaSelectorState
 import me.him188.ani.utils.platform.annotations.TestOnly
 
 @Preview(name = "progress = null")
 @Composable
-private fun PreviewEpisodePlayMediaSelectorSheet() = ProvideFoundationCompositionLocalsForPreview {
+private fun PreviewEpisodePlayMediaSelectorSheet() = ProvideCompositionLocalsForPreview {
     EpisodePlayMediaSelector(
         rememberTestMediaSelectorState(),
         TestMediaSourceResultListPresentation,
@@ -36,7 +36,7 @@ private fun PreviewEpisodePlayMediaSelectorSheet() = ProvideFoundationCompositio
 
 @Preview(name = "progress = 0.7f")
 @Composable
-private fun PreviewEpisodePlayMediaSelectorSheet2() = ProvideFoundationCompositionLocalsForPreview {
+private fun PreviewEpisodePlayMediaSelectorSheet2() = ProvideCompositionLocalsForPreview {
     EpisodePlayMediaSelector(
         rememberTestMediaSelectorState(),
         TestMediaSourceResultListPresentation,
@@ -49,7 +49,7 @@ private fun PreviewEpisodePlayMediaSelectorSheet2() = ProvideFoundationCompositi
 
 @Preview(name = "progress = 1f")
 @Composable
-private fun PreviewEpisodePlayMediaSelectorSheet3() = ProvideFoundationCompositionLocalsForPreview {
+private fun PreviewEpisodePlayMediaSelectorSheet3() = ProvideCompositionLocalsForPreview {
     EpisodePlayMediaSelector(
         rememberTestMediaSelectorState(),
         TestMediaSourceResultListPresentation,

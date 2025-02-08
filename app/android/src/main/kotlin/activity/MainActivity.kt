@@ -79,7 +79,7 @@ class MainActivity : AniComponentActivity() {
                         aniNavigator.awaitNavController()
                         delay(1000) // 等待初始化好, 否则跳转可能无效
                     }
-                    aniNavigator.navigateSubjectDetails(id)
+                    aniNavigator.navigateSubjectDetails(id, placeholder = null)
                 } catch (e: Exception) {
                     logger.error(e) { "Failed to navigate to subject details" }
                 }

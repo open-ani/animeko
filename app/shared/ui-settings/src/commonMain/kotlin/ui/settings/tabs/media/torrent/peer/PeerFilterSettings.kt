@@ -53,7 +53,7 @@ import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 
 @Composable
-fun PeerFilterSettingsPage(
+fun PeerFilterSettingsScreen(
     state: PeerFilterSettingsState,
     modifier: Modifier = Modifier,
     navigator: ThreePaneScaffoldNavigator<Any> = rememberListDetailPaneScaffoldNavigator(),

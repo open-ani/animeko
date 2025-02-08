@@ -11,17 +11,26 @@ package me.him188.ani.app.domain.foundation
 
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
+import io.ktor.client.call.HttpClientCall
 import io.ktor.client.plugins.BrowserUserAgent
 import io.ktor.client.plugins.HttpSend
+import io.ktor.client.plugins.ResponseException
+import io.ktor.client.plugins.Sender
 import io.ktor.client.plugins.auth.Auth
 import io.ktor.client.plugins.auth.providers.BearerTokens
 import io.ktor.client.plugins.auth.providers.bearer
 import io.ktor.client.plugins.plugin
+import io.ktor.client.request.HttpRequestBuilder
+import io.ktor.http.Url
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.io.IOException
 import me.him188.ani.app.platform.getAniUserAgent
 import me.him188.ani.utils.coroutines.Symbol
 import me.him188.ani.utils.ktor.userAgent
+import me.him188.ani.utils.logging.SilentLogger
+import me.him188.ani.utils.logging.debug
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.jvm.JvmField
 
 
@@ -156,3 +165,106 @@ class UseBangumiTokenFeatureHandler(
 // endregion
 
 
+// region ServerListFeature
+/**
+ * 自动替换请求中的 host, 使用多个 URL 重试.
+ */
+val ServerListFeature = ScopedHttpClientFeatureKey<ServerListFeatureConfig>("ServerList")
+
+data class ServerListFeatureConfig(
+    val aniServerRules: AniServerRule?,
+) {
+    data class AniServerRule(
+        /**
+         * 如果请求的 host 为其中任何一个, 则替换为 ani 服务器地址, 并依次重试.
+         */
+        val hostMatches: Set<String>,
+    ) {
+        init {
+            require(hostMatches.isNotEmpty()) { "hostMatches must not be empty" }
+        }
+    }
+
+    companion object {
+        const val MAGIC_ANI_SERVER_HOST = "MAGIC_ANI_SERVER"
+        const val MAGIC_ANI_SERVER = "https://$MAGIC_ANI_SERVER_HOST/"
+
+        val Default = ServerListFeatureConfig(
+            aniServerRules = AniServerRule(
+                hostMatches = setOf(MAGIC_ANI_SERVER_HOST),
+            ),
+        )
+    }
+}
+
+data class ServerListFeatureHandler(
+    private val aniServerUrls: Flow<List<Url>>,
+) : ScopedHttpClientFeatureHandler<ServerListFeatureConfig>(ServerListFeature) {
+    override fun applyToClient(client: HttpClient, value: ServerListFeatureConfig) {
+        client.plugin(HttpSend).intercept { request ->
+            value.aniServerRules?.let { rule ->
+                handleAniRule(rule, request)
+            }?.let {
+                return@intercept it
+            }
+
+            execute(request)
+        }
+    }
+
+    /**
+     * @return non-null if this rule is applied, which means further processing is NOT needed.
+     * Returns `null` if the request does not match this rule, so further handling is needed.
+     */
+    private suspend fun Sender.handleAniRule(
+        rule: ServerListFeatureConfig.AniServerRule,
+        request: HttpRequestBuilder
+    ): HttpClientCall? {
+        if (rule.hostMatches.isEmpty() || rule.hostMatches.none { request.url.host.startsWith(it) }) {
+            return null
+        }
+
+        val urls = aniServerUrls.first()
+        if (urls.isEmpty()) {
+            error("No server URL to try for ani server request")
+        }
+
+        var lastCall: HttpClientCall? = null
+        for (serverUrl in urls) {
+            // Apply server URL to request
+            request.url.protocol = serverUrl.protocol
+            request.url.host = serverUrl.host
+            request.url.port = serverUrl.port
+            request.url.encodedUser = serverUrl.encodedUser
+            request.url.encodedPassword = serverUrl.encodedPassword
+
+            logger.debug { "Trying server $serverUrl for request ${request.url}" }
+            val thisCall = try {
+                execute(request) // if `expectSuccess` is true, this will throw on failure, otherwise return the call
+            } catch (e: CancellationException) {
+                throw e // don't prevent cancellation
+            } catch (e: ResponseException) {
+                continue // try next server
+            } catch (e: IOException) {
+                continue // try next server
+            }
+            lastCall = thisCall
+
+            if (thisCall.response.status.value in 100..399) {
+                // success
+                return thisCall
+            } else {
+                // failed
+                continue // try next server
+            }
+        }
+
+        // all servers failed, return the last failure (for exception and logging)
+        return lastCall ?: throw IOException(
+            "All servers failed for request ${request.url}. Tried: " +
+                    "\n${urls.joinToString("\n")}",
+        )
+    }
+
+    private val logger = SilentLogger//logger<ServerListFeatureHandler>()
+}

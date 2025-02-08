@@ -24,7 +24,7 @@ import me.him188.ani.app.domain.media.selector.DefaultMediaSelector
 import me.him188.ani.app.domain.media.selector.MaybeExcludedMedia
 import me.him188.ani.app.domain.media.selector.MediaExclusionReason
 import me.him188.ani.app.domain.media.selector.MediaSelectorContext
-import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview
+import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.datasources.api.CachedMedia
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.topic.ResourceLocation
@@ -46,7 +46,7 @@ internal val previewMediaList = TestMediaList.run {
 @Composable
 private fun PreviewMediaSelector() {
     val mediaSelector = rememberTestMediaSelectorPresentation(previewMediaList)
-    ProvideFoundationCompositionLocalsForPreview {
+    ProvideCompositionLocalsForPreview {
         Surface {
             MediaSelectorView(
                 state = mediaSelector,
@@ -91,7 +91,7 @@ private fun rememberTestMediaSelectorPresentation(previewMediaList: List<Media>)
 @OptIn(TestOnly::class)
 @PreviewLightDark
 @Composable
-private fun PreviewMediaItemIncluded(modifier: Modifier = Modifier) = ProvideFoundationCompositionLocalsForPreview {
+private fun PreviewMediaItemIncluded(modifier: Modifier = Modifier) = ProvideCompositionLocalsForPreview {
     MediaSelectorItem(
         remember {
             MediaGroupBuilder("Test").apply {
@@ -113,7 +113,7 @@ private fun PreviewMediaItemIncluded(modifier: Modifier = Modifier) = ProvideFou
 @OptIn(TestOnly::class)
 @PreviewLightDark
 @Composable
-private fun PreviewMediaItemExcluded(modifier: Modifier = Modifier) = ProvideFoundationCompositionLocalsForPreview {
+private fun PreviewMediaItemExcluded(modifier: Modifier = Modifier) = ProvideCompositionLocalsForPreview {
     MediaSelectorItem(
         remember {
             MediaGroupBuilder("Test").apply {

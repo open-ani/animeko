@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -17,7 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
-import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview
+import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.richtext.RichText
 import me.him188.ani.app.ui.richtext.UIRichElement
 
@@ -65,7 +65,7 @@ private fun PreviewImpl() {
 @PreviewLightDark
 @Composable
 private fun PreviewRichTextSurfaceContainer() {
-    ProvideFoundationCompositionLocalsForPreview {
+    ProvideCompositionLocalsForPreview {
         Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
             PreviewImpl()
         }
@@ -75,7 +75,7 @@ private fun PreviewRichTextSurfaceContainer() {
 @PreviewLightDark
 @Composable
 private fun PreviewRichTextSurface() {
-    ProvideFoundationCompositionLocalsForPreview {
+    ProvideCompositionLocalsForPreview {
         Surface(color = MaterialTheme.colorScheme.surface) {
             PreviewImpl()
         }

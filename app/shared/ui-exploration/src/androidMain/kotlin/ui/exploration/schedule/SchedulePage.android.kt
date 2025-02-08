@@ -15,7 +15,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
-import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview
+import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.preview.PreviewTabletLightDark
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.utils.platform.annotations.TestOnly
@@ -24,9 +24,9 @@ import me.him188.ani.utils.platform.annotations.TestOnly
 @Preview
 @PreviewTabletLightDark
 fun PreviewSchedulePage() {
-    ProvideFoundationCompositionLocalsForPreview {
+    ProvideCompositionLocalsForPreview {
         Surface(color = MaterialTheme.colorScheme.surfaceContainerLowest) {
-            SchedulePage(
+            ScheduleScreen(
                 presentation = createTestSchedulePagePresentation(),
                 onRetry = {},
                 onClickItem = {},

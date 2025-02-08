@@ -1253,6 +1253,7 @@ class WithMatrix(
                     "assembleDebugAndroidTest",
                     "\"-Pandroid.min.sdk=30\"",
                 ],
+                maxAttempts = 3,
             )
             for (arch in listOfNotNull(
                 // test loading anitorrent and other native libraries

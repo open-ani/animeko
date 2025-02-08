@@ -38,7 +38,6 @@ import me.him188.ani.app.data.models.danmaku.DanmakuRegexFilter
 import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.ui.foundation.LocalPlatform
-import me.him188.ani.app.ui.foundation.launchInBackground
 import me.him188.ani.app.ui.foundation.rememberDebugSettingsViewModel
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.AbstractSettingsViewModel
@@ -363,9 +362,7 @@ fun EpisodeVideoSettings(
                 SwitchItem(
                     debugSettings.showControllerAlwaysOnRequesters,
                     onCheckedChange = {
-                        debugViewModel.launchInBackground {
-                            updateDebugSettings(debugSettings.copy(showControllerAlwaysOnRequesters = it))
-                        }
+                        debugViewModel.updateDebugSettings(debugSettings.copy(showControllerAlwaysOnRequesters = it))
                     },
                     title = { Text("showControllerAlwaysOnRequesters") },
                 )

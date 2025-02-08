@@ -26,6 +26,7 @@ import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
 import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.navigation.ThreePaneScaffoldNavigator
 import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
@@ -56,6 +57,7 @@ import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.ui.adaptive.AniListDetailPaneScaffold
 import me.him188.ani.app.ui.adaptive.AniTopAppBar
 import me.him188.ani.app.ui.adaptive.PaneScope
+import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.interaction.keyboardDirectionToSelectItem
 import me.him188.ani.app.ui.foundation.interaction.keyboardPageToScroll
@@ -65,7 +67,6 @@ import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.paneHorizontalPadding
 import me.him188.ani.app.ui.foundation.layout.paneVerticalPadding
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
-import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.app.ui.foundation.widgets.NsfwMask
 import me.him188.ani.app.ui.search.LoadErrorCard
@@ -174,9 +175,9 @@ internal fun SearchPageResultColumn(
 
     SearchResultLazyVerticalStaggeredGrid(
         items,
-        problem = {
+        error = {
             LoadErrorCard(
-                problem = it,
+                error = it,
                 onRetry = { items.retry() },
                 modifier = Modifier.fillMaxWidth(), // noop
             )
@@ -201,10 +202,11 @@ internal fun SearchPageResultColumn(
                 SearchDefaults.SearchSummaryItem(
                     items,
                     Modifier.animateItem(
-                        fadeInSpec = AniThemeDefaults.feedItemFadeInSpec,
-                        placementSpec = AniThemeDefaults.feedItemPlacementSpec,
-                        fadeOutSpec = AniThemeDefaults.feedItemFadeOutSpec,
+                        fadeInSpec = LocalAniMotionScheme.current.feedItemFadeInSpec,
+                        placementSpec = LocalAniMotionScheme.current.feedItemPlacementSpec,
+                        fadeOutSpec = LocalAniMotionScheme.current.feedItemFadeOutSpec,
                     ),
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
                 )
             }
         }
@@ -244,9 +246,9 @@ internal fun SearchPageResultColumn(
 //                            animatedVisibilityScope,
 //                        )
                             .animateItem(
-                                fadeInSpec = AniThemeDefaults.feedItemFadeInSpec,
-                                placementSpec = AniThemeDefaults.feedItemPlacementSpec,
-                                fadeOutSpec = AniThemeDefaults.feedItemFadeOutSpec,
+                                fadeInSpec = LocalAniMotionScheme.current.feedItemFadeInSpec,
+                                placementSpec = LocalAniMotionScheme.current.feedItemPlacementSpec,
+                                fadeOutSpec = LocalAniMotionScheme.current.feedItemFadeOutSpec,
                             )
                             .fillMaxWidth()
                             .bringIntoViewRequester(requester)

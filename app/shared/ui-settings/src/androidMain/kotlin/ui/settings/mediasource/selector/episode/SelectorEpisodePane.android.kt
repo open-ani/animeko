@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -23,7 +23,7 @@ import me.him188.ani.app.domain.mediasource.test.web.SelectorTestEpisodePresenta
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSourceArguments
 import me.him188.ani.app.domain.mediasource.web.SelectorSearchConfig
 import me.him188.ani.app.platform.LocalContext
-import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview
+import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.settings.mediasource.rss.createTestSaveableStorage
 import me.him188.ani.app.ui.settings.mediasource.selector.EditSelectorMediaSourcePageState
@@ -35,7 +35,7 @@ import kotlin.coroutines.EmptyCoroutineContext
 @OptIn(TestOnly::class)
 @Composable
 @Preview
-fun PreviewSelectorEpisodePaneCompact() = ProvideFoundationCompositionLocalsForPreview {
+fun PreviewSelectorEpisodePaneCompact() = ProvideCompositionLocalsForPreview {
     Surface {
         val state = rememberTestEditSelectorMediaSourceState(
             SelectorSearchConfig.MatchVideoConfig(),
@@ -54,7 +54,7 @@ fun PreviewSelectorEpisodePaneCompact() = ProvideFoundationCompositionLocalsForP
 @Composable
 @Preview(device = "spec:width=1280dp,height=800dp,dpi=240")
 fun PreviewSelectorEpisodePaneExpanded() {
-    ProvideFoundationCompositionLocalsForPreview {
+    ProvideCompositionLocalsForPreview {
         Surface {
             SelectorTestAndEpisodePane(
                 state = rememberTestEditSelectorMediaSourceState(),

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -26,7 +26,7 @@ import me.him188.ani.app.domain.mediasource.test.web.SelectorMediaSourceTester
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSourceEngine
 import me.him188.ani.app.domain.mediasource.web.SelectorSearchConfig
 import me.him188.ani.app.domain.mediasource.web.WebSearchSubjectInfo
-import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview
+import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.utils.platform.annotations.TestOnly
 import me.him188.ani.utils.xml.Document
 import me.him188.ani.utils.xml.Element
@@ -34,7 +34,7 @@ import me.him188.ani.utils.xml.Element
 @Composable
 @SuppressLint("UnusedContentLambdaTargetStateParameter")
 @Preview
-fun PreviewSelectorTestPane() = ProvideFoundationCompositionLocalsForPreview {
+fun PreviewSelectorTestPane() = ProvideCompositionLocalsForPreview {
     val scope = rememberCoroutineScope()
     SharedTransitionScope { modifier ->
         @Suppress("AnimatedContentLabel")

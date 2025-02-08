@@ -25,7 +25,7 @@ sealed class NavRoutes {
 
     @Serializable
     data class Main(
-        val initialPage: MainScenePage,
+        val initialPage: MainScreenPage,
         val requestSearchFocus: Boolean = false,
     ) : NavRoutes()
 
@@ -96,7 +96,7 @@ data class SubjectDetailPlaceholder(
 }
 
 @Serializable
-enum class MainScenePage {
+enum class MainScreenPage {
     Exploration,
     Collection,
     CacheManagement,
@@ -108,7 +108,7 @@ enum class MainScenePage {
 
         @Stable
         val NavType by lazy(LazyThreadSafetyMode.PUBLICATION) {
-            EnumNavType(kotlin.enums.enumEntries<MainScenePage>())
+            EnumNavType(kotlin.enums.enumEntries<MainScreenPage>())
         }
     }
 }
@@ -142,17 +142,17 @@ enum class SettingsTab {
 }
 
 @Stable
-fun MainScenePage.getIcon() = when (this) {
-    MainScenePage.Exploration -> Icons.Rounded.TravelExplore
-    MainScenePage.Collection -> Icons.Rounded.Star
-    MainScenePage.CacheManagement -> Icons.Rounded.DownloadDone
-    MainScenePage.Search -> Icons.Rounded.Search
+fun MainScreenPage.getIcon() = when (this) {
+    MainScreenPage.Exploration -> Icons.Rounded.TravelExplore
+    MainScreenPage.Collection -> Icons.Rounded.Star
+    MainScreenPage.CacheManagement -> Icons.Rounded.DownloadDone
+    MainScreenPage.Search -> Icons.Rounded.Search
 }
 
 @Stable
-fun MainScenePage.getText(): String = when (this) {
-    MainScenePage.Exploration -> "探索"
-    MainScenePage.Collection -> "追番"
-    MainScenePage.CacheManagement -> "缓存"
-    MainScenePage.Search -> "搜索"
+fun MainScreenPage.getText(): String = when (this) {
+    MainScreenPage.Exploration -> "探索"
+    MainScreenPage.Collection -> "追番"
+    MainScreenPage.CacheManagement -> "缓存"
+    MainScreenPage.Search -> "搜索"
 }

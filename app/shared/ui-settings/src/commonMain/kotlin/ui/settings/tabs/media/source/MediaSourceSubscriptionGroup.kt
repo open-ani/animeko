@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -56,7 +56,7 @@ import me.him188.ani.app.data.models.ApiFailure
 import me.him188.ani.app.domain.mediasource.subscription.MediaSourceSubscription
 import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.tools.formatDateTime
-import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
+import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.utils.platform.Uuid
@@ -137,7 +137,7 @@ internal fun SettingsScope.MediaSourceSubscriptionGroup(
 
             AnimatedContent(
                 state.isUpdateAllInProgress.collectAsStateWithLifecycle().value,
-                transitionSpec = AniThemeDefaults.standardAnimatedContentTransition,
+                transitionSpec = LocalAniMotionScheme.current.animatedContent.standard,
                 contentAlignment = Alignment.CenterEnd,
             ) {
                 if (it) {
@@ -169,7 +169,7 @@ internal fun SettingsScope.MediaSourceSubscriptionGroup(
                 confirmButton = {
                     AnimatedContent(
                         isAddInProgressState.value,
-                        transitionSpec = AniThemeDefaults.standardAnimatedContentTransition,
+                        transitionSpec = LocalAniMotionScheme.current.animatedContent.standard,
                         contentAlignment = Alignment.BottomEnd,
                     ) {
                         if (it) {

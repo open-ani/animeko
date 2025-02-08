@@ -26,7 +26,7 @@ import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.data.models.subject.TestSubjectCollections
 import me.him188.ani.app.data.models.subject.TestSubjectProgressInfos
 import me.him188.ani.app.domain.media.cache.EpisodeCacheStatus
-import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview
+import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.subject.collection.components.rememberTestEditableSubjectCollectionTypeState
 import me.him188.ani.app.ui.subject.collection.progress.SubjectProgressButton
 import me.him188.ani.app.ui.subject.collection.progress.rememberTestSubjectProgressState
@@ -35,7 +35,7 @@ import me.him188.ani.utils.platform.annotations.TestOnly
 @PreviewLightDark
 @Composable
 private fun PreviewSubjectCollectionsColumnPhone() {
-    ProvideFoundationCompositionLocalsForPreview {
+    ProvideCompositionLocalsForPreview {
         SubjectCollectionsColumn(
             items = rememberTestItems(),
             item = { TestSubjectCollectionItem(it) },
@@ -50,7 +50,7 @@ private fun rememberTestItems() =
 @PreviewLightDark
 @Composable
 private fun PreviewSubjectCollectionsColumnEmptyButLoading() {
-    ProvideFoundationCompositionLocalsForPreview {
+    ProvideCompositionLocalsForPreview {
         SubjectCollectionsColumn(
             items = rememberTestItems(),
             item = { TestSubjectCollectionItem(it) },
@@ -62,7 +62,7 @@ private fun PreviewSubjectCollectionsColumnEmptyButLoading() {
 @PreviewLightDark
 @Composable
 private fun PreviewSubjectCollectionsColumnEmpty() {
-    ProvideFoundationCompositionLocalsForPreview {
+    ProvideCompositionLocalsForPreview {
         SubjectCollectionsColumn(
             items = rememberTestItems(),
             item = { TestSubjectCollectionItem(it) },
@@ -105,7 +105,7 @@ private fun TestSubjectCollectionItem(it: SubjectCollectionInfo) {
 )
 @Composable
 private fun PreviewSubjectCollectionsColumnDesktopLarge() {
-    ProvideFoundationCompositionLocalsForPreview {
+    ProvideCompositionLocalsForPreview {
         SubjectCollectionsColumn(
             items = rememberTestItems(),
             item = { TestSubjectCollectionItem(it) },

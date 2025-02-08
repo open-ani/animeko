@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.ui.settings.tabs.media.torrent.peer
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
@@ -36,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.IconButton
+import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.components.TextItem
 
@@ -52,7 +52,7 @@ fun BlackListEditPane(
     var showAddBlackIpDialog by rememberSaveable { mutableStateOf(false) }
 
     SettingsTab(modifier) {
-        AnimatedVisibility(visible = showTitle) {
+        AniAnimatedVisibility(visible = showTitle) {
             Group(
                 title = { Text("黑名单") },
                 description = { Text("黑名单中的 Peer 总是被屏蔽，无论是否匹配过滤规则") },

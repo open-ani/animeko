@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -10,6 +10,7 @@
 package me.him188.ani.app.tools.update
 
 import me.him188.ani.app.platform.ContextMP
+import me.him188.ani.app.platform.ExecutableDirectoryDetector
 import me.him188.ani.app.platform.FileOpener
 import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.io.absolutePath
@@ -67,7 +68,7 @@ object WindowsUpdateInstaller : DesktopUpdateInstaller {
 
     override fun install(file: SystemPath, context: ContextMP): InstallationResult {
         logger.info { "Installing update for Windows" }
-        val appDir = File(System.getProperty("user.dir") ?: throw IllegalStateException("Cannot get app directory"))
+        val appDir = ExecutableDirectoryDetector.INSTANCE.getExecutableDirectory()
         logger.info { "Current app dir: ${appDir.absolutePath}" }
         if (!appDir.resolve("Ani.exe").exists()) {
             logger.info { "Current app dir does not have 'Ani.exe'. Fallback to manual update" }
@@ -100,7 +101,7 @@ object WindowsUpdateInstaller : DesktopUpdateInstaller {
     }
 
     override fun deleteOldUpdater() {
-        val appDir = File(System.getProperty("user.dir") ?: throw IllegalStateException("Cannot get app directory"))
+        val appDir = ExecutableDirectoryDetector.INSTANCE.getExecutableDirectory()
         val updateExecutable = appDir.resolve("ani_update.exe")
         if (updateExecutable.exists()) {
             updateExecutable.delete()
