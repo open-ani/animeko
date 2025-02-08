@@ -23,7 +23,6 @@ import io.ktor.http.appendPathSegments
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
@@ -64,7 +63,15 @@ interface BangumiClient {
 
     suspend fun getSelfInfoByToken(accessToken: String?): BangumiUser?
 
-    suspend fun testConnection(): ConnectionStatus
+    /**
+     * 测试与 Bangumi 主站的连接
+     */
+    suspend fun testConnectionMaster(): ConnectionStatus
+
+    /**
+     * 测试与 Bangumi Next 的连接
+     */
+    suspend fun testConnectionNext(): ConnectionStatus
 }
 
 private const val BANGUMI_API_HOST = "https://api.bgm.tv"
@@ -122,9 +129,17 @@ class BangumiClientImpl(
         }
     }
 
-    override suspend fun testConnection(): ConnectionStatus {
+    override suspend fun testConnectionMaster(): ConnectionStatus {
+        return testConnection(BANGUMI_API_HOST)
+    }
+
+    override suspend fun testConnectionNext(): ConnectionStatus {
+        return testConnection(BANGUMI_NEXT_API_HOST)
+    }
+
+    private suspend fun testConnection(host: String): ConnectionStatus {
         return client.use {
-            get(BANGUMI_API_HOST).run {
+            get(host).run {
                 if (status.isSuccess() || status == HttpStatusCode.NotFound)
                     ConnectionStatus.SUCCESS
                 else ConnectionStatus.FAILED

@@ -9,10 +9,17 @@
 
 package me.him188.ani.app.domain.settings
 
-import io.ktor.http.*
+import io.ktor.http.isSuccess
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -185,11 +192,10 @@ object ServiceConnectionTesters {
         return ServiceConnectionTester(
             listOf(
                 Service(ID_BANGUMI) {
-                    bangumiClient.testConnection() == ConnectionStatus.SUCCESS
+                    bangumiClient.testConnectionMaster() == ConnectionStatus.SUCCESS
                 },
                 Service(ID_BANGUMI_NEXT) {
-                    // TODO: test bangumi next
-                    bangumiClient.testConnection() == ConnectionStatus.SUCCESS
+                    bangumiClient.testConnectionNext() == ConnectionStatus.SUCCESS
                 },
                 Service(ID_ANI) {
                     runCatching {

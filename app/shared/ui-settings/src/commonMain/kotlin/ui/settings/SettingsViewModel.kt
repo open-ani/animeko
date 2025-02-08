@@ -176,7 +176,7 @@ class SettingsViewModel : AbstractSettingsViewModel(), KoinComponent {
             ConnectionTester(
                 id = "Bangumi", // Bangumi 顺便也测一下
             ) {
-                if (bangumiClient.testConnection() == ConnectionStatus.SUCCESS) {
+                if (bangumiClient.testConnectionMaster() == ConnectionStatus.SUCCESS) {
                     ConnectionTestResult.SUCCESS
                 } else {
                     ConnectionTestResult.FAILED
