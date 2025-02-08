@@ -7,8 +7,6 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-@file:Suppress("INVISIBLE_REFERENCE", "INVISIBLE_MEMBER")
-
 package me.him188.ani.app.desktop.window
 
 import androidx.compose.animation.AnimatedVisibility
@@ -71,7 +69,6 @@ import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.zIndex
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import me.him188.ani.app.platform.window.ExtendedUser32
 import me.him188.ani.app.platform.window.LocalTitleBarThemeController
 import me.him188.ani.app.platform.window.TitleBarThemeController
 import me.him188.ani.app.platform.window.WindowsWindowUtils
@@ -113,15 +110,15 @@ fun FrameWindowScope.WindowsWindowFrame(
     DisposableEffect(window.windowHandle, density, layoutHitTestOwner, platformWindow, this) {
         windowUtils.extendToTitleBar(platformWindow, this@WindowsWindowFrame) { x, y ->
             when {
-                buttonRects[0].contains(x, y) -> ExtendedUser32.HTMINBUTTON
-                buttonRects[1].contains(x, y) -> ExtendedUser32.HTMAXBUTTON
-                buttonRects[2].contains(x, y) -> ExtendedUser32.HTCLOSE
+                buttonRects[0].contains(x, y) -> WindowsWindowUtils.hitMinimize
+                buttonRects[1].contains(x, y) -> WindowsWindowUtils.hitMaxButton
+                buttonRects[2].contains(x, y) -> WindowsWindowUtils.hitClose
                 y <= titleBarInsets.insets.getTop(density) && !layoutHitTestOwner.hitTest(
                     x,
                     y,
-                ) -> ExtendedUser32.HTCAPTION
+                ) -> WindowsWindowUtils.hitCaption
 
-                else -> ExtendedUser32.HTCLIENT
+                else -> WindowsWindowUtils.hitClient
             }
         }
         onDispose {
