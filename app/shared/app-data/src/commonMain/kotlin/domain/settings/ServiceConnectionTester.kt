@@ -135,10 +135,13 @@ class ServiceConnectionTester(
         ) : TestState()
     }
 
-    class Results(
-        val states: Map<Service, TestState>,
-    )
+    class Results internal constructor(
+        internal val states: Map<Service, TestState>,
+    ) {
+        val idToStateMap: Map<String, TestState> by lazy { states.mapKeys { it.key.id } }
 
+        fun findStateById(id: String): TestState? = states.keys.find { it.id == id }?.let { states[it] }
+    }
 
     private class ServiceImpl(
         val service: Service,
