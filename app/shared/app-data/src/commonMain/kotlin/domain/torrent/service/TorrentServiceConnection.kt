@@ -17,6 +17,7 @@ import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineName
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancel
@@ -26,6 +27,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.yield
 import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.logging.debug
 import me.him188.ani.utils.logging.error
@@ -71,9 +73,8 @@ class LifecycleAwareTorrentServiceConnection<T : Any>(
     private val lifecycle: Lifecycle,
     private val starter: TorrentServiceStarter<T>,
 ) : TorrentServiceConnection<T> {
-    private val logger = logger(this::class.simpleName ?: "TorrentServiceConnection")
+    private val logger = logger(this::class.simpleName ?: "LifecycleAwareTorrentServiceConnection")
 
-    // we assert it is a single thread dispatcher
     private val scope = parentCoroutineContext.childScope()
     
     private var binderDeferred by atomic(CompletableDeferred<T>())
@@ -93,19 +94,19 @@ class LifecycleAwareTorrentServiceConnection<T : Any>(
         synchronized(lifecycleLoopLock) {
             if (started) return
 
-            scope.launch {
+            scope.launch(CoroutineName("TorrentServiceConnection - RepeatOnResume")) {
                 lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
                     isAtForeground.value = true
                     try {
                         if (!isServiceConnected.value) {
-                            logger.debug { "Lifecycle resume: Service is not connected, start connecting..." }
+                            logger.debug { "Service is disconnected while app is at foreground, reconnecting..." }
                             startServiceWithRetry()
                         }
 
                         awaitCancellation()
                     } catch (_: CancellationException) {
                         isAtForeground.value = false
-                        logger.debug { "Lifecycle pause: App moved to background." }
+                        logger.debug { "App moved to background." }
                     }
                 }
             }
@@ -119,18 +120,26 @@ class LifecycleAwareTorrentServiceConnection<T : Any>(
      * 如果目前 APP 还在前台, 就要尝试重启并重连服务.
      */
     fun onServiceDisconnected() {
-        scope.launch(CoroutineName("TorrentServiceConnection - Lifecycle")) {
-            if (!isServiceConnected.value) {
-                // 已经是断开状态，直接忽略
-                return@launch
+        scope.launch(
+            CoroutineName("TorrentServiceConnection - ServiceDisconnected"),
+            start = CoroutineStart.UNDISPATCHED,
+        ) {
+            startServiceLock.withLock {
+                yield()
+
+                if (!isServiceConnected.value) {
+                    // 已经是断开状态，直接忽略
+                    return@launch
+                }
+                isServiceConnected.value = false
+                binderDeferred.cancel(CancellationException("Service disconnected."))
+                binderDeferred = CompletableDeferred()
             }
-            isServiceConnected.value = false
-            binderDeferred.cancel(CancellationException("Service disconnected."))
-            binderDeferred = CompletableDeferred()
 
             // 若应用仍想要连接，则重新启动
             if (isAtForeground.value) {
-                logger.debug { "Service is disconnected and app is in foreground, restarting service connection in 3s..." }
+                logger.debug { "Service is disconnected and app is in foreground, restarting service connection in 2500 ms..." }
+                delay(2500)
                 startServiceWithRetry()
             } else {
                 logger.debug { "Service is disconnected and app is in background." }
@@ -144,14 +153,24 @@ class LifecycleAwareTorrentServiceConnection<T : Any>(
     ) {
         var attempt = 0
         while (attempt < maxAttempts && isAtForeground.value && !isServiceConnected.value) {
-            val binder = try {
+            try {
                 startServiceLock.withLock {
                     if (!isAtForeground.value || isServiceConnected.value) {
                         logger.debug { "Service is already connected or app is not at foreground." }
                         return
                     }
-                    starter.start()
+
+                    val startResult = starter.start()
+
+                    logger.debug { "Service connected successfully: $startResult" }
+                    if (binderDeferred.isCompleted) {
+                        binderDeferred = CompletableDeferred()
+                    }
+                    binderDeferred.complete(startResult)
+                    isServiceConnected.value = true
                 }
+
+                return
             } catch (ex: ServiceStartException) {
                 logger.error(ex) { "[#$attempt] Failed to start service, retry after $delayMillisBetweenAttempts ms" }
 
@@ -160,24 +179,19 @@ class LifecycleAwareTorrentServiceConnection<T : Any>(
 
                 continue
             }
-
-            logger.debug { "Service connected successfully: $binder" }
-            if (binderDeferred.isCompleted) {
-                binderDeferred = CompletableDeferred()
-            }
-            binderDeferred.complete(binder)
-            isServiceConnected.value = true
-
-            return
         }
         if (!isServiceConnected.value) {
-            logger.error { "Failed to connect service after $maxAttempts retries." }
+            logger.error { "Failed to connect service after $attempt retries." }
         }
     }
 
     fun close() {
-        scope.launch(NonCancellable) {
-            logger.debug { "close(): Cancel scope, mark disconnected." }
+        // close 工作不应该被取消并且需要立刻执行
+        scope.launch(
+            NonCancellable + CoroutineName("TorrentServiceConnection - Close"),
+            start = CoroutineStart.UNDISPATCHED,
+        ) {
+            logger.debug { "Closing scope of TorrentServiceConnection." }
             isServiceConnected.value = false
             binderDeferred.cancel(CancellationException("Connection closed."))
             scope.cancel()
@@ -190,7 +204,8 @@ class LifecycleAwareTorrentServiceConnection<T : Any>(
      * - 如果服务还未连接, 此函数将挂起.
      */
     override suspend fun getBinder(): T {
-        // track cancellation of [scope]
+        // 如果 isServiceDisconnected 为 false, 那 binderDeferred 一定是未完成的, 见 onServiceDisconnected
+        // 如果 isServiceDisconnected 为 true, 那 binderDeferred 一定是已完成的, 见 startServiceWithRetry
         return binderDeferred.await()
     }
 }
