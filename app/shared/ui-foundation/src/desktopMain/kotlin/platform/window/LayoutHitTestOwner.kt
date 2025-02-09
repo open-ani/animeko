@@ -49,7 +49,7 @@ fun rememberLayoutHitTestOwner(): LayoutHitTestOwner? {
 }
 
 /*
-* reflect implementation for compose 1.7
+* reflect implementation for compose 1.8
  */
 private abstract class ReflectLayoutHitTestOwner : LayoutHitTestOwner {
     @OptIn(InternalComposeUiApi::class)
