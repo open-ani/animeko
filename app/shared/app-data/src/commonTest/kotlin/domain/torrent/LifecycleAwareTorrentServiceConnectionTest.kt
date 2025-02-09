@@ -13,8 +13,9 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.testing.TestLifecycleOwner
 import app.cash.turbine.test
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -46,6 +47,8 @@ class LifecycleAwareTorrentServiceConnectionTest : AbstractTorrentServiceConnect
             // completed
             expectNoEvents()
         }
+
+        connection.close()
     }
 
     @Test
@@ -69,9 +72,11 @@ class LifecycleAwareTorrentServiceConnectionTest : AbstractTorrentServiceConnect
             // We'll watch for a short while and confirm it does not become true
             repeat(3) {
                 expectNoEvents()
-                advanceTimeBy(8000) // Let the internal retry happen
+                advanceTimeBy(10000) // Let the internal retry happen
             }
         }
+
+        connection.close()
     }
 
     @Test
@@ -84,12 +89,12 @@ class LifecycleAwareTorrentServiceConnectionTest : AbstractTorrentServiceConnect
         ).also { it.startLifecycleLoop() }
         
         // Start a coroutine that calls getBinder
-        val binderDeferred = async {
+        val binderDeferred = async(start = CoroutineStart.UNDISPATCHED) {
             connection.getBinder() // Should suspend
         }
 
         // The call hasn't returned yet, because we haven't simulated connect
-        advanceTimeBy(200) // Enough to start the service, but not connect
+        advanceUntilIdle() // Enough to start the service, but not connect
         assertTrue(!binderDeferred.isCompleted)
 
         testLifecycle.setCurrentState(Lifecycle.State.RESUMED)
@@ -97,6 +102,8 @@ class LifecycleAwareTorrentServiceConnectionTest : AbstractTorrentServiceConnect
         // Once connected, getBinder should complete with the fake binder
         val binder = binderDeferred.await()
         assertEquals(fakeBinder, binder)
+
+        connection.close()
     }
 
     @Test
@@ -112,22 +119,25 @@ class LifecycleAwareTorrentServiceConnectionTest : AbstractTorrentServiceConnect
             assertFalse(awaitItem(), "Initially, connected should be false.")
             // Wait for the startService invocation
             testLifecycle.setCurrentState(Lifecycle.State.RESUMED)
-            advanceTimeBy(200)
+            advanceUntilIdle()
             // Now it’s connected
             assertTrue(awaitItem(), "Service should be connected.")
 
             // Disconnect:
             connection.onServiceDisconnected()
+            advanceUntilIdle()
             assertFalse(awaitItem(), "Service should be disconnected since we triggered disconnection.")
 
             // Because the lifecycle is still in RESUMED,
             // it should attempt to startService again automatically
             // We can wait a bit, then connect again:
-            advanceTimeBy(200) // let the startService happen
+            advanceUntilIdle() // let the startService happen
             assertTrue(awaitItem(), "Service should be reconnected since lifecycle state is RESUMED.")
             
             expectNoEvents()
         }
+
+        connection.close()
     }
 
     @Test
@@ -144,7 +154,7 @@ class LifecycleAwareTorrentServiceConnectionTest : AbstractTorrentServiceConnect
 
             // Wait for the startService invocation
             testLifecycle.setCurrentState(Lifecycle.State.RESUMED)
-            advanceTimeBy(200)
+            advanceUntilIdle()
             // Now it’s connected
             assertTrue(awaitItem(), "Service should be connected.")
 
@@ -154,13 +164,45 @@ class LifecycleAwareTorrentServiceConnectionTest : AbstractTorrentServiceConnect
             connection.onServiceDisconnected()
 
             // Should remain disconnected, no auto retry because we are no longer in RESUMED
-            advanceTimeBy(2000)
+            advanceUntilIdle()
             assertFalse(awaitItem(), "Service should not be connected because current lifecycle state is not RESUMED.")
+
+            advanceUntilIdle()
+            expectNoEvents()
         }
+
+        connection.close()
     }
 
     @Test
-    fun `close cancels all coroutines and flows`() = runTest {
+    fun `lifecycle move to STARTED while starting service`() = runTest {
+        val testLifecycle = TestLifecycleOwner()
+        val connection = LifecycleAwareTorrentServiceConnection(
+            parentCoroutineContext = backgroundScope.coroutineContext,
+            lifecycle = testLifecycle.lifecycle,
+            starter = startServiceWithSuccess,
+        ).also { it.startLifecycleLoop() }
+
+        connection.connected.test {
+            assertFalse(awaitItem(), "Initially, connected should be false.")
+
+
+            // Wait for the startService invocation
+            // connect 成功需要 200ms, 100ms 后就 move to STARTED
+            testLifecycle.setCurrentState(Lifecycle.State.RESUMED)
+            advanceTimeBy(100)
+            testLifecycle.setCurrentState(Lifecycle.State.STARTED)
+
+            // 启动中途切到后台 (lifecycle state => STARTED) 不会 emit true
+            advanceUntilIdle()
+            expectNoEvents()
+        }
+
+        connection.close()
+    }
+
+    @Test
+    fun `fast path for service disconnected and also does not affect binder getter`() = runTest {
         val testLifecycle = TestLifecycleOwner()
         val connection = LifecycleAwareTorrentServiceConnection(
             parentCoroutineContext = backgroundScope.coroutineContext,
@@ -172,19 +214,46 @@ class LifecycleAwareTorrentServiceConnectionTest : AbstractTorrentServiceConnect
         assertFalse(connection.connected.value)
 
         // Attempt to call getBinder() after close => should never succeed
-        val cancelled = CompletableDeferred<Boolean>()
-        launch {
-            try {
-                connection.getBinder()
-            } catch (ex: CancellationException) {
-                cancelled.complete(true)
-            }
-        }
-        
-        advanceUntilIdle()
-        connection.close()
+        var cancelled = false
 
-        advanceUntilIdle()
-        assertTrue(cancelled.await(), "getBinder() should be cancelled because connection is closed.")
+        connection.connected.test {
+            assertFalse(awaitItem(), "Initially, connected should be false.")
+
+            backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                try {
+                    connection.getBinder()
+                } catch (ex: CancellationException) {
+                    cancelled = true
+                }
+            }
+
+            // connect 成功需要 200ms, 100ms 后就 trigger disconnect
+            // 此时 connected 不会被设置为 true, 因为通过 fast path 检测到了 disconnect
+            testLifecycle.setCurrentState(Lifecycle.State.RESUMED)
+            delay(100)
+            connection.onServiceDisconnected()
+
+            advanceUntilIdle()
+            testLifecycle.setCurrentState(Lifecycle.State.STARTED)
+
+            // no connected = false should be emitted, and also binder getter is still active.
+            expectNoEvents()
+            assertFalse(cancelled, "getBinder() should not be cancelled.")
+
+            advanceUntilIdle()
+            testLifecycle.setCurrentState(Lifecycle.State.RESUMED)
+            delay(500)
+            testLifecycle.setCurrentState(Lifecycle.State.STARTED)
+            connection.onServiceDisconnected()
+
+            advanceUntilIdle()
+            assertTrue(awaitItem(), "Service should be connected.")
+            assertFalse(awaitItem(), "Service should be disconnected.")
+
+            advanceUntilIdle()
+            expectNoEvents()
+        }
+
+        connection.close()
     }
 }

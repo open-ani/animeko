@@ -27,25 +27,25 @@ sealed class ServiceStartException : Exception() {
     /**
      * 详情查看 `Context.startForegroundService`.
      */
-    data class StartFailed(override val cause: Throwable? = null) : ServiceStartException()
+    class StartFailed(override val cause: Throwable? = null) : ServiceStartException()
 
     /**
      * 服务启动了, 但服务回应了启动失败, 详情查看 [AniTorrentService][me.him188.ani.app.domain.torrent.service.AniTorrentService] 中的 `INTENT_STARTUP`.
      */
-    data object StartRespondFailure : ServiceStartException()
+    class StartRespondFailure : ServiceStartException()
 
     /**
      * 绑定服务失败, 详情查看 `Context.bindService`.
      */
-    data object BindServiceFailed : ServiceStartException()
+    class BindServiceFailed : ServiceStartException()
 
     /**
      * 绑定成功, 但是获取了空服务通信对象.
      */
-    data object NullBinder : ServiceStartException()
+    class NullBinder : ServiceStartException()
 
     /**
      * 服务在等待通信对象的时候意外断开了连接. 详情查看 `android.content.ServiceConnection` 中的 `onServiceDisconnected`.
      */
-    data object DisconnectedUnexpectedly : ServiceStartException()
+    class DisconnectedUnexpectedly : ServiceStartException()
 }

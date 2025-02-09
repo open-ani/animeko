@@ -100,8 +100,6 @@ private class ForegroundServiceTimeLimitObserver(
     private val context: Context,
     onServiceTimeLimitExceeded: () -> Unit
 ) : DefaultLifecycleObserver {
-    private val logger = logger<ForegroundServiceTimeLimitObserver>()
-
     private var registered = false
     private val timeExceedLimitIntentFilter = IntentFilter(AniTorrentService.INTENT_BACKGROUND_TIMEOUT)
     private val timeExceedLimitReceiver = object : BroadcastReceiver() {

@@ -24,7 +24,7 @@ abstract class AbstractTorrentServiceConnectionTest {
 
     protected val startServiceWithSuccess = object : TorrentServiceStarter<String> {
         override suspend fun start(): String {
-            delay(300)
+            delay(200)
             return fakeBinder
         }
     }
@@ -32,7 +32,7 @@ abstract class AbstractTorrentServiceConnectionTest {
     protected val startServiceWithFail = object : TorrentServiceStarter<String> {
         override suspend fun start(): String {
             delay(100)
-            throw ServiceStartException.NullBinder
+            throw ServiceStartException.NullBinder()
         }
     }
     

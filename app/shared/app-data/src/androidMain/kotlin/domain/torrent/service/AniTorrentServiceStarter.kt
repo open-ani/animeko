@@ -33,11 +33,26 @@ class AniTorrentServiceStarter(
     private val context: Context,
     private val startServiceImpl: () -> ComponentName?,
     private val onServiceDisconnected: () -> Unit = { },
-) : ServiceConnection, TorrentServiceStarter<IRemoteAniTorrentEngine> {
+) : TorrentServiceStarter<IRemoteAniTorrentEngine> {
     private val logger = logger<AniTorrentServiceStarter>()
 
     private val startupIntentFilter = IntentFilter(AniTorrentService.INTENT_STARTUP)
     private val binderDeferred = MutableStateFlow<CompletableDeferred<IRemoteAniTorrentEngine>?>(null)
+
+    private val conn = object : ServiceConnection {
+        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+            if (service == null) {
+                binderDeferred.value?.completeExceptionally(ServiceStartException.NullBinder())
+            }
+            val result = IRemoteAniTorrentEngine.Stub.asInterface(service)
+            binderDeferred.value?.complete(result)
+        }
+
+        override fun onServiceDisconnected(name: ComponentName?) {
+            binderDeferred.value?.completeExceptionally(ServiceStartException.DisconnectedUnexpectedly())
+            onServiceDisconnected()
+        }
+    }
 
     override suspend fun start(): IRemoteAniTorrentEngine {
         suspendCancellableCoroutine { cont ->
@@ -49,7 +64,7 @@ class AniTorrentServiceStarter(
                     val result = intent?.getBooleanExtra(AniTorrentService.INTENT_STARTUP_EXTRA, false) == true
 
                     if (!result) {
-                        cont.resumeWithException(ServiceStartException.StartRespondFailure)
+                        cont.resumeWithException(ServiceStartException.StartRespondFailure())
                     } else {
                         cont.resume(Unit)
                     }
@@ -89,28 +104,14 @@ class AniTorrentServiceStarter(
 
         val bindResult = context.bindService(
             Intent(context, AniTorrentService.actualServiceClass),
-            this,
+            conn,
             Context.BIND_ABOVE_CLIENT,
         )
-        if (!bindResult) throw ServiceStartException.BindServiceFailed
+        if (!bindResult) throw ServiceStartException.BindServiceFailed()
         logger.debug { "[3/4] Bound service successfully." }
 
         val result = newDeferred.await()
         logger.debug { "[4/4] Got service binder: $result" }
         return result
-    }
-
-
-    override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
-        if (service == null) {
-            binderDeferred.value?.completeExceptionally(ServiceStartException.NullBinder)
-        }
-        val result = IRemoteAniTorrentEngine.Stub.asInterface(service)
-        binderDeferred.value?.complete(result)
-    }
-
-    override fun onServiceDisconnected(name: ComponentName?) {
-        binderDeferred.value?.completeExceptionally(ServiceStartException.DisconnectedUnexpectedly)
-        onServiceDisconnected()
     }
 }
