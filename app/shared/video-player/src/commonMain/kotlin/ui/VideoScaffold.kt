@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -45,6 +46,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
+import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
 import me.him188.ani.app.ui.foundation.theme.slightlyWeaken
 import me.him188.ani.app.videoplayer.ui.guesture.PlayerGestureHost
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerBar
@@ -163,13 +165,23 @@ fun VideoScaffold(
                                     ),
                             )
                             val alwaysOnRequester = rememberAlwaysOnRequester(controllerState, "topBar")
+
                             Column(
                                 Modifier
                                     .hoverToRequestAlwaysOn(alwaysOnRequester)
                                     .fillMaxWidth(),
                             ) {
+                                //force skip layout hit test for windows
+                                val desktopTitleBarInsets = WindowInsets.desktopTitleBar.only(WindowInsetsSides.Top)
+                                Spacer(
+                                    modifier = Modifier.fillMaxWidth()
+                                        .pointerInput(Unit) {}
+                                        .windowInsetsPadding(desktopTitleBarInsets),
+
+                                    )
                                 Row(
                                     Modifier.fillMaxWidth()
+                                        .consumeWindowInsets(desktopTitleBarInsets)
                                         .windowInsetsPadding(contentWindowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top)),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {

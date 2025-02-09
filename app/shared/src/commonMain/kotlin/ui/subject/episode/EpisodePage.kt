@@ -103,6 +103,7 @@ import me.him188.ani.app.ui.foundation.effects.ScreenOnEffect
 import me.him188.ani.app.ui.foundation.effects.ScreenRotationEffect
 import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
+import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBarPadding
 import me.him188.ani.app.ui.foundation.layout.isHeightAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.isHeightCompact
@@ -505,6 +506,7 @@ private fun EpisodeScreenContentPhone(
                 vm, page,
                 danmakuHostState,
                 danmakuEditorState, vm.playerControllerState, vm.isFullscreen,
+                windowInsets = ScaffoldDefaults.contentWindowInsets.union(WindowInsets.desktopTitleBar),
             )
         },
         episodeDetails = {
