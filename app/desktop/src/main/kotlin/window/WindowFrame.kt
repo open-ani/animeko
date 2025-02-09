@@ -27,7 +27,11 @@ fun FrameWindowScope.WindowFrame(
         }
 
         is Platform.Windows -> {
-            WindowsWindowFrame(windowState, onCloseRequest, content)
+            WindowsWindowFrame(
+                windowState = windowState,
+                onCloseRequest = onCloseRequest,
+                content = content,
+            )
         }
 
         else -> {

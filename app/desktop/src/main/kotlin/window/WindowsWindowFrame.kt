@@ -35,11 +35,13 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Alignment
@@ -57,6 +59,8 @@ import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.platform.FontLoadResult
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.FrameWindowScope
@@ -64,7 +68,10 @@ import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.zIndex
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import me.him188.ani.app.platform.PlatformWindow
+import me.him188.ani.app.platform.window.LayoutHitTestOwner
 import me.him188.ani.app.platform.window.LocalTitleBarThemeController
 import me.him188.ani.app.platform.window.TitleBarThemeController
 import me.him188.ani.app.platform.window.WindowsWindowUtils
@@ -75,7 +82,6 @@ import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
 import me.him188.ani.app.ui.foundation.layout.LocalTitleBarInsets
 import me.him188.ani.app.ui.foundation.layout.ZeroInsets
 import me.him188.ani.app.ui.foundation.layout.isSystemInFullscreen
-import me.him188.ani.app.videoplayer.ui.guesture.VIDEO_GESTURE_MOUSE_MOVE_SHOW_CONTROLLER_DURATION
 import me.him188.ani.desktop.generated.resources.Res
 import me.him188.ani.desktop.generated.resources.ic_fluent_arrow_minimize_28_regular
 import me.him188.ani.desktop.generated.resources.ic_fluent_dismiss_48_regular
@@ -84,112 +90,63 @@ import me.him188.ani.desktop.generated.resources.ic_fluent_square_multiple_48_re
 import me.him188.ani.desktop.generated.resources.ic_fluent_subtract_48_filled
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
+import kotlin.time.Duration.Companion.seconds
 
 @OptIn(ExperimentalTextApi::class, InternalComposeUiApi::class)
 @Composable
-fun FrameWindowScope.WindowsWindowFrame(
+internal fun FrameWindowScope.WindowsWindowFrame(
     windowState: WindowState,
+    frameState: WindowsWindowFrameState? = rememberWindowsWindowFrameState(),
     onCloseRequest: () -> Unit,
     content: @Composable () -> Unit
 ) {
-    val layoutHitTestOwner = rememberLayoutHitTestOwner()
-    val platformWindow = LocalPlatformWindow.current
-    if (layoutHitTestOwner == null) {
+    if (frameState == null) {
         content()
         return
     }
-    val titleBarInsets = remember { MutableWindowInsets() }
-    val captionButtonsInsets = remember { MutableWindowInsets() }
-    val buttonRects = remember { Array(3) { Rect.Zero } }
-    val density = LocalDensity.current
     val windowUtils = WindowsWindowUtils.instance
-    DisposableEffect(window.windowHandle, density, layoutHitTestOwner, platformWindow, this) {
-        windowUtils.extendToTitleBar(platformWindow, this@WindowsWindowFrame) { x, y ->
-            when {
-                buttonRects[0].contains(x, y) -> WindowsWindowUtils.hitMinimize
-                buttonRects[1].contains(x, y) -> WindowsWindowUtils.hitMaxButton
-                buttonRects[2].contains(x, y) -> WindowsWindowUtils.hitClose
-                y <= titleBarInsets.insets.getTop(density) && !layoutHitTestOwner.hitTest(
-                    x,
-                    y,
-                ) -> WindowsWindowUtils.hitCaption
 
-                else -> WindowsWindowUtils.hitClient
-            }
-        }
-        onDispose {
-            windowUtils.removeExtendToTitleBar(platformWindow)
-        }
-    }
     Box(modifier = Modifier.fillMaxSize()) {
         val isFullScreen = isSystemInFullscreen()
         //Control the visibility of the title bar. initial value is !isFullScreen.
-        val isTitleBarVisible = remember(isFullScreen) { mutableStateOf(!isFullScreen) }
-        val captionButtonThemeController = remember(platformWindow) { TitleBarThemeController() }
+        LaunchedEffect(isFullScreen) {
+            frameState.isTitleBarVisible = !isFullScreen
+        }
+
+        // Window content
         CompositionLocalProvider(
-            LocalTitleBarInsets provides if (isTitleBarVisible.value) {
-                titleBarInsets
-            } else {
-                ZeroInsets
-            },
-            LocalCaptionButtonInsets provides if (isTitleBarVisible.value) {
-                captionButtonsInsets
-            } else {
-                ZeroInsets
-            },
-            LocalTitleBarThemeController provides captionButtonThemeController,
+            LocalTitleBarInsets provides frameState.titleBarInsets,
+            LocalCaptionButtonInsets provides frameState.captionButtonsInsets,
+            LocalTitleBarThemeController provides frameState.titleBarThemeController,
             content = content,
         )
+
+        //Hide title bar if window is full screen mode and title bar is not hovered.
         val titleBarInteractionSource = remember(isFullScreen) { MutableInteractionSource() }
         val titleBarHovered by titleBarInteractionSource.collectIsHoveredAsState()
         LaunchedEffect(titleBarInteractionSource, titleBarHovered, isFullScreen) {
             if (!titleBarHovered && isFullScreen) {
-                delay(VIDEO_GESTURE_MOUSE_MOVE_SHOW_CONTROLLER_DURATION)
-                isTitleBarVisible.value = false
+                delay(3.seconds)
+                frameState.isTitleBarVisible = false
             }
         }
-        val isActive = remember { mutableStateOf(false) }
-        //Draw the caption button
-        LaunchedEffect(platformWindow) {
-            windowUtils.windowIsActive(platformWindow)
-                .collect {
-                    isActive.value = it != false
-                }
-        }
+        //Extend window content to title bar.
+        ExtendToTitleBar(frameState)
+        //Draw Compose Windows title bar.
         AnimatedVisibility(
-            visible = isTitleBarVisible.value,
+            visible = frameState.isTitleBarVisible,
             modifier = Modifier
-                .ifThen(isTitleBarVisible.value && isFullScreen) { hoverable(titleBarInteractionSource) }
+                .ifThen(frameState.isTitleBarVisible && isFullScreen) { hoverable(titleBarInteractionSource) }
                 .fillMaxWidth()
-                .onSizeChanged { titleBarInsets.insets = WindowInsets(top = it.height) }
+                .onSizeChanged(frameState::updateTitleBarInsets)
                 .wrapContentWidth(AbsoluteAlignment.Right),
         ) {
             Row(
-                modifier = Modifier.onSizeChanged {
-                    captionButtonsInsets.insets = WindowInsets(right = it.width, top = it.height)
-                },
+                modifier = Modifier.onSizeChanged(frameState::updateCaptionButtonsInset),
             ) {
-                val fontIconFamily = remember { mutableStateOf<FontFamily?>(null) }
-                // Get windows system font icon, if get failed fall back to fluent svg icon.
-                val fontFamilyResolver = LocalFontFamilyResolver.current
-                LaunchedEffect(fontFamilyResolver) {
-                    fontIconFamily.value = sequenceOf("Segoe Fluent Icons", "Segoe MDL2 Assets")
-                        .mapNotNull {
-                            val fontFamily = FontFamily(it)
-                            runCatching {
-                                val result = fontFamilyResolver.resolve(fontFamily).value as FontLoadResult
-                                if (result.typeface == null || result.typeface?.familyName != it) {
-                                    null
-                                } else {
-                                    fontFamily
-                                }
-                            }.getOrNull()
-                        }
-                        .firstOrNull()
-                }
                 CompositionLocalProvider(
-                    LocalCaptionIconFamily provides fontIconFamily.value,
-                    LocalWindowsColorScheme provides if (captionButtonThemeController.isDark) {
+                    LocalCaptionIconFamily provides rememberFontIconFamily().value,
+                    LocalWindowsColorScheme provides if (frameState.titleBarThemeController.isDark) {
                         WindowsColorScheme.dark()
                     } else {
                         WindowsColorScheme.light()
@@ -198,30 +155,24 @@ fun FrameWindowScope.WindowsWindowFrame(
                     CaptionButtonRow(
                         windowsWindowUtils = windowUtils,
                         windowState = windowState,
+                        frameState = frameState,
                         isMaximize = windowState.placement == WindowPlacement.Maximized,
-                        isActive = isActive.value,
                         onCloseRequest = onCloseRequest,
-                        onMaximizeButtonRectUpdate = {
-                            buttonRects[1] = it
-                        },
-                        onMinimizeButtonRectUpdate = {
-                            buttonRects[0] = it
-                        },
-                        onCloseButtonRectUpdate = {
-                            buttonRects[2] = it
-                        },
+                        onMaximizeButtonRectUpdate = frameState::updateMaximizeButtonRect,
+                        onMinimizeButtonRectUpdate = frameState::updateMinimizeButtonRect,
+                        onCloseButtonRectUpdate = frameState::updateCloseButtonRect,
                     )
                 }
             }
         }
 
         //Auto hoverable area that can be used to show title bar when title bar is hidden.
-        if (!isTitleBarVisible.value) {
+        if (!frameState.isTitleBarVisible) {
             val awareAreaInteractionSource = remember { MutableInteractionSource() }
             val isAwareHovered by awareAreaInteractionSource.collectIsHoveredAsState()
             LaunchedEffect(isAwareHovered) {
                 if (isAwareHovered) {
-                    isTitleBarVisible.value = true
+                    frameState.isTitleBarVisible = true
                 }
             }
             Spacer(
@@ -234,10 +185,138 @@ fun FrameWindowScope.WindowsWindowFrame(
 }
 
 @Composable
+internal fun rememberWindowsWindowFrameState(): WindowsWindowFrameState? {
+    val layoutHitTestOwner = rememberLayoutHitTestOwner()
+    if (layoutHitTestOwner == null) return null
+    val platformWindow = LocalPlatformWindow.current
+    return remember(platformWindow, layoutHitTestOwner) { WindowsWindowFrameState(platformWindow, layoutHitTestOwner) }
+}
+
+internal class WindowsWindowFrameState(
+    internal val platformWindow: PlatformWindow,
+    private val layoutHitTestOwner: LayoutHitTestOwner,
+) {
+    val titleBarThemeController = TitleBarThemeController()
+
+    var isTitleBarVisible by mutableStateOf(true)
+
+    //0 is minimize, 1 is maximize, 2 is close
+    private val captionButtonsRect = Array(3) { Rect.Zero }
+
+    private val _titleBarInsets = MutableWindowInsets()
+    private val _captionButtonsInsets = MutableWindowInsets()
+
+    inline val titleBarInsets: WindowInsets
+        get() = if (isTitleBarVisible) {
+            _titleBarInsets
+        } else {
+            ZeroInsets
+        }
+
+    inline val captionButtonsInsets: WindowInsets
+        get() = if (isTitleBarVisible) {
+            _captionButtonsInsets
+        } else {
+            ZeroInsets
+        }
+
+    fun updateMinimizeButtonRect(rect: Rect) {
+        captionButtonsRect[0] = rect
+    }
+
+    fun updateMaximizeButtonRect(rect: Rect) {
+        captionButtonsRect[1] = rect
+    }
+
+    fun updateCloseButtonRect(rect: Rect) {
+        captionButtonsRect[2] = rect
+    }
+
+    fun updateCaptionButtonsInset(size: IntSize) {
+        _captionButtonsInsets.insets = WindowInsets(right = size.width, top = size.height)
+    }
+
+    fun updateTitleBarInsets(size: IntSize) {
+        _titleBarInsets.insets = WindowInsets(top = size.height)
+    }
+
+    fun hitTest(x: Float, y: Float, density: Density) = when {
+        captionButtonsRect[0].contains(x, y) -> WindowsWindowUtils.hitMinimize
+        captionButtonsRect[1].contains(x, y) -> WindowsWindowUtils.hitMaxButton
+        captionButtonsRect[2].contains(x, y) -> WindowsWindowUtils.hitClose
+        y <= titleBarInsets.getTop(density) && !layoutHitTestOwner.hitTest(x, y) -> WindowsWindowUtils.hitCaption
+        else -> WindowsWindowUtils.hitClient
+    }
+
+    @Composable
+    fun collectWindowIsActive(): State<Boolean> {
+        return remember(platformWindow) {
+            WindowsWindowUtils.instance.windowIsActive(platformWindow).map { it != false }
+        }.collectAsState(false)
+    }
+
+}
+
+@Composable
+private fun ExtendToTitleBar(frameState: WindowsWindowFrameState) {
+    val density = LocalDensity.current
+    DisposableEffect(frameState.platformWindow.windowHandle, density, frameState.platformWindow, frameState) {
+        val windowUtils = WindowsWindowUtils.instance
+        windowUtils.extendToTitleBar(frameState.platformWindow) { x, y -> frameState.hitTest(x, y, density) }
+        onDispose {
+            windowUtils.removeExtendToTitleBar(frameState.platformWindow)
+        }
+    }
+}
+
+@Composable
+private fun WindowsWindowFrameState.collectCaptionButtonColors(): CaptionButtonColors {
+    val isAccentColorFrameEnabled = remember(platformWindow) {
+        WindowsWindowUtils.instance.frameIsColorful(platformWindow)
+    }.collectAsState(false)
+    return if (isAccentColorFrameEnabled.value) {
+        val accentColor = remember(platformWindow) {
+            WindowsWindowUtils.instance.windowAccentColor(platformWindow)
+        }.collectAsState(Color.Unspecified)
+        if (accentColor.value != Color.Unspecified) {
+            CaptionButtonDefaults.accentColors(seedColor = accentColor.value)
+        } else {
+            CaptionButtonDefaults.defaultColors()
+        }
+    } else {
+        CaptionButtonDefaults.defaultColors()
+    }
+}
+
+@OptIn(ExperimentalTextApi::class)
+@Composable
+private fun rememberFontIconFamily(): State<FontFamily?> {
+    val fontIconFamily = remember { mutableStateOf<FontFamily?>(null) }
+    // Get windows system font icon, if get failed fall back to fluent svg icon.
+    val fontFamilyResolver = LocalFontFamilyResolver.current
+    LaunchedEffect(fontFamilyResolver) {
+        fontIconFamily.value = sequenceOf("Segoe Fluent Icons", "Segoe MDL2 Assets")
+            .mapNotNull {
+                val fontFamily = FontFamily(it)
+                runCatching {
+                    val result = fontFamilyResolver.resolve(fontFamily).value as FontLoadResult
+                    if (result.typeface == null || result.typeface?.familyName != it) {
+                        null
+                    } else {
+                        fontFamily
+                    }
+                }.getOrNull()
+            }
+            .firstOrNull()
+    }
+    return fontIconFamily
+}
+
+@Composable
 private fun FrameWindowScope.CaptionButtonRow(
     windowsWindowUtils: WindowsWindowUtils,
+    frameState: WindowsWindowFrameState,
     isMaximize: Boolean,
-    isActive: Boolean,
     windowState: WindowState,
     onCloseRequest: () -> Unit,
     modifier: Modifier = Modifier,
@@ -246,21 +325,8 @@ private fun FrameWindowScope.CaptionButtonRow(
     onCloseButtonRectUpdate: (Rect) -> Unit,
 ) {
     val platformWindow = LocalPlatformWindow.current
-    val isPlatformAccentColorFrameEnabled = remember(platformWindow) {
-        windowsWindowUtils.frameIsColorful(platformWindow)
-    }.collectAsState(false)
-    val captionButtonColors = if (!isPlatformAccentColorFrameEnabled.value) {
-        CaptionButtonDefaults.defaultColors()
-    } else {
-        val accentColor = remember(platformWindow) {
-            windowsWindowUtils.windowAccentColor(platformWindow)
-        }.collectAsState(Color.Unspecified)
-        if (accentColor.value != Color.Unspecified) {
-            CaptionButtonDefaults.accentColors(seedColor = accentColor.value)
-        } else {
-            CaptionButtonDefaults.defaultColors()
-        }
-    }
+    val captionButtonColors = frameState.collectCaptionButtonColors()
+    val isActive by frameState.collectWindowIsActive()
     Row(
         horizontalArrangement = Arrangement.aligned(AbsoluteAlignment.Right),
         modifier = modifier
