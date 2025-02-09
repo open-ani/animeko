@@ -30,6 +30,8 @@ import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.logger
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Torrent 服务与 APP 通信接口. [T] 为通信接口的类型
@@ -144,7 +146,7 @@ class LifecycleAwareTorrentServiceConnection<T : Any>(
      */
     private suspend fun startServiceAndGetBinder(
         maxAttempts: Int = Int.MAX_VALUE, // 可根据需求设置
-        intervalMillisBetweenAttempts: Long = 2500
+        intervalBetweenAttempt: Duration = 2500.milliseconds
     ): ServiceStartResult<T> {
         if (isServiceConnected.value) return ServiceStartResult.AlreadyStarted()
         var attempt = 0
@@ -157,10 +159,10 @@ class LifecycleAwareTorrentServiceConnection<T : Any>(
 
                 return ServiceStartResult.Success(result)
             } catch (ex: ServiceStartException) {
-                logger.error(ex) { "[#$attempt] Failed to start service, retry after $intervalMillisBetweenAttempts ms" }
+                logger.error(ex) { "[#$attempt] Failed to start service, retry after $intervalBetweenAttempt" }
 
                 attempt++
-                delay(intervalMillisBetweenAttempts)
+                delay(intervalBetweenAttempt)
 
                 continue
             }
@@ -183,8 +185,6 @@ class LifecycleAwareTorrentServiceConnection<T : Any>(
      * - 如果服务还未连接, 此函数将一直挂起.
      */
     override suspend fun getBinder(): T {
-        // 如果 isServiceDisconnected 为 false, 那 binderDeferred 一定是未完成的, 见 onServiceDisconnected
-        // 如果 isServiceDisconnected 为 true, 那 binderDeferred 一定是已完成的, 见 startServiceWithRetry
         return binderDeferred.transformLatest {
             // 等 deferred 结束. 如果 deferred 被 cancel, join 不会抛出 CancellationException 异常
             it.join()
