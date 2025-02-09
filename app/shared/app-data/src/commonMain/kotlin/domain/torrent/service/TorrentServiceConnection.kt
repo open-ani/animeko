@@ -16,18 +16,14 @@ import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineName
-import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.yield
 import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.logging.debug
 import me.him188.ani.utils.logging.error
@@ -73,17 +69,11 @@ class LifecycleAwareTorrentServiceConnection<T : Any>(
     private val lifecycle: Lifecycle,
     private val starter: TorrentServiceStarter<T>,
 ) : TorrentServiceConnection<T> {
-    private val logger = logger(this::class.simpleName ?: "LifecycleAwareTorrentServiceConnection")
-
+    private val logger = logger<LifecycleAwareTorrentServiceConnection<*>>()
     private val scope = parentCoroutineContext.childScope()
 
     private val binderDeferred = MutableStateFlow(CompletableDeferred<T>())
-
-    // read at `onServiceDisconnected`, set by `startLifecycleLoop`
-    private val isAtForeground: MutableStateFlow<Boolean> = MutableStateFlow(false)
     private val isServiceConnected: MutableStateFlow<Boolean> = MutableStateFlow(false)
-    private val lock = Mutex()
-    private val startServiceFlow = MutableStateFlow(Any())
 
     private val lifecycleLoopLock = SynchronizedObject()
     private var started = false
@@ -97,50 +87,39 @@ class LifecycleAwareTorrentServiceConnection<T : Any>(
             if (started) return
 
             scope.launch(CoroutineName("TorrentServiceConnection - RepeatOnResume")) {
-                lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-                    isAtForeground.value = true
-                    try {
-                        startServiceFlow.collectLatest {
-                            // 如果 collectLatest 执行后 onServiceDisconnected 也立刻 launch, 最终状态应该是断开了连接
-                            // 此处让出调度权, 以便 onServiceDisconnected 可以立刻执行
-                            // 让出调度后, onServiceDisconnected 会立刻 set new deferred, 然后 yield 还回调度权
-                            val beforeYieldedBinderDeferred = binderDeferred.value
-
-                            yield()
-                            val result = startServiceAndGetBinder()
-
-                            val afterYieldedBinderDeferred = binderDeferred.value
-
-                            // 如果在 yield 后, binderDeferred 已经被重新设置, 则说明 onServiceDisconnected 已经执行了
-                            // fast path for disconnected.
-                            if (beforeYieldedBinderDeferred != afterYieldedBinderDeferred) {
-                                return@collectLatest
-                            }
-
-                            if (result is ServiceStartResult.AlreadyStarted) return@collectLatest
-                            if (result is ServiceStartResult.Failure) {
-                                logger.error { "Failed to start service after ${result.attempt} attempts." }
-                                return@collectLatest
-                            }
-                            if (result !is ServiceStartResult.Success) error("unreachable condition")
-
-                            logger.debug { "Service is connected: ${result.binder}" }
-
-                            lock.withLock {
-                                binderDeferred.value = CompletableDeferred()
-                                binderDeferred.value.complete(result.binder)
-
-                                isServiceConnected.value = true
-                            }
-                        }
-                    } catch (_: CancellationException) {
-                        isAtForeground.value = false
-                        logger.debug { "App moved to background." }
-                    }
-                }
+                lifecycleLoop()
             }
 
             started = true
+        }
+    }
+
+    private suspend fun lifecycleLoop() = lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+        try {
+            // 每当 app 在前台 (lifecycle state = RESUMED) 并且未连接服务时都会尝试连接
+            isServiceConnected.filter { !it }.collect {
+                binderDeferred.value = CompletableDeferred()
+
+                when (val result = startServiceAndGetBinder()) {
+                    is ServiceStartResult.AlreadyStarted -> {
+                        isServiceConnected.value = true
+                    }
+
+                    is ServiceStartResult.Failure -> {
+                        logger.error { "Failed to start service after ${result.attempt} attempts." }
+                    }
+
+                    is ServiceStartResult.Success -> {
+                        logger.debug { "Service is connected: ${result.binder}" }
+
+                        binderDeferred.value.complete(result.binder)
+                        isServiceConnected.value = true // side effect
+                    }
+                }
+            }
+        } catch (e: CancellationException) {
+            logger.debug { "App moved to background." }
+            throw e
         }
     }
     
@@ -149,45 +128,7 @@ class LifecycleAwareTorrentServiceConnection<T : Any>(
      * 如果目前 APP 还在前台, 就要尝试重启并重连服务.
      */
     fun onServiceDisconnected() {
-        scope.launch(
-            CoroutineName("TorrentServiceConnection - ServiceDisconnected"),
-            start = CoroutineStart.UNDISPATCHED,
-        ) {
-            if (!isServiceConnected.value) {
-                // 已经是断开状态，直接忽略
-                return@launch
-            }
-
-            if (lock.tryLock()) { // 如果 lock 成功了, 说明 startServiceFlow collector 没在 lock 阶段
-                try {
-                    isServiceConnected.value = false
-                    binderDeferred.value = CompletableDeferred()
-
-                    yield() // 配合 startServiceFlow collector 中的 yield, 可以检测到 binderDeferred 的变化
-                } finally {
-                    lock.unlock()
-                }
-            } else {
-                lock.withLock {
-                    if (!isServiceConnected.value) {
-                        // 已经是断开状态，直接忽略
-                        return@launch
-                    }
-
-                    isServiceConnected.value = false
-                    binderDeferred.value = CompletableDeferred()
-                }
-            }
-
-            // 若应用仍想要连接，则重新启动
-            if (isAtForeground.value) {
-                logger.debug { "Service is disconnected and app is in foreground, restarting service connection in 1000 ms..." }
-                delay(1000)
-                startServiceFlow.value = Any()
-            } else {
-                logger.debug { "Service is disconnected and app is in background." }
-            }
-        }
+        isServiceConnected.value = false
     }
 
     /**
