@@ -114,9 +114,6 @@ import me.him188.ani.utils.io.toKtPath
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
-import me.him188.ani.utils.platform.currentPlatformDesktop
-import me.him188.ani.utils.platform.isMacOS
-import me.him188.ani.utils.platform.currentPlatform
 import org.jetbrains.compose.resources.painterResource
 import org.koin.core.context.startKoin
 import org.koin.dsl.module
@@ -446,11 +443,13 @@ private fun FrameWindowScope.MainWindowContent(
                 DarkMode.DARK -> true
             }
         }
-
-        DisposableEffect(isTitleBarDark, titleBarThemeController) {
+        val owner = remember { Any() }
+        DisposableEffect(isTitleBarDark, titleBarThemeController, owner) {
             window.setTitleBar(navContainerColor, isTitleBarDark)
-            titleBarThemeController?.isDark = isTitleBarDark
-            onDispose { }
+            titleBarThemeController?.requestTheme(owner = owner, isDark = isTitleBarDark)
+            onDispose {
+                titleBarThemeController?.removeTheme(owner = owner)
+            }
         }
 
         Box(

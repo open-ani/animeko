@@ -11,16 +11,17 @@ package me.him188.ani.app.ui.foundation.effects
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.remember
 import me.him188.ani.app.platform.window.LocalTitleBarThemeController
 
 @Composable
 actual fun DarkCaptionButtonAppearance() {
     val titleBarController = LocalTitleBarThemeController.current ?: return
-    DisposableEffect(titleBarController) {
-        var oldDarkMode = titleBarController.isDark
-        titleBarController.isDark = true
+    val owner = remember { Any() }
+    DisposableEffect(titleBarController, owner) {
+        titleBarController.requestTheme(owner = owner, isDark = true)
         onDispose {
-            titleBarController.isDark = oldDarkMode
+            titleBarController.removeTheme(owner = owner)
         }
     }
 }
