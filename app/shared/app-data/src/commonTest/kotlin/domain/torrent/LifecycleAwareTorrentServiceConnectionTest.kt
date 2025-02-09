@@ -18,6 +18,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import me.him188.ani.app.domain.torrent.service.LifecycleAwareTorrentServiceConnection
 import kotlin.test.Test
@@ -200,7 +201,9 @@ class LifecycleAwareTorrentServiceConnectionTest : AbstractTorrentServiceConnect
             // Wait for the startService invocation
             // connect 成功需要 200ms, 100ms 后就 move to STARTED
             testLifecycle.setCurrentState(Lifecycle.State.RESUMED)
+            runCurrent() // ensure flow collector receives the new value
             testLifecycle.setCurrentState(Lifecycle.State.STARTED)
+            runCurrent()
 
             // 启动中途切到后台 (lifecycle state => STARTED) 不会 emit true
             advanceUntilIdle()
