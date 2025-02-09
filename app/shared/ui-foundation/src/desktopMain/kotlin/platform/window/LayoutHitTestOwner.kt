@@ -20,7 +20,7 @@ import androidx.compose.ui.node.HitTestResult
 import androidx.compose.ui.node.RootNodeOwner
 import androidx.compose.ui.scene.ComposeScene
 import androidx.compose.ui.scene.CopiedList
-import androidx.compose.ui.scene.LocalComposeScene
+import androidx.compose.ui.scene.LocalComposeSceneContext
 import androidx.compose.ui.util.fastForEachReversed
 import androidx.compose.ui.util.packFloats
 
@@ -32,9 +32,9 @@ sealed interface LayoutHitTestOwner {
 @OptIn(InternalComposeUiApi::class)
 @Composable
 fun rememberLayoutHitTestOwner(): LayoutHitTestOwner? {
-    val scene = LocalComposeScene.current ?: return null
+    val scene = (LocalComposeSceneContext.current as? ComposeScene) ?: return null
     return remember(scene) {
-        when (scene::class.qualifiedName) {
+        when (scene::class.java.canonicalName) {
             "androidx.compose.ui.scene.CanvasLayersComposeSceneImpl" -> {
                 CanvasLayersLayoutHitTestOwner(scene)
             }
