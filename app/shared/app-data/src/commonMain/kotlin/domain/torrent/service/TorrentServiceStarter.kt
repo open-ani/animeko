@@ -9,6 +9,8 @@
 
 package me.him188.ani.app.domain.torrent.service
 
+import kotlin.coroutines.cancellation.CancellationException
+
 /**
  * 启动 torrent 服务的接口, 并获取[服务通信对象][T].
  */
@@ -20,7 +22,7 @@ interface TorrentServiceStarter<T : Any> {
      *
      * @return 服务通信对象
      */
-    @Throws(ServiceStartException::class)
+    @Throws(ServiceStartException::class, CancellationException::class)
     suspend fun start(): T
 }
 
