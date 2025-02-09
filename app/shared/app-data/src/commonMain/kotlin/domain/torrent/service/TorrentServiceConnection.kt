@@ -98,6 +98,10 @@ class LifecycleAwareTorrentServiceConnection<T : Any>(
         try {
             // 每当 app 在前台 (lifecycle state = RESUMED) 并且未连接服务时都会尝试连接
             isServiceConnected.filter { !it }.collect {
+                val currentDeferred = binderDeferred.value
+                if (currentDeferred.isActive) {
+                    currentDeferred.cancel(CancellationException("Service disconnected."))
+                }
                 binderDeferred.value = CompletableDeferred()
 
                 when (val result = startServiceAndGetBinder()) {
@@ -182,12 +186,14 @@ class LifecycleAwareTorrentServiceConnection<T : Any>(
         // 如果 isServiceDisconnected 为 false, 那 binderDeferred 一定是未完成的, 见 onServiceDisconnected
         // 如果 isServiceDisconnected 为 true, 那 binderDeferred 一定是已完成的, 见 startServiceWithRetry
         return binderDeferred.transformLatest {
+            // 等 deferred 结束. 如果 deferred 被 cancel, join 不会抛出 CancellationException 异常
             it.join()
-
+            // 此时 deferred 可能是 cancelled 或 completed
             try {
+                // 如果 completed 就可以成功获取到 binder
                 emit(it.await())
             } catch (_: CancellationException) {
-
+                // 如果是 cancelled 就忽略异常, 等待 binderDeferred flow emit 新的
             }
         }.first()
     }
