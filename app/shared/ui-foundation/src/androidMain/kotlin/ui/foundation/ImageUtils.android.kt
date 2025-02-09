@@ -10,10 +10,19 @@
 package me.him188.ani.app.ui.foundation
 
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.core.graphics.scale
 import coil3.Image
 import coil3.toBitmap
 
 actual fun Image.toComposeImageBitmap(): ImageBitmap {
     return this.toBitmap().asImageBitmap()
+}
+
+actual fun ImageBitmap.resize(width: Int): ImageBitmap {
+    val androidBitmap = this.asAndroidBitmap()
+    val newWidth = width
+    val newHeight = androidBitmap.height * newWidth / width
+    return androidBitmap.scale(newWidth, newHeight).asImageBitmap()
 }

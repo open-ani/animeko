@@ -29,7 +29,7 @@ kotlin {
         api(libs.kotlinx.collections.immutable)
         implementation(libs.kotlinx.serialization.protobuf)
         implementation(projects.app.shared.placeholder)
-        
+
         api(libs.coil.compose.core)
         api(libs.coil.svg)
         api(libs.coil.network.ktor2)
@@ -52,11 +52,10 @@ kotlin {
         implementation(projects.utils.bbcode)
         implementation(libs.constraintlayout.compose)
         api(projects.app.shared.pagingCompose)
-        
+
         api(libs.koin.core)
 
         api(libs.materialkolor)
-        api(libs.kmpalette.core)
     }
     sourceSets.commonTest.dependencies {
         api(projects.utils.uiTesting)

@@ -13,7 +13,7 @@ package me.him188.ani.app.ui.foundation.theme
 
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.ContentTransform
-import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.tween
@@ -26,12 +26,9 @@ import androidx.compose.material3.TopAppBarColors
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.compositionLocalOf
-import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.IntOffset
 import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.data.models.preference.ThemeSettings
@@ -223,133 +220,45 @@ fun modifyColorSchemeForBlackBackground(
 
 @Composable
 fun ColorScheme.animate(
-    currentColorScheme: ColorScheme = MaterialTheme.colorScheme,
     targetColorScheme: ColorScheme,
-    animationSpec: AnimationSpec<Float> = tween(EasingDurations.standard),
+    animationSpec: AnimationSpec<Color> = tween(EasingDurations.standard),
 ): ColorScheme {
-    val animationProgress = remember { Animatable(0f) }
-
-    LaunchedEffect(currentColorScheme, targetColorScheme) {
-        animationProgress.snapTo(0f)
-        animationProgress.animateTo(1f, animationSpec)
-    }
-
     return ColorScheme(
-        primary = lerp(currentColorScheme.primary, targetColorScheme.primary, animationProgress.value),
-        onPrimary = lerp(currentColorScheme.onPrimary, targetColorScheme.onPrimary, animationProgress.value),
-        primaryContainer = lerp(
-            currentColorScheme.primaryContainer,
-            targetColorScheme.primaryContainer,
-            animationProgress.value,
-        ),
-        onPrimaryContainer = lerp(
-            currentColorScheme.onPrimaryContainer,
-            targetColorScheme.onPrimaryContainer,
-            animationProgress.value,
-        ),
-        inversePrimary = lerp(
-            currentColorScheme.inversePrimary,
-            targetColorScheme.inversePrimary,
-            animationProgress.value,
-        ),
-        secondary = lerp(currentColorScheme.secondary, targetColorScheme.secondary, animationProgress.value),
-        onSecondary = lerp(currentColorScheme.onSecondary, targetColorScheme.onSecondary, animationProgress.value),
-        secondaryContainer = lerp(
-            currentColorScheme.secondaryContainer,
-            targetColorScheme.secondaryContainer,
-            animationProgress.value,
-        ),
-        onSecondaryContainer = lerp(
-            currentColorScheme.onSecondaryContainer,
-            targetColorScheme.onSecondaryContainer,
-            animationProgress.value,
-        ),
-        tertiary = lerp(currentColorScheme.tertiary, targetColorScheme.tertiary, animationProgress.value),
-        onTertiary = lerp(currentColorScheme.onTertiary, targetColorScheme.onTertiary, animationProgress.value),
-        tertiaryContainer = lerp(
-            currentColorScheme.tertiaryContainer,
-            targetColorScheme.tertiaryContainer,
-            animationProgress.value,
-        ),
-        onTertiaryContainer = lerp(
-            currentColorScheme.onTertiaryContainer,
-            targetColorScheme.onTertiaryContainer,
-            animationProgress.value,
-        ),
-        background = lerp(currentColorScheme.background, targetColorScheme.background, animationProgress.value),
-        onBackground = lerp(currentColorScheme.onBackground, targetColorScheme.onBackground, animationProgress.value),
-        surface = lerp(currentColorScheme.surface, targetColorScheme.surface, animationProgress.value),
-        onSurface = lerp(currentColorScheme.onSurface, targetColorScheme.onSurface, animationProgress.value),
-        surfaceVariant = lerp(
-            currentColorScheme.surfaceVariant,
-            targetColorScheme.surfaceVariant,
-            animationProgress.value,
-        ),
-        onSurfaceVariant = lerp(
-            currentColorScheme.onSurfaceVariant,
-            targetColorScheme.onSurfaceVariant,
-            animationProgress.value,
-        ),
-        surfaceTint = lerp(currentColorScheme.surfaceTint, targetColorScheme.surfaceTint, animationProgress.value),
-        inverseSurface = lerp(
-            currentColorScheme.inverseSurface,
-            targetColorScheme.inverseSurface,
-            animationProgress.value,
-        ),
-        inverseOnSurface = lerp(
-            currentColorScheme.inverseOnSurface,
-            targetColorScheme.inverseOnSurface,
-            animationProgress.value,
-        ),
-        error = lerp(currentColorScheme.error, targetColorScheme.error, animationProgress.value),
-        onError = lerp(currentColorScheme.onError, targetColorScheme.onError, animationProgress.value),
-        errorContainer = lerp(
-            currentColorScheme.errorContainer,
-            targetColorScheme.errorContainer,
-            animationProgress.value,
-        ),
-        onErrorContainer = lerp(
-            currentColorScheme.onErrorContainer,
-            targetColorScheme.onErrorContainer,
-            animationProgress.value,
-        ),
-        outline = lerp(currentColorScheme.outline, targetColorScheme.outline, animationProgress.value),
-        outlineVariant = lerp(
-            currentColorScheme.outlineVariant,
-            targetColorScheme.outlineVariant,
-            animationProgress.value,
-        ),
-        scrim = lerp(currentColorScheme.scrim, targetColorScheme.scrim, animationProgress.value),
-        surfaceBright = lerp(
-            currentColorScheme.surfaceBright,
-            targetColorScheme.surfaceBright,
-            animationProgress.value,
-        ),
-        surfaceDim = lerp(currentColorScheme.surfaceDim, targetColorScheme.surfaceDim, animationProgress.value),
-        surfaceContainer = lerp(
-            currentColorScheme.surfaceContainer,
-            targetColorScheme.surfaceContainer,
-            animationProgress.value,
-        ),
-        surfaceContainerHigh = lerp(
-            currentColorScheme.surfaceContainerHigh,
-            targetColorScheme.surfaceContainerHigh,
-            animationProgress.value,
-        ),
-        surfaceContainerHighest = lerp(
-            currentColorScheme.surfaceContainerHighest,
-            targetColorScheme.surfaceContainerHighest,
-            animationProgress.value,
-        ),
-        surfaceContainerLow = lerp(
-            currentColorScheme.surfaceContainerLow,
-            targetColorScheme.surfaceContainerLow,
-            animationProgress.value,
-        ),
-        surfaceContainerLowest = lerp(
-            currentColorScheme.surfaceContainerLowest,
-            targetColorScheme.surfaceContainerLowest,
-            animationProgress.value,
-        ),
+        primary = animateColorAsState(targetColorScheme.primary, animationSpec).value,
+        onPrimary = animateColorAsState(targetColorScheme.onPrimary, animationSpec).value,
+        primaryContainer = animateColorAsState(targetColorScheme.primaryContainer, animationSpec).value,
+        onPrimaryContainer = animateColorAsState(targetColorScheme.onPrimaryContainer, animationSpec).value,
+        inversePrimary = animateColorAsState(targetColorScheme.inversePrimary, animationSpec).value,
+        secondary = animateColorAsState(targetColorScheme.secondary, animationSpec).value,
+        onSecondary = animateColorAsState(targetColorScheme.onSecondary, animationSpec).value,
+        secondaryContainer = animateColorAsState(targetColorScheme.secondaryContainer, animationSpec).value,
+        onSecondaryContainer = animateColorAsState(targetColorScheme.onSecondaryContainer, animationSpec).value,
+        tertiary = animateColorAsState(targetColorScheme.tertiary, animationSpec).value,
+        onTertiary = animateColorAsState(targetColorScheme.onTertiary, animationSpec).value,
+        tertiaryContainer = animateColorAsState(targetColorScheme.tertiaryContainer, animationSpec).value,
+        onTertiaryContainer = animateColorAsState(targetColorScheme.onTertiaryContainer, animationSpec).value,
+        background = animateColorAsState(targetColorScheme.background, animationSpec).value,
+        onBackground = animateColorAsState(targetColorScheme.onBackground, animationSpec).value,
+        surface = animateColorAsState(targetColorScheme.surface, animationSpec).value,
+        onSurface = animateColorAsState(targetColorScheme.onSurface, animationSpec).value,
+        surfaceVariant = animateColorAsState(targetColorScheme.surfaceVariant, animationSpec).value,
+        onSurfaceVariant = animateColorAsState(targetColorScheme.onSurfaceVariant, animationSpec).value,
+        surfaceTint = animateColorAsState(targetColorScheme.surfaceTint, animationSpec).value,
+        inverseSurface = animateColorAsState(targetColorScheme.inverseSurface, animationSpec).value,
+        inverseOnSurface = animateColorAsState(targetColorScheme.inverseOnSurface, animationSpec).value,
+        surfaceBright = animateColorAsState(targetColorScheme.surfaceBright, animationSpec).value,
+        surfaceDim = animateColorAsState(targetColorScheme.surfaceDim, animationSpec).value,
+        surfaceContainer = animateColorAsState(targetColorScheme.surfaceContainer, animationSpec).value,
+        surfaceContainerHigh = animateColorAsState(targetColorScheme.surfaceContainerHigh, animationSpec).value,
+        surfaceContainerHighest = animateColorAsState(targetColorScheme.surfaceContainerHighest, animationSpec).value,
+        surfaceContainerLow = animateColorAsState(targetColorScheme.surfaceContainerLow, animationSpec).value,
+        surfaceContainerLowest = animateColorAsState(targetColorScheme.surfaceContainerLowest, animationSpec).value,
+        error = animateColorAsState(targetColorScheme.error, animationSpec).value,
+        onError = animateColorAsState(targetColorScheme.onError, animationSpec).value,
+        errorContainer = animateColorAsState(targetColorScheme.errorContainer, animationSpec).value,
+        onErrorContainer = animateColorAsState(targetColorScheme.onErrorContainer, animationSpec).value,
+        outline = animateColorAsState(targetColorScheme.outline, animationSpec).value,
+        outlineVariant = animateColorAsState(targetColorScheme.outlineVariant, animationSpec).value,
+        scrim = animateColorAsState(targetColorScheme.scrim, animationSpec).value,
     )
 }

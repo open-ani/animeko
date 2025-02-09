@@ -19,11 +19,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.ImageBitmap
-import com.kmpalette.rememberDominantColorState
-import com.kmpalette.rememberPaletteState
 import com.materialkolor.PaletteStyle
 import com.materialkolor.dynamicColorScheme
+import com.materialkolor.ktx.themeColor
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.preference.DarkMode
+import me.him188.ani.app.ui.foundation.resize
 
 /**
  * Generate a MaterialTheme from an image
@@ -40,17 +42,21 @@ fun MaterialThemeFromImage(
         DarkMode.AUTO -> isSystemInDarkTheme()
     }
     val useBlackBackground = themeSettings.useBlackBackground
-    rememberPaletteState()
-    val dominantColorState = rememberDominantColorState()
     var colorScheme by remember { mutableStateOf<ColorScheme?>(null) }
+    val fallbackSeedColor = MaterialTheme.colorScheme.primary
 
     LaunchedEffect(bitmap) {
         if (bitmap == null) return@LaunchedEffect
-        bitmap.let {
-            dominantColorState.updateFrom(bitmap)
 
-            colorScheme = dynamicColorScheme(
-                primary = dominantColorState.color,
+        val computedColorScheme = withContext(Dispatchers.Default) {
+            val resizedBitmap = bitmap.resize(64)
+            val primaryColor = resizedBitmap.themeColor(
+                fallback = fallbackSeedColor,
+                filter = false,
+                maxColors = 16,
+            )
+            dynamicColorScheme(
+                primary = primaryColor,
                 isDark = isDark,
                 isAmoled = useBlackBackground,
                 style = PaletteStyle.TonalSpot,
@@ -63,11 +69,12 @@ fun MaterialThemeFromImage(
                 },
             )
         }
+        colorScheme = computedColorScheme
     }
 
     MaterialTheme(
         colorScheme = MaterialTheme.colorScheme.animate(
-            targetColorScheme = colorScheme ?: MaterialTheme.colorScheme
+            targetColorScheme = colorScheme ?: MaterialTheme.colorScheme,
         ),
         content = content,
     )
