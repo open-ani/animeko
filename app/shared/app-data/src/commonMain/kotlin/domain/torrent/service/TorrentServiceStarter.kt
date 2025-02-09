@@ -20,6 +20,7 @@ interface TorrentServiceStarter<T : Any> {
      *
      * @return 服务通信对象
      */
+    @Throws(ServiceStartException::class)
     suspend fun start(): T
 }
 
