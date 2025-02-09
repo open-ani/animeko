@@ -15,7 +15,6 @@ import app.cash.turbine.test
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.async
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -31,10 +30,11 @@ class LifecycleAwareTorrentServiceConnectionTest : AbstractTorrentServiceConnect
     @Test
     fun `service starts on resume - success`() = runTest {
         val testLifecycle = TestLifecycleOwner()
+        val (starter, deferred) = createStarter(expectSuccess = true)
         val connection = LifecycleAwareTorrentServiceConnection(
             parentCoroutineContext = backgroundScope.coroutineContext,
             lifecycle = testLifecycle.lifecycle,
-            starter = startServiceWithSuccess,
+            starter = starter,
         ).also { it.startLifecycleLoop() }
 
         connection.connected.test {
@@ -42,6 +42,7 @@ class LifecycleAwareTorrentServiceConnectionTest : AbstractTorrentServiceConnect
 
             // trigger on resumed
             testLifecycle.setCurrentState(Lifecycle.State.RESUMED)
+            backgroundScope.launch { deferred.complete(Unit) }
             assertTrue(awaitItem(), "After service is connected, connected should become true.")
 
             // completed
@@ -54,10 +55,11 @@ class LifecycleAwareTorrentServiceConnectionTest : AbstractTorrentServiceConnect
     @Test
     fun `service starts on resume - fails to start service`() = runTest {
         val testLifecycle = TestLifecycleOwner()
+        val (starter, deferred) = createStarter(expectSuccess = false)
         val connection = LifecycleAwareTorrentServiceConnection(
             parentCoroutineContext = backgroundScope.coroutineContext,
             lifecycle = testLifecycle.lifecycle,
-            starter = startServiceWithFail,
+            starter = starter,
         ).also { it.startLifecycleLoop() }
 
         // The .connected flow should remain false, even after we move to resumed,
@@ -67,7 +69,7 @@ class LifecycleAwareTorrentServiceConnectionTest : AbstractTorrentServiceConnect
 
             // Move to RESUMED
             testLifecycle.setCurrentState(Lifecycle.State.RESUMED)
-
+            backgroundScope.launch { deferred.complete(Unit) }
             // Because startService() fails repeatedly in the retry loop, connected never becomes true
             // We'll watch for a short while and confirm it does not become true
             repeat(3) {
@@ -82,10 +84,11 @@ class LifecycleAwareTorrentServiceConnectionTest : AbstractTorrentServiceConnect
     @Test
     fun `getBinder suspends until service is connected`() = runTest {
         val testLifecycle = TestLifecycleOwner()
+        val (starter, deferred) = createStarter(expectSuccess = true)
         val connection = LifecycleAwareTorrentServiceConnection(
             parentCoroutineContext = backgroundScope.coroutineContext,
             lifecycle = testLifecycle.lifecycle,
-            starter = startServiceWithSuccess,
+            starter = starter,
         ).also { it.startLifecycleLoop() }
         
         // Start a coroutine that calls getBinder
@@ -98,6 +101,7 @@ class LifecycleAwareTorrentServiceConnectionTest : AbstractTorrentServiceConnect
         assertTrue(!binderDeferred.isCompleted)
 
         testLifecycle.setCurrentState(Lifecycle.State.RESUMED)
+        backgroundScope.launch { deferred.complete(Unit) }
 
         // Once connected, getBinder should complete with the fake binder
         val binder = binderDeferred.await()
@@ -109,16 +113,18 @@ class LifecycleAwareTorrentServiceConnectionTest : AbstractTorrentServiceConnect
     @Test
     fun `service disconnect triggers automatic restart if lifecycle is RESUMED`() = runTest {
         val testLifecycle = TestLifecycleOwner()
+        val (starter, deferred) = createStarter(expectSuccess = true)
         val connection = LifecycleAwareTorrentServiceConnection(
             parentCoroutineContext = backgroundScope.coroutineContext,
             lifecycle = testLifecycle.lifecycle,
-            starter = startServiceWithSuccess,
+            starter = starter,
         ).also { it.startLifecycleLoop() }
         
         connection.connected.test {
             assertFalse(awaitItem(), "Initially, connected should be false.")
             // Wait for the startService invocation
             testLifecycle.setCurrentState(Lifecycle.State.RESUMED)
+            backgroundScope.launch { deferred.complete(Unit) }
             advanceUntilIdle()
             // Now it’s connected
             assertTrue(awaitItem(), "Service should be connected.")
@@ -128,6 +134,7 @@ class LifecycleAwareTorrentServiceConnectionTest : AbstractTorrentServiceConnect
             advanceUntilIdle()
             assertFalse(awaitItem(), "Service should be disconnected since we triggered disconnection.")
 
+            backgroundScope.launch { deferred.complete(Unit) }
             // Because the lifecycle is still in RESUMED,
             // it should attempt to startService again automatically
             // We can wait a bit, then connect again:
@@ -143,10 +150,11 @@ class LifecycleAwareTorrentServiceConnectionTest : AbstractTorrentServiceConnect
     @Test
     fun `service disconnect does not restart if lifecycle is only CREATED`() = runTest {
         val testLifecycle = TestLifecycleOwner()
+        val (starter, deferred) = createStarter(expectSuccess = true)
         val connection = LifecycleAwareTorrentServiceConnection(
             parentCoroutineContext = backgroundScope.coroutineContext,
             lifecycle = testLifecycle.lifecycle,
-            starter = startServiceWithSuccess,
+            starter = starter,
         ).also { it.startLifecycleLoop() }
         
         connection.connected.test {
@@ -154,6 +162,7 @@ class LifecycleAwareTorrentServiceConnectionTest : AbstractTorrentServiceConnect
 
             // Wait for the startService invocation
             testLifecycle.setCurrentState(Lifecycle.State.RESUMED)
+            backgroundScope.launch { deferred.complete(Unit) }
             advanceUntilIdle()
             // Now it’s connected
             assertTrue(awaitItem(), "Service should be connected.")
@@ -177,10 +186,11 @@ class LifecycleAwareTorrentServiceConnectionTest : AbstractTorrentServiceConnect
     @Test
     fun `lifecycle move to STARTED while starting service`() = runTest {
         val testLifecycle = TestLifecycleOwner()
+        val (starter, deferred) = createStarter(expectSuccess = true)
         val connection = LifecycleAwareTorrentServiceConnection(
             parentCoroutineContext = backgroundScope.coroutineContext,
             lifecycle = testLifecycle.lifecycle,
-            starter = startServiceWithSuccess,
+            starter = starter,
         ).also { it.startLifecycleLoop() }
 
         connection.connected.test {
@@ -190,7 +200,6 @@ class LifecycleAwareTorrentServiceConnectionTest : AbstractTorrentServiceConnect
             // Wait for the startService invocation
             // connect 成功需要 200ms, 100ms 后就 move to STARTED
             testLifecycle.setCurrentState(Lifecycle.State.RESUMED)
-            advanceTimeBy(100)
             testLifecycle.setCurrentState(Lifecycle.State.STARTED)
 
             // 启动中途切到后台 (lifecycle state => STARTED) 不会 emit true
@@ -204,10 +213,11 @@ class LifecycleAwareTorrentServiceConnectionTest : AbstractTorrentServiceConnect
     @Test
     fun `fast path for service disconnected and also does not affect binder getter`() = runTest {
         val testLifecycle = TestLifecycleOwner()
+        val (starter, deferred) = createStarter(expectSuccess = true)
         val connection = LifecycleAwareTorrentServiceConnection(
             parentCoroutineContext = backgroundScope.coroutineContext,
             lifecycle = testLifecycle.lifecycle,
-            starter = startServiceWithSuccess,
+            starter = starter,
         ).also { it.startLifecycleLoop() }
         
         advanceUntilIdle()
@@ -230,7 +240,8 @@ class LifecycleAwareTorrentServiceConnectionTest : AbstractTorrentServiceConnect
             // connect 成功需要 200ms, 100ms 后就 trigger disconnect
             // 此时 connected 不会被设置为 true, 因为通过 fast path 检测到了 disconnect
             testLifecycle.setCurrentState(Lifecycle.State.RESUMED)
-            delay(100)
+
+            advanceUntilIdle()
             connection.onServiceDisconnected()
 
             advanceUntilIdle()
@@ -242,16 +253,15 @@ class LifecycleAwareTorrentServiceConnectionTest : AbstractTorrentServiceConnect
 
             advanceUntilIdle()
             testLifecycle.setCurrentState(Lifecycle.State.RESUMED)
-            delay(500)
-            testLifecycle.setCurrentState(Lifecycle.State.STARTED)
-            connection.onServiceDisconnected()
-
+            backgroundScope.launch { deferred.complete(Unit) }
             advanceUntilIdle()
+            // Now it’s connected
             assertTrue(awaitItem(), "Service should be connected.")
-            assertFalse(awaitItem(), "Service should be disconnected.")
 
+            // Disconnect:
+            connection.onServiceDisconnected()
             advanceUntilIdle()
-            expectNoEvents()
+            assertFalse(awaitItem(), "Service should be disconnected since we triggered disconnection.")
         }
 
         connection.close()

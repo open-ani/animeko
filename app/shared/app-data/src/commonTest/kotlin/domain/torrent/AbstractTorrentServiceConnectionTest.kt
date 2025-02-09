@@ -9,8 +9,8 @@
 
 package me.him188.ani.app.domain.torrent
 
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
@@ -22,18 +22,20 @@ import kotlin.test.BeforeTest
 abstract class AbstractTorrentServiceConnectionTest {
     protected val fakeBinder = "FAKE_BINDER_OBJECT"
 
-    protected val startServiceWithSuccess = object : TorrentServiceStarter<String> {
-        override suspend fun start(): String {
-            delay(200)
-            return fakeBinder
-        }
-    }
-
-    protected val startServiceWithFail = object : TorrentServiceStarter<String> {
-        override suspend fun start(): String {
-            delay(100)
-            throw ServiceStartException.NullBinder()
-        }
+    protected fun createStarter(
+        expectSuccess: Boolean
+    ): Pair<TorrentServiceStarter<String>, CompletableDeferred<Unit>> {
+        val deferred = CompletableDeferred<Unit>()
+        return object : TorrentServiceStarter<String> {
+            override suspend fun start(): String {
+                deferred.await()
+                if (expectSuccess) {
+                    return fakeBinder
+                } else {
+                    throw ServiceStartException.NullBinder()
+                }
+            }
+        } to deferred
     }
     
     @BeforeTest
