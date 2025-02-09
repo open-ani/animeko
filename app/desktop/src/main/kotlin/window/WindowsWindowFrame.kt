@@ -121,7 +121,7 @@ internal fun FrameWindowScope.WindowsWindowFrame(
             content = content,
         )
 
-        //Hide title bar if window is full screen mode and title bar is not hovered.
+        // Hide title bar if window is full screen mode and title bar is not hovered.
         val titleBarInteractionSource = remember(isFullScreen) { MutableInteractionSource() }
         val titleBarHovered by titleBarInteractionSource.collectIsHoveredAsState()
         LaunchedEffect(titleBarInteractionSource, titleBarHovered, isFullScreen) {

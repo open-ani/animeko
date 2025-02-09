@@ -59,13 +59,13 @@ private abstract class ReflectLayoutHitTestOwner : LayoutHitTestOwner {
         x: Float,
         y: Float,
     ): Boolean {
-        // result type is List<Modifier.Node> (compose 1.7)
+        // result type is List<Modifier.Node> (compose 1.8)
         val result = HitTestResult()
         owner.root.hitTest(Offset(x, y), result, false, true)
         // pointer input modifier node detection for Material 3 components
         for (index in result.lastIndex downTo result.lastIndex - 1) {
             val node = result.getOrNull(index) ?: return false
-            //SelectableNode, ClickableNode, CombinedClickableNode, ToggleableNode, TriStateToggleableNode
+            // SelectableNode, ClickableNode, CombinedClickableNode, ToggleableNode, TriStateToggleableNode
             if (node is AbstractClickableNode) {
                 return true
             }
