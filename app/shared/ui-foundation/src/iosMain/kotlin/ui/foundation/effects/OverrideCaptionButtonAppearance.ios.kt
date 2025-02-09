@@ -12,5 +12,5 @@ package me.him188.ani.app.ui.foundation.effects
 import androidx.compose.runtime.Composable
 
 @Composable
-actual fun DarkCaptionButtonAppearance() {
+actual fun OverrideCaptionButtonAppearance(isDark: Boolean) {
 }

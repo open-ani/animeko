@@ -94,6 +94,7 @@ import me.him188.ani.app.tools.update.DesktopUpdateInstaller
 import me.him188.ani.app.tools.update.UpdateInstaller
 import me.him188.ani.app.torrent.anitorrent.AnitorrentLibraryLoader
 import me.him188.ani.app.ui.foundation.LocalWindowState
+import me.him188.ani.app.ui.foundation.effects.OverrideCaptionButtonAppearance
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
 import me.him188.ani.app.ui.foundation.layout.isSystemInFullscreen
@@ -443,14 +444,12 @@ private fun FrameWindowScope.MainWindowContent(
                 DarkMode.DARK -> true
             }
         }
-        val owner = remember { Any() }
-        DisposableEffect(isTitleBarDark, titleBarThemeController, owner) {
+        DisposableEffect(isTitleBarDark, titleBarThemeController) {
             window.setTitleBar(navContainerColor, isTitleBarDark)
-            titleBarThemeController?.requestTheme(owner = owner, isDark = isTitleBarDark)
-            onDispose {
-                titleBarThemeController?.removeTheme(owner = owner)
-            }
+            onDispose {}
         }
+
+        OverrideCaptionButtonAppearance(isDark = isTitleBarDark)
 
         Box(
             Modifier

@@ -13,4 +13,4 @@ import androidx.compose.runtime.Composable
 
 //Make TopEnd CaptionButton in dark theme.
 @Composable
-expect fun DarkCaptionButtonAppearance()
+expect fun OverrideCaptionButtonAppearance(isDark: Boolean)

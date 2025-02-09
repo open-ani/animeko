@@ -15,11 +15,11 @@ import androidx.compose.runtime.remember
 import me.him188.ani.app.platform.window.LocalTitleBarThemeController
 
 @Composable
-actual fun DarkCaptionButtonAppearance() {
+actual fun OverrideCaptionButtonAppearance(isDark: Boolean) {
     val titleBarController = LocalTitleBarThemeController.current ?: return
     val owner = remember { Any() }
-    DisposableEffect(titleBarController, owner) {
-        titleBarController.requestTheme(owner = owner, isDark = true)
+    DisposableEffect(titleBarController, owner, isDark) {
+        titleBarController.requestTheme(owner = owner, isDark = isDark)
         onDispose {
             titleBarController.removeTheme(owner = owner)
         }
