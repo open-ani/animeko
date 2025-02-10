@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -12,26 +12,35 @@ package me.him188.ani.app.platform.window
 import androidx.compose.ui.awt.ComposeWindow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.window.WindowState
-import com.sun.jna.platform.win32.Advapi32Util
-import com.sun.jna.platform.win32.WinReg
 import me.him188.ani.app.platform.PlatformWindow
 import me.him188.ani.utils.platform.Platform
 import me.him188.ani.utils.platform.currentPlatformDesktop
+import org.jetbrains.skiko.SkiaLayer
+import java.awt.Container
 import java.awt.Cursor
 import java.awt.GraphicsEnvironment
 import java.awt.Point
 import java.awt.Toolkit
+import java.awt.Window
 import java.awt.image.BufferedImage
+import javax.swing.JComponent
 
+@RequiresOptIn(
+    message = "This is unsafe platform API, use [ComposeWindow.setTitleBar] instead.",
+    level = RequiresOptIn.Level.ERROR,
+)
+annotation class UnsafePlatformWindowApi
 
 /**
  * @see AwtWindowUtils
  */
 interface WindowUtils {
+    @UnsafePlatformWindowApi
     fun setTitleBarColor(hwnd: Long, color: Color): Boolean {
         return false
     }
 
+    @UnsafePlatformWindowApi
     fun setDarkTitleBar(hwnd: Long, dark: Boolean): Boolean {
         return false
     }
@@ -49,7 +58,7 @@ interface WindowUtils {
 
     companion object : WindowUtils by (when (me.him188.ani.utils.platform.currentPlatformDesktop()) {
         is Platform.MacOS -> MacosWindowUtils()
-        is Platform.Windows -> WindowsWindowUtils()
+        is Platform.Windows -> WindowsWindowUtils.instance
         is Platform.Linux -> LinuxWindowUtils()
     })
 }
@@ -82,15 +91,10 @@ abstract class AwtWindowUtils : WindowUtils {
  * * 在 Windows 10 仅设置暗色或亮色, Windows 10 不支持自定义标题栏颜色
  * * 在 Linux 上没有作用, 因为 ani 现在不支持 Linux
  */
+@OptIn(UnsafePlatformWindowApi::class)
 fun ComposeWindow.setTitleBar(color: Color, dark: Boolean) {
     if (currentPlatformDesktop() is Platform.Windows) {
-        val winBuild = kotlin.runCatching {
-            Advapi32Util.registryGetStringValue(
-                WinReg.HKEY_LOCAL_MACHINE,
-                "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion",
-                "CurrentBuildNumber",
-            ).toIntOrNull()
-        }.getOrElse { null }
+        val winBuild = WindowsWindowUtils.instance.windowsBuildNumber()
 
         if (winBuild == null) return
         if (winBuild >= 22000) {
@@ -100,3 +104,23 @@ fun ComposeWindow.setTitleBar(color: Color, dark: Boolean) {
         }
     }
 }
+
+//Find Skia layer in ComposeWindow, fork from https://github.com/MayakaApps/ComposeWindowStyler/blob/02d220cd719eaebaf911bb0acf4d41d4908805c5/window-styler/src/jvmMain/kotlin/com/mayakapps/compose/windowstyler/TransparencyUtils.kt#L38
+fun Window.findSkiaLayer() = findComponent<SkiaLayer>()
+
+private fun <T : JComponent> findComponent(
+    container: Container,
+    klass: Class<T>,
+): T? {
+    val componentSequence = container.components.asSequence()
+    return componentSequence
+        .filter { klass.isInstance(it) }
+        .ifEmpty {
+            componentSequence
+                .filterIsInstance<Container>()
+                .mapNotNull { findComponent(it, klass) }
+        }.map { klass.cast(it) }
+        .firstOrNull()
+}
+
+private inline fun <reified T : JComponent> Container.findComponent() = findComponent(this, T::class.java)

@@ -10,7 +10,6 @@
 package me.him188.ani.app.desktop
 
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -26,12 +25,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.InternalComposeUiApi
 import androidx.compose.ui.LocalSystemTheme
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.SystemTheme
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.FrameWindowScope
 import androidx.compose.ui.window.Window
-import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.application
@@ -44,6 +43,7 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.io.files.Path
+import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.data.persistent.dataStores
 import me.him188.ani.app.data.repository.SavedWindowState
 import me.him188.ani.app.data.repository.WindowStateRepository
@@ -51,6 +51,7 @@ import me.him188.ani.app.data.repository.WindowStateRepositoryImpl
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.desktop.storage.AppFolderResolver
 import me.him188.ani.app.desktop.storage.AppInfo
+import me.him188.ani.app.desktop.window.WindowFrame
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
 import me.him188.ani.app.domain.foundation.get
@@ -86,18 +87,20 @@ import me.him188.ani.app.platform.getCommonKoinModule
 import me.him188.ani.app.platform.notification.NoopNotifManager
 import me.him188.ani.app.platform.notification.NotifManager
 import me.him188.ani.app.platform.startCommonKoinModule
+import me.him188.ani.app.platform.window.LocalTitleBarThemeController
 import me.him188.ani.app.platform.window.setTitleBar
 import me.him188.ani.app.tools.update.DesktopUpdateInstaller
 import me.him188.ani.app.tools.update.UpdateInstaller
 import me.him188.ani.app.torrent.anitorrent.AnitorrentLibraryLoader
-import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.LocalWindowState
+import me.him188.ani.app.ui.foundation.effects.OverrideCaptionButtonAppearance
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
 import me.him188.ani.app.ui.foundation.layout.isSystemInFullscreen
 import me.him188.ani.app.ui.foundation.navigation.LocalOnBackPressedDispatcherOwner
 import me.him188.ani.app.ui.foundation.navigation.SkikoOnBackPressedDispatcherOwner
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
+import me.him188.ani.app.ui.foundation.theme.LocalThemeSettings
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.Toast
 import me.him188.ani.app.ui.foundation.widgets.ToastViewModel
@@ -111,8 +114,6 @@ import me.him188.ani.utils.io.toKtPath
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
-import me.him188.ani.utils.platform.currentPlatformDesktop
-import me.him188.ani.utils.platform.isMacOS
 import org.jetbrains.compose.resources.painterResource
 import org.koin.core.context.startKoin
 import org.koin.dsl.module
@@ -406,35 +407,14 @@ object AniDesktop {
                     @OptIn(InternalComposeUiApi::class)
                     LocalSystemTheme provides systemTheme,
                 ) {
-                    // This actually runs only once since app is never changed.
-                    val windowImmersed = true
 
-                    SideEffect {
-                        // https://www.formdev.com/flatlaf/macos/
-                        if (currentPlatformDesktop().isMacOS()) {
-                            window.rootPane.putClientProperty("apple.awt.application.appearance", "system")
-                            window.rootPane.putClientProperty("apple.awt.fullscreenable", true)
-                            if (windowImmersed) {
-                                window.rootPane.putClientProperty("apple.awt.windowTitleVisible", false)
-                                window.rootPane.putClientProperty("apple.awt.fullWindowContent", true)
-                                window.rootPane.putClientProperty("apple.awt.transparentTitleBar", true)
-                            } else {
-                                window.rootPane.putClientProperty("apple.awt.fullWindowContent", false)
-                                window.rootPane.putClientProperty("apple.awt.transparentTitleBar", false)
-                            }
-                        }
+                    WindowFrame(
+                        windowState = windowState,
+                        onCloseRequest = { exitApplication() },
+                    ) {
+                        MainWindowContent(navigator)
                     }
 
-                    if (LocalPlatform.current.isMacOS()) {
-                        // CMP bug, 退出全屏后窗口会变为 Maximized, 而不是还原到 Floating
-                        if (!isSystemInFullscreen() && windowState.placement == WindowPlacement.Maximized) {
-                            SideEffect {
-                                windowState.placement = WindowPlacement.Floating
-                            }
-                        }
-                    }
-
-                    MainWindowContent(navigator)
                 }
             }
 
@@ -443,12 +423,30 @@ object AniDesktop {
     }
 }
 
+@OptIn(InternalComposeUiApi::class)
 @Composable
 private fun FrameWindowScope.MainWindowContent(
     aniNavigator: AniNavigator,
 ) {
     AniApp {
-        window.setTitleBar(AniThemeDefaults.navigationContainerColor, isSystemInDarkTheme())
+        val themeSettings = LocalThemeSettings.current
+        val titleBarThemeController = LocalTitleBarThemeController.current
+        val systemTheme = LocalSystemTheme.current
+        val navContainerColor = AniThemeDefaults.navigationContainerColor
+
+        val isTitleBarDark = remember(themeSettings, systemTheme) {
+            when (themeSettings.darkMode) {
+                DarkMode.AUTO -> systemTheme == SystemTheme.Dark
+                DarkMode.LIGHT -> false
+                DarkMode.DARK -> true
+            }
+        }
+        DisposableEffect(isTitleBarDark, titleBarThemeController) {
+            window.setTitleBar(navContainerColor, isTitleBarDark)
+            onDispose {}
+        }
+
+        OverrideCaptionButtonAppearance(isDark = isTitleBarDark)
 
         Box(
             Modifier

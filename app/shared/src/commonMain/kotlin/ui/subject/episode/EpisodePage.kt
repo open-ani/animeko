@@ -98,10 +98,12 @@ import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.effects.DarkStatusBarAppearance
 import me.him188.ani.app.ui.foundation.effects.OnLifecycleEvent
+import me.him188.ani.app.ui.foundation.effects.OverrideCaptionButtonAppearance
 import me.him188.ani.app.ui.foundation.effects.ScreenOnEffect
 import me.him188.ani.app.ui.foundation.effects.ScreenRotationEffect
 import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
+import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBarPadding
 import me.him188.ani.app.ui.foundation.layout.isHeightAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.isHeightCompact
@@ -236,6 +238,12 @@ private fun EpisodeScreenContent(
             windowSizeClass.isWidthAtLeastExpanded -> true // #932
             else -> false
         }
+
+        // only show dark caption button on compact ui and full screen mode(windows only).
+        if (vm.isFullscreen || !showExpandedUI) {
+            OverrideCaptionButtonAppearance(isDark = true)
+        }
+        
         val pageState = vm.pageState.collectAsStateWithLifecycle()
 
         when (val page = pageState.value) {
@@ -498,6 +506,7 @@ private fun EpisodeScreenContentPhone(
                 vm, page,
                 danmakuHostState,
                 danmakuEditorState, vm.playerControllerState, vm.isFullscreen,
+                windowInsets = ScaffoldDefaults.contentWindowInsets.union(WindowInsets.desktopTitleBar),
             )
         },
         episodeDetails = {

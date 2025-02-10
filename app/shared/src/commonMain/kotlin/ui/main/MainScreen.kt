@@ -59,9 +59,11 @@ import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
+import me.him188.ani.app.ui.foundation.layout.desktopCaptionButton
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBarPadding
 import me.him188.ani.app.ui.foundation.layout.isHeightAtLeastMedium
+import me.him188.ani.app.ui.foundation.layout.isTopRight
 import me.him188.ani.app.ui.foundation.layout.setRequestFullScreen
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
@@ -162,9 +164,11 @@ private fun MainScreenContent(
         val coroutineScope = rememberCoroutineScope()
         val navigatorState = rememberUpdatedState(LocalNavigator.current)
         val navigator by navigatorState
+        // Windows caption button 在右侧, 没有足够空间放置按钮, 需要保留 title bar insets
+        val isRightCaptionButton = WindowInsets.desktopCaptionButton.isTopRight()
         TabContent(
             layoutType = navigationLayoutType,
-            Modifier.ifThen(navigationLayoutType != NavigationSuiteType.NavigationBar) {
+            Modifier.ifThen(navigationLayoutType != NavigationSuiteType.NavigationBar && !isRightCaptionButton) {
                 // macos 标题栏只会在 NavigationRail 的区域内, TabContent 区域无需这些 padding.
                 consumeWindowInsets(WindowInsets.desktopTitleBar())
             },
