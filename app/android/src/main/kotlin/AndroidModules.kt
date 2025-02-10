@@ -13,9 +13,11 @@ import android.content.Intent
 import android.widget.Toast
 import androidx.core.app.NotificationManagerCompat
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.newSingleThreadContext
 import kotlinx.coroutines.runBlocking
 import kotlinx.io.files.Path
 import me.him188.ani.android.activity.MainActivity
@@ -33,12 +35,14 @@ import me.him188.ani.app.domain.media.resolver.MediaResolver
 import me.him188.ani.app.domain.media.resolver.TorrentMediaResolver
 import me.him188.ani.app.domain.settings.ProxyProvider
 import me.him188.ani.app.domain.torrent.DefaultTorrentManager
+import me.him188.ani.app.domain.torrent.IRemoteAniTorrentEngine
 import me.him188.ani.app.domain.torrent.LocalAnitorrentEngineFactory
 import me.him188.ani.app.domain.torrent.TorrentEngine
 import me.him188.ani.app.domain.torrent.TorrentEngineFactory
 import me.him188.ani.app.domain.torrent.TorrentManager
 import me.him188.ani.app.domain.torrent.client.RemoteAnitorrentEngine
 import me.him188.ani.app.domain.torrent.peer.PeerFilterSettings
+import me.him188.ani.app.domain.torrent.service.AniTorrentService
 import me.him188.ani.app.domain.torrent.service.TorrentServiceConnection
 import me.him188.ani.app.navigation.BrowserNavigator
 import me.him188.ani.app.platform.AndroidPermissionManager
@@ -75,7 +79,7 @@ import kotlin.system.exitProcess
 
 fun getAndroidModules(
     defaultTorrentCacheDir: File,
-    torrentServiceConnection: TorrentServiceConnection,
+    torrentServiceConnection: TorrentServiceConnection<IRemoteAniTorrentEngine>,
     coroutineScope: CoroutineScope,
 ) = module {
     single<PermissionManager> {
@@ -99,7 +103,7 @@ fun getAndroidModules(
     }
     single<BrowserNavigator> { AndroidBrowserNavigator() }
 
-    single<TorrentServiceConnection> { torrentServiceConnection }
+    single<TorrentServiceConnection<IRemoteAniTorrentEngine>> { torrentServiceConnection }
 
     single<TorrentManager> {
         val context = androidContext()
@@ -199,6 +203,8 @@ fun getAndroidModules(
                             peerFilterSettings,
                             saveDir,
                             parentCoroutineContext,
+                            @OptIn(DelicateCoroutinesApi::class)
+                            newSingleThreadContext("RemoteAnitorrentEngine"),
                         )
                     }
                 }
@@ -230,7 +236,7 @@ fun getAndroidModules(
                 runBlocking(Dispatchers.Main.immediate) {
                     (context.findActivity() as? BaseComponentActivity)?.finishAffinity()
                     context.startService(
-                        Intent(context, TorrentServiceConnection.anitorrentServiceClass)
+                        Intent(context, AniTorrentService.actualServiceClass)
                             .apply { putExtra("stopService", true) },
                     )
                     exitProcess(status)

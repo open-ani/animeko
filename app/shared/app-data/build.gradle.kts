@@ -68,6 +68,7 @@ kotlin {
     }
     sourceSets.commonTest.dependencies {
         implementation(projects.utils.uiTesting)
+        implementation(projects.utils.androidxLifecycleRuntimeTesting)
         implementation(libs.ktor.client.mock)
         implementation(libs.turbine)
     }

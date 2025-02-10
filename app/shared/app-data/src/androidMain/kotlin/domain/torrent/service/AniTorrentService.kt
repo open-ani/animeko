@@ -13,8 +13,8 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.IBinder
-import android.os.PowerManager
 import android.os.Process
 import android.os.SystemClock
 import androidx.annotation.RequiresApi
@@ -86,10 +86,6 @@ sealed class AniTorrentService : LifecycleService() {
 
     private val notification = ServiceNotification(this)
     private val alarmService: AlarmManager by lazy { getSystemService(Context.ALARM_SERVICE) as AlarmManager }
-    private val wakeLock: PowerManager.WakeLock by lazy {
-        (getSystemService(Context.POWER_SERVICE) as PowerManager)
-            .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "AniTorrentService::wake_lock")
-    }
 
     private val httpClientProvider = DefaultHttpClientProvider(FlowProxyProvider(proxyConfig), scope)
     private val httpClient = httpClientProvider.get()
@@ -131,27 +127,18 @@ sealed class AniTorrentService : LifecycleService() {
             return super.onStartCommand(intent, flags, startId)
         }
 
-        // acquire wake lock when app is stopped.
-        val acquireWakeLock = intent?.getLongExtra("acquireWakeLock", -1L) ?: -1L
-        if (acquireWakeLock != -1L) {
-            wakeLock.acquire(acquireWakeLock)
-            logger.info { "client acquired wake lock with ${acquireWakeLock / 1000} seconds." }
-            return super.onStartCommand(intent, flags, startId)
-        }
-
         notification.parseNotificationStrategyFromIntent(intent)
-        if (notification.createNotification(this)) {
-            // 启动完成的广播
-            sendBroadcast(
-                Intent().apply {
-                    setPackage(packageName)
-                    setAction(INTENT_STARTUP)
-                },
-            )
-            return START_STICKY
-        } else {
-            return START_NOT_STICKY
-        }
+        val notificationResult = notification.createNotification(this)
+
+        // 启动完成的广播
+        sendBroadcast(
+            Intent(INTENT_STARTUP).apply {
+                setPackage(packageName)
+                putExtra(INTENT_STARTUP_EXTRA, notificationResult)
+            },
+        )
+
+        return if (notificationResult) START_STICKY else START_NOT_STICKY
     }
 
 
@@ -199,6 +186,13 @@ sealed class AniTorrentService : LifecycleService() {
         super.onTaskRemoved(rootIntent)
     }
 
+    override fun onTimeout(startId: Int, fgsType: Int) {
+        super.onTimeout(startId, fgsType)
+        // 发送后台执行超时广播
+        sendBroadcast(Intent(INTENT_BACKGROUND_TIMEOUT).apply { setPackage(packageName) })
+        stopSelf()
+    }
+
     override fun onDestroy() {
         logger.info { "AniTorrentService is stopping." }
         meteredNetworkDetector.dispose()
@@ -214,21 +208,40 @@ sealed class AniTorrentService : LifecycleService() {
         }
         // cancel background scope
         scope.cancel()
-        // release wake lock if held
-        if (wakeLock.isHeld) {
-            wakeLock.release()
-        }
         super.onDestroy()
         // force kill process
         Process.killProcess(Process.myPid())
     }
 
     companion object {
+        /**
+         * 启动服务后的广播 Intent 动作, 通知启动结果. 服务必须在 `onStartCommand` 报告每一次启动结果.
+         * Intent 必须传递 [INTENT_STARTUP_EXTRA] boolean 值作为启动结果, 如果没传 app 会认为启动失败.
+         */
         const val INTENT_STARTUP = "me.him188.ani.android.ANI_TORRENT_SERVICE_STARTUP"
+        const val INTENT_STARTUP_EXTRA = "success"
+        
+        const val INTENT_BACKGROUND_TIMEOUT = "me.him188.ani.android.ANI_TORRENT_SERVICE_BACKGROUND_TIMEOUT"
+        
+        val actualServiceClass = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            AniTorrentServiceApi34::class.java
+        } else {
+            AniTorrentServiceApiDefault::class.java
+        }
     }
 }
 
+/**
+ * Android 34 或以上使用
+ *
+ * 在 manifest 的 fgsType 是 mediaPlayback, 没被限制运行
+ */
 @RequiresApi(34)
 class AniTorrentServiceApi34 : AniTorrentService()
 
+/**
+ * Android 34 以下使用
+ * 
+ * 在 manifest 的 fgsType 是 dataSync
+ */
 class AniTorrentServiceApiDefault : AniTorrentService()

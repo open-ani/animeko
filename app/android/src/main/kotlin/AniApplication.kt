@@ -23,7 +23,8 @@ import kotlinx.coroutines.launch
 import me.him188.ani.android.activity.MainActivity
 import me.him188.ani.app.domain.media.cache.MediaCacheNotificationTask
 import me.him188.ani.app.domain.torrent.TorrentManager
-import me.him188.ani.app.domain.torrent.service.TorrentServiceConnection
+import me.him188.ani.app.domain.torrent.service.AniTorrentService
+import me.him188.ani.app.domain.torrent.service.ServiceConnectionManager
 import me.him188.ani.app.platform.AndroidLoggingConfigurator
 import me.him188.ani.app.platform.AppStartupTasks
 import me.him188.ani.app.platform.JvmLogHelper
@@ -33,7 +34,6 @@ import me.him188.ani.app.platform.startCommonKoinModule
 import me.him188.ani.app.ui.settings.tabs.getLogsDir
 import me.him188.ani.app.ui.settings.tabs.media.DEFAULT_TORRENT_CACHE_DIR_NAME
 import me.him188.ani.utils.coroutines.IO_
-import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.logger
 import org.koin.android.ext.android.getKoin
@@ -88,30 +88,17 @@ class AniApplication : Application() {
 
 
         val scope = createAppRootCoroutineScope()
-        val torrentServiceConnection = TorrentServiceConnection(
+        val connectionManager = ServiceConnectionManager(
             this,
-            onRequiredRestartService = { startAniTorrentService() },
-            scope.childScope(CoroutineName("TorrentServiceConnection")),
-            lifecycle = ProcessLifecycleOwner.get().lifecycle,
+            ::startAniTorrentService,
+            scope.coroutineContext,
+            ProcessLifecycleOwner.get().lifecycle,
         )
-        if (FEATURE_USE_TORRENT_SERVICE) {
-            torrentServiceConnection.startLifecycleJob()
-            try {
-                startAniTorrentService()
-                torrentServiceConnection.startServiceResultWhileAppStartup = true
-            } catch (ex: Exception) {
-                if (ex.toString().contains("ForegroundServiceStartNotAllowedException")) {
-                    torrentServiceConnection.startServiceResultWhileAppStartup = false
-                    Log.e("AniApplication", "Failed to start torrent service at background, defer at activity start.")
-                } else {
-                    // rethrow other exceptions, 
-                    // because catch (ex: ForegroundServiceStartNotAllowedException) needs API 31.
-                    throw ex
-                }
-            }
-        }
-
         instance = Instance()
+
+        if (FEATURE_USE_TORRENT_SERVICE) {
+            connectionManager.startLifecycleLoop()
+        }
 
         scope.launch(Dispatchers.IO_) {
             runCatching {
@@ -129,7 +116,8 @@ class AniApplication : Application() {
         startKoin {
             androidContext(this@AniApplication)
             modules(getCommonKoinModule({ this@AniApplication }, scope))
-            modules(getAndroidModules(defaultTorrentCacheDir, torrentServiceConnection, scope))
+
+            modules(getAndroidModules(defaultTorrentCacheDir, connectionManager.connection, scope))
         }.startCommonKoinModule(scope)
 
         val koin = getKoin()
@@ -168,7 +156,7 @@ class AniApplication : Application() {
 
     private fun startAniTorrentService(): ComponentName? {
         return startForegroundService(
-            Intent(this, TorrentServiceConnection.anitorrentServiceClass).apply {
+            Intent(this, AniTorrentService.actualServiceClass).apply {
                 putExtra("app_name", me.him188.ani.R.string.app_name)
                 putExtra("app_service_title_text_idle", me.him188.ani.R.string.app_service_title_text_idle)
                 putExtra("app_service_title_text_working", me.him188.ani.R.string.app_service_title_text_working)
