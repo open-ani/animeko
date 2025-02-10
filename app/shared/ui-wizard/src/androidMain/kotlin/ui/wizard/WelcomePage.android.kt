@@ -14,14 +14,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.compose.rememberNavController
-import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview
+import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.wizard.navigation.rememberWizardController
 
 @Preview(showBackground = true, device = "spec:width=411dp,height=891dp", showSystemUi = false)
 @Preview(showBackground = true, device = "spec:width=1920px,height=1080px,dpi=240", showSystemUi = false)
 @Composable
 fun PreviewWelcomePage() {
-    ProvideFoundationCompositionLocalsForPreview {
+    ProvideCompositionLocalsForPreview {
         val scope = rememberCoroutineScope()
         WelcomePage(
             rememberNavController(),

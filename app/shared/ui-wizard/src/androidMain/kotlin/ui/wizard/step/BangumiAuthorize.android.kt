@@ -11,20 +11,22 @@ package me.him188.ani.app.ui.wizard.step
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
-import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview
+import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.wizard.WizardDefaults
 
 @Preview(showBackground = true)
 @Composable
 fun PreviewBangumiAuthorizeStepInitial() {
-    ProvideFoundationCompositionLocalsForPreview {
+    ProvideCompositionLocalsForPreview {
         BangumiAuthorize(
             authorizeState = AuthorizeUIState.Idle,
             contactActions = { },
             forwardAction = {
-                WizardDefaults.StepControlBar({
-                    WizardDefaults.GoForwardButton({ }, true)
-                })
+                WizardDefaults.StepControlBar(
+                    {
+                        WizardDefaults.GoForwardButton({ }, true)
+                    },
+                )
             },
             onClickAuthorize = { },
             onCancelAuthorize = { },
@@ -38,7 +40,7 @@ fun PreviewBangumiAuthorizeStepInitial() {
 @Preview(showBackground = true)
 @Composable
 fun PreviewBangumiAuthorizeStepAwaitingResult() {
-    ProvideFoundationCompositionLocalsForPreview {
+    ProvideCompositionLocalsForPreview {
         BangumiAuthorize(
             authorizeState = AuthorizeUIState.AwaitingResult(""),
             contactActions = { },
@@ -59,7 +61,7 @@ fun PreviewBangumiAuthorizeStepAwaitingResult() {
 @Preview(showBackground = true)
 @Composable
 fun PreviewBangumiAuthorizeStepError() {
-    ProvideFoundationCompositionLocalsForPreview {
+    ProvideCompositionLocalsForPreview {
         BangumiAuthorize(
             authorizeState = AuthorizeUIState.Error("", "error message"),
             contactActions = { },
@@ -80,7 +82,7 @@ fun PreviewBangumiAuthorizeStepError() {
 @Preview(showBackground = true)
 @Composable
 fun PreviewBangumiAuthorizeStepSuccess() {
-    ProvideFoundationCompositionLocalsForPreview {
+    ProvideCompositionLocalsForPreview {
         BangumiAuthorize(
             authorizeState = AuthorizeUIState.Success(
                 "StageGuard has long username",

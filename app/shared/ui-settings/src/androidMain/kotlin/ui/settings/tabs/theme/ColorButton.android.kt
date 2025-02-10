@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.app.ui.theme
+package me.him188.ani.app.ui.settings.tabs.theme
 
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.runtime.Composable
@@ -16,17 +16,18 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.tooling.preview.Preview
-import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview
+import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
+import me.him188.ani.app.ui.theme.themeColorOptions
 
 @Preview
 @Composable
 fun PreviewColorButton() {
-    ProvideFoundationCompositionLocalsForPreview {
+    ProvideCompositionLocalsForPreview {
         FlowRow {
             var currentColor by remember { mutableStateOf(AniThemeDefaults.themeColorOptions[0]) }
             AniThemeDefaults.themeColorOptions.forEach {
-                me.him188.ani.app.ui.settings.tabs.theme.ColorButton(
+                ColorButton(
                     onClick = { currentColor = it },
                     baseColor = it,
                     selected = currentColor == it,

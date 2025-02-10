@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.app.ui.theme
+package me.him188.ani.app.ui.settings.tabs.theme
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -16,23 +16,23 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview
+import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.theme.appColorScheme
 
 @Preview
 @Composable
 fun PreviewThemePreviewPanel() {
-    ProvideFoundationCompositionLocalsForPreview {
+    ProvideCompositionLocalsForPreview {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            me.him188.ani.app.ui.settings.tabs.theme.ThemePreviewPanel(
+            ThemePreviewPanel(
                 colorScheme = appColorScheme(isDark = false),
                 modifier = Modifier.size(96.dp, 146.dp),
             )
-            me.him188.ani.app.ui.settings.tabs.theme.ThemePreviewPanel(
+            ThemePreviewPanel(
                 colorScheme = appColorScheme(isDark = true),
                 modifier = Modifier.size(96.dp, 146.dp),
             )
-            me.him188.ani.app.ui.settings.tabs.theme.DiagonalMixedThemePreviewPanel(
+            DiagonalMixedThemePreviewPanel(
                 leftTopColorScheme = appColorScheme(isDark = false),
                 rightBottomColorScheme = appColorScheme(isDark = true),
                 modifier = Modifier.size(96.dp, 146.dp),

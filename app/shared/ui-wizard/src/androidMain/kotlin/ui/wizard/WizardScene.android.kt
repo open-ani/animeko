@@ -16,7 +16,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.flowOf
 import me.him188.ani.app.data.models.preference.ThemeSettings
-import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview
+import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.settings.framework.SettingsState
 import me.him188.ani.app.ui.settings.tabs.network.SystemProxyPresentation
@@ -32,7 +32,7 @@ import me.him188.ani.app.ui.wizard.step.ProxyUIConfig
 @Preview
 @Composable
 fun PreviewWizardScene() {
-    ProvideFoundationCompositionLocalsForPreview {
+    ProvideCompositionLocalsForPreview {
         val scope = rememberCoroutineScope()
         WizardScene(
             rememberWizardController(),
@@ -60,7 +60,7 @@ internal fun createTestWizardPresentationState(scope: CoroutineScope): WizardPre
                         testRunning = false,
                         items = buildList {
                             add(ProxyTestItem(ProxyTestCase.AniDanmakuApi, ProxyTestCaseState.RUNNING))
-                            add(ProxyTestItem(ProxyTestCase.BangumiMasterApi, ProxyTestCaseState.SUCCESS))
+                            add(ProxyTestItem(ProxyTestCase.BangumiApi, ProxyTestCaseState.SUCCESS))
                             add(ProxyTestItem(ProxyTestCase.BangumiNextApi, ProxyTestCaseState.FAILED))
                         },
                     ),
