@@ -21,14 +21,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.ImageBitmap
 import com.materialkolor.PaletteStyle
 import com.materialkolor.dynamicColorScheme
-import com.materialkolor.ktx.themeColor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.ui.foundation.resize
+import me.him188.ani.app.ui.foundation.themeColor
 
 /**
- * Generate a MaterialTheme from an image
+ * Generate a [MaterialTheme] from a [ImageBitmap].
+ *
+ * @receiver The [ImageBitmap] to generate from.
+ * @return Generated [MaterialTheme]
  */
 @Composable
 fun MaterialThemeFromImage(
@@ -43,20 +46,15 @@ fun MaterialThemeFromImage(
     }
     val useBlackBackground = themeSettings.useBlackBackground
     var colorScheme by remember { mutableStateOf<ColorScheme?>(null) }
-    val fallbackSeedColor = MaterialTheme.colorScheme.primary
 
     LaunchedEffect(bitmap) {
         if (bitmap == null) return@LaunchedEffect
 
         val computedColorScheme = withContext(Dispatchers.Default) {
-            val resizedBitmap = bitmap.resize(16, 16)
-            val primaryColor = resizedBitmap.themeColor(
-                fallback = fallbackSeedColor,
-                filter = true,
-                maxColors = 16,
-            )
+            val resizedBitmap = bitmap.resize(64, 64)
+            val seedColor = resizedBitmap.themeColor()
             dynamicColorScheme(
-                primary = primaryColor,
+                primary = seedColor,
                 isDark = isDark,
                 isAmoled = useBlackBackground,
                 style = PaletteStyle.TonalSpot,
