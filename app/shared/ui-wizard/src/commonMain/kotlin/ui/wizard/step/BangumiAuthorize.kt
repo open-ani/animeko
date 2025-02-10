@@ -145,7 +145,6 @@ private fun SettingsScope.DefaultAuthorize(
             Column(
                 modifier = Modifier
                     .padding(horizontal = layoutParams.horizontalPadding)
-                    .padding(horizontal = 4.dp)
                     .fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
@@ -156,25 +155,38 @@ private fun SettingsScope.DefaultAuthorize(
                 Text(
                     "Bangumi 番组计划 是一个中文 ACGN 互联网分享与交流项目，不提供资源下载。" +
                             "登录 Bangumi 账号方可使用收藏、记录观看进度等功能。",
+                    modifier = Modifier.padding(horizontal = 4.dp),
                     style = MaterialTheme.typography.bodyMedium,
                 )
-                Spacer(Modifier.height(8.dp))
+            }
+            Spacer(Modifier.height(8.dp))
+            Column(
+                modifier = Modifier
+                    .padding(horizontal = layoutParams.horizontalPadding)
+                    .fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 Text(
                     "Bangumi 注册提示",
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.primary,
                 )
-                val currentPlatform = LocalPlatform.current
-                remember {
-                    buildList {
-                        add("请使用常见邮箱注册，例如 QQ, 网易, Outlook")
-                        add("如果提示激活失败，请尝试删除激活码的最后一个字再手动输入")
-                        if (currentPlatform.isAndroid()) {
-                            add("如果浏览器提示网站被屏蔽或登录成功后无法跳转，请尝试在系统设置更换默认浏览器")
+                Column(
+                    modifier = Modifier.padding(horizontal = 4.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    val currentPlatform = LocalPlatform.current
+                    remember {
+                        buildList {
+                            add("请使用常见邮箱注册，例如 QQ, 网易, Outlook")
+                            add("如果提示激活失败，请尝试删除激活码的最后一个字再手动输入")
+                            if (currentPlatform.isAndroid()) {
+                                add("如果浏览器提示网站被屏蔽或登录成功后无法跳转，请尝试在系统设置更换默认浏览器")
+                            }
                         }
+                    }.forEach {
+                        RegisterTip(it, modifier = Modifier.fillMaxWidth())
                     }
-                }.forEach {
-                    RegisterTip(it, modifier = Modifier.fillMaxWidth())
                 }
             }
             Spacer(Modifier.height(8.dp))
