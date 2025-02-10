@@ -77,6 +77,7 @@ internal fun WizardScene(
     state: WizardPresentationState,
     contactActions: @Composable () -> Unit,
     onNavigateBack: () -> Unit,
+    onFinishWizard: () -> Unit,
     modifier: Modifier = Modifier,
     wizardLayoutParams: WizardLayoutParams = WizardLayoutParams.Default
 ) {
@@ -178,7 +179,8 @@ internal fun WizardScene(
         
         val bangumiAuthorizeForwardAction: @Composable () -> Unit = {
             WizardDefaults.GoForwardButton(
-                { controller.goForward() },
+                onFinishWizard,
+                text = "完成",
                 enabled = authorizeState is AuthorizeUIState.Success,
             )
         }
@@ -246,7 +248,7 @@ internal fun WizardScene(
                     onCancel = { bangumiAuthorizeSkipClicked = false },
                     onConfirm = {
                         state.bangumiAuthorizeState.onUseGuestMode()
-                        controller.goForward()
+                        onFinishWizard()
                     },
                 )
             }

@@ -94,6 +94,7 @@ fun WelcomePage(
                     modifier = Modifier.fillMaxSize(),
                     contactActions = contactActions,
                     wizardLayoutParams = wizardLayoutParams,
+                    onFinishWizard = { },
                 )
             }
         }
