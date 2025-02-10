@@ -178,10 +178,10 @@ private fun SettingsScope.DefaultAuthorize(
                     val currentPlatform = LocalPlatform.current
                     remember {
                         buildList {
-                            add("请使用常见邮箱注册，例如 QQ, 网易, Outlook")
-                            add("如果提示激活失败，请尝试删除激活码的最后一个字再手动输入")
+                            add("尽可能使用常见邮箱注册，例如 QQ, 网易, Outlook")
+                            add("如果提示激活失败，请尝试删除激活码的最后一个字，然后手动输入删除的字")
                             if (currentPlatform.isAndroid()) {
-                                add("如果浏览器提示网站被屏蔽或登录成功后无法跳转，请尝试在系统设置更换默认浏览器")
+                                add("如果浏览器提示网站被屏蔽或登录成功后无法跳转，请尝试在系统设置中更换默认浏览器")
                             }
                         }
                     }.forEach {
@@ -333,22 +333,24 @@ private fun AuthorizeStateText(
 
 @Stable
 private enum class HelpOption {
+    WEBSITE_BLOCKED,
     BANGUMI_REGISTER_CHOOSE,
-    LOGIN_SUCCESS_NO_RESPONSE,
+    REGISTER_TYPE_WRONG_CAPTCHA,
     CANT_RECEIVE_REGISTER_EMAIL,
     REGISTER_ACTIVATION_FAILED,
-    REGISTER_TYPE_WRONG_CAPTCHA,
+    LOGIN_SUCCESS_NO_RESPONSE,
     OTHERS,
 }
 
 @Composable
 private fun renderHelpOptionTitle(option: HelpOption): String {
     return when (option) {
+        HelpOption.WEBSITE_BLOCKED -> "浏览器提示网站被屏蔽或禁止访问"
         HelpOption.BANGUMI_REGISTER_CHOOSE -> "注册时应该选择哪一项"
-        HelpOption.LOGIN_SUCCESS_NO_RESPONSE -> "网页显示登录成功后没有反应"
+        HelpOption.REGISTER_TYPE_WRONG_CAPTCHA -> "注册或登录时一直提示验证码错误"
         HelpOption.CANT_RECEIVE_REGISTER_EMAIL -> "无法收到邮箱验证码"
         HelpOption.REGISTER_ACTIVATION_FAILED -> "注册时一直激活失败"
-        HelpOption.REGISTER_TYPE_WRONG_CAPTCHA -> "登录时一直验证码错误"
+        HelpOption.LOGIN_SUCCESS_NO_RESPONSE -> "网页显示登录成功后没有反应"
         HelpOption.OTHERS -> "其他问题"
     }
 }
@@ -410,8 +412,27 @@ private fun SettingsScope.AuthorizeHelpQA(
                 ) {
                     ProvideTextStyle(MaterialTheme.typography.bodyMedium) {
                         when (option) {
+                            HelpOption.WEBSITE_BLOCKED ->
+                                Text(
+                                    "请在系统设置中更换默认浏览器，推荐按使用 Google Chrome，Microsoft Edge " +
+                                            "或 Mozilla Firefox 浏览器",
+                                    contentModifier,
+                                )
                             HelpOption.BANGUMI_REGISTER_CHOOSE ->
                                 Text("管理 ACG 收藏与收视进度，分享交流", contentModifier)
+
+                            HelpOption.REGISTER_TYPE_WRONG_CAPTCHA ->
+                                Text(
+                                    "如果没有验证码的输入框，可以尝试多点几次密码输入框，" +
+                                            "如果输错了验证码，需要刷新页面再登录",
+                                    contentModifier,
+                                )
+
+                            HelpOption.CANT_RECEIVE_REGISTER_EMAIL ->
+                                Text("请检查垃圾箱，并且尽可能使用常见邮箱注册，例如 QQ, 网易, Outlook", contentModifier)
+
+                            HelpOption.REGISTER_ACTIVATION_FAILED ->
+                                Text("删除激活码的最后一个字，然后手动输入删除的字，或更换其他浏览器", contentModifier)
 
                             HelpOption.LOGIN_SUCCESS_NO_RESPONSE -> Row(contentModifier) {
                                 Text("可以尝试使用")
@@ -421,16 +442,7 @@ private fun SettingsScope.AuthorizeHelpQA(
                                     modifier = Modifier.clickable(onClick = onClickTokenAuthorize),
                                 )
                             }
-
-                            HelpOption.CANT_RECEIVE_REGISTER_EMAIL ->
-                                Text("请检查垃圾邮件，并尝试使用常见邮箱如 QQ、Gmail、网易", contentModifier)
-
-                            HelpOption.REGISTER_ACTIVATION_FAILED ->
-                                Text("删除激活码的最后一个字，然后手动输入这个字", contentModifier)
-
-                            HelpOption.REGISTER_TYPE_WRONG_CAPTCHA ->
-                                Text("如果输错了验证码，需要刷新页面再登录", contentModifier)
-
+                            
                             HelpOption.OTHERS -> Column(
                                 contentModifier,
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
