@@ -113,8 +113,6 @@ class MainActivity : AniComponentActivity() {
             }
         }
 
-        val settingsRepository = KoinPlatform.getKoin().get<SettingsRepository>()
-
         setContent {
             AniApp {
                 SystemBarColorEffect()
@@ -124,10 +122,7 @@ class MainActivity : AniComponentActivity() {
                         PlatformWindow()
                     },
                 ) {
-                    val uiSettings by settingsRepository.uiSettings.flow.collectAsStateWithLifecycle(null)
-                    uiSettings?.let {
-                        AniAppContent(aniNavigator, NavRoutes.Main(it.mainSceneInitialPage))
-                    }
+                    AniAppContent(aniNavigator)
                 }
             }
         }

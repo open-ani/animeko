@@ -83,7 +83,6 @@ internal fun WizardScene(
     wizardLayoutParams: WizardLayoutParams = WizardLayoutParams.Default
 ) {
     val context = LocalContext.current
-    val backDispatcher = LocalBackDispatcher.current
 
     var notificationErrorScrolledOnce by rememberSaveable { mutableStateOf(false) }
     var bangumiAuthorizeSkipClicked by rememberSaveable { mutableStateOf(false) }

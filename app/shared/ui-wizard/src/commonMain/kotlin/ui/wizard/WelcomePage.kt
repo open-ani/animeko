@@ -58,7 +58,10 @@ fun WelcomeScreen(
                     modifier = Modifier.widthIn(max = 720.dp),
                     wizardController = vm.wizardController,
                     wizardState = vm.wizardState,
-                    onFinishWizard = onFinishWizard,
+                    onFinishWizard = {
+                        vm.finishWizard()
+                        onFinishWizard()
+                    },
                     contactActions = contactActions,
                     windowInsets = windowInsets,
                     wizardLayoutParams = wizardLayoutParams,

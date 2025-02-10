@@ -27,11 +27,14 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.ImageLoader
 import coil3.compose.LocalPlatformContext
+import kotlinx.coroutines.flow.map
 import me.him188.ani.app.data.models.preference.ThemeSettings
+import me.him188.ani.app.data.models.preference.UISettings
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
 import me.him188.ani.app.domain.foundation.get
+import me.him188.ani.app.navigation.NavRoutes
 import me.him188.ani.app.tools.LocalTimeFormatter
 import me.him188.ani.app.tools.TimeFormatter
 import me.him188.ani.app.ui.foundation.AbstractViewModel
@@ -53,6 +56,14 @@ class AniAppViewModel : AbstractViewModel(), KoinComponent {
     val themeSettings: ThemeSettings? by settings.themeSettings.flow.produceState(null)
 
     val imageLoaderClient = httpClientProvider.get(ScopedHttpClientUserAgent.ANI)
+
+    val initialDestinationRoute by settings.uiSettings.flow
+        .map {
+            if (it.startupToWelcomeWizard) return@map NavRoutes.Welcome
+            NavRoutes.Main(it.mainSceneInitialPage)
+        }
+        .produceState(null)
+
 
 //    /**
 //     * 跟随代理设置等配置变化而变化的 [HttpClient] 实例. 用于 coil ImageLoader.

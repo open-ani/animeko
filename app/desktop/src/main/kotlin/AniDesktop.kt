@@ -449,7 +449,6 @@ object AniDesktop {
 private fun FrameWindowScope.MainWindowContent(
     aniNavigator: AniNavigator,
 ) {
-    val settingsRepository = KoinPlatform.getKoin().get<SettingsRepository>()
     AniApp {
         window.setTitleBar(AniThemeDefaults.navigationContainerColor, isSystemInDarkTheme())
 
@@ -477,10 +476,7 @@ private fun FrameWindowScope.MainWindowContent(
                     },
                 ) {
                     Box(Modifier.padding(all = paddingByWindowSize)) {
-                        val uiSettings by settingsRepository.uiSettings.flow.collectAsStateWithLifecycle(null)
-                        uiSettings?.let {
-                            AniAppContent(aniNavigator, NavRoutes.Main(it.mainSceneInitialPage))
-                        }
+                        AniAppContent(aniNavigator)
                         Toast({ showing }, { Text(content) })
                     }
                 }

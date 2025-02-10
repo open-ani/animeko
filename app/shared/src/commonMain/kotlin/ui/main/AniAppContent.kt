@@ -39,6 +39,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import me.him188.ani.app.data.models.preference.UISettings
 import me.him188.ani.app.data.models.subject.SubjectInfo
+import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.mediasource.rss.RssMediaSource
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSource
 import me.him188.ani.app.navigation.AniNavigator
@@ -57,6 +58,7 @@ import me.him188.ani.app.ui.cache.details.MediaCacheDetailsScreen
 import me.him188.ani.app.ui.cache.details.MediaDetailsLazyGrid
 import me.him188.ani.app.ui.exploration.schedule.ScheduleScreen
 import me.him188.ani.app.ui.exploration.schedule.ScheduleViewModel
+import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.foundation.animation.NavigationMotionScheme
 import me.him188.ani.app.ui.foundation.animation.ProvideAniMotionCompositionLocals
 import me.him188.ani.app.ui.foundation.layout.LocalSharedTransitionScopeProvider
@@ -92,10 +94,10 @@ import kotlin.reflect.typeOf
  * UI 入口点. 包含所有子页面, 以及组合这些子页面的方式 (navigation).
  */
 @Composable
-fun AniAppContent(
-    aniNavigator: AniNavigator,
-    initialRoute: NavRoutes,
-) {
+fun AniAppContent(aniNavigator: AniNavigator) {
+    val aniAppViewModel = viewModel<AniAppViewModel>()
+    val initialRoute = aniAppViewModel.initialDestinationRoute ?: return
+    
     val navigator = rememberNavController()
     aniNavigator.setNavController(navigator)
 

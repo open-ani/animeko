@@ -496,6 +496,15 @@ class WelcomeViewModel : AbstractSettingsViewModel(), KoinComponent {
             delay(1000)
         }
     }
+
+    fun finishWizard() {
+        // 因为更新设置之后会马上进入主界面, backgroundScope 会被取消
+        // 所以这里使用 GlobalScope 确保这个任务能完成, 
+        @OptIn(DelicateCoroutinesApi::class)
+        GlobalScope.launch {
+            settingsRepository.uiSettings.update { copy(startupToWelcomeWizard = false) }
+        }
+    }
 }
 
 @Stable
