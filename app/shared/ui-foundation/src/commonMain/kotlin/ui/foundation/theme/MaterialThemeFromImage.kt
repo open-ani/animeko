@@ -73,7 +73,7 @@ fun MaterialThemeFromImage(
     }
 
     MaterialTheme(
-        colorScheme = MaterialTheme.colorScheme.animate(
+        colorScheme = animateColorScheme(
             targetColorScheme = colorScheme ?: MaterialTheme.colorScheme,
         ),
         content = content,

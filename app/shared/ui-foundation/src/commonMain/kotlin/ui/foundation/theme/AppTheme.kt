@@ -219,7 +219,7 @@ fun modifyColorSchemeForBlackBackground(
 }
 
 @Composable
-fun ColorScheme.animate(
+fun animateColorScheme(
     targetColorScheme: ColorScheme,
     animationSpec: AnimationSpec<Color> = tween(EasingDurations.standard),
 ): ColorScheme {
