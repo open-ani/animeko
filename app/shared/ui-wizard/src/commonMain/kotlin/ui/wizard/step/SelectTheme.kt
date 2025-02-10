@@ -14,12 +14,14 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -121,27 +123,31 @@ internal fun SelectTheme(
                     )
                 },
             )
-            FlowRow(
-                modifier = Modifier
-                    .padding(horizontal = layoutParams.horizontalPadding, vertical = 16.dp)
-                    .fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                maxItemsInEachRow = 4,
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center,
             ) {
-                AniThemeDefaults.themeColorOptions.forEach {
-                    ColorButton(
-                        onClick = {
-                            onUpdate(
-                                config.copy(
-                                    useDynamicTheme = false,
-                                    seedColorValue = it.value,
-                                ),
-                            )
-                        },
-                        baseColor = it,
-                        selected = !config.useDynamicTheme && config.seedColorValue == it.value,
-                        cardColor = Color.Transparent,
-                    )
+                FlowRow(
+                    modifier = Modifier
+                        .padding(horizontal = layoutParams.horizontalPadding, vertical = 16.dp)
+                        .widthIn(max = 480.dp),
+                    horizontalArrangement = Arrangement.Center,
+                ) {
+                    AniThemeDefaults.themeColorOptions.forEach {
+                        ColorButton(
+                            onClick = {
+                                onUpdate(
+                                    config.copy(
+                                        useDynamicTheme = false,
+                                        seedColorValue = it.value,
+                                    ),
+                                )
+                            },
+                            baseColor = it,
+                            selected = !config.useDynamicTheme && config.seedColorValue == it.value,
+                            cardColor = Color.Transparent,
+                        )
+                    }
                 }
             }
         }

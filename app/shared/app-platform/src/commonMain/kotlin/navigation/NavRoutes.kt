@@ -24,6 +24,9 @@ sealed class NavRoutes {
     data object Welcome : NavRoutes()
 
     @Serializable
+    data object Wizard : NavRoutes()
+
+    @Serializable
     data class Main(
         val initialPage: MainScreenPage,
         val requestSearchFocus: Boolean = false,

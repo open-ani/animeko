@@ -93,6 +93,10 @@ interface AniNavigator {
         currentNavigator.navigate(NavRoutes.Welcome)
     }
 
+    fun navigateWizard() {
+        currentNavigator.navigate(NavRoutes.Wizard)
+    }
+
     fun navigateMain(
         page: MainScreenPage,
         requestFocus: Boolean = false

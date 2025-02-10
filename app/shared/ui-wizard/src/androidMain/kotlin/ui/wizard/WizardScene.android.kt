@@ -29,7 +29,8 @@ import me.him188.ani.app.ui.wizard.step.ProxyTestItem
 import me.him188.ani.app.ui.wizard.step.ProxyTestState
 import me.him188.ani.app.ui.wizard.step.ProxyUIConfig
 
-@Preview
+@Preview(showBackground = true, device = "spec:width=411dp,height=891dp", showSystemUi = false)
+@Preview(showBackground = true, device = "spec:width=1920px,height=1080px,dpi=240", showSystemUi = false)
 @Composable
 fun PreviewWizardScene() {
     ProvideCompositionLocalsForPreview {
@@ -38,7 +39,7 @@ fun PreviewWizardScene() {
             rememberWizardController(),
             remember { createTestWizardPresentationState(scope) },
             contactActions = { },
-            onNavigateBack = { },
+            navigationIcon = { },
             onFinishWizard = { },
         )
     }

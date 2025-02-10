@@ -12,12 +12,9 @@ package me.him188.ani.app.ui.wizard
 import androidx.compose.material.icons.Icons
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.navigation.NavController
 import io.ktor.http.encodeURLParameter
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -99,12 +96,7 @@ import org.koin.core.component.inject
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.seconds
 
-/**
- * Todo: 这些页面的 view model 逻辑实际上互不相关.
- *  所以可以考虑拆分逻辑至 use case, 与设置页面 view model 对应的逻辑合并.
- *  这样的好处很明显, 减少 view model 的复杂度, 使其更容易维护, 也方便写单元测试.
- */
-class WelcomeViewModel : AbstractSettingsViewModel(), KoinComponent {
+class WizardViewModel : AbstractSettingsViewModel(), KoinComponent {
     private val settingsRepository: SettingsRepository by inject()
 
     private val themeSettings = settingsRepository.themeSettings
@@ -263,8 +255,6 @@ class WelcomeViewModel : AbstractSettingsViewModel(), KoinComponent {
         onUseGuestMode = { setGuestSession() },
         onAuthorizeViaToken = { setAuthorizationToken(it) },
     )
-
-    var welcomeNavController: NavController? by mutableStateOf(null)
 
     val wizardController = WizardController()
     val wizardState = WizardPresentationState(

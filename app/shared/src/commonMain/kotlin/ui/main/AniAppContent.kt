@@ -84,7 +84,8 @@ import me.him188.ani.app.ui.subject.details.SubjectDetailsViewModel
 import me.him188.ani.app.ui.subject.episode.EpisodeScreen
 import me.him188.ani.app.ui.subject.episode.EpisodeViewModel
 import me.him188.ani.app.ui.wizard.WelcomeScreen
-import me.him188.ani.app.ui.wizard.WelcomeViewModel
+import me.him188.ani.app.ui.wizard.WizardScreen
+import me.him188.ani.app.ui.wizard.WizardViewModel
 import me.him188.ani.datasources.api.source.FactoryId
 import kotlin.reflect.typeOf
 
@@ -139,17 +140,37 @@ private fun AniAppContentImpl(
                 exitTransition = exitTransition,
                 popEnterTransition = popEnterTransition,
                 popExitTransition = popExitTransition,
-            ) { // 由 SessionManager.requireAuthorize 跳转到
+            ) {
                 WelcomeScreen(
-                    viewModel { WelcomeViewModel() },
+                    onClickContinue = { aniNavigator.navigateWizard() },
+                    contactActions = { AniContactList() },
+                    Modifier.fillMaxSize(),
+                    windowInsets,
+                )
+            }
+            composable<NavRoutes.Wizard>(
+                enterTransition = enterTransition,
+                exitTransition = exitTransition,
+                popEnterTransition = popEnterTransition,
+                popExitTransition = popExitTransition,
+            ) {
+                WizardScreen(
+                    viewModel { WizardViewModel() },
                     onFinishWizard = {
-                        // 这个界面只在首次启动 APP 的时候显示, 所以直接导航到默认主页
+                        // 直接导航到主页,并且不能返回向导页
                         aniNavigator.currentNavigator
                             .navigate(NavRoutes.Main(UISettings.Default.mainSceneInitialPage)) {
                                 popUpTo(NavRoutes.Welcome) { inclusive = true }
                             }
                     },
                     contactActions = { AniContactList() },
+                    navigationIcon = {
+                        BackNavigationIconButton(
+                            {
+                                navController.navigateUp()
+                            },
+                        )
+                    },
                     Modifier.fillMaxSize(),
                     windowInsets,
                 )

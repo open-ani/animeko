@@ -61,8 +61,7 @@ class AniAppViewModel : AbstractViewModel(), KoinComponent {
             if (it.startupToWelcomeWizard) return@map NavRoutes.Welcome
             NavRoutes.Main(it.mainSceneInitialPage)
         }
-        .produceState(null)
-
+        .collectFirstAsState(null)
 
 //    /**
 //     * 跟随代理设置等配置变化而变化的 [HttpClient] 实例. 用于 coil ImageLoader.

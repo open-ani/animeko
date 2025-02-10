@@ -21,15 +21,20 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.PreviewLightDark
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 
-@PreviewLightDark
+@Preview(showBackground = true, device = "spec:width=411dp,height=891dp", showSystemUi = false)
+@Preview(
+    showBackground = true,
+    device = "spec:width=1920px,height=1080px,dpi=240",
+    showSystemUi = false
+)
 @Composable
-fun PreviewFirstScreenScene() {
+fun PreviewWelcomeScene() {
     ProvideCompositionLocalsForPreview {
-        FirstScreenScene({ }, contactActions = { TestContactActions() })
+        WelcomeScene({ }, contactActions = { TestContactActions() })
     }
 }
 

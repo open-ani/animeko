@@ -57,6 +57,7 @@ import kotlinx.coroutines.launch
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
+import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
@@ -72,11 +73,61 @@ import me.him188.ani.app.ui.wizard.step.ProxyOverallTestState
 import me.him188.ani.app.ui.wizard.step.SelectTheme
 
 @Composable
+fun WizardScreen(
+    vm: WizardViewModel,
+    onFinishWizard: () -> Unit,
+    contactActions: @Composable () -> Unit,
+    navigationIcon: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+    windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
+    wizardLayoutParams: WizardLayoutParams =
+        WizardLayoutParams.fromWindowSizeClass(currentWindowAdaptiveInfo1().windowSizeClass),
+) {
+    WizardPage(
+        modifier = modifier,
+        wizardController = vm.wizardController,
+        wizardState = vm.wizardState,
+        onFinishWizard = {
+            vm.finishWizard()
+            onFinishWizard()
+        },
+        contactActions = contactActions,
+        navigationIcon = navigationIcon,
+        windowInsets = windowInsets,
+        wizardLayoutParams = wizardLayoutParams,
+    )
+}
+
+@Composable
+fun WizardPage(
+    wizardController: WizardController,
+    wizardState: WizardPresentationState,
+    onFinishWizard: () -> Unit,
+    contactActions: @Composable () -> Unit,
+    navigationIcon: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+    windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
+    wizardLayoutParams: WizardLayoutParams = WizardLayoutParams.Default
+) {
+    Box(Modifier.windowInsetsPadding(windowInsets)) {
+        WizardScene(
+            controller = wizardController,
+            state = wizardState,
+            navigationIcon = navigationIcon,
+            modifier = modifier,
+            contactActions = contactActions,
+            wizardLayoutParams = wizardLayoutParams,
+            onFinishWizard = onFinishWizard,
+        )
+    }
+}
+
+@Composable
 internal fun WizardScene(
     controller: WizardController,
     state: WizardPresentationState,
     contactActions: @Composable () -> Unit,
-    onNavigateBack: () -> Unit,
+    navigationIcon: @Composable () -> Unit,
     onFinishWizard: () -> Unit,
     modifier: Modifier = Modifier,
     wizardLayoutParams: WizardLayoutParams = WizardLayoutParams.Default
@@ -86,11 +137,9 @@ internal fun WizardScene(
     var notificationErrorScrolledOnce by rememberSaveable { mutableStateOf(false) }
     var bangumiAuthorizeSkipClicked by rememberSaveable { mutableStateOf(false) }
     var bangumiShowTokenAuthorizePage by remember { mutableStateOf(false) }
-    
-    val authorizeState by state.bangumiAuthorizeState.state
-        .collectAsStateWithLifecycle(AuthorizeUIState.Idle)
-    val proxyState by state.configureProxyState.state
-        .collectAsStateWithLifecycle(ConfigureProxyUIState.Default)
+
+    val authorizeState by state.bangumiAuthorizeState.state.collectAsStateWithLifecycle(AuthorizeUIState.Idle)
+    val proxyState by state.configureProxyState.state.collectAsStateWithLifecycle(ConfigureProxyUIState.Default)
 
     WizardNavHost(
         controller,
@@ -99,7 +148,7 @@ internal fun WizardScene(
         step(
             "theme",
             { Text("选择主题") },
-            backwardButton = { BackNavigationIconButton(onNavigateBack) },
+            backwardButton = navigationIcon,
         ) {
             SelectTheme(
                 config = state.selectThemeState.value,
@@ -176,7 +225,7 @@ internal fun WizardScene(
                 layoutParams = wizardLayoutParams,
             )
         }
-        
+
         val bangumiAuthorizeForwardAction: @Composable () -> Unit = {
             WizardDefaults.GoForwardButton(
                 onFinishWizard,
@@ -247,7 +296,7 @@ internal fun WizardScene(
                 onClickNavigateToBangumiDev = {
                     state.bangumiAuthorizeState.onClickNavigateToBangumiDev(context)
                 },
-                onScrollToTop = { 
+                onScrollToTop = {
                     scope.launch {
                         scrollUpTopAppBar()
                         wizardListState.animateScrollToItem(0)
@@ -312,7 +361,7 @@ object WizardDefaults {
     fun renderStepIndicatorText(currentStep: Int, totalStep: Int): String {
         return "步骤 $currentStep / $totalStep"
     }
-    
+
     @Composable
     fun StepTopAppBar(
         currentStep: Int,

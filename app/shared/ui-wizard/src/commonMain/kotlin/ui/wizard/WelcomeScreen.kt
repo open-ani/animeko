@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -24,6 +23,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProvideTextStyle
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
@@ -38,12 +38,29 @@ import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 
+@Composable
+fun WelcomeScreen(
+    onClickContinue: () -> Unit,
+    contactActions: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+    windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
+) {
+    Surface {
+        WelcomeScene(
+            onClickContinue,
+            contactActions = contactActions,
+            modifier = modifier,
+            windowInsets = windowInsets,
+        )
+    }
+}
+
 /**
  * 首次启动 APP 的欢迎界面, 在向导之前显示.
  */
 @Composable
-internal fun FirstScreenScene(
-    onLinkStart: () -> Unit,
+internal fun WelcomeScene(
+    onClickContinue: () -> Unit,
     contactActions: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
@@ -55,7 +72,7 @@ internal fun FirstScreenScene(
     SideEffect {
         isContentReady = true
     }
-    
+
     Box(
         modifier,
         contentAlignment = Alignment.Center,
@@ -76,8 +93,8 @@ internal fun FirstScreenScene(
                     )
                     .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                
-            ) {
+
+                ) {
                 Column(
                     verticalArrangement = Arrangement.Center,
                 ) {
@@ -112,7 +129,7 @@ internal fun FirstScreenScene(
                         .padding(top = 16.dp, bottom = 36.dp),
                 ) {
                     Button(
-                        onClick = onLinkStart,
+                        onClick = onClickContinue,
                         modifier = Modifier.widthIn(300.dp),
                     ) {
                         Text("继续")
