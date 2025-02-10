@@ -248,7 +248,7 @@ fun AniContactList(
 ) {
     val context = LocalContext.current
     FlowRow(
-        modifier.fillMaxWidth(),
+        modifier,
         horizontalArrangement = Arrangement.spacedBy(12.dp, alignment = Alignment.Start),
     ) {
         SuggestionChip(

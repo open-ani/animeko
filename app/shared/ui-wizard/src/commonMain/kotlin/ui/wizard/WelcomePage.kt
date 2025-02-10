@@ -9,13 +9,17 @@
 
 package me.him188.ani.app.ui.wizard
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -30,6 +34,7 @@ import me.him188.ani.app.ui.wizard.navigation.WizardController
 @Composable
 fun WelcomeScreen(
     vm: WelcomeViewModel,
+    onFinishWizard: () -> Unit,
     contactActions: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
@@ -44,28 +49,31 @@ fun WelcomeScreen(
     ) {
         SystemBarColorEffect()
         MaterialTheme(colorScheme = appColorScheme()) {
-            WelcomePage(
-                navController = navController,
-                wizardController = vm.wizardController,
-                wizardState = vm.wizardState,
-                contactActions = contactActions,
+            Box(
                 modifier = modifier,
-                windowInsets = windowInsets,
-                wizardLayoutParams = wizardLayoutParams,
-            )
+                contentAlignment = Alignment.Center,
+            ) {
+                WelcomePage(
+                    navController = navController,
+                    modifier = Modifier.widthIn(max = 720.dp),
+                    wizardController = vm.wizardController,
+                    wizardState = vm.wizardState,
+                    onFinishWizard = onFinishWizard,
+                    contactActions = contactActions,
+                    windowInsets = windowInsets,
+                    wizardLayoutParams = wizardLayoutParams,
+                )
+            }
         }
     }
 }
 
-/**
- * TODO: 把这两个页面直接添加到 app root NavHost
- *  在一切 UI 工作完成之后.
- */
 @Composable
 fun WelcomePage(
     navController: NavHostController,
     wizardController: WizardController,
     wizardState: WizardPresentationState,
+    onFinishWizard: () -> Unit,
     contactActions: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
@@ -94,7 +102,7 @@ fun WelcomePage(
                     modifier = Modifier.fillMaxSize(),
                     contactActions = contactActions,
                     wizardLayoutParams = wizardLayoutParams,
-                    onFinishWizard = { },
+                    onFinishWizard = onFinishWizard,
                 )
             }
         }

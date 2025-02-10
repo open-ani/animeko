@@ -9,25 +9,23 @@
 
 package me.him188.ani.app.ui.wizard
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -36,6 +34,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
+import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 
 /**
@@ -57,52 +57,55 @@ internal fun FirstScreenScene(
     }
     
     Box(
-        modifier = modifier,
+        modifier,
         contentAlignment = Alignment.Center,
     ) {
-        AnimatedVisibility(
+        AniAnimatedVisibility(
             isContentReady,
-            enter = WizardDefaults.indicatorBarEnterAnim,
+            Modifier.wrapContentSize(),
+            // 从中间往上滑
+            enter = LocalAniMotionScheme.current.animatedVisibility.screenEnter,
+            exit = LocalAniMotionScheme.current.animatedVisibility.screenExit,
         ) {
             Column(
-                modifier = Modifier
+                Modifier
                     .windowInsetsPadding(windowInsets)
                     .padding(
                         horizontal = layoutParams.horizontalPadding,
                         vertical = layoutParams.verticalPadding,
                     )
-                    .fillMaxWidth()
                     .verticalScroll(rememberScrollState()),
-                horizontalAlignment = Alignment.Start,
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                
             ) {
-                Spacer(Modifier.height(32.dp))
-                Text(
-                    text = "欢迎使用 Animeko",
-                    style = MaterialTheme.typography.headlineMedium,
-                )
-                Text(
-                    text = "一站式在线弹幕追番平台 (简称 Ani)",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                )
                 Column(
-                    modifier = Modifier
-                        .padding(vertical = 8.dp)
-                        .fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    Text("欢迎使用 Animeko", style = MaterialTheme.typography.headlineMedium)
 
-                    ) {
-                    CompositionLocalProvider(
-                        LocalTextStyle provides MaterialTheme.typography.bodyMedium,
-                    ) {
-                        Text("Ani 由爱好者组成的组织 OpenAni 和社区贡献者维护，完全免费，在 GitHub 上开源。")
-                        Text("Ani 的目标是提供尽可能简单且舒适的追番体验。")
+                    ProvideTextStyle(MaterialTheme.typography.bodyLarge) {
+                        Row(Modifier.padding(top = 8.dp).align(Alignment.Start)) {
+                            Text(
+                                """一站式在线弹幕追番平台 (简称 Ani)""",
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
                     }
-                }
-                Box(modifier = Modifier.fillMaxWidth()) {
+
+                    Column(
+                        Modifier.padding(vertical = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        ProvideTextStyle(MaterialTheme.typography.bodyMedium) {
+                            Text("""Ani 目前由爱好者组成的组织 OpenAni 和社区贡献者维护，完全免费，在 GitHub 上开源。""")
+
+                            Text("""Ani 的目标是提供尽可能简单且舒适的追番体验。""")
+                        }
+                    }
+
                     contactActions()
                 }
+
                 Box(
                     modifier = Modifier
                         .padding(horizontal = 64.dp)

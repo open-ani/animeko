@@ -142,6 +142,7 @@ private fun AniAppContentImpl(
                 if (false) WelcomeScene(viewModel { WelcomeViewModel() }, Modifier.fillMaxSize())
                 me.him188.ani.app.ui.wizard.WelcomeScreen(
                     viewModel { me.him188.ani.app.ui.wizard.WelcomeViewModel() },
+                    onFinishWizard = { },
                     contactActions = { AniContactList() },
                     Modifier.fillMaxSize(),
                     windowInsets,
