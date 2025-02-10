@@ -24,8 +24,5 @@ actual fun ImageBitmap.resize(
     width: Int,
     height: Int,
 ): ImageBitmap {
-    val androidBitmap = this.asAndroidBitmap()
-    val newWidth = width
-    val newHeight = androidBitmap.height * newWidth / width
-    return androidBitmap.scale(newWidth, newHeight).asImageBitmap()
+    return this.asAndroidBitmap().scale(width, height).asImageBitmap()
 }
