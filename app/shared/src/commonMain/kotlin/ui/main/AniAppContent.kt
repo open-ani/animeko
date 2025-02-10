@@ -126,7 +126,7 @@ private fun AniAppContentImpl(
     val navMotionScheme by rememberUpdatedState(NavigationMotionScheme.current)
 
     SharedTransitionLayout {
-        NavHost(navController, startDestination = NavRoutes.Welcome, modifier) {
+        NavHost(navController, startDestination = initialRoute, modifier) {
             val enterTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition? =
                 { navMotionScheme.enterTransition }
             val exitTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition? =
