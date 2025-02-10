@@ -103,7 +103,7 @@ fun MainViewController(): UIViewController {
         @OptIn(TestOnly::class)
         TestGlobalLifecycleOwner, // TODO: ios lifecycle
     )
-    val settingsRepository = koin.get<SettingsRepository>()
+
     return ComposeUIViewController {
         AniApp {
             CompositionLocalProvider(
@@ -139,10 +139,7 @@ fun MainViewController(): UIViewController {
                             },
                         ) {
                             Box(Modifier.padding(all = paddingByWindowSize)) {
-                                val uiSettings by settingsRepository.uiSettings.flow.collectAsStateWithLifecycle(null)
-                                uiSettings?.let {
-                                    AniAppContent(aniNavigator, NavRoutes.Main(it.mainSceneInitialPage))
-                                }
+                                AniAppContent(aniNavigator)
                                 Toast({ showing }, { Text(content) })
                             }
                         }
