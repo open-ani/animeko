@@ -232,16 +232,18 @@ class WelcomeViewModel : AbstractSettingsViewModel(), KoinComponent {
 
             sessionManager.state
                 .collectLatest { sessionState ->
+                    // 如果有 token, 直接获取当前 session 的状态即可
                     if (sessionState !is SessionStatus.NoToken)
                         return@collectLatest collectFromSessionStatus(requestId, sessionState, null)
 
                     sessionManager.processingRequest
                         .filterNotNull()
-                        .collectLatest { processingRequest ->
-                            logger.trace { "[AuthUIState][$requestId] current processing request: $processingRequest" }
-                            processingRequest.state.collectLatest { requestState ->
-                                collectFromSessionStatus(requestId, sessionState, requestState)
-                            }
+                        .flatMapLatest {
+                            logger.trace { "[AuthUIState][$requestId] current processing request: $it" }
+                            it.state
+                        }
+                        .collectLatest { requestState ->
+                            collectFromSessionStatus(requestId, sessionState, requestState)
                         }
                 }
         }
