@@ -42,7 +42,6 @@ import me.him188.ani.app.ui.settings.framework.components.TextItem
 import me.him188.ani.app.ui.settings.rendering.P2p
 import me.him188.ani.app.ui.wizard.HeroIconDefaults
 import me.him188.ani.app.ui.wizard.WizardLayoutParams
-import me.him188.ani.utils.platform.Platform
 
 @Composable
 private fun BitTorrentTip(
@@ -117,7 +116,7 @@ internal fun BitTorrentFeature(
                                 "你将从其他 Ani 用户和全球的 BT 用户下载并缓存内容，同时你的缓存也将分享给他们。",
                     )
 
-                    when (platform) {
+                    /*when (platform) {
                         // 启用 BitTorrent 功能，App 将会启动前台服务来保持运行 torrent 引擎，这可能会增加耗电。
                         is Platform.Android -> Text(
                             "App 将会启动前台服务来保持运行 BT 引擎，这可能会增加耗电。" +
@@ -125,7 +124,7 @@ internal fun BitTorrentFeature(
                         )
 
                         else -> {}
-                    }
+                    }*/
 
                     // Text("你也可以在 设置 - BitTorrent 中开启或关闭 BitTorrent 功能。")
                 }
@@ -150,14 +149,16 @@ internal fun BitTorrentFeature(
                     ProvideTextStyle(MaterialTheme.typography.bodyMedium) {
                         remember {
                             buildList {
-                                add(
+                                add("老旧的番剧做种人数较少，不适合使用 BT 源")
+                                /*add(
                                     "对于老旧番剧的 BT 资源，由于做种用户比较少，" +
                                             "所以下载速度较慢甚至无法解析磁力链接，此类番剧不适合使用 BT 源。",
-                                )
-                                add(
+                                )*/
+                                add("BT 源的下载速度取决于你的运营商网络质量")
+                                /*add(
                                     "连接 BT 网络对自身的网络环境要求较高，" +
                                             "如果你的运营商提供的网络 NAT 层级过深，则不适合使用 BT 网络。",
-                                )
+                                )*/
                             }
                         }.forEach {
                             BitTorrentTip(it, modifier = Modifier.fillMaxWidth())
