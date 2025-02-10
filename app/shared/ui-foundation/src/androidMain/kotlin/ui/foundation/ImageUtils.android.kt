@@ -10,10 +10,19 @@
 package me.him188.ani.app.ui.foundation
 
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asSkiaBitmap
+import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.core.graphics.scale
 import coil3.Image
-import coil3.asImage
+import coil3.toBitmap
 
-actual fun ImageBitmap.asCoilImage(): Image {
-    return this.asSkiaBitmap().asImage()
+actual fun Image.toComposeImageBitmap(): ImageBitmap {
+    return this.toBitmap().asImageBitmap()
+}
+
+actual fun ImageBitmap.resize(
+    width: Int,
+    height: Int,
+): ImageBitmap {
+    return this.asAndroidBitmap().scale(width, height).asImageBitmap()
 }

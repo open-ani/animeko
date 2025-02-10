@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -43,6 +43,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImagePainter
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.ui.foundation.AsyncImage
@@ -65,6 +66,7 @@ internal fun SubjectDetailsHeader(
     collectionAction: @Composable () -> Unit,
     selectEpisodeButton: @Composable BoxScope.() -> Unit,
     rating: @Composable () -> Unit,
+    onCoverImageSuccess: (AsyncImagePainter.State.Success) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val clipboardManager = LocalClipboardManager.current
@@ -108,6 +110,7 @@ internal fun SubjectDetailsHeader(
             collectionAction = collectionAction,
             selectEpisodeButton = selectEpisodeButton,
             rating = rating,
+            onCoverImageSuccess = onCoverImageSuccess,
             modifier = modifier,
         )
     } else {
@@ -121,6 +124,7 @@ internal fun SubjectDetailsHeader(
             collectionAction = collectionAction,
             selectEpisodeButton = selectEpisodeButton,
             rating = rating,
+            onSuccess = onCoverImageSuccess,
             modifier = modifier,
         )
     }
@@ -139,6 +143,7 @@ fun SubjectDetailsHeaderCompact(
     collectionAction: @Composable () -> Unit,
     selectEpisodeButton: @Composable BoxScope.() -> Unit,
     rating: @Composable () -> Unit,
+    onSuccess: (AsyncImagePainter.State.Success) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier) {
@@ -154,6 +159,7 @@ fun SubjectDetailsHeaderCompact(
                         .height(imageWidth / COVER_WIDTH_TO_HEIGHT_RATIO),
                     contentScale = ContentScale.Crop,
                     placeholder = if (currentAniBuildConfig.isDebug) remember { ColorPainter(Color.Gray) } else null,
+                    onSuccess = onSuccess,
                 )
             }
 
@@ -223,6 +229,7 @@ fun SubjectDetailsHeaderWide(
     collectionAction: @Composable () -> Unit,
     selectEpisodeButton: @Composable BoxScope.() -> Unit,
     rating: @Composable () -> Unit,
+    onCoverImageSuccess: (AsyncImagePainter.State.Success) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier) {
@@ -241,6 +248,7 @@ fun SubjectDetailsHeaderWide(
                         .height(imageWidth / COVER_WIDTH_TO_HEIGHT_RATIO),
                     contentScale = ContentScale.Crop,
                     placeholder = if (currentAniBuildConfig.isDebug) remember { ColorPainter(Color.Gray) } else null,
+                    onSuccess = onCoverImageSuccess,
                 )
             }
 

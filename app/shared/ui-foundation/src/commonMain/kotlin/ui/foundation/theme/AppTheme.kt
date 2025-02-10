@@ -13,6 +13,8 @@ package me.him188.ani.app.ui.foundation.theme
 
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -31,6 +33,11 @@ import androidx.compose.ui.unit.IntOffset
 import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
+import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults.pageContentBackgroundColor
+
+val LocalThemeSettings = compositionLocalOf<ThemeSettings> {
+    error("LocalThemeSettings not provided")
+}
 
 /**
  * Create a [ColorScheme] based on the current [ThemeSettings].
@@ -191,11 +198,6 @@ object EasingDurations {
     const val standardAccelerate = 200
 }
 
-
-val LocalThemeSettings = compositionLocalOf<ThemeSettings> {
-    error("LocalThemeSettings not provided")
-}
-
 fun modifyColorSchemeForBlackBackground(
     colorScheme: ColorScheme,
     isDark: Boolean,
@@ -216,17 +218,47 @@ fun modifyColorSchemeForBlackBackground(
     } else colorScheme
 }
 
-/**
- * Transform system-bar visual effects.
- * Currently only takes effect on Android.
- *
- * @param isDark system theme, if `true`, system bar will be visually white.
- */
 @Composable
-expect fun SystemBarColorEffect(
-    isDark: Boolean = when (LocalThemeSettings.current.darkMode) {
-        DarkMode.LIGHT -> false
-        DarkMode.DARK -> true
-        DarkMode.AUTO -> isSystemInDarkTheme()
-    },
-)
+fun animateColorScheme(
+    targetColorScheme: ColorScheme,
+    animationSpec: AnimationSpec<Color> = tween(EasingDurations.standard),
+): ColorScheme {
+    return ColorScheme(
+        primary = animateColorAsState(targetColorScheme.primary, animationSpec).value,
+        onPrimary = animateColorAsState(targetColorScheme.onPrimary, animationSpec).value,
+        primaryContainer = animateColorAsState(targetColorScheme.primaryContainer, animationSpec).value,
+        onPrimaryContainer = animateColorAsState(targetColorScheme.onPrimaryContainer, animationSpec).value,
+        inversePrimary = animateColorAsState(targetColorScheme.inversePrimary, animationSpec).value,
+        secondary = animateColorAsState(targetColorScheme.secondary, animationSpec).value,
+        onSecondary = animateColorAsState(targetColorScheme.onSecondary, animationSpec).value,
+        secondaryContainer = animateColorAsState(targetColorScheme.secondaryContainer, animationSpec).value,
+        onSecondaryContainer = animateColorAsState(targetColorScheme.onSecondaryContainer, animationSpec).value,
+        tertiary = animateColorAsState(targetColorScheme.tertiary, animationSpec).value,
+        onTertiary = animateColorAsState(targetColorScheme.onTertiary, animationSpec).value,
+        tertiaryContainer = animateColorAsState(targetColorScheme.tertiaryContainer, animationSpec).value,
+        onTertiaryContainer = animateColorAsState(targetColorScheme.onTertiaryContainer, animationSpec).value,
+        background = animateColorAsState(targetColorScheme.background, animationSpec).value,
+        onBackground = animateColorAsState(targetColorScheme.onBackground, animationSpec).value,
+        surface = animateColorAsState(targetColorScheme.surface, animationSpec).value,
+        onSurface = animateColorAsState(targetColorScheme.onSurface, animationSpec).value,
+        surfaceVariant = animateColorAsState(targetColorScheme.surfaceVariant, animationSpec).value,
+        onSurfaceVariant = animateColorAsState(targetColorScheme.onSurfaceVariant, animationSpec).value,
+        surfaceTint = animateColorAsState(targetColorScheme.surfaceTint, animationSpec).value,
+        inverseSurface = animateColorAsState(targetColorScheme.inverseSurface, animationSpec).value,
+        inverseOnSurface = animateColorAsState(targetColorScheme.inverseOnSurface, animationSpec).value,
+        surfaceBright = animateColorAsState(targetColorScheme.surfaceBright, animationSpec).value,
+        surfaceDim = animateColorAsState(targetColorScheme.surfaceDim, animationSpec).value,
+        surfaceContainer = animateColorAsState(targetColorScheme.surfaceContainer, animationSpec).value,
+        surfaceContainerHigh = animateColorAsState(targetColorScheme.surfaceContainerHigh, animationSpec).value,
+        surfaceContainerHighest = animateColorAsState(targetColorScheme.surfaceContainerHighest, animationSpec).value,
+        surfaceContainerLow = animateColorAsState(targetColorScheme.surfaceContainerLow, animationSpec).value,
+        surfaceContainerLowest = animateColorAsState(targetColorScheme.surfaceContainerLowest, animationSpec).value,
+        error = animateColorAsState(targetColorScheme.error, animationSpec).value,
+        onError = animateColorAsState(targetColorScheme.onError, animationSpec).value,
+        errorContainer = animateColorAsState(targetColorScheme.errorContainer, animationSpec).value,
+        onErrorContainer = animateColorAsState(targetColorScheme.onErrorContainer, animationSpec).value,
+        outline = animateColorAsState(targetColorScheme.outline, animationSpec).value,
+        outlineVariant = animateColorAsState(targetColorScheme.outlineVariant, animationSpec).value,
+        scrim = animateColorAsState(targetColorScheme.scrim, animationSpec).value,
+    )
+}
