@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
@@ -83,19 +84,24 @@ fun WizardScreen(
     wizardLayoutParams: WizardLayoutParams =
         WizardLayoutParams.fromWindowSizeClass(currentWindowAdaptiveInfo1().windowSizeClass),
 ) {
-    WizardPage(
-        modifier = modifier,
-        wizardController = vm.wizardController,
-        wizardState = vm.wizardState,
-        onFinishWizard = {
-            vm.finishWizard()
-            onFinishWizard()
-        },
-        contactActions = contactActions,
-        navigationIcon = navigationIcon,
-        windowInsets = windowInsets,
-        wizardLayoutParams = wizardLayoutParams,
-    )
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
+    ) {
+        WizardPage(
+            modifier = modifier,
+            wizardController = vm.wizardController,
+            wizardState = vm.wizardState,
+            onFinishWizard = {
+                vm.finishWizard()
+                onFinishWizard()
+            },
+            contactActions = contactActions,
+            navigationIcon = navigationIcon,
+            windowInsets = windowInsets,
+            wizardLayoutParams = wizardLayoutParams,
+        )
+    }
 }
 
 @Composable
