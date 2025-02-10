@@ -105,6 +105,8 @@ internal fun FrameWindowScope.WindowsWindowFrame(
         return
     }
     val windowUtils = WindowsWindowUtils.instance
+    val platformWindow = LocalPlatformWindow.current
+    val scope = rememberCoroutineScope()
 
     Box(modifier = Modifier.fillMaxSize()) {
         val isFullScreen = isSystemInFullscreen()
@@ -153,10 +155,16 @@ internal fun FrameWindowScope.WindowsWindowFrame(
                     },
                 ) {
                     CaptionButtonRow(
-                        windowsWindowUtils = windowUtils,
-                        windowState = windowState,
                         frameState = frameState,
                         isMaximize = windowState.placement == WindowPlacement.Maximized,
+                        onMinimizeRequest = { windowUtils.minimizeWindow(window.windowHandle) },
+                        onMaximizeRequest = { windowUtils.maximizeWindow(window.windowHandle) },
+                        onRestoreRequest = { windowUtils.restoreWindow(window.windowHandle) },
+                        onExitFullscreenRequest = {
+                            scope.launch {
+                                windowUtils.setUndecoratedFullscreen(platformWindow, windowState, false)
+                            }
+                        },
                         onCloseRequest = onCloseRequest,
                         onMaximizeButtonRectUpdate = frameState::updateMaximizeButtonRect,
                         onMinimizeButtonRectUpdate = frameState::updateMinimizeButtonRect,
@@ -313,18 +321,19 @@ private fun rememberFontIconFamily(): State<FontFamily?> {
 }
 
 @Composable
-private fun FrameWindowScope.CaptionButtonRow(
-    windowsWindowUtils: WindowsWindowUtils,
+private fun CaptionButtonRow(
     frameState: WindowsWindowFrameState,
     isMaximize: Boolean,
-    windowState: WindowState,
+    onMinimizeRequest: () -> Unit,
+    onMaximizeRequest: () -> Unit,
+    onRestoreRequest: () -> Unit,
+    onExitFullscreenRequest: () -> Unit,
     onCloseRequest: () -> Unit,
     modifier: Modifier = Modifier,
     onMinimizeButtonRectUpdate: (Rect) -> Unit,
     onMaximizeButtonRectUpdate: (Rect) -> Unit,
     onCloseButtonRectUpdate: (Rect) -> Unit,
 ) {
-    val platformWindow = LocalPlatformWindow.current
     val captionButtonColors = frameState.collectCaptionButtonColors()
     val isActive by frameState.collectWindowIsActive()
     Row(
@@ -333,37 +342,18 @@ private fun FrameWindowScope.CaptionButtonRow(
             .zIndex(1f),
     ) {
         CaptionButton(
-            onClick = {
-                windowsWindowUtils.minimizeWindow(window.windowHandle)
-            },
+            onClick = onMinimizeRequest,
             icon = CaptionButtonIcon.Minimize,
             isActive = isActive,
             colors = captionButtonColors,
             modifier = Modifier.onGloballyPositioned { onMinimizeButtonRectUpdate(it.boundsInWindow()) },
         )
         val isFullScreen = isSystemInFullscreen()
-        val coroutineScope = rememberCoroutineScope()
         CaptionButton(
-            onClick = {
-                when {
-                    isFullScreen -> {
-                        coroutineScope.launch {
-                            windowsWindowUtils.setUndecoratedFullscreen(
-                                platformWindow,
-                                windowState,
-                                false,
-                            )
-                        }
-                    }
-
-                    isMaximize -> {
-                        windowsWindowUtils.restoreWindow(window.windowHandle)
-                    }
-
-                    else -> {
-                        windowsWindowUtils.maximizeWindow(window.windowHandle)
-                    }
-                }
+            onClick = when {
+                isFullScreen -> onExitFullscreenRequest
+                isMaximize -> onRestoreRequest
+                else -> onMaximizeRequest
             },
             icon = when {
                 isFullScreen -> CaptionButtonIcon.BackToWindow
@@ -386,7 +376,6 @@ private fun FrameWindowScope.CaptionButtonRow(
     }
 }
 
-@OptIn(ExperimentalTextApi::class)
 @Composable
 private fun CaptionButton(
     onClick: () -> Unit,
