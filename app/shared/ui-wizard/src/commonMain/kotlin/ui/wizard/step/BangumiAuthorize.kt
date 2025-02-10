@@ -58,7 +58,6 @@ import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.animation.AnimatedVisibilityMotionScheme
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.icons.BangumiNext
-import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.TextItem
@@ -70,18 +69,18 @@ import me.him188.ani.utils.platform.isAndroid
 @Composable
 internal fun BangumiAuthorize(
     authorizeState: AuthorizeUIState,
+    showTokenAuthorizePage: Boolean,
     contactActions: @Composable () -> Unit,
     forwardAction: @Composable () -> Unit,
+    onSetShowTokenAuthorizePage: (Boolean) -> Unit,
     onClickAuthorize: () -> Unit,
     onCancelAuthorize: () -> Unit,
-    onRefreshAuthorizeStatus: () -> Unit,
     onClickNavigateToBangumiDev: () -> Unit,
     onAuthorizeViaToken: (String) -> Unit,
     modifier: Modifier = Modifier,
     onScrollToTop: () -> Unit = { },
     layoutParams: WizardLayoutParams = WizardLayoutParams.Default
 ) {
-    var showTokenAuthorizePage by remember { mutableStateOf(false) }
 
     SettingsTab(modifier) {
         AnimatedContent(
@@ -96,18 +95,14 @@ internal fun BangumiAuthorize(
                 onClickTokenAuthorize = {
                     onCancelAuthorize()
                     onScrollToTop()
-                    showTokenAuthorizePage = true
+                    onSetShowTokenAuthorizePage(true)
                 },
                 layoutParams = layoutParams,
             ) else TokenAuthorize(
-                onClickBack = {
-                    showTokenAuthorizePage = false
-                    onRefreshAuthorizeStatus()
-                },
                 onClickNavigateToBangumiDev = onClickNavigateToBangumiDev,
                 onAuthorizeViaToken = { token ->
                     onAuthorizeViaToken(token)
-                    showTokenAuthorizePage = false
+                    onSetShowTokenAuthorizePage(false)
                 },
                 layoutParams = layoutParams,
             )
@@ -444,7 +439,6 @@ private fun SettingsScope.AuthorizeHelpQA(
 
 @Composable
 private fun SettingsScope.TokenAuthorize(
-    onClickBack: () -> Unit,
     onClickNavigateToBangumiDev: () -> Unit,
     onAuthorizeViaToken: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -452,7 +446,6 @@ private fun SettingsScope.TokenAuthorize(
 ) {
     var token by rememberSaveable { mutableStateOf("") }
 
-    BackHandler(onBack = onClickBack)
     Group(
         modifier = modifier,
         title = { Text("令牌 (token) 登录指南") },

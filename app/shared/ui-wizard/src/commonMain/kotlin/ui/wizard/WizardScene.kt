@@ -57,6 +57,7 @@ import kotlinx.coroutines.launch
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
+import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.navigation.LocalBackDispatcher
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
@@ -86,6 +87,7 @@ internal fun WizardScene(
 
     var notificationErrorScrolledOnce by rememberSaveable { mutableStateOf(false) }
     var bangumiAuthorizeSkipClicked by rememberSaveable { mutableStateOf(false) }
+    var bangumiShowTokenAuthorizePage by remember { mutableStateOf(false) }
     
     val authorizeState by state.bangumiAuthorizeState.state
         .collectAsStateWithLifecycle(AuthorizeUIState.Idle)
@@ -190,7 +192,14 @@ internal fun WizardScene(
             forwardButton = bangumiAuthorizeForwardAction,
             backwardButton = {
                 BackNavigationIconButton(
-                    { backDispatcher.onBackPressed() },
+                    {
+                        if (bangumiShowTokenAuthorizePage) {
+                            bangumiShowTokenAuthorizePage = false
+                            state.bangumiAuthorizeState.onCheckCurrentToken()
+                        } else {
+                            controller.goBackward()
+                        }
+                    },
                     modifier = Modifier.testTag("buttonPrevStep"),
                 )
             },
@@ -215,6 +224,7 @@ internal fun WizardScene(
             },
         ) {
             val scope = rememberCoroutineScope()
+
             // 每次进入这一步都会检查 token 是否有效, 以及退出这一步时要取消正在进行的授权请求
             DisposableEffect(Unit) {
                 state.bangumiAuthorizeState.onCheckCurrentToken()
@@ -223,14 +233,19 @@ internal fun WizardScene(
                 }
             }
 
+            BackHandler(bangumiShowTokenAuthorizePage) {
+                bangumiShowTokenAuthorizePage = false
+            }
+
             BangumiAuthorize(
                 authorizeState = authorizeState,
+                showTokenAuthorizePage = bangumiShowTokenAuthorizePage,
                 contactActions = contactActions,
                 forwardAction = { WizardDefaults.StepControlBar(bangumiAuthorizeForwardAction) },
+                onSetShowTokenAuthorizePage = { bangumiShowTokenAuthorizePage = it },
                 onClickAuthorize = { state.bangumiAuthorizeState.onClickNavigateAuthorize(context) },
                 onCancelAuthorize = { state.bangumiAuthorizeState.onCancelAuthorize() },
                 onAuthorizeViaToken = { state.bangumiAuthorizeState.onAuthorizeViaToken(it) },
-                onRefreshAuthorizeStatus = { state.bangumiAuthorizeState.onCheckCurrentToken() },
                 onClickNavigateToBangumiDev = {
                     state.bangumiAuthorizeState.onClickNavigateToBangumiDev(context)
                 },

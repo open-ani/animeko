@@ -20,6 +20,8 @@ fun PreviewBangumiAuthorizeStepInitial() {
     ProvideCompositionLocalsForPreview {
         BangumiAuthorize(
             authorizeState = AuthorizeUIState.Idle,
+            showTokenAuthorizePage = false,
+            onSetShowTokenAuthorizePage = { },
             contactActions = { },
             forwardAction = {
                 WizardDefaults.StepControlBar(
@@ -32,7 +34,6 @@ fun PreviewBangumiAuthorizeStepInitial() {
             onCancelAuthorize = { },
             onAuthorizeViaToken = { },
             onClickNavigateToBangumiDev = { },
-            onRefreshAuthorizeStatus = { },
         )
     }
 }
@@ -43,6 +44,8 @@ fun PreviewBangumiAuthorizeStepAwaitingResult() {
     ProvideCompositionLocalsForPreview {
         BangumiAuthorize(
             authorizeState = AuthorizeUIState.AwaitingResult(""),
+            showTokenAuthorizePage = false,
+            onSetShowTokenAuthorizePage = { },
             contactActions = { },
             forwardAction = {
                 WizardDefaults.StepControlBar({
@@ -53,7 +56,6 @@ fun PreviewBangumiAuthorizeStepAwaitingResult() {
             onCancelAuthorize = { },
             onAuthorizeViaToken = { },
             onClickNavigateToBangumiDev = { },
-            onRefreshAuthorizeStatus = { },
         )
     }
 }
@@ -64,6 +66,8 @@ fun PreviewBangumiAuthorizeStepError() {
     ProvideCompositionLocalsForPreview {
         BangumiAuthorize(
             authorizeState = AuthorizeUIState.Error("", "error message"),
+            showTokenAuthorizePage = false,
+            onSetShowTokenAuthorizePage = { },
             contactActions = { },
             forwardAction = {
                 WizardDefaults.StepControlBar({
@@ -74,7 +78,6 @@ fun PreviewBangumiAuthorizeStepError() {
             onCancelAuthorize = { },
             onAuthorizeViaToken = { },
             onClickNavigateToBangumiDev = { },
-            onRefreshAuthorizeStatus = { },
         )
     }
 }
@@ -88,6 +91,8 @@ fun PreviewBangumiAuthorizeStepSuccess() {
                 "StageGuard has long username",
                 "https://lain.bgm.tv/pic/cover/l/44/7d/467461_HHw4K.jpg",
             ),
+            showTokenAuthorizePage = false,
+            onSetShowTokenAuthorizePage = { },
             onClickAuthorize = { },
             forwardAction = {
                 WizardDefaults.StepControlBar({
@@ -98,7 +103,30 @@ fun PreviewBangumiAuthorizeStepSuccess() {
             onCancelAuthorize = { },
             contactActions = { },
             onClickNavigateToBangumiDev = { },
-            onRefreshAuthorizeStatus = { },
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewBangumiTokenAuthorizePage() {
+    ProvideCompositionLocalsForPreview {
+        BangumiAuthorize(
+            authorizeState = AuthorizeUIState.Idle,
+            showTokenAuthorizePage = true,
+            onSetShowTokenAuthorizePage = { },
+            contactActions = { },
+            forwardAction = {
+                WizardDefaults.StepControlBar(
+                    {
+                        WizardDefaults.GoForwardButton({ }, true)
+                    },
+                )
+            },
+            onClickAuthorize = { },
+            onCancelAuthorize = { },
+            onAuthorizeViaToken = { },
+            onClickNavigateToBangumiDev = { },
         )
     }
 }
