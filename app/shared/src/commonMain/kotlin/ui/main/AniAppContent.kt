@@ -37,6 +37,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import me.him188.ani.app.data.models.preference.UISettings
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.domain.mediasource.rss.RssMediaSource
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSource
@@ -68,8 +69,6 @@ import me.him188.ani.app.ui.profile.auth.AniContactList
 import me.him188.ani.app.ui.profile.auth.BangumiOAuthScreen
 import me.him188.ani.app.ui.profile.auth.BangumiTokenAuthScreen
 import me.him188.ani.app.ui.profile.auth.BangumiTokenAuthViewModel
-import me.him188.ani.app.ui.profile.auth.WelcomeScene
-import me.him188.ani.app.ui.profile.auth.WelcomeViewModel
 import me.him188.ani.app.ui.settings.SettingsScreen
 import me.him188.ani.app.ui.settings.SettingsViewModel
 import me.him188.ani.app.ui.settings.mediasource.rss.EditRssMediaSourceScreen
@@ -84,6 +83,8 @@ import me.him188.ani.app.ui.subject.details.SubjectDetailsScreen
 import me.him188.ani.app.ui.subject.details.SubjectDetailsViewModel
 import me.him188.ani.app.ui.subject.episode.EpisodeScreen
 import me.him188.ani.app.ui.subject.episode.EpisodeViewModel
+import me.him188.ani.app.ui.wizard.WelcomeScreen
+import me.him188.ani.app.ui.wizard.WelcomeViewModel
 import me.him188.ani.datasources.api.source.FactoryId
 import kotlin.reflect.typeOf
 
@@ -139,10 +140,15 @@ private fun AniAppContentImpl(
                 popEnterTransition = popEnterTransition,
                 popExitTransition = popExitTransition,
             ) { // 由 SessionManager.requireAuthorize 跳转到
-                if (false) WelcomeScene(viewModel { WelcomeViewModel() }, Modifier.fillMaxSize())
-                me.him188.ani.app.ui.wizard.WelcomeScreen(
-                    viewModel { me.him188.ani.app.ui.wizard.WelcomeViewModel() },
-                    onFinishWizard = { },
+                WelcomeScreen(
+                    viewModel { WelcomeViewModel() },
+                    onFinishWizard = {
+                        // 这个界面只在首次启动 APP 的时候显示, 所以直接导航到默认主页
+                        aniNavigator.currentNavigator
+                            .navigate(NavRoutes.Main(UISettings.Default.mainSceneInitialPage)) {
+                                popUpTo(NavRoutes.Welcome) { inclusive = true }
+                            }
+                    },
                     contactActions = { AniContactList() },
                     Modifier.fillMaxSize(),
                     windowInsets,
