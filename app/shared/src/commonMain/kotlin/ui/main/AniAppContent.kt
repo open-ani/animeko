@@ -64,6 +64,7 @@ import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.app.ui.profile.BangumiOAuthViewModel
+import me.him188.ani.app.ui.profile.auth.AniContactList
 import me.him188.ani.app.ui.profile.auth.BangumiOAuthScreen
 import me.him188.ani.app.ui.profile.auth.BangumiTokenAuthScreen
 import me.him188.ani.app.ui.profile.auth.BangumiTokenAuthViewModel
@@ -122,7 +123,7 @@ private fun AniAppContentImpl(
     val navMotionScheme by rememberUpdatedState(NavigationMotionScheme.current)
 
     SharedTransitionLayout {
-        NavHost(navController, startDestination = initialRoute, modifier) {
+        NavHost(navController, startDestination = NavRoutes.Welcome, modifier) {
             val enterTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition? =
                 { navMotionScheme.enterTransition }
             val exitTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition? =
@@ -138,7 +139,13 @@ private fun AniAppContentImpl(
                 popEnterTransition = popEnterTransition,
                 popExitTransition = popExitTransition,
             ) { // 由 SessionManager.requireAuthorize 跳转到
-                WelcomeScene(viewModel { WelcomeViewModel() }, Modifier.fillMaxSize())
+                if (false) WelcomeScene(viewModel { WelcomeViewModel() }, Modifier.fillMaxSize())
+                me.him188.ani.app.ui.wizard.WelcomeScreen(
+                    viewModel { me.him188.ani.app.ui.wizard.WelcomeViewModel() },
+                    contactActions = { AniContactList() },
+                    Modifier.fillMaxSize(),
+                    windowInsets,
+                )
             }
             composable<NavRoutes.Main>(
                 enterTransition = enterTransition,
