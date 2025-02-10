@@ -11,12 +11,12 @@ package me.him188.ani.app.ui.wizard.step
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
-import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForPreview
+import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 
 @Preview(showBackground = true)
 @Composable
 fun PreviewSelectProxyStep() {
-    ProvideFoundationCompositionLocalsForPreview {
+    ProvideCompositionLocalsForPreview {
         ConfigureProxy(
             state = ConfigureProxyUIState.Default,
             onUpdate = { },

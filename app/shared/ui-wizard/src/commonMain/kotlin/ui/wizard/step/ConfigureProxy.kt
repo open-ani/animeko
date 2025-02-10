@@ -144,18 +144,18 @@ private fun SettingsScope.ProxyTestStatusGroup(
 @Composable
 private fun renderTestCaseName(case: ProxyTestCase): String {
     return when (case.name) {
-        ProxyTestCaseEnums.ANI_DANMAKU_API -> "Animeko"
-        ProxyTestCaseEnums.BANGUMI_V0 -> "Bangumi"
-        ProxyTestCaseEnums.BANGUMI_P1 -> "Bangumi"
+        ProxyTestCaseEnums.ANI -> "Animeko"
+        ProxyTestCaseEnums.BANGUMI -> "Bangumi"
+        ProxyTestCaseEnums.BANGUMI_NEXT -> "Bangumi"
     }
 }
 
 @Composable
 private fun renderTestCaseDescription(case: ProxyTestCase): String {
     return when (case.name) {
-        ProxyTestCaseEnums.ANI_DANMAKU_API -> "弹幕服务"
-        ProxyTestCaseEnums.BANGUMI_V0 -> "收藏数据服务"
-        ProxyTestCaseEnums.BANGUMI_P1 -> "评论服务"
+        ProxyTestCaseEnums.ANI -> "弹幕服务"
+        ProxyTestCaseEnums.BANGUMI -> "收藏数据服务"
+        ProxyTestCaseEnums.BANGUMI_NEXT -> "评论服务"
     }
 }
 

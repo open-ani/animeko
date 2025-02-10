@@ -18,29 +18,22 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavController
-import io.ktor.client.HttpClient
-import io.ktor.client.request.get
 import io.ktor.http.encodeURLParameter
-import kotlinx.collections.immutable.mutate
-import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -54,6 +47,10 @@ import me.him188.ani.app.data.repository.user.AccessTokenSession
 import me.him188.ani.app.data.repository.user.GuestSession
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.foundation.HttpClientProvider
+import me.him188.ani.app.domain.foundation.ServerListFeature
+import me.him188.ani.app.domain.foundation.ServerListFeatureConfig
+import me.him188.ani.app.domain.foundation.withValue
+import me.him188.ani.app.domain.session.AniApiProvider
 import me.him188.ani.app.domain.session.AniAuthClient
 import me.him188.ani.app.domain.session.AuthorizationCancelledException
 import me.him188.ani.app.domain.session.AuthorizationException
@@ -62,6 +59,8 @@ import me.him188.ani.app.domain.session.OAuthResult
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.session.SessionStatus
 import me.him188.ani.app.domain.settings.ProxySettingsFlowProxyProvider
+import me.him188.ani.app.domain.settings.ServiceConnectionTester
+import me.him188.ani.app.domain.settings.ServiceConnectionTesters
 import me.him188.ani.app.navigation.BrowserNavigator
 import me.him188.ani.app.platform.ContextMP
 import me.him188.ani.app.platform.GrantedPermissionManager
@@ -85,10 +84,13 @@ import me.him188.ani.app.ui.wizard.step.ProxyTestItem
 import me.him188.ani.app.ui.wizard.step.ProxyTestState
 import me.him188.ani.app.ui.wizard.step.ProxyUIConfig
 import me.him188.ani.app.ui.wizard.step.ProxyUIMode
+import me.him188.ani.client.apis.TrendsAniApi
+import me.him188.ani.datasources.bangumi.BangumiClientImpl
 import me.him188.ani.utils.coroutines.flows.FlowRestarter
 import me.him188.ani.utils.coroutines.flows.FlowRunning
 import me.him188.ani.utils.coroutines.flows.restartable
 import me.him188.ani.utils.coroutines.update
+import me.him188.ani.utils.ktor.ApiInvoker
 import me.him188.ani.utils.logging.trace
 import me.him188.ani.utils.platform.Uuid
 import me.him188.ani.utils.platform.currentTimeMillis
@@ -113,26 +115,39 @@ class WelcomeViewModel : AbstractSettingsViewModel(), KoinComponent {
     // region ConfigureProxy
     private val proxyTestRunning = FlowRunning()
     private val proxyTestRestarter = FlowRestarter()
+
     private val proxyProvider = ProxySettingsFlowProxyProvider(proxySettings.flow, backgroundScope)
-    private val proxyTestCases: StateFlow<List<ProxyTestCase>> =
-        MutableStateFlow(ProxyTestCase.All)
     private val clientProvider: HttpClientProvider by inject()
-    private val proxyTestResults = MutableStateFlow(
-        persistentMapOf<ProxyTestCaseEnums, ProxyTestCaseState>()
-            .mutate { map ->
-                map.putAll(
-                    proxyTestCases.value.associate { it.name to ProxyTestCaseState.INIT },
-                )
-            },
-    )
+
+    private val connectionTester = clientProvider.configurationFlow.map {
+        val client = clientProvider.get(
+            setOf(ServerListFeature.withValue(ServerListFeatureConfig.Default)),
+        )
+
+        ServiceConnectionTesters.createDefault(
+            bangumiClient = BangumiClientImpl(client),
+            aniClient = ApiInvoker(client) { TrendsAniApi(AniApiProvider.baseurl, it) },
+        )
+    }
+        .stateInBackground(
+            ServiceConnectionTester(emptyList()),
+            SharingStarted.WhileSubscribed(),
+        )
+
+    private val proxyTestItems = connectionTester
+        .flatMapLatest { tester -> tester.results }
+        .map { it.idToStateMap.toUIState() }
+        .stateInBackground(
+            emptyList(),
+            SharingStarted.WhileSubscribed(),
+        )
 
     private val configureProxyUiState = combine(
         proxySettings.flow,
         proxyProvider.proxy,
         proxyTestRunning.isRunning,
-        proxyTestCases,
-        proxyTestResults,
-    ) { settings, proxy, running, cases, results ->
+        proxyTestItems,
+    ) { settings, proxy, running, items ->
         ConfigureProxyUIState(
             config = settings.toUIConfig(),
             systemProxy = if (settings.default.mode == ProxyMode.SYSTEM && proxy != null) {
@@ -140,12 +155,7 @@ class WelcomeViewModel : AbstractSettingsViewModel(), KoinComponent {
             } else {
                 SystemProxyPresentation.NotDetected
             },
-            testState = ProxyTestState(
-                testRunning = running,
-                items = cases.map {
-                    ProxyTestItem(it, results[it.name] ?: ProxyTestCaseState.INIT)
-                },
-            ),
+            testState = ProxyTestState(testRunning = running, items = items),
         )
     }
         .stateInBackground(
@@ -265,13 +275,10 @@ class WelcomeViewModel : AbstractSettingsViewModel(), KoinComponent {
 
     init {
         launchInBackground {
-            clientProvider.configurationFlow
-                .combine(proxyTestCases) { _, cases -> cases }
+            connectionTester
                 .restartable(restarter = proxyTestRestarter)
-                .collectLatest { cases ->
-                    clientProvider.get(emptySet()).use {
-                        startProxyTestServers(this, cases)
-                    }
+                .collectLatest { tester ->
+                    proxyTestRunning.withRunning { tester.testAll() }
                 }
         }
         launchInBackground {
@@ -310,36 +317,6 @@ class WelcomeViewModel : AbstractSettingsViewModel(), KoinComponent {
             return true
         }
         return false
-    }
-
-    private suspend fun startProxyTestServers(
-        client: HttpClient,
-        cases: List<ProxyTestCase>
-    ) = proxyTestRunning.withRunning {
-        proxyTestResults.update {
-            mutate {
-                it.clear()
-                cases.forEach { case -> put(case.name, ProxyTestCaseState.RUNNING) }
-            }
-        }
-
-        coroutineScope {
-            cases.map { case ->
-                async {
-                    runCatching {
-                        client.get(case.url)
-                    }.onSuccess {
-                        proxyTestResults.update {
-                            put(case.name, ProxyTestCaseState.SUCCESS)
-                        }
-                    }.onFailure {
-                        proxyTestResults.update {
-                            put(case.name, ProxyTestCaseState.FAILED)
-                        }
-                    }
-                }
-            }.awaitAll()
-        }
     }
 
     private fun openSystemNotificationSettings(context: ContextMP) {
@@ -536,42 +513,34 @@ class ConfigureProxyState(
 
 @Immutable
 enum class ProxyTestCaseEnums {
-    ANI_DANMAKU_API,
-    BANGUMI_V0,
-    BANGUMI_P1,
+    ANI,
+    BANGUMI,
+    BANGUMI_NEXT,
 }
 
 @Immutable
 sealed class ProxyTestCase(
     val name: ProxyTestCaseEnums,
     val icon: ImageVector,
-    val color: Color,
-    val url: String
+    val color: Color
 ) {
     data object AniDanmakuApi : ProxyTestCase(
-        name = ProxyTestCaseEnums.ANI_DANMAKU_API,
+        name = ProxyTestCaseEnums.ANI,
         icon = Icons.Default.AnimekoIcon,
         color = AnimekoIconColor,
-        url = "https://danmaku-cn.myani.org/status",
     )
 
-    data object BangumiMasterApi : ProxyTestCase(
-        name = ProxyTestCaseEnums.BANGUMI_V0,
+    data object BangumiApi : ProxyTestCase(
+        name = ProxyTestCaseEnums.BANGUMI,
         icon = Icons.Default.BangumiNext,
         color = BangumiNextIconColor,
-        url = "https://api.bgm.tv/",
     )
 
     data object BangumiNextApi : ProxyTestCase(
-        name = ProxyTestCaseEnums.BANGUMI_P1,
+        name = ProxyTestCaseEnums.BANGUMI_NEXT,
         icon = Icons.Default.BangumiNext,
         color = BangumiNextIconColor,
-        url = "https://next.bgm.tv",
     )
-
-    companion object {
-        val All = listOf(AniDanmakuApi, BangumiMasterApi, BangumiNextApi)
-    }
 }
 
 @Stable
@@ -636,3 +605,24 @@ internal fun ProxyUIConfig.toDataSettings(): ProxySettings {
 }
 
 // endregion
+
+private fun Map<String, ServiceConnectionTester.TestState>.toUIState(): List<ProxyTestItem> {
+    return buildList {
+        this@toUIState.forEach { (id, state) ->
+            val case = when (id) {
+                ServiceConnectionTesters.ID_ANI -> ProxyTestCase.AniDanmakuApi
+                ServiceConnectionTesters.ID_BANGUMI -> ProxyTestCase.BangumiApi
+                ServiceConnectionTesters.ID_BANGUMI_NEXT -> ProxyTestCase.BangumiNextApi
+                else -> return@forEach
+            }
+            val result = when (state) {
+                is ServiceConnectionTester.TestState.Idle -> ProxyTestCaseState.INIT
+                is ServiceConnectionTester.TestState.Testing -> ProxyTestCaseState.RUNNING
+                is ServiceConnectionTester.TestState.Success -> ProxyTestCaseState.SUCCESS
+                is ServiceConnectionTester.TestState.Failed -> ProxyTestCaseState.FAILED
+                is ServiceConnectionTester.TestState.Error -> ProxyTestCaseState.FAILED // todo
+            }
+            add(ProxyTestItem(case, result))
+        }
+    }
+}
