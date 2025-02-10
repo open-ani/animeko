@@ -248,7 +248,7 @@ class WelcomeViewModel : AbstractSettingsViewModel(), KoinComponent {
                 }
         }
         .stateInBackground(
-            AuthorizeUIState.Placeholder,
+            AuthorizeUIState.Idle,
             SharingStarted.WhileSubscribed(),
         )
 

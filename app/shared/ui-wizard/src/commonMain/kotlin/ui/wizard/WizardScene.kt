@@ -88,7 +88,7 @@ internal fun WizardScene(
     var bangumiAuthorizeSkipClicked by rememberSaveable { mutableStateOf(false) }
     
     val authorizeState by state.bangumiAuthorizeState.state
-        .collectAsStateWithLifecycle(AuthorizeUIState.Placeholder)
+        .collectAsStateWithLifecycle(AuthorizeUIState.Idle)
     val proxyState by state.configureProxyState.state
         .collectAsStateWithLifecycle(ConfigureProxyUIState.Default)
 

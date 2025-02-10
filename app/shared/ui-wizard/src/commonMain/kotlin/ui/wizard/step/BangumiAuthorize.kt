@@ -41,6 +41,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -54,6 +55,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.IconButton
 import me.him188.ani.app.ui.foundation.LocalPlatform
+import me.him188.ani.app.ui.foundation.animation.AnimatedVisibilityMotionScheme
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.icons.BangumiNext
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
@@ -193,18 +195,11 @@ private fun SettingsScope.DefaultAuthorize(
                         .fillMaxWidth()
                         .widthIn(max = 720.dp),
                 )
-                AnimatedVisibility(
-                    visible = authorizeState is AuthorizeUIState.Error,
-                    enter = motionScheme.animatedVisibility.standardEnter,
-                    exit = motionScheme.animatedVisibility.columnExit,
+                AuthorizeStateText(
+                    authorizeState,
                     modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp),
-                ) {
-                    Text(
-                        "授权登录失败: ${(authorizeState as? AuthorizeUIState.Error)?.message}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                }
+                    animatedVisibilityMotionScheme = motionScheme.animatedVisibility,
+                )
             }
             AnimatedVisibility(
                 authorizeState is AuthorizeUIState.Success,
@@ -286,7 +281,6 @@ private fun AuthorizeButton(
 
     if (authorizeState is AuthorizeUIState.Success) OutlinedButton(
         onClick = onClick,
-        enabled = authorizeState !is AuthorizeUIState.AwaitingResult,
         modifier = modifier,
         content = content,
     ) else Button(
@@ -295,6 +289,39 @@ private fun AuthorizeButton(
         modifier = modifier,
         content = content,
     )
+}
+
+@Composable
+private fun AuthorizeStateText(
+    authorizeState: AuthorizeUIState,
+    modifier: Modifier = Modifier,
+    animatedVisibilityMotionScheme: AnimatedVisibilityMotionScheme = LocalAniMotionScheme.current.animatedVisibility,
+) {
+    var text by rememberSaveable { mutableStateOf("") }
+    LaunchedEffect(authorizeState) {
+        text = when (authorizeState) {
+            is AuthorizeUIState.Initial, is AuthorizeUIState.AwaitingResult -> return@LaunchedEffect
+            is AuthorizeUIState.Success -> "授权登录成功: ${authorizeState.username}"
+            is AuthorizeUIState.Error -> "授权登录失败: ${authorizeState.message}"
+        }
+    }
+
+    AnimatedVisibility(
+        visible = authorizeState is AuthorizeUIState.Success || authorizeState is AuthorizeUIState.Error,
+        enter = animatedVisibilityMotionScheme.columnEnter,
+        exit = animatedVisibilityMotionScheme.columnExit,
+        modifier = modifier,
+    ) {
+        Text(
+            text,
+            style = MaterialTheme.typography.bodyMedium,
+            color = when (authorizeState) {
+                is AuthorizeUIState.Success -> MaterialTheme.colorScheme.primary
+                is AuthorizeUIState.Error -> MaterialTheme.colorScheme.error
+                else -> MaterialTheme.colorScheme.onSurface
+            },
+        )
+    }
 }
 
 @Stable
@@ -503,7 +530,6 @@ sealed class AuthorizeUIState {
     sealed class Initial : AuthorizeUIState()
 
     @Immutable
-    data object Placeholder : Initial()
     data object Idle : Initial()
 
     @Stable
