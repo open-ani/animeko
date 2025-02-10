@@ -49,7 +49,7 @@ fun MaterialThemeFromImage(
         if (bitmap == null) return@LaunchedEffect
 
         val computedColorScheme = withContext(Dispatchers.Default) {
-            val resizedBitmap = bitmap.resize(64)
+            val resizedBitmap = bitmap.resize(64, 64)
             val primaryColor = resizedBitmap.themeColor(
                 fallback = fallbackSeedColor,
                 filter = false,

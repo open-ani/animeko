@@ -14,4 +14,7 @@ import coil3.Image
 
 expect fun Image.toComposeImageBitmap(): ImageBitmap
 
-expect fun ImageBitmap.resize(width: Int): ImageBitmap
+expect fun ImageBitmap.resize(
+    width: Int,
+    height: Int,
+): ImageBitmap

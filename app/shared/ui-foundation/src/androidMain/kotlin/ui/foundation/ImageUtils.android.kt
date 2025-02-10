@@ -20,7 +20,10 @@ actual fun Image.toComposeImageBitmap(): ImageBitmap {
     return this.toBitmap().asImageBitmap()
 }
 
-actual fun ImageBitmap.resize(width: Int): ImageBitmap {
+actual fun ImageBitmap.resize(
+    width: Int,
+    height: Int,
+): ImageBitmap {
     val androidBitmap = this.asAndroidBitmap()
     val newWidth = width
     val newHeight = androidBitmap.height * newWidth / width

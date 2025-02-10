@@ -25,7 +25,10 @@ actual fun Image.toComposeImageBitmap(): ImageBitmap {
     return this.toBitmap().asComposeImageBitmap()
 }
 
-actual fun ImageBitmap.resize(width: Int): ImageBitmap {
+actual fun ImageBitmap.resize(
+    width: Int,
+    height: Int,
+): ImageBitmap {
     // written by o3-mini
 
     val skiaBitmap = this.asSkiaBitmap()
