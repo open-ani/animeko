@@ -69,7 +69,6 @@ import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.navigation.BrowserNavigator
 import me.him188.ani.app.navigation.DesktopBrowserNavigator
 import me.him188.ani.app.navigation.LocalNavigator
-import me.him188.ani.app.navigation.NavRoutes
 import me.him188.ani.app.platform.AniBuildConfigDesktop
 import me.him188.ani.app.platform.AniCefApp
 import me.him188.ani.app.platform.AppStartupTasks
@@ -117,7 +116,6 @@ import me.him188.ani.utils.platform.isMacOS
 import org.jetbrains.compose.resources.painterResource
 import org.koin.core.context.startKoin
 import org.koin.dsl.module
-import org.koin.mp.KoinPlatform
 import org.openani.mediamp.MediampPlayerFactory
 import org.openani.mediamp.MediampPlayerFactoryLoader
 import org.openani.mediamp.compose.MediampPlayerSurfaceProviderLoader

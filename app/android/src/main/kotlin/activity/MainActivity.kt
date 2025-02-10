@@ -16,17 +16,13 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.core.view.WindowCompat
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.navigation.AniNavigator
-import me.him188.ani.app.navigation.NavRoutes
 import me.him188.ani.app.platform.AppStartupTasks
 import me.him188.ani.app.platform.MeteredNetworkDetector
 import me.him188.ani.app.platform.PlatformWindow
@@ -43,7 +39,6 @@ import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import org.koin.android.ext.android.inject
-import org.koin.mp.KoinPlatform
 import org.koin.mp.KoinPlatformTools
 
 class MainActivity : AniComponentActivity() {

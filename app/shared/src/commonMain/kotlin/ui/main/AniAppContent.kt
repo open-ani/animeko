@@ -39,7 +39,6 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import me.him188.ani.app.data.models.preference.UISettings
 import me.him188.ani.app.data.models.subject.SubjectInfo
-import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.mediasource.rss.RssMediaSource
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSource
 import me.him188.ani.app.navigation.AniNavigator
@@ -58,7 +57,6 @@ import me.him188.ani.app.ui.cache.details.MediaCacheDetailsScreen
 import me.him188.ani.app.ui.cache.details.MediaDetailsLazyGrid
 import me.him188.ani.app.ui.exploration.schedule.ScheduleScreen
 import me.him188.ani.app.ui.exploration.schedule.ScheduleViewModel
-import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.foundation.animation.NavigationMotionScheme
 import me.him188.ani.app.ui.foundation.animation.ProvideAniMotionCompositionLocals
 import me.him188.ani.app.ui.foundation.layout.LocalSharedTransitionScopeProvider

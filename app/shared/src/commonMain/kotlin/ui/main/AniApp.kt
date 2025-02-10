@@ -29,7 +29,6 @@ import coil3.ImageLoader
 import coil3.compose.LocalPlatformContext
 import kotlinx.coroutines.flow.map
 import me.him188.ani.app.data.models.preference.ThemeSettings
-import me.him188.ani.app.data.models.preference.UISettings
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
