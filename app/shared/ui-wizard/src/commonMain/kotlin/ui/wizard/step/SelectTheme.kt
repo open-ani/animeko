@@ -60,7 +60,7 @@ internal fun SelectTheme(
 ) {
     val platform = LocalPlatform.current
 
-    val panelModifier = remember { Modifier.size(96.dp, 146.dp) }
+    val panelModifier = Modifier.size(96.dp, 146.dp)
     val themePanelItem: @Composable (DarkMode) -> Unit = {
         ColorSchemePreviewItem(
             onClick = { onUpdate(config.copy(darkMode = it)) },
