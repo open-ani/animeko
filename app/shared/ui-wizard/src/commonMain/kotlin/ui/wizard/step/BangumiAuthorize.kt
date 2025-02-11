@@ -62,7 +62,7 @@ import me.him188.ani.app.ui.foundation.icons.BangumiNextIconColor
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.TextItem
-import me.him188.ani.app.ui.wizard.HeroIconDefaults
+import me.him188.ani.app.ui.wizard.HeroIcon
 import me.him188.ani.app.ui.wizard.WizardLayoutParams
 import me.him188.ani.utils.platform.isAndroid
 
@@ -85,24 +85,28 @@ internal fun BangumiAuthorize(
             showTokenAuthorizePage,
             transitionSpec = LocalAniMotionScheme.current.animatedContent.topLevel,
         ) { show ->
-            if (!show) DefaultAuthorize(
-                authorizeState = authorizeState,
-                contactActions = contactActions,
-                onClickAuthorize = onClickAuthorize,
-                onClickTokenAuthorize = {
-                    onCancelAuthorize()
-                    onScrollToTop()
-                    onSetShowTokenAuthorizePage(true)
-                },
-                layoutParams = layoutParams,
-            ) else TokenAuthorize(
-                onClickNavigateToBangumiDev = onClickNavigateToBangumiDev,
-                onAuthorizeViaToken = { token ->
-                    onAuthorizeViaToken(token)
-                    onSetShowTokenAuthorizePage(false)
-                },
-                layoutParams = layoutParams,
-            )
+            if (!show) {
+                DefaultAuthorize(
+                    authorizeState = authorizeState,
+                    contactActions = contactActions,
+                    onClickAuthorize = onClickAuthorize,
+                    onClickTokenAuthorize = {
+                        onCancelAuthorize()
+                        onScrollToTop()
+                        onSetShowTokenAuthorizePage(true)
+                    },
+                    layoutParams = layoutParams,
+                )
+            } else {
+                TokenAuthorize(
+                    onClickNavigateToBangumiDev = onClickNavigateToBangumiDev,
+                    onAuthorizeViaToken = { token ->
+                        onAuthorizeViaToken(token)
+                        onSetShowTokenAuthorizePage(false)
+                    },
+                    layoutParams = layoutParams,
+                )
+            }
         }
     }
 }
@@ -121,17 +125,11 @@ private fun SettingsScope.DefaultAuthorize(
         modifier,
         verticalArrangement = Arrangement.spacedBy(SettingsScope.itemVerticalSpacing),
     ) {
-        Box(
-            modifier = Modifier
-                .padding(horizontal = layoutParams.horizontalPadding)
-                .padding(HeroIconDefaults.contentPadding())
-                .fillMaxWidth(),
-            contentAlignment = Alignment.Center,
-        ) {
+        HeroIcon(layoutParams) {
             Icon(
                 imageVector = Icons.Default.BangumiNext,
                 contentDescription = null,
-                modifier = Modifier.size(HeroIconDefaults.iconSize),
+                modifier = Modifier.fillMaxSize(),
                 tint = BangumiNextIconColor,
             )
         }

@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -37,7 +38,7 @@ import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.components.TextItem
 import me.him188.ani.app.ui.settings.rendering.P2p
-import me.him188.ani.app.ui.wizard.HeroIconDefaults
+import me.him188.ani.app.ui.wizard.HeroIcon
 import me.him188.ani.app.ui.wizard.WizardLayoutParams
 
 @Composable
@@ -83,18 +84,11 @@ internal fun BitTorrentFeature(
     val platform = LocalPlatform.current
     
     SettingsTab(modifier = modifier) {
-        Box(
-            modifier = Modifier
-                .padding(HeroIconDefaults.contentPadding())
-                .padding(horizontal = layoutParams.horizontalPadding)
-                .fillMaxWidth(),
-            contentAlignment = Alignment.Center,
-        ) {
+        HeroIcon(layoutParams) {
             Icon(
                 imageVector = Icons.Default.P2p,
                 contentDescription = null,
-                modifier = Modifier.size(HeroIconDefaults.iconSize),
-                tint = HeroIconDefaults.iconColor,
+                modifier = Modifier.fillMaxSize(),
             )
         }
         Column(

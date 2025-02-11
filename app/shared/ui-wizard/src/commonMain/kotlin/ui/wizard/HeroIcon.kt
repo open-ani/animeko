@@ -9,13 +9,43 @@
 
 package me.him188.ani.app.ui.wizard
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import me.him188.ani.app.ui.foundation.text.ProvideContentColor
+
+@Composable
+fun HeroIcon(
+    layoutParams: WizardLayoutParams,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    Box(modifier = modifier) {
+        Box(
+            modifier = Modifier
+                .padding(HeroIconDefaults.contentPadding())
+                .padding(horizontal = layoutParams.horizontalPadding)
+                .fillMaxWidth(),
+            contentAlignment = Alignment.Center,
+        ) {
+            Box(Modifier.size(HeroIconDefaults.iconSize)) {
+                ProvideContentColor(HeroIconDefaults.iconColor) {
+                    content()
+                }
+            }
+        }
+    }
+}
 
 @Stable
 object HeroIconDefaults {
