@@ -30,6 +30,7 @@ import me.him188.ani.app.ui.foundation.IconButton
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.settings.SettingsTab
+import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.TextItem
 import me.him188.ani.app.ui.settings.rendering.P2p
 import me.him188.ani.app.ui.wizard.HeroIcon
@@ -38,16 +39,12 @@ import me.him188.ani.app.ui.wizard.WizardLayoutParams
 @Composable
 internal fun BitTorrentFeature(
     bitTorrentEnabled: Boolean,
-    grantedNotificationPermission: Boolean,
-    showPermissionError: Boolean,
     onBitTorrentEnableChanged: (Boolean) -> Unit,
-    onRequestNotificationPermission: () -> Unit,
-    onOpenSystemNotificationSettings: () -> Unit,
     layoutParams: WizardLayoutParams,
     modifier: Modifier = Modifier,
-    showGrantNotificationItem: Boolean = true
-) {
-    val motionScheme = LocalAniMotionScheme.current
+    requestNotificationPermission: (@Composable SettingsScope.() -> Unit)? = null,
+
+    ) {
     val platform = LocalPlatform.current
     
     SettingsTab(modifier = modifier) {
@@ -99,38 +96,51 @@ internal fun BitTorrentFeature(
                 title = { Text("启用 BitTorrent 功能") },
             )*/
 
-            if (showGrantNotificationItem) {
-                TextItem(
-                    title = { Text(if (grantedNotificationPermission) "已授权通知权限" else "请求通知权限") },
-                    description = { Text("显示 BT 引擎的运行状态、下载进度等信息") },
-                    action = {
-                        if (!grantedNotificationPermission) {
-                            IconButton(onRequestNotificationPermission) {
-                                Icon(Icons.Rounded.ArrowOutward, "请求通知权限")
-                            }
-                        }
-                    },
-                    onClick = if (!grantedNotificationPermission) onRequestNotificationPermission else null,
-                )
-                AnimatedVisibility(
-                    showPermissionError,
-                    enter = motionScheme.animatedVisibility.standardEnter, // don't animate layout
-                    exit = motionScheme.animatedVisibility.columnExit,
-                ) {
-                    TextItem(
-                        icon = { Icon(Icons.Filled.Error, null) },
-                        title = {
-                            ProvideTextStyle(MaterialTheme.typography.bodyMedium) {
-                                Text(
-                                    text = "请求通知权限失败，Ani 在后台时 BT 服务可能会被系统终止。" +
-                                            "若非手动拒绝授权，请点击此处打开系统设置进行授权。",
-                                )
-                            }
-                        },
-                        onClick = onOpenSystemNotificationSettings,
-                    )
+            requestNotificationPermission?.invoke(this@SettingsTab)
+        }
+    }
+}
+
+@Composable
+internal fun SettingsScope.RequestNotificationPermission(
+    grantedNotificationPermission: Boolean,
+    showPermissionError: Boolean,
+    onRequestNotificationPermission: () -> Unit,
+    onOpenSystemNotificationSettings: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val motionScheme = LocalAniMotionScheme.current
+
+    Column(modifier) {
+        TextItem(
+            title = { Text(if (grantedNotificationPermission) "已授权通知权限" else "请求通知权限") },
+            description = { Text("显示 BT 引擎的运行状态、下载进度等信息") },
+            action = {
+                if (!grantedNotificationPermission) {
+                    IconButton(onRequestNotificationPermission) {
+                        Icon(Icons.Rounded.ArrowOutward, "请求通知权限")
+                    }
                 }
-            }
+            },
+            onClick = if (!grantedNotificationPermission) onRequestNotificationPermission else null,
+        )
+        AnimatedVisibility(
+            showPermissionError,
+            enter = motionScheme.animatedVisibility.standardEnter, // don't animate layout
+            exit = motionScheme.animatedVisibility.columnExit,
+        ) {
+            TextItem(
+                icon = { Icon(Icons.Filled.Error, null) },
+                title = {
+                    ProvideTextStyle(MaterialTheme.typography.bodyMedium) {
+                        Text(
+                            text = "请求通知权限失败，Ani 在后台时 BT 服务可能会被系统终止。" +
+                                    "若非手动拒绝授权，请点击此处打开系统设置进行授权。",
+                        )
+                    }
+                },
+                onClick = onOpenSystemNotificationSettings,
+            )
         }
     }
 }

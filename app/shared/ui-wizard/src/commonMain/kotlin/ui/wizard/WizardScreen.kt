@@ -56,6 +56,7 @@ import me.him188.ani.app.ui.wizard.step.ConfigureProxy
 import me.him188.ani.app.ui.wizard.step.ConfigureProxyUIState
 import me.him188.ani.app.ui.wizard.step.NotificationPermissionState
 import me.him188.ani.app.ui.wizard.step.ProxyOverallTestState
+import me.him188.ani.app.ui.wizard.step.RequestNotificationPermission
 import me.him188.ani.app.ui.wizard.step.SelectTheme
 
 @Composable
@@ -204,17 +205,22 @@ internal fun WizardScene(
 
             BitTorrentFeature(
                 bitTorrentEnabled = configState.value,
-                grantedNotificationPermission = notificationPermissionState.granted,
-                showPermissionError = notificationPermissionState.lastRequestResult == false,
                 onBitTorrentEnableChanged = { configState.update(it) },
-                showGrantNotificationItem = notificationPermissionState.showGrantNotificationItem,
-                onRequestNotificationPermission = {
-                    state.bitTorrentFeatureState.onRequestNotificationPermission(context)
-                },
-                onOpenSystemNotificationSettings = {
-                    state.bitTorrentFeatureState.onOpenSystemNotificationSettings(context)
-                },
                 layoutParams = wizardLayoutParams,
+                requestNotificationPermission = if (notificationPermissionState.showGrantNotificationItem) {
+                    {
+                        RequestNotificationPermission(
+                            grantedNotificationPermission = notificationPermissionState.granted,
+                            showPermissionError = notificationPermissionState.lastRequestResult == false,
+                            onRequestNotificationPermission = {
+                                state.bitTorrentFeatureState.onRequestNotificationPermission(context)
+                            },
+                            onOpenSystemNotificationSettings = {
+                                state.bitTorrentFeatureState.onOpenSystemNotificationSettings(context)
+                            },
+                        )
+                    }
+                } else null,
             )
         }
         step(
