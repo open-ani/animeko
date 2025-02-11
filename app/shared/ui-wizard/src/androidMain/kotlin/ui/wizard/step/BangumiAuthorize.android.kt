@@ -12,7 +12,6 @@ package me.him188.ani.app.ui.wizard.step
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
-import me.him188.ani.app.ui.wizard.WizardDefaults
 
 @Preview(showBackground = true)
 @Composable
@@ -23,13 +22,6 @@ fun PreviewBangumiAuthorizeStepInitial() {
             showTokenAuthorizePage = false,
             onSetShowTokenAuthorizePage = { },
             contactActions = { },
-            forwardAction = {
-                WizardDefaults.StepControlBar(
-                    {
-                        WizardDefaults.GoForwardButton({ }, true)
-                    },
-                )
-            },
             onClickAuthorize = { },
             onCancelAuthorize = { },
             onAuthorizeViaToken = { },
@@ -47,11 +39,6 @@ fun PreviewBangumiAuthorizeStepAwaitingResult() {
             showTokenAuthorizePage = false,
             onSetShowTokenAuthorizePage = { },
             contactActions = { },
-            forwardAction = {
-                WizardDefaults.StepControlBar({
-                    WizardDefaults.GoForwardButton({ }, true)
-                })
-            },
             onClickAuthorize = { },
             onCancelAuthorize = { },
             onAuthorizeViaToken = { },
@@ -69,11 +56,6 @@ fun PreviewBangumiAuthorizeStepError() {
             showTokenAuthorizePage = false,
             onSetShowTokenAuthorizePage = { },
             contactActions = { },
-            forwardAction = {
-                WizardDefaults.StepControlBar({
-                    WizardDefaults.GoForwardButton({ }, true)
-                })
-            },
             onClickAuthorize = { },
             onCancelAuthorize = { },
             onAuthorizeViaToken = { },
@@ -94,11 +76,6 @@ fun PreviewBangumiAuthorizeStepSuccess() {
             showTokenAuthorizePage = false,
             onSetShowTokenAuthorizePage = { },
             onClickAuthorize = { },
-            forwardAction = {
-                WizardDefaults.StepControlBar({
-                    WizardDefaults.GoForwardButton({ }, true)
-                })
-            },
             onAuthorizeViaToken = { },
             onCancelAuthorize = { },
             contactActions = { },
@@ -116,13 +93,6 @@ fun PreviewBangumiTokenAuthorizePage() {
             showTokenAuthorizePage = true,
             onSetShowTokenAuthorizePage = { },
             contactActions = { },
-            forwardAction = {
-                WizardDefaults.StepControlBar(
-                    {
-                        WizardDefaults.GoForwardButton({ }, true)
-                    },
-                )
-            },
             onClickAuthorize = { },
             onCancelAuthorize = { },
             onAuthorizeViaToken = { },

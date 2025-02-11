@@ -71,7 +71,6 @@ internal fun BangumiAuthorize(
     authorizeState: AuthorizeUIState,
     showTokenAuthorizePage: Boolean,
     contactActions: @Composable () -> Unit,
-    forwardAction: @Composable () -> Unit,
     onSetShowTokenAuthorizePage: (Boolean) -> Unit,
     onClickAuthorize: () -> Unit,
     onCancelAuthorize: () -> Unit,
@@ -90,7 +89,6 @@ internal fun BangumiAuthorize(
             if (!show) DefaultAuthorize(
                 authorizeState = authorizeState,
                 contactActions = contactActions,
-                forwardAction = forwardAction,
                 onClickAuthorize = onClickAuthorize,
                 onClickTokenAuthorize = {
                     onCancelAuthorize()
@@ -116,7 +114,6 @@ private fun SettingsScope.DefaultAuthorize(
     onClickAuthorize: () -> Unit,
     onClickTokenAuthorize: () -> Unit,
     contactActions: @Composable () -> Unit,
-    forwardAction: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     layoutParams: WizardLayoutParams = WizardLayoutParams.Default,
 ) {
@@ -207,13 +204,6 @@ private fun SettingsScope.DefaultAuthorize(
                     modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp),
                     animatedVisibilityMotionScheme = motionScheme.animatedVisibility,
                 )
-            }
-            AnimatedVisibility(
-                authorizeState is AuthorizeUIState.Success,
-                enter = motionScheme.animatedVisibility.columnEnter,
-                exit = motionScheme.animatedVisibility.columnExit,
-            ) {
-                forwardAction()
             }
             Spacer(Modifier.height(8.dp))
             AuthorizeHelpQA(

@@ -12,8 +12,6 @@ package me.him188.ani.app.ui.wizard.navigation
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
-import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
-import me.him188.ani.app.ui.wizard.WizardDefaults
 
 @DslMarker
 annotation class WizardStepDsl
@@ -35,21 +33,19 @@ class WizardNavHostScope(
             )
         },
         backwardButton: @Composable () -> Unit = {
-            BackNavigationIconButton(
+            WizardDefaults.GoBackwardButton(
                 { controller.goBackward() },
                 modifier = Modifier.testTag("buttonPrevStep"),
             )
         },
-        skipButton: @Composable () -> Unit = {
-            WizardDefaults.SkipButton({ controller.goForward() })
-        },
+        skipButton: @Composable () -> Unit = { },
+        navigationIcon: @Composable () -> Unit = { },
         indicatorBar: @Composable (WizardIndicatorState) -> Unit = {
             WizardDefaults.StepTopAppBar(
                 currentStep = it.currentStep,
                 totalStep = it.totalStep,
-                backwardButton = backwardButton,
-                skipButton = skipButton,
                 scrollBehavior = it.scrollBehavior,
+                navigationIcon = navigationIcon,
                 scrollCollapsedFraction = it.scrollCollapsedFraction,
             ) {
                 title()
@@ -58,6 +54,8 @@ class WizardNavHostScope(
         controlBar: @Composable () -> Unit = {
             WizardDefaults.StepControlBar(
                 forwardAction = forwardButton,
+                backwardAction = backwardButton,
+                skipAction = skipButton,
             )
         },
         content: @Composable WizardStepScope.() -> Unit,

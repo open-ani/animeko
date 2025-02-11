@@ -9,34 +9,19 @@
 
 package me.him188.ani.app.ui.wizard
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.only
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LargeTopAppBar
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -48,7 +33,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -56,13 +40,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.launch
 import me.him188.ani.app.platform.LocalContext
-import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
-import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.app.ui.wizard.navigation.WizardController
+import me.him188.ani.app.ui.wizard.navigation.WizardDefaults
 import me.him188.ani.app.ui.wizard.navigation.WizardNavHost
 import me.him188.ani.app.ui.wizard.step.AuthorizeUIState
 import me.him188.ani.app.ui.wizard.step.BangumiAuthorize
@@ -154,7 +137,8 @@ internal fun WizardScene(
         step(
             "theme",
             { Text("选择主题") },
-            backwardButton = navigationIcon,
+            backwardButton = { Spacer(Modifier) },
+            navigationIcon = navigationIcon,
         ) {
             SelectTheme(
                 config = state.selectThemeState.value,
@@ -209,7 +193,7 @@ internal fun WizardScene(
             LaunchedEffect(notificationPermissionState.lastRequestResult) {
                 if (notificationPermissionState.placeholder) return@LaunchedEffect
                 if (notificationPermissionState.lastRequestResult == false) {
-                    if (!notificationErrorScrolledOnce) wizardListState.scrollToItem(controlBarIndex)
+                    if (!notificationErrorScrolledOnce) wizardScrollState.animateScrollTo(wizardScrollState.maxValue)
                     notificationErrorScrolledOnce = true
                 } else {
                     notificationErrorScrolledOnce = false
@@ -231,49 +215,31 @@ internal fun WizardScene(
                 layoutParams = wizardLayoutParams,
             )
         }
-
-        val bangumiAuthorizeForwardAction: @Composable () -> Unit = {
-            WizardDefaults.GoForwardButton(
-                onFinishWizard,
-                text = "完成",
-                enabled = authorizeState is AuthorizeUIState.Success,
-            )
-        }
         step(
             "bangumi",
             { Text("Bangumi 授权") },
-            forwardButton = bangumiAuthorizeForwardAction,
-            backwardButton = {
-                BackNavigationIconButton(
-                    {
-                        if (bangumiShowTokenAuthorizePage) {
+            forwardButton = {
+                WizardDefaults.GoForwardButton(
+                    onFinishWizard,
+                    text = "完成",
+                    enabled = authorizeState is AuthorizeUIState.Success,
+                )
+            },
+            navigationIcon = {
+                if (bangumiShowTokenAuthorizePage) {
+                    BackNavigationIconButton(
+                        {
                             bangumiShowTokenAuthorizePage = false
                             state.bangumiAuthorizeState.onCheckCurrentToken()
-                        } else {
-                            controller.goBackward()
-                        }
-                    },
-                    modifier = Modifier.testTag("buttonPrevStep"),
-                )
+                        },
+                    )
+                }
             },
             skipButton = {
                 WizardDefaults.SkipButton(
                     { bangumiAuthorizeSkipClicked = true },
                     "游客模式",
                 )
-            },
-            controlBar = {
-                val motionScheme = LocalAniMotionScheme.current
-                AnimatedVisibility(
-                    authorizeState !is AuthorizeUIState.Success,
-                    enter = motionScheme.animatedVisibility.columnEnter,
-                    exit = motionScheme.animatedVisibility.columnExit,
-                ) {
-                    WizardDefaults.StepControlBar(
-                        forwardAction = bangumiAuthorizeForwardAction,
-                    )
-                }
-                Spacer(Modifier.height(1.dp))
             },
         ) {
             val scope = rememberCoroutineScope()
@@ -294,7 +260,6 @@ internal fun WizardScene(
                 authorizeState = authorizeState,
                 showTokenAuthorizePage = bangumiShowTokenAuthorizePage,
                 contactActions = contactActions,
-                forwardAction = { WizardDefaults.StepControlBar(bangumiAuthorizeForwardAction) },
                 onSetShowTokenAuthorizePage = { bangumiShowTokenAuthorizePage = it },
                 onClickAuthorize = { state.bangumiAuthorizeState.onClickNavigateAuthorize(context) },
                 onCancelAuthorize = { state.bangumiAuthorizeState.onCancelAuthorize() },
@@ -305,7 +270,7 @@ internal fun WizardScene(
                 onScrollToTop = {
                     scope.launch {
                         scrollUpTopAppBar()
-                        wizardListState.animateScrollToItem(0)
+                        wizardScrollState.animateScrollTo(0)
                     }
                 },
                 layoutParams = wizardLayoutParams,
@@ -355,109 +320,4 @@ private fun BangumiUseGuestModeDialog(
             }
         },
     )
-}
-
-
-object WizardDefaults {
-    val indicatorBarEnterAnim = fadeIn(tween(500)) + slideInVertically(
-        tween(600),
-        initialOffsetY = { 50.coerceAtMost(it) },
-    )
-
-    fun renderStepIndicatorText(currentStep: Int, totalStep: Int): String {
-        return "步骤 $currentStep / $totalStep"
-    }
-
-    @Composable
-    fun StepTopAppBar(
-        currentStep: Int,
-        totalStep: Int,
-        backwardButton: @Composable () -> Unit,
-        skipButton: @Composable () -> Unit,
-        modifier: Modifier = Modifier,
-        windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
-        indicatorStepTextTestTag: String = "indicatorText",
-        scrollBehavior: TopAppBarScrollBehavior? = null,
-        scrollCollapsedFraction: Float = 0f,
-        stepName: @Composable () -> Unit,
-    ) {
-        LargeTopAppBar(
-            title = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ProvideTextStyleContentColor(
-                        value = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                    ) {
-                        if (scrollCollapsedFraction <= 0.5) {
-                            Text(
-                                text = remember(currentStep, totalStep) {
-                                    renderStepIndicatorText(currentStep, totalStep)
-                                },
-                                modifier = Modifier.testTag(indicatorStepTextTestTag),
-                            )
-                        }
-                    }
-                    stepName()
-                }
-            },
-            modifier = modifier,
-            navigationIcon = backwardButton,
-            actions = { skipButton() },
-            scrollBehavior = scrollBehavior,
-            windowInsets = windowInsets,
-        )
-    }
-
-    @Composable
-    fun StepControlBar(
-        forwardAction: @Composable () -> Unit,
-        modifier: Modifier = Modifier,
-        windowInsets: WindowInsets = AniWindowInsets.forNavigationBar(),
-    ) {
-        Box(modifier = modifier) {
-            Column(
-                modifier = Modifier
-                    .windowInsetsPadding(
-                        windowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
-                    )
-                    .fillMaxWidth(),
-            ) {
-                Row(
-                    modifier = Modifier
-                        .padding(24.dp)
-                        .fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.End,
-                ) {
-                    forwardAction()
-                }
-            }
-        }
-    }
-
-    @Composable
-    fun GoForwardButton(
-        onClick: () -> Unit,
-        enabled: Boolean,
-        modifier: Modifier = Modifier,
-        text: String = "下一步"
-    ) {
-        Button(
-            onClick = onClick,
-            enabled = enabled,
-            modifier = modifier,
-        ) {
-            Text(text)
-        }
-    }
-
-    @Composable
-    fun SkipButton(
-        onClick: () -> Unit,
-        text: String = "跳过"
-    ) {
-        TextButton(onClick = onClick) {
-            Text(text)
-        }
-    }
 }
