@@ -27,6 +27,6 @@ class AniApiProvider(
     val subjectRelationsApi = ApiInvoker(client) { SubjectRelationsAniApi(baseurl, it) }
 
     companion object {
-        inline val baseurl get() = ServerListFeatureConfig.MAGIC_ANI_SERVER
+        private val baseurl get() = ServerListFeatureConfig.MAGIC_ANI_SERVER
     }
 }

@@ -81,13 +81,11 @@ import me.him188.ani.app.ui.wizard.step.ProxyTestItem
 import me.him188.ani.app.ui.wizard.step.ProxyTestState
 import me.him188.ani.app.ui.wizard.step.ProxyUIConfig
 import me.him188.ani.app.ui.wizard.step.ProxyUIMode
-import me.him188.ani.client.apis.TrendsAniApi
 import me.him188.ani.datasources.bangumi.BangumiClientImpl
 import me.him188.ani.utils.coroutines.flows.FlowRestarter
 import me.him188.ani.utils.coroutines.flows.FlowRunning
 import me.him188.ani.utils.coroutines.flows.restartable
 import me.him188.ani.utils.coroutines.update
-import me.him188.ani.utils.ktor.ApiInvoker
 import me.him188.ani.utils.logging.trace
 import me.him188.ani.utils.platform.Uuid
 import me.him188.ani.utils.platform.currentTimeMillis
@@ -118,7 +116,7 @@ class WizardViewModel : AbstractSettingsViewModel(), KoinComponent {
 
         ServiceConnectionTesters.createDefault(
             bangumiClient = BangumiClientImpl(client),
-            aniClient = ApiInvoker(client) { TrendsAniApi(AniApiProvider.baseurl, it) },
+            aniClient = AniApiProvider(client).trendsApi,
         )
     }
         .stateInBackground(
