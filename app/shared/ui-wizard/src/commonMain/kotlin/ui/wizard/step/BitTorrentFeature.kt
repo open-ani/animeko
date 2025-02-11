@@ -147,22 +147,22 @@ internal fun SettingsScope.RequestNotificationPermission(
 
 
 @Stable
-class NotificationPermissionState(
+class GrantNotificationPermissionState(
     val showGrantNotificationItem: Boolean,
     val granted: Boolean,
     /**
      * `null` 还没请求过, `true` 成功了, `false` 拒绝了
      */
     val lastRequestResult: Boolean?,
-    val placeholder: Boolean = false
+    val isPlaceholder: Boolean = false
 ) {
     companion object {
         @Stable
-        val Placeholder = NotificationPermissionState(
+        val Placeholder = GrantNotificationPermissionState(
             showGrantNotificationItem = false,
             granted = false,
             lastRequestResult = null,
-            placeholder = true,
+            isPlaceholder = true,
         )
     }
 }

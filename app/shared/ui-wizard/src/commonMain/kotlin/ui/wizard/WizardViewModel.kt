@@ -75,7 +75,7 @@ import me.him188.ani.app.ui.settings.tabs.network.SystemProxyPresentation
 import me.him188.ani.app.ui.wizard.navigation.WizardController
 import me.him188.ani.app.ui.wizard.step.AuthorizeUIState
 import me.him188.ani.app.ui.wizard.step.ConfigureProxyUIState
-import me.him188.ani.app.ui.wizard.step.NotificationPermissionState
+import me.him188.ani.app.ui.wizard.step.GrantNotificationPermissionState
 import me.him188.ani.app.ui.wizard.step.ProxyTestCaseState
 import me.him188.ani.app.ui.wizard.step.ProxyTestItem
 import me.him188.ani.app.ui.wizard.step.ProxyTestState
@@ -173,18 +173,18 @@ class WizardViewModel : AbstractSettingsViewModel(), KoinComponent {
     private val lastGrantPermissionResult = MutableStateFlow<Boolean?>(null)
     private val requestNotificationPermissionTasker = MonoTasker(backgroundScope)
 
-    private val notificationPermissionState = combine(
+    private val grantNotificationPermissionState = combine(
         notificationPermissionGrant,
         lastGrantPermissionResult,
     ) { grant, lastResult ->
-        NotificationPermissionState(
+        GrantNotificationPermissionState(
             showGrantNotificationItem = permissionManager !is GrantedPermissionManager,
             granted = grant,
             lastRequestResult = lastResult,
         )
     }
         .stateInBackground(
-            NotificationPermissionState.Placeholder,
+            GrantNotificationPermissionState.Placeholder,
             SharingStarted.WhileSubscribed(),
         )
 
@@ -195,7 +195,7 @@ class WizardViewModel : AbstractSettingsViewModel(), KoinComponent {
             placeholder = true,
             backgroundScope = backgroundScope,
         ),
-        notificationPermissionState = notificationPermissionState,
+        grantNotificationPermissionState = grantNotificationPermissionState,
         onCheckPermissionState = { checkNotificationPermission(it) },
         onRequestNotificationPermission = { requestNotificationPermission(it) },
         onOpenSystemNotificationSettings = { openSystemNotificationSettings(it) },
@@ -545,7 +545,7 @@ sealed class ProxyTestCase(
 @Stable
 class BitTorrentFeatureState(
     val enabled: SettingsState<Boolean>,
-    val notificationPermissionState: Flow<NotificationPermissionState>,
+    val grantNotificationPermissionState: Flow<GrantNotificationPermissionState>,
     val onCheckPermissionState: (ContextMP) -> Unit,
     val onRequestNotificationPermission: (ContextMP) -> Unit,
     val onOpenSystemNotificationSettings: (ContextMP) -> Unit,

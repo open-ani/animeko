@@ -52,15 +52,6 @@ import me.him188.ani.app.ui.wizard.WizardLayoutParams
 import me.him188.ani.utils.platform.isAndroid
 
 @Composable
-private fun renderThemeModeText(mode: DarkMode): String {
-    return when (mode) {
-        DarkMode.LIGHT -> "亮色"
-        DarkMode.DARK -> "暗色"
-        DarkMode.AUTO -> "自动"
-    }
-}
-
-@Composable
 internal fun SelectTheme(
     config: ThemeSettings,
     onUpdate: (ThemeSettings) -> Unit,
@@ -190,5 +181,14 @@ private fun ColorSchemePreviewItem(
                 text()
             }
         }
+    }
+}
+
+@Composable
+private fun renderThemeModeText(mode: DarkMode): String {
+    return when (mode) {
+        DarkMode.LIGHT -> "亮色"
+        DarkMode.DARK -> "暗色"
+        DarkMode.AUTO -> "自动"
     }
 }

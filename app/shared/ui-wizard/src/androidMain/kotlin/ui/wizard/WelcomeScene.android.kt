@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
+import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 
 @Preview(showBackground = true, device = "spec:width=411dp,height=891dp", showSystemUi = false)
 @Preview(
@@ -34,7 +35,11 @@ import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 @Composable
 fun PreviewWelcomeScene() {
     ProvideCompositionLocalsForPreview {
-        WelcomeScene({ }, contactActions = { TestContactActions() })
+        WelcomeScene(
+            { },
+            contactActions = { TestContactActions() },
+            wizardLayoutParams = WizardLayoutParams.calculate(currentWindowAdaptiveInfo1().windowSizeClass),
+        )
     }
 }
 

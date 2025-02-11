@@ -46,7 +46,7 @@ fun WelcomeScreen(
         WelcomeScene(
             onClickContinue,
             contactActions = contactActions,
-            layoutParams = wizardLayoutParams,
+            wizardLayoutParams = wizardLayoutParams,
             modifier = modifier,
             windowInsets = windowInsets,
         )
@@ -60,7 +60,7 @@ fun WelcomeScreen(
 internal fun WelcomeScene(
     onClickContinue: () -> Unit,
     contactActions: @Composable () -> Unit,
-    layoutParams: WizardLayoutParams,
+    wizardLayoutParams: WizardLayoutParams,
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
 ) {
@@ -73,8 +73,8 @@ internal fun WelcomeScene(
                 Modifier
                     .windowInsetsPadding(windowInsets)
                     .padding(
-                        horizontal = layoutParams.horizontalPadding,
-                        vertical = layoutParams.verticalPadding,
+                        horizontal = wizardLayoutParams.horizontalPadding,
+                        vertical = wizardLayoutParams.verticalPadding,
                     )
                     .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally,

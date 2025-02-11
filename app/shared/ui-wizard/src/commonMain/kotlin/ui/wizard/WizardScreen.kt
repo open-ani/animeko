@@ -54,7 +54,7 @@ import me.him188.ani.app.ui.wizard.step.BangumiAuthorize
 import me.him188.ani.app.ui.wizard.step.BitTorrentFeature
 import me.him188.ani.app.ui.wizard.step.ConfigureProxy
 import me.him188.ani.app.ui.wizard.step.ConfigureProxyUIState
-import me.him188.ani.app.ui.wizard.step.NotificationPermissionState
+import me.him188.ani.app.ui.wizard.step.GrantNotificationPermissionState
 import me.him188.ani.app.ui.wizard.step.ProxyOverallTestState
 import me.him188.ani.app.ui.wizard.step.RequestNotificationPermission
 import me.him188.ani.app.ui.wizard.step.SelectTheme
@@ -171,8 +171,8 @@ internal fun WizardScene(
         }
         step("bittorrent", { Text("BitTorrent 功能") }) {
             val configState = state.bitTorrentFeatureState.enabled
-            val notificationPermissionState by state.bitTorrentFeatureState.notificationPermissionState
-                .collectAsStateWithLifecycle(NotificationPermissionState.Placeholder)
+            val grantNotificationPermissionState by state.bitTorrentFeatureState.grantNotificationPermissionState
+                .collectAsStateWithLifecycle(GrantNotificationPermissionState.Placeholder)
 
 
             val lifecycle = LocalLifecycleOwner.current
@@ -193,9 +193,9 @@ internal fun WizardScene(
             // notificationErrorScrolledOnce 用于标记是否已经滚动过一次, 避免每次进入这一 step 都会滚动
             // collectAsStateWithLifecycle 的默认值也会触发一次 LaunchedEffect scope, 不能处理这种情况
             // 下面的 bangumi 授权步骤也是同理
-            LaunchedEffect(notificationPermissionState.lastRequestResult) {
-                if (notificationPermissionState.placeholder) return@LaunchedEffect
-                if (notificationPermissionState.lastRequestResult == false) {
+            LaunchedEffect(grantNotificationPermissionState.lastRequestResult) {
+                if (grantNotificationPermissionState.isPlaceholder) return@LaunchedEffect
+                if (grantNotificationPermissionState.lastRequestResult == false) {
                     if (!notificationErrorScrolledOnce) wizardScrollState.animateScrollTo(wizardScrollState.maxValue)
                     notificationErrorScrolledOnce = true
                 } else {
@@ -207,11 +207,11 @@ internal fun WizardScene(
                 bitTorrentEnabled = configState.value,
                 onBitTorrentEnableChanged = { configState.update(it) },
                 layoutParams = wizardLayoutParams,
-                requestNotificationPermission = if (notificationPermissionState.showGrantNotificationItem) {
+                requestNotificationPermission = if (grantNotificationPermissionState.showGrantNotificationItem) {
                     {
                         RequestNotificationPermission(
-                            grantedNotificationPermission = notificationPermissionState.granted,
-                            showPermissionError = notificationPermissionState.lastRequestResult == false,
+                            grantedNotificationPermission = grantNotificationPermissionState.granted,
+                            showPermissionError = grantNotificationPermissionState.lastRequestResult == false,
                             onRequestNotificationPermission = {
                                 state.bitTorrentFeatureState.onRequestNotificationPermission(context)
                             },

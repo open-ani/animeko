@@ -12,6 +12,8 @@ package me.him188.ani.app.ui.wizard.step
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
+import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
+import me.him188.ani.app.ui.wizard.WizardLayoutParams
 
 @Preview(showBackground = true)
 @Composable
@@ -19,11 +21,16 @@ fun PreviewBitTorrentFeatureStep() {
     ProvideCompositionLocalsForPreview {
         BitTorrentFeature(
             bitTorrentEnabled = true,
-            grantedNotificationPermission = false,
-            showPermissionError = false,
             onBitTorrentEnableChanged = { },
-            onRequestNotificationPermission = { },
-            onOpenSystemNotificationSettings = { },
+            layoutParams = WizardLayoutParams.calculate(currentWindowAdaptiveInfo1().windowSizeClass),
+            requestNotificationPermission = {
+                RequestNotificationPermission(
+                    grantedNotificationPermission = false,
+                    showPermissionError = false,
+                    onRequestNotificationPermission = { },
+                    onOpenSystemNotificationSettings = { },
+                )
+            },
         )
     }
 }

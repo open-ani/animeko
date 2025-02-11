@@ -13,6 +13,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
+import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
+import me.him188.ani.app.ui.wizard.WizardLayoutParams
 
 @Preview
 @Composable
@@ -21,6 +23,7 @@ fun PreviewSelectThemeStep() {
         SelectTheme(
             config = ThemeSettings.Default,
             onUpdate = { },
+            layoutParams = WizardLayoutParams.calculate(currentWindowAdaptiveInfo1().windowSizeClass),
         )
     }
 }
