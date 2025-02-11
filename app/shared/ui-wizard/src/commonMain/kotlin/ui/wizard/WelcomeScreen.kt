@@ -26,16 +26,10 @@ import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
-import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
+import me.him188.ani.app.ui.foundation.animation.WithContentEnterAnimation
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 
 @Composable
@@ -66,24 +60,11 @@ internal fun WelcomeScene(
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
     layoutParams: WizardLayoutParams = WizardLayoutParams.Default
 ) {
-    var isContentReady by rememberSaveable {
-        mutableStateOf(false)
-    }
-    SideEffect {
-        isContentReady = true
-    }
-
     Box(
         modifier,
         contentAlignment = Alignment.Center,
     ) {
-        AniAnimatedVisibility(
-            isContentReady,
-            Modifier.wrapContentSize(),
-            // 从中间往上滑
-            enter = LocalAniMotionScheme.current.animatedVisibility.screenEnter,
-            exit = LocalAniMotionScheme.current.animatedVisibility.screenExit,
-        ) {
+        WithContentEnterAnimation(Modifier.wrapContentSize()) {
             Column(
                 Modifier
                     .windowInsetsPadding(windowInsets)
