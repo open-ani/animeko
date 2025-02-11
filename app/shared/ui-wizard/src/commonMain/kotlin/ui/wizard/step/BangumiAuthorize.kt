@@ -149,7 +149,7 @@ private fun SettingsScope.DefaultAuthorize(
                 Text(
                     "Bangumi 番组计划 是一个中文 ACGN 互联网分享与交流项目，不提供资源下载。" +
                             "登录 Bangumi 账号方可使用收藏、记录观看进度等功能。",
-                    modifier = Modifier.padding(horizontal = 4.dp),
+                    modifier = Modifier.padding(horizontal = layoutParams.descHorizontalPadding),
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }
@@ -166,7 +166,7 @@ private fun SettingsScope.DefaultAuthorize(
                     color = MaterialTheme.colorScheme.primary,
                 )
                 Column(
-                    modifier = Modifier.padding(horizontal = 4.dp),
+                    modifier = Modifier.padding(horizontal = layoutParams.descHorizontalPadding),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     val currentPlatform = LocalPlatform.current
@@ -198,7 +198,10 @@ private fun SettingsScope.DefaultAuthorize(
                 )
                 AuthorizeStateText(
                     authorizeState,
-                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp),
+                    modifier = Modifier.padding(
+                        horizontal = layoutParams.descHorizontalPadding,
+                        vertical = 8.dp,
+                    ),
                     animatedVisibilityMotionScheme = motionScheme.animatedVisibility,
                 )
             }

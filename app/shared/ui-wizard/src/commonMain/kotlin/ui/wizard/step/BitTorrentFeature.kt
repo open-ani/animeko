@@ -11,25 +11,19 @@ package me.him188.ani.app.ui.wizard.step
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.rounded.ArrowOutward
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProvideTextStyle
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.IconButton
@@ -40,33 +34,6 @@ import me.him188.ani.app.ui.settings.framework.components.TextItem
 import me.him188.ani.app.ui.settings.rendering.P2p
 import me.him188.ani.app.ui.wizard.HeroIcon
 import me.him188.ani.app.ui.wizard.WizardLayoutParams
-
-@Composable
-private fun BitTorrentTip(
-    text: String,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.Start),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            modifier = Modifier.size(24.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Surface(
-                modifier = Modifier.size(8.dp),
-                color = MaterialTheme.colorScheme.onSurface,
-                shape = CircleShape,
-            ) { }
-        }
-        Text(
-            text,
-            style = MaterialTheme.typography.bodyMedium,
-        )
-    }
-}
 
 @Composable
 internal fun BitTorrentFeature(
@@ -97,7 +64,7 @@ internal fun BitTorrentFeature(
             Column(
                 modifier = Modifier
                     .padding(horizontal = layoutParams.horizontalPadding)
-                    .padding(horizontal = 4.dp)
+                    .padding(horizontal = layoutParams.descHorizontalPadding)
                     .fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
