@@ -75,9 +75,9 @@ internal fun BitTorrentFeature(
     onBitTorrentEnableChanged: (Boolean) -> Unit,
     onRequestNotificationPermission: () -> Unit,
     onOpenSystemNotificationSettings: () -> Unit,
+    layoutParams: WizardLayoutParams,
     modifier: Modifier = Modifier,
-    showGrantNotificationItem: Boolean = true,
-    layoutParams: WizardLayoutParams = WizardLayoutParams.Default
+    showGrantNotificationItem: Boolean = true
 ) {
     val motionScheme = LocalAniMotionScheme.current
     val platform = LocalPlatform.current

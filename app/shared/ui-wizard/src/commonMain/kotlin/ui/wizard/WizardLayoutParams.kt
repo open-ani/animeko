@@ -11,7 +11,6 @@ package me.him188.ani.app.ui.wizard
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.Stable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -27,7 +26,7 @@ data class WizardLayoutParams(
 ) {
     companion object {
         @Composable
-        fun fromWindowSizeClass(windowSizeClass: WindowSizeClass): WizardLayoutParams {
+        fun calculate(windowSizeClass: WindowSizeClass): WizardLayoutParams {
             return remember(windowSizeClass) {
                 WizardLayoutParams(
                     horizontalPadding = windowSizeClass.paneHorizontalPadding,
@@ -35,8 +34,5 @@ data class WizardLayoutParams(
                 )
             }
         }
-
-        @Stable
-        val Default = WizardLayoutParams(16.dp, 16.dp)
     }
 }

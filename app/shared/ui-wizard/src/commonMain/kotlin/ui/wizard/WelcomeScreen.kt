@@ -31,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.animation.WithContentEnterAnimation
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
+import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 
 @Composable
 fun WelcomeScreen(
@@ -38,11 +39,14 @@ fun WelcomeScreen(
     contactActions: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
+    wizardLayoutParams: WizardLayoutParams =
+        WizardLayoutParams.calculate(currentWindowAdaptiveInfo1().windowSizeClass)
 ) {
     Surface {
         WelcomeScene(
             onClickContinue,
             contactActions = contactActions,
+            layoutParams = wizardLayoutParams,
             modifier = modifier,
             windowInsets = windowInsets,
         )
@@ -56,9 +60,9 @@ fun WelcomeScreen(
 internal fun WelcomeScene(
     onClickContinue: () -> Unit,
     contactActions: @Composable () -> Unit,
+    layoutParams: WizardLayoutParams,
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
-    layoutParams: WizardLayoutParams = WizardLayoutParams.Default
 ) {
     Box(
         modifier,

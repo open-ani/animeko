@@ -67,7 +67,7 @@ fun WizardScreen(
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
     wizardLayoutParams: WizardLayoutParams =
-        WizardLayoutParams.fromWindowSizeClass(currentWindowAdaptiveInfo1().windowSizeClass),
+        WizardLayoutParams.calculate(currentWindowAdaptiveInfo1().windowSizeClass),
 ) {
     Box(
         modifier = Modifier.fillMaxSize(),
@@ -96,9 +96,9 @@ fun WizardPage(
     onFinishWizard: () -> Unit,
     contactActions: @Composable () -> Unit,
     navigationIcon: @Composable () -> Unit,
+    wizardLayoutParams: WizardLayoutParams,
     modifier: Modifier = Modifier,
-    windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
-    wizardLayoutParams: WizardLayoutParams = WizardLayoutParams.Default
+    windowInsets: WindowInsets = AniWindowInsets.forPageContent()
 ) {
     Box(Modifier.windowInsetsPadding(windowInsets)) {
         WizardScene(
@@ -120,8 +120,8 @@ internal fun WizardScene(
     contactActions: @Composable () -> Unit,
     navigationIcon: @Composable () -> Unit,
     onFinishWizard: () -> Unit,
-    modifier: Modifier = Modifier,
-    wizardLayoutParams: WizardLayoutParams = WizardLayoutParams.Default
+    wizardLayoutParams: WizardLayoutParams,
+    modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
 

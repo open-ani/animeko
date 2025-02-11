@@ -64,8 +64,8 @@ private fun renderThemeModeText(mode: DarkMode): String {
 internal fun SelectTheme(
     config: ThemeSettings,
     onUpdate: (ThemeSettings) -> Unit,
-    modifier: Modifier = Modifier,
-    layoutParams: WizardLayoutParams = WizardLayoutParams.Default
+    layoutParams: WizardLayoutParams,
+    modifier: Modifier = Modifier
 ) {
     val platform = LocalPlatform.current
 

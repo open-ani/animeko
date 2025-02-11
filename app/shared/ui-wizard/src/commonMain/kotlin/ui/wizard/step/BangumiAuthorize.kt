@@ -76,9 +76,9 @@ internal fun BangumiAuthorize(
     onCancelAuthorize: () -> Unit,
     onClickNavigateToBangumiDev: () -> Unit,
     onAuthorizeViaToken: (String) -> Unit,
+    layoutParams: WizardLayoutParams,
     modifier: Modifier = Modifier,
-    onScrollToTop: () -> Unit = { },
-    layoutParams: WizardLayoutParams = WizardLayoutParams.Default
+    onScrollToTop: () -> Unit = { }
 ) {
     SettingsTab(modifier) {
         AnimatedContent(
@@ -113,8 +113,8 @@ private fun SettingsScope.DefaultAuthorize(
     onClickAuthorize: () -> Unit,
     onClickTokenAuthorize: () -> Unit,
     contactActions: @Composable () -> Unit,
+    layoutParams: WizardLayoutParams,
     modifier: Modifier = Modifier,
-    layoutParams: WizardLayoutParams = WizardLayoutParams.Default,
 ) {
     val motionScheme = LocalAniMotionScheme.current
     Column(
@@ -348,8 +348,8 @@ private fun renderHelpOptionTitle(option: HelpOption): String {
 private fun SettingsScope.AuthorizeHelpQA(
     onClickTokenAuthorize: () -> Unit,
     contactActions: @Composable () -> Unit,
+    layoutParams: WizardLayoutParams,
     modifier: Modifier = Modifier,
-    layoutParams: WizardLayoutParams = WizardLayoutParams.Default,
 ) {
     val motionScheme = LocalAniMotionScheme.current
     var currentSelected by rememberSaveable { mutableStateOf<HelpOption?>(null) }
@@ -454,8 +454,8 @@ private fun SettingsScope.AuthorizeHelpQA(
 private fun SettingsScope.TokenAuthorize(
     onClickNavigateToBangumiDev: () -> Unit,
     onAuthorizeViaToken: (String) -> Unit,
+    layoutParams: WizardLayoutParams,
     modifier: Modifier = Modifier,
-    layoutParams: WizardLayoutParams = WizardLayoutParams.Default,
 ) {
     var token by rememberSaveable { mutableStateOf("") }
 

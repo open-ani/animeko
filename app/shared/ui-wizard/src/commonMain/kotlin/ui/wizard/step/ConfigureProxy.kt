@@ -65,8 +65,8 @@ internal fun ConfigureProxy(
     state: ConfigureProxyUIState,
     onUpdate: (config: ProxyUIConfig) -> Unit,
     onRequestReTest: () -> Unit,
-    modifier: Modifier = Modifier,
-    layoutParams: WizardLayoutParams = WizardLayoutParams.Default
+    layoutParams: WizardLayoutParams,
+    modifier: Modifier = Modifier
 ) {
     val motionScheme = LocalAniMotionScheme.current
     var editingProxy by rememberSaveable { mutableStateOf(false) }
