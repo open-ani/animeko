@@ -113,7 +113,7 @@ internal fun SelectTheme(
                         onUpdate(config.copy(useDynamicTheme = !config.useDynamicTheme))
                     },
                 title = { Text("动态色彩") },
-                description = { Text("使用桌面壁纸动态生成主题颜色") },
+                description = { Text("使用桌面壁纸生成主题颜色") },
                 action = {
                     Switch(
                         checked = config.useDynamicTheme,
