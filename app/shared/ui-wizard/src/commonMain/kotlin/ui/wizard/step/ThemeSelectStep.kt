@@ -65,14 +65,18 @@ internal fun ThemeSelectStep(
         ColorSchemePreviewItem(
             onClick = { onUpdate(config.copy(darkMode = it)) },
             panel = {
-                if (it != DarkMode.AUTO) ThemePreviewPanel(
-                    colorScheme = appColorScheme(isDark = it == DarkMode.DARK),
-                    modifier = panelModifier,
-                ) else DiagonalMixedThemePreviewPanel(
-                    leftTopColorScheme = appColorScheme(isDark = false),
-                    rightBottomColorScheme = appColorScheme(isDark = true),
-                    modifier = panelModifier,
-                )
+                if (it != DarkMode.AUTO) {
+                    ThemePreviewPanel(
+                        colorScheme = appColorScheme(isDark = it == DarkMode.DARK),
+                        modifier = panelModifier,
+                    )
+                } else {
+                    DiagonalMixedThemePreviewPanel(
+                        leftTopColorScheme = appColorScheme(isDark = false),
+                        rightBottomColorScheme = appColorScheme(isDark = true),
+                        modifier = panelModifier,
+                    )
+                }
             },
             text = { Text(renderThemeModeText(it)) },
             selected = config.darkMode == it,
@@ -97,23 +101,25 @@ internal fun ThemeSelectStep(
             title = { Text("色彩") },
             useThinHeader = true,
         ) {
-            if (platform.isAndroid()) TextItem(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable {
-                        onUpdate(config.copy(useDynamicTheme = !config.useDynamicTheme))
-                    },
-                title = { Text("动态色彩") },
-                description = { Text("使用桌面壁纸生成主题颜色") },
-                action = {
-                    Switch(
-                        checked = config.useDynamicTheme,
-                        onCheckedChange = {
+            if (platform.isAndroid()) {
+                TextItem(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
                             onUpdate(config.copy(useDynamicTheme = !config.useDynamicTheme))
                         },
-                    )
-                },
-            )
+                    title = { Text("动态色彩") },
+                    description = { Text("使用桌面壁纸生成主题颜色") },
+                    action = {
+                        Switch(
+                            checked = config.useDynamicTheme,
+                            onCheckedChange = {
+                                onUpdate(config.copy(useDynamicTheme = !config.useDynamicTheme))
+                            },
+                        )
+                    },
+                )
+            }
             Box(
                 modifier = Modifier.fillMaxWidth(),
                 contentAlignment = Alignment.Center,
