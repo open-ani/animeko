@@ -24,7 +24,7 @@ sealed class NavRoutes {
     data object Welcome : NavRoutes()
 
     @Serializable
-    data object Wizard : NavRoutes()
+    data object Onboarding : NavRoutes()
 
     @Serializable
     data class Main(

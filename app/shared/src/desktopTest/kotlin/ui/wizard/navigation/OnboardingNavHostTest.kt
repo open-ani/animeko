@@ -23,7 +23,6 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
-import me.him188.ani.app.ui.wizard.WizardDefaults
 import kotlin.test.Test
 
 private const val TAG_INDICATOR_TEXT = "indicatorText"
@@ -32,7 +31,7 @@ private const val TAG_BUTTON_NEXT_STEP = "buttonNextStep"
 private const val TAG_BUTTON_PREV_STEP = "buttonPrevStep"
 private const val TAG_STEP_CONTENT_TEXT = "stepContentText"
 
-class WizardNavHostTest {
+class OnboardingNavHostTest {
     private val SemanticsNodeInteractionsProvider.indicatorText
         get() = onAllNodesWithTag(TAG_INDICATOR_TEXT, useUnmergedTree = true)
     private val SemanticsNodeInteractionsProvider.indicatorTitle

@@ -146,13 +146,13 @@ private fun AniAppContentImpl(
                 popExitTransition = popExitTransition,
             ) {
                 WelcomeScreen(
-                    onClickContinue = { aniNavigator.navigateWizard() },
+                    onClickContinue = { aniNavigator.navigateOnboarding() },
                     contactActions = { AniContactList() },
                     Modifier.fillMaxSize(),
                     windowInsets,
                 )
             }
-            composable<NavRoutes.Wizard>(
+            composable<NavRoutes.Onboarding>(
                 enterTransition = enterTransition,
                 exitTransition = exitTransition,
                 popEnterTransition = popEnterTransition,

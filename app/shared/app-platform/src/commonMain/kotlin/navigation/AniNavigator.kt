@@ -93,8 +93,8 @@ interface AniNavigator {
         currentNavigator.navigate(NavRoutes.Welcome)
     }
 
-    fun navigateWizard() {
-        currentNavigator.navigate(NavRoutes.Wizard)
+    fun navigateOnboarding() {
+        currentNavigator.navigate(NavRoutes.Onboarding)
     }
 
     fun navigateMain(
