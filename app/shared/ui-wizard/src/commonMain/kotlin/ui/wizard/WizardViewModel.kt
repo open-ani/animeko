@@ -240,7 +240,7 @@ class WizardViewModel : AbstractSettingsViewModel(), KoinComponent {
                 }
         }
         .stateInBackground(
-            AuthorizeUIState.Idle,
+            AuthorizeUIState.Placeholder,
             SharingStarted.WhileSubscribed(),
         )
 

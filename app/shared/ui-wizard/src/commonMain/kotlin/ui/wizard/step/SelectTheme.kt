@@ -172,19 +172,20 @@ private fun ColorSchemePreviewItem(
                 role = Role.RadioButton,
                 onClick = onClick,
             ),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalAlignment = Alignment.Start,
     ) {
         panel()
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            RadioButton(
-                selected = selected,
-                interactionSource = interactionSource,
-                onClick = null,
-            )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier.size(48.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                RadioButton(
+                    selected = selected,
+                    interactionSource = interactionSource,
+                    onClick = null,
+                )
+            }
             ProvideContentColor(MaterialTheme.colorScheme.onSurface) {
                 text()
             }

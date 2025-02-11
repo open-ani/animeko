@@ -14,9 +14,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -30,7 +28,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -108,7 +105,7 @@ internal fun BitTorrentFeature(
                     .padding(horizontal = layoutParams.horizontalPadding)
                     .padding(horizontal = 4.dp)
                     .fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 ProvideTextStyle(MaterialTheme.typography.bodyMedium) {
                     Text(
@@ -127,43 +124,8 @@ internal fun BitTorrentFeature(
                     }*/
 
                     // Text("你也可以在 设置 - BitTorrent 中开启或关闭 BitTorrent 功能。")
-                }
-            }
-            Spacer(Modifier.height(8.dp))
-            Column(
-                modifier = Modifier
-                    .padding(horizontal = layoutParams.horizontalPadding)
-                    .fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Text(
-                    "使用提示",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                )
 
-                Column(
-                    modifier = Modifier.padding(horizontal = 4.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    ProvideTextStyle(MaterialTheme.typography.bodyMedium) {
-                        remember {
-                            buildList {
-                                add("老旧的番剧做种人数较少，不适合使用 BT 源")
-                                /*add(
-                                    "对于老旧番剧的 BT 资源，由于做种用户比较少，" +
-                                            "所以下载速度较慢甚至无法解析磁力链接，此类番剧不适合使用 BT 源。",
-                                )*/
-                                add("BT 源的下载速度取决于你的运营商网络质量")
-                                /*add(
-                                    "连接 BT 网络对自身的网络环境要求较高，" +
-                                            "如果你的运营商提供的网络 NAT 层级过深，则不适合使用 BT 网络。",
-                                )*/
-                            }
-                        }.forEach {
-                            BitTorrentTip(it, modifier = Modifier.fillMaxWidth())
-                        }
-                    }
+                    Text("BT 源的下载速度取决于你的运营商网络质量。")
                 }
             }
         }

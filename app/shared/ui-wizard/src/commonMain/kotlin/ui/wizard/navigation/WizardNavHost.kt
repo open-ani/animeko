@@ -94,7 +94,7 @@ fun WizardNavHost(
 
     LaunchedEffect(Unit) {
         controller.subscribeNavDestChanges {
-            launch { controller.animateScrollUpTopAppBar(topAppBarState) }
+            launch { controller.animateScrollTopAppBarExpanded(topAppBarState) }
         }
     }
 
@@ -151,7 +151,8 @@ fun WizardNavHost(
                     val scope = remember(scrollState, topAppBarState) {
                         WizardStepScope(
                             scrollState,
-                            scrollUpTopAppBar = { controller.animateScrollUpTopAppBar(topAppBarState) },
+                            scrollTopAppBarExpanded = { controller.animateScrollTopAppBarExpanded(topAppBarState) },
+                            scrollTopAppBarCollapsed = { controller.animateScrollTopAppBarCollapsed(topAppBarState) },
                         )
                     }
 

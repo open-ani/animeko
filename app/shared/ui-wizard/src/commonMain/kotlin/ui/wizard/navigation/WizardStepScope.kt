@@ -21,9 +21,17 @@ class WizardStepScope(
     /**
      * Access scrolling top app bar.
      */
-    private val scrollUpTopAppBar: suspend () -> Unit,
+    private val scrollTopAppBarExpanded: suspend () -> Unit,
+    /**
+     * Access scrolling top app bar.
+     */
+    private val scrollTopAppBarCollapsed: suspend () -> Unit,
 ) {
-    suspend fun scrollUpTopAppBar() {
-        scrollUpTopAppBar.invoke()
+    suspend fun scrollTopAppBarExpanded() {
+        scrollTopAppBarExpanded.invoke()
+    }
+
+    suspend fun scrollTopAppBarCollapsed() {
+        scrollTopAppBarCollapsed.invoke()
     }
 }

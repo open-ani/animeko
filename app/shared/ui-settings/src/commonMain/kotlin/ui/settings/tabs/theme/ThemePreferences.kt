@@ -122,7 +122,7 @@ fun SettingsScope.ThemeGroup(
                     state.update(themeSettings.copy(useDynamicTheme = checked))
                 },
                 title = { Text("动态色彩") },
-                description = { Text("将壁纸主题色应用于应用主题") },
+                description = { Text("使用桌面壁纸动态生成主题颜色") },
             )
         }
 

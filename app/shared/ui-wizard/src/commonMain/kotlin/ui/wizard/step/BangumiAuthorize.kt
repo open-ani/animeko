@@ -80,7 +80,6 @@ internal fun BangumiAuthorize(
     onScrollToTop: () -> Unit = { },
     layoutParams: WizardLayoutParams = WizardLayoutParams.Default
 ) {
-
     SettingsTab(modifier) {
         AnimatedContent(
             showTokenAuthorizePage,
@@ -535,6 +534,9 @@ private fun TokenAuthorizeStepIcon(
 @Stable
 sealed class AuthorizeUIState {
     sealed class Initial : AuthorizeUIState()
+
+    @Immutable
+    data object Placeholder : Initial()
 
     @Immutable
     data object Idle : Initial()

@@ -38,6 +38,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
@@ -124,10 +126,10 @@ internal fun WizardScene(
     val context = LocalContext.current
 
     var notificationErrorScrolledOnce by rememberSaveable { mutableStateOf(false) }
-    var bangumiAuthorizeSkipClicked by rememberSaveable { mutableStateOf(false) }
+    var showGuestSessionDialog by rememberSaveable { mutableStateOf(false) }
     var bangumiShowTokenAuthorizePage by remember { mutableStateOf(false) }
 
-    val authorizeState by state.bangumiAuthorizeState.state.collectAsStateWithLifecycle(AuthorizeUIState.Idle)
+    val authorizeState by state.bangumiAuthorizeState.state.collectAsStateWithLifecycle(AuthorizeUIState.Placeholder)
     val proxyState by state.configureProxyState.state.collectAsStateWithLifecycle(ConfigureProxyUIState.Default)
 
     WizardNavHost(
@@ -237,13 +239,25 @@ internal fun WizardScene(
             },
             skipButton = {
                 WizardDefaults.SkipButton(
-                    { bangumiAuthorizeSkipClicked = true },
+                    { showGuestSessionDialog = true },
                     "游客模式",
                 )
             },
         ) {
             val scope = rememberCoroutineScope()
 
+            // 如果 45s 没等到结果, 那可以认为用户可能遇到了麻烦, 我们自动滚动到底部, 底部有帮助列表
+            LaunchedEffect(authorizeState) {
+                if (authorizeState is AuthorizeUIState.Placeholder) return@LaunchedEffect
+                if (authorizeState is AuthorizeUIState.AwaitingResult) {
+                    delay(45_000)
+                    coroutineScope {
+                        launch { scrollTopAppBarCollapsed() }
+                        launch { wizardScrollState.animateScrollTo(wizardScrollState.maxValue) }
+                    }
+                }
+            }
+            
             // 每次进入这一步都会检查 token 是否有效, 以及退出这一步时要取消正在进行的授权请求
             DisposableEffect(Unit) {
                 state.bangumiAuthorizeState.onCheckCurrentToken()
@@ -269,16 +283,16 @@ internal fun WizardScene(
                 },
                 onScrollToTop = {
                     scope.launch {
-                        scrollUpTopAppBar()
+                        scrollTopAppBarExpanded()
                         wizardScrollState.animateScrollTo(0)
                     }
                 },
                 layoutParams = wizardLayoutParams,
             )
 
-            if (bangumiAuthorizeSkipClicked) {
+            if (showGuestSessionDialog) {
                 BangumiUseGuestModeDialog(
-                    onCancel = { bangumiAuthorizeSkipClicked = false },
+                    onCancel = { showGuestSessionDialog = false },
                     onConfirm = {
                         state.bangumiAuthorizeState.onUseGuestMode()
                         onFinishWizard()
