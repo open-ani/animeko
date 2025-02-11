@@ -1,4 +1,3 @@
-@file:JvmName("ColorKt_platform")
 /*
  * Copyright (C) 2024-2025 OpenAni and contributors.
  *
@@ -11,12 +10,9 @@
 package me.him188.ani.app.ui.theme
 
 import androidx.compose.ui.graphics.Color
-import kotlin.jvm.JvmName
 
 // region Note: You should only add UI properties when it is accessed both `ui-foundation` and `app-data`
 
 val DefaultSeedColor = Color(0xFF4F378B)
-val AnimekoIconColor = Color(0, 88, 160)
-val BangumiNextIconColor = Color(240, 145, 153)
 
 // endregion

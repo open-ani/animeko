@@ -20,6 +20,8 @@ import androidx.compose.ui.graphics.vector.ImageVector.Builder
 import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.unit.dp
 
+val BangumiNextIconColor = Color(240, 145, 153)
+
 public val Icons.Filled.BangumiNext: ImageVector
     get() {
         if (_bangumiNext != null) {

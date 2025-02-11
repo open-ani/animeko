@@ -20,7 +20,9 @@ import androidx.compose.ui.graphics.vector.ImageVector.Builder
 import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.unit.dp
 
-public val Icons.Filled.AnimekoIcon: ImageVector
+val AnimekoIconColor = Color(0, 88, 160)
+
+public val Icons.Filled.Animeko: ImageVector
     get() {
         if (_animekoIcon != null) {
             return _animekoIcon!!
