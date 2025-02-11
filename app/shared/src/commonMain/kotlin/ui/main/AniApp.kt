@@ -24,11 +24,16 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.ImageLoader
 import coil3.compose.LocalPlatformContext
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
 import me.him188.ani.app.data.models.preference.ThemeSettings
+import me.him188.ani.app.data.models.preference.UISettings
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
@@ -49,20 +54,56 @@ import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
 @Stable
+class AniAppState(
+    val initialNavRoute: NavRoutes,
+    val themeSettings: ThemeSettings,
+    val imageLoaderClient: ScopedHttpClient
+)
+
+@Stable
 class AniAppViewModel : AbstractViewModel(), KoinComponent {
     private val settings: SettingsRepository by inject()
     private val httpClientProvider: HttpClientProvider by inject()
-    val themeSettings: ThemeSettings? by settings.themeSettings.flow.produceState(null)
 
-    val imageLoaderClient = httpClientProvider.get(ScopedHttpClientUserAgent.ANI)
+    private val imageLoaderClient = httpClientProvider.get(ScopedHttpClientUserAgent.ANI)
+    private val firstLoadedNavRoute: MutableStateFlow<NavRoutes?> = MutableStateFlow(null)
 
-    val initialDestinationRoute by settings.uiSettings.flow
-        .map {
-            if (!it.onboardingCompleted) return@map NavRoutes.Welcome
-            NavRoutes.Main(it.mainSceneInitialPage)
+    val appState: Flow<AniAppState?> = combine(
+        settings.themeSettings.flow,
+        settings.uiSettings.flow,
+        httpClientProvider.configurationFlow,
+    ) { themeSettings, uiSettings, _ ->
+        AniAppState(
+            resolveInitialNavRoute(uiSettings),
+            themeSettings,
+            imageLoaderClient,
+        )
+    }
+        .stateInBackground(
+            initialValue = null,
+            started = SharingStarted.Eagerly,
+        )
+
+    /**
+     * 只有首次进入 APP 才会从 [UISettings] 中获取初始路由, 之后都会从 [firstLoadedNavRoute] 中获取.
+     * 这么做是为了避免界面重组.
+     */
+    private fun resolveInitialNavRoute(uiSettings: UISettings): NavRoutes {
+        val result: NavRoutes
+
+        val firstLoadedNavRoute = firstLoadedNavRoute.value
+        if (firstLoadedNavRoute == null) {
+            result = if (!uiSettings.onboardingCompleted) NavRoutes.Welcome
+            else NavRoutes.Main(uiSettings.mainSceneInitialPage)
+
+            this.firstLoadedNavRoute.value = result
+        } else {
+            result = firstLoadedNavRoute
         }
-        .collectFirstAsState(null)
 
+        return result
+    }
+    
 //    /**
 //     * 跟随代理设置等配置变化而变化的 [HttpClient] 实例. 用于 coil ImageLoader.
 //     */
@@ -114,15 +155,14 @@ fun AniApp(
 //    }
 
     val viewModel = viewModel { AniAppViewModel() }
-
     // 主题读好再进入 APP, 防止黑白背景闪烁
-    val themeSettings = viewModel.themeSettings ?: return
+    val appState = viewModel.appState.collectAsStateWithLifecycle(null).value ?: return
 
     CompositionLocalProvider(
 //        LocalImageLoader provides imageLoader,
-        LocalImageLoader provides rememberImageLoader(viewModel.imageLoaderClient),
+        LocalImageLoader provides rememberImageLoader(appState.imageLoaderClient),
         LocalTimeFormatter provides remember { TimeFormatter() },
-        LocalThemeSettings provides themeSettings,
+        LocalThemeSettings provides appState.themeSettings,
     ) {
         val focusManager by rememberUpdatedState(LocalFocusManager.current)
         val keyboard by rememberUpdatedState(LocalSoftwareKeyboardController.current)

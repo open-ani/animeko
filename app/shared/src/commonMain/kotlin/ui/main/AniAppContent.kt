@@ -99,7 +99,8 @@ import kotlin.reflect.typeOf
 @Composable
 fun AniAppContent(aniNavigator: AniNavigator) {
     val aniAppViewModel = viewModel<AniAppViewModel>()
-    val initialRoute = aniAppViewModel.initialDestinationRoute ?: return
+    val appState = aniAppViewModel.appState.collectAsStateWithLifecycle(null).value ?: return
+    val initialRoute by rememberUpdatedState(appState.initialNavRoute)
     
     val navigator = rememberNavController()
     aniNavigator.setNavController(navigator)
