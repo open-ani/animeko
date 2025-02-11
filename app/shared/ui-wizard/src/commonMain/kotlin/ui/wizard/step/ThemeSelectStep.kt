@@ -52,7 +52,7 @@ import me.him188.ani.app.ui.wizard.WizardLayoutParams
 import me.him188.ani.utils.platform.isAndroid
 
 @Composable
-internal fun SelectTheme(
+internal fun ThemeSelectStep(
     config: ThemeSettings,
     onUpdate: (ThemeSettings) -> Unit,
     layoutParams: WizardLayoutParams,

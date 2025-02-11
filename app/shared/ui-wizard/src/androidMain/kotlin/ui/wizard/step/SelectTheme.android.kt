@@ -20,7 +20,7 @@ import me.him188.ani.app.ui.wizard.WizardLayoutParams
 @Composable
 fun PreviewSelectThemeStep() {
     ProvideCompositionLocalsForPreview {
-        SelectTheme(
+        ThemeSelectStep(
             config = ThemeSettings.Default,
             onUpdate = { },
             layoutParams = WizardLayoutParams.calculate(currentWindowAdaptiveInfo1().windowSizeClass),

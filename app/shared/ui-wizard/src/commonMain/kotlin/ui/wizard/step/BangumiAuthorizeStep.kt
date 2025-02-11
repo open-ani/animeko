@@ -67,7 +67,7 @@ import me.him188.ani.app.ui.wizard.WizardLayoutParams
 import me.him188.ani.utils.platform.isAndroid
 
 @Composable
-internal fun BangumiAuthorize(
+internal fun BangumiAuthorizeStep(
     authorizeState: AuthorizeUIState,
     showTokenAuthorizePage: Boolean,
     contactActions: @Composable () -> Unit,

@@ -19,7 +19,7 @@ import me.him188.ani.app.ui.wizard.WizardLayoutParams
 @Composable
 fun PreviewBitTorrentFeatureStep() {
     ProvideCompositionLocalsForPreview {
-        BitTorrentFeature(
+        BitTorrentFeatureStep(
             bitTorrentEnabled = true,
             onBitTorrentEnableChanged = { },
             layoutParams = WizardLayoutParams.calculate(currentWindowAdaptiveInfo1().windowSizeClass),

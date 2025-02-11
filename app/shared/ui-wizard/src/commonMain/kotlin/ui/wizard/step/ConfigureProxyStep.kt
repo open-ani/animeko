@@ -61,7 +61,7 @@ import me.him188.ani.app.ui.wizard.toDataSettings
 import me.him188.ani.app.ui.wizard.toUIConfig
 
 @Composable
-internal fun ConfigureProxy(
+internal fun ConfigureProxyStep(
     state: ConfigureProxyUIState,
     onUpdate: (config: ProxyUIConfig) -> Unit,
     onRequestReTest: () -> Unit,

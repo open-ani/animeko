@@ -37,7 +37,7 @@ import me.him188.ani.app.ui.wizard.HeroIcon
 import me.him188.ani.app.ui.wizard.WizardLayoutParams
 
 @Composable
-internal fun BitTorrentFeature(
+internal fun BitTorrentFeatureStep(
     bitTorrentEnabled: Boolean,
     onBitTorrentEnableChanged: (Boolean) -> Unit,
     layoutParams: WizardLayoutParams,

@@ -19,7 +19,7 @@ import me.him188.ani.app.ui.wizard.WizardLayoutParams
 @Composable
 fun PreviewBangumiAuthorizeStepInitial() {
     ProvideCompositionLocalsForPreview {
-        BangumiAuthorize(
+        BangumiAuthorizeStep(
             authorizeState = AuthorizeUIState.Idle,
             showTokenAuthorizePage = false,
             onSetShowTokenAuthorizePage = { },
@@ -37,7 +37,7 @@ fun PreviewBangumiAuthorizeStepInitial() {
 @Composable
 fun PreviewBangumiAuthorizeStepAwaitingResult() {
     ProvideCompositionLocalsForPreview {
-        BangumiAuthorize(
+        BangumiAuthorizeStep(
             authorizeState = AuthorizeUIState.AwaitingResult(""),
             showTokenAuthorizePage = false,
             onSetShowTokenAuthorizePage = { },
@@ -55,7 +55,7 @@ fun PreviewBangumiAuthorizeStepAwaitingResult() {
 @Composable
 fun PreviewBangumiAuthorizeStepError() {
     ProvideCompositionLocalsForPreview {
-        BangumiAuthorize(
+        BangumiAuthorizeStep(
             authorizeState = AuthorizeUIState.Error("", "error message"),
             showTokenAuthorizePage = false,
             onSetShowTokenAuthorizePage = { },
@@ -73,7 +73,7 @@ fun PreviewBangumiAuthorizeStepError() {
 @Composable
 fun PreviewBangumiAuthorizeStepSuccess() {
     ProvideCompositionLocalsForPreview {
-        BangumiAuthorize(
+        BangumiAuthorizeStep(
             authorizeState = AuthorizeUIState.Success(
                 "StageGuard has long username",
                 "https://lain.bgm.tv/pic/cover/l/44/7d/467461_HHw4K.jpg",
@@ -94,7 +94,7 @@ fun PreviewBangumiAuthorizeStepSuccess() {
 @Composable
 fun PreviewBangumiTokenAuthorizePage() {
     ProvideCompositionLocalsForPreview {
-        BangumiAuthorize(
+        BangumiAuthorizeStep(
             authorizeState = AuthorizeUIState.Idle,
             showTokenAuthorizePage = true,
             onSetShowTokenAuthorizePage = { },

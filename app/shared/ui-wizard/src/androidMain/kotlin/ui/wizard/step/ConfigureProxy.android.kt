@@ -19,7 +19,7 @@ import me.him188.ani.app.ui.wizard.WizardLayoutParams
 @Composable
 fun PreviewSelectProxyStep() {
     ProvideCompositionLocalsForPreview {
-        ConfigureProxy(
+        ConfigureProxyStep(
             state = ConfigureProxyUIState.Default,
             onUpdate = { },
             onRequestReTest = { },

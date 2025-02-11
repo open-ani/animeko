@@ -50,14 +50,14 @@ import me.him188.ani.app.ui.wizard.navigation.WizardController
 import me.him188.ani.app.ui.wizard.navigation.WizardDefaults
 import me.him188.ani.app.ui.wizard.navigation.WizardNavHost
 import me.him188.ani.app.ui.wizard.step.AuthorizeUIState
-import me.him188.ani.app.ui.wizard.step.BangumiAuthorize
-import me.him188.ani.app.ui.wizard.step.BitTorrentFeature
-import me.him188.ani.app.ui.wizard.step.ConfigureProxy
+import me.him188.ani.app.ui.wizard.step.BangumiAuthorizeStep
+import me.him188.ani.app.ui.wizard.step.BitTorrentFeatureStep
+import me.him188.ani.app.ui.wizard.step.ConfigureProxyStep
 import me.him188.ani.app.ui.wizard.step.ConfigureProxyUIState
 import me.him188.ani.app.ui.wizard.step.GrantNotificationPermissionState
 import me.him188.ani.app.ui.wizard.step.ProxyOverallTestState
 import me.him188.ani.app.ui.wizard.step.RequestNotificationPermission
-import me.him188.ani.app.ui.wizard.step.SelectTheme
+import me.him188.ani.app.ui.wizard.step.ThemeSelectStep
 
 @Composable
 fun WizardScreen(
@@ -143,7 +143,7 @@ internal fun WizardScene(
             backwardButton = { Spacer(Modifier) },
             navigationIcon = navigationIcon,
         ) {
-            SelectTheme(
+            ThemeSelectStep(
                 config = state.selectThemeState.value,
                 onUpdate = { state.selectThemeState.update(it) },
                 layoutParams = wizardLayoutParams,
@@ -162,7 +162,7 @@ internal fun WizardScene(
         ) {
             val configureProxyState = state.configureProxyState
 
-            ConfigureProxy(
+            ConfigureProxyStep(
                 state = proxyState,
                 onUpdate = { configureProxyState.onUpdateConfig(it) },
                 onRequestReTest = { configureProxyState.onRequestReTest() },
@@ -203,7 +203,7 @@ internal fun WizardScene(
                 }
             }
 
-            BitTorrentFeature(
+            BitTorrentFeatureStep(
                 bitTorrentEnabled = configState.value,
                 onBitTorrentEnableChanged = { configState.update(it) },
                 layoutParams = wizardLayoutParams,
@@ -276,7 +276,7 @@ internal fun WizardScene(
                 bangumiShowTokenAuthorizePage = false
             }
 
-            BangumiAuthorize(
+            BangumiAuthorizeStep(
                 authorizeState = authorizeState,
                 showTokenAuthorizePage = bangumiShowTokenAuthorizePage,
                 contactActions = contactActions,
