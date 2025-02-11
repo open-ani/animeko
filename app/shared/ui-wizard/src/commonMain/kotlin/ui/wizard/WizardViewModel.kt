@@ -492,7 +492,7 @@ class WizardViewModel : AbstractSettingsViewModel(), KoinComponent {
         // 所以这里使用 GlobalScope 确保这个任务能完成, 
         @OptIn(DelicateCoroutinesApi::class)
         GlobalScope.launch {
-            settingsRepository.uiSettings.update { copy(startupToWelcomeWizard = false) }
+            settingsRepository.uiSettings.update { copy(onboardingCompleted = true) }
         }
     }
 }

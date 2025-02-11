@@ -30,7 +30,10 @@ data class UISettings(
     val myCollections: MyCollectionsSettings = MyCollectionsSettings.Default,
     val searchSettings: SearchSettings = SearchSettings.Default,
     val episodeProgress: EpisodeProgressSettings = EpisodeProgressSettings.Default,
-    val startupToWelcomeWizard: Boolean = true,
+    /**
+     * 是否启动时显示欢迎向导
+     */
+    val onboardingCompleted: Boolean = false,
     @Suppress("PropertyName") @Transient val _placeholder: Int = 0,
 ) {
     companion object {

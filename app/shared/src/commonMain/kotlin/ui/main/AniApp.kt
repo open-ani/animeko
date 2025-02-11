@@ -58,7 +58,7 @@ class AniAppViewModel : AbstractViewModel(), KoinComponent {
 
     val initialDestinationRoute by settings.uiSettings.flow
         .map {
-            if (it.startupToWelcomeWizard) return@map NavRoutes.Welcome
+            if (!it.onboardingCompleted) return@map NavRoutes.Welcome
             NavRoutes.Main(it.mainSceneInitialPage)
         }
         .collectFirstAsState(null)
