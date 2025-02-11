@@ -83,7 +83,7 @@ internal fun SelectTheme(
         Row(
             modifier = Modifier
                 .padding(horizontal = layoutParams.horizontalPadding)
-                .padding(top = 16.dp)
+                .padding(top = layoutParams.verticalPadding)
                 .fillMaxWidth()
                 .horizontalScroll(rememberScrollState())
                 .selectableGroup(),
