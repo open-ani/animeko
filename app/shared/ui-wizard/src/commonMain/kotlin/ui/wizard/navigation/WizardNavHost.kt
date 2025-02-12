@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
@@ -183,23 +184,20 @@ object WizardDefaults {
         scrollCollapsedFraction: Float = 0f,
         stepName: @Composable () -> Unit,
     ) {
+        @OptIn(ExperimentalMaterial3ExpressiveApi::class)
         LargeTopAppBar(
-            title = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ProvideTextStyleContentColor(
-                        value = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                    ) {
-                        if (scrollCollapsedFraction <= 0.5) {
-                            Text(
-                                text = remember(currentStep, totalStep) {
-                                    renderStepIndicatorText(currentStep, totalStep)
-                                },
-                                modifier = Modifier.testTag(indicatorStepTextTestTag),
-                            )
-                        }
-                    }
-                    stepName()
+            title = stepName,
+            subtitle = {
+                ProvideTextStyleContentColor(
+                    value = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                ) {
+                    Text(
+                        text = remember(currentStep, totalStep) {
+                            renderStepIndicatorText(currentStep, totalStep)
+                        },
+                        modifier = Modifier.testTag(indicatorStepTextTestTag),
+                    )
                 }
             },
             modifier = modifier,
