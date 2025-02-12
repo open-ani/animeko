@@ -25,16 +25,18 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.asFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.retry
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import me.him188.ani.app.data.models.fold
 import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.data.models.preference.MediaSourceProxySettings
 import me.him188.ani.app.data.models.preference.ProxyAuthorization
@@ -309,13 +311,21 @@ class WizardViewModel : AbstractSettingsViewModel(), KoinComponent {
                 .filterNotNull()
                 .flatMapLatest { sessionManager.processingRequest }
                 .collectLatest { processingRequest ->
+                    // 如果 requestAuthorizeId 是 -1, 则不会启动 requireAuthorize, 因此 processingRequest 是 null
                     if (processingRequest == null) return@collectLatest
                     val currentRequestId = currentRequestAuthorizeId.value ?: return@collectLatest
                     logger.trace {
                         "[AuthCheckLoop][$currentRequestId] current processing request: $processingRequest"
                     }
 
-                    checkAuthorizeStatus(currentRequestId, processingRequest)
+                    // 最大尝试 300 次, 每次间隔 1 秒
+                    suspend { checkAuthorizeStatus(currentRequestId, processingRequest) }
+                        .asFlow()
+                        .retry(retries = 60 * 5) { e ->
+                            (e is NotAuthorizedException).also { if (it) delay(1000) }
+                        }
+                        .catch { processingRequest.cancel() }
+                        .first()
                 }
         }
     }
@@ -473,7 +483,12 @@ class WizardViewModel : AbstractSettingsViewModel(), KoinComponent {
                 }
 
                 is ExternalOAuthRequest.State.Failed -> {
-                    emit(AuthorizeUIState.Error(requestId, requestState.toString()))
+                    emit(AuthorizeUIState.Error(requestId, requestState.throwable.toString()))
+                }
+
+                is ExternalOAuthRequest.State.Cancelled -> {
+                    emit(AuthorizeUIState.Error(requestId, "等待验证超过最大时间，已取消"))
+
                 }
 
                 else -> {}
@@ -483,39 +498,28 @@ class WizardViewModel : AbstractSettingsViewModel(), KoinComponent {
         }
     }
 
+    /**
+     * 只有验证成功了才会正常返回, 否则会抛出异常
+     */
     private suspend fun checkAuthorizeStatus(
         requestId: String,
         request: ExternalOAuthRequest,
     ) {
-        while (true) {
-            val resp = authClient.getResult(requestId)
-            resp.fold(
-                onSuccess = {
-                    if (it == null) {
-                        return@fold
-                    }
-                    logger.trace {
-                        "[AuthCheckLoop][$requestId] " +
-                                "Check OAuth result success, request is $request, " +
-                                "token expires in ${it.expiresIn.seconds}"
-                    }
-                    request.onCallback(
-                        Result.success(
-                            OAuthResult(
-                                accessToken = it.accessToken,
-                                refreshToken = it.refreshToken,
-                                expiresIn = it.expiresIn.seconds,
-                            ),
-                        ),
-                    )
-                    return
-                },
-                onKnownFailure = {
-                    logger.trace { "[AuthCheckLoop][$requestId] Check OAuth result failed: $it" }
-                },
-            )
-            delay(1000)
+        val token = authClient.getResult(requestId).getOrThrow()
+            ?: throw NotAuthorizedException()
+
+        val result = OAuthResult(
+            accessToken = token.accessToken,
+            refreshToken = token.refreshToken,
+            expiresIn = token.expiresIn.seconds,
+        )
+
+        logger.trace {
+            "[AuthCheckLoop][$requestId] " +
+                    "Check OAuth result success, request is $request, " +
+                    "token expires in ${token.expiresIn.seconds}"
         }
+        request.onCallback(Result.success(result))
     }
 
     fun finishWizard() {
@@ -666,3 +670,8 @@ private fun Map<String, ServiceConnectionTester.TestState>.toUIState(): List<Pro
         }
     }
 }
+
+/**
+ * 还未完成验证
+ */
+private class NotAuthorizedException() : Exception()
