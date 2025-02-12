@@ -40,7 +40,6 @@ import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
@@ -53,6 +52,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import me.him188.ani.app.domain.session.AuthStateNew
 import me.him188.ani.app.ui.foundation.IconButton
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.animation.AnimatedVisibilityMotionScheme
@@ -68,7 +68,7 @@ import me.him188.ani.utils.platform.isAndroid
 
 @Composable
 internal fun BangumiAuthorizeStep(
-    authorizeState: AuthorizeUIState,
+    authorizeState: AuthStateNew,
     showTokenAuthorizePage: Boolean,
     contactActions: @Composable () -> Unit,
     onSetShowTokenAuthorizePage: (Boolean) -> Unit,
@@ -113,7 +113,7 @@ internal fun BangumiAuthorizeStep(
 
 @Composable
 private fun SettingsScope.DefaultAuthorize(
-    authorizeState: AuthorizeUIState,
+    authorizeState: AuthStateNew,
     onClickAuthorize: () -> Unit,
     onClickTokenAuthorize: () -> Unit,
     contactActions: @Composable () -> Unit,
@@ -240,7 +240,7 @@ private fun RegisterTip(
 
 @Composable
 private fun AuthorizeButton(
-    authorizeState: AuthorizeUIState,
+    authorizeState: AuthStateNew,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -251,11 +251,11 @@ private fun AuthorizeButton(
                 transitionSpec = LocalAniMotionScheme.current.animatedContent.standard,
             ) {
                 when (authorizeState) {
-                    is AuthorizeUIState.Initial, is AuthorizeUIState.Error -> {
+                    is AuthStateNew.Initial, is AuthStateNew.Error -> {
                         Text("启动浏览器授权")
                     }
 
-                    is AuthorizeUIState.AwaitingResult -> {
+                    is AuthStateNew.AwaitingResult -> {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
@@ -268,7 +268,7 @@ private fun AuthorizeButton(
                         }
                     }
 
-                    is AuthorizeUIState.Success -> {
+                    is AuthStateNew.Success -> {
                         Text("重新授权其他账号")
                     }
                 }
@@ -276,13 +276,13 @@ private fun AuthorizeButton(
         }
     }
 
-    if (authorizeState is AuthorizeUIState.Success) OutlinedButton(
+    if (authorizeState is AuthStateNew.Success) OutlinedButton(
         onClick = onClick,
         modifier = modifier,
         content = content,
     ) else Button(
         onClick = onClick,
-        enabled = authorizeState !is AuthorizeUIState.AwaitingResult,
+        enabled = authorizeState !is AuthStateNew.AwaitingResult,
         modifier = modifier,
         content = content,
     )
@@ -290,21 +290,21 @@ private fun AuthorizeButton(
 
 @Composable
 private fun AuthorizeStateText(
-    authorizeState: AuthorizeUIState,
+    authorizeState: AuthStateNew,
     modifier: Modifier = Modifier,
     animatedVisibilityMotionScheme: AnimatedVisibilityMotionScheme = LocalAniMotionScheme.current.animatedVisibility,
 ) {
     var text by rememberSaveable { mutableStateOf("") }
     LaunchedEffect(authorizeState) {
         text = when (authorizeState) {
-            is AuthorizeUIState.Initial, is AuthorizeUIState.AwaitingResult -> return@LaunchedEffect
-            is AuthorizeUIState.Success -> "授权登录成功: ${authorizeState.username}"
-            is AuthorizeUIState.Error -> "授权登录失败: ${authorizeState.message}"
+            is AuthStateNew.Initial, is AuthStateNew.AwaitingResult -> return@LaunchedEffect
+            is AuthStateNew.Success -> "授权登录成功: ${authorizeState.username}"
+            is AuthStateNew.Error -> "授权登录失败: ${authorizeState.message}"
         }
     }
 
     AnimatedVisibility(
-        visible = authorizeState is AuthorizeUIState.Success || authorizeState is AuthorizeUIState.Error,
+        visible = authorizeState is AuthStateNew.Success || authorizeState is AuthStateNew.Error,
         enter = animatedVisibilityMotionScheme.columnEnter,
         exit = animatedVisibilityMotionScheme.columnExit,
         modifier = modifier,
@@ -313,8 +313,8 @@ private fun AuthorizeStateText(
             text,
             style = MaterialTheme.typography.bodyMedium,
             color = when (authorizeState) {
-                is AuthorizeUIState.Success -> MaterialTheme.colorScheme.primary
-                is AuthorizeUIState.Error -> MaterialTheme.colorScheme.error
+                is AuthStateNew.Success -> MaterialTheme.colorScheme.primary
+                is AuthStateNew.Error -> MaterialTheme.colorScheme.error
                 else -> MaterialTheme.colorScheme.onSurface
             },
         )
@@ -530,24 +530,4 @@ private fun TokenAuthorizeStepIcon(
             )
         }
     }
-}
-
-@Stable
-sealed class AuthorizeUIState {
-    sealed class Initial : AuthorizeUIState()
-
-    @Immutable
-    data object Placeholder : Initial()
-
-    @Immutable
-    data object Idle : Initial()
-
-    @Stable
-    data class AwaitingResult(val requestId: String) : AuthorizeUIState()
-
-    @Stable
-    data class Error(val requestId: String, val message: String) : AuthorizeUIState()
-
-    @Stable
-    data class Success(val username: String, val avatarUrl: String?) : AuthorizeUIState()
 }

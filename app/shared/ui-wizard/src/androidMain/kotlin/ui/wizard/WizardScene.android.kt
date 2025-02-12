@@ -15,13 +15,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.tooling.preview.Preview
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.flowOf
+import me.him188.ani.app.domain.session.AuthStateNew
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.settings.framework.SettingsState
 import me.him188.ani.app.ui.settings.tabs.network.SystemProxyPresentation
 import me.him188.ani.app.ui.wizard.navigation.rememberWizardController
-import me.him188.ani.app.ui.wizard.step.AuthorizeUIState
 import me.him188.ani.app.ui.wizard.step.ConfigureProxyUIState
 import me.him188.ani.app.ui.wizard.step.GrantNotificationPermissionState
 import me.him188.ani.app.ui.wizard.step.ProxyTestCaseState
@@ -88,11 +88,11 @@ internal fun createTestWizardPresentationState(scope: CoroutineScope): WizardPre
                 ),
             ),
             onCheckPermissionState = { },
-            onRequestNotificationPermission = { },
+            onRequestNotificationPermission = { false },
             onOpenSystemNotificationSettings = { },
         ),
         bangumiAuthorizeState = BangumiAuthorizeState(
-            state = flowOf(AuthorizeUIState.Idle),
+            state = flowOf(AuthStateNew.Idle),
             onClickNavigateAuthorize = { },
             onCheckCurrentToken = { },
             onCancelAuthorize = { },

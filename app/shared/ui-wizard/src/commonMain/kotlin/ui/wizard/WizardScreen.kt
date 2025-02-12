@@ -41,7 +41,9 @@ import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import me.him188.ani.app.domain.session.AuthStateNew
 import me.him188.ani.app.platform.LocalContext
+import me.him188.ani.app.tools.rememberUiMonoTasker
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
@@ -49,7 +51,6 @@ import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.app.ui.wizard.navigation.WizardController
 import me.him188.ani.app.ui.wizard.navigation.WizardDefaults
 import me.him188.ani.app.ui.wizard.navigation.WizardNavHost
-import me.him188.ani.app.ui.wizard.step.AuthorizeUIState
 import me.him188.ani.app.ui.wizard.step.BangumiAuthorizeStep
 import me.him188.ani.app.ui.wizard.step.BitTorrentFeatureStep
 import me.him188.ani.app.ui.wizard.step.ConfigureProxyStep
@@ -128,11 +129,10 @@ internal fun WizardScene(
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
-    var notificationErrorScrolledOnce by rememberSaveable { mutableStateOf(false) }
     var showGuestSessionDialog by rememberSaveable { mutableStateOf(false) }
     var bangumiShowTokenAuthorizePage by remember { mutableStateOf(false) }
 
-    val authorizeState by state.bangumiAuthorizeState.state.collectAsStateWithLifecycle(AuthorizeUIState.Placeholder)
+    val authorizeState by state.bangumiAuthorizeState.state.collectAsStateWithLifecycle(AuthStateNew.Idle)
     val proxyState by state.configureProxyState.state.collectAsStateWithLifecycle(ConfigureProxyUIState.Default)
 
     WizardNavHost(
@@ -189,6 +189,8 @@ internal fun WizardScene(
             )
         }
         step("bittorrent", { Text("BitTorrent 功能") }) {
+            val monoTasker = rememberUiMonoTasker()
+            
             val configState = state.bitTorrentFeatureState.enabled
             val grantNotificationPermissionState by state.bitTorrentFeatureState.grantNotificationPermissionState
                 .collectAsStateWithLifecycle(GrantNotificationPermissionState.Placeholder)
@@ -206,22 +208,6 @@ internal fun WizardScene(
                 onDispose { }
             }
 
-            // 用于在请求权限失败时滚动底部的错误信息位置, 
-            // 因为错误信息显示在最底部, 手机屏幕可能显示不下, 所以需要在错误发生时自动滚动到底部让用户看到信息
-            // 每次只有 lastRequestResult 从别的状态变成 false 时, 才会滚动
-            // notificationErrorScrolledOnce 用于标记是否已经滚动过一次, 避免每次进入这一 step 都会滚动
-            // collectAsStateWithLifecycle 的默认值也会触发一次 LaunchedEffect scope, 不能处理这种情况
-            // 下面的 bangumi 授权步骤也是同理
-            LaunchedEffect(grantNotificationPermissionState.lastRequestResult) {
-                if (grantNotificationPermissionState.isPlaceholder) return@LaunchedEffect
-                if (grantNotificationPermissionState.lastRequestResult == false) {
-                    if (!notificationErrorScrolledOnce) wizardScrollState.animateScrollTo(wizardScrollState.maxValue)
-                    notificationErrorScrolledOnce = true
-                } else {
-                    notificationErrorScrolledOnce = false
-                }
-            }
-
             BitTorrentFeatureStep(
                 bitTorrentEnabled = configState.value,
                 onBitTorrentEnableChanged = { configState.update(it) },
@@ -232,7 +218,11 @@ internal fun WizardScene(
                             grantedNotificationPermission = grantNotificationPermissionState.granted,
                             showPermissionError = grantNotificationPermissionState.lastRequestResult == false,
                             onRequestNotificationPermission = {
-                                state.bitTorrentFeatureState.onRequestNotificationPermission(context)
+                                monoTasker.launch {
+                                    val granted = state.bitTorrentFeatureState.onRequestNotificationPermission(context)
+                                    // 授权失败就滚动到底部, 底部有错误信息
+                                    if (!granted) wizardScrollState.animateScrollTo(wizardScrollState.maxValue)
+                                }
                             },
                             onOpenSystemNotificationSettings = {
                                 state.bitTorrentFeatureState.onOpenSystemNotificationSettings(context)
@@ -249,7 +239,7 @@ internal fun WizardScene(
                 WizardDefaults.GoForwardButton(
                     onFinishWizard,
                     text = "完成",
-                    enabled = authorizeState is AuthorizeUIState.Success,
+                    enabled = authorizeState is AuthStateNew.Success,
                 )
             },
             navigationIcon = {
@@ -269,12 +259,9 @@ internal fun WizardScene(
                 )
             },
         ) {
-            val scope = rememberCoroutineScope()
-
             // 如果 45s 没等到结果, 那可以认为用户可能遇到了麻烦, 我们自动滚动到底部, 底部有帮助列表
             LaunchedEffect(authorizeState) {
-                if (authorizeState is AuthorizeUIState.Placeholder) return@LaunchedEffect
-                if (authorizeState is AuthorizeUIState.AwaitingResult) {
+                if (authorizeState is AuthStateNew.AwaitingResult) {
                     delay(45_000)
                     coroutineScope {
                         launch { scrollTopAppBarCollapsed() }

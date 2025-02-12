@@ -11,6 +11,7 @@ package me.him188.ani.app.ui.wizard.step
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
+import me.him188.ani.app.domain.session.AuthStateNew
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.wizard.WizardLayoutParams
@@ -20,7 +21,7 @@ import me.him188.ani.app.ui.wizard.WizardLayoutParams
 fun PreviewBangumiAuthorizeStepInitial() {
     ProvideCompositionLocalsForPreview {
         BangumiAuthorizeStep(
-            authorizeState = AuthorizeUIState.Idle,
+            authorizeState = AuthStateNew.Idle,
             showTokenAuthorizePage = false,
             onSetShowTokenAuthorizePage = { },
             contactActions = { },
@@ -38,7 +39,7 @@ fun PreviewBangumiAuthorizeStepInitial() {
 fun PreviewBangumiAuthorizeStepAwaitingResult() {
     ProvideCompositionLocalsForPreview {
         BangumiAuthorizeStep(
-            authorizeState = AuthorizeUIState.AwaitingResult(""),
+            authorizeState = AuthStateNew.AwaitingResult(""),
             showTokenAuthorizePage = false,
             onSetShowTokenAuthorizePage = { },
             contactActions = { },
@@ -56,7 +57,7 @@ fun PreviewBangumiAuthorizeStepAwaitingResult() {
 fun PreviewBangumiAuthorizeStepError() {
     ProvideCompositionLocalsForPreview {
         BangumiAuthorizeStep(
-            authorizeState = AuthorizeUIState.Error("", "error message"),
+            authorizeState = AuthStateNew.Error("", "error message"),
             showTokenAuthorizePage = false,
             onSetShowTokenAuthorizePage = { },
             contactActions = { },
@@ -74,9 +75,10 @@ fun PreviewBangumiAuthorizeStepError() {
 fun PreviewBangumiAuthorizeStepSuccess() {
     ProvideCompositionLocalsForPreview {
         BangumiAuthorizeStep(
-            authorizeState = AuthorizeUIState.Success(
+            authorizeState = AuthStateNew.Success(
                 "StageGuard has long username",
                 "https://lain.bgm.tv/pic/cover/l/44/7d/467461_HHw4K.jpg",
+                isGuest = false,
             ),
             showTokenAuthorizePage = false,
             onSetShowTokenAuthorizePage = { },
@@ -95,7 +97,7 @@ fun PreviewBangumiAuthorizeStepSuccess() {
 fun PreviewBangumiTokenAuthorizePage() {
     ProvideCompositionLocalsForPreview {
         BangumiAuthorizeStep(
-            authorizeState = AuthorizeUIState.Idle,
+            authorizeState = AuthStateNew.Idle,
             showTokenAuthorizePage = true,
             onSetShowTokenAuthorizePage = { },
             contactActions = { },
