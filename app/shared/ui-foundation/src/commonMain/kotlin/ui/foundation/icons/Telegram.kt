@@ -1,7 +1,5 @@
 package me.him188.ani.app.ui.foundation.icons
 
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.SolidColor
@@ -27,14 +25,6 @@ public val AniIcons.Telegram: ImageVector
             viewportHeight = 512f,
         ).apply {
             path(
-                fill = Brush.linearGradient(
-                    start = Offset(256f, 3.84f),
-                    end = Offset(256f, 512f),
-                    colorStops = arrayOf(
-                        0f to Color(0xFF2AABEE),
-                        1f to Color(0xFF229ED9),
-                    ),
-                ),
                 fillAlpha = 1.0f,
                 stroke = null,
                 strokeAlpha = 1.0f,

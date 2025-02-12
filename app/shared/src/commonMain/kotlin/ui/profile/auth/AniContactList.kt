@@ -43,7 +43,7 @@ fun AniContactList(
         SuggestionChip(
             { AniHelpNavigator.openGitHubHome(context) },
             icon = {
-                Icon(AniIcons.GithubMark, null, Modifier.size(ContactIconSize))
+                Icon(AniIcons.GithubMark, "Github", Modifier.size(ContactIconSize))
             },
             label = { Text("GitHub") },
         )
@@ -52,7 +52,7 @@ fun AniContactList(
             { AniHelpNavigator.openAniWebsite(context) },
             icon = {
                 Icon(
-                    Icons.Rounded.Public, null,
+                    Icons.Rounded.Public, "官网",
                     Modifier.size(ContactIconSize),
                 )
             },
@@ -63,7 +63,7 @@ fun AniContactList(
             { AniHelpNavigator.openJoinQQGroup(context) },
             icon = {
                 Icon(
-                    AniIcons.QqRoundedOutline, null,
+                    AniIcons.QqRoundedOutline, "QQ 群",
                     Modifier.size(ContactIconSize),
                 )
             },
@@ -74,7 +74,7 @@ fun AniContactList(
             { AniHelpNavigator.openTelegram(context) },
             icon = {
                 Image(
-                    AniIcons.Telegram, null,
+                    AniIcons.Telegram, "Telegram",
                     Modifier.size(ContactIconSize),
                 )
             },
