@@ -163,10 +163,7 @@ private fun AniAppContentImpl(
                     viewModel { WizardViewModel() },
                     onFinishWizard = {
                         // 直接导航到主页,并且不能返回向导页
-                        aniNavigator.currentNavigator
-                            .navigate(NavRoutes.Main(UISettings.Default.mainSceneInitialPage)) {
-                                popUpTo(NavRoutes.Welcome) { inclusive = true }
-                            }
+                        aniNavigator.navigateMain(UISettings.Default.mainSceneInitialPage)
                     },
                     contactActions = { AniContactList() },
                     navigationIcon = {

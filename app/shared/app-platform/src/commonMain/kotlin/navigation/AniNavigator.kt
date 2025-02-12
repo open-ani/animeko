@@ -101,7 +101,10 @@ interface AniNavigator {
         page: MainScreenPage,
         requestFocus: Boolean = false
     ) {
-        currentNavigator.popBackStack<NavRoutes.Main>(inclusive = false)
+        currentNavigator.navigate(NavRoutes.Main(page)) {
+            popUpTo(NavRoutes.Welcome) { inclusive = true }
+            popUpTo(NavRoutes.Onboarding) { inclusive = true }
+        }
     }
 
     /**
