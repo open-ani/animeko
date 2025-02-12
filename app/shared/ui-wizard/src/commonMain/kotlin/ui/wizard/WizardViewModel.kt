@@ -35,7 +35,7 @@ import me.him188.ani.app.data.models.preference.ProxySettings
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.session.AniAuthClient
-import me.him188.ani.app.domain.session.AuthConfigurator
+import me.him188.ani.app.domain.session.AniAuthConfigurator
 import me.him188.ani.app.domain.session.AuthStateNew
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.settings.ProxySettingsFlowProxyProvider
@@ -198,7 +198,7 @@ class WizardViewModel : AbstractSettingsViewModel(), KoinComponent {
 
     private var currentAppContext: ContextMP? = null
 
-    private val authConfigurator = AuthConfigurator(
+    private val authConfigurator = AniAuthConfigurator(
         sessionManager = sessionManager,
         authClient = authClient,
         onLaunchAuthorize = { requestId ->
@@ -208,7 +208,7 @@ class WizardViewModel : AbstractSettingsViewModel(), KoinComponent {
     )
 
     private val bangumiAuthorizeState = BangumiAuthorizeState(
-        authConfigurator.authorizeState,
+        authConfigurator.state,
         onClickNavigateAuthorize = {
             currentAppContext = it
             authConfigurator.startAuthorize()

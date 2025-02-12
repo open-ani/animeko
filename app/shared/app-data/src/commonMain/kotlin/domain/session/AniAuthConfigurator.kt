@@ -44,20 +44,19 @@ import kotlin.coroutines.CoroutineContext
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.seconds
 
-
-class AuthConfigurator(
+class AniAuthConfigurator(
     private val sessionManager: SessionManager,
     private val authClient: AniAuthClient,
     private val onLaunchAuthorize: suspend (requestId: String) -> Unit,
     parentCoroutineContext: CoroutineContext,
 ) {
-    private val logger = logger<AuthConfigurator>()
+    private val logger = logger<AniAuthConfigurator>()
     private val scope = parentCoroutineContext.childScope()
 
     private val authorizeTasker = MonoTasker(scope)
     private val currentRequestAuthorizeId = MutableStateFlow<String?>(null)
 
-    val authorizeState: Flow<AuthStateNew> = currentRequestAuthorizeId
+    val state: Flow<AuthStateNew> = currentRequestAuthorizeId
         .transformLatest { requestId ->
             if (requestId == null) {
                 emit(AuthStateNew.Idle)
@@ -245,11 +244,11 @@ private suspend fun FlowCollector<AuthStateNew>.collectCombinedAuthState(
 
         SessionStatus.NetworkError,
         SessionStatus.ServiceUnavailable -> {
-            emit(AuthStateNew.Error(requestId, "网络错误, 请重试"))
+            emit(AuthStateNew.Network)
         }
 
         SessionStatus.Expired -> {
-            emit(AuthStateNew.Error(requestId, "token 已过期，请重试"))
+            emit(AuthStateNew.TokenExpired)
         }
 
         SessionStatus.NoToken -> when (requestState) {
@@ -260,11 +259,11 @@ private suspend fun FlowCollector<AuthStateNew>.collectCombinedAuthState(
             }
 
             is ExternalOAuthRequest.State.Failed -> {
-                emit(AuthStateNew.Error(requestId, requestState.throwable.toString()))
+                emit(AuthStateNew.UnknownError(requestState.throwable.toString()))
             }
 
             is ExternalOAuthRequest.State.Cancelled -> {
-                emit(AuthStateNew.Error(requestId, "等待验证超过最大时间，已取消"))
+                emit(AuthStateNew.Timeout)
 
             }
 
@@ -275,6 +274,7 @@ private suspend fun FlowCollector<AuthStateNew>.collectCombinedAuthState(
     }
 }
 
+// This class is intend to replace current [AuthState]
 @Stable
 sealed class AuthStateNew {
     sealed class Initial : AuthStateNew()
@@ -288,8 +288,19 @@ sealed class AuthStateNew {
     @Stable
     data class AwaitingResult(val requestId: String) : AuthStateNew()
 
+    sealed class Error : AuthStateNew()
+
+    @Immutable
+    data object Network : Error()
+
+    @Immutable
+    data object TokenExpired : Error()
+
+    @Immutable
+    data object Timeout : Error()
+    
     @Stable
-    data class Error(val requestId: String, val message: String) : AuthStateNew()
+    data class UnknownError(val message: String) : Error()
 
     @Stable
     data class Success(

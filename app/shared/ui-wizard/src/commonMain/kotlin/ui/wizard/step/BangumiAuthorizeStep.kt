@@ -310,7 +310,10 @@ private fun AuthorizeStateText(
                         }
                     }
 
-                    is AuthStateNew.Error -> "授权登录失败: ${authorizeState.message}"
+                    is AuthStateNew.Network -> "授权登录失败：网络错误，请重试"
+                    is AuthStateNew.TokenExpired -> "验证登陆失败：Token 已过期，请重新授权"
+                    is AuthStateNew.Timeout -> "授权登录失败：等待验证超时，请重试"
+                    is AuthStateNew.UnknownError -> "授权登录失败：未知错误，请重试\n" + authorizeState.message
                 }
             },
             style = MaterialTheme.typography.bodyMedium,
