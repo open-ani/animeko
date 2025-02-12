@@ -139,7 +139,7 @@ internal fun WizardScene(
     ) {
         step(
             "theme",
-            { Text("选择主题") },
+            { Text("主题设置") },
             backwardButton = { Spacer(Modifier) },
             navigationIcon = navigationIcon,
         ) {
@@ -156,7 +156,7 @@ internal fun WizardScene(
         }
         step(
             "proxy",
-            title = { Text("设置代理") },
+            title = { Text("网络设置") },
             forwardButton = {
                 WizardDefaults.GoForwardButton(
                     {
@@ -186,7 +186,7 @@ internal fun WizardScene(
                 layoutParams = wizardLayoutParams,
             )
         }
-        step("bittorrent", { Text("BitTorrent 功能") }) {
+        step("bittorrent", { Text("BitTorrent") }) {
             val monoTasker = rememberUiMonoTasker()
             
             val configState = state.bitTorrentFeatureState.enabled
