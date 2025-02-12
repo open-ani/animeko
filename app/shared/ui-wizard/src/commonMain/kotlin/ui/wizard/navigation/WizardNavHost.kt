@@ -119,7 +119,6 @@ fun WizardNavHost(
                         currentStep = index + 1,
                         totalStep = stepCount,
                         scrollBehavior = scrollBehavior,
-                        scrollCollapsedFraction = topAppBarState.collapsedFraction,
                     )
                 }
 
@@ -181,7 +180,6 @@ object WizardDefaults {
         windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
         indicatorStepTextTestTag: String = "indicatorText",
         scrollBehavior: TopAppBarScrollBehavior? = null,
-        scrollCollapsedFraction: Float = 0f,
         stepName: @Composable () -> Unit,
     ) {
         @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -210,7 +208,6 @@ object WizardDefaults {
     @Composable
     fun StepControlBar(
         forwardAction: @Composable () -> Unit,
-        backwardAction: @Composable () -> Unit,
         skipAction: @Composable () -> Unit,
         modifier: Modifier = Modifier,
         windowInsets: WindowInsets = AniWindowInsets.forNavigationBar(),
@@ -228,9 +225,8 @@ object WizardDefaults {
                         .padding(24.dp)
                         .fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                    horizontalArrangement = Arrangement.End,
                 ) {
-                    backwardAction()
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         skipAction()
                         forwardAction()

@@ -14,6 +14,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import kotlinx.coroutines.launch
+import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 
 @DslMarker
 annotation class WizardStepDsl
@@ -51,14 +52,22 @@ class WizardNavHostScope(
             )
         },
         skipButton: @Composable () -> Unit = { },
-        navigationIcon: @Composable () -> Unit = { },
+        navigationIcon: @Composable () -> Unit = {
+            val scope = rememberCoroutineScope()
+            BackNavigationIconButton(
+                onNavigateBack = {
+                    scope.launch {
+                        controller.goBackward()
+                    }
+                },
+            )
+        },
         indicatorBar: @Composable (WizardIndicatorState) -> Unit = {
             WizardDefaults.StepTopAppBar(
                 currentStep = it.currentStep,
                 totalStep = it.totalStep,
                 scrollBehavior = it.scrollBehavior,
                 navigationIcon = navigationIcon,
-                scrollCollapsedFraction = it.scrollCollapsedFraction,
             ) {
                 title()
             }
@@ -66,7 +75,6 @@ class WizardNavHostScope(
         controlBar: @Composable () -> Unit = {
             WizardDefaults.StepControlBar(
                 forwardAction = forwardButton,
-                backwardAction = backwardButton,
                 skipAction = skipButton,
             )
         },
