@@ -34,10 +34,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -195,12 +193,9 @@ internal fun WizardScene(
             val grantNotificationPermissionState by state.bitTorrentFeatureState.grantNotificationPermissionState
                 .collectAsStateWithLifecycle(GrantNotificationPermissionState.Placeholder)
 
-
-            val lifecycle = LocalLifecycleOwner.current
-            LaunchedEffect(lifecycle) {
-                lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-                    state.bitTorrentFeatureState.onCheckPermissionState(context)
-                }
+            LifecycleResumeEffect(Unit) {
+                state.bitTorrentFeatureState.onCheckPermissionState(context)
+                onPauseOrDispose { }
             }
 
             DisposableEffect(Unit) {
