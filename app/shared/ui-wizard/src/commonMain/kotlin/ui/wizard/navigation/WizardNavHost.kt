@@ -177,6 +177,7 @@ object WizardDefaults {
         totalStep: Int,
         modifier: Modifier = Modifier,
         navigationIcon: @Composable () -> Unit,
+        actionButton: @Composable () -> Unit = { },
         windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
         indicatorStepTextTestTag: String = "indicatorText",
         scrollBehavior: TopAppBarScrollBehavior? = null,
@@ -200,6 +201,7 @@ object WizardDefaults {
             },
             modifier = modifier,
             navigationIcon = navigationIcon,
+            actions = { actionButton() },
             scrollBehavior = scrollBehavior,
             windowInsets = windowInsets,
         )
@@ -208,7 +210,6 @@ object WizardDefaults {
     @Composable
     fun StepControlBar(
         forwardAction: @Composable () -> Unit,
-        skipAction: @Composable () -> Unit,
         modifier: Modifier = Modifier,
         windowInsets: WindowInsets = AniWindowInsets.forNavigationBar(),
     ) {
@@ -227,10 +228,7 @@ object WizardDefaults {
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.End,
                 ) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        skipAction()
-                        forwardAction()
-                    }
+                    forwardAction()
                 }
             }
         }
@@ -269,9 +267,13 @@ object WizardDefaults {
     @Composable
     fun SkipButton(
         onClick: () -> Unit,
-        text: String = "跳过"
+        text: String = "跳过",
+        modifier: Modifier = Modifier
     ) {
-        TextButton(onClick = onClick) {
+        TextButton(
+            onClick = onClick,
+            modifier = modifier,
+        ) {
             Text(text)
         }
     }

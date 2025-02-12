@@ -51,7 +51,17 @@ class WizardNavHostScope(
                 modifier = Modifier.testTag("buttonPrevStep"),
             )
         },
-        skipButton: @Composable () -> Unit = { },
+        skipButton: @Composable () -> Unit = {
+            val scope = rememberCoroutineScope()
+            WizardDefaults.SkipButton(
+                {
+                    scope.launch {
+                        controller.goForward()
+                    }
+                },
+                modifier = Modifier.testTag("buttonSkipStep"),
+            )
+        },
         navigationIcon: @Composable () -> Unit = {
             val scope = rememberCoroutineScope()
             BackNavigationIconButton(

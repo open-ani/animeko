@@ -250,7 +250,7 @@ internal fun WizardScene(
             skipButton = {
                 WizardDefaults.SkipButton(
                     { showGuestSessionDialog = true },
-                    "游客模式",
+                    text = "游客模式",
                 )
             },
         ) {
