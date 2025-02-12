@@ -267,7 +267,8 @@ private fun SettingsScope.ProxyConfigGroup(
 ) {
     val scope = rememberCoroutineScope()
     val motionScheme = LocalAniMotionScheme.current
-    val currentConfig = remember {
+
+    val currentConfig = remember(state.config) {
         mutableStateOf(state.config).let { config ->
             SettingsState(
                 valueState = config,
@@ -322,7 +323,7 @@ private fun SettingsScope.ProxyConfigGroup(
 
                         ProxyUIMode.CUSTOM -> {
                             // workaround for re-use CustomProxyConfig: Settings UI has no data layer of UI.
-                            val workaroundDataConfig = remember {
+                            val workaroundDataConfig = remember(currentConfig.value) {
                                 SettingsState(
                                     valueState = derivedStateOf { currentConfig.value.toDataSettings() },
                                     onUpdate = { currentConfig.update(it.toUIConfig()) },

@@ -40,7 +40,6 @@ import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -294,14 +293,6 @@ private fun AuthorizeStateText(
     modifier: Modifier = Modifier,
     animatedVisibilityMotionScheme: AnimatedVisibilityMotionScheme = LocalAniMotionScheme.current.animatedVisibility,
 ) {
-    var text by rememberSaveable { mutableStateOf("") }
-    LaunchedEffect(authorizeState) {
-        text = when (authorizeState) {
-            is AuthStateNew.Initial, is AuthStateNew.AwaitingResult -> return@LaunchedEffect
-            is AuthStateNew.Success -> "授权登录成功: ${authorizeState.username}"
-            is AuthStateNew.Error -> "授权登录失败: ${authorizeState.message}"
-        }
-    }
 
     AnimatedVisibility(
         visible = authorizeState is AuthStateNew.Success || authorizeState is AuthStateNew.Error,
@@ -310,7 +301,20 @@ private fun AuthorizeStateText(
         modifier = modifier,
     ) {
         Text(
-            text,
+            remember(authorizeState) {
+                when (authorizeState) {
+                    is AuthStateNew.Initial, is AuthStateNew.AwaitingResult -> ""
+                    is AuthStateNew.Success -> {
+                        if (authorizeState.isGuest) {
+                            "使用游客模式"
+                        } else {
+                            "授权登录成功: ${authorizeState.username}"
+                        }
+                    }
+
+                    is AuthStateNew.Error -> "授权登录失败: ${authorizeState.message}"
+                }
+            },
             style = MaterialTheme.typography.bodyMedium,
             color = when (authorizeState) {
                 is AuthStateNew.Success -> MaterialTheme.colorScheme.primary
