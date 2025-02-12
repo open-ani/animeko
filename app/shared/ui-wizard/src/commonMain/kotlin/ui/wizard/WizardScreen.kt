@@ -133,7 +133,7 @@ internal fun WizardScene(
     var bangumiShowTokenAuthorizePage by remember { mutableStateOf(false) }
 
     val authorizeState by state.bangumiAuthorizeState.state.collectAsStateWithLifecycle(AuthStateNew.Idle)
-    val proxyState by state.configureProxyState.state.collectAsStateWithLifecycle(ConfigureProxyUIState.Default)
+    val proxyState by state.configureProxyState.state.collectAsStateWithLifecycle(ConfigureProxyUIState.Placeholder)
 
     WizardNavHost(
         controller,

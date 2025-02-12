@@ -138,7 +138,7 @@ class WizardViewModel : AbstractSettingsViewModel(), KoinComponent {
         )
     }
         .stateInBackground(
-            ConfigureProxyUIState.Default,
+            ConfigureProxyUIState.Placeholder,
             SharingStarted.WhileSubscribed(),
         )
     

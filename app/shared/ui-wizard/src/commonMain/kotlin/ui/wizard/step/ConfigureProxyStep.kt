@@ -421,7 +421,7 @@ class ConfigureProxyUIState(
 
     companion object {
         @Stable
-        val Default = ConfigureProxyUIState(
+        val Placeholder = ConfigureProxyUIState(
             ProxyUIConfig.Default,
             SystemProxyPresentation.Detecting,
             ProxyTestState.Default,

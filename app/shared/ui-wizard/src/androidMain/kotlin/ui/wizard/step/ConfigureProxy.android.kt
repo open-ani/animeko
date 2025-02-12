@@ -20,7 +20,7 @@ import me.him188.ani.app.ui.wizard.WizardLayoutParams
 fun PreviewSelectProxyStep() {
     ProvideCompositionLocalsForPreview {
         ConfigureProxyStep(
-            state = ConfigureProxyUIState.Default,
+            state = ConfigureProxyUIState.Placeholder,
             onUpdate = { },
             onRequestReTest = { },
             layoutParams = WizardLayoutParams.calculate(currentWindowAdaptiveInfo1().windowSizeClass),
