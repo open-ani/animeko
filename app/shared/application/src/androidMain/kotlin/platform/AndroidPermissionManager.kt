@@ -14,6 +14,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.provider.Settings
+import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationManagerCompat
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
@@ -22,12 +23,12 @@ class AndroidPermissionManager : PermissionManager {
     private val logger = logger<AndroidPermissionManager>()
 
     override fun checkNotificationPermission(context: ContextMP): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return true
         val activity = context.findActivity() as? BaseComponentActivity ?: return false
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            activity.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) ==
+            ActivityCompat.checkSelfPermission(activity, Manifest.permission.POST_NOTIFICATIONS) == 
                     PackageManager.PERMISSION_GRANTED
         } else {
+            // For API 32 and below, check if notifications are enabled
             NotificationManagerCompat.from(activity).areNotificationsEnabled()
         }
     }
