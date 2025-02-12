@@ -11,7 +11,6 @@ package me.him188.ani.app.ui.wizard.step
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
-import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.wizard.WizardLayoutParams
@@ -21,8 +20,10 @@ import me.him188.ani.app.ui.wizard.WizardLayoutParams
 fun PreviewSelectThemeStep() {
     ProvideCompositionLocalsForPreview {
         ThemeSelectStep(
-            config = ThemeSettings.Default,
-            onUpdate = { },
+            config = ThemeSelectUIState.Placeholder,
+            onUpdateUseDarkMode = { },
+            onUpdateUseDynamicTheme = { },
+            onUpdateSeedColor = { },
             layoutParams = WizardLayoutParams.calculate(currentWindowAdaptiveInfo1().windowSizeClass),
         )
     }

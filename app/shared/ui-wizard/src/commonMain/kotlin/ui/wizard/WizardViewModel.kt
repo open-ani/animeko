@@ -35,11 +35,11 @@ import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.fold
+import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.data.models.preference.MediaSourceProxySettings
 import me.him188.ani.app.data.models.preference.ProxyAuthorization
 import me.him188.ani.app.data.models.preference.ProxyMode
 import me.him188.ani.app.data.models.preference.ProxySettings
-import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.data.repository.user.AccessTokenSession
 import me.him188.ani.app.data.repository.user.GuestSession
 import me.him188.ani.app.data.repository.user.SettingsRepository
@@ -81,6 +81,7 @@ import me.him188.ani.app.ui.wizard.step.ProxyTestItem
 import me.him188.ani.app.ui.wizard.step.ProxyTestState
 import me.him188.ani.app.ui.wizard.step.ProxyUIConfig
 import me.him188.ani.app.ui.wizard.step.ProxyUIMode
+import me.him188.ani.app.ui.wizard.step.ThemeSelectUIState
 import me.him188.ani.datasources.bangumi.BangumiClientImpl
 import me.him188.ani.utils.coroutines.flows.FlowRestarter
 import me.him188.ani.utils.coroutines.flows.FlowRunning
@@ -98,10 +99,42 @@ class WizardViewModel : AbstractSettingsViewModel(), KoinComponent {
     private val settingsRepository: SettingsRepository by inject()
 
     private val themeSettings = settingsRepository.themeSettings
-        .stateInBackground(ThemeSettings.Default.copy(_placeholder = -1))
     private val proxySettings = settingsRepository.proxySettings
     private val bitTorrentEnabled = mutableStateOf(true)
 
+    // region ThemeSelect
+    val themeSelectFlow = themeSettings.flow.map {
+        ThemeSelectUIState(
+            darkMode = it.darkMode,
+            useDynamicTheme = it.useDynamicTheme,
+            seedColor = it.seedColor,
+        )
+    }
+        .stateInBackground(
+            ThemeSelectUIState.Placeholder,
+            SharingStarted.WhileSubscribed(),
+        )
+
+    val themeSelectState = ThemeSelectState(
+        state = themeSelectFlow,
+        onUpdateUseDarkMode = { darkMode ->
+            launchInBackground {
+                themeSettings.update { copy(darkMode = darkMode) }
+            }
+        },
+        onUpdateUseDynamicTheme = { useDynamicTheme ->
+            launchInBackground {
+                themeSettings.update { copy(useDynamicTheme = useDynamicTheme) }
+            }
+        },
+        onUpdateSeedColor = { seedColor ->
+            launchInBackground {
+                themeSettings.update { copy(useDynamicTheme = false, seedColorValue = seedColor.value) }
+            }
+        },
+    )
+    // endregion
+    
     // region ConfigureProxy
     private val proxyTestRunning = FlowRunning()
     private val proxyTestRestarter = FlowRestarter()
@@ -256,7 +289,7 @@ class WizardViewModel : AbstractSettingsViewModel(), KoinComponent {
 
     val wizardController = WizardController()
     val wizardState = WizardPresentationState(
-        selectThemeState = themeSettings,
+        themeSelectState = themeSelectState,
         configureProxyState = configureProxyState,
         bitTorrentFeatureState = bitTorrentFeatureState,
         bangumiAuthorizeState = bangumiAuthorizeState,
@@ -497,10 +530,18 @@ class WizardViewModel : AbstractSettingsViewModel(), KoinComponent {
 
 @Stable
 class WizardPresentationState(
-    val selectThemeState: SettingsState<ThemeSettings>,
+    val themeSelectState: ThemeSelectState,
     val configureProxyState: ConfigureProxyState,
     val bitTorrentFeatureState: BitTorrentFeatureState,
     val bangumiAuthorizeState: BangumiAuthorizeState,
+)
+
+@Stable
+class ThemeSelectState(
+    val state: Flow<ThemeSelectUIState>,
+    val onUpdateUseDarkMode: (DarkMode) -> Unit,
+    val onUpdateUseDynamicTheme: (Boolean) -> Unit,
+    val onUpdateSeedColor: (Color) -> Unit,
 )
 
 @Stable

@@ -30,6 +30,7 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,7 +38,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.data.models.preference.DarkMode
-import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
@@ -47,14 +47,17 @@ import me.him188.ani.app.ui.settings.framework.components.TextItem
 import me.him188.ani.app.ui.settings.tabs.theme.ColorButton
 import me.him188.ani.app.ui.settings.tabs.theme.DiagonalMixedThemePreviewPanel
 import me.him188.ani.app.ui.settings.tabs.theme.ThemePreviewPanel
+import me.him188.ani.app.ui.theme.DefaultSeedColor
 import me.him188.ani.app.ui.theme.themeColorOptions
 import me.him188.ani.app.ui.wizard.WizardLayoutParams
 import me.him188.ani.utils.platform.isAndroid
 
 @Composable
 internal fun ThemeSelectStep(
-    config: ThemeSettings,
-    onUpdate: (ThemeSettings) -> Unit,
+    config: ThemeSelectUIState,
+    onUpdateUseDarkMode: (DarkMode) -> Unit,
+    onUpdateUseDynamicTheme: (Boolean) -> Unit,
+    onUpdateSeedColor: (Color) -> Unit,
     layoutParams: WizardLayoutParams,
     modifier: Modifier = Modifier
 ) {
@@ -63,7 +66,7 @@ internal fun ThemeSelectStep(
     val panelModifier = Modifier.size(96.dp, 146.dp)
     val themePanelItem: @Composable (DarkMode) -> Unit = {
         ColorSchemePreviewItem(
-            onClick = { onUpdate(config.copy(darkMode = it)) },
+            onClick = { onUpdateUseDarkMode(it) },
             panel = {
                 if (it != DarkMode.AUTO) {
                     ThemePreviewPanel(
@@ -105,17 +108,13 @@ internal fun ThemeSelectStep(
                 TextItem(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable {
-                            onUpdate(config.copy(useDynamicTheme = !config.useDynamicTheme))
-                        },
+                        .clickable { onUpdateUseDynamicTheme(!config.useDynamicTheme) },
                     title = { Text("动态色彩") },
                     description = { Text("使用桌面壁纸生成主题颜色") },
                     action = {
                         Switch(
                             checked = config.useDynamicTheme,
-                            onCheckedChange = {
-                                onUpdate(config.copy(useDynamicTheme = !config.useDynamicTheme))
-                            },
+                            onCheckedChange = { onUpdateUseDynamicTheme(!config.useDynamicTheme) },
                         )
                     },
                 )
@@ -132,16 +131,9 @@ internal fun ThemeSelectStep(
                 ) {
                     AniThemeDefaults.themeColorOptions.forEach {
                         ColorButton(
-                            onClick = {
-                                onUpdate(
-                                    config.copy(
-                                        useDynamicTheme = false,
-                                        seedColorValue = it.value,
-                                    ),
-                                )
-                            },
+                            onClick = { onUpdateSeedColor(it) },
                             baseColor = it,
-                            selected = !config.useDynamicTheme && config.seedColorValue == it.value,
+                            selected = !config.useDynamicTheme && config.seedColor == it,
                             cardColor = Color.Transparent,
                         )
                     }
@@ -196,5 +188,17 @@ private fun renderThemeModeText(mode: DarkMode): String {
         DarkMode.LIGHT -> "亮色"
         DarkMode.DARK -> "暗色"
         DarkMode.AUTO -> "自动"
+    }
+}
+
+@Stable
+class ThemeSelectUIState(
+    val darkMode: DarkMode = DarkMode.AUTO,
+    val useDynamicTheme: Boolean = false,
+    val seedColor: Color = DefaultSeedColor,
+) {
+    companion object {
+        @Stable
+        val Placeholder = ThemeSelectUIState()
     }
 }

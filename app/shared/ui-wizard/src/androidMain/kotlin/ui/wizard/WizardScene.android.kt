@@ -15,7 +15,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.tooling.preview.Preview
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.flowOf
-import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.stateOf
@@ -29,6 +28,7 @@ import me.him188.ani.app.ui.wizard.step.ProxyTestCaseState
 import me.him188.ani.app.ui.wizard.step.ProxyTestItem
 import me.him188.ani.app.ui.wizard.step.ProxyTestState
 import me.him188.ani.app.ui.wizard.step.ProxyUIConfig
+import me.him188.ani.app.ui.wizard.step.ThemeSelectUIState
 
 @Preview(showBackground = true, device = "spec:width=411dp,height=891dp", showSystemUi = false)
 @Preview(showBackground = true, device = "spec:width=1920px,height=1080px,dpi=240", showSystemUi = false)
@@ -49,11 +49,11 @@ fun PreviewWizardScene() {
 
 internal fun createTestWizardPresentationState(scope: CoroutineScope): WizardPresentationState {
     return WizardPresentationState(
-        selectThemeState = SettingsState(
-            valueState = stateOf(ThemeSettings.Default),
-            onUpdate = { },
-            placeholder = ThemeSettings.Default,
-            backgroundScope = scope,
+        themeSelectState = ThemeSelectState(
+            state = flowOf(ThemeSelectUIState.Placeholder),
+            onUpdateUseDarkMode = { },
+            onUpdateUseDynamicTheme = { },
+            onUpdateSeedColor = { },
         ),
         configureProxyState = ConfigureProxyState(
             state = flowOf(

@@ -58,6 +58,7 @@ import me.him188.ani.app.ui.wizard.step.GrantNotificationPermissionState
 import me.him188.ani.app.ui.wizard.step.ProxyOverallTestState
 import me.him188.ani.app.ui.wizard.step.RequestNotificationPermission
 import me.him188.ani.app.ui.wizard.step.ThemeSelectStep
+import me.him188.ani.app.ui.wizard.step.ThemeSelectUIState
 
 @Composable
 fun WizardScreen(
@@ -143,9 +144,14 @@ internal fun WizardScene(
             backwardButton = { Spacer(Modifier) },
             navigationIcon = navigationIcon,
         ) {
+            val themeSelectUiState by state.themeSelectState.state
+                .collectAsStateWithLifecycle(ThemeSelectUIState.Placeholder)
+            
             ThemeSelectStep(
-                config = state.selectThemeState.value,
-                onUpdate = { state.selectThemeState.update(it) },
+                config = themeSelectUiState,
+                onUpdateUseDarkMode = { state.themeSelectState.onUpdateUseDarkMode(it) },
+                onUpdateUseDynamicTheme = { state.themeSelectState.onUpdateUseDynamicTheme(it) },
+                onUpdateSeedColor = { state.themeSelectState.onUpdateSeedColor(it) },
                 layoutParams = wizardLayoutParams,
             )
         }
