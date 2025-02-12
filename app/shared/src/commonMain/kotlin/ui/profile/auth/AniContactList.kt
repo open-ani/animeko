@@ -29,6 +29,8 @@ import me.him188.ani.app.ui.foundation.icons.QqRoundedOutline
 import me.him188.ani.app.ui.foundation.icons.Telegram
 import me.him188.ani.app.ui.settings.tabs.AniHelpNavigator
 
+private val ContactIconSize = 24.dp
+
 @Composable
 fun AniContactList(
     modifier: Modifier = Modifier
@@ -41,7 +43,7 @@ fun AniContactList(
         SuggestionChip(
             { AniHelpNavigator.openGitHubHome(context) },
             icon = {
-                Icon(AniIcons.GithubMark, null, Modifier.size(24.dp))
+                Icon(AniIcons.GithubMark, null, Modifier.size(ContactIconSize))
             },
             label = { Text("GitHub") },
         )
@@ -51,7 +53,7 @@ fun AniContactList(
             icon = {
                 Icon(
                     Icons.Rounded.Public, null,
-                    Modifier.size(24.dp),
+                    Modifier.size(ContactIconSize),
                 )
             },
             label = { Text("官网") },
@@ -62,7 +64,7 @@ fun AniContactList(
             icon = {
                 Icon(
                     AniIcons.QqRoundedOutline, null,
-                    Modifier.size(24.dp),
+                    Modifier.size(ContactIconSize),
                 )
             },
             label = { Text("QQ 群") },
@@ -73,7 +75,7 @@ fun AniContactList(
             icon = {
                 Image(
                     AniIcons.Telegram, null,
-                    Modifier.size(24.dp),
+                    Modifier.size(ContactIconSize),
                 )
             },
             label = { Text("Telegram") },
