@@ -373,11 +373,9 @@ private fun SettingsScope.AuthorizeHelpQA(
             )
         }
         Column(modifier = Modifier.fillMaxWidth()) {
-            val contentModifier = remember {
-                Modifier
-                    .padding(horizontal = layoutParams.horizontalPadding, vertical = 8.dp)
-                    .fillMaxWidth()
-            }
+            val contentModifier = Modifier
+                .padding(horizontal = layoutParams.horizontalPadding, vertical = 8.dp)
+                .fillMaxWidth()
             HelpOption.entries.forEachIndexed { index, option ->
                 TextItem(
                     title = {
