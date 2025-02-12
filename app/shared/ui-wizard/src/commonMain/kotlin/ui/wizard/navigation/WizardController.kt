@@ -9,10 +9,6 @@
 
 package me.him188.ani.app.ui.wizard.navigation
 
-import androidx.annotation.UiThread
-import androidx.compose.animation.core.AnimationState
-import androidx.compose.animation.core.animateTo
-import androidx.compose.material3.TopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
@@ -67,24 +63,6 @@ class WizardController() {
         val stepLine by steps.collectAsState()
         return remember {
             derivedStateOf { stepLine.entries.firstOrNull()?.key }
-        }
-    }
-    
-    @UiThread
-    suspend fun animateScrollTopAppBarExpanded(topAppBarState: TopAppBarState) {
-        animateScrollTopAppBar(topAppBarState, 0f)
-    }
-
-    @UiThread
-    suspend fun animateScrollTopAppBarCollapsed(topAppBarState: TopAppBarState) {
-        animateScrollTopAppBar(topAppBarState, topAppBarState.heightOffsetLimit)
-    }
-
-    private suspend fun animateScrollTopAppBar(topAppBarState: TopAppBarState, target: Float) {
-        if (topAppBarState.heightOffset == target) return
-        val animation = AnimationState(topAppBarState.heightOffset)
-        animation.animateTo(target) {
-            topAppBarState.heightOffset = value
         }
     }
 

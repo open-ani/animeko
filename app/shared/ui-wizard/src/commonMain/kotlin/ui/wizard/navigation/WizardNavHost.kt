@@ -9,6 +9,8 @@
 
 package me.him188.ani.app.ui.wizard.navigation
 
+import androidx.compose.animation.core.AnimationState
+import androidx.compose.animation.core.animateTo
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,6 +34,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
+import androidx.compose.material3.TopAppBarState
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -130,11 +133,13 @@ fun WizardNavHost(
                     modifier = Modifier.fillMaxSize(),
                     contentWindowInsets = windowInsets,
                 ) { contentPadding ->
-                    val scope = remember(scrollState, controller, topAppBarState) {
+                    val scope = remember(scrollState, topAppBarState) {
                         WizardStepScope(
                             scrollState,
-                            scrollTopAppBarExpanded = { controller.animateScrollTopAppBarExpanded(topAppBarState) },
-                            scrollTopAppBarCollapsed = { controller.animateScrollTopAppBarCollapsed(topAppBarState) },
+                            scrollTopAppBarExpanded = { animateScrollTopAppBar(topAppBarState, 0f) },
+                            scrollTopAppBarCollapsed = {
+                                animateScrollTopAppBar(topAppBarState, topAppBarState.heightOffsetLimit)
+                            },
                         )
                     }
 
@@ -150,6 +155,14 @@ fun WizardNavHost(
                 }
             }
         }
+    }
+}
+
+private suspend fun animateScrollTopAppBar(topAppBarState: TopAppBarState, target: Float) {
+    if (topAppBarState.heightOffset == target) return
+    val animation = AnimationState(topAppBarState.heightOffset)
+    animation.animateTo(target) {
+        topAppBarState.heightOffset = value
     }
 }
 
