@@ -125,6 +125,7 @@ internal fun WizardScene(
     wizardLayoutParams: WizardLayoutParams,
     modifier: Modifier = Modifier
 ) {
+    val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
     var notificationErrorScrolledOnce by rememberSaveable { mutableStateOf(false) }
@@ -160,11 +161,23 @@ internal fun WizardScene(
             title = { Text("设置代理") },
             forwardButton = {
                 WizardDefaults.GoForwardButton(
-                    { controller.goForward() },
+                    {
+                        scope.launch {
+                            controller.goForward()
+                        }
+                    },
                     enabled = proxyState.overallState == ProxyOverallTestState.SUCCESS,
                 )
             },
-            skipButton = { WizardDefaults.SkipButton({ controller.goForward() }) },
+            skipButton = {
+                WizardDefaults.SkipButton(
+                    {
+                        scope.launch {
+                            controller.goForward()
+                        }
+                    },
+                )
+            },
         ) {
             val configureProxyState = state.configureProxyState
 

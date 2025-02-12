@@ -20,13 +20,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.snapshotFlow
 import androidx.navigation.NavHostController
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import me.him188.ani.utils.coroutines.update
@@ -39,17 +38,15 @@ fun rememberWizardController(): WizardController {
 
 /**
  * 向导界面 [WizardNavHost] 的控制器, 存储向导的状态和步骤
- *
- * @param onFinish 所有步骤完成后的回调, 会传入所有设置的步骤数据. 需要结束向导页
  */
 @Stable
 class WizardController() {
-    private val _controller = MutableStateFlow<NavHostController?>(null)
+    private val navController = MutableStateFlow<NavHostController?>(null)
 
     private val steps = MutableStateFlow(emptyMap<String, WizardStep>())
-    private val currentStepKey: MutableStateFlow<String?> = MutableStateFlow(null)
-
-    val navController: StateFlow<NavHostController?> = _controller
+    private val currentStepKey = combine(
+        navController.filterNotNull().flatMapLatest { it.currentBackStackEntryFlow }, steps,
+    ) { currentBackEntry, steps -> steps[currentBackEntry.destination.route]?.key }
 
     val state: Flow<WizardState?> = steps.map { step ->
         WizardState(
@@ -58,14 +55,11 @@ class WizardController() {
     }
 
     fun setNavController(controller: NavHostController) {
-        _controller.update { controller }
+        navController.update { controller }
     }
 
     fun setupSteps(steps: Map<String, WizardStep>) {
         this.steps.update { steps }
-        if (currentStepKey.value == null || steps[currentStepKey.value] == null) {
-            currentStepKey.update { steps.entries.firstOrNull()?.key }
-        }
     }
 
     @Composable
@@ -74,21 +68,6 @@ class WizardController() {
         return remember {
             derivedStateOf { stepLine.entries.firstOrNull()?.key }
         }
-    }
-
-    internal suspend fun subscribeNavDestChanges(
-        onUpdate: suspend (String?) -> Unit = { }
-    ) {
-        snapshotFlow { navController.value }
-            .filterNotNull()
-            .flatMapLatest { it.currentBackStackEntryFlow }
-            .collectLatest { entry ->
-                val stepKey = entry.destination.route
-                if (steps.value[stepKey] != null) {
-                    currentStepKey.update { stepKey }
-                    onUpdate(stepKey)
-                }
-            }
     }
     
     @UiThread
@@ -109,17 +88,17 @@ class WizardController() {
         }
     }
 
-    fun goForward() {
+    suspend fun goForward() {
         move(forward = true)
     }
 
-    fun goBackward() {
+    suspend fun goBackward() {
         move(forward = false)
     }
 
-    private fun move(forward: Boolean) {
+    private suspend fun move(forward: Boolean) {
         val navController = navController.value ?: return
-        val currentStepKey = currentStepKey.value ?: return
+        val currentStepKey = currentStepKey.filterNotNull().first()
         val stepEntries = steps.value.entries.toList()
         val currentStepIndex = stepEntries.indexOfFirst { it.key == currentStepKey }
 

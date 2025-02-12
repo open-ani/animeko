@@ -10,8 +10,10 @@
 package me.him188.ani.app.ui.wizard.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import kotlinx.coroutines.launch
 
 @DslMarker
 annotation class WizardStepDsl
@@ -26,15 +28,25 @@ class WizardNavHostScope(
         key: String,
         title: @Composable () -> Unit,
         forwardButton: @Composable () -> Unit = {
+            val scope = rememberCoroutineScope()
             WizardDefaults.GoForwardButton(
-                { controller.goForward() },
+                {
+                    scope.launch {
+                        controller.goForward()
+                    }
+                },
                 enabled = true,
                 modifier = Modifier.testTag("buttonNextStep"),
             )
         },
         backwardButton: @Composable () -> Unit = {
+            val scope = rememberCoroutineScope()
             WizardDefaults.GoBackwardButton(
-                { controller.goBackward() },
+                {
+                    scope.launch {
+                        controller.goBackward()
+                    }
+                },
                 modifier = Modifier.testTag("buttonPrevStep"),
             )
         },

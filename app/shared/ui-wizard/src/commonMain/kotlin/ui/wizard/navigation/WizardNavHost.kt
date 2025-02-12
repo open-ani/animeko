@@ -35,15 +35,10 @@ import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -52,7 +47,6 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import kotlinx.coroutines.launch
 import me.him188.ani.app.ui.foundation.animation.LocalNavigationMotionScheme
 import me.him188.ani.app.ui.foundation.animation.NavigationMotionScheme
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
@@ -75,35 +69,17 @@ fun WizardNavHost(
     val navController = rememberNavController()
     controller.setNavController(navController)
 
-    val topAppBarState = rememberTopAppBarState()
-    var contentCanScrollForward by rememberSaveable { mutableStateOf(false) }
-    var contentCanScrollBackward by rememberSaveable { mutableStateOf(false) }
-    val indicatorBarScrollable by derivedStateOf {
-        (contentCanScrollForward && contentCanScrollBackward) || topAppBarState.collapsedFraction != 0f
-    }
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
-        state = topAppBarState,
-        canScroll = { indicatorBarScrollable },
-    )
-
     DisposableEffect(controller, content) {
         val steps = WizardNavHostScope(controller).apply(content).build()
         controller.setupSteps(steps)
         onDispose { }
     }
 
-    LaunchedEffect(Unit) {
-        controller.subscribeNavDestChanges {
-            launch { controller.animateScrollTopAppBarExpanded(topAppBarState) }
-        }
-    }
-
     val wizardState = controller.state.collectAsState(null).value ?: return
-    val currentNavController = controller.navController.collectAsState().value ?: return
     val startDestination = controller.startDestinationAsState().value ?: return
 
     NavHost(
-        currentNavController,
+        navController,
         startDestination = startDestination,
         modifier = modifier,
         enterTransition = { motionScheme.enterTransition },
@@ -115,6 +91,19 @@ fun WizardNavHost(
         wizardState.steps.forEachIndexed { index, step ->
             composable(step.key) {
                 val scrollState = rememberScrollState()
+                val topAppBarState = rememberTopAppBarState()
+
+                val indicatorBarScrollable by remember {
+                    derivedStateOf {
+                        (scrollState.canScrollForward && scrollState.canScrollBackward) ||
+                                topAppBarState.collapsedFraction != 0f
+                    }
+                }
+
+                val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
+                    state = topAppBarState,
+                    canScroll = { indicatorBarScrollable },
+                )
 
                 val indicatorState = remember(
                     stepCount,
@@ -130,13 +119,6 @@ fun WizardNavHost(
                     )
                 }
 
-                key(scrollState.canScrollForward) {
-                    contentCanScrollForward = scrollState.canScrollForward
-                }
-                key(scrollState.canScrollBackward) {
-                    contentCanScrollBackward = scrollState.canScrollBackward
-                }
-
                 Scaffold(
                     topBar = { step.indicatorBar(indicatorState) },
                     bottomBar = {
@@ -148,7 +130,7 @@ fun WizardNavHost(
                     modifier = Modifier.fillMaxSize(),
                     contentWindowInsets = windowInsets,
                 ) { contentPadding ->
-                    val scope = remember(scrollState, topAppBarState) {
+                    val scope = remember(scrollState, controller, topAppBarState) {
                         WizardStepScope(
                             scrollState,
                             scrollTopAppBarExpanded = { controller.animateScrollTopAppBarExpanded(topAppBarState) },
