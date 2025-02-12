@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.retry
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transform
@@ -60,13 +61,13 @@ class AuthConfigurator(
         .transformLatest { requestId ->
             if (requestId == null) {
                 emit(AuthStateNew.Idle)
-                logger.trace { "[AuthState] got null request id, stopped checking" }
+                logger.trace { "[AuthState] Got null request id, stopped checking" }
                 return@transformLatest
             } else {
                 emit(AuthStateNew.AwaitingResult(requestId))
             }
-            logger.trace { "[AuthState][$requestId] start checking authorization request" }
 
+            logger.trace { "[AuthState][$requestId] Start checking authorization request" }
             sessionManager.state
                 .collectLatest { sessionState ->
                     // 如果有 token, 直接获取当前 session 的状态即可
@@ -74,9 +75,15 @@ class AuthConfigurator(
                         return@collectLatest collectCombinedAuthState(requestId, sessionState, null)
 
                     sessionManager.processingRequest
+                        .onEach { processingRequest ->
+                            if (processingRequest == null) {
+                                logger.trace { "[AuthState][$requestId] No processing request, assume NoToken" }
+                                emit(AuthStateNew.Idle)
+                            }
+                        }
                         .filterNotNull()
                         .flatMapLatest {
-                            logger.trace { "[AuthState][$requestId] current processing request: $it" }
+                            logger.trace { "[AuthState][$requestId] Current processing request: $it" }
                             it.state
                         }
                         .collectLatest { requestState ->
@@ -102,9 +109,12 @@ class AuthConfigurator(
                 .filterNotNull()
                 .transform { requestAuthorizeId ->
                     // launch authorize if request id is not REFRESH.
-                    logger.trace { "[AuthCheckLoop] current requestAuthorizeId: $requestAuthorizeId" }
                     if (requestAuthorizeId != REFRESH) {
+                        logger.trace {
+                            "[AuthCheckLoop] Current requestAuthorizeId: $requestAuthorizeId, checking authorize state."
+                        }
                         authorizeTasker.launch {
+                            sessionManager.clearSession()
                             sessionManager.requireAuthorize(
                                 onLaunch = { onLaunchAuthorize(requestAuthorizeId) },
                                 skipOnGuest = false,
@@ -113,6 +123,7 @@ class AuthConfigurator(
                         emit(requestAuthorizeId)
                         return@transform
                     }
+                    logger.trace { "[AuthCheckLoop] Trigger as REFRESH which will not cause checking authorize state." }
                     emit(null)
                 }
                 .filterNotNull() // filter out REFRESH
@@ -125,7 +136,7 @@ class AuthConfigurator(
                 }
                 .collectLatest { (requestAuthorizeId, processingRequest) ->
                     logger.trace {
-                        "[AuthCheckLoop][$requestAuthorizeId] current processing request: $processingRequest"
+                        "[AuthCheckLoop][$requestAuthorizeId] Current processing request: $processingRequest"
                     }
 
                     // 最大尝试 300 次, 每次间隔 1 秒

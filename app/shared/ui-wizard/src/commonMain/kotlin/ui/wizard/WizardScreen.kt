@@ -9,19 +9,12 @@
 
 package me.him188.ani.app.ui.wizard
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Person
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -33,7 +26,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.coroutineScope
@@ -253,8 +245,11 @@ internal fun WizardScene(
             },
             skipButton = {
                 WizardDefaults.SkipButton(
-                    { showGuestSessionDialog = true },
-                    text = "游客模式",
+                    {
+                        state.bangumiAuthorizeState.onUseGuestMode()
+                        onFinishWizard()
+                    },
+                    text = "跳过",
                 )
             },
         ) {
@@ -294,49 +289,6 @@ internal fun WizardScene(
                 },
                 layoutParams = wizardLayoutParams,
             )
-
-            if (showGuestSessionDialog) {
-                BangumiUseGuestModeDialog(
-                    onCancel = { showGuestSessionDialog = false },
-                    onConfirm = {
-                        state.bangumiAuthorizeState.onUseGuestMode()
-                        onFinishWizard()
-                    },
-                )
-            }
         }
     }
-}
-
-@Composable
-private fun BangumiUseGuestModeDialog(
-    onCancel: () -> Unit,
-    onConfirm: () -> Unit,
-) {
-    AlertDialog(
-        onCancel,
-        icon = {
-            Icon(
-                Icons.Rounded.Person,
-                contentDescription = null,
-            )
-        },
-        title = { Text("使用游客模式") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("确认要使用游客模式吗？")
-                Text("使用游客模式可以免登录进入 Ani，但无法使用同步收藏、管理追番进度、发送评论等功能")
-            }
-        },
-        confirmButton = {
-            TextButton(onConfirm) {
-                Text("确认")
-            }
-        },
-        dismissButton = {
-            TextButton(onCancel) {
-                Text("取消")
-            }
-        },
-    )
 }
