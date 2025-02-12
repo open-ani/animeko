@@ -706,7 +706,7 @@ internal class TitleBarWindowProc(
 
     init {
         dwmapi.DwmExtendFrameIntoClientArea(windowHandle, Dwmapi.WindowMargins(-1, -1, -1, -1))
-        val flag = SWP_NOZORDER or SWP_NOACTIVATE or SWP_FRAMECHANGED or SWP_ASYNCWINDOWPOS
+        val flag = SWP_NOZORDER or SWP_NOACTIVATE or SWP_FRAMECHANGED
 
         //workaround for background erase.
         user32.SetWindowPos(windowHandle, null, 0, 0, 0, 0, flag or SWP_HIDEWINDOW)
@@ -972,14 +972,10 @@ internal class SkiaLayerHitTestWindowProc(
         user32.SetWindowLongPtr(contentHandle, WinUser.GWL_WNDPROC, CallbackReference.getFunctionPointer(this))
 
     private var hitResult = HTCLIENT
-
-    private var isMaximized: Boolean = user32.isWindowInMaximized(windowHandle)
-    private var dpi: UINT = UINT(0)
-    private var frameX: Int = 0
-    private var frameY: Int = 0
-    private var edgeX: Int = 0
-    private var edgeY: Int = 0
-    private var padding: Int = 0
+    
+    init {
+        skiaLayer.transparency = true
+    }
     
     override fun callback(
         hwnd: HWND,
@@ -988,42 +984,6 @@ internal class SkiaLayerHitTestWindowProc(
         lParam: WinDef.LPARAM,
     ): LRESULT {
         return when (uMsg) {
-            WM_NCCALCSIZE -> {
-                if (wParam.toInt() == 0) {
-                    user32.CallWindowProc(defaultWindowProc, hwnd, uMsg, wParam, lParam)
-                } else {
-                    // this behavior is call full screen mode
-                    val style = user32.GetWindowLong(windowHandle, WinUser.GWL_STYLE)
-                    if (style and (WinUser.WS_CAPTION or WinUser.WS_THICKFRAME) == 0) {
-                        frameX = 0
-                        frameY = 0
-                        edgeX = 0
-                        edgeY = 0
-                        padding = 0
-                        isMaximized = user32.isWindowInMaximized(windowHandle)
-                        return LRESULT(0)
-                    }
-
-                    dpi = user32.GetDpiForWindow(windowHandle)
-                    frameX = user32.GetSystemMetricsForDpi(WinUser.SM_CXFRAME, dpi)
-                    frameY = user32.GetSystemMetricsForDpi(WinUser.SM_CYFRAME, dpi)
-                    edgeX = user32.GetSystemMetricsForDpi(WinUser.SM_CXEDGE, dpi)
-                    edgeY = user32.GetSystemMetricsForDpi(WinUser.SM_CYEDGE, dpi)
-                    padding = user32.GetSystemMetricsForDpi(WinUser.SM_CXPADDEDBORDER, dpi)
-                    isMaximized = user32.isWindowInMaximized(windowHandle)
-                    val params = Structure.newInstance(NCCalcSizeParams::class.java, Pointer(lParam.toLong()))
-                    params.read()
-                    params.rgrc[0]?.apply {
-                        top += if (isMaximized) {
-                            0
-                        } else {
-                            1
-                        }
-                    }
-                    params.write()
-                    LRESULT(0)
-                }
-            }
             
             WM_NCHITTEST -> {
                 val x = lParam.toInt() and 0xFFFF
