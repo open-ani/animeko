@@ -77,7 +77,6 @@ internal fun BangumiAuthorizeStep(
     onAuthorizeViaToken: (String) -> Unit,
     layoutParams: WizardLayoutParams,
     modifier: Modifier = Modifier,
-    onScrollToTop: () -> Unit = { }
 ) {
     SettingsTab(modifier) {
         AnimatedContent(
@@ -91,7 +90,6 @@ internal fun BangumiAuthorizeStep(
                     onClickAuthorize = onClickAuthorize,
                     onClickTokenAuthorize = {
                         onCancelAuthorize()
-                        onScrollToTop()
                         onSetShowTokenAuthorizePage(true)
                     },
                     layoutParams = layoutParams,
@@ -359,12 +357,9 @@ private fun SettingsScope.AuthorizeHelpQA(
     val motionScheme = LocalAniMotionScheme.current
     var currentSelected by rememberSaveable { mutableStateOf<HelpOption?>(null) }
 
-    Column(
-        modifier = modifier,
-    ) {
+    Column(modifier = modifier) {
         Column(
-            modifier = Modifier
-                .padding(horizontal = layoutParams.horizontalPadding, vertical = 16.dp),
+            modifier = Modifier.padding(horizontal = layoutParams.horizontalPadding, vertical = 16.dp),
             horizontalAlignment = Alignment.Start,
         ) {
             Text(

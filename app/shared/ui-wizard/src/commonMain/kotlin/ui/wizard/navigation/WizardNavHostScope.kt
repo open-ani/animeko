@@ -78,6 +78,8 @@ class WizardNavHostScope(
                 totalStep = it.totalStep,
                 scrollBehavior = it.scrollBehavior,
                 navigationIcon = navigationIcon,
+                actionButton = skipButton,
+                collapsedFraction = it.topAppBarCollapsedFraction,
             ) {
                 title()
             }
@@ -85,7 +87,6 @@ class WizardNavHostScope(
         controlBar: @Composable () -> Unit = {
             WizardDefaults.StepControlBar(
                 forwardAction = forwardButton,
-                skipAction = skipButton,
             )
         },
         content: @Composable WizardStepScope.() -> Unit,

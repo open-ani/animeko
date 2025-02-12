@@ -238,14 +238,18 @@ internal fun WizardScene(
                 )
             },
             navigationIcon = {
-                if (bangumiShowTokenAuthorizePage) {
-                    BackNavigationIconButton(
-                        {
+                BackNavigationIconButton(
+                    {
+                        if (bangumiShowTokenAuthorizePage) {
                             bangumiShowTokenAuthorizePage = false
                             state.bangumiAuthorizeState.onCheckCurrentToken()
-                        },
-                    )
-                }
+                        } else {
+                            scope.launch {
+                                controller.goBackward()
+                            }
+                        }
+                    },
+                )
             },
             skipButton = {
                 WizardDefaults.SkipButton(
@@ -287,12 +291,6 @@ internal fun WizardScene(
                 onAuthorizeViaToken = { state.bangumiAuthorizeState.onAuthorizeViaToken(it) },
                 onClickNavigateToBangumiDev = {
                     state.bangumiAuthorizeState.onClickNavigateToBangumiDev(context)
-                },
-                onScrollToTop = {
-                    scope.launch {
-                        scrollTopAppBarExpanded()
-                        wizardScrollState.animateScrollTo(0)
-                    }
                 },
                 layoutParams = wizardLayoutParams,
             )

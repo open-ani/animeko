@@ -39,6 +39,7 @@ import androidx.compose.material3.TopAppBarState
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -51,10 +52,12 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import me.him188.ani.app.ui.foundation.animation.LocalNavigationMotionScheme
 import me.him188.ani.app.ui.foundation.animation.NavigationMotionScheme
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
-import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
+import me.him188.ani.app.ui.foundation.text.ProvideContentColor
 
 /**
  * A wrapper around [NavHost] that provides a wizard-like experience.
@@ -119,7 +122,15 @@ fun WizardNavHost(
                         currentStep = index + 1,
                         totalStep = stepCount,
                         scrollBehavior = scrollBehavior,
+                        topAppBarCollapsedFraction = topAppBarState.collapsedFraction,
                     )
+                }
+                // scroll to top when entering the step
+                LaunchedEffect(Unit) {
+                    coroutineScope {
+                        launch { animateScrollTopAppBar(topAppBarState, 0f) }
+                        launch { scrollState.animateScrollTo(0) }
+                    }
                 }
 
                 Scaffold(
@@ -175,6 +186,7 @@ object WizardDefaults {
     fun StepTopAppBar(
         currentStep: Int,
         totalStep: Int,
+        collapsedFraction: Float,
         modifier: Modifier = Modifier,
         navigationIcon: @Composable () -> Unit,
         actionButton: @Composable () -> Unit = { },
@@ -187,16 +199,15 @@ object WizardDefaults {
         LargeTopAppBar(
             title = stepName,
             subtitle = {
-                ProvideTextStyleContentColor(
-                    value = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                ) {
-                    Text(
-                        text = remember(currentStep, totalStep) {
-                            renderStepIndicatorText(currentStep, totalStep)
-                        },
-                        modifier = Modifier.testTag(indicatorStepTextTestTag),
-                    )
+                if (collapsedFraction < 0.5) {
+                    ProvideContentColor(MaterialTheme.colorScheme.primary) {
+                        Text(
+                            text = remember(currentStep, totalStep) {
+                                renderStepIndicatorText(currentStep, totalStep)
+                            },
+                            modifier = Modifier.testTag(indicatorStepTextTestTag),
+                        )
+                    }
                 }
             },
             modifier = modifier,
