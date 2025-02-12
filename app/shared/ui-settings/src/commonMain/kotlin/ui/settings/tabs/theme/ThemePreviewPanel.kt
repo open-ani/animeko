@@ -43,14 +43,12 @@ fun DiagonalMixedThemePreviewPanel(
     modifier: Modifier = Modifier
 ) {
     Box(modifier) {
-        // 第一个（底层）：暗色，剪裁出右下角的三角形
         ThemePreviewPanel(
             colorScheme = leftTopColorScheme,
             modifier = Modifier
                 .fillMaxSize()
                 .clip(TopLeftDiagonalShape),
         )
-        // 第二个（上层）：亮色，剪裁出左上角的三角形
         ThemePreviewPanel(
             colorScheme = rightBottomColorScheme,
             modifier = Modifier
