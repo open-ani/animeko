@@ -49,6 +49,7 @@ kotlin {
         api(libs.kotlinx.coroutines.core)
         api(libs.androidx.collection)
 
+        implementation(projects.utils.coroutines)
         implementation(projects.utils.serialization)
         implementation(libs.ktor.client.logging)
         implementation(libs.ktor.client.content.negotiation)

@@ -43,6 +43,7 @@ import me.him188.ani.datasources.bangumi.models.subjects.BangumiLegacySubject
 import me.him188.ani.datasources.bangumi.models.subjects.BangumiSubjectImageSize
 import me.him188.ani.datasources.bangumi.next.apis.EpisodeBangumiNextApi
 import me.him188.ani.datasources.bangumi.next.apis.SubjectBangumiNextApi
+import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.ktor.ApiInvoker
 import me.him188.ani.utils.ktor.HttpTokenChecker
 import me.him188.ani.utils.ktor.ScopedHttpClient
@@ -158,7 +159,7 @@ class BangumiClientImpl(
             ratings: List<String>?,
             ranks: List<String>?,
             nsfw: Boolean?,
-        ): List<BangumiSearchSubjectNewApi>? = withContext(Dispatchers.IO) {
+        ): List<BangumiSearchSubjectNewApi>? = withContext(Dispatchers.IO_) {
             val resp = httpClient.post("$BANGUMI_API_HOST/v0/search/subjects") {
                 parameter("offset", offset)
                 parameter("limit", limit)
@@ -206,7 +207,7 @@ class BangumiClientImpl(
             responseGroup: BangumiSubjectImageSize?,
             start: Int?,
             maxResults: Int?
-        ): Paged<BangumiLegacySubject> = withContext(Dispatchers.IO) {
+        ): Paged<BangumiLegacySubject> = withContext(Dispatchers.IO_) {
             val resp = httpClient.get("$BANGUMI_API_HOST/search/subject".plus("/")) {
                 url {
                     appendPathSegments(keyword)
