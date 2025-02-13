@@ -80,7 +80,7 @@ internal fun OnboardingCompleteScene(
     layoutParams: WizardLayoutParams = WizardLayoutParams.calculate(currentWindowAdaptiveInfo1().windowSizeClass),
 ) {
     Scaffold(
-        modifier = modifier,
+        modifier = modifier.windowInsetsPadding(windowInsets),
         topBar = {
             TopAppBar(
                 title = { },
@@ -90,7 +90,6 @@ internal fun OnboardingCompleteScene(
     ) { _ ->
         Box(
             modifier = Modifier
-                .windowInsetsPadding(windowInsets)
                 .padding(
                     horizontal = layoutParams.horizontalPadding,
                     vertical = layoutParams.verticalPadding

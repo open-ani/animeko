@@ -31,7 +31,7 @@ private const val TAG_BUTTON_NEXT_STEP = "buttonNextStep"
 private const val TAG_BUTTON_PREV_STEP = "buttonPrevStep"
 private const val TAG_STEP_CONTENT_TEXT = "stepContentText"
 
-class OnboardingNavHostTest {
+class WizardNavHostTest {
     private val SemanticsNodeInteractionsProvider.indicatorText
         get() = onAllNodesWithTag(TAG_INDICATOR_TEXT, useUnmergedTree = true)
     private val SemanticsNodeInteractionsProvider.indicatorTitle

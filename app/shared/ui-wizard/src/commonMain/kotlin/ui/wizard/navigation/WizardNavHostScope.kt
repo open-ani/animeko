@@ -40,17 +40,6 @@ class WizardNavHostScope(
                 modifier = Modifier.testTag("buttonNextStep"),
             )
         },
-        backwardButton: @Composable () -> Unit = {
-            val scope = rememberCoroutineScope()
-            WizardDefaults.GoBackwardButton(
-                {
-                    scope.launch {
-                        controller.goBackward()
-                    }
-                },
-                modifier = Modifier.testTag("buttonPrevStep"),
-            )
-        },
         skipButton: @Composable () -> Unit = {
             val scope = rememberCoroutineScope()
             WizardDefaults.SkipButton(
@@ -70,6 +59,7 @@ class WizardNavHostScope(
                         controller.goBackward()
                     }
                 },
+                modifier = Modifier.testTag("buttonPrevStep"),
             )
         },
         indicatorBar: @Composable (WizardIndicatorState) -> Unit = {
@@ -97,7 +87,7 @@ class WizardNavHostScope(
         steps[key] = WizardStep(
             key = key,
             stepName = title,
-            backwardButton = backwardButton,
+            backwardButton = navigationIcon,
             skipButton = skipButton,
             indicatorBar = indicatorBar,
             controlBar = controlBar,

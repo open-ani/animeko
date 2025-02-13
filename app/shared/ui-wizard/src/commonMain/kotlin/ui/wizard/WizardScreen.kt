@@ -131,7 +131,6 @@ internal fun WizardScene(
         step(
             "theme",
             { Text("主题设置") },
-            backwardButton = { Spacer(Modifier) },
             navigationIcon = navigationIcon,
         ) {
             val themeSelectUiState by state.themeSelectState.state
