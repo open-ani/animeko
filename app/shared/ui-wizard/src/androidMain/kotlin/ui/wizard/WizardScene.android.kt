@@ -42,7 +42,6 @@ fun PreviewWizardScene() {
             contactActions = { },
             navigationIcon = { },
             onFinishWizard = { },
-            wizardLayoutParams = WizardLayoutParams.calculate(currentWindowAdaptiveInfo1().windowSizeClass),
         )
     }
 }
