@@ -11,6 +11,7 @@ package me.him188.ani.app.domain.session
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
@@ -28,7 +29,6 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.retry
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.transform
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.repository.user.AccessTokenSession
@@ -68,28 +68,31 @@ class AniAuthConfigurator(
                 emit(AuthStateNew.AwaitingResult(requestId))
             }
 
-            logger.trace { "[AuthState][$requestId] Start checking authorization request" }
+            logger.trace { "[AuthState][${requestId.idStr}] Start checking authorization request" }
             sessionManager.state
                 .collectLatest { sessionState ->
                     // 如果有 token, 直接获取当前 session 的状态即可
                     if (sessionState !is SessionStatus.NoToken)
                         return@collectLatest collectCombinedAuthState(requestId, sessionState, null)
 
+                    // 如果是 NoToken 并且还是 REFRESH, 则直接返回 Idle
+                    if (requestId == REFRESH) {
+                        logger.trace { 
+                            "[AuthState][${requestId.idStr}] Refresh token, but no token found, assume NoToken" 
+                        }
+                        emit(AuthStateNew.Idle)
+                        return@collectLatest
+                    }
+                    
                     sessionManager.processingRequest
-                        /*.onEach { processingRequest ->
-                            if (processingRequest == null) {
-                                logger.trace { "[AuthState][$requestId] No processing request, assume NoToken" }
-                                emit(AuthStateNew.Idle)
-                            }
-                        }*/
                         .filterNotNull()
                         .flatMapLatest {
-                            logger.trace { "[AuthState][$requestId] Current processing request: $it" }
+                            logger.trace { "[AuthState][${requestId.idStr}] Current processing request: $it" }
                             it.state
                         }
                         .collectLatest { requestState ->
                             logger.trace {
-                                "[AuthState][$requestId] " +
+                                "[AuthState][${requestId.idStr}] " +
                                         "session: ${sessionState::class.simpleName}, " +
                                         "request: ${requestState::class.simpleName}"
                             }
@@ -108,33 +111,22 @@ class AniAuthConfigurator(
         scope.launch {
             currentRequestAuthorizeId
                 .filterNotNull()
-                .transform { requestAuthorizeId ->
-                    // launch authorize if request id is not REFRESH.
-                    if (requestAuthorizeId != REFRESH) {
-                        logger.trace {
-                            "[AuthCheckLoop] Current requestAuthorizeId: $requestAuthorizeId, checking authorize state."
-                        }
-                        sessionManager.clearSession()
-                        authorizeTasker.launch {
-                            try {
-                                sessionManager.requireAuthorize(
-                                    onLaunch = { onLaunchAuthorize(requestAuthorizeId) },
-                                    skipOnGuest = false,
-                                )
-                            } catch (_: AuthorizationCancelledException) {
-                            } catch (_: AuthorizationException) {
-                            } catch (e: Throwable) {
-                                throw IllegalStateException("Unknown exception during requireAuth, see cause", e)
-                            }
-                        }
-                        emit(requestAuthorizeId)
-                        return@transform
-                    }
-                    logger.trace { "[AuthCheckLoop] Trigger as REFRESH which will not cause checking authorize state." }
-                    emit(null)
-                }
-                .filterNotNull() // filter out REFRESH
                 .transformLatest { requestAuthorizeId ->
+                    logger.trace {
+                        "[AuthCheckLoop][${requestAuthorizeId.idStr}], checking authorize state."
+                    }
+                    authorizeTasker.launch(start = CoroutineStart.UNDISPATCHED) {
+                        try {
+                            sessionManager.requireAuthorize(
+                                onLaunch = { onLaunchAuthorize(requestAuthorizeId) },
+                                skipOnGuest = false,
+                            )
+                        } catch (_: AuthorizationCancelledException) {
+                        } catch (_: AuthorizationException) {
+                        } catch (e: Throwable) {
+                            throw IllegalStateException("Unknown exception during requireAuth, see cause", e)
+                        }
+                    }
                     emitAll(
                         sessionManager.processingRequest
                             .filterNotNull()
@@ -143,7 +135,7 @@ class AniAuthConfigurator(
                 }
                 .collectLatest { (requestAuthorizeId, processingRequest) ->
                     logger.trace {
-                        "[AuthCheckLoop][$requestAuthorizeId] Current processing request: $processingRequest"
+                        "[AuthCheckLoop][${requestAuthorizeId.idStr}] Current processing request: $processingRequest"
                     }
 
                     // 最大尝试 300 次, 每次间隔 1 秒
@@ -214,7 +206,7 @@ class AniAuthConfigurator(
         )
 
         logger.trace {
-            "[AuthCheckLoop][$requestId] " +
+            "[AuthCheckLoop][${requestId.idStr}] " +
                     "Check OAuth result success, request is $request, " +
                     "token expires in ${token.expiresIn.seconds}"
         }
@@ -223,6 +215,7 @@ class AniAuthConfigurator(
 
     companion object {
         private const val REFRESH = "-1"
+        private val String.idStr get() = if (equals(REFRESH)) "REFRESH" else this
     }
 }
 
