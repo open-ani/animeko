@@ -102,6 +102,7 @@ import me.him188.ani.app.domain.mediasource.subscription.MediaSourceSubscription
 import me.him188.ani.app.domain.mediasource.subscription.MediaSourceSubscriptionUpdater
 import me.him188.ani.app.domain.session.AniApiProvider
 import me.him188.ani.app.domain.session.AniAuthClient
+import me.him188.ani.app.domain.session.AniAuthClientImpl
 import me.him188.ani.app.domain.session.BangumiSessionManager
 import me.him188.ani.app.domain.session.OpaqueSession
 import me.him188.ani.app.domain.session.SessionManager
@@ -176,7 +177,7 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
     }
     single<AniApiProvider> { AniApiProvider(get<HttpClientProvider>().get()) }
     single<AniAuthClient> {
-        AniAuthClient(get<AniApiProvider>().oauthApi)
+        AniAuthClientImpl(get<AniApiProvider>().oauthApi)
     }
     single<TokenRepository> { TokenRepositoryImpl(getContext().dataStores.tokenStore) }
     single<EpisodePreferencesRepository> { EpisodePreferencesRepositoryImpl(getContext().dataStores.preferredAllianceStore) }

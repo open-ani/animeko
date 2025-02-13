@@ -23,10 +23,9 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.retry
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transform
@@ -41,6 +40,7 @@ import me.him188.ani.utils.logging.trace
 import me.him188.ani.utils.platform.Uuid
 import me.him188.ani.utils.platform.currentTimeMillis
 import kotlin.coroutines.CoroutineContext
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.seconds
 
@@ -48,6 +48,8 @@ class AniAuthConfigurator(
     private val sessionManager: SessionManager,
     private val authClient: AniAuthClient,
     private val onLaunchAuthorize: suspend (requestId: String) -> Unit,
+    private val maxAwaitRetries: Long = 5 * 60,
+    private val awaitRetryInterval: Duration = 1.seconds,
     parentCoroutineContext: CoroutineContext,
 ) {
     private val logger = logger<AniAuthConfigurator>()
@@ -74,12 +76,12 @@ class AniAuthConfigurator(
                         return@collectLatest collectCombinedAuthState(requestId, sessionState, null)
 
                     sessionManager.processingRequest
-                        .onEach { processingRequest ->
+                        /*.onEach { processingRequest ->
                             if (processingRequest == null) {
                                 logger.trace { "[AuthState][$requestId] No processing request, assume NoToken" }
                                 emit(AuthStateNew.Idle)
                             }
-                        }
+                        }*/
                         .filterNotNull()
                         .flatMapLatest {
                             logger.trace { "[AuthState][$requestId] Current processing request: $it" }
@@ -89,7 +91,7 @@ class AniAuthConfigurator(
                             logger.trace {
                                 "[AuthState][$requestId] " +
                                         "session: ${sessionState::class.simpleName}, " +
-                                        "request: ${requestState?.let { it::class.simpleName }}"
+                                        "request: ${requestState::class.simpleName}"
                             }
                             collectCombinedAuthState(requestId, sessionState, requestState)
                         }
@@ -98,7 +100,7 @@ class AniAuthConfigurator(
         .stateIn(
             scope,
             SharingStarted.WhileSubscribed(),
-            AuthStateNew.Placeholder,
+            AuthStateNew.Idle,
         )
 
     init {
@@ -112,12 +114,18 @@ class AniAuthConfigurator(
                         logger.trace {
                             "[AuthCheckLoop] Current requestAuthorizeId: $requestAuthorizeId, checking authorize state."
                         }
+                        sessionManager.clearSession()
                         authorizeTasker.launch {
-                            sessionManager.clearSession()
-                            sessionManager.requireAuthorize(
-                                onLaunch = { onLaunchAuthorize(requestAuthorizeId) },
-                                skipOnGuest = false,
-                            )
+                            try {
+                                sessionManager.requireAuthorize(
+                                    onLaunch = { onLaunchAuthorize(requestAuthorizeId) },
+                                    skipOnGuest = false,
+                                )
+                            } catch (_: AuthorizationCancelledException) {
+                            } catch (_: AuthorizationException) {
+                            } catch (e: Throwable) {
+                                throw IllegalStateException("Unknown exception during requireAuth, see cause", e)
+                            }
                         }
                         emit(requestAuthorizeId)
                         return@transform
@@ -141,11 +149,11 @@ class AniAuthConfigurator(
                     // 最大尝试 300 次, 每次间隔 1 秒
                     suspend { checkAuthorizeStatus(requestAuthorizeId, processingRequest) }
                         .asFlow()
-                        .retry(retries = 60 * 5) { e ->
-                            (e is NotAuthorizedException).also { if (it) delay(1000) }
+                        .retry(retries = maxAwaitRetries) { e ->
+                            (e is NotAuthorizedException).also { if (it) delay(awaitRetryInterval) }
                         }
-                        .catch { processingRequest.cancel() }
-                        .first()
+                        .catch { authorizeTasker.cancel() }
+                        .firstOrNull()
                 }
         }
     }
@@ -278,9 +286,6 @@ private suspend fun FlowCollector<AuthStateNew>.collectCombinedAuthState(
 @Stable
 sealed class AuthStateNew {
     sealed class Initial : AuthStateNew()
-
-    @Immutable
-    data object Placeholder : Initial()
 
     @Immutable
     data object Idle : Initial()
