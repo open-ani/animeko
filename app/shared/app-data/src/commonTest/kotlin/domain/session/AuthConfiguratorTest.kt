@@ -21,6 +21,7 @@ import me.him188.ani.client.models.AniBangumiUserToken
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.seconds
 
 class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
@@ -194,6 +195,40 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             val successState = awaitItem()
             assertIs<AuthStateNew.Success>(successState, "Should success.")
             assertEquals("TestUser", successState.username)
+
+            advanceUntilIdle()
+            expectNoEvents()
+        }
+    }
+    
+    @Test
+    fun `test guest`() = runTest {
+        val manager = createManager(
+            getSelfInfo = { ApiResponse.success(UserInfo(123, "TestUser")) },
+            refreshAccessToken = { ApiResponse.success(NewSession(ACCESS_TOKEN, Long.MAX_VALUE, REFRESH_TOKEN)) },
+        )
+        val authClient = createTestAuthClient(
+            getResult = { AniBangumiUserToken(ACCESS_TOKEN, Long.MAX_VALUE, REFRESH_TOKEN, 123) }
+        )
+        
+        val configurator = AniAuthConfigurator(
+            sessionManager = manager,
+            authClient = authClient,
+            onLaunchAuthorize = {},
+            parentCoroutineContext = backgroundScope.coroutineContext
+        )
+        
+        configurator.state.test {
+            assertIs<AuthStateNew.Idle>(awaitItem(), "Initially should be Idle.")
+            
+            configurator.setGuestSession()
+            
+            advanceUntilIdle()
+            assertIs<AuthStateNew.AwaitingResult>(awaitItem(), "Set guest session, should change state to AwaitingResult.")
+            
+            val successState = awaitItem()
+            assertIs<AuthStateNew.Success>(successState, "Should success if set guest session.")
+            assertTrue(successState.isGuest, "Set guest session, should be guest.")
 
             advanceUntilIdle()
             expectNoEvents()
