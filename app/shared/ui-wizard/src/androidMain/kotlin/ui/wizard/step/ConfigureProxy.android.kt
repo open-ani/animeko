@@ -23,7 +23,6 @@ fun PreviewSelectProxyStep() {
             state = ConfigureProxyUIState.Placeholder,
             onUpdate = { },
             onRequestReTest = { },
-            layoutParams = WizardLayoutParams.calculate(currentWindowAdaptiveInfo1().windowSizeClass),
         )
     }
 }

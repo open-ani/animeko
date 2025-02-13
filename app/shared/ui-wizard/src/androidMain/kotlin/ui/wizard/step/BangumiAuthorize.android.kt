@@ -28,8 +28,7 @@ fun PreviewBangumiAuthorizeStepInitial() {
             onClickAuthorize = { },
             onCancelAuthorize = { },
             onAuthorizeViaToken = { },
-            onClickNavigateToBangumiDev = { },
-            layoutParams = WizardLayoutParams.calculate(currentWindowAdaptiveInfo1().windowSizeClass),
+            onClickNavigateToBangumiDev = { }
         )
     }
 }
@@ -47,7 +46,6 @@ fun PreviewBangumiAuthorizeStepAwaitingResult() {
             onCancelAuthorize = { },
             onAuthorizeViaToken = { },
             onClickNavigateToBangumiDev = { },
-            layoutParams = WizardLayoutParams.calculate(currentWindowAdaptiveInfo1().windowSizeClass),
         )
     }
 }
@@ -57,7 +55,7 @@ fun PreviewBangumiAuthorizeStepAwaitingResult() {
 fun PreviewBangumiAuthorizeStepError() {
     ProvideCompositionLocalsForPreview {
         BangumiAuthorizeStep(
-            authorizeState = AuthStateNew.Error("", "error message"),
+            authorizeState = AuthStateNew.Timeout,
             showTokenAuthorizePage = false,
             onSetShowTokenAuthorizePage = { },
             contactActions = { },
@@ -65,7 +63,6 @@ fun PreviewBangumiAuthorizeStepError() {
             onCancelAuthorize = { },
             onAuthorizeViaToken = { },
             onClickNavigateToBangumiDev = { },
-            layoutParams = WizardLayoutParams.calculate(currentWindowAdaptiveInfo1().windowSizeClass),
         )
     }
 }
@@ -87,7 +84,6 @@ fun PreviewBangumiAuthorizeStepSuccess() {
             onCancelAuthorize = { },
             contactActions = { },
             onClickNavigateToBangumiDev = { },
-            layoutParams = WizardLayoutParams.calculate(currentWindowAdaptiveInfo1().windowSizeClass),
         )
     }
 }
@@ -105,7 +101,6 @@ fun PreviewBangumiTokenAuthorizePage() {
             onCancelAuthorize = { },
             onAuthorizeViaToken = { },
             onClickNavigateToBangumiDev = { },
-            layoutParams = WizardLayoutParams.calculate(currentWindowAdaptiveInfo1().windowSizeClass),
         )
     }
 }

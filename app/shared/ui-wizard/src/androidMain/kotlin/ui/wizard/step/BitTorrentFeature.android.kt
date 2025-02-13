@@ -22,7 +22,6 @@ fun PreviewBitTorrentFeatureStep() {
         BitTorrentFeatureStep(
             bitTorrentEnabled = true,
             onBitTorrentEnableChanged = { },
-            layoutParams = WizardLayoutParams.calculate(currentWindowAdaptiveInfo1().windowSizeClass),
             requestNotificationPermission = {
                 RequestNotificationPermission(
                     grantedNotificationPermission = false,

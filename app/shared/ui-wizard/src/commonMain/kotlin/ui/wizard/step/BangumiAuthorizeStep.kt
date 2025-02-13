@@ -58,6 +58,7 @@ import me.him188.ani.app.ui.foundation.animation.AnimatedVisibilityMotionScheme
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.icons.BangumiNext
 import me.him188.ani.app.ui.foundation.icons.BangumiNextIconColor
+import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.TextItem
@@ -75,8 +76,8 @@ internal fun BangumiAuthorizeStep(
     onCancelAuthorize: () -> Unit,
     onClickNavigateToBangumiDev: () -> Unit,
     onAuthorizeViaToken: (String) -> Unit,
-    layoutParams: WizardLayoutParams,
     modifier: Modifier = Modifier,
+    layoutParams: WizardLayoutParams = WizardLayoutParams.calculate(currentWindowAdaptiveInfo1().windowSizeClass),
 ) {
     SettingsTab(modifier) {
         AnimatedContent(

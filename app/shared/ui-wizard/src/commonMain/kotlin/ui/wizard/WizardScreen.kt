@@ -59,8 +59,6 @@ fun WizardScreen(
     navigationIcon: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
-    wizardLayoutParams: WizardLayoutParams =
-        WizardLayoutParams.calculate(currentWindowAdaptiveInfo1().windowSizeClass),
 ) {
     Box(
         modifier = Modifier.fillMaxSize(),
@@ -77,7 +75,6 @@ fun WizardScreen(
             contactActions = contactActions,
             navigationIcon = navigationIcon,
             windowInsets = windowInsets,
-            wizardLayoutParams = wizardLayoutParams,
         )
     }
 }
@@ -89,7 +86,6 @@ fun WizardPage(
     onFinishWizard: () -> Unit,
     contactActions: @Composable () -> Unit,
     navigationIcon: @Composable () -> Unit,
-    wizardLayoutParams: WizardLayoutParams,
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = AniWindowInsets.forPageContent()
 ) {
@@ -100,7 +96,6 @@ fun WizardPage(
             navigationIcon = navigationIcon,
             modifier = modifier,
             contactActions = contactActions,
-            wizardLayoutParams = wizardLayoutParams,
             onFinishWizard = onFinishWizard,
         )
     }
@@ -113,13 +108,11 @@ internal fun WizardScene(
     contactActions: @Composable () -> Unit,
     navigationIcon: @Composable () -> Unit,
     onFinishWizard: () -> Unit,
-    wizardLayoutParams: WizardLayoutParams,
     modifier: Modifier = Modifier
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
-    var showGuestSessionDialog by rememberSaveable { mutableStateOf(false) }
     var bangumiShowTokenAuthorizePage by remember { mutableStateOf(false) }
 
     val authorizeState by state.bangumiAuthorizeState.state.collectAsStateWithLifecycle(AuthStateNew.Idle)
@@ -142,8 +135,7 @@ internal fun WizardScene(
                 config = themeSelectUiState,
                 onUpdateUseDarkMode = { state.themeSelectState.onUpdateUseDarkMode(it) },
                 onUpdateUseDynamicTheme = { state.themeSelectState.onUpdateUseDynamicTheme(it) },
-                onUpdateSeedColor = { state.themeSelectState.onUpdateSeedColor(it) },
-                layoutParams = wizardLayoutParams,
+                onUpdateSeedColor = { state.themeSelectState.onUpdateSeedColor(it) }
             )
         }
         step(
@@ -174,8 +166,7 @@ internal fun WizardScene(
             ConfigureProxyStep(
                 state = proxyState,
                 onUpdate = { configureProxyState.onUpdateConfig(it) },
-                onRequestReTest = { configureProxyState.onRequestReTest() },
-                layoutParams = wizardLayoutParams,
+                onRequestReTest = { configureProxyState.onRequestReTest() }
             )
         }
         step("bittorrent", { Text("BitTorrent") }) {
@@ -198,7 +189,6 @@ internal fun WizardScene(
             BitTorrentFeatureStep(
                 bitTorrentEnabled = configState.value,
                 onBitTorrentEnableChanged = { configState.update(it) },
-                layoutParams = wizardLayoutParams,
                 requestNotificationPermission = if (grantNotificationPermissionState.showGrantNotificationItem) {
                     {
                         RequestNotificationPermission(
@@ -286,8 +276,7 @@ internal fun WizardScene(
                 onAuthorizeViaToken = { state.bangumiAuthorizeState.onAuthorizeViaToken(it) },
                 onClickNavigateToBangumiDev = {
                     state.bangumiAuthorizeState.onClickNavigateToBangumiDev(context)
-                },
-                layoutParams = wizardLayoutParams,
+                }
             )
         }
     }

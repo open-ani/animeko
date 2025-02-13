@@ -46,6 +46,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.data.models.preference.ProxySettings
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
+import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.SettingsState
@@ -65,9 +66,10 @@ internal fun ConfigureProxyStep(
     state: ConfigureProxyUIState,
     onUpdate: (config: ProxyUIConfig) -> Unit,
     onRequestReTest: () -> Unit,
-    layoutParams: WizardLayoutParams,
-    modifier: Modifier = Modifier
-) {
+    modifier: Modifier = Modifier,
+    layoutParams: WizardLayoutParams = WizardLayoutParams.calculate(currentWindowAdaptiveInfo1().windowSizeClass),
+
+    ) {
     val motionScheme = LocalAniMotionScheme.current
     var editingProxy by rememberSaveable { mutableStateOf(false) }
 

@@ -24,7 +24,6 @@ fun PreviewSelectThemeStep() {
             onUpdateUseDarkMode = { },
             onUpdateUseDynamicTheme = { },
             onUpdateSeedColor = { },
-            layoutParams = WizardLayoutParams.calculate(currentWindowAdaptiveInfo1().windowSizeClass),
         )
     }
 }

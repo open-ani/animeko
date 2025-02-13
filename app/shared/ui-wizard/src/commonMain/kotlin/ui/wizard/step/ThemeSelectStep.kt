@@ -29,6 +29,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.remember
@@ -39,6 +40,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.ui.foundation.LocalPlatform
+import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.theme.appColorScheme
@@ -58,8 +60,8 @@ internal fun ThemeSelectStep(
     onUpdateUseDarkMode: (DarkMode) -> Unit,
     onUpdateUseDynamicTheme: (Boolean) -> Unit,
     onUpdateSeedColor: (Color) -> Unit,
-    layoutParams: WizardLayoutParams,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    layoutParams: WizardLayoutParams = WizardLayoutParams.calculate(currentWindowAdaptiveInfo1().windowSizeClass)
 ) {
     val platform = LocalPlatform.current
 

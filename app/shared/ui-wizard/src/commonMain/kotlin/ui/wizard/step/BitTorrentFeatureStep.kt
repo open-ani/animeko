@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.IconButton
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
+import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.TextItem
@@ -40,11 +41,10 @@ import me.him188.ani.app.ui.wizard.WizardLayoutParams
 internal fun BitTorrentFeatureStep(
     bitTorrentEnabled: Boolean,
     onBitTorrentEnableChanged: (Boolean) -> Unit,
-    layoutParams: WizardLayoutParams,
     modifier: Modifier = Modifier,
     requestNotificationPermission: (@Composable SettingsScope.() -> Unit)? = null,
-
-    ) {
+    layoutParams: WizardLayoutParams = WizardLayoutParams.calculate(currentWindowAdaptiveInfo1().windowSizeClass)
+) {
     val platform = LocalPlatform.current
     
     SettingsTab(modifier = modifier) {
