@@ -87,6 +87,8 @@ import me.him188.ani.app.ui.subject.details.SubjectDetailsScreen
 import me.him188.ani.app.ui.subject.details.SubjectDetailsViewModel
 import me.him188.ani.app.ui.subject.episode.EpisodeScreen
 import me.him188.ani.app.ui.subject.episode.EpisodeViewModel
+import me.him188.ani.app.ui.wizard.OnboardingCompleteScreen
+import me.him188.ani.app.ui.wizard.OnboardingCompleteViewModel
 import me.him188.ani.app.ui.wizard.WelcomeScreen
 import me.him188.ani.app.ui.wizard.WizardScreen
 import me.him188.ani.app.ui.wizard.WizardViewModel
@@ -161,21 +163,41 @@ private fun AniAppContentImpl(
             ) {
                 WizardScreen(
                     viewModel { WizardViewModel() },
-                    onFinishWizard = {
-                        // 直接导航到主页,并且不能返回向导页
-                        aniNavigator.navigateMain(UISettings.Default.mainSceneInitialPage)
-                    },
+                    onFinishWizard = { aniNavigator.navigateOnboardingComplete() },
                     contactActions = { AniContactList() },
                     navigationIcon = {
                         BackNavigationIconButton(
                             {
-                                navController.navigateUp()
+                                navController.popBackStack()
                             },
                         )
                     },
                     Modifier
                         .widthIn(max = WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND.dp)
                         .fillMaxHeight(),
+                    windowInsets,
+                )
+            }
+            composable<NavRoutes.OnboardingComplete>(
+                enterTransition = enterTransition,
+                exitTransition = exitTransition,
+                popEnterTransition = popEnterTransition,
+                popExitTransition = popExitTransition,
+            ) { 
+                OnboardingCompleteScreen(
+                    viewModel { OnboardingCompleteViewModel() },
+                    onClickContinue = {
+                        // 直接导航到主页,并且不能返回向导页
+                        aniNavigator.navigateMain(UISettings.Default.mainSceneInitialPage) 
+                    },
+                    backNavigation = {
+                        BackNavigationIconButton(
+                            {
+                                aniNavigator.popBackStack()
+                            },
+                        )
+                    },
+                    Modifier.fillMaxSize(),
                     windowInsets,
                 )
             }

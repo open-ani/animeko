@@ -25,6 +25,9 @@ sealed class NavRoutes {
 
     @Serializable
     data object Onboarding : NavRoutes()
+    
+    @Serializable
+    data object OnboardingComplete : NavRoutes()
 
     @Serializable
     data class Main(

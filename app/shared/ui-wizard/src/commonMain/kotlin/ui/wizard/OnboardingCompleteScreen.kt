@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.ArrowForward
@@ -34,23 +35,29 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.him188.ani.app.ui.foundation.avatar.AvatarImage
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 
 @Composable
 fun OnboardingCompleteScreen(
-    state: OnboardingCompleteState,
+    vm: OnboardingCompleteViewModel,
     onClickContinue: () -> Unit,
     backNavigation: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
 ) {
+    val state by vm.state.collectAsStateWithLifecycle(OnboardingCompleteState.Placeholder)
+    
     Surface { 
         OnboardingCompleteScene(
             state = state,
@@ -95,7 +102,7 @@ internal fun OnboardingCompleteScene(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) { 
                 Text(
-                    "欢迎，" + state.username,
+                    text = if (state.username != null) "欢迎，${state.username}" else "欢迎"  ,
                     modifier = Modifier.widthIn(max = 240.dp),
                     style = MaterialTheme.typography.headlineMedium,
                     overflow = TextOverflow.Ellipsis,
@@ -109,7 +116,7 @@ internal fun OnboardingCompleteScene(
                 Column(modifier = Modifier.padding(vertical = 16.dp)) { 
                     AvatarImage(
                         url = state.avatarUrl,
-                        modifier = Modifier.size(96.dp)
+                        modifier = Modifier.size(96.dp).clip(CircleShape),
                     )
                 }
                 Column(modifier = Modifier.padding(vertical = 16.dp)) {
@@ -134,6 +141,10 @@ internal fun OnboardingCompleteScene(
 
 @Stable
 class OnboardingCompleteState(
-    val username: String,
-    val avatarUrl: String
-)
+    val username: String?, // guest has no username
+    val avatarUrl: String, // guest use default avatar
+) {
+    companion object {
+        val Placeholder = OnboardingCompleteState(null, OnboardingCompleteViewModel.DEFAULT_AVATAR)
+    }
+}

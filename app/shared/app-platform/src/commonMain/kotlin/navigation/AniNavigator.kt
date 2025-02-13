@@ -96,14 +96,19 @@ interface AniNavigator {
     fun navigateOnboarding() {
         currentNavigator.navigate(NavRoutes.Onboarding)
     }
+    
+    fun navigateOnboardingComplete() {
+        currentNavigator.navigate(NavRoutes.OnboardingComplete)
+    }
 
     fun navigateMain(
         page: MainScreenPage,
         requestFocus: Boolean = false
     ) {
         currentNavigator.navigate(NavRoutes.Main(page)) {
-            popUpTo(NavRoutes.Welcome) { inclusive = true }
+            popUpTo(NavRoutes.OnboardingComplete) { inclusive = true }
             popUpTo(NavRoutes.Onboarding) { inclusive = true }
+            popUpTo(NavRoutes.Welcome) { inclusive = true }
         }
     }
 
