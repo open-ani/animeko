@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
@@ -65,7 +66,7 @@ class AniAuthConfigurator(
     private val authorizeTasker = MonoTasker(scope)
     private val currentRequestAuthorizeId = MutableStateFlow<String?>(null)
 
-    val state: Flow<AuthStateNew> = currentRequestAuthorizeId
+    val state: StateFlow<AuthStateNew> = currentRequestAuthorizeId
         .transformLatest { requestId ->
             if (requestId == null) {
                 emit(AuthStateNew.Idle)
