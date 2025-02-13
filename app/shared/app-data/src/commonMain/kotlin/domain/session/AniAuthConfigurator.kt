@@ -26,17 +26,20 @@ import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.retry
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.transform
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.repository.user.AccessTokenSession
 import me.him188.ani.app.data.repository.user.GuestSession
+import me.him188.ani.app.domain.session.AniAuthConfigurator.Companion.idStr
 import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.logging.logger
-import me.him188.ani.utils.logging.trace
+import me.him188.ani.utils.logging.debug
 import me.him188.ani.utils.platform.Uuid
 import me.him188.ani.utils.platform.currentTimeMillis
 import kotlin.coroutines.CoroutineContext
@@ -44,6 +47,10 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.seconds
 
+/**
+ * Wrapper for [SessionManager] and [AniAuthClient] to handle authorization.
+ * Usually use it at UI layer (e.g. at ViewModel).
+ */
 class AniAuthConfigurator(
     private val sessionManager: SessionManager,
     private val authClient: AniAuthClient,
@@ -62,13 +69,13 @@ class AniAuthConfigurator(
         .transformLatest { requestId ->
             if (requestId == null) {
                 emit(AuthStateNew.Idle)
-                logger.trace { "[AuthState] Got null request id, stopped checking" }
+                logger.debug { "[AuthState] Got null request id, stopped checking." }
                 return@transformLatest
             } else {
                 emit(AuthStateNew.AwaitingResult(requestId))
             }
 
-            logger.trace { "[AuthState][${requestId.idStr}] Start checking authorization request" }
+            logger.debug { "[AuthState][${requestId.idStr}] Start checking session state." }
             sessionManager.state
                 .collectLatest { sessionState ->
                     // 如果有 token, 直接获取当前 session 的状态即可
@@ -77,25 +84,22 @@ class AniAuthConfigurator(
 
                     // 如果是 NoToken 并且还是 REFRESH, 则直接返回 Idle
                     if (requestId == REFRESH) {
-                        logger.trace { 
-                            "[AuthState][${requestId.idStr}] Refresh token, but no token found, assume NoToken" 
-                        }
+                        logger.debug { "[AuthState][${requestId.idStr}] No existing session." }
                         emit(AuthStateNew.Idle)
                         return@collectLatest
                     }
                     
                     sessionManager.processingRequest
-                        .filterNotNull()
-                        .flatMapLatest {
-                            logger.trace { "[AuthState][${requestId.idStr}] Current processing request: $it" }
-                            it.state
+                        .transform { processingRequest ->
+                            if (processingRequest == null) {
+                                logger.debug { "[AuthState][${requestId.idStr}] No processing request." }
+                                emit(null)
+                            } else {
+                                logger.debug { "[AuthState][${requestId.idStr}] Current processing request: $processingRequest" }
+                                emitAll(processingRequest.state)
+                            }
                         }
                         .collectLatest { requestState ->
-                            logger.trace {
-                                "[AuthState][${requestId.idStr}] " +
-                                        "session: ${sessionState::class.simpleName}, " +
-                                        "request: ${requestState::class.simpleName}"
-                            }
                             collectCombinedAuthState(requestId, sessionState, requestState)
                         }
                 }
@@ -112,7 +116,7 @@ class AniAuthConfigurator(
             currentRequestAuthorizeId
                 .filterNotNull()
                 .transformLatest { requestAuthorizeId ->
-                    logger.trace {
+                    logger.debug {
                         "[AuthCheckLoop][${requestAuthorizeId.idStr}], checking authorize state."
                     }
                     authorizeTasker.launch(start = CoroutineStart.UNDISPATCHED) {
@@ -127,14 +131,17 @@ class AniAuthConfigurator(
                             throw IllegalStateException("Unknown exception during requireAuth, see cause", e)
                         }
                     }
+                    
+                    if (requestAuthorizeId == REFRESH) return@transformLatest emit(null)
                     emitAll(
                         sessionManager.processingRequest
                             .filterNotNull()
                             .map { requestAuthorizeId to it },
                     )
                 }
+                .filterNotNull() // filter out refresh
                 .collectLatest { (requestAuthorizeId, processingRequest) ->
-                    logger.trace {
+                    logger.debug {
                         "[AuthCheckLoop][${requestAuthorizeId.idStr}] Current processing request: $processingRequest"
                     }
 
@@ -151,7 +158,10 @@ class AniAuthConfigurator(
     }
 
     fun startAuthorize() {
-        currentRequestAuthorizeId.value = Uuid.random().toString()
+        scope.launch {
+            sessionManager.clearSession()
+            currentRequestAuthorizeId.value = Uuid.random().toString()
+        }
     }
 
     fun cancelAuthorize() {
@@ -205,7 +215,7 @@ class AniAuthConfigurator(
             expiresIn = token.expiresIn.seconds,
         )
 
-        logger.trace {
+        logger.debug {
             "[AuthCheckLoop][${requestId.idStr}] " +
                     "Check OAuth result success, request is $request, " +
                     "token expires in ${token.expiresIn.seconds}"
@@ -213,65 +223,70 @@ class AniAuthConfigurator(
         request.onCallback(Result.success(result))
     }
 
-    companion object {
-        private const val REFRESH = "-1"
-        private val String.idStr get() = if (equals(REFRESH)) "REFRESH" else this
-    }
-}
-
-/**
- * Combine [SessionStatus] and [ExternalOAuthRequest.State] to [AuthStateNew]
- */
-private suspend fun FlowCollector<AuthStateNew>.collectCombinedAuthState(
-    requestId: String,
-    sessionState: SessionStatus,
-    requestState: ExternalOAuthRequest.State?,
-) {
-    when (sessionState) {
-        is SessionStatus.Verified -> {
-            val userInfo = sessionState.userInfo
-            emit(
-                AuthStateNew.Success(
-                    username = userInfo.username ?: userInfo.id.toString(),
-                    avatarUrl = userInfo.avatarUrl,
-                    isGuest = false,
-                ),
-            )
+    /**
+     * Combine [SessionStatus] and [ExternalOAuthRequest.State] to [AuthStateNew]
+     */
+    private suspend fun FlowCollector<AuthStateNew>.collectCombinedAuthState(
+        requestId: String,
+        sessionState: SessionStatus,
+        requestState: ExternalOAuthRequest.State?,
+    ) {
+        logger.debug {
+            "[AuthState][${requestId.idStr}] " +
+                    "session: ${sessionState::class.simpleName}, " +
+                    "request: ${requestState?.let { it::class.simpleName }}"
         }
+        when (sessionState) {
+            is SessionStatus.Verified -> {
+                val userInfo = sessionState.userInfo
+                emit(
+                    AuthStateNew.Success(
+                        username = userInfo.username ?: userInfo.id.toString(),
+                        avatarUrl = userInfo.avatarUrl,
+                        isGuest = false,
+                    ),
+                )
+            }
 
-        is SessionStatus.Loading -> {
-            emit(AuthStateNew.AwaitingResult(requestId))
-        }
-
-        SessionStatus.NetworkError,
-        SessionStatus.ServiceUnavailable -> {
-            emit(AuthStateNew.Network)
-        }
-
-        SessionStatus.Expired -> {
-            emit(AuthStateNew.TokenExpired)
-        }
-
-        SessionStatus.NoToken -> when (requestState) {
-            ExternalOAuthRequest.State.Launching,
-            ExternalOAuthRequest.State.AwaitingCallback,
-            ExternalOAuthRequest.State.Processing -> {
+            is SessionStatus.Loading -> {
                 emit(AuthStateNew.AwaitingResult(requestId))
             }
 
-            is ExternalOAuthRequest.State.Failed -> {
-                emit(AuthStateNew.UnknownError(requestState.throwable.toString()))
+            SessionStatus.NetworkError,
+            SessionStatus.ServiceUnavailable -> {
+                emit(AuthStateNew.Network)
             }
 
-            is ExternalOAuthRequest.State.Cancelled -> {
-                emit(AuthStateNew.Timeout)
-
+            SessionStatus.Expired -> {
+                emit(AuthStateNew.TokenExpired)
             }
 
-            else -> {}
+            SessionStatus.NoToken -> when (requestState) {
+                ExternalOAuthRequest.State.Launching,
+                ExternalOAuthRequest.State.AwaitingCallback,
+                ExternalOAuthRequest.State.Processing -> {
+                    emit(AuthStateNew.AwaitingResult(requestId))
+                }
+
+                is ExternalOAuthRequest.State.Failed -> {
+                    emit(AuthStateNew.UnknownError(requestState.throwable.toString()))
+                }
+
+                is ExternalOAuthRequest.State.Cancelled -> {
+                    emit(AuthStateNew.Timeout)
+
+                }
+
+                else -> {}
+            }
+
+            SessionStatus.Guest -> emit(AuthStateNew.Success("", null, isGuest = true))
         }
-
-        SessionStatus.Guest -> emit(AuthStateNew.Success("", null, isGuest = true))
+    }
+    
+    companion object {
+        private const val REFRESH = "-1"
+        private val String.idStr get() = if (equals(REFRESH)) "REFRESH" else this
     }
 }
 
