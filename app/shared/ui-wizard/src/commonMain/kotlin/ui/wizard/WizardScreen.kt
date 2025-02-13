@@ -60,6 +60,12 @@ fun WizardScreen(
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
 ) {
+    LaunchedEffect(Unit) {
+        vm.collectNewLoginEvent {
+            onFinishWizard()
+        }
+    }
+    
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,

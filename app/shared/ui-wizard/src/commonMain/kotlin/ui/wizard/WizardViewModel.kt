@@ -22,7 +22,9 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -37,6 +39,7 @@ import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.session.AniAuthClient
 import me.him188.ani.app.domain.session.AniAuthConfigurator
 import me.him188.ani.app.domain.session.AuthStateNew
+import me.him188.ani.app.domain.session.SessionEvent
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.settings.ProxySettingsFlowProxyProvider
 import me.him188.ani.app.domain.settings.ProxyTester
@@ -285,6 +288,12 @@ class WizardViewModel : AbstractSettingsViewModel(), KoinComponent {
         withContext(Dispatchers.Main) {
             browserNavigator.openBrowser(context, url)
         }
+    }
+    
+    suspend fun collectNewLoginEvent(onLogin: suspend () -> Unit) {
+        sessionManager.events
+            .filterIsInstance<SessionEvent.Login>()
+            .collectLatest { onLogin() }
     }
 
     fun finishWizard() {
