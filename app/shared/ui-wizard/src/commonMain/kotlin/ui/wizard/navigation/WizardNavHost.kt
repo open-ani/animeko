@@ -100,7 +100,7 @@ fun WizardNavHost(
                 val scrollState = rememberScrollState()
                 val topAppBarState = rememberTopAppBarState()
 
-                val indicatorBarScrollable by remember {
+                val indicatorBarScrollable by remember(scrollState, topAppBarState) {
                     derivedStateOf {
                         (scrollState.canScrollForward && scrollState.canScrollBackward) ||
                                 topAppBarState.collapsedFraction != 0f
@@ -199,7 +199,10 @@ object WizardDefaults {
         LargeTopAppBar(
             title = stepName,
             subtitle = {
-                if (collapsedFraction < 0.5) {
+                val showStepText by remember { 
+                    derivedStateOf { collapsedFraction < 0.5 }
+                }
+                if (showStepText) {
                     ProvideContentColor(MaterialTheme.colorScheme.primary) {
                         Text(
                             text = remember(currentStep, totalStep) {
