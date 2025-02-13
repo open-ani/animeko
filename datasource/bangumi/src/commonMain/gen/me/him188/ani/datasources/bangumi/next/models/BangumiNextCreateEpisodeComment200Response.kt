@@ -10,26 +10,27 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.datasources.bangumi.next.models
 
 
-import kotlinx.serialization.Required
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
+import kotlinx.serialization.*
+import kotlinx.serialization.descriptors.*
+import kotlinx.serialization.encoding.*
 
 /**
  * 
  *
- * @param text 
+ * @param id new comment id
  */
 @Serializable
 
-data class BangumiNextEditSubjectPostRequest(
+data class BangumiNextCreateEpisodeComment200Response (
 
-    @SerialName(value = "text") @Required val text: kotlin.String
+    /* new comment id */
+    @SerialName(value = "id") @Required val id: kotlin.Int
 
 )
 

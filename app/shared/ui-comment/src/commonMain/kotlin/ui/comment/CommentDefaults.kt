@@ -120,7 +120,6 @@ object CommentDefaults {
             list.forEach {
                 Reaction(
                     reaction = it,
-                    modifier = Modifier.padding(vertical = 6.dp),
                     onClick = { onClickItem(it.id) },
                 )
             }

@@ -21,24 +21,21 @@ import kotlinx.serialization.descriptors.*
 import kotlinx.serialization.encoding.*
 
 /**
- * default error response type
+ * 
  *
- * @param code 
- * @param error 
- * @param message 
- * @param statusCode 
+ * @param id 
+ * @param nickname 
+ * @param username 
  */
 @Serializable
 
-data class BangumiNextErrorResponse (
+data class BangumiNextSimpleUser (
 
-    @SerialName(value = "code") @Required val code: kotlin.String,
+    @SerialName(value = "id") @Required val id: kotlin.Int,
 
-    @SerialName(value = "error") @Required val error: kotlin.String,
+    @SerialName(value = "nickname") @Required val nickname: kotlin.String,
 
-    @SerialName(value = "message") @Required val message: kotlin.String,
-
-    @SerialName(value = "statusCode") @Required val statusCode: kotlin.Int
+    @SerialName(value = "username") @Required val username: kotlin.String
 
 )
 

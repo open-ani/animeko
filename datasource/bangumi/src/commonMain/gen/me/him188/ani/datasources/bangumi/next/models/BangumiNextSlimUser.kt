@@ -10,30 +10,35 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.datasources.bangumi.next.models
 
-import kotlinx.serialization.Required
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
+import me.him188.ani.datasources.bangumi.next.models.BangumiNextAvatar
+
+import kotlinx.serialization.*
+import kotlinx.serialization.descriptors.*
+import kotlinx.serialization.encoding.*
 
 /**
  * 
  *
- * @param avatar
- * @param id
- * @param joinedAt
- * @param nickname
- * @param sign
+ * @param avatar 
+ * @param group 
+ * @param id 
+ * @param joinedAt 
+ * @param nickname 
+ * @param sign 
  * @param username 
  */
 @Serializable
 
-data class BangumiNextSlimUser(
+data class BangumiNextSlimUser (
 
     @SerialName(value = "avatar") @Required val avatar: BangumiNextAvatar,
+
+    @SerialName(value = "group") @Required val group: kotlin.Int,
 
     @SerialName(value = "id") @Required val id: kotlin.Int,
 

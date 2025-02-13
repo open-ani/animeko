@@ -10,27 +10,26 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.datasources.bangumi.next.models
 
 
-import kotlinx.serialization.Required
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
+import kotlinx.serialization.*
+import kotlinx.serialization.descriptors.*
+import kotlinx.serialization.encoding.*
 
 /**
+ * 
  *
- *
- * @param id new topic id
+ * @param content 
  */
 @Serializable
 
-data class BangumiNextCreateSubjectTopic200Response(
+data class BangumiNextUpdateContent (
 
-    /* new topic id */
-    @SerialName(value = "id") @Required val id: kotlin.Int
+    @SerialName(value = "content") @Required val content: kotlin.String
 
 )
 

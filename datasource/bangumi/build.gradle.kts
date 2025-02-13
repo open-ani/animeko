@@ -130,53 +130,47 @@ val generateApiP1 = tasks.register("generateApiP1", GenerateTask::class) {
     )
 }
 
+/**
+ * 我们只需要保留吐槽箱相关的 API
+ */
 private fun stripP1Api(path: String): File {
     val yaml = org.yaml.snakeyaml.Yaml()
     val p1ApiObject: Map<String, Any> = File(path).inputStream().use { yaml.load(it) }
 
     // keep subjects only
     val paths = p1ApiObject["paths"].cast<Map<String, *>>().toMutableMap()
-    val subjectPaths = paths.filter { (path, _) -> path.startsWith("/p1/subjects") }
+    val keepPaths = listOf(
+        "/p1/episodes/-/comments", // 条目剧集的吐槽箱, 作为剧集评论
+        "/p1/episodes/{episodeID}", // 条目剧集的吐槽箱, 作为剧集评论
+        "/p1/subjects/{subjectID}/comments", // 条目吐槽箱, 作为条目评论
+    )
+    val subjectPaths = paths.filter { (path, _) -> keepPaths.any { path.startsWith(it) } }
+    println("The following paths are kept: ${subjectPaths.keys}")
 
     // keep components referred by subjects only
     val components = p1ApiObject["components"].cast<Map<String, *>>().toMutableMap()
     components.remove("securitySchemes")
     val keepSchemaKeys = listOf(
         "ErrorResponse",
-        "Reply",
-        "Reaction",
-        "PersonImages",
-        "BasicReply",
-        "Subject",
-        "TopicDetail",
-        "Group",
-        "GroupReply",
-        "BasicReply",
-        "Topic",
-        "BaseEpisodeComment",
-
-        "SlimSubject",
-        "SubjectComment",
-        "SlimUser",
-        "SubjectCharacter",
+        "UpdateContent",
         "Episode",
-        "SubjectRec",
-        "SubjectRelation",
-        "SubjectStaff",
-        "SubjectImages",
-        "Avatar",
-        "Infobox",
-        "SubjectAirtime",
-        "SubjectCollection",
-        "SubjectImages",
-        "SubjectPlatform",
-        "SubjectRating",
-        "SubjectTag",
-        "SlimCharacter",
-        "SlimPerson",
-        "SubjectRelationType",
-        "SubjectStaffPosition",
+        "Reaction",
+        "SlimUser",
+        "CommentBase",
+        "CreateReply",
+        "TurnstileToken",
         
+        "CollectionType",
+        "SubjectInterestComment",
+        "Reaction",
+        "CollectionType",
+        "SlimUser",
+        "Avatar",
+        "SimpleUser",
+        
+        "EpisodeCollectionStatus",
+        "SlimSubject",
+        "EpisodeType"
     )
     val schemas = components["schemas"].cast<Map<String, *>>().toMutableMap()
     val keepSchemas = schemas.filter { (component, _) -> component in keepSchemaKeys }

@@ -129,7 +129,7 @@ class BangumiCommentRepository(
             }
 
             try {
-                val subjectReviews = commentService.getSubjectReviews(subjectId, offset, state.config.pageSize)
+                val subjectReviews = commentService.getSubjectComments(subjectId, offset, state.config.pageSize)
                     ?: return@withContext MediatorResult.Success(endOfPaginationReached = true)
 
                 subjectReviewDao.upsert(subjectReviews.page.mapNotNull { it.toEntity(subjectId) })

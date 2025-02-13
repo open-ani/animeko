@@ -10,7 +10,7 @@
 package me.him188.ani.app.data.models.episode
 
 import me.him188.ani.app.data.models.UserInfo
-import me.him188.ani.datasources.bangumi.next.models.BangumiNextGetSubjectEpisodeComments200ResponseInner
+import me.him188.ani.datasources.bangumi.next.models.BangumiNextGetEpisodeComments200ResponseInner
 
 data class EpisodeComment(
     val commentId: Int,
@@ -25,9 +25,9 @@ data class EpisodeComment(
     val replies: List<EpisodeComment> = listOf()
 )
 
-fun BangumiNextGetSubjectEpisodeComments200ResponseInner.toEpisodeComment() = EpisodeComment(
+fun BangumiNextGetEpisodeComments200ResponseInner.toEpisodeComment(episodeId: Int) = EpisodeComment(
     commentId = id,
-    episodeId = epID,
+    episodeId = episodeId,
     createdAt = createdAt * 1000L,
     content = content,
     author = user?.let { u ->
@@ -41,7 +41,7 @@ fun BangumiNextGetSubjectEpisodeComments200ResponseInner.toEpisodeComment() = Ep
     replies = replies.map { r ->
         EpisodeComment(
             commentId = r.id,
-            episodeId = r.epID,
+            episodeId = episodeId,
             createdAt = r.createdAt * 1000L,
             content = r.content,
             author = r.user?.let { u ->

@@ -10,30 +10,34 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.datasources.bangumi.next.models
 
-import kotlinx.serialization.Required
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
+import me.him188.ani.datasources.bangumi.next.models.BangumiNextReaction
+import me.him188.ani.datasources.bangumi.next.models.BangumiNextSlimUser
+
+import kotlinx.serialization.*
+import kotlinx.serialization.descriptors.*
+import kotlinx.serialization.encoding.*
 
 /**
  * 
  *
- * @param content
- * @param createdAt
- * @param creatorID
- * @param epID
- * @param id
- * @param relatedID
+ * @param content 
+ * @param createdAt 
+ * @param creatorID 
+ * @param id 
+ * @param mainID 
+ * @param relatedID 
  * @param state 
+ * @param reactions 
  * @param user 
  */
 @Serializable
 
-data class BangumiNextBaseEpisodeComment(
+data class BangumiNextCommentBase (
 
     @SerialName(value = "content") @Required val content: kotlin.String,
 
@@ -41,15 +45,17 @@ data class BangumiNextBaseEpisodeComment(
 
     @SerialName(value = "creatorID") @Required val creatorID: kotlin.Int,
 
-    @SerialName(value = "epID") @Required val epID: kotlin.Int,
-
     @SerialName(value = "id") @Required val id: kotlin.Int,
+
+    @SerialName(value = "mainID") @Required val mainID: kotlin.Int,
 
     @SerialName(value = "relatedID") @Required val relatedID: kotlin.Int,
 
     @SerialName(value = "state") @Required val state: kotlin.Int,
 
-    @SerialName(value = "user") @Required val user: BangumiNextSlimUser
+    @SerialName(value = "reactions") val reactions: kotlin.collections.List<BangumiNextReaction>? = null,
+
+    @SerialName(value = "user") val user: BangumiNextSlimUser? = null
 
 )
 

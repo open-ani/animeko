@@ -10,30 +10,28 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.datasources.bangumi.next.models
 
+import me.him188.ani.datasources.bangumi.next.models.BangumiNextSimpleUser
 
-import kotlinx.serialization.Required
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
+import kotlinx.serialization.*
+import kotlinx.serialization.descriptors.*
+import kotlinx.serialization.encoding.*
 
 /**
  * 
  *
- * @param selected
- * @param total 
+ * @param users 
  * @param `value` 
  */
 @Serializable
 
-data class BangumiNextReaction(
+data class BangumiNextReaction (
 
-    @SerialName(value = "selected") @Required val selected: kotlin.Boolean,
-
-    @SerialName(value = "total") @Required val total: kotlin.Int,
+    @SerialName(value = "users") @Required val users: kotlin.collections.List<BangumiNextSimpleUser>,
 
     @SerialName(value = "value") @Required val `value`: kotlin.Int
 
