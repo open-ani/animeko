@@ -189,14 +189,11 @@ class AniAuthConfigurator(
         }
     }
 
-    fun setGuestSession() {
+    suspend fun setGuestSession() {
         // 因为设置 GuestSession 之后会马上进入主界面, backgroundScope 会被取消
         // 所以这里使用 GlobalScope 确保这个任务能完成, 
-        @OptIn(DelicateCoroutinesApi::class)
-        GlobalScope.launch {
-            sessionManager.setSession(GuestSession)
-            currentRequestAuthorizeId.value = REFRESH
-        }
+        sessionManager.setSession(GuestSession)
+        currentRequestAuthorizeId.value = REFRESH
     }
 
     /**

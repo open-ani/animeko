@@ -364,7 +364,7 @@ class BangumiAuthorizeState(
     val onCancelAuthorize: () -> Unit,
     val onAuthorizeViaToken: (String) -> Unit,
     val onClickNavigateToBangumiDev: (ContextMP) -> Unit,
-    val onUseGuestMode: () -> Unit,
+    val onUseGuestMode: suspend () -> Unit,
 )
 
 // region transform between ui ProxyUIConfig and data ProxySettings

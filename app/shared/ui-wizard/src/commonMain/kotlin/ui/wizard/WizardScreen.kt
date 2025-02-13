@@ -236,8 +236,10 @@ internal fun WizardScene(
             skipButton = {
                 WizardDefaults.SkipButton(
                     {
-                        state.bangumiAuthorizeState.onUseGuestMode()
-                        onFinishWizard()
+                        scope.launch {
+                            state.bangumiAuthorizeState.onUseGuestMode()
+                            onFinishWizard()
+                        }
                     },
                     text = "跳过",
                 )
