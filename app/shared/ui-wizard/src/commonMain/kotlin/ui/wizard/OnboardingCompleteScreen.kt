@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.ui.wizard
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -103,7 +104,9 @@ internal fun OnboardingCompleteScene(
             ) { 
                 Text(
                     text = if (state.username != null) "欢迎，${state.username}" else "欢迎"  ,
-                    modifier = Modifier.widthIn(max = 240.dp),
+                    modifier = Modifier
+                        .widthIn(max = 240.dp)
+                        .animateContentSize(),
                     style = MaterialTheme.typography.headlineMedium,
                     overflow = TextOverflow.Ellipsis,
                     textAlign = TextAlign.Center,

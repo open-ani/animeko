@@ -267,14 +267,14 @@ private fun AuthorizeButton(
                     }
 
                     is AuthStateNew.Success -> {
-                        Text("重新授权其他账号")
+                        Text(if (authorizeState.isGuest) "启动浏览器授权" else "重新授权其他账号")
                     }
                 }
             }
         }
     }
 
-    if (authorizeState is AuthStateNew.Success) OutlinedButton(
+    if (authorizeState is AuthStateNew.Success && !authorizeState.isGuest) OutlinedButton(
         onClick = onClick,
         modifier = modifier,
         content = content,
@@ -305,7 +305,7 @@ private fun AuthorizeStateText(
                     is AuthStateNew.Initial, is AuthStateNew.AwaitingResult -> ""
                     is AuthStateNew.Success -> {
                         if (authorizeState.isGuest) {
-                            "使用游客模式"
+                            "目前是游客模式"
                         } else {
                             "授权登录成功: ${authorizeState.username}"
                         }

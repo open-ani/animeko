@@ -124,7 +124,7 @@ class AniAuthConfigurator(
                         try {
                             sessionManager.requireAuthorize(
                                 onLaunch = { onLaunchAuthorize(requestAuthorizeId) },
-                                skipOnGuest = false,
+                                skipOnGuest = true,
                             )
                         } catch (_: AuthorizationCancelledException) {
                         } catch (_: AuthorizationException) {
