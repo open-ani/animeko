@@ -29,7 +29,9 @@ import me.him188.ani.app.ui.wizard.step.ProxyTestItem
 import me.him188.ani.app.ui.wizard.step.ProxyTestState
 import me.him188.ani.app.ui.wizard.step.ProxyUIConfig
 import me.him188.ani.app.ui.wizard.step.ThemeSelectUIState
+import me.him188.ani.utils.platform.annotations.TestOnly
 
+@OptIn(TestOnly::class)
 @Preview(showBackground = true, device = "spec:width=411dp,height=891dp", showSystemUi = false)
 @Preview(showBackground = true, device = "spec:width=1920px,height=1080px,dpi=240", showSystemUi = false)
 @Composable
@@ -44,60 +46,4 @@ fun PreviewWizardScene() {
             onFinishWizard = { },
         )
     }
-}
-
-internal fun createTestWizardPresentationState(scope: CoroutineScope): WizardPresentationState {
-    return WizardPresentationState(
-        themeSelectState = ThemeSelectState(
-            state = flowOf(ThemeSelectUIState.Placeholder),
-            onUpdateUseDarkMode = { },
-            onUpdateUseDynamicTheme = { },
-            onUpdateSeedColor = { },
-        ),
-        configureProxyState = ConfigureProxyState(
-            state = flowOf(
-                ConfigureProxyUIState(
-                    config = ProxyUIConfig.Default,
-                    systemProxy = SystemProxyPresentation.Detecting,
-                    testState = ProxyTestState(
-                        testRunning = false,
-                        items = buildList {
-                            add(ProxyTestItem(ProxyTestCase.AniDanmakuApi, ProxyTestCaseState.RUNNING))
-                            add(ProxyTestItem(ProxyTestCase.BangumiApi, ProxyTestCaseState.SUCCESS))
-                            add(ProxyTestItem(ProxyTestCase.BangumiNextApi, ProxyTestCaseState.FAILED))
-                        },
-                    ),
-                ),
-            ),
-            onUpdateConfig = { },
-            onRequestReTest = { },
-        ),
-        bitTorrentFeatureState = BitTorrentFeatureState(
-            enabled = SettingsState(
-                valueState = stateOf(true),
-                onUpdate = { },
-                placeholder = true,
-                backgroundScope = scope,
-            ),
-            grantNotificationPermissionState = flowOf(
-                GrantNotificationPermissionState(
-                    showGrantNotificationItem = true,
-                    granted = false,
-                    lastRequestResult = null,
-                ),
-            ),
-            onCheckPermissionState = { },
-            onRequestNotificationPermission = { false },
-            onOpenSystemNotificationSettings = { },
-        ),
-        bangumiAuthorizeState = BangumiAuthorizeState(
-            state = flowOf(AuthStateNew.Idle),
-            onClickNavigateAuthorize = { },
-            onCheckCurrentToken = { },
-            onCancelAuthorize = { },
-            onClickNavigateToBangumiDev = { },
-            onAuthorizeViaToken = { },
-            onUseGuestMode = { },
-        ),
-    )
 }
