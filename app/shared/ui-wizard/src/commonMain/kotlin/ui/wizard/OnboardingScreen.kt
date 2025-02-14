@@ -193,11 +193,6 @@ internal fun OnboardingScene(
                 onPauseOrDispose { }
             }
 
-            DisposableEffect(Unit) {
-                state.bitTorrentFeatureState.onCheckPermissionState(context)
-                onDispose { }
-            }
-
             BitTorrentFeatureStep(
                 bitTorrentEnabled = configState.value,
                 onBitTorrentEnableChanged = { configState.update(it) },
