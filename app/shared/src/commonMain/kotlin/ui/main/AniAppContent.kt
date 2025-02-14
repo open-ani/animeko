@@ -102,7 +102,6 @@ import kotlin.reflect.typeOf
 fun AniAppContent(aniNavigator: AniNavigator) {
     val aniAppViewModel = viewModel<AniAppViewModel>()
     val appState = aniAppViewModel.appState.collectAsStateWithLifecycle(null).value ?: return
-    val initialRoute by rememberUpdatedState(appState.initialNavRoute)
     
     val navigator = rememberNavController()
     aniNavigator.setNavController(navigator)
@@ -112,7 +111,7 @@ fun AniAppContent(aniNavigator: AniNavigator) {
             LocalNavigator provides aniNavigator,
         ) {
             ProvideAniMotionCompositionLocals {
-                AniAppContentImpl(aniNavigator, initialRoute, Modifier.fillMaxSize())
+                AniAppContentImpl(aniNavigator, appState.initialNavRoute, Modifier.fillMaxSize())
             }
         }
     }
