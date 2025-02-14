@@ -24,7 +24,7 @@ import me.him188.ani.utils.platform.annotations.TestOnly
 fun PreviewOnboardingScene() {
     ProvideCompositionLocalsForPreview {
         val scope = rememberCoroutineScope()
-        OnboardingScene(
+        OnboardingScreen(
             rememberWizardController(),
             remember { createTestOnboardingPresentationState(scope) },
             contactActions = { },

@@ -62,7 +62,7 @@ internal fun BitTorrentFeatureStep(
     layoutParams: WizardLayoutParams = WizardLayoutParams.calculate(currentWindowAdaptiveInfo1().windowSizeClass)
 ) {
     SettingsTab(modifier = modifier) {
-        HeroIcon(layoutParams) {
+        HeroIcon {
             Icon(
                 imageVector = Icons.Default.P2p,
                 contentDescription = null,

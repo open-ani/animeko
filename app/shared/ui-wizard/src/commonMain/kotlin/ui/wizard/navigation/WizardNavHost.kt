@@ -62,6 +62,7 @@ import me.him188.ani.app.ui.foundation.animation.LocalNavigationMotionScheme
 import me.him188.ani.app.ui.foundation.animation.NavigationMotionScheme
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
+import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 
 /**
  * A wrapper around [NavHost] that provides a wizard-like experience.
@@ -234,7 +235,9 @@ object WizardDefaults {
             },
             modifier = modifier,
             navigationIcon = navigationIcon,
-            colors = TopAppBarDefaults.largeTopAppBarColors(containerColor = Color.Transparent),
+            colors = TopAppBarDefaults.largeTopAppBarColors(
+                containerColor = AniThemeDefaults.pageContentBackgroundColor
+            ),
             actions = { actionButton() },
             scrollBehavior = scrollBehavior,
             windowInsets = windowInsets,

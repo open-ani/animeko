@@ -82,9 +82,9 @@ fun OnboardingScreen(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center,
         ) {
-            OnboardingPage(
+            OnboardingScreen(
                 modifier = modifier,
-                wizardController = vm.wizardController,
+                controller = vm.wizardController,
                 state = vm.onboardingState,
                 onFinishOnboarding = {
                     vm.finishOnboarding()
@@ -99,35 +99,14 @@ fun OnboardingScreen(
 }
 
 @Composable
-fun OnboardingPage(
-    wizardController: WizardController,
-    state: OnboardingPresentationState,
-    onFinishOnboarding: () -> Unit,
-    contactActions: @Composable () -> Unit,
-    navigationIcon: @Composable () -> Unit,
-    modifier: Modifier = Modifier,
-    windowInsets: WindowInsets = AniWindowInsets.forPageContent()
-) {
-    OnboardingScene(
-        controller = wizardController,
-        state = state,
-        navigationIcon = navigationIcon,
-        modifier = modifier,
-        windowInsets = windowInsets,
-        contactActions = contactActions,
-        onFinishOnboarding = onFinishOnboarding,
-    )
-}
-
-@Composable
-internal fun OnboardingScene(
+fun OnboardingScreen(
     controller: WizardController,
     state: OnboardingPresentationState,
     onFinishOnboarding: () -> Unit,
     contactActions: @Composable () -> Unit,
     navigationIcon: @Composable () -> Unit,
     modifier: Modifier = Modifier,
-    windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
+    windowInsets: WindowInsets = AniWindowInsets.forPageContent()
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -151,7 +130,7 @@ internal fun OnboardingScene(
         ) {
             val themeSelectUiState by state.themeSelectState.state
                 .collectAsStateWithLifecycle(ThemeSelectUIState.Placeholder)
-            
+
             ThemeSelectStep(
                 config = themeSelectUiState,
                 onUpdateUseDarkMode = { state.themeSelectState.onUpdateUseDarkMode(it) },
@@ -191,7 +170,7 @@ internal fun OnboardingScene(
             )
         }
         step(
-            "bittorrent", 
+            "bittorrent",
             { Text("BitTorrent") },
             forwardButton = {
                 WizardDefaults.GoForwardButton(
@@ -210,7 +189,7 @@ internal fun OnboardingScene(
             },
         ) {
             val monoTasker = rememberUiMonoTasker()
-            
+
             val configState = state.bitTorrentFeatureState.enabled
 
             LifecycleResumeEffect(Unit) {
@@ -238,7 +217,7 @@ internal fun OnboardingScene(
                                 }
                             )
                         }
-                        
+
                     }
                 } else null,
             )
@@ -289,7 +268,7 @@ internal fun OnboardingScene(
                     }
                 }
             }
-            
+
             // 每次进入这一步都会检查 token 是否有效, 以及退出这一步时要取消正在进行的授权请求
             DisposableEffect(Unit) {
                 state.bangumiAuthorizeState.onCheckCurrentToken()

@@ -32,12 +32,14 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -57,8 +59,8 @@ fun OnboardingCompleteScreen(
 ) {
     val state by vm.state.collectAsStateWithLifecycle(OnboardingCompleteState.Placeholder)
 
-    Surface(color = AniThemeDefaults.pageContentBackgroundColor) { 
-        OnboardingCompleteScene(
+    Surface(color = AniThemeDefaults.pageContentBackgroundColor) {
+        OnboardingCompleteScreen(
             state = state,
             onClickContinue = onClickContinue,
             backNavigation = backNavigation,
@@ -69,7 +71,7 @@ fun OnboardingCompleteScreen(
 }
 
 @Composable
-internal fun OnboardingCompleteScene(
+internal fun OnboardingCompleteScreen(
     state: OnboardingCompleteState,
     onClickContinue: () -> Unit,
     backNavigation: @Composable () -> Unit,
@@ -83,9 +85,13 @@ internal fun OnboardingCompleteScene(
             TopAppBar(
                 title = { },
                 navigationIcon = backNavigation,
-                windowInsets = windowInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = AniThemeDefaults.pageContentBackgroundColor
+                ),
+                windowInsets = windowInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
             )
-        }
+        },
+        containerColor = Color.Transparent
     ) { _ ->
         Box(
             modifier = Modifier

@@ -26,7 +26,6 @@ import me.him188.ani.app.ui.foundation.text.ProvideContentColor
 
 @Composable
 fun HeroIcon(
-    layoutParams: WizardLayoutParams,
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit
 ) {
@@ -34,7 +33,6 @@ fun HeroIcon(
         Box(
             modifier = Modifier
                 .padding(HeroIconDefaults.contentPadding())
-                .padding(horizontal = layoutParams.horizontalPadding)
                 .fillMaxWidth(),
             contentAlignment = Alignment.Center,
         ) {

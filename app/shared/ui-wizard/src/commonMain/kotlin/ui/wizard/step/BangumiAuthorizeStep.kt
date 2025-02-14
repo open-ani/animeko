@@ -119,7 +119,7 @@ private fun SettingsScope.DefaultAuthorize(
         modifier,
         verticalArrangement = Arrangement.spacedBy(SettingsScope.itemVerticalSpacing),
     ) {
-        HeroIcon(layoutParams) {
+        HeroIcon {
             Icon(
                 imageVector = Icons.Default.BangumiNext,
                 contentDescription = null,
