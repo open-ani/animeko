@@ -127,7 +127,7 @@ fun EpisodeDetails(
     danmakuStatistics: DanmakuStatistics,
     videoStatisticsFlow: Flow<VideoStatistics>,
     mediaSelectorState: MediaSelectorState,
-    mediaSourceResultListPresentation: MediaSourceResultListPresentation,
+    mediaSourceResultListPresentation: () -> MediaSourceResultListPresentation,
     authState: AuthState,
     onSwitchEpisode: (episodeId: Int) -> Unit,
     onRefreshMediaSources: () -> Unit,

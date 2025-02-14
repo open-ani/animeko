@@ -559,8 +559,19 @@ class EpisodeViewModel(
             ).distinctUntilChanged(),
             settingsRepository.danmakuEnabled.flow,
             settingsRepository.danmakuConfig.flow,
-            mediaSourceResultsFlow,
-        ) { subjectEpisodeBundle, loadError, fetchSelect, danmakuStatistics, danmakuEnabled, danmakuConfig, mediaSourceResultsPresentation ->
+            episodeSession.fetchSelectFlow.map { fetchSelect ->
+                if (fetchSelect != null) MediaSelectorState(
+                    fetchSelect.mediaSelector,
+                    mediaSourceInfoProvider,
+                    backgroundScope,
+                ) else {
+                    // TODO: 2025/1/22 We should not use createTestMediaSelectorState
+                    @OptIn(TestOnly::class)
+                    createTestMediaSelectorState(backgroundScope)
+                }
+            },
+            mediaSourceResultsFlow.map { MediaSourceResultListPresentation(it) },
+        ) { subjectEpisodeBundle, loadError, fetchSelect, danmakuStatistics, danmakuEnabled, danmakuConfig, mediaSelectorState, mediaSourceResultsPresentation ->
 
             val (subject, episode) = if (subjectEpisodeBundle == null) {
                 SubjectPresentation.Placeholder to EpisodePresentation.Placeholder
@@ -576,16 +587,8 @@ class EpisodeViewModel(
             }
 
             EpisodePageState(
-                mediaSelectorState = if (fetchSelect != null) MediaSelectorState(
-                    fetchSelect.mediaSelector,
-                    mediaSourceInfoProvider,
-                    backgroundScope,
-                ) else {
-                    // TODO: 2025/1/22 We should not use createTestMediaSelectorState
-                    @OptIn(TestOnly::class)
-                    createTestMediaSelectorState(backgroundScope)
-                },
-                mediaSourceResultListPresentation = MediaSourceResultListPresentation(mediaSourceResultsPresentation),
+                mediaSelectorState = mediaSelectorState,
+                mediaSourceResultListPresentation = mediaSourceResultsPresentation,
                 danmakuStatistics = danmakuStatistics,
                 subjectPresentation = subject,
                 episodePresentation = episode,

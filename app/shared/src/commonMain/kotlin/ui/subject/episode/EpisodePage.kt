@@ -398,7 +398,7 @@ private fun EpisodeSceneTabletVeryWide(
                                     page.danmakuStatistics,
                                     vm.videoStatisticsFlow,
                                     page.mediaSelectorState,
-                                    page.mediaSourceResultListPresentation,
+                                    { page.mediaSourceResultListPresentation },
                                     vm.authState,
                                     onSwitchEpisode = { episodeId ->
                                         if (!vm.episodeSelectorState.selectEpisodeId(episodeId)) {
@@ -513,7 +513,7 @@ private fun EpisodeSceneContentPhone(
                     page.danmakuStatistics,
                     vm.videoStatisticsFlow,
                     page.mediaSelectorState,
-                    page.mediaSourceResultListPresentation,
+                    { page.mediaSourceResultListPresentation },
                     vm.authState,
                     onSwitchEpisode = { episodeId ->
                         if (!vm.episodeSelectorState.selectEpisodeId(episodeId)) {
