@@ -41,7 +41,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             onLaunchAuthorize = {},
             parentCoroutineContext = backgroundScope.coroutineContext
         ).apply { 
-            launch(start = CoroutineStart.UNDISPATCHED) { 
+            backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) { 
                 startProcessAuthorizeRequestTask()
             }
         }
