@@ -89,9 +89,9 @@ import me.him188.ani.app.ui.subject.episode.EpisodeScreen
 import me.him188.ani.app.ui.subject.episode.EpisodeViewModel
 import me.him188.ani.app.ui.wizard.OnboardingCompleteScreen
 import me.him188.ani.app.ui.wizard.OnboardingCompleteViewModel
+import me.him188.ani.app.ui.wizard.OnboardingScreen
+import me.him188.ani.app.ui.wizard.OnboardingViewModel
 import me.him188.ani.app.ui.wizard.WelcomeScreen
-import me.him188.ani.app.ui.wizard.WizardScreen
-import me.him188.ani.app.ui.wizard.WizardViewModel
 import me.him188.ani.datasources.api.source.FactoryId
 import kotlin.reflect.typeOf
 
@@ -161,9 +161,9 @@ private fun AniAppContentImpl(
                 popEnterTransition = popEnterTransition,
                 popExitTransition = popExitTransition,
             ) {
-                WizardScreen(
-                    viewModel { WizardViewModel() },
-                    onFinishWizard = { aniNavigator.navigateOnboardingComplete() },
+                OnboardingScreen(
+                    viewModel { OnboardingViewModel() },
+                    onFinishOnboarding = { aniNavigator.navigateOnboardingComplete() },
                     contactActions = { AniContactList() },
                     navigationIcon = {
                         BackNavigationIconButton(

@@ -72,7 +72,7 @@ import me.him188.ani.utils.coroutines.update
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
-class WizardViewModel : AbstractSettingsViewModel(), KoinComponent {
+class OnboardingViewModel : AbstractSettingsViewModel(), KoinComponent {
     private val settingsRepository: SettingsRepository by inject()
 
     private val themeSettings = settingsRepository.themeSettings
@@ -231,7 +231,7 @@ class WizardViewModel : AbstractSettingsViewModel(), KoinComponent {
     )
 
     val wizardController = WizardController()
-    val wizardState = WizardPresentationState(
+    val onboardingState = OnboardingPresentationState(
         themeSelectState = themeSelectState,
         configureProxyState = configureProxyState,
         bitTorrentFeatureState = bitTorrentFeatureState,
@@ -296,7 +296,7 @@ class WizardViewModel : AbstractSettingsViewModel(), KoinComponent {
             .collectLatest { onLogin() }
     }
 
-    fun finishWizard() {
+    fun finishOnboarding() {
         // 因为更新设置之后会马上进入主界面, backgroundScope 会被取消
         // 所以这里使用 GlobalScope 确保这个任务能完成, 
         @OptIn(DelicateCoroutinesApi::class)
@@ -307,7 +307,7 @@ class WizardViewModel : AbstractSettingsViewModel(), KoinComponent {
 }
 
 @Stable
-class WizardPresentationState(
+class OnboardingPresentationState(
     val themeSelectState: ThemeSelectState,
     val configureProxyState: ConfigureProxyState,
     val bitTorrentFeatureState: BitTorrentFeatureState,

@@ -10,7 +10,6 @@
 package me.him188.ani.app.ui.wizard
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -22,7 +21,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,7 +35,6 @@ import me.him188.ani.app.domain.session.AuthStateNew
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.tools.rememberUiMonoTasker
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
-import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
@@ -62,9 +59,9 @@ import me.him188.ani.app.ui.wizard.step.ThemeSelectUIState
 import me.him188.ani.utils.platform.annotations.TestOnly
 
 @Composable
-fun WizardScreen(
-    vm: WizardViewModel,
-    onFinishWizard: () -> Unit,
+fun OnboardingScreen(
+    vm: OnboardingViewModel,
+    onFinishOnboarding: () -> Unit,
     contactActions: @Composable () -> Unit,
     navigationIcon: @Composable () -> Unit,
     modifier: Modifier = Modifier,
@@ -72,7 +69,7 @@ fun WizardScreen(
 ) {
     LaunchedEffect(Unit) {
         vm.collectNewLoginEvent {
-            onFinishWizard()
+            onFinishOnboarding()
         }
     }
     
@@ -80,13 +77,13 @@ fun WizardScreen(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,
     ) {
-        WizardPage(
+        OnboardingPage(
             modifier = modifier,
             wizardController = vm.wizardController,
-            wizardState = vm.wizardState,
-            onFinishWizard = {
-                vm.finishWizard()
-                onFinishWizard()
+            state = vm.onboardingState,
+            onFinishOnboarding = {
+                vm.finishOnboarding()
+                onFinishOnboarding()
             },
             contactActions = contactActions,
             navigationIcon = navigationIcon,
@@ -96,34 +93,34 @@ fun WizardScreen(
 }
 
 @Composable
-fun WizardPage(
+fun OnboardingPage(
     wizardController: WizardController,
-    wizardState: WizardPresentationState,
-    onFinishWizard: () -> Unit,
+    state: OnboardingPresentationState,
+    onFinishOnboarding: () -> Unit,
     contactActions: @Composable () -> Unit,
     navigationIcon: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = AniWindowInsets.forPageContent()
 ) {
     Box(Modifier.windowInsetsPadding(windowInsets)) {
-        WizardScene(
+        OnboardingScene(
             controller = wizardController,
-            state = wizardState,
+            state = state,
             navigationIcon = navigationIcon,
             modifier = modifier,
             contactActions = contactActions,
-            onFinishWizard = onFinishWizard,
+            onFinishOnboarding = onFinishOnboarding,
         )
     }
 }
 
 @Composable
-internal fun WizardScene(
+internal fun OnboardingScene(
     controller: WizardController,
-    state: WizardPresentationState,
+    state: OnboardingPresentationState,
     contactActions: @Composable () -> Unit,
     navigationIcon: @Composable () -> Unit,
-    onFinishWizard: () -> Unit,
+    onFinishOnboarding: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val scope = rememberCoroutineScope()
@@ -229,7 +226,7 @@ internal fun WizardScene(
             { Text("Bangumi 授权") },
             forwardButton = {
                 WizardDefaults.GoForwardButton(
-                    onFinishWizard,
+                    onFinishOnboarding,
                     text = "完成",
                     enabled = authorizeState is AuthStateNew.Success,
                 )
@@ -253,7 +250,7 @@ internal fun WizardScene(
                     {
                         scope.launch {
                             state.bangumiAuthorizeState.onUseGuestMode()
-                            onFinishWizard()
+                            onFinishOnboarding()
                         }
                     },
                     text = "跳过",
@@ -300,8 +297,8 @@ internal fun WizardScene(
 }
 
 @TestOnly
-internal fun createTestWizardPresentationState(scope: CoroutineScope): WizardPresentationState {
-    return WizardPresentationState(
+internal fun createTestOnboardingPresentationState(scope: CoroutineScope): OnboardingPresentationState {
+    return OnboardingPresentationState(
         themeSelectState = ThemeSelectState(
             state = flowOf(ThemeSelectUIState.Placeholder),
             onUpdateUseDarkMode = { },
