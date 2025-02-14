@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.animation.WithContentEnterAnimation
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
+import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 
 @Composable
 fun WelcomeScreen(
@@ -42,7 +43,7 @@ fun WelcomeScreen(
     wizardLayoutParams: WizardLayoutParams =
         WizardLayoutParams.calculate(currentWindowAdaptiveInfo1().windowSizeClass)
 ) {
-    Surface {
+    Surface(color = AniThemeDefaults.pageContentBackgroundColor) {
         WelcomeScene(
             onClickContinue,
             contactActions = contactActions,
