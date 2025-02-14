@@ -29,11 +29,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.ImageLoader
 import coil3.compose.LocalPlatformContext
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.take
 import me.him188.ani.app.data.models.preference.ThemeSettings
-import me.him188.ani.app.data.models.preference.UISettings
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
@@ -66,15 +65,18 @@ class AniAppViewModel : AbstractViewModel(), KoinComponent {
     private val httpClientProvider: HttpClientProvider by inject()
 
     private val imageLoaderClient = httpClientProvider.get(ScopedHttpClientUserAgent.ANI)
-    private val firstLoadedNavRoute: MutableStateFlow<NavRoutes?> = MutableStateFlow(null)
 
     val appState: Flow<AniAppState?> = combine(
         settings.themeSettings.flow,
-        settings.uiSettings.flow,
+        settings.uiSettings.flow.take(1), // 只需要读取一次
         httpClientProvider.configurationFlow,
     ) { themeSettings, uiSettings, _ ->
         AniAppState(
-            resolveInitialNavRoute(uiSettings),
+            if (!uiSettings.onboardingCompleted) {
+                NavRoutes.Welcome
+            } else {
+                NavRoutes.Main(uiSettings.mainSceneInitialPage)
+            },
             themeSettings,
             imageLoaderClient,
         )
@@ -83,26 +85,6 @@ class AniAppViewModel : AbstractViewModel(), KoinComponent {
             initialValue = null,
             started = SharingStarted.Eagerly,
         )
-
-    /**
-     * 只有首次进入 APP 才会从 [UISettings] 中获取初始路由, 之后都会从 [firstLoadedNavRoute] 中获取.
-     * 这么做是为了避免界面重组.
-     */
-    private fun resolveInitialNavRoute(uiSettings: UISettings): NavRoutes {
-        val result: NavRoutes
-
-        val firstLoadedNavRoute = firstLoadedNavRoute.value
-        if (firstLoadedNavRoute == null) {
-            result = if (!uiSettings.onboardingCompleted) NavRoutes.Welcome
-            else NavRoutes.Main(uiSettings.mainSceneInitialPage)
-
-            this.firstLoadedNavRoute.value = result
-        } else {
-            result = firstLoadedNavRoute
-        }
-
-        return result
-    }
     
 //    /**
 //     * 跟随代理设置等配置变化而变化的 [HttpClient] 实例. 用于 coil ImageLoader.
