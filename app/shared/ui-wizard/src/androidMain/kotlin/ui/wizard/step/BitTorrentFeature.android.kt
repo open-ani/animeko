@@ -9,11 +9,13 @@
 
 package me.him188.ani.app.ui.wizard.step
 
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
-import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
-import me.him188.ani.app.ui.wizard.WizardLayoutParams
 
 @Preview(showBackground = true)
 @Composable
@@ -23,12 +25,12 @@ fun PreviewBitTorrentFeatureStep() {
             bitTorrentEnabled = true,
             onBitTorrentEnableChanged = { },
             requestNotificationPermission = {
-                RequestNotificationPermission(
-                    grantedNotificationPermission = false,
-                    showPermissionError = false,
-                    onRequestNotificationPermission = { },
-                    onOpenSystemNotificationSettings = { },
-                )
+                Column(Modifier.padding(horizontal = 16.dp)) {
+                    RequestNotificationPermission(
+                        granted = false,
+                        onRequestNotificationPermission = { },
+                    )
+                }
             },
         )
     }

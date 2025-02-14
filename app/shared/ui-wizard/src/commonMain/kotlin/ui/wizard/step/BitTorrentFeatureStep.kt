@@ -9,30 +9,38 @@
 
 package me.him188.ani.app.ui.wizard.step
 
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.basicMarquee
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Error
-import androidx.compose.material.icons.rounded.ArrowOutward
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.NotificationsActive
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.ProvideTextStyle
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import me.him188.ani.app.ui.foundation.IconButton
-import me.him188.ani.app.ui.foundation.LocalPlatform
-import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.settings.SettingsTab
-import me.him188.ani.app.ui.settings.framework.components.SettingsScope
-import me.him188.ani.app.ui.settings.framework.components.TextItem
 import me.him188.ani.app.ui.settings.rendering.P2p
 import me.him188.ani.app.ui.wizard.HeroIcon
 import me.him188.ani.app.ui.wizard.WizardLayoutParams
@@ -42,11 +50,17 @@ internal fun BitTorrentFeatureStep(
     bitTorrentEnabled: Boolean,
     onBitTorrentEnableChanged: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
-    requestNotificationPermission: (@Composable SettingsScope.() -> Unit)? = null,
+    bitTorrentCheckFeatureItem: (@Composable (WizardLayoutParams) -> Unit) = { lp ->
+        Box(Modifier.padding(horizontal = lp.horizontalPadding)) {
+            BitTorrentFeatureSwitchItem(
+                checked = bitTorrentEnabled,
+                onCheckedChange = onBitTorrentEnableChanged
+            )
+        }
+    },
+    requestNotificationPermission: (@Composable (WizardLayoutParams) -> Unit)? = null,
     layoutParams: WizardLayoutParams = WizardLayoutParams.calculate(currentWindowAdaptiveInfo1().windowSizeClass)
 ) {
-    val platform = LocalPlatform.current
-    
     SettingsTab(modifier = modifier) {
         HeroIcon(layoutParams) {
             Icon(
@@ -88,59 +102,120 @@ internal fun BitTorrentFeatureStep(
             }
         }
         Column(
-            modifier = Modifier.padding(bottom = layoutParams.horizontalPadding),
+            modifier = Modifier.padding(vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            /*SwitchItem(
-                checked = bitTorrentEnabled,
-                onCheckedChange = onBitTorrentEnableChanged,
-                title = { Text("启用 BitTorrent 功能") },
-            )*/
-
-            requestNotificationPermission?.invoke(this@SettingsTab)
+            bitTorrentCheckFeatureItem.invoke(layoutParams)
+            requestNotificationPermission?.invoke(layoutParams)
         }
     }
 }
 
 @Composable
-internal fun SettingsScope.RequestNotificationPermission(
-    grantedNotificationPermission: Boolean,
-    showPermissionError: Boolean,
+internal fun BitTorrentFeatureSwitchItem(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    Card(
+        modifier = modifier,
+        shape = MaterialTheme.shapes.large,
+        elevation = CardDefaults.cardElevation(0.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+    ) {
+        Box(
+            Modifier.clickable(
+                interactionSource = interactionSource,
+                indication = LocalIndication.current,
+                onClick = { onCheckedChange(!checked) }
+            )
+        ) {
+            Column(
+                Modifier
+                    .padding(horizontal = 24.dp, vertical = 16.dp)
+                    .fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "启用 BitTorrent 功能",
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 1,
+                        modifier = Modifier.basicMarquee()
+                    )
+                    Switch(
+                        checked = checked,
+                        onCheckedChange = onCheckedChange,
+                        interactionSource = interactionSource
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun RequestNotificationPermission(
+    granted: Boolean,
     onRequestNotificationPermission: () -> Unit,
-    onOpenSystemNotificationSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val motionScheme = LocalAniMotionScheme.current
-
-    Column(modifier) {
-        TextItem(
-            title = { Text(if (grantedNotificationPermission) "已授权通知权限" else "请求通知权限") },
-            description = { Text("显示 BT 引擎的运行状态、下载进度等信息") },
-            action = {
-                if (!grantedNotificationPermission) {
-                    IconButton(onRequestNotificationPermission) {
-                        Icon(Icons.Rounded.ArrowOutward, "请求通知权限")
-                    }
+    Card(
+        modifier = modifier,
+        shape = MaterialTheme.shapes.large,
+        elevation = CardDefaults.cardElevation(0.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+    ) { 
+        Column(
+            Modifier
+                .padding(all = 24.dp)
+                .fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) { 
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        if (granted) Icons.Outlined.NotificationsActive else Icons.Outlined.Notifications,
+                        contentDescription = "Notification icon",
+                        modifier = Modifier.size(32.dp)
+                    )
+                    Text(
+                        text = "允许通知",
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 1,
+                        modifier = Modifier.basicMarquee()
+                    )
                 }
-            },
-            onClick = if (!grantedNotificationPermission) onRequestNotificationPermission else null,
-        )
-        AnimatedVisibility(
-            showPermissionError,
-            enter = motionScheme.animatedVisibility.standardEnter, // don't animate layout
-            exit = motionScheme.animatedVisibility.columnExit,
-        ) {
-            TextItem(
-                icon = { Icon(Icons.Filled.Error, null) },
-                title = {
-                    ProvideTextStyle(MaterialTheme.typography.bodyMedium) {
-                        Text(
-                            text = "请求通知权限失败，Ani 在后台时 BT 服务可能会被系统终止。" +
-                                    "若非手动拒绝授权，请点击此处打开系统设置进行授权。",
-                        )
-                    }
-                },
-                onClick = onOpenSystemNotificationSettings,
-            )
+                Box(modifier = Modifier.padding(start = 48.dp)) {
+                    Text(
+                        text = "显示 BT 下载进度和速度等信息",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            if (granted) {
+                OutlinedButton(
+                    onClick = { },
+                    enabled = false,
+                    modifier = Modifier.fillMaxWidth(),
+                    content = { Text("已授权") }
+                )
+            } else {
+                Button(
+                    onClick = onRequestNotificationPermission,
+                    modifier = Modifier.fillMaxWidth(),
+                    content = { Text("授予权限") }
+                )
+            }
         }
     }
 }

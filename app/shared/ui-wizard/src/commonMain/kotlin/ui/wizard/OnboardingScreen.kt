@@ -10,8 +10,10 @@
 package me.him188.ani.app.ui.wizard
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -196,22 +198,24 @@ internal fun OnboardingScene(
             BitTorrentFeatureStep(
                 bitTorrentEnabled = configState.value,
                 onBitTorrentEnableChanged = { configState.update(it) },
+                bitTorrentCheckFeatureItem = { }, // disabled because we haven't support disable torrent engine.
                 requestNotificationPermission = if (grantNotificationPermissionState.showGrantNotificationItem) {
-                    {
-                        RequestNotificationPermission(
-                            grantedNotificationPermission = grantNotificationPermissionState.granted,
-                            showPermissionError = grantNotificationPermissionState.lastRequestResult == false,
-                            onRequestNotificationPermission = {
-                                monoTasker.launch {
-                                    val granted = state.bitTorrentFeatureState.onRequestNotificationPermission(context)
-                                    // 授权失败就滚动到底部, 底部有错误信息
-                                    if (!granted) wizardScrollState.animateScrollTo(wizardScrollState.maxValue)
+                    { layoutParams ->
+                        Column(modifier = Modifier.padding(horizontal = layoutParams.horizontalPadding)) {
+                            RequestNotificationPermission(
+                                granted = grantNotificationPermissionState.granted,
+                                onRequestNotificationPermission = {
+                                    monoTasker.launch {
+                                        if (grantNotificationPermissionState.lastRequestResult == false) {
+                                            state.bitTorrentFeatureState.onOpenSystemNotificationSettings(context)
+                                        } else {
+                                            state.bitTorrentFeatureState.onRequestNotificationPermission(context)
+                                        }
+                                    }
                                 }
-                            },
-                            onOpenSystemNotificationSettings = {
-                                state.bitTorrentFeatureState.onOpenSystemNotificationSettings(context)
-                            },
-                        )
+                            )
+                        }
+                        
                     }
                 } else null,
             )
