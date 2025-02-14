@@ -68,7 +68,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             onLaunchAuthorize = {},
             parentCoroutineContext = backgroundScope.coroutineContext
         ).apply {
-            launch(start = CoroutineStart.UNDISPATCHED) {
+            backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
                 startProcessAuthorizeRequestTask()
             }
         }
@@ -104,7 +104,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             onLaunchAuthorize = {},
             parentCoroutineContext = backgroundScope.coroutineContext
         ).apply {
-            launch(start = CoroutineStart.UNDISPATCHED) {
+            backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
                 startProcessAuthorizeRequestTask()
             }
         }
@@ -140,7 +140,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             onLaunchAuthorize = {},
             parentCoroutineContext = backgroundScope.coroutineContext
         ).apply {
-            launch(start = CoroutineStart.UNDISPATCHED) {
+            backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
                 startProcessAuthorizeRequestTask()
             }
         }
@@ -176,7 +176,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             awaitRetryInterval = 5.seconds,
             parentCoroutineContext = backgroundScope.coroutineContext
         ).apply {
-            launch(start = CoroutineStart.UNDISPATCHED) {
+            backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
                 startProcessAuthorizeRequestTask()
             }
         }
@@ -211,7 +211,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             onLaunchAuthorize = {},
             parentCoroutineContext = backgroundScope.coroutineContext
         ).apply {
-            launch(start = CoroutineStart.UNDISPATCHED) {
+            backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
                 startProcessAuthorizeRequestTask()
             }
         }
@@ -247,7 +247,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             onLaunchAuthorize = {},
             parentCoroutineContext = backgroundScope.coroutineContext
         ).apply {
-            launch(start = CoroutineStart.UNDISPATCHED) {
+            backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
                 startProcessAuthorizeRequestTask()
             }
         }
@@ -283,7 +283,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             onLaunchAuthorize = {},
             parentCoroutineContext = backgroundScope.coroutineContext
         ).apply {
-            launch(start = CoroutineStart.UNDISPATCHED) {
+            backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
                 startProcessAuthorizeRequestTask()
             }
         }
@@ -317,7 +317,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             onLaunchAuthorize = {},
             parentCoroutineContext = backgroundScope.coroutineContext
         ).apply {
-            launch(start = CoroutineStart.UNDISPATCHED) {
+            backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
                 startProcessAuthorizeRequestTask()
             }
         }
@@ -351,7 +351,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             onLaunchAuthorize = {},
             parentCoroutineContext = backgroundScope.coroutineContext
         ).apply {
-            launch(start = CoroutineStart.UNDISPATCHED) {
+            backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
                 startProcessAuthorizeRequestTask()
             }
         }
@@ -384,7 +384,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             onLaunchAuthorize = {},
             parentCoroutineContext = backgroundScope.coroutineContext
         ).apply {
-            launch(start = CoroutineStart.UNDISPATCHED) {
+            backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
                 startProcessAuthorizeRequestTask()
             }
         }
