@@ -165,7 +165,9 @@ fun OnboardingScreen(
 
             ConfigureProxyStep(
                 state = proxyState,
-                onUpdate = { configureProxyState.onUpdateConfig(it) },
+                onUpdate = { new ->
+                    configureProxyState.updateConfig(proxyState.config, new, proxyState.systemProxy) 
+               },
                 onRequestReTest = { configureProxyState.onRequestReTest() }
             )
         }

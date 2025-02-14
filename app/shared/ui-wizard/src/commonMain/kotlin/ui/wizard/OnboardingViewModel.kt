@@ -25,7 +25,6 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterIsInstance
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -50,7 +49,6 @@ import me.him188.ani.app.platform.ContextMP
 import me.him188.ani.app.platform.GrantedPermissionManager
 import me.him188.ani.app.platform.PermissionManager
 import me.him188.ani.app.platform.currentAniBuildConfig
-import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.ui.foundation.icons.Animeko
 import me.him188.ani.app.ui.foundation.icons.AnimekoIconColor
 import me.him188.ani.app.ui.foundation.icons.BangumiNext
@@ -149,9 +147,6 @@ class OnboardingViewModel : AbstractSettingsViewModel(), KoinComponent {
         state = configureProxyUiState,
         onUpdateConfig = { newConfig ->
             launchInBackground {
-                if (shouldRerunProxyTestManually(proxySettings.flow.first().toUIConfig(), newConfig)) {
-                    proxyTester.restartTest()
-                }
                 proxySettings.update { newConfig.toDataSettings() }
             }
         },
@@ -163,7 +158,6 @@ class OnboardingViewModel : AbstractSettingsViewModel(), KoinComponent {
     private val permissionManager: PermissionManager by inject()
     private val notificationPermissionGrant = MutableStateFlow(false)
     private val lastGrantPermissionResult = MutableStateFlow<Boolean?>(null)
-    private val requestNotificationPermissionTasker = MonoTasker(backgroundScope)
 
     private val grantNotificationPermissionState = combine(
         notificationPermissionGrant,
@@ -246,27 +240,7 @@ class OnboardingViewModel : AbstractSettingsViewModel(), KoinComponent {
         launchInBackground { proxyTester.startTestRestartObserver() }
     }
     
-    /**
-     * 在 [proxySettings] 更新后, [clientProvider] 可能不会 emit 新 client:
-     * - 在系统代理为 null 情况下, 从 禁用代理 设置为 系统代理 或反之.
-     * 
-     * 另外没改也要测试
-     */
-    private fun shouldRerunProxyTestManually(prev: ProxyUIConfig, curr: ProxyUIConfig): Boolean {
-        if (prev == curr) return true
-
-        val prevMode = prev.mode
-        val currMode = curr.mode
-        val noSystemProxy = configureProxyUiState.value.systemProxy is SystemProxyPresentation.NotDetected
-
-        if (prevMode == ProxyUIMode.SYSTEM && currMode == ProxyUIMode.DISABLED && noSystemProxy) {
-            return true
-        }
-        if (prevMode == ProxyUIMode.DISABLED && currMode == ProxyUIMode.SYSTEM && noSystemProxy) {
-            return true
-        }
-        return false
-    }
+    
 
     private fun openSystemNotificationSettings(context: ContextMP) {
         permissionManager.openSystemNotificationSettings(context)
@@ -332,9 +306,40 @@ class ThemeSelectState(
 @Stable
 class ConfigureProxyState(
     val state: Flow<ConfigureProxyUIState>,
-    val onUpdateConfig: (ProxyUIConfig) -> Unit,
+    private val onUpdateConfig: (ProxyUIConfig) -> Unit,
     val onRequestReTest: () -> Unit,
-)
+) {
+    fun updateConfig(
+        currentConfig: ProxyUIConfig, 
+        newConfig: ProxyUIConfig,
+        currentSystemProxy: SystemProxyPresentation
+    ) {
+        if (shouldRerunProxyTestManually(currentConfig, newConfig, currentSystemProxy)) {
+            onRequestReTest()
+        }
+        onUpdateConfig(newConfig)
+    }
+    
+    private fun shouldRerunProxyTestManually(
+        prev: ProxyUIConfig, 
+        curr: ProxyUIConfig, 
+        systemProxy: SystemProxyPresentation
+    ): Boolean {
+        if (prev == curr) return true
+
+        val prevMode = prev.mode
+        val currMode = curr.mode
+        val noSystemProxy = systemProxy is SystemProxyPresentation.NotDetected
+
+        if (prevMode == ProxyUIMode.SYSTEM && currMode == ProxyUIMode.DISABLED && noSystemProxy) {
+            return true
+        }
+        if (prevMode == ProxyUIMode.DISABLED && currMode == ProxyUIMode.SYSTEM && noSystemProxy) {
+            return true
+        }
+        return false
+    }
+}
 
 @Immutable
 enum class ProxyTestCaseEnums {
