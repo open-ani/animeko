@@ -12,10 +12,8 @@ package me.him188.ani.app.domain.session
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import kotlinx.coroutines.CoroutineStart
-import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -26,21 +24,18 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.retry
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transform
 import kotlinx.coroutines.flow.transformLatest
-import kotlinx.coroutines.launch
 import me.him188.ani.app.data.repository.user.AccessTokenSession
 import me.him188.ani.app.data.repository.user.GuestSession
-import me.him188.ani.app.domain.session.AniAuthConfigurator.Companion.idStr
 import me.him188.ani.app.tools.MonoTasker
+import me.him188.ani.utils.coroutines.SingleTaskExecutor
 import me.him188.ani.utils.coroutines.childScope
-import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.debug
+import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.platform.Uuid
 import me.him188.ani.utils.platform.currentTimeMillis
 import kotlin.coroutines.CoroutineContext
@@ -58,11 +53,12 @@ class AniAuthConfigurator(
     private val onLaunchAuthorize: suspend (requestId: String) -> Unit,
     private val maxAwaitRetries: Long = 5 * 60,
     private val awaitRetryInterval: Duration = 1.seconds,
-    parentCoroutineContext: CoroutineContext,
+    parentCoroutineContext: CoroutineContext = Dispatchers.Default,
 ) {
     private val logger = logger<AniAuthConfigurator>()
     private val scope = parentCoroutineContext.childScope()
 
+    private val authRequestProcessor = SingleTaskExecutor(scope.coroutineContext)
     private val authorizeTasker = MonoTasker(scope)
     private val currentRequestAuthorizeId = MutableStateFlow<String?>(null)
 
@@ -111,58 +107,58 @@ class AniAuthConfigurator(
             AuthStateNew.Idle,
         )
 
-    init {
-        // process authorize request
-        scope.launch {
-            currentRequestAuthorizeId
-                .filterNotNull()
-                .transformLatest { requestAuthorizeId ->
-                    logger.debug {
-                        "[AuthCheckLoop][${requestAuthorizeId.idStr}], checking authorize state."
-                    }
-                    authorizeTasker.launch(start = CoroutineStart.UNDISPATCHED) {
-                        try {
-                            sessionManager.requireAuthorize(
-                                onLaunch = { onLaunchAuthorize(requestAuthorizeId) },
-                                skipOnGuest = true,
-                            )
-                        } catch (_: AuthorizationCancelledException) {
-                        } catch (_: AuthorizationException) {
-                        } catch (e: Throwable) {
-                            throw IllegalStateException("Unknown exception during requireAuth, see cause", e)
-                        }
-                    }
-                    
-                    if (requestAuthorizeId == REFRESH) return@transformLatest emit(null)
-                    emitAll(
-                        sessionManager.processingRequest
-                            .filterNotNull()
-                            .map { requestAuthorizeId to it },
-                    )
+    suspend fun startProcessAuthorizeRequestTask() {
+        authRequestProcessor.invoke { processAuthorizeRequestTask() }
+    }
+    
+    private suspend fun processAuthorizeRequestTask() {
+        currentRequestAuthorizeId
+            .filterNotNull()
+            .transformLatest { requestAuthorizeId ->
+                logger.debug {
+                    "[AuthCheckLoop][${requestAuthorizeId.idStr}], checking authorize state."
                 }
-                .filterNotNull() // filter out refresh
-                .collectLatest { (requestAuthorizeId, processingRequest) ->
-                    logger.debug {
-                        "[AuthCheckLoop][${requestAuthorizeId.idStr}] Current processing request: $processingRequest"
+                
+                authorizeTasker.launch(start = CoroutineStart.UNDISPATCHED) {
+                    try {
+                        sessionManager.requireAuthorize(
+                            onLaunch = { onLaunchAuthorize(requestAuthorizeId) },
+                            skipOnGuest = true,
+                        )
+                    } catch (_: AuthorizationCancelledException) {
+                    } catch (_: AuthorizationException) {
+                    } catch (e: Throwable) {
+                        throw IllegalStateException("Unknown exception during requireAuth, see cause", e)
                     }
+                }
 
-                    // 最大尝试 300 次, 每次间隔 1 秒
-                    suspend { checkAuthorizeStatus(requestAuthorizeId, processingRequest) }
-                        .asFlow()
-                        .retry(retries = maxAwaitRetries) { e ->
-                            (e is NotAuthorizedException).also { if (it) delay(awaitRetryInterval) }
-                        }
-                        .catch { authorizeTasker.cancel() }
-                        .firstOrNull()
+                if (requestAuthorizeId == REFRESH) return@transformLatest emit(null)
+                emitAll(
+                    sessionManager.processingRequest
+                        .filterNotNull()
+                        .map { requestAuthorizeId to it },
+                )
+            }
+            .filterNotNull() // filter out refresh
+            .collectLatest { (requestAuthorizeId, processingRequest) ->
+                logger.debug {
+                    "[AuthCheckLoop][${requestAuthorizeId.idStr}] Current processing request: $processingRequest"
                 }
-        }
+
+                // 最大尝试 300 次, 每次间隔 1 秒
+                suspend { checkAuthorizeStatus(requestAuthorizeId, processingRequest) }
+                    .asFlow()
+                    .retry(retries = maxAwaitRetries) { e ->
+                        (e is NotAuthorizedException).also { if (it) delay(awaitRetryInterval) }
+                    }
+                    .catch { authorizeTasker.cancel() }
+                    .firstOrNull()
+            }
     }
 
-    fun startAuthorize() {
-        scope.launch {
-            sessionManager.clearSession()
-            currentRequestAuthorizeId.value = Uuid.random().toString()
-        }
+    suspend fun startAuthorize() {
+        sessionManager.clearSession()
+        currentRequestAuthorizeId.value = Uuid.random().toString()
     }
 
     fun cancelAuthorize() {
@@ -177,17 +173,15 @@ class AniAuthConfigurator(
     /**
      * 通过 token 授权
      */
-    fun setAuthorizationToken(token: String) {
-        scope.launch {
-            sessionManager.setSession(
-                AccessTokenSession(
-                    accessToken = token,
-                    expiresAtMillis = currentTimeMillis() + 365.days.inWholeMilliseconds,
-                ),
-            )
-            // trigger ui update
-            currentRequestAuthorizeId.value = REFRESH
-        }
+    suspend fun setAuthorizationToken(token: String) {
+        sessionManager.setSession(
+            AccessTokenSession(
+                accessToken = token,
+                expiresAtMillis = currentTimeMillis() + 365.days.inWholeMilliseconds,
+            ),
+        )
+        // trigger ui update
+        currentRequestAuthorizeId.value = REFRESH
     }
 
     suspend fun setGuestSession() {

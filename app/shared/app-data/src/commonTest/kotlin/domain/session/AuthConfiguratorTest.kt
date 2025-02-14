@@ -9,6 +9,8 @@
 
 package me.him188.ani.app.domain.session
 import app.cash.turbine.test
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import me.him188.ani.app.data.models.ApiResponse
@@ -38,7 +40,12 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             authClient = authClient,
             onLaunchAuthorize = {},
             parentCoroutineContext = backgroundScope.coroutineContext
-        )
+        ).apply { 
+            launch(start = CoroutineStart.UNDISPATCHED) { 
+                startProcessAuthorizeRequestTask()
+            }
+        }
+        
         configurator.state.test {
             assertIs<AuthStateNew.Idle>(awaitItem(), "Initially should be Idle.")
             
@@ -60,7 +67,12 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             authClient = authClient,
             onLaunchAuthorize = {},
             parentCoroutineContext = backgroundScope.coroutineContext
-        )
+        ).apply {
+            launch(start = CoroutineStart.UNDISPATCHED) {
+                startProcessAuthorizeRequestTask()
+            }
+        }
+        
         configurator.state.test {
             assertIs<AuthStateNew.Idle>(awaitItem(), "Initially should be Idle.")
 
@@ -91,7 +103,12 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             authClient = authClient,
             onLaunchAuthorize = {},
             parentCoroutineContext = backgroundScope.coroutineContext
-        )
+        ).apply {
+            launch(start = CoroutineStart.UNDISPATCHED) {
+                startProcessAuthorizeRequestTask()
+            }
+        }
+        
         configurator.state.test {
             assertIs<AuthStateNew.Idle>(awaitItem(), "Initially should be Idle.")
 
@@ -122,7 +139,12 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             authClient = authClient,
             onLaunchAuthorize = {},
             parentCoroutineContext = backgroundScope.coroutineContext
-        )
+        ).apply {
+            launch(start = CoroutineStart.UNDISPATCHED) {
+                startProcessAuthorizeRequestTask()
+            }
+        }
+
         configurator.state.test {
             assertIs<AuthStateNew.Idle>(awaitItem(), "Initially should be Idle.")
 
@@ -153,8 +175,12 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             maxAwaitRetries = 1,
             awaitRetryInterval = 5.seconds,
             parentCoroutineContext = backgroundScope.coroutineContext
-        )
-        
+        ).apply {
+            launch(start = CoroutineStart.UNDISPATCHED) {
+                startProcessAuthorizeRequestTask()
+            }
+        }
+
         configurator.state.test {
             assertIs<AuthStateNew.Idle>(awaitItem(), "Initially should be Idle.")
             
@@ -184,8 +210,12 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             authClient = authClient,
             onLaunchAuthorize = {},
             parentCoroutineContext = backgroundScope.coroutineContext
-        )
-        
+        ).apply {
+            launch(start = CoroutineStart.UNDISPATCHED) {
+                startProcessAuthorizeRequestTask()
+            }
+        }
+
         configurator.state.test {
             assertIs<AuthStateNew.Idle>(awaitItem(), "Initially should be Idle.")
             
@@ -216,8 +246,12 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             authClient = authClient,
             onLaunchAuthorize = {},
             parentCoroutineContext = backgroundScope.coroutineContext
-        )
-        
+        ).apply {
+            launch(start = CoroutineStart.UNDISPATCHED) {
+                startProcessAuthorizeRequestTask()
+            }
+        }
+
         configurator.state.test {
             assertIs<AuthStateNew.Idle>(awaitItem(), "Initially should be Idle.")
             
@@ -248,7 +282,11 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             authClient = authClient,
             onLaunchAuthorize = {},
             parentCoroutineContext = backgroundScope.coroutineContext
-        )
+        ).apply {
+            launch(start = CoroutineStart.UNDISPATCHED) {
+                startProcessAuthorizeRequestTask()
+            }
+        }
 
         configurator.state.test {
             assertIs<AuthStateNew.Idle>(awaitItem(), "Initially should be Idle.")
@@ -278,7 +316,11 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             authClient = authClient,
             onLaunchAuthorize = {},
             parentCoroutineContext = backgroundScope.coroutineContext
-        )
+        ).apply {
+            launch(start = CoroutineStart.UNDISPATCHED) {
+                startProcessAuthorizeRequestTask()
+            }
+        }
 
         configurator.state.test {
             assertIs<AuthStateNew.Idle>(awaitItem(), "Initially should be Idle.")
@@ -308,7 +350,11 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             authClient = authClient,
             onLaunchAuthorize = {},
             parentCoroutineContext = backgroundScope.coroutineContext
-        )
+        ).apply {
+            launch(start = CoroutineStart.UNDISPATCHED) {
+                startProcessAuthorizeRequestTask()
+            }
+        }
 
         configurator.state.test {
             assertIs<AuthStateNew.Idle>(awaitItem(), "Initially should be Idle.")
@@ -337,7 +383,11 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             authClient = authClient,
             onLaunchAuthorize = {},
             parentCoroutineContext = backgroundScope.coroutineContext
-        )
+        ).apply {
+            launch(start = CoroutineStart.UNDISPATCHED) {
+                startProcessAuthorizeRequestTask()
+            }
+        }
 
         configurator.state.test {
             assertIs<AuthStateNew.Idle>(awaitItem(), "Initially should be Idle.")

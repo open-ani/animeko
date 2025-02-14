@@ -14,13 +14,13 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.ServerListFeature
 import me.him188.ani.app.domain.foundation.ServerListFeatureConfig
 import me.him188.ani.app.domain.foundation.withValue
 import me.him188.ani.app.domain.session.AniApiProvider
 import me.him188.ani.datasources.bangumi.BangumiClientImpl
+import me.him188.ani.utils.coroutines.SingleTaskExecutor
 import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.coroutines.flows.FlowRestarter
 import me.him188.ani.utils.coroutines.flows.FlowRunning
@@ -35,6 +35,7 @@ class ProxyTester(
 
     private val proxyTestRunning = FlowRunning()
     private val proxyTestRestarter = FlowRestarter()
+    private val tasker = SingleTaskExecutor(scope.coroutineContext)
 
     private val connectionTester = clientProvider.configurationFlow.map {
         val client = clientProvider.get(
@@ -55,8 +56,8 @@ class ProxyTester(
     val testResult = connectionTester.flatMapLatest { it.results }
     val testRunning = proxyTestRunning.isRunning
 
-    init {
-        scope.launch {
+    suspend fun startTestRestartObserver() {
+        tasker.invoke {
             connectionTester
                 .restartable(restarter = proxyTestRestarter)
                 .collectLatest { tester ->

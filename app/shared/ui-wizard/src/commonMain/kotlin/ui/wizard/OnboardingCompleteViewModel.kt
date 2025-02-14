@@ -11,7 +11,6 @@ package me.him188.ani.app.ui.wizard
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.map
 import me.him188.ani.app.domain.session.AniAuthClient
@@ -19,6 +18,7 @@ import me.him188.ani.app.domain.session.AniAuthConfigurator
 import me.him188.ani.app.domain.session.AuthStateNew
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.ui.foundation.AbstractViewModel
+import me.him188.ani.app.ui.foundation.launchInBackground
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
@@ -47,6 +47,7 @@ class OnboardingCompleteViewModel : AbstractViewModel(), KoinComponent {
         )
     
     init {
+        launchInBackground { authConfigurator.startProcessAuthorizeRequestTask() }
         authConfigurator.checkAuthorizeState()
     }
     

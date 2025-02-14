@@ -214,7 +214,7 @@ class OnboardingViewModel : AbstractSettingsViewModel(), KoinComponent {
         authConfigurator.state,
         onClickNavigateAuthorize = {
             currentAppContext = it
-            authConfigurator.startAuthorize()
+            backgroundScope.launch { authConfigurator.startAuthorize() }
         },
         onCancelAuthorize = { authConfigurator.cancelAuthorize() },
         onCheckCurrentToken = { authConfigurator.checkAuthorizeState() },
@@ -227,7 +227,9 @@ class OnboardingViewModel : AbstractSettingsViewModel(), KoinComponent {
             if (currentState is AuthStateNew.Success && !currentState.isGuest) return@BangumiAuthorizeState
             authConfigurator.setGuestSession()
         },
-        onAuthorizeViaToken = { authConfigurator.setAuthorizationToken(it) },
+        onAuthorizeViaToken = { 
+            backgroundScope.launch { authConfigurator.setAuthorizationToken(it) }
+        },
     )
 
     val wizardController = WizardController()
@@ -239,6 +241,11 @@ class OnboardingViewModel : AbstractSettingsViewModel(), KoinComponent {
     )
     // endregion
 
+    init {
+        launchInBackground { authConfigurator.startProcessAuthorizeRequestTask() }
+        launchInBackground { proxyTester.startTestRestartObserver() }
+    }
+    
     /**
      * 在 [proxySettings] 更新后, [clientProvider] 可能不会 emit 新 client:
      * - 在系统代理为 null 情况下, 从 禁用代理 设置为 系统代理 或反之.
