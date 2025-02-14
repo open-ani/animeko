@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.ui.wizard.navigation
 
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
@@ -62,21 +63,23 @@ class WizardNavHostScope(
                 modifier = Modifier.testTag("buttonPrevStep"),
             )
         },
-        indicatorBar: @Composable (WizardIndicatorState) -> Unit = {
+        indicatorBar: @Composable (WizardIndicatorState, WindowInsets) -> Unit = { state, insets ->
             WizardDefaults.StepTopAppBar(
-                currentStep = it.currentStep,
-                totalStep = it.totalStep,
-                scrollBehavior = it.scrollBehavior,
+                currentStep = state.currentStep,
+                totalStep = state.totalStep,
+                scrollBehavior = state.scrollBehavior,
                 navigationIcon = navigationIcon,
                 actionButton = skipButton,
-                collapsedFraction = it.topAppBarCollapsedFraction,
+                collapsedFraction = state.topAppBarCollapsedFraction,
+                windowInsets = insets
             ) {
                 title()
             }
         },
-        controlBar: @Composable () -> Unit = {
+        controlBar: @Composable (WindowInsets) -> Unit = { insets ->
             WizardDefaults.StepControlBar(
                 forwardAction = forwardButton,
+                windowInsets = insets
             )
         },
         content: @Composable WizardStepScope.() -> Unit,

@@ -21,14 +21,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -44,8 +44,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
@@ -57,7 +59,7 @@ import kotlinx.coroutines.launch
 import me.him188.ani.app.ui.foundation.animation.LocalNavigationMotionScheme
 import me.him188.ani.app.ui.foundation.animation.NavigationMotionScheme
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
-import me.him188.ani.app.ui.foundation.text.ProvideContentColor
+import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
 
 /**
  * A wrapper around [NavHost] that provides a wizard-like experience.
@@ -134,12 +136,21 @@ fun WizardNavHost(
                 }
 
                 Scaffold(
-                    topBar = { step.indicatorBar(indicatorState) },
+                    topBar = { 
+                        step.indicatorBar(
+                            indicatorState,
+                            windowInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
+                        ) 
+                    },
                     bottomBar = {
-                        if (scrollState.canScrollForward) {
-                            HorizontalDivider(Modifier.fillMaxWidth())
+                        Column {
+                            if (scrollState.canScrollForward) {
+                                HorizontalDivider(Modifier.fillMaxWidth())
+                            }
+                            step.controlBar(
+                                windowInsets.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal)
+                            )
                         }
-                        step.controlBar()
                     },
                     modifier = Modifier.fillMaxSize(),
                     contentWindowInsets = windowInsets,
@@ -195,22 +206,27 @@ object WizardDefaults {
         scrollBehavior: TopAppBarScrollBehavior? = null,
         stepName: @Composable () -> Unit,
     ) {
-        @OptIn(ExperimentalMaterial3ExpressiveApi::class)
         LargeTopAppBar(
-            title = stepName,
-            subtitle = {
-                val showStepText by remember { 
-                    derivedStateOf { collapsedFraction < 0.5 }
+            title = {
+                val currentCollapsedFraction by rememberUpdatedState(collapsedFraction)
+                val showStepText by remember {
+                    derivedStateOf { currentCollapsedFraction < 0.5 }
                 }
-                if (showStepText) {
-                    ProvideContentColor(MaterialTheme.colorScheme.primary) {
-                        Text(
-                            text = remember(currentStep, totalStep) {
-                                renderStepIndicatorText(currentStep, totalStep)
-                            },
-                            modifier = Modifier.testTag(indicatorStepTextTestTag),
-                        )
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    if (showStepText) {
+                        ProvideTextStyleContentColor(
+                            MaterialTheme.typography.titleMedium,
+                            MaterialTheme.colorScheme.primary
+                        ) {
+                            Text(
+                                text = remember(currentStep, totalStep) {
+                                    renderStepIndicatorText(currentStep, totalStep)
+                                },
+                                modifier = Modifier.testTag(indicatorStepTextTestTag),
+                            )
+                        }
                     }
+                    stepName()
                 }
             },
             modifier = modifier,
@@ -225,25 +241,21 @@ object WizardDefaults {
     fun StepControlBar(
         forwardAction: @Composable () -> Unit,
         modifier: Modifier = Modifier,
-        windowInsets: WindowInsets = AniWindowInsets.forNavigationBar(),
+        windowInsets: WindowInsets = NavigationBarDefaults.windowInsets,
     ) {
-        Box(modifier = modifier) {
-            Column(
+        NavigationBar(
+            modifier,
+            containerColor = Color.Transparent,
+            windowInsets = windowInsets
+        ) {
+            Row(
                 modifier = Modifier
-                    .windowInsetsPadding(
-                        windowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
-                    )
+                    .padding(horizontal = 24.dp)
                     .fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.End,
             ) {
-                Row(
-                    modifier = Modifier
-                        .padding(24.dp)
-                        .fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.End,
-                ) {
-                    forwardAction()
-                }
+                forwardAction()
             }
         }
     }

@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.ui.wizard.navigation
 
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 
@@ -23,8 +24,8 @@ class WizardStep(
     val stepName: @Composable () -> Unit,
     val backwardButton: @Composable () -> Unit,
     val skipButton: @Composable () -> Unit,
-    val indicatorBar: @Composable (WizardIndicatorState) -> Unit,
-    val controlBar: @Composable () -> Unit,
+    val indicatorBar: @Composable (WizardIndicatorState, WindowInsets) -> Unit,
+    val controlBar: @Composable (WindowInsets) -> Unit,
     val content: @Composable WizardStepScope.() -> Unit,
 )
 

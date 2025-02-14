@@ -12,7 +12,6 @@ package me.him188.ani.app.ui.wizard
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -102,16 +101,15 @@ fun OnboardingPage(
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = AniWindowInsets.forPageContent()
 ) {
-    Box(Modifier.windowInsetsPadding(windowInsets)) {
-        OnboardingScene(
-            controller = wizardController,
-            state = state,
-            navigationIcon = navigationIcon,
-            modifier = modifier,
-            contactActions = contactActions,
-            onFinishOnboarding = onFinishOnboarding,
-        )
-    }
+    OnboardingScene(
+        controller = wizardController,
+        state = state,
+        navigationIcon = navigationIcon,
+        modifier = modifier,
+        windowInsets = windowInsets,
+        contactActions = contactActions,
+        onFinishOnboarding = onFinishOnboarding,
+    )
 }
 
 @Composable
@@ -121,7 +119,8 @@ internal fun OnboardingScene(
     onFinishOnboarding: () -> Unit,
     contactActions: @Composable () -> Unit,
     navigationIcon: @Composable () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -134,6 +133,7 @@ internal fun OnboardingScene(
     WizardNavHost(
         controller,
         modifier = modifier,
+        windowInsets = windowInsets
     ) {
         step(
             "theme",
