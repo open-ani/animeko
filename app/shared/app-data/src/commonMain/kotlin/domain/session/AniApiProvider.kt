@@ -26,7 +26,5 @@ class AniApiProvider(
     val oauthApi = ApiInvoker(client) { BangumiOAuthAniApi(baseurl, it) }
     val subjectRelationsApi = ApiInvoker(client) { SubjectRelationsAniApi(baseurl, it) }
 
-    companion object {
-        private val baseurl get() = ServerListFeatureConfig.MAGIC_ANI_SERVER
-    }
+    private inline val baseurl get() = ServerListFeatureConfig.MAGIC_ANI_SERVER
 }
