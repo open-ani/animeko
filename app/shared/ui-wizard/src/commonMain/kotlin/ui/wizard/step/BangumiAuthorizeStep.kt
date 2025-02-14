@@ -345,45 +345,51 @@ private fun SettingsScope.AuthorizeHelpQA(
                     enter = motionScheme.animatedVisibility.columnEnter,
                     exit = motionScheme.animatedVisibility.columnExit,
                 ) {
-                    ProvideTextStyle(MaterialTheme.typography.bodyMedium) {
-                        when (option) {
-                            HelpOption.WEBSITE_BLOCKED ->
-                                Text(
-                                    "请在系统设置中更换默认浏览器，推荐按使用 Google Chrome，Microsoft Edge " +
-                                            "或 Mozilla Firefox 浏览器",
+                    Box(
+                        modifier = Modifier
+                            .padding(vertical = 8.dp)
+                            .fillMaxWidth()
+                    ) {
+                        ProvideTextStyle(MaterialTheme.typography.bodyMedium) {
+                            when (option) {
+                                HelpOption.WEBSITE_BLOCKED ->
+                                    Text(
+                                        "请在系统设置中更换默认浏览器，推荐按使用 Google Chrome，Microsoft Edge " +
+                                                "或 Mozilla Firefox 浏览器",
+                                        contentModifier,
+                                    )
+                                HelpOption.BANGUMI_REGISTER_CHOOSE ->
+                                    Text("管理 ACG 收藏与收视进度，分享交流", contentModifier)
+
+                                HelpOption.REGISTER_TYPE_WRONG_CAPTCHA ->
+                                    Text(
+                                        "如果没有验证码的输入框，可以尝试多点几次密码输入框，" +
+                                                "如果输错了验证码，需要刷新页面再登录",
+                                        contentModifier,
+                                    )
+
+                                HelpOption.CANT_RECEIVE_REGISTER_EMAIL ->
+                                    Text("请检查垃圾箱，并且尽可能使用常见邮箱注册，例如 QQ, 网易, Outlook", contentModifier)
+
+                                HelpOption.REGISTER_ACTIVATION_FAILED ->
+                                    Text("删除激活码的最后一个字，然后手动输入删除的字，或更换其他浏览器", contentModifier)
+
+                                HelpOption.LOGIN_SUCCESS_NO_RESPONSE -> Row(contentModifier) {
+                                    Text("可以尝试使用")
+                                    Text(
+                                        "令牌登录",
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.clickable(onClick = onClickTokenAuthorize),
+                                    )
+                                }
+
+                                HelpOption.OTHERS -> Column(
                                     contentModifier,
-                                )
-                            HelpOption.BANGUMI_REGISTER_CHOOSE ->
-                                Text("管理 ACG 收藏与收视进度，分享交流", contentModifier)
-
-                            HelpOption.REGISTER_TYPE_WRONG_CAPTCHA ->
-                                Text(
-                                    "如果没有验证码的输入框，可以尝试多点几次密码输入框，" +
-                                            "如果输错了验证码，需要刷新页面再登录",
-                                    contentModifier,
-                                )
-
-                            HelpOption.CANT_RECEIVE_REGISTER_EMAIL ->
-                                Text("请检查垃圾箱，并且尽可能使用常见邮箱注册，例如 QQ, 网易, Outlook", contentModifier)
-
-                            HelpOption.REGISTER_ACTIVATION_FAILED ->
-                                Text("删除激活码的最后一个字，然后手动输入删除的字，或更换其他浏览器", contentModifier)
-
-                            HelpOption.LOGIN_SUCCESS_NO_RESPONSE -> Row(contentModifier) {
-                                Text("可以尝试使用")
-                                Text(
-                                    "令牌登录",
-                                    color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.clickable(onClick = onClickTokenAuthorize),
-                                )
-                            }
-                            
-                            HelpOption.OTHERS -> Column(
-                                contentModifier,
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                Text("无法解决你的问题？还可以通过以下渠道获取帮助")
-                                contactActions()
+                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    Text("无法解决你的问题？还可以通过以下渠道获取帮助")
+                                    contactActions()
+                                }
                             }
                         }
                     }
