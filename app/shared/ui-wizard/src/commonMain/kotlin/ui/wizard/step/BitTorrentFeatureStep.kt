@@ -177,10 +177,10 @@ internal fun RequestNotificationPermission(
                 .fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) { 
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.Top
                 ) {
                     Icon(
                         if (granted) Icons.Outlined.NotificationsActive else Icons.Outlined.Notifications,
