@@ -65,6 +65,7 @@ import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.session.isSessionVerified
 import me.him188.ani.app.domain.session.unverifiedAccessTokenOrNull
 import me.him188.ani.app.navigation.BrowserNavigator
+import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.ui.foundation.AbstractViewModel
@@ -154,6 +155,7 @@ fun AboutTab(
 ) {
     val context by rememberUpdatedState(LocalContext.current)
     val toaster = LocalToaster.current
+    val navigator = LocalNavigator.current
 
     SettingsTab(modifier) {
         Group(
@@ -340,6 +342,14 @@ fun AboutTab(
                         },
                     ) {
                         Text("Invalidate Session")
+                    }
+                    
+                    FilledTonalButton(
+                        {
+                            navigator.navigateOnboarding()
+                        }
+                    ) {
+                        Text("重新进入新手向导")
                     }
                 }
 
