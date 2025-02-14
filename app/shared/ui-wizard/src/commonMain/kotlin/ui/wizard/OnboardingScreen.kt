@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -131,6 +132,8 @@ internal fun OnboardingScene(
 
     val authorizeState by state.bangumiAuthorizeState.state.collectAsStateWithLifecycle(AuthStateNew.Idle)
     val proxyState by state.configureProxyState.state.collectAsStateWithLifecycle(ConfigureProxyUIState.Placeholder)
+    val grantNotificationPermissionState by state.bitTorrentFeatureState.grantNotificationPermissionState
+        .collectAsStateWithLifecycle(GrantNotificationPermissionState.Placeholder)
 
     WizardNavHost(
         controller,
@@ -183,12 +186,28 @@ internal fun OnboardingScene(
                 onRequestReTest = { configureProxyState.onRequestReTest() }
             )
         }
-        step("bittorrent", { Text("BitTorrent") }) {
+        step(
+            "bittorrent", 
+            { Text("BitTorrent") },
+            forwardButton = {
+                WizardDefaults.GoForwardButton(
+                    {
+                        scope.launch {
+                            controller.goForward()
+                        }
+                    },
+                    enabled = state.bitTorrentFeatureState.enabled.value,
+                    colors = if (grantNotificationPermissionState.granted) {
+                        ButtonDefaults.buttonColors()
+                    } else {
+                        ButtonDefaults.filledTonalButtonColors()
+                    }
+                )
+            },
+        ) {
             val monoTasker = rememberUiMonoTasker()
             
             val configState = state.bitTorrentFeatureState.enabled
-            val grantNotificationPermissionState by state.bitTorrentFeatureState.grantNotificationPermissionState
-                .collectAsStateWithLifecycle(GrantNotificationPermissionState.Placeholder)
 
             LifecycleResumeEffect(Unit) {
                 state.bitTorrentFeatureState.onCheckPermissionState(context)

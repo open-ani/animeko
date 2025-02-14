@@ -24,6 +24,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonColors
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
@@ -265,12 +267,14 @@ object WizardDefaults {
         onClick: () -> Unit,
         enabled: Boolean,
         modifier: Modifier = Modifier,
+        colors: ButtonColors = ButtonDefaults.buttonColors(),
         text: String = "下一步"
     ) {
         Button(
             onClick = onClick,
             enabled = enabled,
             modifier = modifier,
+            colors = colors
         ) {
             Text(text)
         }
