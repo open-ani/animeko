@@ -27,7 +27,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material.icons.rounded.ArrowOutward
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -53,7 +52,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.domain.session.AuthStateNew
 import me.him188.ani.app.ui.foundation.IconButton
-import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.animation.AnimatedVisibilityMotionScheme
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.icons.BangumiNext
@@ -64,7 +62,6 @@ import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.TextItem
 import me.him188.ani.app.ui.wizard.HeroIcon
 import me.him188.ani.app.ui.wizard.WizardLayoutParams
-import me.him188.ani.utils.platform.isAndroid
 
 @Composable
 internal fun BangumiAuthorizeStep(
@@ -156,36 +153,6 @@ private fun SettingsScope.DefaultAuthorize(
                 modifier = Modifier
                     .padding(horizontal = layoutParams.horizontalPadding)
                     .fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Text(
-                    "Bangumi 注册提示",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-                Column(
-                    modifier = Modifier.padding(horizontal = layoutParams.descHorizontalPadding),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    val currentPlatform = LocalPlatform.current
-                    remember {
-                        buildList {
-                            add("尽可能使用常见邮箱注册，例如 QQ, 网易, Outlook")
-                            add("如果提示激活失败，请尝试删除激活码的最后一个字，然后手动输入删除的字")
-                            if (currentPlatform.isAndroid()) {
-                                add("如果浏览器提示网站被屏蔽或登录成功后无法跳转，请尝试在系统设置中更换默认浏览器")
-                            }
-                        }
-                    }.forEach {
-                        RegisterTip(it, modifier = Modifier.fillMaxWidth())
-                    }
-                }
-            }
-            Spacer(Modifier.height(8.dp))
-            Column(
-                modifier = Modifier
-                    .padding(horizontal = layoutParams.horizontalPadding)
-                    .fillMaxWidth(),
             ) {
                 AuthorizeButton(
                     authorizeState,
@@ -210,29 +177,6 @@ private fun SettingsScope.DefaultAuthorize(
                 layoutParams = layoutParams,
             )
         }
-    }
-}
-
-@Composable
-private fun RegisterTip(
-    text: String,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.Start),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            imageVector = Icons.Outlined.Lightbulb,
-            contentDescription = null,
-            modifier = Modifier.size(24.dp),
-            tint = MaterialTheme.colorScheme.primary,
-        )
-        Text(
-            text,
-            style = MaterialTheme.typography.bodyMedium,
-        )
     }
 }
 
