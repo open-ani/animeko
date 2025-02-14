@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.rounded.ArrowOutward
 import androidx.compose.material3.Button
@@ -349,7 +350,6 @@ private fun SettingsScope.AuthorizeHelpQA(
                     ) {
                         ProvideTextStyleContentColor(
                             MaterialTheme.typography.bodyMedium,
-                            MaterialTheme.colorScheme.primary
                         ) {
                             when (option) {
                                 HelpOption.WEBSITE_BLOCKED ->
@@ -374,13 +374,23 @@ private fun SettingsScope.AuthorizeHelpQA(
                                 HelpOption.REGISTER_ACTIVATION_FAILED ->
                                     Text("删除激活码的最后一个字，然后手动输入删除的字，或更换其他浏览器", contentModifier)
 
-                                HelpOption.LOGIN_SUCCESS_NO_RESPONSE -> Row(contentModifier) {
+                                HelpOption.LOGIN_SUCCESS_NO_RESPONSE -> Row(
+                                    modifier = contentModifier,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
                                     Text("可以尝试使用")
-                                    Text(
-                                        "令牌登录",
-                                        color = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.clickable(onClick = onClickTokenAuthorize),
-                                    )
+                                    Row(Modifier.clickable(onClick = onClickTokenAuthorize)) {
+                                        Text(
+                                            "令牌登录",
+                                            color = MaterialTheme.colorScheme.primary,
+                                        )
+                                        Icon(
+                                            Icons.AutoMirrored.Default.OpenInNew,
+                                            contentDescription = "Use token login",
+                                            modifier = Modifier.size(14.dp), // Text size of medium body
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
                                 }
 
                                 HelpOption.OTHERS -> Column(
