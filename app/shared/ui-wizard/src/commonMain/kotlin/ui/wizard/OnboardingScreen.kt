@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -39,6 +40,7 @@ import me.him188.ani.app.tools.rememberUiMonoTasker
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.stateOf
+import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.app.ui.settings.framework.SettingsState
 import me.him188.ani.app.ui.settings.tabs.network.SystemProxyPresentation
@@ -74,23 +76,25 @@ fun OnboardingScreen(
             onFinishOnboarding()
         }
     }
-    
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
-    ) {
-        OnboardingPage(
-            modifier = modifier,
-            wizardController = vm.wizardController,
-            state = vm.onboardingState,
-            onFinishOnboarding = {
-                vm.finishOnboarding()
-                onFinishOnboarding()
-            },
-            contactActions = contactActions,
-            navigationIcon = navigationIcon,
-            windowInsets = windowInsets,
-        )
+
+    Surface(color = AniThemeDefaults.pageContentBackgroundColor) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center,
+        ) {
+            OnboardingPage(
+                modifier = modifier,
+                wizardController = vm.wizardController,
+                state = vm.onboardingState,
+                onFinishOnboarding = {
+                    vm.finishOnboarding()
+                    onFinishOnboarding()
+                },
+                contactActions = contactActions,
+                navigationIcon = navigationIcon,
+                windowInsets = windowInsets,
+            )
+        }
     }
 }
 

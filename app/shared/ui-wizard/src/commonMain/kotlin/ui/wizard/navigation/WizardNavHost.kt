@@ -155,6 +155,7 @@ fun WizardNavHost(
                         }
                     },
                     modifier = Modifier.fillMaxSize(),
+                    containerColor = Color.Transparent,
                     contentWindowInsets = windowInsets,
                 ) { contentPadding ->
                     val scope = remember(scrollState, topAppBarState) {
@@ -233,6 +234,7 @@ object WizardDefaults {
             },
             modifier = modifier,
             navigationIcon = navigationIcon,
+            colors = TopAppBarDefaults.largeTopAppBarColors(containerColor = Color.Transparent),
             actions = { actionButton() },
             scrollBehavior = scrollBehavior,
             windowInsets = windowInsets,

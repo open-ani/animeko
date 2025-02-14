@@ -45,6 +45,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.him188.ani.app.ui.foundation.avatar.AvatarImage
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
+import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 
 @Composable
 fun OnboardingCompleteScreen(
@@ -55,8 +56,8 @@ fun OnboardingCompleteScreen(
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
 ) {
     val state by vm.state.collectAsStateWithLifecycle(OnboardingCompleteState.Placeholder)
-    
-    Surface { 
+
+    Surface(color = AniThemeDefaults.pageContentBackgroundColor) { 
         OnboardingCompleteScene(
             state = state,
             onClickContinue = onClickContinue,
