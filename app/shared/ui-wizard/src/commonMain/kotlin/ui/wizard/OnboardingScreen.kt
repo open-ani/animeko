@@ -118,9 +118,9 @@ fun OnboardingPage(
 internal fun OnboardingScene(
     controller: WizardController,
     state: OnboardingPresentationState,
+    onFinishOnboarding: () -> Unit,
     contactActions: @Composable () -> Unit,
     navigationIcon: @Composable () -> Unit,
-    onFinishOnboarding: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val scope = rememberCoroutineScope()
