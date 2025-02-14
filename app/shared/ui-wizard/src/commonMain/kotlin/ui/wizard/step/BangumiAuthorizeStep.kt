@@ -17,10 +17,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -128,9 +126,7 @@ private fun SettingsScope.DefaultAuthorize(
                 tint = BangumiNextIconColor,
             )
         }
-        Column(
-            verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
-        ) {
+        Column {
             Column(
                 modifier = Modifier
                     .padding(horizontal = layoutParams.horizontalPadding)
@@ -148,10 +144,10 @@ private fun SettingsScope.DefaultAuthorize(
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }
-            Spacer(Modifier.height(8.dp))
             Column(
                 modifier = Modifier
                     .padding(horizontal = layoutParams.horizontalPadding)
+                    .padding(top = 24.dp)
                     .fillMaxWidth(),
             ) {
                 AuthorizeButton(
@@ -170,13 +166,12 @@ private fun SettingsScope.DefaultAuthorize(
                     animatedVisibilityMotionScheme = motionScheme.animatedVisibility,
                 )
             }
-            Spacer(Modifier.height(8.dp))
-            AuthorizeHelpQA(
-                onClickTokenAuthorize = onClickTokenAuthorize,
-                contactActions = contactActions,
-                layoutParams = layoutParams,
-            )
         }
+        AuthorizeHelpQA(
+            onClickTokenAuthorize = onClickTokenAuthorize,
+            contactActions = contactActions,
+            layoutParams = layoutParams,
+        )
     }
 }
 
@@ -307,7 +302,9 @@ private fun SettingsScope.AuthorizeHelpQA(
 
     Column(modifier = modifier) {
         Column(
-            modifier = Modifier.padding(horizontal = layoutParams.horizontalPadding, vertical = 16.dp),
+            modifier = Modifier
+                .padding(horizontal = layoutParams.horizontalPadding)
+                .padding(top = 8.dp),
             horizontalAlignment = Alignment.Start,
         ) {
             Text(
