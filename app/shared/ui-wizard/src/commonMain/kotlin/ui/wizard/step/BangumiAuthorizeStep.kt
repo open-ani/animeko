@@ -33,7 +33,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -55,6 +54,7 @@ import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.icons.BangumiNext
 import me.him188.ani.app.ui.foundation.icons.BangumiNextIconColor
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
+import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.TextItem
@@ -347,7 +347,10 @@ private fun SettingsScope.AuthorizeHelpQA(
                             .padding(vertical = 8.dp)
                             .fillMaxWidth()
                     ) {
-                        ProvideTextStyle(MaterialTheme.typography.bodyMedium) {
+                        ProvideTextStyleContentColor(
+                            MaterialTheme.typography.bodyMedium,
+                            MaterialTheme.colorScheme.primary
+                        ) {
                             when (option) {
                                 HelpOption.WEBSITE_BLOCKED ->
                                     Text(
