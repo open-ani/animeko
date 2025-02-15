@@ -33,12 +33,15 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.ProvideTextStyle
+import androidx.compose.material3.SplitButtonDefaults
+import androidx.compose.material3.SplitButtonShapes
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -56,6 +59,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.domain.session.AuthStateNew
 import me.him188.ani.app.ui.foundation.IconButton
+import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.animation.AniMotionScheme
 import me.him188.ani.app.ui.foundation.animation.AnimatedVisibilityMotionScheme
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
@@ -96,6 +100,7 @@ internal fun BangumiAuthorizeStep(
                         onCancelAuthorize()
                         onSetShowTokenAuthorizePage(true)
                     },
+                    onClickCancelAuthorize = onCancelAuthorize,
                     layoutParams = layoutParams,
                 )
             } else {
@@ -117,6 +122,7 @@ private fun SettingsScope.DefaultAuthorize(
     authorizeState: AuthStateNew,
     onClickAuthorize: () -> Unit,
     onClickTokenAuthorize: () -> Unit,
+    onClickCancelAuthorize: () -> Unit,
     contactActions: @Composable () -> Unit,
     layoutParams: WizardLayoutParams,
     modifier: Modifier = Modifier,
@@ -161,6 +167,7 @@ private fun SettingsScope.DefaultAuthorize(
                 AuthorizeButton(
                     authorizeState,
                     onClick = onClickAuthorize,
+                    onClickCancel = onClickCancelAuthorize,
                     modifier = Modifier
                         .fillMaxWidth()
                         .widthIn(max = 720.dp),
@@ -183,10 +190,14 @@ private fun SettingsScope.DefaultAuthorize(
     }
 }
 
+
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun AuthorizeButton(
     authorizeState: AuthStateNew,
     onClick: () -> Unit,
+    onClickCancel: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val content: @Composable RowScope.() -> Unit = remember(authorizeState) {
@@ -220,17 +231,35 @@ private fun AuthorizeButton(
             }
         }
     }
-
-    if (authorizeState is AuthStateNew.Success && !authorizeState.isGuest) OutlinedButton(
-        onClick = onClick,
-        modifier = modifier,
-        content = content,
-    ) else Button(
-        onClick = onClick,
-        enabled = authorizeState !is AuthStateNew.AwaitingResult,
-        modifier = modifier,
-        content = content,
-    )
+    
+    Row(
+        modifier,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        val awaitingResult = authorizeState is AuthStateNew.AwaitingResult
+        if (authorizeState is AuthStateNew.Success && !authorizeState.isGuest) OutlinedButton(
+            onClick = onClick,
+            modifier = Modifier.weight(1f),
+            content = content,
+        ) else Button(
+            onClick = onClick,
+            enabled = authorizeState !is AuthStateNew.AwaitingResult,
+            modifier = Modifier.weight(1f),
+            content = content,
+            shape = if (awaitingResult) SplitButtonDefaults.leadingButtonShapes().shape else ButtonDefaults.shape,
+        )
+        AniAnimatedVisibility(
+            visible = awaitingResult,
+            enter = LocalAniMotionScheme.current.animatedVisibility.rowEnter,
+            exit = LocalAniMotionScheme.current.animatedVisibility.rowExit,
+        ) {
+            FilledTonalButton(
+                onClick = onClickCancel,
+                content = { Text("取消") },
+                shape = SplitButtonDefaults.trailingButtonShapes().shape
+            )
+        }
+    }
 }
 
 @Composable
