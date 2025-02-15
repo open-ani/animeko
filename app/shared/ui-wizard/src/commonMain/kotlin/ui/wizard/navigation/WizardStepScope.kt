@@ -13,25 +13,17 @@ import androidx.compose.foundation.ScrollState
 import androidx.compose.runtime.Stable
 
 @Stable
-class WizardStepScope(
+interface WizardStepScope {
     /**
      * Access the list state.
      */
-    val wizardScrollState: ScrollState,
+    val wizardScrollState: ScrollState
     /**
      * Access scrolling top app bar.
      */
-    private val scrollTopAppBarExpanded: suspend () -> Unit,
+    suspend fun scrollTopAppBarExpanded()
     /**
      * Access scrolling top app bar.
      */
-    private val scrollTopAppBarCollapsed: suspend () -> Unit,
-) {
-    suspend fun scrollTopAppBarExpanded() {
-        scrollTopAppBarExpanded.invoke()
-    }
-
-    suspend fun scrollTopAppBarCollapsed() {
-        scrollTopAppBarCollapsed.invoke()
-    }
+    suspend fun scrollTopAppBarCollapsed()
 }

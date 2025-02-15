@@ -11,6 +11,7 @@ package me.him188.ani.app.ui.wizard.navigation
 
 import androidx.compose.animation.core.AnimationState
 import androidx.compose.animation.core.animateTo
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -160,13 +161,16 @@ fun WizardNavHost(
                     contentWindowInsets = windowInsets,
                 ) { contentPadding ->
                     val scope = remember(scrollState, topAppBarState) {
-                        WizardStepScope(
-                            scrollState,
-                            scrollTopAppBarExpanded = { animateScrollTopAppBar(topAppBarState, 0f) },
-                            scrollTopAppBarCollapsed = {
+                        object : WizardStepScope {
+                            override val wizardScrollState: ScrollState = scrollState
+                            override suspend fun scrollTopAppBarExpanded() {
+                                animateScrollTopAppBar(topAppBarState, 0f)
+                            }
+
+                            override suspend fun scrollTopAppBarCollapsed() {
                                 animateScrollTopAppBar(topAppBarState, topAppBarState.heightOffsetLimit)
-                            },
-                        )
+                            }
+                        }
                     }
 
                     Box(
