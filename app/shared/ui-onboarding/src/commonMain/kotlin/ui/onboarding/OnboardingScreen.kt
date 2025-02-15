@@ -65,7 +65,7 @@ fun OnboardingScreen(
     vm: OnboardingViewModel,
     onFinishOnboarding: () -> Unit,
     contactActions: @Composable () -> Unit,
-    navigationIcon: @Composable () -> Unit,
+    navigationIcon: @Composable () -> Unit, 
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
 ) {
@@ -74,6 +74,7 @@ fun OnboardingScreen(
             onFinishOnboarding()
         }
     }
+    LaunchedEffect(Unit) { vm.startAuthorizeCheckAndProxyTesterLoop() }
 
     Surface(color = AniThemeDefaults.pageContentBackgroundColor) {
         Box(

@@ -29,11 +29,14 @@ import kotlinx.coroutines.flow.retry
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transform
 import kotlinx.coroutines.flow.transformLatest
+import me.him188.ani.app.data.models.ApiFailure
+import me.him188.ani.app.data.models.fold
 import me.him188.ani.app.data.repository.user.AccessTokenSession
 import me.him188.ani.app.data.repository.user.GuestSession
 import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.logging.debug
+import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.platform.Uuid
 import me.him188.ani.utils.platform.currentTimeMillis
@@ -52,7 +55,6 @@ class AniAuthConfigurator(
     private val sessionManager: SessionManager,
     private val authClient: AniAuthClient,
     private val onLaunchAuthorize: suspend (requestId: String) -> Unit,
-    private val maxAwaitRetries: Long = 5 * 60,
     private val awaitRetryInterval: Duration = 1.seconds,
     parentCoroutineContext: CoroutineContext = Dispatchers.Default,
 ) {
@@ -148,10 +150,26 @@ class AniAuthConfigurator(
                 // 最大尝试 300 次, 每次间隔 1 秒
                 suspend { checkAuthorizeStatus(requestAuthorizeId, processingRequest) }
                     .asFlow()
-                    .retry(retries = maxAwaitRetries) { e ->
+                    .retry(retries = NETWORK_MAX_RETRIES) { e ->
+                        // 网络问题先重试有限次, 超过次数就没必要继续了
+                        (e is ApiNetworkException).also { if (it) delay(awaitRetryInterval) }
+                    }
+                    .retry { e ->
                         (e is NotAuthorizedException).also { if (it) delay(awaitRetryInterval) }
                     }
-                    .catch { authorizeTasker.cancel() }
+                    .catch { e ->
+                        if (e is ApiNetworkException) {
+                            logger.error(e) { 
+                                "[AuthCheckLoop][${requestAuthorizeId.idStr}] Failed to check authorize status " +
+                                        "due to network error." 
+                            }
+                        } else if (e !is NotAuthorizedException) {
+                            logger.error(e) { 
+                                "[AuthCheckLoop][${requestAuthorizeId.idStr}] Failed to check authorize status." 
+                            }
+                        }
+                        authorizeTasker.cancel() 
+                    }
                     .firstOrNull()
             }
     }
@@ -196,8 +214,15 @@ class AniAuthConfigurator(
         requestId: String,
         request: ExternalOAuthRequest,
     ) {
-        val token = authClient.getResult(requestId).getOrThrow()
-            ?: throw NotAuthorizedException()
+        val token = authClient
+            .getResult(requestId)
+            .fold(
+                onSuccess = { resp -> resp ?: throw NotAuthorizedException() },
+                onKnownFailure = { f -> 
+                    if (f is ApiFailure.Unauthorized) throw NotAuthorizedException()
+                    throw ApiNetworkException()
+                }
+            )
 
         val result = OAuthResult(
             accessToken = token.accessToken,
@@ -276,6 +301,7 @@ class AniAuthConfigurator(
     
     companion object {
         private const val REFRESH = "-1"
+        private const val NETWORK_MAX_RETRIES = 10L
         private val String.idStr get() = if (equals(REFRESH)) "REFRESH" else this
     }
 }
@@ -314,6 +340,11 @@ sealed class AuthStateNew {
 }
 
 /**
- * 还未完成验证
+ * 还未完成验证, API 返回 null 或 [ApiFailure.Unauthorized]
  */
 private class NotAuthorizedException : Exception()
+
+/**
+ * 网路问题, [ApiFailure.NetworkError] 和 [ApiFailure.ServiceUnavailable]
+ */
+private class ApiNetworkException : Exception()

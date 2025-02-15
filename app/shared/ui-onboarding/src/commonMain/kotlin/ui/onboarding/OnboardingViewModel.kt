@@ -19,6 +19,7 @@ import io.ktor.http.encodeURLParameter
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -234,13 +235,13 @@ class OnboardingViewModel : AbstractSettingsViewModel(), KoinComponent {
         bangumiAuthorizeState = bangumiAuthorizeState,
     )
     // endregion
-
-    init {
-        launchInBackground { authConfigurator.authorizeRequestCheckLoop() }
-        launchInBackground { proxyTester.testRunnerLoop() }
+    
+    suspend fun startAuthorizeCheckAndProxyTesterLoop() {
+        coroutineScope {
+            launch(backgroundScope.coroutineContext) { authConfigurator.authorizeRequestCheckLoop() }
+            launch(backgroundScope.coroutineContext) { proxyTester.testRunnerLoop() }
+        }
     }
-    
-    
 
     private fun openSystemNotificationSettings(context: ContextMP) {
         permissionManager.openSystemNotificationSettings(context)
