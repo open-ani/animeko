@@ -56,6 +56,7 @@ class AniAuthConfigurator(
     private val sessionManager: SessionManager,
     private val authClient: AniAuthClient,
     private val onLaunchAuthorize: suspend (requestId: String) -> Unit,
+    private val networkMaxRetries: Long = 10,
     private val awaitRetryInterval: Duration = 1.seconds,
     parentCoroutineContext: CoroutineContext = Dispatchers.Default,
 ) {
@@ -151,7 +152,7 @@ class AniAuthConfigurator(
                 // 最大尝试 300 次, 每次间隔 1 秒
                 suspend { checkAuthorizeStatus(requestAuthorizeId, processingRequest) }
                     .asFlow()
-                    .retry(retries = NETWORK_MAX_RETRIES) { e ->
+                    .retry(retries = networkMaxRetries) { e ->
                         // 网络问题先重试有限次, 超过次数就没必要继续了
                         (e is ApiNetworkException).also { if (it) delay(awaitRetryInterval) }
                     }
@@ -307,7 +308,6 @@ class AniAuthConfigurator(
     
     companion object {
         private const val REFRESH = "-1"
-        private const val NETWORK_MAX_RETRIES = 10L
         private val String.idStr get() = if (equals(REFRESH)) "REFRESH" else this
     }
 }

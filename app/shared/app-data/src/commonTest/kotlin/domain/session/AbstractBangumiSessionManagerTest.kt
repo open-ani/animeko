@@ -12,20 +12,12 @@
 package me.him188.ani.app.domain.session
 
 import androidx.datastore.preferences.core.mutablePreferencesOf
-import io.ktor.client.HttpClient
-import io.ktor.client.engine.mock.MockEngine
-import io.ktor.client.engine.mock.respond
-import io.ktor.http.HttpHeaders
-import io.ktor.http.HttpStatusCode
-import io.ktor.http.Url
-import io.ktor.http.headersOf
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.TestResult
 import kotlinx.coroutines.test.TestScope
-import kotlinx.serialization.json.Json
 import me.him188.ani.app.data.models.ApiFailure
 import me.him188.ani.app.data.models.ApiResponse
 import me.him188.ani.app.data.models.UserInfo
@@ -34,11 +26,6 @@ import me.him188.ani.app.data.repository.user.AccessTokenSession
 import me.him188.ani.app.data.repository.user.TokenRepositoryImpl
 import me.him188.ani.app.domain.media.fetch.AtomicInteger
 import me.him188.ani.app.ui.framework.runComposeStateTest
-import me.him188.ani.client.apis.BangumiOAuthAniApi
-import me.him188.ani.client.infrastructure.HttpResponse
-import me.him188.ani.client.models.AniBangumiUserToken
-import me.him188.ani.utils.ktor.ApiInvoker
-import me.him188.ani.utils.ktor.asScopedHttpClient
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 
@@ -93,6 +80,14 @@ sealed class AbstractBangumiSessionManagerTest {
     internal fun <T> noCall(): ApiResponse<T> {
         // 必须要返回一个, 因为 flow 实际上还会在跑一会
         return ApiResponse.failure(ApiFailure.Unauthorized)
+    }
+    
+    internal fun refreshTokenSuccess(
+        accessToken: String = ACCESS_TOKEN,
+        expiresAtMillis: Long = Long.MAX_VALUE,
+        refreshToken: String = REFRESH_TOKEN,
+    ): ApiResponse<NewSession> {
+        return ApiResponse.success(NewSession(accessToken, expiresAtMillis, refreshToken))
     }
 
     internal suspend fun setExpiredToken() {
