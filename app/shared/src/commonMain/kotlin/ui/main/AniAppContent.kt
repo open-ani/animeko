@@ -68,6 +68,11 @@ import me.him188.ani.app.ui.foundation.layout.SharedTransitionScopeProvider
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
+import me.him188.ani.app.ui.onboarding.OnboardingCompleteScreen
+import me.him188.ani.app.ui.onboarding.OnboardingCompleteViewModel
+import me.him188.ani.app.ui.onboarding.OnboardingScreen
+import me.him188.ani.app.ui.onboarding.OnboardingViewModel
+import me.him188.ani.app.ui.onboarding.WelcomeScreen
 import me.him188.ani.app.ui.profile.BangumiOAuthViewModel
 import me.him188.ani.app.ui.profile.auth.AniContactList
 import me.him188.ani.app.ui.profile.auth.BangumiOAuthScreen
@@ -87,11 +92,6 @@ import me.him188.ani.app.ui.subject.details.SubjectDetailsScreen
 import me.him188.ani.app.ui.subject.details.SubjectDetailsViewModel
 import me.him188.ani.app.ui.subject.episode.EpisodeScreen
 import me.him188.ani.app.ui.subject.episode.EpisodeViewModel
-import me.him188.ani.app.ui.wizard.OnboardingCompleteScreen
-import me.him188.ani.app.ui.wizard.OnboardingCompleteViewModel
-import me.him188.ani.app.ui.wizard.OnboardingScreen
-import me.him188.ani.app.ui.wizard.OnboardingViewModel
-import me.him188.ani.app.ui.wizard.WelcomeScreen
 import me.him188.ani.datasources.api.source.FactoryId
 import kotlin.reflect.typeOf
 
