@@ -119,10 +119,6 @@ internal fun OnboardingCompleteScreen(
                     textAlign = TextAlign.Center,
                     maxLines = 1
                 )
-                Text(
-                    "...",
-                    style = MaterialTheme.typography.titleMedium
-                )
                 Column(modifier = Modifier.padding(vertical = 16.dp)) { 
                     AvatarImage(
                         url = state.avatarUrl,
