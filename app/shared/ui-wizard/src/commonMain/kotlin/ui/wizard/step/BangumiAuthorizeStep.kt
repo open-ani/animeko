@@ -17,8 +17,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -28,14 +30,18 @@ import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.rounded.ArrowOutward
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
@@ -50,12 +56,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.domain.session.AuthStateNew
 import me.him188.ani.app.ui.foundation.IconButton
+import me.him188.ani.app.ui.foundation.animation.AniMotionScheme
 import me.him188.ani.app.ui.foundation.animation.AnimatedVisibilityMotionScheme
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.icons.BangumiNext
 import me.him188.ani.app.ui.foundation.icons.BangumiNextIconColor
+import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
-import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.TextItem
@@ -71,7 +78,7 @@ internal fun BangumiAuthorizeStep(
     onClickAuthorize: () -> Unit,
     onCancelAuthorize: () -> Unit,
     onClickNavigateToBangumiDev: () -> Unit,
-    onAuthorizeViaToken: (String) -> Unit,
+    onAuthorizeByToken: (String) -> Unit,
     modifier: Modifier = Modifier,
     layoutParams: WizardLayoutParams = WizardLayoutParams.calculate(currentWindowAdaptiveInfo1().windowSizeClass),
 ) {
@@ -94,8 +101,8 @@ internal fun BangumiAuthorizeStep(
             } else {
                 TokenAuthorize(
                     onClickNavigateToBangumiDev = onClickNavigateToBangumiDev,
-                    onAuthorizeViaToken = { token ->
-                        onAuthorizeViaToken(token)
+                    onAuthorizeByToken = { token ->
+                        onAuthorizeByToken(token)
                         onSetShowTokenAuthorizePage(false)
                     },
                     layoutParams = layoutParams,
@@ -251,7 +258,7 @@ private fun AuthorizeStateText(
                         }
                     }
 
-                    is AuthStateNew.Network -> "授权登录失败：网络错误，请重试"
+                    is AuthStateNew.NetworkError -> "授权登录失败：网络错误，请重试"
                     is AuthStateNew.TokenExpired -> "验证登陆失败：Token 已过期，请重新授权"
                     is AuthStateNew.Timeout -> "授权登录失败：等待验证超时，请重试"
                     is AuthStateNew.UnknownError -> "授权登录失败：未知错误，请重试\n" + authorizeState.message
@@ -291,6 +298,73 @@ private fun renderHelpOptionTitle(option: HelpOption): String {
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun renderHelpOptionContent(
+    option: HelpOption,
+    onClickTokenAuthorize: () -> Unit,
+    contactActions : @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(modifier) {
+        when (option) {
+            HelpOption.WEBSITE_BLOCKED -> {
+                Text("请在系统设置中更换默认浏览器，推荐按使用 Google Chrome，Microsoft Edge 或 Mozilla Firefox 浏览器")
+            }
+
+            HelpOption.BANGUMI_REGISTER_CHOOSE -> {
+                Text("管理 ACG 收藏与收视进度，分享交流")
+            }
+
+            HelpOption.REGISTER_TYPE_WRONG_CAPTCHA -> {
+                Text("如果没有验证码的输入框，可以尝试多点几次密码输入框，如果输错了验证码，需要刷新页面再登录")
+            }
+
+
+            HelpOption.CANT_RECEIVE_REGISTER_EMAIL -> {
+                Text("请检查垃圾箱，并且尽可能使用常见邮箱注册，例如 QQ, 网易, Outlook")
+            }
+
+
+            HelpOption.REGISTER_ACTIVATION_FAILED -> {
+                Text("删除激活码的最后一个字，然后手动输入删除的字，或更换其他浏览器")
+            }
+
+            HelpOption.LOGIN_SUCCESS_NO_RESPONSE -> {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("可以尝试使用")
+                    TextButton(
+                        onClick = onClickTokenAuthorize,
+                        modifier = Modifier.heightIn(ButtonDefaults.XSmallContainerHeight),
+                        contentPadding = ButtonDefaults.XSmallContentPadding,
+                    ) {
+                        Text(
+                            "令牌登录",
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                        Spacer(Modifier.size(ButtonDefaults.XSmallIconSpacing))
+                        Icon(
+                            Icons.AutoMirrored.Default.OpenInNew,
+                            contentDescription = "Use token login",
+                            modifier = Modifier.size(ButtonDefaults.XSmallIconSize), // Text size of medium body
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
+            }
+
+            HelpOption.OTHERS -> {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("无法解决你的问题？还可以通过以下渠道获取帮助")
+                    contactActions()
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun SettingsScope.AuthorizeHelpQA(
     onClickTokenAuthorize: () -> Unit,
@@ -298,7 +372,6 @@ private fun SettingsScope.AuthorizeHelpQA(
     layoutParams: WizardLayoutParams,
     modifier: Modifier = Modifier,
 ) {
-    val motionScheme = LocalAniMotionScheme.current
     var currentSelected by rememberSaveable { mutableStateOf<HelpOption?>(null) }
 
     Column(modifier = modifier) {
@@ -314,100 +387,72 @@ private fun SettingsScope.AuthorizeHelpQA(
             )
         }
         Column(modifier = Modifier.fillMaxWidth()) {
-            val contentModifier = Modifier
-                .padding(horizontal = layoutParams.horizontalPadding, vertical = 8.dp)
-                .fillMaxWidth()
             HelpOption.entries.forEachIndexed { index, option ->
-                TextItem(
+                ExpandableHelpItem(
                     title = {
                         Text(
                             renderHelpOptionTitle(option),
-                            fontWeight = if (currentSelected == option) FontWeight.SemiBold else null,
-                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = if (currentSelected == option) FontWeight.SemiBold else null
                         )
                     },
-                    action = {
-                        Icon(
-                            Icons.Default.ArrowDropDown,
-                            contentDescription = null,
-                            modifier = Modifier
-                                .rotate(if (currentSelected == option) 180f else 0f),
-                        )
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { currentSelected = if (currentSelected == option) null else option },
-                )
-                AnimatedVisibility(
-                    currentSelected == option,
-                    enter = motionScheme.animatedVisibility.columnEnter,
-                    exit = motionScheme.animatedVisibility.columnExit,
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .padding(vertical = 8.dp)
-                            .fillMaxWidth()
-                    ) {
-                        ProvideTextStyleContentColor(
-                            MaterialTheme.typography.bodyMedium,
-                        ) {
-                            when (option) {
-                                HelpOption.WEBSITE_BLOCKED ->
-                                    Text(
-                                        "请在系统设置中更换默认浏览器，推荐按使用 Google Chrome，Microsoft Edge " +
-                                                "或 Mozilla Firefox 浏览器",
-                                        contentModifier,
-                                    )
-                                HelpOption.BANGUMI_REGISTER_CHOOSE ->
-                                    Text("管理 ACG 收藏与收视进度，分享交流", contentModifier)
-
-                                HelpOption.REGISTER_TYPE_WRONG_CAPTCHA ->
-                                    Text(
-                                        "如果没有验证码的输入框，可以尝试多点几次密码输入框，" +
-                                                "如果输错了验证码，需要刷新页面再登录",
-                                        contentModifier,
-                                    )
-
-                                HelpOption.CANT_RECEIVE_REGISTER_EMAIL ->
-                                    Text("请检查垃圾箱，并且尽可能使用常见邮箱注册，例如 QQ, 网易, Outlook", contentModifier)
-
-                                HelpOption.REGISTER_ACTIVATION_FAILED ->
-                                    Text("删除激活码的最后一个字，然后手动输入删除的字，或更换其他浏览器", contentModifier)
-
-                                HelpOption.LOGIN_SUCCESS_NO_RESPONSE -> Row(
-                                    modifier = contentModifier,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text("可以尝试使用")
-                                    Row(Modifier.clickable(onClick = onClickTokenAuthorize)) {
-                                        Text(
-                                            "令牌登录",
-                                            color = MaterialTheme.colorScheme.primary,
-                                        )
-                                        Icon(
-                                            Icons.AutoMirrored.Default.OpenInNew,
-                                            contentDescription = "Use token login",
-                                            modifier = Modifier.size(14.dp), // Text size of medium body
-                                            tint = MaterialTheme.colorScheme.primary
-                                        )
-                                    }
-                                }
-
-                                HelpOption.OTHERS -> Column(
-                                    contentModifier,
-                                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                                ) {
-                                    Text("无法解决你的问题？还可以通过以下渠道获取帮助")
-                                    contactActions()
-                                }
+                    content = {
+                        renderHelpOptionContent(
+                            option, 
+                            onClickTokenAuthorize, 
+                            contactActions,
+                            modifier = Modifier.ifThen(option != HelpOption.LOGIN_SUCCESS_NO_RESPONSE) {
+                                Modifier.padding(vertical = 16.dp)
                             }
-                        }
-                    }
-                }
-                if (index != HelpOption.entries.lastIndex) {
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = layoutParams.horizontalPadding))
-                }
+                        )
+                    },
+                    expanded = currentSelected == option,
+                    showDivider = index != HelpOption.entries.lastIndex,
+                    onClick = { currentSelected = if (currentSelected == option) null else option },
+                )
             }
+        }
+    }
+}
+
+@Composable
+fun SettingsScope.ExpandableHelpItem(
+    title: @Composable () -> Unit,
+    content: @Composable () -> Unit,
+    expanded: Boolean,
+    showDivider: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    motionScheme: AniMotionScheme = LocalAniMotionScheme.current,
+    layoutParams: WizardLayoutParams = WizardLayoutParams.calculate(currentWindowAdaptiveInfo1().windowSizeClass),
+) {
+    Column(modifier) {
+        TextItem(
+            title = {
+                ProvideTextStyle(MaterialTheme.typography.titleMedium, title)
+            },
+            action = {
+                Icon(
+                    Icons.Default.ArrowDropDown,
+                    contentDescription = null,
+                    modifier = Modifier.rotate(if (expanded) 180f else 0f),
+                )
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onClick() },
+        )
+        AnimatedVisibility(
+            expanded,
+            modifier = Modifier
+                .padding(horizontal = layoutParams.horizontalPadding)
+                .fillMaxWidth(),
+            enter = motionScheme.animatedVisibility.columnEnter,
+            exit = motionScheme.animatedVisibility.columnExit,
+        ) {
+            ProvideTextStyle(MaterialTheme.typography.bodyMedium, content)
+        }
+        if (showDivider) {
+            HorizontalDivider(modifier = Modifier.padding(horizontal = layoutParams.horizontalPadding))
         }
     }
 }
@@ -415,7 +460,7 @@ private fun SettingsScope.AuthorizeHelpQA(
 @Composable
 private fun SettingsScope.TokenAuthorize(
     onClickNavigateToBangumiDev: () -> Unit,
-    onAuthorizeViaToken: (String) -> Unit,
+    onAuthorizeByToken: (String) -> Unit,
     layoutParams: WizardLayoutParams,
     modifier: Modifier = Modifier,
 ) {
@@ -458,7 +503,7 @@ private fun SettingsScope.TokenAuthorize(
                 label = { Text("令牌 (token)") },
             )
             Button(
-                onClick = { onAuthorizeViaToken(token) },
+                onClick = { onAuthorizeByToken(token) },
                 enabled = token.isNotBlank(),
                 modifier = Modifier
                     .fillMaxWidth()

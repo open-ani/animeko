@@ -92,9 +92,10 @@ internal fun OnboardingCompleteScreen(
             )
         },
         containerColor = Color.Transparent
-    ) { _ ->
+    ) { contentPadding ->
         Box(
             modifier = Modifier
+                .padding(contentPadding)
                 .padding(
                     horizontal = layoutParams.horizontalPadding,
                     vertical = layoutParams.verticalPadding

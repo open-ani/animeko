@@ -9,33 +9,31 @@
 
 package me.him188.ani.app.domain.settings
 
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.shareIn
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.ServerListFeature
 import me.him188.ani.app.domain.foundation.ServerListFeatureConfig
 import me.him188.ani.app.domain.foundation.withValue
 import me.him188.ani.app.domain.session.AniApiProvider
 import me.him188.ani.datasources.bangumi.BangumiClientImpl
-import me.him188.ani.utils.coroutines.SingleTaskExecutor
-import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.coroutines.flows.FlowRestarter
 import me.him188.ani.utils.coroutines.flows.FlowRunning
 import me.him188.ani.utils.coroutines.flows.restartable
-import kotlin.coroutines.CoroutineContext
 
+/**
+ * You should call [testRunnerLoop] to start the test runner loop and make functionality.
+ */
 class ProxyTester(
     clientProvider: HttpClientProvider,
-    parentCoroutineContext: CoroutineContext
+    flowScope: CoroutineScope
 ) {
-    val scope = parentCoroutineContext.childScope()
-
     private val proxyTestRunning = FlowRunning()
     private val proxyTestRestarter = FlowRestarter()
-    private val tasker = SingleTaskExecutor(scope.coroutineContext)
 
     private val connectionTester = clientProvider.configurationFlow.map {
         val client = clientProvider.get(
@@ -47,23 +45,20 @@ class ProxyTester(
             aniClient = AniApiProvider(client).trendsApi,
         )
     }
-        .stateIn(
-            scope,
-            SharingStarted.WhileSubscribed(),
-            ServiceConnectionTester(services = emptyList()),
+        .shareIn(
+            flowScope,
+            SharingStarted.WhileSubscribed()
         )
 
     val testResult = connectionTester.flatMapLatest { it.results }
     val testRunning = proxyTestRunning.isRunning
 
-    suspend fun startTestRestartObserver() {
-        tasker.invoke {
-            connectionTester
-                .restartable(restarter = proxyTestRestarter)
-                .collectLatest { tester ->
-                    proxyTestRunning.withRunning { tester.testAll() }
-                }
-        }
+    suspend fun testRunnerLoop() {
+        connectionTester
+            .restartable(restarter = proxyTestRestarter)
+            .collectLatest { tester ->
+                proxyTestRunning.withRunning { tester.testAll() }
+            }
     }
 
     fun restartTest() {

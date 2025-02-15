@@ -47,7 +47,7 @@ class OnboardingCompleteViewModel : AbstractViewModel(), KoinComponent {
         )
     
     init {
-        launchInBackground { authConfigurator.startProcessAuthorizeRequestTask() }
+        launchInBackground { authConfigurator.authorizeRequestCheckLoop() }
         authConfigurator.checkAuthorizeState()
     }
     

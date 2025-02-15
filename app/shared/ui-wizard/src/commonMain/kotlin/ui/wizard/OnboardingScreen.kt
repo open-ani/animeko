@@ -30,8 +30,6 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.session.AuthStateNew
@@ -260,17 +258,6 @@ fun OnboardingScreen(
                 )
             },
         ) {
-            // 如果 45s 没等到结果, 那可以认为用户可能遇到了麻烦, 我们自动滚动到底部, 底部有帮助列表
-            LaunchedEffect(authorizeState) {
-                if (authorizeState is AuthStateNew.AwaitingResult) {
-                    delay(45_000)
-                    coroutineScope {
-                        launch { scrollTopAppBarCollapsed() }
-                        launch { wizardScrollState.animateScrollTo(wizardScrollState.maxValue) }
-                    }
-                }
-            }
-
             // 每次进入这一步都会检查 token 是否有效, 以及退出这一步时要取消正在进行的授权请求
             DisposableEffect(Unit) {
                 state.bangumiAuthorizeState.onCheckCurrentToken()
@@ -290,7 +277,7 @@ fun OnboardingScreen(
                 onSetShowTokenAuthorizePage = { bangumiShowTokenAuthorizePage = it },
                 onClickAuthorize = { state.bangumiAuthorizeState.onClickNavigateAuthorize(context) },
                 onCancelAuthorize = { state.bangumiAuthorizeState.onCancelAuthorize() },
-                onAuthorizeViaToken = { state.bangumiAuthorizeState.onAuthorizeViaToken(it) },
+                onAuthorizeByToken = { state.bangumiAuthorizeState.onAuthorizeByToken(it) },
                 onClickNavigateToBangumiDev = {
                     state.bangumiAuthorizeState.onClickNavigateToBangumiDev(context)
                 }
@@ -350,7 +337,7 @@ internal fun createTestOnboardingPresentationState(scope: CoroutineScope): Onboa
             onCheckCurrentToken = { },
             onCancelAuthorize = { },
             onClickNavigateToBangumiDev = { },
-            onAuthorizeViaToken = { },
+            onAuthorizeByToken = { },
             onUseGuestMode = { },
         ),
     )

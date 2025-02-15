@@ -116,7 +116,7 @@ class OnboardingViewModel : AbstractSettingsViewModel(), KoinComponent {
 
     private val proxyTester = ProxyTester(
         clientProvider = clientProvider,
-        parentCoroutineContext = backgroundScope.coroutineContext,
+        flowScope = backgroundScope,
     )
 
     private val configureProxyUiState = combine(
@@ -221,7 +221,7 @@ class OnboardingViewModel : AbstractSettingsViewModel(), KoinComponent {
             if (currentState is AuthStateNew.Success && !currentState.isGuest) return@BangumiAuthorizeState
             authConfigurator.setGuestSession()
         },
-        onAuthorizeViaToken = { 
+        onAuthorizeByToken = { 
             backgroundScope.launch { authConfigurator.setAuthorizationToken(it) }
         },
     )
@@ -236,8 +236,8 @@ class OnboardingViewModel : AbstractSettingsViewModel(), KoinComponent {
     // endregion
 
     init {
-        launchInBackground { authConfigurator.startProcessAuthorizeRequestTask() }
-        launchInBackground { proxyTester.startTestRestartObserver() }
+        launchInBackground { authConfigurator.authorizeRequestCheckLoop() }
+        launchInBackground { proxyTester.testRunnerLoop() }
     }
     
     
@@ -388,7 +388,7 @@ class BangumiAuthorizeState(
     val onCheckCurrentToken: () -> Unit,
     val onClickNavigateAuthorize: (ContextMP) -> Unit,
     val onCancelAuthorize: () -> Unit,
-    val onAuthorizeViaToken: (String) -> Unit,
+    val onAuthorizeByToken: (String) -> Unit,
     val onClickNavigateToBangumiDev: (ContextMP) -> Unit,
     val onUseGuestMode: suspend () -> Unit,
 )

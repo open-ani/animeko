@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -65,61 +64,56 @@ internal fun WelcomeScene(
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
 ) {
-    Box(
-        modifier,
-        contentAlignment = Alignment.Center,
-    ) {
-        WithContentEnterAnimation(Modifier.wrapContentSize()) {
+    WithContentEnterAnimation(Modifier) {
+        Column(
+            Modifier
+                .windowInsetsPadding(windowInsets)
+                .padding(
+                    horizontal = wizardLayoutParams.horizontalPadding,
+                    vertical = wizardLayoutParams.verticalPadding,
+                )
+                .verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally,
+
+            ) {
             Column(
-                Modifier
-                    .windowInsetsPadding(windowInsets)
-                    .padding(
-                        horizontal = wizardLayoutParams.horizontalPadding,
-                        vertical = wizardLayoutParams.verticalPadding,
-                    )
-                    .verticalScroll(rememberScrollState()),
-                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Text("欢迎使用 Animeko", style = MaterialTheme.typography.headlineMedium)
 
-                ) {
-                Column(
-                    verticalArrangement = Arrangement.Center,
-                ) {
-                    Text("欢迎使用 Animeko", style = MaterialTheme.typography.headlineMedium)
-
-                    ProvideTextStyle(MaterialTheme.typography.bodyLarge) {
-                        Row(Modifier.padding(top = 8.dp).align(Alignment.Start)) {
-                            Text(
-                                """一站式在线弹幕追番平台 (简称 Ani)""",
-                                color = MaterialTheme.colorScheme.primary,
-                            )
-                        }
+                ProvideTextStyle(MaterialTheme.typography.bodyLarge) {
+                    Row(Modifier.padding(top = 8.dp).align(Alignment.Start)) {
+                        Text(
+                            """一站式在线弹幕追番平台 (简称 Ani)""",
+                            color = MaterialTheme.colorScheme.primary,
+                        )
                     }
-
-                    Column(
-                        Modifier.padding(vertical = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        ProvideTextStyle(MaterialTheme.typography.bodyMedium) {
-                            Text("""Ani 目前由爱好者组成的组织 OpenAni 和社区贡献者维护，完全免费，在 GitHub 上开源。""")
-
-                            Text("""Ani 的目标是提供尽可能简单且舒适的追番体验。""")
-                        }
-                    }
-
-                    contactActions()
                 }
 
-                Box(
-                    modifier = Modifier
-                        .padding(horizontal = 64.dp)
-                        .padding(top = 16.dp, bottom = 36.dp),
+                Column(
+                    Modifier.padding(vertical = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    Button(
-                        onClick = onClickContinue,
-                        modifier = Modifier.widthIn(300.dp),
-                    ) {
-                        Text("继续")
+                    ProvideTextStyle(MaterialTheme.typography.bodyMedium) {
+                        Text("""Ani 目前由爱好者组成的组织 OpenAni 和社区贡献者维护，完全免费，在 GitHub 上开源。""")
+
+                        Text("""Ani 的目标是提供尽可能简单且舒适的追番体验。""")
                     }
+                }
+
+                contactActions()
+            }
+
+            Box(
+                modifier = Modifier
+                    .padding(horizontal = 64.dp)
+                    .padding(top = 16.dp, bottom = 36.dp),
+            ) {
+                Button(
+                    onClick = onClickContinue,
+                    modifier = Modifier.widthIn(300.dp),
+                ) {
+                    Text("继续")
                 }
             }
         }

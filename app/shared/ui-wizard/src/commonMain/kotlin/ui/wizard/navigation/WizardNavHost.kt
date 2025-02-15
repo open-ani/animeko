@@ -57,7 +57,6 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import me.him188.ani.app.ui.foundation.animation.LocalNavigationMotionScheme
 import me.him188.ani.app.ui.foundation.animation.NavigationMotionScheme
@@ -133,10 +132,8 @@ fun WizardNavHost(
                 }
                 // scroll to top when entering the step
                 LaunchedEffect(Unit) {
-                    coroutineScope {
-                        launch { animateScrollTopAppBar(topAppBarState, 0f) }
-                        launch { scrollState.animateScrollTo(0) }
-                    }
+                    launch { animateScrollTopAppBar(topAppBarState, 0f) }
+                    launch { scrollState.animateScrollTo(0) }
                 }
 
                 Scaffold(

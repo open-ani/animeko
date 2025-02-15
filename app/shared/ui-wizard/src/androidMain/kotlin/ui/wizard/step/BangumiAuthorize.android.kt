@@ -13,8 +13,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import me.him188.ani.app.domain.session.AuthStateNew
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
-import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
-import me.him188.ani.app.ui.wizard.WizardLayoutParams
 
 @Preview(showBackground = true)
 @Composable
@@ -27,7 +25,7 @@ fun PreviewBangumiAuthorizeStepInitial() {
             contactActions = { },
             onClickAuthorize = { },
             onCancelAuthorize = { },
-            onAuthorizeViaToken = { },
+            onAuthorizeByToken = { },
             onClickNavigateToBangumiDev = { }
         )
     }
@@ -44,7 +42,7 @@ fun PreviewBangumiAuthorizeStepAwaitingResult() {
             contactActions = { },
             onClickAuthorize = { },
             onCancelAuthorize = { },
-            onAuthorizeViaToken = { },
+            onAuthorizeByToken = { },
             onClickNavigateToBangumiDev = { },
         )
     }
@@ -61,7 +59,7 @@ fun PreviewBangumiAuthorizeStepError() {
             contactActions = { },
             onClickAuthorize = { },
             onCancelAuthorize = { },
-            onAuthorizeViaToken = { },
+            onAuthorizeByToken = { },
             onClickNavigateToBangumiDev = { },
         )
     }
@@ -80,7 +78,7 @@ fun PreviewBangumiAuthorizeStepSuccess() {
             showTokenAuthorizePage = false,
             onSetShowTokenAuthorizePage = { },
             onClickAuthorize = { },
-            onAuthorizeViaToken = { },
+            onAuthorizeByToken = { },
             onCancelAuthorize = { },
             contactActions = { },
             onClickNavigateToBangumiDev = { },
@@ -99,7 +97,7 @@ fun PreviewBangumiTokenAuthorizePage() {
             contactActions = { },
             onClickAuthorize = { },
             onCancelAuthorize = { },
-            onAuthorizeViaToken = { },
+            onAuthorizeByToken = { },
             onClickNavigateToBangumiDev = { },
         )
     }

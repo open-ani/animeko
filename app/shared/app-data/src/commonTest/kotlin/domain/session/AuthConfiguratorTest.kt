@@ -42,7 +42,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             parentCoroutineContext = backgroundScope.coroutineContext
         ).apply { 
             backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) { 
-                startProcessAuthorizeRequestTask()
+                authorizeRequestCheckLoop()
             }
         }
         
@@ -69,7 +69,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             parentCoroutineContext = backgroundScope.coroutineContext
         ).apply {
             backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
-                startProcessAuthorizeRequestTask()
+                authorizeRequestCheckLoop()
             }
         }
         
@@ -105,7 +105,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             parentCoroutineContext = backgroundScope.coroutineContext
         ).apply {
             backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
-                startProcessAuthorizeRequestTask()
+                authorizeRequestCheckLoop()
             }
         }
         
@@ -141,7 +141,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             parentCoroutineContext = backgroundScope.coroutineContext
         ).apply {
             backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
-                startProcessAuthorizeRequestTask()
+                authorizeRequestCheckLoop()
             }
         }
 
@@ -177,7 +177,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             parentCoroutineContext = backgroundScope.coroutineContext
         ).apply {
             backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
-                startProcessAuthorizeRequestTask()
+                authorizeRequestCheckLoop()
             }
         }
 
@@ -212,7 +212,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             parentCoroutineContext = backgroundScope.coroutineContext
         ).apply {
             backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
-                startProcessAuthorizeRequestTask()
+                authorizeRequestCheckLoop()
             }
         }
 
@@ -248,7 +248,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             parentCoroutineContext = backgroundScope.coroutineContext
         ).apply {
             backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
-                startProcessAuthorizeRequestTask()
+                authorizeRequestCheckLoop()
             }
         }
 
@@ -284,7 +284,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             parentCoroutineContext = backgroundScope.coroutineContext
         ).apply {
             backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
-                startProcessAuthorizeRequestTask()
+                authorizeRequestCheckLoop()
             }
         }
 
@@ -318,7 +318,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             parentCoroutineContext = backgroundScope.coroutineContext
         ).apply {
             backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
-                startProcessAuthorizeRequestTask()
+                authorizeRequestCheckLoop()
             }
         }
 
@@ -352,7 +352,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             parentCoroutineContext = backgroundScope.coroutineContext
         ).apply {
             backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
-                startProcessAuthorizeRequestTask()
+                authorizeRequestCheckLoop()
             }
         }
 
@@ -385,7 +385,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             parentCoroutineContext = backgroundScope.coroutineContext
         ).apply {
             backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
-                startProcessAuthorizeRequestTask()
+                authorizeRequestCheckLoop()
             }
         }
 
@@ -394,7 +394,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
 
             configurator.startAuthorize()
             assertIs<AuthStateNew.AwaitingResult>(awaitItem(), "setAuthorizationToken should change state to AwaitingResult.")
-            assertIs<AuthStateNew.Network>(awaitItem(), "Network error, should change state to Network.")
+            assertIs<AuthStateNew.NetworkError>(awaitItem(), "Network error, should change state to Network.")
 
             advanceUntilIdle()
             expectNoEvents()

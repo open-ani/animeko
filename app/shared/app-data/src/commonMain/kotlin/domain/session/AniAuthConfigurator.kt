@@ -32,7 +32,6 @@ import kotlinx.coroutines.flow.transformLatest
 import me.him188.ani.app.data.repository.user.AccessTokenSession
 import me.him188.ani.app.data.repository.user.GuestSession
 import me.him188.ani.app.tools.MonoTasker
-import me.him188.ani.utils.coroutines.SingleTaskExecutor
 import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.logging.debug
 import me.him188.ani.utils.logging.logger
@@ -46,6 +45,8 @@ import kotlin.time.Duration.Companion.seconds
 /**
  * Wrapper for [SessionManager] and [AniAuthClient] to handle authorization.
  * Usually use it at UI layer (e.g. at ViewModel).
+ * 
+ * You should call [authorizeRequestCheckLoop] to start the test runner loop and make functionality.
  */
 class AniAuthConfigurator(
     private val sessionManager: SessionManager,
@@ -58,7 +59,6 @@ class AniAuthConfigurator(
     private val logger = logger<AniAuthConfigurator>()
     private val scope = parentCoroutineContext.childScope()
 
-    private val authRequestProcessor = SingleTaskExecutor(scope.coroutineContext)
     private val authorizeTasker = MonoTasker(scope)
     private val currentRequestAuthorizeId = MutableStateFlow<String?>(null)
 
@@ -107,8 +107,8 @@ class AniAuthConfigurator(
             AuthStateNew.Idle,
         )
 
-    suspend fun startProcessAuthorizeRequestTask() {
-        authRequestProcessor.invoke { processAuthorizeRequestTask() }
+    suspend fun authorizeRequestCheckLoop() {
+        processAuthorizeRequestTask()
     }
     
     private suspend fun processAuthorizeRequestTask() {
@@ -184,9 +184,7 @@ class AniAuthConfigurator(
         currentRequestAuthorizeId.value = REFRESH
     }
 
-    suspend fun setGuestSession() {
-        // 因为设置 GuestSession 之后会马上进入主界面, backgroundScope 会被取消
-        // 所以这里使用 GlobalScope 确保这个任务能完成, 
+    suspend fun setGuestSession() { 
         sessionManager.setSession(GuestSession)
         currentRequestAuthorizeId.value = REFRESH
     }
@@ -246,7 +244,7 @@ class AniAuthConfigurator(
 
             SessionStatus.NetworkError,
             SessionStatus.ServiceUnavailable -> {
-                emit(AuthStateNew.Network)
+                emit(AuthStateNew.NetworkError)
             }
 
             SessionStatus.Expired -> {
@@ -296,7 +294,7 @@ sealed class AuthStateNew {
     sealed class Error : AuthStateNew()
 
     @Immutable
-    data object Network : Error()
+    data object NetworkError : Error()
 
     @Immutable
     data object TokenExpired : Error()
