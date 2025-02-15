@@ -143,8 +143,10 @@ class AniAuthConfigurator(
                         .map { requestAuthorizeId to it },
                 )
             }
-            .filterNotNull() // filter out refresh
-            .collectLatest { (requestAuthorizeId, processingRequest) ->
+            .collectLatest { pair ->
+                if (pair == null) return@collectLatest
+                val (requestAuthorizeId, processingRequest) = pair
+                
                 logger.debug {
                     "[AuthCheckLoop][${requestAuthorizeId.idStr}] Current processing request: $processingRequest"
                 }
