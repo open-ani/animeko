@@ -260,8 +260,10 @@ fun OnboardingScreen(
             },
         ) {
             // 每次进入这一步都会检查 token 是否有效, 以及退出这一步时要取消正在进行的授权请求
-            DisposableEffect(Unit) {
-                state.bangumiAuthorizeState.onCheckCurrentToken()
+            DisposableEffect(bangumiShowTokenAuthorizePage) {
+                if (!bangumiShowTokenAuthorizePage) {
+                    state.bangumiAuthorizeState.onCheckCurrentToken()
+                }
                 onDispose {
                     state.bangumiAuthorizeState.onCancelAuthorize()
                 }

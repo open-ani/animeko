@@ -67,6 +67,7 @@ import me.him188.ani.app.ui.onboarding.step.ThemeSelectUIState
 import me.him188.ani.app.ui.settings.framework.AbstractSettingsViewModel
 import me.him188.ani.app.ui.settings.framework.SettingsState
 import me.him188.ani.app.ui.settings.tabs.network.SystemProxyPresentation
+import me.him188.ani.utils.coroutines.SingleTaskExecutor
 import me.him188.ani.utils.coroutines.update
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -195,6 +196,7 @@ class OnboardingViewModel : AbstractSettingsViewModel(), KoinComponent {
     private val authClient: AniAuthClient by inject()
 
     private var currentAppContext: ContextMP? = null
+    private val authLoopTasker = SingleTaskExecutor(backgroundScope.coroutineContext)
 
     private val authConfigurator = AniAuthConfigurator(
         sessionManager = sessionManager,
@@ -237,9 +239,9 @@ class OnboardingViewModel : AbstractSettingsViewModel(), KoinComponent {
     // endregion
     
     suspend fun startAuthorizeCheckAndProxyTesterLoop() {
-        coroutineScope {
-            launch(backgroundScope.coroutineContext) { authConfigurator.authorizeRequestCheckLoop() }
-            launch(backgroundScope.coroutineContext) { proxyTester.testRunnerLoop() }
+        authLoopTasker.invoke {
+            launch { authConfigurator.authorizeRequestCheckLoop() }
+            launch { proxyTester.testRunnerLoop() }
         }
     }
 

@@ -58,7 +58,7 @@ fun OnboardingCompleteScreen(
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
 ) {
-    LaunchedEffect(vm) { vm.startAuthCheckLoop() }
+    LaunchedEffect(Unit) { vm.startAuthCheckLoop() }
     val state by vm.state.collectAsStateWithLifecycle(OnboardingCompleteState.Placeholder)
     
     Surface(color = AniThemeDefaults.pageContentBackgroundColor) {

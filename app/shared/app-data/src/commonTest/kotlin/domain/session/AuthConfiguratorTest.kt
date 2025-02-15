@@ -20,8 +20,10 @@ import me.him188.ani.app.data.models.networkError
 import me.him188.ani.app.data.repository.user.AccessTokenSession
 import me.him188.ani.client.models.AniAnonymousBangumiUserToken
 import me.him188.ani.client.models.AniBangumiUserToken
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.seconds
@@ -35,10 +37,11 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
         )
         val authClient = createTestAuthClient(getResult = { ApiResponse.success(null) })
         
+        var launchedAuthorize = false
         val configurator = AniAuthConfigurator(
             sessionManager = manager,
             authClient = authClient,
-            onLaunchAuthorize = {},
+            onLaunchAuthorize = { launchedAuthorize = true },
             parentCoroutineContext = backgroundScope.coroutineContext
         ).apply { 
             backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) { 
@@ -52,6 +55,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             advanceUntilIdle()
             expectNoEvents()
         }
+        assertFalse(launchedAuthorize, "Initial state should not trigger launch authorize.")
     }
     
     @Test
@@ -62,10 +66,11 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
         )
         val authClient = createTestAuthClient(getResult = { ApiResponse.success(null) })
 
+        var launchedAuthorize = false
         val configurator = AniAuthConfigurator(
             sessionManager = manager,
             authClient = authClient,
-            onLaunchAuthorize = {},
+            onLaunchAuthorize = { launchedAuthorize = true },
             parentCoroutineContext = backgroundScope.coroutineContext
         ).apply {
             backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
@@ -83,9 +88,11 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             assertIs<AuthStateNew.AwaitingResult>(awaitItem(), "Start check should change state to AwaitingResult.")
             assertIs<AuthStateNew.Idle>(awaitItem(), "No session exists, after checking should change state to Idle.")
 
+            
             advanceUntilIdle()
             expectNoEvents()
         }
+        assertFalse(launchedAuthorize, "Check state should not trigger launch authorize.")
     }
     
     @Test
@@ -98,10 +105,11 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
         }
         val authClient = createTestAuthClient(getResult = { ApiResponse.success(null) })
 
+        var launchedAuthorize = false
         val configurator = AniAuthConfigurator(
             sessionManager = manager,
             authClient = authClient,
-            onLaunchAuthorize = {},
+            onLaunchAuthorize = { launchedAuthorize = true },
             parentCoroutineContext = backgroundScope.coroutineContext
         ).apply {
             backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
@@ -122,6 +130,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             advanceUntilIdle()
             expectNoEvents()
         }
+        assertFalse(launchedAuthorize, "Check state should not trigger launch authorize.")
     }
 
     @Test
@@ -134,10 +143,11 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
         }
         val authClient = createTestAuthClient(getResult = { ApiResponse.success(null) })
 
+        var launchedAuthorize = false
         val configurator = AniAuthConfigurator(
             sessionManager = manager,
             authClient = authClient,
-            onLaunchAuthorize = {},
+            onLaunchAuthorize = { launchedAuthorize = true },
             parentCoroutineContext = backgroundScope.coroutineContext
         ).apply {
             backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
@@ -158,6 +168,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             advanceUntilIdle()
             expectNoEvents()
         }
+        assertFalse(launchedAuthorize, "Check state should not trigger launch authorize.")
     }
 
     @Test
@@ -170,10 +181,11 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
         }
         val authClient = createTestAuthClient(getResult = { ApiResponse.success(null) })
 
+        var launchedAuthorize = false
         val configurator = AniAuthConfigurator(
             sessionManager = manager,
             authClient = authClient,
-            onLaunchAuthorize = {},
+            onLaunchAuthorize = { launchedAuthorize = true },
             parentCoroutineContext = backgroundScope.coroutineContext
         ).apply {
             backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
@@ -194,6 +206,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             advanceUntilIdle()
             expectNoEvents()
         }
+        assertFalse(launchedAuthorize, "Check state should not trigger launch authorize.")
     }
     
     @Test
@@ -206,10 +219,11 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             getResult = { checkAuthorizeResultSuccess() }
         )
         
+        var launchedAuthorize = false
         val configurator = AniAuthConfigurator(
             sessionManager = manager,
             authClient = authClient,
-            onLaunchAuthorize = {},
+            onLaunchAuthorize = { launchedAuthorize = true },
             parentCoroutineContext = backgroundScope.coroutineContext
         ).apply {
             backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
@@ -230,6 +244,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             advanceUntilIdle()
             expectNoEvents()
         }
+        assertTrue(launchedAuthorize, "Start authorize should trigger launch authorize.")
     }
     
     @Test
@@ -242,10 +257,11 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             getResult = { checkAuthorizeResultSuccess() }
         )
         
+        var launchedAuthorize = false
         val configurator = AniAuthConfigurator(
             sessionManager = manager,
             authClient = authClient,
-            onLaunchAuthorize = {},
+            onLaunchAuthorize = { launchedAuthorize = true },
             parentCoroutineContext = backgroundScope.coroutineContext
         ).apply {
             backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
@@ -268,6 +284,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             advanceUntilIdle()
             expectNoEvents()
         }
+        assertFalse(launchedAuthorize, "Set guest session should not trigger launch authorize.")
     }
 
     @Test
@@ -278,10 +295,11 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
         )
         val authClient = createTestAuthClient(getResult = { ApiResponse.success(null) })
 
+        var launchedAuthorize = false
         val configurator = AniAuthConfigurator(
             sessionManager = manager,
             authClient = authClient,
-            onLaunchAuthorize = {},
+            onLaunchAuthorize = { launchedAuthorize = true },
             parentCoroutineContext = backgroundScope.coroutineContext
         ).apply {
             backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
@@ -302,6 +320,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             advanceUntilIdle()
             expectNoEvents()
         }
+        assertTrue(launchedAuthorize, "Start authorize should trigger launch authorize.")
     }
     
     @Test
@@ -312,10 +331,11 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
         )
         val authClient = createTestAuthClient(getResult = { ApiResponse.success(null) })
 
+        var launchedAuthorize = false
         val configurator = AniAuthConfigurator(
             sessionManager = manager,
             authClient = authClient,
-            onLaunchAuthorize = {},
+            onLaunchAuthorize = { launchedAuthorize = true },
             parentCoroutineContext = backgroundScope.coroutineContext
         ).apply {
             backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
@@ -336,6 +356,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             advanceUntilIdle()
             expectNoEvents()
         }
+        assertFalse(launchedAuthorize, "Set authorization token should not trigger launch authorize.")
     }
     
     @Test
@@ -346,10 +367,11 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
         )
         val authClient = createTestAuthClient(getResult = { ApiResponse.success(null) })
 
+        var launchedAuthorize = false
         val configurator = AniAuthConfigurator(
             sessionManager = manager,
             authClient = authClient,
-            onLaunchAuthorize = {},
+            onLaunchAuthorize = { launchedAuthorize = true },
             parentCoroutineContext = backgroundScope.coroutineContext
         ).apply {
             backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
@@ -367,6 +389,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             advanceUntilIdle()
             expectNoEvents()
         }
+        assertFalse(launchedAuthorize, "Set authorization token should not trigger launch authorize.")
     }
 
     @Test
@@ -377,10 +400,11 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
         )
         val authClient = createTestAuthClient(getResult = { ApiResponse.failure(ApiFailure.NetworkError) })
 
+        var launchedAuthorize = false
         val configurator = AniAuthConfigurator(
             sessionManager = manager,
             authClient = authClient,
-            onLaunchAuthorize = {},
+            onLaunchAuthorize = { launchedAuthorize = true },
             parentCoroutineContext = backgroundScope.coroutineContext
         ).apply {
             backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
@@ -398,6 +422,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             advanceUntilIdle()
             expectNoEvents()
         }
+        assertTrue(launchedAuthorize, "Start authorize should trigger launch authorize.")
     }
     
     @Test
@@ -419,10 +444,11 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             },
         )
 
+        var launchedAuthorize = false
         val configurator = AniAuthConfigurator(
             sessionManager = manager,
             authClient = authClient,
-            onLaunchAuthorize = {},
+            onLaunchAuthorize = { launchedAuthorize = true },
             parentCoroutineContext = backgroundScope.coroutineContext
         ).apply {
             backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
@@ -440,6 +466,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             advanceUntilIdle()
             expectNoEvents()
         }
+        assertTrue(launchedAuthorize, "Start authorize should trigger launch authorize.")
     }
     
     @Test
@@ -450,10 +477,11 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
         )
         val authClient = createTestAuthClient(getResult = { checkAuthorizeResultSuccess()})
 
+        var launchedAuthorize = false
         val configurator = AniAuthConfigurator(
             sessionManager = manager,
             authClient = authClient,
-            onLaunchAuthorize = {},
+            onLaunchAuthorize = { launchedAuthorize = true },
             parentCoroutineContext = backgroundScope.coroutineContext
         ).apply {
             backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
@@ -471,6 +499,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             advanceUntilIdle()
             expectNoEvents()
         }
+        assertTrue(launchedAuthorize, "Start authorize should trigger launch authorize.")
     }
     
     private fun getSelfInfoSuccess(): ApiResponse<UserInfo> {

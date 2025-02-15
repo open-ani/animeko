@@ -117,11 +117,13 @@ class AniAuthConfigurator(
     
     private suspend fun processAuthorizeRequestTask() {
         currentRequestAuthorizeId
-            .filterNotNull()
             .transformLatest { requestAuthorizeId ->
+                if (requestAuthorizeId == null) return@transformLatest emit(null)
+                
                 logger.debug {
                     "[AuthCheckLoop][${requestAuthorizeId.idStr}], checking authorize state."
                 }
+                if (requestAuthorizeId == REFRESH) return@transformLatest emit(null)
                 
                 authorizeTasker.launch(start = CoroutineStart.UNDISPATCHED) {
                     try {
@@ -135,8 +137,6 @@ class AniAuthConfigurator(
                         throw IllegalStateException("Unknown exception during requireAuth, see cause", e)
                     }
                 }
-
-                if (requestAuthorizeId == REFRESH) return@transformLatest emit(null)
                 emitAll(
                     sessionManager.processingRequest
                         .filterNotNull()
@@ -166,7 +166,7 @@ class AniAuthConfigurator(
                                         "due to network error." 
                             }
                         } else if (e !is NotAuthorizedException) {
-                            logger.error { 
+                            logger.error(e) { 
                                 "[AuthCheckLoop][${requestAuthorizeId.idStr}] Failed to check authorize status." 
                             }
                         }
@@ -292,6 +292,8 @@ class AniAuthConfigurator(
                 is ExternalOAuthRequest.State.Cancelled -> {
                     when (val ex = requestState.cause.cause?.cause) {
                         is ApiNetworkException -> emit(AuthStateNew.NetworkError)
+
+                        null -> emit(AuthStateNew.Idle)
                         
                         !is NotAuthorizedException -> emit(AuthStateNew.UnknownError(ex.toString()))
                         
