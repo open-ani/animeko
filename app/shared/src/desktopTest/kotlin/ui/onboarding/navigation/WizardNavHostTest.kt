@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.app.ui.wizard.navigation
+package me.him188.ani.app.ui.onboarding.navigation
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Text

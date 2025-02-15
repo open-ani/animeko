@@ -47,7 +47,8 @@ class ProxyTester(
     }
         .shareIn(
             flowScope,
-            SharingStarted.WhileSubscribed()
+            SharingStarted.WhileSubscribed(),
+            replay = 1
         )
 
     val testResult = connectionTester.flatMapLatest { it.results }
