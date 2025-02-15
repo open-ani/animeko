@@ -259,7 +259,6 @@ fun OnboardingScreen(
                 )
             },
         ) {
-            // 每次进入这一步都会检查 token 是否有效, 以及退出这一步时要取消正在进行的授权请求
             DisposableEffect(bangumiShowTokenAuthorizePage) {
                 if (!bangumiShowTokenAuthorizePage) {
                     state.bangumiAuthorizeState.onCheckCurrentToken()
@@ -277,7 +276,10 @@ fun OnboardingScreen(
                 authorizeState = authorizeState,
                 showTokenAuthorizePage = bangumiShowTokenAuthorizePage,
                 contactActions = contactActions,
-                onSetShowTokenAuthorizePage = { bangumiShowTokenAuthorizePage = it },
+                onSetShowTokenAuthorizePage = { 
+                    bangumiShowTokenAuthorizePage = it
+                    if (it) scope.launch { scrollTopAppBarExpanded() }
+                },
                 onClickAuthorize = { state.bangumiAuthorizeState.onClickNavigateAuthorize(context) },
                 onCancelAuthorize = { state.bangumiAuthorizeState.onCancelAuthorize() },
                 onAuthorizeByToken = { state.bangumiAuthorizeState.onAuthorizeByToken(it) },
