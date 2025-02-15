@@ -41,6 +41,7 @@ import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.platform.Uuid
 import me.him188.ani.utils.platform.currentTimeMillis
 import kotlin.coroutines.CoroutineContext
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.seconds
@@ -159,16 +160,16 @@ class AniAuthConfigurator(
                     }
                     .catch { e ->
                         if (e is ApiNetworkException) {
-                            logger.error(e) { 
+                            logger.error { 
                                 "[AuthCheckLoop][${requestAuthorizeId.idStr}] Failed to check authorize status " +
                                         "due to network error." 
                             }
                         } else if (e !is NotAuthorizedException) {
-                            logger.error(e) { 
+                            logger.error { 
                                 "[AuthCheckLoop][${requestAuthorizeId.idStr}] Failed to check authorize status." 
                             }
                         }
-                        authorizeTasker.cancel() 
+                        authorizeTasker.cancel(CancellationException(cause = e)) 
                     }
                     .firstOrNull()
             }
@@ -288,8 +289,13 @@ class AniAuthConfigurator(
                 }
 
                 is ExternalOAuthRequest.State.Cancelled -> {
-                    emit(AuthStateNew.Timeout)
-
+                    when (val ex = requestState.cause.cause?.cause) {
+                        is ApiNetworkException -> emit(AuthStateNew.NetworkError)
+                        
+                        !is NotAuthorizedException -> emit(AuthStateNew.UnknownError(ex.toString()))
+                        
+                        else -> emit(AuthStateNew.Idle)
+                    }
                 }
 
                 else -> {}
@@ -309,10 +315,8 @@ class AniAuthConfigurator(
 // This class is intend to replace current [AuthState]
 @Stable
 sealed class AuthStateNew {
-    sealed class Initial : AuthStateNew()
-
     @Immutable
-    data object Idle : Initial()
+    data object Idle : AuthStateNew()
 
     @Stable
     data class AwaitingResult(val requestId: String) : AuthStateNew()
@@ -324,9 +328,6 @@ sealed class AuthStateNew {
 
     @Immutable
     data object TokenExpired : Error()
-
-    @Immutable
-    data object Timeout : Error()
     
     @Stable
     data class UnknownError(val message: String) : Error()

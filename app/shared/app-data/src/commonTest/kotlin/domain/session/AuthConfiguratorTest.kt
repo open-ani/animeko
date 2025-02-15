@@ -13,6 +13,7 @@ import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
+import me.him188.ani.app.data.models.ApiFailure
 import me.him188.ani.app.data.models.ApiResponse
 import me.him188.ani.app.data.models.UserInfo
 import me.him188.ani.app.data.models.networkError
@@ -154,41 +155,6 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             configurator.checkAuthorizeState()
             assertIs<AuthStateNew.AwaitingResult>(awaitItem(), "Start check should change state to AwaitingResult.")
             assertIs<AuthStateNew.TokenExpired>(awaitItem(), "Session existed, after checking should change state to TokenExpired.")
-
-            advanceUntilIdle()
-            expectNoEvents()
-        }
-    }
-    
-    @Test
-    fun `test await timeout`() = runTest {
-        val manager = createManager(
-            getSelfInfo = { noCall() },
-            refreshAccessToken = { noCall() },
-        )
-        val authClient = createTestAuthClient(getResult = { ApiResponse.success(null) })
-        
-        val configurator = AniAuthConfigurator(
-            sessionManager = manager,
-            authClient = authClient,
-            onLaunchAuthorize = {},
-            maxAwaitRetries = 1,
-            awaitRetryInterval = 5.seconds,
-            parentCoroutineContext = backgroundScope.coroutineContext
-        ).apply {
-            backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
-                authorizeRequestCheckLoop()
-            }
-        }
-
-        configurator.state.test {
-            assertIs<AuthStateNew.Idle>(awaitItem(), "Initially should be Idle.")
-            
-            configurator.startAuthorize()
-            assertIs<AuthStateNew.AwaitingResult>(awaitItem(), "startAuthorize should change state to AwaitingResult.")
-            
-            advanceTimeBy(10.seconds)
-            assertIs<AuthStateNew.Timeout>(awaitItem(), "Awaiting timeout should change state to Timeout.")
 
             advanceUntilIdle()
             expectNoEvents()
@@ -367,9 +333,40 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             expectNoEvents()
         }
     }
+
+    @Test
+    fun `test authorize - network error - in check authorize status`() = runTest {
+        val manager = createManager(
+            getSelfInfo = { noCall() },
+            refreshAccessToken = { noCall() },
+        )
+        val authClient = createTestAuthClient(getResult = { ApiResponse.failure(ApiFailure.NetworkError) })
+
+        val configurator = AniAuthConfigurator(
+            sessionManager = manager,
+            authClient = authClient,
+            onLaunchAuthorize = {},
+            parentCoroutineContext = backgroundScope.coroutineContext
+        ).apply {
+            backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                authorizeRequestCheckLoop()
+            }
+        }
+
+        configurator.state.test {
+            assertIs<AuthStateNew.Idle>(awaitItem(), "Initially should be Idle.")
+
+            configurator.startAuthorize()
+            assertIs<AuthStateNew.AwaitingResult>(awaitItem(), "setAuthorizationToken should change state to AwaitingResult.")
+            assertIs<AuthStateNew.NetworkError>(awaitItem(), "Network error, should change state to NetworkError.")
+
+            advanceUntilIdle()
+            expectNoEvents()
+        }
+    }
     
     @Test
-    fun `test authorize - network error`() = runTest {
+    fun `test authorize - network error - in refresh token`() = runTest {
         val manager = createManager(
             getSelfInfo = { ApiResponse.networkError() },
             refreshAccessToken = { ApiResponse.networkError() },

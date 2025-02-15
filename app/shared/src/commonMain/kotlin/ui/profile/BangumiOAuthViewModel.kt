@@ -14,6 +14,7 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import io.ktor.http.encodeURLParameter
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
@@ -123,7 +124,7 @@ class BangumiOAuthViewModel : AbstractViewModel(), KoinComponent {
     }
 
     private fun onCancel(reason: String?) {
-        sessionManager.processingRequest.value?.cancel(reason)
+        sessionManager.processingRequest.value?.cancel(CancellationException(reason))
     }
 
     override fun onCleared() {

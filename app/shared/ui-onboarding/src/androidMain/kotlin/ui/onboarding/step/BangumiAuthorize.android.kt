@@ -53,7 +53,7 @@ fun PreviewBangumiAuthorizeStepAwaitingResult() {
 fun PreviewBangumiAuthorizeStepError() {
     ProvideCompositionLocalsForPreview {
         BangumiAuthorizeStep(
-            authorizeState = AuthStateNew.Timeout,
+            authorizeState = AuthStateNew.NetworkError,
             showTokenAuthorizePage = false,
             onSetShowTokenAuthorizePage = { },
             contactActions = { },

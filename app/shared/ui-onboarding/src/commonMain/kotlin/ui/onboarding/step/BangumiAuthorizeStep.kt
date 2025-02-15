@@ -196,7 +196,7 @@ private fun AuthorizeButton(
                 transitionSpec = LocalAniMotionScheme.current.animatedContent.standard,
             ) {
                 when (authorizeState) {
-                    is AuthStateNew.Initial, is AuthStateNew.Error -> {
+                    is AuthStateNew.Idle, is AuthStateNew.Error -> {
                         Text("启动浏览器授权")
                     }
 
@@ -249,7 +249,7 @@ private fun AuthorizeStateText(
         Text(
             remember(authorizeState) {
                 when (authorizeState) {
-                    is AuthStateNew.Initial, is AuthStateNew.AwaitingResult -> ""
+                    is AuthStateNew.Idle, is AuthStateNew.AwaitingResult -> ""
                     is AuthStateNew.Success -> {
                         if (authorizeState.isGuest) {
                             "目前是游客模式"
@@ -260,7 +260,6 @@ private fun AuthorizeStateText(
 
                     is AuthStateNew.NetworkError -> "授权登录失败：网络错误，请重试"
                     is AuthStateNew.TokenExpired -> "验证登陆失败：Token 已过期，请重新授权"
-                    is AuthStateNew.Timeout -> "授权登录失败：等待验证超时，请重试"
                     is AuthStateNew.UnknownError -> "授权登录失败：未知错误，请重试\n" + authorizeState.message
                 }
             },

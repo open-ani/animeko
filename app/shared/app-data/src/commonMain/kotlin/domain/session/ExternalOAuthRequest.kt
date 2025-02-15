@@ -35,7 +35,7 @@ interface ExternalOAuthRequest {
     /**
      * @param reason for debugging
      */
-    fun cancel(reason: String? = null)
+    fun cancel(reason: CancellationException? = null)
 
     /**
      * Does not throw
@@ -90,16 +90,8 @@ class ExternalOAuthRequestImpl(
         this.result.completeWith(code)
     }
 
-    override fun cancel(reason: String?) {
-        result.cancel(
-            kotlinx.coroutines.CancellationException(
-                if (reason != null) {
-                    "ExternalOAuthRequestImpl was cancelled: $reason"
-                } else {
-                    "ExternalOAuthRequestImpl was cancelled"
-                },
-            ),
-        )
+    override fun cancel(reason: CancellationException?) {
+        result.cancel(reason)
     }
 
     override suspend fun invoke() {
