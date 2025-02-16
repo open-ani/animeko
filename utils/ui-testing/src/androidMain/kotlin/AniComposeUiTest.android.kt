@@ -12,6 +12,7 @@ package me.him188.ani.app.ui.framework
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.SemanticsNodeInteraction
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.runComposeUiTest
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
@@ -56,17 +57,26 @@ actual fun runAniComposeUiTest(effectContext: CoroutineContext, testBody: AniCom
         testThread.interrupt()
     }
 
-    try {
-        return runComposeUiTest {
+    runComposeUiTest {
+        try {
             testBody()
-        }
-    } catch (e: InterruptedException) {
-        if (timedOut) {
-            throw AssertionError("Test timed out after 1 minute")
-        } else {
+        } catch (e: InterruptedException) {
+            if (timedOut) {
+                throw AssertionError("Test timed out after 1 minute")
+            } else {
+                throw e
+            }
+        } catch (e: Throwable) {
+            // Add screenshot of current state
+            try {
+                onRoot().assertScreenshot("")
+            } catch (extraInfo: Throwable) {
+                e.addSuppressed(extraInfo) // Will contain base64 of screenshot
+                throw e
+            }
             throw e
+        } finally {
+            job.cancel()
         }
-    } finally {
-        job.cancel()
     }
 }
