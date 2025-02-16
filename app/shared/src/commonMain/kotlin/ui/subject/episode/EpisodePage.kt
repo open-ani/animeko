@@ -78,12 +78,12 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.network.protocol.DanmakuInfo
 import me.him188.ani.app.data.network.protocol.DanmakuLocation
+import me.him188.ani.app.domain.comment.CommentContext
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.features.StreamType
 import me.him188.ani.app.platform.features.getComponentAccessors
 import me.him188.ani.app.tools.rememberUiMonoTasker
-import me.him188.ani.app.ui.comment.CommentContext
 import me.him188.ani.app.ui.comment.CommentEditorState
 import me.him188.ani.app.ui.comment.CommentState
 import me.him188.ani.app.ui.danmaku.DanmakuEditorState
@@ -315,8 +315,8 @@ private fun EpisodeScreenContent(
                 vm.commentEditorState.cancelSend()
                 tryUnpause()
             },
-            onSendComplete = { succeeded ->
-                if (succeeded) scope.launch {
+            onSendComplete = {
+                scope.launch {
                     vm.commentLazyStaggeredGirdState.scrollToItem(0)
                 }
             },

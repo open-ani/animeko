@@ -20,12 +20,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -45,6 +47,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.max
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
+import me.him188.ani.app.domain.comment.CommentSendResult
+import me.him188.ani.app.domain.comment.TurnstileState
+import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.interaction.isImeVisible
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
@@ -63,7 +68,7 @@ fun EditComment(
     modifier: Modifier = Modifier,
     focusRequester: FocusRequester = remember { FocusRequester() },
     stickerPanelHeight: Dp = EditCommentDefaults.MinStickerHeight.dp,
-    onSendComplete: (Boolean) -> Unit = { },
+    onSendComplete: () -> Unit = { },
 ) {
     val scope = rememberCoroutineScope()
     val keyboard = LocalSoftwareKeyboardController.current
@@ -109,7 +114,7 @@ fun EditComment(
                     keyboard?.hide()
                     state.toggleStickerPanelState(false)
                     scope.launch {
-                        onSendComplete(state.send())
+                        if (state.send()) onSendComplete()
                     }
                 },
             )
@@ -133,35 +138,61 @@ fun EditComment(
         expanded = state.expandButtonState,
         onClickExpand = { state.editExpanded = it },
     ) { previewing ->
-        ProvideContentColor(MaterialTheme.colorScheme.onSurface) {
-            if (previewing) {
-                LaunchedEffect(Unit) { state.renderPreview() }
-                EditCommentDefaults.Preview(
-                    content = state.previewContent,
+        Column {
+            ProvideContentColor(MaterialTheme.colorScheme.onSurface) {
+                if (previewing) {
+                    LaunchedEffect(Unit) { state.renderPreview() }
+                    EditCommentDefaults.Preview(
+                        content = state.previewContent,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .ifThen(state.editExpanded) { fillMaxHeight() }
+                            .animateContentSize(),
+                        contentPadding = OutlinedTextFieldDefaults.contentPadding(),
+                    )
+                } else {
+                    EditCommentDefaults.CommentTextField(
+                        value = state.content,
+                        enabled = !sendingComment,
+                        maxLines = if (state.editExpanded) Int.MAX_VALUE else 3,
+                        modifier = Modifier
+                            .focusRequester(focusRequester)
+                            .fillMaxWidth()
+                            .ifThen(state.editExpanded) { fillMaxHeight() }
+                            .animateContentSize(),
+                        onValueChange = { state.setContent(it) },
+                        interactionSource = remember { MutableInteractionSource() },
+                    )
+                    LaunchedEffect(Unit) {
+                        focusRequester.requestFocus()
+                    }
+                }
+                AniAnimatedVisibility(
+                    visible = state.sendResult is CommentSendResult.Error,
                     modifier = Modifier
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
                         .fillMaxWidth()
-                        .ifThen(state.editExpanded) { fillMaxHeight() }
-                        .animateContentSize(),
-                    contentPadding = OutlinedTextFieldDefaults.contentPadding(),
-                )
-            } else {
-                EditCommentDefaults.CommentTextField(
-                    value = state.content,
-                    enabled = !sendingComment,
-                    maxLines = if (state.editExpanded) Int.MAX_VALUE else 3,
-                    modifier = Modifier
-                        .focusRequester(focusRequester)
-                        .fillMaxWidth()
-                        .ifThen(state.editExpanded) { fillMaxHeight() }
-                        .animateContentSize(),
-                    onValueChange = { state.setContent(it) },
-                    interactionSource = remember { MutableInteractionSource() },
-                )
-                LaunchedEffect(Unit) {
-                    focusRequester.requestFocus()
+                ) {
+                    Text(
+                        text = (state.sendResult as? CommentSendResult.Error)
+                            ?.let { renderCommentSendError(it) }
+                            ?: "",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun renderCommentSendError(result: CommentSendResult.Error): String {
+    return when (result) {
+        is CommentSendResult.TurnstileError.Network -> "验证码加载失败：网络错误(${result.code})"
+        is CommentSendResult.TurnstileError.Unknown -> "验证码加载失败：未知错误(${result.code})"
+        CommentSendResult.NetworkError -> "发送失败：网络错误"
+        is CommentSendResult.UnknownError -> "发送失败：未知错误 ${result.message}"
     }
 }
 

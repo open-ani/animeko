@@ -20,9 +20,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import me.him188.ani.app.domain.comment.TurnstileState
 import me.him188.ani.app.ui.comment.CommentEditorState
 import me.him188.ani.app.ui.comment.EditComment
-import me.him188.ani.app.ui.comment.TurnstileState
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.interaction.rememberImeMaxHeight
 import me.him188.ani.app.ui.foundation.widgets.ModalBottomImeAwareSheet
@@ -33,7 +33,7 @@ fun EpisodeEditCommentSheet(
     state: CommentEditorState,
     turnstileState: TurnstileState,
     onDismiss: () -> Unit,
-    onSendComplete: (succeeded: Boolean) -> Unit,
+    onSendComplete: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val density = LocalDensity.current
@@ -61,7 +61,7 @@ fun EpisodeEditCommentSheet(
             focusRequester = focusRequester,
             onSendComplete = {
                 sheetState.close()
-                onSendComplete(it)
+                onSendComplete()
             },
         )
     }

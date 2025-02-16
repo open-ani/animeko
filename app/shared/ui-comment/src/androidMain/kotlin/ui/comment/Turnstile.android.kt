@@ -12,6 +12,7 @@ package me.him188.ani.app.ui.comment
 import android.annotation.SuppressLint
 import android.graphics.Color
 import android.os.Bundle
+import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
@@ -36,8 +37,10 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.viewinterop.AndroidView
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.receiveAsFlow
+import me.him188.ani.app.domain.comment.TurnstileState
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
@@ -63,12 +66,11 @@ class AndroidTurnstileState(
 
     // WebView 重新创建的时候会使用此 state bundle 恢复状态
     private var webViewStateBundle: Bundle? = null
-
-    private val callbackTokenChannel = Channel<String>()
-
-    override val tokenFlow: Flow<String>
-        get() = callbackTokenChannel.receiveAsFlow()
-
+    
+    override val tokenFlow: MutableSharedFlow<String> = MutableSharedFlow()
+    override val webErrorFlow: MutableSharedFlow<TurnstileState.Error> = MutableSharedFlow()
+    
+    
     private fun concatUrl(): String {
         return "${url}&theme=${if (isDarkTheme) "dark" else "light"}"
     }
@@ -90,14 +92,26 @@ class AndroidTurnstileState(
                     val requestUrl = request.url.toString()
                     if (requestUrl.startsWith(TurnstileState.CALLBACK_INTERCEPTION_PREFIX)) {
                         logger.info { "Intercepted request: $requestUrl" }
-                        val responseToken = CALLBACK_REGEX.matchEntire(requestUrl)?.groupValues?.getOrNull(1)
+                        val responseToken = TurnstileState.CALLBACK_REGEX
+                            .matchEntire(requestUrl)?.groupValues?.getOrNull(1)
                         if (responseToken != null) {
-                            callbackTokenChannel.trySend(responseToken)
+                            tokenFlow.tryEmit(responseToken)
                             return WebResourceResponse("text/plain", "utf-8", createEmptyInputStream())
                         }
                     }
                 }
                 return super.shouldInterceptRequest(view, request)
+            }
+
+            override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
+                if (request?.isForMainFrame != true || error == null) return super.onReceivedError(view, request, error)
+                
+                if (error.errorCode in networkErrors) {
+                    webErrorFlow.tryEmit(TurnstileState.Error.Network(error.errorCode))
+                } else {
+                    webErrorFlow.tryEmit(TurnstileState.Error.Unknown(error.errorCode))
+                }
+                return super.onReceivedError(view, request, error)
             }
         }
     }
@@ -130,9 +144,14 @@ class AndroidTurnstileState(
         }
     }
 
-    companion object {
-        private val CALLBACK_REGEX = Regex("^${TurnstileState.CALLBACK_INTERCEPTION_PREFIX}/?\\?token=(.+)$")
+    private companion object {
         private val logger = logger<AndroidTurnstileState>()
+        private val networkErrors = setOf(
+            WebViewClient.ERROR_HOST_LOOKUP,
+            WebViewClient.ERROR_CONNECT,
+            WebViewClient.ERROR_IO,
+            WebViewClient.ERROR_TIMEOUT,
+        )
     }
 }
 

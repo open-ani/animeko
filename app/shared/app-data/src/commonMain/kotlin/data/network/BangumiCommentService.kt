@@ -26,7 +26,7 @@ import me.him188.ani.datasources.bangumi.next.models.BangumiNextSubjectInterestC
 import me.him188.ani.utils.coroutines.IO_
 import kotlin.coroutines.CoroutineContext
 
-sealed interface BangumiCommentService {
+interface BangumiCommentService {
     /**
      * @return `null` if [subjectId] is invalid
      */
