@@ -13,6 +13,7 @@ import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runTest as runCoroutineTest
 import me.him188.ani.app.data.models.ApiFailure
 import me.him188.ani.app.data.models.ApiResponse
 import me.him188.ani.app.data.models.UserInfo
@@ -20,7 +21,6 @@ import me.him188.ani.app.data.models.networkError
 import me.him188.ani.app.data.repository.user.AccessTokenSession
 import me.him188.ani.client.models.AniAnonymousBangumiUserToken
 import me.him188.ani.client.models.AniBangumiUserToken
-import kotlin.coroutines.cancellation.CancellationException
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -30,7 +30,7 @@ import kotlin.time.Duration.Companion.seconds
 
 class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
     @Test
-    fun `test initial state should be Idle`() = runTest {
+    fun `test initial state should be Idle`() = runCoroutineTest {
         val manager = createManager(
             getSelfInfo = { noCall() },
             refreshAccessToken = { noCall() },
@@ -59,7 +59,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
     }
     
     @Test
-    fun `test initial check - no existing session`() = runTest {
+    fun `test initial check - no existing session`() = runCoroutineTest {
         val manager = createManager(
             getSelfInfo = { noCall() },
             refreshAccessToken = { noCall() },
@@ -96,7 +96,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
     }
     
     @Test
-    fun `test initial check - session existed - refresh succeeded`() = runTest {
+    fun `test initial check - session existed - refresh succeeded`() = runCoroutineTest {
         val manager = createManager(
             getSelfInfo = { getSelfInfoSuccess() },
             refreshAccessToken = { refreshTokenSuccess() },
@@ -134,7 +134,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
     }
 
     @Test
-    fun `test initial check - session existed - refresh failed`() = runTest {
+    fun `test initial check - session existed - refresh failed`() = runCoroutineTest {
         val manager = createManager(
             getSelfInfo = { getSelfInfoSuccess() },
             refreshAccessToken = { noCall() },
@@ -172,7 +172,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
     }
 
     @Test
-    fun `test initial check - session existed - get self info failed`() = runTest {
+    fun `test initial check - session existed - get self info failed`() = runCoroutineTest {
         val manager = createManager(
             getSelfInfo = { noCall() },
             refreshAccessToken = { refreshTokenSuccess() },
@@ -210,7 +210,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
     }
     
     @Test
-    fun `test success`() = runTest {
+    fun `test success`() = runCoroutineTest {
         val manager = createManager(
             getSelfInfo = { getSelfInfoSuccess() },
             refreshAccessToken = { refreshTokenSuccess() },
@@ -248,7 +248,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
     }
     
     @Test
-    fun `test guest`() = runTest {
+    fun `test guest`() = runCoroutineTest {
         val manager = createManager(
             getSelfInfo = { getSelfInfoSuccess() },
             refreshAccessToken = { refreshTokenSuccess() },
@@ -288,7 +288,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
     }
 
     @Test
-    fun `test cancel`() = runTest {
+    fun `test cancel`() = runCoroutineTest {
         val manager = createManager(
             getSelfInfo = { getSelfInfoSuccess() },
             refreshAccessToken = { refreshTokenSuccess() },
@@ -324,7 +324,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
     }
     
     @Test
-    fun `test authorize by session - succeeded`() = runTest {
+    fun `test authorize by session - succeeded`() = runCoroutineTest {
         val manager = createManager(
             getSelfInfo = { getSelfInfoSuccess() },
             refreshAccessToken = { refreshTokenSuccess() },
@@ -360,7 +360,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
     }
     
     @Test
-    fun `test authorize by session - failed`() = runTest {
+    fun `test authorize by session - failed`() = runCoroutineTest {
         val manager = createManager(
             getSelfInfo = { noCall() },
             refreshAccessToken = { noCall() },
@@ -393,7 +393,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
     }
 
     @Test
-    fun `test authorize - network error - in check authorize status`() = runTest {
+    fun `test authorize - network error - in check authorize status`() = runCoroutineTest {
         val manager = createManager(
             getSelfInfo = { noCall() },
             refreshAccessToken = { noCall() },
@@ -426,7 +426,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
     }
     
     @Test
-    fun `test authorize - network error initially error but later ok`() = runTest {
+    fun `test authorize - network error initially error but later ok`() = runCoroutineTest {
         val manager = createManager(
             getSelfInfo = { getSelfInfoSuccess() },
             refreshAccessToken = { refreshTokenSuccess() },
@@ -470,7 +470,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
     }
     
     @Test
-    fun `test authorize - network error - in refresh token`() = runTest {
+    fun `test authorize - network error - in refresh token`() = runCoroutineTest {
         val manager = createManager(
             getSelfInfo = { ApiResponse.networkError() },
             refreshAccessToken = { ApiResponse.networkError() },
