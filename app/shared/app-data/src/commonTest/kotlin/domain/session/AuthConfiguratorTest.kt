@@ -43,10 +43,9 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             authClient = authClient,
             onLaunchAuthorize = { launchedAuthorize = true },
             parentCoroutineContext = backgroundScope.coroutineContext
-        ).apply { 
-            backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) { 
-                authorizeRequestCheckLoop()
-            }
+        )
+        val loopJob = launch(start = CoroutineStart.UNDISPATCHED) {
+            configurator.authorizeRequestCheckLoop()
         }
         
         configurator.state.test {
@@ -56,6 +55,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             expectNoEvents()
         }
         assertFalse(launchedAuthorize, "Initial state should not trigger launch authorize.")
+        loopJob.cancel()
     }
     
     @Test
@@ -72,10 +72,9 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             authClient = authClient,
             onLaunchAuthorize = { launchedAuthorize = true },
             parentCoroutineContext = backgroundScope.coroutineContext
-        ).apply {
-            backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
-                authorizeRequestCheckLoop()
-            }
+        )
+        val loopJob = launch(start = CoroutineStart.UNDISPATCHED) {
+            configurator.authorizeRequestCheckLoop()
         }
         
         configurator.state.test {
@@ -93,6 +92,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             expectNoEvents()
         }
         assertFalse(launchedAuthorize, "Check state should not trigger launch authorize.")
+        loopJob.cancel()
     }
     
     @Test
@@ -111,10 +111,9 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             authClient = authClient,
             onLaunchAuthorize = { launchedAuthorize = true },
             parentCoroutineContext = backgroundScope.coroutineContext
-        ).apply {
-            backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
-                authorizeRequestCheckLoop()
-            }
+        )
+        val loopJob = launch(start = CoroutineStart.UNDISPATCHED) {
+            configurator.authorizeRequestCheckLoop()
         }
         
         configurator.state.test {
@@ -131,6 +130,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             expectNoEvents()
         }
         assertFalse(launchedAuthorize, "Check state should not trigger launch authorize.")
+        loopJob.cancel()
     }
 
     @Test
@@ -149,10 +149,9 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             authClient = authClient,
             onLaunchAuthorize = { launchedAuthorize = true },
             parentCoroutineContext = backgroundScope.coroutineContext
-        ).apply {
-            backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
-                authorizeRequestCheckLoop()
-            }
+        )
+        val loopJob = launch(start = CoroutineStart.UNDISPATCHED) {
+            configurator.authorizeRequestCheckLoop()
         }
 
         configurator.state.test {
@@ -169,6 +168,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             expectNoEvents()
         }
         assertFalse(launchedAuthorize, "Check state should not trigger launch authorize.")
+        loopJob.cancel()
     }
 
     @Test
@@ -187,10 +187,9 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             authClient = authClient,
             onLaunchAuthorize = { launchedAuthorize = true },
             parentCoroutineContext = backgroundScope.coroutineContext
-        ).apply {
-            backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
-                authorizeRequestCheckLoop()
-            }
+        )
+        val loopJob = launch(start = CoroutineStart.UNDISPATCHED) {
+            configurator.authorizeRequestCheckLoop()
         }
 
         configurator.state.test {
@@ -207,6 +206,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             expectNoEvents()
         }
         assertFalse(launchedAuthorize, "Check state should not trigger launch authorize.")
+        loopJob.cancel()
     }
     
     @Test
@@ -225,10 +225,9 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             authClient = authClient,
             onLaunchAuthorize = { launchedAuthorize = true },
             parentCoroutineContext = backgroundScope.coroutineContext
-        ).apply {
-            backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
-                authorizeRequestCheckLoop()
-            }
+        )
+        val loopJob = launch(start = CoroutineStart.UNDISPATCHED) {
+            configurator.authorizeRequestCheckLoop()
         }
 
         configurator.state.test {
@@ -245,6 +244,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             expectNoEvents()
         }
         assertTrue(launchedAuthorize, "Start authorize should trigger launch authorize.")
+        loopJob.cancel()
     }
     
     @Test
@@ -263,10 +263,9 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             authClient = authClient,
             onLaunchAuthorize = { launchedAuthorize = true },
             parentCoroutineContext = backgroundScope.coroutineContext
-        ).apply {
-            backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
-                authorizeRequestCheckLoop()
-            }
+        )
+        val loopJob = launch(start = CoroutineStart.UNDISPATCHED) {
+            configurator.authorizeRequestCheckLoop()
         }
 
         configurator.state.test {
@@ -285,6 +284,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             expectNoEvents()
         }
         assertFalse(launchedAuthorize, "Set guest session should not trigger launch authorize.")
+        loopJob.cancel()
     }
 
     @Test
@@ -301,10 +301,9 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             authClient = authClient,
             onLaunchAuthorize = { launchedAuthorize = true },
             parentCoroutineContext = backgroundScope.coroutineContext
-        ).apply {
-            backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
-                authorizeRequestCheckLoop()
-            }
+        )
+        val loopJob = launch(start = CoroutineStart.UNDISPATCHED) {
+            configurator.authorizeRequestCheckLoop()
         }
 
         configurator.state.test {
@@ -321,6 +320,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             expectNoEvents()
         }
         assertTrue(launchedAuthorize, "Start authorize should trigger launch authorize.")
+        loopJob.cancel()
     }
     
     @Test
@@ -337,10 +337,9 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             authClient = authClient,
             onLaunchAuthorize = { launchedAuthorize = true },
             parentCoroutineContext = backgroundScope.coroutineContext
-        ).apply {
-            backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
-                authorizeRequestCheckLoop()
-            }
+        )
+        val loopJob = launch(start = CoroutineStart.UNDISPATCHED) {
+            configurator.authorizeRequestCheckLoop()
         }
 
         configurator.state.test {
@@ -357,6 +356,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             expectNoEvents()
         }
         assertFalse(launchedAuthorize, "Set authorization token should not trigger launch authorize.")
+        loopJob.cancel()
     }
     
     @Test
@@ -373,10 +373,9 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             authClient = authClient,
             onLaunchAuthorize = { launchedAuthorize = true },
             parentCoroutineContext = backgroundScope.coroutineContext
-        ).apply {
-            backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
-                authorizeRequestCheckLoop()
-            }
+        )
+        val loopJob = launch(start = CoroutineStart.UNDISPATCHED) {
+            configurator.authorizeRequestCheckLoop()
         }
 
         configurator.state.test {
@@ -390,6 +389,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             expectNoEvents()
         }
         assertFalse(launchedAuthorize, "Set authorization token should not trigger launch authorize.")
+        loopJob.cancel()
     }
 
     @Test
@@ -406,10 +406,9 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             authClient = authClient,
             onLaunchAuthorize = { launchedAuthorize = true },
             parentCoroutineContext = backgroundScope.coroutineContext
-        ).apply {
-            backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
-                authorizeRequestCheckLoop()
-            }
+        )
+        val loopJob = launch(start = CoroutineStart.UNDISPATCHED) {
+            configurator.authorizeRequestCheckLoop()
         }
 
         configurator.state.test {
@@ -423,6 +422,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             expectNoEvents()
         }
         assertTrue(launchedAuthorize, "Start authorize should trigger launch authorize.")
+        loopJob.cancel()
     }
     
     @Test
@@ -450,10 +450,9 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             authClient = authClient,
             onLaunchAuthorize = { launchedAuthorize = true },
             parentCoroutineContext = backgroundScope.coroutineContext
-        ).apply {
-            backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
-                authorizeRequestCheckLoop()
-            }
+        )
+        val loopJob = launch(start = CoroutineStart.UNDISPATCHED) {
+            configurator.authorizeRequestCheckLoop()
         }
 
         configurator.state.test {
@@ -467,6 +466,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             expectNoEvents()
         }
         assertTrue(launchedAuthorize, "Start authorize should trigger launch authorize.")
+        loopJob.cancel()
     }
     
     @Test
@@ -483,10 +483,9 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             authClient = authClient,
             onLaunchAuthorize = { launchedAuthorize = true },
             parentCoroutineContext = backgroundScope.coroutineContext
-        ).apply {
-            backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
-                authorizeRequestCheckLoop()
-            }
+        )
+        val loopJob = launch(start = CoroutineStart.UNDISPATCHED) {
+            configurator.authorizeRequestCheckLoop()
         }
 
         configurator.state.test {
@@ -500,6 +499,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             expectNoEvents()
         }
         assertTrue(launchedAuthorize, "Start authorize should trigger launch authorize.")
+        loopJob.cancel()
     }
     
     private fun getSelfInfoSuccess(): ApiResponse<UserInfo> {
