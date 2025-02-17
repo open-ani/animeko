@@ -28,11 +28,11 @@ class CommentSenderTest {
     fun `send succeed`() = runTest {
         val commentService = createCommentService { }        
         val turnstileState = createTurnstileState()
-        
-        val sender = CommentSender(
-            turnstileState, 
+
+        val sender = PostCommentUseCase(
+            turnstileState,
             commentService,
-            turnstileContext = coroutineContext
+            turnstileContext = coroutineContext,
         )
         
         val result = sender.send(commentContext, COMMENT_CONTENT)
@@ -46,11 +46,11 @@ class CommentSenderTest {
             tokenFlow = { },
             errorFlow = { emit(TurnstileState.Error.Network(TURNSTILE_ERROR_CODE)) },
         )
-        
-        val sender = CommentSender(
-            turnstileState, 
-            commentService, 
-            turnstileContext = coroutineContext
+
+        val sender = PostCommentUseCase(
+            turnstileState,
+            commentService,
+            turnstileContext = coroutineContext,
         )
         
         val result = sender.send(commentContext, COMMENT_CONTENT)
@@ -66,10 +66,10 @@ class CommentSenderTest {
             errorFlow = { emit(TurnstileState.Error.Unknown(TURNSTILE_ERROR_CODE)) },
         )
 
-        val sender = CommentSender(
-            turnstileState, 
+        val sender = PostCommentUseCase(
+            turnstileState,
             commentService,
-            turnstileContext = coroutineContext
+            turnstileContext = coroutineContext,
         )
 
         val result = sender.send(commentContext, COMMENT_CONTENT)
@@ -81,13 +81,13 @@ class CommentSenderTest {
     fun `turnstile token - unknown error`() = runTest {
         val commentService = createCommentService { }
         val turnstileState = createTurnstileState(
-            errorFlow = { throw IllegalStateException() }
+            errorFlow = { throw IllegalStateException() },
         )
 
-        val sender = CommentSender(
-            turnstileState, 
+        val sender = PostCommentUseCase(
+            turnstileState,
             commentService,
-            turnstileContext = coroutineContext
+            turnstileContext = coroutineContext,
         )
 
         val result = sender.send(commentContext, COMMENT_CONTENT)
@@ -99,10 +99,10 @@ class CommentSenderTest {
         val commentService = createCommentService { throw IOException() }
         val turnstileState = createTurnstileState()
 
-        val sender = CommentSender(
+        val sender = PostCommentUseCase(
             turnstileState,
             commentService,
-            turnstileContext = coroutineContext
+            turnstileContext = coroutineContext,
         )
 
         val result = sender.send(commentContext, COMMENT_CONTENT)
@@ -114,10 +114,10 @@ class CommentSenderTest {
         val commentService = createCommentService { throw IllegalStateException() }
         val turnstileState = createTurnstileState()
 
-        val sender = CommentSender(
+        val sender = PostCommentUseCase(
             turnstileState,
             commentService,
-            turnstileContext = coroutineContext
+            turnstileContext = coroutineContext,
         )
 
         val result = sender.send(commentContext, COMMENT_CONTENT)

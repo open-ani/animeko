@@ -19,18 +19,23 @@ import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.network.BangumiCommentService
 import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.data.repository.RepositoryUnknownException
+import me.him188.ani.app.domain.usecase.UseCase
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.logger
 import kotlin.coroutines.CoroutineContext
 
-class CommentSender(
+interface PostCommentUseCase : UseCase {
+    suspend operator fun invoke(context: CommentContext, content: String): CommentSendResult
+}
+
+class PostCommentUseCaseImpl(
     private val turnstileState: TurnstileState,
     private val commentService: BangumiCommentService,
     private val turnstileContext: CoroutineContext = Dispatchers.Main,
-) {
-    private val logger = logger<CommentSender>()
-    
-    suspend fun send(context: CommentContext, content: String): CommentSendResult {
+) : PostCommentUseCase {
+    private val logger = logger<PostCommentUseCase>()
+
+    override suspend operator fun invoke(context: CommentContext, content: String): CommentSendResult {
         val turnstileResult = try {
             withContext(turnstileContext) {
                 turnstileState.reload()

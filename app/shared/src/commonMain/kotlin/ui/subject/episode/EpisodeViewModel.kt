@@ -47,14 +47,13 @@ import me.him188.ani.app.data.models.episode.renderEpisodeEp
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
-import me.him188.ani.app.data.network.BangumiCommentService
 import me.him188.ani.app.data.network.protocol.DanmakuInfo
 import me.him188.ani.app.data.repository.episode.BangumiCommentRepository
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepository
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
-import me.him188.ani.app.domain.comment.CommentSender
+import me.him188.ani.app.domain.comment.PostCommentUseCase
 import me.him188.ani.app.domain.comment.TurnstileState
 import me.him188.ani.app.domain.danmaku.DanmakuManager
 import me.him188.ani.app.domain.danmaku.SetDanmakuEnabledUseCase
@@ -91,7 +90,6 @@ import me.him188.ani.app.ui.comment.CommentMapperContext
 import me.him188.ani.app.ui.comment.CommentMapperContext.parseToUIComment
 import me.him188.ani.app.ui.comment.CommentState
 import me.him188.ani.app.ui.comment.EditCommentSticker
-import me.him188.ani.app.ui.comment.TurnstileState
 import me.him188.ani.app.ui.danmaku.UIDanmakuEvent
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.foundation.AuthState
@@ -176,9 +174,10 @@ class EpisodeViewModel(
     private val danmakuRegexFilterRepository: DanmakuRegexFilterRepository by inject()
     private val mediaSourceManager: MediaSourceManager by inject()
     private val bangumiCommentRepository: BangumiCommentRepository by inject()
-    private val bangumiCommentService: BangumiCommentService by inject()
     private val subjectDetailsStateFactory: SubjectDetailsStateFactory by inject()
     private val setDanmakuEnabledUseCase: SetDanmakuEnabledUseCase by inject()
+    private val postCommentUseCase: PostCommentUseCase by inject()
+    val turnstileState: TurnstileState by inject()
     // endregion
 
     val player: MediampPlayer =
@@ -480,12 +479,6 @@ class EpisodeViewModel(
         backgroundScope = backgroundScope,
     )
 
-    val turnstileState = TurnstileState(
-        "https://next.bgm.tv/p1/turnstile?redirect_uri=${TurnstileState.CALLBACK_INTERCEPTION_PREFIX}",
-    )
-    
-    private val commentSender = CommentSender(turnstileState, bangumiCommentService)
-
     @OptIn(UnsafeEpisodeSessionApi::class)
     val commentEditorState: CommentEditorState = CommentEditorState(
         showExpandEditCommentButton = true,
@@ -500,7 +493,7 @@ class EpisodeViewModel(
                 with(CommentMapperContext) { parseBBCode(text) }
             }
         },
-        onSend = { context, content -> commentSender.send(context, content) },
+        onSend = { context, content -> postCommentUseCase(context, content) },
         backgroundScope = backgroundScope,
     )
 

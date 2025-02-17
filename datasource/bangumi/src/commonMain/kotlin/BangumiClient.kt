@@ -77,6 +77,9 @@ interface BangumiClient {
     suspend fun testConnectionNext(): ConnectionStatus
 }
 
+val BangumiClient.turnstileBaseUrl: String
+    get() = "$BANGUMI_NEXT_API_HOST/p1/turnstile"
+
 private const val BANGUMI_API_HOST = "https://api.bgm.tv"
 private const val BANGUMI_NEXT_API_HOST = "https://next.bgm.tv" // dev.bgm38.com for testing
 private const val BANGUMI_HOST = "https://bgm.tv"

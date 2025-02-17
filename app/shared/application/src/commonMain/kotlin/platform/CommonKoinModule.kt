@@ -74,6 +74,8 @@ import me.him188.ani.app.data.repository.user.PreferencesRepositoryImpl
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.data.repository.user.TokenRepository
 import me.him188.ani.app.data.repository.user.TokenRepositoryImpl
+import me.him188.ani.app.domain.comment.TurnstileState
+import me.him188.ani.app.ui.comment.TurnstileState as CreateTurnstileState
 import me.him188.ani.app.domain.danmaku.DanmakuManager
 import me.him188.ani.app.domain.danmaku.DanmakuManagerImpl
 import me.him188.ani.app.domain.foundation.ConvertSendCountExceedExceptionFeature
@@ -122,6 +124,7 @@ import me.him188.ani.app.ui.subject.details.state.DefaultSubjectDetailsStateFact
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateFactory
 import me.him188.ani.datasources.bangumi.BangumiClient
 import me.him188.ani.datasources.bangumi.BangumiClientImpl
+import me.him188.ani.datasources.bangumi.turnstileBaseUrl
 import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.coroutines.childScopeContext
@@ -428,6 +431,16 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
 
     single<MeteredNetworkDetector> { createMeteredNetworkDetector(getContext()) }
     single<SubjectDetailsStateFactory> { DefaultSubjectDetailsStateFactory(coroutineScope.coroutineContext) }
+
+    single<TurnstileState> {
+        CreateTurnstileState(
+            buildString {
+                append(get<BangumiClient>().turnstileBaseUrl)
+                append("?redirect_uri=")
+                append(TurnstileState.CALLBACK_INTERCEPTION_PREFIX)
+            },
+        )
+    }
 }
 
 
