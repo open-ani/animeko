@@ -11,6 +11,7 @@ package me.him188.ani.app.domain.session
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -41,7 +42,6 @@ import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.platform.Uuid
 import me.him188.ani.utils.platform.currentTimeMillis
 import kotlin.coroutines.CoroutineContext
-import kotlinx.coroutines.CancellationException
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.seconds
@@ -172,7 +172,7 @@ class AniAuthConfigurator(
                                 "[AuthCheckLoop][${requestAuthorizeId.idStr}] Failed to check authorize status." 
                             }
                         }
-                        authorizeTasker.cancel(CancellationException(message = null, cause = e)) 
+                        processingRequest.cancel(CancellationException(message = null, cause = e)) 
                     }
                     .firstOrNull()
             }
