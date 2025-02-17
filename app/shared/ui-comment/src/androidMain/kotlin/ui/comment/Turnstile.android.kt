@@ -35,8 +35,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.viewinterop.AndroidView
-import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.receiveAsFlow
 import me.him188.ani.app.domain.comment.TurnstileState
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
@@ -63,9 +65,14 @@ class AndroidTurnstileState(
 
     // WebView 重新创建的时候会使用此 state bundle 恢复状态
     private var webViewStateBundle: Bundle? = null
-    
-    override val tokenFlow: MutableSharedFlow<String> = MutableSharedFlow()
-    override val webErrorFlow: MutableSharedFlow<TurnstileState.Error> = MutableSharedFlow()
+
+    private val tokenChannel = Channel<String>()
+    private val webErrorChannel = Channel<TurnstileState.Error>()
+
+    override val tokenFlow: Flow<String>
+        get() = tokenChannel.receiveAsFlow()
+    override val webErrorFlow: Flow<TurnstileState.Error>
+        get() = webErrorChannel.receiveAsFlow()
     
     
     private fun concatUrl(): String {
@@ -92,7 +99,7 @@ class AndroidTurnstileState(
                         val responseToken = TurnstileState.CALLBACK_REGEX
                             .matchEntire(requestUrl)?.groupValues?.getOrNull(1)
                         if (responseToken != null) {
-                            tokenFlow.tryEmit(responseToken)
+                            tokenChannel.trySend(responseToken)
                             return WebResourceResponse("text/plain", "utf-8", createEmptyInputStream())
                         }
                     }
@@ -104,9 +111,9 @@ class AndroidTurnstileState(
                 if (request?.isForMainFrame != true || error == null) return super.onReceivedError(view, request, error)
                 
                 if (error.errorCode in networkErrors) {
-                    webErrorFlow.tryEmit(TurnstileState.Error.Network(error.errorCode))
+                    webErrorChannel.trySend(TurnstileState.Error.Network(error.errorCode))
                 } else {
-                    webErrorFlow.tryEmit(TurnstileState.Error.Unknown(error.errorCode))
+                    webErrorChannel.trySend(TurnstileState.Error.Unknown(error.errorCode))
                 }
                 return super.onReceivedError(view, request, error)
             }
