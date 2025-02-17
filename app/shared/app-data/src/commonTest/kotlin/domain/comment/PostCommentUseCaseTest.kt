@@ -23,19 +23,19 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
-class CommentSenderTest {
+class PostCommentUseCaseTest {
     @Test
     fun `send succeed`() = runTest {
         val commentService = createCommentService { }        
         val turnstileState = createTurnstileState()
 
-        val sender = PostCommentUseCase(
+        val sender = PostCommentUseCaseImpl(
             turnstileState,
             commentService,
             turnstileContext = coroutineContext,
         )
-        
-        val result = sender.send(commentContext, COMMENT_CONTENT)
+
+        val result = sender(commentContext, COMMENT_CONTENT)
         assertIs<CommentSendResult.Ok>(result, "Should send succeeded.")
     }
     
@@ -47,13 +47,13 @@ class CommentSenderTest {
             errorFlow = { emit(TurnstileState.Error.Network(TURNSTILE_ERROR_CODE)) },
         )
 
-        val sender = PostCommentUseCase(
+        val sender = PostCommentUseCaseImpl(
             turnstileState,
             commentService,
             turnstileContext = coroutineContext,
         )
-        
-        val result = sender.send(commentContext, COMMENT_CONTENT)
+
+        val result = sender(commentContext, COMMENT_CONTENT)
         assertIs<CommentSendResult.TurnstileError.Network>(result, "Should cause turnstile web view network error.")
         assertEquals(TURNSTILE_ERROR_CODE, result.code)
     }
@@ -66,13 +66,13 @@ class CommentSenderTest {
             errorFlow = { emit(TurnstileState.Error.Unknown(TURNSTILE_ERROR_CODE)) },
         )
 
-        val sender = PostCommentUseCase(
+        val sender = PostCommentUseCaseImpl(
             turnstileState,
             commentService,
             turnstileContext = coroutineContext,
         )
 
-        val result = sender.send(commentContext, COMMENT_CONTENT)
+        val result = sender(commentContext, COMMENT_CONTENT)
         assertIs<CommentSendResult.TurnstileError.Unknown>(result, "Should cause turnstile web view unknown error.")
                 assertEquals(TURNSTILE_ERROR_CODE, result.code)
     }
@@ -84,13 +84,13 @@ class CommentSenderTest {
             errorFlow = { throw IllegalStateException() },
         )
 
-        val sender = PostCommentUseCase(
+        val sender = PostCommentUseCaseImpl(
             turnstileState,
             commentService,
             turnstileContext = coroutineContext,
         )
 
-        val result = sender.send(commentContext, COMMENT_CONTENT)
+        val result = sender(commentContext, COMMENT_CONTENT)
         assertIs<CommentSendResult.UnknownError>(result, "Exception in turnstile token should cause unknown error.")
             }
     
@@ -99,13 +99,13 @@ class CommentSenderTest {
         val commentService = createCommentService { throw IOException() }
         val turnstileState = createTurnstileState()
 
-        val sender = PostCommentUseCase(
+        val sender = PostCommentUseCaseImpl(
             turnstileState,
             commentService,
             turnstileContext = coroutineContext,
         )
 
-        val result = sender.send(commentContext, COMMENT_CONTENT)
+        val result = sender(commentContext, COMMENT_CONTENT)
         assertIs<CommentSendResult.NetworkError>(result, "Should cause network error.")
     }
     
@@ -114,13 +114,13 @@ class CommentSenderTest {
         val commentService = createCommentService { throw IllegalStateException() }
         val turnstileState = createTurnstileState()
 
-        val sender = PostCommentUseCase(
+        val sender = PostCommentUseCaseImpl(
             turnstileState,
             commentService,
             turnstileContext = coroutineContext,
         )
 
-        val result = sender.send(commentContext, COMMENT_CONTENT)
+        val result = sender(commentContext, COMMENT_CONTENT)
         assertIs<CommentSendResult.UnknownError>(result, "Should cause unknown error.")
     }
     
