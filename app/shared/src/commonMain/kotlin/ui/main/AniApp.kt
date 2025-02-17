@@ -31,7 +31,6 @@ import coil3.compose.LocalPlatformContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.distinctUntilChanged
 import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.foundation.HttpClientProvider
@@ -81,7 +80,6 @@ class AniAppViewModel : AbstractViewModel(), KoinComponent {
             imageLoaderClient,
         )
     }
-        .distinctUntilChanged()
         .stateInBackground(
             initialValue = null,
             started = SharingStarted.Eagerly,
