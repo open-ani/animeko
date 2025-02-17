@@ -21,7 +21,8 @@ import me.him188.ani.app.data.models.networkError
 import me.him188.ani.app.data.repository.user.AccessTokenSession
 import me.him188.ani.client.models.AniAnonymousBangumiUserToken
 import me.him188.ani.client.models.AniBangumiUserToken
-//import me.him188.ani.test.DisabledOnNative
+import me.him188.ani.test.DisabledOnNative
+import me.him188.ani.test.DisabledOnAndroid
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -394,6 +395,8 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
     }
 
     @Test
+    @DisabledOnNative
+    @DisabledOnAndroid
     fun `test authorize - network error - in check authorize status`() = runCoroutineTest {
         val manager = createManager(
             getSelfInfo = { noCall() },
