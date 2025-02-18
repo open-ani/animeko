@@ -80,18 +80,17 @@ class AniAppViewModel : AbstractViewModel(), KoinComponent {
             themeSettings,
             imageLoaderClient,
         )
-    }
-        .stateInBackground(
-            initialValue = null,
-            started = SharingStarted.Eagerly,
-        )
+    }.shareInBackground(
+        started = SharingStarted.Eagerly,
+        replay = 1,
+    )
 
     /*init {
         launchInMain {
             settings.uiSettings.update { copy(onboardingCompleted = false) }
         }
     }*/
-    
+
 //    /**
 //     * 跟随代理设置等配置变化而变化的 [HttpClient] 实例. 用于 coil ImageLoader.
 //     */
