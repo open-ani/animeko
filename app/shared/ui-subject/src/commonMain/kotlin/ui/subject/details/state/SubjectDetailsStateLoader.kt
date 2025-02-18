@@ -9,19 +9,17 @@
 
 package me.him188.ani.app.ui.subject.details.state
 
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.State
-import androidx.compose.runtime.mutableStateOf
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.tools.MonoTasker
+import me.him188.ani.app.ui.subject.details.SubjectDetailsUIState
 import me.him188.ani.utils.platform.annotations.TestOnly
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -31,34 +29,33 @@ import kotlin.coroutines.cancellation.CancellationException
 @Stable
 class SubjectDetailsStateLoader(
     private val subjectDetailsStateFactory: SubjectDetailsStateFactory,
-    private val backgroundScope: CoroutineScope,
+    backgroundScope: CoroutineScope,
 ) {
     private val tasker = MonoTasker(backgroundScope)
 
-    private val _result: MutableState<LoadState> = mutableStateOf(LoadState.Loading)
-    val result: State<LoadState> = _result
+    private val _state = MutableStateFlow<SubjectDetailsUIState?>(null)
+    val state: StateFlow<SubjectDetailsUIState?> = _state
 
     fun load(
         subjectId: Int,
         placeholder: SubjectInfo? = null
     ): Job {
-        val curr = _result.value
-        if (curr is LoadState.Ok && curr.value.info?.subjectId == subjectId) {
+        val currentState = _state.value
+        if (currentState is SubjectDetailsUIState.Ok && currentState.value.info?.subjectId == subjectId) {
             // 已经加载完成了
             return completedJob
         }
         return tasker.launch {
-            withContext(Dispatchers.Main) { _result.value = LoadState.Loading }
+            _state.value = SubjectDetailsUIState.Placeholder(subjectId, placeholder)
             try {
-                subjectDetailsStateFactory.create(subjectId, placeholder).collectLatest {
-                    withContext(Dispatchers.Main) { _result.value = LoadState.Ok(it) }
-                }
+                subjectDetailsStateFactory.create(subjectId, placeholder)
+                    .collectLatest {
+                        _state.value = SubjectDetailsUIState.Ok(it.subjectId, it)
+                    }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    _result.value = LoadState.Err(subjectId, placeholder, LoadError.fromException(e)) 
-                }
+                _state.value = SubjectDetailsUIState.Err(subjectId, placeholder, LoadError.fromException(e))
                 return@launch
             }
         }
@@ -66,7 +63,6 @@ class SubjectDetailsStateLoader(
 
     fun clear() {
         tasker.cancel()
-        _result.value = LoadState.Loading
     }
 
     fun reload(
@@ -75,12 +71,6 @@ class SubjectDetailsStateLoader(
     ) {
         clear()
         load(subjectId, placeholder)
-    }
-
-    sealed class LoadState {
-        data object Loading : LoadState()
-        class Ok(val value: SubjectDetailsState) : LoadState()
-        class Err(val subjectId: Int, val placeholder: SubjectInfo?, val error: LoadError) : LoadState()
     }
     
     private companion object {

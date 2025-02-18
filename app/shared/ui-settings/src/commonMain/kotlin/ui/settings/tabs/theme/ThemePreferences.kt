@@ -141,7 +141,7 @@ fun SettingsScope.ThemeGroup(
                 state.update(themeSettings.copy(useDynamicSubjectPageTheme = checked))
             },
             title = { Text("条目详情页使用动态主题") },
-            description = { Text("根据条目的图片，使用自适应颜色（注意，对详情页性能有较大影响，建议不要在低端设备使用该功能") },
+            description = { Text("根据封面生成动态主题") },
         )
     }
 

@@ -53,11 +53,12 @@ import androidx.compose.material3.adaptive.navigation.ThreePaneScaffoldNavigator
 import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -110,18 +111,40 @@ fun SettingsScreen(
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
     navigationIcon: @Composable () -> Unit = {},
 ) {
-    val navigator: ThreePaneScaffoldNavigator<SettingsTab> = rememberListDetailPaneScaffoldNavigator(
+    var lastSelectedTab by remember {
+        mutableStateOf(initialTab)
+    }
+    val navigator: ThreePaneScaffoldNavigator<Nothing?> = rememberListDetailPaneScaffoldNavigator(
         initialDestinationHistory = buildList {
             add(ThreePaneScaffoldDestinationItem(ListDetailPaneScaffoldRole.List))
             if (initialTab != null) {
-                add(ThreePaneScaffoldDestinationItem(ListDetailPaneScaffoldRole.Detail, initialTab))
+                add(ThreePaneScaffoldDestinationItem(ListDetailPaneScaffoldRole.Detail))
             }
         },
     )
     val layoutParameters = ListDetailLayoutParameters.calculate(navigator.scaffoldDirective)
+    val coroutineScope = rememberCoroutineScope()
 
     SettingsPageLayout(
         navigator,
+        // TODO: 2025/2/14 We should have a SettingsNavController or so to control the tab state 
+        { lastSelectedTab },
+        onSelectedTab = { tab ->
+            coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                navigator.navigateTo(ListDetailPaneScaffoldRole.Detail)
+                lastSelectedTab = tab
+            }
+        },
+        onClickBackOnListPage = {
+            coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                navigator.navigateBack()
+            }
+        },
+        onClickBackOnDetailPage = {
+            coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                navigator.navigateBack(BackNavigationBehavior.PopUntilScaffoldValueChange)
+            }
+        },
         navItems = {
             Title("应用与界面", paddingTop = 0.dp)
             Item(SettingsTab.APPEARANCE)
@@ -212,7 +235,11 @@ fun SettingsScreen(
 
 @Composable
 internal fun SettingsPageLayout(
-    navigator: ThreePaneScaffoldNavigator<SettingsTab>,
+    navigator: ThreePaneScaffoldNavigator<Nothing?>,
+    currentTab: () -> SettingsTab?,
+    onSelectedTab: (SettingsTab) -> Unit,
+    onClickBackOnListPage: () -> Unit,
+    onClickBackOnDetailPage: () -> Unit,
     navItems: @Composable (SettingsDrawerScope.() -> Unit),
     tabContent: @Composable PaneScope.(currentTab: SettingsTab?) -> Unit,
     modifier: Modifier = Modifier,
@@ -223,8 +250,6 @@ internal fun SettingsPageLayout(
 ) = Surface(color = containerColor) {
     val layoutParametersState by rememberUpdatedState(layoutParameters)
 
-    val coroutineScope = rememberCoroutineScope()
-
     @Stable
     fun SettingsTab?.orDefault(): SettingsTab? {
         return if (layoutParametersState.isSinglePane) {
@@ -233,12 +258,6 @@ internal fun SettingsPageLayout(
         } else {
             // 双页模式, 默认选择第一个 tab, 以免右边很空
             this ?: SettingsTab.entries.first()
-        }
-    }
-
-    val currentTab by remember(navigator) {
-        derivedStateOf {
-            navigator.currentDestination?.contentKey.orDefault()
         }
     }
 
@@ -258,9 +277,7 @@ internal fun SettingsPageLayout(
                     if (navigator.canNavigateBack()) {
                         BackNavigationIconButton(
                             onNavigateBack = {
-                                coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
-                                    navigator.navigateBack()
-                                }
+                                onClickBackOnListPage()
                             },
                         )
                     } else {
@@ -272,7 +289,7 @@ internal fun SettingsPageLayout(
                 windowInsets = paneContentWindowInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
             )
         },
-        listPaneContent = {
+        listPaneContent = paneScope@{
             PermanentDrawerSheet(
                 Modifier
                     .paneContentPadding()
@@ -284,18 +301,17 @@ internal fun SettingsPageLayout(
                     .verticalScroll(listPaneScrollState),
                 drawerContainerColor = Color.Unspecified,
             ) {
-                val scope = remember(this, navigator) {
+                val highlightSelectedItemState = rememberUpdatedState(layoutParametersState.highlightSelectedItem)
+                val scope = remember(this, navigator, currentTab, highlightSelectedItemState) {
                     object : SettingsDrawerScope(), ColumnScope by this {
                         @Composable
                         override fun Item(item: SettingsTab) {
                             NavigationDrawerItem(
                                 icon = { Icon(getIcon(item), contentDescription = null) },
                                 label = { Text(getName(item)) },
-                                selected = item == currentTab,
+                                selected = item == currentTab() && highlightSelectedItemState.value,
                                 onClick = {
-                                    coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
-                                        navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, item)
-                                    }
+                                    onSelectedTab(item)
                                 },
                             )
                         }
@@ -313,9 +329,8 @@ internal fun SettingsPageLayout(
         // empty because our detailPaneContent already has it
         detailPane = {
             AnimatedContent(
-                navigator.currentDestination?.contentKey,
-                Modifier
-                    .fillMaxSize(),
+                currentTab(),
+                Modifier.fillMaxSize(),
                 transitionSpec = LocalAniMotionScheme.current.animatedContent.topLevel,
             ) { navigationTab ->
                 val tab = navigationTab.orDefault()
@@ -329,9 +344,7 @@ internal fun SettingsPageLayout(
                                 if (listDetailLayoutParameters.isSinglePane) {
                                     BackNavigationIconButton(
                                         {
-                                            coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
-                                                navigator.navigateBack(BackNavigationBehavior.PopUntilScaffoldValueChange)
-                                            }
+                                            onClickBackOnDetailPage()
                                         },
                                     )
                                 }

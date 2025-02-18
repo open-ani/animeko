@@ -58,7 +58,6 @@ const val COVER_WIDTH_TO_HEIGHT_RATIO = 849 / 1200f
 // 图片和标题
 @Composable
 internal fun SubjectDetailsHeader(
-    subjectId: Int,
     info: SubjectInfo?,
     coverImageUrl: String?,
     seasonTags: @Composable () -> Unit,
@@ -78,7 +77,6 @@ internal fun SubjectDetailsHeader(
 
     if (currentWindowAdaptiveInfo1().isWidthAtLeastMedium) {
         SubjectDetailsHeaderWide(
-            subjectId = subjectId,
             coverImageUrl = coverImageUrl,
             onLongClickTitle = { isSubtitle ->
                 copy(
@@ -115,7 +113,6 @@ internal fun SubjectDetailsHeader(
         )
     } else {
         SubjectDetailsHeaderCompact(
-            subjectId = subjectId,
             coverImageUrl = coverImageUrl,
             title = { Text(info?.displayName ?: "") },
             subtitle = { Text(info?.name ?: "") },
@@ -134,7 +131,6 @@ internal fun SubjectDetailsHeader(
 // 适合手机, 窄
 @Composable
 fun SubjectDetailsHeaderCompact(
-    subjectId: Int,
     coverImageUrl: String?,
     title: @Composable () -> Unit,
     subtitle: @Composable () -> Unit,
@@ -219,7 +215,6 @@ fun SubjectDetailsHeaderCompact(
 
 @Composable
 fun SubjectDetailsHeaderWide(
-    subjectId: Int,
     coverImageUrl: String?,
     onLongClickTitle: (isSubtitle: Boolean) -> Unit,
     title: @Composable () -> Unit,

@@ -16,7 +16,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.paging.cachedIn
 import androidx.paging.map
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -26,8 +25,6 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.asFlow
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
@@ -42,7 +39,6 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.onStart
-import kotlinx.coroutines.flow.retry
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
@@ -57,6 +53,8 @@ import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepository
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
+import me.him188.ani.app.domain.comment.PostCommentUseCase
+import me.him188.ani.app.domain.comment.TurnstileState
 import me.him188.ani.app.domain.danmaku.DanmakuManager
 import me.him188.ani.app.domain.danmaku.SetDanmakuEnabledUseCase
 import me.him188.ani.app.domain.episode.EpisodeCompletionContext.isKnownCompleted
@@ -87,14 +85,11 @@ import me.him188.ani.app.domain.session.AuthState
 import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.app.platform.Context
 import me.him188.ani.app.ui.comment.BangumiCommentSticker
-import me.him188.ani.app.ui.comment.CommentContext
 import me.him188.ani.app.ui.comment.CommentEditorState
 import me.him188.ani.app.ui.comment.CommentMapperContext
 import me.him188.ani.app.ui.comment.CommentMapperContext.parseToUIComment
 import me.him188.ani.app.ui.comment.CommentState
 import me.him188.ani.app.ui.comment.EditCommentSticker
-import me.him188.ani.app.ui.comment.TurnstileState
-import me.him188.ani.app.ui.comment.reloadAndGetToken
 import me.him188.ani.app.ui.danmaku.UIDanmakuEvent
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.foundation.AuthState
@@ -130,7 +125,6 @@ import me.him188.ani.utils.coroutines.flows.FlowRestarter
 import me.him188.ani.utils.coroutines.flows.flowOfEmptyList
 import me.him188.ani.utils.coroutines.flows.restartable
 import me.him188.ani.utils.coroutines.sampleWithInitial
-import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.warn
 import me.him188.ani.utils.platform.annotations.TestOnly
 import org.koin.core.Koin
@@ -182,6 +176,8 @@ class EpisodeViewModel(
     private val bangumiCommentRepository: BangumiCommentRepository by inject()
     private val subjectDetailsStateFactory: SubjectDetailsStateFactory by inject()
     private val setDanmakuEnabledUseCase: SetDanmakuEnabledUseCase by inject()
+    private val postCommentUseCase: PostCommentUseCase by inject()
+    val turnstileState: TurnstileState by inject()
     // endregion
 
     val player: MediampPlayer =
@@ -483,10 +479,6 @@ class EpisodeViewModel(
         backgroundScope = backgroundScope,
     )
 
-    val turnstileState = TurnstileState(
-        "https://next.bgm.tv/p1/turnstile?redirect_uri=${TurnstileState.CALLBACK_INTERCEPTION_PREFIX}",
-    )
-
     @OptIn(UnsafeEpisodeSessionApi::class)
     val commentEditorState: CommentEditorState = CommentEditorState(
         showExpandEditCommentButton = true,
@@ -501,32 +493,7 @@ class EpisodeViewModel(
                 with(CommentMapperContext) { parseBBCode(text) }
             }
         },
-        onSend = { context, content ->
-            val token = suspend {
-                withContext(Dispatchers.Main) { turnstileState.reloadAndGetToken() }
-            }
-                .asFlow()
-                .retry(3)
-                .catch {
-                    if (it !is CancellationException) {
-                        logger.error(it) { "Failed to get token, see exception" }
-                    }
-                }
-                .firstOrNull()
-
-            if (token == null) return@CommentEditorState false
-
-            try {
-                bangumiCommentRepository.postEpisodeComment(context, content, token)
-                commentStateRestarter.restart() // 评论发送成功了, 刷新一下
-                return@CommentEditorState true
-            } catch (e: Exception) {
-                if (e !is CancellationException) {
-                    logger.error(e) { "Failed to post comment, see exception" }
-                }
-                return@CommentEditorState false
-            }
-        },
+        onSend = { context, content -> postCommentUseCase(context, content) },
         backgroundScope = backgroundScope,
     )
 
@@ -569,8 +536,19 @@ class EpisodeViewModel(
             ).distinctUntilChanged(),
             settingsRepository.danmakuEnabled.flow,
             settingsRepository.danmakuConfig.flow,
-            mediaSourceResultsFlow,
-        ) { subjectEpisodeBundle, loadError, fetchSelect, danmakuStatistics, danmakuEnabled, danmakuConfig, mediaSourceResultsPresentation ->
+            episodeSession.fetchSelectFlow.map { fetchSelect ->
+                if (fetchSelect != null) MediaSelectorState(
+                    fetchSelect.mediaSelector,
+                    mediaSourceInfoProvider,
+                    backgroundScope,
+                ) else {
+                    // TODO: 2025/1/22 We should not use createTestMediaSelectorState
+                    @OptIn(TestOnly::class)
+                    createTestMediaSelectorState(backgroundScope)
+                }
+            },
+            mediaSourceResultsFlow.map { MediaSourceResultListPresentation(it) },
+        ) { subjectEpisodeBundle, loadError, fetchSelect, danmakuStatistics, danmakuEnabled, danmakuConfig, mediaSelectorState, mediaSourceResultsPresentation ->
 
             val (subject, episode) = if (subjectEpisodeBundle == null) {
                 SubjectPresentation.Placeholder to EpisodePresentation.Placeholder
@@ -586,16 +564,8 @@ class EpisodeViewModel(
             }
 
             EpisodePageState(
-                mediaSelectorState = if (fetchSelect != null) MediaSelectorState(
-                    fetchSelect.mediaSelector,
-                    mediaSourceInfoProvider,
-                    backgroundScope,
-                ) else {
-                    // TODO: 2025/1/22 We should not use createTestMediaSelectorState
-                    @OptIn(TestOnly::class)
-                    createTestMediaSelectorState(backgroundScope)
-                },
-                mediaSourceResultListPresentation = MediaSourceResultListPresentation(mediaSourceResultsPresentation),
+                mediaSelectorState = mediaSelectorState,
+                mediaSourceResultListPresentation = mediaSourceResultsPresentation,
                 danmakuStatistics = danmakuStatistics,
                 subjectPresentation = subject,
                 episodePresentation = episode,
@@ -698,22 +668,5 @@ class EpisodeViewModel(
 
     fun setDanmakuSourceEnabled(providerId: String, enabled: Boolean) {
         danmakuLoader.setEnabled(providerId, enabled)
-    }
-}
-
-
-private suspend fun BangumiCommentRepository.postEpisodeComment(
-    context: CommentContext,
-    content: String,
-    turnstileToken: String
-) {
-    when (context) {
-        is CommentContext.Episode ->
-            postEpisodeComment(context.episodeId, content, turnstileToken, null)
-
-        is CommentContext.EpisodeReply ->
-            postEpisodeComment(context.episodeId, content, turnstileToken, context.commentId)
-
-        is CommentContext.SubjectReview -> error("unreachable on postEpisodeComment")
     }
 }

@@ -18,8 +18,9 @@
 提示：
 
 - 绝大部分测试可写在 `commonTest` 里，它们会被所有平台共享，也就是所有平台都会执行这些测试；
-- 对于桌面端专用的测试，应当放置在 `jvmTest/desktopTest`，对于 iOS 专用的测试，应当放置在
-  `nativeTest/appleTest/iosTest`，以此类推；
+- 对于桌面端专用的测试，应当放置在 `jvmTest` 或 `desktopTest`。
+- 对于 iOS 专用的测试，应当放置在
+  `nativeTest` 或 `appleTest` 或 `iosTest`。对于不依赖 Apple API 的部分，建议放置于 `nativeTest`；对于依赖 macOS 和 iOS 都存在的 Apple API 的部分，建议放置于 `appleTest`；对于只能在 iOS 运行的部分，放置于 `iosTest`。
 - 如果是桌面端和安卓都可以使用的测试，则放置在 `jvmTest` 中。
 
 ## Android Instrumented Test

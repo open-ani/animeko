@@ -20,12 +20,15 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.runBlocking
+import me.him188.ani.app.domain.comment.TurnstileState
 import me.him188.ani.app.platform.AniCefApp
 import org.cef.CefClient
 import org.cef.browser.CefBrowser
 import org.cef.browser.CefFrame
 import org.cef.browser.CefRendering
 import org.cef.browser.CefRequestContext
+import org.cef.handler.CefLoadHandler
+import org.cef.handler.CefLoadHandlerAdapter
 import org.cef.handler.CefResourceRequestHandlerAdapter
 import org.cef.network.CefRequest
 import java.awt.Component
@@ -38,7 +41,8 @@ class DesktopTurnstileState(
 
     var isDarkTheme: Boolean = false
 
-    override val tokenFlow: MutableSharedFlow<String> = MutableSharedFlow(extraBufferCapacity = 1)
+    override val tokenFlow: MutableSharedFlow<String> = MutableSharedFlow()
+    override val webErrorFlow: MutableSharedFlow<TurnstileState.Error> = MutableSharedFlow()
 
     private fun concatUrl(): String {
         return "${url}&theme=${if (isDarkTheme) "dark" else "light"}"
@@ -49,7 +53,28 @@ class DesktopTurnstileState(
             val newClient = AniCefApp.createClient()
                 ?: throw IllegalStateException("AniCefApp should be initialized.")
 
-            client = newClient
+            client = newClient.apply { 
+                addLoadHandler(object : CefLoadHandlerAdapter() {
+                    override fun onLoadError(
+                        browser: CefBrowser?,
+                        frame: CefFrame?,
+                        errorCode: CefLoadHandler.ErrorCode?,
+                        errorText: String?,
+                        failedUrl: String?
+                    ) {
+                        if (frame?.isMain != true || errorCode == null) {
+                            return super.onLoadError(browser, frame, errorCode, errorText, failedUrl)
+                        }
+                        
+                        if (errorCode in networkErrors) {
+                            webErrorFlow.tryEmit(TurnstileState.Error.Network(errorCode.code))
+                        } else {
+                            webErrorFlow.tryEmit(TurnstileState.Error.Unknown(errorCode.code))
+                        }
+                        return super.onLoadError(browser, frame, errorCode, errorText, failedUrl)
+                    }
+                })
+            }
 
             val newBrowser = newClient.createBrowser(
                 concatUrl(),
@@ -66,12 +91,16 @@ class DesktopTurnstileState(
                             if (requestUrl != null &&
                                 requestUrl.startsWith(TurnstileState.CALLBACK_INTERCEPTION_PREFIX)
                             ) {
-                                tokenFlow.tryEmit(
-                                    requestUrl.substringAfter(
-                                        TurnstileState.CALLBACK_INTERCEPTION_PREFIX,
-                                    ),
-                                )
-                                return true
+                                val responseToken = TurnstileState.CALLBACK_REGEX
+                                    .matchEntire(requestUrl)?.groupValues?.getOrNull(1)
+                                if (responseToken != null) {
+                                    tokenFlow.tryEmit(
+                                        requestUrl.substringAfter(
+                                            TurnstileState.CALLBACK_INTERCEPTION_PREFIX,
+                                        ),
+                                    )
+                                    return true
+                                }
                             }
                             return super.onBeforeResourceLoad(browser, frame, request)
                         }
@@ -98,6 +127,18 @@ class DesktopTurnstileState(
             client = null
             browser = null
         }
+    }
+    
+    private companion object {
+        private val networkErrors = setOf(
+            CefLoadHandler.ErrorCode.ERR_CONNECTION_CLOSED,
+            CefLoadHandler.ErrorCode.ERR_CONNECTION_RESET,
+            CefLoadHandler.ErrorCode.ERR_CONNECTION_REFUSED,
+            CefLoadHandler.ErrorCode.ERR_CONNECTION_ABORTED,
+            CefLoadHandler.ErrorCode.ERR_CONNECTION_FAILED,
+            CefLoadHandler.ErrorCode.ERR_INTERNET_DISCONNECTED ,
+            CefLoadHandler.ErrorCode.ERR_NETWORK_CHANGED,
+        )
     }
 }
 

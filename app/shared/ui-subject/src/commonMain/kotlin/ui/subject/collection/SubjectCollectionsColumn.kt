@@ -86,6 +86,7 @@ fun SubjectCollectionsColumn(
 ) {
     val isCompact = currentWindowAdaptiveInfo1().windowSizeClass.isWidthCompact
     val spacedBy = if (isCompact) 16.dp else 24.dp
+    val aniMotionScheme = LocalAniMotionScheme.current
 
     LazyVerticalGrid(
         GridCells.Adaptive(360.dp),
@@ -116,9 +117,9 @@ fun SubjectCollectionsColumn(
                         .padding(all = spacedBy / 2)
                         .ifThen(enableAnimation) {
                             animateItem(
-                                fadeInSpec = LocalAniMotionScheme.current.feedItemFadeInSpec,
-                                placementSpec = LocalAniMotionScheme.current.feedItemPlacementSpec,
-                                fadeOutSpec = LocalAniMotionScheme.current.feedItemFadeOutSpec,
+                                fadeInSpec = aniMotionScheme.feedItemFadeInSpec,
+                                placementSpec = aniMotionScheme.feedItemPlacementSpec,
+                                fadeOutSpec = aniMotionScheme.feedItemFadeOutSpec,
                             )
                         },
                 ) {

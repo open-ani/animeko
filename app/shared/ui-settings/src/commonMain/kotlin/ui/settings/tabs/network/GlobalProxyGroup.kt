@@ -19,12 +19,11 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.Flow
+import me.him188.ani.app.data.models.preference.ProxyAuthorization
 import me.him188.ani.app.data.models.preference.ProxyConfig
 import me.him188.ani.app.data.models.preference.ProxyMode
 import me.him188.ani.app.data.models.preference.ProxySettings
@@ -169,31 +168,19 @@ fun SettingsScope.CustomProxyConfig(
 
     HorizontalDividerItem()
 
-    val username by remember {
-        derivedStateOf {
-            proxySettings.default.customConfig.authorization?.username ?: ""
-        }
-    }
-
-    val password by remember {
-        derivedStateOf {
-            proxySettings.default.customConfig.authorization?.password ?: ""
-        }
-    }
-
     TextFieldItem(
-        username,
+        proxySettings.default.customConfig.authorization?.username ?: "",
         title = { Text("用户名") },
         description = { Text("可选") },
         placeholder = { Text("无") },
         onValueChangeCompleted = {
+            val newAuth = proxySettings.default.customConfig.authorization?.copy(username = it)
+                ?: ProxyAuthorization(username = it, password = "")
             proxySettingsState.update(
                 proxySettings.copy(
                     default = proxySettings.default.copy(
                         customConfig = proxySettings.default.customConfig.copy(
-                            authorization = proxySettings.default.customConfig.authorization?.copy(
-                                username = it,
-                            ),
+                            authorization = newAuth,
                         ),
                     ),
                 ),
@@ -205,18 +192,18 @@ fun SettingsScope.CustomProxyConfig(
     HorizontalDividerItem()
 
     TextFieldItem(
-        password,
+        proxySettings.default.customConfig.authorization?.password ?: "",
         title = { Text("密码") },
         description = { Text("可选") },
         placeholder = { Text("无") },
         onValueChangeCompleted = {
+            val newAuth = proxySettings.default.customConfig.authorization?.copy(password = it)
+                ?: ProxyAuthorization(username = "", password = it)
             proxySettingsState.update(
                 proxySettings.copy(
                     default = proxySettings.default.copy(
                         customConfig = proxySettings.default.customConfig.copy(
-                            authorization = proxySettings.default.customConfig.authorization?.copy(
-                                password = password,
-                            ),
+                            authorization = newAuth,
                         ),
                     ),
                 ),

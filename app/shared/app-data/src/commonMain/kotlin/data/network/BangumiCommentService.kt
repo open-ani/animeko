@@ -21,22 +21,21 @@ import me.him188.ani.app.data.models.subject.SubjectReview
 import me.him188.ani.datasources.api.paging.Paged
 import me.him188.ani.datasources.api.paging.processPagedResponse
 import me.him188.ani.datasources.bangumi.BangumiClient
-import me.him188.ani.datasources.bangumi.next.models.BangumiNextCreateSubjectEpCommentRequest
-import me.him188.ani.datasources.bangumi.next.models.BangumiNextGetSubjectEpisodeComments200ResponseInner
-import me.him188.ani.datasources.bangumi.next.models.BangumiNextSubjectComment
+import me.him188.ani.datasources.bangumi.next.models.BangumiNextCreateEpisodeCommentRequest
+import me.him188.ani.datasources.bangumi.next.models.BangumiNextSubjectInterestComment
 import me.him188.ani.utils.coroutines.IO_
 import kotlin.coroutines.CoroutineContext
 
-sealed interface BangumiCommentService {
+interface BangumiCommentService {
     /**
      * @return `null` if [subjectId] is invalid
      */
-    suspend fun getSubjectReviews(subjectId: Int, offset: Int, limit: Int): Paged<SubjectReview>?
+    suspend fun getSubjectComments(subjectId: Int, offset: Int, limit: Int): Paged<SubjectReview>?
 
     /**
-     * @return `null` if [subjectId] is invalid
+     * @return `null` if [episodeId] is invalid
      */
-    suspend fun getSubjectEpisodeComments(subjectId: Int): List<EpisodeComment>?
+    suspend fun getSubjectEpisodeComments(episodeId: Int): List<EpisodeComment>?
 
     // comment.id 会被忽略
     suspend fun postEpisodeComment(
@@ -51,10 +50,10 @@ class BangumiBangumiCommentServiceImpl(
     private val client: BangumiClient,
     private val ioDispatcher: CoroutineContext = Dispatchers.IO_,
 ) : BangumiCommentService {
-    override suspend fun getSubjectReviews(subjectId: Int, offset: Int, limit: Int): Paged<SubjectReview>? {
+    override suspend fun getSubjectComments(subjectId: Int, offset: Int, limit: Int): Paged<SubjectReview>? {
         return withContext(ioDispatcher) {
             val response = try {
-                client.nextApi {
+                client.nextSubjectApi {
                     getSubjectComments(subjectId, null, limit, offset)
                         .body()
                 }
@@ -76,12 +75,12 @@ class BangumiBangumiCommentServiceImpl(
         replyToCommentId: Int?
     ) {
         withContext(ioDispatcher) {
-            client.nextApi {
-                createSubjectEpComment(
+            client.nextEpisodeApi {
+                createEpisodeComment(
                     episodeId,
-                    BangumiNextCreateSubjectEpCommentRequest(
-                        cfTurnstileResponse,
+                    BangumiNextCreateEpisodeCommentRequest(
                         content,
+                        cfTurnstileResponse,
                         replyToCommentId,
                     ),
                 )
@@ -90,13 +89,13 @@ class BangumiBangumiCommentServiceImpl(
         }
     }
 
-    override suspend fun getSubjectEpisodeComments(subjectId: Int): List<EpisodeComment>? {
+    override suspend fun getSubjectEpisodeComments(episodeId: Int): List<EpisodeComment>? {
         return withContext(ioDispatcher) {
             val response = try {
-                client.nextApi {
-                    getSubjectEpisodeComments(subjectId)
+                client.nextEpisodeApi {
+                    getEpisodeComments(episodeId)
                         .body()
-                        .map(BangumiNextGetSubjectEpisodeComments200ResponseInner::toEpisodeComment)
+                        .map { it.toEpisodeComment(episodeId) }
                 }
             } catch (e: ClientRequestException) {
                 if (e.response.status == HttpStatusCode.NotFound || e.response.status == HttpStatusCode.BadRequest) {
@@ -109,8 +108,8 @@ class BangumiBangumiCommentServiceImpl(
     }
 }
 
-private fun BangumiNextSubjectComment.toSubjectReview(subjectId: Int) = SubjectReview(
-    id = packInts(subjectId, user.id ?: 0),
+private fun BangumiNextSubjectInterestComment.toSubjectReview(subjectId: Int) = SubjectReview(
+    id = packInts(subjectId, user.id),
     content = comment,
     updatedAt = updatedAt * 1000L,
     rating = rate,

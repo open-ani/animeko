@@ -180,6 +180,7 @@ private fun createFloatingDanmakuTrack(
     safeSeparation = safeSeparation,
     baseSpeedTextWidth = baseSpeedTextWidth, // 如果不进行撞车测试, 那请设置 speedMultiplier 为 1f
     speedMultiplier = mutableFloatStateOf(speedMultiplier),
+    randomizeSpeedFluctuation = 0f, // 测试时不能有速度波动
     onRemoveDanmaku = onRemoveDanmaku,
 )
 

@@ -13,7 +13,7 @@ ani.dandanplay.app.id=aaaaaaaaa
 ani.dandanplay.app.secret=aaaaaaaaaaaaaaa
 ```
 
-### 打包 Android APP
+## 打包 Android APP
 
 在 IDE 中双击 Ctrl，可用的命令：
 - `./gradlew assembleRelease` - 编译发布版
@@ -23,7 +23,7 @@ ani.dandanplay.app.secret=aaaaaaaaaaaaaaa
 
 在 IDE 上也可以选择 `Build -> Build Bundle(s) / APK(s) -> Build APK(s)` 来构建 APK。
 
-### 打包桌面应用
+## 打包桌面应用
 
 要构建桌面应用，请参考 [Compose for Desktop]
 官方文档，或简单执行 `./gradlew createReleaseDistributable`

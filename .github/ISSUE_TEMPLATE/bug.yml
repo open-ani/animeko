@@ -10,13 +10,15 @@ body:
       value: |
         欢迎反馈 bug！
         在提交之前，请确保你已经搜索过已有的 issues，确保没有重复问题。
+        例如，对于 "下载不了在线资源" 问题，请先搜索 "下载"，看看是否已经有人提出过，如果有就去那个议题里点赞即可，无需重复提交。
+        ----
         请尽量提供多的信息，这将帮助问题更快解决。
 
   - type: textarea
     id: issue-description
     attributes:
       label: 问题描述
-      description: 详细描述你遇到的问题，可以附加截图或录屏。
+      description: 详细描述你遇到的问题，建议附加截图或录屏。
     validations:
       required: false
 
@@ -58,11 +60,12 @@ body:
     attributes:
       label: 应用日志
       description: |
+        这非常重要!!! 很多问题都需要日志才能解决，如果现在不提供日志，稍后开发者也很可能会问你要日志。缺少日志的议题可能会被直接关闭。
         对于 PC 端用户，在 "设置-关于" 中点击打开日志目录，把 `app.log` 复制拖到这里。
-        对于 Android 用户，在 "设置-关于" 中分享日志，可以分享到 Telegram 群内获取链接，或者自行上传到这里或者 pastebin 等网站。
+        对于 Android 用户，在 "设置-关于" 中分享日志，可以分享到 Telegram 群内获取链接，或者自行上传到这里，或者上传到 pastebin 等网站。
       placeholder: |
-        请在拖拽文件到这里，或者粘贴日志 (全部) 内容。
-        请同时说明问题的发生时间，最好精确到分钟 (例如 19:43 左右)。
+        拖拽文件到这里。
+        同时说明问题的发生时间，最好精确到分钟 (例如 19:43 左右)。
       value: "..."
     validations:
       required: false

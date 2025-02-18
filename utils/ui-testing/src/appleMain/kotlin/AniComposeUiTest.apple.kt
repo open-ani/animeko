@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.ui.framework
 
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.runComposeUiTest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.resetMain
@@ -21,6 +22,17 @@ actual fun runAniComposeUiTest(
     Dispatchers.resetMain()
 
     runComposeUiTest {
-        testBody()
+        try {
+            testBody()
+        } catch (e: Throwable) {
+            // Add screenshot of current state
+            try {
+                onRoot().assertScreenshot("")
+            } catch (extraInfo: Throwable) {
+                e.addSuppressed(extraInfo) // Will contain base64 of screenshot
+                throw e
+            }
+            throw e
+        }
     }
 }

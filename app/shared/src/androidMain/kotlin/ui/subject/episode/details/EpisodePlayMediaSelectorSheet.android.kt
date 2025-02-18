@@ -26,7 +26,7 @@ import me.him188.ani.utils.platform.annotations.TestOnly
 private fun PreviewEpisodePlayMediaSelectorSheet() = ProvideCompositionLocalsForPreview {
     EpisodePlayMediaSelector(
         rememberTestMediaSelectorState(),
-        TestMediaSourceResultListPresentation,
+        { TestMediaSourceResultListPresentation },
         onDismissRequest = {},
         onRefresh = {},
         onRestartSource = {},
@@ -39,7 +39,7 @@ private fun PreviewEpisodePlayMediaSelectorSheet() = ProvideCompositionLocalsFor
 private fun PreviewEpisodePlayMediaSelectorSheet2() = ProvideCompositionLocalsForPreview {
     EpisodePlayMediaSelector(
         rememberTestMediaSelectorState(),
-        TestMediaSourceResultListPresentation,
+        { TestMediaSourceResultListPresentation },
         onDismissRequest = {},
         onRefresh = {},
         onRestartSource = {},
@@ -52,7 +52,7 @@ private fun PreviewEpisodePlayMediaSelectorSheet2() = ProvideCompositionLocalsFo
 private fun PreviewEpisodePlayMediaSelectorSheet3() = ProvideCompositionLocalsForPreview {
     EpisodePlayMediaSelector(
         rememberTestMediaSelectorState(),
-        TestMediaSourceResultListPresentation,
+        { TestMediaSourceResultListPresentation },
         onDismissRequest = {},
         onRefresh = {},
         onRestartSource = {},

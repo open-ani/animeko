@@ -172,6 +172,7 @@ internal fun SearchPageResultColumn(
     var height by remember { mutableIntStateOf(0) }
     val bringIntoViewRequesters = remember { mutableStateMapOf<Int, BringIntoViewRequester>() }
     val nsfwBlurShape = SubjectItemLayoutParameters.calculate(currentWindowAdaptiveInfo1().windowSizeClass).shape
+    val aniMotionScheme = LocalAniMotionScheme.current
 
     SearchResultLazyVerticalStaggeredGrid(
         items,
@@ -202,9 +203,9 @@ internal fun SearchPageResultColumn(
                 SearchDefaults.SearchSummaryItem(
                     items,
                     Modifier.animateItem(
-                        fadeInSpec = LocalAniMotionScheme.current.feedItemFadeInSpec,
-                        placementSpec = LocalAniMotionScheme.current.feedItemPlacementSpec,
-                        fadeOutSpec = LocalAniMotionScheme.current.feedItemFadeOutSpec,
+                        fadeInSpec = aniMotionScheme.feedItemFadeInSpec,
+                        placementSpec = aniMotionScheme.feedItemPlacementSpec,
+                        fadeOutSpec = aniMotionScheme.feedItemFadeOutSpec,
                     ),
                     containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
                 )
@@ -246,9 +247,9 @@ internal fun SearchPageResultColumn(
 //                            animatedVisibilityScope,
 //                        )
                             .animateItem(
-                                fadeInSpec = LocalAniMotionScheme.current.feedItemFadeInSpec,
-                                placementSpec = LocalAniMotionScheme.current.feedItemPlacementSpec,
-                                fadeOutSpec = LocalAniMotionScheme.current.feedItemFadeOutSpec,
+                                fadeInSpec = aniMotionScheme.feedItemFadeInSpec,
+                                placementSpec = aniMotionScheme.feedItemPlacementSpec,
+                                fadeOutSpec = aniMotionScheme.feedItemFadeOutSpec,
                             )
                             .fillMaxWidth()
                             .bringIntoViewRequester(requester)

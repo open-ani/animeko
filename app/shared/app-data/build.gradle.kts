@@ -45,7 +45,7 @@ kotlin {
         api(projects.client)
         api(projects.utils.ipParser)
         api(projects.utils.jsonpath)
-        
+
         api(projects.torrent.torrentApi)
         api(projects.torrent.anitorrent)
 
@@ -71,6 +71,7 @@ kotlin {
         implementation(projects.utils.androidxLifecycleRuntimeTesting)
         implementation(libs.ktor.client.mock)
         implementation(libs.turbine)
+        implementation(kotlin("reflect"))
     }
     sourceSets.getByName("jvmTest").dependencies {
         implementation(libs.slf4j.simple)
@@ -90,7 +91,7 @@ kotlin {
 
 android {
     namespace = "me.him188.ani.app.data"
-    buildFeatures { 
+    buildFeatures {
         aidl = true
     }
 }

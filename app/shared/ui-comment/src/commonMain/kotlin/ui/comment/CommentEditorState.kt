@@ -20,6 +20,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.text.input.TextFieldValue
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import me.him188.ani.app.domain.comment.CommentContext
+import me.him188.ani.app.domain.comment.CommentSendResult
 import me.him188.ani.app.tools.MonoTasker
 import org.jetbrains.compose.resources.DrawableResource
 import kotlin.coroutines.CoroutineContext
@@ -31,7 +33,7 @@ class CommentEditorState(
     panelTitle: State<String?>,
     stickers: State<List<EditCommentSticker>>,
     private val richTextRenderer: suspend (String) -> UIRichText,
-    private val onSend: suspend (target: CommentContext, content: String) -> Boolean,
+    private val onSend: suspend (target: CommentContext, content: String) -> CommentSendResult,
     backgroundScope: CoroutineScope,
 ) {
     private val editor = CommentEditorTextState("")
@@ -56,6 +58,9 @@ class CommentEditorState(
     var showStickerPanel: Boolean by mutableStateOf(false)
         private set
     val stickers by stickers
+    
+    var sendResult: CommentSendResult? by mutableStateOf(null)
+        private set
 
     /**
      * 连续开关为同一个评论的编辑框将保存编辑内容和编辑框状态
@@ -113,14 +118,20 @@ class CommentEditorState(
         val content = editor.textField.text
 
         editExpanded = false
+        sendResult = null
 
         val result = sendTasker.async(context) {
             checkNotNull(target)
             onSend(target, content)
         }.await()
 
-        editor.override(TextFieldValue(""))
-        return result
+        return (result is CommentSendResult.Ok).also {
+            if (it) {
+                editor.override(TextFieldValue(""))
+            } else {
+                sendResult = result
+            }
+        }
     }
 
     fun cancelSend() {
@@ -133,24 +144,3 @@ data class EditCommentSticker(
     val id: Int,
     val drawableRes: DrawableResource?,
 )
-
-/**
- * 评论发送的对象，在 [CommentEditorState.onSend] 需要提供。
- */
-@Immutable
-sealed interface CommentContext {
-    /**
-     * 剧集评论
-     */
-    data class Episode(val subjectId: Int, val episodeId: Int) : CommentContext
-
-    /**
-     * 条目吐槽箱
-     */
-    data class SubjectReview(val subjectId: Int) : CommentContext
-
-    /**
-     * 剧集回复某个人的评论
-     */
-    data class EpisodeReply(val subjectId: Int, val episodeId: Int, val commentId: Int) : CommentContext
-}

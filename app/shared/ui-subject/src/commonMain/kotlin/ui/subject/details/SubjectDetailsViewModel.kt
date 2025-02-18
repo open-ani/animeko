@@ -10,7 +10,6 @@
 package me.him188.ani.app.ui.subject.details
 
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.getValue
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.ui.foundation.AbstractViewModel
@@ -28,11 +27,7 @@ class SubjectDetailsViewModel(
     private val factory: SubjectDetailsStateFactory by inject()
     private val stateLoader = SubjectDetailsStateLoader(factory, backgroundScope)
 
-    val result by stateLoader.result
-
-    init {
-        stateLoader.load(subjectId, placeholder)
-    }
+    val state get() = stateLoader.state
 
     fun reload() {
         stateLoader.reload(subjectId, placeholder)

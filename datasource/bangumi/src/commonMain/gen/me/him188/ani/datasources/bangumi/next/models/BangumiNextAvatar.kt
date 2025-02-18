@@ -10,26 +10,26 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.datasources.bangumi.next.models
 
 
-import kotlinx.serialization.Required
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
+import kotlinx.serialization.*
+import kotlinx.serialization.descriptors.*
+import kotlinx.serialization.encoding.*
 
 /**
  * 
  *
- * @param large
+ * @param large 
  * @param medium 
  * @param small 
  */
 @Serializable
 
-data class BangumiNextAvatar(
+data class BangumiNextAvatar (
 
     @SerialName(value = "large") @Required val large: kotlin.String,
 

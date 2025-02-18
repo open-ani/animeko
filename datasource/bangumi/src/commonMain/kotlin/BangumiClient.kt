@@ -23,7 +23,6 @@ import io.ktor.http.appendPathSegments
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
@@ -42,7 +41,9 @@ import me.him188.ani.datasources.bangumi.models.BangumiUser
 import me.him188.ani.datasources.bangumi.models.search.BangumiSort
 import me.him188.ani.datasources.bangumi.models.subjects.BangumiLegacySubject
 import me.him188.ani.datasources.bangumi.models.subjects.BangumiSubjectImageSize
+import me.him188.ani.datasources.bangumi.next.apis.EpisodeBangumiNextApi
 import me.him188.ani.datasources.bangumi.next.apis.SubjectBangumiNextApi
+import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.ktor.ApiInvoker
 import me.him188.ani.utils.ktor.HttpTokenChecker
 import me.him188.ani.utils.ktor.ScopedHttpClient
@@ -54,7 +55,8 @@ interface BangumiClient {
     // Bangumi open API: https://github.com/bangumi/api/blob/master/open-api/api.yml
 
     val api: ApiInvoker<DefaultApi>
-    val nextApi: ApiInvoker<SubjectBangumiNextApi>
+    val nextSubjectApi: ApiInvoker<SubjectBangumiNextApi>
+    val nextEpisodeApi: ApiInvoker<EpisodeBangumiNextApi>
     val searchApi: ApiInvoker<BangumiSearchApi>
 
     /**
@@ -74,6 +76,9 @@ interface BangumiClient {
      */
     suspend fun testConnectionNext(): ConnectionStatus
 }
+
+val BangumiClient.turnstileBaseUrl: String
+    get() = "$BANGUMI_NEXT_API_HOST/p1/turnstile"
 
 private const val BANGUMI_API_HOST = "https://api.bgm.tv"
 private const val BANGUMI_NEXT_API_HOST = "https://next.bgm.tv" // dev.bgm38.com for testing
@@ -149,7 +154,8 @@ class BangumiClientImpl(
     }
 
     override val api = ApiInvoker(client) { DefaultApi(BANGUMI_API_HOST, it) }
-    override val nextApi = ApiInvoker(client) { SubjectBangumiNextApi(BANGUMI_NEXT_API_HOST, it) }
+    override val nextSubjectApi = ApiInvoker(client) { SubjectBangumiNextApi(BANGUMI_NEXT_API_HOST, it) }
+    override val nextEpisodeApi = ApiInvoker(client) { EpisodeBangumiNextApi(BANGUMI_NEXT_API_HOST, it) }
     override val searchApi: ApiInvoker<BangumiSearchApi> = ApiInvoker(client) { BangumiSearchApiImpl(it) }
 
     @Serializable
@@ -172,7 +178,7 @@ class BangumiClientImpl(
             ratings: List<String>?,
             ranks: List<String>?,
             nsfw: Boolean?,
-        ): List<BangumiSearchSubjectNewApi>? = withContext(Dispatchers.IO) {
+        ): List<BangumiSearchSubjectNewApi>? = withContext(Dispatchers.IO_) {
             val resp = httpClient.post("$BANGUMI_API_HOST/v0/search/subjects") {
                 parameter("offset", offset)
                 parameter("limit", limit)
@@ -220,7 +226,7 @@ class BangumiClientImpl(
             responseGroup: BangumiSubjectImageSize?,
             start: Int?,
             maxResults: Int?
-        ): Paged<BangumiLegacySubject> = withContext(Dispatchers.IO) {
+        ): Paged<BangumiLegacySubject> = withContext(Dispatchers.IO_) {
             val resp = httpClient.get("$BANGUMI_API_HOST/search/subject".plus("/")) {
                 url {
                     appendPathSegments(keyword)

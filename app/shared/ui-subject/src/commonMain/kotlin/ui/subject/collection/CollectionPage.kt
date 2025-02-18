@@ -56,6 +56,7 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -275,32 +276,34 @@ fun CollectionPage(
             }
 
             else -> {
-                PullToRefreshBox(
-                    items.loadState.refresh is LoadState.Loading,
-                    onRefresh = { items.refresh() },
-                    state = rememberPullToRefreshState(),
-                    enabled = LocalPlatform.current.isMobile(),
-                ) {
-                    SubjectCollectionsColumn(
-                        items,
-                        item = { collection ->
-                            var nsfwModeState: NsfwMode by rememberSaveable { mutableStateOf(collection.nsfwMode) }
-                            NsfwMask(
-                                nsfwModeState,
-                                onTemporarilyDisplay = { nsfwModeState = NsfwMode.DISPLAY },
-                                shape = SubjectCollectionItemDefaults.shape,
-                            ) {
-                                SubjectCollectionItem(
-                                    collection,
-                                    state.episodeListStateFactory,
-                                    state.subjectProgressStateFactory,
-                                    state.createEditableSubjectCollectionTypeState(collection),
-                                )
-                            }
-                        },
-                        enableAnimation = enableAnimation,
-                        gridState = lazyGridState,
-                    )
+                key(state.selectedTypeIndex) {
+                    PullToRefreshBox(
+                        items.loadState.refresh is LoadState.Loading,
+                        onRefresh = { items.refresh() },
+                        state = rememberPullToRefreshState(),
+                        enabled = LocalPlatform.current.isMobile(),
+                    ) {
+                        SubjectCollectionsColumn(
+                            items,
+                            item = { collection ->
+                                var nsfwModeState: NsfwMode by rememberSaveable { mutableStateOf(collection.nsfwMode) }
+                                NsfwMask(
+                                    nsfwModeState,
+                                    onTemporarilyDisplay = { nsfwModeState = NsfwMode.DISPLAY },
+                                    shape = SubjectCollectionItemDefaults.shape,
+                                ) {
+                                    SubjectCollectionItem(
+                                        collection,
+                                        state.episodeListStateFactory,
+                                        state.subjectProgressStateFactory,
+                                        state.createEditableSubjectCollectionTypeState(collection),
+                                    )
+                                }
+                            },
+                            enableAnimation = enableAnimation,
+                            gridState = lazyGridState,
+                        )
+                    }
                 }
             }
         }

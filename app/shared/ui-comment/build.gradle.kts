@@ -22,6 +22,7 @@ kotlin {
     sourceSets.commonMain.dependencies {
         api(projects.app.shared.uiFoundation)
         api(projects.app.shared.uiAdaptive)
+        implementation(projects.app.shared.appData)
         implementation(compose.components.resources)
         implementation(projects.app.shared.placeholder)
         implementation(projects.utils.bbcode)

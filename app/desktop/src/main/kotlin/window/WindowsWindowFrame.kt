@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.material3.Icon
@@ -37,6 +38,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -107,8 +109,14 @@ internal fun FrameWindowScope.WindowsWindowFrame(
     val windowUtils = WindowsWindowUtils.instance
     val platformWindow = LocalPlatformWindow.current
     val scope = rememberCoroutineScope()
-
-    Box(modifier = Modifier.fillMaxSize()) {
+    
+    //Keep 1px for showing float window top area border.
+    val topBorderFixedInsets by remember(windowState) {
+        derivedStateOf { 
+            if (windowState.placement == WindowPlacement.Floating) WindowInsets(top = 1) else ZeroInsets 
+        }
+    }
+    Box(modifier = Modifier.fillMaxSize().windowInsetsPadding(topBorderFixedInsets)) {
         val isFullScreen = isSystemInFullscreen()
         //Control the visibility of the title bar. initial value is !isFullScreen.
         LaunchedEffect(isFullScreen) {

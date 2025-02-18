@@ -326,7 +326,10 @@ class SubjectCollectionRepositoryImpl(
                 initialKey = 0,
                 remoteMediator = SubjectCollectionRemoteMediator(query),
                 pagingSourceFactory = {
-                    subjectCollectionDao.filterByCollectionTypePaging(query.type)
+                    subjectCollectionDao.filterByCollectionTypePaging(
+                        query.type,
+                        includeNsfw = nsfwModeSettings != NsfwMode.HIDE,
+                    )
                 },
             ).flow.map { data ->
                 data.map { (entity, episodesOfAnyType) ->
@@ -657,8 +660,8 @@ internal fun BatchSubjectDetails.toEntity(
             nsfw = nsfw,
             imageLarge = imageLarge,
             totalEpisodes =
-            @Suppress("DEPRECATION")
-            totalEpisodes,
+                @Suppress("DEPRECATION")
+                totalEpisodes,
             airDate = airDate,
             tags = tags,
             aliases = aliases,

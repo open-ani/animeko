@@ -15,12 +15,21 @@ import androidx.compose.runtime.LongState
 import androidx.compose.runtime.Stable
 import kotlin.math.log
 import kotlin.math.pow
+import kotlin.random.Random
 
 /**
  * FloatingDanmakuTrack 中的弹幕在以下情况会移除:
  * - tick 中的逻辑帧检测
  * - 调用 [DanmakuTrack.clearAll]
  * 移除时必须调用 [onRemoveDanmaku] 避免内存泄露.
+ * 
+ * @param baseSpeedPxPerSecond 放到这个轨道的弹幕里. 
+ *     长度大于此基础长度才会加速弹幕运动, 等于此长度的弹幕速度为 1 倍 [baseSpeedPxPerSecond].
+ * @param speedMultiplier 弹幕长度为 2 倍 [baseSpeedTextWidth] 时的速度倍率. 
+ *     [DanmakuTrackProperties.speedMultiplier] 默认值为 1.14 倍.
+ * @param randomizeSpeedFluctuation 弹幕速度随机波动范围.
+ *     设 [randomizeSpeedFluctuation] 为 θ, 对于根据 [baseSpeedPxPerSecond] 与 [speedMultiplier] 计算的速度 α,
+ *     最终的弹幕速度为 [[α - θ, α + θ]] 之间的随机值.
  */
 @Stable
 internal class FloatingDanmakuTrack<T : SizeSpecifiedDanmaku>(
@@ -30,14 +39,9 @@ internal class FloatingDanmakuTrack<T : SizeSpecifiedDanmaku>(
     private val trackWidth: IntState,
     var baseSpeedPxPerSecond: Float,
     var safeSeparation: Float,
-    /**
-     * 放到这个轨道的弹幕里, 长度大于此基础长度才会加速弹幕运动, 等于此长度的弹幕速度为 100% [baseSpeedPxPerSecond].
-     */
     var baseSpeedTextWidth: Int,
-    /**
-     * 弹幕长度为 2 倍 [baseSpeedTextWidth] 时的速度倍率.
-     */
     val speedMultiplier: FloatState,
+    private val randomizeSpeedFluctuation: Float = 0.0875f,
     // 某个弹幕需要消失, 必须调用此函数避免内存泄漏.
     private val onRemoveDanmaku: (FloatingDanmaku<T>) -> Unit
 ) : DanmakuTrack<T, FloatingDanmaku<T>> {
@@ -87,7 +91,7 @@ internal class FloatingDanmakuTrack<T : SizeSpecifiedDanmaku>(
      */
     private fun checkPlaceableImpl(danmaku: T, placeFrameTimeNanos: Long): Pair<FloatingDanmaku<T>, Int>? {
         check(placeFrameTimeNanos == DanmakuTrack.NOT_PLACED || placeFrameTimeNanos >= 0) {
-            "placeFrameTimeNanos must be NOT_PLACED or non-negative, but had $placeFrameTimeNanos"
+            "Expected placeFrameTimeNanos to be NOT_PLACED or non-negative, but got $placeFrameTimeNanos"
         }
         // 弹幕轨道宽度为 0 一定不能放
         if (trackWidth.value <= 0) return null
@@ -108,16 +112,19 @@ internal class FloatingDanmakuTrack<T : SizeSpecifiedDanmaku>(
     }
 
     private fun T.createFloating(placeFrameTimeNanos: Long): FloatingDanmaku<T> {
-        require(danmakuWidth > 0) { "danmaku width must be positive." }
+        require(danmakuWidth > 0) { "Expected danmaku width to be positive, but got $danmakuWidth." }
         val speedMultiplier = this@FloatingDanmakuTrack.speedMultiplier.value
             .pow(log(danmakuWidth.toFloat() / baseSpeedTextWidth, 2f))
             .coerceAtLeast(1f)
         
+        val finalSpeedMultiplier = if (randomizeSpeedFluctuation == 0f) speedMultiplier
+            else (speedMultiplier + (Random.Default.nextFloat() - 0.5f) * 2f * randomizeSpeedFluctuation)
+        
         // 避免浮点数的量级过大
         val upcomingDistanceX = if (placeFrameTimeNanos == DanmakuTrack.NOT_PLACED) 0f else
-            ((frameTimeNanosState.value - placeFrameTimeNanos) / 1_000L) / 1_000_000f * (baseSpeedPxPerSecond * speedMultiplier)
+            ((frameTimeNanosState.value - placeFrameTimeNanos) / 1_000L) / 1_000_000f * (baseSpeedPxPerSecond * finalSpeedMultiplier)
         
-        return FloatingDanmaku(this, upcomingDistanceX, trackIndex, trackHeight, speedMultiplier)
+        return FloatingDanmaku(this, upcomingDistanceX, trackIndex, trackHeight, finalSpeedMultiplier)
     }
     
     // 弹幕左侧在轨道的位置

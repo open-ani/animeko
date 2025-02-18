@@ -34,6 +34,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
@@ -42,6 +44,7 @@ import me.him188.ani.app.domain.session.launchAuthorize
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.ui.foundation.icons.Passkey_24dp_E8EAED_FILL0_wght400_GRAD0_opsz24
+import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import org.koin.core.component.KoinComponent
 
 
@@ -168,7 +171,22 @@ fun LoadErrorCard(
                         Row {
                             if (currentAniBuildConfig.isDebug) {
                                 TextButton({ error.throwable?.printStackTrace() }) {
-                                    Text("Dump Trace", fontStyle = FontStyle.Italic)
+                                    Text("Dump", fontStyle = FontStyle.Italic)
+                                }
+                            } else {
+                                val clipboard = LocalClipboardManager.current
+                                val toaster = LocalToaster.current
+                                TextButton(
+                                    {
+                                        clipboard.setText(
+                                            AnnotatedString(
+                                                error.throwable?.stackTraceToString() ?: "null",
+                                            ),
+                                        )
+                                        toaster.toast("已复制，请反馈到 GitHub issues 或群里")
+                                    },
+                                ) {
+                                    Text("复制")
                                 }
                             }
 

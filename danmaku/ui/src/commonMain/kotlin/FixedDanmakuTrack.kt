@@ -41,7 +41,7 @@ internal class FixedDanmakuTrack<T : SizeSpecifiedDanmaku>(
 
     override fun place(danmaku: T, placeFrameTimeNanos: Long): FixedDanmaku<T> {
         check(placeFrameTimeNanos == DanmakuTrack.NOT_PLACED || placeFrameTimeNanos >= 0) {
-            "placeTimeNanos must be NOT_PLACED or non-negative, but had $placeFrameTimeNanos"
+            "Expected placeTimeNanos to be NOT_PLACED or non-negative, but got $placeFrameTimeNanos"
         }
         val upcomingDanmaku =
             FixedDanmaku(danmaku, placeFrameTimeNanos, trackIndex, trackHeight, hostHeight, fromBottom)
@@ -55,7 +55,7 @@ internal class FixedDanmakuTrack<T : SizeSpecifiedDanmaku>(
         placeFrameTimeNanos: Long
     ): Boolean {
         check(placeFrameTimeNanos == DanmakuTrack.NOT_PLACED || placeFrameTimeNanos >= 0) {
-            "placeTimeNanos must be NOT_PLACED or non-negative, but had $placeFrameTimeNanos"
+            "Expected placeTimeNanos to be NOT_PLACED or non-negative, but had $placeFrameTimeNanos"
         }
         // 当前如果有正在显示的弹幕或者有等待显示的弹幕则一定不可发送
         if (currentDanmaku != null || pendingDanmaku != null) return false

@@ -168,12 +168,14 @@ interface SubjectCollectionDao {
         """
         select * from subject_collection 
         where (collectionType is NOT NULL AND (:collectionType IS NULL OR collectionType = :collectionType))
+        AND (:includeNsfw OR NOT nsfw)
         order by lastUpdated DESC
         """,
     )
     @Transaction
     fun filterByCollectionTypePaging(
         collectionType: UnifiedCollectionType? = null,
+        includeNsfw: Boolean,
     ): PagingSource<Int, SubjectCollectionAndEpisodes>
 
     @Query("""SELECT * FROM subject_collection WHERE subjectId = :subjectId""")

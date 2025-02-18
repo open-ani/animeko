@@ -12,6 +12,7 @@ package me.him188.ani.app.ui.comment
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Constraints
+import me.him188.ani.app.domain.comment.TurnstileState
 
 actual fun createTurnstileState(url: String): TurnstileState {
     TODO("not implemented")

@@ -61,10 +61,6 @@ class SubjectDetailsState(
     val subjectProgressState: SubjectProgressState,
     episodeProgressInfoFlow: Flow<List<EpisodeProgressInfo>>,
     val subjectCommentState: CommentState,
-    /**
-     * 是否预先显示少量 [info].
-     */
-    val showPlaceholder: Boolean,
     backgroundScope: CoroutineScope,
 ) {
     @Immutable

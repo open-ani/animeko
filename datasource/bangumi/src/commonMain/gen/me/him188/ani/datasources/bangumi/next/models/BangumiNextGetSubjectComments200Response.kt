@@ -10,27 +10,30 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.datasources.bangumi.next.models
 
-import kotlinx.serialization.Required
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
+import me.him188.ani.datasources.bangumi.next.models.BangumiNextSubjectInterestComment
+
+import kotlinx.serialization.*
+import kotlinx.serialization.descriptors.*
+import kotlinx.serialization.encoding.*
 
 /**
+ * 
  *
- *
- * @param `data`
- * @param total
+ * @param `data` 
+ * @param total limit+offset 为参数的请求表示总条数，page 为参数的请求表示总页数
  */
 @Serializable
 
-data class BangumiNextGetSubjectComments200Response(
+data class BangumiNextGetSubjectComments200Response (
 
-    @SerialName(value = "data") @Required val `data`: kotlin.collections.List<BangumiNextSubjectComment>,
+    @SerialName(value = "data") @Required val `data`: kotlin.collections.List<BangumiNextSubjectInterestComment>,
 
+    /* limit+offset 为参数的请求表示总条数，page 为参数的请求表示总页数 */
     @SerialName(value = "total") @Required val total: kotlin.Int
 
 )

@@ -207,7 +207,7 @@ private fun PreviewEpisodeDetailsImpl(
                 )
             },
             mediaSelectorState = mediaSelectorState,
-            mediaSourceResultListPresentation = TestMediaSourceResultListPresentation,
+            mediaSourceResultListPresentation = { TestMediaSourceResultListPresentation },
             authState = authState,
             onSwitchEpisode = {},
             onRefreshMediaSources = {},

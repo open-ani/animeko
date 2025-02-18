@@ -31,7 +31,7 @@ import me.him188.ani.datasources.api.Media
 @Composable
 fun EpisodePlayMediaSelector(
     mediaSelector: MediaSelectorState,
-    sourceResults: MediaSourceResultListPresentation,
+    sourceResults: () -> MediaSourceResultListPresentation,
     onDismissRequest: () -> Unit,
     onRefresh: () -> Unit,
     onRestartSource: (MediaSourceResultPresentation) -> Unit,
@@ -43,7 +43,7 @@ fun EpisodePlayMediaSelector(
         mediaSelector,
         sourceResults = {
             MediaSourceResultsView(
-                sourceResults, mediaSelector,
+                sourceResults(), mediaSelector,
                 onRefresh = onRefresh,
                 onRestartSource = onRestartSource,
             )

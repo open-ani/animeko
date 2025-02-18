@@ -81,7 +81,7 @@ class EpisodeFetchSelectPlayState(
     extensions: List<EpisodePlayerExtensionFactory<*>>,
     private val koin: Koin = GlobalKoin,
     private val sharingStarted: SharingStarted = SharingStarted.WhileSubscribed(),
-    val mainDispatcher: CoroutineContext = Dispatchers.Main.immediate,
+    private val mainDispatcher: CoroutineContext = Dispatchers.Main.immediate,
 ) {
     private val _episodeSessionFlow = MutableStateFlow(
         newEpisodeSession(initialEpisodeId),

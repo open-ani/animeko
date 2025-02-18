@@ -16,7 +16,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
-import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateLoader
 import me.him188.ani.app.ui.subject.details.state.createTestSubjectDetailsState
 import me.him188.ani.utils.platform.annotations.TestOnly
 
@@ -26,8 +25,11 @@ import me.him188.ani.utils.platform.annotations.TestOnly
 @Composable
 internal fun PreviewSubjectDetails() = ProvideCompositionLocalsForPreview {
     val scope = rememberCoroutineScope()
-    val state = remember { SubjectDetailsStateLoader.LoadState.Ok(createTestSubjectDetailsState(scope)) }
-    SubjectDetailsScreen(
+    val state = remember {
+        createTestSubjectDetailsState(scope)
+            .let { SubjectDetailsUIState.Ok(it.subjectId, it) } 
+    }
+    SubjectDetailsScene(
         state,
         onPlay = { },
         onLoadErrorRetry = { },
@@ -40,11 +42,10 @@ internal fun PreviewSubjectDetails() = ProvideCompositionLocalsForPreview {
 @Preview(device = "spec:width=1280dp,height=800dp,dpi=240")
 @Composable
 internal fun PreviewPlaceholderSubjectDetails() = ProvideCompositionLocalsForPreview {
-    val scope = rememberCoroutineScope()
     val state = remember {
-        SubjectDetailsStateLoader.LoadState.Ok(createTestSubjectDetailsState(scope, isPlaceholder = true))
+        SubjectDetailsUIState.Placeholder(TestSubjectInfo.subjectId, TestSubjectInfo)
     }
-    SubjectDetailsScreen(
+    SubjectDetailsScene(
         state,
         onPlay = { },
         onLoadErrorRetry = { },
@@ -59,9 +60,9 @@ internal fun PreviewPlaceholderSubjectDetails() = ProvideCompositionLocalsForPre
 @Composable
 internal fun PreviewErrorSubjectDetails() = ProvideCompositionLocalsForPreview {
     val state = remember {
-        SubjectDetailsStateLoader.LoadState.Err(TestSubjectInfo.subjectId, TestSubjectInfo, LoadError.NetworkError)
+        SubjectDetailsUIState.Err(TestSubjectInfo.subjectId, TestSubjectInfo, LoadError.NetworkError)
     }
-    SubjectDetailsScreen(
+    SubjectDetailsScene(
         state,
         onPlay = { },
         onLoadErrorRetry = { },

@@ -10,32 +10,29 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.datasources.bangumi.next.models
 
 
-import kotlinx.serialization.Required
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
+import kotlinx.serialization.*
+import kotlinx.serialization.descriptors.*
+import kotlinx.serialization.encoding.*
 
 /**
+ * 
  *
- *
- * @param cfTurnstileResponse
- * @param content
- * @param replyTo 被回复的 topic ID, `0` 代表回复楼主
+ * @param content 
+ * @param replyTo 被回复的回复 ID, `0` 代表发送顶层回复
  */
 @Serializable
 
-data class BangumiNextCreateSubjectReplyRequest(
-
-    @SerialName(value = "cf-turnstile-response") @Required val cfTurnstileResponse: kotlin.String,
+data class BangumiNextCreateReply (
 
     @SerialName(value = "content") @Required val content: kotlin.String,
 
-    /* 被回复的 topic ID, `0` 代表回复楼主 */
+    /* 被回复的回复 ID, `0` 代表发送顶层回复 */
     @SerialName(value = "replyTo") val replyTo: kotlin.Int? = 0
 
 )

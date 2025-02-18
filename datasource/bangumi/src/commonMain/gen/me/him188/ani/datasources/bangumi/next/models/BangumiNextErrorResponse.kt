@@ -10,27 +10,27 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.datasources.bangumi.next.models
 
 
-import kotlinx.serialization.Required
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
+import kotlinx.serialization.*
+import kotlinx.serialization.descriptors.*
+import kotlinx.serialization.encoding.*
 
 /**
  * default error response type
  *
- * @param code
- * @param error
+ * @param code 
+ * @param error 
  * @param message 
  * @param statusCode 
  */
 @Serializable
 
-data class BangumiNextErrorResponse(
+data class BangumiNextErrorResponse (
 
     @SerialName(value = "code") @Required val code: kotlin.String,
 

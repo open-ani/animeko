@@ -207,6 +207,16 @@ internal fun PreviewDanmakuHost() {
                     Text("Repopulate")
                 }
             }
+            item {
+                Button(
+                    onClick = {
+                        val currentConfig = config.value
+                        config.value = currentConfig.copy(isDebug = !currentConfig.isDebug)
+                    },
+                ) {
+                    Text("Toggle debug")
+                }
+            }
         }
     }
 

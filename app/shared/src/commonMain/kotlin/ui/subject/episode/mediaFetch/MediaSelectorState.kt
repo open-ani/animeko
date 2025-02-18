@@ -10,6 +10,7 @@
 package me.him188.ani.app.ui.subject.episode.mediaFetch
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -114,11 +115,13 @@ fun <T : Any> MediaPreferenceItemState<T>.preferOrRemove(value: T?): Job {
 /**
  * Wraps [MediaSelector] to provide states for UI.
  */
+@Stable
 class MediaSelectorState(
     private val mediaSelector: MediaSelector,
     val mediaSourceInfoProvider: MediaSourceInfoProvider,
     private val backgroundScope: CoroutineScope,
 ) {
+    @Immutable
     data class Presentation(
         val filteredCandidates: List<MaybeExcludedMedia>,
         val preferredCandidates: List<Media>,

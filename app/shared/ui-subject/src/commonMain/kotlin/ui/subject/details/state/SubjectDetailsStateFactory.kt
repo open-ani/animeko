@@ -9,9 +9,6 @@
 
 package me.him188.ani.app.ui.subject.details.state
 
-import androidx.collection.IntList
-import androidx.collection.MutableIntList
-import androidx.collection.intListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.paging.LoadState
 import androidx.paging.LoadStates
@@ -31,17 +28,14 @@ import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transformLatest
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.preference.EpisodeListProgressTheme
-import me.him188.ani.app.data.models.subject.RatingInfo
 import me.him188.ani.app.data.models.subject.RelatedCharacterInfo
 import me.him188.ani.app.data.models.subject.SelfRatingInfo
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
@@ -74,9 +68,7 @@ import me.him188.ani.app.ui.subject.rating.EditableRatingState
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
-import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.coroutines.flows.flowOfEmptyList
-import me.him188.ani.utils.coroutines.update
 import me.him188.ani.utils.platform.annotations.TestOnly
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -101,8 +93,6 @@ interface SubjectDetailsStateFactory {
 class DefaultSubjectDetailsStateFactory(
     parentCoroutineContext: CoroutineContext
 ) : SubjectDetailsStateFactory, KoinComponent {
-    private val childScope = parentCoroutineContext.childScope()
-
     private val subjectCollectionRepository: SubjectCollectionRepository by inject()
     private val episodeProgressRepository: EpisodeProgressRepository by inject()
     private val episodeCollectionRepository: EpisodeCollectionRepository by inject()
@@ -114,28 +104,6 @@ class DefaultSubjectDetailsStateFactory(
     private val animeScheduleRepository: AnimeScheduleRepository by inject()
 
     val sessionManager: SessionManager by inject()
-
-    /**
-     * 已经把条目详情信息缓存到本地数据库的条目 ID.
-     *
-     * 对于已经缓存过的条目, 创建 SubjectDetailsState flow 时不应当
-     * emit [placeholder][SubjectDetailsState.showPlaceholder] 条目.
-     *
-     * @see [create]
-     */
-    private val cachedSubjectDetails: MutableStateFlow<IntList> = MutableStateFlow(intListOf())
-
-    init {
-        childScope.launch {
-            subjectCollectionRepository.cachedValidSubjectIds().collect { newList ->
-                cachedSubjectDetails.update {
-                    MutableIntList(newList.size).apply {
-                        newList.forEach { e -> add(e) }
-                    }
-                }
-            }
-        }
-    }
 
     override fun create(
         subjectInfoFlow: Flow<SubjectInfo>
@@ -191,34 +159,10 @@ class DefaultSubjectDetailsStateFactory(
     override fun create(subjectId: Int, placeholder: SubjectInfo?): Flow<SubjectDetailsState> = flow {
         coroutineScope {
             val authState = createAuthState()
-
-            /**
-             * 为什么有本地缓存时不 emit placeholder ?
-             * 1) [SubjectCollectionRepository.cachedValidSubjectIds] 获取的条目 ID 列表一定是有效的本地缓存列表,
-             *    这个列表内的条目信息能从本地缓存快速返回 (取决于硬盘速度), 这样就不用在进入的时候闪一下 placeholder 界面.
-             * 2) 既然能快速返回本地缓存, 若在显示 placeholder 界面并在进入界面的动画时获取到了本地缓存,
-             *    按照代码流程会 emit 缓存数据, 这会导致界面 remeasure 而使动画卡顿.
-             *
-             * 最主要的原因还是在执行 transition 动画时切换整个页面导致 remeasure, 进而导致卡顿. 具体场景例如:
-             * - 没有缓存的时候 emit placeholder, 如果用户在进入界面动画时获取到了网络数据也会导致动画卡顿.
-             * - 但是大部分时候用户通常要花费大于进入界面动画的时间, 所以很小概率会卡动画.
-             *
-             * 总的来说, 目前的流程如下:
-             *
-             * - 本地有缓存   : 花费一点时间 (取决于硬盘速度) 获取本地缓存, 然后直接显示缓存数据,
-             *              进入界面动画期间显示缓存数据, 不会导致界面 remeasure, 动画不会卡顿
-             *
-             * - 本地没有缓存 : 直接显示 placeholder,
-             *              进入界面动画期间显示 placeholder, 不会导致界面 remeasure, 动画不会卡顿
-             *              如果在进入界面动画期间网络加载完成, 仍然会导致界面 remeasure, 从而导致动画卡顿, 无法避免.
-             */
-            if (!cachedSubjectDetails.value.contains(subjectId)) {
-                emit(createPlaceholder(subjectId, placeholder, authState))
-            }
-
             val subjectProgressStateFactory = createSubjectProgressStateFactory()
             val subjectCollectionInfoFlow = subjectCollectionRepository.subjectCollectionFlow(subjectId)
                 .stateIn(this)
+            
             emit(
                 createImpl(
                     subjectCollectionInfoFlow.value.subjectInfo,
@@ -228,6 +172,7 @@ class DefaultSubjectDetailsStateFactory(
                     authState,
                 ),
             )
+            
             awaitCancellation()
         }
     }
@@ -438,68 +383,9 @@ class DefaultSubjectDetailsStateFactory(
             subjectProgressState = subjectProgressState,
             episodeProgressInfoFlow = flowOfEmptyList(),
             subjectCommentState = subjectCommentState,
-            showPlaceholder = false,
             backgroundScope = this,
         )
         return state
-    }
-
-    private fun CoroutineScope.createPlaceholder(
-        subjectId: Int,
-        subjectInfo: SubjectInfo?,
-        authState: AuthState
-    ): SubjectDetailsState {
-        return SubjectDetailsState(
-            subjectId = subjectId,
-            info = subjectInfo,
-            selfCollectionTypeState = stateOf(UnifiedCollectionType.NOT_COLLECTED),
-            airingLabelState = AiringLabelState(
-                airingInfoState = stateOf(null),
-                progressInfoState = stateOf(null),
-            ),
-            staffPager = emptyFlow(),
-            exposedStaffPager = emptyFlow(),
-            totalStaffCountState = stateOf(null),
-            charactersPager = emptyFlow(),
-            exposedCharactersPager = emptyFlow(),
-            totalCharactersCountState = stateOf(null),
-            relatedSubjectsPager = emptyFlow(),
-            episodeListState = EpisodeListState(
-                subjectId = stateOf(subjectId),
-                theme = stateOf(EpisodeListProgressTheme.Default),
-                episodeProgressInfoList = stateOf(emptyList()),
-                onSetEpisodeWatched = { _, _, _ -> },
-                backgroundScope = this,
-            ),
-            authState = authState,
-            editableSubjectCollectionTypeState = EditableSubjectCollectionTypeState(
-                selfCollectionTypeFlow = flowOf(UnifiedCollectionType.NOT_COLLECTED),
-                hasAnyUnwatched = { true },
-                onSetSelfCollectionType = { },
-                onSetAllEpisodesWatched = { },
-                backgroundScope = this,
-            ),
-            editableRatingState = EditableRatingState(
-                ratingInfo = stateOf(RatingInfo.Empty),
-                selfRatingInfo = stateOf(SelfRatingInfo.Empty),
-                enableEdit = stateOf(false),
-                isCollected = { false },
-                onRate = { },
-                backgroundScope = this,
-            ),
-            subjectProgressState = SubjectProgressState(
-                info = stateOf(null),
-            ),
-            episodeProgressInfoFlow = flowOfEmptyList(),
-            subjectCommentState = CommentState(
-                list = emptyFlow(),
-                countState = stateOf(null),
-                onSubmitCommentReaction = { _, _ -> },
-                backgroundScope = this,
-            ),
-            showPlaceholder = true,
-            backgroundScope = this,
-        )
     }
 }
 

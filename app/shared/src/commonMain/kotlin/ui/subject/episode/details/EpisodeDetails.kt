@@ -77,7 +77,8 @@ import me.him188.ani.app.ui.subject.AiringLabelState
 import me.him188.ani.app.ui.subject.collection.SubjectCollectionTypeSuggestions
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeDialogsHost
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeState
-import me.him188.ani.app.ui.subject.details.SubjectDetailsScreen
+import me.him188.ani.app.ui.subject.details.SubjectDetailsScene
+import me.him188.ani.app.ui.subject.details.SubjectDetailsUIState
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateLoader
 import me.him188.ani.app.ui.subject.episode.details.components.DanmakuMatchInfoGrid
 import me.him188.ani.app.ui.subject.episode.details.components.DanmakuSourceCard
@@ -99,7 +100,7 @@ import me.him188.ani.utils.platform.isDesktop
 
 @Stable
 class EpisodeDetailsState(
-    subjectInfo: State<SubjectInfo>,
+    val subjectInfo: State<SubjectInfo>,
     val airingLabelState: AiringLabelState,
     val subjectDetailsStateLoader: SubjectDetailsStateLoader,
 ) {
@@ -127,7 +128,7 @@ fun EpisodeDetails(
     danmakuStatistics: DanmakuStatistics,
     videoStatisticsFlow: Flow<VideoStatistics>,
     mediaSelectorState: MediaSelectorState,
-    mediaSourceResultListPresentation: MediaSourceResultListPresentation,
+    mediaSourceResultListPresentation: () -> MediaSourceResultListPresentation,
     authState: AuthState,
     onSwitchEpisode: (episodeId: Int) -> Unit,
     onRefreshMediaSources: () -> Unit,
@@ -141,7 +142,8 @@ fun EpisodeDetails(
     }
 
     if (state.subjectId != 0) {
-        val subjectDetailsState by state.subjectDetailsStateLoader.result
+        val subjectDetailsState by state.subjectDetailsStateLoader.state
+            .collectAsStateWithLifecycle(SubjectDetailsUIState.Placeholder(state.subjectId))
         if (showSubjectDetails) {
             ModalBottomSheet(
                 { showSubjectDetails = false },
@@ -149,7 +151,7 @@ fun EpisodeDetails(
                 modifier = Modifier.desktopTitleBarPadding().statusBarsPadding(),
                 contentWindowInsets = { BottomSheetDefaults.windowInsets.add(WindowInsets.desktopTitleBar()) },
             ) {
-                SubjectDetailsScreen(
+                SubjectDetailsScene(
                     subjectDetailsState,
                     onPlay = onSwitchEpisode,
                     onLoadErrorRetry = { state.subjectDetailsStateLoader.reload(state.subjectId) },
@@ -364,7 +366,7 @@ fun EpisodeDetails(
         },
         onExpandSubject = {
             showSubjectDetails = true
-            state.subjectDetailsStateLoader.load(state.subjectId)
+            state.subjectDetailsStateLoader.load(state.subjectId, state.subjectInfo.value)
         },
         modifier = modifier,
         contentPadding = contentPadding,

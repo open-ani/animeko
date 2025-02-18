@@ -320,6 +320,10 @@ data class ListDetailLayoutParameters(
      * 是否为单页模式, 即整个屏幕上只会同时出现一个 pane. 通常在一个 COMPACT 设备上.
      */
     val isSinglePane: Boolean,
+    /**
+     * 在 list pane 中高亮选中的 item.
+     */
+    val highlightSelectedItem: Boolean = !isSinglePane,
 ) {
     companion object {
         @Composable
