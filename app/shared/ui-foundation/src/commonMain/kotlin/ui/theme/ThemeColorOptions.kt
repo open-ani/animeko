@@ -15,17 +15,17 @@ import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 
 private val colorList = ArrayList<Color>(11)
     .apply {
-        set(0, getHctColor(4))
-        set(1, getHctColor(5))
-        set(2, getHctColor(6))
-        set(3, getHctColor(7))
-        set(4, getHctColor(8))
-        set(5, DefaultSeedColor)
-        set(6, getHctColor(9))
-        set(7, getHctColor(10))
-        set(8, getHctColor(1))
-        set(9, getHctColor(2))
-        set(10, getHctColor(3))
+        add(getHctColor(4))
+        add(getHctColor(5))
+        add(getHctColor(6))
+        add(getHctColor(7))
+        add(getHctColor(8))
+        add(DefaultSeedColor)
+        add(getHctColor(9))
+        add(getHctColor(10))
+        add(getHctColor(1))
+        add(getHctColor(2))
+        add(getHctColor(3))
     }
 
 private fun getHctColor(base: Int): Color {
