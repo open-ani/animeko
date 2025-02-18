@@ -13,13 +13,24 @@ import androidx.compose.ui.graphics.Color
 import com.materialkolor.hct.Hct
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 
-private val colorList = ((4..10) + (1..3))
-    .map { it * 35.0 }
-    .map { Color(Hct.from(it, 40.0, 40.0).toInt()) }
-    .toMutableList()
+private val colorList = ArrayList<Color>(11)
     .apply {
-        add(5, DefaultSeedColor)
+        set(0, getHctColor(4))
+        set(1, getHctColor(5))
+        set(2, getHctColor(6))
+        set(3, getHctColor(7))
+        set(4, getHctColor(8))
+        set(5, DefaultSeedColor)
+        set(6, getHctColor(9))
+        set(7, getHctColor(10))
+        set(8, getHctColor(1))
+        set(9, getHctColor(2))
+        set(10, getHctColor(3))
     }
+
+private fun getHctColor(base: Int): Color {
+    return Color(Hct.from(base * 35.0, 40.0, 40.0).toInt())
+}
 
 /**
  * All available seed colors of color scheme for app.
