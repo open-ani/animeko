@@ -192,7 +192,7 @@ private fun renderCommentSendError(result: CommentSendResult.Error): String {
         is CommentSendResult.TurnstileError.Network -> "验证码加载失败：网络错误(${result.code})"
         is CommentSendResult.TurnstileError.Unknown -> "验证码加载失败：未知错误(${result.code})"
         CommentSendResult.NetworkError -> "发送失败：网络错误"
-        is CommentSendResult.UnknownError -> "发送失败：未知错误 ${result.message}"
+        is CommentSendResult.UnknownError -> "发送失败，请附带日志反馈此问题\n${result.message}"
     }
 }
 
