@@ -19,7 +19,6 @@ import io.ktor.http.encodeURLParameter
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -218,11 +217,15 @@ class OnboardingViewModel : AbstractSettingsViewModel(), KoinComponent {
         onClickNavigateToBangumiDev = {
             browserNavigator.openBrowser(it, "https://next.bgm.tv/demo/access-token/create")
         },
-        onUseGuestMode = { 
+        onUseGuestMode = {
             val currentState = authConfigurator.state.value
-            // 如果有 session 那就不设置为 guest session
-            if (currentState is AuthStateNew.Success && !currentState.isGuest) return@BangumiAuthorizeState
-            authConfigurator.setGuestSession()
+            // 如果是 Idle, TokenExpired, UnknownError, 则使用 GuestSession
+            if (currentState is AuthStateNew.Idle ||
+                currentState is AuthStateNew.TokenExpired ||
+                currentState is AuthStateNew.UnknownError
+            ) {
+                authConfigurator.setGuestSession()
+            }
         },
         onAuthorizeByToken = { 
             backgroundScope.launch { authConfigurator.setAuthorizationToken(it) }
