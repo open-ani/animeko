@@ -111,7 +111,7 @@ fun AniAppContent(aniNavigator: AniNavigator) {
             LocalNavigator provides aniNavigator,
         ) {
             ProvideAniMotionCompositionLocals {
-                AniAppContentImpl(aniNavigator, { appState.initialNavRoute }, Modifier.fillMaxSize())
+                AniAppContentImpl(aniNavigator, appState.initialNavRoute, Modifier.fillMaxSize())
             }
         }
     }
@@ -120,7 +120,7 @@ fun AniAppContent(aniNavigator: AniNavigator) {
 @Composable
 private fun AniAppContentImpl(
     aniNavigator: AniNavigator,
-    initialRoute: () -> NavRoutes,
+    initialRoute: NavRoutes,
     modifier: Modifier = Modifier,
 ) {
     val navController by aniNavigator.collectNavigatorAsState()
@@ -130,10 +130,8 @@ private fun AniAppContentImpl(
         .add(WindowInsets.desktopTitleBar()) // Compose 目前不支持这个所以我们要自己加上
     val navMotionScheme by rememberUpdatedState(NavigationMotionScheme.current)
 
-    val currentInitialRoute by rememberUpdatedState(initialRoute)
-    
     SharedTransitionLayout {
-        NavHost(navController, startDestination = currentInitialRoute(), modifier) {
+        NavHost(navController, startDestination = initialRoute, modifier) {
             val enterTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition? =
                 { navMotionScheme.enterTransition }
             val exitTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition? =
