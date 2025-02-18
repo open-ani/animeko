@@ -218,13 +218,15 @@ class OnboardingViewModel : AbstractSettingsViewModel(), KoinComponent {
             browserNavigator.openBrowser(it, "https://next.bgm.tv/demo/access-token/create")
         },
         onUseGuestMode = {
-            val currentState = authConfigurator.state.value
             // 如果是 Idle, TokenExpired, UnknownError, 则使用 GuestSession
-            if (currentState is AuthStateNew.Idle ||
-                currentState is AuthStateNew.TokenExpired ||
-                currentState is AuthStateNew.UnknownError
-            ) {
-                authConfigurator.setGuestSession()
+            when (authConfigurator.state.value) {
+                is AuthStateNew.Idle,
+                is AuthStateNew.TokenExpired,
+                is AuthStateNew.UnknownError -> {
+                    authConfigurator.setGuestSession()
+                }
+
+                else -> {}
             }
         },
         onAuthorizeByToken = { 
