@@ -23,9 +23,9 @@ import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 fun PreviewOnboardingCompleteScene() {
     ProvideCompositionLocalsForPreview {
         OnboardingCompleteScreen(
-            state = OnboardingCompleteState("SG", ""),
+            state = OnboardingCompleteState("SG", "", null),
             onClickContinue = { },
-            backNavigation = { }
+            backNavigation = { },
         )
     }
 }
@@ -40,9 +40,9 @@ fun PreviewOnboardingCompleteScene() {
 fun PreviewOnboardingCompleteSceneLongUsername() {
     ProvideCompositionLocalsForPreview {
         OnboardingCompleteScreen(
-            state = OnboardingCompleteState("SG has long username12312321321321321", ""),
+            state = OnboardingCompleteState("SG has long username12312321321321321", "", null),
             onClickContinue = { },
-            backNavigation = { }
+            backNavigation = { },
         )
     }
 }

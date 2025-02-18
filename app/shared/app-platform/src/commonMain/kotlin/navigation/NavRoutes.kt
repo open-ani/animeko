@@ -16,6 +16,7 @@ import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.TravelExplore
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
+import androidx.navigation.NavOptionsBuilder
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -24,10 +25,26 @@ sealed class NavRoutes {
     data object Welcome : NavRoutes()
 
     @Serializable
-    data object Onboarding : NavRoutes()
+    data class Onboarding(
+        /**
+         * 在这个界面, 用户只能导航到 [OnboardingComplete] 随后导航到 [Main],
+         * 并且不能再回到 [Onboarding] 和 [OnboardingComplete].
+         *
+         * 但是由于用户可能从不同的界面进入 [Onboarding] (如首次进入 APP 从 [Welcome] 进入, 重新运行向导从 [Settings] 进入),
+         * 所以最后 [OnboardingComplete] 导航到 [Main] 的 [NavOptionsBuilder.popUpTo] 的参数也不一样.
+         *
+         * 如果为 `null`, 则不使用 `[NavOptionsBuilder.popUpTo]` 选项.
+         */
+        val popUpTargetInclusive: NavRoutes? = null,
+    ) : NavRoutes()
     
     @Serializable
-    data object OnboardingComplete : NavRoutes()
+    data class OnboardingComplete(
+        /**
+         * 同 [Onboarding.popUpTargetInclusive]
+         */
+        val popUpTargetInclusive: NavRoutes? = null,
+    ) : NavRoutes()
 
     @Serializable
     data class Main(
@@ -87,6 +104,10 @@ sealed class NavRoutes {
 
     @Serializable
     data object Schedule : NavRoutes()
+
+    companion object {
+        val NavType by lazy { SerializableNavType(serializer()) }
+    }
 }
 
 @Serializable

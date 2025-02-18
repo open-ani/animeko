@@ -150,7 +150,10 @@ private fun AniAppContentImpl(
                 popExitTransition = popExitTransition,
             ) {
                 WelcomeScreen(
-                    onClickContinue = { aniNavigator.navigateOnboarding() },
+                    onClickContinue = {
+                        // 从 WelcomeScreen 进入 onboarding, 最后 navigateMain 要 popupTo Welcome
+                        aniNavigator.navigateOnboarding(NavRoutes.Welcome)
+                    },
                     contactActions = { AniContactList() },
                     Modifier.fillMaxSize(),
                     windowInsets,
@@ -161,10 +164,17 @@ private fun AniAppContentImpl(
                 exitTransition = exitTransition,
                 popEnterTransition = popEnterTransition,
                 popExitTransition = popExitTransition,
-            ) {
+                typeMap = mapOf(
+                    typeOf<NavRoutes?>() to NavRoutes.NavType,
+                ),
+            ) { backStackEntry ->
                 OnboardingScreen(
                     viewModel { OnboardingViewModel() },
-                    onFinishOnboarding = { aniNavigator.navigateOnboardingComplete() },
+                    onFinishOnboarding = {
+                        // 传递 popUpTarget 给 OnboardingComplete
+                        val currentRoute = backStackEntry.toRoute<NavRoutes.Onboarding>()
+                        aniNavigator.navigateOnboardingComplete(currentRoute.popUpTargetInclusive)
+                    },
                     contactActions = { AniContactList() },
                     navigationIcon = {
                         BackNavigationIconButton(
@@ -184,12 +194,20 @@ private fun AniAppContentImpl(
                 exitTransition = exitTransition,
                 popEnterTransition = popEnterTransition,
                 popExitTransition = popExitTransition,
-            ) { 
+                typeMap = mapOf(
+                    typeOf<NavRoutes?>() to NavRoutes.NavType,
+                ),
+            ) { backStackEntry ->
+                
                 OnboardingCompleteScreen(
                     viewModel { OnboardingCompleteViewModel() },
-                    onClickContinue = {
-                        // 直接导航到主页,并且不能返回向导页
-                        aniNavigator.navigateMain(UISettings.Default.mainSceneInitialPage) 
+                    onClickContinue = { mainSceneInitialPage ->
+                        // 传递 popUpTarget 给 OnboardingComplete
+                        val currentRoute = backStackEntry.toRoute<NavRoutes.OnboardingComplete>()
+                        aniNavigator.navigateMain(
+                            page = mainSceneInitialPage ?: UISettings.Default.mainSceneInitialPage,
+                            popUpTargetInclusive = currentRoute.popUpTargetInclusive,
+                        ) 
                     },
                     backNavigation = {
                         BackNavigationIconButton(
@@ -221,7 +239,7 @@ private fun AniAppContentImpl(
                 OverrideNavigation(
                     {
                         object : AniNavigator by it {
-                            override fun navigateMain(page: MainScreenPage, requestFocus: Boolean) {
+                            override fun navigateMain(page: MainScreenPage, popUpTargetInclusive: NavRoutes?) {
                                 currentPage = page
                             }
                         }

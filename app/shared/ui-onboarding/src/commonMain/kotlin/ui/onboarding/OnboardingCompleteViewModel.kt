@@ -10,12 +10,13 @@
 package me.him188.ani.app.ui.onboarding
 
 import kotlinx.coroutines.CoroutineStart
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.session.AniAuthClient
 import me.him188.ani.app.domain.session.AniAuthConfigurator
 import me.him188.ani.app.domain.session.AuthStateNew
@@ -28,6 +29,7 @@ import org.koin.core.component.inject
 class OnboardingCompleteViewModel : AbstractViewModel(), KoinComponent {
     private val sessionManager: SessionManager by inject()
     private val authClient: AniAuthClient by inject()
+    private val settings: SettingsRepository by inject()
     private val authLoopTasker = SingleTaskExecutor(backgroundScope.coroutineContext)
 
     private val authConfigurator = AniAuthConfigurator(
@@ -36,19 +38,22 @@ class OnboardingCompleteViewModel : AbstractViewModel(), KoinComponent {
         onLaunchAuthorize = { },
         parentCoroutineContext = backgroundScope.coroutineContext,
     )
-    
-    val state: Flow<OnboardingCompleteState> = authConfigurator.state
-        .filterIsInstance<AuthStateNew.Success>()
-        .map { 
+
+    val state: Flow<OnboardingCompleteState> =
+        combine(
+            authConfigurator.state.filterIsInstance<AuthStateNew.Success>(),
+            settings.uiSettings.flow.map { it.mainSceneInitialPage },
+        ) { authState, initialPage ->
             OnboardingCompleteState(
-                username = if (it.isGuest) null else it.username,
-                avatarUrl = if (it.isGuest) DEFAULT_AVATAR else (it.avatarUrl ?: DEFAULT_AVATAR)
+                username = if (authState.isGuest) null else authState.username,
+                avatarUrl = if (authState.isGuest) DEFAULT_AVATAR else (authState.avatarUrl ?: DEFAULT_AVATAR),
+                mainSceneInitialPage = initialPage,
             )
         }
-        .stateInBackground(
-            OnboardingCompleteState.Placeholder,
-            SharingStarted.WhileSubscribed()
-        )
+            .stateInBackground(
+                OnboardingCompleteState.Placeholder,
+                SharingStarted.WhileSubscribed(),
+            )
     
     suspend fun startAuthCheckLoop() {
         authLoopTasker.invoke {

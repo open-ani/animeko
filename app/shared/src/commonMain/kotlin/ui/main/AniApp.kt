@@ -31,6 +31,7 @@ import coil3.compose.LocalPlatformContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.take
 import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.foundation.HttpClientProvider
@@ -67,7 +68,7 @@ class AniAppViewModel : AbstractViewModel(), KoinComponent {
 
     val appState: Flow<AniAppState?> = combine(
         settings.themeSettings.flow,
-        settings.uiSettings.flow, // 只需要读取一次
+        settings.uiSettings.flow.take(1), // 只需要读取一次
         httpClientProvider.configurationFlow,
     ) { themeSettings, uiSettings, _ ->
         AniAppState(
@@ -84,6 +85,12 @@ class AniAppViewModel : AbstractViewModel(), KoinComponent {
             initialValue = null,
             started = SharingStarted.Eagerly,
         )
+
+    /*init {
+        launchInMain {
+            settings.uiSettings.update { copy(onboardingCompleted = false) }
+        }
+    }*/
     
 //    /**
 //     * 跟随代理设置等配置变化而变化的 [HttpClient] 实例. 用于 coil ImageLoader.
