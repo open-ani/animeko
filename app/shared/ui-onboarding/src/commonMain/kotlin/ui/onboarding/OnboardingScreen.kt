@@ -69,12 +69,12 @@ fun OnboardingScreen(
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
 ) {
-    LaunchedEffect(Unit) {
+    LaunchedEffect(vm) {
         vm.collectNewLoginEvent {
             onFinishOnboarding()
         }
     }
-    LaunchedEffect(Unit) { vm.startAuthorizeCheckAndProxyTesterLoop() }
+    LaunchedEffect(vm) { vm.startAuthorizeCheckAndProxyTesterLoop() }
 
     Surface(color = AniThemeDefaults.pageContentBackgroundColor) {
         Box(
@@ -193,7 +193,7 @@ fun OnboardingScreen(
 
             val configState = state.bitTorrentFeatureState.enabled
 
-            LifecycleResumeEffect(Unit) {
+            LifecycleResumeEffect(state) {
                 state.bitTorrentFeatureState.onCheckPermissionState(context)
                 onPauseOrDispose { }
             }
