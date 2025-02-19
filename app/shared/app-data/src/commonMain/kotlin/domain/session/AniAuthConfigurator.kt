@@ -19,8 +19,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
@@ -31,7 +31,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.retry
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.ApiFailure
@@ -53,9 +53,29 @@ import kotlin.time.Duration.Companion.seconds
 
 /**
  * Wrapper for [SessionManager] and [AniAuthClient] to handle authorization.
- * Usually use it at UI layer (e.g. at ViewModel).
- * 
- * You should call [authorizeRequestCheckLoop] to start the test runner loop and make functionality.
+ *
+ * 通常在 UI 层使用.
+ *
+ * ```
+ * // In your ViewModel.
+ * val sessionManager: SessionManager by inject()
+ * val authClient: AniAuthClient by inject()
+ *
+ * val authConfigurator = AniAuthConfigurator(
+ *    sessionManager = sessionManager,
+ *    authClient = authClient,
+ *    onLaunchAuthorize = { requestId ->
+ *        // open browser or other actions
+ *    }
+ * )
+ *
+ * val authState = authConfigurator.state
+ *    .map { /* Your UI state */ }
+ *    .stateIn(...)
+ *
+ * // In your UI.
+ * val authState by viewModel.authState.collectAsState(MyOwnUIState.Loading)
+ * ```
  */
 class AniAuthConfigurator(
     private val sessionManager: SessionManager,
@@ -73,7 +93,7 @@ class AniAuthConfigurator(
     private val launchedExternalRequests = MutableStateFlow<PersistentList<String>>(persistentListOf())
     private val lastAuthException: MutableStateFlow<Throwable?> = MutableStateFlow(null)
 
-    val state: StateFlow<AuthStateNew> = currentRequestAuthorizeId
+    val state: SharedFlow<AuthStateNew> = currentRequestAuthorizeId
         .transformLatest { requestId ->
             if (requestId == null) return@transformLatest emit(AuthStateNew.Idle)
 
@@ -93,12 +113,20 @@ class AniAuthConfigurator(
             }
                 .collectLatest { authStateNew -> emit(authStateNew) }
         }
-        .stateIn(
+        .shareIn(
             scope,
             SharingStarted.WhileSubscribed(),
-            AuthStateNew.Idle,
         )
 
+    /**
+     * 启动授权请求检查循环.
+     *
+     *
+     *
+     * 会启动两个协程:
+     * * [checkAuthorizeRequestLoop] 用于检查授权请求状态.
+     * * [requireAuthorizeStarterTaskLoop] 用于启动 [SessionManager.requireAuthorize].
+     */
     suspend fun authorizeRequestCheckLoop() = coroutineScope {
         launch(start = CoroutineStart.UNDISPATCHED) { checkAuthorizeRequestLoop() }
         launch { requireAuthorizeStarterTaskLoop() }

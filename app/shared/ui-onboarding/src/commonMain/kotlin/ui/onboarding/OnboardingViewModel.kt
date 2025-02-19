@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterIsInstance
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -219,7 +220,7 @@ class OnboardingViewModel : AbstractSettingsViewModel(), KoinComponent {
         },
         onUseGuestMode = {
             // 如果是 Idle, TokenExpired, UnknownError, 则使用 GuestSession
-            when (authConfigurator.state.value) {
+            when (authConfigurator.state.first()) {
                 is AuthStateNew.Idle,
                 is AuthStateNew.TokenExpired,
                 is AuthStateNew.UnknownError -> {
