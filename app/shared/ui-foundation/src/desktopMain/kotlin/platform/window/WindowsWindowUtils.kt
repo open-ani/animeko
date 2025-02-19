@@ -265,7 +265,7 @@ class WindowsWindowUtils : AwtWindowUtils() {
                 rect.bottom - rect.top,
                 SWP_NOZORDER or SWP_NOACTIVATE or SWP_FRAMECHANGED,
             )
-            window.isUndecoratedFullscreen = true
+            window.isWindowsUndecoratedFullscreen = true
         } else {
             // Restore window borders and title bar
             val style = User32.INSTANCE.GetWindowLong(hwnd, WinUser.GWL_STYLE)
@@ -295,7 +295,7 @@ class WindowsWindowUtils : AwtWindowUtils() {
                 )
             }
             window.savedWindowsWindowState = null
-            window.isUndecoratedFullscreen = false
+            window.isWindowsUndecoratedFullscreen = false
         }
     }
 

@@ -21,24 +21,26 @@ import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.PlatformWindow
 import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
 import me.him188.ani.utils.platform.annotations.TestOnly
+import me.him188.ani.utils.platform.currentPlatform
 import java.io.File
 
 @Composable
 @TestOnly
 @PublishedApi
 internal actual inline fun ProvidePlatformCompositionLocalsForPreview(crossinline content: @Composable () -> Unit) {
+    val windowState = remember { WindowState(size = DpSize(1920.dp, 1080.dp)) }
     CompositionLocalProvider(
         LocalContext provides remember {
             DesktopContext(
-                WindowState(size = DpSize(1920.dp, 1080.dp)),
+                windowState,
                 File("."),
                 File("."),
                 File("./logs"),
                 ExtraWindowProperties(),
             )
         },
-        LocalPlatformWindow provides remember {
-            PlatformWindow(0L)
+        LocalPlatformWindow provides remember(windowState) {
+            PlatformWindow(0L, null, windowState, currentPlatform())
         },
     ) {
         content()

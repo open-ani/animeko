@@ -118,7 +118,6 @@ import me.him188.ani.app.ui.foundation.pagerTabIndicatorOffset
 import me.him188.ani.app.ui.foundation.rememberImageViewerHandler
 import me.him188.ani.app.ui.foundation.theme.weaken
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
-import me.him188.ani.app.ui.foundation.window.currentWindowConfiguration
 import me.him188.ani.app.ui.richtext.RichTextDefaults
 import me.him188.ani.app.ui.subject.episode.comments.EpisodeCommentColumn
 import me.him188.ani.app.ui.subject.episode.comments.EpisodeEditCommentSheet
@@ -228,7 +227,7 @@ private fun EpisodeScreenContent(
     
     //Enable window fullscreen mode detection
     if (LocalPlatform.current.isDesktop()) {
-        vm.isFullscreen = currentWindowConfiguration().isFullScreen
+        vm.isFullscreen = LocalPlatformWindow.current.isUndecoratedFullscreen
     }
 
     SideEffect {

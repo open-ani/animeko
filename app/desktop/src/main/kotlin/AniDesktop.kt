@@ -93,6 +93,7 @@ import me.him188.ani.app.platform.window.setTitleBar
 import me.him188.ani.app.tools.update.DesktopUpdateInstaller
 import me.him188.ani.app.tools.update.UpdateInstaller
 import me.him188.ani.app.torrent.anitorrent.AnitorrentLibraryLoader
+import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.LocalWindowState
 import me.him188.ani.app.ui.foundation.effects.OverrideCaptionButtonAppearance
 import me.him188.ani.app.ui.foundation.ifThen
@@ -396,13 +397,16 @@ object AniDesktop {
                 }
 
                 val systemTheme by systemThemeDetector.current.collectAsStateWithLifecycle()
+                val platform = LocalPlatform.current
                 CompositionLocalProvider(
                     LocalContext provides context,
                     LocalWindowState provides windowState,
-                    LocalPlatformWindow provides remember(window.windowHandle) {
+                    LocalPlatformWindow provides remember(window.windowHandle, this, platform, windowState) {
                         PlatformWindow(
                             windowHandle = window.windowHandle,
                             windowScope = this,
+                            platform = platform,
+                            windowState = windowState
                         )
                     },
                     LocalOnBackPressedDispatcherOwner provides backPressedDispatcherOwner,

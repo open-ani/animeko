@@ -9,22 +9,39 @@
 
 package me.him188.ani.app.platform
 
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.WindowScope
+import androidx.compose.ui.window.WindowState
 import me.him188.ani.app.platform.window.TitleBarWindowProc
+import me.him188.ani.utils.platform.Platform
+import me.him188.ani.utils.platform.isWindows
 
 actual open class PlatformWindow(
     val windowHandle: Long,
-    val windowScope: WindowScope? = null
+    val windowScope: WindowScope? = null,
+    val windowState: WindowState,
+    val platform: Platform
 ) {
     internal var savedWindowsWindowState: SavedWindowsWindowState? = null
 
     internal var titleBarWindowProc by mutableStateOf<TitleBarWindowProc?>(null)
 
-    var isUndecoratedFullscreen by mutableStateOf(false)
+    internal var isWindowsUndecoratedFullscreen by mutableStateOf(false)
+    
+    actual val isUndecoratedFullscreen: Boolean by derivedStateOf {
+        if (platform.isWindows()) {
+            isWindowsUndecoratedFullscreen
+        } else {
+            windowState.placement == WindowPlacement.Fullscreen
+        }
+    }
+    
+    actual val isLandscape: Boolean = true
 }
 
 class SavedWindowsWindowState(

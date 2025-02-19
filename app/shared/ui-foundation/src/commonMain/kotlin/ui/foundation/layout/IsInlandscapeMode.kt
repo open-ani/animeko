@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.BoxWithConstraintsScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.ui.unit.dp
-import me.him188.ani.app.ui.foundation.window.currentWindowConfiguration
 
 
 /**
@@ -14,7 +13,7 @@ import me.him188.ani.app.ui.foundation.window.currentWindowConfiguration
  *
  */
 @Composable
-inline fun isInLandscapeMode(): Boolean = currentWindowConfiguration().isLandscape
+inline fun isInLandscapeMode(): Boolean = LocalPlatformWindow.current.isLandscape
 
 @Stable
 fun BoxWithConstraintsScope.showTabletUI(): Boolean {

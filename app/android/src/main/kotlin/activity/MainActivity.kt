@@ -16,6 +16,7 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.core.view.WindowCompat
@@ -114,15 +115,20 @@ class MainActivity : AniComponentActivity() {
         }
 
         val settingsRepository = KoinPlatform.getKoin().get<SettingsRepository>()
-
         setContent {
             AniApp {
                 SystemBarColorEffect()
+
+                val platformWindow = remember(this) {
+                    PlatformWindow(this)
+                }
+                DisposableEffect(platformWindow) {
+                    onDispose { platformWindow.close() }
+                }
+                
                 CompositionLocalProvider(
                     LocalToaster provides toaster,
-                    LocalPlatformWindow provides remember {
-                        PlatformWindow()
-                    },
+                    LocalPlatformWindow provides platformWindow,
                 ) {
                     val uiSettings by settingsRepository.uiSettings.flow.collectAsStateWithLifecycle(null)
                     uiSettings?.let {
