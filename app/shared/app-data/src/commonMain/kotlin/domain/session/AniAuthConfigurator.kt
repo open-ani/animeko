@@ -295,7 +295,7 @@ class AniAuthConfigurator(
             is SessionStatus.Verified -> {
                 val userInfo = sessionState.userInfo
                 AuthStateNew.Success(
-                    username = userInfo.username ?: userInfo.id.toString(),
+                    username = userInfo.run { nickname ?: username ?: id.toString() },
                     avatarUrl = userInfo.avatarUrl,
                     isGuest = false,
                 )
