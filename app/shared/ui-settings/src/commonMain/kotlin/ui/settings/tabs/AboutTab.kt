@@ -47,7 +47,6 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.toRoute
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
@@ -67,7 +66,6 @@ import me.him188.ani.app.domain.session.isSessionVerified
 import me.him188.ani.app.domain.session.unverifiedAccessTokenOrNull
 import me.him188.ani.app.navigation.BrowserNavigator
 import me.him188.ani.app.navigation.LocalNavigator
-import me.him188.ani.app.navigation.NavRoutes
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.ui.foundation.AbstractViewModel
@@ -344,26 +342,6 @@ fun AboutTab(
                         },
                     ) {
                         Text("Invalidate Session")
-                    }
-                    
-                    FilledTonalButton(
-                        {
-                            val navController = navigator.currentNavigator
-                            val mainRouteFQN = NavRoutes.Main::class.qualifiedName!!
-                            // 找到上一个 NavRoutes.Main 的路由
-                            val lastMainRoute = navController.currentBackStack.value
-                                .asReversed()
-                                .firstOrNull { it.destination.route?.contains(mainRouteFQN) == true }
-                                ?.toRoute<NavRoutes.Main>()
-                            // 从 SettingsScreen 进入 onboarding, 最后 navigateMain 要 popUpTo Main
-                            // 如果 back stack 没有 Main, 那就 popUpTo Settings, 这个一定有
-                            navigator.navigateOnboarding(
-                                lastMainRoute
-                                    ?: navController.currentBackStackEntry?.toRoute<NavRoutes.Settings>(),
-                            )
-                        },
-                    ) {
-                        Text("重新进入新手向导")
                     }
                 }
 

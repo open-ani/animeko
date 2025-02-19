@@ -180,6 +180,7 @@ fun SettingsScreen(
                     SettingsTab.ABOUT -> AboutTab({ vm.debugTriggerState.triggerDebugMode() }, tabModifier)
                     SettingsTab.DEBUG -> DebugTab(
                         vm.debugSettingsState,
+                        vm.uiSettings,
                         tabModifier,
                     )
 

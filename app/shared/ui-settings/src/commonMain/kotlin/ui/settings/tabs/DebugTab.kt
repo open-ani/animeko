@@ -12,12 +12,18 @@ package me.him188.ani.app.ui.settings.tabs
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.toRoute
 import me.him188.ani.app.data.models.preference.DebugSettings
+import me.him188.ani.app.data.models.preference.UISettings
 import me.him188.ani.app.data.models.preference.supportsLimitUploadOnMeteredNetwork
+import me.him188.ani.app.navigation.LocalNavigator
+import me.him188.ani.app.navigation.NavRoutes
 import me.him188.ani.app.platform.MeteredNetworkDetector
 import me.him188.ani.app.ui.foundation.LocalPlatform
+import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.SettingsState
 import me.him188.ani.app.ui.settings.framework.components.SwitchItem
@@ -27,10 +33,14 @@ import org.koin.mp.KoinPlatform
 @Composable
 fun DebugTab(
     debugSettingsState: SettingsState<DebugSettings>,
+    uiSettingsState: SettingsState<UISettings>,
     modifier: Modifier = Modifier,
     onDisableDebugMode: () -> Unit = {}
 ) {
     val debugSettings by debugSettingsState
+    val toaster = LocalToaster.current
+    val navigator = LocalNavigator.current
+    val scope = rememberCoroutineScope()
 
     SettingsTab(modifier) {
         Group(
@@ -70,6 +80,35 @@ fun DebugTab(
                 val isMetered by networkDetector.isMeteredNetworkFlow.collectAsStateWithLifecycle(false)
                 Text("isMetered: $isMetered")
             }
+        }
+        Group(title = { Text("新手引导设置") }, useThinHeader = true) {
+            TextItem(
+                onClick = {
+                    val navController = navigator.currentNavigator
+                    val mainRouteFQN = NavRoutes.Main::class.qualifiedName!!
+                    // 找到上一个 NavRoutes.Main 的路由
+                    val lastMainRoute = navController.currentBackStack.value
+                        .asReversed()
+                        .firstOrNull { it.destination.route?.contains(mainRouteFQN) == true }
+                        ?.toRoute<NavRoutes.Main>()
+                    // 从 SettingsScreen 进入 onboarding, 最后 navigateMain 要 popUpTo Main
+                    // 如果 back stack 没有 Main, 那就 popUpTo Settings, 这个一定有
+                    navigator.navigateOnboarding(
+                        lastMainRoute
+                            ?: navController.currentBackStackEntry?.toRoute<NavRoutes.Settings>(),
+                    )
+                },
+            ) {
+                Text("进入新手向导")
+            }
+            TextItem(
+                title = { Text("重置新手引导状态") },
+                description = { Text("重置后，下次启动 APP 会进入新手引导") },
+                onClick = {
+                    uiSettingsState.update(uiSettingsState.value.copy(onboardingCompleted = false))
+                    toaster.toast("已重置新手引导状态")
+                },
+            )
         }
     }
 }
