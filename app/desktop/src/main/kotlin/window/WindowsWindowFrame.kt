@@ -43,6 +43,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.AbsoluteAlignment
@@ -84,6 +85,7 @@ import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
 import me.him188.ani.app.ui.foundation.layout.LocalTitleBarInsets
 import me.him188.ani.app.ui.foundation.layout.ZeroInsets
 import me.him188.ani.app.ui.foundation.layout.isSystemInFullscreen
+import me.him188.ani.app.ui.foundation.window.currentWindowConfiguration
 import me.him188.ani.desktop.generated.resources.Res
 import me.him188.ani.desktop.generated.resources.ic_fluent_arrow_minimize_28_regular
 import me.him188.ani.desktop.generated.resources.ic_fluent_dismiss_48_regular
@@ -109,18 +111,19 @@ internal fun FrameWindowScope.WindowsWindowFrame(
     val windowUtils = WindowsWindowUtils.instance
     val platformWindow = LocalPlatformWindow.current
     val scope = rememberCoroutineScope()
+    val windowConfiguration = currentWindowConfiguration()
+    val windowConfigurationState = rememberUpdatedState(windowConfiguration)
     
     //Keep 1px for showing float window top area border.
-    val topBorderFixedInsets by remember(windowState) {
+    val topBorderFixedInsets by remember(windowConfigurationState) {
         derivedStateOf { 
-            if (windowState.placement == WindowPlacement.Floating) WindowInsets(top = 1) else ZeroInsets 
+            if (!windowConfigurationState.value.isFullScreen) WindowInsets(top = 1) else ZeroInsets 
         }
     }
     Box(modifier = Modifier.fillMaxSize().windowInsetsPadding(topBorderFixedInsets)) {
-        val isFullScreen = isSystemInFullscreen()
         //Control the visibility of the title bar. initial value is !isFullScreen.
-        LaunchedEffect(isFullScreen) {
-            frameState.isTitleBarVisible = !isFullScreen
+        LaunchedEffect(windowConfiguration.isFullScreen) {
+            frameState.isTitleBarVisible = !windowConfiguration.isFullScreen
         }
 
         // Window content
@@ -132,10 +135,10 @@ internal fun FrameWindowScope.WindowsWindowFrame(
         )
 
         // Hide title bar if window is full screen mode and title bar is not hovered.
-        val titleBarInteractionSource = remember(isFullScreen) { MutableInteractionSource() }
+        val titleBarInteractionSource = remember(windowConfiguration.isFullScreen) { MutableInteractionSource() }
         val titleBarHovered by titleBarInteractionSource.collectIsHoveredAsState()
-        LaunchedEffect(titleBarInteractionSource, titleBarHovered, isFullScreen) {
-            if (!titleBarHovered && isFullScreen) {
+        LaunchedEffect(titleBarInteractionSource, titleBarHovered, windowConfiguration.isFullScreen) {
+            if (!titleBarHovered && windowConfiguration.isFullScreen) {
                 delay(3.seconds)
                 frameState.isTitleBarVisible = false
             }
@@ -146,7 +149,7 @@ internal fun FrameWindowScope.WindowsWindowFrame(
         AnimatedVisibility(
             visible = frameState.isTitleBarVisible,
             modifier = Modifier
-                .ifThen(frameState.isTitleBarVisible && isFullScreen) { hoverable(titleBarInteractionSource) }
+                .ifThen(frameState.isTitleBarVisible && windowConfiguration.isFullScreen) { hoverable(titleBarInteractionSource) }
                 .fillMaxWidth()
                 .onSizeChanged(frameState::updateTitleBarInsets)
                 .wrapContentWidth(AbsoluteAlignment.Right),
