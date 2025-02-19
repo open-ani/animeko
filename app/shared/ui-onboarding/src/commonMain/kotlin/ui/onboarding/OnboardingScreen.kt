@@ -69,10 +69,13 @@ fun OnboardingScreen(
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
 ) {
+    val finishOnboarding = {
+        vm.finishOnboarding()
+        onFinishOnboarding()
+    }
+    
     LaunchedEffect(vm) {
-        vm.collectNewLoginEvent {
-            onFinishOnboarding()
-        }
+        vm.collectNewLoginEvent(finishOnboarding)
     }
 
     val scope = rememberCoroutineScope()
@@ -90,10 +93,7 @@ fun OnboardingScreen(
                 modifier = modifier,
                 controller = vm.wizardController,
                 state = vm.onboardingState,
-                onFinishOnboarding = {
-                    vm.finishOnboarding()
-                    onFinishOnboarding()
-                },
+                onFinishOnboarding = finishOnboarding,
                 contactActions = contactActions,
                 navigationIcon = navigationIcon,
                 windowInsets = windowInsets,
