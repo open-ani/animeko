@@ -9,13 +9,10 @@
 
 package me.him188.ani.app.platform
 
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import me.him188.ani.app.domain.session.AuthorizationCancelledException
 import me.him188.ani.app.domain.session.AuthorizationFailedException
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.session.SessionStatus
-import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
@@ -28,17 +25,10 @@ object AppStartupTasks {
     }
 
     // only throws CancellationException
-    suspend fun verifySession(
-        sessionManager: SessionManager,
-        navigator: AniNavigator,
-    ) {
+    suspend fun verifySession(sessionManager: SessionManager) {
         try {
             sessionManager.requireAuthorize(
                 onLaunch = {
-                    navigator.awaitNavController()
-                    withContext(Dispatchers.Main) {
-                        navigator.navigateWelcome()
-                    }
                     // 打开 welcome page 一定代表账号验证失败或者没有账号，直接取消协程是可以的
                     throw CancellationException("Navigates to welcome page on first launch.")
                 },

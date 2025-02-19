@@ -123,7 +123,7 @@ class MainActivity : AniComponentActivity() {
         }
 
         lifecycleScope.launch {
-            AppStartupTasks.verifySession(sessionManager, aniNavigator)
+            AppStartupTasks.verifySession(sessionManager)
         }
     }
 }

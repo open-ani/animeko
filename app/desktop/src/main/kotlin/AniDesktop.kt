@@ -351,7 +351,7 @@ object AniDesktop {
         coroutineScope.launch {
             navigator.awaitNavController()
             val sessionManager by koin.koin.inject<SessionManager>()
-            AppStartupTasks.verifySession(sessionManager, navigator)
+            AppStartupTasks.verifySession(sessionManager)
         }
 
         val windowStateRepository = koin.koin.get<WindowStateRepository>()
