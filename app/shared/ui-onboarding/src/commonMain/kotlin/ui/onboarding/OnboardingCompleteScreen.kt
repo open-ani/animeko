@@ -34,9 +34,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,7 +44,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 import me.him188.ani.app.navigation.MainScreenPage
 import me.him188.ani.app.ui.foundation.avatar.AvatarImage
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
@@ -59,7 +61,12 @@ fun OnboardingCompleteScreen(
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
 ) {
-    LaunchedEffect(vm) { vm.startAuthCheckLoop() }
+    val scope = rememberCoroutineScope()
+    LifecycleResumeEffect(vm) {
+        val job = scope.launch { vm.startAuthCheckLoop() }
+        onPauseOrDispose { job.cancel() }
+    }
+    
     val state by vm.state.collectAsStateWithLifecycle(OnboardingCompleteState.Placeholder)
     
     Surface(color = AniThemeDefaults.pageContentBackgroundColor) {

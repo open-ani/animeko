@@ -74,7 +74,12 @@ fun OnboardingScreen(
             onFinishOnboarding()
         }
     }
-    LaunchedEffect(vm) { vm.startAuthorizeCheckAndProxyTesterLoop() }
+
+    val scope = rememberCoroutineScope()
+    LifecycleResumeEffect(vm) {
+        val job = scope.launch { vm.startAuthorizeCheckAndProxyTesterLoop() }
+        onPauseOrDispose { job.cancel() }
+    }
 
     Surface(color = AniThemeDefaults.pageContentBackgroundColor) {
         Box(
