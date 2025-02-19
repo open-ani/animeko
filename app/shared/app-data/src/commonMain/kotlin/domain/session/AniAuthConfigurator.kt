@@ -260,7 +260,7 @@ class AniAuthConfigurator(
      * @throws NotAuthorizedException 还未完成验证, 需要捕获并重试
      * @return [OAuthResult]
      */
-    @Throws(NotAuthorizedException::class)
+    @Throws(NotAuthorizedException::class, CancellationException::class)
     private suspend fun getAccessTokenFromAniServer(
         requestId: String,
     ): OAuthResult {
