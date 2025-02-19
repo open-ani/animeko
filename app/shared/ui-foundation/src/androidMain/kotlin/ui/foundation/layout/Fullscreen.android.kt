@@ -11,21 +11,10 @@ package me.him188.ani.app.ui.foundation.layout
 
 import android.app.Activity
 import android.os.Build
-import android.view.View
-import android.view.WindowInsets
-import android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import me.him188.ani.app.platform.Context
-import me.him188.ani.app.platform.LocalContext
 
 
 @Suppress("USELESS_CAST") // compiler bug
@@ -52,70 +41,6 @@ actual suspend fun Context.setRequestFullScreen(window: PlatformWindowMP, fullsc
             android.content.res.Configuration.ORIENTATION_PORTRAIT
         }
         resources.configuration.orientation = orientation
-    }
-}
-
-// TODO: isSystemInFullscreen is written by ChatGPT, not tested
-@Composable
-actual fun isSystemInFullscreenImpl(): Boolean {
-    val context = LocalContext.current
-    var isFullscreen by remember { mutableStateOf(isInFullscreenMode(context)) }
-
-    DisposableEffect(context) {
-        val window = (context as? Activity)?.window
-        val decorView = window?.decorView
-
-        val listener = View.OnApplyWindowInsetsListener { _, insets ->
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                val isFullscreenNow = !insets.isVisible(WindowInsets.Type.systemBars())
-                if (isFullscreenNow != isFullscreen) {
-                    isFullscreen = isFullscreenNow
-                }
-            } else {
-                @Suppress("DEPRECATION")
-                val isFullscreenNow = (insets.systemWindowInsetTop == 0)
-                if (isFullscreenNow != isFullscreen) {
-                    isFullscreen = isFullscreenNow
-                }
-            }
-            insets
-        }
-
-        if (decorView != null) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                decorView.setOnApplyWindowInsetsListener(listener)
-            } else {
-                ViewCompat.setOnApplyWindowInsetsListener(decorView) { v, insets ->
-                    val toWindowInsets = insets.toWindowInsets()!!
-                    listener.onApplyWindowInsets(v, toWindowInsets)
-                    WindowInsetsCompat.toWindowInsetsCompat(toWindowInsets)
-                }
-            }
-        }
-
-        onDispose {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                decorView?.setOnApplyWindowInsetsListener(null)
-            } else {
-                if (decorView != null) {
-                    ViewCompat.setOnApplyWindowInsetsListener(decorView, null)
-                }
-            }
-        }
-    }
-
-    return isFullscreen
-}
-
-@Suppress("DEPRECATION")
-private fun isInFullscreenMode(context: Context): Boolean {
-    val window = (context as? Activity)?.window ?: return false
-    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-        val insetsController = window.insetsController
-        insetsController != null && insetsController.systemBarsBehavior == BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-    } else {
-        val decorView = window.decorView
-        (decorView.systemUiVisibility and View.SYSTEM_UI_FLAG_FULLSCREEN) != 0
     }
 }
 

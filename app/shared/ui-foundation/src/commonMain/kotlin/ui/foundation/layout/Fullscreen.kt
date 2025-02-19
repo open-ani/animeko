@@ -11,6 +11,7 @@ package me.him188.ani.app.ui.foundation.layout
 
 import androidx.compose.runtime.Composable
 import me.him188.ani.app.platform.Context
+import me.him188.ani.app.ui.foundation.window.currentWindowConfiguration
 
 
 /**
@@ -28,10 +29,4 @@ expect fun Context.setSystemBarVisible(visible: Boolean)
 
 @Suppress("NOTHING_TO_INLINE", "KotlinRedundantDiagnosticSuppress")
 @Composable
-inline fun isSystemInFullscreen(): Boolean = isSystemInFullscreenImpl()
-
-/**
- * @see isInLandscapeMode
- */
-@Composable
-expect fun isSystemInFullscreenImpl(): Boolean
+inline fun isSystemInFullscreen(): Boolean = currentWindowConfiguration().isFullScreen

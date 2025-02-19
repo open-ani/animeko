@@ -9,32 +9,11 @@
 
 package me.him188.ani.app.ui.foundation.layout
 
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.ui.window.WindowPlacement
 import me.him188.ani.app.platform.Context
-import me.him188.ani.app.platform.LocalDesktopContext
 import me.him188.ani.app.platform.PlatformWindow
 import me.him188.ani.app.platform.checkIsDesktop
 import me.him188.ani.app.platform.window.WindowUtils
-import me.him188.ani.app.ui.foundation.LocalPlatform
-import me.him188.ani.utils.platform.Platform
 
-
-@Composable
-actual fun isSystemInFullscreenImpl(): Boolean {
-    val context = LocalDesktopContext.current
-    if (LocalPlatform.current is Platform.Windows) {
-        return LocalPlatformWindow.current.isUndecoratedFullscreen
-    }
-    // should be true
-    val placement by rememberUpdatedState(context.windowState.placement)
-    val isFullscreen by remember { derivedStateOf { placement == WindowPlacement.Fullscreen } }
-    return isFullscreen
-}
 
 actual suspend fun Context.setRequestFullScreen(window: PlatformWindow, fullscreen: Boolean) {
     checkIsDesktop()
