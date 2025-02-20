@@ -5,6 +5,7 @@ import android.content.ComponentCallbacks
 import android.content.res.Configuration
 import android.os.Build
 import android.view.View
+import android.view.WindowInsets
 import android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -28,7 +29,7 @@ actual class PlatformWindow(private val context: Context) : AutoCloseable {
     private val insetListener = View.OnApplyWindowInsetsListener { _, insets ->
         @Suppress("DEPRECATION")
         val isFullscreenNow = when {
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.R -> !insets.isVisible(android.view.WindowInsets.Type.systemBars())
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.R -> !insets.isVisible(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())
             else -> insets.systemWindowInsetTop == 0
         }
         if (isFullscreenNow != _isUndecoratedFullscreen) {
