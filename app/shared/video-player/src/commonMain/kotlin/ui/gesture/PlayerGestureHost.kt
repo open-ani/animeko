@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.app.videoplayer.ui.guesture
+package me.him188.ani.app.videoplayer.ui.gesture
 
 import androidx.annotation.UiThread
 import androidx.compose.animation.core.Spring
@@ -93,14 +93,14 @@ import me.him188.ani.app.ui.foundation.layout.isSystemInFullscreen
 import me.him188.ani.app.utils.fixToString
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
-import me.him188.ani.app.videoplayer.ui.guesture.GestureIndicatorState.State.BRIGHTNESS
-import me.him188.ani.app.videoplayer.ui.guesture.GestureIndicatorState.State.FAST_BACKWARD
-import me.him188.ani.app.videoplayer.ui.guesture.GestureIndicatorState.State.FAST_FORWARD
-import me.him188.ani.app.videoplayer.ui.guesture.GestureIndicatorState.State.PAUSED_ONCE
-import me.him188.ani.app.videoplayer.ui.guesture.GestureIndicatorState.State.RESUMED_ONCE
-import me.him188.ani.app.videoplayer.ui.guesture.GestureIndicatorState.State.SEEKING
-import me.him188.ani.app.videoplayer.ui.guesture.GestureIndicatorState.State.VOLUME
-import me.him188.ani.app.videoplayer.ui.guesture.SwipeSeekerState.Companion.swipeToSeek
+import me.him188.ani.app.videoplayer.ui.gesture.GestureIndicatorState.State.BRIGHTNESS
+import me.him188.ani.app.videoplayer.ui.gesture.GestureIndicatorState.State.FAST_BACKWARD
+import me.him188.ani.app.videoplayer.ui.gesture.GestureIndicatorState.State.FAST_FORWARD
+import me.him188.ani.app.videoplayer.ui.gesture.GestureIndicatorState.State.PAUSED_ONCE
+import me.him188.ani.app.videoplayer.ui.gesture.GestureIndicatorState.State.RESUMED_ONCE
+import me.him188.ani.app.videoplayer.ui.gesture.GestureIndicatorState.State.SEEKING
+import me.him188.ani.app.videoplayer.ui.gesture.GestureIndicatorState.State.VOLUME
+import me.him188.ani.app.videoplayer.ui.gesture.SwipeSeekerState.Companion.swipeToSeek
 import me.him188.ani.app.videoplayer.ui.progress.PlayerProgressSliderState
 import me.him188.ani.app.videoplayer.ui.rememberAlwaysOnRequester
 import me.him188.ani.app.videoplayer.ui.top.needWorkaroundForFocusManager
