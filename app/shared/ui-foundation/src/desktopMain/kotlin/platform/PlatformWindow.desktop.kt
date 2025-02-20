@@ -41,7 +41,7 @@ actual open class PlatformWindow(
         }
     }
     
-    actual val isLandscape: Boolean = true
+    actual val deviceOrientation: DeviceOrientation = DeviceOrientation.LANDSCAPE
 }
 
 class SavedWindowsWindowState(

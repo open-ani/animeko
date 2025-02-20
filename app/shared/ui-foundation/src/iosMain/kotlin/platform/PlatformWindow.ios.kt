@@ -5,5 +5,5 @@ package me.him188.ani.app.platform
  */
 actual class PlatformWindow {
     actual val isUndecoratedFullscreen: Boolean = TODO("isUndecoratedFullscreen")
-    actual val isLandscape: Boolean = TODO("isLandscape")
+    actual val deviceOrientation: DeviceOrientation = TODO("isLandscape")
 }

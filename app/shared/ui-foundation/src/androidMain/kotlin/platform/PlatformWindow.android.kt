@@ -19,8 +19,8 @@ actual class PlatformWindow(private val context: Context) : AutoCloseable {
     private val activity = context.findActivity()
     private val decorView = activity?.window?.decorView
     
-    private var _isLandscape: Boolean by mutableStateOf(isLandscape(context.resources.configuration))
-    actual val isLandscape: Boolean get() = _isLandscape
+    private var _deviceOrientation: DeviceOrientation by mutableStateOf(context.resources.configuration.deviceOrientation)
+    actual val deviceOrientation: DeviceOrientation get() = _deviceOrientation
     
     private var _isUndecoratedFullscreen: Boolean by mutableStateOf(isInFullscreenMode(context))
     actual val isUndecoratedFullscreen: Boolean get() = _isUndecoratedFullscreen
@@ -43,7 +43,7 @@ actual class PlatformWindow(private val context: Context) : AutoCloseable {
         }
 
         override fun onConfigurationChanged(newConfig: Configuration) {
-            _isLandscape = isLandscape(newConfig)
+            _deviceOrientation = newConfig.deviceOrientation
         }
     }
 
@@ -86,4 +86,8 @@ private fun isInFullscreenMode(context: Context): Boolean {
     }
 }
 
-private fun isLandscape(configuration: Configuration) = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+private val Configuration.deviceOrientation
+    get() = when(orientation) {
+        Configuration.ORIENTATION_LANDSCAPE -> DeviceOrientation.LANDSCAPE
+        else -> DeviceOrientation.PORTRAIT
+    }
