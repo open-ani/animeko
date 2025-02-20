@@ -21,6 +21,7 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.Url
+import io.ktor.http.fullPath
 import io.ktor.http.headersOf
 import io.ktor.utils.io.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -142,17 +143,20 @@ class ServerListFeatureHandlerTest {
         val client = buildTestClient(aniServerUrls, config) { url ->
             when (url.host) {
                 "fail1.com" -> {
+                    assertEquals(listOf("", "someApi"), url.pathSegments)
                     fail1Requests++
                     HttpStatusCode.InternalServerError to "fail1"
                 }
 
                 "fail2.com" -> {
+                    assertEquals(listOf("", "someApi"), url.pathSegments)
                     fail2Requests++
                     // Let's simulate a 400 for fail2
                     HttpStatusCode.BadRequest to "fail2"
                 }
 
                 "ok.com" -> {
+                    assertEquals(listOf("", "someApi"), url.pathSegments)
                     okRequests++
                     HttpStatusCode.OK to "success from ok.com"
                 }
@@ -264,5 +268,28 @@ class ServerListFeatureHandlerTest {
             client.get("https://${ServerListFeatureConfig.MAGIC_ANI_SERVER_HOST}/someApi")
         }
         assertEquals("User canceled", ex.message)
+    }
+
+    @Suppress("AuthLeak")
+    @Test
+    fun `replaceUrl - verifies correct replacement in URLBuilder`() {
+        val originalUrl = Url("http://user:pass@oldhost:1234/some/path?query=1#fragment")
+        val newServer = Url("https://newhost:443/") // no path => we want to preserve path from original
+        val builder = io.ktor.http.URLBuilder(originalUrl)
+
+        // Actually call the tested function
+        ServerListFeatureHandler.replaceUrl(builder, newServer)
+
+        val replaced = builder.build()
+        assertEquals("https", replaced.protocol.name)
+        assertEquals("newhost", replaced.host)
+        assertEquals(443, replaced.port)
+        assertEquals(null, replaced.user)
+        assertEquals(null, replaced.password)
+        // Path and query remain from the builder
+        assertEquals("/some/path", replaced.encodedPath)
+        assertEquals("query=1", replaced.fullPath.substringAfter('?'))
+
+        assertEquals("https://newhost/some/path?query=1#fragment", replaced.toString())
     }
 }

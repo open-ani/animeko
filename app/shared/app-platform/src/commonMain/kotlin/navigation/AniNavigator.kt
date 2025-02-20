@@ -20,6 +20,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.navigation.NavHostController
+import androidx.navigation.NavOptionsBuilder
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.first
@@ -93,11 +94,33 @@ interface AniNavigator {
         currentNavigator.navigate(NavRoutes.Welcome)
     }
 
+    /**
+     * 向导结束后, 导航到主页时 [NavOptionsBuilder.popUpTo] 的目标.
+     *
+     * @see NavRoutes.Onboarding.popUpTargetInclusive
+     */
+    fun navigateOnboarding(completionPopUpTargetInclusive: NavRoutes?) {
+        currentNavigator.navigate(NavRoutes.Onboarding(completionPopUpTargetInclusive))
+    }
+
+    /**
+     * 向导结束后, 导航到主页时 [NavOptionsBuilder.popUpTo] 的目标.
+     *
+     * @see NavRoutes.Onboarding.popUpTargetInclusive
+     */
+    fun navigateOnboardingComplete(completionPopUpTargetInclusive: NavRoutes?) {
+        currentNavigator.navigate(NavRoutes.OnboardingComplete(completionPopUpTargetInclusive))
+    }
+
     fun navigateMain(
         page: MainScreenPage,
-        requestFocus: Boolean = false
+        popUpTargetInclusive: NavRoutes? = null,
     ) {
-        currentNavigator.popBackStack<NavRoutes.Main>(inclusive = false)
+        currentNavigator.navigate(NavRoutes.Main(page)) {
+            if (popUpTargetInclusive != null) {
+                popUpTo(popUpTargetInclusive) { inclusive = true }
+            }
+        }
     }
 
     /**

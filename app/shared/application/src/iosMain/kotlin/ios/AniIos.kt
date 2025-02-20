@@ -49,8 +49,6 @@ import me.him188.ani.app.platform.PermissionManager
 import me.him188.ani.app.platform.PlatformWindow
 import me.him188.ani.app.platform.createAppRootCoroutineScope
 import me.him188.ani.app.platform.getCommonKoinModule
-import me.him188.ani.app.platform.notification.NoopNotifManager
-import me.him188.ani.app.platform.notification.NotifManager
 import me.him188.ani.app.platform.startCommonKoinModule
 import me.him188.ani.app.tools.update.IosUpdateInstaller
 import me.him188.ani.app.tools.update.UpdateInstaller
@@ -103,7 +101,7 @@ fun MainViewController(): UIViewController {
         @OptIn(TestOnly::class)
         TestGlobalLifecycleOwner, // TODO: ios lifecycle
     )
-    val settingsRepository = koin.get<SettingsRepository>()
+
     return ComposeUIViewController {
         AniApp {
             CompositionLocalProvider(
@@ -139,10 +137,7 @@ fun MainViewController(): UIViewController {
                             },
                         ) {
                             Box(Modifier.padding(all = paddingByWindowSize)) {
-                                val uiSettings by settingsRepository.uiSettings.flow.collectAsStateWithLifecycle(null)
-                                uiSettings?.let {
-                                    AniAppContent(aniNavigator, NavRoutes.Main(it.mainSceneInitialPage))
-                                }
+                                AniAppContent(aniNavigator)
                                 Toast({ showing }, { Text(content) })
                             }
                         }
@@ -159,9 +154,6 @@ fun getIosModules(
 ) = module {
     single<PermissionManager> {
         GrantedPermissionManager
-    }
-    single<NotifManager> {
-        NoopNotifManager
     }
     single<BrowserNavigator> { NoopBrowserNavigator }
     single<TorrentManager> {

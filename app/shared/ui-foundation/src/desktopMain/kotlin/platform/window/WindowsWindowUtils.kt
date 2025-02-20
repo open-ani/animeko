@@ -41,6 +41,8 @@ import com.sun.jna.platform.win32.WinUser.MONITORINFO
 import com.sun.jna.platform.win32.WinUser.SWP_ASYNCWINDOWPOS
 import com.sun.jna.platform.win32.WinUser.SWP_FRAMECHANGED
 import com.sun.jna.platform.win32.WinUser.SWP_HIDEWINDOW
+import com.sun.jna.platform.win32.WinUser.SWP_NOMOVE
+import com.sun.jna.platform.win32.WinUser.SWP_NOSIZE
 import com.sun.jna.platform.win32.WinUser.SWP_NOZORDER
 import com.sun.jna.platform.win32.WinUser.SWP_SHOWWINDOW
 import com.sun.jna.platform.win32.WinUser.WM_DESTROY
@@ -100,7 +102,6 @@ import me.him188.ani.app.platform.window.ExtendedUser32.Companion.WS_EX_DLGMODAL
 import me.him188.ani.app.platform.window.ExtendedUser32.Companion.WS_EX_STATICEDGE
 import me.him188.ani.app.platform.window.ExtendedUser32.Companion.WS_EX_WINDOWEDGE
 import me.him188.ani.app.platform.window.ExtendedUser32.MENUITEMINFO
-import me.him188.ani.app.platform.window.TitleBarWindowProc.NCCalcSizeParams
 import org.jetbrains.skiko.SkiaLayer
 import org.jetbrains.skiko.SystemTheme
 import org.jetbrains.skiko.currentSystemTheme
@@ -706,12 +707,8 @@ internal class TitleBarWindowProc(
 
     init {
         dwmapi.DwmExtendFrameIntoClientArea(windowHandle, Dwmapi.WindowMargins(-1, -1, -1, -1))
-        val flag = SWP_NOZORDER or SWP_NOACTIVATE or SWP_FRAMECHANGED
 
-        //workaround for background erase.
-        user32.SetWindowPos(windowHandle, null, 0, 0, 0, 0, flag or SWP_HIDEWINDOW)
-        user32.SetWindowPos(windowHandle, null, 0, 0, 0, 0, flag or SWP_SHOWWINDOW)
-
+        eraseWindowBackground()
     }
 
     private fun hitTestWindowResizerBorder(x: Int, y: Int): Int {
@@ -899,6 +896,17 @@ internal class TitleBarWindowProc(
         menuItemInfo.fState = if (enabled) ExtendedUser32.MFS_ENABLED else ExtendedUser32.MFS_DISABLED
         user32.SetMenuItemInfo(menu, item, false, menuItemInfo)
     }
+    
+    //workaround for background erase.
+    private fun eraseWindowBackground() {
+        val buildNumber = WindowsWindowUtils.instance.windowsBuildNumber() ?: return
+        if (buildNumber < 22000) {
+            val flag = SWP_NOZORDER or SWP_NOACTIVATE or SWP_FRAMECHANGED or SWP_NOMOVE or SWP_NOSIZE or SWP_ASYNCWINDOWPOS
+            user32.SetWindowPos(windowHandle, null, 0, 0, 0, 0, flag or SWP_HIDEWINDOW)
+            user32.SetWindowPos(windowHandle, null, 0, 0, 0, 0, flag or SWP_SHOWWINDOW)
+        }
+
+    }
 
     fun highWord(value: Int): Int = (value shr 16) and 0xFFFF
 
@@ -974,7 +982,8 @@ internal class SkiaLayerHitTestWindowProc(
     private var hitResult = HTCLIENT
     
     init {
-        skiaLayer.transparency = true
+        val buildNumber = WindowsWindowUtils.instance.windowsBuildNumber() ?: 22000
+        skiaLayer.transparency = buildNumber < 22000
     }
     
     override fun callback(

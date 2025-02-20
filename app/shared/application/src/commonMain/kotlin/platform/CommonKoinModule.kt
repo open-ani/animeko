@@ -74,12 +74,18 @@ import me.him188.ani.app.data.repository.user.PreferencesRepositoryImpl
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.data.repository.user.TokenRepository
 import me.him188.ani.app.data.repository.user.TokenRepositoryImpl
+import me.him188.ani.app.domain.comment.TurnstileState
+import me.him188.ani.app.ui.comment.TurnstileState as CreateTurnstileState
 import me.him188.ani.app.domain.danmaku.DanmakuManager
 import me.him188.ani.app.domain.danmaku.DanmakuManagerImpl
+import me.him188.ani.app.domain.foundation.ConvertSendCountExceedExceptionFeature
+import me.him188.ani.app.domain.foundation.ConvertSendCountExceedExceptionFeatureHandler
 import me.him188.ani.app.domain.foundation.DefaultHttpClientProvider
 import me.him188.ani.app.domain.foundation.DefaultHttpClientProvider.HoldingInstanceMatrix
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
+import me.him188.ani.app.domain.foundation.ServerListFeature
+import me.him188.ani.app.domain.foundation.ServerListFeatureConfig
 import me.him188.ani.app.domain.foundation.ServerListFeatureHandler
 import me.him188.ani.app.domain.foundation.UseBangumiTokenFeature
 import me.him188.ani.app.domain.foundation.UseBangumiTokenFeatureHandler
@@ -102,6 +108,7 @@ import me.him188.ani.app.domain.mediasource.subscription.MediaSourceSubscription
 import me.him188.ani.app.domain.mediasource.subscription.MediaSourceSubscriptionUpdater
 import me.him188.ani.app.domain.session.AniApiProvider
 import me.him188.ani.app.domain.session.AniAuthClient
+import me.him188.ani.app.domain.session.AniAuthClientImpl
 import me.him188.ani.app.domain.session.BangumiSessionManager
 import me.him188.ani.app.domain.session.OpaqueSession
 import me.him188.ani.app.domain.session.SessionManager
@@ -118,6 +125,7 @@ import me.him188.ani.app.ui.subject.details.state.DefaultSubjectDetailsStateFact
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateFactory
 import me.him188.ani.datasources.bangumi.BangumiClient
 import me.him188.ani.datasources.bangumi.BangumiClientImpl
+import me.him188.ani.datasources.bangumi.turnstileBaseUrl
 import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.coroutines.childScopeContext
@@ -171,12 +179,13 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
                         }
                     },
                 ),
+                ConvertSendCountExceedExceptionFeatureHandler,
             ),
         )
     }
     single<AniApiProvider> { AniApiProvider(get<HttpClientProvider>().get()) }
     single<AniAuthClient> {
-        AniAuthClient(get<AniApiProvider>().oauthApi)
+        AniAuthClientImpl(get<AniApiProvider>().oauthApi)
     }
     single<TokenRepository> { TokenRepositoryImpl(getContext().dataStores.tokenStore) }
     single<EpisodePreferencesRepository> { EpisodePreferencesRepositoryImpl(getContext().dataStores.preferredAllianceStore) }
@@ -423,6 +432,16 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
 
     single<MeteredNetworkDetector> { createMeteredNetworkDetector(getContext()) }
     single<SubjectDetailsStateFactory> { DefaultSubjectDetailsStateFactory(coroutineScope.coroutineContext) }
+
+    single<TurnstileState> {
+        CreateTurnstileState(
+            buildString {
+                append(get<BangumiClient>().turnstileBaseUrl)
+                append("?redirect_uri=")
+                append(TurnstileState.CALLBACK_INTERCEPTION_PREFIX)
+            },
+        )
+    }
 }
 
 
@@ -506,6 +525,8 @@ private fun holdingInstanceMatrixSequence() = sequence {
                 setOf(
                     UserAgentFeature.withValue(userAgent),
                     UseBangumiTokenFeature.withValue(false),
+                    ServerListFeature.withValue(ServerListFeatureConfig.Default),
+                    ConvertSendCountExceedExceptionFeature.withValue(true),
                 ),
             ),
         )
@@ -516,6 +537,8 @@ private fun holdingInstanceMatrixSequence() = sequence {
             setOf(
                 UserAgentFeature.withValue(ScopedHttpClientUserAgent.ANI),
                 UseBangumiTokenFeature.withValue(true),
+                ServerListFeature.withValue(ServerListFeatureConfig.Default),
+                ConvertSendCountExceedExceptionFeature.withValue(true),
             ),
         ),
     )

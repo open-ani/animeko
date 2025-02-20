@@ -21,7 +21,6 @@ import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import me.him188.ani.android.activity.MainActivity
-import me.him188.ani.app.domain.media.cache.MediaCacheNotificationTask
 import me.him188.ani.app.domain.torrent.TorrentManager
 import me.him188.ani.app.domain.torrent.service.AniTorrentService
 import me.him188.ani.app.domain.torrent.service.ServiceConnectionManager
@@ -123,9 +122,6 @@ class AniApplication : Application() {
         val koin = getKoin()
         scope.launch(CoroutineName("TorrentManager initializer")) {
             koin.get<TorrentManager>() // start sharing, connect to DHT now
-        }
-        scope.launch(CoroutineName("MediaCacheNotificationTask")) {
-            MediaCacheNotificationTask(koin.get(), koin.get()).run()
         }
     }
 

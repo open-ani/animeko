@@ -903,6 +903,7 @@ class EpisodeVideoControllerTest {
         testRequestAlwaysOn(
             performGesture = {
                 openSideSheet()
+                waitForIdle()
                 root.performMouseInput {
                     moveTo(centerRight)
                 }

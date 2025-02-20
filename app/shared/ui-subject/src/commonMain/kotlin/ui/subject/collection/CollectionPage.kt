@@ -300,6 +300,7 @@ fun CollectionPage(
                                     )
                                 }
                             },
+                            modifier = Modifier.fillMaxSize(),
                             enableAnimation = enableAnimation,
                             gridState = lazyGridState,
                         )

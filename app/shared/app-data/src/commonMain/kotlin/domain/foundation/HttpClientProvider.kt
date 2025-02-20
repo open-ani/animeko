@@ -100,6 +100,7 @@ fun HttpClientProvider.get(
         UserAgentFeature.withValue(userAgent),
         UseBangumiTokenFeature.withValue(useBangumiToken),
         ServerListFeature.withValue(serverListConfig),
+        ConvertSendCountExceedExceptionFeature.withValue(true),
     ),
 )
 

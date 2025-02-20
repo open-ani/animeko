@@ -93,19 +93,6 @@ class BangumiCommentRepository(
         }
     }
 
-    suspend fun postEpisodeComment(
-        episodeId: Int,
-        content: String,
-        cfTurnstileResponse: String,
-        replyToCommentId: Int?,
-    ) {
-        try {
-            commentService.postEpisodeComment(episodeId, content, cfTurnstileResponse, replyToCommentId)
-        } catch (e: Exception) {
-            throw RepositoryException.wrapOrThrowCancellation(e)
-        }
-    }
-
     private inner class SubjectReviewRemoteMediator<T : Any>(
         private val subjectId: Int,
     ) : RemoteMediator<Int, T>() {

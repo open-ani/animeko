@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.ui.comment
 
-import androidx.annotation.UiThread
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -23,36 +22,8 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
-import kotlinx.coroutines.flow.first
+import me.him188.ani.app.domain.comment.TurnstileState
 import me.him188.ani.app.ui.foundation.LocalIsPreviewing
-
-interface TurnstileState {
-    val url: String
-
-    val tokenFlow: Flow<String>
-
-    /**
-     * Start requesting token.
-     * Calling this method represents that you want to get tokens. [tokenFlow] may produce results any minute.
-     */
-    @UiThread
-    fun reload()
-
-    /**
-     * Cancel requesting token.
-     * [tokenFlow] will not produce any result after calling this method.
-     */
-    @UiThread
-    fun cancel()
-
-    companion object {
-        /**
-         * Callback URI for solving Cloudflare Turnstile at Bangumi.
-         * You can intercept the request or register a system-wide URI handler.
-         */
-        const val CALLBACK_INTERCEPTION_PREFIX = "ani://bangumi-turnstile-callback"
-    }
-}
 
 expect fun createTurnstileState(url: String): TurnstileState
 
@@ -64,15 +35,10 @@ fun createPreviewTurnstileState(): TurnstileState {
     return object : TurnstileState {
         override val url: String = ""
         override val tokenFlow: Flow<String> = emptyFlow()
+        override val webErrorFlow: Flow<TurnstileState.Error> = emptyFlow()
         override fun reload() {}
         override fun cancel() {}
     }
-}
-
-@UiThread
-suspend fun TurnstileState.reloadAndGetToken(): String {
-    reload()
-    return tokenFlow.first()
 }
 
 @Composable

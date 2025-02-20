@@ -56,6 +56,7 @@ import me.him188.ani.utils.platform.currentTimeMillis
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import org.koin.mp.KoinPlatform
+import kotlinx.coroutines.CancellationException
 import kotlin.time.Duration.Companion.days
 
 @Stable
@@ -63,7 +64,7 @@ class BangumiTokenAuthViewModel : AbstractViewModel(), KoinComponent {
     private val sessionManager: SessionManager by inject()
 
     fun onCancel(reason: String? = null) {
-        sessionManager.processingRequest.value?.cancel(reason)
+        sessionManager.processingRequest.value?.cancel(CancellationException(reason))
     }
 
     suspend fun authByToken(token: String) {

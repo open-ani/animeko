@@ -68,6 +68,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import me.him188.ani.app.domain.comment.CommentContext
 import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.IconButton
 import me.him188.ani.app.ui.foundation.LocalIsPreviewing
@@ -203,7 +204,8 @@ object EditCommentDefaults {
 
     @Composable
     fun ActionRow(
-        sendTarget: CommentContext?,
+        sendTarget: 
+        CommentContext?,
         onClickBold: () -> Unit,
         onClickItalic: () -> Unit,
         onClickUnderlined: () -> Unit,

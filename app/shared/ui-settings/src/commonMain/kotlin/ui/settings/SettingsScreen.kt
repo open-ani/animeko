@@ -76,7 +76,6 @@ import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
-import me.him188.ani.app.ui.foundation.layout.cardVerticalPadding
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.paneVerticalPadding
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
@@ -181,6 +180,7 @@ fun SettingsScreen(
                     SettingsTab.ABOUT -> AboutTab({ vm.debugTriggerState.triggerDebugMode() }, tabModifier)
                     SettingsTab.DEBUG -> DebugTab(
                         vm.debugSettingsState,
+                        vm.uiSettings,
                         tabModifier,
                     )
 
@@ -443,9 +443,7 @@ fun SettingsTab(
 ) {
     Column(
         modifier,
-        verticalArrangement = Arrangement.spacedBy(
-            currentWindowAdaptiveInfo1().windowSizeClass.cardVerticalPadding,
-        ),
+        verticalArrangement = Arrangement.spacedBy(SettingsScope.itemVerticalSpacing),
     ) {
         val scope = remember(this) {
             object : SettingsScope(), ColumnScope by this@Column {}

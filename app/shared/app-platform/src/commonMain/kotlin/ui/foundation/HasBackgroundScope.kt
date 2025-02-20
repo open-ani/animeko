@@ -40,6 +40,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.WhileSubscribed
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
@@ -244,6 +245,30 @@ interface HasBackgroundScope {
             else -> null
         }
 
+    /**
+     * Produce first emitted value into a [State].
+     * After the first value is emitted, the state is no longer changed.
+     */
+    fun <T> Flow<T>.collectFirstAsState(
+        initialValue: T,
+        coroutineContext: CoroutineContext = EmptyCoroutineContext,
+    ): State<T> {
+        val current = valueOrNull
+        val state = mutableStateOf(current ?: initialValue)
+        if (current != null) return state
+
+        launchInBackground(coroutineContext) {
+            flowOn(Dispatchers.Default) // compute in background
+                .first()
+                .also {
+                    withContext(Dispatchers.Main) { // ensure a dispatch happens
+                        state.value = it
+                    }
+                }
+        }
+        return state
+    }
+    
     /**
      * Collects the flow on the main thread into a [State].
      */

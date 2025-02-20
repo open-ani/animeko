@@ -32,7 +32,10 @@ import androidx.compose.runtime.Stable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import me.him188.ani.app.ui.foundation.layout.cardVerticalPadding
+import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
 import me.him188.ani.app.ui.foundation.theme.weaken
 
@@ -78,6 +81,11 @@ abstract class SettingsScope {
 
         @Stable
         val itemExtraHorizontalPadding = 8.dp
+
+        @Stable
+        val itemVerticalSpacing: Dp
+            @Composable
+            get() = currentWindowAdaptiveInfo1().windowSizeClass.cardVerticalPadding
     }
 
     @Stable

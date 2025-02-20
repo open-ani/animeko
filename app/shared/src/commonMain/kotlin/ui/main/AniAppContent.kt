@@ -17,7 +17,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.add
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.runtime.Composable
@@ -30,6 +32,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavBackStackEntry
@@ -37,6 +40,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import androidx.window.core.layout.WindowSizeClass
+import me.him188.ani.app.data.models.preference.UISettings
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.domain.mediasource.rss.RssMediaSource
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSource
@@ -63,12 +68,16 @@ import me.him188.ani.app.ui.foundation.layout.SharedTransitionScopeProvider
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
+import me.him188.ani.app.ui.onboarding.OnboardingCompleteScreen
+import me.him188.ani.app.ui.onboarding.OnboardingCompleteViewModel
+import me.him188.ani.app.ui.onboarding.OnboardingScreen
+import me.him188.ani.app.ui.onboarding.OnboardingViewModel
+import me.him188.ani.app.ui.onboarding.WelcomeScreen
 import me.him188.ani.app.ui.profile.BangumiOAuthViewModel
+import me.him188.ani.app.ui.profile.auth.AniContactList
 import me.him188.ani.app.ui.profile.auth.BangumiOAuthScreen
 import me.him188.ani.app.ui.profile.auth.BangumiTokenAuthScreen
 import me.him188.ani.app.ui.profile.auth.BangumiTokenAuthViewModel
-import me.him188.ani.app.ui.profile.auth.WelcomeScene
-import me.him188.ani.app.ui.profile.auth.WelcomeViewModel
 import me.him188.ani.app.ui.settings.SettingsScreen
 import me.him188.ani.app.ui.settings.SettingsViewModel
 import me.him188.ani.app.ui.settings.mediasource.rss.EditRssMediaSourceScreen
@@ -90,10 +99,10 @@ import kotlin.reflect.typeOf
  * UI 入口点. 包含所有子页面, 以及组合这些子页面的方式 (navigation).
  */
 @Composable
-fun AniAppContent(
-    aniNavigator: AniNavigator,
-    initialRoute: NavRoutes,
-) {
+fun AniAppContent(aniNavigator: AniNavigator) {
+    val aniAppViewModel = viewModel<AniAppViewModel>()
+    val appState = aniAppViewModel.appState.collectAsStateWithLifecycle(null).value ?: return
+    
     val navigator = rememberNavController()
     aniNavigator.setNavController(navigator)
 
@@ -102,7 +111,7 @@ fun AniAppContent(
             LocalNavigator provides aniNavigator,
         ) {
             ProvideAniMotionCompositionLocals {
-                AniAppContentImpl(aniNavigator, initialRoute, Modifier.fillMaxSize())
+                AniAppContentImpl(aniNavigator, appState.initialNavRoute, Modifier.fillMaxSize())
             }
         }
     }
@@ -137,8 +146,77 @@ private fun AniAppContentImpl(
                 exitTransition = exitTransition,
                 popEnterTransition = popEnterTransition,
                 popExitTransition = popExitTransition,
-            ) { // 由 SessionManager.requireAuthorize 跳转到
-                WelcomeScene(viewModel { WelcomeViewModel() }, Modifier.fillMaxSize())
+            ) {
+                WelcomeScreen(
+                    onClickContinue = {
+                        // 从 WelcomeScreen 进入 onboarding, 最后 navigateMain 要 popupTo Welcome
+                        aniNavigator.navigateOnboarding(NavRoutes.Welcome)
+                    },
+                    contactActions = { AniContactList() },
+                    Modifier.fillMaxSize(),
+                    windowInsets,
+                )
+            }
+            composable<NavRoutes.Onboarding>(
+                enterTransition = enterTransition,
+                exitTransition = exitTransition,
+                popEnterTransition = popEnterTransition,
+                popExitTransition = popExitTransition,
+                typeMap = mapOf(
+                    typeOf<NavRoutes?>() to NavRoutes.NavType,
+                ),
+            ) { backStackEntry ->
+                OnboardingScreen(
+                    viewModel { OnboardingViewModel() },
+                    onFinishOnboarding = {
+                        // 传递 popUpTarget 给 OnboardingComplete
+                        val currentRoute = backStackEntry.toRoute<NavRoutes.Onboarding>()
+                        aniNavigator.navigateOnboardingComplete(currentRoute.popUpTargetInclusive)
+                    },
+                    contactActions = { AniContactList() },
+                    navigationIcon = {
+                        BackNavigationIconButton(
+                            {
+                                navController.popBackStack()
+                            },
+                        )
+                    },
+                    Modifier
+                        .widthIn(max = WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND.dp)
+                        .fillMaxHeight(),
+                    windowInsets,
+                )
+            }
+            composable<NavRoutes.OnboardingComplete>(
+                enterTransition = enterTransition,
+                exitTransition = exitTransition,
+                popEnterTransition = popEnterTransition,
+                popExitTransition = popExitTransition,
+                typeMap = mapOf(
+                    typeOf<NavRoutes?>() to NavRoutes.NavType,
+                ),
+            ) { backStackEntry ->
+                
+                OnboardingCompleteScreen(
+                    viewModel { OnboardingCompleteViewModel() },
+                    onClickContinue = { mainSceneInitialPage ->
+                        // 传递 popUpTarget 给 OnboardingComplete
+                        val currentRoute = backStackEntry.toRoute<NavRoutes.OnboardingComplete>()
+                        aniNavigator.navigateMain(
+                            page = mainSceneInitialPage ?: UISettings.Default.mainSceneInitialPage,
+                            popUpTargetInclusive = currentRoute.popUpTargetInclusive,
+                        ) 
+                    },
+                    backNavigation = {
+                        BackNavigationIconButton(
+                            {
+                                aniNavigator.popBackStack()
+                            },
+                        )
+                    },
+                    Modifier.fillMaxSize(),
+                    windowInsets,
+                )
             }
             composable<NavRoutes.Main>(
                 enterTransition = enterTransition,
@@ -159,7 +237,7 @@ private fun AniAppContentImpl(
                 OverrideNavigation(
                     {
                         object : AniNavigator by it {
-                            override fun navigateMain(page: MainScreenPage, requestFocus: Boolean) {
+                            override fun navigateMain(page: MainScreenPage, popUpTargetInclusive: NavRoutes?) {
                                 currentPage = page
                             }
                         }

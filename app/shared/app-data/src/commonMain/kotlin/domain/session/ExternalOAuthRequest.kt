@@ -9,12 +9,12 @@
 
 package me.him188.ani.app.domain.session
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.completeWith
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import me.him188.ani.utils.platform.currentTimeMillis
-import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -35,8 +35,13 @@ interface ExternalOAuthRequest {
     /**
      * @param reason for debugging
      */
-    fun cancel(reason: String? = null)
+    fun cancel(reason: CancellationException? = null)
 
+    /**
+     * @param
+     */
+    fun completeExceptionally(reason: Throwable)
+    
     /**
      * Does not throw
      */
@@ -90,16 +95,12 @@ class ExternalOAuthRequestImpl(
         this.result.completeWith(code)
     }
 
-    override fun cancel(reason: String?) {
-        result.cancel(
-            kotlinx.coroutines.CancellationException(
-                if (reason != null) {
-                    "ExternalOAuthRequestImpl was cancelled: $reason"
-                } else {
-                    "ExternalOAuthRequestImpl was cancelled"
-                },
-            ),
-        )
+    override fun cancel(reason: CancellationException?) {
+        result.cancel(reason)
+    }
+
+    override fun completeExceptionally(reason: Throwable) {
+        result.completeExceptionally(reason)
     }
 
     override suspend fun invoke() {

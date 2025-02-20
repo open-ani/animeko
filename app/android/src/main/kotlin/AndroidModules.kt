@@ -11,7 +11,6 @@ package me.him188.ani.android
 
 import android.content.Intent
 import android.widget.Toast
-import androidx.core.app.NotificationManagerCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
@@ -20,7 +19,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.newSingleThreadContext
 import kotlinx.coroutines.runBlocking
 import kotlinx.io.files.Path
-import me.him188.ani.android.activity.MainActivity
 import me.him188.ani.android.navigation.AndroidBrowserNavigator
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
 import me.him188.ani.app.data.repository.user.SettingsRepository
@@ -51,8 +49,6 @@ import me.him188.ani.app.platform.BaseComponentActivity
 import me.him188.ani.app.platform.ContextMP
 import me.him188.ani.app.platform.PermissionManager
 import me.him188.ani.app.platform.findActivity
-import me.him188.ani.app.platform.notification.AndroidNotifManager
-import me.him188.ani.app.platform.notification.NotifManager
 import me.him188.ani.app.tools.update.AndroidUpdateInstaller
 import me.him188.ani.app.tools.update.UpdateInstaller
 import me.him188.ani.utils.io.SystemPath
@@ -84,22 +80,6 @@ fun getAndroidModules(
 ) = module {
     single<PermissionManager> {
         AndroidPermissionManager()
-    }
-    single<NotifManager> {
-        AndroidNotifManager(
-            NotificationManagerCompat.from(androidContext()),
-            getContext = { androidContext() },
-            activityIntent = {
-                Intent(androidContext(), MainActivity::class.java).apply {
-                    flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
-                }
-//                androidContext().packageManager.getLaunchIntentForPackage(androidContext().packageName)
-//                    ?: Intent(Intent.ACTION_MAIN).apply {
-//                        setPackage(androidContext().packageName)
-//                    }
-            },
-            coroutineScope.coroutineContext,
-        ).apply { createChannels() }
     }
     single<BrowserNavigator> { AndroidBrowserNavigator() }
 

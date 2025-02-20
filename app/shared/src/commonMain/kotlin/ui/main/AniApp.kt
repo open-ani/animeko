@@ -24,14 +24,20 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.ImageLoader
 import coil3.compose.LocalPlatformContext
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.take
 import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
 import me.him188.ani.app.domain.foundation.get
+import me.him188.ani.app.navigation.NavRoutes
 import me.him188.ani.app.tools.LocalTimeFormatter
 import me.him188.ani.app.tools.TimeFormatter
 import me.him188.ani.app.ui.foundation.AbstractViewModel
@@ -47,12 +53,43 @@ import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
 @Stable
+class AniAppState(
+    val initialNavRoute: NavRoutes,
+    val themeSettings: ThemeSettings,
+    val imageLoaderClient: ScopedHttpClient
+)
+
+@Stable
 class AniAppViewModel : AbstractViewModel(), KoinComponent {
     private val settings: SettingsRepository by inject()
     private val httpClientProvider: HttpClientProvider by inject()
-    val themeSettings: ThemeSettings? by settings.themeSettings.flow.produceState(null)
 
-    val imageLoaderClient = httpClientProvider.get(ScopedHttpClientUserAgent.ANI)
+    private val imageLoaderClient = httpClientProvider.get(ScopedHttpClientUserAgent.ANI)
+
+    val appState: Flow<AniAppState?> = combine(
+        settings.themeSettings.flow,
+        settings.uiSettings.flow.take(1), // 只需要读取一次
+        httpClientProvider.configurationFlow,
+    ) { themeSettings, uiSettings, _ ->
+        AniAppState(
+            if (!uiSettings.onboardingCompleted) {
+                NavRoutes.Welcome
+            } else {
+                NavRoutes.Main(uiSettings.mainSceneInitialPage)
+            },
+            themeSettings,
+            imageLoaderClient,
+        )
+    }.shareInBackground(
+        started = SharingStarted.Eagerly,
+        replay = 1,
+    )
+
+    /*init {
+        launchInMain {
+            settings.uiSettings.update { copy(onboardingCompleted = false) }
+        }
+    }*/
 
 //    /**
 //     * 跟随代理设置等配置变化而变化的 [HttpClient] 实例. 用于 coil ImageLoader.
@@ -105,15 +142,14 @@ fun AniApp(
 //    }
 
     val viewModel = viewModel { AniAppViewModel() }
-
     // 主题读好再进入 APP, 防止黑白背景闪烁
-    val themeSettings = viewModel.themeSettings ?: return
+    val appState = viewModel.appState.collectAsStateWithLifecycle(null).value ?: return
 
     CompositionLocalProvider(
 //        LocalImageLoader provides imageLoader,
-        LocalImageLoader provides rememberImageLoader(viewModel.imageLoaderClient),
+        LocalImageLoader provides rememberImageLoader(appState.imageLoaderClient),
         LocalTimeFormatter provides remember { TimeFormatter() },
-        LocalThemeSettings provides themeSettings,
+        LocalThemeSettings provides appState.themeSettings,
     ) {
         val focusManager by rememberUpdatedState(LocalFocusManager.current)
         val keyboard by rememberUpdatedState(LocalSoftwareKeyboardController.current)

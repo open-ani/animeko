@@ -12,16 +12,23 @@ package me.him188.ani.app.domain.session
 import io.ktor.client.plugins.ClientRequestException
 import io.ktor.http.HttpStatusCode
 import io.ktor.util.reflect.typeInfo
+import me.him188.ani.app.data.models.ApiResponse
 import me.him188.ani.app.data.models.runApiRequest
 import me.him188.ani.client.apis.BangumiOAuthAniApi
+import me.him188.ani.client.models.AniAnonymousBangumiUserToken
 import me.him188.ani.client.models.AniBangumiUserToken
 import me.him188.ani.client.models.AniRefreshBangumiTokenRequest
 import me.him188.ani.utils.ktor.ApiInvoker
 
-class AniAuthClient(
+interface AniAuthClient {
+    suspend fun getResult(requestId: String): ApiResponse<AniBangumiUserToken?>
+    suspend fun refreshAccessToken(refreshToken: String): ApiResponse<AniAnonymousBangumiUserToken>
+}
+
+class AniAuthClientImpl(
     private val oauthApiInvoker: ApiInvoker<BangumiOAuthAniApi>,
-) {
-    suspend fun getResult(requestId: String) = runApiRequest {
+) : AniAuthClient {
+    override suspend fun getResult(requestId: String) = runApiRequest {
         try {
             oauthApiInvoker {
                 getBangumiToken(requestId)
@@ -35,7 +42,7 @@ class AniAuthClient(
         }
     }
 
-    suspend fun refreshAccessToken(refreshToken: String) = runApiRequest {
+    override suspend fun refreshAccessToken(refreshToken: String) = runApiRequest {
         oauthApiInvoker { refreshBangumiToken(AniRefreshBangumiTokenRequest(refreshToken)).body() }
     }
 }

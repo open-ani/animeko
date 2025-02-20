@@ -9,6 +9,8 @@
 
 package me.him188.ani.app.domain.usecase
 
+import me.him188.ani.app.domain.comment.PostCommentUseCase
+import me.him188.ani.app.domain.comment.PostCommentUseCaseImpl
 import me.him188.ani.app.domain.danmaku.SearchDanmakuUseCase
 import me.him188.ani.app.domain.danmaku.SearchDanmakuUseCaseImpl
 import me.him188.ani.app.domain.danmaku.SetDanmakuEnabledUseCase
@@ -56,6 +58,7 @@ fun KoinApplication.useCaseModules() = module {
     single<SetEpisodeCollectionTypeUseCase> { SetEpisodeCollectionTypeUseCaseImpl(koin) }
     single<GetEpisodeCollectionTypeUseCase> { GetEpisodeCollectionTypeUseCaseImpl(koin) }
     single<GetAnimeScheduleFlowUseCase> { GetAnimeScheduleFlowUseCaseImpl(get(), get()) }
+    single<PostCommentUseCase> { PostCommentUseCaseImpl(get(), get()) }
 }
 
 val GlobalKoin get() = KoinPlatform.getKoin()

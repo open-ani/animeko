@@ -121,7 +121,7 @@ internal fun SettingsScope.GlobalProxyGroup(
 
 
 @Composable
-private fun SettingsScope.SystemProxyConfig(
+fun SettingsScope.SystemProxyConfig(
     proxyConfig: SystemProxyPresentation,
 ) {
     TextItem(
@@ -137,7 +137,7 @@ private fun SettingsScope.SystemProxyConfig(
 }
 
 @Composable
-private fun SettingsScope.CustomProxyConfig(
+fun SettingsScope.CustomProxyConfig(
     proxySettings: ProxySettings,
     proxySettingsState: SettingsState<ProxySettings>
 ) {

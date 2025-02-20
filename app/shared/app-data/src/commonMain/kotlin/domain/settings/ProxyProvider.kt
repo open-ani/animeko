@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.isActive
 import me.him188.ani.app.data.models.preference.ProxyConfig
 import me.him188.ani.app.data.models.preference.ProxyMode
+import me.him188.ani.app.data.models.preference.ProxySettings
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.media.fetch.toClientProxyConfig
 import me.him188.ani.app.platform.SystemProxyDetector
@@ -87,9 +88,16 @@ class SystemProxyProvider(
 class SettingsBasedProxyProvider(
     private val settingsRepository: SettingsRepository,
     backgroundScope: CoroutineScope,
+) : ProxyProvider by ProxySettingsFlowProxyProvider(
+    settingsRepository.proxySettings.flow, backgroundScope,
+)
+
+class ProxySettingsFlowProxyProvider(
+    private val flow: Flow<ProxySettings>,
+    backgroundScope: CoroutineScope,
 ) : ProxyProvider {
     override val proxy: Flow<ProxyConfig?> by lazy {
-        settingsRepository.proxySettings.flow.map { it.default }
+        flow.map { it.default }
             .distinctUntilChanged()
             .transformLatest { settings ->
                 coroutineScope {
@@ -104,5 +112,4 @@ class SettingsBasedProxyProvider(
             }
             .shareIn(backgroundScope, started = SharingStarted.WhileSubscribed(), replay = 1)
     }
-
 }

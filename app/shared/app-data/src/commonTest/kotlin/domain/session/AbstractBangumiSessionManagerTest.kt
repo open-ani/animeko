@@ -81,6 +81,14 @@ sealed class AbstractBangumiSessionManagerTest {
         // 必须要返回一个, 因为 flow 实际上还会在跑一会
         return ApiResponse.failure(ApiFailure.Unauthorized)
     }
+    
+    internal fun refreshTokenSuccess(
+        accessToken: String = ACCESS_TOKEN,
+        expiresAtMillis: Long = Long.MAX_VALUE,
+        refreshToken: String = REFRESH_TOKEN,
+    ): ApiResponse<NewSession> {
+        return ApiResponse.success(NewSession(accessToken, expiresAtMillis, refreshToken))
+    }
 
     internal suspend fun setExpiredToken() {
         tokenRepository.setSession(
