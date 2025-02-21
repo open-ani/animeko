@@ -15,8 +15,6 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.remember
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
@@ -24,7 +22,7 @@ import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.platform.AppStartupTasks
 import me.him188.ani.app.platform.MeteredNetworkDetector
-import me.him188.ani.app.platform.PlatformWindow
+import me.him188.ani.app.platform.rememberPlatformWindow
 import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
 import me.him188.ani.app.ui.foundation.theme.SystemBarColorEffect
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
@@ -69,17 +67,10 @@ class MainActivity : AniComponentActivity() {
         setContent {
             AniApp {
                 SystemBarColorEffect()
-
-                val platformWindow = remember(this) {
-                    PlatformWindow(this)
-                }
-                DisposableEffect(platformWindow) {
-                    onDispose { platformWindow.close() }
-                }
                 
                 CompositionLocalProvider(
                     LocalToaster provides toaster,
-                    LocalPlatformWindow provides platformWindow,
+                    LocalPlatformWindow provides rememberPlatformWindow(this),
                 ) {
                     AniAppContent(aniNavigator)
                 }

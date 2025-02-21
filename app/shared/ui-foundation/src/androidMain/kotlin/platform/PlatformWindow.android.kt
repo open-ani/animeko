@@ -7,23 +7,29 @@ import android.os.Build
 import android.view.View
 import android.view.WindowInsets
 import android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 
-/**
- * PC 上的 Window. Android 上没有
- */
-actual class PlatformWindow(private val context: Context) : AutoCloseable {
-    private val activity = context.findActivity()
-    private val decorView = activity?.window?.decorView
+
+actual class PlatformWindow(
+    initialDeviceOrientation: DeviceOrientation,
+    initialUndecoratedFullscreen: Boolean
+) {
+    constructor(context: Context): this(
+        initialDeviceOrientation = context.resources.configuration.deviceOrientation,
+        initialUndecoratedFullscreen = isInFullscreenMode(context)
+    )
     
-    private var _deviceOrientation: DeviceOrientation by mutableStateOf(context.resources.configuration.deviceOrientation)
+    private var _deviceOrientation: DeviceOrientation by mutableStateOf(initialDeviceOrientation)
     actual val deviceOrientation: DeviceOrientation get() = _deviceOrientation
     
-    private var _isUndecoratedFullscreen: Boolean by mutableStateOf(isInFullscreenMode(context))
+    private var _isUndecoratedFullscreen: Boolean by mutableStateOf(initialUndecoratedFullscreen)
     actual val isUndecoratedFullscreen: Boolean get() = _isUndecoratedFullscreen
 
     private val insetListener = View.OnApplyWindowInsetsListener { _, insets ->
@@ -47,9 +53,10 @@ actual class PlatformWindow(private val context: Context) : AutoCloseable {
             _deviceOrientation = newConfig.deviceOrientation
         }
     }
-
-    init {
-        
+    
+    internal fun register(context: Context) {
+        val activity = context.findActivity()
+        val decorView = activity?.window?.decorView
         //register window inset listener
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             decorView?.setOnApplyWindowInsetsListener(insetListener)
@@ -60,12 +67,14 @@ actual class PlatformWindow(private val context: Context) : AutoCloseable {
                 WindowInsetsCompat.toWindowInsetsCompat(toWindowInsets)
             }
         }
-        
+
         //register resource change listener
         context.registerComponentCallbacks(configurationListener)
     }
     
-    override fun close() {
+    internal fun dispose(context: Context) {
+        val activity = context.findActivity()
+        val decorView = activity?.window?.decorView
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             decorView?.setOnApplyWindowInsetsListener(null)
         } else if (decorView != null) {
@@ -92,3 +101,13 @@ private val Configuration.deviceOrientation
         Configuration.ORIENTATION_LANDSCAPE -> DeviceOrientation.LANDSCAPE
         else -> DeviceOrientation.PORTRAIT
     }
+
+@Composable
+fun rememberPlatformWindow(context: Context = LocalContext.current): PlatformWindow {
+    val platformWindow = remember(context) { PlatformWindow(context) }
+    DisposableEffect(platformWindow) {
+        platformWindow.register(context)
+        onDispose { platformWindow.dispose(context) }
+    }
+    return platformWindow
+}
