@@ -123,6 +123,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
 
             configurator.checkAuthorizeState()
             assertIs<AuthStateNew.AwaitingResult>(awaitItem(), "Start check should change state to AwaitingResult.")
+            assertIs<AuthStateNew.AwaitingUserInfo>(awaitItem())
             assertIs<AuthStateNew.Success>(
                 awaitItem(),
                 "Session existed, after checking should change state to Success.",
@@ -243,6 +244,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
 
             configurator.startAuthorize()
             assertIs<AuthStateNew.AwaitingResult>(awaitItem(), "startAuthorize should change state to AwaitingResult.")
+            assertIs<AuthStateNew.AwaitingUserInfo>(awaitItem())
 
             val successState = awaitItem()
             assertIs<AuthStateNew.Success>(successState, "Should success.")
@@ -360,6 +362,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
                 awaitItem(),
                 "setAuthorizationToken should change state to AwaitingResult.",
             )
+            assertIs<AuthStateNew.AwaitingUserInfo>(awaitItem())
 
             val successState = awaitItem()
             assertIs<AuthStateNew.Success>(successState, "Should success.")
@@ -399,6 +402,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
                 awaitItem(),
                 "setAuthorizationToken should change state to AwaitingResult.",
             )
+            assertIs<AuthStateNew.AwaitingUserInfo>(awaitItem())
             assertIs<AuthStateNew.TokenExpired>(awaitItem(), "Token is invalid, should change state to TokenExpired.")
 
             advanceUntilIdle()
@@ -480,6 +484,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
                 awaitItem(),
                 "setAuthorizationToken should change state to AwaitingResult.",
             )
+            assertIs<AuthStateNew.AwaitingUserInfo>(awaitItem())
             assertIs<AuthStateNew.Success>(awaitItem(), "Network store, should change state to Success.")
 
             advanceUntilIdle()
@@ -516,6 +521,44 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
                 awaitItem(),
                 "setAuthorizationToken should change state to AwaitingResult.",
             )
+            assertIs<AuthStateNew.AwaitingUserInfo>(awaitItem())
+            assertIs<AuthStateNew.NetworkError>(awaitItem(), "Network error, should change state to Network.")
+
+            advanceUntilIdle()
+            expectNoEvents()
+        }
+        assertTrue(launchedAuthorize, "Start authorize should trigger launch authorize.")
+        loopJob.cancel()
+    }
+
+    @Test
+    fun `test authorize - network error - in refresh token getSelfInfo`() = runCoroutineTest {
+        val manager = createManager(
+            getSelfInfo = { ApiResponse.networkError() },
+            refreshAccessToken = { refreshTokenSuccess() },
+        )
+        val authClient = createTestAuthClient(getResult = { checkAuthorizeResultSuccess() })
+
+        var launchedAuthorize = false
+        val configurator = AniAuthConfigurator(
+            sessionManager = manager,
+            authClient = authClient,
+            onLaunchAuthorize = { launchedAuthorize = true },
+            parentCoroutineContext = backgroundScope.coroutineContext,
+        )
+        val loopJob = launch(start = CoroutineStart.UNDISPATCHED) {
+            configurator.authorizeRequestCheckLoop()
+        }
+
+        configurator.state.test {
+            assertIs<AuthStateNew.Idle>(awaitItem(), "Initially should be Idle.")
+
+            configurator.startAuthorize()
+            assertIs<AuthStateNew.AwaitingResult>(
+                awaitItem(),
+                "setAuthorizationToken should change state to AwaitingResult.",
+            )
+            assertIs<AuthStateNew.AwaitingUserInfo>(awaitItem())
             assertIs<AuthStateNew.NetworkError>(awaitItem(), "Network error, should change state to Network.")
 
             advanceUntilIdle()
