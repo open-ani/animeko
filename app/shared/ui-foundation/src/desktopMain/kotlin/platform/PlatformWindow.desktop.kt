@@ -31,7 +31,7 @@ actual open class PlatformWindow(
 
     internal var titleBarWindowProc by mutableStateOf<TitleBarWindowProc?>(null)
 
-    internal var isWindowsUndecoratedFullscreen by mutableStateOf(false)
+    private var isWindowsUndecoratedFullscreen by mutableStateOf(false)
     
     actual val isUndecoratedFullscreen: Boolean by derivedStateOf {
         if (platform.isWindows()) {
@@ -42,6 +42,10 @@ actual open class PlatformWindow(
     }
     
     actual val deviceOrientation: DeviceOrientation = DeviceOrientation.LANDSCAPE
+    
+    internal fun onWindowsUndecoratedFullscreenStateChange(newState: Boolean) {
+        isWindowsUndecoratedFullscreen = newState
+    }
 }
 
 class SavedWindowsWindowState(

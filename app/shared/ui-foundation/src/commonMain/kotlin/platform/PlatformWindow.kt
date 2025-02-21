@@ -9,3 +9,8 @@ expect class PlatformWindow {
     val isUndecoratedFullscreen: Boolean
     val deviceOrientation: DeviceOrientation
 }
+
+enum class DeviceOrientation {
+    PORTRAIT,
+    LANDSCAPE,
+}
