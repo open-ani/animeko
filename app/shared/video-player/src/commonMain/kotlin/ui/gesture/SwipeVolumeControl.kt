@@ -89,10 +89,12 @@ fun Modifier.swipeLevelControlWithIndicator(
         indicatorTasker.launch {
             setup()
             indicatorState.progressValue = controller.level
+            indicatorState.visible = true
         }
     },
     onDragStarted = {
         indicatorTasker.launch {
+            indicatorTasker.cancel()
             indicatorState.visible = true
         }
     },
