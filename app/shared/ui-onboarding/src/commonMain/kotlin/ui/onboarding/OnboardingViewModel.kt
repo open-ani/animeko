@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterIsInstance
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -41,6 +42,7 @@ import me.him188.ani.app.domain.session.AniAuthConfigurator
 import me.him188.ani.app.domain.session.AuthStateNew
 import me.him188.ani.app.domain.session.SessionEvent
 import me.him188.ani.app.domain.session.SessionManager
+import me.him188.ani.app.domain.session.userInfoOrNull
 import me.him188.ani.app.domain.settings.ProxySettingsFlowProxyProvider
 import me.him188.ani.app.domain.settings.ProxyTester
 import me.him188.ani.app.domain.settings.ServiceConnectionTester
@@ -111,7 +113,7 @@ class OnboardingViewModel : AbstractSettingsViewModel(), KoinComponent {
         },
     )
     // endregion
-    
+
     // region ConfigureProxy
     private val clientProvider: HttpClientProvider by inject()
     private val proxyProvider = ProxySettingsFlowProxyProvider(proxySettings.flow, backgroundScope)
@@ -144,7 +146,7 @@ class OnboardingViewModel : AbstractSettingsViewModel(), KoinComponent {
             ConfigureProxyUIState.Placeholder,
             SharingStarted.WhileSubscribed(),
         )
-    
+
     private val configureProxyState = ConfigureProxyState(
         state = configureProxyUiState,
         onUpdateConfig = { newConfig ->
@@ -230,7 +232,7 @@ class OnboardingViewModel : AbstractSettingsViewModel(), KoinComponent {
                 else -> {}
             }
         },
-        onAuthorizeByToken = { 
+        onAuthorizeByToken = {
             backgroundScope.launch { authConfigurator.setAuthorizationToken(it) }
         },
     )
@@ -243,7 +245,7 @@ class OnboardingViewModel : AbstractSettingsViewModel(), KoinComponent {
         bangumiAuthorizeState = bangumiAuthorizeState,
     )
     // endregion
-    
+
     suspend fun startAuthorizeCheckAndProxyTesterLoop() {
         authLoopTasker.invoke {
             launch { authConfigurator.authorizeRequestCheckLoop() }
@@ -279,11 +281,14 @@ class OnboardingViewModel : AbstractSettingsViewModel(), KoinComponent {
             browserNavigator.openBrowser(context, url)
         }
     }
-    
+
     suspend fun collectNewLoginEvent(onLogin: suspend () -> Unit) {
         sessionManager.events
             .filterIsInstance<SessionEvent.Login>()
-            .collectLatest { onLogin() }
+            .collectLatest {
+                sessionManager.state.map { it.userInfoOrNull }.filterNotNull().first() // wait for userInfo loading
+                onLogin()
+            }
     }
 
     fun finishOnboarding() {
@@ -319,7 +324,7 @@ class ConfigureProxyState(
     val onRequestReTest: () -> Unit,
 ) {
     fun updateConfig(
-        currentConfig: ProxyUIConfig, 
+        currentConfig: ProxyUIConfig,
         newConfig: ProxyUIConfig,
         currentSystemProxy: SystemProxyPresentation
     ) {
@@ -328,10 +333,10 @@ class ConfigureProxyState(
         }
         onUpdateConfig(newConfig)
     }
-    
+
     private fun shouldRerunProxyTestManually(
-        prev: ProxyUIConfig, 
-        curr: ProxyUIConfig, 
+        prev: ProxyUIConfig,
+        curr: ProxyUIConfig,
         systemProxy: SystemProxyPresentation
     ): Boolean {
         if (prev == curr) return true

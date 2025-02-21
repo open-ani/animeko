@@ -223,7 +223,15 @@ private fun AuthorizeButton(
                                 modifier = Modifier.size(16.dp),
                                 strokeWidth = 3.dp,
                             )
-                            Text("正在等待登录结果")
+                            when (authorizeState) {
+                                is AuthStateNew.AwaitingToken -> {
+                                    Text("正在等待登录结果")
+                                }
+
+                                is AuthStateNew.AwaitingUserInfo -> {
+                                    Text("正在获取用户信息")
+                                }
+                            }
                         }
                     }
 

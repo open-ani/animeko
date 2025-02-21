@@ -37,7 +37,7 @@ fun PreviewBangumiAuthorizeStepInitial() {
 fun PreviewBangumiAuthorizeStepAwaitingResult() {
     ProvideCompositionLocalsForPreview {
         BangumiAuthorizeStep(
-            authorizeState = AuthStateNew.AwaitingResult(""),
+            authorizeState = AuthStateNew.AwaitingToken(""),
             showTokenAuthorizePage = false,
             onSetShowTokenAuthorizePage = { },
             contactActions = { },

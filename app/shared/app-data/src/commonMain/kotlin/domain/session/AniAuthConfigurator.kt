@@ -99,7 +99,7 @@ class AniAuthConfigurator(
             if (requestId == null) return@transformLatest emit(AuthStateNew.Idle)
 
             logger.debug { "[AuthState][${requestId.idStr}] Start checking session state." }
-            emit(AuthStateNew.AwaitingResult(requestId))
+            emit(AuthStateNew.AwaitingToken(requestId))
 
             combine(
                 sessionManager.state,
@@ -119,7 +119,7 @@ class AniAuthConfigurator(
 
     /**
      * 启动授权请求检查循环.
-     * 
+     *
      * 会启动两个协程:
      * * [checkAuthorizeRequestLoop] 用于检查授权请求状态.
      * * [requireAuthorizeStarterTaskLoop] 用于启动 [SessionManager.requireAuthorize].
@@ -271,7 +271,7 @@ class AniAuthConfigurator(
         currentRequestAuthorizeId.value = REFRESH
     }
 
-    suspend fun setGuestSession() { 
+    suspend fun setGuestSession() {
         sessionManager.setSession(GuestSession)
         currentRequestAuthorizeId.value = REFRESH
     }
@@ -326,8 +326,9 @@ class AniAuthConfigurator(
                 )
             }
 
-            is SessionStatus.Loading -> {
-                AuthStateNew.AwaitingResult(requestId)
+            is SessionStatus.Refreshing,
+            is SessionStatus.Verifying -> {
+                AuthStateNew.AwaitingUserInfo(requestId)
             }
 
             SessionStatus.NetworkError,
@@ -341,9 +342,8 @@ class AniAuthConfigurator(
 
             SessionStatus.NoToken -> when (requestState) {
                 ExternalOAuthRequest.State.Launching,
-                ExternalOAuthRequest.State.AwaitingCallback,
-                ExternalOAuthRequest.State.Processing -> {
-                    AuthStateNew.AwaitingResult(requestId)
+                ExternalOAuthRequest.State.AwaitingCallback -> {
+                    AuthStateNew.AwaitingToken(requestId)
                 }
 
                 is ExternalOAuthRequest.State.Failed -> {
@@ -376,15 +376,16 @@ class AniAuthConfigurator(
 
                 // oauth 成功并不代表所有流程结束了, 还会继续进行 session 验证
                 // null 表示还未开始 oauth, 也是进行中的动作
+                ExternalOAuthRequest.State.Processing,
                 ExternalOAuthRequest.State.Success, null -> {
-                    AuthStateNew.AwaitingResult(requestId)
+                    AuthStateNew.AwaitingUserInfo(requestId)
                 }
             }
 
             SessionStatus.Guest -> AuthStateNew.Success("", null, isGuest = true)
         }
     }
-    
+
     companion object {
         private const val REFRESH = "-1"
         private val String.idStr get() = if (equals(REFRESH)) "REFRESH" else this
@@ -398,7 +399,15 @@ sealed class AuthStateNew {
     data object Idle : AuthStateNew()
 
     @Stable
-    data class AwaitingResult(val requestId: String) : AuthStateNew()
+    sealed class AwaitingResult : AuthStateNew() {
+        abstract val requestId: String
+    }
+
+    @Stable
+    data class AwaitingToken(override val requestId: String) : AwaitingResult()
+
+    @Stable
+    data class AwaitingUserInfo(override val requestId: String) : AwaitingResult()
 
     sealed class Error : AuthStateNew()
 
@@ -407,7 +416,7 @@ sealed class AuthStateNew {
 
     @Immutable
     data object TokenExpired : Error()
-    
+
     @Stable
     data class UnknownError(val message: String) : Error()
 
