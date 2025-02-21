@@ -25,13 +25,13 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.InputChipDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -269,7 +269,7 @@ private fun ExposedMediaSourceMenu(
             onValueChange = {},
             Modifier
                 .widthIn(min = 48.dp) // override default
-                .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
             readOnly = true,
             maxLines = 1,
             leadingIcon = {
@@ -279,7 +279,7 @@ private fun ExposedMediaSourceMenu(
                 {
                     ExposedDropdownMenuDefaults.TrailingIcon(
                         expanded = showMenu,
-                        Modifier.menuAnchor(MenuAnchorType.SecondaryEditable),
+                        Modifier.menuAnchor(ExposedDropdownMenuAnchorType.SecondaryEditable),
                     )
                 }
             } else null,

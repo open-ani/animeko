@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -65,7 +65,7 @@ data object SelectorSubjectFormatA : SelectorSubjectFormat<SelectorSubjectFormat
     @Immutable
     @Serializable
     data class Config(
-        @Language("css")
+        @param:Language("css")
         val selectLists: String = "div.video-info-header > a",
         val preferShorterName: Boolean = true,
     ) : SelectorFormatConfig {
@@ -111,9 +111,9 @@ data object SelectorSubjectFormatIndexed :
     @Immutable
     @Serializable
     data class Config(
-        @Language("css")
+        @param:Language("css")
         val selectNames: String = ".search-box .thumb-content > .thumb-txt",
-        @Language("css")
+        @param:Language("css")
         val selectLinks: String = ".search-box .thumb-menu > a",
         val preferShorterName: Boolean = true,
     ) : SelectorFormatConfig {
@@ -164,9 +164,9 @@ data object SelectorSubjectFormatJsonPathIndexed :
 
     @Serializable
     data class Config(
-        @Language("jsonpath") // install IDE plugin "jsonpath"
+        @param:Language("jsonpath") // install IDE plugin "jsonpath"
         val selectLinks: String = "$[*]['url', 'link']",
-        @Language("jsonpath")
+        @param:Language("jsonpath")
         val selectNames: String = "$[*]['title','name']",
         val preferShorterName: Boolean = true,
     ) : SelectorFormatConfig {

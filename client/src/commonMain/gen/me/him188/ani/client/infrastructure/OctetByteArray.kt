@@ -1,14 +1,26 @@
+/*
+ * Copyright (C) 2024-2025 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.client.infrastructure
 
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 
 @Serializable(OctetByteArray.Companion::class)
 class OctetByteArray(val value: ByteArray) {
     companion object : KSerializer<OctetByteArray> {
         override val descriptor = PrimitiveSerialDescriptor("OctetByteArray", PrimitiveKind.STRING)
-        override fun serialize(encoder: Encoder, obj: OctetByteArray) = encoder.encodeString(hex(obj.value))
+        override fun serialize(encoder: Encoder, value: OctetByteArray) = encoder.encodeString(hex(value.value))
         override fun deserialize(decoder: Decoder) = OctetByteArray(hex(decoder.decodeString()))
     }
 

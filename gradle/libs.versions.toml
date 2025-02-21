@@ -1,44 +1,45 @@
 [versions]
-kotlin = "2.1.0"
+kotlin = "2.1.20-RC"
 android-gradle-plugin = "8.6.1"
 
 ### KOTLINX ###
-kotlinx-coroutines = "1.9.0" # https://github.com/Kotlin/kotlinx.coroutines/releases
-kotlinx-serialization = "1.7.3" # https://github.com/Kotlin/kotlinx.serialization/releases
-kotlinx-datetime = "0.6.1" # https://github.com/Kotlin/kotlinx-datetime/releases
-kotlinx-atomicfu = "0.26.1" # https://github.com/Kotlin/kotlinx-atomicfu/releases
+kotlinx-coroutines = "1.10.1" # https://github.com/Kotlin/kotlinx.coroutines/releases
+kotlinx-serialization = "1.8.0" # https://github.com/Kotlin/kotlinx.serialization/releases
+kotlinx-datetime = "0.6.2" # https://github.com/Kotlin/kotlinx-datetime/releases
+kotlinx-atomicfu = "0.27.0" # https://github.com/Kotlin/kotlinx-atomicfu/releases
 kotlinx-io = "0.6.0" # https://github.com/Kotlin/kotlinx-io/releases
 kotlinx-collections-immutable = "0.3.8" # https://github.com/Kotlin/kotlinx.collections.immutable/releases
 
 ### ANDROIDX ###
 androidx-annotation = "1.9.1"
-androidx-media3 = "1.5.1"
-androidx-lifecycle = "2.8.7"
-paging = "3.3.5" # https://developer.android.com/jetpack/androidx/releases/paging
+androidx-media3 = "1.5.1" # https://developer.android.com/jetpack/androidx/releases/media3
+androidx-lifecycle = "2.8.7" # https://developer.android.com/jetpack/androidx/releases/lifecycle
+paging = "3.3.6" # https://developer.android.com/jetpack/androidx/releases/paging
 datastore = "1.1.2" # https://developer.android.com/jetpack/androidx/releases/datastore
-ksp = "2.1.0-1.0.29" # https://github.com/google/ksp/releases
+ksp = "2.1.20-RC-1.0.30" # https://github.com/google/ksp/releases
 room = "2.7.0-alpha12" # https://developer.android.com/jetpack/androidx/releases/room#declaring_dependencies
 sentry-kotlin-multiplatform = "0.11.0"
 sqlite = "2.5.0-alpha12"
-androidx-activity = "1.9.2"
-androidx-core = "1.13.1"
+androidx-activity = "1.10.0"
+androidx-core = "1.15.0"
+androidx-window = "1.4.0-beta02"
 
 ### COMPOSE ###
 # How to upgrade them? Check compose multiplatform release notes and find the corresponding versions for each library.
 
 # https://github.com/JetBrains/compose-multiplatform/releases
-compose-multiplatform = "1.8.0-alpha02"
+compose-multiplatform = "1.8.0-alpha03"
 
 # JetBrains compose libraries. Follow the release notes for main Compose Multiplatform for versoins.
-compose-lifecycle = "2.9.0-alpha02"
-compose-navigation = "2.8.0-alpha12"
-compose-material3-adaptive = "1.1.0-alpha02"
+compose-lifecycle = "2.9.0-alpha03"
+compose-navigation = "2.8.0-alpha13"
+compose-material3-adaptive = "1.1.0-alpha03"
 
 # Jetpack Compose libraries. Use the exact version mentioned from Compose Multiplatfrom release notes.
 # https://developer.android.com/jetpack/androidx/releases/compose-material3
-compose-material3 = "1.4.0-alpha04"
-jetpack-compose = "1.8.0-alpha07"
-androidx-compose-material3-adaptive = "1.1.0-alpha07"
+compose-material3 = "1.4.0-alpha07"
+jetpack-compose = "1.8.0-beta01"
+androidx-compose-material3-adaptive = "1.1.0-beta01"
 
 ### OTHERS ###
 
@@ -54,7 +55,7 @@ koin = "3.5.6" # https://github.com/InsertKoinIO/koin/releases
 slf4j = "2.0.16"
 jsoup = "1.18.1" # https://github.com/jhy/jsoup/releases
 snakeyaml = "2.2"
-coil = "3.0.4" # https://github.com/coil-kt/coil/releases
+coil = "3.1.0" # https://github.com/coil-kt/coil/releases
 constraintlayout-compose = "0.4.0"
 antlr-kotlin = "1.0.0"
 oshai-kotlin-logging = "7.0.0" # Only for native. On JVM we use slf4j directly.
@@ -189,6 +190,7 @@ androidx-annotation = { module = "androidx.annotation:annotation", version.ref =
 androidx-compose-material3-adaptive = { module = "androidx.compose.material3.adaptive:adaptive", version.ref = "androidx-compose-material3-adaptive" }
 androidx-compose-material3-adaptive-layout = { module = "androidx.compose.material3.adaptive:adaptive-layout", version.ref = "androidx-compose-material3-adaptive" }
 androidx-compose-material3-adaptive-navigation = { module = "androidx.compose.material3.adaptive:adaptive-navigation", version.ref = "androidx-compose-material3-adaptive" }
+androidx-window-core = { module = "androidx.window:window-core", version.ref = "androidx-window" }
 
 # Androidx
 # Each library has its own version, so we don't use `Versions` here.

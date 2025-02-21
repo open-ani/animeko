@@ -25,16 +25,21 @@
 package me.him188.ani.client.apis
 
 
-import me.him188.ani.client.infrastructure.*
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
-import io.ktor.client.request.forms.formData
 import io.ktor.client.engine.HttpClientEngine
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
-import io.ktor.http.ParametersBuilder
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.serializer
+import me.him188.ani.client.infrastructure.ApiClient
+import me.him188.ani.client.infrastructure.HttpResponse
+import me.him188.ani.client.infrastructure.RequestConfig
+import me.him188.ani.client.infrastructure.RequestMethod
+import me.him188.ani.client.infrastructure.map
+import me.him188.ani.client.infrastructure.wrap
 
 open class SubscriptionsAniApi : ApiClient {
 
@@ -93,8 +98,8 @@ open class SubscriptionsAniApi : ApiClient {
             private val serializer: KSerializer<Map<kotlin.String, kotlin.String>> =
                 serializer<Map<String, kotlin.String>>()
             override val descriptor = serializer.descriptor
-            override fun serialize(encoder: Encoder, obj: GetSubscriptionDataResponse) =
-                serializer.serialize(encoder, obj.value)
+            override fun serialize(encoder: Encoder, value: GetSubscriptionDataResponse) =
+                serializer.serialize(encoder, value.value)
             override fun deserialize(decoder: Decoder) = GetSubscriptionDataResponse(serializer.deserialize(decoder))
         }
     }

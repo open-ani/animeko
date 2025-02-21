@@ -152,7 +152,8 @@ object CarouselItemDefaults {
     @Composable
     fun itemSize(): CarouselItemSize {
         val windowSizeClass = currentWindowAdaptiveInfo1().windowSizeClass
-        val preferredWidth = if (windowSizeClass.containsWidthDp(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)) {
+        val preferredWidth =
+            if (windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)) {
             300.dp
         } else {
             240.dp

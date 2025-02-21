@@ -392,7 +392,6 @@ private fun renderDayOfWeek(day: DayOfWeek, kind: ScheduleDay.Kind): String = wh
         DayOfWeek.FRIDAY -> "上周五"
         DayOfWeek.SATURDAY -> "上周六"
         DayOfWeek.SUNDAY -> "上周日"
-        else -> day.toString()
     }
 
     ScheduleDay.Kind.THIS_WEEK,
@@ -404,7 +403,6 @@ private fun renderDayOfWeek(day: DayOfWeek, kind: ScheduleDay.Kind): String = wh
         DayOfWeek.FRIDAY -> "周五"
         DayOfWeek.SATURDAY -> "周六"
         DayOfWeek.SUNDAY -> "周日"
-        else -> day.toString()
     }
 
     ScheduleDay.Kind.NEXT_WEEK -> when (day) {
@@ -415,6 +413,5 @@ private fun renderDayOfWeek(day: DayOfWeek, kind: ScheduleDay.Kind): String = wh
         DayOfWeek.FRIDAY -> "下周五"
         DayOfWeek.SATURDAY -> "下周六"
         DayOfWeek.SUNDAY -> "下周日"
-        else -> day.toString()
     }
 }

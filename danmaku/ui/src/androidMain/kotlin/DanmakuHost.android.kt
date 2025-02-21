@@ -436,7 +436,7 @@ private fun DanmakuConfig(
                 )
 
                 val isDesktop =
-                    currentWindowAdaptiveInfo().windowSizeClass.containsWidthDp(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
+                    currentWindowAdaptiveInfo().windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
                 val displayDensityRange = remember(isDesktop) {
                     // 100% .. 0%
                     36.dp..(if (isDesktop) 720.dp else 240.dp)

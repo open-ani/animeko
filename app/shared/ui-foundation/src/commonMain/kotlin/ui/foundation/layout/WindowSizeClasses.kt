@@ -59,23 +59,23 @@ inline val WindowAdaptiveInfo.isHeightAtLeastMedium: Boolean
 
 @Stable
 inline val WindowSizeClass.isWidthCompact: Boolean
-    get() = !containsWidthDp(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
+    get() = !isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
 
 @Stable
 inline val WindowSizeClass.isWidthAtLeastMedium: Boolean
-    get() = containsWidthDp(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
+    get() = isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
 
 @Stable
 inline val WindowSizeClass.isWidthAtLeastExpanded: Boolean
-    get() = containsWidthDp(WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND)
+    get() = isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND)
 
 @Stable
 inline val WindowSizeClass.isHeightCompact: Boolean
-    get() = !containsHeightDp(WindowSizeClass.HEIGHT_DP_MEDIUM_LOWER_BOUND)
+    get() = !isHeightAtLeastBreakpoint(WindowSizeClass.HEIGHT_DP_MEDIUM_LOWER_BOUND)
 
 @Stable
 inline val WindowSizeClass.isHeightAtLeastMedium: Boolean
-    get() = containsHeightDp(WindowSizeClass.HEIGHT_DP_MEDIUM_LOWER_BOUND)
+    get() = isHeightAtLeastBreakpoint(WindowSizeClass.HEIGHT_DP_MEDIUM_LOWER_BOUND)
 
 
 @Stable

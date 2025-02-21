@@ -39,15 +39,10 @@ kotlin {
         api(libs.compose.lifecycle.runtime.compose)
         api(libs.compose.navigation.compose)
         api(libs.compose.navigation.runtime)
-        api(libs.compose.material3.adaptive.core.get().toString()) {
-            exclude("androidx.window.core", "window-core")
-        }
-        api(libs.compose.material3.adaptive.layout.get().toString()) {
-            exclude("androidx.window.core", "window-core")
-        }
-        api(libs.compose.material3.adaptive.navigation0.get().toString()) {
-            exclude("androidx.window.core", "window-core")
-        }
+        api(libs.compose.material3.adaptive.core.get().toString())
+        api(libs.compose.material3.adaptive.layout.get().toString())
+        api(libs.compose.material3.adaptive.navigation0.get().toString())
+        api(libs.androidx.window.core)
 
         implementation(projects.utils.bbcode)
         implementation(libs.constraintlayout.compose)
@@ -64,9 +59,7 @@ kotlin {
     sourceSets.androidMain.dependencies {
         api(libs.androidx.compose.ui.tooling.preview)
         api(libs.androidx.compose.ui.tooling)
-        api(libs.compose.material3.adaptive.core.get().toString()) {
-            exclude("androidx.window.core", "window-core")
-        }
+        api(libs.compose.material3.adaptive.core)
         // Preview only
     }
     sourceSets.desktopMain.dependencies {

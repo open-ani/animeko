@@ -52,7 +52,6 @@ object BangumiSubjectGraphQLParser {
             is JsonArray -> this.asSequence().flatMap { it.vSequence() }
             is JsonPrimitive -> sequenceOf(content)
             is JsonObject -> this["v"]?.vSequence() ?: emptySequence()
-            else -> emptySequence()
         }
     }
 

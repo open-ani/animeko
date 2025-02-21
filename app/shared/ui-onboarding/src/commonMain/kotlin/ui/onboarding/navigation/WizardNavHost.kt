@@ -241,8 +241,8 @@ object WizardDefaults {
             },
             modifier = modifier,
             navigationIcon = navigationIcon,
-            colors = TopAppBarDefaults.largeTopAppBarColors(
-                containerColor = AniThemeDefaults.pageContentBackgroundColor
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = AniThemeDefaults.pageContentBackgroundColor,
             ),
             actions = { actionButton() },
             scrollBehavior = scrollBehavior,

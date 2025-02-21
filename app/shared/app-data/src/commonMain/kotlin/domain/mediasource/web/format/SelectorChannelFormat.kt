@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -83,25 +83,25 @@ data object SelectorChannelFormatIndexGrouped :
     @Immutable
     @Serializable
     data class Config(
-        @Language("css")
+        @param:Language("css")
         val selectChannelNames: String = ".anthology-tab > .swiper-wrapper a",
-        @Language("regexp")
+        @param:Language("regexp")
         val matchChannelName: String = """^(?<ch>.+?)(\d+)?$""", // empty to use full text
-        @Language("css")
+        @param:Language("css")
         val selectEpisodeLists: String = ".anthology-list-box",
 
         /**
          * 提取剧集名称. 如果是 `<a>`, 还能提取链接
          */
-        @Language("css")
+        @param:Language("css")
         val selectEpisodesFromList: String = "a",
         /**
          * 如果 [selectEpisodesFromList] 不返回 `<a>`, 则此项必须有
          */
-        @Language("css")
+        @param:Language("css")
         val selectEpisodeLinksFromList: String = "",
 
-        @Language("regexp")
+        @param:Language("regexp")
         val matchEpisodeSortFromName: String = DEFAULT_MATCH_EPISODE_SORT_FROM_NAME,
     ) : SelectorFormatConfig {
         override fun isValid(): Boolean {
@@ -222,14 +222,14 @@ data object SelectorChannelFormatNoChannel :
         /**
          * 提取剧集名称. 如果是 `<a>`, 还能提取链接
          */
-        @Language("css")
+        @param:Language("css")
         val selectEpisodes: String = "#glist-1 > div.module-blocklist.scroll-box.scroll-box-y > div > a",
         /**
          * 如果 [selectEpisodes] 不返回 `<a>`, 则此项必须有
          */
-        @Language("css")
+        @param:Language("css")
         val selectEpisodeLinks: String = "",
-        @Language("regexp")
+        @param:Language("regexp")
         val matchEpisodeSortFromName: String = DEFAULT_MATCH_EPISODE_SORT_FROM_NAME,
     ) : SelectorFormatConfig {
         val matchEpisodeSortFromNameRegex by lazy(LazyThreadSafetyMode.PUBLICATION) {
