@@ -17,6 +17,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.debugInspectorInfo
 import androidx.compose.ui.unit.Dp
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
 import me.him188.ani.app.platform.features.AudioManager
 import me.him188.ani.app.platform.features.BrightnessManager
 import me.him188.ani.app.platform.features.StreamType
@@ -100,6 +101,7 @@ fun Modifier.swipeLevelControlWithIndicator(
     },
     onDragStopped = {
         indicatorTasker.launch {
+            delay(500)
             indicatorState.visible = false
         }
     },
