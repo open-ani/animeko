@@ -53,7 +53,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -80,7 +79,6 @@ import kotlinx.coroutines.launch
 import me.him188.ani.app.data.network.protocol.DanmakuInfo
 import me.him188.ani.app.data.network.protocol.DanmakuLocation
 import me.him188.ani.app.domain.comment.CommentContext
-import me.him188.ani.app.domain.session.AuthState
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.features.StreamType
@@ -413,7 +411,7 @@ private fun EpisodeScreenTabletVeryWide(
                                     vm.videoStatisticsFlow,
                                     page.mediaSelectorState,
                                     { page.mediaSourceResultListPresentation },
-                                    vm.authState.collectAsState(AuthState.Idle).value,
+                                    page.authState,
                                     onSwitchEpisode = { episodeId ->
                                         if (!vm.episodeSelectorState.selectEpisodeId(episodeId)) {
                                             navigator.navigateEpisodeDetails(vm.subjectId, episodeId)
@@ -530,7 +528,7 @@ private fun EpisodeScreenContentPhone(
                     vm.videoStatisticsFlow,
                     page.mediaSelectorState,
                     { page.mediaSourceResultListPresentation },
-                    vm.authState.collectAsState(AuthState.Idle).value,
+                    page.authState,
                     onSwitchEpisode = { episodeId ->
                         if (!vm.episodeSelectorState.selectEpisodeId(episodeId)) {
                             navigator.navigateEpisodeDetails(vm.subjectId, episodeId)

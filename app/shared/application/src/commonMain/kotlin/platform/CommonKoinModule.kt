@@ -111,7 +111,7 @@ import me.him188.ani.app.domain.session.AniAuthClientImpl
 import me.him188.ani.app.domain.session.AniAuthConfigurator
 import me.him188.ani.app.domain.session.AniAuthStateProvider
 import me.him188.ani.app.domain.session.BangumiSessionManager
-import me.him188.ani.app.domain.session.NoopAniAuthClient
+import me.him188.ani.app.domain.session.ConstantFailureAniAuthClient
 import me.him188.ani.app.domain.session.OpaqueSession
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.session.SessionStatus
@@ -208,7 +208,7 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
     single<AniAuthStateProvider> {
         AniAuthConfigurator(
             get(),
-            NoopAniAuthClient, // Read-only configurator doesn't need a auth client.
+            ConstantFailureAniAuthClient, // Read-only configurator doesn't need a auth client.
             onLaunchAuthorize = { }, // Read-only configurator doesn't need to do real authorization.
             parentCoroutineContext = coroutineScope.coroutineContext,
         )

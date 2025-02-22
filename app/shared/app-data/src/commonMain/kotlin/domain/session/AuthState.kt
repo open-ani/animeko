@@ -40,7 +40,7 @@ sealed class AuthState {
     data object TokenExpired : Error()
 
     @Stable
-    data class UnknownError(val message: String) : Error()
+    data class UnknownError(val throwable: Throwable) : Error()
 
     @Stable
     data class Success(

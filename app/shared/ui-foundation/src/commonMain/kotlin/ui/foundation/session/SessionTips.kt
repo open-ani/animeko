@@ -117,17 +117,18 @@ fun SessionTipsArea(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        when {
-            state is AuthState.Success -> {
-
+        when (state) {
+            is AuthState.Success -> {
+                if (state.isGuest) {
+                    guest()
+                }
             }
 
-            state.isLoading -> {
+            is AuthState.AwaitingResult -> {
                 CircularProgressIndicator()
             }
 
-            state.isKnownGuest -> guest()
-            state.isKnownExpired -> {
+            is AuthState.TokenExpired -> {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Icon(Icons.Rounded.HowToReg, null)
                     Text("登录过期，请重新登录")
@@ -138,7 +139,7 @@ fun SessionTipsArea(
                 }
             }
 
-            state is AuthState.NetworkError -> {
+            is AuthState.NetworkError -> {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Icon(Icons.Rounded.CloudOff, null)
                     Text("网络错误，请检查网络连接")
@@ -154,7 +155,15 @@ fun SessionTipsArea(
                 RetryButton(onRetry)
             }*/
 
-            state is AuthState.Idle -> guest()
+            is AuthState.Idle -> guest()
+
+            is AuthState.UnknownError -> {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Icon(Icons.Rounded.SyncProblem, null)
+                    Text("未知错误，请重试")
+                }
+                RetryButton(onRetry)
+            }
         }
     }
 }
@@ -199,10 +208,14 @@ fun SessionTipsIcon(
             horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            when {
-                state.isKnownLoggedIn -> {}
+            when (state) {
+                is AuthState.Success -> {
+                    if (state.isGuest && showLabel) {
+                        Text("游客模式")
+                    }
+                }
 
-                state.isLoading -> {
+                is AuthState.AwaitingResult -> {
                     if (showLoading) {
                         var rotation by remember { mutableStateOf(0f) }
                         LaunchedEffect(true) {
@@ -224,14 +237,14 @@ fun SessionTipsIcon(
                     }
                 }
 
-                state.isKnownLoggedOut -> {
+                is AuthState.Idle -> {
                     ProvideContentColor(MaterialTheme.colorScheme.primary) {
                         Icon(Icons.Rounded.HowToReg, "登录")
                         Text("登录")
                     }
                 }
 
-                state.isKnownExpired -> {
+                is AuthState.TokenExpired -> {
                     ProvideContentColor(MaterialTheme.colorScheme.error) {
                         Icon(
                             Icons.Rounded.SyncProblem,
@@ -243,7 +256,7 @@ fun SessionTipsIcon(
                     }
                 }
 
-                state is AuthState.NetworkError -> {
+                is AuthState.NetworkError -> {
                     ProvideContentColor(MaterialTheme.colorScheme.error) {
                         Icon(
                             Icons.Rounded.SyncProblem,
@@ -256,9 +269,16 @@ fun SessionTipsIcon(
                     }
                 }
 
-                state.isKnownGuest -> {
-                    if (showLabel) {
-                        Text("游客模式")
+                is AuthState.UnknownError -> {
+                    ProvideContentColor(MaterialTheme.colorScheme.error) {
+                        Icon(
+                            Icons.Rounded.SyncProblem,
+                            "未知错误",
+                            tint = MaterialTheme.colorScheme.error,
+                        )
+                        if (showLabel) {
+                            Text("未知错误")
+                        }
                     }
                 }
             }

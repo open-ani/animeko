@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.paging.cachedIn
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.firstOrNull
@@ -83,7 +84,7 @@ class UserCollectionsViewModel : AbstractViewModel(), KoinComponent {
     )
 
     suspend fun refreshLoginSession() {
-        withContext(backgroundScope.coroutineContext) {
+        withContext(Dispatchers.Main) {
             sessionManager.retry()
         }
     }

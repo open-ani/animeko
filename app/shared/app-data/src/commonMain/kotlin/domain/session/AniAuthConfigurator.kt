@@ -381,7 +381,7 @@ class AniAuthConfigurator(
                         }
 
                         else -> {
-                            AuthState.UnknownError(requestState.throwable.toString())
+                            AuthState.UnknownError(requestState.throwable)
                         }
                     }
                 }

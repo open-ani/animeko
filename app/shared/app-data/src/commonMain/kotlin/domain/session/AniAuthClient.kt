@@ -51,7 +51,7 @@ class AniAuthClientImpl(
 /**
  * A [AniAuthClient] that does nothing. Always get failure response [ApiFailure.ServiceUnavailable].
  */
-object NoopAniAuthClient : AniAuthClient {
+object ConstantFailureAniAuthClient : AniAuthClient {
     override suspend fun getResult(requestId: String): ApiResponse<AniBangumiUserToken?> {
         return ApiResponse.failure(ApiFailure.ServiceUnavailable)
     }

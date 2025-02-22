@@ -14,6 +14,7 @@ import androidx.paging.cachedIn
 import androidx.paging.compose.launchAsLazyPagingItemsIn
 import androidx.paging.filter
 import androidx.paging.flatMap
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -78,7 +79,7 @@ class ExplorationPageViewModel : AbstractViewModel(), KoinComponent {
     )
 
     suspend fun refreshLoginSession() {
-        withContext(backgroundScope.coroutineContext) {
+        withContext(Dispatchers.Default) {
             sessionManager.retry()
         }
     }
