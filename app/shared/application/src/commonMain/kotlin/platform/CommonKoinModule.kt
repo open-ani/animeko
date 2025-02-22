@@ -210,7 +210,6 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
             get(),
             NoopAniAuthClient, // Read-only configurator doesn't need a auth client.
             onLaunchAuthorize = { }, // Read-only configurator doesn't need to do real authorization.
-            doInitialStateCheck = true,
             parentCoroutineContext = coroutineScope.coroutineContext,
         )
     }

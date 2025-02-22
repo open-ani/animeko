@@ -73,6 +73,10 @@ interface AniAuthStateProvider {
  *
  * Effectively a mutable version of [AniAuthStateProvider], which allows you to start and cancel authorization requests.
  *
+ * This class does:
+ * * Directly read session states from [SessionManager] by subscribing [state].
+ * * Handle procedure of starting and canceling authorization requests.
+ *
  * 通常在 UI 层使用.
  *
  * ```
@@ -101,14 +105,13 @@ class AniAuthConfigurator(
     private val authClient: AniAuthClient,
     private val onLaunchAuthorize: suspend (requestId: String) -> Unit,
     private val awaitRetryInterval: Duration = 1.seconds,
-    doInitialStateCheck: Boolean = true,
     parentCoroutineContext: CoroutineContext = Dispatchers.Default,
 ) : AniAuthStateProvider {
     private val logger = logger<AniAuthConfigurator>()
     private val scope = parentCoroutineContext.childScope()
 
     private val authorizeTasker = MonoTasker(scope)
-    private val currentRequestAuthorizeId = MutableStateFlow(if (doInitialStateCheck) REFRESH else null)
+    private val currentRequestAuthorizeId: MutableStateFlow<String?> = MutableStateFlow(REFRESH)
 
     private val launchedExternalRequests = MutableStateFlow<PersistentList<String>>(persistentListOf())
     private val lastAuthException: MutableStateFlow<Throwable?> = MutableStateFlow(null)
@@ -389,7 +392,10 @@ class AniAuthConfigurator(
 
                 // oauth 成功并不代表所有流程结束了, 还会继续进行 session 验证
                 // null 表示还未开始 oauth, 也是进行中的动作
-                ExternalOAuthRequest.State.Processing,
+                ExternalOAuthRequest.State.Processing -> {
+                    AuthState.AwaitingToken(requestId)
+                }
+
                 ExternalOAuthRequest.State.Success -> {
                     AuthState.AwaitingUserInfo(requestId)
                 }
