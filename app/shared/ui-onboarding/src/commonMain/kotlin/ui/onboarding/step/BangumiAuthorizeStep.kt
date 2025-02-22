@@ -216,7 +216,7 @@ private fun AuthorizeButton(
                 transitionSpec = LocalAniMotionScheme.current.animatedContent.standard,
             ) {
                 when (authorizeState) {
-                    is AuthState.Idle, is AuthState.Error -> {
+                    is AuthState.NotAuthed, is AuthState.Error -> {
                         Text("登录 / 注册")
                     }
 
@@ -295,7 +295,7 @@ private fun AuthorizeStateText(
         Text(
             remember(authorizeState) {
                 when (authorizeState) {
-                    is AuthState.Idle, is AuthState.AwaitingResult -> ""
+                    is AuthState.NotAuthed, is AuthState.AwaitingResult -> ""
                     is AuthState.Success -> "已登录: ${authorizeState.username}"
                     is AuthState.NetworkError -> "登录失败：网络错误，请重试"
                     is AuthState.TokenExpired -> "登录失败：Token 已过期，请重新授权"

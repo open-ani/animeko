@@ -249,7 +249,7 @@ private fun AniAppContentImpl(
                             this@SharedTransitionLayout, this,
                         ),
                     ) {
-                        val authState by vm.authState.collectAsStateWithLifecycle(AuthState.Idle)
+                        val authState by vm.authState.collectAsStateWithLifecycle(AuthState.NotAuthed)
                         MainScreen(
                             page = currentPage,
                             authState = authState,

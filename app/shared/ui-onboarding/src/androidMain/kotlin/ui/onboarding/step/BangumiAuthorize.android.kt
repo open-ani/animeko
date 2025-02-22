@@ -21,7 +21,7 @@ import me.him188.ani.utils.platform.annotations.TestOnly
 fun PreviewBangumiAuthorizeStepInitial() {
     ProvideCompositionLocalsForPreview {
         BangumiAuthorizeStep(
-            authorizeState = AuthState.Idle,
+            authorizeState = AuthState.NotAuthed,
             showTokenAuthorizePage = false,
             onSetShowTokenAuthorizePage = { },
             contactActions = { },
@@ -94,7 +94,7 @@ fun PreviewBangumiAuthorizeStepSuccess() {
 fun PreviewBangumiTokenAuthorizePage() {
     ProvideCompositionLocalsForPreview {
         BangumiAuthorizeStep(
-            authorizeState = AuthState.Idle,
+            authorizeState = AuthState.NotAuthed,
             showTokenAuthorizePage = true,
             onSetShowTokenAuthorizePage = { },
             contactActions = { },

@@ -118,7 +118,7 @@ class AniAuthConfigurator(
 
     override val state: SharedFlow<AuthState> = currentRequestAuthorizeId
         .transformLatest { requestId ->
-            if (requestId == null) return@transformLatest emit(AuthState.Idle)
+            if (requestId == null) return@transformLatest emit(AuthState.NotAuthed)
 
             combine(
                 sessionManager.state,
@@ -377,7 +377,7 @@ class AniAuthConfigurator(
                         //     when 分支到这里, 这里返回 Idle
 
                         is RefreshTokenFailedException -> {
-                            AuthState.Idle
+                            AuthState.NotAuthed
                         }
 
                         else -> {
@@ -387,7 +387,7 @@ class AniAuthConfigurator(
                 }
 
                 is ExternalOAuthRequest.State.Cancelled -> {
-                    AuthState.Idle
+                    AuthState.NotAuthed
                 }
 
                 // oauth 成功并不代表所有流程结束了, 还会继续进行 session 验证
@@ -401,7 +401,7 @@ class AniAuthConfigurator(
                 }
 
                 null -> {
-                    AuthState.Idle
+                    AuthState.NotAuthed
                 }
             }
 

@@ -111,7 +111,7 @@ fun OnboardingScreen(
 
     var bangumiShowTokenAuthorizePage by remember { mutableStateOf(false) }
 
-    val authorizeState by state.bangumiAuthorizeState.state.collectAsStateWithLifecycle(AuthState.Idle)
+    val authorizeState by state.bangumiAuthorizeState.state.collectAsStateWithLifecycle(AuthState.NotAuthed)
     val proxyState by state.configureProxyState.state.collectAsStateWithLifecycle(ConfigureProxyUIState.Placeholder)
     val grantNotificationPermissionState by state.bitTorrentFeatureState.grantNotificationPermissionState
         .collectAsStateWithLifecycle(GrantNotificationPermissionState.Placeholder)
@@ -350,7 +350,7 @@ internal fun createTestOnboardingPresentationState(scope: CoroutineScope): Onboa
             onOpenSystemNotificationSettings = { },
         ),
         bangumiAuthorizeState = BangumiAuthorizeStepState(
-            state = flowOf(AuthState.Idle),
+            state = flowOf(AuthState.NotAuthed),
             onClickNavigateAuthorize = { },
             onCheckCurrentToken = { },
             onCancelAuthorize = { },

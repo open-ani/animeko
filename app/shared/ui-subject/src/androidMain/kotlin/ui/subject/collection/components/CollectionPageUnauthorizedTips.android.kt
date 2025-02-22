@@ -89,7 +89,7 @@ fun PreviewSessionTipsIcon() {
 @OptIn(TestOnly::class)
 @Stable
 val PreviewSessionStatuses = listOf(
-    AuthState.Idle,
+    AuthState.NotAuthed,
     AuthState.AwaitingToken("REFRESH"),
     AuthState.AwaitingUserInfo("REFRESH"),
     AuthState.NetworkError,

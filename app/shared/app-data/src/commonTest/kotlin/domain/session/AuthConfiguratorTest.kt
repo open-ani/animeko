@@ -48,7 +48,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
         }
 
         configurator.state.test {
-            assertIs<AuthState.Idle>(awaitItem(), "Initially should be Idle.")
+            assertIs<AuthState.NotAuthed>(awaitItem(), "Initially should be Idle.")
 
             advanceUntilIdle()
             expectNoEvents()
@@ -77,7 +77,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
         }
 
         configurator.state.test {
-            assertIs<AuthState.Idle>(awaitItem(), "Initially should be Idle.")
+            assertIs<AuthState.NotAuthed>(awaitItem(), "Initially should be Idle.")
 
             advanceUntilIdle()
             expectNoEvents()
@@ -211,7 +211,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
         }
 
         configurator.state.test {
-            assertIs<AuthState.Idle>(awaitItem(), "Initially should be Idle.")
+            assertIs<AuthState.NotAuthed>(awaitItem(), "Initially should be Idle.")
 
             configurator.startAuthorize()
             assertIs<AuthState.AwaitingResult>(awaitItem(), "startAuthorize should change state to AwaitingResult.")
@@ -249,7 +249,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
         }
 
         configurator.state.test {
-            assertIs<AuthState.Idle>(awaitItem(), "Initially should be Idle.")
+            assertIs<AuthState.NotAuthed>(awaitItem(), "Initially should be Idle.")
 
             configurator.setGuestSession()
 
@@ -286,13 +286,13 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
         }
 
         configurator.state.test {
-            assertIs<AuthState.Idle>(awaitItem(), "Initially should be Idle.")
+            assertIs<AuthState.NotAuthed>(awaitItem(), "Initially should be Idle.")
 
             configurator.startAuthorize()
             assertIs<AuthState.AwaitingResult>(awaitItem(), "startAuthorize should change state to AwaitingResult.")
 
             configurator.cancelAuthorize()
-            assertIs<AuthState.Idle>(awaitItem(), "Cancel authorize should change state to Idle.")
+            assertIs<AuthState.NotAuthed>(awaitItem(), "Cancel authorize should change state to Idle.")
 
             advanceUntilIdle()
             expectNoEvents()
@@ -321,7 +321,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
         }
 
         configurator.state.test {
-            assertIs<AuthState.Idle>(awaitItem(), "Initially should be Idle.")
+            assertIs<AuthState.NotAuthed>(awaitItem(), "Initially should be Idle.")
 
             configurator.setAuthorizationToken(ACCESS_TOKEN)
             assertIs<AuthState.AwaitingUserInfo>(awaitItem())
@@ -357,7 +357,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
         }
 
         configurator.state.test {
-            assertIs<AuthState.Idle>(awaitItem(), "Initially should be Idle.")
+            assertIs<AuthState.NotAuthed>(awaitItem(), "Initially should be Idle.")
 
             configurator.setAuthorizationToken(ACCESS_TOKEN)
             assertIs<AuthState.AwaitingUserInfo>(awaitItem())
@@ -390,7 +390,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
         }
 
         configurator.state.test {
-            assertIs<AuthState.Idle>(awaitItem(), "Initially should be Idle.")
+            assertIs<AuthState.NotAuthed>(awaitItem(), "Initially should be Idle.")
 
             configurator.startAuthorize()
             assertIs<AuthState.AwaitingResult>(
@@ -435,7 +435,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
         }
 
         configurator.state.test {
-            assertIs<AuthState.Idle>(awaitItem(), "Initially should be Idle.")
+            assertIs<AuthState.NotAuthed>(awaitItem(), "Initially should be Idle.")
 
             configurator.startAuthorize()
             assertIs<AuthState.AwaitingResult>(
@@ -472,7 +472,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
         }
 
         configurator.state.test {
-            assertIs<AuthState.Idle>(awaitItem(), "Initially should be Idle.")
+            assertIs<AuthState.NotAuthed>(awaitItem(), "Initially should be Idle.")
 
             configurator.startAuthorize()
             assertIs<AuthState.AwaitingResult>(
@@ -508,7 +508,7 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
         }
 
         configurator.state.test {
-            assertIs<AuthState.Idle>(awaitItem(), "Initially should be Idle.")
+            assertIs<AuthState.NotAuthed>(awaitItem(), "Initially should be Idle.")
 
             configurator.startAuthorize()
             assertIs<AuthState.AwaitingResult>(

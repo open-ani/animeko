@@ -118,6 +118,6 @@ class BangumiAuthorizeState(
 ) {
     companion object {
         @Stable
-        val Placeholder = BangumiAuthorizeState(AuthState.Idle, null)
+        val Placeholder = BangumiAuthorizeState(AuthState.NotAuthed, null)
     }
 }

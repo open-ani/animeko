@@ -155,7 +155,7 @@ fun SessionTipsArea(
                 RetryButton(onRetry)
             }*/
 
-            is AuthState.Idle -> guest()
+            is AuthState.NotAuthed -> guest()
 
             is AuthState.UnknownError -> {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -189,7 +189,7 @@ fun SessionTipsIcon(
     showLabel: Boolean = true,
 ) {
     val action = when (state) {
-        AuthState.Idle -> onLogin
+        AuthState.NotAuthed -> onLogin
         is AuthState.Success -> {
             if (state.isGuest) onLogin else NO_ACTION
         }
@@ -237,7 +237,7 @@ fun SessionTipsIcon(
                     }
                 }
 
-                is AuthState.Idle -> {
+                is AuthState.NotAuthed -> {
                     ProvideContentColor(MaterialTheme.colorScheme.primary) {
                         Icon(Icons.Rounded.HowToReg, "登录")
                         Text("登录")

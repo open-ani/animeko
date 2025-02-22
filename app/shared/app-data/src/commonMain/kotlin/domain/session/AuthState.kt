@@ -17,8 +17,11 @@ import me.him188.ani.utils.platform.annotations.TestOnly
 // This class is intend to replace current [AuthState]
 @Stable
 sealed class AuthState {
+    /**
+     * No token is available or user cancelled authorize procedure (also no token).
+     */
     @Immutable
-    data object Idle : AuthState()
+    data object NotAuthed : AuthState()
 
     @Stable
     sealed class AwaitingResult : AuthState() {
@@ -51,7 +54,7 @@ sealed class AuthState {
 
     val isKnownLoggedIn: Boolean get() = this is Success && !isGuest
     val isKnownGuest: Boolean get() = this is Success && isGuest
-    val isKnownLoggedOut: Boolean get() = this is NetworkError || this is TokenExpired || this is Idle
+    val isKnownLoggedOut: Boolean get() = this is NetworkError || this is TokenExpired || this is NotAuthed
     val isKnownExpired: Boolean get() = this is TokenExpired
     val isLoading: Boolean get() = this is AwaitingResult
 }

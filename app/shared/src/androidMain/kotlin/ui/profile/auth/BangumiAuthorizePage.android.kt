@@ -19,7 +19,7 @@ import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 private fun PreviewBangumiAuthorizePage() {
     ProvideCompositionLocalsForPreview {
         BangumiAuthorizePage(
-            authState = AuthState.Idle,
+            authState = AuthState.NotAuthed,
             onCheckCurrentToken = { },
             onClickNavigateAuthorize = { },
             onCancelAuthorize = { },

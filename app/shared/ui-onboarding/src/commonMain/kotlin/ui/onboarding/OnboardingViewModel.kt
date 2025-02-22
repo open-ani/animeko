@@ -223,7 +223,7 @@ class OnboardingViewModel : AbstractSettingsViewModel(), KoinComponent {
         onUseGuestMode = {
             // 如果是 Idle, TokenExpired, UnknownError, 则使用 GuestSession
             when (authConfigurator.state.first()) {
-                is AuthState.Idle,
+                is AuthState.NotAuthed,
                 is AuthState.TokenExpired,
                 is AuthState.UnknownError -> {
                     authConfigurator.setGuestSession()
