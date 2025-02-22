@@ -51,7 +51,27 @@ import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.seconds
 
 /**
+ * 从 [SessionManager] 获取当前的 Bangumi 授权状态.
+ *
+ * 通常在 UI 层使用.
+ *
+ * ```
+ * // In your ViewModel.
+ * val authStateProvider: AniAuthStateProvider by inject()
+ * // In your UI.
+ * val authState by authStateProvider.state.collectAsState(initial = AuthState.Idle)
+ * ```
+ *
+ * @see AniAuthConfigurator
+ */
+interface AniAuthStateProvider {
+    val state: SharedFlow<AuthState>
+}
+
+/**
  * Wrapper for [SessionManager] and [AniAuthClient] to handle authorization.
+ *
+ * Effectively a mutable version of [AniAuthStateProvider], which allows you to start and cancel authorization requests.
  *
  * 通常在 UI 层使用.
  *
@@ -83,7 +103,7 @@ class AniAuthConfigurator(
     private val awaitRetryInterval: Duration = 1.seconds,
     doInitialStateCheck: Boolean = true,
     parentCoroutineContext: CoroutineContext = Dispatchers.Default,
-) {
+) : AniAuthStateProvider {
     private val logger = logger<AniAuthConfigurator>()
     private val scope = parentCoroutineContext.childScope()
 
@@ -93,7 +113,7 @@ class AniAuthConfigurator(
     private val launchedExternalRequests = MutableStateFlow<PersistentList<String>>(persistentListOf())
     private val lastAuthException: MutableStateFlow<Throwable?> = MutableStateFlow(null)
 
-    val state: SharedFlow<AuthState> = currentRequestAuthorizeId
+    override val state: SharedFlow<AuthState> = currentRequestAuthorizeId
         .transformLatest { requestId ->
             if (requestId == null) return@transformLatest emit(AuthState.Idle)
 

@@ -9,22 +9,12 @@
 
 package me.him188.ani.app.ui.main
 
-import me.him188.ani.app.domain.session.AniAuthConfigurator
-import me.him188.ani.app.domain.session.NoopAniAuthClient
-import me.him188.ani.app.domain.session.SessionManager
+import me.him188.ani.app.domain.session.AniAuthStateProvider
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
 class MainScreenSharedViewModel : AbstractViewModel(), KoinComponent {
-    private val sessionManager: SessionManager by inject()
-
-    private val authConfigurator = AniAuthConfigurator(
-        sessionManager = sessionManager,
-        authClient = NoopAniAuthClient,
-        onLaunchAuthorize = { },
-        parentCoroutineContext = backgroundScope.coroutineContext,
-    )
-
-    val authState = authConfigurator.state
+    private val authStateProvider: AniAuthStateProvider by inject()
+    val authState = authStateProvider.state
 }

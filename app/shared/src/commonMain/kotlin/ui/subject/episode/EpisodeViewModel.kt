@@ -81,9 +81,8 @@ import me.him188.ani.app.domain.player.extension.RememberPlayProgressExtension
 import me.him188.ani.app.domain.player.extension.SaveMediaPreferenceExtension
 import me.him188.ani.app.domain.player.extension.SwitchMediaOnPlayerErrorExtension
 import me.him188.ani.app.domain.player.extension.SwitchNextEpisodeExtension
-import me.him188.ani.app.domain.session.AniAuthConfigurator
+import me.him188.ani.app.domain.session.AniAuthStateProvider
 import me.him188.ani.app.domain.session.AuthState
-import me.him188.ani.app.domain.session.NoopAniAuthClient
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.app.platform.Context
@@ -298,15 +297,9 @@ class EpisodeViewModel(
         },
     )
 
-    private val authConfigurator =
-        AniAuthConfigurator(
-            sessionManager = sessionManager,
-            authClient = NoopAniAuthClient,
-            { },
-            parentCoroutineContext = backgroundScope.coroutineContext,
-        )
 
-    val authState: Flow<AuthState> = authConfigurator.state
+    private val authStateProvider: AniAuthStateProvider by inject()
+    val authState: Flow<AuthState> = authStateProvider.state
 
     @OptIn(UnsafeEpisodeSessionApi::class)
     val episodeDetailsState: EpisodeDetailsState = kotlin.run {
