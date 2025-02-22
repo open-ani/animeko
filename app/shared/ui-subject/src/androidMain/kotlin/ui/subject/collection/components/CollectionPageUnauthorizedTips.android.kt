@@ -94,7 +94,7 @@ val PreviewSessionStatuses = listOf(
     AuthState.AwaitingUserInfo("REFRESH"),
     AuthState.NetworkError,
     AuthState.TokenExpired,
-    AuthState.UnknownError("unknown error"),
+    AuthState.UnknownError(Exception()),
     TestAuthState,
     TestGuestAuthState,
 )
