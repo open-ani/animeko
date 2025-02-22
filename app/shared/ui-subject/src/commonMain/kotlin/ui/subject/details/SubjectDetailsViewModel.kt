@@ -12,6 +12,9 @@ package me.him188.ani.app.ui.subject.details
 import androidx.compose.runtime.Stable
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
+import me.him188.ani.app.domain.session.AniAuthConfigurator
+import me.him188.ani.app.domain.session.NoopAniAuthClient
+import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateFactory
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateLoader
@@ -25,9 +28,19 @@ class SubjectDetailsViewModel(
     private val placeholder: SubjectInfo? = null
 ) : AbstractViewModel(), KoinComponent {
     private val factory: SubjectDetailsStateFactory by inject()
+    private val sessionManager: SessionManager by inject()
+
+    private val authConfigurator =
+        AniAuthConfigurator(
+            sessionManager = sessionManager,
+            authClient = NoopAniAuthClient,
+            { },
+            parentCoroutineContext = backgroundScope.coroutineContext,
+        )
     private val stateLoader = SubjectDetailsStateLoader(factory, backgroundScope)
 
     val state get() = stateLoader.state
+    val authState = authConfigurator.state
 
     fun reload() {
         stateLoader.reload(subjectId, placeholder)

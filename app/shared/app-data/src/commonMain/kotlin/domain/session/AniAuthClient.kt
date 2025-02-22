@@ -12,6 +12,7 @@ package me.him188.ani.app.domain.session
 import io.ktor.client.plugins.ClientRequestException
 import io.ktor.http.HttpStatusCode
 import io.ktor.util.reflect.typeInfo
+import me.him188.ani.app.data.models.ApiFailure
 import me.him188.ani.app.data.models.ApiResponse
 import me.him188.ani.app.data.models.runApiRequest
 import me.him188.ani.client.apis.BangumiOAuthAniApi
@@ -44,5 +45,18 @@ class AniAuthClientImpl(
 
     override suspend fun refreshAccessToken(refreshToken: String) = runApiRequest {
         oauthApiInvoker { refreshBangumiToken(AniRefreshBangumiTokenRequest(refreshToken)).body() }
+    }
+}
+
+/**
+ * A [AniAuthClient] that does nothing. Always get failure response [ApiFailure.ServiceUnavailable].
+ */
+object NoopAniAuthClient : AniAuthClient {
+    override suspend fun getResult(requestId: String): ApiResponse<AniBangumiUserToken?> {
+        return ApiResponse.failure(ApiFailure.ServiceUnavailable)
+    }
+
+    override suspend fun refreshAccessToken(refreshToken: String): ApiResponse<AniAnonymousBangumiUserToken> {
+        return ApiResponse.failure(ApiFailure.ServiceUnavailable)
     }
 }

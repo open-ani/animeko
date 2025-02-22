@@ -435,7 +435,7 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
     }
 
     single<MeteredNetworkDetector> { createMeteredNetworkDetector(getContext()) }
-    single<SubjectDetailsStateFactory> { DefaultSubjectDetailsStateFactory(coroutineScope.coroutineContext) }
+    single<SubjectDetailsStateFactory> { DefaultSubjectDetailsStateFactory() }
 
     single<TurnstileState> {
         CreateTurnstileState(

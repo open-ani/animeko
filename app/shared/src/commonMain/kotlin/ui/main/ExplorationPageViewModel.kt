@@ -17,6 +17,7 @@ import androidx.paging.flatMap
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.models.subject.subjectInfo
 import me.him188.ani.app.data.network.TrendsRepository
@@ -27,7 +28,6 @@ import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.session.userInfo
 import me.him188.ani.app.ui.exploration.ExplorationPageState
 import me.him188.ani.app.ui.foundation.AbstractViewModel
-import me.him188.ani.app.ui.foundation.AuthState
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
@@ -37,7 +37,6 @@ class ExplorationPageViewModel : AbstractViewModel(), KoinComponent {
     private val sessionManager: SessionManager by inject()
     private val followedSubjectsRepository: FollowedSubjectsRepository by inject()
     private val settingsRepository: SettingsRepository by inject()
-    private val authState = AuthState()
 
     @OptIn(OpaqueSession::class)
     private val selfInfoState = sessionManager.userInfo.produceState(null)
@@ -45,9 +44,8 @@ class ExplorationPageViewModel : AbstractViewModel(), KoinComponent {
     private val nsfwSettingFlow = settingsRepository.uiSettings.flow.map { it.searchSettings.nsfwMode }
     private val horizontalScrollTipFlow =
         settingsRepository.oneshotActionConfig.flow.map { it.horizontalScrollTip }
-    
+
     val explorationPageState: ExplorationPageState = ExplorationPageState(
-        authState,
         selfInfoState,
         trendingSubjectInfoPager = trendsRepository.trendsInfoPager()
             .map { pagingData ->
@@ -78,4 +76,10 @@ class ExplorationPageViewModel : AbstractViewModel(), KoinComponent {
 //                emit(arrayOfNulls<FollowedSubjectInfo>(10).toList())
 //            }
     )
+
+    suspend fun refreshLoginSession() {
+        withContext(backgroundScope.coroutineContext) {
+            sessionManager.retry()
+        }
+    }
 }

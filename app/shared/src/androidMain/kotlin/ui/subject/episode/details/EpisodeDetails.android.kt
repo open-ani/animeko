@@ -25,16 +25,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.MutableStateFlow
-import me.him188.ani.app.data.models.UserInfo
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.domain.danmaku.DanmakuLoadingState
 import me.him188.ani.app.domain.media.TestMediaList
 import me.him188.ani.app.domain.media.cache.EpisodeCacheStatus
 import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.domain.session.AuthState
-import me.him188.ani.app.domain.session.SessionStatus
+import me.him188.ani.app.domain.session.TestAuthState
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
-import me.him188.ani.app.ui.foundation.rememberBackgroundScope
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeState
 import me.him188.ani.app.ui.subject.collection.components.rememberTestEditableSubjectCollectionTypeState
 import me.him188.ani.app.ui.subject.createTestAiringLabelState
@@ -125,7 +123,7 @@ fun PreviewEpisodeDetailsNotAuthorized() = ProvideCompositionLocalsForPreview {
     val state = rememberTestEpisodeDetailsState()
     PreviewEpisodeDetailsImpl(
         state,
-        authState = rememberTestAuthState(SessionStatus.NoToken),
+        authState = TestAuthState,
     )
 }
 
@@ -180,7 +178,7 @@ private fun PreviewEpisodeDetailsImpl(
     editableSubjectCollectionTypeState: EditableSubjectCollectionTypeState = rememberTestEditableSubjectCollectionTypeState(),
     mediaSelectorState: MediaSelectorState = rememberTestMediaSelectorState(),
     playingMedia: Media? = TestMediaList.first(),
-    authState: AuthState = rememberTestAuthState(),
+    authState: AuthState = TestAuthState,
 ) {
     Scaffold {
         EpisodeDetails(
@@ -213,26 +211,11 @@ private fun PreviewEpisodeDetailsImpl(
             onRefreshMediaSources = {},
             onRestartSource = {},
             onSetDanmakuSourceEnabled = { _, _ -> },
+            onClickLogin = { },
             Modifier
                 .padding(bottom = 16.dp, top = 8.dp)
                 .padding(it)
                 .verticalScroll(rememberScrollState()),
-        )
-    }
-}
-
-@Composable
-fun rememberTestAuthState(
-    state: SessionStatus = SessionStatus.Verified("", UserInfo.EMPTY),
-): AuthState {
-    val state1 = remember { mutableStateOf(state) }
-    val scope = rememberBackgroundScope()
-    return remember {
-        AuthState(
-            state1,
-            launchAuthorize = { },
-            retry = {},
-            scope.backgroundScope,
         )
     }
 }

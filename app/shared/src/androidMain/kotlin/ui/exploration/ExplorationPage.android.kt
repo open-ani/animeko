@@ -18,8 +18,8 @@ import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.paging.compose.collectAsLazyPagingItemsWithLifecycle
 import kotlinx.coroutines.flow.flowOf
 import me.him188.ani.app.data.models.subject.TestFollowedSubjectInfos
+import me.him188.ani.app.domain.session.TestAuthState
 import me.him188.ani.app.domain.session.TestUserInfo
-import me.him188.ani.app.domain.session.createTestAuthState
 import me.him188.ani.app.ui.exploration.trends.TestTrendingSubjectInfos
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.preview.PreviewSizeClasses
@@ -37,7 +37,6 @@ internal fun PreviewExplorationPage() {
         ExplorationScreen(
             remember {
                 ExplorationPageState(
-                    authState = createTestAuthState(scope),
                     selfInfoState = stateOf(TestUserInfo),
                     trendingSubjectInfoPager,
                     followedSubjectsPager = createTestPager(TestFollowedSubjectInfos),
@@ -45,6 +44,9 @@ internal fun PreviewExplorationPage() {
                     onSetDisableHorizontalScrollTip = {},
                 )
             },
+            authState = TestAuthState,
+            {},
+            {},
             {},
             {},
         )

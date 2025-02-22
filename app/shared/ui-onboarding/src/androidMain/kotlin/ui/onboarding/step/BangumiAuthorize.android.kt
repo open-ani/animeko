@@ -11,15 +11,17 @@ package me.him188.ani.app.ui.onboarding.step
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
-import me.him188.ani.app.domain.session.AuthStateNew
+import me.him188.ani.app.domain.session.AuthState
+import me.him188.ani.app.domain.session.TestAuthState
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
+import me.him188.ani.utils.platform.annotations.TestOnly
 
 @Preview(showBackground = true)
 @Composable
 fun PreviewBangumiAuthorizeStepInitial() {
     ProvideCompositionLocalsForPreview {
         BangumiAuthorizeStep(
-            authorizeState = AuthStateNew.Idle,
+            authorizeState = AuthState.Idle,
             showTokenAuthorizePage = false,
             onSetShowTokenAuthorizePage = { },
             contactActions = { },
@@ -37,7 +39,7 @@ fun PreviewBangumiAuthorizeStepInitial() {
 fun PreviewBangumiAuthorizeStepAwaitingResult() {
     ProvideCompositionLocalsForPreview {
         BangumiAuthorizeStep(
-            authorizeState = AuthStateNew.AwaitingToken(""),
+            authorizeState = AuthState.AwaitingToken(""),
             showTokenAuthorizePage = false,
             onSetShowTokenAuthorizePage = { },
             contactActions = { },
@@ -55,7 +57,7 @@ fun PreviewBangumiAuthorizeStepAwaitingResult() {
 fun PreviewBangumiAuthorizeStepError() {
     ProvideCompositionLocalsForPreview {
         BangumiAuthorizeStep(
-            authorizeState = AuthStateNew.NetworkError,
+            authorizeState = AuthState.NetworkError,
             showTokenAuthorizePage = false,
             onSetShowTokenAuthorizePage = { },
             contactActions = { },
@@ -68,16 +70,13 @@ fun PreviewBangumiAuthorizeStepError() {
     }
 }
 
+@OptIn(TestOnly::class)
 @Preview(showBackground = true)
 @Composable
 fun PreviewBangumiAuthorizeStepSuccess() {
     ProvideCompositionLocalsForPreview {
         BangumiAuthorizeStep(
-            authorizeState = AuthStateNew.Success(
-                "StageGuard has long username",
-                "https://lain.bgm.tv/pic/cover/l/44/7d/467461_HHw4K.jpg",
-                isGuest = false,
-            ),
+            authorizeState = TestAuthState,
             showTokenAuthorizePage = false,
             onSetShowTokenAuthorizePage = { },
             onClickAuthorize = { },
@@ -95,7 +94,7 @@ fun PreviewBangumiAuthorizeStepSuccess() {
 fun PreviewBangumiTokenAuthorizePage() {
     ProvideCompositionLocalsForPreview {
         BangumiAuthorizeStep(
-            authorizeState = AuthStateNew.Idle,
+            authorizeState = AuthState.Idle,
             showTokenAuthorizePage = true,
             onSetShowTokenAuthorizePage = { },
             contactActions = { },

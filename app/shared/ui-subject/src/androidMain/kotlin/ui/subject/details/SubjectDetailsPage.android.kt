@@ -14,6 +14,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.tooling.preview.Preview
 import me.him188.ani.app.domain.foundation.LoadError
+import me.him188.ani.app.domain.session.TestAuthState
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.app.ui.subject.details.state.createTestSubjectDetailsState
@@ -27,10 +28,11 @@ internal fun PreviewSubjectDetails() = ProvideCompositionLocalsForPreview {
     val scope = rememberCoroutineScope()
     val state = remember {
         createTestSubjectDetailsState(scope)
-            .let { SubjectDetailsUIState.Ok(it.subjectId, it) } 
+            .let { SubjectDetailsUIState.Ok(it.subjectId, it) }
     }
     SubjectDetailsScene(
         state,
+        TestAuthState,
         onPlay = { },
         onLoadErrorRetry = { },
         navigationIcon = { BackNavigationIconButton({}) },
@@ -47,6 +49,7 @@ internal fun PreviewPlaceholderSubjectDetails() = ProvideCompositionLocalsForPre
     }
     SubjectDetailsScene(
         state,
+        TestAuthState,
         onPlay = { },
         onLoadErrorRetry = { },
         navigationIcon = { BackNavigationIconButton({}) },
@@ -64,6 +67,7 @@ internal fun PreviewErrorSubjectDetails() = ProvideCompositionLocalsForPreview {
     }
     SubjectDetailsScene(
         state,
+        TestAuthState,
         onPlay = { },
         onLoadErrorRetry = { },
         navigationIcon = { BackNavigationIconButton({}) },

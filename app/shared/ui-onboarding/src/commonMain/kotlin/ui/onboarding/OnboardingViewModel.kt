@@ -39,7 +39,7 @@ import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.session.AniAuthClient
 import me.him188.ani.app.domain.session.AniAuthConfigurator
-import me.him188.ani.app.domain.session.AuthStateNew
+import me.him188.ani.app.domain.session.AuthState
 import me.him188.ani.app.domain.session.SessionEvent
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.session.userInfoOrNull
@@ -94,7 +94,7 @@ class OnboardingViewModel : AbstractSettingsViewModel(), KoinComponent {
             SharingStarted.WhileSubscribed(),
         )
 
-    private val themeSelectState = ThemeSelectState(
+    private val themeSelectState = ThemeSelectStepState(
         state = themeSelectFlow,
         onUpdateUseDarkMode = { darkMode ->
             launchInBackground {
@@ -147,7 +147,7 @@ class OnboardingViewModel : AbstractSettingsViewModel(), KoinComponent {
             SharingStarted.WhileSubscribed(),
         )
 
-    private val configureProxyState = ConfigureProxyState(
+    private val configureProxyState = ConfigureProxyStepState(
         state = configureProxyUiState,
         onUpdateConfig = { newConfig ->
             launchInBackground {
@@ -178,7 +178,7 @@ class OnboardingViewModel : AbstractSettingsViewModel(), KoinComponent {
             SharingStarted.WhileSubscribed(),
         )
 
-    private val bitTorrentFeatureState = BitTorrentFeatureState(
+    private val bitTorrentFeatureState = BitTorrentFeatureStepState(
         enabled = SettingsState(
             valueState = bitTorrentEnabled,
             onUpdate = { bitTorrentEnabled.value = it },
@@ -209,7 +209,7 @@ class OnboardingViewModel : AbstractSettingsViewModel(), KoinComponent {
         parentCoroutineContext = backgroundScope.coroutineContext,
     )
 
-    private val bangumiAuthorizeState = BangumiAuthorizeState(
+    private val bangumiAuthorizeState = BangumiAuthorizeStepState(
         authConfigurator.state,
         onClickNavigateAuthorize = {
             currentAppContext = it
@@ -223,9 +223,9 @@ class OnboardingViewModel : AbstractSettingsViewModel(), KoinComponent {
         onUseGuestMode = {
             // 如果是 Idle, TokenExpired, UnknownError, 则使用 GuestSession
             when (authConfigurator.state.first()) {
-                is AuthStateNew.Idle,
-                is AuthStateNew.TokenExpired,
-                is AuthStateNew.UnknownError -> {
+                is AuthState.Idle,
+                is AuthState.TokenExpired,
+                is AuthState.UnknownError -> {
                     authConfigurator.setGuestSession()
                 }
 
@@ -303,14 +303,14 @@ class OnboardingViewModel : AbstractSettingsViewModel(), KoinComponent {
 
 @Stable
 class OnboardingPresentationState(
-    val themeSelectState: ThemeSelectState,
-    val configureProxyState: ConfigureProxyState,
-    val bitTorrentFeatureState: BitTorrentFeatureState,
-    val bangumiAuthorizeState: BangumiAuthorizeState,
+    val themeSelectState: ThemeSelectStepState,
+    val configureProxyState: ConfigureProxyStepState,
+    val bitTorrentFeatureState: BitTorrentFeatureStepState,
+    val bangumiAuthorizeState: BangumiAuthorizeStepState,
 )
 
 @Stable
-class ThemeSelectState(
+class ThemeSelectStepState(
     val state: Flow<ThemeSelectUIState>,
     val onUpdateUseDarkMode: (DarkMode) -> Unit,
     val onUpdateUseDynamicTheme: (Boolean) -> Unit,
@@ -318,7 +318,7 @@ class ThemeSelectState(
 )
 
 @Stable
-class ConfigureProxyState(
+class ConfigureProxyStepState(
     val state: Flow<ConfigureProxyUIState>,
     private val onUpdateConfig: (ProxyUIConfig) -> Unit,
     val onRequestReTest: () -> Unit,
@@ -388,7 +388,7 @@ sealed class ProxyTestCase(
 }
 
 @Stable
-class BitTorrentFeatureState(
+class BitTorrentFeatureStepState(
     val enabled: SettingsState<Boolean>,
     val grantNotificationPermissionState: Flow<GrantNotificationPermissionState>,
     val onCheckPermissionState: (ContextMP) -> Unit,
@@ -397,8 +397,8 @@ class BitTorrentFeatureState(
 )
 
 @Stable
-class BangumiAuthorizeState(
-    val state: Flow<AuthStateNew>,
+class BangumiAuthorizeStepState(
+    val state: Flow<AuthState>,
     val onCheckCurrentToken: () -> Unit,
     val onClickNavigateAuthorize: (ContextMP) -> Unit,
     val onCancelAuthorize: () -> Unit,

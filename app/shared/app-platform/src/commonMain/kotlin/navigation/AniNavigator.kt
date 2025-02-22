@@ -21,6 +21,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.navigation.NavHostController
 import androidx.navigation.NavOptionsBuilder
+import androidx.navigation.toRoute
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.first
@@ -62,15 +63,6 @@ interface AniNavigator {
 //    ) {
 //        navigator.popBackStackIfExist(route, inclusive = true)
 //    }
-
-    fun popUntilNotWelcome() {
-        currentNavigator.popBackStack(NavRoutes.Welcome, inclusive = true)
-    }
-
-    fun popUntilNotAuth() {
-        currentNavigator.popBackStack(NavRoutes.BangumiTokenAuth, inclusive = true)
-        currentNavigator.popBackStack(NavRoutes.BangumiOAuth, inclusive = true)
-    }
 
     fun navigateSubjectDetails(
         subjectId: Int,
@@ -126,21 +118,8 @@ interface AniNavigator {
     /**
      * 登录页面
      */
-    fun navigateBangumiOAuthOrTokenAuth() {
-        currentNavigator.navigate(NavRoutes.BangumiOAuth) {
-            launchSingleTop = true
-        }
-    }
-
-    fun navigateBangumiTokenAuth() {
-        currentNavigator.navigate(
-            NavRoutes.BangumiTokenAuth,
-        ) {
-            launchSingleTop = true
-            popUpTo(NavRoutes.BangumiOAuth) {
-                inclusive = true
-            }
-        }
+    fun navigateBangumiAuthorize() {
+        currentNavigator.navigate(NavRoutes.BangumiAuthorize)
     }
 
     fun navigateSettings(tab: SettingsTab? = null) {
@@ -199,6 +178,17 @@ private class AniNavigatorImpl : AniNavigator {
     override suspend fun awaitNavController(): NavHostController {
         return _navigator.first()
     }
+}
+
+/**
+ * Find last route of type [T] in the back stack.
+ */
+inline fun <reified T : NavRoutes> NavHostController.findLast(): NavRoutes? {
+    val routeFQN = T::class.qualifiedName ?: return null
+    return currentBackStack.value
+        .asReversed()
+        .firstOrNull { it.destination.route?.contains(routeFQN) == true }
+        ?.toRoute<NavRoutes.Main>()
 }
 
 /**

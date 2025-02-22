@@ -53,10 +53,7 @@ sealed class NavRoutes {
     ) : NavRoutes()
 
     @Serializable
-    data object BangumiOAuth : NavRoutes()
-
-    @Serializable
-    data object BangumiTokenAuth : NavRoutes()
+    data object BangumiAuthorize : NavRoutes()
 
     @Serializable
     data class Settings(

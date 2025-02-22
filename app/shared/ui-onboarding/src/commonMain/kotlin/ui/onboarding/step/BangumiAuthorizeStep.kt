@@ -56,7 +56,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import me.him188.ani.app.domain.session.AuthStateNew
+import me.him188.ani.app.domain.session.AuthState
 import me.him188.ani.app.ui.foundation.IconButton
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.animation.AniMotionScheme
@@ -72,9 +72,13 @@ import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.TextItem
 
+/**
+ * @param onSkip if not null, a "skip" button will be shown, and this callback will be invoked when the button is clicked.
+ */
+// this page will be reused.
 @Composable
-internal fun BangumiAuthorizeStep(
-    authorizeState: AuthStateNew,
+fun BangumiAuthorizeStep(
+    authorizeState: AuthState,
     showTokenAuthorizePage: Boolean,
     contactActions: @Composable () -> Unit,
     onSetShowTokenAuthorizePage: (Boolean) -> Unit,
@@ -82,8 +86,8 @@ internal fun BangumiAuthorizeStep(
     onCancelAuthorize: () -> Unit,
     onClickNavigateToBangumiDev: () -> Unit,
     onAuthorizeByToken: (String) -> Unit,
-    onSkip: () -> Unit,
     modifier: Modifier = Modifier,
+    onSkip: (() -> Unit)? = null,
     layoutParams: WizardLayoutParams = WizardLayoutParams.calculate(currentWindowAdaptiveInfo1().windowSizeClass),
 ) {
     SettingsTab(modifier) {
@@ -120,11 +124,11 @@ internal fun BangumiAuthorizeStep(
 
 @Composable
 private fun SettingsScope.DefaultAuthorize(
-    authorizeState: AuthStateNew,
+    authorizeState: AuthState,
     onClickAuthorize: () -> Unit,
     onClickTokenAuthorize: () -> Unit,
     onClickCancelAuthorize: () -> Unit,
-    onSkip: () -> Unit,
+    onSkip: (() -> Unit)?,
     contactActions: @Composable () -> Unit,
     layoutParams: WizardLayoutParams,
     modifier: Modifier = Modifier,
@@ -167,13 +171,15 @@ private fun SettingsScope.DefaultAuthorize(
                         .fillMaxWidth()
                         .widthIn(max = 720.dp),
                 )
-                TextButton(
-                    onClick = onSkip,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .widthIn(max = 720.dp),
-                ) {
-                    Text("跳过")
+                onSkip?.let {
+                    TextButton(
+                        onClick = it,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .widthIn(max = 720.dp),
+                    ) {
+                        Text("跳过")
+                    }
                 }
                 AuthorizeStateText(
                     authorizeState,
@@ -198,7 +204,7 @@ private fun SettingsScope.DefaultAuthorize(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun AuthorizeButton(
-    authorizeState: AuthStateNew,
+    authorizeState: AuthState,
     onClick: () -> Unit,
     onClickCancel: () -> Unit,
     modifier: Modifier = Modifier,
@@ -210,11 +216,11 @@ private fun AuthorizeButton(
                 transitionSpec = LocalAniMotionScheme.current.animatedContent.standard,
             ) {
                 when (authorizeState) {
-                    is AuthStateNew.Idle, is AuthStateNew.Error -> {
+                    is AuthState.Idle, is AuthState.Error -> {
                         Text("登录 / 注册")
                     }
 
-                    is AuthStateNew.AwaitingResult -> {
+                    is AuthState.AwaitingResult -> {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
@@ -224,18 +230,18 @@ private fun AuthorizeButton(
                                 strokeWidth = 3.dp,
                             )
                             when (authorizeState) {
-                                is AuthStateNew.AwaitingToken -> {
+                                is AuthState.AwaitingToken -> {
                                     Text("正在等待登录结果")
                                 }
 
-                                is AuthStateNew.AwaitingUserInfo -> {
+                                is AuthState.AwaitingUserInfo -> {
                                     Text("正在获取用户信息")
                                 }
                             }
                         }
                     }
 
-                    is AuthStateNew.Success -> {
+                    is AuthState.Success -> {
                         Text(if (authorizeState.isGuest) "登录 / 注册" else "登录其他账号")
                     }
                 }
@@ -247,14 +253,14 @@ private fun AuthorizeButton(
         modifier,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        val awaitingResult = authorizeState is AuthStateNew.AwaitingResult
-        if (authorizeState is AuthStateNew.Success && !authorizeState.isGuest) OutlinedButton(
+        val awaitingResult = authorizeState is AuthState.AwaitingResult
+        if (authorizeState is AuthState.Success && !authorizeState.isGuest) OutlinedButton(
             onClick = onClick,
             modifier = Modifier.weight(1f),
             content = content,
         ) else Button(
             onClick = onClick,
-            enabled = authorizeState !is AuthStateNew.AwaitingResult,
+            enabled = authorizeState !is AuthState.AwaitingResult,
             modifier = Modifier.weight(1f),
             content = content,
             shape = if (awaitingResult) SplitButtonDefaults.leadingButtonShapes().shape else ButtonDefaults.shape,
@@ -275,13 +281,13 @@ private fun AuthorizeButton(
 
 @Composable
 private fun AuthorizeStateText(
-    authorizeState: AuthStateNew,
+    authorizeState: AuthState,
     modifier: Modifier = Modifier,
     animatedVisibilityMotionScheme: AnimatedVisibilityMotionScheme = LocalAniMotionScheme.current.animatedVisibility,
 ) {
 
     AnimatedVisibility(
-        visible = authorizeState.isKnownLogin() || authorizeState is AuthStateNew.Error,
+        visible = authorizeState.isKnownLoggedIn || authorizeState is AuthState.Error,
         enter = animatedVisibilityMotionScheme.columnEnter,
         exit = animatedVisibilityMotionScheme.columnExit,
         modifier = modifier,
@@ -289,17 +295,17 @@ private fun AuthorizeStateText(
         Text(
             remember(authorizeState) {
                 when (authorizeState) {
-                    is AuthStateNew.Idle, is AuthStateNew.AwaitingResult -> ""
-                    is AuthStateNew.Success -> "已登录: ${authorizeState.username}"
-                    is AuthStateNew.NetworkError -> "登录失败：网络错误，请重试"
-                    is AuthStateNew.TokenExpired -> "登录失败：Token 已过期，请重新授权"
-                    is AuthStateNew.UnknownError -> "登录失败：未知错误，请重试\n" + authorizeState.message
+                    is AuthState.Idle, is AuthState.AwaitingResult -> ""
+                    is AuthState.Success -> "已登录: ${authorizeState.username}"
+                    is AuthState.NetworkError -> "登录失败：网络错误，请重试"
+                    is AuthState.TokenExpired -> "登录失败：Token 已过期，请重新授权"
+                    is AuthState.UnknownError -> "登录失败：未知错误，请重试\n" + authorizeState.message
                 }
             },
             style = MaterialTheme.typography.bodyMedium,
             color = when (authorizeState) {
-                is AuthStateNew.Success -> MaterialTheme.colorScheme.primary
-                is AuthStateNew.Error -> MaterialTheme.colorScheme.error
+                is AuthState.Success -> MaterialTheme.colorScheme.primary
+                is AuthState.Error -> MaterialTheme.colorScheme.error
                 else -> MaterialTheme.colorScheme.onSurface
             },
         )

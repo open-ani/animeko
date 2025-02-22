@@ -55,6 +55,8 @@ fun SelfAvatar(
     authState: AuthState,
     selfInfo: UserInfo?,
     size: DpSize, // = DpSize(48.dp, 48.dp)
+    onClickLogin: () -> Unit,
+    onClickRetryRefreshSession: () -> Unit,
     modifier: Modifier = Modifier,
     handler: SelfAvatarActionHandler = rememberSelfAvatarActionHandler(),
 ) {
@@ -69,12 +71,16 @@ fun SelfAvatar(
                 )
             } else {
                 if (authState.isKnownGuest) {
-                    val navigator = LocalNavigator.current
-                    TextButton({ authState.launchAuthorize(navigator) }) {
+                    TextButton(onClickLogin) {
                         Text("登录")
                     }
                 } else {
-                    SessionTipsIcon(authState, showLabel = false)
+                    SessionTipsIcon(
+                        state = authState,
+                        onLogin = onClickLogin,
+                        onRetry = onClickRetryRefreshSession,
+                        showLabel = false,
+                    )
                 }
             }
         }

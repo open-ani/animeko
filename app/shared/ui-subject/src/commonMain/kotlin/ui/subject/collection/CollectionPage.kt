@@ -128,7 +128,6 @@ val COLLECTION_TABS_SORTED = listOf(
 @Stable
 class UserCollectionsState(
     private val startSearch: (filterQuery: CollectionsFilterQuery) -> Flow<PagingData<SubjectCollectionInfo>>,
-    val authState: AuthState,
     selfInfoState: State<UserInfo?>,
     collectionCountsState: State<SubjectCollectionCounts?>,
     val episodeListStateFactory: EpisodeListStateFactory,
@@ -189,8 +188,11 @@ class UserCollectionsState(
 @Composable
 fun CollectionPage(
     state: UserCollectionsState,
+    authState: AuthState,
     items: LazyPagingItems<SubjectCollectionInfo>,
     onClickSearch: () -> Unit,
+    onClickLogin: () -> Unit,
+    onClickRetryRefreshSession: () -> Unit,
     onClickSettings: () -> Unit,
     modifier: Modifier = Modifier,
     actions: @Composable RowScope.() -> Unit = {},
@@ -201,7 +203,7 @@ fun CollectionPage(
     // 如果有缓存, 列表区域要展示缓存, 错误就用图标放在角落
     CollectionPageLayout(
         settingsIcon = {
-            if (state.authState.isKnownGuest // #1269 游客模式下无法打开设置界面
+            if (authState.isKnownGuest // #1269 游客模式下无法打开设置界面
                 || currentWindowAdaptiveInfo1().windowSizeClass.isWidthAtLeastMedium
             ) {
                 IconButton(onClick = onClickSettings) {
@@ -210,11 +212,21 @@ fun CollectionPage(
             }
         },
         actions = {
-            SessionTipsIcon(state.authState)
+            SessionTipsIcon(
+                authState,
+                onLogin = onClickLogin,
+                onRetry = onClickRetryRefreshSession,
+            )
             actions()
         },
         avatar = { recommendedSize ->
-            SelfAvatar(state.authState, state.selfInfo, size = recommendedSize)
+            SelfAvatar(
+                authState,
+                state.selfInfo,
+                onClickLogin = onClickLogin,
+                onClickRetryRefreshSession = onClickRetryRefreshSession,
+                size = recommendedSize,
+            )
         },
         filters = {
             CollectionTypeScrollableTabRow(
@@ -266,11 +278,13 @@ fun CollectionPage(
     ) {
         when {
             // 假设没登录, 但是有缓存, 需要展示缓存
-            state.authState.isKnownGuest && items.itemCount == 0 -> {
+            authState.isKnownGuest && items.itemCount == 0 -> {
                 SessionTipsArea(
-                    state.authState,
-                    guest = { GuestTips(state.authState, onClickSearch) },
-                    Modifier.padding(top = 32.dp)
+                    authState,
+                    guest = { GuestTips(onClickSearch = onClickSearch, onClickLogin = onClickLogin) },
+                    onLogin = onClickLogin,
+                    onRetry = onClickRetryRefreshSession,
+                    modifier = Modifier.padding(top = 32.dp)
                         .padding(horizontal = 16.dp),
                 )
             }
@@ -535,16 +549,15 @@ private fun UnifiedCollectionType.displayText(): String {
 
 @Composable
 private fun GuestTips(
-    authState: AuthState,
     onClickSearch: () -> Unit,
+    onClickLogin: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier) {
-        val navigator = LocalNavigator.current
         Text("游客模式下请搜索后观看，或登录后使用收藏功能")
 
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            OutlinedButton({ authState.launchAuthorize(navigator) }, Modifier.weight(1f)) {
+            OutlinedButton(onClickLogin, Modifier.weight(1f)) {
                 Icon(Icons.Rounded.HowToReg, null)
                 Text("登录", Modifier.padding(start = 8.dp))
             }

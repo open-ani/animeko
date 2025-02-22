@@ -19,7 +19,7 @@ import kotlinx.coroutines.launch
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.session.AniAuthClient
 import me.him188.ani.app.domain.session.AniAuthConfigurator
-import me.him188.ani.app.domain.session.AuthStateNew
+import me.him188.ani.app.domain.session.AuthState
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.utils.coroutines.SingleTaskExecutor
@@ -41,7 +41,7 @@ class OnboardingCompleteViewModel : AbstractViewModel(), KoinComponent {
 
     val state: Flow<OnboardingCompleteState> =
         combine(
-            authConfigurator.state.filterIsInstance<AuthStateNew.Success>(),
+            authConfigurator.state.filterIsInstance<AuthState.Success>(),
             settings.uiSettings.flow.map { it.mainSceneInitialPage },
         ) { authState, initialPage ->
             OnboardingCompleteState(
@@ -54,15 +54,15 @@ class OnboardingCompleteViewModel : AbstractViewModel(), KoinComponent {
                 OnboardingCompleteState.Placeholder,
                 SharingStarted.WhileSubscribed(),
             )
-    
+
     suspend fun startAuthCheckLoop() {
         authLoopTasker.invoke {
             launch(start = CoroutineStart.UNDISPATCHED) { authConfigurator.authorizeRequestCheckLoop() }
             authConfigurator.checkAuthorizeState()
-            
+
         }
     }
-    
+
     companion object {
         internal const val DEFAULT_AVATAR = "https://lain.bgm.tv/r/200/pic/user/l/icon.jpg"
     }

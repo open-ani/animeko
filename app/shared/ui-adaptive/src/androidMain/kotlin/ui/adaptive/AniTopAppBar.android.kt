@@ -19,8 +19,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.tooling.preview.PreviewScreenSizes
+import me.him188.ani.app.domain.session.TestAuthState
 import me.him188.ani.app.domain.session.TestUserInfo
-import me.him188.ani.app.domain.session.createTestAuthState
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.layout.Zero
 import me.him188.ani.app.ui.foundation.session.SelfAvatar
@@ -42,7 +42,13 @@ private fun PreviewAniTopAppBar() = ProvideCompositionLocalsForPreview {
             }
         },
         avatar = { recommendedSize ->
-            SelfAvatar(createTestAuthState(scope), TestUserInfo, size = recommendedSize)
+            SelfAvatar(
+                TestAuthState,
+                TestUserInfo,
+                onClickLogin = { },
+                onClickRetryRefreshSession = { },
+                size = recommendedSize,
+            )
         },
         searchIconButton = {
             IconButton({}) {

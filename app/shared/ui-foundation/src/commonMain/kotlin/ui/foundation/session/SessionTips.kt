@@ -45,8 +45,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.domain.session.AuthState
-import me.him188.ani.app.domain.session.SessionStatus
-import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.ui.foundation.layout.paddingIfNotEmpty
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
 
@@ -100,29 +98,6 @@ import me.him188.ani.app.ui.foundation.text.ProvideContentColor
 //    }
 
 /**
- * @param guest
- */
-@Composable
-fun SessionTipsArea(
-    authState: AuthState,
-    guest: @Composable () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val navigator = LocalNavigator.current
-    SessionTipsArea(
-        authState.status ?: SessionStatus.Refreshing,
-        onLogin = {
-            authState.launchAuthorize(navigator)
-        },
-        onRetry = {
-            authState.retry()
-        },
-        guest = guest,
-        modifier,
-    )
-}
-
-/**
  * 用于显示未登录时的提示和相关动作按钮的区域.
  *
  * 占用两三行的高度, 包含两个按钮, 一个用于登录, 一个用于搜索.
@@ -131,7 +106,7 @@ fun SessionTipsArea(
  */
 @Composable
 fun SessionTipsArea(
-    status: SessionStatus,
+    state: AuthState,
     onLogin: () -> Unit,
     onRetry: () -> Unit,
     guest: @Composable () -> Unit = {},
@@ -142,17 +117,17 @@ fun SessionTipsArea(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        when (status) {
-            is SessionStatus.Verified -> {
+        when {
+            state is AuthState.Success -> {
 
             }
 
-            is SessionStatus.Verifying, SessionStatus.Refreshing -> {
+            state.isLoading -> {
                 CircularProgressIndicator()
             }
 
-            SessionStatus.NoToken -> guest()
-            SessionStatus.Expired -> {
+            state.isKnownGuest -> guest()
+            state.isKnownExpired -> {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Icon(Icons.Rounded.HowToReg, null)
                     Text("登录过期，请重新登录")
@@ -163,7 +138,7 @@ fun SessionTipsArea(
                 }
             }
 
-            SessionStatus.NetworkError -> {
+            state is AuthState.NetworkError -> {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Icon(Icons.Rounded.CloudOff, null)
                     Text("网络错误，请检查网络连接")
@@ -171,15 +146,15 @@ fun SessionTipsArea(
                 RetryButton(onRetry)
             }
 
-            SessionStatus.ServiceUnavailable -> {
+            /*SessionStatus.ServiceUnavailable -> {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Icon(Icons.Rounded.SyncProblem, null)
                     Text("服务异常，请稍后再试")
                 }
                 RetryButton(onRetry)
-            }
+            }*/
 
-            SessionStatus.Guest -> guest()
+            state is AuthState.Idle -> guest()
         }
     }
 }
@@ -192,62 +167,42 @@ private fun RetryButton(onRetry: () -> Unit, modifier: Modifier = Modifier) {
     }
 }
 
-@Composable
-fun SessionTipsIcon(
-    authState: AuthState,
-    modifier: Modifier = Modifier,
-    showLoading: Boolean = true,
-    showLabel: Boolean = true,
-) {
-    val navigator = LocalNavigator.current
-    SessionTipsIcon(
-        authState.status ?: SessionStatus.Refreshing,
-        onLogin = {
-            authState.launchAuthorize(navigator)
-        },
-        onRetry = {
-            authState.retry()
-        },
-        modifier,
-        showLoading = showLoading,
-        showLabel = showLabel,
-    )
-}
-
 @Stable
 private val NO_ACTION = {}
 
 @Composable
 fun SessionTipsIcon(
-    status: SessionStatus,
+    state: AuthState,
     onLogin: () -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
     showLoading: Boolean = true,
     showLabel: Boolean = true,
 ) {
-    val action = when (status) {
-        SessionStatus.Guest -> onLogin
-        is SessionStatus.Verified -> NO_ACTION
-        is SessionStatus.Loading -> NO_ACTION
-        SessionStatus.Expired -> onLogin
-        SessionStatus.NetworkError -> onRetry
-        SessionStatus.NoToken -> onLogin
-        SessionStatus.ServiceUnavailable -> onRetry
+    val action = when (state) {
+        AuthState.Idle -> onLogin
+        is AuthState.Success -> {
+            if (state.isGuest) onLogin else NO_ACTION
+        }
+
+        is AuthState.AwaitingResult -> NO_ACTION
+        AuthState.TokenExpired -> onLogin
+        AuthState.NetworkError -> onRetry
+        is AuthState.UnknownError -> onLogin
     }
     TextButton(
         action,
         modifier.animateContentSize(),
-        enabled = status !is SessionStatus.Verified,
+        enabled = !state.isKnownLoggedIn,
     ) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            when (status) {
-                is SessionStatus.Verified -> {}
+            when {
+                state.isKnownLoggedIn -> {}
 
-                is SessionStatus.Loading -> {
+                state.isLoading -> {
                     if (showLoading) {
                         var rotation by remember { mutableStateOf(0f) }
                         LaunchedEffect(true) {
@@ -269,14 +224,14 @@ fun SessionTipsIcon(
                     }
                 }
 
-                SessionStatus.NoToken -> {
+                state.isKnownLoggedOut -> {
                     ProvideContentColor(MaterialTheme.colorScheme.primary) {
                         Icon(Icons.Rounded.HowToReg, "登录")
                         Text("登录")
                     }
                 }
 
-                SessionStatus.Expired -> {
+                state.isKnownExpired -> {
                     ProvideContentColor(MaterialTheme.colorScheme.error) {
                         Icon(
                             Icons.Rounded.SyncProblem,
@@ -288,7 +243,7 @@ fun SessionTipsIcon(
                     }
                 }
 
-                SessionStatus.NetworkError -> {
+                state is AuthState.NetworkError -> {
                     ProvideContentColor(MaterialTheme.colorScheme.error) {
                         Icon(
                             Icons.Rounded.SyncProblem,
@@ -301,26 +256,12 @@ fun SessionTipsIcon(
                     }
                 }
 
-                SessionStatus.ServiceUnavailable -> {
-                    ProvideContentColor(MaterialTheme.colorScheme.error) {
-                        Icon(
-                            Icons.Rounded.SyncProblem,
-                            "服务器异常",
-                            tint = MaterialTheme.colorScheme.error,
-                        )
-                        if (showLabel) {
-                            Text("服务异常")
-                        }
-                    }
-                }
-
-                SessionStatus.Guest -> {
+                state.isKnownGuest -> {
                     if (showLabel) {
                         Text("游客模式")
                     }
                 }
             }
-
         }
     }
 }

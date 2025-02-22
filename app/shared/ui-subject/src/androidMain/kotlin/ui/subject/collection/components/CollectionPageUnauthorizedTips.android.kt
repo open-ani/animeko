@@ -24,34 +24,36 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
-import me.him188.ani.app.data.models.UserInfo
-import me.him188.ani.app.domain.session.SessionStatus
+import me.him188.ani.app.domain.session.AuthState
+import me.him188.ani.app.domain.session.TestAuthState
+import me.him188.ani.app.domain.session.TestGuestAuthState
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.session.SessionTipsArea
 import me.him188.ani.app.ui.foundation.session.SessionTipsIcon
+import me.him188.ani.utils.platform.annotations.TestOnly
 
 @Composable
 private fun PreviewSessionTipsAreaImpl(
-    status: SessionStatus,
+    authState: AuthState,
     modifier: Modifier = Modifier,
 ) {
     Column {
-        Text(status.toString(), Modifier.padding(bottom = 4.dp))
+        Text(authState.toString(), Modifier.padding(bottom = 4.dp))
         Surface(Modifier.fillMaxWidth(), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)) {
-            SessionTipsArea(status, {}, {}, {}, modifier)
+            SessionTipsArea(authState, {}, {}, {}, modifier)
         }
     }
 }
 
 @Composable
 private fun PreviewSessionTipsIconImpl(
-    status: SessionStatus,
+    authState: AuthState,
     modifier: Modifier = Modifier,
 ) {
     Column {
-        Text(status.toString(), Modifier.padding(bottom = 4.dp))
+        Text(authState.toString(), Modifier.padding(bottom = 4.dp))
         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-            SessionTipsIcon(status, {}, {}, modifier)
+            SessionTipsIcon(authState, {}, {}, modifier)
         }
     }
 }
@@ -84,13 +86,15 @@ fun PreviewSessionTipsIcon() {
     }
 }
 
+@OptIn(TestOnly::class)
 @Stable
 val PreviewSessionStatuses = listOf(
-    SessionStatus.Refreshing,
-    SessionStatus.Verifying("1"),
-    SessionStatus.Verified("1", UserInfo.EMPTY),
-    SessionStatus.Expired,
-    SessionStatus.NetworkError,
-    SessionStatus.ServiceUnavailable,
-    SessionStatus.NoToken,
+    AuthState.Idle,
+    AuthState.AwaitingToken("REFRESH"),
+    AuthState.AwaitingUserInfo("REFRESH"),
+    AuthState.NetworkError,
+    AuthState.TokenExpired,
+    AuthState.UnknownError("unknown error"),
+    TestAuthState,
+    TestGuestAuthState,
 )

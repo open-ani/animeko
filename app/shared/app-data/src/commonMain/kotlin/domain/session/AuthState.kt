@@ -9,71 +9,51 @@
 
 package me.him188.ani.app.domain.session
 
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.State
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.UserInfo
-import me.him188.ani.app.navigation.AniNavigator
-import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.utils.platform.annotations.TestOnly
-import org.koin.core.component.KoinComponent
-import org.koin.core.component.inject
 
+// This class is intend to replace current [AuthState]
 @Stable
-class AuthState(
-    state: State<SessionStatus?>,
-    val launchAuthorize: (navigator: AniNavigator) -> Unit,
-    private val retry: suspend () -> Unit,
-    backgroundScope: CoroutineScope,
-) {
-    val status by state
+sealed class AuthState {
+    @Immutable
+    data object Idle : AuthState()
 
-    val isKnownLoggedIn: Boolean by derivedStateOf { this.status is SessionStatus.Verified }
-    val isKnownGuest: Boolean by derivedStateOf { this.status is SessionStatus.Guest }
-    val isLoading: Boolean by derivedStateOf { this.status == null || this.status is SessionStatus.Loading }
-
-    /**
-     * 任何未登录成功的情况, 如网络错误
-     */
-    val isKnownLoggedOut: Boolean by derivedStateOf { this.status is SessionStatus.VerificationFailed }
-
-    val isKnownExpired: Boolean by derivedStateOf { this.status is SessionStatus.NoToken || this.status is SessionStatus.Expired }
-
-    private val retryTasker = MonoTasker(backgroundScope)
-    fun retry() {
-        retryTasker.launch {
-            retry.invoke()
-        }
+    @Stable
+    sealed class AwaitingResult : AuthState() {
+        abstract val requestId: String
     }
-}
 
-fun <T> T.launchAuthorize(navigator: AniNavigator)
-        where T : KoinComponent {
-    val sessionManager: SessionManager by inject()
-    sessionManager.requireAuthorizeAsync(
-        onLaunch = {
-            withContext(Dispatchers.Main) { navigator.navigateBangumiOAuthOrTokenAuth() }
-        },
-        skipOnGuest = false,
-    )  //  use SessionManager's lifecycle
-}
+    @Stable
+    data class AwaitingToken(override val requestId: String) : AwaitingResult()
 
-@TestOnly
-fun createTestAuthState(
-    backgroundScope: CoroutineScope,
-    value: SessionStatus = SessionStatus.Verified("test", TestUserInfo),
-): AuthState {
-    return AuthState(
-        mutableStateOf(value),
-        launchAuthorize = {},
-        retry = {},
-        backgroundScope,
-    )
+    @Stable
+    data class AwaitingUserInfo(override val requestId: String) : AwaitingResult()
+
+    sealed class Error : AuthState()
+
+    @Immutable
+    data object NetworkError : Error()
+
+    @Immutable
+    data object TokenExpired : Error()
+
+    @Stable
+    data class UnknownError(val message: String) : Error()
+
+    @Stable
+    data class Success(
+        val username: String,
+        val avatarUrl: String?,
+        val isGuest: Boolean
+    ) : AuthState()
+
+    val isKnownLoggedIn: Boolean get() = this is Success && !isGuest
+    val isKnownGuest: Boolean get() = this is Success && isGuest
+    val isKnownLoggedOut: Boolean get() = this is NetworkError || this is TokenExpired || this is Idle
+    val isKnownExpired: Boolean get() = this is TokenExpired
+    val isLoading: Boolean get() = this is AwaitingResult
 }
 
 @Stable
@@ -88,3 +68,22 @@ val TestUserInfo
 @Stable
 @TestOnly
 val TestSelfInfo get() = TestUserInfo
+
+
+@Stable
+@TestOnly
+val TestAuthState
+    get() = AuthState.Success(
+        username = "Tester",
+        avatarUrl = null,
+        isGuest = false,
+    )
+
+@Stable
+@TestOnly
+val TestGuestAuthState
+    get() = AuthState.Success(
+        username = "",
+        avatarUrl = null,
+        isGuest = true,
+    )

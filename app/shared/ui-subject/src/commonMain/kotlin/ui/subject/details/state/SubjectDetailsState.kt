@@ -27,7 +27,6 @@ import me.him188.ani.app.data.models.subject.RelatedCharacterInfo
 import me.him188.ani.app.data.models.subject.RelatedPersonInfo
 import me.him188.ani.app.data.models.subject.RelatedSubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectInfo
-import me.him188.ani.app.domain.session.AuthState
 import me.him188.ani.app.ui.comment.CommentState
 import me.him188.ani.app.ui.subject.AiringLabelState
 import me.him188.ani.app.ui.subject.SubjectProgressState
@@ -55,7 +54,6 @@ class SubjectDetailsState(
     val totalCharactersCountState: State<Int?>,
     val relatedSubjectsPager: Flow<PagingData<RelatedSubjectInfo>>,
     val episodeListState: EpisodeListState,
-    val authState: AuthState,
     val editableSubjectCollectionTypeState: EditableSubjectCollectionTypeState,
     val editableRatingState: EditableRatingState,
     val subjectProgressState: SubjectProgressState,

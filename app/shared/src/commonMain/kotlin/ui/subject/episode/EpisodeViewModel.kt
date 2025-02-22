@@ -81,7 +81,10 @@ import me.him188.ani.app.domain.player.extension.RememberPlayProgressExtension
 import me.him188.ani.app.domain.player.extension.SaveMediaPreferenceExtension
 import me.him188.ani.app.domain.player.extension.SwitchMediaOnPlayerErrorExtension
 import me.him188.ani.app.domain.player.extension.SwitchNextEpisodeExtension
+import me.him188.ani.app.domain.session.AniAuthConfigurator
 import me.him188.ani.app.domain.session.AuthState
+import me.him188.ani.app.domain.session.NoopAniAuthClient
+import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.app.platform.Context
 import me.him188.ani.app.ui.comment.BangumiCommentSticker
@@ -92,7 +95,6 @@ import me.him188.ani.app.ui.comment.CommentState
 import me.him188.ani.app.ui.comment.EditCommentSticker
 import me.him188.ani.app.ui.danmaku.UIDanmakuEvent
 import me.him188.ani.app.ui.foundation.AbstractViewModel
-import me.him188.ani.app.ui.foundation.AuthState
 import me.him188.ani.app.ui.foundation.HasBackgroundScope
 import me.him188.ani.app.ui.foundation.launchInBackground
 import me.him188.ani.app.ui.foundation.stateOf
@@ -165,6 +167,7 @@ class EpisodeViewModel(
     private val koin: Koin = GlobalKoin,
 ) : KoinComponent, AbstractViewModel(), HasBackgroundScope {
     // region dependencies
+    private val sessionManager: SessionManager by inject()
     private val playerStateFactory: MediampPlayerFactory<*> by inject()
     private val subjectCollectionRepository: SubjectCollectionRepository by inject()
     private val episodeCollectionRepository: EpisodeCollectionRepository by inject()
@@ -295,7 +298,15 @@ class EpisodeViewModel(
         },
     )
 
-    val authState: AuthState = AuthState()
+    private val authConfigurator =
+        AniAuthConfigurator(
+            sessionManager = sessionManager,
+            authClient = NoopAniAuthClient,
+            { },
+            parentCoroutineContext = backgroundScope.coroutineContext,
+        )
+
+    val authState: Flow<AuthState> = authConfigurator.state
 
     @OptIn(UnsafeEpisodeSessionApi::class)
     val episodeDetailsState: EpisodeDetailsState = kotlin.run {

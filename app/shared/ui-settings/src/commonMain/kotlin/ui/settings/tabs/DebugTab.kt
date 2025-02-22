@@ -21,6 +21,7 @@ import me.him188.ani.app.data.models.preference.UISettings
 import me.him188.ani.app.data.models.preference.supportsLimitUploadOnMeteredNetwork
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.NavRoutes
+import me.him188.ani.app.navigation.findLast
 import me.him188.ani.app.platform.MeteredNetworkDetector
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
@@ -85,16 +86,10 @@ fun DebugTab(
             TextItem(
                 onClick = {
                     val navController = navigator.currentNavigator
-                    val mainRouteFQN = NavRoutes.Main::class.qualifiedName!!
-                    // 找到上一个 NavRoutes.Main 的路由
-                    val lastMainRoute = navController.currentBackStack.value
-                        .asReversed()
-                        .firstOrNull { it.destination.route?.contains(mainRouteFQN) == true }
-                        ?.toRoute<NavRoutes.Main>()
                     // 从 SettingsScreen 进入 onboarding, 最后 navigateMain 要 popUpTo Main
                     // 如果 back stack 没有 Main, 那就 popUpTo Settings, 这个一定有
                     navigator.navigateOnboarding(
-                        lastMainRoute
+                        navController.findLast<NavRoutes.Main>()
                             ?: navController.currentBackStackEntry?.toRoute<NavRoutes.Settings>(),
                     )
                 },

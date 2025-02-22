@@ -53,6 +53,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -79,6 +80,7 @@ import kotlinx.coroutines.launch
 import me.him188.ani.app.data.network.protocol.DanmakuInfo
 import me.him188.ani.app.data.network.protocol.DanmakuLocation
 import me.him188.ani.app.domain.comment.CommentContext
+import me.him188.ani.app.domain.session.AuthState
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.features.StreamType
@@ -224,7 +226,7 @@ private fun EpisodeScreenContent(
             vm.isFullscreen = it
         }
     }
-    
+
     //Enable window fullscreen mode detection
     if (LocalPlatform.current.isDesktop()) {
         vm.isFullscreen = LocalPlatformWindow.current.isUndecoratedFullscreen
@@ -249,7 +251,7 @@ private fun EpisodeScreenContent(
         if (vm.isFullscreen || !showExpandedUI) {
             OverrideCaptionButtonAppearance(isDark = true)
         }
-        
+
         val pageState = vm.pageState.collectAsStateWithLifecycle()
 
         when (val page = pageState.value) {
@@ -286,11 +288,11 @@ private fun EpisodeScreenContent(
                                 page,
                                 danmakuHostState,
                                 danmakuEditorState,
-                                Modifier.fillMaxSize(),
+                                modifier = Modifier.fillMaxSize(),
                                 pauseOnPlaying = pauseOnPlaying,
                                 tryUnpause = tryUnpause,
                                 setShowEditCommentSheet = { showEditCommentSheet = it },
-                                windowInsets,
+                                windowInsets = windowInsets,
                             )
 
                         else -> EpisodeScreenContentPhone(
@@ -338,10 +340,10 @@ private fun EpisodeScreenTabletVeryWide(
     page: EpisodePageState,
     danmakuHostState: DanmakuHostState,
     danmakuEditorState: DanmakuEditorState,
-    modifier: Modifier = Modifier,
     pauseOnPlaying: () -> Unit,
     tryUnpause: () -> Unit,
     setShowEditCommentSheet: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
     windowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
 ) {
     BoxWithConstraints {
@@ -411,7 +413,7 @@ private fun EpisodeScreenTabletVeryWide(
                                     vm.videoStatisticsFlow,
                                     page.mediaSelectorState,
                                     { page.mediaSourceResultListPresentation },
-                                    vm.authState,
+                                    vm.authState.collectAsState(AuthState.Idle).value,
                                     onSwitchEpisode = { episodeId ->
                                         if (!vm.episodeSelectorState.selectEpisodeId(episodeId)) {
                                             navigator.navigateEpisodeDetails(vm.subjectId, episodeId)
@@ -422,6 +424,7 @@ private fun EpisodeScreenTabletVeryWide(
                                     onSetDanmakuSourceEnabled = { providerId, enabled ->
                                         vm.setDanmakuSourceEnabled(providerId, enabled)
                                     },
+                                    onClickLogin = { navigator.navigateBangumiAuthorize() },
                                 )
                             }
                         }
@@ -527,7 +530,7 @@ private fun EpisodeScreenContentPhone(
                     vm.videoStatisticsFlow,
                     page.mediaSelectorState,
                     { page.mediaSourceResultListPresentation },
-                    vm.authState,
+                    vm.authState.collectAsState(AuthState.Idle).value,
                     onSwitchEpisode = { episodeId ->
                         if (!vm.episodeSelectorState.selectEpisodeId(episodeId)) {
                             navigator.navigateEpisodeDetails(vm.subjectId, episodeId)
@@ -538,6 +541,7 @@ private fun EpisodeScreenContentPhone(
                     onSetDanmakuSourceEnabled = { providerId, enabled ->
                         vm.setDanmakuSourceEnabled(providerId, enabled)
                     },
+                    onClickLogin = { navigator.navigateBangumiAuthorize() },
                     Modifier.fillMaxSize(),
                 )
             }

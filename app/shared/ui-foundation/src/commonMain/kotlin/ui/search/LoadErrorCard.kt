@@ -40,12 +40,10 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
 import me.him188.ani.app.domain.foundation.LoadError
-import me.him188.ani.app.domain.session.launchAuthorize
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.ui.foundation.icons.Passkey_24dp_E8EAED_FILL0_wght400_GRAD0_opsz24
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
-import org.koin.core.component.KoinComponent
 
 
 @Composable
@@ -76,9 +74,7 @@ fun LoadErrorCard(
     modifier: Modifier = Modifier,
     onLogin: () -> Unit = run {
         val navigator = LocalNavigator.current
-        {
-            object : KoinComponent {}.launchAuthorize(navigator)
-        }
+        { navigator.navigateBangumiAuthorize() }
     },
     shape: Shape = MaterialTheme.shapes.large, // behave like Dialogs.
     containerColor: Color = LoadErrorDefaults.containerColor,

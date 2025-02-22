@@ -50,9 +50,6 @@ import me.him188.ani.app.data.repository.episode.EpisodeProgressRepository
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.data.repository.subject.SubjectRelationsRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
-import me.him188.ani.app.domain.session.AuthState
-import me.him188.ani.app.domain.session.SessionManager
-import me.him188.ani.app.domain.session.launchAuthorize
 import me.him188.ani.app.ui.comment.CommentMapperContext.parseToUIComment
 import me.him188.ani.app.ui.comment.CommentState
 import me.him188.ani.app.ui.foundation.produceState
@@ -72,7 +69,6 @@ import me.him188.ani.utils.coroutines.flows.flowOfEmptyList
 import me.him188.ani.utils.platform.annotations.TestOnly
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
-import kotlin.coroutines.CoroutineContext
 
 interface SubjectDetailsStateFactory {
     fun create(subjectInfoFlow: Flow<SubjectInfo>): Flow<SubjectDetailsState>
@@ -90,9 +86,7 @@ interface SubjectDetailsStateFactory {
     fun create(subjectCollectionInfo: SubjectCollectionInfo, scope: CoroutineScope): SubjectDetailsState
 }
 
-class DefaultSubjectDetailsStateFactory(
-    parentCoroutineContext: CoroutineContext
-) : SubjectDetailsStateFactory, KoinComponent {
+class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinComponent {
     private val subjectCollectionRepository: SubjectCollectionRepository by inject()
     private val episodeProgressRepository: EpisodeProgressRepository by inject()
     private val episodeCollectionRepository: EpisodeCollectionRepository by inject()
@@ -103,13 +97,10 @@ class DefaultSubjectDetailsStateFactory(
     private val bangumiCommentRepository: BangumiCommentRepository by inject()
     private val animeScheduleRepository: AnimeScheduleRepository by inject()
 
-    val sessionManager: SessionManager by inject()
-
     override fun create(
         subjectInfoFlow: Flow<SubjectInfo>
     ): Flow<SubjectDetailsState> = flow {
         coroutineScope {
-            val authState = createAuthState()
             val subjectProgressStateFactory = createSubjectProgressStateFactory()
 
 
@@ -124,7 +115,6 @@ class DefaultSubjectDetailsStateFactory(
                             subjectCollectionFlow,
                             subjectCollectionFlow.map { it.collectionType }.stateIn(this),
                             subjectProgressStateFactory,
-                            authState,
                         ),
                     )
                     awaitCancellation()
@@ -138,7 +128,6 @@ class DefaultSubjectDetailsStateFactory(
         subjectInfo: SubjectInfo,
     ): Flow<SubjectDetailsState> = flow {
         coroutineScope {
-            val authState = createAuthState()
             val subjectProgressStateFactory = createSubjectProgressStateFactory()
             val subjectCollectionFlow = subjectCollectionRepository.subjectCollectionFlow(subjectInfo.subjectId)
                 .shareIn(this, started = SharingStarted.Eagerly, replay = 1)
@@ -149,7 +138,6 @@ class DefaultSubjectDetailsStateFactory(
                     subjectCollectionFlow,
                     subjectCollectionFlow.map { it.collectionType }.stateIn(this),
                     subjectProgressStateFactory,
-                    authState,
                 ),
             )
             awaitCancellation()
@@ -158,27 +146,24 @@ class DefaultSubjectDetailsStateFactory(
 
     override fun create(subjectId: Int, placeholder: SubjectInfo?): Flow<SubjectDetailsState> = flow {
         coroutineScope {
-            val authState = createAuthState()
             val subjectProgressStateFactory = createSubjectProgressStateFactory()
             val subjectCollectionInfoFlow = subjectCollectionRepository.subjectCollectionFlow(subjectId)
                 .stateIn(this)
-            
+
             emit(
                 createImpl(
                     subjectCollectionInfoFlow.value.subjectInfo,
                     subjectCollectionInfoFlow,
                     subjectCollectionInfoFlow.map { it.collectionType }.stateIn(this),
                     subjectProgressStateFactory,
-                    authState,
                 ),
             )
-            
+
             awaitCancellation()
         }
     }
 
     override fun create(subjectCollectionInfo: SubjectCollectionInfo, scope: CoroutineScope): SubjectDetailsState {
-        val authState = scope.createAuthState()
         val subjectProgressStateFactory = createSubjectProgressStateFactory()
 
         val subjectCollectionInfoFlow = MutableStateFlow(subjectCollectionInfo)
@@ -187,18 +172,8 @@ class DefaultSubjectDetailsStateFactory(
             subjectCollectionInfoFlow,
             MutableStateFlow(subjectCollectionInfo.collectionType),
             subjectProgressStateFactory,
-            authState,
         )
     }
-
-    private fun CoroutineScope.createAuthState() = AuthState(
-        state = sessionManager.state.produceState(null, this),
-        launchAuthorize = { navigator ->
-            launchAuthorize(navigator)
-        },
-        retry = { sessionManager.retry() },
-        this,
-    )
 
     private fun createSubjectProgressStateFactory() = SubjectProgressStateFactory(
         episodeProgressRepository,
@@ -208,8 +183,7 @@ class DefaultSubjectDetailsStateFactory(
         subjectInfo: SubjectInfo,
         subjectCollectionFlow: SharedFlow<SubjectCollectionInfo>,
         selfCollectionTypeStateFlow: StateFlow<UnifiedCollectionType>,
-        subjectProgressStateFactory: SubjectProgressStateFactory,
-        authState: AuthState
+        subjectProgressStateFactory: SubjectProgressStateFactory
     ): SubjectDetailsState {
         val totalStaffCountState = mutableStateOf<Int?>(null)
         val totalCharactersCountState = mutableStateOf<Int?>(null)
@@ -377,7 +351,6 @@ class DefaultSubjectDetailsStateFactory(
                 .map { PagingData.from(it) }
                 .cachedIn(this),
             episodeListState = episodeListState,
-            authState = authState,
             editableSubjectCollectionTypeState = editableSubjectCollectionTypeState,
             editableRatingState = editableRatingState,
             subjectProgressState = subjectProgressState,

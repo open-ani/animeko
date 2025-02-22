@@ -134,6 +134,7 @@ fun EpisodeDetails(
     onRefreshMediaSources: () -> Unit,
     onRestartSource: (MediaSourceResultPresentation) -> Unit,
     onSetDanmakuSourceEnabled: (providerId: String, enabled: Boolean) -> Unit,
+    onClickLogin: () -> Unit,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
 ) {
@@ -153,6 +154,7 @@ fun EpisodeDetails(
             ) {
                 SubjectDetailsScene(
                     subjectDetailsState,
+                    authState,
                     onPlay = onSwitchEpisode,
                     onLoadErrorRetry = { state.subjectDetailsStateLoader.reload(state.subjectId) },
                     showTopBar = false,

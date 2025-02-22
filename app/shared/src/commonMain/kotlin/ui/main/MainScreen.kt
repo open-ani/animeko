@@ -44,6 +44,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.paging.compose.collectAsLazyPagingItems
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
+import me.him188.ani.app.domain.session.AuthState
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.MainScreenPage
 import me.him188.ani.app.navigation.getIcon
@@ -80,6 +81,7 @@ import me.him188.ani.utils.platform.isAndroid
 @Composable
 fun MainScreen(
     page: MainScreenPage,
+    authState: AuthState,
     modifier: Modifier = Modifier,
     onNavigateToPage: (MainScreenPage) -> Unit,
     onNavigateToSettings: () -> Unit,
@@ -95,12 +97,13 @@ fun MainScreen(
         }
     }
 
-    MainScreenContent(page, onNavigateToPage, onNavigateToSettings, modifier, navigationLayoutType)
+    MainScreenContent(page, authState, onNavigateToPage, onNavigateToSettings, modifier, navigationLayoutType)
 }
 
 @Composable
 private fun MainScreenContent(
     page: MainScreenPage,
+    authState: AuthState,
     onNavigateToPage: (MainScreenPage) -> Unit,
     onNavigateToSettings: () -> Unit,
     modifier: Modifier = Modifier,
@@ -184,11 +187,17 @@ private fun MainScreenContent(
             ) { page ->
                 when (page) {
                     MainScreenPage.Exploration -> {
+                        val vm = viewModel { ExplorationPageViewModel() }
                         ExplorationScreen(
-                            viewModel { ExplorationPageViewModel() }.explorationPageState,
+                            vm.explorationPageState,
+                            authState,
                             onSearch = { onNavigateToPage(MainScreenPage.Search) },
                             onClickSettings = { navigator.navigateSettings() },
-                            modifier.fillMaxSize(),
+                            onClickLogin = { navigator.navigateBangumiAuthorize() },
+                            onClickRetryRefreshSession = {
+                                coroutineScope.launch { vm.refreshLoginSession() }
+                            },
+                            modifier = modifier.fillMaxSize(),
                             actions = {
                                 TextButtonUpdateLogo()
                             },
@@ -199,10 +208,15 @@ private fun MainScreenContent(
                         val vm = viewModel<UserCollectionsViewModel> { UserCollectionsViewModel() }
                         CollectionPage(
                             state = vm.state,
+                            authState = authState,
                             items = vm.items.collectAsLazyPagingItems(),
                             onClickSearch = { onNavigateToPage(MainScreenPage.Search) },
                             onClickSettings = { navigator.navigateSettings() },
-                            Modifier.fillMaxSize(),
+                            onClickLogin = { navigator.navigateBangumiAuthorize() },
+                            onClickRetryRefreshSession = {
+                                coroutineScope.launch { vm.refreshLoginSession() }
+                            },
+                            modifier = Modifier.fillMaxSize(),
                             enableAnimation = vm.myCollectionsSettings.enableListAnimation1,
                             lazyGridState = vm.lazyGridState,
                             actions = {
@@ -231,6 +245,7 @@ private fun MainScreenContent(
                                     .collectAsStateWithLifecycle(null)
                                 SubjectDetailsScene(
                                     subjectDetailsState,
+                                    authState,
                                     onPlay = { episodeId ->
                                         val current = subjectDetailsState
                                         if (current != null) {
