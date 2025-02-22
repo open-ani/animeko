@@ -716,7 +716,7 @@ internal class TitleBarWindowProc(
      * @param y, the vertical offset relative to the client area.
      */
     private fun hitTestWindowResizerBorder(x: Int, y: Int): Int {
-        //Force update window info.
+        // Force update window info.
         updateWindowInfo()
         val horizontalPadding = frameX
         val verticalPadding = frameY
@@ -804,7 +804,7 @@ internal class TitleBarWindowProc(
             }
 
             WM_NCHITTEST -> {
-                //skip resizer border hit test if window is maximized
+                // Skip resizer border hit test if window is maximized
                 if (!isMaximized) {
                     val callResult = lParam.usePoint(::hitTestWindowResizerBorder)
                     if (isHitWindowResizer(callResult)) {
@@ -822,7 +822,7 @@ internal class TitleBarWindowProc(
                     user32.SetWindowLong(hWnd, WinUser.GWL_STYLE, oldStyle)
                     isMaximized = user32.isWindowInMaximized(hWnd)
                     if (menu != null) {
-                        // 更新菜单项状态
+                        // Update menu items state.
                         val menuItemInfo = MENUITEMINFO().apply {
                             cbSize = this.size()
                             fMask = MIIM_STATE
@@ -836,18 +836,18 @@ internal class TitleBarWindowProc(
                         updateMenuItemInfo(menu, menuItemInfo, WinUser.SC_MAXIMIZE, !isMaximized)
                         updateMenuItemInfo(menu, menuItemInfo, SC_CLOSE, true)
 
-                        // 设置默认菜单项
+                        // Set default menu item.
                         user32.SetMenuDefaultItem(menu, WINT_MAX, false)
 
-                        // 获取鼠标位置
+                        // Get cursor position.
                         val lParamValue = lParam.toInt()
                         val x = lowWord(lParamValue)
                         val y = highWord(lParamValue)
 
-                        // 显示菜单并获取用户选择
+                        // Show menu and get user selection.
                         val ret = user32.TrackPopupMenu(menu, TPM_RETURNCMD, x, y, 0, hWnd, null)
                         if (ret != 0) {
-                            // 发送系统命令
+                            // Send WM_SYSCOMMAND message.
                             user32.PostMessage(
                                 hWnd,
                                 WinUser.WM_SYSCOMMAND,
@@ -873,7 +873,7 @@ internal class TitleBarWindowProc(
 
             WM_SETTINGCHANGE -> {
                 val changedKey = Pointer(lParam.toLong()).getWideString(0)
-                // theme changed for color and darkTheme
+                // Theme changed for color and darkTheme
                 if (changedKey == "ImmersiveColorSet") {
                     _systemTheme.tryEmit(currentSystemTheme)
                     _systemColor.tryEmit(currentAccentColor())
@@ -900,8 +900,8 @@ internal class TitleBarWindowProc(
         menuItemInfo.fState = if (enabled) ExtendedUser32.MFS_ENABLED else ExtendedUser32.MFS_DISABLED
         user32.SetMenuItemInfo(menu, item, false, menuItemInfo)
     }
-    
-    //workaround for background erase.
+
+    // Workaround for background erase.
     private fun eraseWindowBackground() {
         val buildNumber = WindowsWindowUtils.instance.windowsBuildNumber() ?: return
         if (buildNumber < 22000) {
