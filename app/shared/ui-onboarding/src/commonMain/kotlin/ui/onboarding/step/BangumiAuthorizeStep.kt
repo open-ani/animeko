@@ -299,7 +299,7 @@ private fun AuthorizeStateText(
                     is AuthState.Success -> "已登录: ${authorizeState.username}"
                     is AuthState.NetworkError -> "登录失败：网络错误，请重试"
                     is AuthState.TokenExpired -> "登录失败：Token 已过期，请重新授权"
-                    is AuthState.UnknownError -> "登录失败：未知错误，请重试\n" + authorizeState.message
+                    is AuthState.UnknownError -> "登录失败：未知错误，请重试"
                 }
             },
             style = MaterialTheme.typography.bodyMedium,
