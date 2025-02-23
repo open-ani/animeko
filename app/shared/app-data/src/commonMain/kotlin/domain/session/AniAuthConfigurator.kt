@@ -392,10 +392,7 @@ class AniAuthConfigurator(
 
                 // oauth 成功并不代表所有流程结束了, 还会继续进行 session 验证
                 // null 表示还未开始 oauth, 也是进行中的动作
-                ExternalOAuthRequest.State.Processing -> {
-                    AuthState.AwaitingToken(requestId)
-                }
-
+                ExternalOAuthRequest.State.Processing,
                 ExternalOAuthRequest.State.Success -> {
                     AuthState.AwaitingUserInfo(requestId)
                 }
