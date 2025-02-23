@@ -707,7 +707,7 @@ internal class TitleBarWindowProc(
 
     init {
         dwmapi.DwmExtendFrameIntoClientArea(windowHandle, Dwmapi.WindowMargins(-1, -1, -1, -1))
-
+        windowHandle.updateWindowStyle { it and WS_SYSMENU.inv() }
         eraseWindowBackground()
     }
 
@@ -846,6 +846,7 @@ internal class TitleBarWindowProc(
 
                         // Show menu and get user selection.
                         val ret = user32.TrackPopupMenu(menu, TPM_RETURNCMD, x, y, 0, hWnd, null)
+                        menuItemInfo.clear()
                         if (ret != 0) {
                             // Send WM_SYSCOMMAND message.
                             user32.PostMessage(
@@ -952,6 +953,11 @@ internal class TitleBarWindowProc(
         return result
     }
 
+    private inline fun HWND.updateWindowStyle(block: (old: Int) -> Int) {
+        val oldStyle = user32.GetWindowLong(this, WinUser.GWL_STYLE)
+        user32.SetWindowLong(this, WinUser.GWL_STYLE, block(oldStyle))
+    }
+
     fun currentAccentColor(): Color {
         val value = Advapi32Util.registryGetIntValue(
             WinReg.HKEY_CURRENT_USER,
@@ -1002,6 +1008,7 @@ internal class TitleBarWindowProc(
 
     fun dispose() {
         skiaLayerWindowProc?.dispose()
+        windowHandle.updateWindowStyle { it or WS_SYSMENU }
         user32.SetWindowLongPtr(windowHandle, WinUser.GWL_WNDPROC, defaultWindowProc)
     }
 }
