@@ -56,8 +56,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.flatMapConcat
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.mapLatest
 import me.him188.ani.app.platform.PlatformWindow
 import me.him188.ani.app.platform.SavedWindowsWindowState
 import me.him188.ani.app.platform.window.ExtendedUser32.Companion.HTBOTTOM
@@ -165,19 +166,24 @@ class WindowsWindowUtils : AwtWindowUtils() {
         }
     }
 
+    fun isExtendToTitleBar(platformWindow: PlatformWindow): Flow<Boolean> {
+        return snapshotFlow { platformWindow.titleBarWindowProc }
+            .mapLatest { it != null }
+    }
+
     fun windowIsActive(platformWindow: PlatformWindow): Flow<Boolean?> {
         return snapshotFlow { platformWindow.titleBarWindowProc }
-            .flatMapConcat { it?.windowIsActive ?: flowOf(null) }
+            .flatMapLatest { it?.windowIsActive ?: flowOf(null) }
     }
 
     fun windowAccentColor(platformWindow: PlatformWindow): Flow<Color> {
         return snapshotFlow { platformWindow.titleBarWindowProc }
-            .flatMapConcat { it?.systemColor ?: flowOf(Color.Unspecified) }
+            .flatMapLatest { it?.systemColor ?: flowOf(Color.Unspecified) }
     }
 
     fun frameIsColorful(platformWindow: PlatformWindow): Flow<Boolean> {
         return snapshotFlow { platformWindow.titleBarWindowProc }
-            .flatMapConcat { it?.frameIsColorful ?: flowOf(false) }
+            .flatMapLatest { it?.frameIsColorful ?: flowOf(false) }
     }
 
     fun restoreWindow(windowHandle: Long) {

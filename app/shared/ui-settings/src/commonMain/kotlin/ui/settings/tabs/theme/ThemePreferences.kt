@@ -30,6 +30,7 @@ import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
+import me.him188.ani.app.ui.foundation.theme.isPlatformSupportDynamicTheme
 import me.him188.ani.app.ui.settings.framework.SettingsState
 import me.him188.ani.app.ui.settings.framework.components.DropdownItem
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
@@ -115,7 +116,7 @@ fun SettingsScope.ThemeGroup(
 //            }
 //        }
 
-        if (LocalPlatform.current.isAndroid()) {
+        if (isPlatformSupportDynamicTheme()) {
             SwitchItem(
                 checked = themeSettings.useDynamicTheme,
                 onCheckedChange = { checked ->

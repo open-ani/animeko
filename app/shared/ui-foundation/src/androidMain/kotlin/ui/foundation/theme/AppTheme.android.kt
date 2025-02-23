@@ -13,6 +13,7 @@ import android.os.Build
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
+import androidx.annotation.ChecksSdkIntAtLeast
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
@@ -33,7 +34,7 @@ actual fun appColorScheme(
     useBlackBackground: Boolean,
     isDark: Boolean,
 ): ColorScheme {
-    return if (useDynamicTheme && Build.VERSION.SDK_INT >= 31) {
+    return if (useDynamicTheme && isPlatformSupportDynamicTheme()) {
         if (isDark) {
             modifyColorSchemeForBlackBackground(
                 colorScheme = dynamicDarkColorScheme(LocalContext.current),
@@ -88,4 +89,10 @@ fun SystemBarColorEffect(
             onDispose { }
         }
     }
+}
+
+@ChecksSdkIntAtLeast(api = Build.VERSION_CODES.S)
+@Composable
+actual fun isPlatformSupportDynamicTheme(): Boolean {
+    return Build.VERSION.SDK_INT >= 31
 }

@@ -43,6 +43,7 @@ import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.theme.appColorScheme
+import me.him188.ani.app.ui.foundation.theme.isPlatformSupportDynamicTheme
 import me.him188.ani.app.ui.onboarding.WizardLayoutParams
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.components.TextItem
@@ -51,7 +52,6 @@ import me.him188.ani.app.ui.settings.tabs.theme.DiagonalMixedThemePreviewPanel
 import me.him188.ani.app.ui.settings.tabs.theme.ThemePreviewPanel
 import me.him188.ani.app.ui.theme.DefaultSeedColor
 import me.him188.ani.app.ui.theme.themeColorOptions
-import me.him188.ani.utils.platform.isAndroid
 
 @Composable
 internal fun ThemeSelectStep(
@@ -105,7 +105,7 @@ internal fun ThemeSelectStep(
             title = { Text("色彩") },
             useThinHeader = true,
         ) {
-            if (platform.isAndroid()) {
+            if (isPlatformSupportDynamicTheme()) {
                 TextItem(
                     modifier = Modifier
                         .fillMaxWidth()

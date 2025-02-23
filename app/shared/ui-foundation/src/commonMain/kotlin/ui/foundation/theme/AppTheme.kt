@@ -55,6 +55,9 @@ expect fun appColorScheme(
     },
 ): ColorScheme
 
+@Composable
+expect fun isPlatformSupportDynamicTheme(): Boolean
+
 /**
  * AniApp MaterialTheme.
  * @param isDark Used for overriding [DarkMode] in specific situations.

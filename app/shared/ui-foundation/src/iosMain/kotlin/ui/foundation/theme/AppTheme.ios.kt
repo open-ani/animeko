@@ -32,3 +32,8 @@ actual fun appColorScheme(
         },
     )
 }
+
+@Composable
+actual fun isPlatformSupportDynamicTheme(): Boolean {
+    return false
+}
