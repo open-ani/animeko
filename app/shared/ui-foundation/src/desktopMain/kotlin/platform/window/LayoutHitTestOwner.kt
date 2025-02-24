@@ -16,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.InternalComposeUiApi
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.node.HitTestResult
 import androidx.compose.ui.node.RootNodeOwner
 import androidx.compose.ui.scene.ComposeScene
@@ -75,7 +76,7 @@ private abstract class ReflectLayoutHitTestOwner : LayoutHitTestOwner {
     ): Boolean {
         // result type is List<Modifier.Node> (compose 1.8)
         val result = HitTestResult()
-        owner.root.hitTest(Offset(x, y), result, false, true)
+        owner.root.hitTest(Offset(x, y), result, PointerType.Mouse, true)
         // pointer input modifier node detection for Material 3 components
         for (index in result.lastIndex downTo result.lastIndex - 1) {
             val node = result.getOrNull(index) ?: return false
