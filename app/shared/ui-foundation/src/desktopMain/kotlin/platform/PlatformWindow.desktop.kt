@@ -14,10 +14,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.WindowScope
 import androidx.compose.ui.window.WindowState
-import me.him188.ani.app.platform.window.TitleBarWindowProc
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import me.him188.ani.app.platform.window.BasicWindowProc
 import me.him188.ani.utils.platform.Platform
 import me.him188.ani.utils.platform.isWindows
 
@@ -29,7 +32,11 @@ actual open class PlatformWindow(
 ) {
     internal var savedWindowsWindowState: SavedWindowsWindowState? = null
 
-    internal var titleBarWindowProc by mutableStateOf<TitleBarWindowProc?>(null)
+    internal var windowsWindowProc by mutableStateOf<BasicWindowProc?>(null)
+
+    val accentColor: StateFlow<Color> by derivedStateOf {
+        windowsWindowProc?.accentColor ?: MutableStateFlow(Color.Unspecified)
+    }
 
     private var isWindowsUndecoratedFullscreen by mutableStateOf(false)
     

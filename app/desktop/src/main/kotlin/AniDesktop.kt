@@ -443,7 +443,7 @@ private fun FrameWindowScope.MainWindowContent(
                 DarkMode.DARK -> true
             }
         }
-        DisposableEffect(isTitleBarDark, titleBarThemeController) {
+        DisposableEffect(isTitleBarDark, navContainerColor, titleBarThemeController) {
             window.setTitleBar(navContainerColor, isTitleBarDark)
             onDispose {}
         }

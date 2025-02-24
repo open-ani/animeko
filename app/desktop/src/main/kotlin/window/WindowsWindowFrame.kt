@@ -102,12 +102,18 @@ internal fun FrameWindowScope.WindowsWindowFrame(
     onCloseRequest: () -> Unit,
     content: @Composable () -> Unit
 ) {
+    val platformWindow = LocalPlatformWindow.current
+    val windowUtils = WindowsWindowUtils.instance
+
     if (frameState == null) {
+        //Listen to window theme change event.
+        DisposableEffect(platformWindow) {
+            windowUtils.handleBasicWindowProc(platformWindow)
+            onDispose { windowUtils.disposeWindowProc(platformWindow) }
+        }
         content()
         return
     }
-    val windowUtils = WindowsWindowUtils.instance
-    val platformWindow = LocalPlatformWindow.current
     val scope = rememberCoroutineScope()
     
     //Keep 1px for showing float window top area border.
@@ -277,9 +283,15 @@ private fun ExtendToTitleBar(frameState: WindowsWindowFrameState) {
     val density = LocalDensity.current
     DisposableEffect(frameState.platformWindow.windowHandle, density, frameState.platformWindow, frameState) {
         val windowUtils = WindowsWindowUtils.instance
-        windowUtils.extendToTitleBar(frameState.platformWindow) { x, y -> frameState.hitTest(x, y, density) }
+        windowUtils.handleCustomTitleBarWindowProc(frameState.platformWindow) { x, y ->
+            frameState.hitTest(
+                x,
+                y,
+                density,
+            )
+        }
         onDispose {
-            windowUtils.removeExtendToTitleBar(frameState.platformWindow)
+            windowUtils.disposeWindowProc(frameState.platformWindow)
         }
     }
 }
@@ -290,9 +302,7 @@ private fun WindowsWindowFrameState.collectCaptionButtonColors(): CaptionButtonC
         WindowsWindowUtils.instance.frameIsColorful(platformWindow)
     }.collectAsState(false)
     return if (isAccentColorFrameEnabled.value) {
-        val accentColor = remember(platformWindow) {
-            WindowsWindowUtils.instance.windowAccentColor(platformWindow)
-        }.collectAsState(Color.Unspecified)
+        val accentColor = LocalPlatformWindow.current.accentColor.collectAsState()
         if (accentColor.value != Color.Unspecified) {
             CaptionButtonDefaults.accentColors(seedColor = accentColor.value)
         } else {
