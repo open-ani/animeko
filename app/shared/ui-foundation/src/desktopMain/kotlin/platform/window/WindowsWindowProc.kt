@@ -10,7 +10,6 @@
 package me.him188.ani.app.platform.window
 
 import androidx.compose.ui.awt.ComposeWindow
-import androidx.compose.ui.graphics.Color
 import com.sun.jna.CallbackReference
 import com.sun.jna.Native
 import com.sun.jna.Pointer
@@ -77,68 +76,20 @@ import me.him188.ani.app.platform.window.ExtendedUser32.Companion.WM_NCRBUTTONUP
 import me.him188.ani.app.platform.window.ExtendedUser32.Companion.WM_SETTINGCHANGE
 import me.him188.ani.app.platform.window.ExtendedUser32.MENUITEMINFO
 import org.jetbrains.skiko.SkiaLayer
-import org.jetbrains.skiko.SystemTheme
-import org.jetbrains.skiko.currentSystemTheme
 import java.awt.Window
 
-internal open class BasicWindowProc(
-    private val user32: ExtendedUser32,
-    window: Window,
-) : WindowProc, AutoCloseable {
-    protected val windowHandle: HWND =
-        HWND((window as? ComposeWindow)?.let { Pointer(it.windowHandle) } ?: Native.getWindowPointer(window))
-
-    private val _accentColor: MutableStateFlow<Color> = MutableStateFlow(currentAccentColor())
-    val accentColor: StateFlow<Color> = _accentColor.asStateFlow()
-
-    private val defaultWindowProc =
-        user32.SetWindowLongPtr(windowHandle, WinUser.GWL_WNDPROC, CallbackReference.getFunctionPointer(this))
-
-    override fun callback(hwnd: HWND, uMsg: Int, wParam: WinDef.WPARAM, lParam: WinDef.LPARAM): LRESULT {
-        if (uMsg == WM_SETTINGCHANGE) {
-            val changedKey = Pointer(lParam.toLong()).getWideString(0)
-            // Theme changed for color and darkTheme
-            if (changedKey == "ImmersiveColorSet") {
-                _accentColor.tryEmit(currentAccentColor())
-                onThemeChanged()
-            }
-        }
-        return callDefWindowProc(hwnd, uMsg, wParam, lParam)
-    }
-
-    protected open fun onThemeChanged() {}
-
-    private fun callDefWindowProc(hwnd: HWND, uMsg: Int, wParam: WinDef.WPARAM, lParam: WinDef.LPARAM): LRESULT {
-        return user32.CallWindowProc(defaultWindowProc, hwnd, uMsg, wParam, lParam)
-    }
-
-    private fun currentAccentColor(): Color {
-        val value = Advapi32Util.registryGetIntValue(
-            WinReg.HKEY_CURRENT_USER,
-            "SOFTWARE\\Microsoft\\Windows\\DWM",
-            "AccentColor",
-        ).toLong()
-        val alpha = (value and 0xFF000000)
-        val green = (value and 0xFF).shl(16)
-        val blue = (value and 0xFF00)
-        val red = (value and 0xFF0000).shr(16)
-        return Color((alpha or green or blue or red).toInt())
-    }
-
-    override fun close() {
-        user32.SetWindowLongPtr(windowHandle, WinUser.GWL_WNDPROC, defaultWindowProc)
-    }
-}
-
-internal class CustomTitleBarWindowProc(
+internal class ExtendedTitleBarWindowProc(
     window: Window,
     private val user32: ExtendedUser32,
     dwmapi: Dwmapi,
     private val childHitTest: (Float, Float) -> Int
-) : BasicWindowProc(user32, window) {
+) : WindowProc, java.lang.AutoCloseable {
 
-    private val _systemTheme: MutableStateFlow<SystemTheme> = MutableStateFlow(currentSystemTheme)
-    val systemTheme: StateFlow<SystemTheme> = _systemTheme.asStateFlow()
+    protected val windowHandle: HWND =
+        HWND((window as? ComposeWindow)?.let { Pointer(it.windowHandle) } ?: Native.getWindowPointer(window))
+
+    private val defaultWindowProc =
+        user32.SetWindowLongPtr(windowHandle, WinUser.GWL_WNDPROC, CallbackReference.getFunctionPointer(this))
 
     private val _windowIsActive: MutableStateFlow<Boolean> = MutableStateFlow(user32.GetActiveWindow() == windowHandle)
     val windowIsActive: StateFlow<Boolean> = _windowIsActive.asStateFlow()
@@ -209,7 +160,7 @@ internal class CustomTitleBarWindowProc(
             // thus effectively making all the window our client area
             WM_NCCALCSIZE -> {
                 if (wParam.toInt() == 0) {
-                    super.callback(hWnd, uMsg, wParam, lParam)
+                    callDefWindowProc(hWnd, uMsg, wParam, lParam)
                 } else {
                     // this behavior is call full screen mode
                     val style = user32.GetWindowLong(hWnd, WinUser.GWL_STYLE)
@@ -314,14 +265,14 @@ internal class CustomTitleBarWindowProc(
                         }
                     }
                 }
-                super.callback(hWnd, uMsg, wParam, lParam)
+                callDefWindowProc(hWnd, uMsg, wParam, lParam)
             }
 
             WM_SIZE -> {
                 val lParamValue = lParam.toInt()
                 width = lowWord(lParamValue)
                 height = highWord(lParamValue)
-                super.callback(hWnd, uMsg, wParam, lParam)
+                callDefWindowProc(hWnd, uMsg, wParam, lParam)
             }
 
             else -> {
@@ -333,14 +284,26 @@ internal class CustomTitleBarWindowProc(
                         user32.PostMessage(it.contentHandle, uMsg, wParam, lParam)
                     }
                 }
-                super.callback(hWnd, uMsg, wParam, lParam)
+
+                if (uMsg == WM_SETTINGCHANGE) {
+                    val changedKey = Pointer(lParam.toLong()).getWideString(0)
+                    // Theme changed for color and darkTheme
+                    if (changedKey == "ImmersiveColorSet") {
+                        _frameIsColorful.tryEmit(isAccentColorWindowFrame())
+                    }
+                }
+                return callDefWindowProc(hWnd, uMsg, wParam, lParam)
             }
         }
     }
 
-    override fun onThemeChanged() {
-        _systemTheme.tryEmit(currentSystemTheme)
-        _frameIsColorful.tryEmit(isAccentColorWindowFrame())
+    private fun callDefWindowProc(
+        hwnd: HWND,
+        uMsg: Int,
+        wParam: WinDef.WPARAM,
+        lParam: WinDef.LPARAM
+    ): LRESULT {
+        return user32.CallWindowProc(defaultWindowProc, hwnd, uMsg, wParam, lParam)
     }
 
     private fun updateMenuItemInfo(menu: HMENU, menuItemInfo: MENUITEMINFO, item: Int, enabled: Boolean) {
@@ -363,9 +326,7 @@ internal class CustomTitleBarWindowProc(
     fun highWord(value: Int): Int = (value shr 16) and 0xFFFF
 
     fun lowWord(value: Int): Int = value and 0xFFFF
-
-    fun word(high: Int, low: Int): Int = (high and 0xFFFF shl 16) + low and 0xFFFF
-
+    
     private fun isHitWindowResizer(result: Int): Boolean = when (result) {
         HTTOP, HTLEFT, HTRIGHT, HTBOTTOM,
         HTTOPLEFT, HTTOPRIGHT, HTBOTTOMLEFT, HTBOTTOMRIGHT -> {
@@ -444,7 +405,7 @@ internal class CustomTitleBarWindowProc(
     override fun close() {
         skiaLayerWindowProc?.close()
         windowHandle.updateWindowStyle { it or WS_SYSMENU }
-        super.close()
+        user32.SetWindowLongPtr(windowHandle, WinUser.GWL_WNDPROC, defaultWindowProc)
     }
 }
 

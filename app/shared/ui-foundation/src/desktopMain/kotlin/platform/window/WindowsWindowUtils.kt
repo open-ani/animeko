@@ -10,7 +10,6 @@
 package me.him188.ani.app.platform.window
 
 import androidx.annotation.Keep
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
@@ -101,43 +100,32 @@ class WindowsWindowUtils : AwtWindowUtils() {
         }.getOrElse { false }
     }
 
-    fun handleBasicWindowProc(
-        platformWindow: PlatformWindow,
-        windowScope: WindowScope? = platformWindow.windowScope
-    ) {
-        if (windowScope != null) {
-            platformWindow.windowsWindowProc?.close()
-            platformWindow.windowsWindowProc = BasicWindowProc(
-                extendedUser32,
-                windowScope.window,
-            )
-        }
-    }
-
-    fun handleCustomTitleBarWindowProc(
+    fun handleExtendedTitleBarWindowProc(
         platformWindow: PlatformWindow,
         windowScope: WindowScope? = platformWindow.windowScope,
         hitTest: (Float, Float) -> Int
     ) {
         if (windowScope != null) {
-            platformWindow.windowsWindowProc?.close()
-            platformWindow.windowsWindowProc = CustomTitleBarWindowProc(
-                windowScope.window,
-                extendedUser32,
-                dwmAPi,
-                hitTest,
+            platformWindow.windowsWindowProc.value?.close()
+            platformWindow.windowsWindowProc.tryEmit(
+                ExtendedTitleBarWindowProc(
+                    windowScope.window,
+                    extendedUser32,
+                    dwmAPi,
+                    hitTest,
+                ),
             )
         }
     }
 
     fun windowIsActive(platformWindow: PlatformWindow): Flow<Boolean?> {
-        return snapshotFlow { platformWindow.windowsWindowProc }
-            .flatMapLatest { (it as? CustomTitleBarWindowProc)?.windowIsActive ?: flowOf(null) }
+        return platformWindow.windowsWindowProc
+            .flatMapLatest { it?.windowIsActive ?: flowOf(null) }
     }
 
     fun frameIsColorful(platformWindow: PlatformWindow): Flow<Boolean> {
-        return snapshotFlow { platformWindow.windowsWindowProc }
-            .flatMapLatest { (it as? CustomTitleBarWindowProc)?.frameIsColorful ?: flowOf(false) }
+        return platformWindow.windowsWindowProc
+            .flatMapLatest { it?.frameIsColorful ?: flowOf(false) }
     }
 
     fun restoreWindow(windowHandle: Long) {
@@ -153,8 +141,8 @@ class WindowsWindowUtils : AwtWindowUtils() {
     }
 
     fun disposeWindowProc(platformWindow: PlatformWindow) {
-        platformWindow.windowsWindowProc?.close()
-        platformWindow.windowsWindowProc = null
+        platformWindow.windowsWindowProc.value?.close()
+        platformWindow.windowsWindowProc.tryEmit(null)
     }
 
     fun windowsBuildNumber(): Int? = kotlin.runCatching {
@@ -197,7 +185,7 @@ class WindowsWindowUtils : AwtWindowUtils() {
             window.savedWindowsWindowState = SavedWindowsWindowState(
                 style = currentStyle,
                 exStyle = User32.INSTANCE.GetWindowLong(hwnd, WinUser.GWL_EXSTYLE),
-                rect = WinDef.RECT().apply {
+                rect = RECT().apply {
                     User32.INSTANCE.GetWindowRect(hwnd, this)
                 }.toComposeRect(),
                 maximized = maximised,
@@ -293,7 +281,7 @@ class WindowsWindowUtils : AwtWindowUtils() {
     }
 }
 
-private fun WinDef.RECT.toComposeRect(): Rect {
+private fun RECT.toComposeRect(): Rect {
     return Rect(left.toFloat(), top.toFloat(), right.toFloat(), bottom.toFloat())
 }
 
@@ -359,7 +347,7 @@ internal interface ExtendedUser32 : User32 {
      * @param lpMonitorInfo structure to receive monitor information
      * @return `true` on success; `false` otherwise
      */
-    fun GetMonitorInfoA(hMonitor: Pointer?, lpMonitorInfo: WinUser.MONITORINFO?): Boolean
+    fun GetMonitorInfoA(hMonitor: Pointer?, lpMonitorInfo: MONITORINFO?): Boolean
 
     /**
      * Send a message to a native window.
@@ -370,7 +358,7 @@ internal interface ExtendedUser32 : User32 {
      * @param lParam message parameter
      * @return result
      */
-    override fun SendMessage(hWnd: HWND, Msg: Int, wParam: WinDef.WPARAM, lParam: WinDef.LPARAM): WinDef.LRESULT
+    override fun SendMessage(hWnd: HWND, Msg: Int, wParam: WinDef.WPARAM, lParam: WinDef.LPARAM): LRESULT
 
     /**
      * Converts the screen coordinates of a specified point on the screen to client-area coordinates.
@@ -609,17 +597,12 @@ internal interface ExtendedUser32 : User32 {
         internal const val HTBOTTOMLEFT: Int = 16
         internal const val HTBOTTOMRIGHT: Int = 17
 
-        const val WS_THICKFRAME: Int = 0x00040000
-        const val WS_CAPTION: Int = 0x00c00000
-
         const val WS_EX_DLGMODALFRAME: Int = 0x00000001
         const val WS_EX_WINDOWEDGE: Int = 0x00000100
         const val WS_EX_CLIENTEDGE: Int = 0x00000200
         const val WS_EX_STATICEDGE: Int = 0x00020000
 
-        const val SWP_NOZORDER: Int = 0x0004
         const val SWP_NOACTIVATE: Int = 0x0010
-        const val SWP_FRAMECHANGED: Int = 0x0020
 
         val MONITOR_DEFAULTTONEAREST: DWORD = DWORD(2)
     }

@@ -102,18 +102,13 @@ internal fun FrameWindowScope.WindowsWindowFrame(
     onCloseRequest: () -> Unit,
     content: @Composable () -> Unit
 ) {
-    val platformWindow = LocalPlatformWindow.current
-    val windowUtils = WindowsWindowUtils.instance
-
     if (frameState == null) {
-        //Listen to window theme change event.
-        DisposableEffect(platformWindow) {
-            windowUtils.handleBasicWindowProc(platformWindow)
-            onDispose { windowUtils.disposeWindowProc(platformWindow) }
-        }
         content()
         return
     }
+
+    val platformWindow = LocalPlatformWindow.current
+    val windowUtils = WindowsWindowUtils.instance
     val scope = rememberCoroutineScope()
     
     //Keep 1px for showing float window top area border.
@@ -283,7 +278,7 @@ private fun ExtendToTitleBar(frameState: WindowsWindowFrameState) {
     val density = LocalDensity.current
     DisposableEffect(frameState.platformWindow.windowHandle, density, frameState.platformWindow, frameState) {
         val windowUtils = WindowsWindowUtils.instance
-        windowUtils.handleCustomTitleBarWindowProc(frameState.platformWindow) { x, y ->
+        windowUtils.handleExtendedTitleBarWindowProc(frameState.platformWindow) { x, y ->
             frameState.hitTest(
                 x,
                 y,

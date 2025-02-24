@@ -83,6 +83,7 @@ import me.him188.ani.app.platform.JvmLogHelper
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.PermissionManager
 import me.him188.ani.app.platform.PlatformWindow
+import me.him188.ani.app.platform.WindowsAccentColorEffect
 import me.him188.ani.app.platform.createAppRootCoroutineScope
 import me.him188.ani.app.platform.getCommonKoinModule
 import me.him188.ani.app.platform.startCommonKoinModule
@@ -114,6 +115,7 @@ import me.him188.ani.utils.io.toKtPath
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
+import me.him188.ani.utils.platform.isWindows
 import org.jetbrains.compose.resources.painterResource
 import org.koin.core.context.startKoin
 import org.koin.dsl.module
@@ -410,6 +412,9 @@ object AniDesktop {
                     LocalSystemTheme provides systemTheme,
                 ) {
 
+                    if (platform.isWindows()) {
+                        WindowsAccentColorEffect()
+                    }
                     WindowFrame(
                         windowState = windowState,
                         onCloseRequest = { exitApplication() },
