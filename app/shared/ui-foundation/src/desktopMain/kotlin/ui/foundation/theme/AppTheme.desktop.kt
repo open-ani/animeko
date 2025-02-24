@@ -29,7 +29,7 @@ actual fun appColorScheme(
     isDark: Boolean,
 ): ColorScheme {
     val actualSeedColor = if (useDynamicTheme && isPlatformSupportDynamicTheme()) {
-        val currentWindowColor by LocalPlatformWindow.current.accentColor.collectAsState()
+        val currentWindowColor by LocalPlatformWindow.current.accentColor.collectAsState(Color.Unspecified)
         //fallback to default color, if platform can't get the accent color
         currentWindowColor.takeOrElse { seedColor }
     } else {

@@ -83,11 +83,12 @@ import me.him188.ani.app.platform.JvmLogHelper
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.PermissionManager
 import me.him188.ani.app.platform.PlatformWindow
-import me.him188.ani.app.platform.WindowsAccentColorEffect
 import me.him188.ani.app.platform.createAppRootCoroutineScope
 import me.him188.ani.app.platform.getCommonKoinModule
 import me.him188.ani.app.platform.startCommonKoinModule
+import me.him188.ani.app.platform.window.HandleWindowsWindowProc
 import me.him188.ani.app.platform.window.LocalTitleBarThemeController
+import me.him188.ani.app.platform.window.rememberLayoutHitTestOwner
 import me.him188.ani.app.platform.window.setTitleBar
 import me.him188.ani.app.tools.update.DesktopUpdateInstaller
 import me.him188.ani.app.tools.update.UpdateInstaller
@@ -396,6 +397,12 @@ object AniDesktop {
 
                 val systemTheme by systemThemeDetector.current.collectAsStateWithLifecycle()
                 val platform = LocalPlatform.current
+                // We need layout hit test owner to do hit test on windows.
+                val layoutHitTestOwner = if (platform.isWindows()) {
+                    rememberLayoutHitTestOwner()
+                } else {
+                    null
+                }
                 CompositionLocalProvider(
                     LocalContext provides context,
                     LocalWindowState provides windowState,
@@ -404,17 +411,15 @@ object AniDesktop {
                             windowHandle = window.windowHandle,
                             windowScope = this,
                             platform = platform,
-                            windowState = windowState
+                            windowState = windowState,
+                            layoutHitTestOwner = layoutHitTestOwner,
                         )
                     },
                     LocalOnBackPressedDispatcherOwner provides backPressedDispatcherOwner,
                     @OptIn(InternalComposeUiApi::class)
                     LocalSystemTheme provides systemTheme,
                 ) {
-
-                    if (platform.isWindows()) {
-                        WindowsAccentColorEffect()
-                    }
+                    HandleWindowsWindowProc()
                     WindowFrame(
                         windowState = windowState,
                         onCloseRequest = { exitApplication() },

@@ -18,9 +18,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.WindowScope
 import androidx.compose.ui.window.WindowState
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import me.him188.ani.app.platform.window.ExtendedTitleBarWindowProc
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import me.him188.ani.app.platform.window.BasicWindowProc
+import me.him188.ani.app.platform.window.LayoutHitTestOwner
 import me.him188.ani.utils.platform.Platform
 import me.him188.ani.utils.platform.isWindows
 
@@ -28,15 +31,18 @@ actual open class PlatformWindow(
     val windowHandle: Long,
     val windowScope: WindowScope? = null,
     val windowState: WindowState,
-    val platform: Platform
+    val platform: Platform,
+    val layoutHitTestOwner: LayoutHitTestOwner? = null
 ) {
     internal var savedWindowsWindowState: SavedWindowsWindowState? = null
 
-    internal val windowsWindowProc = MutableStateFlow<ExtendedTitleBarWindowProc?>(null)
+    internal val windowsWindowProc = MutableStateFlow<BasicWindowProc?>(null)
 
     // Common desktop accent color for window.
-    internal val _accentColor: MutableStateFlow<Color> = MutableStateFlow(Color.Unspecified)
-    val accentColor: StateFlow<Color> get() = _accentColor
+    val accentColor: Flow<Color>
+        get() = windowsWindowProc.flatMapLatest {
+            it?.accentColor ?: flowOf(Color.Unspecified)
+        }
 
     private var isWindowsUndecoratedFullscreen by mutableStateOf(false)
     

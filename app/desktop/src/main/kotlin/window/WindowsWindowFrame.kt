@@ -33,7 +33,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
@@ -77,7 +76,6 @@ import me.him188.ani.app.platform.window.LayoutHitTestOwner
 import me.him188.ani.app.platform.window.LocalTitleBarThemeController
 import me.him188.ani.app.platform.window.TitleBarThemeController
 import me.him188.ani.app.platform.window.WindowsWindowUtils
-import me.him188.ani.app.platform.window.rememberLayoutHitTestOwner
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.LocalCaptionButtonInsets
 import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
@@ -202,9 +200,9 @@ internal fun FrameWindowScope.WindowsWindowFrame(
 
 @Composable
 internal fun rememberWindowsWindowFrameState(): WindowsWindowFrameState? {
-    val layoutHitTestOwner = rememberLayoutHitTestOwner()
-    if (layoutHitTestOwner == null) return null
     val platformWindow = LocalPlatformWindow.current
+    val layoutHitTestOwner = platformWindow.layoutHitTestOwner
+    if (layoutHitTestOwner == null) return null
     return remember(platformWindow, layoutHitTestOwner) { WindowsWindowFrameState(platformWindow, layoutHitTestOwner) }
 }
 
@@ -276,17 +274,14 @@ internal class WindowsWindowFrameState(
 @Composable
 private fun ExtendToTitleBar(frameState: WindowsWindowFrameState) {
     val density = LocalDensity.current
-    DisposableEffect(frameState.platformWindow.windowHandle, density, frameState.platformWindow, frameState) {
-        val windowUtils = WindowsWindowUtils.instance
-        windowUtils.handleExtendedTitleBarWindowProc(frameState.platformWindow) { x, y ->
+    val platformWindow = LocalPlatformWindow.current
+    LaunchedEffect(platformWindow, density, frameState) {
+        WindowsWindowUtils.instance.collectWindowProcHitTestResult(platformWindow) { x, y ->
             frameState.hitTest(
                 x,
                 y,
                 density,
             )
-        }
-        onDispose {
-            windowUtils.disposeWindowProc(frameState.platformWindow)
         }
     }
 }
@@ -297,7 +292,7 @@ private fun WindowsWindowFrameState.collectCaptionButtonColors(): CaptionButtonC
         WindowsWindowUtils.instance.frameIsColorful(platformWindow)
     }.collectAsState(false)
     return if (isAccentColorFrameEnabled.value) {
-        val accentColor = LocalPlatformWindow.current.accentColor.collectAsState()
+        val accentColor = LocalPlatformWindow.current.accentColor.collectAsState(Color.Unspecified)
         if (accentColor.value != Color.Unspecified) {
             CaptionButtonDefaults.accentColors(seedColor = accentColor.value)
         } else {

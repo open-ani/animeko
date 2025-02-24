@@ -41,6 +41,7 @@ import com.sun.jna.ptr.IntByReference
 import com.sun.jna.win32.StdCallLibrary
 import com.sun.jna.win32.W32APIOptions
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import me.him188.ani.app.platform.PlatformWindow
@@ -100,32 +101,46 @@ class WindowsWindowUtils : AwtWindowUtils() {
         }.getOrElse { false }
     }
 
-    fun handleExtendedTitleBarWindowProc(
+    fun handleWindowProc(
         platformWindow: PlatformWindow,
         windowScope: WindowScope? = platformWindow.windowScope,
-        hitTest: (Float, Float) -> Int
     ) {
         if (windowScope != null) {
             platformWindow.windowsWindowProc.value?.close()
             platformWindow.windowsWindowProc.tryEmit(
-                ExtendedTitleBarWindowProc(
-                    windowScope.window,
-                    extendedUser32,
-                    dwmAPi,
-                    hitTest,
-                ),
+                if (platformWindow.layoutHitTestOwner == null) {
+                    BasicWindowProc(
+                        extendedUser32,
+                        windowScope.window,
+                    )
+                } else {
+                    ExtendedTitleBarWindowProc(
+                        windowScope.window,
+                        extendedUser32,
+                        dwmAPi,
+                    )
+                },
             )
         }
     }
 
+    suspend fun collectWindowProcHitTestResult(platformWindow: PlatformWindow, hitTest: (x: Float, y: Float) -> Int) {
+        return platformWindow
+            .windowsWindowProc
+            .filterIsInstance<ExtendedTitleBarWindowProc>()
+            .collect {
+                it.updateChildHitTestProvider(hitTest)
+            }
+    }
+
     fun windowIsActive(platformWindow: PlatformWindow): Flow<Boolean?> {
         return platformWindow.windowsWindowProc
-            .flatMapLatest { it?.windowIsActive ?: flowOf(null) }
+            .flatMapLatest { (it as? ExtendedTitleBarWindowProc)?.windowIsActive ?: flowOf(null) }
     }
 
     fun frameIsColorful(platformWindow: PlatformWindow): Flow<Boolean> {
         return platformWindow.windowsWindowProc
-            .flatMapLatest { it?.frameIsColorful ?: flowOf(false) }
+            .flatMapLatest { (it as? ExtendedTitleBarWindowProc)?.frameIsColorful ?: flowOf(false) }
     }
 
     fun restoreWindow(windowHandle: Long) {

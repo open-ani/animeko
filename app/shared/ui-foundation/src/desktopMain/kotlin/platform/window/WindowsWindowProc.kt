@@ -9,7 +9,10 @@
 
 package me.him188.ani.app.platform.window
 
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.awt.ComposeWindow
+import androidx.compose.ui.graphics.Color
 import com.sun.jna.CallbackReference
 import com.sun.jna.Native
 import com.sun.jna.Pointer
@@ -75,22 +78,100 @@ import me.him188.ani.app.platform.window.ExtendedUser32.Companion.WM_NCMOUSEMOVE
 import me.him188.ani.app.platform.window.ExtendedUser32.Companion.WM_NCRBUTTONUP
 import me.him188.ani.app.platform.window.ExtendedUser32.Companion.WM_SETTINGCHANGE
 import me.him188.ani.app.platform.window.ExtendedUser32.MENUITEMINFO
+import me.him188.ani.app.ui.foundation.LocalPlatform
+import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
+import me.him188.ani.utils.platform.isWindows
 import org.jetbrains.skiko.SkiaLayer
 import java.awt.Window
+
+@Composable
+fun HandleWindowsWindowProc() {
+    if (LocalPlatform.current.isWindows()) {
+        val platformWindow = LocalPlatformWindow.current
+        DisposableEffect(platformWindow) {
+            WindowsWindowUtils.instance.handleWindowProc(platformWindow)
+            onDispose { WindowsWindowUtils.instance.disposeWindowProc(platformWindow) }
+        }
+    }
+}
+
+internal open class BasicWindowProc(
+    private val user32: ExtendedUser32,
+    window: Window,
+) : WindowProc, AutoCloseable {
+    protected val windowHandle: HWND =
+        HWND((window as? ComposeWindow)?.let { Pointer(it.windowHandle) }
+            ?: Native.getWindowPointer(window))
+
+    private val _accentColor: MutableStateFlow<Color> = MutableStateFlow(currentAccentColor())
+    val accentColor: StateFlow<Color> = _accentColor.asStateFlow()
+
+    private val defaultWindowProc =
+        user32.SetWindowLongPtr(
+            windowHandle,
+            WinUser.GWL_WNDPROC,
+            CallbackReference.getFunctionPointer(this)
+        )
+
+    override fun callback(
+        hwnd: HWND,
+        uMsg: Int,
+        wParam: WinDef.WPARAM,
+        lParam: WinDef.LPARAM
+    ): LRESULT {
+        if (uMsg == WM_SETTINGCHANGE) {
+            val changedKey = Pointer(lParam.toLong()).getWideString(0)
+            // Theme changed for color and darkTheme
+            if (changedKey == "ImmersiveColorSet") {
+                _accentColor.tryEmit(currentAccentColor())
+                onThemeChanged()
+            }
+        }
+        return callDefWindowProc(hwnd, uMsg, wParam, lParam)
+    }
+
+    protected open fun onThemeChanged() {}
+
+    private fun callDefWindowProc(
+        hwnd: HWND,
+        uMsg: Int,
+        wParam: WinDef.WPARAM,
+        lParam: WinDef.LPARAM
+    ): LRESULT {
+        return user32.CallWindowProc(defaultWindowProc, hwnd, uMsg, wParam, lParam)
+    }
+
+    private fun currentAccentColor(): Color {
+        val value = Advapi32Util.registryGetIntValue(
+            WinReg.HKEY_CURRENT_USER,
+            "SOFTWARE\\Microsoft\\Windows\\DWM",
+            "AccentColor",
+        ).toLong()
+        val alpha = (value and 0xFF000000)
+        val green = (value and 0xFF).shl(16)
+        val blue = (value and 0xFF00)
+        val red = (value and 0xFF0000).shr(16)
+        return Color((alpha or green or blue or red).toInt())
+    }
+
+    override fun close() {
+        user32.SetWindowLongPtr(windowHandle, WinUser.GWL_WNDPROC, defaultWindowProc)
+    }
+}
 
 internal class ExtendedTitleBarWindowProc(
     window: Window,
     private val user32: ExtendedUser32,
-    dwmapi: Dwmapi,
-    private val childHitTest: (Float, Float) -> Int
-) : WindowProc, java.lang.AutoCloseable {
+    dwmapi: Dwmapi
+) : BasicWindowProc(user32, window) {
 
-    protected val windowHandle: HWND =
-        HWND((window as? ComposeWindow)?.let { Pointer(it.windowHandle) } ?: Native.getWindowPointer(window))
-
-    private val defaultWindowProc =
-        user32.SetWindowLongPtr(windowHandle, WinUser.GWL_WNDPROC, CallbackReference.getFunctionPointer(this))
-
+    private var childHitTest: ((x: Float, y: Float) -> Int)? = null
+        set(value) {
+            if (field != value) {
+                field = value
+            }
+        }
+    
     private val _windowIsActive: MutableStateFlow<Boolean> = MutableStateFlow(user32.GetActiveWindow() == windowHandle)
     val windowIsActive: StateFlow<Boolean> = _windowIsActive.asStateFlow()
 
@@ -149,7 +230,7 @@ internal class ExtendedTitleBarWindowProc(
                     return@usePoint hitTestResult
                 }
             }
-            hitTestResult = childHitTest(x.toFloat(), y.toFloat())
+            hitTestResult = childHitTest?.invoke(x.toFloat(), y.toFloat()) ?: HTCLIENT
             hitTestResult
         }
     }
@@ -160,7 +241,7 @@ internal class ExtendedTitleBarWindowProc(
             // thus effectively making all the window our client area
             WM_NCCALCSIZE -> {
                 if (wParam.toInt() == 0) {
-                    callDefWindowProc(hWnd, uMsg, wParam, lParam)
+                    super.callback(hWnd, uMsg, wParam, lParam)
                 } else {
                     // this behavior is call full screen mode
                     val style = user32.GetWindowLong(hWnd, WinUser.GWL_STYLE)
@@ -265,14 +346,14 @@ internal class ExtendedTitleBarWindowProc(
                         }
                     }
                 }
-                callDefWindowProc(hWnd, uMsg, wParam, lParam)
+                super.callback(hWnd, uMsg, wParam, lParam)
             }
 
             WM_SIZE -> {
                 val lParamValue = lParam.toInt()
                 width = lowWord(lParamValue)
                 height = highWord(lParamValue)
-                callDefWindowProc(hWnd, uMsg, wParam, lParam)
+                super.callback(hWnd, uMsg, wParam, lParam)
             }
 
             else -> {
@@ -292,18 +373,17 @@ internal class ExtendedTitleBarWindowProc(
                         _frameIsColorful.tryEmit(isAccentColorWindowFrame())
                     }
                 }
-                return callDefWindowProc(hWnd, uMsg, wParam, lParam)
+                return super.callback(hWnd, uMsg, wParam, lParam)
             }
         }
     }
 
-    private fun callDefWindowProc(
-        hwnd: HWND,
-        uMsg: Int,
-        wParam: WinDef.WPARAM,
-        lParam: WinDef.LPARAM
-    ): LRESULT {
-        return user32.CallWindowProc(defaultWindowProc, hwnd, uMsg, wParam, lParam)
+    internal fun updateChildHitTestProvider(hitTest: (x: Float, y: Float) -> Int) {
+        childHitTest = hitTest
+    }
+
+    override fun onThemeChanged() {
+        _frameIsColorful.tryEmit(isAccentColorWindowFrame())
     }
 
     private fun updateMenuItemInfo(menu: HMENU, menuItemInfo: MENUITEMINFO, item: Int, enabled: Boolean) {
@@ -405,7 +485,7 @@ internal class ExtendedTitleBarWindowProc(
     override fun close() {
         skiaLayerWindowProc?.close()
         windowHandle.updateWindowStyle { it or WS_SYSMENU }
-        user32.SetWindowLongPtr(windowHandle, WinUser.GWL_WNDPROC, defaultWindowProc)
+        super.close()
     }
 }
 
