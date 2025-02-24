@@ -166,11 +166,6 @@ internal class ExtendedTitleBarWindowProc(
 ) : BasicWindowProc(user32, window) {
 
     private var childHitTest: ((x: Float, y: Float) -> Int)? = null
-        set(value) {
-            if (field != value) {
-                field = value
-            }
-        }
     
     private val _windowIsActive: MutableStateFlow<Boolean> = MutableStateFlow(user32.GetActiveWindow() == windowHandle)
     val windowIsActive: StateFlow<Boolean> = _windowIsActive.asStateFlow()
