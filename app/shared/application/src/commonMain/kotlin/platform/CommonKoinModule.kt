@@ -108,7 +108,10 @@ import me.him188.ani.app.domain.mediasource.subscription.MediaSourceSubscription
 import me.him188.ani.app.domain.session.AniApiProvider
 import me.him188.ani.app.domain.session.AniAuthClient
 import me.him188.ani.app.domain.session.AniAuthClientImpl
+import me.him188.ani.app.domain.session.AniAuthConfigurator
+import me.him188.ani.app.domain.session.AniAuthStateProvider
 import me.him188.ani.app.domain.session.BangumiSessionManager
+import me.him188.ani.app.domain.session.ConstantFailureAniAuthClient
 import me.him188.ani.app.domain.session.OpaqueSession
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.session.SessionStatus
@@ -200,6 +203,14 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
                 userAgent = ScopedHttpClientUserAgent.ANI,
                 useBangumiToken = false,
             ),
+        )
+    }
+    single<AniAuthStateProvider> {
+        AniAuthConfigurator(
+            get(),
+            ConstantFailureAniAuthClient, // Read-only configurator doesn't need a auth client.
+            onLaunchAuthorize = { }, // Read-only configurator doesn't need to do real authorization.
+            parentCoroutineContext = coroutineScope.coroutineContext,
         )
     }
 
@@ -435,7 +446,7 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
     }
 
     single<MeteredNetworkDetector> { createMeteredNetworkDetector(getContext()) }
-    single<SubjectDetailsStateFactory> { DefaultSubjectDetailsStateFactory(coroutineScope.coroutineContext) }
+    single<SubjectDetailsStateFactory> { DefaultSubjectDetailsStateFactory() }
 
     single<TurnstileState> {
         CreateTurnstileState(

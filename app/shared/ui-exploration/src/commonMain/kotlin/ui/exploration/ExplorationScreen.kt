@@ -81,7 +81,6 @@ import me.him188.ani.app.ui.search.isLoadingFirstPageOrRefreshing
  */
 @Stable
 class ExplorationPageState(
-    val authState: AuthState,
     selfInfoState: State<UserInfo?>,
     val trendingSubjectInfoPager: LazyPagingItems<TrendingSubjectInfo>,
     val followedSubjectsPager: Flow<PagingData<FollowedSubjectInfo>>,
@@ -112,7 +111,10 @@ class ExplorationPageState(
 @Composable
 fun ExplorationScreen(
     state: ExplorationPageState,
+    authState: AuthState,
     onSearch: () -> Unit,
+    onClickLogin: () -> Unit,
+    onClickRetryRefreshSession: () -> Unit,
     onClickSettings: () -> Unit,
     modifier: Modifier = Modifier,
     actions: @Composable () -> Unit = {},
@@ -127,7 +129,7 @@ fun ExplorationScreen(
                 Modifier.fillMaxWidth(),
                 actions = {
                     actions()
-                    if (state.authState.isKnownGuest // #1269 游客模式下无法打开设置界面
+                    if (authState.isKnownGuest // #1269 游客模式下无法打开设置界面
                         || currentWindowAdaptiveInfo1().windowSizeClass.isWidthAtLeastMedium
                     ) {
                         IconButton(onClick = onClickSettings) {
@@ -136,7 +138,13 @@ fun ExplorationScreen(
                     }
                 },
                 avatar = { recommendedSize ->
-                    SelfAvatar(state.authState, state.selfInfo, size = recommendedSize)
+                    SelfAvatar(
+                        authState,
+                        state.selfInfo,
+                        onClickLogin = onClickLogin,
+                        onClickRetryRefreshSession = onClickRetryRefreshSession,
+                        size = recommendedSize,
+                    )
                 },
                 searchIconButton = {
                     IconButton(onSearch) {

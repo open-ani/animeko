@@ -13,12 +13,10 @@ import androidx.annotation.UiThread
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import me.him188.ani.app.domain.session.AuthState
 import me.him188.ani.app.domain.session.OpaqueSession
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.session.userInfo
 import me.him188.ani.app.ui.foundation.AbstractViewModel
-import me.him188.ani.app.ui.foundation.AuthState
 import me.him188.ani.app.ui.foundation.launchInBackground
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -33,7 +31,7 @@ class AccountViewModel : AbstractViewModel(), KoinComponent {
     var logoutEnabled by mutableStateOf(true)
         private set
 
-    val authState = AuthState()
+    // val authState = AuthState()
 
     @UiThread
     fun logout() {

@@ -29,7 +29,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
-import me.him188.ani.app.domain.session.AuthStateNew
+import me.him188.ani.app.domain.session.AuthState
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
@@ -111,7 +111,7 @@ fun OnboardingScreen(
 
     var bangumiShowTokenAuthorizePage by remember { mutableStateOf(false) }
 
-    val authorizeState by state.bangumiAuthorizeState.state.collectAsStateWithLifecycle(AuthStateNew.Idle)
+    val authorizeState by state.bangumiAuthorizeState.state.collectAsStateWithLifecycle(AuthState.NotAuthed)
     val proxyState by state.configureProxyState.state.collectAsStateWithLifecycle(ConfigureProxyUIState.Placeholder)
     val grantNotificationPermissionState by state.bitTorrentFeatureState.grantNotificationPermissionState
         .collectAsStateWithLifecycle(GrantNotificationPermissionState.Placeholder)
@@ -247,7 +247,7 @@ fun OnboardingScreen(
                         }
                     },
                     text = "完成",
-                    enabled = authorizeState is AuthStateNew.Success,
+                    enabled = authorizeState is AuthState.Success,
                 )
             },
             navigationIcon = {
@@ -307,13 +307,13 @@ fun OnboardingScreen(
 @TestOnly
 internal fun createTestOnboardingPresentationState(scope: CoroutineScope): OnboardingPresentationState {
     return OnboardingPresentationState(
-        themeSelectState = ThemeSelectState(
+        themeSelectState = ThemeSelectStepState(
             state = flowOf(ThemeSelectUIState.Placeholder),
             onUpdateUseDarkMode = { },
             onUpdateUseDynamicTheme = { },
             onUpdateSeedColor = { },
         ),
-        configureProxyState = ConfigureProxyState(
+        configureProxyState = ConfigureProxyStepState(
             state = flowOf(
                 ConfigureProxyUIState(
                     config = ProxyUIConfig.Default,
@@ -331,7 +331,7 @@ internal fun createTestOnboardingPresentationState(scope: CoroutineScope): Onboa
             onUpdateConfig = { },
             onRequestReTest = { },
         ),
-        bitTorrentFeatureState = BitTorrentFeatureState(
+        bitTorrentFeatureState = BitTorrentFeatureStepState(
             enabled = SettingsState(
                 valueState = stateOf(true),
                 onUpdate = { },
@@ -349,8 +349,8 @@ internal fun createTestOnboardingPresentationState(scope: CoroutineScope): Onboa
             onRequestNotificationPermission = { false },
             onOpenSystemNotificationSettings = { },
         ),
-        bangumiAuthorizeState = BangumiAuthorizeState(
-            state = flowOf(AuthStateNew.Idle),
+        bangumiAuthorizeState = BangumiAuthorizeStepState(
+            state = flowOf(AuthState.NotAuthed),
             onClickNavigateAuthorize = { },
             onCheckCurrentToken = { },
             onCancelAuthorize = { },

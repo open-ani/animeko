@@ -10,20 +10,22 @@
 package me.him188.ani.app.ui.profile.auth
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.tooling.preview.PreviewLightDark
+import me.him188.ani.app.domain.session.AuthState
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
-import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
-import me.him188.ani.app.ui.profile.BangumiOAuthViewModel
 
 @PreviewLightDark
 @Composable
-private fun PreviewAuthRequestPage() {
+private fun PreviewBangumiAuthorizePage() {
     ProvideCompositionLocalsForPreview {
-        BangumiOAuthPage(
-            remember { BangumiOAuthViewModel() },
-            {},
-            navigationIcon = { BackNavigationIconButton({}) },
+        BangumiAuthorizePage(
+            authState = AuthState.NotAuthed,
+            onCheckCurrentToken = { },
+            onClickNavigateAuthorize = { },
+            onCancelAuthorize = { },
+            onAuthorizeByToken = { },
+            onClickNavigateToBangumiDev = { },
+            onClickBack = { },
         )
     }
 }

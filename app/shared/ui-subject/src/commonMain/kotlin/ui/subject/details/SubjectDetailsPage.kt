@@ -81,6 +81,7 @@ import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
 import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.domain.media.cache.EpisodeCacheStatus
+import me.him188.ani.app.domain.session.AuthState
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.ImageViewer
@@ -142,26 +143,29 @@ fun SubjectDetailsScreen(
     navigationIcon: @Composable () -> Unit = {},
 ) {
     val state by vm.state.collectAsStateWithLifecycle(null)
-    
+    val authState by vm.authState.collectAsStateWithLifecycle(AuthState.NotAuthed)
+
     LaunchedEffect(Unit) {
         vm.reload()
     }
-    
+
     SubjectDetailsScene(
         state,
-        onPlay,
+        authState,
+        onPlay = onPlay,
         onLoadErrorRetry,
         modifier,
         showTopBar,
         showBlurredBackground,
         windowInsets,
-        navigationIcon
+        navigationIcon,
     )
 }
 
 @Composable
 fun SubjectDetailsScene(
     state: SubjectDetailsUIState?,
+    authState: AuthState,
     onPlay: (episodeId: Int) -> Unit,
     onLoadErrorRetry: () -> Unit,
     modifier: Modifier = Modifier,
@@ -170,11 +174,12 @@ fun SubjectDetailsScene(
     windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
     navigationIcon: @Composable () -> Unit = {},
 ) {
+    val navigator = LocalNavigator.current
     val uriHandler = LocalUriHandler.current
     val onClickOpenExternal = {
         if (state != null) uriHandler.openUri("https://bgm.tv/subject/${state.subjectId}")
     }
-    
+
     when (state) {
         null, is SubjectDetailsUIState.Placeholder -> PlaceholderSubjectDetailsPage(
             (state as? SubjectDetailsUIState.Placeholder)?.subjectInfo,
@@ -182,18 +187,20 @@ fun SubjectDetailsScene(
             showTopBar,
             windowInsets,
             navigationIcon,
-            onClickOpenExternal
+            onClickOpenExternal,
         )
-        
+
         is SubjectDetailsUIState.Ok -> SubjectDetailsPage(
             state.value,
+            authState,
             onPlay = onPlay,
+            onClickLogin = { navigator.navigateBangumiAuthorize() },
             modifier,
             showTopBar,
             showBlurredBackground,
             windowInsets,
             navigationIcon,
-            onClickOpenExternal
+            onClickOpenExternal,
         )
 
         is SubjectDetailsUIState.Err -> ErrorSubjectDetailsPage(
@@ -204,7 +211,7 @@ fun SubjectDetailsScene(
             showTopBar,
             windowInsets,
             navigationIcon,
-            onClickOpenExternal
+            onClickOpenExternal,
         )
     }
 }
@@ -216,7 +223,9 @@ fun SubjectDetailsScene(
 @Composable
 private fun SubjectDetailsPage(
     state: SubjectDetailsState,
+    authState: AuthState,
     onPlay: (episodeId: Int) -> Unit,
+    onClickLogin: () -> Unit,
     modifier: Modifier = Modifier,
     showTopBar: Boolean = true,
     showBlurredBackground: Boolean = true,
@@ -254,35 +263,30 @@ private fun SubjectDetailsPage(
             seasonTags = {
                 SubjectDetailsDefaults.SeasonTag(
                     airDate = state.info?.airDate ?: PackedDate.Invalid,
-                    airingLabelState = state.airingLabelState
+                    airingLabelState = state.airingLabelState,
                 )
             },
             collectionData = {
                 SubjectDetailsDefaults.CollectionData(state.info?.collectionStats ?: SubjectCollectionStats.Zero)
             },
             collectionActions = {
-                if (state.authState.isKnownExpired) {
-                    val navigator = LocalNavigator.current
-                    OutlinedButton(
-                        {
-                            state.authState.launchAuthorize(navigator)
-                        }
-                    ) {
+                if (authState.isKnownExpired) {
+                    OutlinedButton(onClickLogin) {
                         Text("登录后可收藏")
                     }
                 } else {
-                    EditableSubjectCollectionTypeButton(state.editableSubjectCollectionTypeState,)
+                    EditableSubjectCollectionTypeButton(state.editableSubjectCollectionTypeState)
                 }
             },
             rating = {
-                EditableRating(state.editableRatingState,)
+                EditableRating(state.editableRatingState)
             },
             selectEpisodeButton = {
                 SubjectDetailsDefaults.SelectEpisodeButtons(
                     state.subjectProgressState,
                     episodeCacheStatus = { presentation.episodeCacheInfo.findCacheStatus(it) },
                     onShowEpisodeList = { showSelectEpisode = true },
-                    onPlay = onPlay
+                    onPlay = onPlay,
                 )
             },
             connectedScrollState = connectedScrollState,
@@ -369,19 +373,19 @@ private fun PlaceholderSubjectDetailsPage(
             SubjectDetailsDefaults.SeasonTag(
                 airDate = remember { PackedDate.Invalid },
                 airingLabelState = remember { AiringLabelState(stateOf(null), stateOf(null)) },
-                modifier = Modifier.placeholder(true)
+                modifier = Modifier.placeholder(true),
             )
         },
         collectionData = {
             SubjectDetailsDefaults.CollectionData(
                 remember { SubjectCollectionStats.Zero },
-                modifier = Modifier.placeholder(true)
+                modifier = Modifier.placeholder(true),
             )
         },
         collectionActions = {
             OutlinedButton(
                 onClick = {},
-                modifier = Modifier.placeholder(true)
+                modifier = Modifier.placeholder(true),
             ) { Text("登录后可收藏") }
         },
         rating = {
@@ -394,10 +398,10 @@ private fun PlaceholderSubjectDetailsPage(
                         stateOf(false),
                         { false },
                         { },
-                        scope
+                        scope,
                     )
                 },
-                modifier = Modifier.placeholder(true)
+                modifier = Modifier.placeholder(true),
             )
         },
         selectEpisodeButton = {
@@ -406,7 +410,7 @@ private fun PlaceholderSubjectDetailsPage(
                 episodeCacheStatus = { EpisodeCacheStatus.NotCached },
                 onShowEpisodeList = { },
                 onPlay = { },
-                modifier = Modifier.placeholder(true)
+                modifier = Modifier.placeholder(true),
             )
         },
         connectedScrollState = connectedScrollState,
@@ -816,13 +820,13 @@ enum class SubjectDetailsTab {
  */
 sealed interface SubjectDetailsUIState {
     val subjectId: Int
-    
+
     /**
      * Placeholder, data is still loading.
      * If preview subject info is available, it will show first.
      */
     data class Placeholder(
-        override val subjectId: Int, 
+        override val subjectId: Int,
         val subjectInfo: SubjectInfo? = null
     ) : SubjectDetailsUIState
 
@@ -830,7 +834,7 @@ sealed interface SubjectDetailsUIState {
      * Content ready.
      */
     class Ok(
-        override val subjectId: Int, 
+        override val subjectId: Int,
         val value: SubjectDetailsState
     ) : SubjectDetailsUIState
 
@@ -838,8 +842,8 @@ sealed interface SubjectDetailsUIState {
      * Load error, if preview subject info is available, it will also show.
      */
     class Err(
-        override val subjectId: Int, 
-        val placeholder: SubjectInfo?, 
+        override val subjectId: Int,
+        val placeholder: SubjectInfo?,
         val error: LoadError
     ) : SubjectDetailsUIState
 }

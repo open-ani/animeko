@@ -36,7 +36,6 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,9 +43,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import kotlinx.coroutines.launch
 import me.him188.ani.app.navigation.MainScreenPage
 import me.him188.ani.app.ui.foundation.avatar.AvatarImage
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
@@ -61,14 +58,8 @@ fun OnboardingCompleteScreen(
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
 ) {
-    val scope = rememberCoroutineScope()
-    LifecycleResumeEffect(vm) {
-        val job = scope.launch { vm.startAuthCheckLoop() }
-        onPauseOrDispose { job.cancel() }
-    }
-    
     val state by vm.state.collectAsStateWithLifecycle(OnboardingCompleteState.Placeholder)
-    
+
     Surface(color = AniThemeDefaults.pageContentBackgroundColor) {
         OnboardingCompleteScreen(
             state = state,
@@ -96,38 +87,38 @@ internal fun OnboardingCompleteScreen(
                 title = { },
                 navigationIcon = backNavigation,
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = AniThemeDefaults.pageContentBackgroundColor
+                    containerColor = AniThemeDefaults.pageContentBackgroundColor,
                 ),
                 windowInsets = windowInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
             )
         },
-        containerColor = Color.Transparent
+        containerColor = Color.Transparent,
     ) { contentPadding ->
         Box(
             modifier = Modifier
                 .padding(contentPadding)
                 .padding(
                     horizontal = layoutParams.horizontalPadding,
-                    vertical = layoutParams.verticalPadding
+                    vertical = layoutParams.verticalPadding,
                 )
                 .fillMaxSize(),
-            contentAlignment = Alignment.Center
+            contentAlignment = Alignment.Center,
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) { 
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 Text(
-                    text = if (state.username != null) "欢迎，${state.username}" else "欢迎"  ,
+                    text = if (state.username != null) "欢迎，${state.username}" else "欢迎",
                     modifier = Modifier
                         .widthIn(max = 240.dp)
                         .animateContentSize(),
                     style = MaterialTheme.typography.headlineMedium,
                     overflow = TextOverflow.Ellipsis,
                     textAlign = TextAlign.Center,
-                    maxLines = 1
+                    maxLines = 1,
                 )
-                Column(modifier = Modifier.padding(vertical = 16.dp)) { 
+                Column(modifier = Modifier.padding(vertical = 16.dp)) {
                     AvatarImage(
                         url = state.avatarUrl,
                         modifier = Modifier.size(96.dp).clip(CircleShape),
@@ -140,9 +131,9 @@ internal fun OnboardingCompleteScreen(
                         contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
                     ) {
                         Icon(
-                            Icons.AutoMirrored.Rounded.ArrowForward, 
+                            Icons.AutoMirrored.Rounded.ArrowForward,
                             null,
-                            Modifier.size(ButtonDefaults.IconSize)
+                            Modifier.size(ButtonDefaults.IconSize),
                         )
                         Spacer(Modifier.size(ButtonDefaults.IconSpacing))
                         Text("完成", softWrap = false)

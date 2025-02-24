@@ -45,6 +45,7 @@ import me.him188.ani.app.data.models.preference.UISettings
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.domain.mediasource.rss.RssMediaSource
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSource
+import me.him188.ani.app.domain.session.AuthState
 import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.MainScreenPage
@@ -52,6 +53,7 @@ import me.him188.ani.app.navigation.NavRoutes
 import me.him188.ani.app.navigation.OverrideNavigation
 import me.him188.ani.app.navigation.SettingsTab
 import me.him188.ani.app.navigation.SubjectDetailPlaceholder
+import me.him188.ani.app.navigation.findLast
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.ui.adaptive.navigation.AniNavigationSuiteDefaults
 import me.him188.ani.app.ui.cache.CacheManagementScreen
@@ -73,11 +75,9 @@ import me.him188.ani.app.ui.onboarding.OnboardingCompleteViewModel
 import me.him188.ani.app.ui.onboarding.OnboardingScreen
 import me.him188.ani.app.ui.onboarding.OnboardingViewModel
 import me.him188.ani.app.ui.onboarding.WelcomeScreen
-import me.him188.ani.app.ui.profile.BangumiOAuthViewModel
 import me.him188.ani.app.ui.profile.auth.AniContactList
-import me.him188.ani.app.ui.profile.auth.BangumiOAuthScreen
-import me.him188.ani.app.ui.profile.auth.BangumiTokenAuthScreen
-import me.him188.ani.app.ui.profile.auth.BangumiTokenAuthViewModel
+import me.him188.ani.app.ui.profile.auth.BangumiAuthorizePage
+import me.him188.ani.app.ui.profile.auth.BangumiAuthorizeViewModel
 import me.him188.ani.app.ui.settings.SettingsScreen
 import me.him188.ani.app.ui.settings.SettingsViewModel
 import me.him188.ani.app.ui.settings.mediasource.rss.EditRssMediaSourceScreen
@@ -102,7 +102,7 @@ import kotlin.reflect.typeOf
 fun AniAppContent(aniNavigator: AniNavigator) {
     val aniAppViewModel = viewModel<AniAppViewModel>()
     val appState = aniAppViewModel.appState.collectAsStateWithLifecycle(null).value ?: return
-    
+
     val navigator = rememberNavController()
     aniNavigator.setNavController(navigator)
 
@@ -196,7 +196,6 @@ private fun AniAppContentImpl(
                     typeOf<NavRoutes?>() to NavRoutes.NavType,
                 ),
             ) { backStackEntry ->
-                
                 OnboardingCompleteScreen(
                     viewModel { OnboardingCompleteViewModel() },
                     onClickContinue = { mainSceneInitialPage ->
@@ -205,7 +204,7 @@ private fun AniAppContentImpl(
                         aniNavigator.navigateMain(
                             page = mainSceneInitialPage ?: UISettings.Default.mainSceneInitialPage,
                             popUpTargetInclusive = currentRoute.popUpTargetInclusive,
-                        ) 
+                        )
                     },
                     backNavigation = {
                         BackNavigationIconButton(
@@ -232,6 +231,8 @@ private fun AniAppContentImpl(
                     AniNavigationSuiteDefaults.calculateLayoutType(
                         currentWindowAdaptiveInfo1(),
                     )
+
+                val vm = viewModel { MainScreenSharedViewModel() }
                 var currentPage by rememberSaveable { mutableStateOf(route.initialPage) }
 
                 OverrideNavigation(
@@ -248,8 +249,10 @@ private fun AniAppContentImpl(
                             this@SharedTransitionLayout, this,
                         ),
                     ) {
+                        val authState by vm.authState.collectAsStateWithLifecycle(AuthState.NotAuthed)
                         MainScreen(
                             page = currentPage,
+                            authState = authState,
                             onNavigateToPage = { currentPage = it },
                             onNavigateToSettings = { aniNavigator.navigateSettings() },
                             navigationLayoutType = navigationLayoutType,
@@ -257,41 +260,25 @@ private fun AniAppContentImpl(
                     }
                 }
             }
-            composable<NavRoutes.BangumiOAuth>(
+            composable<NavRoutes.BangumiAuthorize>(
                 enterTransition = enterTransition,
                 exitTransition = exitTransition,
                 popEnterTransition = popEnterTransition,
                 popExitTransition = popExitTransition,
             ) {
-                BangumiOAuthScreen(
-                    viewModel { BangumiOAuthViewModel() },
-                    navigationIcon = {
-                        BackNavigationIconButton(
-                            {
-                                aniNavigator.popUntilNotAuth()
-                            },
+                BangumiAuthorizePage(
+                    viewModel { BangumiAuthorizeViewModel() },
+                    onClickBackNavigation = { aniNavigator.popBackStack() },
+                    onFinishLogin = { mainSceneInitialPage ->
+                        aniNavigator.navigateMain(
+                            mainSceneInitialPage ?: UISettings.Default.mainSceneInitialPage,
+                            aniNavigator.currentNavigator.findLast<NavRoutes.Main>(),
                         )
                     },
+                    modifier = Modifier
+                        .widthIn(max = WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND.dp)
+                        .fillMaxHeight(),
                     windowInsets = windowInsets,
-                )
-            }
-            composable<NavRoutes.BangumiTokenAuth>(
-                enterTransition = enterTransition,
-                exitTransition = exitTransition,
-                popEnterTransition = popEnterTransition,
-                popExitTransition = popExitTransition,
-            ) {
-                BangumiTokenAuthScreen(
-                    viewModel { BangumiTokenAuthViewModel() },
-                    Modifier.fillMaxSize(),
-                    windowInsets,
-                    navigationIcon = {
-                        BackNavigationIconButton(
-                            {
-                                aniNavigator.popUntilNotAuth()
-                            },
-                        )
-                    },
                 )
             }
             composable<NavRoutes.SubjectDetail>(

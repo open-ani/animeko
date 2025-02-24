@@ -81,6 +81,7 @@ import me.him188.ani.app.domain.player.extension.RememberPlayProgressExtension
 import me.him188.ani.app.domain.player.extension.SaveMediaPreferenceExtension
 import me.him188.ani.app.domain.player.extension.SwitchMediaOnPlayerErrorExtension
 import me.him188.ani.app.domain.player.extension.SwitchNextEpisodeExtension
+import me.him188.ani.app.domain.session.AniAuthStateProvider
 import me.him188.ani.app.domain.session.AuthState
 import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.app.platform.Context
@@ -92,7 +93,6 @@ import me.him188.ani.app.ui.comment.CommentState
 import me.him188.ani.app.ui.comment.EditCommentSticker
 import me.him188.ani.app.ui.danmaku.UIDanmakuEvent
 import me.him188.ani.app.ui.foundation.AbstractViewModel
-import me.him188.ani.app.ui.foundation.AuthState
 import me.him188.ani.app.ui.foundation.HasBackgroundScope
 import me.him188.ani.app.ui.foundation.launchInBackground
 import me.him188.ani.app.ui.foundation.stateOf
@@ -138,6 +138,7 @@ import kotlin.time.Duration.Companion.milliseconds
 
 @Stable
 data class EpisodePageState(
+    val authState: AuthState,
     val mediaSelectorState: MediaSelectorState,
     val mediaSourceResultListPresentation: MediaSourceResultListPresentation,
     val danmakuStatistics: DanmakuStatistics,
@@ -295,7 +296,8 @@ class EpisodeViewModel(
         },
     )
 
-    val authState: AuthState = AuthState()
+
+    private val authStateProvider: AniAuthStateProvider by inject()
 
     @OptIn(UnsafeEpisodeSessionApi::class)
     val episodeDetailsState: EpisodeDetailsState = kotlin.run {
@@ -525,6 +527,7 @@ class EpisodeViewModel(
             flowScope = this,
         ).presentationFlow
         return me.him188.ani.utils.coroutines.flows.combine(
+            authStateProvider.state,
             episodeSession.infoBundleFlow.distinctUntilChanged().onStart { emit(null) },
             episodeSession.infoLoadErrorStateFlow,
             episodeSession.fetchSelectFlow,
@@ -548,7 +551,7 @@ class EpisodeViewModel(
                 }
             },
             mediaSourceResultsFlow.map { MediaSourceResultListPresentation(it) },
-        ) { subjectEpisodeBundle, loadError, fetchSelect, danmakuStatistics, danmakuEnabled, danmakuConfig, mediaSelectorState, mediaSourceResultsPresentation ->
+        ) { authState, subjectEpisodeBundle, loadError, fetchSelect, danmakuStatistics, danmakuEnabled, danmakuConfig, mediaSelectorState, mediaSourceResultsPresentation ->
 
             val (subject, episode) = if (subjectEpisodeBundle == null) {
                 SubjectPresentation.Placeholder to EpisodePresentation.Placeholder
@@ -564,6 +567,7 @@ class EpisodeViewModel(
             }
 
             EpisodePageState(
+                authState = authState,
                 mediaSelectorState = mediaSelectorState,
                 mediaSourceResultListPresentation = mediaSourceResultsPresentation,
                 danmakuStatistics = danmakuStatistics,

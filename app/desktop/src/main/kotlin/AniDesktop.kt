@@ -10,6 +10,7 @@
 package me.him188.ani.app.desktop
 
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.LocalContextMenuRepresentation
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -471,6 +472,7 @@ private fun FrameWindowScope.MainWindowContent(
                             vm.show(text)
                         }
                     },
+                    LocalContextMenuRepresentation provides DesktopContextMenuRepresentation,
                 ) {
                     Box(Modifier.padding(all = paddingByWindowSize)) {
                         AniAppContent(aniNavigator)

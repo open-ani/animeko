@@ -9,8 +9,6 @@
 
 package me.him188.ani.app.domain.session
 
-import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.Stable
 import kotlinx.collections.immutable.PersistentList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.CancellationException
@@ -53,7 +51,31 @@ import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.seconds
 
 /**
+ * 从 [SessionManager] 获取当前的 Bangumi 授权状态.
+ *
+ * 通常在 UI 层使用.
+ *
+ * ```
+ * // In your ViewModel.
+ * val authStateProvider: AniAuthStateProvider by inject()
+ * // In your UI.
+ * val authState by authStateProvider.state.collectAsState(initial = AuthState.Idle)
+ * ```
+ *
+ * @see AniAuthConfigurator
+ */
+interface AniAuthStateProvider {
+    val state: SharedFlow<AuthState>
+}
+
+/**
  * Wrapper for [SessionManager] and [AniAuthClient] to handle authorization.
+ *
+ * Effectively a mutable version of [AniAuthStateProvider], which allows you to start and cancel authorization requests.
+ *
+ * This class does:
+ * * Directly read session states from [SessionManager] by subscribing [state].
+ * * Handle procedure of starting and canceling authorization requests.
  *
  * 通常在 UI 层使用.
  *
@@ -84,33 +106,30 @@ class AniAuthConfigurator(
     private val onLaunchAuthorize: suspend (requestId: String) -> Unit,
     private val awaitRetryInterval: Duration = 1.seconds,
     parentCoroutineContext: CoroutineContext = Dispatchers.Default,
-) {
+) : AniAuthStateProvider {
     private val logger = logger<AniAuthConfigurator>()
     private val scope = parentCoroutineContext.childScope()
 
     private val authorizeTasker = MonoTasker(scope)
-    private val currentRequestAuthorizeId = MutableStateFlow<String?>(null)
+    private val currentRequestAuthorizeId: MutableStateFlow<String?> = MutableStateFlow(REFRESH)
 
     private val launchedExternalRequests = MutableStateFlow<PersistentList<String>>(persistentListOf())
     private val lastAuthException: MutableStateFlow<Throwable?> = MutableStateFlow(null)
 
-    val state: SharedFlow<AuthStateNew> = currentRequestAuthorizeId
+    override val state: SharedFlow<AuthState> = currentRequestAuthorizeId
         .transformLatest { requestId ->
-            if (requestId == null) return@transformLatest emit(AuthStateNew.Idle)
-
-            logger.debug { "[AuthState][${requestId.idStr}] Start checking session state." }
-            emit(AuthStateNew.AwaitingToken(requestId))
+            if (requestId == null) return@transformLatest emit(AuthState.NotAuthed)
 
             combine(
                 sessionManager.state,
                 sessionManager.processingRequest.flatMapConcat { it?.state ?: flowOf(null) },
                 lastAuthException,
             ) { sessionState, requestState, lastAuthEx ->
-                convertCombinedAuthState(
-                    requestId = requestId,
-                    sessionState = sessionState,
-                    requestState = requestState ?: (lastAuthEx?.let { ExternalOAuthRequest.State.Failed(it) }),
-                )
+                val combinedReqState = requestState ?: (lastAuthEx?.let { ExternalOAuthRequest.State.Failed(it) })
+                logger.debug {
+                    "[AuthState][${requestId.idStr}] sessionStatus: $sessionState, requestState: $combinedReqState"
+                }
+                convertCombinedAuthState(requestId, sessionState, combinedReqState)
             }
                 .collectLatest { authStateNew -> emit(authStateNew) }
         }
@@ -306,20 +325,17 @@ class AniAuthConfigurator(
     }
 
     /**
-     * Combine [SessionStatus] and [ExternalOAuthRequest.State] to [AuthStateNew]
+     * Combine [SessionStatus] and [ExternalOAuthRequest.State] to [AuthState]
      */
     private fun convertCombinedAuthState(
         requestId: String,
         sessionState: SessionStatus,
         requestState: ExternalOAuthRequest.State?,
-    ): AuthStateNew {
-        logger.debug {
-            "[AuthState][${requestId.idStr}] sessionStatus: $sessionState, requestState: $requestState"
-        }
+    ): AuthState {
         return when (sessionState) {
             is SessionStatus.Verified -> {
                 val userInfo = sessionState.userInfo
-                AuthStateNew.Success(
+                AuthState.Success(
                     username = userInfo.run { nickname ?: username ?: id.toString() },
                     avatarUrl = userInfo.avatarUrl,
                     isGuest = false,
@@ -328,22 +344,22 @@ class AniAuthConfigurator(
 
             is SessionStatus.Refreshing,
             is SessionStatus.Verifying -> {
-                AuthStateNew.AwaitingUserInfo(requestId)
+                AuthState.AwaitingUserInfo(requestId)
             }
 
             SessionStatus.NetworkError,
             SessionStatus.ServiceUnavailable -> {
-                AuthStateNew.NetworkError
+                AuthState.NetworkError
             }
 
             SessionStatus.Expired -> {
-                AuthStateNew.TokenExpired
+                AuthState.TokenExpired
             }
 
             SessionStatus.NoToken -> when (requestState) {
                 ExternalOAuthRequest.State.Launching,
                 ExternalOAuthRequest.State.AwaitingCallback -> {
-                    AuthStateNew.AwaitingToken(requestId)
+                    AuthState.AwaitingToken(requestId)
                 }
 
                 is ExternalOAuthRequest.State.Failed -> {
@@ -361,74 +377,38 @@ class AniAuthConfigurator(
                         //     when 分支到这里, 这里返回 Idle
 
                         is RefreshTokenFailedException -> {
-                            AuthStateNew.Idle
+                            AuthState.NotAuthed
                         }
 
                         else -> {
-                            AuthStateNew.UnknownError(requestState.throwable.toString())
+                            AuthState.UnknownError(requestState.throwable)
                         }
                     }
                 }
 
                 is ExternalOAuthRequest.State.Cancelled -> {
-                    AuthStateNew.Idle
+                    AuthState.NotAuthed
                 }
 
                 // oauth 成功并不代表所有流程结束了, 还会继续进行 session 验证
                 // null 表示还未开始 oauth, 也是进行中的动作
                 ExternalOAuthRequest.State.Processing,
-                ExternalOAuthRequest.State.Success, null -> {
-                    AuthStateNew.AwaitingUserInfo(requestId)
+                ExternalOAuthRequest.State.Success -> {
+                    AuthState.AwaitingUserInfo(requestId)
+                }
+
+                null -> {
+                    AuthState.NotAuthed
                 }
             }
 
-            SessionStatus.Guest -> AuthStateNew.Success("", null, isGuest = true)
+            SessionStatus.Guest -> AuthState.Success("", null, isGuest = true)
         }
     }
 
     companion object {
         private const val REFRESH = "-1"
         private val String.idStr get() = if (equals(REFRESH)) "REFRESH" else this
-    }
-}
-
-// This class is intend to replace current [AuthState]
-@Stable
-sealed class AuthStateNew {
-    @Immutable
-    data object Idle : AuthStateNew()
-
-    @Stable
-    sealed class AwaitingResult : AuthStateNew() {
-        abstract val requestId: String
-    }
-
-    @Stable
-    data class AwaitingToken(override val requestId: String) : AwaitingResult()
-
-    @Stable
-    data class AwaitingUserInfo(override val requestId: String) : AwaitingResult()
-
-    sealed class Error : AuthStateNew()
-
-    @Immutable
-    data object NetworkError : Error()
-
-    @Immutable
-    data object TokenExpired : Error()
-
-    @Stable
-    data class UnknownError(val message: String) : Error()
-
-    @Stable
-    data class Success(
-        val username: String,
-        val avatarUrl: String?,
-        val isGuest: Boolean
-    ) : AuthStateNew()
-
-    fun isKnownLogin(): Boolean {
-        return this is Success && !isGuest
     }
 }
 

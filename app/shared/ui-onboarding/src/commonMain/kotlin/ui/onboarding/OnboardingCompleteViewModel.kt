@@ -9,39 +9,25 @@
 
 package me.him188.ani.app.ui.onboarding
 
-import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.launch
 import me.him188.ani.app.data.repository.user.SettingsRepository
-import me.him188.ani.app.domain.session.AniAuthClient
-import me.him188.ani.app.domain.session.AniAuthConfigurator
-import me.him188.ani.app.domain.session.AuthStateNew
-import me.him188.ani.app.domain.session.SessionManager
+import me.him188.ani.app.domain.session.AniAuthStateProvider
+import me.him188.ani.app.domain.session.AuthState
 import me.him188.ani.app.ui.foundation.AbstractViewModel
-import me.him188.ani.utils.coroutines.SingleTaskExecutor
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
 class OnboardingCompleteViewModel : AbstractViewModel(), KoinComponent {
-    private val sessionManager: SessionManager by inject()
-    private val authClient: AniAuthClient by inject()
     private val settings: SettingsRepository by inject()
-    private val authLoopTasker = SingleTaskExecutor(backgroundScope.coroutineContext)
-
-    private val authConfigurator = AniAuthConfigurator(
-        sessionManager = sessionManager,
-        authClient = authClient,
-        onLaunchAuthorize = { },
-        parentCoroutineContext = backgroundScope.coroutineContext,
-    )
+    private val authStateProvider: AniAuthStateProvider by inject()
 
     val state: Flow<OnboardingCompleteState> =
         combine(
-            authConfigurator.state.filterIsInstance<AuthStateNew.Success>(),
+            authStateProvider.state.filterIsInstance<AuthState.Success>(),
             settings.uiSettings.flow.map { it.mainSceneInitialPage },
         ) { authState, initialPage ->
             OnboardingCompleteState(
@@ -54,15 +40,7 @@ class OnboardingCompleteViewModel : AbstractViewModel(), KoinComponent {
                 OnboardingCompleteState.Placeholder,
                 SharingStarted.WhileSubscribed(),
             )
-    
-    suspend fun startAuthCheckLoop() {
-        authLoopTasker.invoke {
-            launch(start = CoroutineStart.UNDISPATCHED) { authConfigurator.authorizeRequestCheckLoop() }
-            authConfigurator.checkAuthorizeState()
-            
-        }
-    }
-    
+
     companion object {
         internal const val DEFAULT_AVATAR = "https://lain.bgm.tv/r/200/pic/user/l/icon.jpg"
     }

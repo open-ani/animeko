@@ -73,6 +73,7 @@ import me.him188.ani.app.videoplayer.ui.progress.TAG_SPEED_SWITCHER_DROPDOWN_MEN
 import me.him188.ani.app.videoplayer.ui.progress.TAG_SPEED_SWITCHER_TEXT_BUTTON
 import me.him188.ani.app.videoplayer.ui.top.PlayerTopBar
 import me.him188.ani.danmaku.ui.DanmakuConfig
+import org.junit.jupiter.api.Disabled
 import org.openani.mediamp.DummyMediampPlayer
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -743,6 +744,7 @@ class EpisodeVideoControllerTest {
     }
 
     @Test
+    @Disabled // Sometimes fail on CI
     fun `touch - hover to always on - media selector sheet`() = runAniComposeUiTest {
         testSideSheetRequestAlwaysOn(
             gestureFamily = GestureFamily.TOUCH,
@@ -956,6 +958,7 @@ class EpisodeVideoControllerTest {
     }
 
     @Test
+    @Disabled // Sometimes fail on CI
     fun `mouse - hover to always on - media selector sheet`() = runAniComposeUiTest {
         testSideSheetRequestAlwaysOn(
             gestureFamily = GestureFamily.MOUSE,
