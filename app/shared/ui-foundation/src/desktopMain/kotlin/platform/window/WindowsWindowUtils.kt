@@ -46,11 +46,6 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import me.him188.ani.app.platform.PlatformWindow
 import me.him188.ani.app.platform.SavedWindowsWindowState
-import me.him188.ani.app.platform.window.ExtendedUser32.Companion.HTCAPTION
-import me.him188.ani.app.platform.window.ExtendedUser32.Companion.HTCLIENT
-import me.him188.ani.app.platform.window.ExtendedUser32.Companion.HTCLOSE
-import me.him188.ani.app.platform.window.ExtendedUser32.Companion.HTMAXBUTTON
-import me.him188.ani.app.platform.window.ExtendedUser32.Companion.HTMINBUTTON
 import me.him188.ani.app.platform.window.ExtendedUser32.Companion.MONITOR_DEFAULTTONEAREST
 import me.him188.ani.app.platform.window.ExtendedUser32.Companion.SC_RESTORE
 import me.him188.ani.app.platform.window.ExtendedUser32.Companion.SWP_NOACTIVATE
@@ -124,13 +119,14 @@ class WindowsWindowUtils : AwtWindowUtils() {
         }
     }
 
-    suspend fun collectWindowProcHitTestResult(platformWindow: PlatformWindow, hitTest: (x: Float, y: Float) -> Int) {
-        return platformWindow
+    suspend fun collectWindowProcHitTestProvider(
+        platformWindow: PlatformWindow,
+        hitTestOwner: WindowsWindowHitTestOwner
+    ) {
+        platformWindow
             .windowsWindowProc
             .filterIsInstance<ExtendedTitleBarWindowProc>()
-            .collect {
-                it.updateChildHitTestProvider(hitTest)
-            }
+            .collect { it.updateChildHitTestProvider(hitTestOwner) }
     }
 
     fun windowIsActive(platformWindow: PlatformWindow): Flow<Boolean?> {
@@ -281,18 +277,7 @@ class WindowsWindowUtils : AwtWindowUtils() {
     }
 
     companion object {
-
         val instance: WindowsWindowUtils by lazy { WindowsWindowUtils() }
-
-        val hitClient: Int get() = HTCLIENT
-
-        val hitMaxButton: Int get() = HTMAXBUTTON
-
-        val hitMinimize: Int get() = HTMINBUTTON
-
-        val hitClose: Int get() = HTCLOSE
-
-        val hitCaption: Int get() = HTCAPTION
     }
 }
 
@@ -581,36 +566,6 @@ internal interface ExtendedUser32 : User32 {
         // window is deactivated
         const val WA_INACTIVE: Int = 0x00000000
 
-        // pass the hit test to parent window
-        internal const val HTTRANSPANRENT: Int = -1
-
-        // no hit test
-        internal const val HTNOWHERE: Int = 0
-
-        // client area
-        const val HTCLIENT: Int = 1
-
-        // title bar
-        internal const val HTCAPTION: Int = 2
-
-        //
-        internal const val HTMINBUTTON: Int = 8
-
-        // max button
-        internal const val HTMAXBUTTON: Int = 9
-
-        // close button
-        internal const val HTCLOSE: Int = 20
-
-        // window edges
-        internal const val HTLEFT: Int = 10
-        internal const val HTRIGHT: Int = 11
-        internal const val HTTOP: Int = 12
-        internal const val HTTOPLEFT: Int = 13
-        internal const val HTTOPRIGHT: Int = 14
-        internal const val HTBOTTOM: Int = 15
-        internal const val HTBOTTOMLEFT: Int = 16
-        internal const val HTBOTTOMRIGHT: Int = 17
 
         const val WS_EX_DLGMODALFRAME: Int = 0x00000001
         const val WS_EX_WINDOWEDGE: Int = 0x00000100

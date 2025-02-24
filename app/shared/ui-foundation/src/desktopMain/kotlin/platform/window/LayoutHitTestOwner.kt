@@ -24,11 +24,25 @@ import androidx.compose.ui.scene.LocalComposeSceneContext
 import androidx.compose.ui.util.fastForEachReversed
 import androidx.compose.ui.util.packFloats
 
+/**
+ * 提供 [ComposeScene] 的点击测试.
+ *
+ * 使用 [rememberLayoutHitTestOwner] 获取当前平台的 [LayoutHitTestOwner].
+ */
 sealed interface LayoutHitTestOwner {
-
+    /**
+     * 测试这个坐标是否有 Compose 中的可**点击** (clickable), 可**复合点击** (combined clickable),
+     * 可**选择** (selectable) 和 可**开关** (toggleable) 的节点视图.
+     *
+     * @return 如果返回 true, 则表示这个坐标有可点击的节点.
+     * 点击这个坐标将会触发对应的 Compose 视图的点击事件.
+     */
     fun hitTest(x: Float, y: Float): Boolean
 }
 
+/**
+ * 获取当前 [ComposeScene] 的 [LayoutHitTestOwner].
+ */
 @OptIn(InternalComposeUiApi::class)
 @Composable
 fun rememberLayoutHitTestOwner(): LayoutHitTestOwner? {
@@ -89,7 +103,7 @@ private class PlatformLayersLayoutHitTestOwner(
 ) : ReflectLayoutHitTestOwner() {
     private val sceneClass = classLoader.loadClass("androidx.compose.ui.scene.PlatformLayersComposeSceneImpl")
 
-    private val mainOwnerRef = 
+    private val mainOwnerRef =
         sceneClass.getDeclaredMethod("getMainOwner").let {
             it.trySetAccessible()
             it.invoke(scene) as RootNodeOwner
