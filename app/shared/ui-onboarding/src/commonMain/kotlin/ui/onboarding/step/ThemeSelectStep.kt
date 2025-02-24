@@ -86,7 +86,7 @@ internal fun ThemeSelectStep(
             selected = config.darkMode == it,
         )
     }
-    
+
     SettingsTab(modifier = modifier) {
         Row(
             modifier = Modifier
@@ -111,7 +111,7 @@ internal fun ThemeSelectStep(
                         .fillMaxWidth()
                         .clickable { onUpdateUseDynamicTheme(!config.useDynamicTheme) },
                     title = { Text("动态色彩") },
-                    description = { Text("使用桌面壁纸生成主题颜色") },
+                    description = { Text("使用系统强调色") },
                     action = {
                         Switch(
                             checked = config.useDynamicTheme,
