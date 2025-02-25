@@ -38,7 +38,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.data.models.preference.DarkMode
-import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
@@ -62,45 +61,14 @@ internal fun ThemeSelectStep(
     modifier: Modifier = Modifier,
     layoutParams: WizardLayoutParams = WizardLayoutParams.calculate(currentWindowAdaptiveInfo1().windowSizeClass)
 ) {
-    val platform = LocalPlatform.current
-
-    val panelModifier = Modifier.size(96.dp, 146.dp)
-    val themePanelItem: @Composable (DarkMode) -> Unit = {
-        ColorSchemePreviewItem(
-            onClick = { onUpdateUseDarkMode(it) },
-            panel = {
-                if (it != DarkMode.AUTO) {
-                    ThemePreviewPanel(
-                        colorScheme = appColorScheme(isDark = it == DarkMode.DARK),
-                        modifier = panelModifier,
-                    )
-                } else {
-                    DiagonalMixedThemePreviewPanel(
-                        leftTopColorScheme = appColorScheme(isDark = false),
-                        rightBottomColorScheme = appColorScheme(isDark = true),
-                        modifier = panelModifier,
-                    )
-                }
-            },
-            text = { Text(renderThemeModeText(it)) },
-            selected = config.darkMode == it,
-        )
-    }
-
     SettingsTab(modifier = modifier) {
-        Row(
+        DarkModeSelectPanel(
+            currentMode = config.darkMode,
+            onModeSelected = onUpdateUseDarkMode,
             modifier = Modifier
                 .padding(horizontal = layoutParams.horizontalPadding)
-                .padding(top = layoutParams.verticalPadding)
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
-                .selectableGroup(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
-        ) {
-            themePanelItem(DarkMode.LIGHT)
-            themePanelItem(DarkMode.DARK)
-            themePanelItem(DarkMode.AUTO)
-        }
+                .padding(top = layoutParams.verticalPadding),
+        )
         Group(
             title = { Text("色彩") },
             useThinHeader = true,
@@ -141,6 +109,49 @@ internal fun ThemeSelectStep(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun DarkModeSelectPanel(
+    currentMode: DarkMode,
+    onModeSelected: (DarkMode) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val panelModifier = Modifier.size(96.dp, 146.dp)
+
+    val themePanelItem: @Composable (DarkMode) -> Unit = {
+        ColorSchemePreviewItem(
+            onClick = { onModeSelected(it) },
+            panel = {
+                if (it != DarkMode.AUTO) {
+                    ThemePreviewPanel(
+                        colorScheme = appColorScheme(isDark = it == DarkMode.DARK),
+                        modifier = panelModifier,
+                    )
+                } else {
+                    DiagonalMixedThemePreviewPanel(
+                        leftTopColorScheme = appColorScheme(isDark = false),
+                        rightBottomColorScheme = appColorScheme(isDark = true),
+                        modifier = panelModifier,
+                    )
+                }
+            },
+            text = { Text(renderThemeModeText(it)) },
+            selected = currentMode == it,
+        )
+    }
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .selectableGroup(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+    ) {
+        themePanelItem(DarkMode.LIGHT)
+        themePanelItem(DarkMode.DARK)
+        themePanelItem(DarkMode.AUTO)
     }
 }
 
