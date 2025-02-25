@@ -14,11 +14,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.DarkMode
-import androidx.compose.material.icons.rounded.HdrAuto
-import androidx.compose.material.icons.rounded.LightMode
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -26,18 +21,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.data.models.preference.ThemeSettings
-import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.theme.isPlatformSupportDynamicTheme
 import me.him188.ani.app.ui.settings.framework.SettingsState
-import me.him188.ani.app.ui.settings.framework.components.DropdownItem
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.SwitchItem
 import me.him188.ani.app.ui.theme.themeColorOptions
-import me.him188.ani.utils.platform.isAndroid
-import me.him188.ani.utils.platform.isDesktop
 
 @Composable
 fun SettingsScope.ThemeGroup(
@@ -48,73 +38,10 @@ fun SettingsScope.ThemeGroup(
     Group(
         title = { Text("主题") },
     ) {
-        if (LocalPlatform.current.isDesktop() || LocalPlatform.current.isAndroid()) {
-            DropdownItem(
-                selected = { themeSettings.darkMode },
-                values = { DarkMode.entries },
-                itemText = {
-                    when (it) {
-                        DarkMode.AUTO -> Text("自动")
-                        DarkMode.LIGHT -> Text("浅色")
-                        DarkMode.DARK -> Text("深色")
-                    }
-                },
-                onSelect = {
-                    state.update(themeSettings.copy(darkMode = it))
-                },
-                itemIcon = {
-                    when (it) {
-                        DarkMode.AUTO -> Icon(Icons.Rounded.HdrAuto, null)
-                        DarkMode.LIGHT -> Icon(Icons.Rounded.LightMode, null)
-                        DarkMode.DARK -> Icon(Icons.Rounded.DarkMode, null)
-                    }
-                },
-                description = {
-                    when (themeSettings.darkMode) {
-                        DarkMode.AUTO -> Text("根据系统设置自动切换")
-                        else -> {}
-                    }
-                },
-                title = { Text("深色模式") },
-            )
-        }
-
-//        Row(
-//            modifier = Modifier
-//                .fillMaxWidth()
-//                .padding(8.dp),
-//            horizontalArrangement = Arrangement.Center,
-//        ) {
-//            var selectedIndex by remember(themeSettings.darkMode) {
-//                mutableIntStateOf(themeSettings.darkMode.ordinal)
-//            }
-//            val options = DarkMode.entries.toList()
-//
-//            SingleChoiceSegmentedButtonRow(
-//                modifier = Modifier.widthIn(240.dp, 240.dp)
-//            ) {
-//                options.forEachIndexed { index, mode ->
-//                    SegmentedButton(
-//                        selected = index == selectedIndex,
-//                        onClick = {
-//                            selectedIndex = index
-//                            state.update(themeSettings.copy(darkMode = options[index]))
-//                        },
-//                        shape = SegmentedButtonDefaults.itemShape(
-//                            index = index,
-//                            count = options.size,
-//                        ),
-//                        label = {
-//                            when (mode) {
-//                                DarkMode.AUTO -> Text("系统")
-//                                DarkMode.LIGHT -> Text("浅色")
-//                                DarkMode.DARK -> Text("深色")
-//                            }
-//                        },
-//                    )
-//                }
-//            }
-//        }
+        DarkModeSelectPanel(
+            currentMode = themeSettings.darkMode,
+            onModeSelected = { state.update(themeSettings.copy(darkMode = it)) },
+        )
 
         if (isPlatformSupportDynamicTheme()) {
             SwitchItem(
