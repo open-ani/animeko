@@ -186,8 +186,8 @@ private fun ColorSchemePreviewItem(
 @Composable
 private fun renderThemeModeText(mode: DarkMode): String {
     return when (mode) {
-        DarkMode.LIGHT -> "亮色"
-        DarkMode.DARK -> "暗色"
+        DarkMode.LIGHT -> "浅色"
+        DarkMode.DARK -> "深色"
         DarkMode.AUTO -> "自动"
     }
 }
