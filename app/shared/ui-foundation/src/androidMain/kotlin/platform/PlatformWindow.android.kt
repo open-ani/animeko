@@ -21,21 +21,28 @@ actual class PlatformWindow(
     initialDeviceOrientation: DeviceOrientation,
     initialUndecoratedFullscreen: Boolean
 ) {
-    constructor(context: Context): this(
+    constructor(context: Context) : this(
         initialDeviceOrientation = context.resources.configuration.deviceOrientation,
-        initialUndecoratedFullscreen = isInFullscreenMode(context)
+        initialUndecoratedFullscreen = isInFullscreenMode(context),
     )
-    
+
     private var _deviceOrientation: DeviceOrientation by mutableStateOf(initialDeviceOrientation)
     actual val deviceOrientation: DeviceOrientation get() = _deviceOrientation
-    
+
     private var _isUndecoratedFullscreen: Boolean by mutableStateOf(initialUndecoratedFullscreen)
     actual val isUndecoratedFullscreen: Boolean get() = _isUndecoratedFullscreen
 
     private val insetListener = View.OnApplyWindowInsetsListener { _, insets ->
         @Suppress("DEPRECATION")
         val isFullscreenNow = when {
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.R -> !insets.isVisible(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.R -> {
+                // 只有在导航栏和状态栏都隐藏的时候才认为是无修饰全屏 (undecorated fullscreen)
+                // 有些系统 (例如 MIUI) 在开启全面屏手势后, 会隐藏导航栏并且设置 visible = false
+                // 我们不管包含在 systemBars 里的 systemOverlays 和 captionBar, 这两个东西的实现在各个系统都不一样
+                !insets.isVisible(WindowInsets.Type.statusBars()) &&
+                        !insets.isVisible(WindowInsets.Type.navigationBars())
+            }
+
             else -> insets.systemWindowInsetTop == 0
         }
         if (isFullscreenNow != _isUndecoratedFullscreen) {
@@ -44,7 +51,7 @@ actual class PlatformWindow(
 
         insets
     }
-    
+
     private val configurationListener = object : ComponentCallbacks {
         override fun onLowMemory() {
         }
@@ -53,7 +60,7 @@ actual class PlatformWindow(
             _deviceOrientation = newConfig.deviceOrientation
         }
     }
-    
+
     internal fun register(context: Context) {
         val activity = context.findActivity()
         val decorView = activity?.window?.decorView
@@ -71,7 +78,7 @@ actual class PlatformWindow(
         //register resource change listener
         context.registerComponentCallbacks(configurationListener)
     }
-    
+
     internal fun dispose(context: Context) {
         val activity = context.findActivity()
         val decorView = activity?.window?.decorView
@@ -97,7 +104,7 @@ private fun isInFullscreenMode(context: Context): Boolean {
 }
 
 private val Configuration.deviceOrientation
-    get() = when(orientation) {
+    get() = when (orientation) {
         Configuration.ORIENTATION_LANDSCAPE -> DeviceOrientation.LANDSCAPE
         else -> DeviceOrientation.PORTRAIT
     }
