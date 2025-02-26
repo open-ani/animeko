@@ -41,6 +41,7 @@ fun SettingsScope.ThemeGroup(
         DarkModeSelectPanel(
             currentMode = themeSettings.darkMode,
             onModeSelected = { state.update(themeSettings.copy(darkMode = it)) },
+            modifier = Modifier.padding(vertical = SettingsScope.itemVerticalSpacing),
         )
 
         if (isPlatformSupportDynamicTheme()) {
