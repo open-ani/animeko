@@ -277,7 +277,11 @@ private fun ExtendToTitleBar(frameState: WindowsWindowFrameState) {
     val platformWindow = LocalPlatformWindow.current
     LaunchedEffect(platformWindow, density, frameState) {
         WindowsWindowUtils.instance.collectWindowProcHitTestProvider(platformWindow) { x, y ->
-            frameState.hitTest(x, y, density)
+            if (!platformWindow.isUndecoratedFullscreen) {
+                frameState.hitTest(x, y, density)
+            } else {
+                WindowsWindowHitResult.CLIENT
+            }
         }
     }
 }
