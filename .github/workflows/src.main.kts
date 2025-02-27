@@ -405,6 +405,20 @@ run {
         gradleHeap = "6g",
         kotlinCompilerHeap = "6g",
     )
+    val ghMac15 = MatrixInstance(
+        runner = Runner.GithubMacOS15,
+        uploadApk = false, // all ABIs
+        runAndroidInstrumentedTests = false,
+        composeResourceTriple = "macos-aarch64",
+        uploadDesktopInstallers = true,
+        extraGradleArgs = listOf(
+            "-P$ANI_ANDROID_ABIS=arm64-v8a",
+        ),
+        buildIosFramework = false,
+        buildAllAndroidAbis = false,
+        gradleHeap = "4g",
+        kotlinCompilerHeap = "4g",
+    )
     val selfMac15 = MatrixInstance(
         runner = Runner.SelfHostedMacOS15,
         uploadApk = false, // upload arm64-v8a once finished
@@ -433,8 +447,10 @@ run {
         selfMac15.copy(
             buildAllAndroidAbis = true,
             uploadApk = true,
+            uploadDesktopInstallers = false,
             extraGradleArgs = selfMac15.extraGradleArgs.filterNot { it.startsWith("-P$ANI_ANDROID_ABIS=") }
-        ), // macos installer, android apks
+        ), // android apks
+        ghMac15 // macos installer
     )
 }
 
@@ -1151,14 +1167,16 @@ class WithMatrix(
             maxAttempts = 2,
         )
         // Run separately to avoid OOM
-        runGradle(
-            name = "Compile Kotlin Android",
-            tasks = [
-                "compileDebugKotlinAndroid",
-                "compileReleaseKotlinAndroid",
-            ],
-            maxAttempts = 2,
-        )
+        if (matrix.uploadApk || matrix.runTests || matrix.runAndroidInstrumentedTests) {
+            runGradle(
+                name = "Compile Kotlin Android",
+                tasks = [
+                    "compileDebugKotlinAndroid",
+                    "compileReleaseKotlinAndroid",
+                ],
+                maxAttempts = 2,
+            )
+        }
     }
 
     fun JobBuilder<*>.buildAndroidApk(prepareSigningKey: ActionStep<Base64ToFile_Untyped.Outputs>) {
