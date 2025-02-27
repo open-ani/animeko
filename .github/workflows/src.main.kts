@@ -408,6 +408,7 @@ run {
     val ghMac15 = MatrixInstance( // upload macos aarch64 dmg, see #1479
         runner = Runner.GithubMacOS15,
         uploadApk = false,
+        runTests = false,
         runAndroidInstrumentedTests = false,
         composeResourceTriple = "macos-aarch64",
         uploadDesktopInstallers = true,
