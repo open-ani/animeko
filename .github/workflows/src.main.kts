@@ -405,9 +405,9 @@ run {
         gradleHeap = "6g",
         kotlinCompilerHeap = "6g",
     )
-    val ghMac15 = MatrixInstance(
+    val ghMac15 = MatrixInstance( // upload macos aarch64 dmg, see #1479
         runner = Runner.GithubMacOS15,
-        uploadApk = false, // all ABIs
+        uploadApk = false,
         runAndroidInstrumentedTests = false,
         composeResourceTriple = "macos-aarch64",
         uploadDesktopInstallers = true,
@@ -424,7 +424,7 @@ run {
         uploadApk = false, // upload arm64-v8a once finished
         runAndroidInstrumentedTests = true,
         composeResourceTriple = "macos-arm64",
-        uploadDesktopInstallers = true,
+        uploadDesktopInstallers = false,
         extraGradleArgs = listOf(
             "-P$ANI_ANDROID_ABIS=arm64-v8a",
         ),
@@ -440,6 +440,7 @@ run {
 //        ghUbuntu2404,
         ghMac13,
         selfMac15,
+        ghMac15,
     )
     
     releaseMatrixInstances = listOf(
@@ -702,15 +703,16 @@ workflow(
     builds.filter { (matrix, _) ->
         matrix.runner.os == OS.MACOS && matrix.runner.arch == Arch.AARCH64
                 && matrix.uploadDesktopInstallers
-    }.forEach { (_, build) ->
-        listOf(
-            Runner.SelfHostedMacOS15,
-            Runner.GithubMacOS14,
-            Runner.GithubMacOS15,
-        ).forEach { runner ->
-            addVerifyJob(build, runner, build.outputs.macosAarch64DmgSuccess)
+    }.let { it.singleOrNull() ?: error("List contain multiple elements: $it") }
+        .let { (_, build) ->
+            listOf(
+                Runner.SelfHostedMacOS15,
+                Runner.GithubMacOS14,
+                Runner.GithubMacOS15,
+            ).forEach { runner ->
+                addVerifyJob(build, runner, build.outputs.macosAarch64DmgSuccess)
+            }
         }
-    }
 }
 
 operator fun List<Pair<MatrixInstance, Job<BuildJobOutputs>>>.get(runner: Runner): Job<BuildJobOutputs> {
