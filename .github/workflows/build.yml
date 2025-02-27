@@ -110,7 +110,7 @@ jobs:
     permissions:
       actions: 'write'
     outputs:
-      windowsX64PortableSuccess: '${{ steps.step-13.outcome == ''success'' }}'
+      windowsX64PortableSuccess: '${{ steps.step-12.outcome == ''success'' }}'
     steps:
     - id: 'step-0'
       uses: 'actions/checkout@v4'
@@ -173,27 +173,20 @@ jobs:
         max_attempts: '2'
         command: './gradlew compileDebugKotlinAndroid compileReleaseKotlinAndroid "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "--parallel" "-Pani.android.abis=x86_64"'
     - id: 'step-10'
-      name: 'Check'
-      uses: 'nick-fields/retry@v3'
-      with:
-        timeout_minutes: '60'
-        max_attempts: '2'
-        command: './gradlew check "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "--parallel" "-Pani.android.abis=x86_64"'
-    - id: 'step-11'
       name: 'Package Desktop'
       uses: 'nick-fields/retry@v3'
       with:
         timeout_minutes: '120'
         max_attempts: '2'
         command: './gradlew createReleaseDistributable "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "--parallel" "-Pani.android.abis=x86_64"'
-    - id: 'step-12'
+    - id: 'step-11'
       name: 'Upload compose logs'
       uses: 'actions/upload-artifact@v4'
       with:
         name: 'compose-logs-github-windows-2019'
         path: 'app/desktop/build/compose/logs'
       if: '${{ always() }}'
-    - id: 'step-13'
+    - id: 'step-12'
       name: 'Upload Windows packages'
       uses: 'actions/upload-artifact@v4'
       with:
@@ -201,6 +194,13 @@ jobs:
         path: 'app/desktop/build/compose/binaries/main-release/app'
         if-no-files-found: 'error'
         overwrite: 'true'
+    - id: 'step-13'
+      name: 'Check'
+      uses: 'nick-fields/retry@v3'
+      with:
+        timeout_minutes: '60'
+        max_attempts: '2'
+        command: './gradlew check "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "--parallel" "-Pani.android.abis=x86_64"'
   build_github-macos-13:
     name: 'Build (macOS 13 x86_64 (GitHub))'
     runs-on:
@@ -224,7 +224,7 @@ jobs:
       shell: 'bash'
       run: |-
         # Expand jbrLocationExpr
-        jbr_location_expr='${{ runner.tool_cache }}/jbrsdk_jcef-21.0.5-osx-x64-b631.8.tar.gz'
+        jbr_location_expr='${{ runner.tool_cache }}/jbrsdk_jcef-21.0.6-osx-x64-b895.91.tar.gz'
         echo "jbrLocation=$jbr_location_expr" >> $GITHUB_OUTPUT
     - id: 'step-4'
       name: 'Get JBR 21 for macOS AArch64'
@@ -233,7 +233,7 @@ jobs:
       shell: 'bash'
       run: |-
         jbr_location="$jbrLocation"
-        checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-osx-x64-b631.8.tar.gz.checksum"
+        checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.6-osx-x64-b895.91.tar.gz.checksum"
         checksum_file="checksum.tmp"
         wget -q -O $checksum_file $checksum_url
 
@@ -245,7 +245,7 @@ jobs:
         fi
 
         if [ "$file_checksum" != "$expected_checksum" ]; then
-            wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-osx-x64-b631.8.tar.gz -O "$jbr_location"
+            wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.6-osx-x64-b895.91.tar.gz -O "$jbr_location"
             file_checksum=$(shasum -a 512 "$jbr_location" | awk '{print $1}')
         fi
 
@@ -405,8 +405,6 @@ jobs:
     permissions:
       actions: 'write'
     if: '${{ github.repository == ''open-ani/animeko'' }}'
-    outputs:
-      macosAarch64DmgSuccess: '${{ steps.step-18.outcome == ''success'' }}'
     steps:
     - id: 'step-0'
       uses: 'actions/checkout@v4'
@@ -420,7 +418,7 @@ jobs:
       shell: 'bash'
       run: |-
         # Expand jbrLocationExpr
-        jbr_location_expr='${{ runner.tool_cache }}/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz'
+        jbr_location_expr='${{ runner.tool_cache }}/jbrsdk_jcef-21.0.6-osx-aarch64-b895.91.tar.gz'
         echo "jbrLocation=$jbr_location_expr" >> $GITHUB_OUTPUT
     - id: 'step-3'
       name: 'Get JBR 21 for macOS AArch64'
@@ -429,7 +427,7 @@ jobs:
       shell: 'bash'
       run: |-
         jbr_location="$jbrLocation"
-        checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz.checksum"
+        checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.6-osx-aarch64-b895.91.tar.gz.checksum"
         checksum_file="checksum.tmp"
         wget -q -O $checksum_file $checksum_url
 
@@ -441,7 +439,7 @@ jobs:
         fi
 
         if [ "$file_checksum" != "$expected_checksum" ]; then
-            wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz -O "$jbr_location"
+            wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.6-osx-aarch64-b895.91.tar.gz -O "$jbr_location"
             file_checksum=$(shasum -a 512 "$jbr_location" | awk '{print $1}')
         fi
 
@@ -531,20 +529,122 @@ jobs:
         emulator-boot-timeout: '1800'
         script: './gradlew connectedDebugAndroidTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "--parallel" "-Pani.android.abis=arm64-v8a"'
     - id: 'step-16'
+      name: 'Cleanup temp files'
+      continue-on-error: true
+      run: 'chmod +x ./ci-helper/cleanup-temp-files-macos.sh && ./ci-helper/cleanup-temp-files-macos.sh'
+  build_github-macos-15:
+    name: 'Build (macOS 15 AArch64 (GitHub))'
+    runs-on:
+    - 'macos-15'
+    permissions:
+      actions: 'write'
+    outputs:
+      macosAarch64DmgSuccess: '${{ steps.step-14.outcome == ''success'' }}'
+    steps:
+    - id: 'step-0'
+      uses: 'actions/checkout@v4'
+      with:
+        submodules: 'recursive'
+    - id: 'step-1'
+      name: 'Free space for macOS'
+      continue-on-error: true
+      run: 'chmod +x ./ci-helper/free-space-macos.sh && ./ci-helper/free-space-macos.sh'
+    - id: 'step-2'
+      continue-on-error: true
+      run: 'rm local.properties'
+    - id: 'step-3'
+      name: 'Resolve JBR location'
+      shell: 'bash'
+      run: |-
+        # Expand jbrLocationExpr
+        jbr_location_expr='${{ runner.tool_cache }}/jbrsdk_jcef-21.0.6-osx-aarch64-b895.91.tar.gz'
+        echo "jbrLocation=$jbr_location_expr" >> $GITHUB_OUTPUT
+    - id: 'step-4'
+      name: 'Get JBR 21 for macOS AArch64'
+      env:
+        jbrLocation: '${{ steps.step-3.outputs.jbrLocation }}'
+      shell: 'bash'
+      run: |-
+        jbr_location="$jbrLocation"
+        checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.6-osx-aarch64-b895.91.tar.gz.checksum"
+        checksum_file="checksum.tmp"
+        wget -q -O $checksum_file $checksum_url
+
+        expected_checksum=$(awk '{print $1}' $checksum_file)
+        file_checksum=""
+
+        if [ -f "$jbr_location" ]; then
+            file_checksum=$(shasum -a 512 "$jbr_location" | awk '{print $1}')
+        fi
+
+        if [ "$file_checksum" != "$expected_checksum" ]; then
+            wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.6-osx-aarch64-b895.91.tar.gz -O "$jbr_location"
+            file_checksum=$(shasum -a 512 "$jbr_location" | awk '{print $1}')
+        fi
+
+        if [ "$file_checksum" != "$expected_checksum" ]; then
+            echo "Checksum verification failed!" >&2
+            rm -f $checksum_file
+            exit 1
+        fi
+
+        rm -f $checksum_file
+        file "$jbr_location"
+    - id: 'step-5'
+      name: 'Setup JBR 21 for macOS '
+      uses: 'gmitch215/setup-java@6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d'
+      with:
+        java-version: '21'
+        distribution: 'jdkfile'
+        jdkFile: '${{ steps.step-3.outputs.jbrLocation }}'
+      env:
+        GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
+    - id: 'step-6'
+      name: 'Dump Local Properties'
+      run: 'echo "jvm.toolchain.version=21" >> local.properties'
+    - id: 'step-7'
+      run: 'chmod -R 777 .'
+    - id: 'step-8'
+      name: 'Setup Gradle'
+      uses: 'gradle/actions/setup-gradle@v3'
+      with:
+        cache-disabled: 'true'
+    - id: 'step-9'
+      name: 'Clean and download dependencies'
+      uses: 'nick-fields/retry@v3'
+      with:
+        timeout_minutes: '60'
+        max_attempts: '3'
+        command: './gradlew "--stacktrace" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "-Pani.android.abis=arm64-v8a"'
+    - id: 'step-10'
+      name: 'Update dev version name'
+      uses: 'nick-fields/retry@v3'
+      with:
+        timeout_minutes: '120'
+        max_attempts: '2'
+        command: './gradlew updateDevVersionNameFromGit "--no-configuration-cache" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "-Pani.android.abis=arm64-v8a"'
+    - id: 'step-11'
+      name: 'Compile Kotlin'
+      uses: 'nick-fields/retry@v3'
+      with:
+        timeout_minutes: '120'
+        max_attempts: '2'
+        command: './gradlew compileKotlin compileCommonMainKotlinMetadata compileJvmMainKotlinMetadata compileKotlinDesktop compileKotlinMetadata "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "-Pani.android.abis=arm64-v8a"'
+    - id: 'step-12'
       name: 'Package Desktop'
       uses: 'nick-fields/retry@v3'
       with:
         timeout_minutes: '120'
         max_attempts: '2'
-        command: './gradlew packageReleaseDistributionForCurrentOS "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "--parallel" "-Pani.android.abis=arm64-v8a"'
-    - id: 'step-17'
+        command: './gradlew packageReleaseDistributionForCurrentOS "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "-Pani.android.abis=arm64-v8a"'
+    - id: 'step-13'
       name: 'Upload compose logs'
       uses: 'actions/upload-artifact@v4'
       with:
-        name: 'compose-logs-self-hosted-macos-15'
+        name: 'compose-logs-github-macos-15'
         path: 'app/desktop/build/compose/logs'
       if: '${{ always() }}'
-    - id: 'step-18'
+    - id: 'step-14'
       name: 'Upload macOS dmg'
       uses: 'actions/upload-artifact@v4'
       with:
@@ -552,10 +652,6 @@ jobs:
         path: 'app/desktop/build/compose/binaries/main-release/dmg/Ani-*.dmg'
         if-no-files-found: 'error'
         overwrite: 'true'
-    - id: 'step-19'
-      name: 'Cleanup temp files'
-      continue-on-error: true
-      run: 'chmod +x ./ci-helper/cleanup-temp-files-macos.sh && ./ci-helper/cleanup-temp-files-macos.sh'
   verify_github-windows-2019:
     name: 'Verify (Windows Server 2019 x86_64 (GitHub))'
     runs-on:
@@ -668,8 +764,8 @@ jobs:
     permissions:
       actions: 'read'
     needs:
-    - 'build_self-hosted-macos-15'
-    if: '${{ (github.repository == ''open-ani/animeko'') && (needs.build_self-hosted-macos-15.outputs.macosAarch64DmgSuccess) }}'
+    - 'build_github-macos-15'
+    if: '${{ (github.repository == ''open-ani/animeko'') && (needs.build_github-macos-15.outputs.macosAarch64DmgSuccess) }}'
     steps:
     - id: 'step-0'
       uses: 'actions/checkout@v4'
@@ -694,8 +790,8 @@ jobs:
     permissions:
       actions: 'read'
     needs:
-    - 'build_self-hosted-macos-15'
-    if: '${{ needs.build_self-hosted-macos-15.outputs.macosAarch64DmgSuccess }}'
+    - 'build_github-macos-15'
+    if: '${{ needs.build_github-macos-15.outputs.macosAarch64DmgSuccess }}'
     steps:
     - id: 'step-0'
       uses: 'actions/checkout@v4'
@@ -728,8 +824,8 @@ jobs:
     permissions:
       actions: 'read'
     needs:
-    - 'build_self-hosted-macos-15'
-    if: '${{ needs.build_self-hosted-macos-15.outputs.macosAarch64DmgSuccess }}'
+    - 'build_github-macos-15'
+    if: '${{ needs.build_github-macos-15.outputs.macosAarch64DmgSuccess }}'
     steps:
     - id: 'step-0'
       uses: 'actions/checkout@v4'

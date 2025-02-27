@@ -405,12 +405,27 @@ run {
         gradleHeap = "6g",
         kotlinCompilerHeap = "6g",
     )
+    val ghMac15 = MatrixInstance( // upload macos aarch64 dmg, see #1479
+        runner = Runner.GithubMacOS15,
+        uploadApk = false,
+        runTests = false,
+        runAndroidInstrumentedTests = false,
+        composeResourceTriple = "macos-aarch64",
+        uploadDesktopInstallers = true,
+        extraGradleArgs = listOf(
+            "-P$ANI_ANDROID_ABIS=arm64-v8a",
+        ),
+        buildIosFramework = false,
+        buildAllAndroidAbis = false,
+        gradleHeap = "4g",
+        kotlinCompilerHeap = "4g",
+    )
     val selfMac15 = MatrixInstance(
         runner = Runner.SelfHostedMacOS15,
         uploadApk = false, // upload arm64-v8a once finished
         runAndroidInstrumentedTests = true,
         composeResourceTriple = "macos-arm64",
-        uploadDesktopInstallers = true,
+        uploadDesktopInstallers = false,
         extraGradleArgs = listOf(
             "-P$ANI_ANDROID_ABIS=arm64-v8a",
         ),
@@ -426,6 +441,7 @@ run {
 //        ghUbuntu2404,
         ghMac13,
         selfMac15,
+        ghMac15,
     )
     
     releaseMatrixInstances = listOf(
@@ -433,8 +449,10 @@ run {
         selfMac15.copy(
             buildAllAndroidAbis = true,
             uploadApk = true,
+            uploadDesktopInstallers = false,
             extraGradleArgs = selfMac15.extraGradleArgs.filterNot { it.startsWith("-P$ANI_ANDROID_ABIS=") }
-        ), // macos installer, android apks
+        ), // android apks
+        ghMac15 // macos installer
     )
 }
 
@@ -467,8 +485,6 @@ fun getBuildJobBody(matrix: MatrixInstance): JobBuilder<BuildJobOutputs>.() -> U
             prepareSigningKey?.let {
                 buildAndroidApk(it)
             }
-            gradleCheck()
-            androidConnectedTests()
             val packageOutputs = packageDesktopAndUpload()
 
             packageOutputs.macosAarch64DmgOutcome?.let {
@@ -478,6 +494,8 @@ fun getBuildJobBody(matrix: MatrixInstance): JobBuilder<BuildJobOutputs>.() -> U
             packageOutputs.windowsX64PortableOutcome?.let {
                 jobOutputs.windowsX64PortableSuccess = it.eq(AbstractResult.Status.Success)
             }
+            gradleCheck()
+            androidConnectedTests()
         }
         cleanupTempFiles()
     }
@@ -686,15 +704,16 @@ workflow(
     builds.filter { (matrix, _) ->
         matrix.runner.os == OS.MACOS && matrix.runner.arch == Arch.AARCH64
                 && matrix.uploadDesktopInstallers
-    }.forEach { (_, build) ->
-        listOf(
-            Runner.SelfHostedMacOS15,
-            Runner.GithubMacOS14,
-            Runner.GithubMacOS15,
-        ).forEach { runner ->
-            addVerifyJob(build, runner, build.outputs.macosAarch64DmgSuccess)
+    }.let { it.singleOrNull() ?: error("List contain multiple elements: $it") }
+        .let { (_, build) ->
+            listOf(
+                Runner.SelfHostedMacOS15,
+                Runner.GithubMacOS14,
+                Runner.GithubMacOS15,
+            ).forEach { runner ->
+                addVerifyJob(build, runner, build.outputs.macosAarch64DmgSuccess)
+            }
         }
-    }
 }
 
 operator fun List<Pair<MatrixInstance, Job<BuildJobOutputs>>>.get(runner: Runner): Job<BuildJobOutputs> {
@@ -1008,9 +1027,9 @@ class WithMatrix(
         when (matrix.runner.os) {
             OS.MACOS -> {
                 val jbrLocationExpr = if (matrix.arch == Arch.AARCH64) {
-                    downloadJbrUnix("jbrsdk_jcef-21.0.5-osx-aarch64-b631.8.tar.gz")
+                    downloadJbrUnix("jbrsdk_jcef-21.0.6-osx-aarch64-b895.91.tar.gz")
                 } else {
-                    downloadJbrUnix("jbrsdk_jcef-21.0.5-osx-x64-b631.8.tar.gz")
+                    downloadJbrUnix("jbrsdk_jcef-21.0.6-osx-x64-b895.91.tar.gz")
                 }
 
                 uses(
@@ -1151,14 +1170,16 @@ class WithMatrix(
             maxAttempts = 2,
         )
         // Run separately to avoid OOM
-        runGradle(
-            name = "Compile Kotlin Android",
-            tasks = [
-                "compileDebugKotlinAndroid",
-                "compileReleaseKotlinAndroid",
-            ],
-            maxAttempts = 2,
-        )
+        if (matrix.uploadApk || matrix.runTests || matrix.runAndroidInstrumentedTests) {
+            runGradle(
+                name = "Compile Kotlin Android",
+                tasks = [
+                    "compileDebugKotlinAndroid",
+                    "compileReleaseKotlinAndroid",
+                ],
+                maxAttempts = 2,
+            )
+        }
     }
 
     fun JobBuilder<*>.buildAndroidApk(prepareSigningKey: ActionStep<Base64ToFile_Untyped.Outputs>) {
