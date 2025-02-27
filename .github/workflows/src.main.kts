@@ -467,8 +467,6 @@ fun getBuildJobBody(matrix: MatrixInstance): JobBuilder<BuildJobOutputs>.() -> U
             prepareSigningKey?.let {
                 buildAndroidApk(it)
             }
-            gradleCheck()
-            androidConnectedTests()
             val packageOutputs = packageDesktopAndUpload()
 
             packageOutputs.macosAarch64DmgOutcome?.let {
@@ -478,6 +476,8 @@ fun getBuildJobBody(matrix: MatrixInstance): JobBuilder<BuildJobOutputs>.() -> U
             packageOutputs.windowsX64PortableOutcome?.let {
                 jobOutputs.windowsX64PortableSuccess = it.eq(AbstractResult.Status.Success)
             }
+            gradleCheck()
+            androidConnectedTests()
         }
         cleanupTempFiles()
     }
