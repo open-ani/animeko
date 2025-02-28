@@ -109,9 +109,11 @@ internal fun FrameWindowScope.WindowsWindowFrame(
     val scope = rememberCoroutineScope()
 
     //Keep 1px for showing float window top area border.
-    val topBorderFixedInsets by remember(platformWindow) {
+    val topBorderFixedInsets by remember(platformWindow, windowState) {
         derivedStateOf {
-            if (!platformWindow.isUndecoratedFullscreen) WindowInsets(top = 1) else ZeroInsets
+            val isFloatingWindow =
+                !platformWindow.isUndecoratedFullscreen && windowState.placement == WindowPlacement.Floating
+            if (isFloatingWindow) WindowInsets(top = 1) else ZeroInsets
         }
     }
     Box(modifier = Modifier.fillMaxSize().windowInsetsPadding(topBorderFixedInsets)) {
