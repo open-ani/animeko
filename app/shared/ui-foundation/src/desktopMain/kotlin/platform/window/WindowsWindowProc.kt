@@ -188,6 +188,11 @@ internal class ExtendedTitleBarWindowProc(
     private fun hitTestWindowResizerBorder(x: Int, y: Int): WindowsWindowHitResult {
         // Force update window info.
         updateWindowInfo()
+        // If window not contains the border, return NOWHERE.
+        val currentStyle = User32.INSTANCE.GetWindowLong(windowHandle, WinUser.GWL_STYLE)
+        if (currentStyle and WinUser.WS_CAPTION == 0) {
+            return WindowsWindowHitResult.NOWHERE
+        }
         val horizontalPadding = frameX
         val verticalPadding = frameY
         return when {
