@@ -25,7 +25,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Text
@@ -168,7 +167,7 @@ fun SubjectDetailsHeaderCompact(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     var showSubtitle by remember { mutableStateOf(false) }
-                    SelectionContainer(Modifier.clickable { showSubtitle = !showSubtitle }) {
+                    Box(Modifier.clickable { showSubtitle = !showSubtitle }) {
                         ProvideTextStyle(MaterialTheme.typography.titleLarge) {
                             if (showSubtitle) {
                                 subtitle()
@@ -257,7 +256,7 @@ fun SubjectDetailsHeaderWide(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     var showSubtitle by remember { mutableStateOf(false) }
-                    SelectionContainer(
+                    Box(
                         Modifier
                             .onRightClickIfSupported {
                                 onLongClickTitle(showSubtitle)
