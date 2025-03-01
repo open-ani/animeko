@@ -280,7 +280,7 @@ private fun EpisodeScreenContent(
 
                 CompositionLocalProvider(LocalImageViewerHandler provides imageViewer) {
                     when {
-                        showExpandedUI || isSystemInFullscreen() ->
+                        showExpandedUI ->
                             EpisodeScreenTabletVeryWide(
                                 vm,
                                 page,
