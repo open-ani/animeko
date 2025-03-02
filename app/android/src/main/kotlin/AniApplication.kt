@@ -19,19 +19,27 @@ import androidx.lifecycle.ProcessLifecycleOwner
 import io.ktor.client.engine.okhttp.OkHttp
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import me.him188.ani.android.activity.MainActivity
+import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.torrent.TorrentManager
 import me.him188.ani.app.domain.torrent.service.AniTorrentService
 import me.him188.ani.app.domain.torrent.service.ServiceConnectionManager
 import me.him188.ani.app.platform.AndroidLoggingConfigurator
 import me.him188.ani.app.platform.AppStartupTasks
 import me.him188.ani.app.platform.JvmLogHelper
+import me.him188.ani.app.platform.create
 import me.him188.ani.app.platform.createAppRootCoroutineScope
+import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.platform.getCommonKoinModule
 import me.him188.ani.app.platform.startCommonKoinModule
 import me.him188.ani.app.ui.settings.tabs.getLogsDir
 import me.him188.ani.app.ui.settings.tabs.media.DEFAULT_TORRENT_CACHE_DIR_NAME
+import me.him188.ani.utils.analytics.AnalyticsConfig
+import me.him188.ani.utils.analytics.AnalyticsHolder
+import me.him188.ani.utils.analytics.AnalyticsImpl
 import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.logger
@@ -72,8 +80,6 @@ class AniApplication : Application() {
         val logsDir = applicationContext.getLogsDir().absolutePath
         AndroidLoggingConfigurator.configure(logsDir)
         AppStartupTasks.printVersions()
-
-        AppStartupTasks.initializeSentry()
 
         val defaultUEH = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { t, e ->
@@ -122,9 +128,37 @@ class AniApplication : Application() {
         }.startCommonKoinModule(scope)
 
         val koin = getKoin()
+        val analyticsInitializer = scope.launch {
+            val settingsRepository = koin.get<SettingsRepository>()
+            val settings = settingsRepository.analyticsSettings.flow.first()
+            if (settings.allowAnonymousBugReport) {
+                AppStartupTasks.initializeSentry()
+            }
+            if (settings.isInit) {
+                settingsRepository.analyticsSettings.update {
+                    copy(isInit = false) // save user id
+                }
+            }
+            if (settings.allowAnonymousAnalytics) {
+                AnalyticsHolder.init(
+                    AnalyticsImpl(
+                        AnalyticsConfig.create(),
+                    ).apply {
+                        init(
+                            this@AniApplication,
+                            apiKey = currentAniBuildConfig.analyticsKey,
+                            host = currentAniBuildConfig.analyticsServer,
+                        )
+                    },
+                )
+            }
+        }
+
         scope.launch(CoroutineName("TorrentManager initializer")) {
             koin.get<TorrentManager>() // start sharing, connect to DHT now
         }
+
+        runBlocking { analyticsInitializer.join() }
     }
 
     @SuppressLint("DiscouragedPrivateApi")

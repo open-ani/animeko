@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -23,6 +23,7 @@ import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
 import me.him188.ani.app.data.models.danmaku.DanmakuConfigSerializer
 import me.him188.ani.app.data.models.danmaku.DanmakuFilterConfig
+import me.him188.ani.app.data.models.preference.AnalyticsSettings
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
 import me.him188.ani.app.data.models.preference.DanmakuSettings
 import me.him188.ani.app.data.models.preference.DebugSettings
@@ -78,6 +79,7 @@ interface SettingsRepository {
 
     val oneshotActionConfig: Settings<OneshotActionConfig>
 
+    val analyticsSettings: Settings<AnalyticsSettings>
     val debugSettings: Settings<DebugSettings>
 }
 
@@ -227,13 +229,19 @@ class PreferencesRepositoryImpl(
     override val torrentPeerConfig: Settings<TorrentPeerConfig> = SerializablePreference(
         "torrentPeerConfig",
         TorrentPeerConfig.serializer(),
-        default = { TorrentPeerConfig.Default }
+        default = { TorrentPeerConfig.Default },
     )
 
     override val oneshotActionConfig: Settings<OneshotActionConfig> = SerializablePreference(
         "oneshotActionConfig",
         OneshotActionConfig.serializer(),
         default = { OneshotActionConfig.Default },
+    )
+
+    override val analyticsSettings: Settings<AnalyticsSettings> = SerializablePreference(
+        "analyticsSettings",
+        AnalyticsSettings.serializer(),
+        default = { AnalyticsSettings.default() },
     )
 
     override val debugSettings: Settings<DebugSettings> = SerializablePreference(

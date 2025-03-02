@@ -45,6 +45,7 @@ kotlin {
 
         api(libs.koin.core)
         api(libs.sentry.kotlin.multiplatform)
+        api(projects.utils.analytics)
     }
     sourceSets.commonTest.dependencies {
         api(projects.utils.uiTesting)
@@ -70,6 +71,8 @@ val aniAuthServerUrlRelease = getPropertyOrNull("ani.auth.server.url.release") ?
 val dandanplayAppId = getPropertyOrNull("ani.dandanplay.app.id") ?: ""
 val dandanplayAppSecret = getPropertyOrNull("ani.dandanplay.app.secret") ?: ""
 val sentryDsn = getPropertyOrNull("ani.sentry.dsn") ?: ""
+val analyticsServer = getPropertyOrNull("ani.analytics.server") ?: ""
+val analyticsKey = getPropertyOrNull("ani.analytics.key") ?: ""
 
 //if (bangumiClientDesktopAppId == null || bangumiClientDesktopSecret == null) {
 //    logger.warn("bangumi.oauth.client.desktop.appId or bangumi.oauth.client.desktop.secret is not set. Bangumi authorization will not work. Get a token from https://bgm.tv/dev/app and set them in local.properties.")
@@ -81,6 +84,8 @@ android {
         buildConfigField("String", "DANDANPLAY_APP_ID", "\"$dandanplayAppId\"")
         buildConfigField("String", "DANDANPLAY_APP_SECRET", "\"$dandanplayAppSecret\"")
         buildConfigField("String", "SENTRY_DSN", "\"$sentryDsn\"")
+        buildConfigField("String", "ANALYTICS_KEY", "\"$analyticsKey\"")
+        buildConfigField("String", "ANALYTICS_SERVER", "\"$analyticsServer\"")
     }
     buildTypes.getByName("release") {
         isMinifyEnabled = false
@@ -136,6 +141,8 @@ val generateAniBuildConfigDesktop = tasks.register("generateAniBuildConfigDeskto
                 override val dandanplayAppId = "$dandanplayAppId"
                 override val dandanplayAppSecret = "$dandanplayAppSecret"
                 override val sentryDsn = "$sentryDsn"
+                override val analyticsKey = "$analyticsKey"
+                override val analyticsServer = "$analyticsServer"
             }
             """.trimIndent()
 
@@ -171,6 +178,8 @@ if (enableIos) {
                 override val dandanplayAppId = "$dandanplayAppId"
                 override val dandanplayAppSecret = "$dandanplayAppSecret"
                 override val sentryDsn = "$sentryDsn"
+                override val analyticsKey = "$analyticsKey"
+                override val analyticsServer = "$analyticsServer"
             }
             """.trimIndent()
 

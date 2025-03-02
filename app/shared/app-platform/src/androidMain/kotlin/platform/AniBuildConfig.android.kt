@@ -25,6 +25,10 @@ private object AniBuildConfigAndroid : AniBuildConfig {
         get() = BuildConfig.DANDANPLAY_APP_SECRET
     override val sentryDsn: String
         get() = BuildConfig.SENTRY_DSN
+    override val analyticsServer: String
+        get() = BuildConfig.ANALYTICS_SERVER
+    override val analyticsKey: String
+        get() = BuildConfig.ANALYTICS_KEY
 }
 
 @Stable

@@ -83,7 +83,9 @@ import me.him188.ani.app.platform.JvmLogHelper
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.PermissionManager
 import me.him188.ani.app.platform.PlatformWindow
+import me.him188.ani.app.platform.create
 import me.him188.ani.app.platform.createAppRootCoroutineScope
+import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.platform.getCommonKoinModule
 import me.him188.ani.app.platform.startCommonKoinModule
 import me.him188.ani.app.platform.window.HandleWindowsWindowProc
@@ -111,6 +113,9 @@ import me.him188.ani.app.ui.main.AniApp
 import me.him188.ani.app.ui.main.AniAppContent
 import me.him188.ani.desktop.generated.resources.Res
 import me.him188.ani.desktop.generated.resources.a_round
+import me.him188.ani.utils.analytics.AnalyticsConfig
+import me.him188.ani.utils.analytics.AnalyticsHolder
+import me.him188.ani.utils.analytics.AnalyticsImpl
 import me.him188.ani.utils.io.inSystem
 import me.him188.ani.utils.io.toKtPath
 import me.him188.ani.utils.logging.error
@@ -188,8 +193,6 @@ object AniDesktop {
             logger.info { "Debug mode enabled" }
         }
         AppStartupTasks.printVersions()
-
-        AppStartupTasks.initializeSentry()
 
         logger.info { "dataDir: file://${dataDir.absolutePathString().replace(" ", "%20")}" }
         logger.info { "cacheDir: file://${cacheDir.absolutePathString().replace(" ", "%20")}" }
@@ -302,6 +305,32 @@ object AniDesktop {
             }
             TestTasks.handleTestTask(taskName, args, context)
         }
+        val settingsRepository = koin.koin.get<SettingsRepository>()
+
+        val analyticsInitializer = coroutineScope.launch {
+            val settings = settingsRepository.analyticsSettings.flow.first()
+            if (settings.allowAnonymousBugReport) {
+                AppStartupTasks.initializeSentry()
+            }
+            if (settings.isInit) {
+                settingsRepository.analyticsSettings.update {
+                    copy(isInit = false) // save user id
+                }
+            }
+            if (settings.allowAnonymousAnalytics) {
+                AnalyticsHolder.init(
+                    AnalyticsImpl(
+                        AnalyticsConfig.create(),
+                        settings.userId,
+                    ).apply {
+                        init(
+                            apiKey = currentAniBuildConfig.analyticsKey,
+                            host = currentAniBuildConfig.analyticsServer,
+                        )
+                    },
+                )
+            }
+        }
 
         val loadAnitorrentJob = coroutineScope.launch {
             try {
@@ -368,6 +397,10 @@ object AniDesktop {
         }
 
         val systemThemeDetector = SystemThemeDetector()
+
+        if (analyticsInitializer.isActive) {
+            runBlocking { analyticsInitializer.join() }
+        }
 
         application {
             WindowStateRecorder(

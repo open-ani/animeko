@@ -13,6 +13,7 @@ import me.him188.ani.app.domain.session.AuthorizationCancelledException
 import me.him188.ani.app.domain.session.AuthorizationFailedException
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.session.SessionStatus
+import me.him188.ani.utils.analytics.AnalyticsConfig
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
@@ -55,4 +56,12 @@ object AppStartupTasks {
     }
 
     private val logger = logger<AppStartupTasks>()
+}
+
+fun AnalyticsConfig.Companion.create(): AnalyticsConfig {
+    return AnalyticsConfig(
+        currentAniBuildConfig.versionName,
+        currentAniBuildConfig.isDebug,
+        enabled = currentAniBuildConfig.isDebug, // todo: ask for consent then enable for production
+    )
 }

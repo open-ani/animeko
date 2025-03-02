@@ -26,6 +26,10 @@ import androidx.compose.ui.window.ComposeUIViewController
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.get
 import me.him188.ani.app.domain.media.resolver.HttpStreamingMediaResolver
@@ -45,7 +49,9 @@ import me.him188.ani.app.platform.IosContextFiles
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.PermissionManager
 import me.him188.ani.app.platform.PlatformWindow
+import me.him188.ani.app.platform.create
 import me.him188.ani.app.platform.createAppRootCoroutineScope
+import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.platform.getCommonKoinModule
 import me.him188.ani.app.platform.startCommonKoinModule
 import me.him188.ani.app.tools.update.IosUpdateInstaller
@@ -62,6 +68,9 @@ import me.him188.ani.app.ui.foundation.widgets.ToastViewModel
 import me.him188.ani.app.ui.foundation.widgets.Toaster
 import me.him188.ani.app.ui.main.AniApp
 import me.him188.ani.app.ui.main.AniAppContent
+import me.him188.ani.utils.analytics.AnalyticsConfig
+import me.him188.ani.utils.analytics.AnalyticsHolder
+import me.him188.ani.utils.analytics.AnalyticsImpl
 import me.him188.ani.utils.io.SystemCacheDir
 import me.him188.ani.utils.io.SystemDocumentDir
 import me.him188.ani.utils.io.SystemPath
@@ -86,12 +95,35 @@ fun MainViewController(): UIViewController {
     )
     AppStartupTasks.printVersions()
 
-    AppStartupTasks.initializeSentry()
-    
     val koin = startKoin {
         modules(getCommonKoinModule({ context }, scope))
         modules(getIosModules(SystemDocumentDir.resolve("torrent"), scope))
     }.startCommonKoinModule(scope).koin
+
+    val analyticsInitializer = scope.launch {
+        val settingsRepository = koin.get<SettingsRepository>()
+        val settings = settingsRepository.analyticsSettings.flow.first()
+        if (settings.allowAnonymousBugReport) {
+            AppStartupTasks.initializeSentry()
+        }
+        if (settings.isInit) {
+            settingsRepository.analyticsSettings.update {
+                copy(isInit = false) // save user id
+            }
+        }
+        if (settings.allowAnonymousAnalytics) {
+            AnalyticsHolder.init(
+                AnalyticsImpl(
+                    AnalyticsConfig.create(),
+                ).apply {
+                    init(
+                        apiKey = currentAniBuildConfig.analyticsKey,
+                        host = currentAniBuildConfig.analyticsServer,
+                    )
+                },
+            )
+        }
+    }
 
     koin.get<TorrentManager>() // start sharing, connect to DHT now
 
@@ -102,6 +134,7 @@ fun MainViewController(): UIViewController {
         TestGlobalLifecycleOwner, // TODO: ios lifecycle
     )
 
+    runBlocking { analyticsInitializer.join() }
     return ComposeUIViewController {
         AniApp {
             CompositionLocalProvider(
