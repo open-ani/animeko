@@ -71,6 +71,7 @@ kotlin {
             }
 
             // Maps custom Xcode configuration to NativeBuildType
+            ios.deploymentTarget = "10.0"
             xcodeConfigurationToNativeBuildType["CUSTOM_DEBUG"] = NativeBuildType.DEBUG
             xcodeConfigurationToNativeBuildType["CUSTOM_RELEASE"] = NativeBuildType.RELEASE
         }
