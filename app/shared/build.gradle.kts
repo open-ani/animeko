@@ -9,6 +9,9 @@
 
 @file:Suppress("UnstableApiUsage")
 
+import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
+import org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType
+
 
 plugins {
     kotlin("multiplatform")
@@ -21,6 +24,7 @@ plugins {
 
     kotlin("plugin.serialization")
     id("org.jetbrains.kotlinx.atomicfu")
+    kotlin("native.cocoapods")
     idea
 }
 
@@ -45,6 +49,29 @@ kotlin {
                 baseName = "ComposeApp"
                 isStatic = false
             }
+        }
+        // Sentry requires cocoapods for its dependencies
+        cocoapods {
+            // https://kotlinlang.org/docs/native-cocoapods.html#configure-existing-project
+
+            version = project.version.toString()
+            summary = "Animeko Shared Library"
+            homepage = "https://github.com/open-ani/animeko"
+            name = "AnimekoLib"
+
+            framework {
+                baseName = "AnimekoFramework"
+                isStatic = false
+                // Dependency export
+                // Uncomment and specify another project module if you have one:
+                // export(project(":<your other KMP module>"))
+                @OptIn(ExperimentalKotlinGradlePluginApi::class)
+                transitiveExport = false // This is default.
+            }
+
+            // Maps custom Xcode configuration to NativeBuildType
+            xcodeConfigurationToNativeBuildType["CUSTOM_DEBUG"] = NativeBuildType.DEBUG
+            xcodeConfigurationToNativeBuildType["CUSTOM_RELEASE"] = NativeBuildType.RELEASE
         }
     }
 
