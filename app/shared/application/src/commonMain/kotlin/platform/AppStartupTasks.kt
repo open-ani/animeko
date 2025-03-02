@@ -20,6 +20,10 @@ import me.him188.ani.utils.platform.currentPlatform
 import kotlin.coroutines.cancellation.CancellationException
 
 object AppStartupTasks {
+    fun initializeSentry() {
+        initializeErrorReport()
+    }
+
     fun printVersions() {
         logger.info { "Ani started. platform: ${currentPlatform()}, version: ${currentAniBuildConfig.versionName}, isDebug: ${currentAniBuildConfig.isDebug}" }
     }

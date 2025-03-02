@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -16,6 +16,7 @@ import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import me.him188.ani.app.trace.ErrorReport
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.thisLogger
 import me.him188.ani.utils.logging.trace
@@ -61,6 +62,9 @@ abstract class AbstractViewModel : RememberObserver, ViewModel(), HasBackgroundS
         return CoroutineScope(
             CoroutineExceptionHandler { coroutineContext, throwable ->
                 logger.error(throwable) { "Unhandled exception in background scope for viewmodel ${this::class.qualifiedName}, coroutineContext: $coroutineContext" }
+                ErrorReport.captureException(throwable) {
+                    setTag("viewmodel", this@AbstractViewModel::class.qualifiedName.toString())
+                }
             } + SupervisorJob(),
         )
     }

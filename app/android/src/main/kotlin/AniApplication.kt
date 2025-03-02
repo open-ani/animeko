@@ -73,6 +73,8 @@ class AniApplication : Application() {
         AndroidLoggingConfigurator.configure(logsDir)
         AppStartupTasks.printVersions()
 
+        AppStartupTasks.initializeSentry()
+
         val defaultUEH = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { t, e ->
             logger<AniApplication>().error(e) { "!!!ANI FATAL EXCEPTION!!! ($e)" }
