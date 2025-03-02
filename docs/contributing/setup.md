@@ -40,6 +40,23 @@ Runtime (JCEF)，版本 17 或 21，下文简称 JBR。
     - IntelliJ 中 Tools -> Android -> SDK Manager
 2. 安装 SDK 版本 35
 
+## 准备 iOS 构建 (对于 macOS 用户)
+
+如果你是 macOS 用户，在安装 Xcode 和 CocoaPods 后可构建 iOS APP。
+
+1. 在 App Store 中安装 Xcode 并打开，安装默认勾选的必要的组件。
+2. 安装 Cocoapods。有多种安装方式，参考 Kotlin
+   官方文档 [CocoaPods](https://kotlinlang.org/docs/native-cocoapods.html#set-up-an-environment-to-work-with-cocoapods)。
+
+> [!TIP]
+> **如果你不希望安装这些依赖，可以禁用 iOS 构建**
+>
+> 在项目根目录的 `local.properties`（如果没有就创建一个）中增加以下内容:
+>
+> ```properties
+> ani.enable.ios=false
+> ```
+
 ## Clone 仓库
 
 建议使用 IDE clone 功能. 如果你要自己使用命令行 clone, 必须添加 `--recursive`:
