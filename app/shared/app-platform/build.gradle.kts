@@ -7,6 +7,8 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
+import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
+import org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompileTool
 
 plugins {

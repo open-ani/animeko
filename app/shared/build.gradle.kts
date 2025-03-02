@@ -41,25 +41,10 @@ atomicfu {
 val enableIosFramework = enableIos && getPropertyOrNull("ani.build.framework") != "false"
 
 kotlin {
-    if (enableIosFramework) {
-        listOf(
-            iosArm64(),
-            iosSimulatorArm64(),
-        ).forEach { iosTarget ->
-            iosTarget.binaries.framework {
-                baseName = "ComposeApp"
-                isStatic = false
-            }
-        }
+    if (enableIos) {
         // Sentry requires cocoapods for its dependencies
         cocoapods {
             // https://kotlinlang.org/docs/native-cocoapods.html#configure-existing-project
-
-            version = project.version.toString()
-            summary = "Animeko Shared Library"
-            homepage = "https://github.com/open-ani/animeko"
-            name = "AnimekoLib"
-
             framework {
                 baseName = "AnimekoFramework"
                 isStatic = false
@@ -69,11 +54,6 @@ kotlin {
                 @OptIn(ExperimentalKotlinGradlePluginApi::class)
                 transitiveExport = false // This is default.
             }
-
-            // Maps custom Xcode configuration to NativeBuildType
-            ios.deploymentTarget = "10.0"
-            xcodeConfigurationToNativeBuildType["CUSTOM_DEBUG"] = NativeBuildType.DEBUG
-            xcodeConfigurationToNativeBuildType["CUSTOM_RELEASE"] = NativeBuildType.RELEASE
         }
     }
 
@@ -302,16 +282,16 @@ dependencies {
 
 if (enableIosFramework) {
 // 太耗内存了, 只能一次跑一个
-    tasks.named("linkDebugFrameworkIosArm64") {
-        mustRunAfter("linkReleaseFrameworkIosArm64")
-        mustRunAfter("linkDebugFrameworkIosSimulatorArm64")
-        mustRunAfter("linkReleaseFrameworkIosSimulatorArm64")
-    }
-    tasks.named("linkReleaseFrameworkIosArm64") {
-        mustRunAfter("linkDebugFrameworkIosSimulatorArm64")
-        mustRunAfter("linkReleaseFrameworkIosSimulatorArm64")
-    }
-    tasks.named("linkDebugFrameworkIosSimulatorArm64") {
-        mustRunAfter("linkReleaseFrameworkIosSimulatorArm64")
-    }
+//    tasks.named("linkDebugFrameworkIosArm64") {
+//        mustRunAfter("linkReleaseFrameworkIosArm64")
+//        mustRunAfter("linkDebugFrameworkIosSimulatorArm64")
+//        mustRunAfter("linkReleaseFrameworkIosSimulatorArm64")
+//    }
+//    tasks.named("linkReleaseFrameworkIosArm64") {
+//        mustRunAfter("linkDebugFrameworkIosSimulatorArm64")
+//        mustRunAfter("linkReleaseFrameworkIosSimulatorArm64")
+//    }
+//    tasks.named("linkDebugFrameworkIosSimulatorArm64") {
+//        mustRunAfter("linkReleaseFrameworkIosSimulatorArm64")
+//    }
 }

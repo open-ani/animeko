@@ -15,6 +15,8 @@ import org.jetbrains.compose.ExperimentalComposeLibrary
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSetTree
+import org.jetbrains.kotlin.gradle.plugin.cocoapods.CocoapodsExtension
+import org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
 
 /*
@@ -70,7 +72,7 @@ configure<KotlinMultiplatformExtension> {
                 }
             }
         }
-        
+
         // This won't work (KT 2.1.0)
 //        sourceSets {
 //            val commonAndroidTest = create("commonAndroidTest") {
@@ -196,7 +198,7 @@ if (android != null) {
             testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
             testInstrumentationRunnerArguments.set("runnerBuilder", "de.mannodermaus.junit5.AndroidJUnit5Builder")
         }
-        packaging { 
+        packaging {
             resources {
                 pickFirsts.add("META-INF/LICENSE.md")
                 pickFirsts.add("META-INF/LICENSE-notice.md")
@@ -232,4 +234,24 @@ if (android != null) {
 
 if (android != null) {
     apply(plugin = "de.mannodermaus.android-junit5")
+}
+
+if (enableIos) {
+    apply(plugin = "org.jetbrains.kotlin.native.cocoapods")
+    apply(plugin = "io.sentry.kotlin.multiplatform.gradle")
+
+    configure<KotlinMultiplatformExtension> {
+        this.configure<CocoapodsExtension> {
+            version = project.version.toString()
+            summary = project.name
+            homepage = "https://github.com/open-ani/animeko"
+            name = project.name
+
+            ios.deploymentTarget = "12.0"
+
+            // Maps custom Xcode configuration to NativeBuildType
+            xcodeConfigurationToNativeBuildType["CUSTOM_DEBUG"] = NativeBuildType.DEBUG
+            xcodeConfigurationToNativeBuildType["CUSTOM_RELEASE"] = NativeBuildType.RELEASE
+        }
+    }
 }
