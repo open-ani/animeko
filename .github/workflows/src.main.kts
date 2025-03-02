@@ -50,6 +50,7 @@ import Secrets.SIGNING_RELEASE_STOREFILE
 import Secrets.SIGNING_RELEASE_STOREPASSWORD
 import Secrets.DANDANPLAY_APP_ID
 import Secrets.DANDANPLAY_APP_SECRET
+import Secrets.SENTRY_DSN
 import io.github.typesafegithub.workflows.actions.actions.Checkout
 import io.github.typesafegithub.workflows.actions.actions.DownloadArtifact
 import io.github.typesafegithub.workflows.actions.actions.GithubScript
@@ -218,6 +219,7 @@ data class MatrixInstance(
         add(quote("-Dkotlin.daemon.jvm.options=-Xmx${kotlinCompilerHeap}"))
         add(quote("-Pani.dandanplay.app.id=${expr { secrets.DANDANPLAY_APP_ID }}"))
         add(quote("-Pani.dandanplay.app.secret=${expr { secrets.DANDANPLAY_APP_SECRET }}"))
+        add(quote("-Pani.sentry.dsn=${expr { secrets.SENTRY_DSN }}"))
 
         if (gradleParallel) {
             add(quote("--parallel"))
@@ -1496,6 +1498,7 @@ object Secrets {
     val SecretsContext.AWS_BUCKET by SecretsContext.propertyToExprPath
     val SecretsContext.DANDANPLAY_APP_ID by SecretsContext.propertyToExprPath
     val SecretsContext.DANDANPLAY_APP_SECRET by SecretsContext.propertyToExprPath
+    val SecretsContext.SENTRY_DSN by SecretsContext.propertyToExprPath
 }
 
 /// EXTENSIONS

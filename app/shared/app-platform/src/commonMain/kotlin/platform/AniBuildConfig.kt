@@ -23,6 +23,7 @@ interface AniBuildConfig {
     val aniAuthServerUrl: String
     val dandanplayAppId: String
     val dandanplayAppSecret: String
+    val sentryDsn: String
 
     companion object {
         @Stable

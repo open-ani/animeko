@@ -23,6 +23,8 @@ private object AniBuildConfigAndroid : AniBuildConfig {
         get() = BuildConfig.DANDANPLAY_APP_ID
     override val dandanplayAppSecret: String
         get() = BuildConfig.DANDANPLAY_APP_SECRET
+    override val sentryDsn: String
+        get() = BuildConfig.SENTRY_DSN
 }
 
 @Stable

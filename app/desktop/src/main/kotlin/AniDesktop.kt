@@ -189,6 +189,8 @@ object AniDesktop {
         }
         AppStartupTasks.printVersions()
 
+        AppStartupTasks.initializeSentry()
+
         logger.info { "dataDir: file://${dataDir.absolutePathString().replace(" ", "%20")}" }
         logger.info { "cacheDir: file://${cacheDir.absolutePathString().replace(" ", "%20")}" }
         logger.info { "logsDir: file://${logsDir.absolutePath.replace(" ", "%20")}" }
@@ -300,11 +302,11 @@ object AniDesktop {
             }
             TestTasks.handleTestTask(taskName, args, context)
         }
-        
+
         val loadAnitorrentJob = coroutineScope.launch {
             try {
                 AnitorrentLibraryLoader.loadLibraries()
-            } catch (e: Throwable){
+            } catch (e: Throwable) {
                 logger.error(e) { "Failed to load anitorrent libraries" }
             }
         }
@@ -317,7 +319,7 @@ object AniDesktop {
             }
             // Load anitorrent libraries before JCEF, so they won't load at the same time.
             // We suspect concurrent loading of native libraries may cause some issues #1121.
-            
+
             val proxySettings = koin.koin.get<ProxyProvider>()
                 .proxy.first()
 

@@ -26,7 +26,6 @@ import androidx.compose.ui.window.ComposeUIViewController
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.CoroutineScope
-import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.get
 import me.him188.ani.app.domain.media.resolver.HttpStreamingMediaResolver
@@ -38,7 +37,6 @@ import me.him188.ani.app.domain.torrent.TorrentManager
 import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.navigation.BrowserNavigator
 import me.him188.ani.app.navigation.LocalNavigator
-import me.him188.ani.app.navigation.NavRoutes
 import me.him188.ani.app.navigation.NoopBrowserNavigator
 import me.him188.ani.app.platform.AppStartupTasks
 import me.him188.ani.app.platform.GrantedPermissionManager
@@ -88,6 +86,8 @@ fun MainViewController(): UIViewController {
     )
     AppStartupTasks.printVersions()
 
+    AppStartupTasks.initializeSentry()
+    
     val koin = startKoin {
         modules(getCommonKoinModule({ context }, scope))
         modules(getIosModules(SystemDocumentDir.resolve("torrent"), scope))
