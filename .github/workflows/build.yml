@@ -393,6 +393,28 @@ jobs:
         path: 'app/android/build/outputs/apk/release/android-universal-release.apk'
         overwrite: 'true'
     - id: 'step-24'
+      name: 'Package Desktop'
+      uses: 'nick-fields/retry@v3'
+      with:
+        timeout_minutes: '120'
+        max_attempts: '2'
+        command: './gradlew packageReleaseDistributionForCurrentOS "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}"'
+    - id: 'step-25'
+      name: 'Upload compose logs'
+      uses: 'actions/upload-artifact@v4'
+      with:
+        name: 'compose-logs-github-macos-13'
+        path: 'app/desktop/build/compose/logs'
+      if: '${{ always() }}'
+    - id: 'step-26'
+      name: 'Upload macOS dmg'
+      uses: 'actions/upload-artifact@v4'
+      with:
+        name: 'ani-macos-portable-x64'
+        path: 'app/desktop/build/compose/binaries/main-release/app/Ani.app'
+        if-no-files-found: 'error'
+        overwrite: 'true'
+    - id: 'step-27'
       name: 'Check'
       uses: 'nick-fields/retry@v3'
       with:

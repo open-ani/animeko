@@ -1348,8 +1348,7 @@ class WithMatrix(
     }
 
     fun JobBuilder<*>.packageDesktopAndUpload(): PackageDesktopAndUploadOutputs {
-        if (matrix.isMacOSX64 // not supported
-            || !matrix.uploadDesktopInstallers // disabled
+        if (!matrix.uploadDesktopInstallers // disabled
         ) {
 
             return PackageDesktopAndUploadOutputs()
