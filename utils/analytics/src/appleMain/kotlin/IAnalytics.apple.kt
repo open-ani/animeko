@@ -9,7 +9,7 @@
 
 package me.him188.ani.utils.analytics
 
-actual class AnalyticsImpl(config: AnalyticsConfig) : IAnalytics, CommonAnalyticsImpl(config) {
+class AnalyticsImpl(config: AnalyticsConfig) : IAnalytics, CommonAnalyticsImpl(config) {
 
     fun init(apiKey: String, host: String) {
 
@@ -22,7 +22,7 @@ actual class AnalyticsImpl(config: AnalyticsConfig) : IAnalytics, CommonAnalytic
 
 
 //
-//actual class AnalyticsImpl(config: AnalyticsConfig) : IAnalytics, CommonAnalyticsImpl(config) {
+//class AnalyticsImpl(config: AnalyticsConfig) : IAnalytics, CommonAnalyticsImpl(config) {
 //    @OptIn(ExperimentalForeignApi::class)
 //    fun init(
 //        appKey: String,

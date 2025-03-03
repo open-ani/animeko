@@ -14,7 +14,7 @@ import com.posthog.PostHog
 import com.posthog.android.PostHogAndroid
 import com.posthog.android.PostHogAndroidConfig
 
-actual class AnalyticsImpl(config: AnalyticsConfig) : CommonAnalyticsImpl(config), IAnalytics {
+class AnalyticsImpl(config: AnalyticsConfig) : CommonAnalyticsImpl(config), IAnalytics {
     fun init(
         context: Context,
         apiKey: String,
@@ -39,7 +39,7 @@ actual class AnalyticsImpl(config: AnalyticsConfig) : CommonAnalyticsImpl(config
 
 // Countly implementation
 
-//actual class AnalyticsImpl(config: AnalyticsConfig) : CommonAnalyticsImpl(config), IAnalytics {
+//class AnalyticsImpl(config: AnalyticsConfig) : CommonAnalyticsImpl(config), IAnalytics {
 //    fun init(
 //        application: Application,
 //        appKey: String,

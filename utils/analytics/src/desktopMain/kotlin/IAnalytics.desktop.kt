@@ -15,7 +15,7 @@ import me.him188.ani.utils.logging.Logger
 import me.him188.ani.utils.logging.logger
 import java.util.*
 
-actual class AnalyticsImpl(
+class AnalyticsImpl(
     config: AnalyticsConfig,
     private val userId: String, // anonymous id
 ) : IAnalytics, CommonAnalyticsImpl(config) {
@@ -63,7 +63,7 @@ actual class AnalyticsImpl(
     }
 }
 
-//actual class AnalyticsImpl(
+//class AnalyticsImpl(
 //    config: AnalyticsConfig,
 //) : IAnalytics, CommonAnalyticsImpl(config) {
 //    private val logger = logger<AnalyticsImpl>()

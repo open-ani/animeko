@@ -78,11 +78,6 @@ abstract class CommonAnalyticsImpl(
     protected abstract fun recordEventImpl(event: AnalyticsEvent, properties: Map<String, Any?> = emptyMap())
 }
 
-/**
- * Platform-specific implementations of [IAnalytics].
- */
-expect class AnalyticsImpl : IAnalytics, CommonAnalyticsImpl
-
 object AnalyticsHolder {
     @Volatile
     private var instance: IAnalytics = NoopAnalytics
