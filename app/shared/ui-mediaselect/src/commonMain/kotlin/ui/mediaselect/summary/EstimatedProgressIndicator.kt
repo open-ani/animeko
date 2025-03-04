@@ -30,6 +30,10 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import me.him188.ani.utils.coroutines.SingleTaskExecutor
 
+/**
+ * @param initialProgress 初始进度. 此值的变更不会反应到 [EstimatedProgressIndicatorState] 中, 也就是说只有第一个值会被使用.
+ * @param initialVisible 初始是否可见. 此值的变更不会反应到 [EstimatedProgressIndicatorState] 中, 也就是说只有第一个值会被使用.
+ */
 @Composable
 fun rememberEstimatedProgressIndicatorState(
     initialProgress: Float = 0f,
