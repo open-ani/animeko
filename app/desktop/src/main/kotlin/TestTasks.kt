@@ -64,6 +64,7 @@ object TestTasks {
                     logger.error { "sentryDsn is empty" }
                     exitProcess(1)
                 }
+                exitProcess(0)
             }
 
             "analytics-server" -> {
@@ -75,6 +76,7 @@ object TestTasks {
                     logger.error { "analyticsKey is empty" }
                     exitProcess(1)
                 }
+                exitProcess(0)
             }
 
             else -> {
