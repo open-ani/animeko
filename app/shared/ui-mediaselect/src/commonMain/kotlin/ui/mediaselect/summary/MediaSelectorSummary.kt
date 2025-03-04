@@ -192,7 +192,7 @@ fun MediaSelectorSummaryCard(
             }
         },
         headerContainerColor = colors.headerContainerColor,
-        modifier = modifier.defaultMinSize(minHeight = 168.dp),
+        modifier = modifier.defaultMinSize(minHeight = 144.dp),
         content = {
             AnimatedContent(
                 animationState.currentSummary,
