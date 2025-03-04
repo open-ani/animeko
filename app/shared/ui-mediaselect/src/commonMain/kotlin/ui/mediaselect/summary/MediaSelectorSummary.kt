@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.ui.mediaselect.summary
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,10 +44,13 @@ import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -55,6 +59,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.collectLatest
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
@@ -64,23 +70,23 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
 @Immutable
-sealed class MediaSelectorSummaryState {
+sealed class MediaSelectorSummary {
     @Immutable
     data class AutoSelecting(
         val queriedSources: List<QueriedSourcePresentation>,
         val estimate: Duration
-    ) : MediaSelectorSummaryState()
+    ) : MediaSelectorSummary()
 
     @Immutable
     data class RequiresManualSelection(
         val queriedSources: List<QueriedSourcePresentation>,
-    ) : MediaSelectorSummaryState()
+    ) : MediaSelectorSummary()
 
     @Immutable
     data class Selected(
         val source: QueriedSourcePresentation,
         val mediaTitle: String,
-    ) : MediaSelectorSummaryState()
+    ) : MediaSelectorSummary()
 }
 
 /**
@@ -88,13 +94,24 @@ sealed class MediaSelectorSummaryState {
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun MediaSelectorSummary(
-    state: MediaSelectorSummaryState,
+fun MediaSelectorSummaryCard(
+    summary: MediaSelectorSummary,
     onClickManualSelect: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val colors = MediaSelectorColors.calculate(state)
+    val colors = MediaSelectorColors.calculate(summary)
+    val summaryUpdated by rememberUpdatedState(summary)
+
     val motionScheme = LocalAniMotionScheme.current
+    val transitionSpec = motionScheme.animatedContent.standard
+
+    val progressIndicatorState = rememberEstimatedProgressIndicatorState()
+    val animationState = remember(progressIndicatorState) {
+        MediaSelectorSummaryState(summary, progressIndicatorState)
+    }
+    LaunchedEffect(animationState) {
+        animationState.collectSummaryChanges(snapshotFlow { summaryUpdated })
+    }
 
     MediaSelectorSummaryLayout(
         header = {
@@ -105,127 +122,157 @@ fun MediaSelectorSummary(
                 headlineColor = colors.headerContentColor,
             )
 
-            when (state) {
-                is MediaSelectorSummaryState.AutoSelecting -> {
-                    ListItem(
-                        headlineContent = { Text("正在自动选择数据源") },
-                        commonModifiers,
-                        leadingContent = {
-                            LoadingIndicator(
-                                Modifier.size(24.dp),
-                            )
-                        },
-                        colors = listItemColors,
-                    )
-                }
+            AnimatedContent(
+                animationState.currentSummary,
+                transitionSpec = transitionSpec,
+            ) { state ->
+                when (state) {
+                    is MediaSelectorSummary.AutoSelecting -> {
+                        ListItem(
+                            headlineContent = { Text("正在自动选择数据源") },
+                            commonModifiers,
+                            leadingContent = {
+                                LoadingIndicator(
+                                    Modifier.size(24.dp),
+                                )
+                            },
+                            colors = listItemColors,
+                        )
+                    }
 
-                is MediaSelectorSummaryState.RequiresManualSelection -> {
-                    ListItem(
-                        headlineContent = { Text("请选择数据源") },
-                        commonModifiers,
-                        colors = listItemColors,
-                    )
-                }
+                    is MediaSelectorSummary.RequiresManualSelection -> {
+                        ListItem(
+                            headlineContent = { Text("请选择数据源") },
+                            commonModifiers,
+                            colors = listItemColors,
+                        )
+                    }
 
-                is MediaSelectorSummaryState.Selected -> {
-                    ListItem(
-                        headlineContent = { Text(state.source.sourceName, softWrap = true, maxLines = 2) },
-                        commonModifiers,
-                        overlineContent = { Text("数据源") },
-                        leadingContent = {
-                            SourceIcon(
-                                state.source,
-                                Modifier.size(24.dp),
-                            )
-                        },
-                        colors = listItemColors,
-                    )
+                    is MediaSelectorSummary.Selected -> {
+                        ListItem(
+                            headlineContent = { Text(state.source.sourceName, softWrap = true, maxLines = 2) },
+                            commonModifiers,
+                            overlineContent = { Text("数据源") },
+                            leadingContent = {
+                                SourceIcon(
+                                    state.source,
+                                    Modifier.size(24.dp),
+                                )
+                            },
+                            colors = listItemColors,
+                        )
+                    }
                 }
             }
         },
         button = {
-            val buttonLabel = when (state) {
-                is MediaSelectorSummaryState.AutoSelecting -> "手动选择"
-                is MediaSelectorSummaryState.RequiresManualSelection -> "手动选择"
-                is MediaSelectorSummaryState.Selected -> "更换"
-            }
+            AnimatedContent(
+                animationState.currentSummary,
+                contentAlignment = Alignment.CenterEnd,
+                transitionSpec = transitionSpec,
+            ) { state ->
+                val buttonLabel = when (state) {
+                    is MediaSelectorSummary.AutoSelecting -> "手动选择"
+                    is MediaSelectorSummary.RequiresManualSelection -> "手动选择"
+                    is MediaSelectorSummary.Selected -> "更换"
+                }
 
-            OutlinedButton(
-                onClickManualSelect,
-                contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
-            ) {
-                Icon(
-                    Icons.Rounded.SyncAlt,
-                    contentDescription = null,
-                    Modifier.size(ButtonDefaults.IconSize),
-                )
-                Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                Text(buttonLabel, softWrap = false)
+                OutlinedButton(
+                    onClickManualSelect,
+                    contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
+                ) {
+                    Icon(
+                        Icons.Rounded.SyncAlt,
+                        contentDescription = null,
+                        Modifier.size(ButtonDefaults.IconSize),
+                    )
+                    Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                    Text(buttonLabel, softWrap = false)
+                }
             }
         },
         headerContainerColor = colors.headerContainerColor,
         modifier = modifier.defaultMinSize(minHeight = 168.dp),
         content = {
-            val progressIndicatorState = rememberEstimatedProgressIndicatorState()
-            LaunchedEffect(
-                state is MediaSelectorSummaryState.AutoSelecting, // listen for state type change
-            ) {
+            AnimatedContent(
+                animationState.currentSummary,
+                transitionSpec = transitionSpec,
+            ) { state ->
                 when (state) {
-                    is MediaSelectorSummaryState.AutoSelecting -> progressIndicatorState.animateWithoutFinish(
-                        durationMillis = state.estimate.inWholeMilliseconds.toInt(),
-                    )
-
-                    is MediaSelectorSummaryState.RequiresManualSelection,
-                    is MediaSelectorSummaryState.Selected -> progressIndicatorState.finish()
-                }
-            }
-
-            when (state) {
-                is MediaSelectorSummaryState.AutoSelecting,
-                is MediaSelectorSummaryState.RequiresManualSelection -> {
-                    val queriedSources = when (state) {
-                        is MediaSelectorSummaryState.AutoSelecting -> state.queriedSources
-                        is MediaSelectorSummaryState.RequiresManualSelection -> state.queriedSources
-                        is MediaSelectorSummaryState.Selected -> error("not reachable")
-                    }
-
-                    Column {
-                        EstimatedLinearProgressIndictorBox(
-                            progressIndicatorState,
-                            Modifier.height(8.dp)
-                                .padding(horizontal = MediaSelectorSummaryDefaults.bodyContentPadding),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            LinearProgressIndicator(
-                                progress = { progressIndicatorState.progress },
-                                Modifier.fillMaxWidth(),
-                                trackColor = MaterialTheme.colorScheme.inverseOnSurface,
-                            )
+                    is MediaSelectorSummary.AutoSelecting,
+                    is MediaSelectorSummary.RequiresManualSelection -> {
+                        val queriedSources = when (state) {
+                            is MediaSelectorSummary.AutoSelecting -> state.queriedSources
+                            is MediaSelectorSummary.RequiresManualSelection -> state.queriedSources
+                            is MediaSelectorSummary.Selected -> error("not reachable")
                         }
 
-                        QueriedSources(
-                            queriedSources,
-                            Modifier.padding(all = MediaSelectorSummaryDefaults.bodyContentPadding),
-                        )
-                    }
-                }
+                        Column {
+                            EstimatedLinearProgressIndictorBox(
+                                progressIndicatorState,
+                                Modifier.height(8.dp)
+                                    .padding(horizontal = MediaSelectorSummaryDefaults.bodyContentPadding),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                LinearProgressIndicator(
+                                    progress = { progressIndicatorState.progress },
+                                    Modifier.fillMaxWidth(),
+                                    trackColor = MaterialTheme.colorScheme.inverseOnSurface,
+                                )
+                            }
 
-                is MediaSelectorSummaryState.Selected -> {
-                    Box(
-                        Modifier.padding(all = MediaSelectorSummaryDefaults.bodyContentPadding),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            state.mediaTitle,
-                            softWrap = true,
-                            maxLines = 3,
-                            overflow = TextOverflow.Ellipsis,
-                        )
+                            QueriedSources(
+                                queriedSources,
+                                Modifier.padding(all = MediaSelectorSummaryDefaults.bodyContentPadding),
+                            )
+                        }
+                    }
+
+                    is MediaSelectorSummary.Selected -> {
+                        Box(
+                            Modifier.padding(all = MediaSelectorSummaryDefaults.bodyContentPadding),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                state.mediaTitle,
+                                softWrap = true,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
                     }
                 }
             }
         },
     )
+}
+
+@Stable
+private class MediaSelectorSummaryState(
+    initialState: MediaSelectorSummary,
+    private val progressIndicatorState: EstimatedProgressIndicatorState,
+) {
+    var currentSummary: MediaSelectorSummary by mutableStateOf(initialState)
+        private set
+
+    suspend fun collectSummaryChanges(flow: Flow<MediaSelectorSummary>) {
+        flow.collectLatest { state ->
+            when (state) {
+                is MediaSelectorSummary.AutoSelecting -> {
+                    currentSummary = state
+                    progressIndicatorState.animateWithoutFinish(
+                        durationMillis = state.estimate.inWholeMilliseconds.toInt(),
+                    )
+                }
+
+                is MediaSelectorSummary.RequiresManualSelection,
+                is MediaSelectorSummary.Selected -> {
+                    progressIndicatorState.finish()
+                    currentSummary = state
+                }
+            }
+        }
+    }
 }
 
 
@@ -363,23 +410,23 @@ private data class MediaSelectorColors(
 ) {
     companion object {
         @Composable
-        fun calculate(state: MediaSelectorSummaryState): MediaSelectorColors {
+        fun calculate(state: MediaSelectorSummary): MediaSelectorColors {
             return when (state) {
-                is MediaSelectorSummaryState.AutoSelecting -> MediaSelectorColors(
+                is MediaSelectorSummary.AutoSelecting -> MediaSelectorColors(
                     headerContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                     headerContentColor = MaterialTheme.colorScheme.onSurface,
                     bodyContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                     bodyContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
 
-                is MediaSelectorSummaryState.RequiresManualSelection -> MediaSelectorColors(
+                is MediaSelectorSummary.RequiresManualSelection -> MediaSelectorColors(
                     headerContainerColor = MaterialTheme.colorScheme.tertiaryContainer,
                     headerContentColor = MaterialTheme.colorScheme.onTertiaryContainer,
                     bodyContainerColor = MaterialTheme.colorScheme.tertiaryContainer,
                     bodyContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
 
-                is MediaSelectorSummaryState.Selected -> MediaSelectorColors(
+                is MediaSelectorSummary.Selected -> MediaSelectorColors(
                     headerContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                     headerContentColor = MaterialTheme.colorScheme.onSurface,
                     bodyContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
@@ -396,8 +443,8 @@ private data class MediaSelectorColors(
 @Preview
 private fun PreviewMediaSelectorSummarySelected() {
     ProvideCompositionLocalsForPreview {
-        MediaSelectorSummary(
-            state = MediaSelectorSummaryState.Selected(
+        MediaSelectorSummaryCard(
+            summary = MediaSelectorSummary.Selected(
                 source = TestQueriedSources[0],
                 mediaTitle = TestMediaTitle,
             ),
@@ -411,19 +458,19 @@ private fun PreviewMediaSelectorSummarySelected() {
 @Preview
 fun PreviewMediaSelectorSummaryAutoSelecting() {
     ProvideCompositionLocalsForPreview {
-        var state: MediaSelectorSummaryState by remember {
+        var state: MediaSelectorSummary by remember {
             mutableStateOf(
                 createAutoSelecting(),
             )
         }
-        MediaSelectorSummary(
-            state = state,
+        MediaSelectorSummaryCard(
+            summary = state,
             onClickManualSelect = {},
             Modifier.width(360.dp),
         )
         LaunchedEffect(Unit) {
             delay(5.seconds)
-            state = MediaSelectorSummaryState.Selected(
+            state = MediaSelectorSummary.Selected(
                 TestQueriedSources[0],
                 mediaTitle = TestMediaTitle,
             )
@@ -437,19 +484,19 @@ fun PreviewMediaSelectorSummaryAutoSelecting() {
 @Preview
 fun PreviewMediaSelectorSummaryAutoSelectingQuickComplete() {
     ProvideCompositionLocalsForPreview {
-        var state: MediaSelectorSummaryState by remember {
+        var state: MediaSelectorSummary by remember {
             mutableStateOf(
                 createAutoSelecting(),
             )
         }
-        MediaSelectorSummary(
-            state = state,
+        MediaSelectorSummaryCard(
+            summary = state,
             onClickManualSelect = {},
             Modifier.width(360.dp),
         )
         LaunchedEffect(Unit) {
             delay(2.seconds)
-            state = MediaSelectorSummaryState.Selected(
+            state = MediaSelectorSummary.Selected(
                 TestQueriedSources[0],
                 mediaTitle = TestMediaTitle,
             )
@@ -462,12 +509,12 @@ private val TestMediaTitle
     get() = "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s"
 
 private fun createRequiresManualSelection(sources: List<QueriedSourcePresentation>) =
-    MediaSelectorSummaryState.RequiresManualSelection(
+    MediaSelectorSummary.RequiresManualSelection(
         queriedSources = sources,
     )
 
 @TestOnly
-private fun createAutoSelecting() = MediaSelectorSummaryState.AutoSelecting(
+private fun createAutoSelecting() = MediaSelectorSummary.AutoSelecting(
     queriedSources = TestQueriedSources,
     estimate = 5.seconds,
 )

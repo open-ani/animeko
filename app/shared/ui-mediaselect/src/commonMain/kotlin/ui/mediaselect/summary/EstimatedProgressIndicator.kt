@@ -9,7 +9,7 @@
 
 package me.him188.ani.app.ui.mediaselect.summary
 
-import androidx.compose.animation.core.AnimationSpec
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -68,7 +68,6 @@ class EstimatedProgressIndicatorState private constructor(
      */
     suspend fun animateWithoutFinish(
         durationMillis: Int,
-        heightAnimationSpec: AnimationSpec<Float> = spring(),
     ) {
         coroutineScope {
             if (!isVisible) {
@@ -77,7 +76,7 @@ class EstimatedProgressIndicatorState private constructor(
                     animate(
                         initialValue = heightScale,
                         targetValue = 1f,
-                        animationSpec = heightAnimationSpec,
+                        animationSpec = spring(),
                     ) { value, _ ->
                         this@EstimatedProgressIndicatorState.heightScale = value
                     }
@@ -89,7 +88,7 @@ class EstimatedProgressIndicatorState private constructor(
                 initialValue = 0f,
                 targetValue = 0.99f,
                 initialVelocity = velocity,
-                animationSpec = tween(durationMillis),
+                animationSpec = tween(durationMillis, easing = LinearEasing),
             ) { p, v ->
                 progress = p
                 velocity = v
@@ -104,16 +103,7 @@ class EstimatedProgressIndicatorState private constructor(
         if (progress >= 1f) {
             return
         }
-        // animate progress
-        animate(
-            initialValue = progress,
-            targetValue = 1.0f,
-            initialVelocity = velocity,
-            animationSpec = spring(),
-        ) { p, v ->
-            progress = p
-            velocity = v
-        }
+        // no animate progress
 
         // animate height collapse
         animate(
@@ -123,6 +113,8 @@ class EstimatedProgressIndicatorState private constructor(
         ) { value, _ ->
             this.heightScale = value
         }
+
+        this.progress = 1f
     }
 
     companion object {
