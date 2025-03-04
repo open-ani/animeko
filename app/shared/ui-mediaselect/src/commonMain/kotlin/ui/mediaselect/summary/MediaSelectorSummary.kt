@@ -296,7 +296,7 @@ private fun QueriedSources(
         )
         ContextualFlowRow(
             sources.size,
-            maxLines = 2,
+            maxLines = 1,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
             overflow = ContextualFlowRowOverflow.expandIndicator {
