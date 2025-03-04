@@ -574,6 +574,16 @@ fun getVerifyJobBody(
             step = "Check that Dandanplay APP ID is valid",
             `if` = expr { github.isAnimekoRepository and !github.isPullRequest }
         ),
+        VerifyTask(
+            name = "sentry-dsn",
+            step = "Check that sentryDsn is valid",
+            `if` = expr { github.isAnimekoRepository and !github.isPullRequest }
+        ),
+        VerifyTask(
+            name = "analytics-server",
+            step = "Check that analyticsServer is valid",
+            `if` = expr { github.isAnimekoRepository and !github.isPullRequest }
+        ),
     )
 
     when (runner.os to runner.arch) {

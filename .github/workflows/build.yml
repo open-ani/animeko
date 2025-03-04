@@ -688,6 +688,18 @@ jobs:
       shell: 'powershell'
       run: 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${{ github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "${{ github.workspace }}\ci-helper\verify" "dandanplay-app-id"'
       if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
+    - id: 'step-5'
+      name: 'Check that sentryDsn is valid'
+      timeout-minutes: 5
+      shell: 'powershell'
+      run: 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${{ github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "${{ github.workspace }}\ci-helper\verify" "sentry-dsn"'
+      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
+    - id: 'step-6'
+      name: 'Check that analyticsServer is valid'
+      timeout-minutes: 5
+      shell: 'powershell'
+      run: 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${{ github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "${{ github.workspace }}\ci-helper\verify" "analytics-server"'
+      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
   verify_github-windows-2022:
     name: 'Verify (Windows Server 2022 x86_64 (GitHub))'
     runs-on:
@@ -724,6 +736,18 @@ jobs:
       shell: 'powershell'
       run: 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${{ github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "${{ github.workspace }}\ci-helper\verify" "dandanplay-app-id"'
       if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
+    - id: 'step-5'
+      name: 'Check that sentryDsn is valid'
+      timeout-minutes: 5
+      shell: 'powershell'
+      run: 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${{ github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "${{ github.workspace }}\ci-helper\verify" "sentry-dsn"'
+      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
+    - id: 'step-6'
+      name: 'Check that analyticsServer is valid'
+      timeout-minutes: 5
+      shell: 'powershell'
+      run: 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${{ github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "${{ github.workspace }}\ci-helper\verify" "analytics-server"'
+      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
   verify_self-hosted-windows-10:
     name: 'Verify (Windows 10 x86_64 (Self-Hosted))'
     runs-on:
@@ -755,6 +779,18 @@ jobs:
       shell: 'powershell'
       run: 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${{ github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "${{ github.workspace }}\ci-helper\verify" "dandanplay-app-id"'
       if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
+    - id: 'step-4'
+      name: 'Check that sentryDsn is valid'
+      timeout-minutes: 5
+      shell: 'powershell'
+      run: 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${{ github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "${{ github.workspace }}\ci-helper\verify" "sentry-dsn"'
+      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
+    - id: 'step-5'
+      name: 'Check that analyticsServer is valid'
+      timeout-minutes: 5
+      shell: 'powershell'
+      run: 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${{ github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "${{ github.workspace }}\ci-helper\verify" "analytics-server"'
+      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
   verify_self-hosted-macos-15:
     name: 'Verify (macOS 15 AArch64 (Self-Hosted))'
     runs-on:
@@ -782,6 +818,16 @@ jobs:
       name: 'Check that Dandanplay APP ID is valid'
       timeout-minutes: 5
       run: '"$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" "$GITHUB_WORKSPACE"/*.dmg dandanplay-app-id'
+      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
+    - id: 'step-4'
+      name: 'Check that sentryDsn is valid'
+      timeout-minutes: 5
+      run: '"$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" "$GITHUB_WORKSPACE"/*.dmg sentry-dsn'
+      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
+    - id: 'step-5'
+      name: 'Check that analyticsServer is valid'
+      timeout-minutes: 5
+      run: '"$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" "$GITHUB_WORKSPACE"/*.dmg analytics-server'
       if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
   verify_github-macos-14:
     name: 'Verify (macOS 14 AArch64 (GitHub))'
@@ -817,6 +863,16 @@ jobs:
       timeout-minutes: 5
       run: '"$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" "$GITHUB_WORKSPACE"/*.dmg dandanplay-app-id'
       if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
+    - id: 'step-5'
+      name: 'Check that sentryDsn is valid'
+      timeout-minutes: 5
+      run: '"$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" "$GITHUB_WORKSPACE"/*.dmg sentry-dsn'
+      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
+    - id: 'step-6'
+      name: 'Check that analyticsServer is valid'
+      timeout-minutes: 5
+      run: '"$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" "$GITHUB_WORKSPACE"/*.dmg analytics-server'
+      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
   verify_github-macos-15:
     name: 'Verify (macOS 15 AArch64 (GitHub))'
     runs-on:
@@ -850,4 +906,14 @@ jobs:
       name: 'Check that Dandanplay APP ID is valid'
       timeout-minutes: 5
       run: '"$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" "$GITHUB_WORKSPACE"/*.dmg dandanplay-app-id'
+      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
+    - id: 'step-5'
+      name: 'Check that sentryDsn is valid'
+      timeout-minutes: 5
+      run: '"$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" "$GITHUB_WORKSPACE"/*.dmg sentry-dsn'
+      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
+    - id: 'step-6'
+      name: 'Check that analyticsServer is valid'
+      timeout-minutes: 5
+      run: '"$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" "$GITHUB_WORKSPACE"/*.dmg analytics-server'
       if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
