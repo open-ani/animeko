@@ -25,7 +25,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
@@ -33,24 +32,21 @@ import me.him188.ani.utils.coroutines.SingleTaskExecutor
 
 @Composable
 fun rememberEstimatedProgressIndicatorState(
-    normalHeight: Dp = 4.dp,
     initialProgress: Float = 0f,
     initialVisible: Boolean = false,
 ) = rememberSaveable(saver = EstimatedProgressIndicatorState.Saver) {
-    EstimatedProgressIndicatorState(normalHeight, initialProgress, initialVisible)
+    EstimatedProgressIndicatorState(initialProgress, initialVisible)
 }
 
 @Stable
 class EstimatedProgressIndicatorState private constructor(
-    private val normalHeight: Dp = 4.dp,
     initialProgress: Float = 0f,
     initialHeightScale: Float = 0f,
 ) {
     constructor(
-        normalHeight: Dp = 4.dp,
         initialProgress: Float = 0f,
         initialVisible: Boolean = false,
-    ) : this(normalHeight, initialProgress, initialHeightScale = if (initialVisible) 1f else 0f)
+    ) : this(initialProgress, initialHeightScale = if (initialVisible) 1f else 0f)
 
     var progress by mutableFloatStateOf(initialProgress)
         private set
@@ -119,11 +115,10 @@ class EstimatedProgressIndicatorState private constructor(
 
     companion object {
         val Saver = Saver<EstimatedProgressIndicatorState, Any>(
-            save = { listOf(it.normalHeight.value, it.heightScale, it.progress) },
+            save = { listOf(it.heightScale, it.progress) },
             restore = {
                 it as List<*>
                 EstimatedProgressIndicatorState(
-                    normalHeight = (it[0] as Float).dp,
                     initialProgress = it[2] as Float,
                     initialHeightScale = it[1] as Float,
                 )
