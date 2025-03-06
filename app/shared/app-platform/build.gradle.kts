@@ -44,7 +44,6 @@ kotlin {
         api(libs.compose.material3.adaptive.navigation0)
 
         api(libs.koin.core)
-        api(libs.sentry.kotlin.multiplatform)
         api(projects.utils.analytics)
     }
     sourceSets.commonTest.dependencies {
