@@ -58,7 +58,7 @@ class DefaultMediaSelectorSubjectSeriesTest {
                         SubjectNameMismatch,
                         null,
                     ),
-                    "香格里拉·开拓异境～粪作猎手挑战神作～" to null,
+                    "香格里拉·开拓异境～粪作猎手挑战神作～" to FromSeriesSeason,
                     "香格里拉·开拓异境～粪作猎手挑战神作～ 2nd season" to tentatively(
                         SubjectNameMismatch,
                         null,
@@ -77,7 +77,7 @@ class DefaultMediaSelectorSubjectSeriesTest {
                         FromSeriesSeason,
                     ),
                     "香格里拉2009" to SubjectNameMismatch, // 这确实是另一个番
-                    "香格里拉·开拓异境～粪作猎手挑战神作" to null,
+                    "香格里拉·开拓异境～粪作猎手挑战神作" to FromSeriesSeason,
                     "这儿是香格里拉" to SubjectNameMismatch,
                 )
             }
@@ -114,8 +114,8 @@ class DefaultMediaSelectorSubjectSeriesTest {
                         SubjectNameMismatch,
                         FromSeriesSeason,
                     ),
-                    "香格里拉·开拓异境～粪作猎手挑战神作～ 第二季" to null,
-                    "香格里拉·开拓异境～粪作猎手挑战神作～第二季" to null,
+                    "香格里拉·开拓异境～粪作猎手挑战神作～ 第二季" to FromSeriesSeason,
+                    "香格里拉·开拓异境～粪作猎手挑战神作～第二季" to FromSeriesSeason,
                     "香格里拉·弗陇提亚~屎作猎人向神作发起挑战~第二季" to tentatively(
                         SubjectNameMismatch,
                         FromSeriesSeason,

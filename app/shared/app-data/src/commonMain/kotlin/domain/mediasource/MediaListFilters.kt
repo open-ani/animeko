@@ -190,6 +190,16 @@ object MediaListFilters {
         return result
     }
 
+    fun specialEquals(first: String, second: String): Boolean {
+        return removeSpecials(first, removeWhitespace = true, replaceNumbers = true)
+            .equals(removeSpecials(second, removeWhitespace = true, replaceNumbers = true), ignoreCase = true)
+    }
+
+    fun specialContains(string: String, sub: String): Boolean {
+        return removeSpecials(string, removeWhitespace = true, replaceNumbers = true)
+            .contains(removeSpecials(sub, removeWhitespace = true, replaceNumbers = true), ignoreCase = true)
+    }
+
     /**
      * 逐字符扫描，按照 [minimumLength] 的规则处理 toDelete & replaceWithWhitespace.
      *  - 如果还是在“开头”，只要发现属于 toDelete 的字符，直接删；或属于 replaceWithWhitespace，直接替换成空格

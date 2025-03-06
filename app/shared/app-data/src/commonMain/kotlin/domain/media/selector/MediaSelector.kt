@@ -466,14 +466,14 @@ class DefaultMediaSelector(
             }
 
             context.subjectSeriesInfo?.sequelSubjectNames?.forEach { name ->
-                if (name.isNotBlank() && name in media.originalTitle) {
+                if (name.isNotBlank() && MediaListFilters.specialContains(media.originalTitle, name)) {
                     return@filter exclude(MediaExclusionReason.FromSequelSeason) // 是其他季度
                 }
             }
 
-            if (media.properties.subjectName != null) {
+            media.properties.subjectName?.let{ subjectName ->
                 context.subjectSeriesInfo?.seriesSubjectNamesWithoutSelf?.forEach { name ->
-                    if (name.equals(media.properties.subjectName, ignoreCase = true)) {
+                    if (MediaListFilters.specialEquals(subjectName, name)) {
                         // 精确匹配到了是其他季度的名称. 这里只有用精确匹配才安全. 
                         // 有些条目可能就只差距一个字母, 例如 "天降之物" 和 "天降之物f", 非常容易满足模糊匹配.
                         return@filter exclude(MediaExclusionReason.FromSeriesSeason)
