@@ -102,7 +102,16 @@ fun MediaSelectorView(
                         Row {
                             Text("Debug tools: ")
                             FilledTonalButton(onClick = { MediaSelectorDebugTools.dumpSubjectNames(presentation.filteredCandidates) }) {
-                                Text("Dump unique media lists")
+                                Text("Dump unique subject names")
+                            }
+                            FilledTonalButton(
+                                onClick = {
+                                    MediaSelectorDebugTools.dumpMediaSubjectNameAndEpisodes(
+                                        presentation.filteredCandidates,
+                                    )
+                                },
+                            ) {
+                                Text("Dump unique subject names with eps")
                             }
                         }
                     }
