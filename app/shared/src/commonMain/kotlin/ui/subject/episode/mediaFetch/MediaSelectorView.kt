@@ -23,9 +23,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProvideTextStyle
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -48,6 +50,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filterNotNull
 import me.him188.ani.app.domain.media.selector.UnsafeOriginalMediaAccess
+import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.ui.foundation.widgets.FastLinearProgressIndicator
 import me.him188.ani.datasources.api.Media
 
@@ -93,6 +96,18 @@ fun MediaSelectorView(
             Modifier.padding(bottom = WINDOW_VERTICAL_PADDING).weight(1f, fill = false),
             lazyListState,
         ) {
+            if (currentAniBuildConfig.isDebug) {
+                item {
+                    Surface {
+                        Row {
+                            Text("Debug tools: ")
+                            FilledTonalButton(onClick = { MediaSelectorDebugTools.dumpSubjectNames(presentation.filteredCandidates) }) {
+                                Text("Dump unique media lists")
+                            }
+                        }
+                    }
+                }
+            }
             item {
                 Row(Modifier.padding(bottom = 12.dp)) {
                     sourceResults()
