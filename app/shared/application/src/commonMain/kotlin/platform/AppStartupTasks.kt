@@ -13,6 +13,8 @@ import me.him188.ani.app.domain.session.AuthorizationCancelledException
 import me.him188.ani.app.domain.session.AuthorizationFailedException
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.session.SessionStatus
+import me.him188.ani.app.platform.trace.SentryErrorReport
+import me.him188.ani.app.trace.ErrorReportHolder
 import me.him188.ani.utils.analytics.AnalyticsConfig
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
@@ -23,6 +25,7 @@ import kotlin.coroutines.cancellation.CancellationException
 object AppStartupTasks {
     fun initializeSentry() {
         initializeErrorReport()
+        ErrorReportHolder.init(SentryErrorReport)
     }
 
     fun printVersions() {

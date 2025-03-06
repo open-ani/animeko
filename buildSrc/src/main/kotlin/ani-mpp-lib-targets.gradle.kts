@@ -238,7 +238,6 @@ if (android != null) {
 
 if (enableIos) {
     apply(plugin = "org.jetbrains.kotlin.native.cocoapods")
-    apply(plugin = "io.sentry.kotlin.multiplatform.gradle")
 
     configure<KotlinMultiplatformExtension> {
         this.configure<CocoapodsExtension> {

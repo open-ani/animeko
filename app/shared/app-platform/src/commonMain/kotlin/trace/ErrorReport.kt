@@ -9,45 +9,49 @@
 
 package me.him188.ani.app.trace
 
-import io.sentry.kotlin.multiplatform.Scope
-import io.sentry.kotlin.multiplatform.Sentry
-import io.sentry.kotlin.multiplatform.SentryLevel
-import io.sentry.kotlin.multiplatform.protocol.Breadcrumb
-import io.sentry.kotlin.multiplatform.protocol.SentryId
+import kotlin.concurrent.Volatile
 
-object ErrorReport {
-    inline fun captureMessage(
+interface ErrorReportScope {
+    fun setTag(key: String, value: String)
+}
+
+interface IErrorReport {
+    fun captureMessage(
         message: String,
-        level: SentryLevel = SentryLevel.INFO,
-        crossinline config: Scope.() -> Unit = {}
-    ): SentryId {
-        return if (Sentry.isEnabled()) {
-            Sentry.captureMessage(message) {
-                it.level = level
-                config(it)
-            }
-        } else {
-            SentryId.EMPTY_ID
-        }
+//        level: SentryLevel = SentryLevel.INFO,
+        config: ErrorReportScope.() -> Unit = {}
+    )
+
+//    fun breadcrumb(
+//        breadcrumb: Breadcrumb,
+//        config: Breadcrumb.() -> Unit = {}
+//    ) = Sentry.addBreadcrumb(breadcrumb.apply(config))
+
+    fun captureException(
+        throwable: Throwable,
+//        level: SentryLevel = SentryLevel.WARNING,
+        config: ErrorReportScope.() -> Unit = {}
+    )
+}
+
+val ErrorReport get() = ErrorReportHolder._errorReport
+
+object ErrorReportHolder {
+    @Suppress("ObjectPropertyName")
+    @Volatile
+    internal var _errorReport: IErrorReport = NoopErrorReport
+
+    fun init(errorReport: IErrorReport) {
+        _errorReport = errorReport
+    }
+}
+
+private object NoopErrorReport : IErrorReport {
+    override fun captureMessage(message: String, config: ErrorReportScope.() -> Unit) {
+        // no-op
     }
 
-    inline fun breadcrumb(
-        breadcrumb: Breadcrumb,
-        config: Breadcrumb.() -> Unit = {}
-    ) = Sentry.addBreadcrumb(breadcrumb.apply(config))
-
-    inline fun captureException(
-        throwable: Throwable,
-        level: SentryLevel = SentryLevel.WARNING,
-        crossinline config: Scope.() -> Unit = {}
-    ): SentryId {
-        return if (Sentry.isEnabled()) {
-            Sentry.captureException(throwable) {
-                it.level = level
-                config(it)
-            }
-        } else {
-            SentryId.EMPTY_ID
-        }
+    override fun captureException(throwable: Throwable, config: ErrorReportScope.() -> Unit) {
+        // no-op
     }
 }
