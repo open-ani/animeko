@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -128,6 +128,11 @@ class MediaListFiltersTest {
         case(
             "香格里拉弗陇提亚屎作猎人向神作发起挑战第二季",
             "香格里拉·弗陇提亚～屎作猎人向神作发起挑战～ 第二季",
+            removeWhitespace = true,
+        )
+        case(
+            "香格里拉开拓异境粪作猎手挑战神作",
+            "香格里拉・开拓异境～粪作猎手挑战神作～",
             removeWhitespace = true,
         )
         case(

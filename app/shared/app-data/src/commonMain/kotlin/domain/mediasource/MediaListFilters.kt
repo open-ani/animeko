@@ -103,7 +103,7 @@ object MediaListFilters {
     val charsToDelete = """~!@#$%^&*()_+{}\|;':",.<>/?【】：「」！―""".toCharCodeIntSet()
     val charsToDeleteForSearch get() = charsToDelete // 放在这里, 这样你改 [charsToDelete] 时会注意到
 
-    private val charsToReplaceWithWhitespace = """[。、，·[]～]“”""".toCharCodeIntSet()
+    private val charsToReplaceWithWhitespace = """[。、，·・[]～]“”""".toCharCodeIntSet()
     private val whitespaceChars = """ 	\s+""".toCharCodeIntSet()
 
     private data class KeepWords(
