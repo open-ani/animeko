@@ -33,6 +33,9 @@ import me.him188.ani.datasources.api.topic.SubtitleLanguage.ChineseTraditional
 import me.him188.ani.utils.platform.collections.copyPut
 import me.him188.ani.utils.platform.collections.toImmutable
 
+/**
+ * This class is soft-deprecated. Use [MediaSelectorTestSuite] instead.
+ */
 sealed class AbstractDefaultMediaSelectorTest {
     protected val mediaList: MutableStateFlow<MutableList<DefaultMedia>> = MutableStateFlow(mutableListOf())
     protected fun addMedia(vararg media: DefaultMedia) {

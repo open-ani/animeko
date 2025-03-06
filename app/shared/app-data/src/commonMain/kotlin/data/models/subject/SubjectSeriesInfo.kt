@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -69,3 +69,47 @@ data class SubjectSeriesInfo(
         )
     }
 }
+
+fun SubjectSeriesInfo.toBuilder() = SubjectSeriesInfoBuilder(seasonSort).apply {
+    sequel(*sequelSubjectNames.toTypedArray())
+    series(*seriesSubjectNamesWithoutSelf.toTypedArray())
+}
+
+// mainly designed for tests
+class SubjectSeriesInfoBuilder(
+    /**
+     * 此条目是系列中的第几季
+     * @see SubjectSeriesInfo.seasonSort
+     */
+    var seasonSort: Int,
+) {
+    private val sequelNames = mutableListOf<String>()
+    private val seriesNames = mutableListOf<String>()
+
+    /**
+     * 添加一个续集番名.
+     * @see SubjectSeriesInfo.sequelSubjectNames
+     */
+    fun sequel(vararg subjectName: String) {
+        sequelNames.addAll(subjectName)
+        seriesNames.addAll(subjectName)
+    }
+
+    /**
+     * 添加一个同系列的番名
+     * @see SubjectSeriesInfo.seriesSubjectNamesWithoutSelf
+     */
+    fun series(vararg subjectName: String) {
+        seriesNames.addAll(subjectName)
+    }
+
+    fun build() = SubjectSeriesInfo(
+        seasonSort, sequelSubjectNames = sequelNames.toSet(), seriesSubjectNamesWithoutSelf = seriesNames.toSet(),
+    )
+}
+
+inline fun buildSubjectSeriesInfo(
+    seasonSort: Int,
+    block: SubjectSeriesInfoBuilder.() -> Unit
+) =
+    SubjectSeriesInfoBuilder(seasonSort).apply(block).build()
