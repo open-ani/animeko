@@ -540,7 +540,7 @@ class EpisodeViewModel(
         val mediaSourceResultsFlow = MediaSourceResultListPresenter(
             filteredSourceResults,
             flowScope = this,
-        ).presentationFlow.sample(200.milliseconds)
+        ).presentationFlow.sampleWithInitial(200.milliseconds)
         return me.him188.ani.utils.coroutines.flows.combine(
             authStateProvider.state,
             episodeSession.infoBundleFlow.distinctUntilChanged().onStart { emit(null) },

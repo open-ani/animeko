@@ -55,6 +55,7 @@ import me.him188.ani.app.ui.mediaselect.selector.WebSource
 import me.him188.ani.app.ui.mediaselect.selector.WebSourceChannel
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.source.MediaSourceKind
+import me.him188.ani.utils.coroutines.sampleWithInitial
 import me.him188.ani.utils.platform.annotations.TestOnly
 import me.him188.ani.utils.platform.collections.tupleOf
 import kotlin.time.Duration.Companion.milliseconds
@@ -289,7 +290,7 @@ class MediaSelectorState(
                     it.filterNotNull()
                 }
             }
-        }.debounce(200.milliseconds)
+        }.sampleWithInitial(200.milliseconds)
             .catch {
                 it.printStackTrace()
                 ErrorReport.captureException(it) {
