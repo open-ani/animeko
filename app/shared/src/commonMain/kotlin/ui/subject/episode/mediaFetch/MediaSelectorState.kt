@@ -224,18 +224,6 @@ class MediaSelectorState(
         ),
     )
 
-    suspend fun selectWebSource(webSource: WebSource, channel: WebSourceChannel) {
-//        val mediaList = mediaSelector.preferredCandidates.first()
-//        mediaSelector.select(
-//            mediaList.asSequence().mapNotNull { it.result }.find {
-//                it.mediaSourceId == webSource.mediaSourceId && it.properties.
-//            },
-//        )
-        channel.original?.let {
-            mediaSelector.select(it)
-        }
-    }
-
     private fun createWebSourcesFlow(
         getPreferredMediaSourceSortingUseCase: GetPreferredMediaSourceSortingUseCase,
     ): Flow<List<WebSource>> {

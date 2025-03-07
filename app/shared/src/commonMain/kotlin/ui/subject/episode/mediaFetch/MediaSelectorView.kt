@@ -131,10 +131,8 @@ fun MediaSelectorView(
                     presentation.webSources,
                     selectedSource = { presentation.selectedWebSource },
                     selectedChannel = { presentation.selectedWebSourceChannel },
-                    onSelect = { webSource, channel ->
-                        uiScope.launch {
-                            state.selectWebSource(webSource, channel)
-                        }
+                    onSelect = { _, channel ->
+                        channel.original?.let { onClickItem(it) }
                     },
                     onRefresh = { onRestartSource(it.instanceId) },
                     Modifier.padding(bottom = WINDOW_VERTICAL_PADDING).weight(1f, fill = false),
