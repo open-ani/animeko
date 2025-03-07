@@ -11,6 +11,7 @@ package me.him188.ani.app.ui.mediaselect.selector
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
@@ -20,8 +21,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Refresh
@@ -76,19 +75,28 @@ fun MediaSelectorWebSourcesColumn(
     onRefresh: (WebSource) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    LazyColumn(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        items(list, key = { it.instanceId }) { source ->
-            WebSourceCard(
-                source,
-                selectedChannel = { if (selectedSource() == source) selectedChannel() else null },
-                onSelect = {
-                    onSelect(source, it)
-                },
-                onRefresh = {
-                    onRefresh(source)
-                },
-                Modifier.fillMaxWidth(),
-            )
+    val card = @Composable { source: WebSource ->
+        WebSourceCard(
+            source,
+            selectedChannel = { if (selectedSource() == source) selectedChannel() else null },
+            onSelect = {
+                onSelect(source, it)
+            },
+            onRefresh = {
+                onRefresh(source)
+            },
+            Modifier.fillMaxWidth(),
+        )
+    }
+//    LazyColumn(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+//        items(list, key = { it.instanceId }) { source ->
+//            card(source)
+//        }
+//    }
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        // not scrollable. 否则会跟 bottom sheet 的 scroll 冲突. 
+        list.forEach { source ->
+            card(source)
         }
     }
 }

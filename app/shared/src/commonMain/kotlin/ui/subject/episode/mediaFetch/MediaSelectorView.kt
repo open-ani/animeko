@@ -154,18 +154,18 @@ fun MediaSelectorView(
                     onShowExcludedChange = { showExcluded = !showExcluded },
                     Modifier.padding(bottom = WINDOW_VERTICAL_PADDING).weight(1f, fill = false),
                 )
-            }
-        }
 
-        if (bottomActions != null) {
-            HorizontalDivider(Modifier.padding(bottom = 8.dp))
+                if (bottomActions != null) {
+                    HorizontalDivider(Modifier.padding(bottom = 8.dp))
 
-            Row(
-                Modifier.align(Alignment.End).padding(bottom = 8.dp).padding(horizontal = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                ProvideTextStyle(MaterialTheme.typography.labelLarge) {
-                    bottomActions()
+                    Row(
+                        Modifier.align(Alignment.End).padding(bottom = 8.dp).padding(horizontal = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        ProvideTextStyle(MaterialTheme.typography.labelLarge) {
+                            bottomActions()
+                        }
+                    }
                 }
             }
         }
