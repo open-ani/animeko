@@ -430,7 +430,7 @@ class DefaultMediaSelector(
             fun include(): MaybeExcludedMedia {
                 return MaybeExcludedMedia.Included(
                     media,
-                    metadata = computeMatchMetadata(
+                    metadata = calculateMatchMetadata(
                         contextSubjectNames,
                         mediaSubjectName,
                         media.episodeRange,
@@ -517,7 +517,7 @@ class DefaultMediaSelector(
 
     }
 
-    private fun computeMatchMetadata(
+    private fun calculateMatchMetadata(
         contextSubjectNames: Sequence<String>,
         mediaSubjectName: String,
         mediaEpisodeRange: EpisodeRange?,

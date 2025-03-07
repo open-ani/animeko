@@ -60,6 +60,7 @@ class MediaSelectorTestSuite {
         var aliases: MutableList<String> = mutableListOf()
         var seriesInfo: SubjectSeriesInfo = SubjectSeriesInfo.Fallback
         var episodeSort: EpisodeSort = EpisodeSort(1)
+        var episodeEp: EpisodeSort = EpisodeSort(1)
 
         fun aliases(vararg aliases: String) {
             this.aliases.addAll(aliases)
@@ -91,7 +92,7 @@ class MediaSelectorTestSuite {
                 nameCn = init.subjectName,
                 aliases = init.aliases.toList(),
             ),
-            episodeInfo = EpisodeInfo.Empty.copy(sort = init.episodeSort),
+            episodeInfo = EpisodeInfo.Empty.copy(sort = init.episodeSort, ep = init.episodeEp),
             subjectSeriesInfo = init.seriesInfo,
         )
         preferenceApi.mediaSelectorSettings.value = MediaSelectorSettings.Default
@@ -191,8 +192,79 @@ class MediaSelectorTestSuite {
         }
     }
 
+    /**
+     * DSL for verifying the [MatchMetadata] of included media.
+     */
+    inner class MatchMetadataApi {
+        private val checks = mutableListOf<MatchCheck>()
+
+        fun expect(
+            mediaSubjectName: String,
+            episodeRange: EpisodeRange?,
+            subjectMatchKind: MatchMetadata.SubjectMatchKind,
+            episodeMatchKind: MatchMetadata.EpisodeMatchKind,
+        ) {
+            val media = media(
+                subjectName = mediaSubjectName,
+                episodeRange = episodeRange ?: EpisodeRange.single(EpisodeSort(1)),
+                kind = MediaSourceKind.WEB,
+            )
+            mediaApi.addMedia(
+                media,
+            )
+            checks += MatchCheck(
+                media.mediaId,
+                mediaSubjectName,
+                episodeRange ?: EpisodeRange.single(EpisodeSort(1)),
+                subjectMatchKind,
+                episodeMatchKind,
+            )
+        }
+
+        @OptIn(UnsafeOriginalMediaAccess::class)
+        suspend fun checkAll() {
+            if (checks.isEmpty()) return
+            val allIncluded = selector.filteredCandidates.first().filterIsInstance<MaybeExcludedMedia.Included>()
+            checks.forEach { check ->
+                val found = allIncluded.firstOrNull { included ->
+                    included.original.mediaId == check.mediaId
+                } ?: fail(
+                    "Expected included media with subjectName='${check.mediaSubjectName}' and episodeRange=${check.episodeRange}, " +
+                            "but none found in the included list. Possibly it got excluded? ",
+                )
+
+                assertEquals(
+                    check.expectedSubjectMatchKind,
+                    found.metadata.subjectMatchKind,
+                    message = "Media subjectName='${found.original.properties.subjectName}'",
+                )
+                assertEquals(
+                    check.expectedEpisodeMatchKind,
+                    found.metadata.episodeMatchKind,
+                    message = "Media subjectName='${found.original.properties.subjectName}'",
+                )
+            }
+        }
+    }
+
+    private data class MatchCheck(
+        // Target info:
+        val mediaId: String,
+        val mediaSubjectName: String,
+        val episodeRange: EpisodeRange,
+
+        // Assertions:
+        val expectedSubjectMatchKind: MatchMetadata.SubjectMatchKind,
+        val expectedEpisodeMatchKind: MatchMetadata.EpisodeMatchKind,
+    )
+
+
     suspend fun checkSubjectExclusion(block: SubjectExclusionApi.() -> Unit) {
         SubjectExclusionApi().apply(block).checkAll()
+    }
+
+    suspend inline fun checkMatchMetadata(block: MatchMetadataApi.() -> Unit) {
+        MatchMetadataApi().apply(block).checkAll()
     }
 
 
