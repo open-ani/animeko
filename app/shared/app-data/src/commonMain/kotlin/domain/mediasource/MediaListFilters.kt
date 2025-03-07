@@ -15,6 +15,7 @@ import me.him188.ani.app.domain.mediasource.MediaListFilters.charsToDelete
 import me.him188.ani.app.domain.mediasource.MediaListFilters.charsToReplaceWithWhitespace
 import me.him188.ani.app.domain.mediasource.MediaListFilters.keepWords
 import me.him188.ani.app.domain.mediasource.MediaListFilters.minimumLength
+import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.topic.contains
 import me.him188.ani.utils.platform.deleteAnyCharIn
 import me.him188.ani.utils.platform.deleteInfix
@@ -62,8 +63,12 @@ object MediaListFilters {
         val range = media.episodeRange ?: return@BasicMediaListFilter false
         episodeEp != null && range.contains(episodeEp)
     }
+
     val ContainsEpisodeName = BasicMediaListFilter { media ->
         episodeName ?: return@BasicMediaListFilter false
+        if (episodeSort is EpisodeSort.Normal) {
+            return@BasicMediaListFilter false // 对于普通剧集, 不考虑名称匹配. #1738. See also test MediaListFilterEpisodeFilterTest
+        }
         val name = episodeNameForCompare
         checkNotNull(name)
         if (name.isBlank()) return@BasicMediaListFilter false

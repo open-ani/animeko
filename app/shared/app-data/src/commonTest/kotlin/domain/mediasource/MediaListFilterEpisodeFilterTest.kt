@@ -105,7 +105,7 @@ class MediaListFilterEpisodeFilterTest {
             episodeSort = EpisodeSort(11), // 在看 11, 但是标题叫"黄金", 不能匹配到
             episodeName = "黄金",
             mediaEpisodeSort = EpisodeSort(12),
-            expected = true,
+            expected = false,
         )
     }
 
