@@ -55,6 +55,7 @@ import me.him188.ani.app.ui.mediaselect.selector.WebSource
 import me.him188.ani.app.ui.mediaselect.selector.WebSourceChannel
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.source.MediaSourceKind
+import me.him188.ani.utils.coroutines.flows.flowOfEmptyList
 import me.him188.ani.utils.coroutines.sampleWithInitial
 import me.him188.ani.utils.platform.annotations.TestOnly
 import me.him188.ani.utils.platform.collections.tupleOf
@@ -248,9 +249,11 @@ class MediaSelectorState(
                 val myMediaList = allMediaList
                     .asSequence()
                     .filter {
+                        // Filter medias that are from this source
                         it.result?.mediaSourceId == source.mediaSourceId // null result gives `false` and is hence excluded
                     }
                     .filter {
+                        // Take only exact matches
                         when (it) {
                             is MaybeExcludedMedia.Excluded -> false
                             is MaybeExcludedMedia.Included -> {
@@ -271,9 +274,10 @@ class MediaSelectorState(
                             null // 查询成功, 0 条, 隐藏
                         } else {
                             WebSource(
-                                source.instanceId,
-                                source.mediaSourceId,
-                                source.sourceInfo.iconUrl ?: "", source.sourceInfo.displayName,
+                                instanceId = source.instanceId,
+                                mediaSourceId = source.mediaSourceId,
+                                iconUrl = source.sourceInfo.iconUrl ?: "",
+                                name = source.sourceInfo.displayName,
                                 channels = channels,
                                 isLoading = state.isWorking,
                                 isError = state.isFailedOrAbandoned,
@@ -282,7 +286,7 @@ class MediaSelectorState(
                     }
             }
             if (showWebSources.isEmpty()) {
-                flowOf(emptyList())
+                flowOfEmptyList()
             } else {
                 combine(
                     showWebSources,
@@ -290,13 +294,7 @@ class MediaSelectorState(
                     it.filterNotNull()
                 }
             }
-        }.sampleWithInitial(200.milliseconds)
-            .catch {
-                it.printStackTrace()
-                ErrorReport.captureException(it) {
-                    this.setTag("module", "media selector")
-                }
-            }
+        }
     }
 
     /**
