@@ -32,6 +32,7 @@ import me.him188.ani.app.domain.mediasource.MediaListFilter
 import me.him188.ani.app.domain.mediasource.MediaListFilterContext
 import me.him188.ani.app.domain.mediasource.MediaListFilters
 import me.him188.ani.app.domain.mediasource.StringMatcher
+import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.source.MediaSourceLocation
@@ -421,48 +422,20 @@ class DefaultMediaSelector(
             )
         } else null
 
-
         return list.fastMap filter@{ media ->
             val mediaSubjectName = media.properties.subjectName ?: media.originalTitle
-            val contextSubjectNames = context.subjectInfo?.allNames.orEmpty().asSequence() + sequenceOfEmptyString
-            val contextEpisodeSort = context.episodeInfo?.sort
-            val contextEpisodeEp = context.episodeInfo?.ep
-            val mediaEpisodeRange = media.episodeRange
+            val contextSubjectNames = context.subjectInfo?.allNames.orEmpty().asSequence()
 
             // 由下面实现调用, 方便创建 MaybeExcludedMedia
             fun include(): MaybeExcludedMedia {
                 return MaybeExcludedMedia.Included(
                     media,
-                    metadata = MatchMetadata(
-                        subjectMatchKind = if (
-                            contextSubjectNames.any {
-                                MediaListFilters.specialEquals(mediaSubjectName, it)
-                            }
-                        ) {
-                            MatchMetadata.SubjectMatchKind.EXACT
-                        } else {
-                            MatchMetadata.SubjectMatchKind.FUZZY
-                        },
-                        episodeMatchKind = if (mediaEpisodeRange != null) {
-                            when {
-                                contextEpisodeSort != null && contextEpisodeSort in mediaEpisodeRange -> {
-                                    MatchMetadata.EpisodeMatchKind.SORT
-                                }
-
-                                contextEpisodeEp != null && contextEpisodeEp in mediaEpisodeRange -> {
-                                    MatchMetadata.EpisodeMatchKind.EP
-                                }
-
-                                else -> {
-                                    MatchMetadata.EpisodeMatchKind.NONE
-                                }
-                            }
-                        } else {
-                            MatchMetadata.EpisodeMatchKind.NONE
-                        },
-                        similarity = contextSubjectNames
-                            .map { StringMatcher.calculateMatchRate(it, mediaSubjectName) }
-                            .max(),
+                    metadata = computeMatchMetadata(
+                        contextSubjectNames,
+                        mediaSubjectName,
+                        media.episodeRange,
+                        context.episodeInfo?.sort,
+                        context.episodeInfo?.ep,
                     ),
                 )
             }
@@ -543,6 +516,44 @@ class DefaultMediaSelector(
         }
 
     }
+
+    private fun computeMatchMetadata(
+        contextSubjectNames: Sequence<String>,
+        mediaSubjectName: String,
+        mediaEpisodeRange: EpisodeRange?,
+        contextEpisodeSort: EpisodeSort?,
+        contextEpisodeEp: EpisodeSort?
+    ) = MatchMetadata(
+        subjectMatchKind = if (
+            contextSubjectNames.any {
+                MediaListFilters.specialEquals(mediaSubjectName, it)
+            }
+        ) {
+            MatchMetadata.SubjectMatchKind.EXACT
+        } else {
+            MatchMetadata.SubjectMatchKind.FUZZY
+        },
+        episodeMatchKind = if (mediaEpisodeRange != null) {
+            when {
+                contextEpisodeSort != null && contextEpisodeSort in mediaEpisodeRange -> {
+                    MatchMetadata.EpisodeMatchKind.SORT
+                }
+
+                contextEpisodeEp != null && contextEpisodeEp in mediaEpisodeRange -> {
+                    MatchMetadata.EpisodeMatchKind.EP
+                }
+
+                else -> {
+                    MatchMetadata.EpisodeMatchKind.NONE
+                }
+            }
+        } else {
+            MatchMetadata.EpisodeMatchKind.NONE
+        },
+        similarity = (contextSubjectNames + sequenceOfEmptyString)
+            .map { StringMatcher.calculateMatchRate(it, mediaSubjectName) }
+            .max(),
+    )
 
     private val savedUserPreferenceNotCached = savedUserPreference
     private val savedUserPreference: Flow<MediaPreference> = savedUserPreference.cached()

@@ -110,7 +110,7 @@ private fun WebSourceCard(
             Modifier.heightIn(min = minHeight)
                 .widthIn(
                     min = 100.dp,
-                    max = 120.dp,
+                    max = 140.dp,
                 ),
             verticalAlignment = Alignment.CenterVertically,
         ) {

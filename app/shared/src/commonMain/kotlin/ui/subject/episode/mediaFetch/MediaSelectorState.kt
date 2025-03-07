@@ -24,12 +24,13 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.mapNotNull
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.preference.MediaPreference
@@ -48,6 +49,7 @@ import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.media.selector.MediaSelectorContext
 import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.app.tools.MonoTasker
+import me.him188.ani.app.trace.ErrorReport
 import me.him188.ani.app.ui.foundation.rememberBackgroundScope
 import me.him188.ani.app.ui.mediaselect.selector.WebSource
 import me.him188.ani.app.ui.mediaselect.selector.WebSourceChannel
@@ -253,46 +255,59 @@ class MediaSelectorState(
         ) { sources, mediaList ->
             tupleOf(sources, mediaList)
         }.flatMapLatest { (sources, allMediaList) ->
-            combine(
-                sources.map { source ->
-                    val myMediaList = allMediaList
-                        .asSequence()
-                        .filter {
-                            when (it) {
-                                is MaybeExcludedMedia.Excluded -> false
-                                is MaybeExcludedMedia.Included -> {
-                                    it.metadata.subjectMatchKind == MatchMetadata.SubjectMatchKind.EXACT
-                                            && it.metadata.episodeMatchKind >= MatchMetadata.EpisodeMatchKind.EP
-                                }
+            val showWebSources = sources.map { source ->
+                val myMediaList = allMediaList
+                    .asSequence()
+                    .filter {
+                        it.result?.mediaSourceId == source.mediaSourceId // null result gives `false` and is hence excluded
+                    }
+                    .filter {
+                        when (it) {
+                            is MaybeExcludedMedia.Excluded -> false
+                            is MaybeExcludedMedia.Included -> {
+                                it.metadata.subjectMatchKind == MatchMetadata.SubjectMatchKind.EXACT
+                                        && it.metadata.episodeMatchKind >= MatchMetadata.EpisodeMatchKind.EP
                             }
                         }
-                        .mapNotNull { it.result }
-                        .filter { it.mediaSourceId == source.mediaSourceId }
+                    }
+                    .mapNotNull { it.result }
 
-                    source.state
-                        .mapNotNull { state ->
-                            val channels = myMediaList.map { media ->
-                                WebSourceChannel(media.properties.alliance, original = media)
-                            }.toList()
+                source.state
+                    .map { state ->
+                        val channels = myMediaList.map { media ->
+                            WebSourceChannel(media.properties.alliance, original = media)
+                        }.toList()
 
-                            if (channels.isEmpty() && state is MediaSourceFetchState.Succeed) {
-                                null // 查询成功, 0 条, 隐藏
-                            } else {
-                                WebSource(
-                                    source.instanceId,
-                                    source.mediaSourceId,
-                                    source.sourceInfo.iconUrl ?: "", source.sourceInfo.displayName,
-                                    channels = channels,
-                                    isLoading = state.isWorking,
-                                    isError = state.isFailedOrAbandoned,
-                                )
-                            }
+                        if (channels.isEmpty() && state is MediaSourceFetchState.Succeed) {
+                            null // 查询成功, 0 条, 隐藏
+                        } else {
+                            WebSource(
+                                source.instanceId,
+                                source.mediaSourceId,
+                                source.sourceInfo.iconUrl ?: "", source.sourceInfo.displayName,
+                                channels = channels,
+                                isLoading = state.isWorking,
+                                isError = state.isFailedOrAbandoned,
+                            )
                         }
-                },
-            ) {
-                it.toList()
+                    }
+            }
+            if (showWebSources.isEmpty()) {
+                flowOf(emptyList())
+            } else {
+                combine(
+                    showWebSources,
+                ) {
+                    it.filterNotNull()
+                }
             }
         }.debounce(200.milliseconds)
+            .catch {
+                it.printStackTrace()
+                ErrorReport.captureException(it) {
+                    this.setTag("module", "media selector")
+                }
+            }
     }
 
     /**
