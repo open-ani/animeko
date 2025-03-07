@@ -9,33 +9,16 @@
 
 package me.him188.ani.app.ui.mediaselect.selector
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.InputChip
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.minimumInteractiveComponentSize
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.domain.mediasource.instance.MediaSourceInstance
 import me.him188.ani.app.ui.foundation.IconButton
@@ -75,7 +58,7 @@ fun MediaSelectorWebSourcesColumn(
     selectedChannel: () -> WebSourceChannel?,
     onSelect: (WebSource, WebSourceChannel) -> Unit,
     onRefresh: (WebSource) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val card = @Composable { source: WebSource ->
         WebSourceCard(
@@ -117,23 +100,28 @@ private fun WebSourceCard(
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Row(
-            Modifier.heightIn(min = minHeight)
-                .widthIn(
-                    min = 100.dp,
-                    max = 140.dp,
-                ),
+            Modifier.heightIn(min = minHeight),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             SourceIcon(
                 source.iconUrl, source.name,
                 Modifier.size(24.dp),
             )
-            Text(
-                source.name,
-                Modifier.padding(start = 8.dp).width(IntrinsicSize.Max),
-                softWrap = true,
-                maxLines = 2,
-            )
+            Box(Modifier.padding(start = 8.dp)) {
+                Text(
+                    "五个字占位",
+                    Modifier.alpha(0f).width(IntrinsicSize.Max),
+                    softWrap = true,
+                    maxLines = 2,
+                )
+                Text(
+                    source.name,
+                    Modifier.matchParentSize(),
+                    softWrap = true,
+                    maxLines = 2,
+                    overflow = TextOverflow.Clip,
+                )
+            }
         }
 
         FlowRow(
