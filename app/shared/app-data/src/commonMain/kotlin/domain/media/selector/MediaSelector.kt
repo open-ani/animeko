@@ -36,6 +36,7 @@ import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.source.MediaSourceLocation
 import me.him188.ani.datasources.api.topic.EpisodeRange
+import me.him188.ani.datasources.api.topic.contains
 import me.him188.ani.datasources.api.topic.hasSeason
 import me.him188.ani.datasources.api.topic.isSingleEpisode
 import kotlin.coroutines.CoroutineContext
@@ -424,14 +425,45 @@ class DefaultMediaSelector(
         return list.fastMap filter@{ media ->
             val mediaSubjectName = media.properties.subjectName ?: media.originalTitle
             val contextSubjectNames = context.subjectInfo?.allNames.orEmpty().asSequence() + sequenceOfEmptyString
+            val contextEpisodeSort = context.episodeInfo?.sort
+            val contextEpisodeEp = context.episodeInfo?.ep
+            val mediaEpisodeRange = media.episodeRange
 
             // 由下面实现调用, 方便创建 MaybeExcludedMedia
             fun include(): MaybeExcludedMedia {
                 return MaybeExcludedMedia.Included(
                     media,
-                    similarity = contextSubjectNames
-                        .map { StringMatcher.calculateMatchRate(it, mediaSubjectName) }
-                        .max(),
+                    metadata = MatchMetadata(
+                        subjectMatchKind = if (
+                            contextSubjectNames.any {
+                                MediaListFilters.specialEquals(mediaSubjectName, it)
+                            }
+                        ) {
+                            MatchMetadata.SubjectMatchKind.EXACT
+                        } else {
+                            MatchMetadata.SubjectMatchKind.FUZZY
+                        },
+                        episodeMatchKind = if (mediaEpisodeRange != null) {
+                            when {
+                                contextEpisodeSort != null && contextEpisodeSort in mediaEpisodeRange -> {
+                                    MatchMetadata.EpisodeMatchKind.SORT
+                                }
+
+                                contextEpisodeEp != null && contextEpisodeEp in mediaEpisodeRange -> {
+                                    MatchMetadata.EpisodeMatchKind.EP
+                                }
+
+                                else -> {
+                                    MatchMetadata.EpisodeMatchKind.NONE
+                                }
+                            }
+                        } else {
+                            MatchMetadata.EpisodeMatchKind.NONE
+                        },
+                        similarity = contextSubjectNames
+                            .map { StringMatcher.calculateMatchRate(it, mediaSubjectName) }
+                            .max(),
+                    ),
                 )
             }
 
@@ -471,7 +503,7 @@ class DefaultMediaSelector(
                 }
             }
 
-            media.properties.subjectName?.let{ subjectName ->
+            media.properties.subjectName?.let { subjectName ->
                 context.subjectSeriesInfo?.seriesSubjectNamesWithoutSelf?.forEach { name ->
                     if (MediaListFilters.specialEquals(subjectName, name)) {
                         // 精确匹配到了是其他季度的名称. 这里只有用精确匹配才安全. 

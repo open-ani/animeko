@@ -9,7 +9,9 @@
 
 package me.him188.ani.app.domain.media.selector
 
+import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.subject.SubjectInfo
+import me.him188.ani.app.domain.mediasource.MediaListFilters
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.topic.EpisodeRange
 import me.him188.ani.utils.platform.annotations.Range
@@ -46,11 +48,13 @@ sealed class MaybeExcludedMedia {
      */
     data class Included(
         override val result: Media,
-        val similarity: @Range(from = 0L, to = 100L) Int,
+        val metadata: MatchMetadata,
     ) : MaybeExcludedMedia() {
         @UnsafeOriginalMediaAccess
         override val original: Media get() = result
         override val exclusionReason: Nothing? get() = null
+
+        val similarity: @Range(from = 0L, to = 100L) Int get() = metadata.similarity
     }
 
     /**
@@ -107,4 +111,43 @@ sealed class MediaExclusionReason {
      * 资源标题不匹配 (不包含 [SubjectInfo.allNames])
      */
     data object SubjectNameMismatch : MediaExclusionReason()
+}
+
+data class MatchMetadata(
+    val subjectMatchKind: SubjectMatchKind,
+    /**
+     * media 识别到了精准的 sort, 并且完全匹配正在观看的 [sort][EpisodeInfo.sort].
+     * 注意, 这不包含匹配 [EpisodeInfo.ep], 因为我们无法在第二季时根据 ep 区分是否正确.
+     */
+    val episodeMatchKind: EpisodeMatchKind,
+    val similarity: @Range(from = 0L, to = 100L) Int,
+) {
+    enum class SubjectMatchKind {
+        /**
+         * 没有精确匹配.
+         */
+        FUZZY,
+
+        /**
+         * media 识别到了精准的条目名称, 并且完全匹配正在观看的条目名称.
+         * @see MediaListFilters.specialEquals
+         */
+        EXACT,
+    }
+
+    enum class EpisodeMatchKind { // Element order has semantics. Check usage before changing.
+        NONE,
+
+        /**
+         * media 识别到了精准的 sort 或 ep, 并且完全匹配正在观看的 [ep][EpisodeInfo.ep].
+         * 注意, 如果能匹配正在观看的 [sort][EpisodeInfo.sort], 则会是 [SORT].
+         */
+        EP,
+
+        /**
+         * media 识别到了精准的 sort 或 ep, 并且完全匹配正在观看的 [sort][EpisodeInfo.sort].
+         * 注意, 这不包含匹配 [EpisodeInfo.ep], 因为我们无法在第二季时根据 ep 区分是否正确.
+         */
+        SORT,
+    }
 }
