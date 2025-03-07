@@ -38,6 +38,7 @@ fun EpisodePlayMediaSelector(
     modifier: Modifier = Modifier,
     stickyHeaderBackgroundColor: Color = Color.Unspecified,
     onSelected: (Media) -> Unit = {},
+    scrollable: Boolean = true,
 ) {
     MediaSelectorView(
         mediaSelector,
@@ -63,5 +64,6 @@ fun EpisodePlayMediaSelector(
                 Text("取消")
             }
         },
+        scrollable = scrollable,
     )
 }

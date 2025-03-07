@@ -24,6 +24,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -54,9 +56,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.media.selector.UnsafeOriginalMediaAccess
 import me.him188.ani.app.platform.currentAniBuildConfig
+import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.widgets.FastLinearProgressIndicator
 import me.him188.ani.app.ui.mediaselect.selector.MediaSelectorWebSourcesColumn
 import me.him188.ani.datasources.api.Media
@@ -94,6 +96,7 @@ fun MediaSelectorView(
     onClickItem: ((Media) -> Unit) = { state.select(it) },
     bottomActions: (@Composable RowScope.() -> Unit)? = null,
     singleLineFilter: Boolean = false,
+    scrollable: Boolean = true,
 ) {
     val bringIntoViewRequesters = remember { mutableStateMapOf<Media, BringIntoViewRequester>() }
     val presentation by state.presentationFlow.collectAsStateWithLifecycle()
@@ -135,7 +138,8 @@ fun MediaSelectorView(
                         channel.original?.let { onClickItem(it) }
                     },
                     onRefresh = { onRestartSource(it.instanceId) },
-                    Modifier.padding(bottom = WINDOW_VERTICAL_PADDING).weight(1f, fill = false),
+                    Modifier.padding(bottom = WINDOW_VERTICAL_PADDING).weight(1f, fill = false)
+                        .ifThen(scrollable) { verticalScroll(rememberScrollState()) },
                 )
             }
 
