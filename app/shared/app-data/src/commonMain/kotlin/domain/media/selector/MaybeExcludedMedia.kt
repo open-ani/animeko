@@ -15,6 +15,7 @@ import me.him188.ani.app.domain.mediasource.MediaListFilters
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.topic.EpisodeRange
 import me.him188.ani.utils.platform.annotations.Range
+import me.him188.ani.utils.platform.annotations.TestOnly
 
 /**
  * 表示一个可能被排除的资源, 包含其被排除的原因.
@@ -151,3 +152,12 @@ data class MatchMetadata(
         SORT,
     }
 }
+
+@TestOnly
+val TestMatchMetadata
+    get() = MatchMetadata(
+        MatchMetadata.SubjectMatchKind.EXACT,
+        MatchMetadata.EpisodeMatchKind.EP,
+        90,
+    )
+

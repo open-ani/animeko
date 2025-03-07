@@ -26,6 +26,7 @@ import me.him188.ani.app.domain.media.selector.DefaultMediaSelector
 import me.him188.ani.app.domain.media.selector.MaybeExcludedMedia
 import me.him188.ani.app.domain.media.selector.MediaExclusionReason
 import me.him188.ani.app.domain.media.selector.MediaSelectorContext
+import me.him188.ani.app.domain.media.selector.TestMatchMetadata
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.datasources.api.CachedMedia
 import me.him188.ani.datasources.api.Media
@@ -100,7 +101,7 @@ private fun PreviewMediaItemIncluded(modifier: Modifier = Modifier) = ProvideCom
     MediaSelectorItem(
         remember {
             MediaGroupBuilder("Test").apply {
-                add(previewMediaList[0].let { MaybeExcludedMedia.Included(it, similarity = 90) })
+                add(previewMediaList[0].let { MaybeExcludedMedia.Included(it, TestMatchMetadata) })
             }.build()
         },
         remember { MediaGroupState("test") },
