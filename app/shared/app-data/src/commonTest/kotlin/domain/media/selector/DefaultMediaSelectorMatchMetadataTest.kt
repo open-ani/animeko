@@ -103,7 +103,7 @@ class DefaultMediaSelectorMatchMetadataTest {
     }
 
     @TestFactory
-    fun `subject + episode combined test`() = runDynamicTests {
+    fun `subject and episode combined test`() = runDynamicTests {
         addMediaSelectorTest(
             "subject + episode combined test",
             {
