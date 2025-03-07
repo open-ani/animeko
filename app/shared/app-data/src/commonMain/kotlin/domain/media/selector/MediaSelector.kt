@@ -393,7 +393,7 @@ class DefaultMediaSelector(
                         }
                     },
             )
-    }.flowOn(flowCoroutineContext)
+    }.cached()
 
     override val filteredCandidatesMedia: Flow<List<Media>> = filteredCandidates.map { list ->
         list.mapNotNull { it.result }

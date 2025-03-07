@@ -21,13 +21,13 @@ import androidx.compose.runtime.snapshots.SnapshotStateMap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -49,17 +49,14 @@ import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.media.selector.MediaSelectorContext
 import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.app.tools.MonoTasker
-import me.him188.ani.app.trace.ErrorReport
 import me.him188.ani.app.ui.foundation.rememberBackgroundScope
 import me.him188.ani.app.ui.mediaselect.selector.WebSource
 import me.him188.ani.app.ui.mediaselect.selector.WebSourceChannel
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.utils.coroutines.flows.flowOfEmptyList
-import me.him188.ani.utils.coroutines.sampleWithInitial
 import me.him188.ani.utils.platform.annotations.TestOnly
 import me.him188.ani.utils.platform.collections.tupleOf
-import kotlin.time.Duration.Companion.milliseconds
 
 // todo: shit
 @Composable
@@ -246,6 +243,8 @@ class MediaSelectorState(
             tupleOf(sources, mediaList)
         }.flatMapLatest { (sources, allMediaList) ->
             val showWebSources = sources.map { source ->
+
+                // 属于这个数据源的 medias
                 val myMediaList = allMediaList
                     .asSequence()
                     .filter {
@@ -270,7 +269,10 @@ class MediaSelectorState(
                             WebSourceChannel(media.properties.alliance, original = media)
                         }.toList()
 
-                        if (channels.isEmpty() && state is MediaSourceFetchState.Succeed) {
+                        if (channels.isEmpty()
+                            && state is MediaSourceFetchState.Succeed
+                        ) {
+                            delay(1000)
                             null // 查询成功, 0 条, 隐藏
                         } else {
                             WebSource(
