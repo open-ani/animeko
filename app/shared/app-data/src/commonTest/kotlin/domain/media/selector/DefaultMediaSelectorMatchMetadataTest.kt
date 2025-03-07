@@ -105,7 +105,7 @@ class DefaultMediaSelectorMatchMetadataTest {
     @TestFactory
     fun `subject and episode combined test`() = runDynamicTests {
         addMediaSelectorTest(
-            "subject + episode combined test",
+            "subject and episode combined test",
             {
                 initSubject("进击的巨人") {
                     episodeSort = EpisodeSort(2)
