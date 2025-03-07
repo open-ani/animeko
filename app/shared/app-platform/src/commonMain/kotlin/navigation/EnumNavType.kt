@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -9,8 +9,10 @@
 
 package me.him188.ani.app.navigation
 
-import androidx.core.bundle.Bundle
 import androidx.navigation.NavType
+import androidx.savedstate.SavedState
+import androidx.savedstate.read
+import androidx.savedstate.write
 import kotlin.enums.EnumEntries
 
 class EnumNavType<E : Enum<E>>(
@@ -18,14 +20,19 @@ class EnumNavType<E : Enum<E>>(
 ) : NavType<E?>(true) {
     override val name: String get() = "enum"
 
-    override fun put(bundle: Bundle, key: String, value: E?) {
+    override fun put(bundle: SavedState, key: String, value: E?) {
         val name = value?.name
         check(name != "null") { "Enum value must not be \"null\"" }
-        bundle.putString(key, name)
+        bundle.write {
+            putString(key, name ?: "null")
+        }
     }
 
-    override fun get(bundle: Bundle, key: String): E? {
-        return bundle.getString(key)?.let { parseValue(it) }
+    override fun get(bundle: SavedState, key: String): E? {
+        bundle.read {
+            val value = getString(key)
+            return if (value == "null") null else entries.find { it.name == value }
+        }
     }
 
     /**

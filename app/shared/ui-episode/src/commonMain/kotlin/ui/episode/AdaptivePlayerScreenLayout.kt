@@ -72,6 +72,7 @@ import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.isHeightAtLeastMedium
+import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastBreakpoint
 import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
 import me.him188.ani.app.ui.foundation.pagerTabIndicatorOffset
 import me.him188.ani.app.ui.foundation.theme.AniTheme
@@ -430,7 +431,7 @@ data class AdaptivePlayerScreenLayoutParams private constructor(
         private fun calculateMode(
             windowSizeClass: WindowSizeClass,
             preferTheater: Boolean,
-        ) = if (windowSizeClass.containsWidthDp(BREAKPOINT_WIDTH)) {
+        ) = if (windowSizeClass.isWidthAtLeastBreakpoint(BREAKPOINT_WIDTH)) {
             if (preferTheater) {
                 Mode.THEATER
             } else {

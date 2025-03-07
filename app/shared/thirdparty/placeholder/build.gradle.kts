@@ -20,7 +20,6 @@ plugins {
 
 kotlin {
     sourceSets.commonMain.dependencies {
-        api(compose.material3)
         implementation(libs.androidx.annotation)
     }
     sourceSets.commonTest.dependencies {

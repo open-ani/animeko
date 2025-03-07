@@ -85,12 +85,6 @@ kotlin {
         api(projects.app.shared.uiMediaselect)
 
         // Compose
-        api(compose.foundation)
-        api(compose.animation)
-        api(compose.ui)
-        api(compose.material3)
-        api(compose.materialIconsExtended)
-        api(compose.runtime)
         api(libs.compose.lifecycle.viewmodel.compose)
         api(libs.compose.lifecycle.runtime.compose)
         api(libs.compose.navigation.compose)
@@ -175,7 +169,6 @@ kotlin {
 
         // Compose
         api(libs.androidx.compose.ui.tooling.preview)
-        api(libs.androidx.compose.material3)
 
         api(libs.coil)
 
@@ -197,7 +190,6 @@ kotlin {
             exclude(compose.material) // We use material3
             exclude("org.jetbrains.compose.ui:ui-tooling-preview")
         }
-        api(compose.material3)
         api("org.jetbrains.compose.ui:ui-graphics-desktop:${libs.versions.compose.multiplatform.get()}")
         api(projects.utils.logging)
         api(libs.kotlinx.coroutines.swing)

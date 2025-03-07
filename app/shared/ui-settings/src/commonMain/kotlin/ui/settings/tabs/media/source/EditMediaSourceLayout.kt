@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024-2025 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.app.ui.settings.tabs.media.source
 
 import androidx.compose.foundation.layout.Arrangement
@@ -11,10 +20,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Switch
@@ -80,7 +89,6 @@ class EditingMediaSource(
             is BooleanParameter -> BooleanArgumentState(param)
             is SimpleEnumParameter -> SimpleEnumArgumentState(param)
             is StringParameter -> StringArgumentState(param)
-            else -> throw IllegalArgumentException("Unsupported parameter type: $param")
         }
     }
 
@@ -282,7 +290,7 @@ private fun SimpleEnumArgument(argument: SimpleEnumArgumentState, modifier: Modi
                 // The `menuAnchor` modifier must be passed to the text field to handle
                 // expanding/collapsing the menu on click. A read-only text field has
                 // the anchor type `PrimaryNotEditable`.
-                modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
                 value = argument.value,
                 onValueChange = {},
                 readOnly = true,

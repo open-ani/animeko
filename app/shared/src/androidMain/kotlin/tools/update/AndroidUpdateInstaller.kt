@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024-2025 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.app.tools.update
 
 import android.content.Context
@@ -30,7 +39,7 @@ class AndroidUpdateInstaller : UpdateInstaller {
             kotlin.runCatching {
                 val intent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES)
                     .setData(Uri.parse(String.format("package:%s", context.packageName)))
-                startActivity(context, intent, null)
+                context.startActivity(intent)
             }.onFailure {
                 logger.warn(it) { "Failed to request permission to install APK" }
             }
@@ -76,6 +85,6 @@ class AndroidUpdateInstaller : UpdateInstaller {
                 Intent.FLAG_GRANT_WRITE_URI_PERMISSION or Intent.FLAG_GRANT_READ_URI_PERMISSION,
             )
         }
-        startActivity(context, intent, null)
+        context.startActivity(intent)
     }
 }

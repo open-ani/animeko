@@ -42,7 +42,6 @@ kotlin {
         api(libs.compose.material3.adaptive.core.get().toString())
         api(libs.compose.material3.adaptive.layout.get().toString())
         api(libs.compose.material3.adaptive.navigation0.get().toString())
-        api(libs.androidx.window.core)
 
         implementation(projects.utils.bbcode)
         implementation(libs.constraintlayout.compose)

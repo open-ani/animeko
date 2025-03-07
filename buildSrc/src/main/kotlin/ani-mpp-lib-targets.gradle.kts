@@ -99,7 +99,21 @@ configure<KotlinMultiplatformExtension> {
             api(compose.foundation)
             api(compose.animation)
             api(compose.ui)
-            api(compose.material3)
+            
+//            api(compose.material3)
+            // workaround in CMP 1.8.0-alpha04. Remove in the future.
+            api("org.jetbrains.compose.material3:material3") {
+                version {
+                    strictly("1.8.0-alpha03")
+                }
+            }
+            // workaround in CMP 1.8.0-alpha04. Remove in the future.
+            api("org.jetbrains.androidx.window:window-core") {
+                version {
+                    strictly("1.4.0-alpha03")
+                }
+            }
+            
             api(compose.materialIconsExtended)
             api(compose.runtime)
         }
