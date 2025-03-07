@@ -38,6 +38,7 @@ import me.him188.ani.datasources.api.source.MediaSourceInfo
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.mikan.MikanCNMediaSource
 import me.him188.ani.datasources.mikan.MikanMediaSource
+import me.him188.ani.utils.coroutines.flows.flowOfEmptyList
 import me.him188.ani.utils.platform.annotations.TestOnly
 
 
@@ -86,14 +87,19 @@ class MediaSourceResultListPresenter(
 ) {
     val presentationFlow: Flow<List<MediaSourceResultPresentation>> = resultListFlow
         .flatMapLatest { list ->
-            combine(
-                list.map { source ->
-                    combine(source.state, source.results) { state, results ->
-                        source.toPresentation(state, results.size)
-                    }
-                },
-            ) {
-                it.toList()
+            val flows = list.map { source ->
+                combine(source.state, source.results) { state, results ->
+                    source.toPresentation(state, results.size)
+                }
+            }
+            if (flows.isEmpty()) {
+                flowOfEmptyList()
+            } else {
+                combine(
+                    flows,
+                ) {
+                    it.toList()
+                }
             }
         }
         .shareIn(flowScope, SharingStarted.WhileSubscribed(), replay = 1)
