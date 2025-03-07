@@ -126,7 +126,7 @@ fun EpisodeDetails(
     authState: AuthState,
     onSwitchEpisode: (episodeId: Int) -> Unit,
     onRefreshMediaSources: () -> Unit,
-    onRestartSource: (MediaSourceResultPresentation) -> Unit,
+    onRestartSource: (instanceId: String) -> Unit,
     onSetDanmakuSourceEnabled: (providerId: String, enabled: Boolean) -> Unit,
     onClickLogin: () -> Unit,
     modifier: Modifier = Modifier,

@@ -21,28 +21,45 @@ import androidx.compose.runtime.snapshots.SnapshotStateMap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
 import me.him188.ani.app.domain.media.TestMediaList
+import me.him188.ani.app.domain.media.fetch.MediaSourceFetchResult
+import me.him188.ani.app.domain.media.fetch.isFailedOrAbandoned
+import me.him188.ani.app.domain.media.fetch.isWorking
 import me.him188.ani.app.domain.media.selector.DefaultMediaSelector
+import me.him188.ani.app.domain.media.selector.GetPreferredMediaSourceSortingUseCase
 import me.him188.ani.app.domain.media.selector.MaybeExcludedMedia
 import me.him188.ani.app.domain.media.selector.MediaPreferenceItem
 import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.media.selector.MediaSelectorContext
+import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.ui.foundation.rememberBackgroundScope
+import me.him188.ani.app.ui.mediaselect.selector.WebSource
+import me.him188.ani.app.ui.mediaselect.selector.WebSourceChannel
 import me.him188.ani.datasources.api.Media
+import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.utils.platform.annotations.TestOnly
+import me.him188.ani.utils.platform.collections.tupleOf
+import kotlin.time.Duration.Companion.milliseconds
 
+// todo: shit
 @Composable
 fun rememberMediaSelectorState(
     mediaSourceInfoProvider: MediaSourceInfoProvider,
+    filteredResults: Flow<List<MediaSourceFetchResult>>,
     mediaSelector: () -> MediaSelector,// lambda remembered
 ): MediaSelectorState {
     val scope = rememberBackgroundScope()
@@ -50,7 +67,14 @@ fun rememberMediaSelectorState(
         derivedStateOf(mediaSelector)
     }
     return remember {
-        MediaSelectorState(selector, mediaSourceInfoProvider, scope.backgroundScope)
+        MediaSelectorState(
+            selector,
+            filteredResults,
+            mediaSourceInfoProvider,
+            scope.backgroundScope,
+            // todo: shit
+            GlobalKoin.get(),
+        )
     }
 }
 
@@ -118,8 +142,10 @@ fun <T : Any> MediaPreferenceItemState<T>.preferOrRemove(value: T?): Job {
 @Stable
 class MediaSelectorState(
     private val mediaSelector: MediaSelector,
+    private val mediaSourceFetchResults: Flow<List<MediaSourceFetchResult>>,
     val mediaSourceInfoProvider: MediaSourceInfoProvider,
     private val backgroundScope: CoroutineScope,
+    getPreferredMediaSourceSortingUseCase: GetPreferredMediaSourceSortingUseCase,
 ) {
     @Immutable
     data class Presentation(
@@ -132,6 +158,10 @@ class MediaSelectorState(
         val resolution: MediaPreferenceItemState.Presentation<String>,
         val subtitleLanguageId: MediaPreferenceItemState.Presentation<String>,
         val mediaSource: MediaPreferenceItemState.Presentation<String>,
+        // New MS
+        val webSources: List<WebSource>,
+        val selectedWebSource: WebSource?,
+        val selectedWebSourceChannel: WebSourceChannel?,
         val isPlaceholder: Boolean = false,
     )
 
@@ -160,7 +190,8 @@ class MediaSelectorState(
         resolution.presentationFlow,
         subtitleLanguageId.presentationFlow,
         mediaSource.presentationFlow,
-    ) { filteredCandidatesMedia, preferredCandidates, selected, alliance, resolution, subtitleLanguageId, mediaSource ->
+        createWebSourcesFlow(getPreferredMediaSourceSortingUseCase),
+    ) { filteredCandidatesMedia, preferredCandidates, selected, alliance, resolution, subtitleLanguageId, mediaSource, webSources ->
         val (groupsExcluded, groupsIncluded) = MediaGrouper.buildGroups(preferredCandidates).partition { it.isExcluded }
         Presentation(
             filteredCandidatesMedia,
@@ -169,6 +200,9 @@ class MediaSelectorState(
             groupsExcluded,
             selected,
             alliance, resolution, subtitleLanguageId, mediaSource,
+            webSources,
+            selectedWebSource = webSources.find { source -> source.channels.any { it.original == selected } },
+            selectedWebSourceChannel = webSources.firstNotNullOfOrNull { source -> source.channels.find { it.original == selected } },
         )
     }.stateIn(
         backgroundScope,
@@ -179,9 +213,69 @@ class MediaSelectorState(
             resolution = MediaPreferenceItemState.Presentation.placeholder(),
             subtitleLanguageId = MediaPreferenceItemState.Presentation.placeholder(),
             mediaSource = MediaPreferenceItemState.Presentation.placeholder(),
+            webSources = emptyList(),
+            selectedWebSource = null,
+            selectedWebSourceChannel = null,
             isPlaceholder = true,
         ),
     )
+
+    suspend fun selectWebSource(webSource: WebSource, channel: WebSourceChannel) {
+//        val mediaList = mediaSelector.preferredCandidates.first()
+//        mediaSelector.select(
+//            mediaList.asSequence().mapNotNull { it.result }.find {
+//                it.mediaSourceId == webSource.mediaSourceId && it.properties.
+//            },
+//        )
+        channel.original?.let {
+            mediaSelector.select(it)
+        }
+    }
+
+    private fun createWebSourcesFlow(
+        getPreferredMediaSourceSortingUseCase: GetPreferredMediaSourceSortingUseCase,
+    ): Flow<List<WebSource>> {
+        val sortedResultsFlow = combine(
+            mediaSourceFetchResults,
+            getPreferredMediaSourceSortingUseCase(),
+        ) { results, desiredInstanceIdOrder ->
+            results
+                .filter { it.kind == MediaSourceKind.WEB } // 只使用 WEB
+                .sortedBy {
+                    desiredInstanceIdOrder.indexOf(it.instanceId)
+                }
+        }
+        return combine(
+            sortedResultsFlow.distinctUntilChanged(),
+            mediaSelector.filteredCandidates,
+        ) { sources, mediaList ->
+            tupleOf(sources, mediaList)
+        }.flatMapLatest { (sources, allMediaList) ->
+            combine(
+                sources.map { source ->
+                    val myMediaList = allMediaList
+                        .asSequence()
+                        .mapNotNull { it.result }
+                        .filter { it.mediaSourceId == source.mediaSourceId }
+
+                    source.state.map { state ->
+                        WebSource(
+                            source.instanceId,
+                            source.mediaSourceId,
+                            source.sourceInfo.iconUrl ?: "", source.sourceInfo.displayName,
+                            channels = myMediaList.map { media ->
+                                WebSourceChannel(media.properties.alliance, original = media)
+                            }.toList(),
+                            isLoading = state.isWorking,
+                            isError = state.isFailedOrAbandoned,
+                        )
+                    }
+                },
+            ) {
+                it.toList()
+            }
+        }.debounce(200.milliseconds)
+    }
 
     /**
      * @see MediaSelector.select
@@ -227,7 +321,9 @@ fun createTestMediaSelectorState(backgroundScope: CoroutineScope) =
             savedDefaultPreference = flowOf(MediaPreference.Empty),
             mediaSelectorSettings = flowOf(MediaSelectorSettings.Default),
         ),
+        mediaSourceFetchResults = createTestMediaSourceResultsFilterer(backgroundScope).filteredSourceResults,
         createTestMediaSourceInfoProvider(),
         backgroundScope,
+        getPreferredMediaSourceSortingUseCase = { flowOf(listOf()) },
     )
 

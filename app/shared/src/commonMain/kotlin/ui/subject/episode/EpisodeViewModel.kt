@@ -530,14 +530,15 @@ class EpisodeViewModel(
     }.stateIn(backgroundScope, started = SharingStarted.WhileSubscribed(5_000), null)
 
     private fun CoroutineScope.createPageStateFlow(episodeSession: EpisodeSession): Flow<EpisodePageState> {
+        val filteredSourceResults = MediaSourceResultsFilterer(
+            results = episodeSession.fetchSelectFlow.map {
+                it?.mediaFetchSession?.mediaSourceResults ?: emptyList()
+            },
+            settings = settingsRepository.mediaSelectorSettings.flow,
+            flowScope = this,
+        ).filteredSourceResults
         val mediaSourceResultsFlow = MediaSourceResultListPresenter(
-            MediaSourceResultsFilterer(
-                results = episodeSession.fetchSelectFlow.map {
-                    it?.mediaFetchSession?.mediaSourceResults ?: emptyList()
-                },
-                settings = settingsRepository.mediaSelectorSettings.flow,
-                flowScope = this,
-            ).filteredSourceResults,
+            filteredSourceResults,
             flowScope = this,
         ).presentationFlow.sample(200.milliseconds)
         return me.him188.ani.utils.coroutines.flows.combine(
@@ -554,11 +555,15 @@ class EpisodeViewModel(
             settingsRepository.danmakuEnabled.flow,
             settingsRepository.danmakuConfig.flow,
             episodeSession.fetchSelectFlow.map { fetchSelect ->
-                if (fetchSelect != null) MediaSelectorState(
-                    fetchSelect.mediaSelector,
-                    mediaSourceInfoProvider,
-                    backgroundScope,
-                ) else {
+                if (fetchSelect != null) {
+                    MediaSelectorState(
+                        fetchSelect.mediaSelector,
+                        filteredSourceResults,
+                        mediaSourceInfoProvider,
+                        backgroundScope,
+                        koin.get(),
+                    )
+                } else {
                     // TODO: 2025/1/22 We should not use createTestMediaSelectorState
                     @OptIn(TestOnly::class)
                     createTestMediaSelectorState(backgroundScope)

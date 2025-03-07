@@ -68,7 +68,7 @@ fun MediaSourceResultsView(
     sourceResults: MediaSourceResultListPresentation,
     mediaSelector: MediaSelectorState,
     onRefresh: () -> Unit,
-    onRestartSource: (MediaSourceResultPresentation) -> Unit,
+    onRestartSource: (instanceId: String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val presentation by mediaSelector.mediaSource.presentationFlow.collectAsStateWithLifecycle()
@@ -94,7 +94,7 @@ fun MediaSourceResultsView(
     sourceSelected: (String) -> Boolean,
     onClickEnabled: (mediaSourceId: String) -> Unit,
     onRefresh: () -> Unit,
-    onRestartSource: (MediaSourceResultPresentation) -> Unit,
+    onRestartSource: (instanceId: String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier) {
@@ -153,7 +153,7 @@ fun MediaSourceResultsView(
             val onClick: (MediaSourceResultPresentation) -> Unit = remember(onClickEnabled) {
                 { item ->
                     if (item.isDisabled || item.isFailedOrAbandoned) {
-                        onRestartSource(item)
+                        onRestartSource(item.instanceId)
                     } else {
                         onClickEnabled(item.mediaSourceId)
                     }

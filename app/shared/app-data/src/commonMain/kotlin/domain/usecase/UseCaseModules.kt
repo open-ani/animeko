@@ -27,6 +27,8 @@ import me.him188.ani.app.domain.episode.GetSubjectEpisodeInfoBundleFlowUseCase
 import me.him188.ani.app.domain.episode.GetSubjectEpisodeInfoBundleFlowUseCaseImpl
 import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeUseCase
 import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeUseCaseImpl
+import me.him188.ani.app.domain.media.selector.GetPreferredMediaSourceSortingUseCase
+import me.him188.ani.app.domain.media.selector.GetPreferredMediaSourceSortingUseCaseImpl
 import me.him188.ani.app.domain.media.selector.MediaSelectorAutoSelectUseCase
 import me.him188.ani.app.domain.media.selector.MediaSelectorAutoSelectUseCaseImpl
 import me.him188.ani.app.domain.media.selector.MediaSelectorEventSavePreferenceUseCase
@@ -59,6 +61,7 @@ fun KoinApplication.useCaseModules() = module {
     single<GetEpisodeCollectionTypeUseCase> { GetEpisodeCollectionTypeUseCaseImpl(koin) }
     single<GetAnimeScheduleFlowUseCase> { GetAnimeScheduleFlowUseCaseImpl(get(), get()) }
     single<PostCommentUseCase> { PostCommentUseCaseImpl(get(), get()) }
+    single<GetPreferredMediaSourceSortingUseCase> { GetPreferredMediaSourceSortingUseCaseImpl(get()) }
 }
 
 val GlobalKoin get() = KoinPlatform.getKoin()

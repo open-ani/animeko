@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.ui.subject.episode.mediaFetch
 
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import kotlinx.atomicfu.atomic
@@ -119,57 +118,61 @@ class MediaSourceResultListPresenter(
 ///////////////////////////////////////////////////////////////////////////
 
 @TestOnly
-@Composable
 fun createTestMediaSourceResultsPresenter(
     flowScope: CoroutineScope,
 ): MediaSourceResultListPresenter {
     return MediaSourceResultListPresenter(
-        MediaSourceResultsFilterer(
-            results = flowOf(
-                listOf(
-                    TestMediaSourceResult(
-                        MikanMediaSource.ID,
-                        MikanMediaSource.INFO,
-                        MediaSourceKind.BitTorrent,
-                        initialState = MediaSourceFetchState.Working,
-                        results = TestMediaList,
-                    ),
-                    TestMediaSourceResult(
-                        "dmhy",
-                        MediaSourceInfo("dmhy"),
-                        MediaSourceKind.BitTorrent,
-                        initialState = MediaSourceFetchState.Succeed(1),
-                        results = TestMediaList,
-                    ),
-                    TestMediaSourceResult(
-                        "acg.rip",
-                        MediaSourceInfo("acg.rip"),
-                        MediaSourceKind.BitTorrent,
-                        initialState = MediaSourceFetchState.Disabled,
-                        results = TestMediaList,
-                    ),
-                    TestMediaSourceResult(
-                        "nyafun",
-                        MediaSourceInfo("nyafun"),
-                        MediaSourceKind.WEB,
-                        initialState = MediaSourceFetchState.Succeed(1),
-                        results = TestMediaList,
-                    ),
-                    TestMediaSourceResult(
-                        MikanCNMediaSource.ID,
-                        MikanCNMediaSource.INFO,
-                        MediaSourceKind.BitTorrent,
-                        initialState = MediaSourceFetchState.Failed(IllegalStateException(), 1),
-                        results = emptyList(),
-                    ),
-                ),
-            ),
-            settings = flowOf(MediaSelectorSettings.Default),
-            flowScope = flowScope,
-        ).filteredSourceResults,
+        createTestMediaSourceResultsFilterer(flowScope).filteredSourceResults,
         flowScope = flowScope,
     )
 }
+
+@TestOnly
+fun createTestMediaSourceResultsFilterer(
+    flowScope: CoroutineScope
+) = MediaSourceResultsFilterer(
+    results = flowOf(
+        listOf(
+            TestMediaSourceResult(
+                MikanMediaSource.ID,
+                MikanMediaSource.INFO,
+                MediaSourceKind.BitTorrent,
+                initialState = MediaSourceFetchState.Working,
+                results = TestMediaList,
+            ),
+            TestMediaSourceResult(
+                "dmhy",
+                MediaSourceInfo("dmhy"),
+                MediaSourceKind.BitTorrent,
+                initialState = MediaSourceFetchState.Succeed(1),
+                results = TestMediaList,
+            ),
+            TestMediaSourceResult(
+                "acg.rip",
+                MediaSourceInfo("acg.rip"),
+                MediaSourceKind.BitTorrent,
+                initialState = MediaSourceFetchState.Disabled,
+                results = TestMediaList,
+            ),
+            TestMediaSourceResult(
+                "source1",
+                MediaSourceInfo("source1"),
+                MediaSourceKind.WEB,
+                initialState = MediaSourceFetchState.Succeed(1),
+                results = TestMediaList,
+            ),
+            TestMediaSourceResult(
+                MikanCNMediaSource.ID,
+                MikanCNMediaSource.INFO,
+                MediaSourceKind.BitTorrent,
+                initialState = MediaSourceFetchState.Failed(IllegalStateException(), 1),
+                results = emptyList(),
+            ),
+        ),
+    ),
+    settings = flowOf(MediaSelectorSettings.Default),
+    flowScope = flowScope,
+)
 
 @TestOnly
 val TestMediaSourceResultListPresentation

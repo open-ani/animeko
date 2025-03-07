@@ -149,15 +149,25 @@ fun SettingsScope.EpisodeCacheListGroup(
         if (!attemptedTrySelect) return@let
 
         val scope = rememberCoroutineScope()
+
+        val filteredResults = remember(task.fetchSession.mediaSourceResults, mediaSelectorSettingsProvider, scope) {
+            MediaSourceResultsFilterer(
+                MutableStateFlow(task.fetchSession.mediaSourceResults),
+                settings = mediaSelectorSettingsProvider(),
+                flowScope = scope,
+            ).filteredSourceResults
+        }
+
         // 注意, 这里会一直 collect mediaSourceResults
-        val sourceResults by remember(task.fetchSession.mediaSourceResults, mediaSelectorSettingsProvider, scope) {
+        val sourceResults by remember(
+            task.fetchSession.mediaSourceResults,
+            mediaSelectorSettingsProvider,
+            scope,
+            filteredResults,
+        ) {
             // TODO: shit
             MediaSourceResultListPresenter(
-                MediaSourceResultsFilterer(
-                    MutableStateFlow(task.fetchSession.mediaSourceResults),
-                    settings = mediaSelectorSettingsProvider(),
-                    flowScope = scope,
-                ).filteredSourceResults,
+                filteredResults,
                 scope,
             ).presentationFlow.map {
                 MediaSourceResultListPresentation(it)
@@ -175,7 +185,7 @@ fun SettingsScope.EpisodeCacheListGroup(
                 contentWindowInsets = { BottomSheetDefaults.windowInsets.add(WindowInsets.desktopTitleBar()) },
             ) {
                 val selectorPresentation =
-                    rememberMediaSelectorState(mediaSourceInfoProvider) { task.mediaSelector }
+                    rememberMediaSelectorState(mediaSourceInfoProvider, filteredResults) { task.mediaSelector }
                 MediaSelectorView(
                     selectorPresentation,
                     sourceResults = {
@@ -183,8 +193,11 @@ fun SettingsScope.EpisodeCacheListGroup(
                             sourceResults,
                             selectorPresentation,
                             onRefresh = { task.fetchSession.restartAll() },
-                            onRestartSource = { task.fetchSession.restart(it.instanceId) },
+                            onRestartSource = { task.fetchSession.restart(it) },
                         )
+                    },
+                    onRestartSource = {
+                        task.fetchSession.restart(it)
                     },
                     stickyHeaderBackgroundColor = BottomSheetDefaults.ContainerColor,
                     modifier = Modifier.padding(vertical = 12.dp, horizontal = 16.dp)

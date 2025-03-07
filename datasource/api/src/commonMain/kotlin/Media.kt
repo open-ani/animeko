@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -247,6 +247,8 @@ class MediaProperties private constructor(
     /**
      * 字幕组名称, 例如 "桜都字幕组", "北宇治字幕组".
      * 空字符串可能导致数据源选择器忽略掉这个资源.
+     * 
+     * 对于在线数据源, 这会是线路名称.
      *
      * 对于无法确定字幕组的数据源, 可以使用数据源的 [MediaSource.mediaSourceId] 代替.
      *

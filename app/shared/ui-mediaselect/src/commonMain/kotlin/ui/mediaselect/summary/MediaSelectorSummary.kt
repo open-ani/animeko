@@ -14,8 +14,6 @@ import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.core.snap
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,7 +29,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.SyncAlt
 import androidx.compose.material3.ButtonDefaults
@@ -59,16 +56,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collectLatest
-import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.utils.platform.annotations.TestOnly
@@ -128,7 +122,7 @@ fun MediaSelectorSummaryCard(
             ContentTransform(
                 EnterTransition.None,
                 ExitTransition.None,
-                sizeTransform = default.sizeTransform
+                sizeTransform = default.sizeTransform,
             )
         } else {
             default
@@ -280,6 +274,15 @@ fun MediaSelectorSummaryCard(
     )
 }
 
+@Composable
+private fun SourceIcon(source: QueriedSourcePresentation, modifier: Modifier) {
+    me.him188.ani.app.ui.mediaselect.common.SourceIcon(
+        iconUrl = source.sourceIconUrl,
+        sourceName = source.sourceName,
+        modifier,
+    )
+}
+
 @Stable
 private class MediaSelectorSummaryState(
     initialState: MediaSelectorSummary,
@@ -380,19 +383,6 @@ private fun QueriedSources(
 //        }
 
     }
-}
-
-@Composable
-private fun SourceIcon(
-    source: QueriedSourcePresentation,
-    modifier: Modifier = Modifier,
-) {
-    AsyncImage(
-        source.sourceIconUrl,
-        contentDescription = source.sourceName,
-        Modifier.clip(CircleShape).then(modifier),
-        contentScale = ContentScale.Crop,
-    )
 }
 
 /**

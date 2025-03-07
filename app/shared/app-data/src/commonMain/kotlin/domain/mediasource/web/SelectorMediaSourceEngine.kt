@@ -245,7 +245,7 @@ abstract class SelectorMediaSourceEngine {
                     episodeName = info.name,
                     subtitleLanguageIds = subtitleLanguages,
                     resolution = config.defaultResolution.id,
-                    alliance = info.channel ?: mediaSourceId,
+                    alliance = info.channel ?: "",
                     size = FileSize.Unspecified,
                     subtitleKind = SubtitleKind.EMBEDDED,
                 ),
