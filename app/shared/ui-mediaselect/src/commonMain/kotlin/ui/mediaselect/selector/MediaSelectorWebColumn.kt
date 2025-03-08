@@ -94,7 +94,7 @@ private fun WebSourceCard(
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val minHeight = 40.dp
+    val minHeight = 48.dp
     Row(
         modifier,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
