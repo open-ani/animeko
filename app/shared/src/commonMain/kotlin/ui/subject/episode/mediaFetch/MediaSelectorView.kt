@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.ui.subject.episode.mediaFetch
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -58,6 +59,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filterNotNull
 import me.him188.ani.app.domain.media.selector.UnsafeOriginalMediaAccess
 import me.him188.ani.app.platform.currentAniBuildConfig
+import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.widgets.FastLinearProgressIndicator
 import me.him188.ani.app.ui.mediaselect.selector.MediaSelectorWebSourcesColumn
@@ -128,46 +130,56 @@ fun MediaSelectorView(
             }
         }
 
-        when (selectedViewKind) {
-            ViewKind.WEB -> {
-                MediaSelectorWebSourcesColumn(
-                    presentation.webSources,
-                    selectedSource = { presentation.selectedWebSource },
-                    selectedChannel = { presentation.selectedWebSourceChannel },
-                    onSelect = { _, channel ->
-                        channel.original?.let { onClickItem(it) }
-                    },
-                    onRefresh = { onRestartSource(it.instanceId) },
-                    Modifier.padding(bottom = WINDOW_VERTICAL_PADDING).weight(1f, fill = false)
-                        .ifThen(scrollable) { verticalScroll(rememberScrollState()) },
-                )
-            }
+        AnimatedContent(
+            selectedViewKind,
+            transitionSpec = LocalAniMotionScheme.current.animatedContent.topLevel,
+            contentAlignment = Alignment.TopCenter,
+        ) { target ->
+            when (target) {
+                ViewKind.WEB -> {
+                    MediaSelectorWebSourcesColumn(
+                        presentation.webSources,
+                        selectedSource = { presentation.selectedWebSource },
+                        selectedChannel = { presentation.selectedWebSourceChannel },
+                        onSelect = { _, channel ->
+                            channel.original?.let { onClickItem(it) }
+                        },
+                        onRefresh = { onRestartSource(it.instanceId) },
+                        Modifier.padding(bottom = WINDOW_VERTICAL_PADDING)
+                            .weight(1f, fill = false)
+                            .fillMaxWidth()
+                            .ifThen(scrollable) { verticalScroll(rememberScrollState()) },
+                    )
+                }
 
-            ViewKind.BT -> {
-                LegacyBTSourceColumn(
-                    lazyListState,
-                    presentation,
-                    sourceResults,
-                    stickyHeaderBackgroundColor,
-                    state,
-                    singleLineFilter,
-                    bringIntoViewRequesters,
-                    onClickItem,
-                    itemProgressBar,
-                    showExcluded,
-                    onShowExcludedChange = { showExcluded = !showExcluded },
-                    Modifier.padding(bottom = WINDOW_VERTICAL_PADDING).weight(1f, fill = false),
-                )
+                ViewKind.BT -> {
+                    LegacyBTSourceColumn(
+                        lazyListState,
+                        presentation,
+                        sourceResults,
+                        stickyHeaderBackgroundColor,
+                        state,
+                        singleLineFilter,
+                        bringIntoViewRequesters,
+                        onClickItem,
+                        itemProgressBar,
+                        showExcluded,
+                        onShowExcludedChange = { showExcluded = !showExcluded },
+                        Modifier.padding(bottom = WINDOW_VERTICAL_PADDING)
+                            .fillMaxWidth()
+                            .weight(1f, fill = false),
+                    )
 
-                if (bottomActions != null) {
-                    HorizontalDivider(Modifier.padding(bottom = 8.dp))
+                    if (bottomActions != null) {
+                        HorizontalDivider(Modifier.padding(bottom = 8.dp))
 
-                    Row(
-                        Modifier.align(Alignment.End).padding(bottom = 8.dp).padding(horizontal = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        ProvideTextStyle(MaterialTheme.typography.labelLarge) {
-                            bottomActions()
+                        Row(
+                            Modifier.align(Alignment.End).padding(bottom = 8.dp).padding(horizontal = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            ProvideTextStyle(MaterialTheme.typography.labelLarge) {
+                                bottomActions()
+                            }
                         }
                     }
                 }
