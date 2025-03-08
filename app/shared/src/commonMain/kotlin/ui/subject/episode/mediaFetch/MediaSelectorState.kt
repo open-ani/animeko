@@ -225,6 +225,10 @@ class MediaSelectorState(
     private fun createWebSourcesFlow(
         getPreferredMediaSourceSortingUseCase: GetPreferredMediaSourceSortingUseCase,
     ): Flow<List<WebSource>> {
+        // 第一次 collect 时不 delay, 尽快 emit, 否则 UI 会一直是 placeholder.
+        // 见 createWebSourceFlow 里的注释.
+        var isFirstCollect = true
+
         val sortedResultsFlow = combine(
             mediaSourceFetchResults,
             getPreferredMediaSourceSortingUseCase(),
@@ -281,7 +285,9 @@ class MediaSelectorState(
                     }
                     .mapNotNull { it.result }
 
-                createWebSourceFlow(source, myMediaList)
+                createWebSourceFlow(source, myMediaList, delayToOvercomeCacheIssue = isFirstCollect).also {
+                    isFirstCollect = false
+                }
             }
             if (showWebSources.isEmpty()) {
                 flowOfEmptyList()
@@ -297,7 +303,8 @@ class MediaSelectorState(
 
     private fun createWebSourceFlow(
         source: MediaSourceFetchResult,
-        myMediaList: Sequence<Media>
+        myMediaList: Sequence<Media>,
+        delayToOvercomeCacheIssue: Boolean,
     ) = source.state.map { state ->
         val channels = myMediaList.map { media ->
             WebSourceChannel(media.properties.alliance, original = media)
@@ -313,7 +320,9 @@ class MediaSelectorState(
                 // MediaSelector 的 filteredCandidates 有 cache, 而 MediaSourceFetchResult.state 没有.
                 // 当 state 为 Succeed 后, 我们可能仍然看到的是旧的 filteredCandidates, 导致 channels 为 empty.
                 // 这里延迟一下可以非常轻易地解决问题.
-                delay(1000)
+                if (delayToOvercomeCacheIssue) {
+                    delay(1000)
+                }
                 null // 查询成功, 0 条, 隐藏
             }
 
