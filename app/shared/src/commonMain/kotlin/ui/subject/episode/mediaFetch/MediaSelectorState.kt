@@ -229,12 +229,31 @@ class MediaSelectorState(
             mediaSourceFetchResults,
             getPreferredMediaSourceSortingUseCase(),
         ) { results, desiredInstanceIdOrder ->
-            results
+            tupleOf(results, desiredInstanceIdOrder)
+        }.flatMapLatest { (results, desiredInstanceIdOrder) ->
+            if (results.isEmpty()) return@flatMapLatest flowOfEmptyList()
+
+            // 按顺序排序
+            val sorted = results
                 .filter { it.kind == MediaSourceKind.WEB } // 只使用 WEB
                 .sortedBy {
                     desiredInstanceIdOrder.indexOf(it.instanceId)
                 }
+
+            // 监控状态, 把错误的放到最后
+            combine(results.map { it.state }) { states ->
+                sorted.sortedBy {
+                    val state = states.getOrNull(results.indexOf(it))
+                        ?: return@sortedBy 0 // should not happen. Just defensive
+                    if (state is MediaSourceFetchState.Failed) {
+                        1 // 错误的放后面
+                    } else {
+                        -1
+                    }
+                }
+            }
         }
+
         return combine(
             sortedResultsFlow.distinctUntilChanged(),
             mediaSelector.filteredCandidates,
@@ -289,7 +308,7 @@ class MediaSelectorState(
                 // 禁用的数据源一直排除. TODO: 考虑增加某种方法临时启用数据源
                 null
             }
-            
+
             channels.isEmpty() && state is MediaSourceFetchState.Succeed -> {
                 // MediaSelector 的 filteredCandidates 有 cache, 而 MediaSourceFetchResult.state 没有.
                 // 当 state 为 Succeed 后, 我们可能仍然看到的是旧的 filteredCandidates, 导致 channels 为 empty.
