@@ -27,7 +27,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -263,29 +262,7 @@ class MediaSelectorState(
                     }
                     .mapNotNull { it.result }
 
-                source.state
-                    .map { state ->
-                        val channels = myMediaList.map { media ->
-                            WebSourceChannel(media.properties.alliance, original = media)
-                        }.toList()
-
-                        if (channels.isEmpty()
-                            && state is MediaSourceFetchState.Succeed
-                        ) {
-                            delay(1000)
-                            null // 查询成功, 0 条, 隐藏
-                        } else {
-                            WebSource(
-                                instanceId = source.instanceId,
-                                mediaSourceId = source.mediaSourceId,
-                                iconUrl = source.sourceInfo.iconUrl ?: "",
-                                name = source.sourceInfo.displayName,
-                                channels = channels,
-                                isLoading = state.isWorking,
-                                isError = state.isFailedOrAbandoned,
-                            )
-                        }
-                    }
+                createWebSourceFlow(source, myMediaList)
             }
             if (showWebSources.isEmpty()) {
                 flowOfEmptyList()
@@ -295,6 +272,42 @@ class MediaSelectorState(
                 ) {
                     it.filterNotNull()
                 }
+            }
+        }
+    }
+
+    private fun createWebSourceFlow(
+        source: MediaSourceFetchResult,
+        myMediaList: Sequence<Media>
+    ) = source.state.map { state ->
+        val channels = myMediaList.map { media ->
+            WebSourceChannel(media.properties.alliance, original = media)
+        }.toList()
+
+        when {
+            state is MediaSourceFetchState.Disabled -> {
+                // 禁用的数据源一直排除. TODO: 考虑增加某种方法临时启用数据源
+                null
+            }
+            
+            channels.isEmpty() && state is MediaSourceFetchState.Succeed -> {
+                // MediaSelector 的 filteredCandidates 有 cache, 而 MediaSourceFetchResult.state 没有.
+                // 当 state 为 Succeed 后, 我们可能仍然看到的是旧的 filteredCandidates, 导致 channels 为 empty.
+                // 这里延迟一下可以非常轻易地解决问题.
+                delay(1000)
+                null // 查询成功, 0 条, 隐藏
+            }
+
+            else -> {
+                WebSource(
+                    instanceId = source.instanceId,
+                    mediaSourceId = source.mediaSourceId,
+                    iconUrl = source.sourceInfo.iconUrl ?: "",
+                    name = source.sourceInfo.displayName,
+                    channels = channels,
+                    isLoading = state.isWorking,
+                    isError = state.isFailedOrAbandoned,
+                )
             }
         }
     }
