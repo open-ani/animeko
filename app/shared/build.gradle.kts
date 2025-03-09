@@ -10,7 +10,6 @@
 @file:Suppress("UnstableApiUsage")
 
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
-import org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType
 
 
 plugins {
@@ -196,7 +195,9 @@ kotlin {
         implementation(libs.vlcj)
         implementation(libs.jna) // required and don't change version, otherwise vlcj might crash the VM 
 
-        runtimeOnly(libs.kotlinx.coroutines.debug)
+        // This causes duplicated entry when packaging compose binaries (Task `createDistribution`).
+        // https://youtrack.jetbrains.com/issue/CMP-7734/packageReleaseDmg-for-macOS-arm64-fails-since-1.8.0-alpha04
+//        runtimeOnly(libs.kotlinx.coroutines.debug)
 
         implementation(libs.log4j.core)
         implementation(libs.log4j.slf4j.impl)
