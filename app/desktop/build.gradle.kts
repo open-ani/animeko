@@ -236,14 +236,48 @@ afterEvaluate {
                     val dest = destinationDir.file(destPath)
                     outputs.dir(dest)
                     doLast("copy $sourcePath") {
+                        val destAbsolutePath = dest.get().asFile.normalize().absolutePath
                         ProcessBuilder().run {
-                            command("cp", "-r", source.absolutePath, dest.get().asFile.normalize().absolutePath)
+                            command("cp", "-r", source.absolutePath, destAbsolutePath)
                             inheritIO()
                             start()
                         }.waitFor().let {
                             if (it != 0) {
                                 throw GradleException("Failed to copy $sourcePath")
                             }
+                        }
+                        if (getArch() == Arch.X86_64) {
+                            ProcessBuilder().run {
+                                command(
+                                    "codesign",
+                                    "--force",
+                                    "-vvvv",
+                                    "--deep",
+                                    "--remove-signature",
+                                    destAbsolutePath,
+                                )
+                                inheritIO()
+                                start()
+                            }.waitFor() // don't check result
+                            //                        ProcessBuilder().run {
+                            //                            command(
+                            //                                "codesign",
+                            //                                "--force",
+                            //                                "-vvvv",
+                            //                                "--deep",
+                            //                                "--sign",
+                            //                                "-",
+                            //                                "--options",
+                            //                                "runtime",
+                            //                                destAbsolutePath,
+                            //                            )
+                            //                            inheritIO()
+                            //                            start()
+                            //                        }.waitFor().let {
+                            //                            if (it != 0) {
+                            //                                throw GradleException("Failed to sign $sourcePath")
+                            //                            }
+                            //                        }
                         }
                         logger.info("Copied $source to $dest")
                     }
