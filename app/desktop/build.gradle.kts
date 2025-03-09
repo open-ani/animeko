@@ -259,25 +259,25 @@ afterEvaluate {
                                 inheritIO()
                                 start()
                             }.waitFor() // don't check result
-                            //                        ProcessBuilder().run {
-                            //                            command(
-                            //                                "codesign",
-                            //                                "--force",
-                            //                                "-vvvv",
-                            //                                "--deep",
-                            //                                "--sign",
-                            //                                "-",
-                            //                                "--options",
-                            //                                "runtime",
-                            //                                destAbsolutePath,
-                            //                            )
-                            //                            inheritIO()
-                            //                            start()
-                            //                        }.waitFor().let {
-                            //                            if (it != 0) {
-                            //                                throw GradleException("Failed to sign $sourcePath")
-                            //                            }
-                            //                        }
+                            ProcessBuilder().run {
+                                command(
+                                    "codesign",
+                                    "--force",
+                                    "-vvvv",
+                                    "--deep",
+                                    "--sign",
+                                    "-",
+                                    "--options",
+                                    "runtime",
+                                    destAbsolutePath,
+                                )
+                                inheritIO()
+                                start()
+                            }.waitFor().let {
+                                if (it != 0) {
+                                    throw GradleException("Failed to sign $sourcePath")
+                                }
+                            }
                         }
                         logger.info("Copied $source to $dest")
                     }
