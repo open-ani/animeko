@@ -74,8 +74,14 @@ fun HandleWindowsWindowProc() {
     if (LocalPlatform.current.isWindows()) {
         val platformWindow = LocalPlatformWindow.current
         DisposableEffect(platformWindow) {
-            WindowsWindowUtils.instance.handleWindowProc(platformWindow)
-            onDispose { WindowsWindowUtils.instance.disposeWindowProc(platformWindow) }
+            val handler = try {
+                WindowsWindowUtils.instance.handleWindowProc(platformWindow)
+            } catch (e: Throwable) {
+                null
+            }
+            onDispose {
+                handler?.let { WindowsWindowUtils.instance.disposeWindowProc(platformWindow) }
+            }
         }
     }
 }
