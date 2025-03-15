@@ -71,7 +71,7 @@ import java.awt.Window
 
 @Composable
 fun HandleWindowsWindowProc() {
-    if (LocalPlatform.current.isWindows()) {
+    if (LocalPlatform.current.isWindows() && !isRunningUnderWine()) {
         val platformWindow = LocalPlatformWindow.current
         DisposableEffect(platformWindow) {
             val handler = try {
@@ -84,6 +84,10 @@ fun HandleWindowsWindowProc() {
             }
         }
     }
+}
+
+private fun isRunningUnderWine(): Boolean {
+    return Advapi32Util.registryKeyExists(WinReg.HKEY_LOCAL_MACHINE, "Software\\Wine")
 }
 
 internal open class BasicWindowProc(
