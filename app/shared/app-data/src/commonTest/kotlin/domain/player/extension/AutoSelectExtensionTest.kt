@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -37,6 +37,8 @@ import me.him188.ani.app.domain.media.resolver.MediaResolver
 import me.him188.ani.app.domain.media.resolver.TestUniversalMediaResolver
 import me.him188.ani.app.domain.media.selector.MediaSelectorAutoSelectUseCase
 import me.him188.ani.app.domain.media.selector.MediaSelectorAutoSelectUseCaseImpl
+import me.him188.ani.app.domain.media.selector.MediaSelectorSourceTiers
+import me.him188.ani.app.domain.mediasource.GetMediaSelectorSourceTiersUseCase
 import me.him188.ani.app.domain.mediasource.GetWebMediaSourceInstanceFlowUseCase
 import me.him188.ani.app.domain.settings.GetMediaSelectorSettingsFlowUseCase
 import me.him188.ani.datasources.api.DefaultMedia
@@ -94,6 +96,11 @@ class AutoSelectExtensionTest : AbstractPlayerExtensionTest() {
         }
         suite.registerComponent<MediaResolver> {
             TestUniversalMediaResolver
+        }
+        suite.registerComponent<GetMediaSelectorSourceTiersUseCase> {
+            GetMediaSelectorSourceTiersUseCase {
+                flowOf(MediaSelectorSourceTiers.Empty)
+            }
         }
 
         config(testScope, suite)

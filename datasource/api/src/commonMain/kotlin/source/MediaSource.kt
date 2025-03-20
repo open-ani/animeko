@@ -58,6 +58,7 @@ import me.him188.ani.datasources.api.paging.SizedSource
  * 仿照着增加一行你的模块: `api(projects.datasource.foo)`
  * 5. 现在启动 app 便可以自动加载你的数据源了, 可在设置中验证
  *
+ * @see MediaSourceConfig
  * @see MediaSourceFactory
  */
 interface MediaSource : AutoCloseable {

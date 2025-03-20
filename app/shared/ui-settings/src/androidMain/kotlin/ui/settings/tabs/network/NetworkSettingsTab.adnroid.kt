@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import me.him188.ani.app.domain.media.fetch.MediaFetcher
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
+import me.him188.ani.app.domain.media.selector.MediaSelectorSourceTiers
 import me.him188.ani.app.domain.mediasource.instance.MediaSourceInstance
 import me.him188.ani.app.domain.mediasource.instance.MediaSourceSave
 import me.him188.ani.app.ui.settings.tabs.media.source.MediaSourceTemplate
@@ -143,6 +144,10 @@ fun createTestMediaSourceManager() = object : MediaSourceManager {
     }
 
     override suspend fun removeInstance(instanceId: String) {
+    }
+
+    override fun mediaSourceTiersFlow(): Flow<MediaSelectorSourceTiers> {
+        return flowOf(MediaSelectorSourceTiers.Empty)
     }
 }
 

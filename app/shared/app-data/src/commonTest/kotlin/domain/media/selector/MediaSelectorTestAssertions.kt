@@ -14,9 +14,12 @@ import me.him188.ani.app.domain.media.selector.MaybeExcludedMediaAssertions.Asse
 import me.him188.ani.app.domain.media.selector.MaybeExcludedMediaAssertions.AssertNoMoreElements
 import me.him188.ani.app.domain.media.selector.MaybeExcludedMediaAssertions.Filter.FilterType
 import me.him188.ani.datasources.api.Media
+import me.him188.ani.datasources.api.source.MediaSourceKind
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
+import kotlin.jvm.JvmName
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
 
 context(_: MediaSelectorTestSuite)
 inline fun List<MaybeExcludedMedia>.assert(
@@ -24,6 +27,24 @@ inline fun List<MaybeExcludedMedia>.assert(
 ) {
     contract { callsInPlace(block, InvocationKind.EXACTLY_ONCE) }
     MaybeExcludedMediaAssertions().apply(block).runOn(this)
+}
+
+context(_: MediaSelectorTestSuite)
+@JvmName("assertListMedia")
+inline fun List<Media>.assert(
+    block: MaybeExcludedMediaAssertions.() -> Unit,
+) {
+    contract { callsInPlace(block, InvocationKind.EXACTLY_ONCE) }
+    MaybeExcludedMediaAssertions().apply(block).runOn(this.map {
+        MaybeExcludedMedia.Included(
+            it,
+            metadata = MatchMetadata(
+                MatchMetadata.SubjectMatchKind.EXACT,
+                episodeMatchKind = MatchMetadata.EpisodeMatchKind.SORT,
+                similarity = 100,
+            )
+        )
+    })
 }
 
 class MaybeExcludedMediaAssertions {
@@ -42,6 +63,21 @@ class MaybeExcludedMediaAssertions {
         unusedTargets.add(it)
     }
 
+    /**
+     * 匹配列表中的唯一一个元素.
+     */
+    @CheckResult
+    fun single(): Filter {
+        return Filter(
+            getCodeSource("filter"),
+            FilterType.SINGLE,
+            failOnNoMatch = true,
+            failIfMoreElement = true,
+        ).also {
+            unusedTargets.add(it)
+        }
+    }
+
     ///////////////////////////////////////////////////////////////////////////
     // Random Access
     ///////////////////////////////////////////////////////////////////////////
@@ -57,7 +93,14 @@ class MaybeExcludedMediaAssertions {
         mediaId: String? = null,
     ): Filter {
         require(sourceId != null || mediaId != null)
-        return Filter(getCodeSource("filter"), FilterType.SINGLE, failOnNoMatch = true, sourceId, mediaId).also {
+        return Filter(
+            getCodeSource("filter"),
+            FilterType.SINGLE,
+            failOnNoMatch = true,
+            failIfMoreElement = false,
+            sourceId,
+            mediaId
+        ).also {
             unusedTargets.add(it)
         }
     }
@@ -71,7 +114,14 @@ class MaybeExcludedMediaAssertions {
         mediaId: String? = null,
     ): Filter {
         require(sourceId != null || mediaId != null)
-        return Filter(getCodeSource("filter"), FilterType.ALL, failOnNoMatch = true, sourceId, mediaId).also {
+        return Filter(
+            getCodeSource("filter"),
+            FilterType.ALL,
+            failOnNoMatch = true,
+            failIfMoreElement = false,
+            sourceId,
+            mediaId
+        ).also {
             unusedTargets.add(it)
         }
     }
@@ -85,7 +135,14 @@ class MaybeExcludedMediaAssertions {
         mediaId: String? = null,
     ): Filter {
         require(sourceId != null || mediaId != null)
-        return Filter(getCodeSource("filter"), FilterType.ALL, failOnNoMatch = false, sourceId, mediaId).also {
+        return Filter(
+            getCodeSource("filter"),
+            FilterType.ALL,
+            failOnNoMatch = false,
+            failIfMoreElement = false,
+            sourceId,
+            mediaId
+        ).also {
             unusedTargets.add(it)
         }
     }
@@ -114,8 +171,13 @@ class MaybeExcludedMediaAssertions {
         mediaId: String? = null,
         included: Boolean? = null,
         sourceId: String? = null,
+        source: Handle? = null,
+        kind: MediaSourceKind? = null,
     ): Target {
         removeUnusedTarget(this)
+        check(sourceId == null || source == null) {
+            "sourceId and source cannot be set at the same time."
+        }
 
         // Properties can be null, in which case we only assert this element exists.
         addCheck(
@@ -124,7 +186,8 @@ class MaybeExcludedMediaAssertions {
                 getCodeSource("assertion"),
                 mediaId = mediaId,
                 included = included,
-                sourceId = sourceId,
+                sourceId = sourceId ?: source?.instance?.mediaSourceId,
+                kind = kind,
             ),
         )
         return this
@@ -165,6 +228,7 @@ class MaybeExcludedMediaAssertions {
         override val codeSource: CodeSource,
         val type: FilterType,
         val failOnNoMatch: Boolean,
+        val failIfMoreElement: Boolean,
         val sourceId: String? = null,
         val mediaId: String? = null,
     ) : Target() {
@@ -187,7 +251,7 @@ class MaybeExcludedMediaAssertions {
 
     data class Assert(
         val target: Target,
-        val checks: MutableList<Check> = mutableListOf()
+        val checks: MutableList<Check> = mutableListOf(),
     ) : Rule()
 
     data class AssertNoMoreElements(
@@ -204,6 +268,7 @@ class MaybeExcludedMediaAssertions {
         val mediaId: String? = null,
         val included: Boolean? = null,
         val sourceId: String? = null,
+        val kind: MediaSourceKind? = null,
         val exclusionReason: MediaExclusionReason? = null,
     ) : Check(source)
 
@@ -235,7 +300,7 @@ class CodeSource(
 )
 
 inline fun <R> CodeSource.runWithSourceInfo(
-    block: () -> R
+    block: () -> R,
 ): R {
     contract { callsInPlace(block, InvocationKind.EXACTLY_ONCE) }
     return try {
@@ -254,7 +319,7 @@ inline fun getCodeSource(name: String): CodeSource = CodeSource(Exception("Sourc
 
 private class MaybeExcludedMediaAssertionsExecutor(
     private val list: List<MaybeExcludedMedia>,
-    private val rules: List<MaybeExcludedMediaAssertions.Rule>
+    private val rules: List<MaybeExcludedMediaAssertions.Rule>,
 ) {
     private var index = -1
 
@@ -306,9 +371,16 @@ private class MaybeExcludedMediaAssertionsExecutor(
                     }
 
                     if (this.failOnNoMatch) {
-                        assertEquals(
+                        assertNotEquals(
                             0, matched.size,
                             "Found empty match for filter: $this",
+                        )
+                    }
+
+                    if (this.failIfMoreElement) {
+                        assertEquals(
+                            matched.size, list.size,
+                            "Found excess elements in the less for filter: $this",
                         )
                     }
 
@@ -349,7 +421,7 @@ private class MaybeExcludedMediaAssertionsExecutor(
 
     private fun atIndexOrFail(index: Int): MaybeExcludedMedia {
         return list.getOrNull(index)
-            ?: throw AssertionError("Expected one more media at index $index, but ")
+            ?: throw AssertionError("Expected one more media at index $index, but found none. List size = ${list.size}")
     }
 
     @OptIn(UnsafeOriginalMediaAccess::class)
@@ -367,6 +439,10 @@ private class MaybeExcludedMediaAssertionsExecutor(
 
                     this.sourceId?.let {
                         assertEquals(it, media.original.mediaSourceId)
+                    }
+
+                    this.kind?.let {
+                        assertEquals(it, media.original.kind)
                     }
 
                     this.exclusionReason?.let {

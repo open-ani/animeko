@@ -27,9 +27,12 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.flow.transformWhile
 import kotlinx.coroutines.launch
+import me.him188.ani.app.data.models.preference.MediaSelectorSettings
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
+import me.him188.ani.app.domain.media.fetch.MediaSourceFetchResult
 import me.him188.ani.app.domain.media.fetch.MediaSourceFetchState
 import me.him188.ani.app.domain.media.fetch.awaitCompletion
+import me.him188.ani.app.domain.mediasource.codec.MediaSourceTier
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.utils.coroutines.cancellableCoroutineScope
@@ -44,7 +47,9 @@ import kotlin.coroutines.cancellation.CancellationException
 inline val MediaSelector.autoSelect get() = MediaSelectorAutoSelect(this)
 
 /**
- * [MediaSelector] 自动选择功能
+ * [MediaSelector] 自动选择功能.
+ *
+ * 有关数据源选择算法, 参阅 [MediaSelector], 尤其是 "快速选择的情况" 部分.
  */
 class MediaSelectorAutoSelect(
     private val mediaSelector: MediaSelector,
@@ -92,9 +97,11 @@ class MediaSelectorAutoSelect(
         mediaFetchSession: MediaFetchSession,
         fastMediaSourceIdOrder: List<String>,
         preferKind: Flow<MediaSourceKind?>,
+        sourceTiers: MediaSelectorSourceTiers,
         overrideUserSelection: Boolean = false,
         blacklistMediaIds: Set<String> = emptySet(),
         allowNonPreferredFlow: Flow<Boolean> = flowOf(false),
+        fastSelectTierThreshold: MediaSourceTier = FastSelectTierThreshold,
     ): Media? {
         if (preferKind.first() != MediaSourceKind.WEB) {
             return null // 只处理 WEB 类型
@@ -102,6 +109,8 @@ class MediaSelectorAutoSelect(
         if (fastMediaSourceIdOrder.isEmpty()) {
             return null
         }
+
+        fun MediaSourceFetchResult.getTier(): MediaSourceTier = sourceTiers.get(this.mediaSourceId)
 
         return cancellableCoroutineScope {
             val backgroundTasks = Job()
@@ -195,9 +204,7 @@ class MediaSelectorAutoSelect(
                                 blacklistMediaIds = blacklistMediaIds,
                                 allowNonPreferred = allowNonPreferred,
                             )
-                            logger.debug {
-                                "done trySelectFromMediaSources"
-                            }
+                            logger.debug { "done trySelectFromMediaSources 1" }
 
                             if (selected != null) {
                                 // selected one
@@ -212,6 +219,39 @@ class MediaSelectorAutoSelect(
                         }
                     }
                 }
+
+                // 尝试立即选择 tier 低的数据源 (具体阈值取决于 fastSelectTierThreshold)
+                // See MediaSourceTier
+                states
+                    .mapIndexedNotNull { i, state ->
+                        if (state is MediaSourceFetchState.Succeed) {
+                            val source = fastSources[i]
+                            val tier = source.getTier()
+                            if (tier <= fastSelectTierThreshold) {
+                                source
+                            } else {
+                                null
+                            }
+                        } else {
+                            null
+                        }
+                    }
+                    .let { lowTierSources ->
+                        // 该数据源查询成功了, 立即选择它
+                        val selected: Media? = mediaSelector.trySelectFromMediaSources(
+                            lowTierSources.map { it.mediaSourceId },
+                            overrideUserSelection = overrideUserSelection,
+                            blacklistMediaIds = blacklistMediaIds,
+                            allowNonPreferred = allowNonPreferred,
+                        )
+                        logger.debug { "done trySelectFromMediaSources 2" }
+
+                        if (selected != null) {
+                            // selected one
+                            return@combine selected // 'returns' to `firstOrNull`
+                        }
+                    }
+
                 null
             }.filterNotNull()
                 .run {
@@ -279,6 +319,16 @@ class MediaSelectorAutoSelect(
             it.mediaSourceId == lastSelectedId
         } ?: return
         lastSelected.enable()
+    }
+
+    companion object {
+        /**
+         * 如果快速选择数据源功能为启用状态 ([MediaSelectorSettings.fastSelectWebKind]),
+         * 在等待 [MediaSelectorSettings.fastSelectWebKindAllowNonPreferredDelay] 时长后, 将会立即选择阶级小于等于 [MediaSelectorAutoSelect.FastSelectTierThreshold] 的数据源.
+         *
+         * @see MediaSelector
+         */
+        val FastSelectTierThreshold = MediaSourceTier(1u)
     }
 }
 

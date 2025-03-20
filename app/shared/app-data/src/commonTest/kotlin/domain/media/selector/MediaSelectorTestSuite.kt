@@ -9,8 +9,11 @@
 
 package me.him188.ani.app.domain.media.selector
 
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.TestResult
 import kotlinx.coroutines.test.TestScope
@@ -24,10 +27,14 @@ import me.him188.ani.app.data.models.subject.SubjectSeriesInfoBuilder
 import me.him188.ani.app.data.models.subject.toBuilder
 import me.him188.ani.app.domain.media.createTestDefaultMedia
 import me.him188.ani.app.domain.media.createTestMediaProperties
+import me.him188.ani.app.domain.media.fetch.MediaFetchSession
+import me.him188.ani.app.domain.media.fetch.create
+import me.him188.ani.app.domain.mediasource.codec.MediaSourceTier
 import me.him188.ani.datasources.api.DefaultMedia
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.MediaExtraFiles
 import me.him188.ani.datasources.api.SubtitleKind
+import me.him188.ani.datasources.api.source.MediaFetchRequest
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.source.MediaSourceLocation
 import me.him188.ani.datasources.api.topic.EpisodeRange
@@ -42,6 +49,8 @@ import me.him188.ani.utils.platform.collections.toImmutable
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
 import kotlin.coroutines.ContinuationInterceptor
+import kotlin.coroutines.CoroutineContext
+import kotlin.jvm.JvmName
 import kotlin.random.Random
 
 /**
@@ -54,7 +63,7 @@ sealed class MediaSelectorTestSuite {
     val preferenceApi = PreferenceApi()
 
     /**
-     * initializes [mediaSelectorContext].
+     * initializes [MediaSelectorContext].
      */
     inner class InitApi {
         lateinit var subjectName: String
@@ -108,6 +117,15 @@ sealed class MediaSelectorTestSuite {
         val mediaSelectorContext = MutableStateFlow(
             createMediaSelectorContextFromEmpty(),
         )
+
+        var sourceTiers
+            get() = mediaSelectorContext.value.mediaSourceTiers
+            set(value) {
+                mediaSelectorContext.value = mediaSelectorContext.value.copy(
+                    mediaSourceTiers = value,
+                )
+            }
+
 
         fun setSubtitlePreferences(
             preferences: MediaSelectorSubtitlePreferences = getCurrentSubtitlePreferences()
@@ -210,6 +228,7 @@ sealed class MediaSelectorTestSuite {
             subjectSequelNames: Set<String> = emptySet(),
             subjectInfo: SubjectInfo = SubjectInfo.Empty,
             episodeInfo: EpisodeInfo = EpisodeInfo.Empty,
+            mediaSelectorSourceTiers: MediaSelectorSourceTiers = MediaSelectorSourceTiers.Empty,
         ) = createMediaSelectorContextFromEmpty(
             subjectCompleted = subjectCompleted,
             mediaSourcePrecedence = mediaSourcePrecedence,
@@ -217,6 +236,7 @@ sealed class MediaSelectorTestSuite {
             subjectSeriesInfo = SubjectSeriesInfo.Fallback.copy(sequelSubjectNames = subjectSequelNames),
             subjectInfo = subjectInfo,
             episodeInfo = episodeInfo,
+            mediaSelectorSourceTiers = mediaSelectorSourceTiers,
         )
 
         @Suppress("SameParameterValue")
@@ -227,6 +247,7 @@ sealed class MediaSelectorTestSuite {
             subjectSeriesInfo: SubjectSeriesInfo = SubjectSeriesInfo.Fallback,
             subjectInfo: SubjectInfo = SubjectInfo.Empty,
             episodeInfo: EpisodeInfo = EpisodeInfo.Empty,
+            mediaSelectorSourceTiers: MediaSelectorSourceTiers = MediaSelectorSourceTiers.Empty,
         ) =
             MediaSelectorContext(
                 subjectFinished = subjectCompleted,
@@ -235,6 +256,7 @@ sealed class MediaSelectorTestSuite {
                 subjectSeriesInfo = subjectSeriesInfo,
                 subjectInfo = subjectInfo,
                 episodeInfo = episodeInfo,
+                mediaSourceTiers = mediaSelectorSourceTiers,
             )
     }
 }
@@ -290,18 +312,41 @@ class SimpleMediaSelectorTestSuite : MediaSelectorTestSuite() {
 }
 
 /**
+ * Default state:
+ *
+ * - [MediaSourceTier] are unspecified.
+ *
  * @see buildTestMediaFetchSession
  */
-class FetchMediaSelectorTestSuite : MediaSelectorTestSuite() {
+class FetchMediaSelectorTestSuite(
+    private val testDispatcher: CoroutineContext,
+) : MediaSelectorTestSuite() {
     private lateinit var fetchSession: TestMediaFetchSession<*>
 
-    context(testScope: TestScope)
+    /**
+     * 配置 [MediaFetchSession], 并且在后台启动, 开始收集结果.
+     *
+     * 必须在 [initSubject] 之后调用.
+     */
+    context(scope: TestScope)
     fun <R> configureFetchSession(block: TestMediaFetchSessionBuilder.() -> R): TestMediaFetchSession<R> {
         return buildTestMediaFetchSession(
-            dispatcher = testScope.coroutineContext[ContinuationInterceptor]!!,
-            block,
-        ).also {
+            dispatcher = testDispatcher,
+        ) {
+            request {
+                val mediaSelectorContext = preferenceApi.mediaSelectorContext.value
+                takeFrom(
+                    MediaFetchRequest.create(
+                        mediaSelectorContext.subjectInfo!!,
+                        mediaSelectorContext.episodeInfo!!,
+                    ),
+                )
+            }
+
+            block()
+        }.also {
             fetchSession = it
+            it.session.startInBackground()
         }
     }
 
@@ -313,7 +358,15 @@ class FetchMediaSelectorTestSuite : MediaSelectorTestSuite() {
             savedDefaultPreference = preferenceApi.savedDefaultPreference,
             enableCaching = false,
             mediaSelectorSettings = preferenceApi.mediaSelectorSettings,
+            flowCoroutineContext = testDispatcher,
         )
+    }
+
+    context(scope: TestScope)
+    fun MediaFetchSession.startInBackground() {
+        scope.backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
+            cumulativeResults.collect()
+        }
     }
 
 //
@@ -328,6 +381,66 @@ class FetchMediaSelectorTestSuite : MediaSelectorTestSuite() {
 //        mediaSelectorSettings = preferenceApi.mediaSelectorSettings,
 //    )
 }
+
+///////////////////////////////////////////////////////////////////////////
+// Source Tiers
+///////////////////////////////////////////////////////////////////////////
+
+fun MediaSelectorTestSuite.setSourceTier(sourceId: String, tier: Int?) = setSourceTier(sourceId, tier?.toUInt())
+
+@JvmName("setSourceTierUInt")
+fun MediaSelectorTestSuite.setSourceTier(sourceId: String, tier: UInt?) =
+    setSourceTier(sourceId, tier?.let { MediaSourceTier(it) })
+
+fun MediaSelectorTestSuite.setSourceTier(sourceId: String, tier: MediaSourceTier?) {
+    val oldTiers = preferenceApi.mediaSelectorContext.value.mediaSourceTiers
+    val newMap = oldTiers?.tiers.orEmpty().toMutableMap()
+    if (tier != null) {
+        newMap[sourceId] = tier
+    } else {
+        newMap.remove(sourceId)
+    }
+    preferenceApi.mediaSelectorContext.value = preferenceApi.mediaSelectorContext.value.copy(
+        mediaSourceTiers = MediaSelectorSourceTiers(newMap) {
+            // fallback function if not found
+            MediaSourceTier.Fallback
+        },
+    )
+}
+
+@JvmName("setSourceTiersPairStringInt")
+fun MediaSelectorTestSuite.setSourceTiers(vararg pairs: Pair<String, Int?>) =
+    setSourceTiers(*pairs.map { it.first to it.second?.toUInt() }.toTypedArray())
+
+/**
+ * Sets tiers for multiple sources at once.
+ */
+@JvmName("setSourceTiersPairStringUInt")
+fun MediaSelectorTestSuite.setSourceTiers(vararg pairs: Pair<String, UInt?>) {
+    val oldTiers = preferenceApi.mediaSelectorContext.value.mediaSourceTiers
+    val newMap = oldTiers?.tiers.orEmpty().toMutableMap()
+    for ((sourceId, tier) in pairs) {
+        if (tier == null) {
+            newMap.remove(sourceId)
+        } else {
+            newMap[sourceId] = MediaSourceTier(tier)
+        }
+    }
+    preferenceApi.mediaSelectorContext.value = preferenceApi.mediaSelectorContext.value.copy(
+        mediaSourceTiers = MediaSelectorSourceTiers(newMap) {
+            MediaSourceTier.Fallback
+        },
+    )
+}
+
+fun MediaSelectorTestSuite.getMediaSourceTier(sourceId: String) = preferenceApi.sourceTiers?.tiers?.get(sourceId)
+
+context(suite: MediaSelectorTestSuite)
+var Handle.tier: Int?
+    get() = suite.getMediaSourceTier(instance.mediaSourceId)?.value?.toInt()
+    set(value) {
+        suite.setSourceTier(instance.mediaSourceId, value?.toUInt())
+    }
 
 
 ///////////////////////////////////////////////////////////////////////////
@@ -346,7 +459,7 @@ fun runFetchMediaSelectorTestSuite(
     buildTest: context(TestScope) FetchMediaSelectorTestSuite.() -> Unit = {},
     thenCheck: suspend context(TestScope) FetchMediaSelectorTestSuite.() -> Unit
 ): TestResult = runTest {
-    FetchMediaSelectorTestSuite().apply { buildTest() }.thenCheck()
+    FetchMediaSelectorTestSuite(this.coroutineContext[ContinuationInterceptor]!!).apply { buildTest() }.thenCheck()
 }
 
 inline fun DynamicTestsBuilder.addSimpleMediaSelectorTest(

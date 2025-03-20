@@ -33,6 +33,9 @@ import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
 import me.him188.ani.app.domain.foundation.get
 import me.him188.ani.app.domain.media.cache.MediaCacheManager.Companion.LOCAL_FS_MEDIA_SOURCE_ID
+import me.him188.ani.app.domain.media.selector.MediaSelectorSourceTiers
+import me.him188.ani.app.domain.mediasource.codec.MediaSourceCodecManager
+import me.him188.ani.app.domain.mediasource.codec.getArgumentOrNull
 import me.him188.ani.app.domain.mediasource.instance.MediaSourceInstance
 import me.him188.ani.app.domain.mediasource.instance.MediaSourceSave
 import me.him188.ani.app.domain.mediasource.rss.RssMediaSource
@@ -137,6 +140,8 @@ interface MediaSourceManager { // available by inject
     suspend fun updateConfig(instanceId: String, config: MediaSourceConfig): Boolean
     suspend fun setEnabled(instanceId: String, enabled: Boolean)
     suspend fun removeInstance(instanceId: String)
+
+    fun mediaSourceTiersFlow(): Flow<MediaSelectorSourceTiers>
 }
 
 suspend fun <T> MediaSourceManager.addInstance(
@@ -187,13 +192,14 @@ class MediaSourceManagerImpl(
      * @see LOCAL_FS_MEDIA_SOURCE_ID
      */
     additionalSources: () -> List<MediaSource>, // local sources, calculated only once
-    flowCoroutineContext: CoroutineContext = Dispatchers.Default,
+    private val flowCoroutineContext: CoroutineContext = Dispatchers.Default,
 ) : MediaSourceManager, KoinComponent {
     private val proxyProvider: ProxyProvider by inject()
     private val mikanIndexCacheRepository: MikanIndexCacheRepository by inject()
     private val instances: MediaSourceInstanceRepository by inject()
     private val selectorMediaSourceEpisodeCacheRepository: SelectorMediaSourceEpisodeCacheRepository by inject()
     private val clientProvider: HttpClientProvider by inject()
+    private val codecManager: MediaSourceCodecManager by inject()
 
     private val scope = CoroutineScope(
         CoroutineExceptionHandler { _, throwable ->
@@ -312,13 +318,26 @@ class MediaSourceManagerImpl(
         instances.remove(instanceId)
     }
 
+    override fun mediaSourceTiersFlow(): Flow<MediaSelectorSourceTiers> = instances.flow.map { list ->
+        MediaSelectorSourceTiers(
+            buildMap {
+                for (save in list) {
+                    val argument = save.getArgumentOrNull(codecManager)
+                    if (argument != null) {
+                        put(save.mediaSourceId, argument.tier)
+                    }
+                }
+            },
+        )
+    }.flowOn(flowCoroutineContext)
+
     private fun MediaSourceFactory.create(
         proxyConfig: ProxyConfig?,
         mediaSourceId: String,
         config: MediaSourceConfig,
         client: ScopedHttpClient,
     ): MediaSource {
-        @Suppress("DEPRECATION") 
+        @Suppress("DEPRECATION")
         val mediaSourceConfig = config.copy(
             proxy = config.proxy ?: proxyConfig?.toClientProxyConfig(),
             userAgent = getAniUserAgent(),

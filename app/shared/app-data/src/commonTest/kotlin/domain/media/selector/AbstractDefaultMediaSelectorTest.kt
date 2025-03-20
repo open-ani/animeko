@@ -129,6 +129,7 @@ sealed class AbstractDefaultMediaSelectorTest {
                 subjectSeriesInfo = subjectSeriesInfo,
                 subjectInfo = subjectInfo,
                 episodeInfo = episodeInfo,
+                mediaSourceTiers = MediaSelectorSourceTiers.Empty,
             )
     }
 

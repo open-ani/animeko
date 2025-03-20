@@ -32,6 +32,7 @@ import me.him188.ani.app.domain.mediasource.MediaListFilter
 import me.him188.ani.app.domain.mediasource.MediaListFilterContext
 import me.him188.ani.app.domain.mediasource.MediaListFilters
 import me.him188.ani.app.domain.mediasource.StringMatcher
+import me.him188.ani.app.domain.mediasource.codec.MediaSourceTier
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.source.MediaSourceKind
@@ -79,6 +80,18 @@ import kotlin.coroutines.CoroutineContext
  *
  * 在选择时, 会触发 [MediaSelectorEvents.onChangePreference] 和 [MediaSelectorEvents.onSelect] 事件, 事件可用于保存用户偏好等操作.
  *
+ * ## 数据源阶级
+ *
+ * 每个数据源 [me.him188.ani.datasources.api.source.MediaSource] 都拥有阶级 [me.him188.ani.app.domain.mediasource.codec.MediaSourceTier]. 阶级会影响排序.
+ * 阶级值越低, 数据源排序越靠前.
+ *
+ * ### 快速选择的情况
+ *
+ * 如果快速选择数据源功能为启用状态 ([MediaSelectorSettings.fastSelectWebKind]), 将会考虑如下因素:
+ *
+ * - 当任意 T0 数据源查询完成并且满足用户的字幕组偏好时, [MediaSelectorAutoSelect] 将会立即选择该数据源.
+ * - 在等待 [MediaSelectorSettings.fastSelectWebKindAllowNonPreferredDelay] 时长后, 将会立即选择阶级小于 [MediaSelectorAutoSelect.FastSelectTierThreshold] 的数据源.
+ *
  * ## 使用示例
  *
  * 以下是一个演示如何观察各 Flow 并进行选择的示例代码（伪代码）：
@@ -113,6 +126,7 @@ import kotlin.coroutines.CoroutineContext
  * @see Media
  * @see MediaSelectorSettings
  * @see MediaPreference
+ * @see me.him188.ani.datasources.api.source.MediaSource
  */
 interface MediaSelector {
     /**
@@ -264,6 +278,9 @@ interface MediaPreferenceItem<T : Any> {
     suspend fun removePreference()
 }
 
+/**
+ * @see MediaSelector
+ */
 class DefaultMediaSelector(
     mediaSelectorContextNotCached: Flow<MediaSelectorContext>,
     mediaListNotCached: Flow<List<Media>>,
@@ -382,6 +399,11 @@ class DefaultMediaSelector(
                     .then(
                         compareBy { it.original.costForDownload },
                     )
+                    .thenBy { maybe ->
+                        val tiers = context.mediaSourceTiers
+                        tiers?.get(maybe.original.mediaSourceId)
+                            ?: MediaSourceTier.MaximumValue // 还没加载出来, 先不排序
+                    }
                     .thenByDescending {
                         it.original.publishedTime
                     }

@@ -19,6 +19,7 @@ import me.him188.ani.app.domain.mediasource.MediaListFilterContext
 import me.him188.ani.app.domain.mediasource.codec.DefaultMediaSourceCodec
 import me.him188.ani.app.domain.mediasource.codec.DontForgetToRegisterCodec
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceArguments
+import me.him188.ani.app.domain.mediasource.codec.MediaSourceTier
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.paging.PageBasedPagedSource
@@ -53,6 +54,7 @@ data class RssMediaSourceArguments(
     val description: String,
     val iconUrl: String,
     val searchConfig: RssSearchConfig = RssSearchConfig.Empty,
+    override val tier: MediaSourceTier = MediaSourceTier.Fallback,
 ) : MediaSourceArguments {
     companion object {
         const val DEFAULT_ICON_URL = "https://rss.com/blog/wp-content/uploads/2019/10/social_style_3_rss-512-1.png"

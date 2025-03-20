@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -17,6 +17,7 @@ import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectSeriesInfo
 import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.data.repository.RepositoryUnknownException
+import me.him188.ani.app.domain.mediasource.codec.MediaSourceTier
 import me.him188.ani.app.domain.mediasource.instance.MediaSourceInstance
 import me.him188.ani.utils.coroutines.retryWithBackoffDelay
 import me.him188.ani.utils.logging.error
@@ -43,6 +44,7 @@ data class MediaSelectorContext(
     val subjectSeriesInfo: SubjectSeriesInfo?,
     val subjectInfo: SubjectInfo?,
     val episodeInfo: EpisodeInfo?,
+    val mediaSourceTiers: MediaSelectorSourceTiers?,
 ) {
     fun allFieldsLoaded() = subjectFinished != null
             && mediaSourcePrecedence != null
@@ -50,12 +52,13 @@ data class MediaSelectorContext(
             && subjectSeriesInfo != null
             && subjectInfo != null
             && episodeInfo != null
+            && mediaSourceTiers != null
 
     companion object {
         /**
          * 刚开始查询时的默认值
          */
-        val Initial = MediaSelectorContext(null, null, null, null, null, null)
+        val Initial = MediaSelectorContext(null, null, null, null, null, null, null)
 
         val EmptyForPreview
             get() = MediaSelectorContext(
@@ -65,6 +68,7 @@ data class MediaSelectorContext(
                 SubjectSeriesInfo.Fallback,
                 SubjectInfo.Empty,
                 EpisodeInfo.Empty,
+                mediaSourceTiers = MediaSelectorSourceTiers.Empty,
             )
 
 
@@ -82,6 +86,7 @@ fun MediaSelectorContext.Companion.createFlow(
     subjectSeriesInfo: Flow<SubjectSeriesInfo>,
     subjectInfoFlow: Flow<SubjectInfo>,
     episodeInfoFlow: Flow<EpisodeInfo>,
+    mediaSourceTiersFlow: Flow<MediaSelectorSourceTiers>,
 ): Flow<MediaSelectorContext> = me.him188.ani.utils.coroutines.flows.combine(
     // 都 emit null, debug 时能知道是谁没 emit
     subjectCompleted.onStart<Boolean?> { emit(null) },
@@ -99,7 +104,8 @@ fun MediaSelectorContext.Companion.createFlow(
     }.onStart<SubjectSeriesInfo?> { emit(null) },
     subjectInfoFlow.onStart<SubjectInfo?> { emit(null) },
     episodeInfoFlow.onStart<EpisodeInfo?> { emit(null) },
-) { completed, instances, filters, seriesInfo, subjectInfo, episodeInfo ->
+    mediaSourceTiersFlow.onStart<MediaSelectorSourceTiers?> { emit(null) },
+) { completed, instances, filters, seriesInfo, subjectInfo, episodeInfo, mediaSourceTiers ->
     MediaSelectorContext(
         subjectFinished = completed,
         mediaSourcePrecedence = instances,
@@ -107,6 +113,7 @@ fun MediaSelectorContext.Companion.createFlow(
         subjectSeriesInfo = seriesInfo,
         subjectInfo = subjectInfo,
         episodeInfo = episodeInfo,
+        mediaSourceTiers = mediaSourceTiers,
     )
 }.onStart {
     emit(Initial) // 否则如果一直没获取到剧集信息, 就无法选集, #385
@@ -123,6 +130,7 @@ fun MediaSelectorContext.Companion.createFlow(
     subjectSeriesInfo: Flow<SubjectSeriesInfo>,
     subjectInfo: Flow<SubjectInfo>,
     episodeInfo: Flow<EpisodeInfo>,
+    mediaSourceTiers: Flow<MediaSelectorSourceTiers>,
 ): Flow<MediaSelectorContext> = createFlow(
     subjectCompleted,
     mediaSourcePrecedence.map { list ->
@@ -132,4 +140,27 @@ fun MediaSelectorContext.Companion.createFlow(
     subjectSeriesInfo,
     subjectInfo,
     episodeInfo,
+    mediaSourceTiers,
 )
+
+
+/**
+ * 所有已知数据源的 tiers.
+ *
+ * @since 4.7
+ */
+data class MediaSelectorSourceTiers(
+    /**
+     * Key is [me.him188.ani.datasources.api.source.MediaSource.mediaSourceId]
+     */
+    val tiers: Map<String, MediaSourceTier>,
+    val fallback: (mediaSourceId: String) -> MediaSourceTier = { MediaSourceTier.Fallback },
+) {
+    fun get(mediaSourceId: String): MediaSourceTier {
+        return tiers[mediaSourceId] ?: fallback(mediaSourceId)
+    }
+
+    companion object {
+        val Empty = MediaSelectorSourceTiers(emptyMap())
+    }
+}

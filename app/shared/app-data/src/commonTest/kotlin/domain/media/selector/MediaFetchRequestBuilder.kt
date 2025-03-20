@@ -33,10 +33,20 @@ class MediaFetchRequestBuilder(
         episodeName,
         episodeEp,
     )
+
+    fun takeFrom(other: MediaFetchRequest) {
+        subjectId = other.subjectId
+        episodeId = other.episodeId
+        subjectNameCN = other.subjectNameCN
+        subjectNames = other.subjectNames
+        episodeSort = other.episodeSort
+        episodeName = other.episodeName
+        episodeEp = other.episodeEp
+    }
 }
 
 inline fun buildMediaFetchRequest(
-    action: MediaFetchRequestBuilder.() -> Unit
+    action: MediaFetchRequestBuilder.() -> Unit,
 ): MediaFetchRequest {
     return MediaFetchRequestBuilder().apply(action).build()
 }

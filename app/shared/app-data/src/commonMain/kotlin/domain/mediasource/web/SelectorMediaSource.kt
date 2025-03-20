@@ -28,6 +28,7 @@ import me.him188.ani.app.data.repository.media.SelectorMediaSourceEpisodeCacheRe
 import me.him188.ani.app.domain.mediasource.codec.DefaultMediaSourceCodec
 import me.him188.ani.app.domain.mediasource.codec.DontForgetToRegisterCodec
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceArguments
+import me.him188.ani.app.domain.mediasource.codec.MediaSourceTier
 import me.him188.ani.datasources.api.DefaultMedia
 import me.him188.ani.datasources.api.matcher.WebVideoMatcher
 import me.him188.ani.datasources.api.matcher.WebVideoMatcherContext
@@ -60,6 +61,7 @@ private typealias EngineType = DefaultSelectorMediaSourceEngine
  * [SelectorMediaSource] 的用户侧配置, 用于创建 [SelectorMediaSource] 实例.
  *
  * @since 3.10
+ * @see SelectorMediaSourceCodec
  */
 @OptIn(DontForgetToRegisterCodec::class)
 @Serializable
@@ -68,6 +70,7 @@ data class SelectorMediaSourceArguments(
     val description: String,
     val iconUrl: String,
     val searchConfig: SelectorSearchConfig = SelectorSearchConfig.Empty,
+    override val tier: MediaSourceTier = MediaSourceTier.Fallback,
 ) : MediaSourceArguments {
     companion object {
         val Default = SelectorMediaSourceArguments(

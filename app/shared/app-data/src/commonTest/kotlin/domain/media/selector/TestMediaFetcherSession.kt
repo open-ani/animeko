@@ -15,7 +15,9 @@ import kotlinx.coroutines.test.TestScope
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
 import me.him188.ani.app.domain.media.fetch.MediaFetcherConfig
 import me.him188.ani.app.domain.media.fetch.MediaSourceMediaFetcher
+import me.him188.ani.app.domain.media.selector.MediaSelectorTestSuite.Companion.SOURCE_DMHY
 import me.him188.ani.app.domain.mediasource.instance.MediaSourceInstance
+import me.him188.ani.datasources.api.DefaultMedia
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.paging.SinglePagePagedSource
 import me.him188.ani.datasources.api.paging.SizedSource
@@ -112,7 +114,7 @@ class TestMediaFetchSessionBuilder {
 
 
 class Handle(
-    internal val instance: MediaSourceInstance,
+    val instance: MediaSourceInstance,
 ) {
     val result = CompletableDeferred<List<MediaMatch>>()
 
@@ -125,7 +127,15 @@ class Handle(
 
     @JvmName("completeListMediaMatch")
     fun complete(medias: List<MediaMatch>): Handle {
-        result.complete(medias)
+        check(result.isActive)
+        check(medias.all { it.media.mediaSourceId == SOURCE_DMHY })
+        result.complete(
+            medias.map {
+                it.copy(
+                    (it.media as DefaultMedia).copy(mediaSourceId = instance.mediaSourceId)
+                )
+            }
+        )
         return this
     }
 }

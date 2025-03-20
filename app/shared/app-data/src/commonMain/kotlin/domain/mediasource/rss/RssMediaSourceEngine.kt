@@ -152,7 +152,7 @@ data class RssSearchConfig(
  *
  * 注意, 这不会影响 UI 里每个 RSS 卡片显示的信息. 如需修改, 查看 [RssItemPresentation.computeTags]
  *
- * @see MediaListFilter
+ * @see me.him188.ani.app.domain.mediasource.MediaListFilter
  */
 fun RssSearchConfig.createFilters() = buildList {
     if (filterByEpisodeSort) add(MediaListFilters.ContainsAnyEpisodeInfo)

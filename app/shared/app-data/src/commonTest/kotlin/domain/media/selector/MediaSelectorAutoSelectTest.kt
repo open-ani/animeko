@@ -54,6 +54,7 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 
 /**
+ * @suppress 已弃用, 新的 test 使用 [TestMediaFetchSessionBuilder].
  * @see MediaSelectorAutoSelect
  */
 class MediaSelectorAutoSelectTest {
@@ -76,6 +77,7 @@ class MediaSelectorAutoSelectTest {
             subjectSeriesInfo = SubjectSeriesInfo.Fallback,
             subjectInfo = SubjectInfo.Empty,
             episodeInfo = EpisodeInfo.Empty,
+            mediaSourceTiers = MediaSelectorSourceTiers.Empty,
         ),
     )
 
