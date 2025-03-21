@@ -20,9 +20,12 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import me.him188.ani.app.data.models.subject.CanonicalTagKind
 import me.him188.ani.app.domain.search.SubjectSearchQuery
 import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.ui.search.PagingSearchState
@@ -35,13 +38,14 @@ import me.him188.ani.utils.platform.annotations.TestOnly
 class SearchPageState(
     searchHistoryPager: Flow<PagingData<String>>,
     suggestionsPager: Flow<PagingData<String>>,
-    queryFlow: StateFlow<SubjectSearchQuery>,
+    private val queryFlow: StateFlow<SubjectSearchQuery>,
     val setQuery: (SubjectSearchQuery) -> Unit,
     val onRequestPlay: suspend (SubjectPreviewItemInfo) -> EpisodeTarget?,
     val searchState: SearchState<SubjectPreviewItemInfo>,
     private val onRemoveHistory: suspend (String) -> Unit,
     backgroundScope: CoroutineScope,
     private val onStartSearch: (String) -> Unit = {},
+    private val tagKinds: List<CanonicalTagKind> = SearchFilterState.DEFAULT_TAG_KINDS,
 ) {
     // to navigate to episode page
     data class EpisodeTarget(
@@ -63,6 +67,29 @@ class SearchPageState(
     )
     val gridState = LazyStaggeredGridState()
 
+    val searchFilterStateFlow = queryFlow.map { it.tags.orEmpty() }.map { selectedTags ->
+        SearchFilterState(
+            chips = tagKinds.map { kind ->
+                SearchFilterChipState(
+                    kind = kind,
+                    values = kind.values,
+                    selected = kind.values.filter { value -> value in selectedTags },
+                )
+            },
+        )
+    }.stateIn(
+        backgroundScope, started = SharingStarted.WhileSubscribed(),
+        SearchFilterState(
+            chips = tagKinds.map { kind ->
+                SearchFilterChipState(
+                    kind = kind,
+                    values = kind.values,
+                    selected = emptyList(),
+                )
+            },
+        ),
+    )
+
     val items = searchState.launchAsItemsIn(backgroundScope)
 
     var selectedItemIndex: Int by mutableIntStateOf(0)
@@ -76,6 +103,21 @@ class SearchPageState(
         return playTasker.async {
             onRequestPlay(info)
         }.await()
+    }
+
+    fun toggleTagSelection(tag: String) {
+        val query = queryFlow.value
+        val existingTags = query.tags.orEmpty()
+        setQuery(
+            query.copy(
+                tags = if (tag in existingTags) {
+                    existingTags - tag
+                } else {
+                    existingTags + tag
+                },
+            ),
+        )
+        searchState.startSearch()
     }
 }
 
