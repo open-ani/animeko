@@ -56,9 +56,9 @@ class SearchViewModel : AbstractViewModel(), KoinComponent {
         suggestionsPager = queryFlow.debounce(200.milliseconds).flatMapLatest {
             bangumiSubjectSearchCompletionRepository.completionsFlow(it.keywords)
         },
-        queryFlow = queryFlow.map { it.keywords },
+        queryFlow = queryFlow,
         setQuery = { newQuery ->
-            queryFlow.update { it.copy(keywords = newQuery) }
+            queryFlow.update { newQuery }
         },
         onRequestPlay = { info ->
             episodeCollectionRepository.subjectEpisodeCollectionInfosFlow(info.subjectId).first().firstOrNull()?.let {

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -20,6 +20,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.update
+import me.him188.ani.app.domain.search.SubjectSearchQuery
 import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.ui.search.PagingSearchState
 import me.him188.ani.app.ui.search.SearchState
@@ -31,8 +35,8 @@ import me.him188.ani.utils.platform.annotations.TestOnly
 class SearchPageState(
     searchHistoryPager: Flow<PagingData<String>>,
     suggestionsPager: Flow<PagingData<String>>,
-    queryFlow: Flow<String>,
-    val setQuery: (String) -> Unit,
+    queryFlow: StateFlow<SubjectSearchQuery>,
+    val setQuery: (SubjectSearchQuery) -> Unit,
     val onRequestPlay: suspend (SubjectPreviewItemInfo) -> EpisodeTarget?,
     val searchState: SearchState<SubjectPreviewItemInfo>,
     private val onRemoveHistory: suspend (String) -> Unit,
@@ -49,8 +53,8 @@ class SearchPageState(
         historyPager = searchHistoryPager,
         suggestionsPager = suggestionsPager,
         searchState = searchState,
-        queryFlow = queryFlow,
-        setQueryValue = setQuery,
+        queryFlow = queryFlow.map { it.keywords },
+        setQueryValue = { setQuery(queryFlow.value.copy(keywords = it)) },
         onRemoveHistory = { onRemoveHistory(it) },
         onStartSearch = { query ->
             onStartSearch(query)
@@ -83,12 +87,14 @@ fun createTestSearchPageState(
     )
 ): SearchPageState {
     val results = mutableStateOf<List<SubjectPreviewItemInfo>>(emptyList())
-    val queryFlow = MutableStateFlow("")
+    val queryFlow = MutableStateFlow(SubjectSearchQuery(""))
     return SearchPageState(
         searchHistoryPager = MutableStateFlow(PagingData.from(listOf("test history"))),
         suggestionsPager = MutableStateFlow(PagingData.from(listOf("suggestion1"))),
         queryFlow = queryFlow,
-        setQuery = { queryFlow.value = it },
+        setQuery = { new ->
+            queryFlow.update { new }
+        },
         onRequestPlay = {
             delay(3000)
             SearchPageState.EpisodeTarget(1, 2)
