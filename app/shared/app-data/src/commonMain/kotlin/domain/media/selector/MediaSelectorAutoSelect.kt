@@ -101,7 +101,7 @@ class MediaSelectorAutoSelect(
         overrideUserSelection: Boolean = false,
         blacklistMediaIds: Set<String> = emptySet(),
         allowNonPreferredFlow: Flow<Boolean> = flowOf(false),
-        fastSelectTierThreshold: MediaSourceTier = FastSelectTierThreshold,
+        instantSelectTierThreshold: MediaSourceTier = InstantSelectTierThreshold,
     ): Media? {
         if (preferKind.first() != MediaSourceKind.WEB) {
             return null // 只处理 WEB 类型
@@ -227,7 +227,7 @@ class MediaSelectorAutoSelect(
                         if (state is MediaSourceFetchState.Succeed) {
                             val source = fastSources[i]
                             val tier = source.getTier()
-                            if (tier <= fastSelectTierThreshold) {
+                            if (tier <= instantSelectTierThreshold) {
                                 source
                             } else {
                                 null
@@ -324,11 +324,11 @@ class MediaSelectorAutoSelect(
     companion object {
         /**
          * 如果快速选择数据源功能为启用状态 ([MediaSelectorSettings.fastSelectWebKind]),
-         * 在等待 [MediaSelectorSettings.fastSelectWebKindAllowNonPreferredDelay] 时长后, 将会立即选择阶级小于等于 [MediaSelectorAutoSelect.FastSelectTierThreshold] 的数据源.
+         * 不经过任何等待, 只要该数据源查询成功并且满足字幕语言偏好就立即选择.
          *
          * @see MediaSelector
          */
-        val FastSelectTierThreshold = MediaSourceTier(1u)
+        val InstantSelectTierThreshold = MediaSourceTier(0u)
     }
 }
 

@@ -90,7 +90,7 @@ import kotlin.coroutines.CoroutineContext
  * 如果快速选择数据源功能为启用状态 ([MediaSelectorSettings.fastSelectWebKind]), 将会考虑如下因素:
  *
  * - 当任意 T0 数据源查询完成并且满足用户的字幕组偏好时, [MediaSelectorAutoSelect] 将会立即选择该数据源.
- * - 在等待 [MediaSelectorSettings.fastSelectWebKindAllowNonPreferredDelay] 时长后, 将会立即选择阶级小于 [MediaSelectorAutoSelect.FastSelectTierThreshold] 的数据源.
+ * - 在等待 [MediaSelectorSettings.fastSelectWebKindAllowNonPreferredDelay] 时长后, 将会立即选择阶级小于 [MediaSelectorAutoSelect.InstantSelectTierThreshold] 的数据源.
  *
  * ## 使用示例
  *

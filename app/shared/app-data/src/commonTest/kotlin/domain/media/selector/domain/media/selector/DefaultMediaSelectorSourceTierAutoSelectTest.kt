@@ -80,7 +80,7 @@ class DefaultMediaSelectorSourceTierAutoSelectTest {
     }
 
     @Test
-    fun `auto select t0 when it completes`() = runFetchMediaSelectorTestSuite {
+    fun `auto select only t0 when it completes`() = runFetchMediaSelectorTestSuite {
         initSubject()
         val (handles, session, sources) = configureFetchSession {
             object {
@@ -104,7 +104,7 @@ class DefaultMediaSelectorSourceTierAutoSelectTest {
     }
 
     @Test
-    fun `auto select t1 when it completes`() = runFetchMediaSelectorTestSuite {
+    fun `dont auto select t1 when it completes`() = runFetchMediaSelectorTestSuite {
         initSubject()
         val (handles, session, sources) = configureFetchSession {
             object {
@@ -120,9 +120,7 @@ class DefaultMediaSelectorSourceTierAutoSelectTest {
             expectNoEvents()
             sources.web1.complete(media(kind = WEB, subjectName = initApi.subjectName))
             testScope().runCurrent()
-            listOf(assertNotNull(awaitItem())).assert {
-                single().assert(source = sources.web1)
-            }
+            expectNoEvents()
             cancelAndIgnoreRemainingEvents()
         }
     }

@@ -67,8 +67,8 @@ class DefaultMediaSelectorSourceTierSortTest {
 
         assertMedias {
             next().assert(sourceId = "t0")
-            next().assert(sourceId = "untiered")
             next().assert(sourceId = "t1")
+            next().assert(sourceId = "untiered")
             next().assert(sourceId = "t2")
             next().assert(sourceId = "t3")
             assertNoMoreElements()
@@ -131,9 +131,9 @@ class DefaultMediaSelectorSourceTierSortTest {
         assertMedias {
             next().assert(sourceId = "t0")
             next().assert(sourceId = "t1")
+            next().assert(sourceId = "t2")
+            next().assert(sourceId = "t2")
             next().assert(sourceId = "bt1")
-            next().assert(sourceId = "t2")
-            next().assert(sourceId = "t2")
             next().assert(sourceId = "t3")
             assertNoMoreElements()
         }

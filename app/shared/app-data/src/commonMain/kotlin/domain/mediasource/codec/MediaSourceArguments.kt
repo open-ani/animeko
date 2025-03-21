@@ -52,9 +52,9 @@ value class MediaSourceTier(val value: UInt) : Comparable<MediaSourceTier> {
         /**
          * 当数据源订阅没有指定 tier, 并且用户没有手动设置 tier 时的 fallback 值.
          *
-         * 默认在范围内 [me.him188.ani.app.domain.media.selector.MediaSelectorAutoSelect.FastSelectTierThreshold].
+         * 默认在范围内 [me.him188.ani.app.domain.media.selector.MediaSelectorAutoSelect.InstantSelectTierThreshold].
          */
-        val Fallback = MediaSourceTier(1u)
+        val Fallback = MediaSourceTier(2u)
 
         val MaximumValue = MediaSourceTier(UInt.MAX_VALUE)
     }
