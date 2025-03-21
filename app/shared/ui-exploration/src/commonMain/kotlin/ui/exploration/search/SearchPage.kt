@@ -14,7 +14,6 @@ import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -46,6 +45,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemContentType
 import androidx.paging.compose.itemKey
@@ -103,6 +103,16 @@ fun SearchPage(
                                 || !state.suggestionSearchBarState.expanded,
                     ) { contentPadding },
                 placeholder = { Text("搜索") },
+            )
+
+            val filterState by state.searchFilterStateFlow.collectAsStateWithLifecycle()
+            SearchFilterChipsRow(
+                filterState,
+                onClickChip = { _, value ->
+                    state.toggleTagSelection(value)
+                },
+                Modifier.fillMaxWidth()
+                    .padding(horizontal = currentWindowAdaptiveInfo1().windowSizeClass.paneHorizontalPadding),
             )
         },
         searchResultList = {
@@ -328,22 +338,21 @@ internal fun SearchPageLayout(
             )
         },
         listPaneContent = {
-            Box {
-                Column(
-                    Modifier
-                        .paneContentPadding()
-                        .paneWindowInsetsPadding()
-                        .padding(top = searchBarHeight),
-                ) {
-                    searchResultList()
-                }
-
-                Row(Modifier.fillMaxWidth()) {
+            Column {
+                Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     searchBar(
                         Modifier
                             .paneContentPadding(),
                         // no window insets padding. 让 search bar 自己 consume
                     )
+                }
+                Column(
+                    Modifier
+                        .paneContentPadding()
+                        .paneWindowInsetsPadding(),
+//                        .padding(top = searchBarHeight),
+                ) {
+                    searchResultList()
                 }
             }
         },
