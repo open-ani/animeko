@@ -324,12 +324,11 @@ idea {
 tasks.register<ComposeHotRun>("runHot") {
     mainClass.set("me.him188.ani.app.desktop.AniDesktop")
     this.jvmArgs(
-        """
-            -XX:+UseZGC
-            -Dorg.slf4j.simpleLogger.defaultLogLevel=TRACE
-            -Dkotlinx.coroutines.debug=on
-            -Dani.debug=true
-            -Xmx256m
-        """.trimIndent().lines(),
+//        "-XX:+UseZGC", // this may crash the VM
+        "-Xmx256m",
     )
+    systemProperty("org.slf4j.simpleLogger.defaultLogLevel", "TRACE")
+    systemProperty("kotlinx.coroutines.debug", "on")
+    systemProperty("ani.debug", "on")
+    workingDir(file("test-sandbox"))
 }
