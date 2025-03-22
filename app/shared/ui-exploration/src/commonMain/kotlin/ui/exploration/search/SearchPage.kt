@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.ui.exploration.search
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.Arrangement
@@ -25,7 +26,12 @@ import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
 import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.KeyboardArrowUp
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.adaptive.navigation.ThreePaneScaffoldNavigator
@@ -95,6 +101,7 @@ fun SearchPage(
             navigator.navigateBack()
         }
     }
+    val scope = rememberCoroutineScope()
 
     val items = state.items
     val searchBar = @Composable {
@@ -123,7 +130,6 @@ fun SearchPage(
         navigator,
         searchResultList = { nestedScrollConnection ->
             val aniNavigator = LocalNavigator.current
-            val scope = rememberCoroutineScope()
 
             val hasQuery by state.searchState.collectHasQueryAsState()
             SearchPageResultColumn(
@@ -156,6 +162,21 @@ fun SearchPage(
 //            }
             items.itemSnapshotList.getOrNull(state.selectedItemIndex)?.let {
                 detailContent(it.subjectId)
+            }
+        },
+        navigateToTopButton = {
+            AnimatedVisibility(
+                state.gridState.canScrollBackward,
+            ) {
+                SmallFloatingActionButton(
+                    {
+                        scope.launch {
+                            state.gridState.animateScrollToItem(0)
+                        }
+                    },
+                ) {
+                    Icon(Icons.Rounded.KeyboardArrowUp, "回到顶部")
+                }
             }
         },
         modifier,
@@ -320,6 +341,7 @@ internal fun SearchPageLayout(
     navigator: ThreePaneScaffoldNavigator<*>,
     searchResultList: @Composable (PaneScope.(NestedScrollConnection) -> Unit),
     detailContent: @Composable (PaneScope.() -> Unit),
+    navigateToTopButton: @Composable PaneScope.() -> Unit,
     modifier: Modifier = Modifier,
     navigationIcon: @Composable () -> Unit = {},
     contentWindowInsets: WindowInsets = AniWindowInsets.forPageContent(),
@@ -352,13 +374,18 @@ internal fun SearchPageLayout(
             )
         },
         listPaneContent = {
-            Column(
-                Modifier
-                    .paneContentPadding()
-                    .paneWindowInsetsPadding()
-                    .nestedScroll(topAppBarScrollBehavior.nestedScrollConnection),
-            ) {
-                searchResultList(topAppBarScrollBehavior.nestedScrollConnection)
+            Scaffold(
+                floatingActionButton = { navigateToTopButton() },
+                containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+            ) { _ -> // We only need window insets for the FAB
+                Column(
+                    Modifier
+                        .paneContentPadding()
+                        .paneWindowInsetsPadding()
+                        .nestedScroll(topAppBarScrollBehavior.nestedScrollConnection),
+                ) {
+                    searchResultList(topAppBarScrollBehavior.nestedScrollConnection)
+                }
             }
         },
         detailPane = {
