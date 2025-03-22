@@ -27,6 +27,7 @@ import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.adaptive.navigation.ThreePaneScaffoldNavigator
 import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
 import androidx.compose.runtime.Composable
@@ -42,6 +43,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -57,6 +60,7 @@ import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.ui.adaptive.AniListDetailPaneScaffold
 import me.him188.ani.app.ui.adaptive.AniTopAppBar
 import me.him188.ani.app.ui.adaptive.PaneScope
+import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.interaction.keyboardDirectionToSelectItem
@@ -73,6 +77,7 @@ import me.him188.ani.app.ui.search.LoadErrorCard
 import me.him188.ani.app.ui.search.SearchDefaults
 import me.him188.ani.app.ui.search.SearchResultLazyVerticalStaggeredGrid
 import me.him188.ani.app.ui.search.collectHasQueryAsState
+import me.him188.ani.utils.platform.isDesktop
 
 @Composable
 fun SearchPage(
@@ -116,7 +121,7 @@ fun SearchPage(
     }
     SearchPageLayout(
         navigator,
-        searchResultList = {
+        searchResultList = { nestedScrollConnection ->
             val aniNavigator = LocalNavigator.current
             val scope = rememberCoroutineScope()
 
@@ -313,13 +318,14 @@ internal fun SearchPageResultColumn(
 @Composable
 internal fun SearchPageLayout(
     navigator: ThreePaneScaffoldNavigator<*>,
-    searchResultList: @Composable (PaneScope.() -> Unit),
+    searchResultList: @Composable (PaneScope.(NestedScrollConnection) -> Unit),
     detailContent: @Composable (PaneScope.() -> Unit),
     modifier: Modifier = Modifier,
     navigationIcon: @Composable () -> Unit = {},
     contentWindowInsets: WindowInsets = AniWindowInsets.forPageContent(),
 ) {
     val coroutineScope = rememberCoroutineScope()
+    val topAppBarScrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     AniListDetailPaneScaffold(
         navigator,
         listPaneTopAppBar = {
@@ -340,16 +346,19 @@ internal fun SearchPageLayout(
                     }
                 },
                 windowInsets = paneContentWindowInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
+                scrollBehavior =
+                    if (LocalPlatform.current.isDesktop()) null // Workaround for Compose bug: scrolling to the top does not work correctly.
+                    else topAppBarScrollBehavior,
             )
         },
         listPaneContent = {
             Column(
                 Modifier
                     .paneContentPadding()
-                    .paneWindowInsetsPadding(),
-//                        .padding(top = searchBarHeight),
+                    .paneWindowInsetsPadding()
+                    .nestedScroll(topAppBarScrollBehavior.nestedScrollConnection),
             ) {
-                searchResultList()
+                searchResultList(topAppBarScrollBehavior.nestedScrollConnection)
             }
         },
         detailPane = {
