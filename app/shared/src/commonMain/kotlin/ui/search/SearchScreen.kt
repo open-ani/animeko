@@ -9,9 +9,7 @@
 
 package me.him188.ani.app.ui.search
 
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
 import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
 import androidx.compose.runtime.Composable
@@ -76,7 +74,6 @@ fun SearchScreen(
             }
         },
         navigator = listDetailNavigator,
-        contentWindowInsets = WindowInsets.safeDrawing, // 不包含 macos 标题栏, 因为左侧有 navigation rail
         navigationIcon = {
             BackNavigationIconButton(onNavigateBack)
         },
