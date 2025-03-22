@@ -62,12 +62,17 @@ data class SearchFilterChipState(
 @Composable
 fun SearchFilterChipsRow(
     state: SearchFilterState,
-    onClickChip: (SearchFilterChipState, value: String) -> Unit,
+    onClickItemText: (SearchFilterChipState, value: String) -> Unit,
+    onCheckedChange: (SearchFilterChipState, value: String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     FlowRow(modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         for (chipState in state.chips) {
-            SearchFilterChip(chipState, { onClickChip(chipState, it) })
+            SearchFilterChip(
+                chipState,
+                { onClickItemText(chipState, it) },
+                { onCheckedChange(chipState, it) }
+            )
         }
     }
 }
@@ -75,7 +80,8 @@ fun SearchFilterChipsRow(
 @Composable
 fun SearchFilterChip(
     state: SearchFilterChipState,
-    onClick: (String) -> Unit,
+    onClickItemText: (String) -> Unit,
+    onCheckedChange: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var showDropdown by rememberSaveable { mutableStateOf(false) }
@@ -119,13 +125,13 @@ fun SearchFilterChip(
                 DropdownMenuItem(
                     text = { Text(value) },
                     {
-                        onClick(value)
+                        onClickItemText(value)
                         showDropdown = false
                     },
                     leadingIcon = {
                         Checkbox(
                             checked = value in state.selected,
-                            onCheckedChange = { onClick(value) },
+                            onCheckedChange = { onCheckedChange(value) },
                         )
                     },
                     contentPadding = PaddingValues(start = 4.dp, end = 12.dp),
@@ -165,6 +171,7 @@ private fun PreviewSearchFilterChipsRow() {
         Surface {
             SearchFilterChipsRow(
                 createTestSearchFilterState(),
+                { _, _ -> },
                 { _, _ -> },
             )
         }

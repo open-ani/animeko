@@ -119,8 +119,11 @@ fun SearchPage(
             val filterState by state.searchFilterStateFlow.collectAsStateWithLifecycle()
             SearchFilterChipsRow(
                 filterState,
-                onClickChip = { _, value ->
-                    state.toggleTagSelection(value)
+                onClickItemText = { chip, value ->
+                    state.toggleTagSelection(chip, value, unselectOthersOfSameKind = true)
+                },
+                onCheckedChange = { chip, value ->
+                    state.toggleTagSelection(chip, value, unselectOthersOfSameKind = false)
                 },
                 Modifier.fillMaxWidth(),
             )

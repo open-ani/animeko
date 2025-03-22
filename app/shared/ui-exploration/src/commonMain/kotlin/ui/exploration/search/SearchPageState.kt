@@ -105,15 +105,24 @@ class SearchPageState(
         }.await()
     }
 
-    fun toggleTagSelection(tag: String) {
+    fun toggleTagSelection(
+        tag: SearchFilterChipState,
+        value: String,
+        unselectOthersOfSameKind: Boolean,
+    ) {
         val query = queryFlow.value
         val existingTags = query.tags.orEmpty()
         setQuery(
             query.copy(
-                tags = if (tag in existingTags) {
-                    existingTags - tag
+                tags = if (value in existingTags) {
+                    existingTags - value
                 } else {
-                    existingTags + tag
+                    if (unselectOthersOfSameKind) {
+                        existingTags.filterNot { it in tag.values } // 取消选中同类的其他选项
+                            .plus(value) // 选中当前选项
+                    } else {
+                        existingTags + value
+                    }
                 },
             ),
         )
