@@ -77,7 +77,6 @@ fun CommentColumn(
                 ),
             lazyStaggeredGridState = lazyStaggeredGridState,
             contentPadding = contentPadding,
-            progressIndicator = null,
         ) {
             item("spacer header") { Spacer(Modifier.height(1.dp)) }
 

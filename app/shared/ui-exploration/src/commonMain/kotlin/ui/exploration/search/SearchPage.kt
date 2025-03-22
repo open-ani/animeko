@@ -92,16 +92,15 @@ fun SearchPage(
     }
 
     val items = state.items
-    SearchPageLayout(
-        navigator,
-        searchBar = { contentPadding ->
+    val searchBar = @Composable {
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
             SuggestionSearchBar(
                 state.suggestionSearchBarState,
                 Modifier
                     .ifThen(
                         currentWindowAdaptiveInfo1().windowSizeClass.isWidthAtLeastMedium
                                 || !state.suggestionSearchBarState.expanded,
-                    ) { contentPadding },
+                    ) { Modifier.padding(horizontal = 8.dp) },
                 placeholder = { Text("搜索") },
             )
 
@@ -111,10 +110,12 @@ fun SearchPage(
                 onClickChip = { _, value ->
                     state.toggleTagSelection(value)
                 },
-                Modifier.fillMaxWidth()
-                    .padding(horizontal = currentWindowAdaptiveInfo1().windowSizeClass.paneHorizontalPadding),
+                Modifier.fillMaxWidth(),
             )
-        },
+        }
+    }
+    SearchPageLayout(
+        navigator,
         searchResultList = {
             val aniNavigator = LocalNavigator.current
             val scope = rememberCoroutineScope()
@@ -137,6 +138,7 @@ fun SearchPage(
                         }
                     }
                 }, // collect only once
+                searchBar = searchBar,
                 state = state.gridState,
             )
         },
@@ -176,10 +178,11 @@ internal fun SearchPageResultColumn(
     selectedItemIndex: () -> Int,
     onSelect: (index: Int) -> Unit,
     onPlay: (info: SubjectPreviewItemInfo) -> Unit,
+    searchBar: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     state: LazyStaggeredGridState = rememberLazyStaggeredGridState()
 ) {
-    var height by remember { mutableIntStateOf(0) }
+    var height by rememberSaveable { mutableIntStateOf(0) }
     val bringIntoViewRequesters = remember { mutableStateMapOf<Int, BringIntoViewRequester>() }
     val nsfwBlurShape = SubjectItemLayoutParameters.calculate(currentWindowAdaptiveInfo1().windowSizeClass).shape
     val aniMotionScheme = LocalAniMotionScheme.current
@@ -208,6 +211,10 @@ internal fun SearchPageResultColumn(
         lazyStaggeredGridState = state,
         horizontalArrangement = Arrangement.spacedBy(currentWindowAdaptiveInfo1().windowSizeClass.paneHorizontalPadding),
     ) {
+        item(span = StaggeredGridItemSpan.FullLine) {
+            searchBar()
+        }
+
         if (showSummary()) {
             item(span = StaggeredGridItemSpan.FullLine) {
                 SearchDefaults.SearchSummaryItem(
@@ -306,13 +313,11 @@ internal fun SearchPageResultColumn(
 @Composable
 internal fun SearchPageLayout(
     navigator: ThreePaneScaffoldNavigator<*>,
-    searchBar: @Composable (contentPadding: Modifier) -> Unit,
     searchResultList: @Composable (PaneScope.() -> Unit),
     detailContent: @Composable (PaneScope.() -> Unit),
     modifier: Modifier = Modifier,
     navigationIcon: @Composable () -> Unit = {},
     contentWindowInsets: WindowInsets = AniWindowInsets.forPageContent(),
-    searchBarHeight: Dp = 64.dp,
 ) {
     val coroutineScope = rememberCoroutineScope()
     AniListDetailPaneScaffold(
@@ -338,22 +343,13 @@ internal fun SearchPageLayout(
             )
         },
         listPaneContent = {
-            Column {
-                Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    searchBar(
-                        Modifier
-                            .paneContentPadding(),
-                        // no window insets padding. 让 search bar 自己 consume
-                    )
-                }
-                Column(
-                    Modifier
-                        .paneContentPadding()
-                        .paneWindowInsetsPadding(),
+            Column(
+                Modifier
+                    .paneContentPadding()
+                    .paneWindowInsetsPadding(),
 //                        .padding(top = searchBarHeight),
-                ) {
-                    searchResultList()
-                }
+            ) {
+                searchResultList()
             }
         },
         detailPane = {

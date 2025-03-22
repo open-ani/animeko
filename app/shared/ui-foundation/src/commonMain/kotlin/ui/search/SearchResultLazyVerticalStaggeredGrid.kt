@@ -26,10 +26,11 @@ import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
 import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemColors
 import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -43,13 +44,13 @@ import androidx.compose.ui.zIndex
 import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import me.him188.ani.app.domain.foundation.LoadError
-import me.him188.ani.app.ui.foundation.widgets.FastLinearProgressIndicator
 
 /**
  * 显示搜索结果的 [LazyVerticalStaggeredGrid]. 支持显示加载中的进度条, 错误时显示错误卡片.
  *
  * @param error 当有错误时调用. 内容可以是 [LoadErrorCard].
  */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun <T : Any> SearchResultLazyVerticalStaggeredGrid(
     items: LazyPagingItems<T>,
@@ -57,16 +58,9 @@ fun <T : Any> SearchResultLazyVerticalStaggeredGrid(
     modifier: Modifier = Modifier,
     cells: StaggeredGridCells.Adaptive = StaggeredGridCells.Adaptive(300.dp),
     lazyStaggeredGridState: LazyStaggeredGridState = rememberLazyStaggeredGridState(),
-    listItemColors: ListItemColors = ListItemDefaults.colors(containerColor = Color.Unspecified),
+    listItemColors: ListItemColors = ListItemDefaults.colors(containerColor = Color.Transparent),
     horizontalArrangement: Arrangement.Horizontal = Arrangement.spacedBy(0.dp),
     contentPadding: PaddingValues = PaddingValues(0.dp),
-    progressIndicator: @Composable (() -> Unit)? = {
-        FastLinearProgressIndicator(
-            items.isLoadingFirstPage || items.loadState.refresh is LoadState.Loading,
-            Modifier.zIndex(2f).fillMaxWidth().padding(vertical = 4.dp),
-            minimumDurationMillis = 300,
-        )
-    },
     content: LazyStaggeredGridScope.() -> Unit,
 ) {
     Box(modifier) {
@@ -97,24 +91,18 @@ fun <T : Any> SearchResultLazyVerticalStaggeredGrid(
 
                 content()
 
-                if (items.isLoadingNextPage) {
+                if (items.isLoadingFirstPage || items.loadState.refresh is LoadState.Loading) {
                     item(span = StaggeredGridItemSpan.FullLine) {
                         ListItem(
                             headlineContent = {
                                 Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                                    CircularProgressIndicator()
+                                    LoadingIndicator()
                                 }
                             },
                             colors = listItemColors,
                         )
                     }
                 }
-            }
-        }
-
-        if (progressIndicator != null) {
-            Box(Modifier.align(Alignment.TopStart)) {
-                progressIndicator()
             }
         }
     }
