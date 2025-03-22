@@ -76,6 +76,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.data.network.protocol.DanmakuInfo
 import me.him188.ani.app.data.network.protocol.DanmakuLocation
 import me.him188.ani.app.domain.comment.CommentContext
@@ -115,6 +116,8 @@ import me.him188.ani.app.ui.foundation.layout.setSystemBarVisible
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.pagerTabIndicatorOffset
 import me.him188.ani.app.ui.foundation.rememberImageViewerHandler
+import me.him188.ani.app.ui.foundation.theme.AniTheme
+import me.him188.ani.app.ui.foundation.theme.LocalThemeSettings
 import me.him188.ani.app.ui.foundation.theme.weaken
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.richtext.RichTextDefaults
@@ -154,15 +157,20 @@ fun EpisodeScreen(
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
 ) {
-    Column(modifier.fillMaxSize()) {
-        Scaffold(
-            contentWindowInsets = WindowInsets(0.dp),
-        ) {
-            EpisodeScreenContent(
-                viewModel,
-                Modifier,
-                windowInsets = windowInsets,
-            )
+    val themeSettings = LocalThemeSettings.current
+    AniTheme(
+        darkModeOverride = if (themeSettings.alwaysDarkInEpisodePage) DarkMode.DARK else null,
+    ) {
+        Column(modifier.fillMaxSize()) {
+            Scaffold(
+                contentWindowInsets = WindowInsets(0.dp),
+            ) {
+                EpisodeScreenContent(
+                    viewModel,
+                    Modifier,
+                    windowInsets = windowInsets,
+                )
+            }
         }
     }
 }

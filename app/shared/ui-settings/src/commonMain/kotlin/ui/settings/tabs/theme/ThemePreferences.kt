@@ -65,6 +65,15 @@ fun SettingsScope.ThemeGroup(
         )
 
         SwitchItem(
+            checked = themeSettings.alwaysDarkInEpisodePage,
+            onCheckedChange = { checked ->
+                state.update(themeSettings.copy(alwaysDarkInEpisodePage = checked))
+            },
+            title = { Text("播放页始终使用深色主题") },
+            description = { Text("提供更加沉浸的播放体验") },
+        )
+
+        SwitchItem(
             checked = themeSettings.useDynamicSubjectPageTheme,
             onCheckedChange = { checked ->
                 state.update(themeSettings.copy(useDynamicSubjectPageTheme = checked))
