@@ -33,6 +33,7 @@ import androidx.compose.ui.test.swipe
 import androidx.compose.ui.unit.dp
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.flow.MutableStateFlow
+import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.domain.media.player.ChunkState
 import me.him188.ani.app.domain.media.player.staticMediaCacheProgressState
@@ -82,7 +83,7 @@ class EpisodeVideoCursorTest {
 
     @Composable
     private fun Player(gestureFamily: GestureFamily = GestureFamily.MOUSE) {
-        ProvideCompositionLocalsForPreview(isDark = true) {
+        ProvideCompositionLocalsForPreview(darkMode = DarkMode.DARK) {
             val scope = rememberCoroutineScope()
             val playerState = remember {
                 DummyMediampPlayer(scope.coroutineContext)

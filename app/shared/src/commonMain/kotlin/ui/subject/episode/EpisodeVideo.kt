@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.domain.media.player.MediaCacheProgressInfo
 import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.tools.rememberUiMonoTasker
@@ -150,7 +151,7 @@ internal fun EpisodeVideoImpl(
         }
     }
 
-    AniTheme(isDark = true) {
+    AniTheme(darkModeOverride = DarkMode.DARK) {
         VideoScaffold(
             expanded = expanded,
             modifier = modifier

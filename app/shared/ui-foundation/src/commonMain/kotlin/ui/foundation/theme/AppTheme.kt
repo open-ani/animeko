@@ -60,17 +60,19 @@ expect fun isPlatformSupportDynamicTheme(): Boolean
 
 /**
  * AniApp MaterialTheme.
- * @param isDark Used for overriding [DarkMode] in specific situations.
+ * @param darkModeOverride Used for overriding [DarkMode] in specific situations.
  */
 @Composable
 fun AniTheme(
-    isDark: Boolean = when (LocalThemeSettings.current.darkMode) {
+    darkModeOverride: DarkMode? = null,
+    content: @Composable () -> Unit,
+) {
+    val isDark = when (darkModeOverride ?: LocalThemeSettings.current.darkMode) {
         DarkMode.LIGHT -> false
         DarkMode.DARK -> true
         DarkMode.AUTO -> isSystemInDarkTheme()
-    },
-    content: @Composable () -> Unit,
-) {
+    }
+
     MaterialTheme(
         colorScheme = appColorScheme(isDark = isDark),
         content = content,

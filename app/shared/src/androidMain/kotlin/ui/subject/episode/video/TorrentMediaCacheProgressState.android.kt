@@ -24,6 +24,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.delay
+import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.domain.media.player.TorrentMediaCacheProgressProvider
 import me.him188.ani.app.torrent.api.pieces.PieceList
 import me.him188.ani.app.torrent.api.pieces.PieceState
@@ -36,7 +37,7 @@ import kotlin.time.Duration.Companion.seconds
 // Try interactive preview to see cache progress change
 @Preview
 @Composable
-fun PreviewMediaProgressSliderInteractive() = ProvideCompositionLocalsForPreview(isDark = true) {
+fun PreviewMediaProgressSliderInteractive() = ProvideCompositionLocalsForPreview(darkMode = DarkMode.DARK) {
     var currentPositionMillis by remember { mutableLongStateOf(2000) }
     val totalDurationMillis by remember { mutableLongStateOf(30_000) }
     val pieces = remember {
@@ -91,7 +92,7 @@ private fun buildPiecesWithStep(
 @Composable
 fun PreviewMediaProgressSliderNonConsecutiveCacheImpl(
     pieces: PieceList,
-) = ProvideCompositionLocalsForPreview(isDark = true) {
+) = ProvideCompositionLocalsForPreview(darkMode = DarkMode.DARK) {
     val cacheProgress = remember {
         TorrentMediaCacheProgressProvider(
             pieces,

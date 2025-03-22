@@ -64,6 +64,7 @@ import androidx.compose.ui.unit.dp
 import androidx.window.core.layout.WindowSizeClass
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.ui.comment.CommentColumn
 import me.him188.ani.app.ui.comment.generateUiComment
 import me.him188.ani.app.ui.episode.AdaptivePlayerScreenLayoutParams.Mode
@@ -313,7 +314,7 @@ sealed class AdaptivePlayerScreenScope {
 
             Mode.THEATER -> {
                 @Composable {
-                    AniTheme(isDark = true) {
+                    AniTheme(darkModeOverride = DarkMode.DARK) {
                         content()
                     }
                 }

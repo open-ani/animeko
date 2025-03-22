@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.ui.foundation
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -51,7 +50,7 @@ import org.jetbrains.compose.resources.imageResource
 @OptIn(TestOnly::class)
 @Composable
 inline fun ProvideCompositionLocalsForPreview(
-    isDark: Boolean = isSystemInDarkTheme(),
+    darkMode: DarkMode = DarkMode.AUTO,
     crossinline content: @Composable () -> Unit,
 ) {
     val aniNavigator = remember { AniNavigator() }
@@ -94,14 +93,14 @@ inline fun ProvideCompositionLocalsForPreview(
             TestGlobalLifecycleOwner
         },
         LocalThemeSettings providesDefault ThemeSettings.Default.copy(
-            darkMode = if (isDark) DarkMode.DARK else DarkMode.LIGHT,
+            darkMode = darkMode,
         ),
         LocalViewModelStoreOwner provides viewModelStoreOwner,
     ) {
         val navController = rememberNavController()
         aniNavigator.setNavController(navController)
         ProvidePlatformCompositionLocalsForPreview {
-            AniTheme(isDark = isDark) {
+            AniTheme(darkModeOverride = darkMode) {
                 ProvideAniMotionCompositionLocals {
                     content()
                 }
@@ -135,9 +134,9 @@ internal expect inline fun ProvidePlatformCompositionLocalsForPreview(
     level = DeprecationLevel.ERROR,
 )
 inline fun ProvideFoundationCompositionLocalsForPreview(
-    isDark: Boolean = isSystemInDarkTheme(),
+    darkMode: DarkMode = DarkMode.AUTO,
     crossinline content: @Composable () -> Unit,
-) = ProvideCompositionLocalsForPreview(isDark, content)
+) = ProvideCompositionLocalsForPreview(darkMode, content)
 
 
 /**
@@ -146,11 +145,11 @@ inline fun ProvideFoundationCompositionLocalsForPreview(
 @TestOnly
 @Composable
 fun ProvideFoundationCompositionLocalsForTest(
-    isDark: Boolean = false,
+    darkMode: DarkMode = DarkMode.LIGHT,
     content: @Composable () -> Unit,
 ) {
     ProvideCompositionLocalsForPreview(
-        isDark,
+        darkMode,
     ) {
         content()
     }
