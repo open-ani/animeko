@@ -26,6 +26,7 @@ import me.him188.ani.app.data.repository.subject.SubjectSearchHistoryRepository
 import me.him188.ani.app.data.repository.subject.SubjectSearchRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.search.SubjectSearchQuery
+import me.him188.ani.app.domain.session.AniAuthStateProvider
 import me.him188.ani.app.ui.exploration.search.SearchPageState
 import me.him188.ani.app.ui.exploration.search.SubjectPreviewItemInfo
 import me.him188.ani.app.ui.foundation.AbstractViewModel
@@ -46,11 +47,13 @@ class SearchViewModel : AbstractViewModel(), KoinComponent {
     private val subjectSearchRepository: SubjectSearchRepository by inject()
     private val subjectDetailsStateFactory: SubjectDetailsStateFactory by inject()
     private val settingsRepository: SettingsRepository by inject()
+    private val authStateProvider: AniAuthStateProvider by inject()
 
     private val nsfwSettingFlow = settingsRepository.uiSettings.flow.map { it.searchSettings.nsfwMode }
 
     private val queryFlow = MutableStateFlow(SubjectSearchQuery(""))
 
+    val authState = authStateProvider.state
     val searchPageState: SearchPageState = SearchPageState(
         searchHistoryPager = searchHistoryRepository.getHistoryPager(),
         suggestionsPager = queryFlow.debounce(200.milliseconds).flatMapLatest {

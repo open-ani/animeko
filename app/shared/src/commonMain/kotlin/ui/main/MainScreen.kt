@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Search
@@ -26,8 +25,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
-import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteDefaults
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.runtime.Composable
@@ -39,10 +36,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.paging.compose.collectAsLazyPagingItems
-import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.session.AuthState
 import me.him188.ani.app.navigation.LocalNavigator
@@ -56,7 +51,6 @@ import me.him188.ani.app.ui.adaptive.navigation.AniNavigationSuiteLayout
 import me.him188.ani.app.ui.cache.CacheManagementScreen
 import me.him188.ani.app.ui.cache.CacheManagementViewModel
 import me.him188.ani.app.ui.exploration.ExplorationScreen
-import me.him188.ani.app.ui.exploration.search.SearchPage
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.ifThen
@@ -68,12 +62,9 @@ import me.him188.ani.app.ui.foundation.layout.desktopTitleBarPadding
 import me.him188.ani.app.ui.foundation.layout.isHeightAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.isTopRight
 import me.him188.ani.app.ui.foundation.layout.setRequestFullScreen
-import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
-import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.app.ui.subject.collection.CollectionPage
 import me.him188.ani.app.ui.subject.collection.UserCollectionsViewModel
-import me.him188.ani.app.ui.subject.details.SubjectDetailsScene
 import me.him188.ani.app.ui.update.TextButtonUpdateLogo
 import me.him188.ani.utils.platform.isAndroid
 
@@ -85,6 +76,7 @@ fun MainScreen(
     modifier: Modifier = Modifier,
     onNavigateToPage: (MainScreenPage) -> Unit,
     onNavigateToSettings: () -> Unit,
+    onNavigateToSearch: () -> Unit,
     navigationLayoutType: NavigationSuiteType = AniNavigationSuiteDefaults.calculateLayoutType(
         currentWindowAdaptiveInfo1(),
     ),
@@ -97,7 +89,15 @@ fun MainScreen(
         }
     }
 
-    MainScreenContent(page, authState, onNavigateToPage, onNavigateToSettings, modifier, navigationLayoutType)
+    MainScreenContent(
+        page,
+        authState,
+        onNavigateToPage,
+        onNavigateToSettings,
+        onNavigateToSearch,
+        modifier,
+        navigationLayoutType,
+    )
 }
 
 @Composable
@@ -106,6 +106,7 @@ private fun MainScreenContent(
     authState: AuthState,
     onNavigateToPage: (MainScreenPage) -> Unit,
     onNavigateToSettings: () -> Unit,
+    onNavigateToSearch: () -> Unit,
     modifier: Modifier = Modifier,
     navigationLayoutType: NavigationSuiteType = AniNavigationSuiteDefaults.calculateLayoutType(
         currentWindowAdaptiveInfo1(),
@@ -122,7 +123,7 @@ private fun MainScreenContent(
                 ),
                 navigationRailHeader = {
                     FloatingActionButton(
-                        { onNavigateToPage(MainScreenPage.Search) },
+                        onNavigateToSearch,
                         Modifier
                             .desktopTitleBarPadding()
                             .ifThen(currentWindowAdaptiveInfo1().windowSizeClass.isHeightAtLeastMedium) {
@@ -191,7 +192,7 @@ private fun MainScreenContent(
                         ExplorationScreen(
                             vm.explorationPageState,
                             authState,
-                            onSearch = { onNavigateToPage(MainScreenPage.Search) },
+                            onSearch = onNavigateToSearch,
                             onClickSettings = { navigator.navigateSettings() },
                             onClickLogin = { navigator.navigateBangumiAuthorize() },
                             onClickRetryRefreshSession = {
@@ -210,7 +211,7 @@ private fun MainScreenContent(
                             state = vm.state,
                             authState = authState,
                             items = vm.items.collectAsLazyPagingItems(),
-                            onClickSearch = { onNavigateToPage(MainScreenPage.Search) },
+                            onClickSearch = onNavigateToSearch,
                             onClickSettings = { navigator.navigateSettings() },
                             onClickLogin = { navigator.navigateBangumiAuthorize() },
                             onClickRetryRefreshSession = {
@@ -230,58 +231,6 @@ private fun MainScreenContent(
                         navigationIcon = { },
                         Modifier.fillMaxSize(),
                     )
-
-                    MainScreenPage.Search -> {
-                        val vm = viewModel { SearchViewModel() }
-                        val onBack = {
-                            onNavigateToPage(MainScreenPage.Exploration)
-                        }
-                        BackHandler(true, onBack)
-                        val listDetailNavigator = rememberListDetailPaneScaffoldNavigator()
-                        SearchPage(
-                            vm.searchPageState,
-                            detailContent = {
-                                val subjectDetailsState by vm.subjectDetailsStateLoader.state
-                                    .collectAsStateWithLifecycle(null)
-                                SubjectDetailsScene(
-                                    subjectDetailsState,
-                                    authState,
-                                    onPlay = { episodeId ->
-                                        val current = subjectDetailsState
-                                        if (current != null) {
-                                            navigator.navigateEpisodeDetails(current.subjectId, episodeId)
-                                        }
-                                    },
-                                    onLoadErrorRetry = { vm.reloadCurrentSubjectDetails() },
-                                    navigationIcon = {
-                                        // 只有在单面板模式下才显示返回按钮
-                                        if (listDetailLayoutParameters.isSinglePane) {
-                                            BackNavigationIconButton(
-                                                onNavigateBack = {
-                                                    coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
-                                                        listDetailNavigator.navigateBack()
-                                                    }
-                                                },
-                                            )
-                                        }
-                                    },
-                                )
-                            },
-                            Modifier.fillMaxSize(),
-                            onSelect = { index, item ->
-                                vm.searchPageState.selectedItemIndex = index
-                                vm.viewSubjectDetails(item)
-                                coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
-                                    listDetailNavigator.navigateTo(ListDetailPaneScaffoldRole.Detail)
-                                }
-                            },
-                            navigator = listDetailNavigator,
-                            contentWindowInsets = WindowInsets.safeDrawing, // 不包含 macos 标题栏, 因为左侧有 navigation rail
-                            navigationIcon = {
-                                BackNavigationIconButton(onBack)
-                            },
-                        )
-                    }
                 }
             }
         }

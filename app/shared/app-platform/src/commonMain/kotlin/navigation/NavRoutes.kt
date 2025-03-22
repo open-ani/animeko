@@ -11,7 +11,6 @@ package me.him188.ani.app.navigation
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.DownloadDone
-import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.TravelExplore
 import androidx.compose.runtime.Immutable
@@ -37,7 +36,7 @@ sealed class NavRoutes {
          */
         val popUpTargetInclusive: NavRoutes? = null,
     ) : NavRoutes()
-    
+
     @Serializable
     data class OnboardingComplete(
         /**
@@ -64,6 +63,9 @@ sealed class NavRoutes {
          */
         val tab: SettingsTab? = null,
     ) : NavRoutes()
+
+    @Serializable
+    data object SubjectSearch : NavRoutes()
 
     @Serializable
     data class SubjectDetail(
@@ -124,11 +126,11 @@ enum class MainScreenPage {
     Exploration,
     Collection,
     CacheManagement,
-    Search, ;
+    ;
 
     companion object {
         @Stable
-        val visibleEntries by lazy(LazyThreadSafetyMode.PUBLICATION) { entries - Search }
+        val visibleEntries get() = entries
 
         @Stable
         val NavType by lazy(LazyThreadSafetyMode.PUBLICATION) {
@@ -170,7 +172,6 @@ fun MainScreenPage.getIcon() = when (this) {
     MainScreenPage.Exploration -> Icons.Rounded.TravelExplore
     MainScreenPage.Collection -> Icons.Rounded.Star
     MainScreenPage.CacheManagement -> Icons.Rounded.DownloadDone
-    MainScreenPage.Search -> Icons.Rounded.Search
 }
 
 @Stable
@@ -178,5 +179,4 @@ fun MainScreenPage.getText(): String = when (this) {
     MainScreenPage.Exploration -> "探索"
     MainScreenPage.Collection -> "追番"
     MainScreenPage.CacheManagement -> "缓存"
-    MainScreenPage.Search -> "搜索"
 }

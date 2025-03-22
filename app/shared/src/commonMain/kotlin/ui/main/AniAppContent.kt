@@ -82,6 +82,7 @@ import me.him188.ani.app.ui.onboarding.WelcomeScreen
 import me.him188.ani.app.ui.profile.auth.AniContactList
 import me.him188.ani.app.ui.profile.auth.BangumiAuthorizePage
 import me.him188.ani.app.ui.profile.auth.BangumiAuthorizeViewModel
+import me.him188.ani.app.ui.search.SearchScreen
 import me.him188.ani.app.ui.settings.SettingsScreen
 import me.him188.ani.app.ui.settings.SettingsViewModel
 import me.him188.ani.app.ui.settings.mediasource.rss.EditRssMediaSourceScreen
@@ -265,10 +266,27 @@ private fun AniAppContentImpl(
                             authState = authState,
                             onNavigateToPage = { currentPage = it },
                             onNavigateToSettings = { aniNavigator.navigateSettings() },
+                            onNavigateToSearch = { aniNavigator.navigateSubjectSearch() },
                             navigationLayoutType = navigationLayoutType,
                         )
                     }
                 }
+            }
+            composable<NavRoutes.SubjectSearch>(
+                enterTransition = enterTransition,
+                exitTransition = exitTransition,
+                popEnterTransition = popEnterTransition,
+                popExitTransition = popExitTransition,
+            ) {
+                val navigator = LocalNavigator.current
+                SearchScreen(
+                    onNavigateBack = {
+                        aniNavigator.popBackStack()
+                    },
+                    onNavigateToEpisodeDetails = { subjectId, episodeId ->
+                        navigator.navigateEpisodeDetails(subjectId, episodeId)
+                    },
+                )
             }
             composable<NavRoutes.BangumiAuthorize>(
                 enterTransition = enterTransition,

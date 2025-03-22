@@ -141,6 +141,10 @@ interface AniNavigator {
         currentNavigator.navigate(NavRoutes.Settings(tab))
     }
 
+    fun navigateSubjectSearch() {
+        currentNavigator.navigate(NavRoutes.SubjectSearch)
+    }
+
     fun navigateEditMediaSource(
         factoryId: FactoryId,
         mediaSourceInstanceId: String,
