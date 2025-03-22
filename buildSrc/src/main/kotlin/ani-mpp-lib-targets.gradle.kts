@@ -12,6 +12,7 @@ import com.android.build.api.dsl.LibraryExtension
 import org.jetbrains.compose.ComposeExtension
 import org.jetbrains.compose.ComposePlugin
 import org.jetbrains.compose.ExperimentalComposeLibrary
+import org.jetbrains.kotlin.compose.compiler.gradle.ComposeFeatureFlag
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSetTree
@@ -29,6 +30,9 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
 
 val android = extensions.findByType(LibraryExtension::class)
 val composeExtension = extensions.findByType(ComposeExtension::class)
+val composeCompilerExtension =
+    extensions.findByType(org.jetbrains.kotlin.compose.compiler.gradle.ComposeCompilerGradlePluginExtension::class)
+val enableHotReload = getLocalProperty("ani.compose.hot.reload")?.toBooleanStrict() != false
 
 configure<KotlinMultiplatformExtension> {
     /**
@@ -99,7 +103,7 @@ configure<KotlinMultiplatformExtension> {
             api(compose.foundation)
             api(compose.animation)
             api(compose.ui)
-            
+
 //            api(compose.material3)
             // workaround in CMP 1.8.0-alpha04. Remove in the future.
             api("org.jetbrains.compose.material3:material3") {
@@ -113,7 +117,7 @@ configure<KotlinMultiplatformExtension> {
                     strictly("1.4.0-alpha03")
                 }
             }
-            
+
             api(compose.materialIconsExtended)
             api(compose.runtime)
         }
@@ -166,6 +170,13 @@ configure<KotlinMultiplatformExtension> {
             androidExtension.sourceSets["main"].aidl.srcDirs(androidMainSourceSetDir.resolve("aidl"))
             // add more sourceSet dirs if necessary.
         }
+    }
+}
+
+if (enableHotReload && composeCompilerExtension != null) {
+    composeCompilerExtension.apply {
+        // Required by Compose hot reload
+        featureFlags.add(ComposeFeatureFlag.OptimizeNonSkippingGroups)
     }
 }
 

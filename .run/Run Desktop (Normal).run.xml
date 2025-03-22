@@ -8,7 +8,7 @@
   -->
 
 <component name="ProjectRunConfigurationManager">
-    <configuration default="false" name="Run Desktop" type="JetRunConfigurationType">
+    <configuration default="false" name="Run Desktop (Normal)" type="JetRunConfigurationType">
         <option name="MAIN_CLASS_NAME" value="me.him188.ani.app.desktop.AniDesktop" />
         <module name="animeko.app.desktop.main" />
         <shortenClasspath name="ARGS_FILE" />

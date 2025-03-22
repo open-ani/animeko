@@ -30,6 +30,7 @@ androidx-window = { strictly = "1.4.0-beta02" }
 
 # https://github.com/JetBrains/compose-multiplatform/releases
 compose-multiplatform = "1.8.0-alpha04"
+compose-hot-reload = "1.0.0-alpha03" # https://github.com/JetBrains/compose-hot-reload/releases
 
 # JetBrains compose libraries. Follow the release notes for main Compose Multiplatform for versoins.
 compose-lifecycle = "2.9.0-alpha04"
@@ -76,6 +77,9 @@ sentry-compose-android = "8.3.0" # https://docs.sentry.io/platforms/android/inte
 #gitlive-firebase = "2.1.0"
 posthog-android = "3.11.3"
 posthog-java = "1.2.0"
+
+[plugins]
+compose-hot-reload = { id = "org.jetbrains.compose.hot-reload", version.ref = "compose-hot-reload" }
 
 [libraries]
 # Gradle plugins

@@ -31,6 +31,7 @@ plugins {
     id("com.strumenta.antlr-kotlin") version libs.versions.antlr.kotlin apply false
     id("de.mannodermaus.android-junit5") version "1.11.2.0" apply false
     id("io.sentry.kotlin.multiplatform.gradle") version libs.versions.sentry.kmp apply false
+    alias(libs.plugins.compose.hot.reload) apply false
     kotlin("native.cocoapods") apply false
     idea
 }

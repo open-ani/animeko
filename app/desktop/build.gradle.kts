@@ -10,6 +10,7 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.compose.desktop.application.tasks.AbstractJLinkTask
 import org.jetbrains.compose.desktop.application.tasks.AbstractJPackageTask
+import org.jetbrains.compose.reload.ComposeHotRun
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
 import java.util.UUID
 import java.util.zip.ZipEntry
@@ -22,6 +23,10 @@ plugins {
     kotlin("plugin.serialization")
     id("org.jetbrains.kotlinx.atomicfu")
     idea
+}
+
+if (getLocalProperty("ani.compose.hot.reload")?.toBooleanStrict() != false) {
+    apply(plugin = libs.plugins.compose.hot.reload.get().pluginId)
 }
 
 dependencies {
@@ -314,4 +319,17 @@ idea {
         excludeDirs.add(file("appResources/windows-x64/lib"))
         excludeDirs.add(file("test-sandbox"))
     }
+}
+
+tasks.register<ComposeHotRun>("runHot") {
+    mainClass.set("me.him188.ani.app.desktop.AniDesktop")
+    this.jvmArgs(
+        """
+            -XX:+UseZGC
+            -Dorg.slf4j.simpleLogger.defaultLogLevel=TRACE
+            -Dkotlinx.coroutines.debug=on
+            -Dani.debug=true
+            -Xmx256m
+        """.trimIndent().lines(),
+    )
 }

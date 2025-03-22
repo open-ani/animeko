@@ -122,6 +122,7 @@ import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.platform.isWindows
+import org.jetbrains.compose.reload.DevelopmentEntryPoint
 import org.jetbrains.compose.resources.painterResource
 import org.koin.core.context.startKoin
 import org.koin.dsl.module
@@ -356,7 +357,7 @@ object AniDesktop {
                 .proxy.first()
 
             logger.info { "[JCEF init] Calling AniCefApp.initialize" }
-            
+
             AniCefApp.initialize(
                 logDir = dataDir.toFile().resolve("logs"),
                 cacheDir = cacheDir.toFile().resolve("jcef-cache"),
@@ -428,53 +429,57 @@ object AniDesktop {
                 title = "Ani",
                 icon = painterResource(Res.drawable.a_round),
             ) {
-                val lifecycleOwner = LocalLifecycleOwner.current
-                val backPressedDispatcherOwner = remember {
-                    SkikoOnBackPressedDispatcherOwner(navigator, lifecycleOwner)
-                }
-
-                SideEffect {
-                    // 防止闪眼
-                    window.background = java.awt.Color.BLACK
-                    window.contentPane.background = java.awt.Color.BLACK
-
-                    logger.info {
-                        "renderApi: " + this.window.renderApi
+                // In dev mode this enables hot reload,
+                // In release mode this just executes the content
+                DevelopmentEntryPoint {
+                    val lifecycleOwner = LocalLifecycleOwner.current
+                    val backPressedDispatcherOwner = remember {
+                        SkikoOnBackPressedDispatcherOwner(navigator, lifecycleOwner)
                     }
-                }
 
-                val systemTheme by systemThemeDetector.current.collectAsStateWithLifecycle()
-                val platform = LocalPlatform.current
-                // We need layout hit test owner to do hit test on windows.
-                val layoutHitTestOwner = if (platform.isWindows()) {
-                    rememberLayoutHitTestOwner()
-                } else {
-                    null
-                }
-                CompositionLocalProvider(
-                    LocalContext provides context,
-                    LocalWindowState provides windowState,
-                    LocalPlatformWindow provides remember(window.windowHandle, this, platform, windowState) {
-                        PlatformWindow(
-                            windowHandle = window.windowHandle,
-                            windowScope = this,
-                            platform = platform,
-                            windowState = windowState,
-                            layoutHitTestOwner = layoutHitTestOwner,
-                        )
-                    },
-                    LocalOnBackPressedDispatcherOwner provides backPressedDispatcherOwner,
-                    @OptIn(InternalComposeUiApi::class)
-                    LocalSystemTheme provides systemTheme,
-                ) {
-                    HandleWindowsWindowProc()
-                    WindowFrame(
-                        windowState = windowState,
-                        onCloseRequest = { exitApplication() },
+                    SideEffect {
+                        // 防止闪眼
+                        window.background = java.awt.Color.BLACK
+                        window.contentPane.background = java.awt.Color.BLACK
+
+                        logger.info {
+                            "renderApi: " + this.window.renderApi
+                        }
+                    }
+
+                    val systemTheme by systemThemeDetector.current.collectAsStateWithLifecycle()
+                    val platform = LocalPlatform.current
+                    // We need layout hit test owner to do hit test on windows.
+                    val layoutHitTestOwner = if (platform.isWindows()) {
+                        rememberLayoutHitTestOwner()
+                    } else {
+                        null
+                    }
+                    CompositionLocalProvider(
+                        LocalContext provides context,
+                        LocalWindowState provides windowState,
+                        LocalPlatformWindow provides remember(window.windowHandle, this, platform, windowState) {
+                            PlatformWindow(
+                                windowHandle = window.windowHandle,
+                                windowScope = this,
+                                platform = platform,
+                                windowState = windowState,
+                                layoutHitTestOwner = layoutHitTestOwner,
+                            )
+                        },
+                        LocalOnBackPressedDispatcherOwner provides backPressedDispatcherOwner,
+                        @OptIn(InternalComposeUiApi::class)
+                        LocalSystemTheme provides systemTheme,
                     ) {
-                        MainWindowContent(navigator)
-                    }
+                        HandleWindowsWindowProc()
+                        WindowFrame(
+                            windowState = windowState,
+                            onCloseRequest = { exitApplication() },
+                        ) {
+                            MainWindowContent(navigator)
+                        }
 
+                    }
                 }
             }
 
