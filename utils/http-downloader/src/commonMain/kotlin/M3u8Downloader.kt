@@ -241,6 +241,9 @@ enum class DownloadStatus {
     /** Actively downloading segments */
     DOWNLOADING,
 
+    /** Merging all downloaded segments into the final file */
+    MERGING,
+
     /** Paused by user */
     PAUSED,
 
@@ -278,7 +281,10 @@ data class DownloadState(
     val downloadedBytes: Long,
     val timestamp: Long,
     val status: DownloadStatus,
-    val error: DownloadError? = null
+    val error: DownloadError? = null,
+
+    // Add this to remember where segment files are stored:
+    val segmentCacheDir: String? = null,
 )
 
 /**
@@ -296,7 +302,7 @@ data class SegmentInfo(
     val url: String,
     val isDownloaded: Boolean,
     val byteSize: Long = -1, // -1 for unknown size
-    val tempFilePath: String? = null
+    val tempFilePath: String,
 )
 
 /**
