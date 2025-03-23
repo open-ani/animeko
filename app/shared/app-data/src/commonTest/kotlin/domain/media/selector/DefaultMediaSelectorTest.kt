@@ -21,6 +21,7 @@ import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectSeriesInfo
 import me.him188.ani.datasources.api.DefaultMedia
 import me.him188.ani.datasources.api.EpisodeSort
+import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.MediaExtraFiles
 import me.him188.ani.datasources.api.Subtitle
 import me.him188.ani.datasources.api.source.MediaSourceKind
@@ -633,6 +634,54 @@ class DefaultMediaSelectorTest : AbstractDefaultMediaSelectorTest() {
             target,
             selector.trySelectDefault(),
         )
+    }
+
+
+    // #1827
+    @Test
+    fun `do not exclude exactly matched by FromSequelSeason if the subject has OVA series`() = runTest {
+        var target: Media
+        mediaSelectorContext.value = createMediaSelectorContextFromEmpty(
+            subjectCompleted = true,
+            subjectSeriesInfo = SubjectSeriesInfo(
+                seasonSort = 2,
+                sequelSubjectNames = setOf(
+                    "暗杀教室 Episode:0 相遇的时间",
+                    "暗殺教室 Episode:0 出会いの時間",
+                    "暗杀教室 第0话",
+                    "暗杀教室 OVA",
+                    "暗杀教室 第二季",
+                    "暗殺教室 第2期",
+                    "暗杀教室 第二季 课外授课篇",
+                    "暗殺教室 第2期 課外授業編",
+                ),
+                seriesSubjectNamesWithoutSelf = setOf(
+                    "暗杀教室 第二季",
+                    "暗殺教室 第2期",
+                ),
+            ),
+            subjectInfo = SubjectInfo.Empty.copy(name = "暗杀教室", nameCn = "暗杀教室"),
+        )
+        mediaSelectorSettings.value = MediaSelectorSettings.Default
+        savedUserPreference.value = DEFAULT_PREFERENCE
+        savedDefaultPreference.value = DEFAULT_PREFERENCE
+
+        addMedia(
+            media(
+                // kept
+                alliance = "咕咕新线(优先使用)",
+                episodeRange = EpisodeRange.single("1"),
+                kind = WEB,
+                subjectName = "暗杀教室",
+                episodeName = "第01集",
+                subtitleLanguages = listOf(SubtitleLanguage.ChineseSimplified.id),
+                originalTitle = "暗杀教室 第01集",
+            ).also { target = it },
+        )
+
+        assertEquals(1, selector.preferredCandidates.first().size)
+        assertEquals(listOf(null), selector.preferredCandidates.first().map { it.exclusionReason })
+        assertEquals(target, selector.trySelectDefault())
     }
 
     @Test

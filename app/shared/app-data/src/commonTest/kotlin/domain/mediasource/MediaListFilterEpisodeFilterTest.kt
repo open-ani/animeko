@@ -76,7 +76,7 @@ class MediaListFilterEpisodeFilterTest {
             episodeName = "OVA",
             mediaEpisodeSort = null,
             mediaTitle = "来自深渊 OVA",
-            expected = false, // TODO: 2025/3/7 should be true 
+            expected = true,
         )
         case(
             "match episode name - control",

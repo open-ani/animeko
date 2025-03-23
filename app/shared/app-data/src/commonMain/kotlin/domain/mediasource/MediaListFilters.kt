@@ -130,7 +130,7 @@ object MediaListFilters {
      * 我们定义几类特殊字符(串):
      *
      * 1. 无条件保留的特殊字符. [keepWords] 中的词总是会被保留.
-     * 2. 无条件删除的特殊字符. 例如 "电影", "剧场版", "OVA" 等, 这些字符总是会被删除.
+     * 2. 无条件删除的特殊字符. 例如 "电影", "剧场版" 等, 这些字符总是会被删除.
      *
      * 基于经过上面两类处理后的字符串, 我们会进一步处理:
      * 1. 条件删除 ([charsToDelete]) 和替换为空格 ([charsToReplaceWithWhitespace]).
@@ -158,8 +158,8 @@ object MediaListFilters {
             deleteInfix("电影")
             deletePrefix("剧场版")
             deleteInfix("剧场版")
-            deletePrefix("OVA")
-            deleteInfix("OVA")
+            // deletePrefix("OVA")
+            // deleteInfix("OVA")
         }
 
         // 3. 基于位置要求，处理特殊字符
