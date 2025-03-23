@@ -29,7 +29,7 @@ class DefaultM3u8ParserTest {
             http://example.com/low.m3u8
         """.trimIndent()
 
-        val playlist = parser.parse(content)
+        val playlist = parser.parse(content, "http://example.com")
 
         assertTrue(playlist is M3u8Playlist.MasterPlaylist, "Should parse as MasterPlaylist")
 
@@ -55,7 +55,7 @@ class DefaultM3u8ParserTest {
             http://example.com/high.m3u8
         """.trimIndent()
 
-        val playlist = parser.parse(content)
+        val playlist = parser.parse(content, "http://example.com")
 
         assertTrue(playlist is M3u8Playlist.MasterPlaylist, "Should parse as MasterPlaylist")
 
@@ -93,7 +93,7 @@ class DefaultM3u8ParserTest {
             #EXT-X-ENDLIST
         """.trimIndent()
 
-        val playlist = parser.parse(content)
+        val playlist = parser.parse(content, "http://example.com")
 
         assertTrue(playlist is M3u8Playlist.MediaPlaylist, "Should parse as MediaPlaylist")
 
@@ -128,7 +128,7 @@ class DefaultM3u8ParserTest {
             #EXT-X-ENDLIST
         """.trimIndent()
 
-        val playlist = parser.parse(content)
+        val playlist = parser.parse(content, "http://example.com")
 
         assertTrue(playlist is M3u8Playlist.MediaPlaylist)
 
@@ -173,7 +173,7 @@ class DefaultM3u8ParserTest {
             #EXT-X-ENDLIST
         """.trimIndent()
 
-        val playlist = parser.parse(content)
+        val playlist = parser.parse(content, "http://example.com")
 
         assertTrue(playlist is M3u8Playlist.MediaPlaylist)
 
@@ -185,8 +185,7 @@ class DefaultM3u8ParserTest {
         // Check the encryption key was recorded at the segment level or in the segment's keys map
         val segment0 = playlist.segments[0]
         assertEquals(8.0f, segment0.duration)
-        // Implementation-dependent: some parsers store key info in `tags`, others in `keys`
-        // Make sure you test whichever approach DefaultM3u8Parser uses
+        // Key info is in segment0.keys or segment0.tags
         assertTrue(segment0.keys.isNotEmpty() || segment0.tags.isNotEmpty())
     }
 
@@ -199,7 +198,7 @@ class DefaultM3u8ParserTest {
             http://example.com/only.m3u8
         """.trimIndent()
 
-        val playlist = parser.parse(content)
+        val playlist = parser.parse(content, "http://example.com")
         assertTrue(playlist is M3u8Playlist.MasterPlaylist)
 
         // Depending on parser default logic (often 3 or 1):
@@ -219,7 +218,7 @@ class DefaultM3u8ParserTest {
             fileSequence1.ts
         """.trimIndent()
 
-        val playlist = parser.parse(content)
+        val playlist = parser.parse(content, "http://example.com")
         assertTrue(playlist is M3u8Playlist.MediaPlaylist)
 
         // The parser default version is 3
@@ -237,14 +236,16 @@ class DefaultM3u8ParserTest {
     @Test
     fun `parse - invalid input throws exception`() {
         assertFailsWith<M3uFormatException> {
-            parser.parse("")
+            parser.parse("", "http://example.com")
         }
         assertFailsWith<M3uFormatException> {
-            parser.parse("#EXT-X-STREAM-INF:BANDWIDTH=1000000\nhttp://example.com/video.m3u8") // no #EXTM3U
+            // no #EXTM3U
+            parser.parse("#EXT-X-STREAM-INF:BANDWIDTH=1000000\nhttp://example.com/video.m3u8", "http://example.com")
         }
 
         // TODO: This should throw
-        parser.parse("#EXTM3U\n#EXTX-STREAM-INF:BANDWIDTH=1000000\nhttp://example.com/video.m3u8") // Typo in the tag #EXTX
+        parser.parse("#EXTM3U\n#EXTX-STREAM-INF:BANDWIDTH=1000000\nhttp://example.com/video.m3u8", "http://example.com")
+        // Typo in the tag #EXTX
     }
 
     @Test
@@ -258,7 +259,7 @@ class DefaultM3u8ParserTest {
             http://example.com/segmentNoOffset.ts
         """.trimIndent()
 
-        val playlist = parser.parse(content)
+        val playlist = parser.parse(content, "http://example.com")
         assertTrue(playlist is M3u8Playlist.MediaPlaylist)
         assertEquals(1, playlist.segments.size)
 

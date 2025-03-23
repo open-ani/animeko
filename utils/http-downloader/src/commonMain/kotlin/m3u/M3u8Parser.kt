@@ -9,6 +9,8 @@
 
 package me.him188.ani.utils.httpdownloader.m3u
 
+import me.him188.ani.utils.ktor.UrlHelpers
+
 /**
  * Interface for parsing m3u8 playlists
  */
@@ -16,10 +18,11 @@ interface M3u8Parser {
     /**
      * Parse m3u8 content from a string
      * @param content The m3u8 content as a string
+     * @param baseUrl The base URL to resolve relative paths
      * @return An M3u8Playlist object representing the parsed content
      */
     @Throws(M3uFormatException::class)
-    fun parse(content: String): M3u8Playlist
+    fun parse(content: String, baseUrl: String): M3u8Playlist
 }
 
 class M3uFormatException(override val message: String?) : RuntimeException()
@@ -79,6 +82,9 @@ data class MediaSegment(
  * Represents a variant stream in a master playlist
  */
 data class VariantStream(
+    /**
+     * Absolute uri, i.e., may start with `https://`.
+     */
     val uri: String,
     val bandwidth: Int,
     val averageBandwidth: Int? = null,
@@ -96,7 +102,7 @@ data class VariantStream(
  * Default implementation of M3u8Parser
  */
 object DefaultM3u8Parser : M3u8Parser {
-    override fun parse(content: String): M3u8Playlist {
+    override fun parse(content: String, baseUrl: String): M3u8Playlist {
         val lines = content.lines().filter { it.isNotBlank() }
         if (lines.isEmpty() || !lines[0].trimStart().startsWith("#EXTM3U")) {
             throw M3uFormatException("Invalid M3U8 format, must start with #EXTM3U")
@@ -199,9 +205,10 @@ object DefaultM3u8Parser : M3u8Parser {
 
                 if (currentVariantAttributes.isNotEmpty()) {
                     // This is a variant stream URI
+                    val absoluteUri = UrlHelpers.computeAbsoluteUrl(baseUrl, uri)
                     variants.add(
                         VariantStream(
-                            uri = uri,
+                            uri = absoluteUri,
                             bandwidth = currentVariantAttributes["BANDWIDTH"]?.toIntOrNull() ?: 0,
                             averageBandwidth = currentVariantAttributes["AVERAGE-BANDWIDTH"]?.toIntOrNull(),
                             codecs = currentVariantAttributes["CODECS"]?.trim('"'),
@@ -218,10 +225,11 @@ object DefaultM3u8Parser : M3u8Parser {
                     currentVariantAttributes.clear()
                 } else if (currentSegmentDuration != null) {
                     // This is a media segment URI
+                    val absoluteUri = UrlHelpers.computeAbsoluteUrl(baseUrl, uri)
                     segments.add(
                         MediaSegment(
                             duration = currentSegmentDuration,
-                            uri = uri,
+                            uri = absoluteUri,
                             title = currentSegmentTitle,
                             isDiscontinuity = currentSegmentDiscontinuity,
                             byteRange = currentSegmentByteRange,
