@@ -10,10 +10,10 @@
 package me.him188.ani.utils.httpdownloader
 
 import io.ktor.client.HttpClient
-import io.ktor.client.call.body
-import io.ktor.client.request.get
 import io.ktor.client.request.header
+import io.ktor.client.request.prepareGet
 import io.ktor.client.statement.HttpResponse
+import io.ktor.client.statement.bodyAsChannel
 import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
@@ -36,6 +36,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
+import kotlinx.io.buffered
 import kotlinx.io.files.FileSystem
 import kotlinx.io.files.Path
 import me.him188.ani.utils.coroutines.IO_
@@ -48,6 +49,7 @@ import me.him188.ani.utils.httpdownloader.DownloadStatus.PAUSED
 import me.him188.ani.utils.httpdownloader.m3u.DefaultM3u8Parser
 import me.him188.ani.utils.httpdownloader.m3u.M3u8Parser
 import me.him188.ani.utils.httpdownloader.m3u.M3u8Playlist
+import me.him188.ani.utils.io.resolve
 
 /**
  * A simple implementation of [M3u8Downloader] that uses Ktor and coroutines.
@@ -435,10 +437,9 @@ class KtorM3u8Downloader(
     // ------------------------------------------------------------------------
     // Internal helpers
     // ------------------------------------------------------------------------
-
     /**
      * Downloads segments, respecting [DownloadOptions.maxConcurrentSegments].
-     * Updates progress as it goes. Simplified for demonstration.
+     * Updates progress as it goes.
      */
     private suspend fun downloadSegments(downloadId: DownloadId, options: DownloadOptions) {
         val stateSnapshot = getState(downloadId) ?: return
@@ -454,11 +455,7 @@ class KtorM3u8Downloader(
             val deferred = scope.async {
                 semaphore.acquire()
                 try {
-                    // Download the segment (stub)
-                    val segmentBytes = downloadSegment(segmentInfo.url, options)
-                    val newSize = segmentBytes.size.toLong()
-
-                    // Update segment info
+                    val newSize = downloadSegment(segmentInfo.url, options, segmentInfo.index, downloadId)
                     markSegmentDownloaded(downloadId, segmentInfo.index, newSize)
                 } finally {
                     semaphore.release()
@@ -471,19 +468,48 @@ class KtorM3u8Downloader(
         segmentDownloadJobs.awaitAll()
     }
 
-    private suspend fun downloadSegment(url: String, options: DownloadOptions): ByteArray {
-        // We set timeouts in the request if needed, etc.
-        return httpGet(url, options).body()
+    /**
+     * Download a single segment in a streaming fashion so we do NOT hold the entire segment in memory.
+     *
+     * @return the number of bytes actually downloaded.
+     */
+    private suspend fun downloadSegment(
+        url: String,
+        options: DownloadOptions,
+        segmentIndex: Int,
+        downloadId: DownloadId
+    ): Long {
+        val response = httpGet(url, options)
+        val channel = response.bodyAsChannel()
+
+        // We’ll store each segment as a separate file, e.g. /path/to/output/0.ts, 1.ts, 2.ts, etc.
+        val state = getState(downloadId) ?: error("No state found for downloadId=$downloadId")
+        val outputDir = Path(state.outputPath)
+        val segmentFile = outputDir.resolve("$segmentIndex.ts")
+
+        var totalBytes = 0L
+
+        fileSystem.sink(segmentFile).buffered().use { sink ->
+            val ktorBuffer = ByteArray(8 * 1024)
+            while (true) {
+                val bytesRead = channel.readAvailable(ktorBuffer, 0, ktorBuffer.size)
+                if (bytesRead == -1) break
+                sink.write(ktorBuffer, startIndex = 0, endIndex = bytesRead)
+                totalBytes += bytesRead
+            }
+        }
+
+        return totalBytes
     }
 
     private suspend fun httpGet(
         url: String,
         options: DownloadOptions
-    ): HttpResponse = client.get(url) {
+    ): HttpResponse = client.prepareGet(url) {
         options.headers.forEach { (key, value) ->
             header(key, value)
         }
-    }
+    }.body()
 
     /**
      * Marks a specific segment as downloaded, updates [downloadedBytes], and emits progress.
