@@ -38,6 +38,8 @@ import androidx.compose.ui.window.application
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.sun.jna.platform.win32.Advapi32Util
+import com.sun.jna.platform.win32.WinReg
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
@@ -162,6 +164,10 @@ object AniDesktop {
             width = if (desiredWidth > screenSize.width) screenSize.width else desiredWidth,
             height = if (desiredHeight > screenSize.height) screenSize.height else desiredHeight,
         )
+    }
+
+    private fun isRunningUnderWine(): Boolean {
+        return Advapi32Util.registryKeyExists(WinReg.HKEY_LOCAL_MACHINE, "Software\\Wine")
     }
 
     @JvmStatic
@@ -471,14 +477,17 @@ object AniDesktop {
                         @OptIn(InternalComposeUiApi::class)
                         LocalSystemTheme provides systemTheme,
                     ) {
-                        HandleWindowsWindowProc()
-                        WindowFrame(
-                            windowState = windowState,
-                            onCloseRequest = { exitApplication() },
-                        ) {
+                        if (isRunningUnderWine()) {
                             MainWindowContent(navigator)
+                        } else {
+                            HandleWindowsWindowProc()
+                            WindowFrame(
+                                windowState = windowState,
+                                onCloseRequest = { exitApplication() },
+                            ) {
+                                MainWindowContent(navigator)
+                            }
                         }
-
                     }
                 }
             }
