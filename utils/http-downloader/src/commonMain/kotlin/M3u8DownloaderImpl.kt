@@ -57,6 +57,7 @@ import me.him188.ani.utils.httpdownloader.m3u.M3u8Playlist
  */
 class KtorM3u8Downloader(
     private val client: HttpClient,
+    private val fileSystem: FileSystem,
     private val computeDispatcher: CoroutineDispatcher = Dispatchers.Default,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO_,
     val clock: Clock = Clock.System,
@@ -103,7 +104,6 @@ class KtorM3u8Downloader(
     override suspend fun download(
         url: String,
         outputPath: Path,
-        fileSystem: FileSystem,
         options: DownloadOptions
     ): DownloadId {
         val downloadId = DownloadId(value = generateDownloadId(url))
@@ -117,7 +117,7 @@ class KtorM3u8Downloader(
     override suspend fun downloadWithId(
         downloadId: DownloadId,
         url: String,
-        outputPath: String,
+        outputPath: Path,
         options: DownloadOptions
     ) {
         stateMutex.withLock {
@@ -131,7 +131,7 @@ class KtorM3u8Downloader(
         val initialState = DownloadState(
             downloadId = downloadId,
             url = url,
-            outputPath = outputPath,
+            outputPath = outputPath.toString(),
             segments = emptyList(),  // Will be updated after M3U8 parse
             totalSegments = 0,
             downloadedBytes = 0L,

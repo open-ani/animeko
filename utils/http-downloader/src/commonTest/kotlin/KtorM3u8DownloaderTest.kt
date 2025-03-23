@@ -144,6 +144,7 @@ class KtorM3u8DownloaderTest {
 
         downloader = KtorM3u8Downloader(
             client = mockClient,
+            fileSystem,
             ioDispatcher = testDispatcher,
             computeDispatcher = testDispatcher,
             clock = mockClock,
@@ -200,7 +201,7 @@ class KtorM3u8DownloaderTest {
         downloader.downloadWithId(
             downloadId = customId,
             url = "https://example.com/master.m3u8",
-            outputPath = "$tempDir/custom-output.ts",
+            outputPath = Path("$tempDir/custom-output.ts"),
         )
 
         // Advance time
@@ -392,7 +393,6 @@ class KtorM3u8DownloaderTest {
             downloader.download(
                 url = "https://example.com/timeout.m3u8",
                 outputPath = "$tempDir/timeout.ts",
-                fileSystem = SystemFileSystem,
                 options = options,
             )
 
@@ -462,6 +462,7 @@ class KtorM3u8DownloaderTest {
             ioDispatcher = testDispatcher,
             computeDispatcher = testDispatcher,
             clock = mockClock,
+            fileSystem = fileSystem,
         )
 
         // Load all states
@@ -643,3 +644,9 @@ class KtorM3u8DownloaderTest {
         }
     }
 }
+
+private suspend inline fun M3u8Downloader.download(
+    url: String,
+    outputPath: String,
+    options: DownloadOptions = DownloadOptions()
+): DownloadId = download(url, Path(outputPath), options)
