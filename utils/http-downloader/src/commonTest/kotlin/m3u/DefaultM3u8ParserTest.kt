@@ -152,7 +152,9 @@ class DefaultM3u8ParserTest {
         assertEquals("Segment 51", secondSegment.title)
         // The second segment follows a discontinuity tag
         assertTrue(secondSegment.isDiscontinuity)
-        assertEquals("75232@0", secondSegment.byteRange)
+        // Now that byteRange is a structured type:
+        assertEquals(75232, secondSegment.byteRange?.length)
+        assertEquals(0, secondSegment.byteRange?.offset)
 
         assertTrue(playlist.isEndlist)
     }
@@ -201,7 +203,6 @@ class DefaultM3u8ParserTest {
         assertTrue(playlist is M3u8Playlist.MasterPlaylist)
 
         // Depending on parser default logic (often 3 or 1):
-        // Adjust the expected version to match your parser's default
         assertEquals(3, playlist.version)
         assertEquals(1, playlist.variants.size)
     }
@@ -221,13 +222,13 @@ class DefaultM3u8ParserTest {
         val playlist = parser.parse(content)
         assertTrue(playlist is M3u8Playlist.MediaPlaylist)
 
-        // Might be 3 or 1 based on how your parser implements defaults
+        // The parser default version is 3
         assertEquals(3, playlist.version)
-        // If no #EXT-X-TARGETDURATION is found, parser may return null
+        // If no #EXT-X-TARGETDURATION is found, parser returns null
         assertNull(playlist.targetDuration)
-        // If no #EXT-X-MEDIA-SEQUENCE is found, parser may default to 0
+        // If no #EXT-X-MEDIA-SEQUENCE is found, parser defaults to 0
         assertEquals(0, playlist.mediaSequence)
-        // The playlist does not end with #EXT-X-ENDLIST, so isEndlist might be false
+        // The playlist does not end with #EXT-X-ENDLIST, so isEndlist is false
         assertFalse(playlist.isEndlist)
 
         assertEquals(2, playlist.segments.size)
@@ -242,7 +243,29 @@ class DefaultM3u8ParserTest {
             parser.parse("#EXT-X-STREAM-INF:BANDWIDTH=1000000\nhttp://example.com/video.m3u8") // no #EXTM3U
         }
 
-        // TODO: this should throw
+        // TODO: This should throw
         parser.parse("#EXTM3U\n#EXTX-STREAM-INF:BANDWIDTH=1000000\nhttp://example.com/video.m3u8") // Typo in the tag #EXTX
+    }
+
+    @Test
+    fun `parse - media playlist with byte range no offset`() {
+        val content = """
+            #EXTM3U
+            #EXT-X-VERSION:4
+            #EXT-X-TARGETDURATION:10
+            #EXTINF:10.0,No offset
+            #EXT-X-BYTERANGE:45000
+            http://example.com/segmentNoOffset.ts
+        """.trimIndent()
+
+        val playlist = parser.parse(content)
+        assertTrue(playlist is M3u8Playlist.MediaPlaylist)
+        assertEquals(1, playlist.segments.size)
+
+        val segment = playlist.segments[0]
+        assertEquals(10.0f, segment.duration)
+        assertEquals("http://example.com/segmentNoOffset.ts", segment.uri)
+        assertEquals(45000, segment.byteRange?.length)
+        assertNull(segment.byteRange?.offset)
     }
 }

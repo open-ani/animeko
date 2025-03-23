@@ -183,15 +183,8 @@ value class DownloadId(val value: String) {
  */
 @Serializable
 enum class DownloadErrorCode {
-    NETWORK_UNAVAILABLE,
-    NETWORK_TIMEOUT,
-    NETWORK_ERROR,
-    HTTP_ERROR,
-    PLAYLIST_PARSE_ERROR,
-    SEGMENT_DOWNLOAD_ERROR,
-    STORAGE_ERROR,
-    MERGE_ERROR,
-    UNEXPECTED_ERROR
+    NO_MEDIA_LIST,
+    UNEXPECTED_ERROR,
 }
 
 /**

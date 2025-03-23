@@ -55,6 +55,14 @@ sealed class M3u8Playlist {
 }
 
 /**
+ * Represents a byte range in an M3U8 segment
+ */
+data class ByteRange(
+    val length: Long,
+    val offset: Long? = null,
+)
+
+/**
  * Represents a media segment in an M3U8 playlist
  */
 data class MediaSegment(
@@ -62,7 +70,7 @@ data class MediaSegment(
     val uri: String,
     val title: String? = null,
     val isDiscontinuity: Boolean = false,
-    val byteRange: String? = null,
+    val byteRange: ByteRange? = null,
     val keys: Map<String, String> = emptyMap(),
     val tags: Map<String, String> = emptyMap(),
 )
@@ -108,7 +116,7 @@ object DefaultM3u8Parser : M3u8Parser {
         var currentSegmentDuration: Float? = null
         var currentSegmentTitle: String? = null
         var currentSegmentDiscontinuity = false
-        var currentSegmentByteRange: String? = null
+        var currentSegmentByteRange: ByteRange? = null
         val currentSegmentKeys = mutableMapOf<String, String>()
         val currentSegmentTags = mutableMapOf<String, String>()
 
@@ -151,7 +159,7 @@ object DefaultM3u8Parser : M3u8Parser {
                     }
 
                     line.startsWith("#EXT-X-BYTERANGE:") -> {
-                        currentSegmentByteRange = line.substringAfter(":").trim()
+                        currentSegmentByteRange = parseByteRange(line.substringAfter(":").trim())
                     }
 
                     line.startsWith("#EXT-X-KEY:") -> {
@@ -303,5 +311,19 @@ object DefaultM3u8Parser : M3u8Parser {
         }
 
         return attributes
+    }
+
+    /**
+     * Parse a #EXT-X-BYTERANGE value (e.g., "500@1000") into a ByteRange object.
+     */
+    private fun parseByteRange(rangeValue: String): ByteRange {
+        val parts = rangeValue.split("@")
+        val length = parts[0].toLongOrNull() ?: throw M3uFormatException("Invalid byte range length: ${parts[0]}")
+        val offset = if (parts.size > 1) {
+            parts[1].toLongOrNull() ?: throw M3uFormatException("Invalid byte range offset: ${parts[1]}")
+        } else {
+            null
+        }
+        return ByteRange(length, offset)
     }
 }
