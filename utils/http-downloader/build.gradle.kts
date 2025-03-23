@@ -30,5 +30,6 @@ kotlin {
         implementation(libs.turbine)
         implementation(libs.ktor.client.mock)
         implementation(libs.ktor.server.test.host)
+        runtimeOnly(libs.slf4j.simple)
     }
 }
