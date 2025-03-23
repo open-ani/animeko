@@ -9,20 +9,44 @@
 
 package me.him188.ani.utils.httpdownloader
 
-import io.ktor.client.*
-import io.ktor.client.call.*
-import io.ktor.client.request.*
-import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.*
+import io.ktor.client.HttpClient
+import io.ktor.client.call.body
+import io.ktor.client.request.get
+import io.ktor.client.request.header
+import io.ktor.client.statement.HttpResponse
+import io.ktor.client.statement.bodyAsText
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.yield
 import kotlinx.datetime.Clock
 import me.him188.ani.utils.coroutines.IO_
-import me.him188.ani.utils.httpdownloader.DownloadStatus.*
-import kotlin.collections.component1
-import kotlin.collections.component2
-import kotlin.collections.set
+import me.him188.ani.utils.httpdownloader.DownloadStatus.CANCELED
+import me.him188.ani.utils.httpdownloader.DownloadStatus.COMPLETED
+import me.him188.ani.utils.httpdownloader.DownloadStatus.DOWNLOADING
+import me.him188.ani.utils.httpdownloader.DownloadStatus.FAILED
+import me.him188.ani.utils.httpdownloader.DownloadStatus.INITIALIZING
+import me.him188.ani.utils.httpdownloader.DownloadStatus.PAUSED
+import me.him188.ani.utils.httpdownloader.m3u.DefaultM3u8Parser
+import me.him188.ani.utils.httpdownloader.m3u.M3u8Parser
+import me.him188.ani.utils.httpdownloader.m3u.M3u8Playlist
 
 /**
  * A simple implementation of [M3u8Downloader] that uses Ktor and coroutines.
@@ -34,7 +58,8 @@ class KtorM3u8Downloader(
     private val client: HttpClient,
     private val computeDispatcher: CoroutineDispatcher = Dispatchers.Default,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO_,
-    val clock: Clock = Clock.System
+    val clock: Clock = Clock.System,
+    private val m3u8Parser: M3u8Parser = DefaultM3u8Parser,
 ) : M3u8Downloader {
 
     private val scope = CoroutineScope(SupervisorJob() + computeDispatcher)
@@ -117,10 +142,11 @@ class KtorM3u8Downloader(
         }
 
         // Launch a job to parse the M3U8 and download segments
-        val job = scope.launch {
+        val job = scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            yield()
             try {
-                // 1) Parse M3U8 (stub)
-                val segments = parseM3u8(url)
+                val segments = resolveM3u8MediaPlaylist(url, options)
+                    .toSegments()
                 val totalSegments = segments.size
 
                 // 2) Update state to DOWNLOADING
@@ -147,14 +173,14 @@ class KtorM3u8Downloader(
                 // Job canceled => do not set status to FAILED or COMPLETED
                 // We'll handle that in `pause` or `cancel`
                 throw e
-            } catch (t: Throwable) {
+            } catch (e: Throwable) {
                 // Something went wrong => set status to FAILED
                 updateState(downloadId) {
                     it.copy(
                         status = FAILED,
                         error = DownloadError(
-                            code = DownloadErrorCode.UNEXPECTED_ERROR,
-                            technicalMessage = t.message,
+                            code = if (e is M3u8Exception) e.errorCode else DownloadErrorCode.UNEXPECTED_ERROR,
+                            technicalMessage = e.message,
                         ),
                         timestamp = clock.now().toEpochMilliseconds(),
                     )
@@ -165,6 +191,27 @@ class KtorM3u8Downloader(
 
         stateMutex.withLock {
             downloadJobs[downloadId] = job
+        }
+    }
+
+    private suspend fun resolveM3u8MediaPlaylist(
+        url: String,
+        options: DownloadOptions,
+        depth: Int = 0,
+    ): M3u8Playlist.MediaPlaylist {
+        if (depth >= 5) {
+            throw IllegalStateException("")
+        }
+        when (val playlist = m3u8Parser.parse(httpGet(url, options).bodyAsText())) {
+            is M3u8Playlist.MasterPlaylist -> {
+                val bestVariant = playlist.variants.maxByOrNull { it.bandwidth }
+                    ?: throw M3u8Exception(DownloadErrorCode.NO_MEDIA_LIST)
+                return resolveM3u8MediaPlaylist(bestVariant.uri, options, depth + 1)
+            }
+
+            is M3u8Playlist.MediaPlaylist -> {
+                return playlist
+            }
         }
     }
 
@@ -190,7 +237,8 @@ class KtorM3u8Downloader(
             it.copy(status = DOWNLOADING)
         }
 
-        val job = scope.launch {
+        val job = scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            yield()
             try {
                 downloadSegments(downloadId, DownloadOptions()) // use default or reconstruct from state
                 // Mark as completed if all segments are downloaded
@@ -386,24 +434,6 @@ class KtorM3u8Downloader(
     // ------------------------------------------------------------------------
 
     /**
-     * Parses the given M3U8 URL and returns a list of segment info. (Stub implementation)
-     */
-    private suspend fun parseM3u8(url: String): List<SegmentInfo> {
-        // A real implementation would fetch the M3U8 text and parse it properly.
-        // This stub simply returns 5 segments with dummy URLs for demonstration.
-        delay(300) // Simulate some network+parse delay
-        return List(5) { index ->
-            SegmentInfo(
-                index = index,
-                url = "$url/segment-$index.ts",
-                isDownloaded = false,
-                byteSize = -1,
-                tempFilePath = null,
-            )
-        }
-    }
-
-    /**
      * Downloads segments, respecting [DownloadOptions.maxConcurrentSegments].
      * Updates progress as it goes. Simplified for demonstration.
      */
@@ -444,12 +474,16 @@ class KtorM3u8Downloader(
      */
     private suspend fun downloadSegment(url: String, options: DownloadOptions): ByteArray {
         // We set timeouts in the request if needed, etc.
-        return client.get(url) {
-            // You could apply headers here if needed
-            options.headers.forEach { (key, value) ->
-                header(key, value)
-            }
-        }.body()
+        return httpGet(url, options).body()
+    }
+
+    private suspend fun httpGet(
+        url: String,
+        options: DownloadOptions
+    ): HttpResponse = client.get(url) {
+        options.headers.forEach { (key, value) ->
+            header(key, value)
+        }
     }
 
     /**
@@ -512,5 +546,22 @@ class KtorM3u8Downloader(
      */
     private fun generateDownloadId(url: String): String {
         return "download_${url.hashCode()}_${clock.now().toEpochMilliseconds()}"
+    }
+}
+
+private class M3u8Exception(
+    val errorCode: DownloadErrorCode,
+) : Exception()
+
+private fun M3u8Playlist.MediaPlaylist.toSegments(): List<SegmentInfo> {
+    return this.segments.mapIndexed { i, segment ->
+
+        SegmentInfo(
+            index = this.mediaSequence + i,
+            url = segment.uri,
+            isDownloaded = false,
+            byteSize = -1,
+            tempFilePath = null,
+        )
     }
 }

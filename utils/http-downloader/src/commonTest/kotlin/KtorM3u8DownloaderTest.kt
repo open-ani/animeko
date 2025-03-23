@@ -32,7 +32,6 @@ import kotlinx.datetime.Instant
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import kotlinx.io.files.SystemTemporaryDirectory
-import kotlinx.serialization.json.Json
 import me.him188.ani.utils.io.deleteRecursively
 import me.him188.ani.utils.io.resolve
 import kotlin.test.AfterTest
@@ -146,10 +145,8 @@ class KtorM3u8DownloaderTest {
 
         downloader = KtorM3u8Downloader(
             client = mockClient,
-            json = Json { ignoreUnknownKeys = true },
             ioDispatcher = testDispatcher,
             computeDispatcher = testDispatcher,
-            persistenceDir = "$tempDir/persistence",
             clock = mockClock,
         )
     }
@@ -464,7 +461,6 @@ class KtorM3u8DownloaderTest {
             client = mockClient,
             ioDispatcher = testDispatcher,
             computeDispatcher = testDispatcher,
-            persistenceDir = "$tempDir/persistence",
             clock = mockClock,
         )
 
