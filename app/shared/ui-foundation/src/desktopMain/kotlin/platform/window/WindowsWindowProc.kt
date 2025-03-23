@@ -65,9 +65,13 @@ import me.him188.ani.app.platform.window.ExtendedUser32.Companion.WM_SETTINGCHAN
 import me.him188.ani.app.platform.window.ExtendedUser32.MENUITEMINFO
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
+import me.him188.ani.utils.logging.error
+import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.platform.isWindows
 import org.jetbrains.skiko.SkiaLayer
 import java.awt.Window
+
+private val logger = logger("HandleWindowsWindowProc")
 
 @Composable
 fun HandleWindowsWindowProc() {
@@ -77,6 +81,7 @@ fun HandleWindowsWindowProc() {
             val handler = try {
                 WindowsWindowUtils.instance.handleWindowProc(platformWindow)
             } catch (e: Throwable) {
+                logger.error(e) { "处理 Windows 窗口过程失败" }
                 null
             }
             onDispose {
