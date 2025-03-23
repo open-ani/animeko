@@ -35,8 +35,9 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.yield
 import kotlinx.datetime.Clock
+import kotlinx.io.files.FileSystem
+import kotlinx.io.files.Path
 import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.httpdownloader.DownloadStatus.CANCELED
 import me.him188.ani.utils.httpdownloader.DownloadStatus.COMPLETED
@@ -101,7 +102,8 @@ class KtorM3u8Downloader(
      */
     override suspend fun download(
         url: String,
-        outputPath: String,
+        outputPath: Path,
+        fileSystem: FileSystem,
         options: DownloadOptions
     ): DownloadId {
         val downloadId = DownloadId(value = generateDownloadId(url))
@@ -143,7 +145,6 @@ class KtorM3u8Downloader(
 
         // Launch a job to parse the M3U8 and download segments
         val job = scope.launch(start = CoroutineStart.UNDISPATCHED) {
-            yield()
             try {
                 val segments = resolveM3u8MediaPlaylist(url, options)
                     .toSegments()
@@ -200,13 +201,16 @@ class KtorM3u8Downloader(
         depth: Int = 0,
     ): M3u8Playlist.MediaPlaylist {
         if (depth >= 5) {
-            throw IllegalStateException("")
+            throw M3u8Exception(DownloadErrorCode.NO_MEDIA_LIST)
         }
-        when (val playlist = m3u8Parser.parse(httpGet(url, options).bodyAsText())) {
+        when (val playlist = m3u8Parser.parse(httpGet(url, options).bodyAsText(), url)) {
             is M3u8Playlist.MasterPlaylist -> {
                 val bestVariant = playlist.variants.maxByOrNull { it.bandwidth }
                     ?: throw M3u8Exception(DownloadErrorCode.NO_MEDIA_LIST)
-                return resolveM3u8MediaPlaylist(bestVariant.uri, options, depth + 1)
+                return resolveM3u8MediaPlaylist(
+                    bestVariant.uri,
+                    options, depth + 1,
+                )
             }
 
             is M3u8Playlist.MediaPlaylist -> {
@@ -238,7 +242,6 @@ class KtorM3u8Downloader(
         }
 
         val job = scope.launch(start = CoroutineStart.UNDISPATCHED) {
-            yield()
             try {
                 downloadSegments(downloadId, DownloadOptions()) // use default or reconstruct from state
                 // Mark as completed if all segments are downloaded
@@ -468,10 +471,6 @@ class KtorM3u8Downloader(
         segmentDownloadJobs.awaitAll()
     }
 
-    /**
-     * Stub to "download" a segment via Ktor. Returns the raw bytes.
-     * In a real app, you'd stream it to a temp file, etc.
-     */
     private suspend fun downloadSegment(url: String, options: DownloadOptions): ByteArray {
         // We set timeouts in the request if needed, etc.
         return httpGet(url, options).body()
@@ -546,6 +545,15 @@ class KtorM3u8Downloader(
      */
     private fun generateDownloadId(url: String): String {
         return "download_${url.hashCode()}_${clock.now().toEpochMilliseconds()}"
+    }
+
+    /**
+     * Wait for a particular download job to finish (either complete or fail).
+     */
+    suspend fun joinDownload(downloadId: DownloadId) {
+        stateMutex.withLock {
+            downloadJobs[downloadId]
+        }?.join()
     }
 }
 

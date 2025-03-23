@@ -10,6 +10,8 @@
 package me.him188.ani.utils.httpdownloader
 
 import kotlinx.coroutines.flow.Flow
+import kotlinx.io.files.FileSystem
+import kotlinx.io.files.Path
 import kotlinx.serialization.Serializable
 import kotlin.jvm.JvmInline
 
@@ -50,7 +52,8 @@ interface M3u8Downloader : AutoCloseable {
      */
     suspend fun download(
         url: String,
-        outputPath: String,
+        outputPath: Path,
+        fileSystem: FileSystem,
         options: DownloadOptions = DownloadOptions()
     ): DownloadId
 

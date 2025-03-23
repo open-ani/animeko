@@ -66,18 +66,17 @@ class KtorM3u8DownloaderTest {
             .toString()
 
         // Create directories
-        runBlocking {
-            if (!fileSystem.exists(Path(tempDir))) {
-                fileSystem.createDirectories(Path(tempDir))
-            }
+        if (!fileSystem.exists(Path(tempDir))) {
+            fileSystem.createDirectories(Path(tempDir))
+        }
 
-            if (!fileSystem.exists(Path("$tempDir/persistence"))) {
-                fileSystem.createDirectories(Path("$tempDir/persistence"))
-            }
+        if (!fileSystem.exists(Path("$tempDir/persistence"))) {
+            fileSystem.createDirectories(Path("$tempDir/persistence"))
         }
 
         // Create mock client with preset responses
         mockClient = HttpClient(MockEngine) {
+            expectSuccess = true
             engine {
                 // Master playlist
                 addHandler { request ->
@@ -177,11 +176,11 @@ class KtorM3u8DownloaderTest {
         )
 
         // Advance time to allow downloads to complete
-        advanceUntilIdle()
-
+        downloader.joinDownload(downloadId)
         // Verify final state
         val state = downloader.getState(downloadId)
         assertNotNull(state)
+        assertEquals(null, state.error)
         assertEquals(DownloadStatus.COMPLETED, state.status)
         assertEquals(3, state.totalSegments)
 
@@ -393,6 +392,7 @@ class KtorM3u8DownloaderTest {
             downloader.download(
                 url = "https://example.com/timeout.m3u8",
                 outputPath = "$tempDir/timeout.ts",
+                fileSystem = SystemFileSystem,
                 options = options,
             )
 
