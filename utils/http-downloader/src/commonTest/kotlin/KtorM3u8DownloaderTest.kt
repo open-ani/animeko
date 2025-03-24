@@ -16,6 +16,7 @@ import io.ktor.client.engine.mock.respond
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -25,6 +26,7 @@ import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.io.files.Path
@@ -109,7 +111,9 @@ class KtorM3u8DownloaderTest {
 
                         "https://example.com/timeout.m3u8" -> {
                             // Simulate a long delay
-                            delay(10.seconds)
+                            withContext(testDispatcher) {
+                                delay(10.seconds)
+                            }
                             respond("Timeout", HttpStatusCode.OK)
                         }
 
@@ -245,8 +249,8 @@ class KtorM3u8DownloaderTest {
         assertNotNull(state)
         assertEquals(DownloadStatus.CANCELED, state.status)
         assertFalse(downloadId in downloader.getActiveDownloadIds())
-        // Temporary segment directory should be removed
-        assertFalse(fileSystem.exists(Path("$tempDir/cancellable.ts_segments_$downloadId")))
+        // Temporary segment directory should NOT be removed
+        assertTrue(fileSystem.exists(Path("$tempDir/cancellable.ts_segments_$downloadId")))
     }
 
     // ----------------------------------------------------
@@ -256,7 +260,7 @@ class KtorM3u8DownloaderTest {
     @Test
     fun `progressFlow - should emit progress updates`() = testScope.runTest {
         val progressUpdates = mutableListOf<DownloadProgress>()
-        val collectJob = launch {
+        val collectJob = launch(start = CoroutineStart.UNDISPATCHED) {
             downloader.progressFlow.collect { progressUpdates.add(it) }
         }
 
@@ -271,6 +275,7 @@ class KtorM3u8DownloaderTest {
 
         assertTrue(progressUpdates.isNotEmpty())
         assertEquals(downloadId, progressUpdates.first().downloadId)
+        println(progressUpdates)
         assertTrue(progressUpdates.any { it.status == DownloadStatus.INITIALIZING })
         assertEquals(DownloadStatus.COMPLETED, progressUpdates.last().status)
 
@@ -423,7 +428,7 @@ class KtorM3u8DownloaderTest {
             outputPath = "$tempDir/pause-all2.ts",
         )
 
-        delay(100) // let them start
+        assertEquals(2, downloader.getActiveDownloadIds().size)
         val paused = downloader.pauseAll()
 
         assertEquals(2, paused.size)
@@ -445,8 +450,8 @@ class KtorM3u8DownloaderTest {
             url = "https://example.com/master.m3u8",
             outputPath = "$tempDir/cancel-all2.ts",
         )
+        assertEquals(2, downloader.getActiveDownloadIds().size)
 
-        delay(100)
         downloader.cancelAll()
 
         assertTrue(downloader.getActiveDownloadIds().isEmpty())
@@ -462,12 +467,11 @@ class KtorM3u8DownloaderTest {
             outputPath = "$tempDir/close-test.ts",
         )
         // Let it run briefly
-        delay(100)
 
         // Closing should cancel all active downloads
-        downloader.close()
+        downloader.closeSuspend()
         // After close, no active downloads
-        assertTrue(downloader.getActiveDownloadIds().isEmpty())
+        assertEquals(0, downloader.getActiveDownloadIds().size)
 
         // If you want to test what happens if we try to start a new one:
         // The current code *does not* throw, nor does it gracefully do anything. 

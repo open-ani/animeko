@@ -15,24 +15,29 @@ import io.ktor.client.request.prepareGet
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsChannel
 import io.ktor.client.statement.bodyAsText
+import io.ktor.utils.io.readAvailable
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
 import kotlinx.io.buffered
 import kotlinx.io.files.FileSystem
@@ -50,6 +55,9 @@ import me.him188.ani.utils.httpdownloader.m3u.M3u8Parser
 import me.him188.ani.utils.httpdownloader.m3u.M3u8Playlist
 import me.him188.ani.utils.io.copyTo
 import me.him188.ani.utils.io.resolve
+import me.him188.ani.utils.platform.Uuid
+import kotlin.concurrent.atomics.AtomicLong
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
 /**
  * A simple implementation of [M3u8Downloader] that uses Ktor and coroutines.
@@ -84,6 +92,7 @@ class KtorM3u8Downloader(
     private val _progressFlow = MutableSharedFlow<DownloadProgress>(
         replay = 1,
         extraBufferCapacity = 64,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
     override val progressFlow: Flow<DownloadProgress> = _progressFlow.asSharedFlow()
 
@@ -158,6 +167,7 @@ class KtorM3u8Downloader(
         stateMutex.withLock {
             downloadStates[downloadId] = initialState
         }
+        emitProgress(downloadId)
 
         // Launch a job to parse the M3U8, download segments, merge, etc.
         val job = scope.launch(start = CoroutineStart.UNDISPATCHED) {
@@ -175,6 +185,7 @@ class KtorM3u8Downloader(
                         status = DOWNLOADING,
                     )
                 }
+                emitProgress(downloadId)
 
                 // 3) Download all segments
                 downloadSegments(downloadId, options)
@@ -430,18 +441,22 @@ class KtorM3u8Downloader(
      * Closes the downloader, cancelling all active jobs and closing the [HttpClient].
      */
     override fun close() {
-        runBlocking {
-            stateMutex.withLock {
-                downloadJobs.forEach { (_, job) ->
-                    if (job.isActive) {
-                        job.cancel()
-                    }
-                }
-                downloadJobs.clear()
-            }
-            client.close()
-            scope.cancel() // Cancel the entire coroutine scope
+        scope.launch(NonCancellable + CoroutineName("M3u8Downloader.close")) {
+            closeSuspend()
         }
+    }
+
+    suspend fun closeSuspend() {
+        stateMutex.withLock {
+            downloadJobs.forEach { (_, job) ->
+                if (job.isActive) {
+                    job.cancelAndJoin()
+                }
+            }
+            downloadJobs.clear()
+        }
+        client.close()
+        scope.cancel() // Cancel the entire coroutine scope
     }
 
     // ------------------------------------------------------------------------
@@ -524,6 +539,7 @@ class KtorM3u8Downloader(
      *
      * @return the number of bytes actually downloaded
      */
+    @OptIn(ExperimentalAtomicApi::class)
     private suspend fun downloadSingleSegment(
         downloadId: DownloadId,
         segmentInfo: SegmentInfo,
@@ -535,18 +551,20 @@ class KtorM3u8Downloader(
         val segmentPath = Path(requireNotNull(segmentInfo.tempFilePath))
         fileSystem.createDirectories(segmentPath.parent ?: Path("."))
 
-        var totalBytes = 0L
+        val totalBytes = AtomicLong(0L)
         fileSystem.sink(segmentPath).buffered().use { sink ->
             val ktorBuffer = ByteArray(8 * 1024)
-            while (true) {
-                val bytesRead = channel.readAvailable(ktorBuffer, 0, ktorBuffer.size)
-                if (bytesRead == -1) break
-                sink.write(ktorBuffer, startIndex = 0, endIndex = bytesRead)
-                totalBytes += bytesRead
+            withContext(Dispatchers.IO_) {
+                while (true) {
+                    val bytesRead = channel.readAvailable(ktorBuffer, 0, ktorBuffer.size)
+                    if (bytesRead == -1) break
+                    sink.write(ktorBuffer, startIndex = 0, endIndex = bytesRead)
+                    totalBytes.fetchAndAdd(bytesRead.toLong())
+                }
             }
         }
 
-        return totalBytes
+        return totalBytes.load()
     }
 
     /**
@@ -649,7 +667,7 @@ class KtorM3u8Downloader(
      * Generates a simple unique ID based on the URL and current time.
      */
     private fun generateDownloadId(url: String): String {
-        return "download_${url.hashCode()}_${clock.now().toEpochMilliseconds()}"
+        return Uuid.randomString()
     }
 
     /**
