@@ -150,6 +150,7 @@ class DirectoryMediaCacheStorageTest {
             CACHE_MEDIA_SOURCE_ID,
             metadataDir,
             engine.also { cacheEngine = it },
+            "本地",
             this.coroutineContext,
             clock = object : Clock {
                 override fun now(): Instant {
