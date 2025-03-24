@@ -34,7 +34,6 @@ import kotlinx.io.files.SystemFileSystem
 import kotlinx.io.files.SystemTemporaryDirectory
 import me.him188.ani.utils.io.deleteRecursively
 import me.him188.ani.utils.io.resolve
-import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.ktor.asScopedHttpClient
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
@@ -190,6 +189,29 @@ class KtorM3u8DownloaderTest {
         )
         downloader.joinDownload(customId)
 
+        val state = downloader.getState(customId)
+        assertNotNull(state)
+        assertEquals(customId, state.downloadId)
+        assertEquals(DownloadStatus.COMPLETED, state.status)
+    }
+
+    @Test
+    fun `downloadWithId - dont start if completed`() = testScope.runTest {
+        val customId = DownloadId("custom-test-id")
+        downloader.downloadWithId(
+            downloadId = customId,
+            url = "https://example.com/master.m3u8",
+            outputPath = Path("$tempDir/custom-output.ts"),
+        )
+        downloader.joinDownload(customId)
+
+        check(downloader.getState(customId)?.status == DownloadStatus.COMPLETED)
+
+        downloader.downloadWithId(
+            downloadId = customId,
+            url = "https://example.com/master.m3u8",
+            outputPath = Path("$tempDir/custom-output.ts"),
+        )
         val state = downloader.getState(customId)
         assertNotNull(state)
         assertEquals(customId, state.downloadId)
@@ -361,39 +383,6 @@ class KtorM3u8DownloaderTest {
         assertNotNull(state)
         assertEquals(DownloadStatus.FAILED, state.status)
         assertNotNull(state.error)
-    }
-
-    // ----------------------------------------------------
-    // State management
-    // (If you truly persisted to disk, you'd test that logic.)
-    // ----------------------------------------------------
-
-    @Test
-    fun `saveState - dummy test for now`() = testScope.runTest {
-        val downloadId = downloader.download(
-            url = "https://example.com/master.m3u8",
-            outputPath = "$tempDir/saveable.ts",
-        )
-        // Let it finish
-        downloader.joinDownload(downloadId)
-
-        val saved = downloader.saveState(downloadId)
-        assertTrue(saved)
-        // In your real code, you might verify a file or DB record.
-        // For now, we just confirm it returns true.
-    }
-
-    @Test
-    fun `loadSavedStates - dummy test for now`() = testScope.runTest {
-        // Suppose we had real persistence; for now, your example returns empty
-        val loaded = downloader.loadSavedStates()
-        assertTrue(loaded.isEmpty())
-    }
-
-    @Test
-    fun `hasSavedState - dummy test`() = testScope.runTest {
-        // Always false in your in-memory example
-        assertFalse(downloader.hasSavedState(DownloadId("nope")))
     }
 
     // ----------------------------------------------------

@@ -39,6 +39,7 @@ import me.him188.ani.utils.httpdownloader.DownloadOptions
 import me.him188.ani.utils.httpdownloader.DownloadStatus
 import me.him188.ani.utils.httpdownloader.M3u8Downloader
 import me.him188.ani.utils.io.*
+import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
 import me.him188.ani.utils.platform.Uuid
@@ -103,17 +104,29 @@ class M3u8MediaCacheEngine(
     ): MediaCache? {
         if (!supports(origin)) throw UnsupportedOperationException("Media is not supported by this engine $this: ${origin.download}")
 
-        val downloadId = metadata.extra[EXTRA_DOWNLOAD_ID] ?: return null
+        logger.info { "Restarting cache '${origin.mediaId}'" }
+
+        val downloadId = metadata.extra[EXTRA_DOWNLOAD_ID]?.let { DownloadId(it) } ?: return null
         val uri = metadata.extra[EXTRA_URI] ?: return null
         val outputPath = metadata.extra[EXTRA_OUTPUT_PATH] ?: return null
         val headers = json.decodeFromString<Map<String, String>>(metadata.extra[EXTRA_HEADERS] ?: return null)
+
+        // 注意, getState 一般不会返回 null, 除非 downloader 的 persistent datastore 出问题了 (例如文件损坏).
+        if (downloader.getState(downloadId) != null) {
+            downloader.resume(downloadId) // ignore result.
+            // Task already exists
+            logger.info { "Resumed download $downloadId" }
+            return M3u8MediaCache(mediaSourceId, downloader, downloadId, origin, metadata)
+        }
+
+        logger.info { "Download not found, recreating $downloadId" }
         downloader.downloadWithId(
-            downloadId = DownloadId(downloadId),
+            downloadId = downloadId,
             uri,
             outputPath = Path(outputPath),
             options = DownloadOptions(headers = headers),
         )
-        return M3u8MediaCache(mediaSourceId, downloader, DownloadId(downloadId), origin, metadata)
+        return M3u8MediaCache(mediaSourceId, downloader, downloadId, origin, metadata)
     }
 
     override suspend fun createCache(

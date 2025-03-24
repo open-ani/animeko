@@ -134,7 +134,7 @@ import me.him188.ani.datasources.bangumi.turnstileBaseUrl
 import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.coroutines.childScopeContext
-import me.him188.ani.utils.httpdownloader.KtorM3u8Downloader
+import me.him188.ani.utils.httpdownloader.KtorPersistentM3u8Downloader
 import me.him188.ani.utils.httpdownloader.M3u8Downloader
 import me.him188.ani.utils.io.resolve
 import me.him188.ani.utils.logging.logger
@@ -381,7 +381,8 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
     }
 
     single<M3u8Downloader> {
-        KtorM3u8Downloader(
+        KtorPersistentM3u8Downloader(
+            dataStore = getContext().dataStores.m3u8DownloaderStore,
             get<HttpClientProvider>().get(),
             fileSystem = SystemFileSystem,
         )
@@ -505,14 +506,15 @@ fun KoinApplication.startCommonKoinModule(coroutineScope: CoroutineScope): KoinA
     }
     // Now, the proxy settings is ready. Other components can use http clients.
 
-
-    koin.get<MediaAutoCacheService>().startRegularCheck(coroutineScope)
-
     coroutineScope.launch {
+        koin.get<M3u8Downloader>().init() // 这涉及读取 DownloadState, 需要在加载 storage metadata 前调用.
+
         val manager = koin.get<MediaCacheManager>()
         for (storage in manager.storages) {
             storage.first()?.restorePersistedCaches()
         }
+
+        koin.get<MediaAutoCacheService>().startRegularCheck(coroutineScope)
     }
 
     coroutineScope.launch {

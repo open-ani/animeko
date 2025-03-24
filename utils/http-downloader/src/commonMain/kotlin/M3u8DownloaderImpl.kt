@@ -9,7 +9,6 @@
 
 package me.him188.ani.utils.httpdownloader
 
-import io.ktor.client.HttpClient
 import io.ktor.client.request.header
 import io.ktor.client.request.prepareGet
 import io.ktor.client.statement.HttpResponse
@@ -17,7 +16,6 @@ import io.ktor.client.statement.HttpStatement
 import io.ktor.client.statement.bodyAsChannel
 import io.ktor.utils.io.readAvailable
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -61,37 +59,22 @@ import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.platform.Uuid
 import kotlin.concurrent.atomics.AtomicLong
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
+import kotlin.coroutines.CoroutineContext
 
 /**
  * A simple implementation of [M3u8Downloader] that uses Ktor and coroutines.
- *
- * This version:
- * - Uses a dedicated cache directory to store each segment separately.
- * - Merges segments into the final file when all downloads finish.
- * - Cleans up segment files after merging.
- *
- * @param client The Ktor HTTP client used for downloads.
- * @param fileSystem The filesystem to use for reading/writing segments and output files.
- * @param computeDispatcher The dispatcher used for compute-heavy tasks (default: [Dispatchers.Default]).
- * @param ioDispatcher The dispatcher used for IO-bound tasks (default: [IO_]).
- * @param clock For time-based operations such as generating unique IDs or timestamping states.
- * @param m3u8Parser The parser used to interpret m3u8 content.
  */
-class KtorM3u8Downloader(
-    private val client: ScopedHttpClient,
+open class KtorM3u8Downloader(
+    protected val client: ScopedHttpClient,
     private val fileSystem: FileSystem,
-    private val computeDispatcher: CoroutineDispatcher = Dispatchers.Default,
-    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO_,
+    computeDispatcher: CoroutineContext = Dispatchers.Default,
+    private val ioDispatcher: CoroutineContext = Dispatchers.IO_,
     val clock: Clock = Clock.System,
     private val m3u8Parser: M3u8Parser = DefaultM3u8Parser,
 ) : M3u8Downloader {
 
-    private val scope = CoroutineScope(SupervisorJob() + computeDispatcher)
+    protected val scope = CoroutineScope(SupervisorJob() + computeDispatcher)
 
-    /**
-     * Holds the shared flow of [DownloadProgress] for all active downloads.
-     * We use `replay = 1` so that new collectors get the latest progress immediately.
-     */
     private val _progressFlow = MutableSharedFlow<DownloadProgress>(
         replay = 1,
         extraBufferCapacity = 64,
@@ -99,33 +82,23 @@ class KtorM3u8Downloader(
     )
     override val progressFlow: Flow<DownloadProgress> = _progressFlow.asSharedFlow()
 
-    /**
-     * Get a flow for a specific download by filtering the shared flow.
-     */
     override fun getProgressFlow(downloadId: DownloadId): Flow<DownloadProgress> {
         return progressFlow.filter { it.downloadId == downloadId }
     }
 
     /**
-     * We keep a state flow of all downloads (id -> entry). Publicly, we map it to a list of [DownloadState].
+     * Our map of download states.
      */
-    private val _downloadStatesFlow = MutableStateFlow(emptyMap<DownloadId, DownloadEntry>())
+    protected val _downloadStatesFlow = MutableStateFlow(emptyMap<DownloadId, DownloadEntry>())
 
-    /**
-     * Expose them as a flow of just the [DownloadState] values.
-     */
-    override val downloadStatesFlow: Flow<List<DownloadState>> = _downloadStatesFlow.map { map ->
-        map.values.map { it.state }
+    override val downloadStatesFlow: Flow<List<DownloadState>> =
+        _downloadStatesFlow.map { it.values.map { entry -> entry.state } }
+
+    override suspend fun init() {
     }
 
-    /**
-     * For thread safety, all map mutations happen under this mutex.
-     */
-    private val stateMutex = Mutex()
+    protected val stateMutex = Mutex()
 
-    /**
-     * Starts a download using an auto-generated [DownloadId].
-     */
     override suspend fun download(
         url: String,
         outputPath: Path,
@@ -136,12 +109,6 @@ class KtorM3u8Downloader(
         return downloadId
     }
 
-    /**
-     * Starts a new download with the provided [downloadId].
-     *
-     * Creates a dedicated cache directory to store segments, parses the m3u8
-     * playlist, downloads all segments, then merges them into [outputPath].
-     */
     override suspend fun downloadWithId(
         downloadId: DownloadId,
         url: String,
@@ -151,12 +118,9 @@ class KtorM3u8Downloader(
         stateMutex.withLock {
             val currentMap = _downloadStatesFlow.value.toMutableMap()
             val existing = currentMap[downloadId]
-            // If a download with this ID already exists and is active, do nothing
-            if (existing != null && existing.job?.isActive == true) {
+            if (existing != null) {
                 return
             }
-
-            // Create or update the DownloadState to INITIALIZING
             val segmentCacheDir = createSegmentCacheDir(outputPath, downloadId)
             val initialState = DownloadState(
                 downloadId = downloadId,
@@ -169,61 +133,39 @@ class KtorM3u8Downloader(
                 status = INITIALIZING,
                 segmentCacheDir = segmentCacheDir.toString(),
             )
-
-            // Put it into the map with a placeholder null job
             currentMap[downloadId] = DownloadEntry(job = null, state = initialState)
             _downloadStatesFlow.value = currentMap
         }
 
         emitProgress(downloadId)
 
-        // Launch a job to parse M3U8, download segments, merge, etc.
         val job = scope.launch(start = CoroutineStart.UNDISPATCHED) {
             try {
-                // 1) Parse M3U8
                 val playlist = resolveM3u8MediaPlaylist(url, options)
-                val segments = playlist.toSegments(Path(checkNotNull(getState(downloadId)?.segmentCacheDir)))
+                val segments = playlist.toSegments(Path(getState(downloadId)?.segmentCacheDir ?: return@launch))
                 val totalSegments = segments.size
 
-                // 2) Update state to DOWNLOADING
                 updateState(downloadId) {
-                    it.copy(
-                        segments = segments,
-                        totalSegments = totalSegments,
-                        status = DOWNLOADING,
-                    )
+                    it.copy(segments = segments, totalSegments = totalSegments, status = DOWNLOADING)
                 }
                 emitProgress(downloadId)
 
-                // 3) Download all segments
                 downloadSegments(downloadId, options)
 
-                // 4) After all segments are downloaded => set status to MERGING
                 updateState(downloadId) {
-                    it.copy(
-                        status = MERGING,
-                        timestamp = clock.now().toEpochMilliseconds(),
-                    )
+                    it.copy(status = MERGING, timestamp = clock.now().toEpochMilliseconds())
                 }
                 emitProgress(downloadId)
 
-                // 5) Merge segments into the final file
                 mergeSegments(downloadId)
 
-                // 6) Mark as COMPLETED
                 updateState(downloadId) {
-                    it.copy(
-                        status = COMPLETED,
-                        timestamp = clock.now().toEpochMilliseconds(),
-                    )
+                    it.copy(status = COMPLETED, timestamp = clock.now().toEpochMilliseconds())
                 }
                 emitProgress(downloadId)
-
             } catch (e: CancellationException) {
-                // Job canceled => do not set status to FAILED or COMPLETED
                 throw e
             } catch (e: Throwable) {
-                // Something went wrong => set status to FAILED
                 updateState(downloadId) {
                     it.copy(
                         status = FAILED,
@@ -238,96 +180,74 @@ class KtorM3u8Downloader(
             }
         }
 
-        // Store the job in the map
+        // store the job
         stateMutex.withLock {
-            val newMap = _downloadStatesFlow.value.toMutableMap()
-            val entry = newMap[downloadId]
+            val currentMap = _downloadStatesFlow.value.toMutableMap()
+            val entry = currentMap[downloadId]
             if (entry != null) {
-                newMap[downloadId] = entry.copy(job = job)
-                _downloadStatesFlow.value = newMap
+                currentMap[downloadId] = entry.copy(job = job)
+                _downloadStatesFlow.value = currentMap
             }
         }
     }
 
-    /**
-     * Resumes a paused or failed download. Re-initiates the job with the existing [DownloadState].
-     */
     override suspend fun resume(downloadId: DownloadId): Boolean {
-        val state = getState(downloadId) ?: return false
-        if (state.status != PAUSED && state.status != FAILED) {
+        val st = getState(downloadId) ?: return false
+        if (st.status != PAUSED && st.status != FAILED) {
             return false
         }
 
-        // Check if there's already an active job for this ID
-        stateMutex.withLock {
-            val currentMap = _downloadStatesFlow.value
-            val existing = currentMap[downloadId]
-            if (existing != null && existing.job?.isActive == true) {
-                // Already resuming
-                return true
-            }
+        // Check if there's already an active job
+        val hasExistingJob = stateMutex.withLock {
+            val existing = _downloadStatesFlow.value[downloadId]
+            existing != null && existing.job?.isActive == true
+        }
+        if (hasExistingJob) { // must be done outside the lock
+            emitProgress(downloadId)
+            return true
         }
 
-        // Mark status as DOWNLOADING
         updateState(downloadId) { it.copy(status = DOWNLOADING) }
-
+        emitProgress(downloadId)
         val job = scope.launch(start = CoroutineStart.UNDISPATCHED) {
             try {
-                // 1) Download missing segments
-                downloadSegments(downloadId, DownloadOptions()) // or reconstruct from state, as needed
-
-                // 2) Merge
+                downloadSegments(downloadId, DownloadOptions())
                 updateState(downloadId) { it.copy(status = MERGING) }
                 emitProgress(downloadId)
                 mergeSegments(downloadId)
-
-                // 3) Completed
                 updateState(downloadId) { it.copy(status = COMPLETED) }
                 emitProgress(downloadId)
-
             } catch (e: CancellationException) {
                 throw e
             } catch (t: Throwable) {
                 updateState(downloadId) {
                     it.copy(
                         status = FAILED,
-                        error = DownloadError(
-                            code = DownloadErrorCode.UNEXPECTED_ERROR,
-                            technicalMessage = t.message,
-                        ),
+                        error = DownloadError(DownloadErrorCode.UNEXPECTED_ERROR, technicalMessage = t.message),
                     )
                 }
                 emitProgress(downloadId)
             }
         }
-
-        // Store the job in the map
         stateMutex.withLock {
-            val newMap = _downloadStatesFlow.value.toMutableMap()
-            val entry = newMap[downloadId]
+            val currentMap = _downloadStatesFlow.value.toMutableMap()
+            val entry = currentMap[downloadId]
             if (entry != null) {
-                newMap[downloadId] = entry.copy(job = job)
-                _downloadStatesFlow.value = newMap
+                currentMap[downloadId] = entry.copy(job = job)
+                _downloadStatesFlow.value = currentMap
             }
         }
         return true
     }
 
-    /**
-     * Gets all currently active download IDs.
-     */
     override suspend fun getActiveDownloadIds(): List<DownloadId> {
         return stateMutex.withLock {
             _downloadStatesFlow.value.values
-                .map { it.state }
-                .filter { it.status == DOWNLOADING || it.status == INITIALIZING }
-                .map { it.downloadId }
+                .filter { it.state.status == DOWNLOADING || it.state.status == INITIALIZING }
+                .map { it.state.downloadId }
         }
     }
 
-    /**
-     * Pauses a specific download by canceling its job and marking status = PAUSED.
-     */
     override suspend fun pause(downloadId: DownloadId): Boolean {
         stateMutex.withLock {
             val currentMap = _downloadStatesFlow.value.toMutableMap()
@@ -347,9 +267,6 @@ class KtorM3u8Downloader(
         return true
     }
 
-    /**
-     * Pauses all active downloads by cancelling their jobs and marking them as PAUSED.
-     */
     override suspend fun pauseAll(): List<DownloadId> {
         val paused = mutableListOf<DownloadId>()
         stateMutex.withLock {
@@ -371,9 +288,6 @@ class KtorM3u8Downloader(
         return paused
     }
 
-    /**
-     * Cancels a specific download, removing it from active jobs and marking status = CANCELED.
-     */
     override suspend fun cancel(downloadId: DownloadId): Boolean {
         stateMutex.withLock {
             val currentMap = _downloadStatesFlow.value.toMutableMap()
@@ -392,9 +306,6 @@ class KtorM3u8Downloader(
         return true
     }
 
-    /**
-     * Cancels all active downloads, marking status = CANCELED.
-     */
     override suspend fun cancelAll() {
         stateMutex.withLock {
             val currentMap = _downloadStatesFlow.value.toMutableMap()
@@ -403,7 +314,7 @@ class KtorM3u8Downloader(
                     entry.job.cancel()
                 }
                 val st = entry.state
-                if (st.status == DOWNLOADING || st.status == INITIALIZING || st.status == PAUSED || st.status == MERGING) {
+                if (st.status in listOf(INITIALIZING, DOWNLOADING, PAUSED, MERGING)) {
                     currentMap[id] = entry.copy(
                         job = null,
                         state = st.copy(status = CANCELED),
@@ -412,69 +323,22 @@ class KtorM3u8Downloader(
             }
             _downloadStatesFlow.value = currentMap
         }
-        // Emit progress for all
         val allIds = stateMutex.withLock { _downloadStatesFlow.value.keys.toList() }
         allIds.forEach { emitProgress(it) }
     }
 
-    /**
-     * Get the current state of a download.
-     */
     override suspend fun getState(downloadId: DownloadId): DownloadState? {
         return stateMutex.withLock {
             _downloadStatesFlow.value[downloadId]?.state
         }
     }
 
-    /**
-     * Get all states (which are in our map).
-     */
     override suspend fun getAllStates(): List<DownloadState> {
         return stateMutex.withLock {
-            _downloadStatesFlow.value.values.map { it.state }.toList()
+            _downloadStatesFlow.value.values.map { it.state }
         }
     }
 
-    /**
-     * Saves state for the specified download to persistent storage.
-     * This example is just in-memory, so it's a no-op returning true.
-     */
-    override suspend fun saveState(downloadId: DownloadId): Boolean {
-        // TODO: Integrate with real persistence (e.g. Room, DataStore, etc.)
-        return true
-    }
-
-    /**
-     * Saves states for all active downloads to persistent storage.
-     * This example is just in-memory, so it's a no-op returning true.
-     */
-    override suspend fun saveAllStates(): Boolean {
-        // TODO: Integrate with real persistence
-        return true
-    }
-
-    /**
-     * Loads all previously saved states from persistent storage.
-     * This example is just in-memory, so there's nothing to load.
-     */
-    override suspend fun loadSavedStates(): List<DownloadId> {
-        // TODO: Integrate with real persistence
-        return emptyList()
-    }
-
-    /**
-     * Checks if a saved state exists for the given download ID.
-     * This example is just in-memory, so we only check our map.
-     */
-    override suspend fun hasSavedState(downloadId: DownloadId): Boolean {
-        return stateMutex.withLock {
-            _downloadStatesFlow.value.containsKey(downloadId)
-        }
-    }
-
-    /**
-     * Closes the downloader, cancelling all active jobs and closing the [HttpClient].
-     */
     override fun close() {
         scope.launch(NonCancellable + CoroutineName("M3u8Downloader.close")) {
             closeSuspend()
@@ -489,31 +353,19 @@ class KtorM3u8Downloader(
                     entry.job.cancelAndJoin()
                 }
             }
-            // If desired, we can clear them out:
+            // If we want to remove them entirely:
             _downloadStatesFlow.value = emptyMap()
         }
-        scope.cancel() // Cancel the entire coroutine scope
+        scope.cancel()
     }
 
-    // ------------------------------------------------------------------------
-    // Internal helpers
-    // ------------------------------------------------------------------------
+    // -------------------------------------------------------
+    // Internal details
+    // -------------------------------------------------------
 
-    /**
-     * Data structure holding both the [DownloadState] and the [Job] for a download.
-     */
-    private data class DownloadEntry(
-        val job: Job?,
-        val state: DownloadState
-    )
+    protected data class DownloadEntry(val job: Job?, val state: DownloadState)
 
-    /**
-     * Creates a dedicated subdirectory for segment caching.
-     */
-    private fun createSegmentCacheDir(
-        outputPath: Path,
-        downloadId: DownloadId
-    ): Path {
+    protected fun createSegmentCacheDir(outputPath: Path, downloadId: DownloadId): Path {
         val cacheDirName = outputPath.name + "_segments_" + downloadId.value
         val parentDir = outputPath.parent ?: Path(".")
         val cacheDir = parentDir.resolve(cacheDirName)
@@ -539,44 +391,26 @@ class KtorM3u8Downloader(
                     ?: throw M3u8Exception(DownloadErrorCode.NO_MEDIA_LIST)
                 resolveM3u8MediaPlaylist(bestVariant.uri, options, depth + 1)
             }
+
             is M3u8Playlist.MediaPlaylist -> {
                 playlist
             }
         }
     }
 
-    /**
-     * Downloads all non-downloaded segments, respecting concurrency.
-     */
-    private suspend fun downloadSegments(downloadId: DownloadId, options: DownloadOptions) {
-        val stateSnapshot = getState(downloadId) ?: return
-        if (stateSnapshot.segments.isEmpty()) return
-
-        val semaphore = Semaphore(options.maxConcurrentSegments)
-
-        coroutineScope {
-            stateSnapshot.segments.forEach { segmentInfo ->
-                // Skip if already downloaded
-                if (segmentInfo.isDownloaded) return@forEach
-
-                launch(ioDispatcher) {
-                    semaphore.acquire()
-                    try {
-                        val newSize = downloadSingleSegment(downloadId, segmentInfo, options)
-                        markSegmentDownloaded(downloadId, segmentInfo.index, newSize)
-                    } finally {
-                        semaphore.release()
-                    }
-                }
-            }
+    protected suspend fun updateState(downloadId: DownloadId, transform: (DownloadState) -> DownloadState) {
+        stateMutex.withLock {
+            val currentMap = _downloadStatesFlow.value.toMutableMap()
+            val entry = currentMap[downloadId] ?: return
+            val oldState = entry.state
+            val newState = transform(oldState)
+            currentMap[downloadId] = entry.copy(state = newState)
+            _downloadStatesFlow.value = currentMap
         }
     }
 
-    /**
-     * Download a single segment file to [segmentInfo.tempFilePath].
-     */
     @OptIn(ExperimentalAtomicApi::class)
-    private suspend fun downloadSingleSegment(
+    protected suspend fun downloadSingleSegment(
         downloadId: DownloadId,
         segmentInfo: SegmentInfo,
         options: DownloadOptions
@@ -603,116 +437,86 @@ class KtorM3u8Downloader(
         }
     }
 
-    /**
-     * Marks a specific segment as downloaded, updates [downloadedBytes], and emits progress.
-     */
-    private suspend fun markSegmentDownloaded(downloadId: DownloadId, segmentIndex: Int, byteSize: Long) {
-        updateState(downloadId) { old ->
-            val newSegments = old.segments.map { seg ->
-                if (seg.index == segmentIndex) {
-                    seg.copy(isDownloaded = true, byteSize = byteSize)
-                } else seg
+    protected suspend fun downloadSegments(downloadId: DownloadId, options: DownloadOptions) {
+        val snapshot = getState(downloadId) ?: return
+        if (snapshot.segments.isEmpty()) return
+        val semaphore = Semaphore(options.maxConcurrentSegments)
+
+        coroutineScope {
+            snapshot.segments.forEach { seg ->
+                if (seg.isDownloaded) return@forEach
+                launch(ioDispatcher) {
+                    semaphore.acquire()
+                    try {
+                        val newSize = downloadSingleSegment(downloadId, seg, options)
+                        markSegmentDownloaded(downloadId, seg.index, newSize)
+                    } finally {
+                        semaphore.release()
+                    }
+                }
             }
-            val newDownloadedBytes = old.downloadedBytes + byteSize
-            old.copy(
-                segments = newSegments,
-                downloadedBytes = newDownloadedBytes,
-            )
+        }
+    }
+
+    protected suspend fun markSegmentDownloaded(downloadId: DownloadId, segmentIndex: Int, byteSize: Long) {
+        updateState(downloadId) { old ->
+            val updatedSegments = old.segments.map {
+                if (it.index == segmentIndex) it.copy(isDownloaded = true, byteSize = byteSize) else it
+            }
+            old.copy(downloadedBytes = old.downloadedBytes + byteSize, segments = updatedSegments)
         }
         emitProgress(downloadId)
     }
 
-    /**
-     * Merges all downloaded segments into the final [DownloadState.outputPath].
-     * Then deletes the segment cache directory and all .ts files.
-     */
-    private suspend fun mergeSegments(downloadId: DownloadId) {
-        val state = getState(downloadId) ?: return
-        val finalOutput = Path(state.outputPath)
-
-        val cacheDir = state.segmentCacheDir?.let { Path(it) } ?: return
-
-        // Merge all segments in ascending index order
+    protected suspend fun mergeSegments(downloadId: DownloadId) {
+        val st = getState(downloadId) ?: return
+        val cacheDir = Path(st.segmentCacheDir)
+        val finalOutput = Path(st.outputPath)
         fileSystem.sink(finalOutput).buffered().use { out ->
-            state.segments.sortedBy { it.index }.forEach { seg ->
+            st.segments.sortedBy { it.index }.forEach { seg ->
                 fileSystem.source(Path(seg.tempFilePath)).buffered().use { input ->
                     input.copyTo(out)
                 }
             }
         }
-
-        // Delete each segment file
-        state.segments.forEach { seg ->
+        // remove segment files
+        st.segments.forEach { seg ->
             fileSystem.delete(Path(seg.tempFilePath))
         }
-
-        // Finally remove the cache directory itself
+        // remove the cache dir
         fileSystem.delete(cacheDir)
     }
 
-    /**
-     * Updates the internal [DownloadState] for [downloadId].
-     * This always occurs inside a [stateMutex] lock.
-     */
-    private suspend fun updateState(downloadId: DownloadId, transform: (DownloadState) -> DownloadState) {
-        stateMutex.withLock {
-            val currentMap = _downloadStatesFlow.value.toMutableMap()
-            val entry = currentMap[downloadId] ?: return
-            val oldState = entry.state
-            val newState = transform(oldState)
-            currentMap[downloadId] = entry.copy(state = newState)
-            _downloadStatesFlow.value = currentMap
-        }
-    }
-
-    /**
-     * Reads the latest [DownloadState] and emits a new [DownloadProgress].
-     */
-    private suspend fun emitProgress(downloadId: DownloadId) {
-        val currentState = getState(downloadId) ?: return
-        val (downloadedSegments, totalSegments) = with(currentState) {
-            segments.count { it.isDownloaded } to totalSegments
-        }
+    protected suspend fun emitProgress(downloadId: DownloadId) {
+        val st = getState(downloadId) ?: return
+        val downloadedSegments = st.segments.count { it.isDownloaded }
         val progress = DownloadProgress(
-            downloadId = currentState.downloadId,
-            url = currentState.url,
-            totalSegments = currentState.totalSegments,
+            downloadId = st.downloadId,
+            url = st.url,
+            totalSegments = st.totalSegments,
             downloadedSegments = downloadedSegments,
-            downloadedBytes = currentState.downloadedBytes,
-            totalBytes = currentState.segments.sumOf { it.byteSize.coerceAtLeast(0) },
-            speedBytesPerSecond = 0L, // not implemented
-            estimatedTimeRemainingSeconds = -1L, // not implemented
-            status = currentState.status,
-            error = currentState.error,
+            downloadedBytes = st.downloadedBytes,
+            totalBytes = st.segments.sumOf { it.byteSize.coerceAtLeast(0) },
+            speedBytesPerSecond = 0L,
+            estimatedTimeRemainingSeconds = -1L,
+            status = st.status,
+            error = st.error,
         )
         _progressFlow.emit(progress)
     }
 
-    /**
-     * Simple HTTP GET wrapper to attach custom headers from [DownloadOptions].
-     */
-    private suspend inline fun <R> httpGet(url: String, options: DownloadOptions, block: (HttpStatement) -> R): R {
+    protected suspend inline fun <R> httpGet(url: String, options: DownloadOptions, block: (HttpStatement) -> R): R {
         return client.use {
             prepareGet(url) {
-                options.headers.forEach { (key, value) ->
-                    header(key, value)
-                }
-            }.let {
-                block(it)
-            }
+                options.headers.forEach { (k, v) -> header(k, v) }
+            }.let { statement -> block(statement) }
         }
     }
 
-    /**
-     * Generates a simple unique ID.
-     */
-    private fun generateDownloadId(url: String): String {
+    protected fun generateDownloadId(url: String): String {
         return Uuid.randomString()
     }
 
-    /**
-     * Wait for a particular download job to finish (either complete or fail).
-     */
     suspend fun joinDownload(downloadId: DownloadId) {
         val job = stateMutex.withLock {
             _downloadStatesFlow.value[downloadId]?.job
@@ -721,24 +525,17 @@ class KtorM3u8Downloader(
     }
 }
 
-/**
- * Private internal exception for M3u8 parsing issues.
- */
 private class M3u8Exception(val errorCode: DownloadErrorCode) : Exception()
 
-/**
- * Extension function to convert a [M3u8Playlist.MediaPlaylist] into a list of [SegmentInfo],
- * pointing each segment’s `tempFilePath` into the given [cacheDir].
- */
 private fun M3u8Playlist.MediaPlaylist.toSegments(cacheDir: Path): List<SegmentInfo> {
-    return segments.mapIndexed { i, segment ->
-        val segmentIndex = mediaSequence + i
+    return segments.mapIndexed { i, seg ->
+        val idx = mediaSequence + i
         SegmentInfo(
-            index = segmentIndex,
-            url = segment.uri,
+            index = idx,
+            url = seg.uri,
             isDownloaded = false,
             byteSize = -1,
-            tempFilePath = cacheDir.resolve("$segmentIndex.ts").toString(),
+            tempFilePath = cacheDir.resolve("$idx.ts").toString(),
         )
     }
 }

@@ -25,6 +25,7 @@ kotlin {
         api(libs.kotlinx.datetime)
         implementation(projects.utils.logging)
         implementation(projects.utils.ktorClient)
+        api(libs.datastore.core)
     }
     sourceSets.commonTest.dependencies {
         implementation(libs.turbine)
