@@ -15,6 +15,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -28,6 +29,7 @@ import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
 import me.him188.ani.app.domain.media.resolver.MediaResolver
 import me.him188.ani.app.tools.Progress
 import me.him188.ani.app.tools.toProgress
+import me.him188.ani.app.torrent.api.files.averageRate
 import me.him188.ani.datasources.api.*
 import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
@@ -52,13 +54,22 @@ class M3u8MediaCacheEngine(
 ) : MediaCacheEngine {
     private val json get() = DataStoreJson
 
-    override val stats: Flow<MediaStats> = downloader.downloadStatesFlow.map { list ->
-        MediaStats(
-            uploaded = FileSize.Zero,
-            downloaded = list.sumOf { it.downloadedBytes }.bytes,
-            uploadSpeed = FileSize.Zero,
-            downloadSpeed = FileSize.Zero, // TODO: 2025/3/24 download speed 
-        )
+    override val stats: Flow<MediaStats> = run {
+        val downloadSpeedFlow =
+            downloader.downloadStatesFlow
+                .map { list ->
+                    list.sumOf { it.downloadedBytes }
+                }
+                .averageRate()
+
+        combine(downloader.downloadStatesFlow, downloadSpeedFlow) { list, speed ->
+            MediaStats(
+                uploaded = FileSize.Zero,
+                downloaded = list.sumOf { it.downloadedBytes }.bytes,
+                uploadSpeed = FileSize.Zero,
+                downloadSpeed = speed.bytes,
+            )
+        }
     }
 
     override fun supports(media: Media): Boolean {
@@ -223,17 +234,20 @@ class M3u8MediaCache(
             },
         )
     }
-    override val sessionStats: Flow<MediaCache.SessionStats> = fileStats.map {
-        MediaCache.SessionStats(
-            totalSize = it.totalSize,
-            downloadedBytes = it.downloadedBytes,
-            downloadSpeed = FileSize.Zero,
-            uploadedBytes = FileSize.Zero,
-            uploadSpeed = FileSize.Zero,
-            downloadProgress = it.downloadProgress,
-        )
-    }
+    override val sessionStats: Flow<MediaCache.SessionStats> = run {
+        val downloadSpeedFlow = fileStats.map { it.downloadedBytes.inBytes }.averageRate()
 
+        combine(downloadSpeedFlow, fileStats) { speed, stats ->
+            MediaCache.SessionStats(
+                totalSize = stats.totalSize,
+                downloadedBytes = stats.downloadedBytes,
+                downloadSpeed = speed.bytes,
+                uploadedBytes = FileSize.Zero,
+                uploadSpeed = FileSize.Zero,
+                downloadProgress = stats.downloadProgress,
+            )
+        }
+    }
     override val isDeleted: MutableStateFlow<Boolean> = MutableStateFlow(false)
     private val closeMutex = Mutex()
 
