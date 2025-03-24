@@ -33,6 +33,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
@@ -83,7 +84,11 @@ open class KtorM3u8Downloader(
     override val progressFlow: Flow<DownloadProgress> = _progressFlow.asSharedFlow()
 
     override fun getProgressFlow(downloadId: DownloadId): Flow<DownloadProgress> {
-        return progressFlow.filter { it.downloadId == downloadId }
+        return progressFlow.filter { it.downloadId == downloadId }.onStart {
+            emit(
+                createProgress(getState(downloadId) ?: return@onStart),
+            )
+        }
     }
 
     /**
@@ -489,6 +494,11 @@ open class KtorM3u8Downloader(
 
     protected suspend fun emitProgress(downloadId: DownloadId) {
         val st = getState(downloadId) ?: return
+        val progress = createProgress(st)
+        _progressFlow.emit(progress)
+    }
+
+    private fun createProgress(st: DownloadState): DownloadProgress {
         val downloadedSegments = st.segments.count { it.isDownloaded }
         val progress = DownloadProgress(
             downloadId = st.downloadId,
@@ -502,7 +512,7 @@ open class KtorM3u8Downloader(
             status = st.status,
             error = st.error,
         )
-        _progressFlow.emit(progress)
+        return progress
     }
 
     protected suspend inline fun <R> httpGet(url: String, options: DownloadOptions, block: (HttpStatement) -> R): R {
