@@ -54,7 +54,7 @@ fun PlayerExtensionManager(
         override val videoLoadingStateFlow: Flow<VideoLoadingState>
             get() = state.playerSession.videoLoadingState
         override val sessionFlow: Flow<EpisodeSession>
-            get() = state.episodeSessionFlow
+            get() = state.sessionFlow
 
         @UnsafeEpisodeSessionApi
         override suspend fun getCurrentEpisodeId(): Int {
@@ -71,7 +71,13 @@ fun PlayerExtensionManager(
         }
     }
 
-    return PlayerExtensionManager(extensions.map { it.create(context, koin) })
+    return PlayerExtensionManager(
+        extensions + listOf(
+            RememberPlayProgressExtension,
+            MarkAsWatchedExtension,
+            BurnAfterReadExtension,
+        ).map { it.create(context, koin) },
+    )
 }
 
 class ExtensionException(message: String? = null, cause: Throwable? = null) : Exception(message, cause)
