@@ -42,6 +42,13 @@ interface M3u8Downloader : AutoCloseable {
     fun getProgressFlow(downloadId: DownloadId): Flow<DownloadProgress>
 
     /**
+     * A flow that continuously emits the entire list of known downloads.
+     * These remain in the map until they are removed (i.e., a completed or canceled download might remain if the
+     * implementation chooses). If the implementation removes them, they will disappear from this flow.
+     */
+    val downloadStatesFlow: Flow<List<DownloadState>>
+
+    /**
      * Starts a new download and returns its unique ID.
      *
      * @param url The m3u8 URL to download
@@ -284,7 +291,7 @@ data class DownloadState(
     val error: DownloadError? = null,
 
     // Add this to remember where segment files are stored:
-    val segmentCacheDir: String? = null,
+    val segmentCacheDir: String,
 )
 
 /**

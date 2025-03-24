@@ -15,7 +15,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -30,6 +29,7 @@ import me.him188.ani.app.domain.media.resolver.MediaResolver
 import me.him188.ani.app.tools.Progress
 import me.him188.ani.app.tools.toProgress
 import me.him188.ani.datasources.api.*
+import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
 import me.him188.ani.datasources.api.topic.ResourceLocation
 import me.him188.ani.utils.httpdownloader.DownloadId
@@ -52,8 +52,14 @@ class M3u8MediaCacheEngine(
 ) : MediaCacheEngine {
     private val json get() = DataStoreJson
 
-    override val stats: Flow<MediaStats>
-        get() = flowOf(MediaStats.Unspecified) // TODO: 2025/3/24 M3u8MediaCacheEngine stats
+    override val stats: Flow<MediaStats> = downloader.downloadStatesFlow.map { list ->
+        MediaStats(
+            uploaded = FileSize.Zero,
+            downloaded = list.sumOf { it.downloadedBytes }.bytes,
+            uploadSpeed = FileSize.Zero,
+            downloadSpeed = FileSize.Zero, // TODO: 2025/3/24 download speed 
+        )
+    }
 
     override fun supports(media: Media): Boolean {
         // Check that the media is not already cached
@@ -142,10 +148,14 @@ class M3u8MediaCacheEngine(
     override suspend fun deleteUnusedCaches(all: List<MediaCache>) {
         if (!(SystemFileSystem.exists(dataDir))) return
 
-        val allowedAbsolute = buildSet(capacity = all.size) {
-            for (mediaCache in all) {
+
+        val allowedAbsolute = buildSet {
+            for (mediaCache in all.filterIsInstance<M3u8MediaCache>()) {
                 mediaCache.metadata.extra[EXTRA_OUTPUT_PATH]?.let {
                     add(it) // 上次记录的位置
+                }
+                downloader.getState(mediaCache.downloadId)?.let {
+                    add(it.segmentCacheDir)
                 }
             }
         }
@@ -177,7 +187,7 @@ class M3u8MediaCacheEngine(
 class M3u8MediaCache(
     private val mediaSourceId: String,
     private val downloader: M3u8Downloader,
-    private val downloadId: DownloadId,
+    internal val downloadId: DownloadId,
     override val origin: Media,
     override val metadata: MediaCacheMetadata,
 ) : MediaCache {
@@ -213,8 +223,16 @@ class M3u8MediaCache(
             },
         )
     }
-    override val sessionStats: Flow<MediaCache.SessionStats>
-        get() = flowOf(MediaCache.SessionStats.Unspecified) // TODO: 2025/3/24  sessionStats
+    override val sessionStats: Flow<MediaCache.SessionStats> = fileStats.map {
+        MediaCache.SessionStats(
+            totalSize = it.totalSize,
+            downloadedBytes = it.downloadedBytes,
+            downloadSpeed = FileSize.Zero,
+            uploadedBytes = FileSize.Zero,
+            uploadSpeed = FileSize.Zero,
+            downloadProgress = it.downloadProgress,
+        )
+    }
 
     override val isDeleted: MutableStateFlow<Boolean> = MutableStateFlow(false)
     private val closeMutex = Mutex()
@@ -229,7 +247,7 @@ class M3u8MediaCache(
             DownloadStatus.MERGING,
             DownloadStatus.PAUSED,
                 -> {
-                TODO("Partial download is not supported")
+                TODO("Partial play is not supported")
             }
 
             DownloadStatus.COMPLETED -> {
