@@ -140,8 +140,6 @@ data class DownloadProgress(
     val downloadedSegments: Int,
     val downloadedBytes: Long,
     val totalBytes: Long, // -1 for unknown
-    val speedBytesPerSecond: Long,
-    val estimatedTimeRemainingSeconds: Long, // -1 if unknown
     val status: DownloadStatus,
     val error: DownloadError? = null
 )

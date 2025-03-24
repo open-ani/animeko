@@ -238,13 +238,13 @@ class M3u8MediaCache(
         MediaCache.FileStats(
             totalSize = totalSize.bytes,
             downloadedBytes = downloadedBytes.bytes,
-            downloadProgress = run {
-                if (totalSize == 0L) {
-                    Progress.Unspecified
-                } else {
-                    (downloadedBytes.toFloat() / totalSize).toProgress()
-                }
-            },
+            downloadProgress = if (
+                it.status == DownloadStatus.COMPLETED
+            ) {
+                1f.toProgress()
+            } else {
+                Progress.Unspecified
+            }, // m3u8 has no total size.
         )
     }
     override val sessionStats: Flow<MediaCache.SessionStats> = run {

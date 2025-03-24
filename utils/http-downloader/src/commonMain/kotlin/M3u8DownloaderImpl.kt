@@ -506,9 +506,8 @@ open class KtorM3u8Downloader(
             totalSegments = st.totalSegments,
             downloadedSegments = downloadedSegments,
             downloadedBytes = st.downloadedBytes,
-            totalBytes = st.segments.sumOf { it.byteSize.coerceAtLeast(0) },
-            speedBytesPerSecond = 0L,
-            estimatedTimeRemainingSeconds = -1L,
+            totalBytes = st.segments.sumOf { it.byteSize.coerceAtLeast(0) }
+                .coerceAtLeast(st.downloadedBytes),
             status = st.status,
             error = st.error,
         )
@@ -544,7 +543,7 @@ private fun M3u8Playlist.MediaPlaylist.toSegments(cacheDir: Path): List<SegmentI
             index = idx,
             url = seg.uri,
             isDownloaded = false,
-            byteSize = -1,
+            byteSize = seg.byteRange?.length ?: -1,
             tempFilePath = cacheDir.resolve("$idx.ts").toString(),
         )
     }
