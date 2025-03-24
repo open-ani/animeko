@@ -104,17 +104,13 @@ class KtorM3u8Downloader(
     }
 
     /**
-     * Internal map to track [DownloadState]. This could be replaced by a database or other persistent storage.
+     * Single map to track all downloads (their [DownloadState] and associated [Job]).
+     * Could be replaced or augmented by a database or other persistent storage for states.
      */
-    private val downloadStates = mutableMapOf<DownloadId, DownloadState>()
+    private val downloads = mutableMapOf<DownloadId, DownloadEntry>()
 
     /**
-     * Internal map to track the active jobs associated with each download.
-     */
-    private val downloadJobs = mutableMapOf<DownloadId, Job>()
-
-    /**
-     * Mutex to guard access to mutable maps ([downloadStates], [downloadJobs]).
+     * Mutex to guard access to [downloads].
      */
     private val stateMutex = Mutex()
 
@@ -145,7 +141,8 @@ class KtorM3u8Downloader(
     ) {
         stateMutex.withLock {
             // If a download with this ID already exists and is active, do nothing
-            if (downloadJobs[downloadId]?.isActive == true) {
+            val existing = downloads[downloadId]
+            if (existing != null && existing.job?.isActive == true) {
                 return
             }
         }
@@ -164,12 +161,16 @@ class KtorM3u8Downloader(
             segmentCacheDir = segmentCacheDir.toString(),
         )
 
+        // Register or override in the map with a placeholder job
         stateMutex.withLock {
-            downloadStates[downloadId] = initialState
+            downloads[downloadId] = DownloadEntry(
+                job = null,
+                state = initialState,
+            )
         }
         emitProgress(downloadId)
 
-        // Launch a job to parse the M3U8, download segments, merge, etc.
+        // Launch a job to parse M3U8, download segments, merge, etc.
         val job = scope.launch(start = CoroutineStart.UNDISPATCHED) {
             try {
                 // 1) Parse M3U8
@@ -230,8 +231,9 @@ class KtorM3u8Downloader(
             }
         }
 
+        // Store the job in the single map
         stateMutex.withLock {
-            downloadJobs[downloadId] = job
+            downloads[downloadId]?.job = job
         }
     }
 
@@ -246,9 +248,10 @@ class KtorM3u8Downloader(
             return false
         }
 
-        // Re-launch the same logic as `downloadWithId` but skipping already-downloaded segments
+        // Check if there's already an active job for this ID
         stateMutex.withLock {
-            if (downloadJobs[downloadId]?.isActive == true) {
+            val existing = downloads[downloadId]
+            if (existing != null && existing.job?.isActive == true) {
                 // Already resuming
                 return true
             }
@@ -288,7 +291,7 @@ class KtorM3u8Downloader(
         }
 
         stateMutex.withLock {
-            downloadJobs[downloadId] = job
+            downloads[downloadId]?.job = job
         }
         return true
     }
@@ -298,7 +301,8 @@ class KtorM3u8Downloader(
      */
     override suspend fun getActiveDownloadIds(): List<DownloadId> {
         return stateMutex.withLock {
-            downloadStates.values
+            downloads.values
+                .map { it.state }
                 .filter { it.status == DOWNLOADING || it.status == INITIALIZING }
                 .map { it.downloadId }
         }
@@ -309,13 +313,13 @@ class KtorM3u8Downloader(
      */
     override suspend fun pause(downloadId: DownloadId): Boolean {
         stateMutex.withLock {
-            val job = downloadJobs[downloadId] ?: return false
+            val entry = downloads[downloadId] ?: return false
+            val job = entry.job ?: return false
             if (!job.isActive) return false
             job.cancel()
-            downloadJobs.remove(downloadId)
-            downloadStates[downloadId]?.let { old ->
-                downloadStates[downloadId] = old.copy(status = PAUSED)
-            }
+            entry.job = null
+            val oldState = entry.state
+            entry.state = oldState.copy(status = PAUSED)
         }
         emitProgress(downloadId)
         return true
@@ -327,16 +331,15 @@ class KtorM3u8Downloader(
     override suspend fun pauseAll(): List<DownloadId> {
         val paused = mutableListOf<DownloadId>()
         stateMutex.withLock {
-            downloadJobs.forEach { (id, job) ->
-                if (job.isActive) {
+            downloads.forEach { (id, entry) ->
+                val job = entry.job
+                if (job != null && job.isActive) {
                     job.cancel()
+                    entry.job = null
+                    entry.state = entry.state.copy(status = PAUSED)
                     paused.add(id)
-                    downloadStates[id]?.let { old ->
-                        downloadStates[id] = old.copy(status = PAUSED)
-                    }
                 }
             }
-            paused.forEach { downloadJobs.remove(it) }
         }
         paused.forEach { emitProgress(it) }
         return paused
@@ -347,14 +350,13 @@ class KtorM3u8Downloader(
      */
     override suspend fun cancel(downloadId: DownloadId): Boolean {
         stateMutex.withLock {
-            val job = downloadJobs[downloadId] ?: return false
-            if (job.isActive) {
+            val entry = downloads[downloadId] ?: return false
+            val job = entry.job
+            if (job != null && job.isActive) {
                 job.cancel()
             }
-            downloadJobs.remove(downloadId)
-            downloadStates[downloadId]?.let { old ->
-                downloadStates[downloadId] = old.copy(status = CANCELED)
-            }
+            entry.job = null
+            entry.state = entry.state.copy(status = CANCELED)
         }
         emitProgress(downloadId)
         return true
@@ -365,20 +367,19 @@ class KtorM3u8Downloader(
      */
     override suspend fun cancelAll() {
         stateMutex.withLock {
-            downloadJobs.forEach { (_, job) ->
-                if (job.isActive) job.cancel()
-            }
-            downloadJobs.clear()
-            downloadStates.keys.forEach { id ->
-                downloadStates[id]?.let { old ->
-                    if (old.status == DOWNLOADING || old.status == INITIALIZING || old.status == PAUSED) {
-                        downloadStates[id] = old.copy(status = CANCELED)
-                    }
+            downloads.forEach { (_, entry) ->
+                if (entry.job?.isActive == true) {
+                    entry.job?.cancel()
+                }
+                entry.job = null
+                val st = entry.state
+                if (st.status == DOWNLOADING || st.status == INITIALIZING || st.status == PAUSED) {
+                    entry.state = st.copy(status = CANCELED)
                 }
             }
         }
         // Emit progress for all
-        val allIds = downloadStates.keys.toList()
+        val allIds = stateMutex.withLock { downloads.keys.toList() }
         allIds.forEach { emitProgress(it) }
     }
 
@@ -387,7 +388,7 @@ class KtorM3u8Downloader(
      */
     override suspend fun getState(downloadId: DownloadId): DownloadState? {
         return stateMutex.withLock {
-            downloadStates[downloadId]
+            downloads[downloadId]?.state
         }
     }
 
@@ -396,7 +397,7 @@ class KtorM3u8Downloader(
      */
     override suspend fun getAllStates(): List<DownloadState> {
         return stateMutex.withLock {
-            downloadStates.values.toList()
+            downloads.values.map { it.state }.toList()
         }
     }
 
@@ -433,7 +434,7 @@ class KtorM3u8Downloader(
      */
     override suspend fun hasSavedState(downloadId: DownloadId): Boolean {
         return stateMutex.withLock {
-            downloadStates.containsKey(downloadId)
+            downloads.containsKey(downloadId)
         }
     }
 
@@ -448,12 +449,12 @@ class KtorM3u8Downloader(
 
     suspend fun closeSuspend() {
         stateMutex.withLock {
-            downloadJobs.forEach { (_, job) ->
-                if (job.isActive) {
-                    job.cancelAndJoin()
+            downloads.forEach { (_, entry) ->
+                if (entry.job?.isActive == true) {
+                    entry.job?.cancelAndJoin()
                 }
             }
-            downloadJobs.clear()
+            downloads.clear()
         }
         client.close()
         scope.cancel() // Cancel the entire coroutine scope
@@ -462,6 +463,14 @@ class KtorM3u8Downloader(
     // ------------------------------------------------------------------------
     // Internal helpers
     // ------------------------------------------------------------------------
+
+    /**
+     * Data structure holding both the [DownloadState] and the [Job] for a download.
+     */
+    private data class DownloadEntry(
+        var job: Job?,
+        var state: DownloadState
+    )
 
     /**
      * Creates a dedicated subdirectory for segment caching.
@@ -530,7 +539,6 @@ class KtorM3u8Downloader(
                 }
             }
         }
-
         // Wait for all segments to finish
     }
 
@@ -554,7 +562,7 @@ class KtorM3u8Downloader(
         val totalBytes = AtomicLong(0L)
         fileSystem.sink(segmentPath).buffered().use { sink ->
             val ktorBuffer = ByteArray(8 * 1024)
-            withContext(Dispatchers.IO_) {
+            withContext(ioDispatcher) {
                 while (true) {
                     val bytesRead = channel.readAvailable(ktorBuffer, 0, ktorBuffer.size)
                     if (bytesRead == -1) break
@@ -618,7 +626,7 @@ class KtorM3u8Downloader(
     }
 
     /**
-     * Reads the latest [DownloadState] from [downloadStates] and emits a new [DownloadProgress].
+     * Reads the latest [DownloadState] and emits a new [DownloadProgress].
      */
     private suspend fun emitProgress(downloadId: DownloadId) {
         val currentState = getState(downloadId) ?: return
@@ -641,14 +649,15 @@ class KtorM3u8Downloader(
     }
 
     /**
-     * Helper that updates the internal [downloadStates] map inside a [stateMutex] lock
+     * Helper that updates the internal [DownloadState] in [downloads] inside a [stateMutex] lock
      * and returns the new state.
      */
     private suspend fun updateState(downloadId: DownloadId, transform: (DownloadState) -> DownloadState) {
         stateMutex.withLock {
-            val old = downloadStates[downloadId] ?: return
+            val entry = downloads[downloadId] ?: return
+            val old = entry.state
             val new = transform(old)
-            downloadStates[downloadId] = new
+            entry.state = new
         }
     }
 
@@ -674,9 +683,10 @@ class KtorM3u8Downloader(
      * Wait for a particular download job to finish (either complete or fail).
      */
     suspend fun joinDownload(downloadId: DownloadId) {
-        stateMutex.withLock {
-            downloadJobs[downloadId]
-        }?.join()
+        val job = stateMutex.withLock {
+            downloads[downloadId]?.job
+        }
+        job?.join()
     }
 }
 
