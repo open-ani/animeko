@@ -13,8 +13,8 @@ import io.ktor.client.HttpClient
 import io.ktor.client.request.header
 import io.ktor.client.request.prepareGet
 import io.ktor.client.statement.HttpResponse
+import io.ktor.client.statement.HttpStatement
 import io.ktor.client.statement.bodyAsChannel
-import io.ktor.client.statement.bodyAsText
 import io.ktor.utils.io.readAvailable
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
@@ -42,6 +42,7 @@ import kotlinx.datetime.Clock
 import kotlinx.io.buffered
 import kotlinx.io.files.FileSystem
 import kotlinx.io.files.Path
+import kotlinx.io.files.SystemFileSystem
 import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.httpdownloader.DownloadStatus.CANCELED
 import me.him188.ani.utils.httpdownloader.DownloadStatus.COMPLETED
@@ -55,6 +56,8 @@ import me.him188.ani.utils.httpdownloader.m3u.M3u8Parser
 import me.him188.ani.utils.httpdownloader.m3u.M3u8Playlist
 import me.him188.ani.utils.io.copyTo
 import me.him188.ani.utils.io.resolve
+import me.him188.ani.utils.ktor.ScopedHttpClient
+import me.him188.ani.utils.ktor.asScopedHttpClient
 import me.him188.ani.utils.platform.Uuid
 import kotlin.concurrent.atomics.AtomicLong
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
@@ -75,7 +78,7 @@ import kotlin.concurrent.atomics.ExperimentalAtomicApi
  * @param m3u8Parser The parser used to interpret m3u8 content.
  */
 class KtorM3u8Downloader(
-    private val client: HttpClient,
+    private val client: ScopedHttpClient,
     private val fileSystem: FileSystem,
     private val computeDispatcher: CoroutineDispatcher = Dispatchers.Default,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO_,
@@ -456,7 +459,6 @@ class KtorM3u8Downloader(
             }
             downloads.clear()
         }
-        client.close()
         scope.cancel() // Cancel the entire coroutine scope
     }
 
@@ -500,7 +502,7 @@ class KtorM3u8Downloader(
         if (depth >= 5) {
             throw M3u8Exception(DownloadErrorCode.NO_MEDIA_LIST)
         }
-        val response = httpGet(url, options).bodyAsText()
+        val response = httpGet(url, options) { it.body<String>() }
         return when (val playlist = m3u8Parser.parse(response, url)) {
             is M3u8Playlist.MasterPlaylist -> {
                 val bestVariant = playlist.variants.maxByOrNull { it.bandwidth }
@@ -553,26 +555,26 @@ class KtorM3u8Downloader(
         segmentInfo: SegmentInfo,
         options: DownloadOptions
     ): Long {
-        val response = httpGet(segmentInfo.url, options)
-        val channel = response.bodyAsChannel()
+        httpGet(segmentInfo.url, options) {
+            val channel = it.body<HttpResponse>().bodyAsChannel()
 
-        val segmentPath = Path(requireNotNull(segmentInfo.tempFilePath))
-        fileSystem.createDirectories(segmentPath.parent ?: Path("."))
+            val segmentPath = Path(requireNotNull(segmentInfo.tempFilePath))
+            fileSystem.createDirectories(segmentPath.parent ?: Path("."))
 
-        val totalBytes = AtomicLong(0L)
-        fileSystem.sink(segmentPath).buffered().use { sink ->
-            val ktorBuffer = ByteArray(8 * 1024)
-            withContext(ioDispatcher) {
-                while (true) {
-                    val bytesRead = channel.readAvailable(ktorBuffer, 0, ktorBuffer.size)
-                    if (bytesRead == -1) break
-                    sink.write(ktorBuffer, startIndex = 0, endIndex = bytesRead)
-                    totalBytes.fetchAndAdd(bytesRead.toLong())
+            val totalBytes = AtomicLong(0L)
+            fileSystem.sink(segmentPath).buffered().use { sink ->
+                val ktorBuffer = ByteArray(8 * 1024)
+                withContext(ioDispatcher) {
+                    while (true) {
+                        val bytesRead = channel.readAvailable(ktorBuffer, 0, ktorBuffer.size)
+                        if (bytesRead == -1) break
+                        sink.write(ktorBuffer, startIndex = 0, endIndex = bytesRead)
+                        totalBytes.fetchAndAdd(bytesRead.toLong())
+                    }
                 }
             }
+            return totalBytes.load()
         }
-
-        return totalBytes.load()
     }
 
     /**
@@ -664,12 +666,16 @@ class KtorM3u8Downloader(
     /**
      * Simple HTTP GET wrapper to attach custom headers from [DownloadOptions].
      */
-    private suspend fun httpGet(url: String, options: DownloadOptions): HttpResponse {
-        return client.prepareGet(url) {
-            options.headers.forEach { (key, value) ->
-                header(key, value)
+    private suspend inline fun <R> httpGet(url: String, options: DownloadOptions, block: (HttpStatement) -> R): R {
+        return client.use {
+            prepareGet(url) {
+                options.headers.forEach { (key, value) ->
+                    header(key, value)
+                }
+            }.let {
+                block(it)
             }
-        }.body()
+        }
     }
 
     /**
@@ -713,3 +719,16 @@ private fun M3u8Playlist.MediaPlaylist.toSegments(cacheDir: Path): List<SegmentI
         )
     }
 }
+
+//suspend fun main() {
+//    val downloader = KtorM3u8Downloader(
+//        HttpClient().asScopedHttpClient(),
+//        SystemFileSystem,
+//    )
+//    val downloadId = downloader.download(
+//        Path("output.mp4"),
+//        DownloadOptions(),
+//    )
+//    downloader.joinDownload(downloadId)
+//    downloader.close()
+//}

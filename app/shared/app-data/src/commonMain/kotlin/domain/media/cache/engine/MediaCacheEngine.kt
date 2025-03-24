@@ -9,9 +9,11 @@
 
 package me.him188.ani.app.domain.media.cache.engine
 
+import androidx.compose.runtime.Composable
 import kotlinx.coroutines.flow.Flow
 import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.storage.MediaCacheStorage
+import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.MediaCacheMetadata
 import kotlin.coroutines.CoroutineContext
@@ -48,6 +50,13 @@ interface MediaCacheEngine {
     fun supports(media: Media): Boolean
 
     /**
+     * "挂载" 到 composable 中, 以便进行需要虚拟 UI 的操作, 例如 WebView
+     */
+    @Composable
+    fun ComposeContent() {
+    }
+
+    /**
      * 使用给定的 [Media] 信息 [origin] 以及缓存元数据 [metadata], 恢复一个 [MediaCache]
      * Restores a cache that was created by [createCache].
      *
@@ -69,7 +78,8 @@ interface MediaCacheEngine {
     suspend fun createCache(
         origin: Media,
         metadata: MediaCacheMetadata,
-        parentContext: CoroutineContext
+        episodeMetadata: EpisodeMetadata,
+        parentContext: CoroutineContext,
     ): MediaCache
 
     /**

@@ -32,6 +32,7 @@ import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngine
 import me.him188.ani.app.domain.media.cache.engine.MediaStats
 import me.him188.ani.app.domain.media.fetch.MediaFetcher
+import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.MediaCacheMetadata
 import me.him188.ani.datasources.api.paging.SinglePagePagedSource
@@ -71,7 +72,8 @@ private const val METADATA_FILE_EXTENSION = "metadata"
 class DirectoryMediaCacheStorage(
     override val mediaSourceId: String,
     val metadataDir: SystemPath,
-    private val engine: MediaCacheEngine,
+    override val engine: MediaCacheEngine,
+    private val displayName: String,
     parentCoroutineContext: CoroutineContext = EmptyCoroutineContext,
     private val clock: Clock = Clock.System,
 ) : MediaCacheStorage {
@@ -164,7 +166,7 @@ class DirectoryMediaCacheStorage(
     override val listFlow: MutableStateFlow<List<MediaCache>> = MutableStateFlow(emptyList())
 
     override val cacheMediaSource: MediaSource by lazy {
-        MediaCacheStorageSource(this, MediaSourceLocation.Local)
+        MediaCacheStorageSource(this, displayName, MediaSourceLocation.Local)
     }
     override val stats: Flow<MediaStats> = engine.stats.map { stats ->
         MediaStats(
@@ -180,7 +182,12 @@ class DirectoryMediaCacheStorage(
      */
     private val lock = Mutex()
 
-    override suspend fun cache(media: Media, metadata: MediaCacheMetadata, resume: Boolean): MediaCache {
+    override suspend fun cache(
+        media: Media,
+        metadata: MediaCacheMetadata,
+        episodeMetadata: EpisodeMetadata,
+        resume: Boolean
+    ): MediaCache {
         @Suppress("NAME_SHADOWING")
         val metadata = metadata.withExtra(
             mapOf(
@@ -198,6 +205,7 @@ class DirectoryMediaCacheStorage(
             }
             val cache = engine.createCache(
                 media, metadata,
+                episodeMetadata,
                 scope.coroutineContext,
             )
             withContext(Dispatchers.IO) {
@@ -250,7 +258,8 @@ class DirectoryMediaCacheStorage(
  */
 private class MediaCacheStorageSource(
     private val storage: MediaCacheStorage,
-    override val location: MediaSourceLocation = MediaSourceLocation.Local
+    private val displayName: String,
+    override val location: MediaSourceLocation = MediaSourceLocation.Local,
 ) : MediaSource {
     override val mediaSourceId: String get() = storage.mediaSourceId
     override val kind: MediaSourceKind get() = MediaSourceKind.LocalCache
@@ -268,7 +277,7 @@ private class MediaCacheStorageSource(
     }
 
     override val info: MediaSourceInfo = MediaSourceInfo(
-        "本地",
+        displayName,
         "本地缓存",
         isSpecial = true,
     )

@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.MediaCacheState
+import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
 import me.him188.ani.app.tools.toProgress
 import me.him188.ani.datasources.api.CachedMedia
 import me.him188.ani.datasources.api.Media
@@ -43,6 +44,7 @@ class DummyMediaCacheEngine(
     override suspend fun createCache(
         origin: Media,
         metadata: MediaCacheMetadata,
+        episodeMetadata: EpisodeMetadata,
         parentContext: CoroutineContext
     ): MediaCache = DummyMediaCache(origin, metadata, mediaSourceId, location)
 

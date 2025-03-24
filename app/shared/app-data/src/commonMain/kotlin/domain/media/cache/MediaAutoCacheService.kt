@@ -32,6 +32,7 @@ import me.him188.ani.app.domain.media.cache.storage.MediaCacheStorage
 import me.him188.ani.app.domain.media.fetch.MediaFetcher
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.fetch.create
+import me.him188.ani.app.domain.media.resolver.toEpisodeMetadata
 import me.him188.ani.app.domain.media.selector.MediaSelectorFactory
 import me.him188.ani.app.domain.media.selector.autoSelect
 import me.him188.ani.datasources.api.MediaCacheMetadata
@@ -151,7 +152,10 @@ class DefaultMediaAutoCacheService(
             logger.info { "No media selected for ${subject.debugName()} ${firstUnwatched.episodeInfo.name}" }
             return
         }
-        val cache = targetStorage.first().cache(selected, MediaCacheMetadata(fetchSession.request.first()))
+        val cache = targetStorage.first().cache(
+            selected, MediaCacheMetadata(fetchSession.request.first()),
+            firstUnwatched.episodeInfo.toEpisodeMetadata(),
+        )
         logger.info { "Created cache '${cache.cacheId}' for ${subject.debugName()} ${firstUnwatched.episodeInfo.name}" }
     }
 

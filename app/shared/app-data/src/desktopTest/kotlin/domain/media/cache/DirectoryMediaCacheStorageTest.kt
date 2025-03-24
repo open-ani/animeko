@@ -28,11 +28,13 @@ import me.him188.ani.app.domain.media.cache.engine.TorrentMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.storage.DirectoryMediaCacheStorage
 import me.him188.ani.app.domain.media.createTestDefaultMedia
 import me.him188.ani.app.domain.media.createTestMediaProperties
+import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
 import me.him188.ani.app.domain.torrent.TorrentEngine
 import me.him188.ani.app.domain.torrent.engines.AnitorrentEngine
 import me.him188.ani.app.domain.torrent.peer.PeerFilterSettings
 import me.him188.ani.app.torrent.anitorrent.session.AnitorrentDownloadSession
 import me.him188.ani.app.torrent.anitorrent.test.TestAnitorrentTorrentDownloader
+import me.him188.ani.datasources.api.DefaultMedia
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.MediaCacheMetadata
 import me.him188.ani.datasources.api.source.MediaFetchRequest
@@ -206,6 +208,17 @@ class DirectoryMediaCacheStorageTest {
             storage.cache(media, mediaCacheMetadata(), resume = false) as TorrentMediaCacheEngine.TorrentMediaCache
         assertSame(cache, storage.listFlow.first().single())
     }
+
+    private suspend fun DirectoryMediaCacheStorage.cache(
+        media: DefaultMedia,
+        metadata: MediaCacheMetadata,
+        resume: Boolean
+    ) = cache(
+        media,
+        metadata,
+        EpisodeMetadata("Test", null, EpisodeSort(1)), // doesn't matter, as we only test BT engine.
+        resume,
+    )
 
     @Test
     fun `create cache saves metadata`() = runTest {

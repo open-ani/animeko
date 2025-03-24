@@ -58,7 +58,7 @@ interface MediaCache {
      */
     val metadata: MediaCacheMetadata
 
-    val state: StateFlow<MediaCacheState>
+    val state: Flow<MediaCacheState>
 
     /**
      * Returns the [CachedMedia] instance for this cache.
@@ -69,7 +69,7 @@ interface MediaCache {
     /**
      * 缓存
      */
-    fun isValid(): Boolean
+    fun isValid(): Boolean // todo: deprecate this
 
     /**
      * @see TorrentFileEntry.Stats

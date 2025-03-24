@@ -221,8 +221,12 @@ class EpisodeCacheRequesterImpl(
     inner class SelectStorage(
         private val previous: SelectMedia,
         private val selectedMedia: Media,
-        override val storages: List<MediaCacheStorage>,
+        storages: List<MediaCacheStorage>,
     ) : CacheRequestStage.SelectStorage, AbstractWorkingStage(previous.request), CloseableStage {
+
+        override val storages: List<MediaCacheStorage> = storages.filter {
+            it.engine.supports(selectedMedia)
+        }
 
         override val fetchSession: MediaFetchSession get() = previous.fetchSession
         override val mediaSelector: MediaSelector get() = previous.mediaSelector

@@ -55,6 +55,8 @@ import me.him188.ani.app.domain.media.cache.requester.EpisodeCacheRequest
 import me.him188.ani.app.domain.media.cache.requester.EpisodeCacheRequester
 import me.him188.ani.app.domain.media.cache.requester.EpisodeCacheRequesterImpl
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
+import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
+import me.him188.ani.app.domain.media.resolver.toEpisodeMetadata
 import me.him188.ani.app.domain.media.selector.MediaSelectorFactory
 import me.him188.ani.app.domain.media.selector.eventHandling
 import me.him188.ani.app.navigation.LocalNavigator
@@ -180,7 +182,16 @@ class SubjectCacheViewModelImpl(
             }
         },
         onRequestCacheComplete = { target ->
-            target.storage.cache(target.media, target.metadata)
+            val episodeInfo = episodeCollectionsFlow.first().firstOrNull { it.episodeId == target.episode.episodeId }
+                ?: error(
+                    "Episode ${target.episode} not found from episodes: ${
+                        episodeCollectionsFlow.first().joinToString { it.episodeId.toString() }
+                    }",
+                )
+            target.storage.cache(
+                target.media, target.metadata,
+                episodeInfo.episodeInfo.toEpisodeMetadata(),
+            )
         },
         onDeleteCache = { episode ->
             val episodeId = episode.episodeId.toString()

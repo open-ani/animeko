@@ -34,6 +34,9 @@ import kotlinx.io.files.FileNotFoundException
 import kotlinx.io.files.Path
 import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.MediaCacheState
+import me.him188.ani.app.domain.media.cache.engine.TorrentMediaCacheEngine.Companion.EXTRA_TORRENT_CACHE_DIR
+import me.him188.ani.app.domain.media.cache.engine.TorrentMediaCacheEngine.Companion.EXTRA_TORRENT_DATA
+import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
 import me.him188.ani.app.domain.media.resolver.TorrentMediaResolver
 import me.him188.ani.app.domain.torrent.TorrentEngine
 import me.him188.ani.app.tools.toProgress
@@ -342,6 +345,7 @@ class TorrentMediaCacheEngine(
     override suspend fun createCache(
         origin: Media,
         metadata: MediaCacheMetadata,
+        episodeMetadata: EpisodeMetadata,
         parentContext: CoroutineContext
     ): MediaCache {
         if (!supports(origin)) throw UnsupportedOperationException("Media is not supported by this engine $this: ${origin.download}")

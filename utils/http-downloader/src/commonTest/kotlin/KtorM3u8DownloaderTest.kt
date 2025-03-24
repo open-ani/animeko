@@ -34,6 +34,8 @@ import kotlinx.io.files.SystemFileSystem
 import kotlinx.io.files.SystemTemporaryDirectory
 import me.him188.ani.utils.io.deleteRecursively
 import me.him188.ani.utils.io.resolve
+import me.him188.ani.utils.ktor.ScopedHttpClient
+import me.him188.ani.utils.ktor.asScopedHttpClient
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -137,7 +139,7 @@ class KtorM3u8DownloaderTest {
         }
 
         downloader = KtorM3u8Downloader(
-            client = mockClient,
+            client = mockClient.asScopedHttpClient(),
             fileSystem = fileSystem,
             ioDispatcher = testDispatcher,
             computeDispatcher = testDispatcher,

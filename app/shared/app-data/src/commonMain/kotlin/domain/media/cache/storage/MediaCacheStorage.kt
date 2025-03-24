@@ -18,8 +18,10 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.MediaCacheManager
+import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngine
 import me.him188.ani.app.domain.media.cache.engine.MediaStats
 import me.him188.ani.app.domain.media.fetch.MediaFetcher
+import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
 import me.him188.ani.datasources.api.CachedMedia
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.MediaCacheMetadata
@@ -49,6 +51,8 @@ interface MediaCacheStorage : AutoCloseable {
      * 此空间的 [MediaSource]. 调用 [MediaSource.fetch] 则可从此空间中查询缓存, 作为 [Media].
      */
     val cacheMediaSource: MediaSource
+
+    val engine: MediaCacheEngine
 
     /**
      * 此存储的总体统计
@@ -83,7 +87,8 @@ interface MediaCacheStorage : AutoCloseable {
     suspend fun cache(
         media: Media,
         metadata: MediaCacheMetadata,
-        resume: Boolean = true
+        episodeMetadata: EpisodeMetadata,
+        resume: Boolean = true,
     ): MediaCache
 
     /**
@@ -127,6 +132,8 @@ class TestMediaCacheStorage : MediaCacheStorage {
         get() = MediaCacheManager.LOCAL_FS_MEDIA_SOURCE_ID
     override val cacheMediaSource: MediaSource
         get() = throw UnsupportedOperationException()
+    override val engine: MediaCacheEngine
+        get() = throw UnsupportedOperationException()
     override val listFlow: MutableStateFlow<List<MediaCache>> =
         MutableStateFlow(listOf())
 
@@ -138,6 +145,7 @@ class TestMediaCacheStorage : MediaCacheStorage {
     override suspend fun cache(
         media: Media,
         metadata: MediaCacheMetadata,
+        episodeMetadata: EpisodeMetadata,
         resume: Boolean
     ): MediaCache {
         throw UnsupportedOperationException()
