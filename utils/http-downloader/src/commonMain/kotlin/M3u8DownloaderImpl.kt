@@ -257,10 +257,12 @@ open class KtorM3u8Downloader(
         stateMutex.withLock {
             val currentMap = _downloadStatesFlow.value.toMutableMap()
             val entry = currentMap[downloadId] ?: return false
-            val job = entry.job ?: return false
-            if (!job.isActive) return false
+            val job = entry.job
+            if (job != null) {
+                if (!job.isActive) return false
+                job.cancel()
+            }
 
-            job.cancel()
             val oldState = entry.state
             currentMap[downloadId] = entry.copy(
                 job = null,

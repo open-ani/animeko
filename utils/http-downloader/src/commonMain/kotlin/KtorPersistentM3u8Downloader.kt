@@ -77,7 +77,19 @@ class KtorPersistentM3u8Downloader(
             savedList.forEach { st ->
                 currentMap[st.downloadId] = DownloadEntry(
                     job = null,
-                    state = st,
+                    state = st.copy(
+                        status = when (val status = st.status) {
+                            // 恢复时必须将原本的下载中状态设置为 PAUSED, 否则无法 resume.
+                            DownloadStatus.INITIALIZING,
+                            DownloadStatus.DOWNLOADING,
+                            DownloadStatus.MERGING -> DownloadStatus.PAUSED
+
+                            DownloadStatus.PAUSED,
+                            DownloadStatus.COMPLETED,
+                            DownloadStatus.FAILED,
+                            DownloadStatus.CANCELED -> status
+                        },
+                    ),
                 )
             }
             _downloadStatesFlow.value = currentMap

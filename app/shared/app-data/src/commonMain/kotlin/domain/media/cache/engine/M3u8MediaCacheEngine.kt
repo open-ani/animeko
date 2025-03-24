@@ -217,12 +217,12 @@ class M3u8MediaCache(
 ) : MediaCache {
     override val state: Flow<MediaCacheState> = downloader.getProgressFlow(downloadId).map {
         when (it.status) {
-            DownloadStatus.INITIALIZING,
             DownloadStatus.DOWNLOADING,
             DownloadStatus.MERGING,
             DownloadStatus.COMPLETED,
                 -> MediaCacheState.IN_PROGRESS
 
+            DownloadStatus.INITIALIZING,
             DownloadStatus.PAUSED,
                 -> MediaCacheState.PAUSED
 
