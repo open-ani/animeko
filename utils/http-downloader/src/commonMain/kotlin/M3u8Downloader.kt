@@ -324,12 +324,3 @@ data class DownloadOptions(
     val autoSaveIntervalMs: Long = 5_000,
     val headers: Map<String, String> = emptyMap()
 )
-
-
-/**
- * Custom exceptions for m3u8 download errors
- */
-open class M3u8DownloaderException(message: String, cause: Throwable? = null) : Exception(message, cause)
-class M3u8StateException(message: String, cause: Throwable? = null) : M3u8DownloaderException(message, cause)
-class M3u8IOException(message: String, cause: Throwable? = null) : M3u8DownloaderException(message, cause)
-class M3u8NetworkException(message: String, cause: Throwable? = null) : M3u8DownloaderException(message, cause)
