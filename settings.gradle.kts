@@ -175,6 +175,10 @@ findLocalProperty("ani.build.mediamp.path")?.let { mediampPath ->
                 .using(project(":mediamp-vlc-compose"))
             substitute(module("org.openani.mediamp:mediamp-source-ktxio"))
                 .using(project(":mediamp-source-ktxio"))
+            substitute(module("org.openani.mediamp:mediamp-test"))
+                .using(project(":mediamp-test"))
+            substitute(module("org.openani.mediamp:catalog"))
+                .using(project(":catalog"))
         }
     }
 }

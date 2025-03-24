@@ -57,7 +57,8 @@ class RememberPlayProgressExtension(
                 when (playbackState) {
                     // 加载播放进度
                     PlaybackState.READY -> {
-                        val positionMillis = playProgressRepository.getPositionMillisByEpisodeId(episodeSession.episodeId)
+                        val positionMillis =
+                            playProgressRepository.getPositionMillisByEpisodeId(episodeSession.episodeId)
                         if (positionMillis == null) {
                             logger.info { "Did not find saved position" }
                         } else {
@@ -108,7 +109,10 @@ class RememberPlayProgressExtension(
 
         when (playbackState) {
             PlaybackState.READY,
-            PlaybackState.ERROR -> return
+            PlaybackState.ERROR,
+            PlaybackState.DESTROYED,
+            PlaybackState.CREATED,
+                -> return
 
             PlaybackState.FINISHED,
             PlaybackState.PAUSED,

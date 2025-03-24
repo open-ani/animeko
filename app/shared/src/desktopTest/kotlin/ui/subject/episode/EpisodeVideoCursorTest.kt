@@ -55,7 +55,7 @@ import me.him188.ani.app.videoplayer.ui.gesture.VIDEO_GESTURE_MOUSE_MOVE_SHOW_CO
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
 import me.him188.ani.app.videoplayer.ui.progress.PlayerProgressSliderState
 import me.him188.ani.app.videoplayer.ui.progress.TAG_PROGRESS_SLIDER_PREVIEW_POPUP
-import org.openani.mediamp.DummyMediampPlayer
+import org.openani.mediamp.test.TestMediampPlayer
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.time.Duration.Companion.seconds
@@ -88,7 +88,7 @@ class EpisodeVideoCursorTest {
         ProvideCompositionLocalsForPreview(darkMode = DarkMode.DARK) {
             val scope = rememberCoroutineScope()
             val playerState = remember {
-                DummyMediampPlayer(scope.coroutineContext)
+                TestMediampPlayer(scope.coroutineContext)
             }
             Row {
                 val expanded = true

@@ -51,7 +51,7 @@ import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
 import me.him188.ani.app.videoplayer.ui.progress.rememberMediaProgressSliderState
 import me.him188.ani.app.videoplayer.ui.rememberVideoControllerState
 import me.him188.ani.utils.platform.annotations.TestOnly
-import org.openani.mediamp.DummyMediampPlayer
+import org.openani.mediamp.test.TestMediampPlayer
 
 
 @Preview("Landscape Fullscreen - Light", device = PHONE_LANDSCAPE, uiMode = UI_MODE_NIGHT_NO)
@@ -90,7 +90,7 @@ private fun PreviewVideoScaffoldImpl(
 ) = ProvideCompositionLocalsForPreview {
     val scope = rememberCoroutineScope()
     val playerState = remember {
-        DummyMediampPlayer(scope.coroutineContext)
+        TestMediampPlayer(scope.coroutineContext)
     }
 
     val controllerState = rememberVideoControllerState(initialVisibility = controllerVisibility)

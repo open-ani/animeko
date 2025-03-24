@@ -80,7 +80,7 @@ import me.him188.ani.app.videoplayer.ui.progress.TAG_SPEED_SWITCHER_TEXT_BUTTON
 import me.him188.ani.app.videoplayer.ui.top.PlayerTopBar
 import me.him188.ani.danmaku.ui.DanmakuConfig
 import org.junit.jupiter.api.Disabled
-import org.openani.mediamp.DummyMediampPlayer
+import org.openani.mediamp.test.TestMediampPlayer
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.time.Duration.Companion.seconds
@@ -163,7 +163,7 @@ class EpisodeVideoControllerTest {
         ProvideCompositionLocalsForPreview(darkMode = DarkMode.DARK) {
             val scope = rememberCoroutineScope()
             val playerState = remember {
-                DummyMediampPlayer(scope.coroutineContext)
+                TestMediampPlayer(scope.coroutineContext)
             }
             val expanded = true
             val cacheProgressInfoFlow = staticMediaCacheProgressState(ChunkState.NONE).flow

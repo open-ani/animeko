@@ -63,6 +63,7 @@ kotlin {
         api(projects.danmaku.dandanplay)
 
         api(libs.paging.common)
+        api("org.openani.mediamp:mediamp-test:0.0.19") // TestMediampPlayer for previews. will be striped during ProGuard.
 
         implementation(libs.koin.core)
     }
