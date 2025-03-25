@@ -17,6 +17,14 @@ plugins {
 
 android {
     namespace = "me.him188.ani.utils.http.downloader"
+    packaging {
+        resources {
+            pickFirsts.add("META-INF/AL2.0")
+            pickFirsts.add("META-INF/LGPL2.1")
+            excludes.add("META-INF/DEPENDENCIES")
+            excludes.add("META-INF/licenses/ASM")
+        }
+    }
 }
 
 kotlin {
