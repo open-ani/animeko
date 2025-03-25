@@ -690,7 +690,7 @@ workflow(
             append('-')
             append(expr { github.event_name })
             append('-')
-            append(expr { """${github.ref_name} == 'main' && ${github.sha} || ${github.ref_name}""" })
+            append(expr { """${github.ref_name} == 'main' && ${github.run_id} || ${github.ref_name}""" })
         },
         cancelInProgress = true,
     ),
