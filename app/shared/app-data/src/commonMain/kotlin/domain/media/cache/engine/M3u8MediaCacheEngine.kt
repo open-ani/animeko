@@ -30,7 +30,11 @@ import me.him188.ani.app.domain.media.resolver.MediaResolver
 import me.him188.ani.app.tools.Progress
 import me.him188.ani.app.tools.toProgress
 import me.him188.ani.app.torrent.api.files.averageRate
-import me.him188.ani.datasources.api.*
+import me.him188.ani.datasources.api.CachedMedia
+import me.him188.ani.datasources.api.DefaultMedia
+import me.him188.ani.datasources.api.Media
+import me.him188.ani.datasources.api.MediaCacheMetadata
+import me.him188.ani.datasources.api.MetadataKey
 import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
 import me.him188.ani.datasources.api.topic.ResourceLocation
@@ -38,7 +42,11 @@ import me.him188.ani.utils.httpdownloader.DownloadId
 import me.him188.ani.utils.httpdownloader.DownloadOptions
 import me.him188.ani.utils.httpdownloader.DownloadStatus
 import me.him188.ani.utils.httpdownloader.M3u8Downloader
-import me.him188.ani.utils.io.*
+import me.him188.ani.utils.io.absolutePath
+import me.him188.ani.utils.io.actualSize
+import me.him188.ani.utils.io.deleteRecursively
+import me.him188.ani.utils.io.inSystem
+import me.him188.ani.utils.io.resolve
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
@@ -158,12 +166,14 @@ class M3u8MediaCacheEngine(
                     downloader,
                     downloadId,
                     origin,
-                    metadata.copy(extra = metadata.extra.toMutableMap().apply {
-                        put(EXTRA_DOWNLOAD_ID, downloadId.value)
-                        put(EXTRA_URI, mediaData.uri)
-                        put(EXTRA_OUTPUT_PATH, outputPath.inSystem.absolutePath)
-                        put(EXTRA_HEADERS, json.encodeToString(mediaData.headers))
-                    })
+                    metadata.copy(
+                        extra = metadata.extra.toMutableMap().apply {
+                            put(EXTRA_DOWNLOAD_ID, downloadId.value)
+                            put(EXTRA_URI, mediaData.uri)
+                            put(EXTRA_OUTPUT_PATH, outputPath.inSystem.absolutePath)
+                            put(EXTRA_HEADERS, json.encodeToString(mediaData.headers))
+                        },
+                    ),
                 )
             }
         }
@@ -281,7 +291,7 @@ class M3u8MediaCache(
                 CachedMedia(
                     origin,
                     cacheMediaSourceId = mediaSourceId,
-                    download = ResourceLocation.LocalFile(state.outputPath)
+                    download = ResourceLocation.LocalFile(state.outputPath, ResourceLocation.LocalFile.FileType.MPTS),
                 )
             }
 
