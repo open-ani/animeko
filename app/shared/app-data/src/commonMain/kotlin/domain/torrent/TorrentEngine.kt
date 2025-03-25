@@ -60,7 +60,7 @@ interface TorrentEngine : AutoCloseable {
     /**
      * 是否被当前平台支持
      */
-    val isSupported: Flow<Boolean>
+    val isSupported: Boolean
 
     /**
      * 测试是否可以连接到这个引擎. 不能连接一定代表无法使用, 但能连接不一定代表能使用.
@@ -166,7 +166,7 @@ abstract class AbstractTorrentEngine<Downloader : TorrentDownloader, Config : An
     }
 
     final override suspend fun getDownloader(): Downloader {
-        if (!isSupported.first()) throw UnsupportedOperationException("Engine $this is not supported")
+        if (!isSupported) throw UnsupportedOperationException("Engine $this is not supported")
         return try {
             downloader.filterNotNull().first()
         } catch (e: CancellationException) {

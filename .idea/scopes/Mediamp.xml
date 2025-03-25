@@ -1,0 +1,3 @@
+<component name="DependencyValidationManager">
+  <scope name="Mediamp" pattern="file[mediamp]:*/||file[mediamp.**]:*/||file[buildSrc.mediamp]:*/||file[buildSrc.mediamp.*]:*/" />
+</component>

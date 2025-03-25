@@ -71,7 +71,7 @@ class DesktopWebMediaResolver(
     private val settings: SettingsRepository by inject()
     private val proxyProvider: ProxyProvider by inject()
 
-    override suspend fun supports(media: Media): Boolean = media.download is ResourceLocation.WebVideo
+    override fun supports(media: Media): Boolean = media.download is ResourceLocation.WebVideo
 
     override suspend fun resolve(media: Media, episode: EpisodeMetadata): MediaDataProvider<*> {
         return withContext(Dispatchers.Default) {

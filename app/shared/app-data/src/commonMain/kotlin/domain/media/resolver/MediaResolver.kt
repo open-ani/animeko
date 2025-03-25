@@ -31,7 +31,7 @@ interface MediaResolver {
      *
      * 当且仅当返回 `true` 时, 才可以调用 [resolve] 方法.
      */
-    suspend fun supports(media: Media): Boolean
+    fun supports(media: Media): Boolean
 
     /**
      * "挂载" 到 composable 中, 以便进行需要虚拟 UI 的操作, 例如 WebView
@@ -122,7 +122,7 @@ class MediaResolutionException(
 private class ChainedMediaResolver(
     private val resolvers: List<MediaResolver>
 ) : MediaResolver {
-    override suspend fun supports(media: Media): Boolean {
+    override fun supports(media: Media): Boolean {
         return resolvers.any { it.supports(media) }
     }
 

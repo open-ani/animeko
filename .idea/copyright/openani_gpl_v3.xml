@@ -1,0 +1,8 @@
+<component name="CopyrightManager">
+    <copyright>
+        <option name="allowReplaceRegexp" value="Copyright" />
+        <option name="notice"
+                value="Copyright (C) 2024-&amp;#36;today.year OpenAni and contributors.&#10;&#10;Use of this source code is governed by the GNU GENERAL PUBLIC LICENSE version 3 license, which can be found at the following link.&#10;&#10;https://github.com/open-ani/mediamp/blob/main/LICENSE" />
+        <option name="myName" value="openani-gpl-v3" />
+    </copyright>
+</component>

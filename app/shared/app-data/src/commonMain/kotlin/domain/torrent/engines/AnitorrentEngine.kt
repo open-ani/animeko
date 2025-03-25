@@ -12,8 +12,6 @@ package me.him188.ani.app.domain.torrent.engines
 import io.ktor.client.request.get
 import io.ktor.client.statement.readBytes
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flowOf
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
 import me.him188.ani.app.domain.torrent.AbstractTorrentEngine
 import me.him188.ani.app.domain.torrent.TorrentEngineType
@@ -49,7 +47,10 @@ class AnitorrentEngine(
     parentCoroutineContext = parentCoroutineContext,
 ) {
     override val location: MediaSourceLocation get() = MediaSourceLocation.Local
-    override val isSupported: Flow<Boolean> by lazy { flowOf(tryLoadLibraries()) }
+
+    override val isSupported by lazy {
+        tryLoadLibraries()
+    }
 
     init {
         initialized.complete(Unit)
@@ -66,12 +67,12 @@ class AnitorrentEngine(
         }
     }
 
-    override suspend fun testConnection(): Boolean = isSupported.first()
+    override suspend fun testConnection(): Boolean = isSupported
 
     override suspend fun newInstance(
         config: AnitorrentConfig
     ): AnitorrentTorrentDownloader<*, *> {
-        if (!isSupported.first()) {
+        if (!isSupported) {
             logger.error { "Anitorrent is disabled because it is not built. Read `/torrent/anitorrent/README.md` for more information." }
             throw UnsupportedOperationException("AnitorrentEngine is not supported")
         }

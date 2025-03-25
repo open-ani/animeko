@@ -25,7 +25,9 @@ import kotlin.coroutines.cancellation.CancellationException
 object AppStartupTasks {
     fun initializeSentry(userId: String) {
         initializeErrorReport(userId = userId)
-        ErrorReportHolder.init(SentryErrorReport)
+        if (!currentAniBuildConfig.isDebug) {
+            ErrorReportHolder.init(SentryErrorReport)
+        }
     }
 
     fun printVersions() {

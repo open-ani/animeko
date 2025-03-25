@@ -57,7 +57,7 @@ class AndroidWebMediaResolver(
         java.util.ServiceLoader.load(WebVideoMatcher::class.java, this::class.java.classLoader).filterNotNull()
     }
 
-    override suspend fun supports(media: Media): Boolean = media.download is ResourceLocation.WebVideo
+    override fun supports(media: Media): Boolean = media.download is ResourceLocation.WebVideo
 
     private var attached: Context? = null
 

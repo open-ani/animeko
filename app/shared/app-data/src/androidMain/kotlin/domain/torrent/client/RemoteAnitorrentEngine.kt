@@ -67,16 +67,16 @@ class RemoteAnitorrentEngine(
     private val fetchRemoteScope = parentCoroutineContext.childScope(
         CoroutineName("RemoteAnitorrentEngineFetchRemote") + Dispatchers.IO_,
     )
-    
+
     private val connectivityAware = DefaultConnectivityAware(
         parentCoroutineContext.childScope(),
         connection.connected,
     )
-    
+
     override val type: TorrentEngineType = TorrentEngineType.RemoteAnitorrent
 
-    override val isSupported: Flow<Boolean> 
-        get() = flowOf(true)
+    override val isSupported: Boolean
+        get() = true
 
     override val location: MediaSourceLocation = MediaSourceLocation.Local
 
@@ -84,7 +84,7 @@ class RemoteAnitorrentEngine(
         ignoreUnknownKeys = true
         encodeDefaults = true
     }
-    
+
     init {
         // transfer from app to service.
         collectSettingsToRemote(
@@ -112,7 +112,7 @@ class RemoteAnitorrentEngine(
     override suspend fun testConnection(): Boolean {
         return connection.connected.value
     }
-    
+
     override suspend fun getDownloader(): TorrentDownloader {
         return RemoteTorrentDownloader(
             fetchRemoteScope,

@@ -1,0 +1,3 @@
+<component name="DependencyValidationManager">
+  <scope name="mediamp-vlc" pattern="file[mediamp.mediamp-vlc]:*/||file[mediamp.mediamp-vlc-compose]:*/||file[mediamp.mediamp-vlc-compose.main]:*/||file[mediamp.mediamp-vlc.main]:*/" />
+</component>

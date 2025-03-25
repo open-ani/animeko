@@ -145,6 +145,16 @@ fun SystemPath.deleteRecursively(mustExist: Boolean = false) {
     delete(mustExist)
 }
 
+fun FileSystem.deleteRecursively(path: Path, mustExist: Boolean = false) {
+    if (SystemFileSystem.metadataOrNull(path)?.isDirectory == true) {
+        SystemFileSystem.list(path).asSequence().forEach { path ->
+            deleteRecursively(path, mustExist)
+        }
+    }
+    delete(path, mustExist)
+}
+
+
 /**
  * @see FileSystem.list
  */

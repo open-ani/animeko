@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -10,9 +10,8 @@
 package me.him188.ani.app.domain.mediasource.web.format
 
 import androidx.compose.runtime.Immutable
-import io.ktor.http.URLBuilder
-import io.ktor.http.path
 import kotlinx.serialization.Serializable
+import me.him188.ani.utils.ktor.UrlHelpers
 import kotlin.jvm.JvmInline
 
 /**
@@ -48,24 +47,4 @@ fun Regex.Companion.parseOrNull(regex: String): Regex? {
     }
 }
 
-object SelectorHelpers {
-    fun computeAbsoluteUrl(baseUrl: String, relativeUrl: String): String {
-        require(baseUrl.isNotEmpty()) { "baseUrl must not be empty" }
-        @Suppress("NAME_SHADOWING")
-        var baseUrl = baseUrl
-        if (baseUrl.endsWith('/')) {
-            baseUrl = baseUrl.dropLast(1)
-        }
-        return when {
-            relativeUrl.startsWith("http") -> relativeUrl
-            relativeUrl.startsWith('/') -> {
-                URLBuilder(baseUrl).apply {
-                    pathSegments = emptyList()
-                    path(relativeUrl)
-                }.buildString()
-            }
-
-            else -> "$baseUrl/$relativeUrl"
-        }
-    }
-}
+typealias SelectorHelpers = UrlHelpers

@@ -14,7 +14,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.io.IOException
@@ -37,8 +36,8 @@ import kotlin.coroutines.cancellation.CancellationException
 class TorrentMediaResolver(
     private val engine: TorrentEngine,
 ) : MediaResolver {
-    override suspend fun supports(media: Media): Boolean {
-        if (!engine.isSupported.first()) return false
+    override fun supports(media: Media): Boolean {
+        if (!engine.isSupported) return false
         return media.download is ResourceLocation.HttpTorrentFile || media.download is ResourceLocation.MagnetLink
     }
 
