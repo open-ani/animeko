@@ -684,13 +684,11 @@ workflow(
     consistencyCheckJobConfig = ConsistencyCheckJobConfig.Disabled,
     concurrency = Concurrency(
         run {
-            val isPr = expr { github.isPullRequest }
-            val workflow = expr { github.workflow }
-            val ref = expr { github.ref }
-            val sha = expr { github.sha } // no concurrency limit in main
             // 如果是 PR, 则限制为 1 个并发, 并且 cancelInProgress
-            val eventName = expr { github.event_name }
-            """$isPr && $workflow-$eventName-$ref || $sha"""
+            expr {
+                """${github.ref_name} == "main" && ${github.sha} || ${github.workflow}-${github.event_name}-${github.ref_name}"""
+                // PR: build-push-foo/bar
+            }
         },
         cancelInProgress = true,
     ),

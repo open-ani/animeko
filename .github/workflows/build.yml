@@ -11,7 +11,7 @@ on:
     paths-ignore:
     - '**/*.md'
 concurrency:
-  group: '${{ github.event_name == ''pull_request'' }} && ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }} || ${{ github.sha }}'
+  group: '${{ github.ref_name == "main" && github.sha || github.workflow-github.event_name-github.ref_name }}'
   cancel-in-progress: true
 jobs:
   consistency-check:
