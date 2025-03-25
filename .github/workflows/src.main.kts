@@ -670,7 +670,27 @@ fun WorkflowBuilder.addConsistencyCheckJob(filename: String) {
     }
 }
 
-val buildBlock: WorkflowBuilder.() -> Unit = {
+workflow(
+    name = "Build",
+    on = listOf(
+        // Including: 
+        // - pushing directly to main
+        // - pushing to a branch that has an associated PR
+        Push(pathsIgnore = listOf("**/*.md")),
+        PullRequest(pathsIgnore = listOf("**/*.md")),
+    ),
+    sourceFile = __FILE__,
+    targetFileName = "build.yml",
+    consistencyCheckJobConfig = ConsistencyCheckJobConfig.Disabled,
+    concurrency = Concurrency(
+        // 如果是 PR, 则限制为 1 个并发, 并且 cancelInProgress
+        expr {
+            """${github.ref_name} == 'main' && ${github.sha} || join([${github.workflow}, ${github.event_name}, ${github.ref_name}], '-')"""
+            // PR: build-push-foo/bar
+        },
+        cancelInProgress = true,
+    ),
+) {
     addConsistencyCheckJob("build.yml")
     // Expands job matrix at compile-time so that we set job-level `if` condition. 
     val builds: List<Pair<MatrixInstance, Job<BuildJobOutputs>>> = buildMatrixInstances.map { matrix ->
@@ -719,41 +739,6 @@ val buildBlock: WorkflowBuilder.() -> Unit = {
             }
         }
 }
-
-workflow(
-    name = "Build",
-    on = listOf(
-        // Including: 
-        // - pushing directly to main
-        Push(branches = listOf("main"), pathsIgnore = listOf("**/*.md")),
-        PullRequest(branches = listOf("main"), pathsIgnore = listOf("**/*.md")),
-    ),
-    sourceFile = __FILE__,
-    targetFileName = "build-main.yml",
-    consistencyCheckJobConfig = ConsistencyCheckJobConfig.Disabled,
-    // no concurrency limit
-    block = buildBlock,
-)
-
-workflow(
-    name = "Build",
-    on = listOf(
-        // Including: 
-        // - pushing to a branch that has an associated PR
-        Push(branchesIgnore = listOf("main"), pathsIgnore = listOf("**/*.md")),
-        PullRequest(branchesIgnore = listOf("main"), pathsIgnore = listOf("**/*.md")),
-    ),
-    sourceFile = __FILE__,
-    targetFileName = "build-pr.yml",
-    consistencyCheckJobConfig = ConsistencyCheckJobConfig.Disabled,
-    concurrency = Concurrency(
-        // 限制为 1 个并发, 并且 cancelInProgress
-        // build-push-foo/bar
-        expr { "${github.workflow}-${github.event_name}-${github.ref_name}" },
-        cancelInProgress = true,
-    ),
-    block = buildBlock,
-)
 
 operator fun List<Pair<MatrixInstance, Job<BuildJobOutputs>>>.get(runner: Runner): Job<BuildJobOutputs> {
     return first { it.first.runner == runner }.second
