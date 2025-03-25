@@ -225,10 +225,6 @@ class KtorM3u8DownloaderTest {
             outputPath = "$tempDir/pausable.ts",
         )
 
-        // Let the job run briefly.
-        // Because Ktor's mock engine is often immediate, you might do a small delay:
-        delay(100) // just to ensure it started
-
         val result = downloader.pause(downloadId)
         assertTrue(result)
 
@@ -244,7 +240,6 @@ class KtorM3u8DownloaderTest {
             url = "https://example.com/master.m3u8",
             outputPath = "$tempDir/resumable.ts",
         )
-        delay(100)
         downloader.pause(downloadId)
 
         // Resume
@@ -265,7 +260,6 @@ class KtorM3u8DownloaderTest {
             url = "https://example.com/master.m3u8",
             outputPath = "$tempDir/cancellable.ts",
         )
-        delay(100)
         val result = downloader.cancel(downloadId)
         assertTrue(result)
 
