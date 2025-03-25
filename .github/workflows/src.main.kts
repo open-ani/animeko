@@ -685,7 +685,7 @@ workflow(
     concurrency = Concurrency(
         // 如果是 PR, 则限制为 1 个并发, 并且 cancelInProgress
         expr {
-            """${github.ref_name} == 'main' && ${github.sha} || (${github.workflow} + '-' + ${github.event_name} + '-' + ${github.ref_name})"""
+            """${github.ref_name} == 'main' && ${github.sha} || join([${github.workflow}, ${github.event_name}, ${github.ref_name}], '-')"""
             // PR: build-push-foo/bar
         },
         cancelInProgress = true,
