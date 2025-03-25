@@ -38,21 +38,21 @@
 @file:DependsOn("snow-actions:qrcode:v1.0.0")
 
 
+import Secrets.ANALYTICS_KEY
+import Secrets.ANALYTICS_SERVER
 import Secrets.AWS_ACCESS_KEY_ID
 import Secrets.AWS_BASEURL
 import Secrets.AWS_BUCKET
 import Secrets.AWS_REGION
 import Secrets.AWS_SECRET_ACCESS_KEY
+import Secrets.DANDANPLAY_APP_ID
+import Secrets.DANDANPLAY_APP_SECRET
 import Secrets.GITHUB_REPOSITORY
+import Secrets.SENTRY_DSN
 import Secrets.SIGNING_RELEASE_KEYALIAS
 import Secrets.SIGNING_RELEASE_KEYPASSWORD
 import Secrets.SIGNING_RELEASE_STOREFILE
 import Secrets.SIGNING_RELEASE_STOREPASSWORD
-import Secrets.DANDANPLAY_APP_ID
-import Secrets.DANDANPLAY_APP_SECRET
-import Secrets.SENTRY_DSN
-import Secrets.ANALYTICS_SERVER
-import Secrets.ANALYTICS_KEY
 import io.github.typesafegithub.workflows.actions.actions.Checkout
 import io.github.typesafegithub.workflows.actions.actions.DownloadArtifact
 import io.github.typesafegithub.workflows.actions.actions.GithubScript
@@ -69,7 +69,7 @@ import io.github.typesafegithub.workflows.actions.softprops.ActionGhRelease
 import io.github.typesafegithub.workflows.actions.timheuer.Base64ToFile_Untyped
 import io.github.typesafegithub.workflows.domain.AbstractResult
 import io.github.typesafegithub.workflows.domain.ActionStep
-import io.github.typesafegithub.workflows.domain.CommandStep
+import io.github.typesafegithub.workflows.domain.Concurrency
 import io.github.typesafegithub.workflows.domain.Job
 import io.github.typesafegithub.workflows.domain.JobOutputs
 import io.github.typesafegithub.workflows.domain.Mode
@@ -87,7 +87,6 @@ import io.github.typesafegithub.workflows.dsl.expressions.expr
 import io.github.typesafegithub.workflows.dsl.workflow
 import io.github.typesafegithub.workflows.yaml.ConsistencyCheckJobConfig
 import org.intellij.lang.annotations.Language
-import kotlin.math.max
 
 check(KotlinVersion.CURRENT.isAtLeast(2, 0, 0)) {
     "This script requires Kotlin 2.0.0 or later"
@@ -411,7 +410,8 @@ run {
         gradleHeap = "6g",
         kotlinCompilerHeap = "6g",
     )
-    val ghMac15 = MatrixInstance( // upload macos aarch64 dmg, see #1479
+    val ghMac15 = MatrixInstance(
+        // upload macos aarch64 dmg, see #1479
         runner = Runner.GithubMacOS15,
         uploadApk = false,
         runTests = false,
@@ -440,7 +440,7 @@ run {
         kotlinCompilerHeap = "4g",
         gradleParallel = true,
     )
-    
+
     buildMatrixInstances = listOf(
         selfWin10,
         ghWin2019,
@@ -449,16 +449,16 @@ run {
         selfMac15,
         ghMac15,
     )
-    
+
     releaseMatrixInstances = listOf(
         ghWin2019, // win installer
         selfMac15.copy(
             buildAllAndroidAbis = true,
             uploadApk = true,
             uploadDesktopInstallers = false,
-            extraGradleArgs = selfMac15.extraGradleArgs.filterNot { it.startsWith("-P$ANI_ANDROID_ABIS=") }
+            extraGradleArgs = selfMac15.extraGradleArgs.filterNot { it.startsWith("-P$ANI_ANDROID_ABIS=") },
         ), // android apks
-        ghMac15 // macos installer
+        ghMac15, // macos installer
     )
 }
 
@@ -572,17 +572,17 @@ fun getVerifyJobBody(
         VerifyTask(
             name = "dandanplay-app-id",
             step = "Check that Dandanplay APP ID is valid",
-            `if` = expr { github.isAnimekoRepository and !github.isPullRequest }
+            `if` = expr { github.isAnimekoRepository and !github.isPullRequest },
         ),
         VerifyTask(
             name = "sentry-dsn",
             step = "Check that sentryDsn is valid",
-            `if` = expr { github.isAnimekoRepository and !github.isPullRequest }
+            `if` = expr { github.isAnimekoRepository and !github.isPullRequest },
         ),
         VerifyTask(
             name = "analytics-server",
             step = "Check that analyticsServer is valid",
-            `if` = expr { github.isAnimekoRepository and !github.isPullRequest }
+            `if` = expr { github.isAnimekoRepository and !github.isPullRequest },
         ),
     )
 
@@ -682,6 +682,18 @@ workflow(
     sourceFile = __FILE__,
     targetFileName = "build.yml",
     consistencyCheckJobConfig = ConsistencyCheckJobConfig.Disabled,
+    concurrency = Concurrency(
+        run {
+            val isPr = expr { github.isPullRequest }
+            val workflow = expr { github.workflow }
+            val ref = expr { github.ref }
+            val sha = expr { github.sha } // no concurrency limit in main
+            // 如果是 PR, 则限制为 1 个并发, 并且 cancelInProgress
+            val eventName = expr { github.event_name }
+            """$isPr && $workflow-$eventName-$ref || $sha"""
+        },
+        cancelInProgress = true,
+    ),
 ) {
     addConsistencyCheckJob("build.yml")
     // Expands job matrix at compile-time so that we set job-level `if` condition. 
@@ -907,7 +919,7 @@ class WithMatrix(
         maxAttempts: Int = 2,
         timeoutMinutes: Int = 180,
     ): ActionStep<Retry_Untyped.Outputs> = uses(
-        name = name, 
+        name = name,
         `if` = `if`,
         action = Retry_Untyped(
             maxAttempts_Untyped = "$maxAttempts",
@@ -942,7 +954,7 @@ class WithMatrix(
                     android_Untyped = "false",
                     largePackages_Untyped = "false",
                     // others are true
-                )
+                ),
             )
         }
     }

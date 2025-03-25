@@ -10,6 +10,9 @@ on:
   pull_request:
     paths-ignore:
     - '**/*.md'
+concurrency:
+  group: '${{ github.event_name == ''pull_request'' }} && ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }} || ${{ github.sha }}'
+  cancel-in-progress: true
 jobs:
   consistency-check:
     name: 'Workflow YAML Consistency Check'
