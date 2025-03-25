@@ -684,7 +684,6 @@ workflow(
     consistencyCheckJobConfig = ConsistencyCheckJobConfig.Disabled,
     concurrency = Concurrency(
         // 如果是 PR, 则限制为 1 个并发, 并且 cancelInProgress
-        // PR: build-push-foo/bar
         buildString {
             append(expr { github.workflow })
             append('-')
