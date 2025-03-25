@@ -5,13 +5,17 @@
 name: 'Build'
 on:
   push:
+    branches-ignore:
+      - 'main'
     paths-ignore:
     - '**/*.md'
   pull_request:
+    branches-ignore:
+      - 'main'
     paths-ignore:
     - '**/*.md'
 concurrency:
-  group: '${{ github.ref_name == ''main'' && github.sha || join([github.workflow, github.event_name, github.ref_name], ''-'') }}'
+  group: '${{ github.workflow-github.event_name-github.ref_name }}'
   cancel-in-progress: true
 jobs:
   consistency-check:
