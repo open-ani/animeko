@@ -11,8 +11,6 @@ Ani 依赖一些外部服务，因此你需要有这些服务的秘钥等信息�
 ```properties
 ani.dandanplay.app.id=aaaaaaaaa
 ani.dandanplay.app.secret=aaaaaaaaaaaaaaa
-bangumi.oauth.client.android.appId=aaaaaaaaaaaaaaa
-bangumi.oauth.client.android.secret=aaaaaaaaaaaaaaa
 ```
 
 ## 打包 Android APP
