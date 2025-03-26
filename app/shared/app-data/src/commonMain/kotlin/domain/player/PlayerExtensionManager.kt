@@ -71,12 +71,15 @@ fun PlayerExtensionManager(
         }
     }
 
+    val intrinsicExtensions = listOf(
+        EpisodePlayerExtensionFactory { _, _ -> LoadMediaOnSelectExtension() },
+        RememberPlayProgressExtension,
+        MarkAsWatchedExtension,
+        BurnAfterReadExtension,
+    )
+
     return PlayerExtensionManager(
-        extensions + listOf(
-            RememberPlayProgressExtension,
-            MarkAsWatchedExtension,
-            BurnAfterReadExtension,
-        ).map { it.create(context, koin) },
+        intrinsicExtensions.map { it.create(context, koin) } + extensions.map { it.create(context, koin) },
     )
 }
 

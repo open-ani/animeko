@@ -12,18 +12,16 @@ import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
-import org.koin.core.component.KoinComponent
-import org.koin.core.component.inject
 
 /**
  * 缓存清理服务
  * 负责处理阅后即焚和自动清理功能
  */
-class CacheCleanupService : KoinComponent {
-    private val mediaCacheManager: MediaCacheManager by inject()
-    private val episodeCollectionRepository: EpisodeCollectionRepository by inject()
-    private val settingsRepository: SettingsRepository by inject()
-    
+class CacheCleanupService(
+    private val mediaCacheManager: MediaCacheManager,
+    private val episodeCollectionRepository: EpisodeCollectionRepository,
+    private val settingsRepository: SettingsRepository,
+) {
     private val logger = logger<CacheCleanupService>()
     
     /**
@@ -39,7 +37,7 @@ class CacheCleanupService : KoinComponent {
                         cleanupWatchedEpisodes()
                     }
                 } catch (e: Exception) {
-                    logger.error(e) { "清理缓存时发生错误" }
+                    logger.error(e) { "An error occurred while clearing the cache" }
                 }
                 // 每24小时检查一次
                 kotlinx.coroutines.delay(24 * 60 * 60 * 1000)
@@ -59,7 +57,7 @@ class CacheCleanupService : KoinComponent {
             // 检查剧集是否已观看
             val collectionType = episodeCollectionRepository.getEpisodeCollectionType(subjectId, episodeId)
             if (collectionType?.isDoneOrDropped() == true) {
-                logger.info { "清理已观看剧集缓存: subjectId=$subjectId, episodeId=$episodeId" }
+                logger.info { "Clearing cache of watched episode: subjectId=$subjectId, episodeId=$episodeId" }
                 mediaCacheManager.deleteCache(cache)
             }
         }
@@ -72,11 +70,11 @@ class CacheCleanupService : KoinComponent {
     suspend fun handleBurnAfterRead(cache: MediaCache) {
         val settings = settingsRepository.mediaCacheSettings.flow.first()
         if (!settings.burnAfterRead) {
-            logger.info { "阅后即焚功能未启用，跳过删除缓存" }
+            logger.info { "Burn after reading disabled, skipping cache deletion" }
             return
         }
         
-        logger.info { "执行阅后即焚: subjectId=${cache.metadata.subjectIdInt}, episodeId=${cache.metadata.episodeIdInt}" }
+        logger.info { "Executing burn after reading: subjectId=${cache.metadata.subjectIdInt}, episodeId=${cache.metadata.episodeIdInt}" }
         mediaCacheManager.deleteCache(cache)
     }
 } 
