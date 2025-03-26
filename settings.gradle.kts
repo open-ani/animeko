@@ -40,7 +40,7 @@ dependencyResolutionManagement {
         }
 
         create("mediampLibs") {
-            from("org.openani.mediamp:catalog:0.0.19")
+            from("org.openani.mediamp:catalog:0.0.22")
         }
     }
 }
@@ -72,6 +72,7 @@ includeProject(":utils:ui-testing")
 includeProject(":utils:androidx-lifecycle-runtime-testing")
 includeProject(":utils:ui-preview")
 includeProject(":utils:analytics")
+includeProject(":utils:http-downloader")
 
 
 includeProject(":torrent:torrent-api", "torrent/api") // Torrent 系统 API

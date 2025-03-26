@@ -45,6 +45,7 @@ kotlin {
         api(projects.client)
         api(projects.utils.ipParser)
         api(projects.utils.jsonpath)
+        api(projects.utils.httpDownloader)
 
         api(projects.torrent.torrentApi)
         api(projects.torrent.anitorrent)

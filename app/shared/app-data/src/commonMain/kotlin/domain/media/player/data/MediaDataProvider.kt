@@ -37,7 +37,7 @@ import kotlin.coroutines.cancellation.CancellationException
  *
  * @param S type of the stream
  */
-interface MediaDataProvider<S : MediaData> {
+interface MediaDataProvider<out S : MediaData> {
     val extraFiles: MediaExtraFiles
 
     /**

@@ -18,8 +18,6 @@ import me.him188.ani.app.domain.mediasource.MediaListFilters.minimumLength
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.topic.contains
 import me.him188.ani.utils.platform.deleteAnyCharIn
-import me.him188.ani.utils.platform.deleteInfix
-import me.him188.ani.utils.platform.deletePrefix
 import me.him188.ani.utils.platform.replaceMatches
 import me.him188.ani.utils.platform.trimSB
 
@@ -154,10 +152,10 @@ object MediaListFilters {
 
         // 2. 无条件删除 "电影", "剧场版", "OVA" 等
         val sb = StringBuilder(result).apply {
-            deletePrefix("电影")
-            deleteInfix("电影")
-            deletePrefix("剧场版")
-            deleteInfix("剧场版")
+//            deletePrefix("电影")
+//            deleteInfix("电影")
+//            deletePrefix("剧场版")
+//            deleteInfix("剧场版")
             // deletePrefix("OVA")
             // deleteInfix("OVA")
         }

@@ -37,6 +37,8 @@ dependencies {
     implementation(libs.log4j.core)
     implementation(libs.vlcj)
     implementation(libs.jsystemthemedetector)
+    implementation(libs.bytebuddy.agent)
+    implementation(libs.bytebuddy)
 }
 
 // workaround for compose limitation
@@ -74,6 +76,7 @@ compose.desktop {
             // JCEF
             "--add-opens=java.desktop/java.awt.peer=ALL-UNNAMED",
             "--add-opens=java.desktop/sun.awt=ALL-UNNAMED",
+            "-XX:+EnableDynamicAgentLoading", // ByteBuddy agent
             "-Xmx512m",
         )
         if (getOs() == Os.MacOS) {
@@ -94,6 +97,7 @@ compose.desktop {
                 "jcef",
                 "gluegen.rt",
                 "jogl.all",
+                "java.instrument", // ByteBuddy, for disabling PagingLogger
             )
 
             // ./gradlew suggestRuntimeModules

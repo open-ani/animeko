@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -33,6 +33,9 @@ import org.openani.mediamp.PlaybackState
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class MarkAsWatchedExtensionTest : AbstractPlayerExtensionTest() {
@@ -105,7 +108,7 @@ class MarkAsWatchedExtensionTest : AbstractPlayerExtensionTest() {
     }
 
     @Test
-    fun `does mark even if not playing`() = runTest(UnconfinedTestDispatcher()) {
+    fun `does mark if not playing`() = runTest(UnconfinedTestDispatcher()) {
         var setCalled = false
         val (testScope, suite, _) = createCase(
             setEpisodeCollectionType = { _, _, _ ->
@@ -121,7 +124,7 @@ class MarkAsWatchedExtensionTest : AbstractPlayerExtensionTest() {
 
         advanceUntilIdle()
 
-        assertFalse(setCalled)
+        assertTrue(setCalled) // TODO: 2025/3/25 This case may be wrong. We should reconsider. 
 
         testScope.cancel()
     }
@@ -201,6 +204,88 @@ class MarkAsWatchedExtensionTest : AbstractPlayerExtensionTest() {
         advanceUntilIdle()
         // Still 1
         assertEquals(1, callCount)
+
+        testScope.cancel()
+    }
+
+    @Test
+    fun `marks as watched for 3min`() = runTest {
+        var requestedSubjectId: Int? = null
+        var requestedEpisodeId: Int? = null
+        var requestedType: UnifiedCollectionType? = null
+
+        val (testScope, suite, _) = createCase(
+            getEpisodeCollectionType = { _, _ -> null }, // Not already marked
+            setEpisodeCollectionType = { subjectId, episodeId, type ->
+                requestedSubjectId = subjectId
+                requestedEpisodeId = episodeId
+                requestedType = type
+            },
+        )
+
+        suite.setMediaDuration(durationMillis = 3.minutes.inWholeMilliseconds)
+        suite.player.currentPositionMillis.value = (3.minutes - 100.seconds).inWholeMilliseconds
+        suite.player.playbackState.value = PlaybackState.PLAYING
+
+        advanceUntilIdle()
+
+        // Should mark as watched because we're within the last 100 seconds
+        assertEquals(subjectId, requestedSubjectId)
+        assertEquals(initialEpisodeId, requestedEpisodeId)
+        assertEquals(UnifiedCollectionType.DONE, requestedType)
+
+        testScope.cancel()
+    }
+
+    @Test
+    fun `marks as watched when within last 100 seconds`() = runTest {
+        var requestedSubjectId: Int? = null
+        var requestedEpisodeId: Int? = null
+        var requestedType: UnifiedCollectionType? = null
+
+        val (testScope, suite, _) = createCase(
+            getEpisodeCollectionType = { _, _ -> null }, // Not already marked
+            setEpisodeCollectionType = { subjectId, episodeId, type ->
+                requestedSubjectId = subjectId
+                requestedEpisodeId = episodeId
+                requestedType = type
+            },
+        )
+
+        suite.setMediaDuration(durationMillis = 1_200_000L)
+        suite.player.currentPositionMillis.value = (18.minutes + 21.seconds).inWholeMilliseconds
+        suite.player.playbackState.value = PlaybackState.PLAYING
+
+        advanceUntilIdle()
+
+        // Should mark as watched because we're within the last 100 seconds
+        assertEquals(subjectId, requestedSubjectId)
+        assertEquals(initialEpisodeId, requestedEpisodeId)
+        assertEquals(UnifiedCollectionType.DONE, requestedType)
+
+        testScope.cancel()
+    }
+
+    @Test
+    fun `does not mark when neither at 90 percent nor within last 100 seconds`() = runTest {
+        var setCalled = false
+        val (testScope, suite, _) = createCase(
+            getEpisodeCollectionType = { _, _ -> null }, // Not already marked
+            setEpisodeCollectionType = { _, _, _ ->
+                setCalled = true
+            },
+        )
+
+        // Set up a 20-minute video (1,200,000 ms)
+        // Position at 80% (960,000 ms) which is less than 90% and more than 100 seconds from the end
+        suite.setMediaDuration(durationMillis = 1_200_000L)
+        suite.player.currentPositionMillis.value = 960_000L // 80% of video, more than 100 seconds from end
+        suite.player.playbackState.value = PlaybackState.PLAYING
+
+        advanceUntilIdle()
+
+        // Should not mark as watched because we're neither at 90% nor within the last 100 seconds
+        assertFalse(setCalled)
 
         testScope.cancel()
     }

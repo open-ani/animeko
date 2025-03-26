@@ -188,7 +188,7 @@ fun SettingsScope.EpisodeCacheListGroup(
             ) {
                 val selectorPresentation =
                     rememberMediaSelectorState(mediaSourceInfoProvider, filteredResults) { task.mediaSelector }
-                val (viewKind, onViewKindChange) = rememberSaveable { mutableStateOf(ViewKind.BT) }
+                val (viewKind, onViewKindChange) = rememberSaveable { mutableStateOf(ViewKind.WEB) }
                 MediaSelectorView(
                     selectorPresentation,
                     viewKind,

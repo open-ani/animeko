@@ -45,6 +45,7 @@ androidx-compose-material3-adaptive = "1.1.0-beta01"
 
 ### OTHERS ###
 
+bytebuddy = "1.17.4" # https://github.com/raphw/byte-buddy/releases
 jna = "5.13.0" # 不要轻易改这个版本, 它可能导致 VLC 兼容性问题
 jsonpathkt-kotlinx = "3.0.2"
 ksoup = "0.1.4"
@@ -254,6 +255,8 @@ jsystemthemedetector = { module = "org.openani.jsystemthemedetector:jSystemTheme
 turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
 materialkolor = { module = "com.materialkolor:material-kolor", version.ref = "materialkolor" }
 constraintlayout-compose = { module = "tech.annexflow.compose:constraintlayout-compose-multiplatform", version.ref = "constraintlayout-compose" }
+bytebuddy-agent = { module = "net.bytebuddy:byte-buddy-agent", version.ref = "bytebuddy" }
+bytebuddy = { module = "net.bytebuddy:byte-buddy", version.ref = "bytebuddy" }
 sentry-kotlin-multiplatform = { module = "io.sentry:sentry-kotlin-multiplatform", version.ref = "sentry-kotlin-multiplatform" }
 sentry-compose-android = { module = "io.sentry:sentry-compose-android", version.ref = "sentry-compose-android" }
 

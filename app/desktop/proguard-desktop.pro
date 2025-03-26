@@ -141,4 +141,8 @@
     private *** isInBounds(...); # 反射调用的方法
 }
 
+# ByteBuddy, for disabling Paging logging
+-keep class net.bytebuddy.agent.VirtualMachine$ForHotSpot { *; }
+-keep class net.bytebuddy.** { *; }
+
 -verbose

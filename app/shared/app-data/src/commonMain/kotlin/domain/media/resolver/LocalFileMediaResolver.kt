@@ -26,6 +26,7 @@ class LocalFileMediaResolver : MediaResolver {
                 return SystemFileMediaDataProvider(
                     Path(download.filePath),
                     media.extraFiles.toMediampMediaExtraFiles(),
+                    fileType = download.fileType,
                 )
             }
 

@@ -28,6 +28,8 @@ import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import org.koin.core.Koin
 import org.openani.mediamp.MediampPlayer
+import kotlin.math.min
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * 自动标记为已看
@@ -96,9 +98,14 @@ class MarkAsWatchedExtension(
                 player.mediaProperties.map { it?.durationMillis }
                     .let { if (enableSamplingAndDebounce) it.debounce(5000) else it },
                 player.playbackState,
-            ) { pos, max, playback ->
-                if (max == null || !playback.isPlaying) return@combine
-                if (pos > max.toFloat() * 0.9) {
+            ) { pos, videoLength, playback ->
+                if (videoLength == null || !playback.isPlaying) return@combine
+                if (pos >=
+                    min(
+                        (videoLength.toFloat() * 0.9).toLong(),
+                        videoLength - 100.seconds.inWholeMilliseconds,
+                    )
+                ) {
                     logger.info { "观看到 90%, 标记看过" }
                     try {
                         setEpisodeCollectionTypeUseCase(subjectId, episodeId, UnifiedCollectionType.DONE)

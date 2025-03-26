@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.text.TextPainter
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
@@ -43,7 +44,7 @@ data class StyledDanmaku(
         val seconds = playTimeMillis.toFloat().div(1000)
         if (isDebug) "$text (${floor((seconds / 60)).toInt()}:${String.format2f(seconds % 60)})" else text
     }
-    
+
     private val solidTextLayout = measurer.measure(
         text = danmakuText,
         style = baseStyle.merge(
@@ -57,8 +58,8 @@ data class StyledDanmaku(
         maxLines = 1,
         softWrap = false,
     )
-    
-    private val borderTextLayout = measurer.measure(
+
+    private val borderTextLayout = if (style.strokeWidth == 0f) null else measurer.measure(
         text = danmakuText,
         style = baseStyle.merge(style.styleForBorder())
             .copy(textDecoration = if (presentation.isSelf) TextDecoration.Underline else null),
@@ -66,16 +67,16 @@ data class StyledDanmaku(
         maxLines = 1,
         softWrap = false,
     )
-    
+
     internal var imageBitmap: ImageBitmap? = null
 
     override val danmakuWidth: Int = solidTextLayout.size.width.coerceAtLeast(1)
     override val danmakuHeight: Int = solidTextLayout.size.height.coerceAtLeast(1)
-    
+
     internal fun DrawScope.draw(screenPosX: Float, screenPosY: Float) {
         val cachedImage = imageBitmap ?: createDanmakuImageBitmap(solidTextLayout, borderTextLayout)
             .also { imageBitmap = it }
-        
+
         drawImage(cachedImage, Offset(screenPosX, screenPosY))
     }
 }
@@ -85,8 +86,14 @@ data class StyledDanmaku(
  */
 internal expect fun createDanmakuImageBitmap(
     solidTextLayout: TextLayoutResult,
-    borderTextLayout: TextLayoutResult,
+    borderTextLayout: TextLayoutResult?,
 ): ImageBitmap
+
+internal fun Canvas.paintIfNotEmpty(layout: TextLayoutResult) {
+    if (layout.size.width != 0 && layout.size.height != 0) {
+        TextPainter.paint(this, layout)
+    }
+}
 
 internal fun dummyDanmaku(
     measurer: TextMeasurer,
@@ -102,12 +109,12 @@ internal fun dummyDanmaku(
                 0L, "1",
                 DanmakuLocation.NORMAL, dummyText, 0,
             ),
-            isSelf = false
+            isSelf = false,
         ),
         measurer = measurer,
         baseStyle = baseStyle,
         style = style,
         enableColor = false,
-        isDebug = false
+        isDebug = false,
     )
 }

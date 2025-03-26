@@ -31,6 +31,7 @@ import coil3.compose.LocalPlatformContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.take
 import me.him188.ani.app.data.models.preference.ThemeSettings
@@ -38,6 +39,7 @@ import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
 import me.him188.ani.app.domain.foundation.get
+import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.navigation.MainScreenPage
 import me.him188.ani.app.navigation.NavRoutes
 import me.him188.ani.app.tools.LocalTimeFormatter
@@ -59,22 +61,34 @@ class AniAppState(
     val initialNavRoute: NavRoutes,
     val mainSceneInitialPage: MainScreenPage,
     val themeSettings: ThemeSettings,
-    val imageLoaderClient: ScopedHttpClient
+    val imageLoaderClient: ScopedHttpClient,
+    val mediaCacheComposables: List<@Composable () -> Unit>,
 )
 
 @Stable
 class AniAppViewModel : AbstractViewModel(), KoinComponent {
     private val settings: SettingsRepository by inject()
     private val httpClientProvider: HttpClientProvider by inject()
+    private val mediaCacheManager: MediaCacheManager by inject()
 
     private val imageLoaderClient = httpClientProvider.get(ScopedHttpClientUserAgent.ANI)
+
+    private val mediaCacheComposablesFlow = combine(mediaCacheManager.storages) { array ->
+        array.mapNotNull { storage ->
+            storage?.engine
+        }
+    }.distinctUntilChanged()
+        .map { list ->
+            list.map { @Composable { it.ComposeContent() } }
+        }
 
     val appState: Flow<AniAppState?> = combine(
         settings.themeSettings.flow,
         settings.uiSettings.flow.take(1).map { it.mainSceneInitialPage }, // 只需要读取一次
         settings.uiSettings.flow,
         httpClientProvider.configurationFlow,
-    ) { themeSettings, mainSceneInitialPage, uiSettings, _ ->
+        mediaCacheComposablesFlow,
+    ) { themeSettings, mainSceneInitialPage, uiSettings, _, mediaCacheComposables ->
         AniAppState(
             if (!uiSettings.onboardingCompleted) {
                 NavRoutes.Welcome
@@ -84,6 +98,7 @@ class AniAppViewModel : AbstractViewModel(), KoinComponent {
             uiSettings.mainSceneInitialPage,
             themeSettings,
             imageLoaderClient,
+            mediaCacheComposables,
         )
     }.shareInBackground(
         started = SharingStarted.Eagerly,
@@ -171,6 +186,12 @@ fun AniApp(
                     }
                 },
             ) {
+                Box {
+                    for (composable in appState.mediaCacheComposables) {
+                        composable()
+                    }
+                }
+
                 Column {
                     content()
                 }

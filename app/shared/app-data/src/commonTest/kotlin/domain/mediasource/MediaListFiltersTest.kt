@@ -70,19 +70,19 @@ class MediaListFiltersTest {
     @TestFactory
     fun `removeSpecials movie`() = runDynamicTests {
         add("剧场版 re0") {
-            assertEquals("Re：从零开始的异世界生活", removeSpecials("剧场版 Re：从零开始的异世界生活"))
+            assertEquals("剧场版 Re：从零开始的异世界生活", removeSpecials("剧场版 Re：从零开始的异世界生活"))
         }
         add("剧场版 with special") {
-            assertEquals("从零开始的异世界生活", removeSpecials("剧场版 从零开始的异世界生活()"))
+            assertEquals("剧场版 从零开始的异世界生活", removeSpecials("剧场版 从零开始的异世界生活()"))
         }
         add("剧场版 紫罗兰") {
-            assertEquals("紫罗兰永恒花园", removeSpecials("剧场版 紫罗兰永恒花园"))
+            assertEquals("剧场版 紫罗兰永恒花园", removeSpecials("剧场版 紫罗兰永恒花园"))
         }
         add("剧场版 suffix") {
-            assertEquals("紫罗兰永恒花园", removeSpecials("紫罗兰永恒花园剧场版"))
+            assertEquals("紫罗兰永恒花园剧场版", removeSpecials("紫罗兰永恒花园剧场版"))
         }
         add("剧场版 suffix with space") {
-            assertEquals("紫罗兰永恒花园", removeSpecials("紫罗兰永恒花园 剧场版"))
+            assertEquals("紫罗兰永恒花园 剧场版", removeSpecials("紫罗兰永恒花园 剧场版"))
         }
     }
 

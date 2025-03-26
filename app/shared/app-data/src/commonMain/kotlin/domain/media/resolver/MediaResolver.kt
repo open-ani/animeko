@@ -53,7 +53,7 @@ interface MediaResolver {
      * @throws Exception 所有抛出的其他异常都属于 bug
      */
     @Throws(MediaResolutionException::class, CancellationException::class)
-    suspend fun resolve(media: Media, episode: EpisodeMetadata): MediaDataProvider<*>
+    suspend fun resolve(media: Media, episode: EpisodeMetadata): MediaDataProvider<MediaData>
 
     companion object {
         fun from(vararg resolvers: MediaResolver): MediaResolver {

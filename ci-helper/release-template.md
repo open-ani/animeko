@@ -70,7 +70,7 @@ uploaded.
 | Windows          | [主线][cf-win-x64] / [备线][ghproxy-win-x64]         | 1. 目录不要有中文或者空格. <br/> 2. [显示异常][windows解决方案] |
 | macOS (M 系列芯片)   | [主线][cf-mac-aarch64] / [备线][ghproxy-mac-aarch64] | [安装后打不开][macos解决方案]                        |
 | macOS (Intel 芯片) | 正在开发。<br/>点赞[此 issue][macos-intel-issue] 以加快开发速度 |                                            |
-| Ubuntu           | 下载 Windows 版本搭配 Wine                             |                                            |
+| Linux             | 下载 Windows 版本搭配 Wine                             |                                            |
 | iOS              | 正在开发。<br/>点赞[此 issue][ios-issue] 以加快开发速度         |                                            |
 
 或者扫描二维码安装安卓版本:

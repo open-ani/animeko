@@ -111,7 +111,8 @@ abstract class BaseJellyfinMediaSource(
                             originalTitle = originalTitle,
                             publishedTime = 0,
                             properties = MediaProperties(
-                                subjectName = item.SeasonName,
+                                // Note: 这里我们 fallback 使用请求的名称, 这样可以在缺少信息时绝对通过后续的过滤, 避免资源被排除. 但这可能会导致有不满足的资源被匹配. 如果未来有问题再考虑. See also #1806.
+                                subjectName = item.SeasonName?.takeIf { it.isNotBlank() } ?: query.subjectNameCN,
                                 episodeName = item.Name,
                                 subtitleLanguageIds = listOf("CHS"),
                                 resolution = "1080P",

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -20,6 +20,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import io.github.vinceglb.filekit.compose.rememberDirectoryPickerLauncher
 import me.him188.ani.app.platform.LocalDesktopContext
+import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.settings.framework.components.RowButtonItem
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.TextFieldItem
@@ -62,13 +63,17 @@ actual fun SettingsScope.CacheDirectoryGroup(state: CacheDirectoryGroupState) {
                 }
             },
         )
+        val toaster = LocalToaster.current
         RowButtonItem(
             title = { Text("打开 BT 缓存目录") },
             icon = { Icon(Icons.Rounded.ArrowOutward, null) },
             onClick = {
-                Desktop.getDesktop().open(
-                    File(mediaCacheSettings.saveDir ?: context.torrentDataCacheDir.absolutePath),
-                )
+                val file = File(mediaCacheSettings.saveDir ?: context.torrentDataCacheDir.absolutePath)
+                if (file.exists()) {
+                    Desktop.getDesktop().open(file)
+                } else {
+                    toaster.toast("该目录不存在")
+                }
             },
         )
     }

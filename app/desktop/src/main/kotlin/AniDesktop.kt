@@ -123,6 +123,7 @@ import me.him188.ani.utils.io.toKtPath
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
+import me.him188.ani.utils.logging.trace
 import me.him188.ani.utils.platform.currentPlatform
 import me.him188.ani.utils.platform.isWindows
 import org.jetbrains.compose.reload.DevelopmentEntryPoint
@@ -402,6 +403,12 @@ object AniDesktop {
             }.onFailure {
                 logger.error(it) { "Failed to delete installed files" }
             }
+        }
+        runCatching {
+            PagingLoggingHack.install()
+            logger.trace { "Successfully instrumented PagingLogging" }
+        }.onFailure {
+            logger.error(it) { "Failed to install paging logging hack" }
         }
 
         val navigator = AniNavigator()
