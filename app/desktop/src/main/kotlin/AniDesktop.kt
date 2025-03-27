@@ -138,6 +138,7 @@ import org.openani.mediamp.vlc.VlcMediampPlayerFactory
 import org.openani.mediamp.vlc.compose.VlcMediampPlayerSurfaceProvider
 import kotlin.io.path.absolutePathString
 import kotlin.system.exitProcess
+import kotlin.time.measureTime
 
 
 private val logger by lazy { logger("Ani") }
@@ -240,10 +241,10 @@ object AniDesktop {
             ExtraWindowProperties(),
         )
 
-        // val time = measureTime {
-        //     SingleInstanceChecker.instance.ensureSingleInstance()
-        // }
-        // logger.info { "Single instance check took $time" }
+        val time = measureTime {
+            SingleInstanceChecker.instance.ensureSingleInstance()
+        }
+        logger.info { "Single instance check took $time" }
 
         coroutineScope.launch(Dispatchers.IO) {
             // since 3.4.0, anitorrent 增加后不兼容 QB 数据
