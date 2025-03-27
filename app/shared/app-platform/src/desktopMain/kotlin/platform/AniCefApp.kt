@@ -34,7 +34,7 @@ import org.cef.callback.CefAuthCallback
 import org.cef.handler.CefRequestHandlerAdapter
 import org.cef.misc.CefLog
 import java.io.File
-import java.nio.file.AccessDeniedException
+import java.nio.file.FileSystemException
 import java.nio.file.Files
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -216,7 +216,7 @@ object AniCefApp {
             suspendCancellableCoroutine<Unit> { cont ->
                 cefApp.onInitialization { state ->
                     if (state == CefApp.CefAppState.INITIALIZED) {
-                        logger.info { "AniCefApp is initialized." }
+                        logger.info { "JCEF is initialized." }
                         cont.resume(Unit)
                     }
                 }
@@ -251,7 +251,7 @@ object AniCefApp {
                 try {
                     Files.delete(lockFile.toPath())
                     true
-                } catch (e: AccessDeniedException) {
+                } catch (e: FileSystemException) {
                     // 删不掉说明之前 Ani 退出后 jcef helper 还在后台运行.
                     logger.error(e) { "Lock file exists and cannot be deleted while initializing JCEF." }
                     false
