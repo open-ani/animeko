@@ -69,6 +69,8 @@ interface PlayerExtensionContext {
     val videoLoadingStateFlow: Flow<VideoLoadingState>
 
     val sessionFlow: Flow<EpisodeSession>
+    
+    val coroutineScope: CoroutineScope
 
     @UnsafeEpisodeSessionApi
     suspend fun getCurrentEpisodeId(): Int
