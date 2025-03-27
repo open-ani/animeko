@@ -34,7 +34,7 @@ import org.cef.callback.CefAuthCallback
 import org.cef.handler.CefRequestHandlerAdapter
 import org.cef.misc.CefLog
 import java.io.File
-import java.nio.file.FileSystemException
+import java.io.IOException
 import java.nio.file.Files
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -193,7 +193,7 @@ object AniCefApp {
                 cacheDir
             } else {
                 val newTempCacheDir = cacheDir.nameWithoutExtension + "-${currentTimeMillis()}"
-                logger.warn { "Failed to resolve JCEF lock file, use temporary dir $newTempCacheDir at this instance." }
+                logger.warn { "Failed to resolve JCEF lock file, switch to temporary dir $newTempCacheDir for this instance." }
                 cacheDir.parentFile.resolve(newTempCacheDir)
             }
 
@@ -212,7 +212,8 @@ object AniCefApp {
             newApp
         }
 
-        withTimeoutOrNull(15.seconds) {
+        withTimeoutOrNull(8.seconds) {
+            logger.info { "Awaiting JCEF initialization." }
             suspendCancellableCoroutine<Unit> { cont ->
                 cefApp.onInitialization { state ->
                     if (state == CefApp.CefAppState.INITIALIZED) {
@@ -224,7 +225,7 @@ object AniCefApp {
         }.also { result ->
             if (result == null) {
                 // 长时间没加载好 JCEF, 可能是 CEF 内部出错了, 直接抛出异常并附带最新的 CEF 日志.
-                throw RuntimeException(
+                throw JCEFInitializationException(
                     "Failed to initialize JCEF, state: ${CefApp.getState()}, " +
                             "last cef logs: \n${getLatestCefLog().joinToString("\n")}",
                 )
@@ -251,7 +252,7 @@ object AniCefApp {
                 try {
                     Files.delete(lockFile.toPath())
                     true
-                } catch (e: FileSystemException) {
+                } catch (e: IOException) {
                     // 删不掉说明之前 Ani 退出后 jcef helper 还在后台运行.
                     logger.error(e) { "Lock file exists and cannot be deleted while initializing JCEF." }
                     false
@@ -315,3 +316,6 @@ object AniCefApp {
         return file.readLastNLines(nLine)
     }
 }
+
+private class JCEFInitializationException(message: String, cause: Throwable? = null) :
+    RuntimeException(message, cause)
