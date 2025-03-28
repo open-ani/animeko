@@ -269,6 +269,7 @@ afterEvaluate {
                             }.waitFor() // don't check result
 
                             for (file in dest.get().asFile.walk()) {
+                                if (!file.isFile) continue
                                 ProcessBuilder().run {
                                     command(
                                         "codesign",
