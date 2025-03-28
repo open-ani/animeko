@@ -16,7 +16,7 @@ import kotlin.test.assertTrue
 
 class FileReadLastNLinesTest {
 
-    @Te
+    @Test
     fun `should return empty list when file does not exist`() {
         val file = File.createTempFile("non_existent_file", "txt")
         val result = file.readLastNLines(5)
