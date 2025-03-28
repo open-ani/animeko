@@ -15,6 +15,7 @@ import androidx.compose.animation.core.snap
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -42,8 +43,11 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
 import androidx.window.core.layout.WindowSizeClass
+import me.him188.ani.app.ui.foundation.LocalPlatform
+import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.interaction.WindowDragArea
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
+import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.isHeightAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastExpanded
@@ -51,6 +55,7 @@ import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.paddingIfNotEmpty
 import me.him188.ani.app.ui.foundation.layout.paneHorizontalPadding
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
+import me.him188.ani.utils.platform.isDesktop
 
 /**
  * 符合 Ani 设计风格的 TopAppBar: [NavigationSuiteScaffold on Figma](https://www.figma.com/design/LET1n9mmDa6npDTIlUuJjU/Main?node-id=15-605&t=gmFJS6LFQudIIXfK-4).
@@ -90,7 +95,24 @@ fun AniTopAppBar(
     scrollBehavior: TopAppBarScrollBehavior? = null,
 ) {
     val windowSizeClass = currentWindowAdaptiveInfo1().windowSizeClass
-    WindowDragArea {
+
+    val platformWindow = LocalPlatformWindow.current
+    WindowDragArea(
+        Modifier.ifThen(LocalPlatform.current.isDesktop()) {
+            // 双击标题栏全屏
+            combinedClickable(
+                onDoubleClick = {
+                    if (platformWindow.isExactlyMaximized) {
+                        platformWindow.floating()
+                    } else {
+                        platformWindow.maximize()
+                    }
+                },
+                interactionSource = null,
+                indication = null,
+            ) {}
+        },
+    ) {
         val additionalPadding =
             if (windowSizeClass.isWidthAtLeastMedium && windowSizeClass.isHeightAtLeastMedium) {
                 8.dp
