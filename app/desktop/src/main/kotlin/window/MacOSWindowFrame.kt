@@ -15,9 +15,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.FrameWindowScope
-import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.WindowState
-import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.layout.LocalCaptionButtonInsets
 import me.him188.ani.app.ui.foundation.layout.LocalTitleBarInsets
 import me.him188.ani.app.ui.foundation.layout.ZeroInsets
@@ -42,14 +40,6 @@ fun FrameWindowScope.MacOSWindowFrame(windowState: WindowState, content: @Compos
             } else {
                 window.rootPane.putClientProperty("apple.awt.fullWindowContent", false)
                 window.rootPane.putClientProperty("apple.awt.transparentTitleBar", false)
-            }
-        }
-    }
-    if (LocalPlatform.current.isMacOS()) {
-        // CMP bug, 退出全屏后窗口会变为 Maximized, 而不是还原到 Floating
-        if (!isSystemInFullscreen() && windowState.placement == WindowPlacement.Maximized) {
-            SideEffect {
-                windowState.placement = WindowPlacement.Floating
             }
         }
     }
