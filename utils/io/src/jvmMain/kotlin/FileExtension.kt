@@ -29,44 +29,49 @@ fun File.readLastNLines(n: Int): List<String> {
         val fileLength = raf.length()
         if (fileLength == 0L) return emptyList()
 
-        // Position the pointer at the last character in the file
+        // Position at the last byte in the file
         var pos = fileLength - 1
-        raf.seek(pos)
 
         // Skip trailing newlines (if any)
-        while (pos > 0) {
+        while (pos >= 0) {
+            raf.seek(pos)
             val c = raf.readByte()
             if (c != '\n'.code.toByte() && c != '\r'.code.toByte()) {
-                raf.seek(++pos)
                 break
             }
-            raf.seek(--pos)
+            pos--
+        }
+
+        // If pos < 0, means the file contains only newlines
+        if (pos < 0) {
+            return emptyList()
         }
 
         val lines = ArrayDeque<String>(n)
         val sb = StringBuilder()
         var lineCount = 0
 
-        // Move backwards through the file until we collect n lines or reach the start
+        // Read backwards until we collect n lines or reach start
         while (pos >= 0 && lineCount < n) {
-            raf.seek(pos--)
+            raf.seek(pos)
             val c = raf.readByte().toInt().toChar()
+            pos--
 
             if (c == '\n' || c == '\r') {
-                // We have a new line if there's something in the buffer
+                // We have a completed line if there's text in sb
                 if (sb.isNotEmpty()) {
-                    sb.reverse() // Reverse the current line (because we built it backwards)
+                    sb.reverse()
                     lines.addFirst(sb.toString())
                     sb.setLength(0)
                     lineCount++
                 }
             } else {
-                // Collect the characters of the current line
+                // Build the line in reverse
                 sb.append(c)
             }
         }
 
-        // If we reached the start of the file and still have text in the buffer
+        // If we reached the beginning but there's still text in sb
         if (sb.isNotEmpty()) {
             sb.reverse()
             lines.addFirst(sb.toString())
