@@ -24,7 +24,7 @@ class FileReadLastNLinesTest {
     }
 
     @Test
-    fun `should return empty list when file is not a file (points to a directory) - or doesn't exist`() {
+    fun `should return empty list when file is not a file points to a directory - or doesnt exist`() {
         // For demonstration, let's create a temp directory and pass that in
         val dir = File(System.getProperty("java.io.tmpdir"))
         val result = dir.readLastNLines(5)
