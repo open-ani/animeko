@@ -230,6 +230,14 @@ afterEvaluate {
                     "../Frameworks" to "lib/",
                 )
 
+                val logDir = layout.buildDirectory.dir("ani-compose-sign").get()
+                val outputFile = logDir.file("sign.out")
+                val errorFile = logDir.file("sign.err")
+
+                doLast {
+                    logDir.asFile.mkdirs()
+                }
+
                 dirsNames.forEach { (sourcePath, destPath) ->
                     val source = File(javaHome.get()).resolve(sourcePath).normalize()
                     inputs.dir(source)
@@ -259,23 +267,27 @@ afterEvaluate {
                                 inheritIO()
                                 start()
                             }.waitFor() // don't check result
-                            ProcessBuilder().run {
-                                command(
-                                    "codesign",
-                                    "--force",
-                                    "-vvvv",
-                                    "--deep",
-                                    "--sign",
-                                    "-",
-                                    "--options",
-                                    "runtime",
-                                    destAbsolutePath,
-                                )
-                                inheritIO()
-                                start()
-                            }.waitFor().let {
-                                if (it != 0) {
-                                    throw GradleException("Failed to sign $sourcePath")
+
+                            for (file in dest.get().asFile.walk()) {
+                                ProcessBuilder().run {
+                                    command(
+                                        "codesign",
+                                        "--force",
+                                        "-vvvv",
+                                        "--deep",
+                                        "--sign",
+                                        "-",
+                                        "--options",
+                                        "runtime",
+                                        file.absolutePath,
+                                    )
+                                    redirectOutput(outputFile.asFile)
+                                    redirectOutput(errorFile.asFile)
+                                    start()
+                                }.waitFor().let {
+                                    if (it != 0) {
+                                        throw GradleException("Failed to sign $sourcePath")
+                                    }
                                 }
                             }
                         }
