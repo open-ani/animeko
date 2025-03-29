@@ -150,6 +150,10 @@ compose.desktop {
                 infoPlist {
                     extraKeysRawXml = macOSExtraPlistKeys
                 }
+
+                if (getArch() == Arch.X86_64) {
+                    signing.sign = false
+                }
             }
             windows {
                 this.upgradeUuid = UUID.randomUUID().toString()
@@ -299,8 +303,7 @@ afterEvaluate {
 
             if (getArch() == Arch.X86_64) {
                 tasks.withType<AbstractJPackageTask> {
-                    @Suppress("INVISIBLE_MEMBER", "INVISIBLE_REFERENCE")
-                    nonValidatedMacSigningSettings = null
+                    disableSigning()
                 }
             }
         }
@@ -308,6 +311,19 @@ afterEvaluate {
         Os.Linux -> {}
         Os.Unknown -> {}
     }
+}
+
+@Suppress("INVISIBLE_MEMBER", "INVISIBLE_REFERENCE")
+fun AbstractJPackageTask.disableSigning() {
+    nonValidatedMacSigningSettings = null
+
+    val lazy = lazy<org.jetbrains.compose.desktop.application.internal.MacSigner?> {
+        null
+    }
+
+    val field = AbstractJPackageTask::class.java.getDeclaredField("macSigner\$delegate")
+    field.isAccessible = true
+    field.set(this, lazy)
 }
 
 val macOSExtraPlistKeys: String
