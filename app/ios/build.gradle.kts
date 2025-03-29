@@ -73,10 +73,10 @@ val buildDebugArchive = tasks.register("buildDebugArchive", Exec::class) {
 
 val buildReleaseArchive = tasks.register("buildReleaseArchive", Exec::class) {
     group = "build"
-    description = "Builds the iOS framework for Debug"
+    description = "Builds the iOS framework for Release"
     workingDir(projectDir)
 
-    val output = layout.buildDirectory.file("archives/release/Animeko.xcarchive")
+    val output = layout.buildDirectory.file("archives/Animeko.xcarchive")
     outputs.file(output)
     commandLine(
         *ipaArguments(),
@@ -184,20 +184,6 @@ tasks.register("buildReleaseIpa", BuildIpaTask::class) {
 //    )
 //}
 
-tasks.register("buildReleaseArchive", Exec::class) {
-    group = "build"
-    description = "Builds the iOS framework for Release"
-    workingDir(projectDir)
-
-    val output = layout.buildDirectory.file("archives/Animeko.xcarchive")
-    outputs.file(output)
-    commandLine(
-        *ipaArguments(),
-        "archive",
-        "-configuration", "Release",
-        "-archivePath", output.get().asFile.absolutePath,
-    )
-}
 
 /// FOR DEBUG
 
