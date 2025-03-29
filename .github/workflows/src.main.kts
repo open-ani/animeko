@@ -165,6 +165,7 @@ data class MatrixInstance(
      */
     val uploadApk: Boolean,
     val runAndroidInstrumentedTests: Boolean = uploadApk,
+    val uploadIpa: Boolean = false,
     /**
      * Compose for Desktop 的 resource 标识符, e.g. `windows-x64`
      */
@@ -436,6 +437,7 @@ run {
             "-P$ANI_ANDROID_ABIS=arm64-v8a",
         ),
         buildAllAndroidAbis = false,
+        uploadIpa = true,
         gradleHeap = "6g",
         kotlinCompilerHeap = "4g",
         gradleParallel = true,
@@ -490,6 +492,9 @@ fun getBuildJobBody(matrix: MatrixInstance): JobBuilder<BuildJobOutputs>.() -> U
             compileAndAssemble()
             prepareSigningKey?.let {
                 buildAndroidApk(it)
+            }
+            if (matrix.uploadIpa) {
+                buildIosApk()
             }
             val packageOutputs = packageDesktopAndUpload()
 
@@ -1269,6 +1274,42 @@ class WithMatrix(
                     ),
                 )
             }
+        }
+    }
+
+    fun JobBuilder<*>.buildIosApk() {
+        if (matrix.uploadIpa) {
+            runGradle(
+                name = "Build iOS Debug IPA",
+                tasks = [
+                    ":app:ios:buildDebugIpa",
+                ],
+            )
+            uses(
+                name = "Upload iOS Debug IPA",
+                action = UploadArtifact(
+                    name = "ani-ios-debug",
+                    path_Untyped = "app/ios/build/archives/debug/Animeko.ipa",
+                    overwrite = true,
+                ),
+            )
+        }
+
+        if (matrix.uploadIpa) {
+            runGradle(
+                name = "Build iOS Release IPA",
+                tasks = [
+                    ":app:ios:buildDebugIpa",
+                ],
+            )
+            uses(
+                name = "Upload iOS Release IPA",
+                action = UploadArtifact(
+                    name = "ani-ios-release",
+                    path_Untyped = "app/ios/build/archives/release/Animeko.ipa",
+                    overwrite = true,
+                ),
+            )
         }
     }
 
