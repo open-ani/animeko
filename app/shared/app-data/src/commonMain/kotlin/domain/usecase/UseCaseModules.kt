@@ -43,6 +43,7 @@ import me.him188.ani.app.domain.settings.GetMediaSelectorSettingsFlowUseCase
 import me.him188.ani.app.domain.settings.GetMediaSelectorSettingsFlowUseCaseImpl
 import me.him188.ani.app.domain.settings.GetVideoScaffoldConfigUseCase
 import me.him188.ani.app.domain.settings.GetVideoScaffoldConfigUseCaseImpl
+import me.him188.ani.app.domain.media.cache.CacheCleanupService
 import org.koin.core.KoinApplication
 import org.koin.dsl.module
 import org.koin.mp.KoinPlatform
@@ -65,6 +66,7 @@ fun KoinApplication.useCaseModules() = module {
     single<PostCommentUseCase> { PostCommentUseCaseImpl(get(), get()) }
     single<GetPreferredMediaSourceSortingUseCase> { GetPreferredMediaSourceSortingUseCaseImpl(get()) }
     single<GetMediaSelectorSourceTiersUseCase> { GetMediaSelectorSourceTiersUseCaseImpl(get()) }
+    single { CacheCleanupService(get(), get(), get()) }
 }
 
 val GlobalKoin get() = KoinPlatform.getKoin()

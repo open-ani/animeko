@@ -16,6 +16,7 @@ ani.dandanplay.app.secret=aaaaaaaaaaaaaaa
 ## 打包 Android APP
 
 在 IDE 中双击 Ctrl，可用的命令：
+
 - `./gradlew assembleRelease` - 编译发布版
 - `./gradlew assembleDebug` - 编译测试版
 - `./gradlew installRelease` - 构建发布版并安装到模拟器
