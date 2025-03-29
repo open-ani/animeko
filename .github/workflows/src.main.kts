@@ -1280,13 +1280,22 @@ class WithMatrix(
     fun JobBuilder<*>.buildIosApk() {
         if (matrix.uploadIpa) {
             runGradle(
+                name = "generateDummyFramework",
+                tasks = [
+                    ":app:shared:application:generateDummyFramework",
+                ],
+            )
+        }
+
+        if (matrix.uploadIpa) {
+            runGradle(
                 name = "Pod Install",
                 tasks = [
                     ":app:ios:podInstall",
                 ],
             )
         }
-        
+
         if (matrix.uploadIpa) {
             runGradle(
                 name = "Build iOS Debug IPA",
