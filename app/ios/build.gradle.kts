@@ -154,8 +154,8 @@ tasks.register("buildDebugIpa", BuildIpaTask::class) {
     group = "build"
 
     // Adjust these paths as needed
-    archiveDir = layout.projectDirectory.dir("build/archives/debug/Animeko.xcarchive")
-    outputIpa = layout.projectDirectory.file("build/archives/debug/Animeko.ipa")
+    archiveDir = layout.buildDirectory.dir("archives/debug/Animeko.xcarchive")
+    outputIpa = layout.buildDirectory.file("archives/debug/Animeko.ipa")
     dependsOn(buildDebugArchive)
 }
 
@@ -164,8 +164,8 @@ tasks.register("buildReleaseIpa", BuildIpaTask::class) {
     group = "build"
 
     // Adjust these paths as needed
-    archiveDir = layout.projectDirectory.dir("build/archives/release/Animeko.xcarchive")
-    outputIpa = layout.projectDirectory.file("build/archives/release/Animeko.ipa")
+    archiveDir = layout.buildDirectory.dir("archives/release/Animeko.xcarchive")
+    outputIpa = layout.buildDirectory.file("archives/release/Animeko.ipa")
     dependsOn(buildReleaseArchive)
 }
 
