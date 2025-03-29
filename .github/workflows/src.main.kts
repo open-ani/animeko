@@ -1317,7 +1317,7 @@ class WithMatrix(
             runGradle(
                 name = "Build iOS Release IPA",
                 tasks = [
-                    ":app:ios:buildDebugIpa",
+                    ":app:ios:buildReleaseIpa",
                 ],
             )
             uses(

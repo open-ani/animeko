@@ -61,8 +61,8 @@ val buildDebugArchive = tasks.register("buildDebugArchive", Exec::class) {
     description = "Builds the iOS framework for Debug"
     workingDir(projectDir)
 
-    val output = layout.buildDirectory.file("archives/debug/Animeko.xcarchive")
-    outputs.file(output)
+    val output = layout.buildDirectory.dir("archives/debug/Animeko.xcarchive")
+    outputs.dir(output)
     commandLine(
         *ipaArguments(),
         "archive",
@@ -76,8 +76,8 @@ val buildReleaseArchive = tasks.register("buildReleaseArchive", Exec::class) {
     description = "Builds the iOS framework for Release"
     workingDir(projectDir)
 
-    val output = layout.buildDirectory.file("archives/Animeko.xcarchive")
-    outputs.file(output)
+    val output = layout.buildDirectory.dir("archives/Animeko.xcarchive")
+    outputs.dir(output)
     commandLine(
         *ipaArguments(),
         "archive",
