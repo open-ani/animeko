@@ -268,32 +268,39 @@ afterEvaluate {
                                 start()
                             }.waitFor() // don't check result
 
-                            for (file in dest.get().asFile.walk()) {
-                                if (!file.isFile) continue
-                                ProcessBuilder().run {
-                                    command(
-                                        "codesign",
-                                        "--force",
-                                        "-vvvv",
-                                        "--deep",
-                                        "--sign",
-                                        "-",
-                                        "--options",
-                                        "runtime",
-                                        file.absolutePath,
-                                    )
-                                    redirectOutput(outputFile.asFile)
-                                    redirectOutput(errorFile.asFile)
-                                    start()
-                                }.waitFor().let {
-                                    if (it != 0) {
-                                        throw GradleException("Failed to sign $sourcePath")
-                                    }
-                                }
-                            }
+//                            for (file in dest.get().asFile.walk()) {
+//                                if (!file.isFile) continue
+//                                ProcessBuilder().run {
+//                                    command(
+//                                        "codesign",
+//                                        "--force",
+//                                        "-vvvv",
+//                                        "--deep",
+//                                        "--sign",
+//                                        "-",
+//                                        "--options",
+//                                        "runtime",
+//                                        file.absolutePath,
+//                                    )
+//                                    redirectOutput(outputFile.asFile)
+//                                    redirectOutput(errorFile.asFile)
+//                                    start()
+//                                }.waitFor().let {
+//                                    if (it != 0) {
+//                                        throw GradleException("Failed to sign $file")
+//                                    }
+//                                }
+//                            }
                         }
                         logger.info("Copied $source to $dest")
                     }
+                }
+            }
+
+            if (getArch() == Arch.X86_64) {
+                tasks.withType<AbstractJPackageTask> {
+                    @Suppress("INVISIBLE_MEMBER", "INVISIBLE_REFERENCE")
+                    nonValidatedMacSigningSettings = null
                 }
             }
         }
