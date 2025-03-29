@@ -76,7 +76,7 @@ val buildReleaseArchive = tasks.register("buildReleaseArchive", Exec::class) {
     description = "Builds the iOS framework for Release"
     workingDir(projectDir)
 
-    val output = layout.buildDirectory.dir("archives/Animeko.xcarchive")
+    val output = layout.buildDirectory.dir("archives/release/Animeko.xcarchive")
     outputs.dir(output)
     commandLine(
         *ipaArguments(),
