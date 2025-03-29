@@ -1280,6 +1280,15 @@ class WithMatrix(
     fun JobBuilder<*>.buildIosApk() {
         if (matrix.uploadIpa) {
             runGradle(
+                name = "Pod Install",
+                tasks = [
+                    ":app:ios:podInstall",
+                ],
+            )
+        }
+        
+        if (matrix.uploadIpa) {
+            runGradle(
                 name = "Build iOS Debug IPA",
                 tasks = [
                     ":app:ios:buildDebugIpa",
