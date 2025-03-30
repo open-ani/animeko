@@ -150,10 +150,12 @@ fun LockableVideoGestureHost(
     onToggleDanmaku: () -> Unit = {},
     family: GestureFamily = LocalPlatform.current.mouseFamily,
     gestureIndicatorState: GestureIndicatorState = rememberGestureIndicatorState(),
-    fastSkipState: FastSkipState = rememberPlayerFastSkipState(
-        playerState = playerState.features.getOrFail(PlaybackSpeed),
-        gestureIndicatorState,
-    ),
+    fastSkipState: FastSkipState? = playerState.features[PlaybackSpeed]?.let {
+        rememberPlayerFastSkipState(
+            playerState = it,
+            gestureIndicatorState,
+        )
+    },
 ) {
     if (locked) {
         LockedScreenGestureHost(

@@ -433,7 +433,7 @@ fun PlayerGestureHost(
     seekerState: SwipeSeekerState,
     progressSliderState: PlayerProgressSliderState,
     indicatorState: GestureIndicatorState,
-    fastSkipState: FastSkipState,
+    fastSkipState: FastSkipState?,
     playerState: MediampPlayer, // TODO: remove playerState from VideoGestureHost
     enableSwipeToSeek: Boolean,
     audioController: LevelController,
@@ -784,7 +784,9 @@ fun PlayerGestureHost(
                     Modifier.matchParentSize()
                         .systemGesturesPadding()
                         .ifThen(family.longPressForFastSkip) {
-                            longPressFastSkip(fastSkipState, SkipDirection.FORWARD)
+                            fastSkipState?.let {
+                                longPressFastSkip(it, SkipDirection.FORWARD)
+                            }
                         },
                 ) {
                     Box(

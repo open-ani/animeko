@@ -80,8 +80,8 @@ import me.him188.ani.utils.io.resolve
 import me.him188.ani.utils.platform.annotations.TestOnly
 import org.koin.core.context.startKoin
 import org.koin.dsl.module
-import org.openani.mediamp.DummyMediampPlayer
 import org.openani.mediamp.MediampPlayerFactory
+import org.openani.mediamp.avkit.AVKitMediampPlayerFactory
 import platform.UIKit.UIViewController
 
 @Suppress("FunctionName", "unused") // used in Swift
@@ -201,7 +201,7 @@ fun getIosModules(
         )
     }
     single<MediampPlayerFactory<*>> {
-        DummyMediampPlayer.Factory
+        AVKitMediampPlayerFactory()
     }
 
 

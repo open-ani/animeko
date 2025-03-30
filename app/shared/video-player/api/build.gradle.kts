@@ -34,6 +34,10 @@ kotlin {
     }
     sourceSets.desktopMain.dependencies {
     }
+    sourceSets.appleMain.dependencies {
+        api("org.openani.mediamp:mediamp-avkit:0.0.22")
+//        api(mediampLibs.mediamp.avkit.compose)
+    }
 }
 
 android {
