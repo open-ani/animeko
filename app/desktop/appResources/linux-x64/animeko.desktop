@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Animeko
+Comment=集找番、追番、看番的一站式弹幕追番平台
+Exec=Ani
+Icon=icon
+Terminal=false
+Type=Application
+Categories=AudioVideo;Player;Video;

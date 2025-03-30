@@ -37,7 +37,6 @@
 @file:DependsOn("softprops:action-gh-release:v1")
 @file:DependsOn("snow-actions:qrcode:v1.0.0")
 
-
 import Secrets.ANALYTICS_KEY
 import Secrets.ANALYTICS_SERVER
 import Secrets.AWS_ACCESS_KEY_ID
@@ -446,7 +445,7 @@ run {
     buildMatrixInstances = listOf(
         selfWin10,
         ghWin2019,
-//        ghUbuntu2404,
+        ghUbuntu2404,
         ghMac13,
         selfMac15,
         ghMac15,
@@ -468,6 +467,7 @@ run {
 class BuildJobOutputs : JobOutputs() {
     var macosAarch64DmgSuccess by output()
     var windowsX64PortableSuccess by output()
+    var linuxX64AppImageSuccess by output()
 }
 
 fun getBuildJobBody(matrix: MatrixInstance): JobBuilder<BuildJobOutputs>.() -> Unit = {
@@ -486,6 +486,12 @@ fun getBuildJobBody(matrix: MatrixInstance): JobBuilder<BuildJobOutputs>.() -> U
         )
         if (matrix.isUbuntu) {
             compileAndAssemble()
+
+            val packageOutputs = packageDesktopAndUpload()
+            packageOutputs.linuxX64AppImageOutcome?.let {
+                jobOutputs.linuxX64AppImageSuccess = it.eq(AbstractResult.Status.Success)
+            }
+
             androidConnectedTests()
         } else {
             val prepareSigningKey = prepareSigningKey()
@@ -516,6 +522,7 @@ object ArtifactNames {
     fun windowsPortable() = "ani-windows-portable"
     fun macosDmg(arch: Arch) = "ani-macos-dmg-${arch}"
     fun macosPortable(arch: Arch) = "ani-macos-portable-${arch}"
+    fun linuxAppImage(arch: Arch) = "ani-appimage-${arch}"
 }
 
 fun getVerifyJobBody(
@@ -1404,6 +1411,7 @@ class WithMatrix(
         // null means not enabled on this machine
         var macosAarch64DmgOutcome: Step<*>.Outcome? = null
         var windowsX64PortableOutcome: Step<*>.Outcome? = null
+        var linuxX64AppImageOutcome: Step<*>.Outcome? = null
     }
 
     fun JobBuilder<*>.packageDesktopAndUpload(): PackageDesktopAndUploadOutputs {
@@ -1412,6 +1420,15 @@ class WithMatrix(
         ) {
 
             return PackageDesktopAndUploadOutputs()
+        }
+
+        if (matrix.isUbuntu) {
+            runGradle(
+                name = "Package Desktop",
+                tasks = [
+                    "createReleaseDistributable",
+                ],
+            )
         }
 
         if (matrix.isWindows) {
@@ -1473,6 +1490,40 @@ class WithMatrix(
                 )
 
                 this.windowsX64PortableOutcome = windowsX64Portable.outcome
+            }
+
+            if (matrix.isUbuntu) {
+                run(
+                    name = "Prepare linuxdeploy & AppDir",
+                    command = $$"""
+                        wget https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+                        chmod +x appimagetool-x86_64.AppImage
+                        
+                        mkdir -p AppDir/usr
+                        cp -r app/desktop/build/compose/binaries/main-release/app/Ani/* AppDir/usr
+                        cp app/desktop/appResources/linux-x64/AppRun AppDir/AppRun && chmod a+x AppDir/AppRun
+                        cp app/desktop/appResources/linux-x64/animeko.desktop AppDir/animeko.desktop
+                        cp app/desktop/appResources/linux-x64/icon.png AppDir/icon.png
+                        """.trimIndent(),
+                )
+                run(
+                    name = "Build AppImage",
+                    command = $$"""
+                        ARCH=x86_64 ./appimagetool-x86_64.AppImage AppDir
+                        """.trimIndent(),
+                )
+
+                val linuxX64AppImage = uses(
+                    name = "Upload Linux packages",
+                    action = UploadArtifact(
+                        name = ArtifactNames.linuxAppImage(matrix.arch),
+                        path_Untyped = "Animeko-x86_64.AppImage",
+                        overwrite = true,
+                        ifNoFilesFound = UploadArtifact.BehaviorIfNoFilesFound.Error,
+                    ),
+                )
+
+                this.linuxX64AppImageOutcome = linuxX64AppImage.outcome
             }
         }
     }
