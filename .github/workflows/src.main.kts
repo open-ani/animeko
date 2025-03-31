@@ -1454,15 +1454,6 @@ class WithMatrix(
             return PackageDesktopAndUploadOutputs()
         }
 
-        if (matrix.isUbuntu) {
-            runGradle(
-                name = "Package Desktop",
-                tasks = [
-                    "createReleaseDistributable",
-                ],
-            )
-        }
-
         if (matrix.isWindows) {
             // Windows does not support installers
             runGradle(
@@ -1471,12 +1462,23 @@ class WithMatrix(
                     "createReleaseDistributable", // portable
                 ],
             )
-        } else {
+        }
+        
+        if (matrix.isMacOS) {
             // macOS uses installers
             runGradle(
                 name = "Package Desktop",
                 tasks = [
                     "packageReleaseDistributionForCurrentOS", // dmg
+                ],
+            )
+        }
+
+        if (matrix.isUbuntu) {
+            runGradle(
+                name = "Package Desktop",
+                tasks = [
+                    "createReleaseDistributable",
                 ],
             )
         }
