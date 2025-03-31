@@ -387,10 +387,10 @@ run {
     val ghUbuntu2404 = MatrixInstance(
         runner = Runner.GithubUbuntu2404,
         uploadApk = false,
-        runAndroidInstrumentedTests = true, // 这其实有问题, GH 没有足够的空间安装 7GB 模拟器
+        runAndroidInstrumentedTests = false, // 这其实有问题, GH 没有足够的空间安装 7GB 模拟器
         composeResourceTriple = "linux-x64",
         runTests = false,
-        uploadDesktopInstallers = false,
+        uploadDesktopInstallers = true,
         extraGradleArgs = listOf(
             "-P$ANI_ANDROID_ABIS=x86_64",
         ),
@@ -637,6 +637,28 @@ fun getVerifyJobBody(
             }
         }
 
+        OS.UBUNTU to Arch.X64 -> {
+            uses(
+                name = "Download Linux x64 AppImage",
+                action = DownloadArtifact(
+                    name = ArtifactNames.linuxAppImage(Arch.X64),
+                    path = "${expr { github.workspace }}/ci-helper/verify",
+                ),
+            )
+            tasksToExecute.forEach { task ->
+                run(
+                    name = task.step,
+                    shell = Shell.Bash,
+                    command = shell(
+                        $$"""
+                        """.trimIndent(),
+                    ), // TODO: add verify ci-helper for Linux
+                    `if` = task.`if`,
+                    timeoutMinutes = task.timeoutMinutes,
+                )
+            }
+        }
+
         else -> error("Unsupported OS and arch combination: ${runner.os} ${runner.arch}")
     }
 }
@@ -753,6 +775,16 @@ workflow(
                 addVerifyJob(build, runner, build.outputs.macosAarch64DmgSuccess)
             }
         }
+
+    builds.filter { (matrix, _) ->
+        matrix.runner.os == OS.UBUNTU && matrix.uploadDesktopInstallers
+    }.forEach { (_, build) ->
+        listOf(
+            Runner.GithubUbuntu2404,
+        ).forEach { runner ->
+            addVerifyJob(build, runner, build.outputs.linuxX64AppImageSuccess)
+        }
+    }
 }
 
 operator fun List<Pair<MatrixInstance, Job<BuildJobOutputs>>>.get(runner: Runner): Job<BuildJobOutputs> {
@@ -1492,7 +1524,7 @@ class WithMatrix(
                 this.windowsX64PortableOutcome = windowsX64Portable.outcome
             }
 
-            if (matrix.isUbuntu) {
+            if (matrix.isUbuntu && matrix.isX64) {
                 run(
                     name = "Prepare linuxdeploy & AppDir",
                     command = $$"""
