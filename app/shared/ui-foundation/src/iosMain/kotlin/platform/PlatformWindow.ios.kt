@@ -30,9 +30,7 @@ actual class PlatformWindow {
 
     private var orientationObserver: NSObjectProtocol? = null
 
-    actual val isExactlyMaximized: Boolean = TODO("isExactlyMaximized")
-    actual val isUndecoratedFullscreen: Boolean = TODO("isUndecoratedFullscreen")
-    actual val deviceOrientation: DeviceOrientation = TODO("isLandscape")
+    actual val isExactlyMaximized: Boolean get() = false
 
     internal fun register() {
         // Start listening to device orientation changes
