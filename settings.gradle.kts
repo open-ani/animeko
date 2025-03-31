@@ -40,7 +40,7 @@ dependencyResolutionManagement {
         }
 
         create("mediampLibs") {
-            from("org.openani.mediamp:catalog:0.0.22")
+            from("org.openani.mediamp:catalog:0.0.23")
         }
     }
 }

@@ -53,8 +53,8 @@ kotlin {
         api(mediampLibs.mediamp.vlc.compose)
     }
     sourceSets.appleMain.dependencies {
-        api("org.openani.mediamp:mediamp-avkit:0.0.22")
-        api("org.openani.mediamp:mediamp-avkit-compose:0.0.22")
+        api(mediampLibs.mediamp.avkit)
+        api(mediampLibs.mediamp.avkit.compose)
 //        api(mediampLibs.mediamp.avkit.compose)
     }
 }
