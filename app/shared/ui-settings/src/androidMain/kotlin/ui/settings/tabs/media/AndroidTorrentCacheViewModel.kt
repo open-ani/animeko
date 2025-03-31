@@ -28,7 +28,7 @@ import me.him188.ani.app.data.models.preference.MediaCacheSettings
 import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.cache.engine.TorrentMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.storage.DirectoryMediaCacheStorage
-import me.him188.ani.app.domain.media.cache.storage.DirectoryMediaCacheStorage.MediaCacheSave
+import me.him188.ani.app.domain.media.cache.storage.MediaCacheSave
 import me.him188.ani.app.platform.AppTerminator
 import me.him188.ani.app.platform.ContextMP
 import me.him188.ani.app.platform.PermissionManager

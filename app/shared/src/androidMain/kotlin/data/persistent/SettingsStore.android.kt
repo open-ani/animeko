@@ -10,12 +10,16 @@
 package me.him188.ani.app.data.persistent
 
 import androidx.datastore.core.DataStore
+import androidx.datastore.core.MultiProcessDataStoreFactory
 import androidx.datastore.dataStoreFile
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
+import kotlinx.serialization.builtins.ListSerializer
+import me.him188.ani.app.domain.media.cache.storage.MediaCacheSave
 import me.him188.ani.app.platform.Context
 import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.io.inSystem
+import me.him188.ani.utils.io.toFile
 import me.him188.ani.utils.io.toKtPath
 
 actual val Context.dataStoresImpl: PlatformDataStoreManager
@@ -45,4 +49,15 @@ internal class PlatformDataStoreManagerAndroid(
         corruptionHandler = replaceFileCorruptionHandlerForPreferences,
     )
     override val preferredAllianceStore: DataStore<Preferences> get() = context.preferredAlliancesStoreImpl
+
+    private val Context.mediaCacheMetadataStoreImpl by lazy {
+        MultiProcessDataStoreFactory.create(
+            serializer = ListSerializer(MediaCacheSave.serializer()).asDataStoreSerializer({ emptyList() }),
+            produceFile = { resolveDataStoreFile("mediaCacheMetadata").toFile() },
+            corruptionHandler = ReplaceFileCorruptionHandler { emptyList() },
+        )
+    }
+
+    override val mediaCacheMetadataStore: DataStore<List<MediaCacheSave>>
+        get() = context.mediaCacheMetadataStoreImpl
 }

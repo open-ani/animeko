@@ -26,7 +26,6 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngine
@@ -85,12 +84,6 @@ class DirectoryMediaCacheStorage(
     }
 
     private val scope: CoroutineScope = parentCoroutineContext.childScope()
-
-    @Serializable
-    class MediaCacheSave(
-        val origin: Media,
-        val metadata: MediaCacheMetadata,
-    )
 
     override suspend fun restorePersistedCaches() {
         withContext(Dispatchers.IO) {

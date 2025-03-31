@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.Serializable
 import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.cache.engine.DummyMediaCacheEngine
@@ -105,6 +106,15 @@ interface MediaCacheStorage : AutoCloseable {
      */
     suspend fun deleteFirst(predicate: (MediaCache) -> Boolean): Boolean
 }
+
+/**
+ * 持久化的媒体缓存数据, 用于在 APP 重启后恢复缓存.
+ */
+@Serializable
+class MediaCacheSave(
+    val origin: Media,
+    val metadata: MediaCacheMetadata,
+)
 
 /**
  * 所有缓存项目的大小总和
