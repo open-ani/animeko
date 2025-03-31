@@ -36,7 +36,8 @@ import platform.Foundation.NSHTTPCookie
 import platform.Foundation.NSHTTPCookieStorage
 import platform.Foundation.NSURL
 import platform.Foundation.NSURLRequest
-import platform.WebKit.WKNavigation
+import platform.WebKit.WKNavigationAction
+import platform.WebKit.WKNavigationActionPolicy
 import platform.WebKit.WKNavigationDelegateProtocol
 import platform.WebKit.WKScriptMessage
 import platform.WebKit.WKScriptMessageHandlerProtocol
@@ -215,8 +216,15 @@ class IosWebViewVideoExtractor : WebViewVideoExtractor {
 
             // WKNavigationDelegate: watch for new main-frame navigations
             val navDelegate = object : NSObject(), WKNavigationDelegateProtocol {
-                override fun webView(webView: WKWebView, didStartProvisionalNavigation: WKNavigation?) {
-                    handleInterceptedUrl(pageUrl)
+                override fun webView(
+                    webView: WKWebView,
+                    decidePolicyForNavigationAction: WKNavigationAction,
+                    decisionHandler: (WKNavigationActionPolicy) -> Unit
+                ) {
+                    val policy = decidePolicyForNavigationAction.request.URL?.absoluteString()?.let {
+                        handleInterceptedUrl(it)
+                    } ?: WKNavigationActionPolicy.WKNavigationActionPolicyAllow
+                    decisionHandler(policy)
                 }
             }
             webView.navigationDelegate = navDelegate
@@ -241,8 +249,8 @@ class IosWebViewVideoExtractor : WebViewVideoExtractor {
         }
 
         // Function to handle any URL that the JS intercepts (or main frame load):
-        fun doHandleUrl(url: String) {
-            if (deferred.isCompleted) return
+        fun doHandleUrl(url: String): WKNavigationActionPolicy {
+            if (deferred.isCompleted) return WKNavigationActionPolicy.WKNavigationActionPolicyAllow
             logger.info { "Processing url: $url" }
             val instruction = resourceMatcher(url)
             when (instruction) {
@@ -250,6 +258,7 @@ class IosWebViewVideoExtractor : WebViewVideoExtractor {
                 WebViewVideoExtractor.Instruction.FoundResource -> {
                     logger.info { "Found resource: $url" }
                     deferred.complete(WebResource(url))
+                    return WKNavigationActionPolicy.WKNavigationActionPolicyCancel
                 }
 
                 WebViewVideoExtractor.Instruction.LoadPage -> {
@@ -258,11 +267,10 @@ class IosWebViewVideoExtractor : WebViewVideoExtractor {
                     webView.loadRequest(NSURLRequest.requestWithURL(NSURL(string = url)))
                 }
             }
+            return WKNavigationActionPolicy.WKNavigationActionPolicyAllow
         }
 
-        fun handleInterceptedUrl(url: String) {
-            doHandleUrl(url)
-        }
+        fun handleInterceptedUrl(url: String) = doHandleUrl(url)
     }
 
     /**

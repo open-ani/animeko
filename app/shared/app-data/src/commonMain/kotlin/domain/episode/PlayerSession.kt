@@ -32,6 +32,7 @@ import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
+import me.him188.ani.utils.logging.warn
 import org.koin.core.Koin
 import org.openani.mediamp.MediampPlayer
 import kotlin.coroutines.CoroutineContext
@@ -88,11 +89,11 @@ class PlayerSession(
             logger.info { "playerState.applySourceToPlayer with source = $source" }
             _videoLoadingStateFlow.value = VideoLoadingState.Succeed(isBt = source is TorrentMediaDataProvider)
         } catch (e: UnsupportedMediaException) {
-            logger.error { IllegalStateException("Failed to resolve video source, unsupported media", e) }
+            logger.warn { IllegalStateException("Failed to resolve video source, unsupported media", e) }
             _videoLoadingStateFlow.value = VideoLoadingState.UnsupportedMedia
             stopPlayer()
         } catch (e: MediaSourceOpenException) { // during playerState.setVideoSource
-            logger.error {
+            logger.warn {
                 IllegalStateException(
                     "Failed to resolve video source due to VideoSourceOpenException",
                     e,
@@ -105,7 +106,7 @@ class PlayerSession(
             }
             stopPlayer()
         } catch (e: MediaResolutionException) { // during MediaResolver.resolve
-            logger.error {
+            logger.warn {
                 IllegalStateException(
                     "Failed to resolve video source due to VideoSourceResolutionException",
                     e,
