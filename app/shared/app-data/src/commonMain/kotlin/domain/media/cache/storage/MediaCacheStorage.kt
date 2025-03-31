@@ -20,7 +20,9 @@ import kotlinx.serialization.Serializable
 import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.cache.engine.DummyMediaCacheEngine
+import me.him188.ani.app.domain.media.cache.engine.InvalidMediaCacheEngineKey
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngine
+import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.domain.media.cache.engine.MediaStats
 import me.him188.ani.app.domain.media.fetch.MediaFetcher
 import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
@@ -111,10 +113,18 @@ interface MediaCacheStorage : AutoCloseable {
  * 持久化的媒体缓存数据, 用于在 APP 重启后恢复缓存.
  */
 @Serializable
-class MediaCacheSave(
+data class MediaCacheSave(
+    /**
+     * 创建此缓存的的引擎 key.
+     */
+    val engine: MediaCacheEngineKey,
     val origin: Media,
     val metadata: MediaCacheMetadata,
-)
+) {
+    @InvalidMediaCacheEngineKey
+    constructor(origin: Media, metadata: MediaCacheMetadata) :
+            this(MediaCacheEngineKey.Invalid, origin, metadata)
+}
 
 /**
  * 所有缓存项目的大小总和
@@ -143,7 +153,7 @@ class TestMediaCacheStorage : MediaCacheStorage {
         get() = MediaCacheManager.LOCAL_FS_MEDIA_SOURCE_ID
     override val cacheMediaSource: MediaSource
         get() = throw UnsupportedOperationException()
-    override val engine: MediaCacheEngine = DummyMediaCacheEngine(mediaSourceId)
+    override val engine: MediaCacheEngine = DummyMediaCacheEngine(mediaSourceId, MediaCacheEngineKey("dummy-cache"))
     override val listFlow: MutableStateFlow<List<MediaCache>> =
         MutableStateFlow(listOf())
 

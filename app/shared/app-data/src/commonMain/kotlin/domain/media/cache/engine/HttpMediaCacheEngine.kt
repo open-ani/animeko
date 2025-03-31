@@ -61,6 +61,7 @@ import kotlin.coroutines.CoroutineContext
 
 class HttpMediaCacheEngine(
     private val downloader: HttpDownloader,
+    override val engineKey: MediaCacheEngineKey,
     private val dataDir: Path,
     private val mediaResolver: MediaResolver,
     private val mediaSourceId: String,

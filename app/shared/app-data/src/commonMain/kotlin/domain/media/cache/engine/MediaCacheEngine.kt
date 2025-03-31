@@ -11,12 +11,15 @@ package me.him188.ani.app.domain.media.cache.engine
 
 import androidx.compose.runtime.Composable
 import kotlinx.coroutines.flow.Flow
+import kotlinx.serialization.Serializable
 import me.him188.ani.app.domain.media.cache.MediaCache
+import me.him188.ani.app.domain.media.cache.storage.MediaCacheSave
 import me.him188.ani.app.domain.media.cache.storage.MediaCacheStorage
 import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.MediaCacheMetadata
 import kotlin.coroutines.CoroutineContext
+import kotlin.jvm.JvmInline
 
 /**
  * 资源缓存引擎, 负责 [MediaCache] 的创建.
@@ -38,6 +41,12 @@ import kotlin.coroutines.CoroutineContext
  * [MediaCacheEngine] 决定种子数据的实际存储位置, 但该目录不一定包含视频文件. TODO
  */
 interface MediaCacheEngine {
+    /**
+     * 此引擎缓存时使用的标识 key. [MediaCacheStorage] 使用此 key 区分不同的引擎创建的缓存.
+     * 其他组件也可能使用此 key 来作为此引擎的唯一标识.
+     */
+    val engineKey: MediaCacheEngineKey
+
     /**
      * 此引擎的总体传输统计
      */
@@ -88,3 +97,25 @@ interface MediaCacheEngine {
     suspend fun deleteUnusedCaches(all: List<MediaCache>)
 }
 
+/**
+ * 每个 [MediaCacheEngine] 使用独一无二的 key，存储于 [MediaCacheSave] 用于区分不同的引擎创建的 [MediaCache].
+ *
+ * 对于从 4.8 版本以前从文件中迁移过来的缓存, 会使用引擎的文件夹名称作为 key.
+ */
+@Serializable
+@JvmInline
+value class MediaCacheEngineKey(val key: String) {
+    companion object {
+        /**
+         * For serialization compatibility only.
+         */
+        @InvalidMediaCacheEngineKey
+        val Invalid = MediaCacheEngineKey("Invalid")
+    }
+}
+
+@RequiresOptIn(
+    message = "For serialization compatibility only. Don't use it.",
+    level = RequiresOptIn.Level.ERROR,
+)
+annotation class InvalidMediaCacheEngineKey

@@ -9,15 +9,19 @@
 
 package me.him188.ani.app.domain.media.cache.storage
 
+import androidx.datastore.core.DataStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asFlow
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.sync.Mutex
@@ -26,7 +30,6 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
-import kotlinx.serialization.json.Json
 import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngine
 import me.him188.ani.app.domain.media.cache.engine.MediaStats
@@ -45,94 +48,80 @@ import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.source.MediaSourceLocation
 import me.him188.ani.datasources.api.source.matches
 import me.him188.ani.utils.coroutines.childScope
-import me.him188.ani.utils.io.SystemPath
-import me.him188.ani.utils.io.createDirectories
-import me.him188.ani.utils.io.delete
-import me.him188.ani.utils.io.exists
-import me.him188.ani.utils.io.extension
-import me.him188.ani.utils.io.moveTo
-import me.him188.ani.utils.io.name
-import me.him188.ani.utils.io.readText
-import me.him188.ani.utils.io.resolve
-import me.him188.ani.utils.io.useDirectoryEntries
-import me.him188.ani.utils.io.writeText
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
-import me.him188.ani.utils.logging.warn
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 
-private const val METADATA_FILE_EXTENSION = "metadata"
+@Deprecated("Since 4.8, metadata is now stored in the datastore. This will be removed in the future.")
+const val METADATA_FILE_EXTENSION = "metadata"
 
 /**
  * 本地目录缓存, 管理本地目录以及元数据的存储, 调用 [MediaCacheEngine] 进行缓存的实际创建
  */
-class DirectoryMediaCacheStorage(
+class DataStoreMediaCacheStorage(
     override val mediaSourceId: String,
-    val metadataDir: SystemPath,
+    private val store: DataStore<List<MediaCacheSave>>,
     override val engine: MediaCacheEngine,
     private val displayName: String,
     parentCoroutineContext: CoroutineContext = EmptyCoroutineContext,
     private val clock: Clock = Clock.System,
 ) : MediaCacheStorage {
-    private companion object {
-        private val json = Json {
-            ignoreUnknownKeys = true
-        }
-        private val logger = logger<DirectoryMediaCacheStorage>()
-    }
-
+    private val logger = logger<DataStoreMediaCacheStorage>()
     private val scope: CoroutineScope = parentCoroutineContext.childScope()
 
-    override suspend fun restorePersistedCaches() {
-        withContext(Dispatchers.IO) {
-            if (!metadataDir.exists()) {
-                metadataDir.createDirectories()
-            }
+    private val metadataFlow = store.data
+        .map { list ->
+            list
+                .filter { it.engine == engine.engineKey }
+                .sortedBy { it.origin.mediaId } // consistent stable order
         }
+        .stateIn(
+            scope = scope,
+            started = SharingStarted.Lazily,
+            initialValue = emptyList(),
+        )
 
-        metadataDir.useDirectoryEntries { files ->
+    override suspend fun restorePersistedCaches() {
+        val metadataFlowSnapshot = metadataFlow
+            .filter { it.isNotEmpty() }
+            .first()
+
+        metadataFlowSnapshot.forEach { (_, origin, metadata) ->
             val allRecovered = mutableListOf<MediaCache>()
             val semaphore = Semaphore(8)
+
             supervisorScope {
-                for (file in files) {
-                    launch {
-                        semaphore.withPermit {
-                            restoreFile(
-                                file,
-                                reportRecovered = { cache ->
-                                    lock.withLock {
-                                        listFlow.value += cache
-                                    }
-                                    allRecovered.add(cache)
-                                },
-                            )
-                        }
+                launch {
+                    semaphore.withPermit {
+                        restoreFile(
+                            origin,
+                            metadata,
+                            reportRecovered = { cache ->
+                                lock.withLock {
+                                    listFlow.value += cache
+                                }
+                                allRecovered.add(cache)
+                            },
+                        )
                     }
                 }
             }
+
             engine.deleteUnusedCaches(allRecovered)
         }
     }
 
     private suspend fun restoreFile(
-        file: SystemPath,
+        origin: Media,
+        metadata: MediaCacheMetadata,
         reportRecovered: suspend (MediaCache) -> Unit,
     ) = withContext(Dispatchers.IO) {
-        if (file.extension != METADATA_FILE_EXTENSION) return@withContext
-
-        val save = try {
-            json.decodeFromString(MediaCacheSave.serializer(), file.readText())
-        } catch (e: Exception) {
-            logger.error(e) { "Failed to deserialize metadata file ${file.name}" }
-            file.delete()
-            return@withContext
-        }
 
         try {
-            val cache = engine.restore(save.origin, save.metadata, scope.coroutineContext)
-            logger.info { "Cache restored: ${save.origin.mediaId}, result=${cache}" }
+            val cache = engine.restore(origin, metadata, scope.coroutineContext)
+            logger.info { "Cache restored: ${origin.mediaId}, result=${cache}" }
 
             if (cache != null) {
                 reportRecovered(cache)
@@ -141,7 +130,7 @@ class DirectoryMediaCacheStorage(
             }
 
             // try to migrate
-            if (cache != null) {
+            /*if (cache != null) {
                 val newSaveName = getSaveFilename(cache)
                 if (file.name != newSaveName) {
                     logger.warn {
@@ -150,9 +139,9 @@ class DirectoryMediaCacheStorage(
                     }
                     file.moveTo(metadataDir.resolve(newSaveName))
                 }
-            }
+            }*/
         } catch (e: Exception) {
-            logger.error(e) { "Failed to restore cache for ${save.origin.mediaId}" }
+            logger.error(e) { "Failed to restore cache for ${origin.mediaId}" }
         }
     }
 
@@ -202,12 +191,9 @@ class DirectoryMediaCacheStorage(
                 scope.coroutineContext,
             )
             withContext(Dispatchers.IO) {
-                metadataDir.resolve(getSaveFilename(cache)).writeText(
-                    json.encodeToString(
-                        MediaCacheSave.serializer(),
-                        MediaCacheSave(media, cache.metadata),
-                    ),
-                )
+                store.updateData { list ->
+                    list + MediaCacheSave(engine.engineKey, media, metadata)
+                }
             }
             listFlow.value += cache
             cache
@@ -229,14 +215,14 @@ class DirectoryMediaCacheStorage(
             val cache = listFlow.value.firstOrNull(predicate) ?: return false
             listFlow.value -= cache
             withContext(Dispatchers.IO) {
-                metadataDir.resolve(getSaveFilename(cache)).delete()
+                store.updateData { list ->
+                    list.filterNot { it.engine == engine.engineKey && it.origin.mediaId == cache.origin.mediaId }
+                }
             }
             cache.closeAndDeleteFiles()
             return true
         }
     }
-
-    private fun getSaveFilename(cache: MediaCache) = "${cache.cacheId}.$METADATA_FILE_EXTENSION"
 
     override fun close() {
         if (engine is AutoCloseable) {

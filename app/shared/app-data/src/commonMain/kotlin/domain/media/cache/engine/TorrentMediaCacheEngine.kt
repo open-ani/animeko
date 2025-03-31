@@ -76,6 +76,7 @@ class TorrentMediaCacheEngine(
      * 创建的 [CachedMedia] 将会使用此 [mediaSourceId]
      */
     private val mediaSourceId: String,
+    override val engineKey: MediaCacheEngineKey,
     val torrentEngine: TorrentEngine,
     val flowDispatcher: CoroutineContext = Dispatchers.Default,
     private val onDownloadStarted: suspend (session: TorrentSession) -> Unit = {},
