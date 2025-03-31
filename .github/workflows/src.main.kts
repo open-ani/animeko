@@ -1528,21 +1528,26 @@ class WithMatrix(
 
             if (matrix.isUbuntu && matrix.isX64) {
                 run(
-                    name = "Prepare linuxdeploy & AppDir",
+                    name = "Build AppImage",
                     command = $$"""
+                        # Download appimagetool
                         wget https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
                         chmod +x appimagetool-x86_64.AppImage
                         
+                        # Prepare AppDir
                         mkdir -p AppDir/usr
                         cp -r app/desktop/build/compose/binaries/main-release/app/Ani/* AppDir/usr
-                        cp app/desktop/appResources/linux-x64/AppRun AppDir/AppRun && chmod a+x AppDir/AppRun
+                        
+                        cp app/desktop/appResources/linux-x64/AppRun AppDir/AppRun
                         cp app/desktop/appResources/linux-x64/animeko.desktop AppDir/animeko.desktop
                         cp app/desktop/appResources/linux-x64/icon.png AppDir/icon.png
-                        """.trimIndent(),
-                )
-                run(
-                    name = "Build AppImage",
-                    command = $$"""
+                        
+                        # Fix permissions
+                        chmod a+x AppDir/AppRun
+                        chmod a+x AppDir/usr/bin/Ani
+                        chmod a+x AppDir/usr/lib/runtime/lib/jcef_helper
+                        
+                        # Build AppImage
                         ARCH=x86_64 ./appimagetool-x86_64.AppImage AppDir
                         """.trimIndent(),
                 )
