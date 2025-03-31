@@ -59,7 +59,12 @@ fun getAnitorrentTriple(): String? {
             }
         }
 
-        Os.Linux -> null
+        Os.Linux -> {
+            when (getArch()) {
+                Arch.X86_64 -> "linux-x64"
+                else -> null
+            }
+        }
         Os.Unknown -> error("Unsupported OS: ${getOs()}")
     }
 }
