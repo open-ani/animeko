@@ -16,12 +16,9 @@ import kotlinx.coroutines.IO
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asFlow
-import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.sync.Mutex
@@ -30,7 +27,10 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
+import kotlinx.serialization.SerializationException
+import me.him188.ani.app.data.persistent.DataStoreJson
 import me.him188.ani.app.domain.media.cache.MediaCache
+import me.him188.ani.app.domain.media.cache.engine.InvalidMediaCacheEngineKey
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngine
 import me.him188.ani.app.domain.media.cache.engine.MediaStats
 import me.him188.ani.app.domain.media.fetch.MediaFetcher
@@ -48,13 +48,18 @@ import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.source.MediaSourceLocation
 import me.him188.ani.datasources.api.source.matches
 import me.him188.ani.utils.coroutines.childScope
+import me.him188.ani.utils.io.SystemPath
+import me.him188.ani.utils.io.name
+import me.him188.ani.utils.io.readText
+import me.him188.ani.utils.io.useDirectoryEntries
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
+import me.him188.ani.utils.logging.warn
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 
-@Deprecated("Since 4.8, metadata is now stored in the datastore. This will be removed in the future.")
+@Deprecated("Since 4.8, metadata is stored in the datastore. This will be removed in the future.")
 const val METADATA_FILE_EXTENSION = "metadata"
 
 /**
@@ -68,28 +73,19 @@ class DataStoreMediaCacheStorage(
     parentCoroutineContext: CoroutineContext = EmptyCoroutineContext,
     private val clock: Clock = Clock.System,
 ) : MediaCacheStorage {
-    private val logger = logger<DataStoreMediaCacheStorage>()
     private val scope: CoroutineScope = parentCoroutineContext.childScope()
 
     private val metadataFlow = store.data
         .map { list ->
-            list
-                .filter { it.engine == engine.engineKey }
+            list.filter { it.engine == engine.engineKey }
                 .sortedBy { it.origin.mediaId } // consistent stable order
         }
-        .stateIn(
-            scope = scope,
-            started = SharingStarted.Lazily,
-            initialValue = emptyList(),
-        )
 
     override suspend fun restorePersistedCaches() {
-        val metadataFlowSnapshot = metadataFlow
-            .filter { it.isNotEmpty() }
-            .first()
+        val metadataFlowSnapshot = metadataFlow.first()
+        val allRecovered = mutableListOf<MediaCache>()
 
         metadataFlowSnapshot.forEach { (origin, metadata, _) ->
-            val allRecovered = mutableListOf<MediaCache>()
             val semaphore = Semaphore(8)
 
             supervisorScope {
@@ -108,9 +104,9 @@ class DataStoreMediaCacheStorage(
                     }
                 }
             }
-
-            engine.deleteUnusedCaches(allRecovered)
         }
+
+        engine.deleteUnusedCaches(allRecovered)
     }
 
     private suspend fun restoreFile(
@@ -229,6 +225,49 @@ class DataStoreMediaCacheStorage(
             engine.close()
         }
         scope.cancel()
+    }
+
+    companion object {
+        private val logger = logger<DataStoreMediaCacheStorage>()
+
+        @Deprecated("Since 4.8, metadata is stored in the datastore. This method is for migration only.")
+        @InvalidMediaCacheEngineKey
+        suspend fun migrateCache(
+            metadataStore: DataStore<List<MediaCacheSave>>,
+            storage: MediaCacheStorage,
+            dir: SystemPath
+        ) {
+            dir.useDirectoryEntries { entries ->
+                entries.forEach { file ->
+                    val save = try {
+                        DataStoreJson.decodeFromString(LegacyMediaCacheSaveSerializer, file.readText())
+                            .copy(engine = storage.engine.engineKey)
+                    } catch (e: SerializationException) {
+                        logger.error(e) { "Failed to deserialize metadata file ${file.name}, ignoring migration." }
+                        // file.delete() // todo: uncomment this
+                        return@useDirectoryEntries
+                    }
+
+                    metadataStore.updateData { originalList ->
+                        val existing = originalList.indexOfFirst { it.origin.mediaId == save.origin.mediaId }
+                        if (existing != -1) {
+                            logger.warn {
+                                "Duplicated media cache metadata ${originalList[existing].origin.mediaId} found while migrating, " +
+                                        "override to new ${save.origin.mediaId}, engine: ${save.engine}."
+                            }
+                            originalList.toMutableList().apply {
+                                removeAt(existing)
+                                add(save)
+                            }
+                        } else {
+                            logger.info { "Migrating media cache metadata ${save.origin.mediaId}, engine: ${storage.engine}." }
+                            originalList + save
+                        }
+                    }
+                    // file.delete() // todo: uncomment this
+                }
+            }
+        }
     }
 }
 
