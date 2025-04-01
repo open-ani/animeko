@@ -88,7 +88,7 @@ class DataStoreMediaCacheStorage(
             .filter { it.isNotEmpty() }
             .first()
 
-        metadataFlowSnapshot.forEach { (_, origin, metadata) ->
+        metadataFlowSnapshot.forEach { (origin, metadata, _) ->
             val allRecovered = mutableListOf<MediaCache>()
             val semaphore = Semaphore(8)
 
@@ -192,7 +192,7 @@ class DataStoreMediaCacheStorage(
             )
             withContext(Dispatchers.IO) {
                 store.updateData { list ->
-                    list + MediaCacheSave(engine.engineKey, media, metadata)
+                    list + MediaCacheSave(media, metadata, engine.engineKey)
                 }
             }
             listFlow.value += cache

@@ -16,7 +16,10 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.cache.engine.DummyMediaCacheEngine
@@ -114,16 +117,46 @@ interface MediaCacheStorage : AutoCloseable {
  */
 @Serializable
 data class MediaCacheSave(
+    val origin: Media,
+    val metadata: MediaCacheMetadata,
     /**
      * 创建此缓存的的引擎 key.
      */
     val engine: MediaCacheEngineKey,
-    val origin: Media,
-    val metadata: MediaCacheMetadata,
 ) {
     @InvalidMediaCacheEngineKey
     constructor(origin: Media, metadata: MediaCacheMetadata) :
-            this(MediaCacheEngineKey.Invalid, origin, metadata)
+            this(origin, metadata, MediaCacheEngineKey.Invalid)
+}
+
+@InvalidMediaCacheEngineKey
+object LegacyMediaCacheSaveSerializer : KSerializer<MediaCacheSave> {
+    private val currentSerializer = MediaCacheSave.serializer()
+
+    // Create a serializer for the legacy format (without engine)
+    @Serializable
+    private data class LegacyMediaCacheSave(
+        val origin: Media,
+        val metadata: MediaCacheMetadata
+    )
+
+    private val legacySerializer = LegacyMediaCacheSave.serializer()
+
+    override val descriptor = currentSerializer.descriptor
+
+    override fun serialize(encoder: Encoder, value: MediaCacheSave) {
+        throw IllegalStateException("Legacy serializer should not be used for serialization.")
+    }
+
+    override fun deserialize(decoder: Decoder): MediaCacheSave {
+        try {
+            val legacy = legacySerializer.deserialize(decoder)
+            // Convert legacy format to current format with invalid engine
+            return MediaCacheSave(origin = legacy.origin, metadata = legacy.metadata)
+        } catch (e: Exception) {
+            throw e
+        }
+    }
 }
 
 /**

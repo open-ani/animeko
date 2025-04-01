@@ -15,7 +15,6 @@ import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -23,6 +22,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import kotlinx.io.files.SystemFileSystem
 import kotlinx.serialization.json.Json
 import me.him188.ani.app.data.models.preference.ThemeSettings
@@ -103,10 +103,11 @@ import me.him188.ani.app.domain.media.cache.MediaCacheManagerImpl
 import me.him188.ani.app.domain.media.cache.createWithKoin
 import me.him188.ani.app.domain.media.cache.engine.DummyMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.engine.HttpMediaCacheEngine
+import me.him188.ani.app.domain.media.cache.engine.InvalidMediaCacheEngineKey
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.domain.media.cache.engine.TorrentMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.storage.DataStoreMediaCacheStorage
-import me.him188.ani.app.domain.media.cache.storage.MediaCacheSave
+import me.him188.ani.app.domain.media.cache.storage.LegacyMediaCacheSaveSerializer
 import me.him188.ani.app.domain.media.cache.storage.MediaCacheStorage
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.fetch.MediaSourceManagerImpl
@@ -143,6 +144,8 @@ import me.him188.ani.utils.coroutines.childScopeContext
 import me.him188.ani.utils.httpdownloader.HttpDownloader
 import me.him188.ani.utils.httpdownloader.KtorPersistentHttpDownloader
 import me.him188.ani.utils.io.SystemPath
+import me.him188.ani.utils.io.exists
+import me.him188.ani.utils.io.isDirectory
 import me.him188.ani.utils.io.name
 import me.him188.ani.utils.io.readText
 import me.him188.ani.utils.io.resolve
@@ -521,7 +524,7 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
 /**
  * 会在非 preview 环境调用. 用来初始化一些模块
  */
-fun KoinApplication.startCommonKoinModule(coroutineScope: CoroutineScope): KoinApplication {
+fun KoinApplication.startCommonKoinModule(context: Context, coroutineScope: CoroutineScope): KoinApplication {
     // Start the proxy provider very soon (before initialization of any other components)
     runBlocking {
         // We have to block here to read the saved proxy settings
@@ -533,15 +536,20 @@ fun KoinApplication.startCommonKoinModule(coroutineScope: CoroutineScope): KoinA
     // Now, the proxy settings is ready. Other components can use http clients.
 
     coroutineScope.launch {
-        val json = Json { ignoreUnknownKeys = true }
+        val json = Json {
+            ignoreUnknownKeys = true
+            encodeDefaults = true
+        }
         val logger = logger<MediaCacheStorage>()
-        val metadataStore = koin.get<ContextMP>().dataStores.mediaCacheMetadataStore
+        val metadataStore = context.dataStores.mediaCacheMetadataStore
+        val storages = koin.get<MediaCacheManager>().storagesIncludingDisabled
 
+        @OptIn(InvalidMediaCacheEngineKey::class)
         suspend fun migrateCache(storage: DataStoreMediaCacheStorage, dir: SystemPath) {
             dir.useDirectoryEntries { entries ->
                 entries.forEach { file ->
                     val save = try {
-                        json.decodeFromString(MediaCacheSave.serializer(), file.readText())
+                        json.decodeFromString(LegacyMediaCacheSaveSerializer, file.readText())
                             .copy(engine = storage.engine.engineKey)
                     } catch (e: Exception) {
                         logger.error(e) { "Failed to deserialize metadata file ${file.name}, ignoring migration." }
@@ -552,7 +560,10 @@ fun KoinApplication.startCommonKoinModule(coroutineScope: CoroutineScope): KoinA
                     metadataStore.updateData { originalList ->
                         val existing = originalList.indexOfFirst { it.origin.mediaId == save.origin.mediaId }
                         if (existing != -1) {
-                            logger.warn { "Duplicated media cache metadata found ${originalList[existing]} while migrating, override to new $save." }
+                            logger.warn {
+                                "Duplicated media cache metadata ${originalList[existing].origin.mediaId} found while migrating, " +
+                                        "override to new ${save.origin.mediaId}, engine: ${save.engine}."
+                            }
                             originalList.toMutableList().apply {
                                 removeAt(existing)
                                 add(save)
@@ -569,16 +580,16 @@ fun KoinApplication.startCommonKoinModule(coroutineScope: CoroutineScope): KoinA
 
         // remove in 4.12
         @Suppress("DEPRECATION")
-        coroutineScope {
-            val storages = koin.get<MediaCacheManager>().storagesIncludingDisabled
-
+        withContext(Dispatchers.IO_) {
             storages
                 .filterIsInstance<DataStoreMediaCacheStorage>()
                 .firstOrNull { it.engine is TorrentMediaCacheEngine }
                 .also { storage ->
                     if (storage != null) {
-                        val dir = koin.get<ContextMP>().getMediaMetadataDir("anitorrent")
-                        migrateCache(storage, dir)
+                        val dir = context.getMediaMetadataDir("anitorrent")
+                        if (dir.exists() && dir.isDirectory()) {
+                            migrateCache(storage, dir)
+                        }
                     }
                 }
             storages
@@ -586,8 +597,10 @@ fun KoinApplication.startCommonKoinModule(coroutineScope: CoroutineScope): KoinA
                 .firstOrNull { it.engine is HttpMediaCacheEngine }
                 .also { storage ->
                     if (storage != null) {
-                        val dir = koin.get<ContextMP>().getMediaMetadataDir("web-m3u")
-                        migrateCache(storage, dir)
+                        val dir = context.getMediaMetadataDir("web-m3u")
+                        if (dir.exists() && dir.isDirectory()) {
+                            migrateCache(storage, dir)
+                        }
                     }
                 }
         }
