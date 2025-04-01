@@ -83,12 +83,12 @@ class DataStoreMediaCacheStorage(
 
     override suspend fun restorePersistedCaches() {
         val metadataFlowSnapshot = metadataFlow.first()
+
         val allRecovered = mutableListOf<MediaCache>()
+        val semaphore = Semaphore(8)
 
-        metadataFlowSnapshot.forEach { (origin, metadata, _) ->
-            val semaphore = Semaphore(8)
-
-            supervisorScope {
+        supervisorScope {
+            metadataFlowSnapshot.forEach { (origin, metadata, _) ->
                 launch {
                     semaphore.withPermit {
                         restoreFile(
