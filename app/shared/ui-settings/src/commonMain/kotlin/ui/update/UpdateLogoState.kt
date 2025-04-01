@@ -1,10 +1,18 @@
+/*
+ * Copyright (C) 2024-2025 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.app.ui.update
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import androidx.compose.ui.platform.UriHandler
 import me.him188.ani.app.platform.ContextMP
-import me.him188.ani.app.tools.update.InstallationFailureReason
 import me.him188.ani.app.tools.update.InstallationResult
 import me.him188.ani.app.tools.update.UpdateInstaller
 import me.him188.ani.utils.io.SystemPath
@@ -72,7 +80,7 @@ sealed interface UpdateLogoState {
 fun AutoUpdateViewModel.handleClickLogo(
     context: ContextMP,
     uriHandler: UriHandler,
-    onInstallationError: (InstallationFailureReason) -> Unit,
+    onInstallationError: (InstallationResult.Failed) -> Unit,
     showChangelogDialog: () -> Unit,
 ) {
     when (val logo = logoState) {
@@ -81,7 +89,7 @@ fun AutoUpdateViewModel.handleClickLogo(
         is UpdateLogoState.Downloaded -> {
             val result = KoinPlatform.getKoin().get<UpdateInstaller>().install(logo.file, context)
             if (result is InstallationResult.Failed) {
-                onInstallationError(result.reason)
+                onInstallationError(result)
             }
         }
 

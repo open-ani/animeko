@@ -307,7 +307,7 @@ fun CollectionPage(
                         SubjectCollectionsColumn(
                             items,
                             item = { collection ->
-                                var nsfwModeState: NsfwMode by rememberSaveable { mutableStateOf(collection.nsfwMode) }
+                                var nsfwModeState: NsfwMode by rememberSaveable(collection) { mutableStateOf(collection.nsfwMode) }
                                 NsfwMask(
                                     nsfwModeState,
                                     onTemporarilyDisplay = { nsfwModeState = NsfwMode.DISPLAY },

@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024-2025 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.app.ui.update
 
 import androidx.compose.foundation.layout.Arrangement
@@ -27,7 +36,7 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import me.him188.ani.app.platform.LocalContext
-import me.him188.ani.app.tools.update.InstallationFailureReason
+import me.him188.ani.app.tools.update.InstallationResult
 import me.him188.ani.app.ui.foundation.text.toPercentageString
 
 @Composable
@@ -93,9 +102,10 @@ fun TextButtonUpdateLogo(
         }
     }
     if (state.hasUpdate) {
-        var installationError by remember { mutableStateOf<InstallationFailureReason?>(null) }
+        var installationError by remember { mutableStateOf<InstallationResult.Failed?>(null) }
         if (installationError != null) {
             FailedToInstallDialog(
+                message = installationError.toString(),
                 onDismissRequest = { installationError = null },
                 logoState = { state.logoState },
             )

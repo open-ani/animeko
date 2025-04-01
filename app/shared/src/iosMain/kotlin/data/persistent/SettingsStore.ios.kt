@@ -32,8 +32,8 @@ import okio.Path.Companion.toPath
 /**
  * Must not be stored
  */
-actual val Context.dataStoresImpl: PlatformDataStoreManager
-    get() = IosPlatformDataStoreManager(this.asIosContext())
+actual fun Context.createPlatformDataStoreManager(): PlatformDataStoreManager =
+    IosPlatformDataStoreManager(this.asIosContext())
 
 private class IosPlatformDataStoreManager(
     private val context: IosContext,

@@ -194,6 +194,7 @@ fun Project.configureJvmTarget() {
                 compilerOptions {
                     freeCompilerArgs.add("-Xdont-warn-on-error-suppression")
                     freeCompilerArgs.add("-Xannotation-target-all")
+                    freeCompilerArgs.add("-Xmulti-dollar-interpolation")
                 }
             }
             if (this is KotlinJvmAndroidCompilation) {

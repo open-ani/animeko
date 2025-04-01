@@ -40,7 +40,7 @@ dependencyResolutionManagement {
         }
 
         create("mediampLibs") {
-            from("org.openani.mediamp:catalog:0.0.22")
+            from("org.openani.mediamp:catalog:0.0.23")
         }
     }
 }
@@ -177,6 +177,10 @@ findLocalProperty("ani.build.mediamp.path")?.let { mediampPath ->
                 .using(project(":mediamp-vlc-compose"))
             substitute(module("org.openani.mediamp:mediamp-source-ktxio"))
                 .using(project(":mediamp-source-ktxio"))
+            substitute(module("org.openani.mediamp:mediamp-avkit"))
+                .using(project(":mediamp-avkit"))
+            substitute(module("org.openani.mediamp:mediamp-avkit-compose"))
+                .using(project(":mediamp-avkit-compose"))
         }
     }
 }

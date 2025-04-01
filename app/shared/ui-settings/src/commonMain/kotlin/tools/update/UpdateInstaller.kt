@@ -34,7 +34,10 @@ sealed class InstallationResult {
     /**
      * 安装失败, 附带失败原因. UI 会展示这个失败原因
      */
-    data class Failed(val reason: InstallationFailureReason) : InstallationResult()
+    data class Failed(
+        val reason: InstallationFailureReason,
+        val message: String? = null,
+    ) : InstallationResult()
 }
 
 enum class InstallationFailureReason {
@@ -42,4 +45,7 @@ enum class InstallationFailureReason {
      * 未支持的安装目录结构. 例如 Windows 上未找到 `Ani.exe`
      */
     UNSUPPORTED_FILE_STRUCTURE,
+
+    FAILED_TO_MOUNT_DMG,
+    FAILED_TO_COPY,
 }
