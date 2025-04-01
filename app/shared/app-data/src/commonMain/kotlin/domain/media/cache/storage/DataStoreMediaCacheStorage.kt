@@ -249,7 +249,11 @@ class DataStoreMediaCacheStorage(
                     }
 
                     metadataStore.updateData { originalList ->
-                        val existing = originalList.indexOfFirst { it.origin.mediaId == save.origin.mediaId }
+                        val existing = originalList.indexOfFirst {
+                            it.origin.mediaId == save.origin.mediaId &&
+                                    it.metadata.subjectId == save.metadata.subjectId &&
+                                    it.metadata.episodeId == save.metadata.episodeId
+                        }
                         if (existing != -1) {
                             logger.warn {
                                 "Duplicated media cache metadata ${originalList[existing].origin.mediaId} found while migrating, " +
