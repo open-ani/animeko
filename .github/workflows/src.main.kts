@@ -395,7 +395,7 @@ run {
             "-P$ANI_ANDROID_ABIS=x86_64",
         ),
         buildAllAndroidAbis = false,
-        gradleHeap = "6g",
+        gradleHeap = "8g",
         kotlinCompilerHeap = "6g",
     )
     val ghMac13 = MatrixInstance(
