@@ -62,7 +62,7 @@ import kotlin.coroutines.CoroutineContext
 class HttpMediaCacheEngine(
     private val downloader: HttpDownloader,
     override val engineKey: MediaCacheEngineKey,
-    private val dataDir: Path,
+    private val saveDir: Path,
     private val mediaResolver: MediaResolver,
     private val mediaSourceId: String,
 ) : MediaCacheEngine {
@@ -159,7 +159,7 @@ class HttpMediaCacheEngine(
 
             is UriMediaData -> {
                 val downloadId = DownloadId(Uuid.randomString())
-                val outputPath = dataDir.resolve(downloadId.value)
+                val outputPath = saveDir.resolve(downloadId.value)
                 downloader.downloadWithId(
                     downloadId = downloadId,
                     mediaData.uri,
@@ -184,8 +184,20 @@ class HttpMediaCacheEngine(
         }
     }
 
+    override suspend fun modifyMetadataForMigration(
+        original: MediaCacheMetadata,
+        newSaveDir: Path
+    ): MediaCacheMetadata {
+        val downloadId = original.extra[EXTRA_DOWNLOAD_ID] ?: return original
+        return original.copy(
+            extra = original.extra.toMutableMap().apply {
+                put(EXTRA_OUTPUT_PATH, newSaveDir.resolve(downloadId).inSystem.absolutePath)
+            },
+        )
+    }
+
     override suspend fun deleteUnusedCaches(all: List<MediaCache>) {
-        if (!(SystemFileSystem.exists(dataDir))) return
+        if (!(SystemFileSystem.exists(saveDir))) return
 
 
         val allowedAbsolute = buildSet {
@@ -199,7 +211,7 @@ class HttpMediaCacheEngine(
             }
         }
         withContext(Dispatchers.IO) {
-            val saves = SystemFileSystem.list(dataDir)
+            val saves = SystemFileSystem.list(saveDir)
             for (save in saves) {
                 val myPath = save.inSystem.absolutePath
                 if (allowedAbsolute.none {

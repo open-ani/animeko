@@ -453,7 +453,7 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
                             mediaSourceId = id,
                             downloader = get<HttpDownloader>(),
                             engineKey = MediaCacheEngineKey("web-m3u"),
-                            dataDir = getContext().files.dataDir.resolve("web-m3u-cache").path,
+                            saveDir = getContext().files.dataDir.resolve("web-m3u-cache").path,
                             mediaResolver = get<MediaResolver>(),
                         ),
                         displayName = "本地",
