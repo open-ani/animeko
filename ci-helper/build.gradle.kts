@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -155,7 +155,7 @@ val zipDesktopDistribution = tasks.register("zipDesktopDistribution", Zip::class
 tasks.register("uploadDesktopInstallers") {
     dependsOn(zipDesktopDistribution)
 
-    if (hostOS != OS.WINDOWS) {
+    if (hostOS == OS.MACOS) {
         dependsOn(
             ":app:desktop:packageReleaseDistributionForCurrentOS",
         )
@@ -473,8 +473,16 @@ fun ReleaseEnvironment.uploadDesktopDistributions() {
         }
 
         OS.LINUX -> {
-            uploadBinary("deb", osName = "debian")
-            uploadBinary("rpm", osName = "redhat")
+            uploadReleaseAsset(
+                name = namer.desktopDistributionFile(
+                    fullVersion,
+                    "linux",
+                    "x86_64",
+                    extension = "appimage",
+                ),
+                contentType = "application/x-appimage",
+                file = rootProject.file("Animeko-x86_64.AppImage"),
+            )
         }
     }
 }
