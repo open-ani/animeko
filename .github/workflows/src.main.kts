@@ -24,7 +24,6 @@
 @file:DependsOn("org.jetbrains:annotations:23.0.0")
 @file:DependsOn("actions:github-script:v7")
 @file:DependsOn("gradle:actions__setup-gradle:v3")
-@file:DependsOn("nick-fields:retry:v3")
 @file:DependsOn("timheuer:base64-to-file:v1.1")
 @file:DependsOn("actions:upload-artifact:v4")
 @file:DependsOn("actions:download-artifact:v4")
@@ -61,7 +60,6 @@ import io.github.typesafegithub.workflows.actions.dawidd6.ActionGetTag_Untyped
 import io.github.typesafegithub.workflows.actions.gmitch215.SetupJava_Untyped
 import io.github.typesafegithub.workflows.actions.gradle.ActionsSetupGradle
 import io.github.typesafegithub.workflows.actions.jlumbroso.FreeDiskSpace_Untyped
-import io.github.typesafegithub.workflows.actions.nickfields.Retry_Untyped
 import io.github.typesafegithub.workflows.actions.reactivecircus.AndroidEmulatorRunner
 import io.github.typesafegithub.workflows.actions.snowactions.Qrcode_Untyped
 import io.github.typesafegithub.workflows.actions.softprops.ActionGhRelease
@@ -979,6 +977,7 @@ class WithMatrix(
         env: Map<String, String> = emptyMap(),
         maxAttempts: Int = 2,
         timeoutMinutes: Int = 180,
+        gradleArgs: String = matrix.gradleArgs,
     ) = runWithAttempts(
         name = name,
         `if` = `if`,
@@ -987,7 +986,7 @@ class WithMatrix(
             append("./gradlew ")
             tasks.joinTo(this, " ")
             append(' ')
-            append(matrix.gradleArgs)
+            append(gradleArgs)
         },
         env = env,
         maxAttempts = maxAttempts,
@@ -1211,15 +1210,14 @@ class WithMatrix(
                 cacheDisabled = true,
             ),
         )
-        usesWithAttempts(
+        runGradle(
             name = "Clean and download dependencies",
-            action = Retry_Untyped(
-                maxAttempts_Untyped = "3",
-                timeoutMinutes_Untyped = "60",
-                command_Untyped = """./gradlew """ + matrix.gradleArgs.replace(
-                    "--scan",
-                    "--stacktrace",
-                ), // com.gradle.develocity.DevelocityException: Internal error in Develocity Gradle plugin: finished notification
+            tasks = [
+                "--scan",
+            ],
+            gradleArgs = matrix.gradleArgs.replace(
+                "--scan",
+                "--stacktrace", // com.gradle.develocity.DevelocityException: Internal error in Develocity Gradle plugin: finished notification
             ),
         )
     }
