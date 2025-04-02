@@ -505,7 +505,8 @@ fun getBuildJobBody(matrix: MatrixInstance): JobBuilder<BuildJobOutputs>.() -> U
             if (matrix.uploadIpa) {
                 prepareIosBuild()
                 buildIosIpaDebug()
-                buildIosIpaRelease()
+                // Don't upload Release - it takes 30 mins
+                // buildIosIpaRelease()
             }
             val packageOutputs = packageDesktopAndUpload()
 
