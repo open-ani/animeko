@@ -460,6 +460,7 @@ run {
             extraGradleArgs = selfMac15.extraGradleArgs.filterNot { it.startsWith("-P$ANI_ANDROID_ABIS=") },
         ), // android apks
         ghMac15, // macos installer
+        ghUbuntu2404, // linux app image
     )
 }
 
