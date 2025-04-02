@@ -904,6 +904,10 @@ workflow(
             ) {
                 uploadAndroidApkToCloud()
                 generateQRCodeAndUpload()
+                if (matrix.isUbuntu) {
+                    // Ubuntu `uploadDesktopInstallers` assumes `Animeko-x86_64.AppImage` is already built
+                    packageDesktopAndUpload()
+                }
                 uploadDesktopInstallers()
                 if (matrix.uploadIpa) {
                     prepareIosBuild()
