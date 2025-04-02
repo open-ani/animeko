@@ -1540,16 +1540,16 @@ jobs:
       timeout-minutes: 5
       shell: 'bash'
       run: |-
-        $ANI_APPIMAGE = "$GITHUB_WORKSPACE"/ani-linux-appimage-x64
+        $ANI_APPIMAGE="$GITHUB_WORKSPACE"/ani-linux-appimage-x64
         chmod +x "$ANI_APPIMAGE"
-        ANIMEKO_DESKTOP_TEST_TASK=sentry-dsn "$ANI_APPiMAGE"
+        ANIMEKO_DESKTOP_TEST_TASK="sentry-dsn" "$ANI_APPIMAGE"
       if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
     - id: 'step-3'
       name: 'Check that analyticsServer is valid'
       timeout-minutes: 5
       shell: 'bash'
       run: |-
-        $ANI_APPIMAGE = "$GITHUB_WORKSPACE"/ani-linux-appimage-x64
+        $ANI_APPIMAGE="$GITHUB_WORKSPACE"/ani-linux-appimage-x64
         chmod +x "$ANI_APPIMAGE"
-        ANIMEKO_DESKTOP_TEST_TASK=analytics-server "$ANI_APPiMAGE"
+        ANIMEKO_DESKTOP_TEST_TASK="analytics-server" "$ANI_APPIMAGE"
       if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
