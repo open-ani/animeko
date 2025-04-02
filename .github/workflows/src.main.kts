@@ -581,12 +581,21 @@ fun getVerifyJobBody(
         val step: String,
         val timeoutMinutes: Int = 5,
         val `if`: String? = null,
+        /**
+         * 指定此项, 则只在指定的 Runner 上执行.
+         */
+        val enabledOnlyOn: List<Runner>? = null,
+        /**
+         * 指定此项, 则在所有的 Runner 上执行, 但在指定的 Runner 上不执行.
+         */
+        val disabledOn: List<Runner>? = null,
     )
 
     val tasksToExecute = listOf(
         VerifyTask(
             name = "anitorrent-load-test",
             step = "Check that Anitorrent can be loaded",
+            disabledOn = listOf(Runner.GithubUbuntu2404),
         ),
         VerifyTask(
             name = "dandanplay-app-id",
@@ -603,7 +612,20 @@ fun getVerifyJobBody(
             step = "Check that analyticsServer is valid",
             `if` = expr { github.isAnimekoRepository and !github.isPullRequest },
         ),
-    )
+    ).filter { task ->
+        // Filter task that should execute on this runner.
+
+        check(task.enabledOnlyOn == null || task.disabledOn == null) {
+            "enabledOnlyOn and disabledOn must not be set at the same time (for task ${task.name})"
+        }
+        if (task.enabledOnlyOn != null) {
+            task.enabledOnlyOn.contains(runner)
+        } else if (task.disabledOn != null) {
+            !task.disabledOn.contains(runner)
+        } else {
+            true
+        }
+    }
 
     when (runner.os to runner.arch) {
         OS.WINDOWS to Arch.X64 -> {
@@ -652,14 +674,17 @@ fun getVerifyJobBody(
                     path = "${expr { github.workspace }}/ci-helper/verify",
                 ),
             )
-            tasksToExecute.forEach { task ->
+            tasksToExecute.drop(1).forEach { task ->
                 run(
                     name = task.step,
                     shell = Shell.Bash,
                     command = shell(
                         $$"""
+                            $ANI_APPIMAGE="$GITHUB_WORKSPACE"/$${ArtifactNames.linuxAppImage(Arch.X64)}
+                            chmod +x "$ANI_APPIMAGE"
+                            ANIMEKO_DESKTOP_TEST_TASK="$${task.name}" "$ANI_APPIMAGE"
                         """.trimIndent(),
-                    ), // TODO: add verify ci-helper for Linux
+                    ),
                     `if` = task.`if`,
                     timeoutMinutes = task.timeoutMinutes,
                 )

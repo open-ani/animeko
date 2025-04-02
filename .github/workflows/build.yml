@@ -1536,25 +1536,20 @@ jobs:
         name: 'ani-linux-appimage-x64'
         path: '${{ github.workspace }}/ci-helper/verify'
     - id: 'step-2'
-      name: 'Check that Anitorrent can be loaded'
-      timeout-minutes: 5
-      shell: 'bash'
-      run: ''
-    - id: 'step-3'
-      name: 'Check that Dandanplay APP ID is valid'
-      timeout-minutes: 5
-      shell: 'bash'
-      run: ''
-      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
-    - id: 'step-4'
       name: 'Check that sentryDsn is valid'
       timeout-minutes: 5
       shell: 'bash'
-      run: ''
+      run: |-
+        $ANI_APPIMAGE = "$GITHUB_WORKSPACE"/ani-linux-appimage-x64
+        chmod +x "$ANI_APPIMAGE"
+        ANIMEKO_DESKTOP_TEST_TASK=sentry-dsn "$ANI_APPiMAGE"
       if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
-    - id: 'step-5'
+    - id: 'step-3'
       name: 'Check that analyticsServer is valid'
       timeout-minutes: 5
       shell: 'bash'
-      run: ''
+      run: |-
+        $ANI_APPIMAGE = "$GITHUB_WORKSPACE"/ani-linux-appimage-x64
+        chmod +x "$ANI_APPIMAGE"
+        ANIMEKO_DESKTOP_TEST_TASK=analytics-server "$ANI_APPiMAGE"
       if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
