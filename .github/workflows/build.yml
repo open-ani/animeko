@@ -1001,30 +1001,49 @@ jobs:
       run: './gradlew :app:ios:buildDebugIpa "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "-Pani.sentry.dsn=${{ secrets.SENTRY_DSN }}" "-Pani.analytics.server=${{ secrets.ANALYTICS_SERVER }}" "-Pani.analytics.key=${{ secrets.ANALYTICS_KEY }}" "--parallel" "-Pani.android.abis=arm64-v8a"'
       if: '${{ steps.step-21.outcome == ''failure'' }}'
     - id: 'step-23'
-      name: 'Upload iOS Debug IPA'
+      name: 'Upload iOS Debug IPA (Attempt #1)'
+      continue-on-error: true
       uses: 'actions/upload-artifact@v4'
       with:
         name: 'ani-ios-debug'
         path: 'app/ios/build/archives/debug/Animeko.ipa'
         overwrite: 'true'
     - id: 'step-24'
+      name: 'Upload iOS Debug IPA (Attempt #2)'
+      continue-on-error: true
+      uses: 'actions/upload-artifact@v4'
+      with:
+        name: 'ani-ios-debug'
+        path: 'app/ios/build/archives/debug/Animeko.ipa'
+        overwrite: 'true'
+      if: '${{ steps.step-23.outcome == ''failure'' }}'
+    - id: 'step-25'
+      name: 'Upload iOS Debug IPA (Attempt #3)'
+      continue-on-error: false
+      uses: 'actions/upload-artifact@v4'
+      with:
+        name: 'ani-ios-debug'
+        path: 'app/ios/build/archives/debug/Animeko.ipa'
+        overwrite: 'true'
+      if: '${{ steps.step-24.outcome == ''failure'' }}'
+    - id: 'step-26'
       name: 'Build iOS Release IPA (Attempt #1)'
       continue-on-error: true
       timeout-minutes: 180
       run: './gradlew :app:ios:buildReleaseIpa "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "-Pani.sentry.dsn=${{ secrets.SENTRY_DSN }}" "-Pani.analytics.server=${{ secrets.ANALYTICS_SERVER }}" "-Pani.analytics.key=${{ secrets.ANALYTICS_KEY }}" "--parallel" "-Pani.android.abis=arm64-v8a"'
-    - id: 'step-25'
+    - id: 'step-27'
       name: 'Build iOS Release IPA (Attempt #2)'
       continue-on-error: true
       timeout-minutes: 180
       run: './gradlew :app:ios:buildReleaseIpa "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "-Pani.sentry.dsn=${{ secrets.SENTRY_DSN }}" "-Pani.analytics.server=${{ secrets.ANALYTICS_SERVER }}" "-Pani.analytics.key=${{ secrets.ANALYTICS_KEY }}" "--parallel" "-Pani.android.abis=arm64-v8a"'
-      if: '${{ steps.step-24.outcome == ''failure'' }}'
-    - id: 'step-26'
+      if: '${{ steps.step-26.outcome == ''failure'' }}'
+    - id: 'step-28'
       name: 'Build iOS Release IPA (Attempt #3)'
       continue-on-error: false
       timeout-minutes: 180
       run: './gradlew :app:ios:buildReleaseIpa "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "-Pani.sentry.dsn=${{ secrets.SENTRY_DSN }}" "-Pani.analytics.server=${{ secrets.ANALYTICS_SERVER }}" "-Pani.analytics.key=${{ secrets.ANALYTICS_KEY }}" "--parallel" "-Pani.android.abis=arm64-v8a"'
-      if: '${{ steps.step-25.outcome == ''failure'' }}'
-    - id: 'step-27'
+      if: '${{ steps.step-27.outcome == ''failure'' }}'
+    - id: 'step-29'
       name: 'Upload iOS Release IPA (Attempt #1)'
       continue-on-error: true
       uses: 'actions/upload-artifact@v4'
@@ -1032,7 +1051,7 @@ jobs:
         name: 'ani-ios-release'
         path: 'app/ios/build/archives/release/Animeko.ipa'
         overwrite: 'true'
-    - id: 'step-28'
+    - id: 'step-30'
       name: 'Upload iOS Release IPA (Attempt #2)'
       continue-on-error: true
       uses: 'actions/upload-artifact@v4'
@@ -1040,8 +1059,8 @@ jobs:
         name: 'ani-ios-release'
         path: 'app/ios/build/archives/release/Animeko.ipa'
         overwrite: 'true'
-      if: '${{ steps.step-27.outcome == ''failure'' }}'
-    - id: 'step-29'
+      if: '${{ steps.step-29.outcome == ''failure'' }}'
+    - id: 'step-31'
       name: 'Upload iOS Release IPA (Attempt #3)'
       continue-on-error: false
       uses: 'actions/upload-artifact@v4'
@@ -1049,42 +1068,42 @@ jobs:
         name: 'ani-ios-release'
         path: 'app/ios/build/archives/release/Animeko.ipa'
         overwrite: 'true'
-      if: '${{ steps.step-28.outcome == ''failure'' }}'
-    - id: 'step-30'
+      if: '${{ steps.step-30.outcome == ''failure'' }}'
+    - id: 'step-32'
       name: 'Check (Attempt #1)'
       continue-on-error: true
       timeout-minutes: 180
       run: './gradlew check "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "-Pani.sentry.dsn=${{ secrets.SENTRY_DSN }}" "-Pani.analytics.server=${{ secrets.ANALYTICS_SERVER }}" "-Pani.analytics.key=${{ secrets.ANALYTICS_KEY }}" "--parallel" "-Pani.android.abis=arm64-v8a"'
-    - id: 'step-31'
+    - id: 'step-33'
       name: 'Check (Attempt #2)'
       continue-on-error: true
       timeout-minutes: 180
       run: './gradlew check "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "-Pani.sentry.dsn=${{ secrets.SENTRY_DSN }}" "-Pani.analytics.server=${{ secrets.ANALYTICS_SERVER }}" "-Pani.analytics.key=${{ secrets.ANALYTICS_KEY }}" "--parallel" "-Pani.android.abis=arm64-v8a"'
-      if: '${{ steps.step-30.outcome == ''failure'' }}'
-    - id: 'step-32'
+      if: '${{ steps.step-32.outcome == ''failure'' }}'
+    - id: 'step-34'
       name: 'Check (Attempt #3)'
       continue-on-error: false
       timeout-minutes: 180
       run: './gradlew check "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "-Pani.sentry.dsn=${{ secrets.SENTRY_DSN }}" "-Pani.analytics.server=${{ secrets.ANALYTICS_SERVER }}" "-Pani.analytics.key=${{ secrets.ANALYTICS_KEY }}" "--parallel" "-Pani.android.abis=arm64-v8a"'
-      if: '${{ steps.step-31.outcome == ''failure'' }}'
-    - id: 'step-33'
+      if: '${{ steps.step-33.outcome == ''failure'' }}'
+    - id: 'step-35'
       name: 'Build Android Instrumented Tests (Attempt #1)'
       continue-on-error: true
       timeout-minutes: 180
       run: './gradlew assembleDebugAndroidTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "-Pani.sentry.dsn=${{ secrets.SENTRY_DSN }}" "-Pani.analytics.server=${{ secrets.ANALYTICS_SERVER }}" "-Pani.analytics.key=${{ secrets.ANALYTICS_KEY }}" "--parallel" "-Pani.android.abis=arm64-v8a"'
-    - id: 'step-34'
+    - id: 'step-36'
       name: 'Build Android Instrumented Tests (Attempt #2)'
       continue-on-error: true
       timeout-minutes: 180
       run: './gradlew assembleDebugAndroidTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "-Pani.sentry.dsn=${{ secrets.SENTRY_DSN }}" "-Pani.analytics.server=${{ secrets.ANALYTICS_SERVER }}" "-Pani.analytics.key=${{ secrets.ANALYTICS_KEY }}" "--parallel" "-Pani.android.abis=arm64-v8a"'
-      if: '${{ steps.step-33.outcome == ''failure'' }}'
-    - id: 'step-35'
+      if: '${{ steps.step-35.outcome == ''failure'' }}'
+    - id: 'step-37'
       name: 'Build Android Instrumented Tests (Attempt #3)'
       continue-on-error: false
       timeout-minutes: 180
       run: './gradlew assembleDebugAndroidTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "-Pani.sentry.dsn=${{ secrets.SENTRY_DSN }}" "-Pani.analytics.server=${{ secrets.ANALYTICS_SERVER }}" "-Pani.analytics.key=${{ secrets.ANALYTICS_KEY }}" "--parallel" "-Pani.android.abis=arm64-v8a"'
-      if: '${{ steps.step-34.outcome == ''failure'' }}'
-    - id: 'step-36'
+      if: '${{ steps.step-36.outcome == ''failure'' }}'
+    - id: 'step-38'
       name: 'Android Instrumented Test (api=30, arch=arm64-v8a)'
       uses: 'reactivecircus/android-emulator-runner@v2.33.0'
       with:
@@ -1092,7 +1111,7 @@ jobs:
         arch: 'arm64-v8a'
         emulator-boot-timeout: '1800'
         script: './gradlew connectedDebugAndroidTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "-Pani.sentry.dsn=${{ secrets.SENTRY_DSN }}" "-Pani.analytics.server=${{ secrets.ANALYTICS_SERVER }}" "-Pani.analytics.key=${{ secrets.ANALYTICS_KEY }}" "--parallel" "-Pani.android.abis=arm64-v8a"'
-    - id: 'step-37'
+    - id: 'step-39'
       name: 'Android Instrumented Test (api=35, arch=arm64-v8a)'
       uses: 'reactivecircus/android-emulator-runner@v2.33.0'
       with:
@@ -1100,7 +1119,7 @@ jobs:
         arch: 'arm64-v8a'
         emulator-boot-timeout: '1800'
         script: './gradlew connectedDebugAndroidTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "-Pani.sentry.dsn=${{ secrets.SENTRY_DSN }}" "-Pani.analytics.server=${{ secrets.ANALYTICS_SERVER }}" "-Pani.analytics.key=${{ secrets.ANALYTICS_KEY }}" "--parallel" "-Pani.android.abis=arm64-v8a"'
-    - id: 'step-38'
+    - id: 'step-40'
       name: 'Cleanup temp files'
       continue-on-error: true
       run: 'chmod +x ./ci-helper/cleanup-temp-files-macos.sh && ./ci-helper/cleanup-temp-files-macos.sh'

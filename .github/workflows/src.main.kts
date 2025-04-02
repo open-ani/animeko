@@ -1358,7 +1358,7 @@ class WithMatrix(
                     ":app:ios:buildDebugIpa",
                 ],
             )
-            uses(
+            usesWithAttempts(
                 name = "Upload iOS Debug IPA",
                 action = UploadArtifact(
                     name = "ani-ios-debug",
