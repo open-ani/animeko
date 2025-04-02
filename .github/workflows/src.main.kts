@@ -674,13 +674,15 @@ fun getVerifyJobBody(
                     path = "${expr { github.workspace }}/ci-helper/verify",
                 ),
             )
-            tasksToExecute.drop(1).forEach { task ->
+            tasksToExecute.forEach { task ->
+                val appimagePath =
+                    """${expr { github.workspace }}/ci-helper/verify/${ArtifactNames.linuxAppImage(Arch.X64)}"""
                 run(
                     name = task.step,
                     shell = Shell.Bash,
                     command = shell(
                         $$"""
-                            $ANI_APPIMAGE="$GITHUB_WORKSPACE"/$${ArtifactNames.linuxAppImage(Arch.X64)}
+                            $ANI_APPIMAGE="$$appimagePath"
                             chmod +x "$ANI_APPIMAGE"
                             ANIMEKO_DESKTOP_TEST_TASK="$${task.name}" "$ANI_APPIMAGE"
                         """.trimIndent(),
