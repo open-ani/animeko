@@ -53,13 +53,15 @@ android {
 kotlin {
     if (enableIos) {
         // Sentry requires cocoapods for its dependencies
-        extensions.configure<org.jetbrains.kotlin.gradle.plugin.cocoapods.CocoapodsExtension> {
-            // https://kotlinlang.org/docs/native-cocoapods.html#configure-existing-project
-            framework {
-                baseName = "application"
-                isStatic = false
-                @OptIn(ExperimentalKotlinGradlePluginApi::class)
-                transitiveExport = true
+        if (getOs() == Os.MacOS) {
+            extensions.configure<org.jetbrains.kotlin.gradle.plugin.cocoapods.CocoapodsExtension> {
+                // https://kotlinlang.org/docs/native-cocoapods.html#configure-existing-project
+                framework {
+                    baseName = "application"
+                    isStatic = false
+                    @OptIn(ExperimentalKotlinGradlePluginApi::class)
+                    transitiveExport = true
+                }
             }
             pod("PostHog") {
                 version = "~> 3.0"
