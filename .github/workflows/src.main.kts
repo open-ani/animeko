@@ -466,6 +466,7 @@ run {
 
 
 class BuildJobOutputs : JobOutputs() {
+    var iosIpaSuccess by output()
     var macosAarch64DmgSuccess by output()
     var windowsX64PortableSuccess by output()
     var linuxX64AppImageSuccess by output()
@@ -501,7 +502,9 @@ fun getBuildJobBody(matrix: MatrixInstance): JobBuilder<BuildJobOutputs>.() -> U
                 buildAndroidApk(it)
             }
             if (matrix.uploadIpa) {
-                buildIosApk()
+                prepareIosBuild()
+                buildIosIpaDebug()
+                buildIosIpaRelease()
             }
             val packageOutputs = packageDesktopAndUpload()
 
@@ -523,6 +526,7 @@ object ArtifactNames {
     fun windowsPortable() = "ani-windows-portable"
     fun macosDmg(arch: Arch) = "ani-macos-dmg-${arch}"
     fun macosPortable(arch: Arch) = "ani-macos-portable-${arch}"
+    fun iosIpa() = "ani-ios-ipa"
     fun linuxAppImage(arch: Arch) = "ani-linux-appimage-${arch}"
 }
 
@@ -901,6 +905,12 @@ workflow(
                 uploadAndroidApkToCloud()
                 generateQRCodeAndUpload()
                 uploadDesktopInstallers()
+                if (matrix.uploadIpa) {
+                    prepareIosBuild()
+                    // Don't build debug
+                    buildIosIpaRelease()
+                }
+                uploadIosIpa()
                 uploadComposeLogs()
             }
             cleanupTempFiles()
@@ -1317,7 +1327,7 @@ class WithMatrix(
         }
     }
 
-    fun JobBuilder<*>.buildIosApk() {
+    fun JobBuilder<*>.prepareIosBuild() {
         if (matrix.uploadIpa) {
             runGradle(
                 name = "generateDummyFramework",
@@ -1335,7 +1345,9 @@ class WithMatrix(
                 ],
             )
         }
+    }
 
+    fun JobBuilder<*>.buildIosIpaDebug() {
         if (matrix.uploadIpa) {
             runGradle(
                 name = "Build iOS Debug IPA",
@@ -1352,7 +1364,9 @@ class WithMatrix(
                 ),
             )
         }
+    }
 
+    fun JobBuilder<*>.buildIosIpaRelease() {
         if (matrix.uploadIpa) {
             runGradle(
                 name = "Build iOS Release IPA",
@@ -1652,6 +1666,16 @@ class WithMatrix(
                 runGradle(
                     name = "Upload Desktop Installers",
                     tasks = [":ci-helper:uploadDesktopInstallers", "\"--no-configuration-cache\""],
+                    env = ciHelperSecrets,
+                )
+            }
+        }
+
+        fun JobBuilder<*>.uploadIosIpa() {
+            if (matrix.uploadIpa) {
+                runGradle(
+                    name = "Upload iOS IPA",
+                    tasks = [":ci-helper:uploadIosIpa", "\"--no-configuration-cache\""],
                     env = ciHelperSecrets,
                 )
             }

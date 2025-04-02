@@ -32,7 +32,7 @@ import kotlinx.serialization.Serializable
 /**
  * 
  *
- * @param large
+ * @param large 
  * @param medium 
  * @param small 
  * @param grid 

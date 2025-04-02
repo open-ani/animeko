@@ -32,6 +32,8 @@ uploaded.
 
 [cf-mac-aarch64]: https://d.myani.org/$GIT_TAG/ani-$TAG_VERSION-macos-aarch64.dmg
 
+[cf-ios]: https://d.myani.org/$GIT_TAG/ani-$TAG_VERSION.ipa
+
 [cf-android]: https://d.myani.org/$GIT_TAG/ani-$TAG_VERSION-universal.apk
 
 [cf-android-arm64-v8a]: https://d.myani.org/$GIT_TAG/ani-$TAG_VERSION-arm64-v8a.apk
@@ -45,6 +47,8 @@ uploaded.
 [ghproxy-mac-x64]: https://mirror.ghproxy.com/?q=https%3A%2F%2Fgithub.com%2Fopen-ani%2Fani%2Freleases%2Fdownload%2F$GIT_TAG%2Fani-$TAG_VERSION-macos-x86_64.dmg
 
 [ghproxy-mac-aarch64]: https://mirror.ghproxy.com/?q=https%3A%2F%2Fgithub.com%2Fopen-ani%2Fani%2Freleases%2Fdownload%2F$GIT_TAG%2Fani-$TAG_VERSION-macos-aarch64.dmg
+
+[ghproxy-ios]: https://mirror.ghproxy.com/?q=https%3A%2F%2Fgithub.com%2Fopen-ani%2Fani%2Freleases%2Fdownload%2F$GIT_TAG%2Fani-$TAG_VERSION.ios
 
 [ghproxy-android]: https://mirror.ghproxy.com/?q=https%3A%2F%2Fgithub.com%2Fopen-ani%2Fani%2Freleases%2Fdownload%2F$GIT_TAG%2Fani-$TAG_VERSION-universal.apk
 
@@ -62,16 +66,14 @@ uploaded.
 
 [linux-issue]: https://github.com/open-ani/animeko/issues/944
 
-[ios-issue]: https://github.com/open-ani/animeko/issues/496
-
-|                  | 下载                                               | 常见问题                                       |
-|------------------|--------------------------------------------------|--------------------------------------------|
-| 安卓 手机/平板/电视      | [主线][cf-android] / [备线][ghproxy-android]         |                                            |
+|                  | 下载                                               | 常见问题                                         |
+|------------------|--------------------------------------------------|----------------------------------------------|
+| 安卓 手机/平板/电视      | [主线][cf-android] / [备线][ghproxy-android]         |                                              |
+| iOS              | [主线][cf-ios] / [备线][ghproxy-ios]                 | 需要自签                                         |
 | Windows          | [主线][cf-win-x64] / [备线][ghproxy-win-x64]         | 1. 目录不要有中文或者空格. <br/> 2. [显示异常][windows解决方案] |
-| macOS (M 系列芯片)   | [主线][cf-mac-aarch64] / [备线][ghproxy-mac-aarch64] | [安装后打不开][macos解决方案]                        |
-| macOS (Intel 芯片) | 正在开发。<br/>点赞[此 issue][macos-intel-issue] 以加快开发速度 |                                            |
-| Linux             | 下载 Windows 版本搭配 Wine                             |                                            |
-| iOS              | 正在开发。<br/>点赞[此 issue][ios-issue] 以加快开发速度         |                                            |
+| macOS (M 系列芯片)   | [主线][cf-mac-aarch64] / [备线][ghproxy-mac-aarch64] | [安装后打不开][macos解决方案]                          |
+| macOS (Intel 芯片) | 正在开发。<br/>点赞[此 issue][macos-intel-issue] 以加快开发速度 |                                              |
+| Linux            | 下载 Windows 版本搭配 Wine                             |                                              |
 
 或者扫描二维码安装安卓版本:
 

@@ -26,6 +26,7 @@ import me.him188.ani.datasources.api.seasonMonth
 import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
+import me.him188.ani.utils.logging.warn
 import kotlin.coroutines.cancellation.CancellationException
 
 class DandanplayDanmakuProvider(
@@ -263,7 +264,7 @@ class DandanplayDanmakuProvider(
             dandanplayClient.getSeasonAnimeList(date.year, date.seasonMonth)
         }.onFailure {
             if (it is CancellationException) throw it
-            logger.error(it) { "Failed to fetch season anime list" }
+            logger.warn(it) { "Failed to fetch season anime list" }
         }.getOrNull()
             ?.bangumiList
             ?.firstOrNull { it.animeTitle in expectedNames }
@@ -278,7 +279,7 @@ class DandanplayDanmakuProvider(
                 dandanplayClient.searchSubject(name).animes
             }.onFailure {
                 if (it is CancellationException) throw it
-                logger.error(it) { "Failed to fetch anime list by name" }
+                logger.warn(it) { "Failed to fetch anime list by name" }
             }.getOrNull() ?: emptySet()
         }
             .firstOrNull { it.animeTitle in expectedNames }

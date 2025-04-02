@@ -35,10 +35,10 @@ import kotlinx.serialization.Serializable
  * @param fieldEps
  * @param fieldInfobox
  * @param fieldSummary
- * @param name
- * @param nameCn
- * @param platform
- * @param subjectId
+ * @param name 
+ * @param nameCn 
+ * @param platform 
+ * @param subjectId 
  * @param type 
  * @param typeId 
  * @param voteField 

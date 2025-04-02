@@ -57,8 +57,8 @@ open class TrendingBangumiNextApi : ApiClient {
 
     /**
      * 获取热门条目
-     *
-     * @param type
+     * 
+     * @param type 
      * @param limit max 100 (optional, default to 20)
      * @param offset min 0 (optional, default to 0)
      * @return BangumiNextGetTrendingSubjects200Response
@@ -72,7 +72,7 @@ open class TrendingBangumiNextApi : ApiClient {
 
         val localVariableAuthNames = listOf<String>()
 
-        val localVariableBody =
+        val localVariableBody = 
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()

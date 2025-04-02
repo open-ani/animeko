@@ -28,6 +28,7 @@ import me.him188.ani.datasources.api.matcher.WebVideoMatcher
 import me.him188.ani.datasources.api.matcher.WebVideoMatcherContext
 import me.him188.ani.datasources.api.matcher.WebViewConfig
 import me.him188.ani.datasources.api.topic.ResourceLocation
+import me.him188.ani.utils.ktor.UrlHelpers
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import org.openani.mediamp.source.MediaData
@@ -206,6 +207,9 @@ class IosWebViewVideoExtractor : WebViewVideoExtractor {
                 })();
             """.trimIndent()
 
+            // Allow executing JS
+            webView.configuration.preferences.javaScriptCanOpenWindowsAutomatically = true
+
             webView.configuration.userContentController.addUserScript(
                 WKUserScript(
                     source = injectionScript,
@@ -251,6 +255,8 @@ class IosWebViewVideoExtractor : WebViewVideoExtractor {
         // Function to handle any URL that the JS intercepts (or main frame load):
         fun doHandleUrl(url: String): WKNavigationActionPolicy {
             if (deferred.isCompleted) return WKNavigationActionPolicy.WKNavigationActionPolicyAllow
+            @Suppress("NAME_SHADOWING")
+            val url = UrlHelpers.computeAbsoluteUrl(webView.URL?.absoluteString ?: pageUrl, url)
             logger.info { "Processing url: $url" }
             val instruction = resourceMatcher(url)
             when (instruction) {

@@ -433,7 +433,7 @@ fun PlayerGestureHost(
     seekerState: SwipeSeekerState,
     progressSliderState: PlayerProgressSliderState,
     indicatorState: GestureIndicatorState,
-    fastSkipState: FastSkipState,
+    fastSkipState: FastSkipState?,
     playerState: MediampPlayer, // TODO: remove playerState from VideoGestureHost
     enableSwipeToSeek: Boolean,
     audioController: LevelController,
@@ -449,7 +449,11 @@ fun PlayerGestureHost(
     val onTogglePauseResumeState by rememberUpdatedState(onTogglePauseResume)
 
     BoxWithConstraints {
-        Row(Modifier.align(Alignment.TopCenter).padding(top = 80.dp)) {
+        Row(
+            Modifier.align(Alignment.TopCenter)
+                .systemGesturesPadding()
+                .padding(top = 16.dp),
+        ) {
             LaunchedEffect(seekerState.deltaSeconds) {
                 if (seekerState.isSeeking) {
                     indicatorState.showSeeking(seekerState.deltaSeconds)
@@ -784,7 +788,9 @@ fun PlayerGestureHost(
                     Modifier.matchParentSize()
                         .systemGesturesPadding()
                         .ifThen(family.longPressForFastSkip) {
-                            longPressFastSkip(fastSkipState, SkipDirection.FORWARD)
+                            fastSkipState?.let {
+                                longPressFastSkip(it, SkipDirection.FORWARD)
+                            }
                         },
                 ) {
                     Box(

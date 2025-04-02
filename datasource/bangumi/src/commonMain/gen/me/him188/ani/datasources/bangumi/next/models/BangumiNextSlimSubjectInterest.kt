@@ -31,10 +31,10 @@ import kotlinx.serialization.Serializable
 /**
  * 
  *
- * @param comment
- * @param rate
- * @param tags
- * @param type
+ * @param comment 
+ * @param rate 
+ * @param tags 
+ * @param type 
  * @param updatedAt 
  */
 @Serializable

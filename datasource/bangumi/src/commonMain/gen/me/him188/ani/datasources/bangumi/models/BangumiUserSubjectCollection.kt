@@ -31,10 +31,10 @@ import kotlinx.serialization.Serializable
 /**
  * 
  *
- * @param subjectId
- * @param subjectType
- * @param rate
- * @param type
+ * @param subjectId 
+ * @param subjectType 
+ * @param rate 
+ * @param type 
  * @param tags 
  * @param epStatus 
  * @param volStatus 

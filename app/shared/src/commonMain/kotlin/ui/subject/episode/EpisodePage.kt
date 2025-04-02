@@ -79,6 +79,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.preference.DarkMode
+import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.data.network.protocol.DanmakuInfo
 import me.him188.ani.app.data.network.protocol.DanmakuLocation
 import me.him188.ani.app.domain.comment.CommentContext
@@ -224,6 +225,7 @@ private fun EpisodeScreenContent(
     }
 
     AutoPauseEffect(vm)
+    DisplayModeEffect(vm.videoScaffoldConfig)
 
     VideoNotifEffect(vm)
 
@@ -984,3 +986,6 @@ private fun AutoPauseEffect(viewModel: EpisodeViewModel) {
         }
     }
 }
+
+@Composable
+internal expect fun DisplayModeEffect(config: VideoScaffoldConfig)

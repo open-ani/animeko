@@ -36,10 +36,10 @@ import kotlinx.serialization.Serializable
  * @param locked
  * @param name
  * @param nameCN
- * @param nsfw
- * @param rating
- * @param type
- * @param images
+ * @param nsfw 
+ * @param rating 
+ * @param type 
+ * @param images 
  * @param interest 
  */
 @Serializable

@@ -96,6 +96,10 @@ class ArtifactNamer {
         return "$APP_NAME-$fullVersion-$osName-$archName.$extension"
     }
 
+    fun iosIpa(fullVersion: String): String {
+        return "$APP_NAME-$fullVersion.ipa"
+    }
+
     fun server(fullVersion: String, extension: String): String {
         return "$APP_NAME-server-$fullVersion.$extension"
     }
@@ -163,6 +167,14 @@ tasks.register("uploadDesktopInstallers") {
 
     doLast {
         ReleaseEnvironment().uploadDesktopDistributions()
+    }
+}
+
+tasks.register("uploadIosIpa") {
+    dependsOn(":app:ios:buildReleaseIpa")
+    val file = project(":app:ios").tasks.getByPath("buildReleaseIpa").outputs.files.singleFile
+    doLast {
+        ReleaseEnvironment().uploadIpa(file)
     }
 }
 
@@ -485,6 +497,16 @@ fun ReleaseEnvironment.uploadDesktopDistributions() {
             )
         }
     }
+}
+
+fun ReleaseEnvironment.uploadIpa(
+    file: File,
+) {
+    uploadReleaseAsset(
+        name = namer.iosIpa(fullVersion),
+        contentType = "application/x-iphone",
+        file = file,
+    )
 }
 
 // ./gradlew updateDevVersionNameFromGit -DGITHUB_REF=refs/heads/master -DGITHUB_SHA=123456789 --no-configuration-cache

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -62,7 +62,7 @@ data class VideoScaffoldConfig @SerializationOnly constructor(
     /**
      * 自动连播
      */
-    val autoPlayNext: Boolean = false,
+    val autoPlayNext: Boolean = true,
     /**
      * 跳过 OP 和 ED
      */
@@ -71,6 +71,14 @@ data class VideoScaffoldConfig @SerializationOnly constructor(
      * 在播放器错误时自动切换视频源
      */
     val autoSwitchMediaOnPlayerError: Boolean = true,
+    /**
+     * 用于在安卓上设置屏幕刷新率, 解决某些设备会自动限制刷新率的问题 (三星).
+     *
+     * 0 为不设置 (使用系统默认).
+     *
+     * @since 4.8
+     */
+    val displayModeId: Int = 0,
     // WARNING: if you add new property here, review Companion properties.
     @Suppress("PropertyName") @Transient val _placeholder: Int = 0,
 ) {

@@ -25,6 +25,7 @@ import org.koin.mp.KoinPlatform
 
 @Composable
 fun FailedToInstallDialog(
+    message: String,
     onDismissRequest: () -> Unit,
     logoState: () -> UpdateLogoState,
 ) {
@@ -34,6 +35,7 @@ fun FailedToInstallDialog(
     BasicAlertDialog(onDismissRequest) {
         RichDialogLayout(
             title = { Text("自动安装失败") },
+            description = { Text(message) },
             buttons = {
                 TextButton(onDismissRequest) { Text("取消更新") }
                 Button(

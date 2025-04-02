@@ -24,19 +24,16 @@
 
 package me.him188.ani.datasources.bangumi.models
 
-import me.him188.ani.datasources.bangumi.models.BangumiCharacterRevisionDataItem
-import me.him188.ani.datasources.bangumi.models.BangumiCreator
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * 
  *
- * @param id
- * @param type
- * @param summary
+ * @param id 
+ * @param type 
+ * @param summary 
  * @param createdAt 
  * @param creator 
  * @param `data` 
