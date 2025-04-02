@@ -68,6 +68,7 @@ import io.github.typesafegithub.workflows.actions.softprops.ActionGhRelease
 import io.github.typesafegithub.workflows.actions.timheuer.Base64ToFile_Untyped
 import io.github.typesafegithub.workflows.domain.AbstractResult
 import io.github.typesafegithub.workflows.domain.ActionStep
+import io.github.typesafegithub.workflows.domain.CommandStep
 import io.github.typesafegithub.workflows.domain.Concurrency
 import io.github.typesafegithub.workflows.domain.Job
 import io.github.typesafegithub.workflows.domain.JobOutputs
@@ -76,6 +77,7 @@ import io.github.typesafegithub.workflows.domain.Permission
 import io.github.typesafegithub.workflows.domain.RunnerType
 import io.github.typesafegithub.workflows.domain.Shell
 import io.github.typesafegithub.workflows.domain.Step
+import io.github.typesafegithub.workflows.domain.actions.Action
 import io.github.typesafegithub.workflows.domain.triggers.PullRequest
 import io.github.typesafegithub.workflows.domain.triggers.Push
 import io.github.typesafegithub.workflows.dsl.JobBuilder
@@ -85,6 +87,7 @@ import io.github.typesafegithub.workflows.dsl.expressions.contexts.SecretsContex
 import io.github.typesafegithub.workflows.dsl.expressions.expr
 import io.github.typesafegithub.workflows.dsl.workflow
 import io.github.typesafegithub.workflows.yaml.ConsistencyCheckJobConfig
+import kotlinx.serialization.Contextual
 import org.intellij.lang.annotations.Language
 
 check(KotlinVersion.CURRENT.isAtLeast(2, 0, 0)) {
@@ -976,20 +979,18 @@ class WithMatrix(
         env: Map<String, String> = emptyMap(),
         maxAttempts: Int = 2,
         timeoutMinutes: Int = 180,
-    ): ActionStep<Retry_Untyped.Outputs> = uses(
+    ) = runWithAttempts(
         name = name,
         `if` = `if`,
-        action = Retry_Untyped(
-            maxAttempts_Untyped = "$maxAttempts",
-            timeoutMinutes_Untyped = "$timeoutMinutes",
-            command_Untyped = buildString {
-                append("./gradlew ")
-                tasks.joinTo(this, " ")
-                append(' ')
-                append(matrix.gradleArgs)
-            },
-        ),
+        timeoutMinutes = timeoutMinutes,
+        command = buildString {
+            append("./gradlew ")
+            tasks.joinTo(this, " ")
+            append(' ')
+            append(matrix.gradleArgs)
+        },
         env = env,
+        maxAttempts = maxAttempts,
     )
 
     /**
@@ -1047,7 +1048,7 @@ class WithMatrix(
 //                env = mapOf("MY_PATH" to ),
             ).outputs["jbrLocation"]
 
-            run(
+            runWithAttempts(
                 name = "Get JBR 21 for macOS AArch64",
                 command = shell(
                     $$"""
@@ -1210,7 +1211,7 @@ class WithMatrix(
                 cacheDisabled = true,
             ),
         )
-        uses(
+        usesWithAttempts(
             name = "Clean and download dependencies",
             action = Retry_Untyped(
                 maxAttempts_Untyped = "3",
@@ -1285,7 +1286,7 @@ class WithMatrix(
                 matrix.uploadApk
             }
             if (shouldUpload) {
-                uses(
+                usesWithAttempts(
                     name = "Upload Android Debug APK $arch",
                     action = UploadArtifact(
                         name = "ani-android-${arch}-debug",
@@ -1319,7 +1320,7 @@ class WithMatrix(
                 matrix.uploadApk
             }
             if (shouldUpload) {
-                uses(
+                usesWithAttempts(
                     name = "Upload Android Release APK $arch",
                     action = UploadArtifact(
                         name = "ani-android-${arch}-release",
@@ -1377,8 +1378,9 @@ class WithMatrix(
                 tasks = [
                     ":app:ios:buildReleaseIpa",
                 ],
+                maxAttempts = 3,
             )
-            uses(
+            usesWithAttempts(
                 name = "Upload iOS Release IPA",
                 action = UploadArtifact(
                     name = "ani-ios-release",
@@ -1394,8 +1396,8 @@ class WithMatrix(
             runGradle(
                 name = "Check",
                 tasks = ["check"],
-                maxAttempts = 2,
-                timeoutMinutes = 120,
+                maxAttempts = 3,
+                timeoutMinutes = 180,
             )
         }
     }
@@ -1482,7 +1484,7 @@ class WithMatrix(
                 ],
             )
         }
-        
+
         if (matrix.isMacOS) {
             // macOS uses installers
             runGradle(
@@ -1742,3 +1744,153 @@ fun String.neq(other: Boolean) = "($this != $other)"
 
 operator fun String.not() = "!($this)"
 
+/**
+ * Unroll attempts at compile time.
+ *
+ * 例如, [maxAttempts] 为 3 时, 这个函数将会添加三个 step.
+ * 当第一个 step 完成时, 后面的两个 step 都会被跳过.
+ * 如果第一个 step 失败了, 则继续执行第二个 step.
+ */
+fun <T : Action.Outputs> JobBuilder<*>.usesWithAttempts(
+    @Suppress("UNUSED_PARAMETER")
+    vararg pleaseUseNamedArguments: Unit,
+    action: Action<T>,
+    name: String? = null,
+    env: Map<String, String> = mapOf(),
+    @SuppressWarnings("FunctionParameterNaming")
+    `if`: String? = null,
+    condition: String? = null,
+    continueOnError: Boolean? = null,
+    timeoutMinutes: Int? = null,
+    @SuppressWarnings("FunctionParameterNaming")
+    _customArguments: Map<String, @Contextual Any> = mapOf(),
+
+    // ADDED:
+    maxAttempts: Int? = when (action) {
+        is DownloadArtifact -> 3
+        is UploadArtifact -> 3
+        else -> null
+    },
+) {
+    if (maxAttempts == null) {
+        uses(
+            // calls member
+            action = action,
+            name = name,
+            env = env,
+            `if` = `if`,
+            condition = condition,
+            continueOnError = continueOnError,
+            timeoutMinutes = timeoutMinutes,
+            _customArguments = _customArguments,
+        )
+        return
+    }
+    require(maxAttempts > 0) { "maxAttempts must be greater than 0" }
+
+    fun unroll(attemptNumber: Int, previousAttempt: ActionStep<T>?) = uses(
+        action = action,
+        name = "$name (Attempt #$attemptNumber)",
+        env = env,
+        `if` = if (previousAttempt == null) {
+            // First attempt
+            `if`
+        } else {
+            // 前一步失败了就重试, 否则跳过重试
+            expr { previousAttempt.outcome.eq(AbstractResult.Status.Failure) }
+        },
+        condition = condition,
+        continueOnError = if (continueOnError == true) {
+            // 整个 task 允许失败, 所以一直都 continueOnError
+            true
+        } else {
+            // Last step does not allow failure
+            attemptNumber != maxAttempts
+        },
+        timeoutMinutes = timeoutMinutes,
+        _customArguments = _customArguments,
+    )
+
+    // First attempt
+    var previousAttempt = unroll(1, null)
+    repeat(maxAttempts - 1) {
+        previousAttempt = unroll(it + 2, previousAttempt)
+    }
+}
+
+
+/**
+ * Unroll attempts at compile time.
+ *
+ * 例如, [maxAttempts] 为 3 时, 这个函数将会添加三个 step.
+ * 当第一个 step 完成时, 后面的两个 step 都会被跳过.
+ * 如果第一个 step 失败了, 则继续执行第二个 step.
+ */
+fun JobBuilder<*>.runWithAttempts(
+    @Suppress("UNUSED_PARAMETER")
+    vararg pleaseUseNamedArguments: Unit,
+    command: String,
+    name: String? = null,
+    env: Map<String, String> = mapOf(),
+    @SuppressWarnings("FunctionParameterNaming")
+    `if`: String? = null,
+    condition: String? = null,
+    continueOnError: Boolean? = null,
+    timeoutMinutes: Int? = 180, // CHANGED default
+    shell: Shell? = null,
+    workingDirectory: String? = null,
+    @SuppressWarnings("FunctionParameterNaming")
+    _customArguments: Map<String, @Contextual Any> = mapOf(),
+
+    // ADDED:
+    maxAttempts: Int? = 2,
+) {
+    if (maxAttempts == null) {
+        run(
+            // calls member
+            command = command,
+            name = name,
+            env = env,
+            `if` = `if`,
+            condition = condition,
+            continueOnError = continueOnError,
+            timeoutMinutes = timeoutMinutes,
+            shell = shell,
+            workingDirectory = workingDirectory,
+            _customArguments = _customArguments,
+        )
+        return
+    }
+    require(maxAttempts > 0) { "maxAttempts must be greater than 0" }
+
+    fun unroll(attemptNumber: Int, previousAttempt: CommandStep?) = run(
+        command = command,
+        name = "$name (Attempt #$attemptNumber)",
+        env = env,
+        `if` = if (previousAttempt == null) {
+            // First attempt
+            `if`
+        } else {
+            // 前一步失败了就重试, 否则跳过重试
+            expr { previousAttempt.outcome.eq(AbstractResult.Status.Failure) }
+        },
+        condition = condition,
+        continueOnError = if (continueOnError == true) {
+            // 整个 task 允许失败, 所以一直都 continueOnError
+            true
+        } else {
+            // Last step does not allow failure
+            attemptNumber != maxAttempts
+        },
+        timeoutMinutes = timeoutMinutes,
+        shell = shell,
+        workingDirectory = workingDirectory,
+        _customArguments = _customArguments,
+    )
+
+    // First attempt
+    var previousAttempt = unroll(1, null)
+    repeat(maxAttempts - 1) {
+        previousAttempt = unroll(it + 2, previousAttempt)
+    }
+}
