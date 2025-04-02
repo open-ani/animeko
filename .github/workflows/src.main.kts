@@ -495,7 +495,9 @@ fun getBuildJobBody(matrix: MatrixInstance): JobBuilder<BuildJobOutputs>.() -> U
                 buildAndroidApk(it)
             }
             if (matrix.uploadIpa) {
-                buildIosIpa()
+                prepareIosBuild()
+                buildIosIpaDebug()
+                buildIosIpaRelease()
             }
             val packageOutputs = packageDesktopAndUpload()
 
@@ -863,6 +865,11 @@ workflow(
                 uploadAndroidApkToCloud()
                 generateQRCodeAndUpload()
                 uploadDesktopInstallers()
+                if (matrix.uploadIpa) {
+                    prepareIosBuild()
+                    // Don't build debug
+                    buildIosIpaRelease()
+                }
                 uploadIosIpa()
                 uploadComposeLogs()
             }
@@ -1280,7 +1287,7 @@ class WithMatrix(
         }
     }
 
-    fun JobBuilder<*>.buildIosIpa() {
+    fun JobBuilder<*>.prepareIosBuild() {
         if (matrix.uploadIpa) {
             runGradle(
                 name = "generateDummyFramework",
@@ -1298,7 +1305,9 @@ class WithMatrix(
                 ],
             )
         }
+    }
 
+    fun JobBuilder<*>.buildIosIpaDebug() {
         if (matrix.uploadIpa) {
             runGradle(
                 name = "Build iOS Debug IPA",
@@ -1315,7 +1324,9 @@ class WithMatrix(
                 ),
             )
         }
+    }
 
+    fun JobBuilder<*>.buildIosIpaRelease() {
         if (matrix.uploadIpa) {
             runGradle(
                 name = "Build iOS Release IPA",
