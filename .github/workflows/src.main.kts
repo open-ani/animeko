@@ -466,6 +466,7 @@ run {
 
 
 class BuildJobOutputs : JobOutputs() {
+    var iosIpaSuccess by output()
     var macosAarch64DmgSuccess by output()
     var windowsX64PortableSuccess by output()
 }
@@ -494,7 +495,7 @@ fun getBuildJobBody(matrix: MatrixInstance): JobBuilder<BuildJobOutputs>.() -> U
                 buildAndroidApk(it)
             }
             if (matrix.uploadIpa) {
-                buildIosApk()
+                buildIosIpa()
             }
             val packageOutputs = packageDesktopAndUpload()
 
@@ -516,6 +517,7 @@ object ArtifactNames {
     fun windowsPortable() = "ani-windows-portable"
     fun macosDmg(arch: Arch) = "ani-macos-dmg-${arch}"
     fun macosPortable(arch: Arch) = "ani-macos-portable-${arch}"
+    fun iosIpa() = "ani-ios-ipa"
 }
 
 fun getVerifyJobBody(
@@ -861,6 +863,7 @@ workflow(
                 uploadAndroidApkToCloud()
                 generateQRCodeAndUpload()
                 uploadDesktopInstallers()
+                uploadIosIpa()
                 uploadComposeLogs()
             }
             cleanupTempFiles()
@@ -1277,7 +1280,7 @@ class WithMatrix(
         }
     }
 
-    fun JobBuilder<*>.buildIosApk() {
+    fun JobBuilder<*>.buildIosIpa() {
         if (matrix.uploadIpa) {
             runGradle(
                 name = "generateDummyFramework",
@@ -1559,6 +1562,16 @@ class WithMatrix(
                 runGradle(
                     name = "Upload Desktop Installers",
                     tasks = [":ci-helper:uploadDesktopInstallers", "\"--no-configuration-cache\""],
+                    env = ciHelperSecrets,
+                )
+            }
+        }
+
+        fun JobBuilder<*>.uploadIosIpa() {
+            if (matrix.uploadIpa) {
+                runGradle(
+                    name = "Upload iOS IPA",
+                    tasks = [":ci-helper:uploadIosIpa", "\"--no-configuration-cache\""],
                     env = ciHelperSecrets,
                 )
             }
