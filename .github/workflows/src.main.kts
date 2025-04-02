@@ -522,7 +522,7 @@ object ArtifactNames {
     fun windowsPortable() = "ani-windows-portable"
     fun macosDmg(arch: Arch) = "ani-macos-dmg-${arch}"
     fun macosPortable(arch: Arch) = "ani-macos-portable-${arch}"
-    fun linuxAppImage(arch: Arch) = "ani-appimage-${arch}"
+    fun linuxAppImage(arch: Arch) = "ani-linux-appimage-${arch}"
 }
 
 fun getVerifyJobBody(
@@ -1551,6 +1551,8 @@ class WithMatrix(
                         ARCH=x86_64 ./appimagetool-x86_64.AppImage AppDir
                         """.trimIndent(),
                 )
+                // Expected output path: Animeko-x86_64.AppImage.
+                // If changed, change also uploadDesktopDistributions in :ci-helper
 
                 val linuxX64AppImage = uses(
                     name = "Upload Linux packages",

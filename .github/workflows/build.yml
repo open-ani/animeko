@@ -315,7 +315,7 @@ jobs:
       name: 'Upload Linux packages'
       uses: 'actions/upload-artifact@v4'
       with:
-        name: 'ani-appimage-x64'
+        name: 'ani-linux-appimage-x64'
         path: 'Animeko-x86_64.AppImage'
         if-no-files-found: 'error'
         overwrite: 'true'
@@ -1093,7 +1093,7 @@ jobs:
       name: 'Download Linux x64 AppImage'
       uses: 'actions/download-artifact@v4'
       with:
-        name: 'ani-appimage-x64'
+        name: 'ani-linux-appimage-x64'
         path: '${{ github.workspace }}/ci-helper/verify'
     - id: 'step-2'
       name: 'Check that Anitorrent can be loaded'
