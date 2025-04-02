@@ -141,6 +141,7 @@ import me.him188.ani.utils.coroutines.childScopeContext
 import me.him188.ani.utils.httpdownloader.HttpDownloader
 import me.him188.ani.utils.httpdownloader.KtorPersistentHttpDownloader
 import me.him188.ani.utils.io.SystemPath
+import me.him188.ani.utils.io.deleteRecursively
 import me.him188.ani.utils.io.exists
 import me.him188.ani.utils.io.isDirectory
 import me.him188.ani.utils.io.resolve
@@ -160,8 +161,8 @@ private val Scope.settingsRepository get() = get<SettingsRepository>()
  * @see me.him188.ani.app.data.persistent.PlatformDataStoreManager.mediaCacheMetadataStore
  */
 @Deprecated("Since 4.8, metadata is now stored in the datastore. This will be removed in the future.")
-fun Context.getMediaMetadataDir(engineId: String): SystemPath {
-    return files.dataDir.resolve("media-cache").resolve(engineId)
+fun Context.getMediaMetadataDir(): SystemPath {
+    return files.dataDir.resolve("media-cache")
 }
 
 fun KoinApplication.getCommonKoinModule(getContext: () -> Context, coroutineScope: CoroutineScope) =
@@ -530,32 +531,36 @@ fun KoinApplication.startCommonKoinModule(context: Context, coroutineScope: Coro
     coroutineScope.launch {
         val metadataStore = context.dataStores.mediaCacheMetadataStore
         val storages = koin.get<MediaCacheManager>().storagesIncludingDisabled
+        val legacyMetadataDir = context.getMediaMetadataDir()
 
-        // remove in 4.12
+        // Since 4.8, metadata is stored in the datastore. Migration workaround.
+        // remove in 5.x
         @Suppress("DEPRECATION")
         @OptIn(InvalidMediaCacheEngineKey::class)
         withContext(Dispatchers.IO_) {
             storages
                 .firstOrNull { it.engine is TorrentMediaCacheEngine }
-                .also { storage ->
+                .let { storage ->
                     if (storage != null) {
-                        val dir = context.getMediaMetadataDir("anitorrent")
+                        val dir = legacyMetadataDir.resolve("anitorrent")
                         if (dir.exists() && dir.isDirectory()) {
-                            DataStoreMediaCacheStorage.migrateCache(metadataStore, storage, dir)
+                            DataStoreMediaCacheStorage.migrateMetadataFromV47(metadataStore, storage, dir)
                         }
                     }
                 }
             storages
                 .filterIsInstance<DataStoreMediaCacheStorage>()
                 .firstOrNull { it.engine is HttpMediaCacheEngine }
-                .also { storage ->
+                .let { storage ->
                     if (storage != null) {
-                        val dir = context.getMediaMetadataDir("web-m3u")
+                        val dir = legacyMetadataDir.resolve("web-m3u")
                         if (dir.exists() && dir.isDirectory()) {
-                            DataStoreMediaCacheStorage.migrateCache(metadataStore, storage, dir)
+                            DataStoreMediaCacheStorage.migrateMetadataFromV47(metadataStore, storage, dir)
                         }
                     }
                 }
+            // Delete the whole metadata dir
+            legacyMetadataDir.deleteRecursively()
         }
 
         koin.get<HttpDownloader>().init() // 这涉及读取 DownloadState, 需要在加载 storage metadata 前调用.

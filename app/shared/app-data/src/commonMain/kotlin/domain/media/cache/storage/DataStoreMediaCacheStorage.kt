@@ -232,43 +232,39 @@ class DataStoreMediaCacheStorage(
 
         @Deprecated("Since 4.8, metadata is stored in the datastore. This method is for migration only.")
         @InvalidMediaCacheEngineKey
-        suspend fun migrateCache(
+        suspend fun migrateMetadataFromV47(
             metadataStore: DataStore<List<MediaCacheSave>>,
             storage: MediaCacheStorage,
             dir: SystemPath
-        ) {
-            dir.useDirectoryEntries { entries ->
-                entries.forEach { file ->
-                    val save = try {
-                        DataStoreJson.decodeFromString(LegacyMediaCacheSaveSerializer, file.readText())
-                            .copy(engine = storage.engine.engineKey)
-                    } catch (e: SerializationException) {
-                        logger.error(e) { "Failed to deserialize metadata file ${file.name}, ignoring migration." }
-                        // file.delete() // todo: uncomment this
-                        return@useDirectoryEntries
-                    }
+        ) = dir.useDirectoryEntries { entries ->
+            entries.forEach { file ->
+                val save = try {
+                    DataStoreJson.decodeFromString(LegacyMediaCacheSaveSerializer, file.readText())
+                        .copy(engine = storage.engine.engineKey)
+                } catch (e: SerializationException) {
+                    logger.error(e) { "Failed to deserialize metadata file ${file.name}, ignoring migration." }
+                    return@useDirectoryEntries
+                }
 
-                    metadataStore.updateData { originalList ->
-                        val existing = originalList.indexOfFirst {
-                            it.origin.mediaId == save.origin.mediaId &&
-                                    it.metadata.subjectId == save.metadata.subjectId &&
-                                    it.metadata.episodeId == save.metadata.episodeId
-                        }
-                        if (existing != -1) {
-                            logger.warn {
-                                "Duplicated media cache metadata ${originalList[existing].origin.mediaId} found while migrating, " +
-                                        "override to new ${save.origin.mediaId}, engine: ${save.engine}."
-                            }
-                            originalList.toMutableList().apply {
-                                removeAt(existing)
-                                add(save)
-                            }
-                        } else {
-                            logger.info { "Migrating media cache metadata ${save.origin.mediaId}, engine: ${storage.engine}." }
-                            originalList + save
-                        }
+                metadataStore.updateData { originalList ->
+                    val existing = originalList.indexOfFirst {
+                        it.origin.mediaId == save.origin.mediaId &&
+                                it.metadata.subjectId == save.metadata.subjectId &&
+                                it.metadata.episodeId == save.metadata.episodeId
                     }
-                    // file.delete() // todo: uncomment this
+                    if (existing != -1) {
+                        logger.warn {
+                            "Duplicated media cache metadata ${originalList[existing].origin.mediaId} found while migrating, " +
+                                    "override to new ${save.origin.mediaId}, engine: ${save.engine}."
+                        }
+                        originalList.toMutableList().apply {
+                            removeAt(existing)
+                            add(save)
+                        }
+                    } else {
+                        logger.info { "Migrating media cache metadata ${save.origin.mediaId}, engine: ${storage.engine.engineKey}." }
+                        originalList + save
+                    }
                 }
             }
         }
