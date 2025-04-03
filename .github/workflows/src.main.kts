@@ -676,7 +676,7 @@ fun getVerifyJobBody(
             )
             tasksToExecute.forEach { task ->
                 val appimagePath =
-                    """${expr { github.workspace }}/ci-helper/verify/${ArtifactNames.linuxAppImage(Arch.X64)}"""
+                    """${expr { github.workspace }}/ci-helper/verify/Animeko-x86_64.AppImage"""
                 run(
                     name = task.step,
                     shell = Shell.Bash,

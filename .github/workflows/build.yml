@@ -1540,7 +1540,7 @@ jobs:
       timeout-minutes: 5
       shell: 'bash'
       run: |-
-        $ANI_APPIMAGE="${{ github.workspace }}/ci-helper/verify/ani-linux-appimage-x64"
+        $ANI_APPIMAGE="${{ github.workspace }}/ci-helper/verify/Animeko-x86_64.AppImage"
         chmod +x "$ANI_APPIMAGE"
         ANIMEKO_DESKTOP_TEST_TASK="dandanplay-app-id" "$ANI_APPIMAGE"
       if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
@@ -1549,7 +1549,7 @@ jobs:
       timeout-minutes: 5
       shell: 'bash'
       run: |-
-        $ANI_APPIMAGE="${{ github.workspace }}/ci-helper/verify/ani-linux-appimage-x64"
+        $ANI_APPIMAGE="${{ github.workspace }}/ci-helper/verify/Animeko-x86_64.AppImage"
         chmod +x "$ANI_APPIMAGE"
         ANIMEKO_DESKTOP_TEST_TASK="sentry-dsn" "$ANI_APPIMAGE"
       if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
@@ -1558,7 +1558,7 @@ jobs:
       timeout-minutes: 5
       shell: 'bash'
       run: |-
-        $ANI_APPIMAGE="${{ github.workspace }}/ci-helper/verify/ani-linux-appimage-x64"
+        $ANI_APPIMAGE="${{ github.workspace }}/ci-helper/verify/Animeko-x86_64.AppImage"
         chmod +x "$ANI_APPIMAGE"
         ANIMEKO_DESKTOP_TEST_TASK="analytics-server" "$ANI_APPIMAGE"
       if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
