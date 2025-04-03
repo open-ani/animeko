@@ -10,15 +10,17 @@
 package me.him188.ani.app.ui.settings.tabs
 
 import android.content.Context
-import androidx.activity.ComponentActivity
+import android.content.Intent
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
+import androidx.core.content.ContextCompat.startActivity
+import androidx.core.content.FileProvider
+import me.him188.ani.app.platform.BuildConfig
 import me.him188.ani.app.platform.LocalContext
-import me.him188.ani.app.platform.findActivity
 import java.io.File
 
 
@@ -27,7 +29,18 @@ internal actual fun ColumnScope.PlatformDebugInfoItems() {
     val context = LocalContext.current
     FilledTonalButton(
         {
-            (context.findActivity() as? ComponentActivity)?
+            val shareIntent = Intent(Intent.ACTION_SEND)
+            shareIntent.setType("text/plain") // Set appropriate MIME type
+            shareIntent.putExtra(
+                Intent.EXTRA_STREAM,
+                FileProvider.getUriForFile(
+                    context,
+                    BuildConfig.APP_APPLICATION_ID + ".fileprovider",
+                    context.getCurrentLogFile(),
+                ),
+            )
+            shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            context.startActivity(Intent.createChooser(shareIntent, "分享日志文件"))
         },
     ) {
         Text("分享当日日志文件")
