@@ -1645,7 +1645,7 @@ class WithMatrix(
                     name = "Generate QR code for APK (GitHub)",
                     `if` = condition,
                     action = Qrcode_Untyped(
-                        text_Untyped = """https://github.com/Him188/ani/releases/download/${expr { gitTag.tagExpr }}/ani-${expr { gitTag.tagVersionExpr }}-universal.apk""",
+                        text_Untyped = """https://github.com/open-ani/animeko/releases/download/${expr { gitTag.tagExpr }}/ani-${expr { gitTag.tagVersionExpr }}-universal.apk""",
                         path_Untyped = "apk-qrcode-github.png",
                     ),
                 )
@@ -1661,6 +1661,28 @@ class WithMatrix(
                     name = "Upload QR code",
                     `if` = condition,
                     tasks = [":ci-helper:uploadAndroidApkQR", "\"--no-configuration-cache\""],
+                    env = ciHelperSecrets,
+                )
+                uses(
+                    name = "Generate QR code for iOS (GitHub)",
+                    `if` = condition,
+                    action = Qrcode_Untyped(
+                        text_Untyped = """https://github.com/open-ani/animeko/releases/download/${expr { gitTag.tagExpr }}/ani-${expr { gitTag.tagVersionExpr }}.ipa""",
+                        path_Untyped = "ipa-qrcode-github.png",
+                    ),
+                )
+                uses(
+                    name = "Generate QR code for iOS (Cloudflare)",
+                    `if` = condition,
+                    action = Qrcode_Untyped(
+                        text_Untyped = """https://d.myani.org/${expr { gitTag.tagExpr }}/ani-${expr { gitTag.tagVersionExpr }}.ipa""",
+                        path_Untyped = "ipa-qrcode-cloudflare.png",
+                    ),
+                )
+                runGradle(
+                    name = "Upload QR code",
+                    `if` = condition,
+                    tasks = [":ci-helper:uploadIosIpaQR", "\"--no-configuration-cache\""],
                     env = ciHelperSecrets,
                 )
             }
