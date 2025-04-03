@@ -372,7 +372,9 @@ class TorrentMediaCacheEngine(
                     EXTRA_TORRENT_CACHE_DIR,
                     // TODO: The hardcoded path is for anitorrent only. 
                     // see AnitorrentTorrentDownloader
-                    newSaveDir.resolve("pieces")
+                    newSaveDir
+                        .resolve(torrentEngine.type.id)
+                        .resolve("pieces")
                         .resolve(currentTorrentData.contentHashCode().toString())
                         .inSystem.absolutePath,
                 )
