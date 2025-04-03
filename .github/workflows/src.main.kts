@@ -682,7 +682,7 @@ fun getVerifyJobBody(
                     shell = Shell.Bash,
                     command = shell(
                         $$"""
-                            $ANI_APPIMAGE="$$appimagePath"
+                            ANI_APPIMAGE="$$appimagePath"
                             chmod +x "$ANI_APPIMAGE"
                             ANIMEKO_DESKTOP_TEST_TASK="$${task.name}" "$ANI_APPIMAGE"
                         """.trimIndent(),
