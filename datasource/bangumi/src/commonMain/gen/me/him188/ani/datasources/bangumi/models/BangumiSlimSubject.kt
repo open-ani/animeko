@@ -31,7 +31,7 @@ import kotlinx.serialization.Serializable
 /**
  * 
  *
- * @param id
+ * @param id 
  * @param type 
  * @param name 
  * @param nameCn 

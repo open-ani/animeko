@@ -31,7 +31,7 @@ import kotlinx.serialization.Serializable
 /**
  * 
  *
- * @param rank
+ * @param rank 
  * @param total 
  * @param count 
  * @param score 

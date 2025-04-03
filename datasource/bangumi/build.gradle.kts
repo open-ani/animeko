@@ -102,9 +102,93 @@ val generateApiV0 = tasks.register("generateApiV0", GenerateTask::class) {
 //    typeMappings.put("BangumiEpisodeCollectionType", "/*- `0`: 未收藏 - `1`: 想看 - `2`: 看过 - `3`: 抛弃*/ Int")
 }
 
+val stripeApiP1 = tasks.register("stripeApiP1") {
+    val strippedP1File = layout.buildDirectory.file("p1-stripped.yaml")
+    val inputFile = file("$projectDir/p1.yaml")
+    inputs.file(inputFile)
+    outputs.file(strippedP1File)
+
+    /**
+     * 我们只需要保留吐槽箱相关的 API
+     */
+    doLast {
+        val yaml = org.yaml.snakeyaml.Yaml()
+        val p1ApiObject: Map<String, Any> = inputFile.inputStream().use { yaml.load(it) }
+
+        // keep subjects only
+        val paths = p1ApiObject["paths"].cast<Map<String, *>>().toMutableMap()
+        val keepPaths = listOf(
+            "/p1/episodes/-/comments", // 条目剧集的吐槽箱, 作为剧集评论
+            "/p1/episodes/{episodeID}", // 条目剧集的吐槽箱, 作为剧集评论
+            "/p1/subjects/{subjectID}/comments", // 条目吐槽箱, 作为条目评论
+            "/p1/trending/subjects",
+            "/p1/collections/subjects",
+        )
+        val subjectPaths = paths.filter { (path, _) -> keepPaths.any { path.startsWith(it) } }
+        println("The following paths are kept: ${subjectPaths.keys}")
+
+        // keep components referred by subjects only
+        val components = p1ApiObject["components"].cast<Map<String, *>>().toMutableMap()
+        components.remove("securitySchemes")
+        val keepSchemaKeys = listOf(
+            "ErrorResponse",
+            "UpdateContent",
+            "Episode",
+            "Reaction",
+            "SlimUser",
+            "CommentBase",
+            "CreateReply",
+            "TurnstileToken",
+
+            "CollectionType",
+            "SubjectInterestComment",
+            "Reaction",
+            "CollectionType",
+            "SlimUser",
+            "Avatar",
+            "SimpleUser",
+
+            "EpisodeCollectionStatus",
+            "SlimSubject",
+            "EpisodeType",
+            "SubjectRating",
+            "SubjectType",
+            "SubjectImages",
+            "SlimSubjectInterest",
+
+            "TrendingSubject",
+
+            "CollectSubject",
+            "UpdateSubjectProgress",
+            "Subject",
+            "Subject.*",
+            "Infobox",
+            "Slim.*",
+            "PersonImages",
+            "Reply.*",
+            "WikiPlatform",
+        )
+        val schemas = components["schemas"].cast<Map<String, *>>().toMutableMap()
+        val keepSchemas = schemas.filter { (component, _) ->
+            keepSchemaKeys.any {
+                Regex(it).matchEntire(component) != null
+            }
+        }
+
+        val strippedApiObject = mutableMapOf<String, Any>().apply {
+            put("openapi", p1ApiObject["openapi"].cast())
+            put("info", p1ApiObject["info"].cast())
+            put("paths", subjectPaths)
+            put("components", mapOf("schemas" to keepSchemas))
+        }
+
+        strippedP1File.get().asFile.writeText(yaml.dump(strippedApiObject))
+    }
+}
+
 val generateApiP1 = tasks.register("generateApiP1", GenerateTask::class) {
     generatorName.set("kotlin")
-    inputSpec.set(stripP1Api("$projectDir/p1.yaml").absolutePath)
+    inputSpec.set(stripeApiP1.get().outputs.files.singleFile.absolutePath)
     outputDir.set(layout.buildDirectory.file(generatedRoot).get().asFile.absolutePath)
     packageName.set("me.him188.ani.datasources.bangumi.next")
     modelNamePrefix.set("BangumiNext")
@@ -129,71 +213,8 @@ val generateApiP1 = tasks.register("generateApiP1", GenerateTask::class) {
         "kotlin.Double",
         "@Serializable(me.him188.ani.utils.serialization.BigNumAsDoubleStringSerializer::class) me.him188.ani.utils.serialization.BigNum",
     )
-}
 
-/**
- * 我们只需要保留吐槽箱相关的 API
- */
-private fun stripP1Api(path: String): File {
-    val yaml = org.yaml.snakeyaml.Yaml()
-    val p1ApiObject: Map<String, Any> = File(path).inputStream().use { yaml.load(it) }
-
-    // keep subjects only
-    val paths = p1ApiObject["paths"].cast<Map<String, *>>().toMutableMap()
-    val keepPaths = listOf(
-        "/p1/episodes/-/comments", // 条目剧集的吐槽箱, 作为剧集评论
-        "/p1/episodes/{episodeID}", // 条目剧集的吐槽箱, 作为剧集评论
-        "/p1/subjects/{subjectID}/comments", // 条目吐槽箱, 作为条目评论
-        "/p1/trending/subjects",
-    )
-    val subjectPaths = paths.filter { (path, _) -> keepPaths.any { path.startsWith(it) } }
-    println("The following paths are kept: ${subjectPaths.keys}")
-
-    // keep components referred by subjects only
-    val components = p1ApiObject["components"].cast<Map<String, *>>().toMutableMap()
-    components.remove("securitySchemes")
-    val keepSchemaKeys = listOf(
-        "ErrorResponse",
-        "UpdateContent",
-        "Episode",
-        "Reaction",
-        "SlimUser",
-        "CommentBase",
-        "CreateReply",
-        "TurnstileToken",
-
-        "CollectionType",
-        "SubjectInterestComment",
-        "Reaction",
-        "CollectionType",
-        "SlimUser",
-        "Avatar",
-        "SimpleUser",
-
-        "EpisodeCollectionStatus",
-        "SlimSubject",
-        "EpisodeType",
-        "SubjectRating",
-        "SubjectType",
-        "SubjectImages",
-        "SlimSubjectInterest",
-
-        "TrendingSubject",
-    )
-    val schemas = components["schemas"].cast<Map<String, *>>().toMutableMap()
-    val keepSchemas = schemas.filter { (component, _) -> component in keepSchemaKeys }
-
-    val strippedApiObject = mutableMapOf<String, Any>().apply {
-        put("openapi", p1ApiObject["openapi"].cast())
-        put("info", p1ApiObject["info"].cast())
-        put("paths", subjectPaths)
-        put("components", mapOf("schemas" to keepSchemas))
-    }
-
-    return File.createTempFile("ani-build-fixGeneratedOpenApi-next-p1-stripped", ".yaml").apply {
-        deleteOnExit()
-        writeText(yaml.dump(strippedApiObject))
-    }
+    dependsOn(stripeApiP1)
 }
 
 val fixGeneratedOpenApi = tasks.register("fixGeneratedOpenApi") {

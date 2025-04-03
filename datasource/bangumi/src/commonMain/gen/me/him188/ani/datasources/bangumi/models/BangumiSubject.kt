@@ -31,10 +31,10 @@ import kotlinx.serialization.Serializable
 /**
  * 
  *
- * @param id
- * @param type
- * @param name
- * @param nameCn
+ * @param id 
+ * @param type 
+ * @param name 
+ * @param nameCn 
  * @param summary 
  * @param nsfw 
  * @param locked 

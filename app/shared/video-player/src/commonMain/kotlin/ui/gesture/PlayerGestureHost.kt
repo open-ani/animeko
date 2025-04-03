@@ -449,7 +449,11 @@ fun PlayerGestureHost(
     val onTogglePauseResumeState by rememberUpdatedState(onTogglePauseResume)
 
     BoxWithConstraints {
-        Row(Modifier.align(Alignment.TopCenter).padding(top = 80.dp)) {
+        Row(
+            Modifier.align(Alignment.TopCenter)
+                .systemGesturesPadding()
+                .padding(top = 16.dp),
+        ) {
             LaunchedEffect(seekerState.deltaSeconds) {
                 if (seekerState.isSeeking) {
                     indicatorState.showSeeking(seekerState.deltaSeconds)

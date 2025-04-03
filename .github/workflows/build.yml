@@ -204,6 +204,121 @@ jobs:
         timeout_minutes: '120'
         max_attempts: '2'
         command: './gradlew check "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "-Pani.sentry.dsn=${{ secrets.SENTRY_DSN }}" "-Pani.analytics.server=${{ secrets.ANALYTICS_SERVER }}" "-Pani.analytics.key=${{ secrets.ANALYTICS_KEY }}" "--parallel" "-Pani.android.abis=x86_64"'
+  build_github-ubuntu-2404:
+    name: 'Build (Ubuntu 24.04 x86_64 (GitHub))'
+    runs-on:
+    - 'ubuntu-24.04'
+    permissions:
+      actions: 'write'
+    outputs:
+      linuxX64AppImageSuccess: '${{ steps.step-14.outcome == ''success'' }}'
+    steps:
+    - id: 'step-0'
+      uses: 'actions/checkout@v4'
+      with:
+        submodules: 'recursive'
+    - id: 'step-1'
+      name: 'Free space for Ubuntu'
+      uses: 'jlumbroso/free-disk-space@v1.3.1'
+      with:
+        android: 'false'
+        large-packages: 'false'
+        tool-cache: 'false'
+    - id: 'step-2'
+      continue-on-error: true
+      run: 'rm local.properties'
+    - id: 'step-3'
+      name: 'Get JBR (Windows)'
+      env:
+        RUNNER_TOOL_CACHE: '${{ runner.tool_cache }}'
+        JBR_URL: 'https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-linux-x64-b750.29.tar.gz'
+        JBR_CHECKSUM_URL: 'https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-linux-x64-b750.29.tar.gz.checksum'
+      shell: 'bash'
+      run: 'python .github/workflows/download_jbr.py'
+    - id: 'step-4'
+      name: 'Setup JBR 21 for Ubuntu'
+      uses: 'gmitch215/setup-java@6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d'
+      with:
+        java-version: '21'
+        distribution: 'jdkfile'
+        jdkFile: '${{ steps.step-3.outputs.jbrLocation }}'
+      env:
+        GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
+    - id: 'step-5'
+      name: 'Dump Local Properties'
+      run: 'echo "jvm.toolchain.version=21" >> local.properties'
+    - id: 'step-6'
+      run: 'chmod -R 777 .'
+    - id: 'step-7'
+      name: 'Setup Gradle'
+      uses: 'gradle/actions/setup-gradle@v3'
+      with:
+        cache-disabled: 'true'
+    - id: 'step-8'
+      name: 'Clean and download dependencies'
+      uses: 'nick-fields/retry@v3'
+      with:
+        timeout_minutes: '60'
+        max_attempts: '3'
+        command: './gradlew "--stacktrace" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "-Pani.sentry.dsn=${{ secrets.SENTRY_DSN }}" "-Pani.analytics.server=${{ secrets.ANALYTICS_SERVER }}" "-Pani.analytics.key=${{ secrets.ANALYTICS_KEY }}" "-Pani.android.abis=x86_64"'
+    - id: 'step-9'
+      name: 'Update dev version name'
+      uses: 'nick-fields/retry@v3'
+      with:
+        timeout_minutes: '180'
+        max_attempts: '2'
+        command: './gradlew updateDevVersionNameFromGit "--no-configuration-cache" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "-Pani.sentry.dsn=${{ secrets.SENTRY_DSN }}" "-Pani.analytics.server=${{ secrets.ANALYTICS_SERVER }}" "-Pani.analytics.key=${{ secrets.ANALYTICS_KEY }}" "-Pani.android.abis=x86_64"'
+    - id: 'step-10'
+      name: 'Compile Kotlin'
+      uses: 'nick-fields/retry@v3'
+      with:
+        timeout_minutes: '180'
+        max_attempts: '2'
+        command: './gradlew compileKotlin compileCommonMainKotlinMetadata compileJvmMainKotlinMetadata compileKotlinDesktop compileKotlinMetadata "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "-Pani.sentry.dsn=${{ secrets.SENTRY_DSN }}" "-Pani.analytics.server=${{ secrets.ANALYTICS_SERVER }}" "-Pani.analytics.key=${{ secrets.ANALYTICS_KEY }}" "-Pani.android.abis=x86_64"'
+    - id: 'step-11'
+      name: 'Package Desktop'
+      uses: 'nick-fields/retry@v3'
+      with:
+        timeout_minutes: '180'
+        max_attempts: '2'
+        command: './gradlew createReleaseDistributable "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "-Pani.sentry.dsn=${{ secrets.SENTRY_DSN }}" "-Pani.analytics.server=${{ secrets.ANALYTICS_SERVER }}" "-Pani.analytics.key=${{ secrets.ANALYTICS_KEY }}" "-Pani.android.abis=x86_64"'
+    - id: 'step-12'
+      name: 'Upload compose logs'
+      uses: 'actions/upload-artifact@v4'
+      with:
+        name: 'compose-logs-github-ubuntu-2404'
+        path: 'app/desktop/build/compose/logs'
+      if: '${{ always() }}'
+    - id: 'step-13'
+      name: 'Build AppImage'
+      run: |-
+        # Download appimagetool
+        wget https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+        chmod +x appimagetool-x86_64.AppImage
+
+        # Prepare AppDir
+        mkdir -p AppDir/usr
+        cp -r app/desktop/build/compose/binaries/main-release/app/Ani/* AppDir/usr
+
+        cp app/desktop/appResources/linux-x64/AppRun AppDir/AppRun
+        cp app/desktop/appResources/linux-x64/animeko.desktop AppDir/animeko.desktop
+        cp app/desktop/appResources/linux-x64/icon.png AppDir/icon.png
+
+        # Fix permissions
+        chmod a+x AppDir/AppRun
+        chmod a+x AppDir/usr/bin/Ani
+        chmod a+x AppDir/usr/lib/runtime/lib/jcef_helper
+
+        # Build AppImage
+        ARCH=x86_64 ./appimagetool-x86_64.AppImage AppDir
+    - id: 'step-14'
+      name: 'Upload Linux packages'
+      uses: 'actions/upload-artifact@v4'
+      with:
+        name: 'ani-linux-appimage-x64'
+        path: 'Animeko-x86_64.AppImage'
+        if-no-files-found: 'error'
+        overwrite: 'true'
   build_github-macos-13:
     name: 'Build (macOS 13 x86_64 (GitHub))'
     runs-on:
@@ -530,34 +645,20 @@ jobs:
         path: 'app/ios/build/archives/debug/Animeko.ipa'
         overwrite: 'true'
     - id: 'step-16'
-      name: 'Build iOS Release IPA'
-      uses: 'nick-fields/retry@v3'
-      with:
-        timeout_minutes: '180'
-        max_attempts: '2'
-        command: './gradlew :app:ios:buildReleaseIpa "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "-Pani.sentry.dsn=${{ secrets.SENTRY_DSN }}" "-Pani.analytics.server=${{ secrets.ANALYTICS_SERVER }}" "-Pani.analytics.key=${{ secrets.ANALYTICS_KEY }}" "--parallel" "-Pani.android.abis=arm64-v8a"'
-    - id: 'step-17'
-      name: 'Upload iOS Release IPA'
-      uses: 'actions/upload-artifact@v4'
-      with:
-        name: 'ani-ios-release'
-        path: 'app/ios/build/archives/release/Animeko.ipa'
-        overwrite: 'true'
-    - id: 'step-18'
       name: 'Check'
       uses: 'nick-fields/retry@v3'
       with:
         timeout_minutes: '120'
         max_attempts: '2'
         command: './gradlew check "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "-Pani.sentry.dsn=${{ secrets.SENTRY_DSN }}" "-Pani.analytics.server=${{ secrets.ANALYTICS_SERVER }}" "-Pani.analytics.key=${{ secrets.ANALYTICS_KEY }}" "--parallel" "-Pani.android.abis=arm64-v8a"'
-    - id: 'step-19'
+    - id: 'step-17'
       name: 'Build Android Instrumented Tests'
       uses: 'nick-fields/retry@v3'
       with:
         timeout_minutes: '180'
         max_attempts: '3'
         command: './gradlew assembleDebugAndroidTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "-Pani.sentry.dsn=${{ secrets.SENTRY_DSN }}" "-Pani.analytics.server=${{ secrets.ANALYTICS_SERVER }}" "-Pani.analytics.key=${{ secrets.ANALYTICS_KEY }}" "--parallel" "-Pani.android.abis=arm64-v8a"'
-    - id: 'step-20'
+    - id: 'step-18'
       name: 'Android Instrumented Test (api=30, arch=arm64-v8a)'
       uses: 'reactivecircus/android-emulator-runner@v2.33.0'
       with:
@@ -565,7 +666,7 @@ jobs:
         arch: 'arm64-v8a'
         emulator-boot-timeout: '1800'
         script: './gradlew connectedDebugAndroidTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "-Pani.sentry.dsn=${{ secrets.SENTRY_DSN }}" "-Pani.analytics.server=${{ secrets.ANALYTICS_SERVER }}" "-Pani.analytics.key=${{ secrets.ANALYTICS_KEY }}" "--parallel" "-Pani.android.abis=arm64-v8a"'
-    - id: 'step-21'
+    - id: 'step-19'
       name: 'Android Instrumented Test (api=35, arch=arm64-v8a)'
       uses: 'reactivecircus/android-emulator-runner@v2.33.0'
       with:
@@ -573,7 +674,7 @@ jobs:
         arch: 'arm64-v8a'
         emulator-boot-timeout: '1800'
         script: './gradlew connectedDebugAndroidTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "-Pani.sentry.dsn=${{ secrets.SENTRY_DSN }}" "-Pani.analytics.server=${{ secrets.ANALYTICS_SERVER }}" "-Pani.analytics.key=${{ secrets.ANALYTICS_KEY }}" "--parallel" "-Pani.android.abis=arm64-v8a"'
-    - id: 'step-22'
+    - id: 'step-20'
       name: 'Cleanup temp files'
       continue-on-error: true
       run: 'chmod +x ./ci-helper/cleanup-temp-files-macos.sh && ./ci-helper/cleanup-temp-files-macos.sh'
@@ -961,4 +1062,45 @@ jobs:
       name: 'Check that analyticsServer is valid'
       timeout-minutes: 5
       run: '"$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" "$GITHUB_WORKSPACE"/*.dmg analytics-server'
+      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
+  verify_github-ubuntu-2404:
+    name: 'Verify (Ubuntu 24.04 x86_64 (GitHub))'
+    runs-on:
+    - 'ubuntu-24.04'
+    permissions:
+      actions: 'read'
+    needs:
+    - 'build_github-ubuntu-2404'
+    if: '${{ needs.build_github-ubuntu-2404.outputs.linuxX64AppImageSuccess }}'
+    steps:
+    - id: 'step-0'
+      uses: 'actions/checkout@v4'
+    - id: 'step-1'
+      name: 'Download Linux x64 AppImage'
+      uses: 'actions/download-artifact@v4'
+      with:
+        name: 'ani-linux-appimage-x64'
+        path: '${{ github.workspace }}/ci-helper/verify'
+    - id: 'step-2'
+      name: 'Check that Anitorrent can be loaded'
+      timeout-minutes: 5
+      shell: 'bash'
+      run: ''
+    - id: 'step-3'
+      name: 'Check that Dandanplay APP ID is valid'
+      timeout-minutes: 5
+      shell: 'bash'
+      run: ''
+      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
+    - id: 'step-4'
+      name: 'Check that sentryDsn is valid'
+      timeout-minutes: 5
+      shell: 'bash'
+      run: ''
+      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
+    - id: 'step-5'
+      name: 'Check that analyticsServer is valid'
+      timeout-minutes: 5
+      shell: 'bash'
+      run: ''
       if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'

@@ -39,10 +39,10 @@ import kotlinx.serialization.Serializable
  * @param name
  * @param nameCN
  * @param sort
- * @param subjectID
- * @param type
- * @param desc
- * @param status
+ * @param subjectID 
+ * @param type 
+ * @param desc 
+ * @param status 
  * @param subject 
  */
 @Serializable

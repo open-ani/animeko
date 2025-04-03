@@ -53,6 +53,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.derivedStateOf
@@ -79,6 +80,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.preference.DarkMode
+import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.data.network.protocol.DanmakuInfo
 import me.him188.ani.app.data.network.protocol.DanmakuLocation
 import me.him188.ani.app.domain.comment.CommentContext
@@ -224,6 +226,7 @@ private fun EpisodeScreenContent(
     }
 
     AutoPauseEffect(vm)
+    DisplayModeEffect(vm.videoScaffoldConfig)
 
     VideoNotifEffect(vm)
 
@@ -240,8 +243,10 @@ private fun EpisodeScreenContent(
         vm.isFullscreen = LocalPlatformWindow.current.isUndecoratedFullscreen
     }
 
-    SideEffect {
-        context.setSystemBarVisible(!vm.isFullscreen)
+    DisposableEffect(Unit) {
+        // Call only once.
+        context.setSystemBarVisible(window, !vm.isFullscreen)
+        onDispose { }
     }
 
     BoxWithConstraints(modifier) {
@@ -984,3 +989,6 @@ private fun AutoPauseEffect(viewModel: EpisodeViewModel) {
         }
     }
 }
+
+@Composable
+internal expect fun DisplayModeEffect(config: VideoScaffoldConfig)

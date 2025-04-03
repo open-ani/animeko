@@ -128,7 +128,7 @@ open class EpisodeBangumiNextApi : ApiClient {
 
     /**
      * 获取剧集信息
-     *
+     * 
      * @param episodeID 
      * @return BangumiNextEpisode
      */

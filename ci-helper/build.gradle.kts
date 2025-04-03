@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -96,6 +96,10 @@ class ArtifactNamer {
         return "$APP_NAME-$fullVersion-$osName-$archName.$extension"
     }
 
+    fun iosIpa(fullVersion: String): String {
+        return "$APP_NAME-$fullVersion.ipa"
+    }
+
     fun server(fullVersion: String, extension: String): String {
         return "$APP_NAME-server-$fullVersion.$extension"
     }
@@ -155,7 +159,7 @@ val zipDesktopDistribution = tasks.register("zipDesktopDistribution", Zip::class
 tasks.register("uploadDesktopInstallers") {
     dependsOn(zipDesktopDistribution)
 
-    if (hostOS != OS.WINDOWS) {
+    if (hostOS == OS.MACOS) {
         dependsOn(
             ":app:desktop:packageReleaseDistributionForCurrentOS",
         )
@@ -163,6 +167,14 @@ tasks.register("uploadDesktopInstallers") {
 
     doLast {
         ReleaseEnvironment().uploadDesktopDistributions()
+    }
+}
+
+tasks.register("uploadIosIpa") {
+    dependsOn(":app:ios:buildReleaseIpa")
+    val file = project(":app:ios").tasks.getByPath("buildReleaseIpa").outputs.files.singleFile
+    doLast {
+        ReleaseEnvironment().uploadIpa(file)
     }
 }
 
@@ -473,10 +485,28 @@ fun ReleaseEnvironment.uploadDesktopDistributions() {
         }
 
         OS.LINUX -> {
-            uploadBinary("deb", osName = "debian")
-            uploadBinary("rpm", osName = "redhat")
+            uploadReleaseAsset(
+                name = namer.desktopDistributionFile(
+                    fullVersion,
+                    "linux",
+                    "x86_64",
+                    extension = "appimage",
+                ),
+                contentType = "application/x-appimage",
+                file = rootProject.file("Animeko-x86_64.AppImage"),
+            )
         }
     }
+}
+
+fun ReleaseEnvironment.uploadIpa(
+    file: File,
+) {
+    uploadReleaseAsset(
+        name = namer.iosIpa(fullVersion),
+        contentType = "application/x-iphone",
+        file = file,
+    )
 }
 
 // ./gradlew updateDevVersionNameFromGit -DGITHUB_REF=refs/heads/master -DGITHUB_SHA=123456789 --no-configuration-cache

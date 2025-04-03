@@ -37,7 +37,6 @@
 @file:DependsOn("softprops:action-gh-release:v1")
 @file:DependsOn("snow-actions:qrcode:v1.0.0")
 
-
 import Secrets.ANALYTICS_KEY
 import Secrets.ANALYTICS_SERVER
 import Secrets.AWS_ACCESS_KEY_ID
@@ -388,15 +387,15 @@ run {
     val ghUbuntu2404 = MatrixInstance(
         runner = Runner.GithubUbuntu2404,
         uploadApk = false,
-        runAndroidInstrumentedTests = true, // 这其实有问题, GH 没有足够的空间安装 7GB 模拟器
+        runAndroidInstrumentedTests = false, // 这其实有问题, GH 没有足够的空间安装 7GB 模拟器
         composeResourceTriple = "linux-x64",
         runTests = false,
-        uploadDesktopInstallers = false,
+        uploadDesktopInstallers = true,
         extraGradleArgs = listOf(
             "-P$ANI_ANDROID_ABIS=x86_64",
         ),
         buildAllAndroidAbis = false,
-        gradleHeap = "6g",
+        gradleHeap = "8g",
         kotlinCompilerHeap = "6g",
     )
     val ghMac13 = MatrixInstance(
@@ -446,7 +445,7 @@ run {
     buildMatrixInstances = listOf(
         selfWin10,
         ghWin2019,
-//        ghUbuntu2404,
+        ghUbuntu2404,
         ghMac13,
         selfMac15,
         ghMac15,
@@ -461,13 +460,16 @@ run {
             extraGradleArgs = selfMac15.extraGradleArgs.filterNot { it.startsWith("-P$ANI_ANDROID_ABIS=") },
         ), // android apks
         ghMac15, // macos installer
+        ghUbuntu2404, // linux app image
     )
 }
 
 
 class BuildJobOutputs : JobOutputs() {
+    var iosIpaSuccess by output()
     var macosAarch64DmgSuccess by output()
     var windowsX64PortableSuccess by output()
+    var linuxX64AppImageSuccess by output()
 }
 
 fun getBuildJobBody(matrix: MatrixInstance): JobBuilder<BuildJobOutputs>.() -> Unit = {
@@ -486,6 +488,12 @@ fun getBuildJobBody(matrix: MatrixInstance): JobBuilder<BuildJobOutputs>.() -> U
         )
         if (matrix.isUbuntu) {
             compileAndAssemble()
+
+            val packageOutputs = packageDesktopAndUpload()
+            packageOutputs.linuxX64AppImageOutcome?.let {
+                jobOutputs.linuxX64AppImageSuccess = it.eq(AbstractResult.Status.Success)
+            }
+
             androidConnectedTests()
         } else {
             val prepareSigningKey = prepareSigningKey()
@@ -494,7 +502,10 @@ fun getBuildJobBody(matrix: MatrixInstance): JobBuilder<BuildJobOutputs>.() -> U
                 buildAndroidApk(it)
             }
             if (matrix.uploadIpa) {
-                buildIosApk()
+                prepareIosBuild()
+                buildIosIpaDebug()
+                // Don't upload Release - it takes 30 mins
+                // buildIosIpaRelease()
             }
             val packageOutputs = packageDesktopAndUpload()
 
@@ -516,6 +527,8 @@ object ArtifactNames {
     fun windowsPortable() = "ani-windows-portable"
     fun macosDmg(arch: Arch) = "ani-macos-dmg-${arch}"
     fun macosPortable(arch: Arch) = "ani-macos-portable-${arch}"
+    fun iosIpa() = "ani-ios-ipa"
+    fun linuxAppImage(arch: Arch) = "ani-linux-appimage-${arch}"
 }
 
 fun getVerifyJobBody(
@@ -624,6 +637,28 @@ fun getVerifyJobBody(
                 run(
                     name = task.step,
                     command = shell($$""""$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" "$GITHUB_WORKSPACE"/*.dmg $${task.name}"""),
+                    `if` = task.`if`,
+                    timeoutMinutes = task.timeoutMinutes,
+                )
+            }
+        }
+
+        OS.UBUNTU to Arch.X64 -> {
+            uses(
+                name = "Download Linux x64 AppImage",
+                action = DownloadArtifact(
+                    name = ArtifactNames.linuxAppImage(Arch.X64),
+                    path = "${expr { github.workspace }}/ci-helper/verify",
+                ),
+            )
+            tasksToExecute.forEach { task ->
+                run(
+                    name = task.step,
+                    shell = Shell.Bash,
+                    command = shell(
+                        $$"""
+                        """.trimIndent(),
+                    ), // TODO: add verify ci-helper for Linux
                     `if` = task.`if`,
                     timeoutMinutes = task.timeoutMinutes,
                 )
@@ -746,6 +781,16 @@ workflow(
                 addVerifyJob(build, runner, build.outputs.macosAarch64DmgSuccess)
             }
         }
+
+    builds.filter { (matrix, _) ->
+        matrix.runner.os == OS.UBUNTU && matrix.uploadDesktopInstallers
+    }.forEach { (_, build) ->
+        listOf(
+            Runner.GithubUbuntu2404,
+        ).forEach { runner ->
+            addVerifyJob(build, runner, build.outputs.linuxX64AppImageSuccess)
+        }
+    }
 }
 
 operator fun List<Pair<MatrixInstance, Job<BuildJobOutputs>>>.get(runner: Runner): Job<BuildJobOutputs> {
@@ -860,7 +905,17 @@ workflow(
             ) {
                 uploadAndroidApkToCloud()
                 generateQRCodeAndUpload()
+                if (matrix.isUbuntu) {
+                    // Ubuntu `uploadDesktopInstallers` assumes `Animeko-x86_64.AppImage` is already built
+                    packageDesktopAndUpload()
+                }
                 uploadDesktopInstallers()
+                if (matrix.uploadIpa) {
+                    prepareIosBuild()
+                    // Don't build debug
+                    buildIosIpaRelease()
+                }
+                uploadIosIpa()
                 uploadComposeLogs()
             }
             cleanupTempFiles()
@@ -1277,7 +1332,7 @@ class WithMatrix(
         }
     }
 
-    fun JobBuilder<*>.buildIosApk() {
+    fun JobBuilder<*>.prepareIosBuild() {
         if (matrix.uploadIpa) {
             runGradle(
                 name = "generateDummyFramework",
@@ -1295,7 +1350,9 @@ class WithMatrix(
                 ],
             )
         }
+    }
 
+    fun JobBuilder<*>.buildIosIpaDebug() {
         if (matrix.uploadIpa) {
             runGradle(
                 name = "Build iOS Debug IPA",
@@ -1312,7 +1369,9 @@ class WithMatrix(
                 ),
             )
         }
+    }
 
+    fun JobBuilder<*>.buildIosIpaRelease() {
         if (matrix.uploadIpa) {
             runGradle(
                 name = "Build iOS Release IPA",
@@ -1404,6 +1463,7 @@ class WithMatrix(
         // null means not enabled on this machine
         var macosAarch64DmgOutcome: Step<*>.Outcome? = null
         var windowsX64PortableOutcome: Step<*>.Outcome? = null
+        var linuxX64AppImageOutcome: Step<*>.Outcome? = null
     }
 
     fun JobBuilder<*>.packageDesktopAndUpload(): PackageDesktopAndUploadOutputs {
@@ -1422,12 +1482,23 @@ class WithMatrix(
                     "createReleaseDistributable", // portable
                 ],
             )
-        } else {
+        }
+
+        if (matrix.isMacOS) {
             // macOS uses installers
             runGradle(
                 name = "Package Desktop",
                 tasks = [
                     "packageReleaseDistributionForCurrentOS", // dmg
+                ],
+            )
+        }
+
+        if (matrix.isUbuntu) {
+            runGradle(
+                name = "Package Desktop",
+                tasks = [
+                    "createReleaseDistributable",
                 ],
             )
         }
@@ -1473,6 +1544,47 @@ class WithMatrix(
                 )
 
                 this.windowsX64PortableOutcome = windowsX64Portable.outcome
+            }
+
+            if (matrix.isUbuntu && matrix.isX64) {
+                run(
+                    name = "Build AppImage",
+                    command = $$"""
+                        # Download appimagetool
+                        wget https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+                        chmod +x appimagetool-x86_64.AppImage
+                        
+                        # Prepare AppDir
+                        mkdir -p AppDir/usr
+                        cp -r app/desktop/build/compose/binaries/main-release/app/Ani/* AppDir/usr
+                        
+                        cp app/desktop/appResources/linux-x64/AppRun AppDir/AppRun
+                        cp app/desktop/appResources/linux-x64/animeko.desktop AppDir/animeko.desktop
+                        cp app/desktop/appResources/linux-x64/icon.png AppDir/icon.png
+                        
+                        # Fix permissions
+                        chmod a+x AppDir/AppRun
+                        chmod a+x AppDir/usr/bin/Ani
+                        chmod a+x AppDir/usr/lib/runtime/lib/jcef_helper
+                        
+                        # Build AppImage
+                        ARCH=x86_64 ./appimagetool-x86_64.AppImage AppDir
+                        """.trimIndent(),
+                )
+                // Expected output path: Animeko-x86_64.AppImage.
+                // If changed, change also uploadDesktopDistributions in :ci-helper
+
+                val linuxX64AppImage = uses(
+                    name = "Upload Linux packages",
+                    action = UploadArtifact(
+                        name = ArtifactNames.linuxAppImage(matrix.arch),
+                        path_Untyped = "Animeko-x86_64.AppImage",
+                        overwrite = true,
+                        ifNoFilesFound = UploadArtifact.BehaviorIfNoFilesFound.Error,
+                    ),
+                )
+
+                this.linuxX64AppImageOutcome = linuxX64AppImage.outcome
             }
         }
     }
@@ -1559,6 +1671,16 @@ class WithMatrix(
                 runGradle(
                     name = "Upload Desktop Installers",
                     tasks = [":ci-helper:uploadDesktopInstallers", "\"--no-configuration-cache\""],
+                    env = ciHelperSecrets,
+                )
+            }
+        }
+
+        fun JobBuilder<*>.uploadIosIpa() {
+            if (matrix.uploadIpa) {
+                runGradle(
+                    name = "Upload iOS IPA",
+                    tasks = [":ci-helper:uploadIosIpa", "\"--no-configuration-cache\""],
                     env = ciHelperSecrets,
                 )
             }

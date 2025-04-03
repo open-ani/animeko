@@ -24,14 +24,9 @@
 
 package me.him188.ani.datasources.bangumi.models
 
-import me.him188.ani.datasources.bangumi.models.BangumiBloodType
-import me.him188.ani.datasources.bangumi.models.BangumiCharacterType
-import me.him188.ani.datasources.bangumi.models.BangumiPersonImages
-import me.him188.ani.datasources.bangumi.models.BangumiStat
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * 

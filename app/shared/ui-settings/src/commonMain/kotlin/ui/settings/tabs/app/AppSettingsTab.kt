@@ -469,6 +469,7 @@ fun SettingsScope.PlayerGroup(
             },
             title = { Text("播放失败时自动切换资源") },
         )
+        PlayerGroupPlatform(videoScaffoldConfig)
     }
 }
 
@@ -495,3 +496,8 @@ private fun guessReleaseClass(version: String): ReleaseClass {
 
 @Composable
 internal expect fun SettingsScope.AppSettingsTabPlatform()
+
+@Composable
+internal expect fun SettingsScope.PlayerGroupPlatform(
+    videoScaffoldConfig: SettingsState<VideoScaffoldConfig>,
+)

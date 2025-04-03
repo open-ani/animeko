@@ -29,9 +29,9 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
+ * 
  *
- *
- * @param `data`
+ * @param `data` 
  * @param total limit+offset 为参数的请求表示总条数，page 为参数的请求表示总页数
  */
 @Serializable

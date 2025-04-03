@@ -15,13 +15,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.uikit.LocalUIViewController
 import platform.Foundation.NSNotificationCenter
 import platform.UIKit.UIDevice
 import platform.UIKit.UIDeviceOrientation
 import platform.UIKit.UIDeviceOrientationDidChangeNotification
 import platform.darwin.NSObjectProtocol
 
-actual class PlatformWindow {
+actual class PlatformWindow(
+    val uiViewController: platform.UIKit.UIViewController,
+) {
     private var _deviceOrientation by mutableStateOf(getCurrentOrientation())
     actual val deviceOrientation: DeviceOrientation get() = _deviceOrientation
 
@@ -60,7 +63,7 @@ actual class PlatformWindow {
             else -> DeviceOrientation.PORTRAIT
         }
     }
-    
+
     actual fun maximize() {
     }
 
@@ -70,8 +73,9 @@ actual class PlatformWindow {
 
 @Composable
 fun rememberPlatformWindow(): PlatformWindow {
-    val platformWindow = remember {
-        PlatformWindow()
+    val uiViewController = LocalUIViewController.current
+    val platformWindow = remember(uiViewController) {
+        PlatformWindow(uiViewController)
     }
     DisposableEffect(platformWindow) {
         platformWindow.register()
