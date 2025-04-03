@@ -10,6 +10,8 @@
 package me.him188.ani.app.domain.media.cache.storage
 
 import androidx.datastore.core.DataStore
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.plus
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -48,6 +50,7 @@ import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.source.MediaSourceLocation
 import me.him188.ani.datasources.api.source.matches
 import me.him188.ani.utils.coroutines.childScope
+import me.him188.ani.utils.coroutines.update
 import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.io.name
 import me.him188.ani.utils.io.readText
@@ -84,7 +87,7 @@ class DataStoreMediaCacheStorage(
     override suspend fun restorePersistedCaches() {
         val metadataFlowSnapshot = metadataFlow.first()
 
-        val allRecovered = mutableListOf<MediaCache>()
+        val allRecovered = MutableStateFlow(persistentListOf<MediaCache>())
         val semaphore = Semaphore(8)
 
         supervisorScope {
@@ -98,7 +101,7 @@ class DataStoreMediaCacheStorage(
                                 lock.withLock {
                                     listFlow.value += cache
                                 }
-                                allRecovered.add(cache)
+                                allRecovered.update { plus(cache) }
                             },
                         )
                     }
@@ -106,7 +109,7 @@ class DataStoreMediaCacheStorage(
             }
         }
 
-        engine.deleteUnusedCaches(allRecovered)
+        engine.deleteUnusedCaches(allRecovered.value)
     }
 
     private suspend fun restoreFile(
