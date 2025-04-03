@@ -387,27 +387,28 @@ run {
     )
     val ghUbuntu2404 = MatrixInstance(
         runner = Runner.GithubUbuntu2404,
-        uploadApk = false,
-        runAndroidInstrumentedTests = false, // 这其实有问题, GH 没有足够的空间安装 7GB 模拟器
+        uploadApk = true,
+        runAndroidInstrumentedTests = false,
         composeResourceTriple = "linux-x64",
         runTests = false,
         uploadDesktopInstallers = true,
         extraGradleArgs = listOf(
-            "-P$ANI_ANDROID_ABIS=x86_64",
         ),
-        buildAllAndroidAbis = false,
+        buildAllAndroidAbis = true,
         gradleHeap = "8g",
         kotlinCompilerHeap = "6g",
     )
     val ghMac13 = MatrixInstance(
         runner = Runner.GithubMacOS13,
-        uploadApk = true, // all ABIs
+        uploadApk = false, // all ABIs
         runAndroidInstrumentedTests = false,
         composeResourceTriple = "macos-x64",
         uploadDesktopInstallers = true,
-        extraGradleArgs = listOf(),
+        extraGradleArgs = listOf(
+            "-P$ANI_ANDROID_ABIS=arm64-v8a",
+        ),
         buildIosFramework = false,
-        buildAllAndroidAbis = true,
+        buildAllAndroidAbis = false,
         gradleHeap = "6g",
         kotlinCompilerHeap = "6g",
     )
