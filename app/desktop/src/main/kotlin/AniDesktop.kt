@@ -45,7 +45,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import kotlinx.io.files.Path
 import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.data.persistent.dataStores
 import me.him188.ani.app.data.repository.SavedWindowState
@@ -135,6 +134,8 @@ import org.openani.mediamp.compose.MediampPlayerSurfaceProviderLoader
 import org.openani.mediamp.vlc.VlcMediampPlayer
 import org.openani.mediamp.vlc.VlcMediampPlayerFactory
 import org.openani.mediamp.vlc.compose.VlcMediampPlayerSurfaceProvider
+import java.io.File
+import kotlin.io.path.Path
 import kotlin.io.path.absolutePathString
 import kotlin.system.exitProcess
 import kotlin.time.measureTime
@@ -262,20 +263,37 @@ object AniDesktop {
 //                single<AuthorizationNavigator> { AndroidAuthorizationNavigator() }
 //                single<BrowserNavigator> { AndroidBrowserNavigator() }
                     single<TorrentManager> {
+                        val defaultTorrentCachePath = context.torrentDataCacheDir
+
+                        val saveDir = runBlocking {
+                            val settings = get<SettingsRepository>().mediaCacheSettings
+                            val dir = settings.flow.first().saveDir
+
+                            // 首次启动设置默认 dir
+                            if (dir == null) {
+                                val finalPathString = defaultTorrentCachePath.absolutePath
+                                settings.update { copy(saveDir = finalPathString) }
+                                return@runBlocking finalPathString
+                            }
+
+                            // 如果当前目录没有权限读写, 直接使用默认目录
+                            if (!File(dir).run { canRead() && canWrite() }) {
+                                val fallbackPathString = defaultTorrentCachePath.absolutePath
+                                settings.update { copy(saveDir = fallbackPathString) }
+                                return@runBlocking fallbackPathString
+                            }
+
+                            dir
+                        }
+                        logger<TorrentManager>().info { "TorrentManager base save dir: $saveDir" }
+
                         DefaultTorrentManager.create(
                             coroutineScope.coroutineContext,
                             get(),
                             client = get<HttpClientProvider>().get(ScopedHttpClientUserAgent.ANI),
                             get(),
                             get(),
-                            baseSaveDir = {
-                                val saveDir = runBlocking {
-                                    get<SettingsRepository>().mediaCacheSettings.flow.first().saveDir
-                                        ?.let(::Path)
-                                } ?: context.torrentDataCacheDir.toKtPath()
-                                toplevelLogger.info { "TorrentManager baseSaveDir: $saveDir" }
-                                saveDir.inSystem
-                            },
+                            baseSaveDir = { Path(saveDir).toKtPath().inSystem },
                         )
                     }
                     single<MediampPlayerFactory<*>> {

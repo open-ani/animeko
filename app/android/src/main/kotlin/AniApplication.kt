@@ -12,6 +12,7 @@ package me.him188.ani.android
 import android.annotation.SuppressLint
 import android.app.Application
 import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.util.Log
@@ -36,7 +37,6 @@ import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.platform.getCommonKoinModule
 import me.him188.ani.app.platform.startCommonKoinModule
 import me.him188.ani.app.ui.settings.tabs.getLogsDir
-import me.him188.ani.app.ui.settings.tabs.media.DEFAULT_TORRENT_CACHE_DIR_NAME
 import me.him188.ani.utils.analytics.AnalyticsConfig
 import me.him188.ani.utils.analytics.AnalyticsImpl
 import me.him188.ani.utils.coroutines.IO_
@@ -63,6 +63,7 @@ class AniApplication : Application() {
         }
 
         lateinit var instance: Instance
+            private set
 
         /**
          * Only use torrent service at Android 8.1 (27) or above.
@@ -71,7 +72,16 @@ class AniApplication : Application() {
         val FEATURE_USE_TORRENT_SERVICE = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1
     }
 
-    inner class Instance
+    inner class Instance {
+        /**
+         * Since 4.9, Default directory of torrent cache is changed to external/shared storage and
+         * cannot be changed. This is the workaround for startup migration.
+         *
+         * @see Context.getExternalFilesDir
+         */
+        @Volatile
+        var requiresMigration = false
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -114,16 +124,13 @@ class AniApplication : Application() {
             }
         }
 
-        val defaultTorrentCacheDir = applicationContext.filesDir
-            .resolve(DEFAULT_TORRENT_CACHE_DIR_NAME).apply { mkdir() }
-
         OkHttp // survive R8
 
         startKoin {
             androidContext(this@AniApplication)
             modules(getCommonKoinModule({ this@AniApplication }, scope))
 
-            modules(getAndroidModules(defaultTorrentCacheDir, connectionManager.connection, scope))
+            modules(getAndroidModules(connectionManager.connection, scope))
         }.startCommonKoinModule(this@AniApplication, scope)
 
         val koin = getKoin()
