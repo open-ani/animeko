@@ -170,7 +170,7 @@ if (enableIos) {
             package me.him188.ani.app.platform
             object AniBuildConfigIos : AniBuildConfig {
                 override val versionName = "${project.version}"
-                override val isDebug = true
+                override val isDebug = false
                 override val aniAuthServerUrl = if (isDebug) "$aniAuthServerUrlDebug" else "$aniAuthServerUrlRelease"
                 override val dandanplayAppId = "$dandanplayAppId"
                 override val dandanplayAppSecret = "$dandanplayAppSecret"

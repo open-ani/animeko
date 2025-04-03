@@ -112,6 +112,11 @@ private fun MainScreenContent(
         currentWindowAdaptiveInfo1(),
     ),
 ) {
+    val explorationPageViewModel = viewModel { ExplorationPageViewModel() }
+    val userCollectionsViewModel = viewModel<UserCollectionsViewModel> { UserCollectionsViewModel() }
+    val cacheManagementViewModel = viewModel { CacheManagementViewModel() }
+    val scope = rememberCoroutineScope()
+
     AniNavigationSuiteLayout(
         navigationSuite = {
             AniNavigationSuite(
@@ -157,6 +162,22 @@ private fun MainScreenContent(
                     item(
                         page == entry,
                         onClick = { onNavigateToPage(entry) },
+                        onDoubleClick = {
+                            scope.launch {
+                                when (entry) {
+                                    MainScreenPage.Exploration ->
+                                        explorationPageViewModel.explorationPageState.pageScrollState.animateScrollToItem(
+                                            0,
+                                        )
+
+                                    MainScreenPage.Collection ->
+                                        userCollectionsViewModel.lazyGridState.animateScrollToItem(0)
+
+                                    MainScreenPage.CacheManagement ->
+                                        cacheManagementViewModel.lazyGridState.animateScrollToItem(0)
+                                }
+                            }
+                        },
                         icon = { Icon(entry.getIcon(), null) },
                         label = { Text(text = entry.getText()) },
                     )
@@ -188,15 +209,14 @@ private fun MainScreenContent(
             ) { page ->
                 when (page) {
                     MainScreenPage.Exploration -> {
-                        val vm = viewModel { ExplorationPageViewModel() }
                         ExplorationScreen(
-                            vm.explorationPageState,
+                            explorationPageViewModel.explorationPageState,
                             authState,
                             onSearch = onNavigateToSearch,
                             onClickSettings = { navigator.navigateSettings() },
                             onClickLogin = { navigator.navigateBangumiAuthorize() },
                             onClickRetryRefreshSession = {
-                                coroutineScope.launch { vm.refreshLoginSession() }
+                                coroutineScope.launch { explorationPageViewModel.refreshLoginSession() }
                             },
                             modifier = modifier.fillMaxSize(),
                             actions = {
@@ -206,32 +226,33 @@ private fun MainScreenContent(
                     }
 
                     MainScreenPage.Collection -> {
-                        val vm = viewModel<UserCollectionsViewModel> { UserCollectionsViewModel() }
                         CollectionPage(
-                            state = vm.state,
+                            state = userCollectionsViewModel.state,
                             authState = authState,
-                            items = vm.items.collectAsLazyPagingItems(),
+                            items = userCollectionsViewModel.items.collectAsLazyPagingItems(),
                             onClickSearch = onNavigateToSearch,
                             onClickSettings = { navigator.navigateSettings() },
                             onClickLogin = { navigator.navigateBangumiAuthorize() },
                             onClickRetryRefreshSession = {
-                                coroutineScope.launch { vm.refreshLoginSession() }
+                                coroutineScope.launch { userCollectionsViewModel.refreshLoginSession() }
                             },
                             modifier = Modifier.fillMaxSize(),
-                            enableAnimation = vm.myCollectionsSettings.enableListAnimation1,
-                            lazyGridState = vm.lazyGridState,
+                            enableAnimation = userCollectionsViewModel.myCollectionsSettings.enableListAnimation1,
+                            lazyGridState = userCollectionsViewModel.lazyGridState,
                             actions = {
                                 TextButtonUpdateLogo()
                             },
                         )
                     }
 
-                    MainScreenPage.CacheManagement -> CacheManagementScreen(
-                        viewModel { CacheManagementViewModel() },
-                        onPlay = { navigator.navigateEpisodeDetails(it.subjectId, it.episodeId) },
-                        Modifier.fillMaxSize(),
-                        navigationIcon = { },
-                    )
+                    MainScreenPage.CacheManagement -> {
+                        CacheManagementScreen(
+                            cacheManagementViewModel,
+                            onPlay = { navigator.navigateEpisodeDetails(it.subjectId, it.episodeId) },
+                            Modifier.fillMaxSize(),
+                            navigationIcon = { },
+                        )
+                    }
                 }
             }
         }

@@ -271,7 +271,7 @@ if (enableIos) {
             homepage = "https://github.com/open-ani/animeko"
             name = project.name
 
-            ios.deploymentTarget = "12.0"
+            ios.deploymentTarget = "13.0"
 
             // Maps custom Xcode configuration to NativeBuildType
             xcodeConfigurationToNativeBuildType["CUSTOM_DEBUG"] = NativeBuildType.DEBUG

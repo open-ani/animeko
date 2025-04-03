@@ -45,5 +45,20 @@
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>CADisableMinimumFrameDurationOnPhone</key><true/>
+	
+	<key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <!-- Name used just to group related URL schemes -->
+            <key>CFBundleURLName</key>
+            <string>ani.bangumi.oauth.callback</string>
+            
+            <!-- Array of schemes your app should handle -->
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>ani</string>
+            </array>
+        </dict>
+    </array>
 </dict>
 </plist>

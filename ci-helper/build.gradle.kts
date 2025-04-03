@@ -82,6 +82,10 @@ class ArtifactNamer {
         return "${androidApp(fullVersion, arch)}.$server.qrcode.png"
     }
 
+    fun iosIpaQR(fullVersion: String, server: String): String {
+        return "${iosIpa(fullVersion)}.$server.qrcode.png"
+    }
+
     // Ani-2.0.0-beta03-macos-amd64.dmg
     // Ani-2.0.0-beta03-macos-arm64.dmg
     // Ani-2.0.0-beta03-windows-amd64.msi
@@ -139,6 +143,23 @@ tasks.register("uploadAndroidApkQR") {
                 name = namer.androidAppQR(fullVersion, "universal", "cloudflare"),
                 contentType = "image/png",
                 file = rootProject.file("apk-qrcode-cloudflare.png"),
+            )
+        }
+    }
+}
+
+tasks.register("uploadIosIpaQR") {
+    doLast {
+        ReleaseEnvironment().run {
+            uploadReleaseAsset(
+                name = namer.iosIpaQR(fullVersion, "github"),
+                contentType = "image/png",
+                file = rootProject.file("ipa-qrcode-github.png"),
+            )
+            uploadReleaseAsset(
+                name = namer.iosIpaQR(fullVersion, "cloudflare"),
+                contentType = "image/png",
+                file = rootProject.file("ipa-qrcode-cloudflare.png"),
             )
         }
     }

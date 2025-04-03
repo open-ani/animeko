@@ -81,6 +81,5 @@ fun AnalyticsConfig.Companion.create(): AnalyticsConfig {
     return AnalyticsConfig(
         currentAniBuildConfig.versionName,
         currentAniBuildConfig.isDebug,
-        enabled = currentAniBuildConfig.isDebug, // todo: ask for consent then enable for production
     )
 }
