@@ -81,15 +81,15 @@ uploaded.
 | macOS (Intel 芯片) | 正在开发。<br/>点赞[此 issue][macos-intel-issue] 以加快开发速度 |                                              |
 | Linux AppImage   | [主线][cf-linux-x64] / [备线][ghproxy-linux-x64]     | [安装说明][linux安装说明]                            |
 
-或者扫描二维码安装安卓版本:
-
 [github-android-qr]: https://github.com/open-ani/ani/releases/download/$GIT_TAG/ani-$TAG_VERSION-universal.apk.github.qrcode.png
 
 [cf-android-qr]: https://d.myani.org/$GIT_TAG/ani-$TAG_VERSION-universal.apk.cloudflare.qrcode.png
 
-| 安卓 手机/平板/电视                  |
-|------------------------------|
-| ![Cloudflare][cf-android-qr] |
+[cf-ios-qr]: https://d.myani.org/$GIT_TAG/ani-$TAG_VERSION.ipa.cloudflare.qrcode.png
+
+| 安卓 手机/平板/电视                  | iOS IPA (需要自签)           | 
+|------------------------------|--------------------------|
+| ![Cloudflare][cf-android-qr] | ![Cloudflare][cf-ios-qr] |
 
 > - 安卓版本支持 arm64-v8a、armeabi-v7a、x86_64 架构 (几乎所有设备)。
 

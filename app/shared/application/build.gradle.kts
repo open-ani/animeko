@@ -61,6 +61,10 @@ kotlin {
                 @OptIn(ExperimentalKotlinGradlePluginApi::class)
                 transitiveExport = true
             }
+            pod("PostHog") {
+                version = "~> 3.0"
+                extraOpts += listOf("-compiler-option", "-fmodules")
+            }
         }
     }
 }
