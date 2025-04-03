@@ -80,7 +80,7 @@ class AniApplication : Application() {
          * @see Context.getExternalFilesDir
          */
         @Volatile
-        var requiresMigration = false
+        var requiresTorrentCacheMigration = false
     }
 
     override fun onCreate() {
@@ -131,7 +131,14 @@ class AniApplication : Application() {
             modules(getCommonKoinModule({ this@AniApplication }, scope))
 
             modules(getAndroidModules(connectionManager.connection, scope))
-        }.startCommonKoinModule(this@AniApplication, scope)
+        }.startCommonKoinModule(
+            this@AniApplication,
+            scope,
+            /**
+             * If the torrent cache migration is required, we need to restore the caches.
+             */
+            restorePersistedCaches = { !instance.requiresTorrentCacheMigration },
+        )
 
         val koin = getKoin()
         val analyticsInitializer = scope.launch {

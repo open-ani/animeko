@@ -98,7 +98,7 @@ fun getAndroidModules(
             if (dir.startsWith(context.filesDir.absolutePath)) {
                 if (defaultTorrentCachePath != null) {
                     // 如果当前是内部但是默认外部目录可用，则请求迁移. 这是绝大部分用户更新到 4.9 后的 path
-                    AniApplication.instance.requiresMigration = true
+                    AniApplication.instance.requiresTorrentCacheMigration = true
                 }
                 return@runBlocking dir
             } else {
