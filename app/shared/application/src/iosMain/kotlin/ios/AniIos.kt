@@ -42,8 +42,8 @@ import me.him188.ani.app.domain.torrent.DefaultTorrentManager
 import me.him188.ani.app.domain.torrent.TorrentManager
 import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.navigation.BrowserNavigator
+import me.him188.ani.app.navigation.IosBrowserNavigator
 import me.him188.ani.app.navigation.LocalNavigator
-import me.him188.ani.app.navigation.NoopBrowserNavigator
 import me.him188.ani.app.platform.AppStartupTasks
 import me.him188.ani.app.platform.GrantedPermissionManager
 import me.him188.ani.app.platform.IosContext
@@ -71,7 +71,6 @@ import me.him188.ani.app.ui.foundation.widgets.Toaster
 import me.him188.ani.app.ui.main.AniApp
 import me.him188.ani.app.ui.main.AniAppContent
 import me.him188.ani.utils.analytics.AnalyticsConfig
-import me.him188.ani.utils.analytics.AnalyticsImpl
 import me.him188.ani.utils.io.SystemCacheDir
 import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.io.SystemSupportDir
@@ -114,8 +113,9 @@ fun MainViewController(): UIViewController {
         }
         if (settings.allowAnonymousAnalytics) {
             AppStartupTasks.initializeAnalytics {
-                AnalyticsImpl(
+                IosAnalyticsImpl(
                     AnalyticsConfig.create(),
+                    settings.userId,
                 ).apply {
                     init(
                         apiKey = currentAniBuildConfig.analyticsKey,
@@ -189,7 +189,7 @@ fun getIosModules(
     single<PermissionManager> {
         GrantedPermissionManager
     }
-    single<BrowserNavigator> { NoopBrowserNavigator }
+    single<BrowserNavigator> { IosBrowserNavigator() }
     single<TorrentManager> {
         DefaultTorrentManager.create(
             coroutineScope.coroutineContext,

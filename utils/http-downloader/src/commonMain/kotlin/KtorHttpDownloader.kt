@@ -271,7 +271,9 @@ open class KtorHttpDownloader(
     override suspend fun resume(downloadId: DownloadId): Boolean {
         val st = getState(downloadId) ?: return false
         if (st.status != PAUSED && st.status != FAILED) {
-            logger.info { "Cannot resume $downloadId because status=${st.status}" }
+            if (st.status != COMPLETED) {
+                logger.info { "Cannot resume $downloadId because status=${st.status}" }
+            }
             return false
         }
 

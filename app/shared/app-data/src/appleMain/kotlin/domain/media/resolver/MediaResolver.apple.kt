@@ -12,6 +12,7 @@
 package me.him188.ani.app.domain.media.resolver
 
 import androidx.compose.runtime.Composable
+import io.ktor.http.decodeURLPart
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -155,41 +156,45 @@ class IosWebViewVideoExtractor : WebViewVideoExtractor {
         private val scope: CoroutineScope,
     ) {
         private val deferred = CompletableDeferred<WebResource>()
+
+        // Hold strong reference to avoid GC
+        private val aniInterceptContentController = WKUserContentController().apply {
+            addScriptMessageHandler(
+                object : NSObject(), WKScriptMessageHandlerProtocol {
+                    override fun userContentController(
+                        userContentController: WKUserContentController,
+                        didReceiveScriptMessage: WKScriptMessage
+                    ) {
+                        val body = didReceiveScriptMessage.body.toString()
+                        handleInterceptedUrl(body)
+                    }
+                },
+                name = "AniIntercept",
+            )
+        }
         private lateinit var webView: WKWebView
 
         suspend fun run(): WebResource? {
             logger.info { "Starting webview for $pageUrl" }
+
             webView = WKWebView(
                 frame = CGRectMake(0.0, 0.0, 100.0, 100.0), // offscreen or minimal
                 configuration = WKWebViewConfiguration().apply {
                     // Add a user content controller for injecting JS
-                    userContentController = WKUserContentController().apply {
-                        addScriptMessageHandler(
-                            object : NSObject(), WKScriptMessageHandlerProtocol {
-                                override fun userContentController(
-                                    userContentController: WKUserContentController,
-                                    didReceiveScriptMessage: WKScriptMessage
-                                ) {
-                                    val body = didReceiveScriptMessage.body.toString()
-                                    handleInterceptedUrl(body)
-                                }
-                            },
-                            name = "AniIntercept",
-                        )
-                    }
+                    userContentController = aniInterceptContentController
                     // Possibly allow inline media playback, JavaScript, etc.:
                     allowsInlineMediaPlayback = true
                     // If you want to set cookies, you typically do so via NSHTTPCookieStorage
                     // or the WKWebsiteDataStore before loading. We'll show an example below.
                 },
             )
+            try {
+                // Set cookies from config
+                setCookiesFor(pageUrl, config.cookies)
 
-            // Set cookies from config
-            setCookiesFor(pageUrl, config.cookies)
-
-            // Inject JS to intercept all fetch / XHR / <video> tags, etc.
-            // This is a minimal approach. You can enhance to intercept other requests as needed.
-            val injectionScript = """
+                // Inject JS to intercept all fetch / XHR / <video> tags, etc.
+                // This is a minimal approach. You can enhance to intercept other requests as needed.
+                val injectionScript = """
                 // Overwrite fetch:
                 (function(){
                   const oldFetch = window.fetch;
@@ -207,49 +212,46 @@ class IosWebViewVideoExtractor : WebViewVideoExtractor {
                 })();
             """.trimIndent()
 
-            // Allow executing JS
-            webView.configuration.preferences.javaScriptCanOpenWindowsAutomatically = true
+                // Allow executing JS
+                webView.configuration.preferences.javaScriptCanOpenWindowsAutomatically = true
 
-            webView.configuration.userContentController.addUserScript(
-                WKUserScript(
-                    source = injectionScript,
-                    injectionTime = WKUserScriptInjectionTime.WKUserScriptInjectionTimeAtDocumentStart,
-                    forMainFrameOnly = false,
-                ),
-            )
+                webView.configuration.userContentController.addUserScript(
+                    WKUserScript(
+                        source = injectionScript,
+                        injectionTime = WKUserScriptInjectionTime.WKUserScriptInjectionTimeAtDocumentStart,
+                        forMainFrameOnly = false,
+                    ),
+                )
 
-            // WKNavigationDelegate: watch for new main-frame navigations
-            val navDelegate = object : NSObject(), WKNavigationDelegateProtocol {
-                override fun webView(
-                    webView: WKWebView,
-                    decidePolicyForNavigationAction: WKNavigationAction,
-                    decisionHandler: (WKNavigationActionPolicy) -> Unit
-                ) {
-                    val policy = decidePolicyForNavigationAction.request.URL?.absoluteString()?.let {
-                        handleInterceptedUrl(it)
-                    } ?: WKNavigationActionPolicy.WKNavigationActionPolicyAllow
-                    decisionHandler(policy)
+                // WKNavigationDelegate: watch for new main-frame navigations
+                val navDelegate = object : NSObject(), WKNavigationDelegateProtocol {
+                    override fun webView(
+                        webView: WKWebView,
+                        decidePolicyForNavigationAction: WKNavigationAction,
+                        decisionHandler: (WKNavigationActionPolicy) -> Unit
+                    ) {
+                        val policy = decidePolicyForNavigationAction.request.URL?.absoluteString()?.let {
+                            handleInterceptedUrl(it)
+                        } ?: WKNavigationActionPolicy.WKNavigationActionPolicyAllow
+                        decisionHandler(policy)
+                    }
                 }
+                webView.navigationDelegate = navDelegate
+
+
+                logger.info { "Loading page: $pageUrl" }
+                // Finally, load the initial page:
+                webView.loadRequest(NSURLRequest.requestWithURL(NSURL(string = pageUrl)))
+
+                // Wait up to 15 seconds or user cancel
+                val result = withTimeoutOrNull(15.seconds) {
+                    deferred.await()
+                }
+                return result
+            } finally {
+                webView.stopLoading()
+                webView.navigationDelegate = null // help GC    
             }
-            webView.navigationDelegate = navDelegate
-
-
-            logger.info { "Loading page: $pageUrl" }
-            // Finally, load the initial page:
-            webView.loadRequest(NSURLRequest.requestWithURL(NSURL(string = pageUrl)))
-
-            // Wait up to 15 seconds or user cancel
-            val result = withTimeoutOrNull(15.seconds) {
-                deferred.await()
-            }
-
-            webView.stopLoading()
-
-            // TODO: 2025/3/29  dispose webview
-
-            // Dispose the webView. WKWebView can be removed from superview, if attached
-            // If you keep it in memory, you might want to do webView.navigationDelegate = null, etc.
-            return result
         }
 
         // Function to handle any URL that the JS intercepts (or main frame load):
@@ -258,7 +260,7 @@ class IosWebViewVideoExtractor : WebViewVideoExtractor {
             @Suppress("NAME_SHADOWING")
             val url = UrlHelpers.computeAbsoluteUrl(webView.URL?.absoluteString ?: pageUrl, url)
             logger.info { "Processing url: $url" }
-            val instruction = resourceMatcher(url)
+            val instruction = resourceMatcher(url.runCatching { decodeURLPart() }.getOrElse { url })
             when (instruction) {
                 WebViewVideoExtractor.Instruction.Continue -> Unit
                 WebViewVideoExtractor.Instruction.FoundResource -> {
