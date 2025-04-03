@@ -478,6 +478,7 @@ fun getBuildJobBody(matrix: MatrixInstance): JobBuilder<BuildJobOutputs>.() -> U
 
     with(WithMatrix(matrix)) {
         freeSpace()
+        enableSwap()
         deleteLocalProperties()
         installJbr21()
         chmod777()
@@ -874,6 +875,7 @@ workflow(
             val gitTag = getGitTag()
 
             freeSpace()
+            enableSwap()
             deleteLocalProperties()
             installJbr21()
             chmod777()
@@ -1240,6 +1242,22 @@ class WithMatrix(
             )
         } else {
             null
+        }
+    }
+
+    fun JobBuilder<*>.enableSwap() {
+        if (matrix.selfHosted) return
+
+        if (matrix.isUbuntu) {
+            run(
+                name = "Enable Swap",
+                command = """
+                sudo fallocate -l 10G /swapfile
+                sudo chmod 600 /swapfile
+                sudo mkswap /swapfile
+                sudo swapon /swapfile
+            """.trimIndent(),
+            )
         }
     }
 
