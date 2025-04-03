@@ -449,8 +449,11 @@ run {
         ghWin2019,
         ghUbuntu2404,
         ghMac13,
-        selfMac15,
-        ghMac15,
+        selfMac15.copy(
+            // 即使自己机器上传的 dmg 安装时会有问题 (#1479), 也在 build 时使用它, 避免使用太多 GitHub 机器占用并行.
+            // 发版时还是使用 GitHub
+            uploadDesktopInstallers = true,
+        ),
     )
 
     releaseMatrixInstances = listOf(
