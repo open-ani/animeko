@@ -568,7 +568,7 @@ fun KoinApplication.startCommonKoinModule(
                 .filterIsInstance<DataStoreMediaCacheStorage>()
                 .firstOrNull { it.engine is HttpMediaCacheEngine }
                 .let { storage ->
-                    if (storage != null) return@let
+                    if (storage == null) return@let
 
                     val dir = legacyMetadataDir.resolve("web-m3u")
                     if (dir.exists() && dir.isDirectory()) {

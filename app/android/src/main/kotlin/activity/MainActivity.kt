@@ -59,7 +59,10 @@ import me.him188.ani.app.ui.foundation.widgets.Toaster
 import me.him188.ani.app.ui.main.AniApp
 import me.him188.ani.app.ui.main.AniAppContent
 import me.him188.ani.utils.io.absolutePath
+import me.him188.ani.utils.io.createDirectories
+import me.him188.ani.utils.io.exists
 import me.him188.ani.utils.io.inSystem
+import me.him188.ani.utils.io.isDirectory
 import me.him188.ani.utils.io.moveDirectoryRecursively
 import me.him188.ani.utils.io.name
 import me.him188.ani.utils.io.toKtPath
@@ -166,7 +169,7 @@ class MainActivity : AniComponentActivity() {
     private fun migrateTorrentCache() = GlobalScope.launch(Dispatchers.IO) {
         try {
             withContext(Dispatchers.Main) { migrationStatus = MigrationStatus.Init }
-            delay(5000) // 让用户能看清楚目前做的事情
+            delay(15000) // 让用户能看清楚目前做的事情
 
             // hard-coded directory name before 4.9
             val prevPath = filesDir.resolve("torrent-caches").toPath().toKtPath().inSystem
@@ -183,12 +186,15 @@ class MainActivity : AniComponentActivity() {
             }
 
             logger.info { "[migration] Start move from $prevPath to $newPath" }
-            prevPath.moveDirectoryRecursively(newPath) {
-                migrationStatus = MigrationStatus.Cache(it.name)
+            if (prevPath.exists() && prevPath.isDirectory()) {
+                newPath.createDirectories()
+                prevPath.moveDirectoryRecursively(newPath) {
+                    migrationStatus = MigrationStatus.Cache(it.name)
+                }
             }
             logger.info { "[migration] Move complete." }
 
-            val metadataStore = dataStores.mediaCacheMetadataStore
+            val metadataStore = applicationContext.dataStores.mediaCacheMetadataStore
             val torrentStorage = mediaCacheManager.storagesIncludingDisabled
                 .find { it is DataStoreMediaCacheStorage && it.engine is TorrentMediaCacheEngine }
 
@@ -262,14 +268,12 @@ class MainActivity : AniComponentActivity() {
             onDismissRequest = { /* not dismiss-able */ },
             confirmButton = {
                 if (status is MigrationStatus.Error) {
-                    val toaster = LocalToaster.current
                     val clipboard = LocalClipboardManager.current
                     TextButton(
                         {
-                            val errorMessage = status.throwable?.message
+                            val errorMessage = status.throwable?.toString()
                             if (errorMessage != null) {
                                 clipboard.setText(AnnotatedString(errorMessage))
-                                toaster.toast("已复制错误信息")
                             }
                             appTerminator.exitApp(this, 0)
                         },
@@ -290,6 +294,7 @@ class MainActivity : AniComponentActivity() {
         is MigrationStatus.Error ->
             """
             迁移时发生错误, 可能会导致 Ani 后续的闪退等意料之外的问题.
+            
             错误信息:
             ${status.throwable}
             
