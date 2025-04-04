@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -16,13 +16,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import me.him188.ani.app.data.models.preference.MediaPreference
-import me.him188.ani.app.domain.media.selector.DefaultMediaSelector
 import me.him188.ani.app.domain.media.selector.MaybeExcludedMedia
 import me.him188.ani.app.domain.media.selector.MediaPreferenceItem
 import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.media.selector.MediaSelectorEvents
 import me.him188.ani.app.domain.media.selector.MutableMediaSelectorEvents
 import me.him188.ani.app.domain.media.selector.OptionalPreference
+import me.him188.ani.app.domain.media.selector.filter.MediaSelectorFilterSortAlgorithm
 import me.him188.ani.app.domain.media.selector.orElse
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.topic.Resolution
@@ -63,6 +63,7 @@ open class TestMediaSelector(
             ).map { it.id },
         ),
     ),
+    private val algorithm: MediaSelectorFilterSortAlgorithm = MediaSelectorFilterSortAlgorithm(),
 ) : MediaSelector {
     final override val filteredCandidatesMedia: Flow<List<Media>> =
         filteredCandidates.map { list -> list.mapNotNull { it.result } }
@@ -87,7 +88,7 @@ open class TestMediaSelector(
     }
     final override val preferredCandidates: Flow<List<MaybeExcludedMedia>> =
         combine(filteredCandidates, mergedPreference) { mediaList, preference ->
-            DefaultMediaSelector.filterCandidates(mediaList, preference)
+            algorithm.filterByPreference(mediaList, preference)
         }
 
     final override val preferredCandidatesMedia: Flow<List<Media>> =

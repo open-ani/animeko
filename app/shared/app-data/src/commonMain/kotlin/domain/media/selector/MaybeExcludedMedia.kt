@@ -115,13 +115,10 @@ sealed class MediaExclusionReason {
 }
 
 data class MatchMetadata(
-    val subjectMatchKind: SubjectMatchKind,
-    /**
-     * media 识别到了精准的 sort, 并且完全匹配正在观看的 [sort][EpisodeInfo.sort].
-     * 注意, 这不包含匹配 [EpisodeInfo.ep], 因为我们无法在第二季时根据 ep 区分是否正确.
-     */
-    val episodeMatchKind: EpisodeMatchKind,
-    val similarity: @Range(from = 0L, to = 100L) Int,
+    val subjectMatchKind: SubjectMatchKind, // FUZZY or EXACT
+    val episodeMatchKind: EpisodeMatchKind, // NONE, EP, SORT
+    /** 条目名称相似度 */
+    val similarity: @Range(from = 0L, to = 100L) Int, 
 ) {
     enum class SubjectMatchKind {
         /**

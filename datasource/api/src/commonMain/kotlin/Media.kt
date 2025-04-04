@@ -340,3 +340,7 @@ enum class SubtitleKind {
      */
     CLOSED_OR_EXTERNAL_DISCOVER,
 }
+
+fun Media.isLocalCache(): Boolean {
+    return kind == MediaSourceKind.LocalCache
+}
