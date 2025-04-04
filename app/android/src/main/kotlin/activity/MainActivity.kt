@@ -187,15 +187,7 @@ class MainActivity : AniComponentActivity() {
                             LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                         }
                         Spacer(modifier = Modifier.height(24.dp))
-                        Text(
-                            """
-                            从 4.9 版本起，Ani 不再将 BT 缓存存放之内部目录. 目前你的缓存位置在内部目录，Ani 正在迁移它们到外部目录.
-                            
-                            将缓存存放在外部目录可以使其他较高权限的应用访问或播放你的缓存，例如使用 Shizuku 授权的应用.
-                            
-                            迁移过程中设备可能会轻微卡顿，请不要强制关闭 Ani，这可能导致缓存损坏或下次启动应用闪退.
-                        """.trimIndent(),
-                        )
+                        Text("迁移过程中设备可能会轻微卡顿, 请不要强制关闭 Ani，这可能导致缓存损坏或下次启动应用闪退")
                     }
                 }
             },
