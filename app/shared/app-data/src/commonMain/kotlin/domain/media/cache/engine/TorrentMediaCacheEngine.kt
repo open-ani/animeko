@@ -366,19 +366,23 @@ class TorrentMediaCacheEngine(
         newSaveDir: Path
     ): MediaCacheMetadata {
         val currentTorrentData = original.extra[EXTRA_TORRENT_DATA]?.hexToByteArray() ?: return original
+
+        // TODO: The hardcoded path is for anitorrent only. 
+        // see AnitorrentTorrentDownloader
+        val newTorrentCacheDir = newSaveDir
+            .resolve(torrentEngine.type.id)
+            .resolve("pieces")
+            .resolve(currentTorrentData.contentHashCode().toString())
+            .inSystem.absolutePath
+
+        logger.info {
+            "Migrate metadata, EXTRA_TORRENT_CACHE_DIR prev: ${original.extra[EXTRA_TORRENT_CACHE_DIR]}, " +
+                    "new: $newTorrentCacheDir"
+        }
+
         return original.copy(
-            extra = original.extra.toMutableMap().apply {
-                put(
-                    EXTRA_TORRENT_CACHE_DIR,
-                    // TODO: The hardcoded path is for anitorrent only. 
-                    // see AnitorrentTorrentDownloader
-                    newSaveDir
-                        .resolve(torrentEngine.type.id)
-                        .resolve("pieces")
-                        .resolve(currentTorrentData.contentHashCode().toString())
-                        .inSystem.absolutePath,
-                )
-            },
+            extra = original.extra.toMutableMap()
+                .apply { put(EXTRA_TORRENT_CACHE_DIR, newTorrentCacheDir) },
         )
     }
 
@@ -402,7 +406,7 @@ class TorrentMediaCacheEngine(
             val saves = downloader.listSaves()
             for (save in saves) {
                 if (save.absolutePath !in allowedAbsolute) {
-                    logger.warn { "本地种子缓存文件未找到匹配的 MediaCache, 已释放 ${save.actualSize()}: ${save.absolutePath}" }
+                    logger.warn { "本地种子缓存文件未找到匹配的 MediaCache, 已释放 ${save.actualSize().bytes}: ${save.absolutePath}" }
                     save.deleteRecursively()
                 }
             }
