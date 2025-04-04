@@ -28,7 +28,7 @@ import me.him188.ani.app.domain.media.cache.storage.DataStoreMediaCacheStorage
 import me.him188.ani.app.domain.media.cache.storage.MediaCacheSave
 import me.him188.ani.app.platform.AppTerminator
 import me.him188.ani.utils.io.absolutePath
-import me.him188.ani.utils.io.createDirectories
+import me.him188.ani.utils.io.actualSize
 import me.him188.ani.utils.io.exists
 import me.him188.ani.utils.io.inSystem
 import me.him188.ani.utils.io.isDirectory
@@ -67,7 +67,7 @@ class TorrentCacheMigrator(
             val prevPath = context.filesDir.resolve("torrent-caches").toPath().toKtPath().inSystem
             val newPath = context.getExternalFilesDir(Environment.DIRECTORY_MOVIES)?.toPath()?.toKtPath()?.inSystem
 
-            _status.value = Status.Cache(null)
+            _status.value = Status.Cache(null, 0, 0)
             if (newPath == null) {
                 logger.error { "[migration] Failed to get external files dir while migrating cache." }
                 _status.value = Status.Error(IllegalStateException("Shared storage is not currently available."))
@@ -76,9 +76,12 @@ class TorrentCacheMigrator(
 
             logger.info { "[migration] Start move from $prevPath to $newPath" }
             if (prevPath.exists() && prevPath.isDirectory()) {
-                newPath.createDirectories()
+                val totalSize = prevPath.actualSize()
+                var migratedSize = 0L
+
                 prevPath.moveDirectoryRecursively(newPath) {
-                    _status.value = Status.Cache(it.name)
+                    _status.value = Status.Cache(it.name, totalSize, migratedSize)
+                    migratedSize += it.actualSize()
                 }
             }
             logger.info { "[migration] Move complete." }
@@ -126,7 +129,7 @@ class TorrentCacheMigrator(
     sealed interface Status {
         object Init : Status
 
-        class Cache(val currentFile: String?) : Status
+        class Cache(val currentFile: String?, val totalSize: Long, val migratedSize: Long) : Status
 
         object Metadata : Status
 

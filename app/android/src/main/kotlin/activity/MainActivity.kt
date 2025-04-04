@@ -53,6 +53,7 @@ import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.Toaster
 import me.him188.ani.app.ui.main.AniApp
 import me.him188.ani.app.ui.main.AniAppContent
+import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.logger
 import org.koin.android.ext.android.inject
@@ -177,7 +178,14 @@ class MainActivity : AniComponentActivity() {
                     Text(renderMigrationStatus(status = status))
                     if (status !is TorrentCacheMigrator.Status.Error) {
                         Spacer(modifier = Modifier.height(24.dp))
-                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                        if (status is TorrentCacheMigrator.Status.Cache) {
+                            LinearProgressIndicator(
+                                progress = { status.migratedSize.toFloat() / status.totalSize.coerceAtLeast(1L) },
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        } else {
+                            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                        }
                         Spacer(modifier = Modifier.height(24.dp))
                         Text(
                             """
@@ -212,7 +220,9 @@ class MainActivity : AniComponentActivity() {
     private fun renderMigrationStatus(status: TorrentCacheMigrator.Status) = when (status) {
         is TorrentCacheMigrator.Status.Init -> "正在准备..."
         is TorrentCacheMigrator.Status.Cache ->
-            if (status.currentFile != null) "迁移缓存: \n${status.currentFile}" else "迁移缓存..."
+            if (status.currentFile != null)
+                "迁移缓存（${status.migratedSize.bytes} / ${status.totalSize.bytes}）:\n${status.currentFile}"
+            else "迁移缓存..."
 
         is TorrentCacheMigrator.Status.Metadata -> "合并元数据..."
 
