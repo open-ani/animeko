@@ -256,12 +256,13 @@ class MainActivity : AniComponentActivity() {
                         Spacer(modifier = Modifier.height(24.dp))
                         Text(
                             """
-                            从 4.9 版本起，BT 缓存位置将不再被允许设置为内部私有目录 (位置为 /data/data/me.him188.ani/files/)，
-                            目前你的缓存位置在内部私有目录，Ani 正在迁移它们到外部私有目录 (例如 /storage/emulated/0/Android/data/me.him188.ani/).
+                            从 4.9 版本起，Ani 不再将 BT 缓存存放之内部目录. 目前你的缓存位置在内部目录，Ani 正在迁移它们到外部目录.
+                            
+                            将缓存存放在外部目录可以使其他较高权限的应用访问或播放你的缓存，例如使用 Shizuku 授权的应用.
+                            
+                            此过程是完全自动的，迁移过程中设备可能会轻微卡顿. 请不要强制关闭 Ani，这可能导致缓存损坏或下次启动应用闪退.
                         """.trimIndent(),
                         )
-                        Text("此过程是完全自动的，迁移完成后 Ani 将自动关闭.")
-                        Text("请不要强制关闭 Ani，这可能导致缓存损坏或下次启动应用闪退.")
                     }
                 }
             },
