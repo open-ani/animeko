@@ -9,15 +9,6 @@
 
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 
-/*
- * Copyright (C) 2024-2025 OpenAni and contributors.
- *
- * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
- * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
- *
- * https://github.com/open-ani/ani/blob/main/LICENSE
- */
-
 plugins {
     kotlin("multiplatform")
     id("com.android.library")
@@ -53,17 +44,19 @@ android {
 kotlin {
     if (enableIos) {
         // Sentry requires cocoapods for its dependencies
-        extensions.configure<org.jetbrains.kotlin.gradle.plugin.cocoapods.CocoapodsExtension> {
-            // https://kotlinlang.org/docs/native-cocoapods.html#configure-existing-project
-            framework {
-                baseName = "application"
-                isStatic = false
-                @OptIn(ExperimentalKotlinGradlePluginApi::class)
-                transitiveExport = true
-            }
-            pod("PostHog") {
-                version = "~> 3.0"
-                extraOpts += listOf("-compiler-option", "-fmodules")
+        if (getOs() == Os.MacOS) {
+            extensions.configure<org.jetbrains.kotlin.gradle.plugin.cocoapods.CocoapodsExtension> {
+                // https://kotlinlang.org/docs/native-cocoapods.html#configure-existing-project
+                framework {
+                    baseName = "application"
+                    isStatic = false
+                    @OptIn(ExperimentalKotlinGradlePluginApi::class)
+                    transitiveExport = true
+                }
+                pod("PostHog") {
+                    version = "~> 3.0"
+                    extraOpts += listOf("-compiler-option", "-fmodules")
+                }
             }
         }
     }

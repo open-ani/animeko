@@ -6,6 +6,7 @@ build/
 local.properties
 .kotlin/
 **/test-sandbox/
+**/*.podspec
 
 # Local source files
 **/local.kt

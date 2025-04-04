@@ -192,7 +192,7 @@ class DataStoreMediaCacheStorage(
             )
             withContext(Dispatchers.IO) {
                 store.updateData { list ->
-                    list + MediaCacheSave(media, metadata, engine.engineKey)
+                    list + MediaCacheSave(cache.origin, cache.metadata, engine.engineKey)
                 }
             }
             listFlow.value += cache

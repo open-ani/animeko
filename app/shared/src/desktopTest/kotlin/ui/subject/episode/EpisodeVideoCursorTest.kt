@@ -156,7 +156,7 @@ class EpisodeVideoCursorTest {
             Player()
         }
         runOnIdle {
-            waitUntil { cursorVisible.exists() }
+            waitUntil(timeoutMillis = WAIT_TIMEOUT) { cursorVisible.exists() }
         }
     }
 
@@ -170,7 +170,7 @@ class EpisodeVideoCursorTest {
             Player()
         }
         runOnIdle {
-            waitUntil { cursorVisible.exists() } // 因为没有 hover
+            waitUntil(timeoutMillis = WAIT_TIMEOUT) { cursorVisible.exists() } // 因为没有 hover
         }
     }
 
@@ -185,7 +185,7 @@ class EpisodeVideoCursorTest {
             Player()
         }
         runOnIdle {
-            waitUntil { cursorVisible.exists() } // 因为没有 hover
+            waitUntil(timeoutMillis = WAIT_TIMEOUT) { cursorVisible.exists() } // 因为没有 hover
         }
         runOnIdle {
             onRoot().performMouseInput {
@@ -193,7 +193,7 @@ class EpisodeVideoCursorTest {
             }
         } // 这里不会因为滑动鼠标而显示 controller 进而显示 cursor, 因为会自动 advance 时间跳过状态
         runOnIdle {
-            waitUntil { cursorInvisible.exists() }
+            waitUntil(timeoutMillis = WAIT_TIMEOUT) { cursorInvisible.exists() }
         }
     }
 
@@ -207,7 +207,7 @@ class EpisodeVideoCursorTest {
             Player()
         }
         runOnIdle {
-            waitUntil { cursorVisible.exists() } // 因为没有 hover
+            waitUntil(timeoutMillis = WAIT_TIMEOUT) { cursorVisible.exists() } // 因为没有 hover
         }
         runOnIdle {
             onRoot().performMouseInput {
@@ -215,7 +215,7 @@ class EpisodeVideoCursorTest {
             }
         }
         runOnIdle {
-            waitUntil { cursorInvisible.exists() } // hover 了
+            waitUntil(timeoutMillis = WAIT_TIMEOUT) { cursorInvisible.exists() } // hover 了
         }
         runOnIdle {
             onRoot().performMouseInput {
@@ -224,7 +224,7 @@ class EpisodeVideoCursorTest {
         }
         runOnIdle {
             assertEquals(ControllerVisibility.Invisible, controllerState.visibility)
-            waitUntil { cursorVisible.exists() }
+            waitUntil(timeoutMillis = WAIT_TIMEOUT) { cursorVisible.exists() }
         }
     }
 
@@ -241,7 +241,7 @@ class EpisodeVideoCursorTest {
         val root = onAllNodes(isRoot()).onFirst()
         runOnIdle {
             assertEquals(true, controllerState.visibility.topBar)
-            waitUntil { cursorVisible.exists() } // 因为没有 hover
+            waitUntil(timeoutMillis = WAIT_TIMEOUT) { cursorVisible.exists() } // 因为没有 hover
             root.performMouseInput {
                 moveTo(centerRight) // 初始在视频外面
             }
@@ -258,15 +258,15 @@ class EpisodeVideoCursorTest {
         }
         runOnIdle {
             assertEquals(true, controllerState.visibility.topBar)
-            waitUntil { cursorVisible.exists() }
+            waitUntil(timeoutMillis = WAIT_TIMEOUT) { cursorVisible.exists() }
         }
         runOnIdle {
             mainClock.advanceTimeBy((VIDEO_GESTURE_MOUSE_MOVE_SHOW_CONTROLLER_DURATION + 1.seconds).inWholeMilliseconds)
             mainClock.autoAdvance = true
         }
         runOnIdle {
-            waitUntil { topBar.doesNotExist() }
-            waitUntil { cursorInvisible.doesNotExist() }
+            waitUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.doesNotExist() }
+            waitUntil(timeoutMillis = WAIT_TIMEOUT) { cursorInvisible.doesNotExist() }
             assertEquals(false, controllerState.visibility.topBar)
         }
     }

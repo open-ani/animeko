@@ -262,20 +262,22 @@ if (android != null) {
 }
 
 if (enableIos) {
-    apply(plugin = "org.jetbrains.kotlin.native.cocoapods")
+    if (getOs() == Os.MacOS) {
+        apply(plugin = "org.jetbrains.kotlin.native.cocoapods")
 
-    configure<KotlinMultiplatformExtension> {
-        this.configure<CocoapodsExtension> {
-            version = project.version.toString()
-            summary = project.name
-            homepage = "https://github.com/open-ani/animeko"
-            name = project.name
+        configure<KotlinMultiplatformExtension> {
+            this.configure<CocoapodsExtension> {
+                version = project.version.toString()
+                summary = project.name
+                homepage = "https://github.com/open-ani/animeko"
+                name = project.name
 
-            ios.deploymentTarget = "13.0"
+                ios.deploymentTarget = "13.0"
 
-            // Maps custom Xcode configuration to NativeBuildType
-            xcodeConfigurationToNativeBuildType["CUSTOM_DEBUG"] = NativeBuildType.DEBUG
-            xcodeConfigurationToNativeBuildType["CUSTOM_RELEASE"] = NativeBuildType.RELEASE
+                // Maps custom Xcode configuration to NativeBuildType
+                xcodeConfigurationToNativeBuildType["CUSTOM_DEBUG"] = NativeBuildType.DEBUG
+                xcodeConfigurationToNativeBuildType["CUSTOM_RELEASE"] = NativeBuildType.RELEASE
+            }
         }
     }
 }
