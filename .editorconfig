@@ -999,8 +999,8 @@ ij_markdown_max_lines_between_paragraphs = 1
 ij_markdown_min_lines_around_block_elements = 1
 ij_markdown_min_lines_around_header = 1
 ij_markdown_min_lines_between_paragraphs = 1
-ij_markdown_wrap_text_if_long = true
-ij_markdown_wrap_text_inside_blockquotes = true
+ij_markdown_wrap_text_if_long = false
+ij_markdown_wrap_text_inside_blockquotes = false
 
 [{*.pb,*.textproto}]
 indent_size = 2
