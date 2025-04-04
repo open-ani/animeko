@@ -52,7 +52,6 @@ import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.desktop.storage.AppFolderResolver
 import me.him188.ani.app.desktop.storage.AppInfo
 import me.him188.ani.app.desktop.window.WindowFrame
-import me.him188.ani.app.domain.foundation.get
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.settings.ProxyProvider
 import me.him188.ani.app.domain.update.UpdateManager
@@ -70,6 +69,7 @@ import me.him188.ani.app.platform.create
 import me.him188.ani.app.platform.createAppRootCoroutineScope
 import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.platform.getCommonKoinModule
+import me.him188.ani.app.platform.startCommonKoinModule
 import me.him188.ani.app.platform.window.HandleWindowsWindowProc
 import me.him188.ani.app.platform.window.LocalTitleBarThemeController
 import me.him188.ani.app.platform.window.rememberLayoutHitTestOwner
@@ -229,7 +229,7 @@ object AniDesktop {
         val koin = startKoin {
             modules(getCommonKoinModule({ context }, coroutineScope))
             modules(getDesktopModules({ context }, coroutineScope))
-        }.startCommoxnKoinModule(context, coroutineScope)
+        }.startCommonKoinModule(context, coroutineScope)
 
 
         // Startup ok, run test task if needed
