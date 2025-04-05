@@ -7,15 +7,11 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-@file:OptIn(ExperimentalForeignApi::class)
-
 package me.him188.ani.app.domain.media.resolver
 
 import androidx.compose.runtime.Composable
-import io.ktor.http.decodeURLPart
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -38,6 +34,8 @@ import platform.Foundation.NSHTTPCookie
 import platform.Foundation.NSHTTPCookieStorage
 import platform.Foundation.NSURL
 import platform.Foundation.NSURLRequest
+import platform.WebKit.WKAudiovisualMediaTypeNone
+import platform.WebKit.WKDownload
 import platform.WebKit.WKNavigationAction
 import platform.WebKit.WKNavigationActionPolicy
 import platform.WebKit.WKNavigationDelegateProtocol
@@ -48,6 +46,7 @@ import platform.WebKit.WKUserScript
 import platform.WebKit.WKUserScriptInjectionTime
 import platform.WebKit.WKWebView
 import platform.WebKit.WKWebViewConfiguration
+import platform.WebKit.WKWebpagePreferences
 import platform.darwin.NSObject
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration.Companion.seconds
@@ -75,6 +74,7 @@ class IosWebMediaResolver(
     override suspend fun resolve(media: Media, episode: EpisodeMetadata): MediaDataProvider<MediaData> {
         if (!supports(media)) throw UnsupportedMediaException(media)
 
+        val extractor = IosWebViewVideoExtractor()
         // Gather all matchers: from the media source + from the classpath
         val matchersFromMediaSource = matcherLoader.loadMatchers(media.mediaSourceId)
 
@@ -96,12 +96,9 @@ class IosWebMediaResolver(
         }
         logger.info { "Final config: $config" }
 
-        // Use the iOS webview-based extractor
-        val extractor = IosWebViewVideoExtractor()
-
         var video: WebVideo? = null
         withContext(Dispatchers.Default) {
-            extractor.getVideoResourceUrl(
+            withContext(Dispatchers.Main) { extractor!! }.getVideoResourceUrl(
                 context = this@IosWebMediaResolver.iosContext,
                 pageUrl = media.download.uri,
                 config = config,
@@ -138,6 +135,81 @@ class IosWebViewVideoExtractor : WebViewVideoExtractor {
         private val logger = logger<IosWebViewVideoExtractor>()
     }
 
+    private val aniInterceptContentController = WKUserContentController().apply {
+        // Add the message handler for "AniIntercept"
+        addScriptMessageHandler(
+            object : NSObject(), WKScriptMessageHandlerProtocol {
+                override fun userContentController(
+                    userContentController: WKUserContentController,
+                    didReceiveScriptMessage: WKScriptMessage
+                ) {
+                    val body = didReceiveScriptMessage.body.toString()
+                    logger.info { "JS -> Native: $body" }
+                    currentHandler?.handleInterceptedUrl(body)
+                }
+            },
+            name = "AniIntercept",
+        )
+
+        // Insert a small test to ensure the script actually runs
+        val injectionScript = """
+            console.log("[AniIntercept] Script injected at documentStart.");
+            (function() {
+                const oldFetch = window.fetch;
+                window.fetch = function() {
+                    const url = arguments[0];
+                    console.log("[AniIntercept] fetch called:", url);
+                    window.webkit.messageHandlers.AniIntercept.postMessage(url);
+                    return oldFetch.apply(this, arguments);
+                };
+
+                const oldOpen = XMLHttpRequest.prototype.open;
+                XMLHttpRequest.prototype.open = function(method, url) {
+                    console.log("[AniIntercept] XHR open:", url);
+                    window.webkit.messageHandlers.AniIntercept.postMessage(url);
+                    return oldOpen.apply(this, arguments);
+                };
+            })();
+            
+            (function() {
+              const origSetSrc = HTMLMediaElement.prototype.setAttribute;
+              HTMLMediaElement.prototype.setAttribute = function(name, value) {
+                if (name === 'src') {
+                  window.webkit.messageHandlers.AniIntercept.postMessage(value);
+                }
+                return origSetSrc.apply(this, arguments);
+              };
+            })();
+        """.trimIndent()
+
+        addUserScript(
+            WKUserScript(
+                source = injectionScript,
+                injectionTime = WKUserScriptInjectionTime.WKUserScriptInjectionTimeAtDocumentStart,
+                forMainFrameOnly = false,
+            ),
+        )
+    }
+
+    @OptIn(ExperimentalForeignApi::class)
+    val webView: WKWebView = WKWebView(
+        frame = CGRectMake(0.0, 0.0, 1000.0, 1000.0),
+        configuration = WKWebViewConfiguration().apply {
+            allowsInlineMediaPlayback = true
+            mediaTypesRequiringUserActionForPlayback = WKAudiovisualMediaTypeNone
+            preferences.javaScriptCanOpenWindowsAutomatically = true
+            userContentController = aniInterceptContentController
+
+            // For demonstration; tweak if needed
+            defaultWebpagePreferences.allowsContentJavaScript = true
+            preferences.fraudulentWebsiteWarningEnabled = false
+            limitsNavigationsToAppBoundDomains = false
+            upgradeKnownHostsToHTTPS = false
+        },
+    )
+
+    private var currentHandler: Handler? = null
+
     @OptIn(DelicateCoroutinesApi::class)
     override suspend fun getVideoResourceUrl(
         context: Context,
@@ -145,7 +217,10 @@ class IosWebViewVideoExtractor : WebViewVideoExtractor {
         config: WebViewConfig,
         resourceMatcher: (String) -> WebViewVideoExtractor.Instruction
     ): WebResource? = withContext(Dispatchers.Main) {
-        Handler(pageUrl, config, resourceMatcher, this).run()
+        // Create a new handler for each request to avoid re-entrancy issues
+        val handler = Handler(pageUrl, config, resourceMatcher)
+        currentHandler = handler
+        handler.run()
     }
 
     @OptIn(DelicateCoroutinesApi::class)
@@ -153,114 +228,58 @@ class IosWebViewVideoExtractor : WebViewVideoExtractor {
         private val pageUrl: String,
         private val config: WebViewConfig,
         private val resourceMatcher: (String) -> WebViewVideoExtractor.Instruction,
-        private val scope: CoroutineScope,
     ) {
         private val deferred = CompletableDeferred<WebResource>()
 
-        // Hold strong reference to avoid GC
-        private val aniInterceptContentController = WKUserContentController().apply {
-            addScriptMessageHandler(
-                object : NSObject(), WKScriptMessageHandlerProtocol {
-                    override fun userContentController(
-                        userContentController: WKUserContentController,
-                        didReceiveScriptMessage: WKScriptMessage
-                    ) {
-                        val body = didReceiveScriptMessage.body.toString()
-                        handleInterceptedUrl(body)
-                    }
-                },
-                name = "AniIntercept",
-            )
-        }
-        private lateinit var webView: WKWebView
-
         suspend fun run(): WebResource? {
             logger.info { "Starting webview for $pageUrl" }
-
-            webView = WKWebView(
-                frame = CGRectMake(0.0, 0.0, 100.0, 100.0), // offscreen or minimal
-                configuration = WKWebViewConfiguration().apply {
-                    // Add a user content controller for injecting JS
-                    userContentController = aniInterceptContentController
-                    // Possibly allow inline media playback, JavaScript, etc.:
-                    allowsInlineMediaPlayback = true
-                    // If you want to set cookies, you typically do so via NSHTTPCookieStorage
-                    // or the WKWebsiteDataStore before loading. We'll show an example below.
-                },
+            webView.setCustomUserAgent(
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) " +
+                        "Chrome/58.0.3029.110 Safari/537.3",
             )
+
             try {
                 // Set cookies from config
                 setCookiesFor(pageUrl, config.cookies)
 
-                // Inject JS to intercept all fetch / XHR / <video> tags, etc.
-                // This is a minimal approach. You can enhance to intercept other requests as needed.
-                val injectionScript = """
-                // Overwrite fetch:
-                (function(){
-                  const oldFetch = window.fetch;
-                  window.fetch = function() {
-                    const url = arguments[0];
-                    window.webkit.messageHandlers.AniIntercept.postMessage(url);
-                    return oldFetch.apply(this, arguments);
-                  };
-                  // Also intercept XHR:
-                  const oldOpen = XMLHttpRequest.prototype.open;
-                  XMLHttpRequest.prototype.open = function(method, url) {
-                    window.webkit.messageHandlers.AniIntercept.postMessage(url);
-                    return oldOpen.apply(this, arguments);
-                  };
-                })();
-            """.trimIndent()
-
-                // Allow executing JS
-                webView.configuration.preferences.javaScriptCanOpenWindowsAutomatically = true
-
-                webView.configuration.userContentController.addUserScript(
-                    WKUserScript(
-                        source = injectionScript,
-                        injectionTime = WKUserScriptInjectionTime.WKUserScriptInjectionTimeAtDocumentStart,
-                        forMainFrameOnly = false,
-                    ),
-                )
-
-                // WKNavigationDelegate: watch for new main-frame navigations
-                val navDelegate = object : NSObject(), WKNavigationDelegateProtocol {
-                    override fun webView(
-                        webView: WKWebView,
-                        decidePolicyForNavigationAction: WKNavigationAction,
-                        decisionHandler: (WKNavigationActionPolicy) -> Unit
-                    ) {
-                        val policy = decidePolicyForNavigationAction.request.URL?.absoluteString()?.let {
-                            handleInterceptedUrl(it)
-                        } ?: WKNavigationActionPolicy.WKNavigationActionPolicyAllow
-                        decisionHandler(policy)
-                    }
-                }
+                // Set up the WKNavigationDelegate to intercept main-frame navigations
                 webView.navigationDelegate = navDelegate
 
-
                 logger.info { "Loading page: $pageUrl" }
-                // Finally, load the initial page:
                 webView.loadRequest(NSURLRequest.requestWithURL(NSURL(string = pageUrl)))
 
-                // Wait up to 15 seconds or user cancel
                 val result = withTimeoutOrNull(15.seconds) {
                     deferred.await()
                 }
                 return result
             } finally {
+                logger.info { "Cleaning up webview" }
                 webView.stopLoading()
-                webView.navigationDelegate = null // help GC    
+                webView.loadHTMLString("", baseURL = null)
+                webView.navigationDelegate = null
+                // Remove the injected script so subsequent calls can re-inject if needed.
             }
         }
 
-        // Function to handle any URL that the JS intercepts (or main frame load):
-        fun doHandleUrl(url: String): WKNavigationActionPolicy {
+        private val handledUrls = mutableSetOf<String>()
+
+        fun handleInterceptedUrl(url: String) = doHandleUrl(url)
+
+        // Shared logic for any new request we want to evaluate
+        private fun doHandleUrl(rawUrl: String): WKNavigationActionPolicy {
             if (deferred.isCompleted) return WKNavigationActionPolicy.WKNavigationActionPolicyAllow
-            @Suppress("NAME_SHADOWING")
-            val url = UrlHelpers.computeAbsoluteUrl(webView.URL?.absoluteString ?: pageUrl, url)
+
+            val currentWebViewUrl = webView.URL?.absoluteString ?: pageUrl
+            val url = UrlHelpers.computeAbsoluteUrl(currentWebViewUrl, rawUrl)
+
+            if (handledUrls.contains(url)) {
+                logger.info { "Already handled url: $url" }
+                return WKNavigationActionPolicy.WKNavigationActionPolicyAllow
+            }
+            handledUrls.add(url)
+
             logger.info { "Processing url: $url" }
-            val instruction = resourceMatcher(url.runCatching { decodeURLPart() }.getOrElse { url })
+            val instruction = resourceMatcher(url)
             when (instruction) {
                 WebViewVideoExtractor.Instruction.Continue -> Unit
                 WebViewVideoExtractor.Instruction.FoundResource -> {
@@ -271,22 +290,68 @@ class IosWebViewVideoExtractor : WebViewVideoExtractor {
 
                 WebViewVideoExtractor.Instruction.LoadPage -> {
                     logger.info { "Load nested page: $url" }
-                    // Navigate the WKWebView to the new URL:
+                    webView.stopLoading()
                     webView.loadRequest(NSURLRequest.requestWithURL(NSURL(string = url)))
+                    return WKNavigationActionPolicy.WKNavigationActionPolicyCancel
                 }
             }
             return WKNavigationActionPolicy.WKNavigationActionPolicyAllow
         }
 
-        fun handleInterceptedUrl(url: String) = doHandleUrl(url)
+        // A simple delegate to catch main-frame navigations
+        private val navDelegate = object : NSObject(), WKNavigationDelegateProtocol {
+            override fun webView(
+                webView: WKWebView,
+                decidePolicyForNavigationAction: WKNavigationAction,
+                decisionHandler: (WKNavigationActionPolicy) -> Unit
+            ) {
+                try {
+                    val policy = decidePolicyForNavigationAction.request.URL?.absoluteString?.let {
+                        handleInterceptedUrl(it)
+                    } ?: WKNavigationActionPolicy.WKNavigationActionPolicyAllow
+                    decisionHandler(policy)
+                } catch (e: Throwable) {
+                    logger.info { "Error in navigation action: ${e.message}" }
+                    decisionHandler(WKNavigationActionPolicy.WKNavigationActionPolicyAllow)
+                }
+            }
+
+            override fun webView(
+                webView: WKWebView,
+                navigationAction: WKNavigationAction,
+                didBecomeDownload: WKDownload
+            ) {
+                didBecomeDownload.originalRequest?.URL?.absoluteString?.let {
+                    handleInterceptedUrl(it)
+                }
+                logger.info {
+                    "Navigation became download: ${didBecomeDownload.originalRequest?.URL?.absoluteString}"
+                }
+            }
+
+            override fun webView(
+                webView: WKWebView,
+                decidePolicyForNavigationAction: WKNavigationAction,
+                preferences: WKWebpagePreferences,
+                decisionHandler: (WKNavigationActionPolicy, WKWebpagePreferences?) -> Unit
+            ) {
+                try {
+                    val policy = decidePolicyForNavigationAction.request.URL?.absoluteString?.let {
+                        handleInterceptedUrl(it)
+                    } ?: WKNavigationActionPolicy.WKNavigationActionPolicyAllow
+                    decisionHandler(policy, preferences)
+                } catch (e: Throwable) {
+                    logger.info { "Error in navigation action: ${e.message}" }
+                    decisionHandler(WKNavigationActionPolicy.WKNavigationActionPolicyAllow, preferences)
+                }
+            }
+        }
     }
 
     /**
      * In iOS, you typically set cookies via NSHTTPCookieStorage / WKWebsiteDataStore.
      */
     private fun setCookiesFor(url: String, cookies: List<String>) {
-        // Very minimal approach:
-        // Each cookie is a Set-Cookie header string. We'll parse them and set them in NSHTTPCookieStorage.
         val nsCookieStorage = NSHTTPCookieStorage.sharedHTTPCookieStorage
         cookies.forEach { cookieString ->
             val cookieMap = NSHTTPCookie.cookiesWithResponseHeaderFields(

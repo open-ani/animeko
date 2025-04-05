@@ -152,12 +152,15 @@ class PlaybackSpeedControllerStateTest {
             scope = backgroundScope,
         )
         takeSnapshot()
-        // 1.3f is not in list => currentIndex = -1
+        // 1.3f is not in list
+        assertEquals(1.3f, state.currentSpeed)
+        assertEquals(1, state.currentIndex)
+        
         state.speedUp()
         takeSnapshot()
         // nearestUp is 1.5f
-        assertEquals(1.5f, state.currentSpeed)
-        assertEquals(3, state.currentIndex)
+        assertEquals(1.25f, state.currentSpeed)
+        assertEquals(2, state.currentIndex)
     }
 
     @Test

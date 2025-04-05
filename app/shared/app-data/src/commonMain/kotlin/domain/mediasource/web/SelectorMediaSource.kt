@@ -230,7 +230,7 @@ class SelectorMediaSource(
             }.flattenConcat(searchConfig.requestInterval)
     }
 
-    override val matcher: WebVideoMatcher by lazy(LazyThreadSafetyMode.PUBLICATION) {
+    override val matcher: WebVideoMatcher by lazy {
         object : WebVideoMatcher {
             override fun match(
                 url: String,
