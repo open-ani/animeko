@@ -172,7 +172,7 @@ class MainActivity : AniComponentActivity() {
         status: TorrentCacheMigrator.Status,
     ) {
         AlertDialog(
-            title = { Text("正在迁移缓存") },
+            title = { Text(if (status !is TorrentCacheMigrator.Status.Error) "正在迁移缓存" else "迁移发生错误") },
             text = {
                 Column {
                     Text(renderMigrationStatus(status = status))
@@ -187,7 +187,7 @@ class MainActivity : AniComponentActivity() {
                             LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                         }
                         Spacer(modifier = Modifier.height(24.dp))
-                        Text("迁移过程中设备可能会轻微卡顿, 请不要强制关闭 Ani，这可能导致缓存损坏或下次启动应用闪退")
+                        Text("迁移过程中设备可能会轻微卡顿，请不要强制关闭 Ani，否则可能导致闪退")
                     }
                 }
             },
@@ -220,7 +220,7 @@ class MainActivity : AniComponentActivity() {
 
         is TorrentCacheMigrator.Status.Error ->
             """
-            迁移时发生错误, 可能会导致 Ani 后续的闪退等意料之外的问题.
+            迁移时发生错误，可能会导致 Ani 后续的闪退等意料之外的问题.
             
             错误信息:
             ${status.throwable}
