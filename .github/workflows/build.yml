@@ -138,8 +138,6 @@ jobs:
     - 'windows-2019'
     permissions:
       actions: 'write'
-    outputs:
-      windowsX64PortableSuccess: '${{ steps.step-17.outcome == ''success'' }}'
     steps:
     - id: 'step-0'
       uses: 'actions/checkout@v4'
@@ -236,7 +234,8 @@ jobs:
         path: 'app/desktop/build/compose/logs'
       if: '${{ always() }}'
     - id: 'step-17'
-      name: 'Upload Windows packages'
+      name: 'Upload Windows packages (Attempt #1)'
+      continue-on-error: true
       uses: 'actions/upload-artifact@v4'
       with:
         name: 'ani-windows-portable'
@@ -244,30 +243,48 @@ jobs:
         if-no-files-found: 'error'
         overwrite: 'true'
     - id: 'step-18'
+      name: 'Upload Windows packages (Attempt #2)'
+      continue-on-error: true
+      uses: 'actions/upload-artifact@v4'
+      with:
+        name: 'ani-windows-portable'
+        path: 'app/desktop/build/compose/binaries/main-release/app'
+        if-no-files-found: 'error'
+        overwrite: 'true'
+      if: '${{ steps.step-17.outcome == ''failure'' }}'
+    - id: 'step-19'
+      name: 'Upload Windows packages (Attempt #3)'
+      continue-on-error: false
+      uses: 'actions/upload-artifact@v4'
+      with:
+        name: 'ani-windows-portable'
+        path: 'app/desktop/build/compose/binaries/main-release/app'
+        if-no-files-found: 'error'
+        overwrite: 'true'
+      if: '${{ steps.step-18.outcome == ''failure'' }}'
+    - id: 'step-20'
       name: 'Check (Attempt #1)'
       continue-on-error: true
       timeout-minutes: 180
       run: './gradlew check "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "-Pani.sentry.dsn=${{ secrets.SENTRY_DSN }}" "-Pani.analytics.server=${{ secrets.ANALYTICS_SERVER }}" "-Pani.analytics.key=${{ secrets.ANALYTICS_KEY }}" "--parallel" "-Pani.android.abis=x86_64"'
-    - id: 'step-19'
+    - id: 'step-21'
       name: 'Check (Attempt #2)'
       continue-on-error: true
       timeout-minutes: 180
       run: './gradlew check "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "-Pani.sentry.dsn=${{ secrets.SENTRY_DSN }}" "-Pani.analytics.server=${{ secrets.ANALYTICS_SERVER }}" "-Pani.analytics.key=${{ secrets.ANALYTICS_KEY }}" "--parallel" "-Pani.android.abis=x86_64"'
-      if: '${{ steps.step-18.outcome == ''failure'' }}'
-    - id: 'step-20'
+      if: '${{ steps.step-20.outcome == ''failure'' }}'
+    - id: 'step-22'
       name: 'Check (Attempt #3)'
       continue-on-error: false
       timeout-minutes: 180
       run: './gradlew check "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "-Pani.sentry.dsn=${{ secrets.SENTRY_DSN }}" "-Pani.analytics.server=${{ secrets.ANALYTICS_SERVER }}" "-Pani.analytics.key=${{ secrets.ANALYTICS_KEY }}" "--parallel" "-Pani.android.abis=x86_64"'
-      if: '${{ steps.step-19.outcome == ''failure'' }}'
+      if: '${{ steps.step-21.outcome == ''failure'' }}'
   build_github-ubuntu-2404:
     name: 'Build (Ubuntu 24.04 x86_64 (GitHub))'
     runs-on:
     - 'ubuntu-24.04'
     permissions:
       actions: 'write'
-    outputs:
-      linuxX64AppImageSuccess: '${{ steps.step-50.outcome == ''success'' }}'
     steps:
     - id: 'step-0'
       uses: 'actions/checkout@v4'
@@ -652,13 +669,34 @@ jobs:
         # Build AppImage
         ARCH=x86_64 ./appimagetool-x86_64.AppImage AppDir
     - id: 'step-50'
-      name: 'Upload Linux packages'
+      name: 'Upload Linux packages (Attempt #1)'
+      continue-on-error: true
       uses: 'actions/upload-artifact@v4'
       with:
         name: 'ani-linux-appimage-x64'
         path: 'Animeko-x86_64.AppImage'
         if-no-files-found: 'error'
         overwrite: 'true'
+    - id: 'step-51'
+      name: 'Upload Linux packages (Attempt #2)'
+      continue-on-error: true
+      uses: 'actions/upload-artifact@v4'
+      with:
+        name: 'ani-linux-appimage-x64'
+        path: 'Animeko-x86_64.AppImage'
+        if-no-files-found: 'error'
+        overwrite: 'true'
+      if: '${{ steps.step-50.outcome == ''failure'' }}'
+    - id: 'step-52'
+      name: 'Upload Linux packages (Attempt #3)'
+      continue-on-error: false
+      uses: 'actions/upload-artifact@v4'
+      with:
+        name: 'ani-linux-appimage-x64'
+        path: 'Animeko-x86_64.AppImage'
+        if-no-files-found: 'error'
+        overwrite: 'true'
+      if: '${{ steps.step-51.outcome == ''failure'' }}'
   build_github-macos-13:
     name: 'Build (macOS 13 x86_64 (GitHub))'
     runs-on:
@@ -840,8 +878,6 @@ jobs:
     permissions:
       actions: 'write'
     if: '${{ github.repository == ''open-ani/animeko'' }}'
-    outputs:
-      macosAarch64DmgSuccess: '${{ steps.step-31.outcome == ''success'' }}'
     steps:
     - id: 'step-0'
       uses: 'actions/checkout@v4'
@@ -1076,7 +1112,8 @@ jobs:
         path: 'app/desktop/build/compose/logs'
       if: '${{ always() }}'
     - id: 'step-31'
-      name: 'Upload macOS dmg'
+      name: 'Upload macOS dmg (Attempt #1)'
+      continue-on-error: true
       uses: 'actions/upload-artifact@v4'
       with:
         name: 'ani-macos-dmg-aarch64'
@@ -1084,40 +1121,60 @@ jobs:
         if-no-files-found: 'error'
         overwrite: 'true'
     - id: 'step-32'
+      name: 'Upload macOS dmg (Attempt #2)'
+      continue-on-error: true
+      uses: 'actions/upload-artifact@v4'
+      with:
+        name: 'ani-macos-dmg-aarch64'
+        path: 'app/desktop/build/compose/binaries/main-release/dmg/Ani-*.dmg'
+        if-no-files-found: 'error'
+        overwrite: 'true'
+      if: '${{ steps.step-31.outcome == ''failure'' }}'
+    - id: 'step-33'
+      name: 'Upload macOS dmg (Attempt #3)'
+      continue-on-error: false
+      uses: 'actions/upload-artifact@v4'
+      with:
+        name: 'ani-macos-dmg-aarch64'
+        path: 'app/desktop/build/compose/binaries/main-release/dmg/Ani-*.dmg'
+        if-no-files-found: 'error'
+        overwrite: 'true'
+      if: '${{ steps.step-32.outcome == ''failure'' }}'
+    - id: 'step-34'
       name: 'Check (Attempt #1)'
       continue-on-error: true
       timeout-minutes: 180
       run: './gradlew check "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "-Pani.sentry.dsn=${{ secrets.SENTRY_DSN }}" "-Pani.analytics.server=${{ secrets.ANALYTICS_SERVER }}" "-Pani.analytics.key=${{ secrets.ANALYTICS_KEY }}" "--parallel" "-Pani.android.abis=arm64-v8a"'
-    - id: 'step-33'
+    - id: 'step-35'
       name: 'Check (Attempt #2)'
       continue-on-error: true
       timeout-minutes: 180
       run: './gradlew check "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "-Pani.sentry.dsn=${{ secrets.SENTRY_DSN }}" "-Pani.analytics.server=${{ secrets.ANALYTICS_SERVER }}" "-Pani.analytics.key=${{ secrets.ANALYTICS_KEY }}" "--parallel" "-Pani.android.abis=arm64-v8a"'
-      if: '${{ steps.step-32.outcome == ''failure'' }}'
-    - id: 'step-34'
+      if: '${{ steps.step-34.outcome == ''failure'' }}'
+    - id: 'step-36'
       name: 'Check (Attempt #3)'
       continue-on-error: false
       timeout-minutes: 180
       run: './gradlew check "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "-Pani.sentry.dsn=${{ secrets.SENTRY_DSN }}" "-Pani.analytics.server=${{ secrets.ANALYTICS_SERVER }}" "-Pani.analytics.key=${{ secrets.ANALYTICS_KEY }}" "--parallel" "-Pani.android.abis=arm64-v8a"'
-      if: '${{ steps.step-33.outcome == ''failure'' }}'
-    - id: 'step-35'
+      if: '${{ steps.step-35.outcome == ''failure'' }}'
+    - id: 'step-37'
       name: 'Build Android Instrumented Tests (Attempt #1)'
       continue-on-error: true
       timeout-minutes: 180
       run: './gradlew assembleDebugAndroidTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "-Pani.sentry.dsn=${{ secrets.SENTRY_DSN }}" "-Pani.analytics.server=${{ secrets.ANALYTICS_SERVER }}" "-Pani.analytics.key=${{ secrets.ANALYTICS_KEY }}" "--parallel" "-Pani.android.abis=arm64-v8a"'
-    - id: 'step-36'
+    - id: 'step-38'
       name: 'Build Android Instrumented Tests (Attempt #2)'
       continue-on-error: true
       timeout-minutes: 180
       run: './gradlew assembleDebugAndroidTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "-Pani.sentry.dsn=${{ secrets.SENTRY_DSN }}" "-Pani.analytics.server=${{ secrets.ANALYTICS_SERVER }}" "-Pani.analytics.key=${{ secrets.ANALYTICS_KEY }}" "--parallel" "-Pani.android.abis=arm64-v8a"'
-      if: '${{ steps.step-35.outcome == ''failure'' }}'
-    - id: 'step-37'
+      if: '${{ steps.step-37.outcome == ''failure'' }}'
+    - id: 'step-39'
       name: 'Build Android Instrumented Tests (Attempt #3)'
       continue-on-error: false
       timeout-minutes: 180
       run: './gradlew assembleDebugAndroidTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "-Pani.sentry.dsn=${{ secrets.SENTRY_DSN }}" "-Pani.analytics.server=${{ secrets.ANALYTICS_SERVER }}" "-Pani.analytics.key=${{ secrets.ANALYTICS_KEY }}" "--parallel" "-Pani.android.abis=arm64-v8a"'
-      if: '${{ steps.step-36.outcome == ''failure'' }}'
-    - id: 'step-38'
+      if: '${{ steps.step-38.outcome == ''failure'' }}'
+    - id: 'step-40'
       name: 'Android Instrumented Test (api=30, arch=arm64-v8a)'
       uses: 'reactivecircus/android-emulator-runner@v2.33.0'
       with:
@@ -1125,7 +1182,7 @@ jobs:
         arch: 'arm64-v8a'
         emulator-boot-timeout: '1800'
         script: './gradlew connectedDebugAndroidTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "-Pani.sentry.dsn=${{ secrets.SENTRY_DSN }}" "-Pani.analytics.server=${{ secrets.ANALYTICS_SERVER }}" "-Pani.analytics.key=${{ secrets.ANALYTICS_KEY }}" "--parallel" "-Pani.android.abis=arm64-v8a"'
-    - id: 'step-39'
+    - id: 'step-41'
       name: 'Android Instrumented Test (api=35, arch=arm64-v8a)'
       uses: 'reactivecircus/android-emulator-runner@v2.33.0'
       with:
@@ -1133,7 +1190,7 @@ jobs:
         arch: 'arm64-v8a'
         emulator-boot-timeout: '1800'
         script: './gradlew connectedDebugAndroidTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "-Pani.sentry.dsn=${{ secrets.SENTRY_DSN }}" "-Pani.analytics.server=${{ secrets.ANALYTICS_SERVER }}" "-Pani.analytics.key=${{ secrets.ANALYTICS_KEY }}" "--parallel" "-Pani.android.abis=arm64-v8a"'
-    - id: 'step-40'
+    - id: 'step-42'
       name: 'Cleanup temp files'
       continue-on-error: true
       run: 'chmod +x ./ci-helper/cleanup-temp-files-macos.sh && ./ci-helper/cleanup-temp-files-macos.sh'
@@ -1145,7 +1202,7 @@ jobs:
       actions: 'read'
     needs:
     - 'build_github-windows-2019'
-    if: '${{ needs.build_github-windows-2019.outputs.windowsX64PortableSuccess }}'
+    if: '${{ needs.build_github-windows-2019.result == ''success'' }}'
     steps:
     - id: 'step-0'
       uses: 'actions/checkout@v4'
@@ -1210,7 +1267,7 @@ jobs:
       actions: 'read'
     needs:
     - 'build_github-windows-2019'
-    if: '${{ needs.build_github-windows-2019.outputs.windowsX64PortableSuccess }}'
+    if: '${{ needs.build_github-windows-2019.result == ''success'' }}'
     steps:
     - id: 'step-0'
       uses: 'actions/checkout@v4'
@@ -1277,7 +1334,7 @@ jobs:
       actions: 'read'
     needs:
     - 'build_github-windows-2019'
-    if: '${{ (github.repository == ''open-ani/animeko'') && (needs.build_github-windows-2019.outputs.windowsX64PortableSuccess) }}'
+    if: '${{ (github.repository == ''open-ani/animeko'') && (needs.build_github-windows-2019.result == ''success'') }}'
     steps:
     - id: 'step-0'
       uses: 'actions/checkout@v4'
@@ -1337,7 +1394,7 @@ jobs:
       actions: 'read'
     needs:
       - 'build_self-hosted-macos-15'
-    if: '${{ (github.repository == ''open-ani/animeko'') && (needs.build_self-hosted-macos-15.outputs.macosAarch64DmgSuccess) }}'
+    if: '${{ (github.repository == ''open-ani/animeko'') && (needs.build_self-hosted-macos-15.result == ''success'') }}'
     steps:
     - id: 'step-0'
       uses: 'actions/checkout@v4'
@@ -1388,7 +1445,7 @@ jobs:
       actions: 'read'
     needs:
       - 'build_self-hosted-macos-15'
-    if: '${{ needs.build_self-hosted-macos-15.outputs.macosAarch64DmgSuccess }}'
+    if: '${{ needs.build_self-hosted-macos-15.result == ''success'' }}'
     steps:
     - id: 'step-0'
       uses: 'actions/checkout@v4'
@@ -1447,7 +1504,7 @@ jobs:
       actions: 'read'
     needs:
       - 'build_self-hosted-macos-15'
-    if: '${{ needs.build_self-hosted-macos-15.outputs.macosAarch64DmgSuccess }}'
+    if: '${{ needs.build_self-hosted-macos-15.result == ''success'' }}'
     steps:
     - id: 'step-0'
       uses: 'actions/checkout@v4'
@@ -1506,7 +1563,7 @@ jobs:
       actions: 'read'
     needs:
     - 'build_github-ubuntu-2404'
-    if: '${{ needs.build_github-ubuntu-2404.outputs.linuxX64AppImageSuccess }}'
+    if: '${{ needs.build_github-ubuntu-2404.result == ''success'' }}'
     steps:
     - id: 'step-0'
       uses: 'actions/checkout@v4'

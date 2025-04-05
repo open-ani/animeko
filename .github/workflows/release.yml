@@ -1615,7 +1615,8 @@ jobs:
         # Build AppImage
         ARCH=x86_64 ./appimagetool-x86_64.AppImage AppDir
     - id: 'step-62'
-      name: 'Upload Linux packages'
+      name: 'Upload Linux packages (Attempt #1)'
+      continue-on-error: true
       uses: 'actions/upload-artifact@v4'
       with:
         name: 'ani-linux-appimage-x64'
@@ -1623,6 +1624,26 @@ jobs:
         if-no-files-found: 'error'
         overwrite: 'true'
     - id: 'step-63'
+      name: 'Upload Linux packages (Attempt #2)'
+      continue-on-error: true
+      uses: 'actions/upload-artifact@v4'
+      with:
+        name: 'ani-linux-appimage-x64'
+        path: 'Animeko-x86_64.AppImage'
+        if-no-files-found: 'error'
+        overwrite: 'true'
+      if: '${{ steps.step-62.outcome == ''failure'' }}'
+    - id: 'step-64'
+      name: 'Upload Linux packages (Attempt #3)'
+      continue-on-error: false
+      uses: 'actions/upload-artifact@v4'
+      with:
+        name: 'ani-linux-appimage-x64'
+        path: 'Animeko-x86_64.AppImage'
+        if-no-files-found: 'error'
+        overwrite: 'true'
+      if: '${{ steps.step-63.outcome == ''failure'' }}'
+    - id: 'step-65'
       name: 'Upload Desktop Installers (Attempt #1)'
       env:
         GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
@@ -1638,7 +1659,7 @@ jobs:
       continue-on-error: true
       timeout-minutes: 180
       run: './gradlew :ci-helper:uploadDesktopInstallers "--no-configuration-cache" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "-Pani.sentry.dsn=${{ secrets.SENTRY_DSN }}" "-Pani.analytics.server=${{ secrets.ANALYTICS_SERVER }}" "-Pani.analytics.key=${{ secrets.ANALYTICS_KEY }}"'
-    - id: 'step-64'
+    - id: 'step-66'
       name: 'Upload Desktop Installers (Attempt #2)'
       env:
         GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
@@ -1654,8 +1675,8 @@ jobs:
       continue-on-error: false
       timeout-minutes: 180
       run: './gradlew :ci-helper:uploadDesktopInstallers "--no-configuration-cache" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Pkotlin.native.ignoreDisabledTargets=true" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" "-Pani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" "-Pani.sentry.dsn=${{ secrets.SENTRY_DSN }}" "-Pani.analytics.server=${{ secrets.ANALYTICS_SERVER }}" "-Pani.analytics.key=${{ secrets.ANALYTICS_KEY }}"'
-      if: '${{ steps.step-63.outcome == ''failure'' }}'
-    - id: 'step-65'
+      if: '${{ steps.step-65.outcome == ''failure'' }}'
+    - id: 'step-67'
       name: 'Upload compose logs'
       uses: 'actions/upload-artifact@v4'
       with:
