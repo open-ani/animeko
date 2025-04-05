@@ -10,12 +10,8 @@
 package me.him188.ani.app.data.persistent
 
 import androidx.datastore.core.DataStore
-import androidx.datastore.core.DataStoreFactory
-import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
-import kotlinx.serialization.builtins.ListSerializer
-import me.him188.ani.app.domain.media.cache.storage.MediaCacheSave
 import me.him188.ani.app.platform.Context
 import me.him188.ani.app.platform.DesktopContext
 import me.him188.ani.utils.io.SystemPath
@@ -40,14 +36,6 @@ internal class PlatformDataStoreManagerDesktop(
         PreferenceDataStoreFactory.create(corruptionHandler = replaceFileCorruptionHandlerForPreferences) {
             context.dataStoreDir.resolve("preferredAllianceStore.preferences_pb")
         }
-
-    override val mediaCacheMetadataStore: DataStore<List<MediaCacheSave>> by lazy {
-        DataStoreFactory.create(
-            serializer = ListSerializer(MediaCacheSave.serializer()).asDataStoreSerializer({ emptyList() }),
-            produceFile = { context.dataStoreDir.resolve("mediaCacheMetadata") },
-            corruptionHandler = ReplaceFileCorruptionHandler { emptyList() },
-        )
-    }
 
     override fun resolveDataStoreFile(name: String): SystemPath = context.dataStoreDir.resolve(name).toKtPath().inSystem
 }

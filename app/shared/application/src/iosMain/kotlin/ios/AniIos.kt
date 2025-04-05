@@ -101,7 +101,7 @@ fun MainViewController(): UIViewController {
     val koin = startKoin {
         modules(getCommonKoinModule({ context }, scope))
         modules(getIosModules(context, context.files.dataDir.resolve("torrent"), scope))
-    }.startCommonKoinModule(context, scope).koin
+    }.startCommonKoinModule(scope).koin
 
     val analyticsInitializer = scope.launch {
         val settingsRepository = koin.get<SettingsRepository>()

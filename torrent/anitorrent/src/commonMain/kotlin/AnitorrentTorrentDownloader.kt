@@ -227,13 +227,6 @@ abstract class AnitorrentTorrentDownloader<THandle : TorrentHandle, TAddInfo : T
         return httpTorrentFileCacheDir.resolve(uri.hashCode().toString() + ".txt")
     }
 
-    /**
-     *  Don't change this directory.
-     *
-     *  TODO: move this to [TorrentDownloader].
-     *
-     *  @see TorrentMediaCacheEngine.modifyMediaCacheDirectory
-     */
     private val downloadCacheDir = rootDataDirectory.resolve("pieces").apply {
         createDirectories()
     }
@@ -349,13 +342,6 @@ abstract class AnitorrentTorrentDownloader<THandle : TorrentHandle, TAddInfo : T
         this.filter = filter
     }
 
-    /**
-     *  Don't change this.
-     *
-     *  TODO: move this to [TorrentDownloader].
-     *
-     *  @see TorrentMediaCacheEngine.modifyMediaCacheDirectory
-     */
     override fun getSaveDirForTorrent(data: EncodedTorrentInfo): SystemPath =
         downloadCacheDir.resolve(data.data.contentHashCode().toString())
 

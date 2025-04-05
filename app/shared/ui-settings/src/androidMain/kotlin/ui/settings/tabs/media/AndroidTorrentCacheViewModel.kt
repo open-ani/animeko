@@ -26,7 +26,9 @@ import kotlinx.io.files.Path
 import kotlinx.serialization.json.Json
 import me.him188.ani.app.data.models.preference.MediaCacheSettings
 import me.him188.ani.app.domain.media.cache.MediaCacheManager
-import me.him188.ani.app.domain.media.cache.storage.DataStoreMediaCacheStorage
+import me.him188.ani.app.domain.media.cache.engine.TorrentMediaCacheEngine
+import me.him188.ani.app.domain.media.cache.storage.DirectoryMediaCacheStorage
+import me.him188.ani.app.domain.media.cache.storage.DirectoryMediaCacheStorage.MediaCacheSave
 import me.him188.ani.app.platform.AppTerminator
 import me.him188.ani.app.platform.ContextMP
 import me.him188.ani.app.platform.PermissionManager
@@ -36,8 +38,12 @@ import me.him188.ani.app.ui.settings.framework.SettingsState
 import me.him188.ani.app.ui.settings.framework.components.SingleSelectionElement
 import me.him188.ani.utils.io.deleteRecursively
 import me.him188.ani.utils.io.inSystem
+import me.him188.ani.utils.io.isRegularFile
 import me.him188.ani.utils.io.moveDirectoryRecursively
 import me.him188.ani.utils.io.name
+import me.him188.ani.utils.io.readText
+import me.him188.ani.utils.io.useDirectoryEntries
+import me.him188.ani.utils.io.writeText
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.warn
 import org.koin.core.component.KoinComponent
@@ -209,14 +215,51 @@ class AndroidTorrentCacheViewModel(
             logger.info { "[migration] move complete." }
 
             migrationStatus = MigrationStatus.Metadata(null)
-
             cacheManager.storages.forEach { storage ->
                 @Suppress("NAME_SHADOWING")
                 val storage = storage.firstOrNull() ?: return@forEach
-                if (storage !is DataStoreMediaCacheStorage) return@forEach // 只移动 DirectoryMediaCacheStorage
+                if (storage !is DirectoryMediaCacheStorage) return@forEach // 只移动 DirectoryMediaCacheStorage
 
                 withContext(Dispatchers.IO) {
-                    
+                    storage.metadataDir.useDirectoryEntries { seq ->
+                        seq.forEach seq@{ file ->
+                            if (!file.isRegularFile()) return@seq
+
+                            logger.info { "[migration] migrating metadata: $file" }
+                            withContext(Dispatchers.Main) { migrationStatus = MigrationStatus.Metadata(file.name) }
+
+                            // read metadata file
+                            val metadataSave = try {
+                                json.decodeFromString(MediaCacheSave.serializer(), file.readText())
+                            } catch (e: Exception) {
+                                logger.warn(e) { "[migration] Failed to migrate metadata file ${file.name}" }
+                                return@seq
+                            }
+
+                            // replace torrent cache dir
+                            val torrentDir =
+                                metadataSave.metadata.extra[TorrentMediaCacheEngine.EXTRA_TORRENT_CACHE_DIR]
+                                    ?: return@seq // 只处理 TorrentMediaCacheEngine 创建的 metadata
+                            val newTorrentDir = Path(newPath, torrentDir.substringAfter(prevPath)).toString()
+                            logger.info {
+                                "[migration] metadata of torrent cache changed: $torrentDir -> $newTorrentDir"
+                            }
+
+                            // write new metadata to original file
+                            val migratedMetadata = MediaCacheSave(
+                                metadataSave.origin,
+                                metadataSave.metadata.copy(
+                                    extra = metadataSave.metadata.extra.toMutableMap().apply {
+                                        set(TorrentMediaCacheEngine.EXTRA_TORRENT_CACHE_DIR, newTorrentDir)
+                                    },
+                                ),
+                            )
+
+                            file.writeText(
+                                json.encodeToString(MediaCacheSave.serializer(), migratedMetadata),
+                            )
+                        }
+                    }
                 }
             }
         }.apply {

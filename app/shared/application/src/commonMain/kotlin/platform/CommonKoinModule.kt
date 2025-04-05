@@ -22,7 +22,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withContext
 import kotlinx.io.files.SystemFileSystem
 import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.data.network.AniSubjectRelationIndexService
@@ -102,10 +101,8 @@ import me.him188.ani.app.domain.media.cache.MediaCacheManagerImpl
 import me.him188.ani.app.domain.media.cache.createWithKoin
 import me.him188.ani.app.domain.media.cache.engine.DummyMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.engine.HttpMediaCacheEngine
-import me.him188.ani.app.domain.media.cache.engine.InvalidMediaCacheEngineKey
-import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.domain.media.cache.engine.TorrentMediaCacheEngine
-import me.him188.ani.app.domain.media.cache.storage.DataStoreMediaCacheStorage
+import me.him188.ani.app.domain.media.cache.storage.DirectoryMediaCacheStorage
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.fetch.MediaSourceManagerImpl
 import me.him188.ani.app.domain.media.resolver.MediaResolver
@@ -140,10 +137,6 @@ import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.coroutines.childScopeContext
 import me.him188.ani.utils.httpdownloader.HttpDownloader
 import me.him188.ani.utils.httpdownloader.KtorPersistentHttpDownloader
-import me.him188.ani.utils.io.SystemPath
-import me.him188.ani.utils.io.deleteRecursively
-import me.him188.ani.utils.io.exists
-import me.him188.ani.utils.io.isDirectory
 import me.him188.ani.utils.io.resolve
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
@@ -157,13 +150,6 @@ private val Scope.client get() = get<BangumiClient>()
 private val Scope.database get() = get<AniDatabase>()
 private val Scope.settingsRepository get() = get<SettingsRepository>()
 
-/**
- * @see me.him188.ani.app.data.persistent.PlatformDataStoreManager.mediaCacheMetadataStore
- */
-@Deprecated("Since 4.8, metadata is now stored in the datastore. This will be removed in the future.")
-fun Context.getMediaMetadataDir(): SystemPath {
-    return files.dataDir.resolve("media-cache")
-}
 
 fun KoinApplication.getCommonKoinModule(getContext: () -> Context, coroutineScope: CoroutineScope) =
     listOf(useCaseModules(), repositoryModules(), otherModules(getContext, coroutineScope))
@@ -407,22 +393,20 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
     // Media
     single<MediaCacheManager> {
         val id = MediaCacheManager.LOCAL_FS_MEDIA_SOURCE_ID
-        val engines = get<TorrentManager>().engines
-        val metadataStore = getContext().dataStores.mediaCacheMetadataStore
 
+        fun getMediaMetadataDir(engineId: String) = getContext().files.dataDir
+            .resolve("media-cache").resolve(engineId)
+
+        val engines = get<TorrentManager>().engines
         MediaCacheManagerImpl(
             storagesIncludingDisabled = buildList(capacity = engines.size) {
                 if (currentAniBuildConfig.isDebug) {
                     // 注意, 这个必须要在第一个, 见 [DefaultTorrentManager.engines] 注释
                     add(
-                        @Suppress("DEPRECATION")
-                        DataStoreMediaCacheStorage(
+                        DirectoryMediaCacheStorage(
                             mediaSourceId = "test-in-memory",
-                            store = metadataStore,
-                            engine = DummyMediaCacheEngine(
-                                "test-in-memory",
-                                engineKey = MediaCacheEngineKey("test-in-memory"),
-                            ),
+                            metadataDir = getMediaMetadataDir("test-in-memory"),
+                            engine = DummyMediaCacheEngine("test-in-memory"),
                             "[debug]dummy",
                             coroutineScope.childScopeContext(),
                         ),
@@ -430,33 +414,29 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
                 }
                 for (engine in engines) {
                     add(
-                        @Suppress("DEPRECATION")
-                        DataStoreMediaCacheStorage(
+                        DirectoryMediaCacheStorage(
                             mediaSourceId = id,
-                            store = metadataStore,
+                            metadataDir = getMediaMetadataDir(engine.type.id),
                             engine = TorrentMediaCacheEngine(
                                 mediaSourceId = id,
-                                engineKey = MediaCacheEngineKey(engine.type.id),
                                 torrentEngine = engine,
                             ),
-                            displayName = "本地",
+                            "本地",
                             coroutineScope.childScopeContext(),
                         ),
                     )
                 }
                 add(
-                    @Suppress("DEPRECATION")
-                    DataStoreMediaCacheStorage(
+                    DirectoryMediaCacheStorage(
                         mediaSourceId = id,
-                        store = metadataStore,
+                        metadataDir = getMediaMetadataDir("web-m3u"),
                         engine = HttpMediaCacheEngine(
                             mediaSourceId = id,
                             downloader = get<HttpDownloader>(),
-                            engineKey = MediaCacheEngineKey("web-m3u"),
-                            saveDir = getContext().files.dataDir.resolve("web-m3u-cache").path,
+                            dataDir = getContext().files.dataDir.resolve("web-m3u-cache").path,
                             mediaResolver = get<MediaResolver>(),
                         ),
-                        displayName = "本地",
+                        "本地",
                         coroutineScope.childScopeContext(),
                     ),
                 )
@@ -517,7 +497,7 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
 /**
  * 会在非 preview 环境调用. 用来初始化一些模块
  */
-fun KoinApplication.startCommonKoinModule(context: Context, coroutineScope: CoroutineScope): KoinApplication {
+fun KoinApplication.startCommonKoinModule(coroutineScope: CoroutineScope): KoinApplication {
     // Start the proxy provider very soon (before initialization of any other components)
     runBlocking {
         // We have to block here to read the saved proxy settings
@@ -529,40 +509,6 @@ fun KoinApplication.startCommonKoinModule(context: Context, coroutineScope: Coro
     // Now, the proxy settings is ready. Other components can use http clients.
 
     coroutineScope.launch {
-        val metadataStore = context.dataStores.mediaCacheMetadataStore
-        val storages = koin.get<MediaCacheManager>().storagesIncludingDisabled
-        val legacyMetadataDir = context.getMediaMetadataDir()
-
-        // Since 4.8, metadata is stored in the datastore. Migration workaround.
-        // remove in 5.x
-        @Suppress("DEPRECATION")
-        @OptIn(InvalidMediaCacheEngineKey::class)
-        withContext(Dispatchers.IO_) {
-            storages
-                .firstOrNull { it.engine is TorrentMediaCacheEngine }
-                .let { storage ->
-                    if (storage != null) {
-                        val dir = legacyMetadataDir.resolve("anitorrent")
-                        if (dir.exists() && dir.isDirectory()) {
-                            DataStoreMediaCacheStorage.migrateMetadataFromV47(metadataStore, storage, dir)
-                        }
-                    }
-                }
-            storages
-                .filterIsInstance<DataStoreMediaCacheStorage>()
-                .firstOrNull { it.engine is HttpMediaCacheEngine }
-                .let { storage ->
-                    if (storage != null) {
-                        val dir = legacyMetadataDir.resolve("web-m3u")
-                        if (dir.exists() && dir.isDirectory()) {
-                            DataStoreMediaCacheStorage.migrateMetadataFromV47(metadataStore, storage, dir)
-                        }
-                    }
-                }
-            // Delete the whole metadata dir
-            legacyMetadataDir.deleteRecursively()
-        }
-
         koin.get<HttpDownloader>().init() // 这涉及读取 DownloadState, 需要在加载 storage metadata 前调用.
 
         val manager = koin.get<MediaCacheManager>()

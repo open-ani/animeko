@@ -10,15 +10,12 @@
 package me.him188.ani.app.data.persistent
 
 import androidx.datastore.core.DataStore
-import androidx.datastore.core.DataStoreFactory
 import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import androidx.datastore.core.okio.OkioStorage
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.PreferencesSerializer
 import androidx.datastore.preferences.core.mutablePreferencesOf
-import kotlinx.serialization.builtins.ListSerializer
-import me.him188.ani.app.domain.media.cache.storage.MediaCacheSave
 import me.him188.ani.app.platform.Context
 import me.him188.ani.app.platform.IosContext
 import me.him188.ani.app.platform.asIosContext
@@ -46,14 +43,6 @@ private class IosPlatformDataStoreManager(
     }
     override val preferredAllianceStore: DataStore<Preferences> by lazy {
         createPreferencesDataStore("preferredAlliance")
-    }
-
-    override val mediaCacheMetadataStore: DataStore<List<MediaCacheSave>> by lazy {
-        DataStoreFactory.create(
-            serializer = ListSerializer(MediaCacheSave.serializer()).asDataStoreSerializer({ emptyList() }),
-            produceFile = { resolveDataStoreFile("mediaCacheMetadata") },
-            corruptionHandler = ReplaceFileCorruptionHandler { emptyList() },
-        )
     }
 
     override fun resolveDataStoreFile(name: String): SystemPath =

@@ -31,7 +31,6 @@ import kotlinx.coroutines.job
 import kotlinx.coroutines.withContext
 import kotlinx.io.IOException
 import kotlinx.io.files.FileNotFoundException
-import kotlinx.io.files.Path
 import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.MediaCacheState
 import me.him188.ani.app.domain.media.cache.engine.TorrentMediaCacheEngine.Companion.EXTRA_TORRENT_CACHE_DIR
@@ -58,8 +57,6 @@ import me.him188.ani.utils.io.actualSize
 import me.him188.ani.utils.io.delete
 import me.him188.ani.utils.io.deleteRecursively
 import me.him188.ani.utils.io.exists
-import me.him188.ani.utils.io.inSystem
-import me.him188.ani.utils.io.resolve
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
@@ -79,7 +76,6 @@ class TorrentMediaCacheEngine(
      * 创建的 [CachedMedia] 将会使用此 [mediaSourceId]
      */
     private val mediaSourceId: String,
-    override val engineKey: MediaCacheEngineKey,
     val torrentEngine: TorrentEngine,
     val flowDispatcher: CoroutineContext = Dispatchers.Default,
     private val onDownloadStarted: suspend (session: TorrentSession) -> Unit = {},
@@ -358,25 +354,6 @@ class TorrentMediaCacheEngine(
             origin = origin,
             metadata = newMetadata,
             lazyFileHandle = getLazyFileHandle(data, newMetadata, parentContext),
-        )
-    }
-
-    override suspend fun modifyMetadataForMigration(
-        original: MediaCacheMetadata,
-        newSaveDir: Path
-    ): MediaCacheMetadata {
-        val currentTorrentData = original.extra[EXTRA_TORRENT_DATA]?.hexToByteArray() ?: return original
-        return original.copy(
-            extra = original.extra.toMutableMap().apply {
-                put(
-                    EXTRA_TORRENT_CACHE_DIR,
-                    // TODO: The hardcoded path is for anitorrent only. 
-                    // see AnitorrentTorrentDownloader
-                    newSaveDir.resolve("pieces")
-                        .resolve(currentTorrentData.contentHashCode().toString())
-                        .inSystem.absolutePath,
-                )
-            },
         )
     }
 

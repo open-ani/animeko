@@ -16,16 +16,10 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
-import kotlinx.serialization.KSerializer
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.encoding.Decoder
-import kotlinx.serialization.encoding.Encoder
 import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.cache.engine.DummyMediaCacheEngine
-import me.him188.ani.app.domain.media.cache.engine.InvalidMediaCacheEngineKey
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngine
-import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.domain.media.cache.engine.MediaStats
 import me.him188.ani.app.domain.media.fetch.MediaFetcher
 import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
@@ -113,53 +107,6 @@ interface MediaCacheStorage : AutoCloseable {
 }
 
 /**
- * 持久化的媒体缓存数据, 用于在 APP 重启后恢复缓存.
- */
-@Serializable
-data class MediaCacheSave(
-    val origin: Media,
-    val metadata: MediaCacheMetadata,
-    /**
-     * 创建此缓存的的引擎 key.
-     */
-    val engine: MediaCacheEngineKey,
-) {
-    @InvalidMediaCacheEngineKey
-    constructor(origin: Media, metadata: MediaCacheMetadata) :
-            this(origin, metadata, MediaCacheEngineKey.Invalid)
-}
-
-@InvalidMediaCacheEngineKey
-object LegacyMediaCacheSaveSerializer : KSerializer<MediaCacheSave> {
-    private val currentSerializer = MediaCacheSave.serializer()
-
-    // Create a serializer for the legacy format (without engine)
-    @Serializable
-    private data class LegacyMediaCacheSave(
-        val origin: Media,
-        val metadata: MediaCacheMetadata
-    )
-
-    private val legacySerializer = LegacyMediaCacheSave.serializer()
-
-    override val descriptor = currentSerializer.descriptor
-
-    override fun serialize(encoder: Encoder, value: MediaCacheSave) {
-        throw IllegalStateException("Legacy serializer should not be used for serialization.")
-    }
-
-    override fun deserialize(decoder: Decoder): MediaCacheSave {
-        try {
-            val legacy = legacySerializer.deserialize(decoder)
-            // Convert legacy format to current format with invalid engine
-            return MediaCacheSave(origin = legacy.origin, metadata = legacy.metadata)
-        } catch (e: Exception) {
-            throw e
-        }
-    }
-}
-
-/**
  * 所有缓存项目的大小总和
  */
 val MediaCacheStorage.totalSize: Flow<FileSize>
@@ -186,7 +133,7 @@ class TestMediaCacheStorage : MediaCacheStorage {
         get() = MediaCacheManager.LOCAL_FS_MEDIA_SOURCE_ID
     override val cacheMediaSource: MediaSource
         get() = throw UnsupportedOperationException()
-    override val engine: MediaCacheEngine = DummyMediaCacheEngine(mediaSourceId, MediaCacheEngineKey("dummy-cache"))
+    override val engine: MediaCacheEngine = DummyMediaCacheEngine(mediaSourceId)
     override val listFlow: MutableStateFlow<List<MediaCache>> =
         MutableStateFlow(listOf())
 

@@ -304,7 +304,7 @@ object AniDesktop {
                     single<AppTerminator> { DefaultAppTerminator }
                 },
             )
-        }.startCommonKoinModule(context, coroutineScope)
+        }.startCommonKoinModule(coroutineScope)
 
 
         // Startup ok, run test task if needed

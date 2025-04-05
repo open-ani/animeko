@@ -124,7 +124,7 @@ class AniApplication : Application() {
             modules(getCommonKoinModule({ this@AniApplication }, scope))
 
             modules(getAndroidModules(defaultTorrentCacheDir, connectionManager.connection, scope))
-        }.startCommonKoinModule(this@AniApplication, scope)
+        }.startCommonKoinModule(scope)
 
         val koin = getKoin()
         val analyticsInitializer = scope.launch {
