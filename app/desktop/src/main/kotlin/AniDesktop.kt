@@ -592,8 +592,7 @@ private fun WindowStateRecorder(
             val screenSize = ScreenUtils.getScreenSize()
             if (
                 (savedWindowState.size.width > minimumSize.width || savedWindowState.size.height > minimumSize.height)
-                && savedWindowState.position.x > 0.dp && savedWindowState.position.y > 0.dp
-                && savedWindowState.position.x < screenSize.width - 200.dp && savedWindowState.position.y < screenSize.height - 200.dp
+                && savedWindowState.position.x < screenSize.width && savedWindowState.position.y < screenSize.height
             ) {
                 windowState.apply {
                     position = savedWindowState.position
