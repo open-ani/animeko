@@ -334,7 +334,9 @@ internal fun EpisodeVideoImpl(
                             onClick = { onToggleDanmaku() },
                         )
                         val audioLevelController = playerState.features[AudioLevelController]
-                        if (expanded && audioLevelController != null) {
+                        if (expanded && audioLevelController != null
+                            && gestureFamily == GestureFamily.MOUSE
+                        ) {
                             val volumeState by audioLevelController.volume.collectAsStateWithLifecycle()
                             val volumeMute by audioLevelController.isMute.collectAsStateWithLifecycle()
                             PlayerControllerDefaults.AudioIcon(

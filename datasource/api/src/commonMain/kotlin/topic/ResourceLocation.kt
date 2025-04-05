@@ -112,3 +112,13 @@ sealed class ResourceLocation {
         }
     }
 }
+
+@Suppress("HttpUrlsUsage")
+fun ResourceLocation.Companion.guessTorrentFromUrl(uri: String): ResourceLocation? {
+    val isHttp = uri.startsWith("http://", ignoreCase = true) || uri.startsWith("https://", ignoreCase = true)
+    return when {
+        uri.startsWith("magnet:") -> ResourceLocation.MagnetLink(uri)
+        isHttp && uri.endsWith(".torrent") -> ResourceLocation.HttpTorrentFile(uri)
+        else -> null
+    }
+}

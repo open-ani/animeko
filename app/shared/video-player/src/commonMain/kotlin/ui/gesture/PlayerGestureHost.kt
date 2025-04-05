@@ -387,6 +387,7 @@ enum class GestureFamily(
     val longPressForFastSkip: Boolean,
     val scrollForVolume: Boolean,
     val autoHideController: Boolean,
+    val volumeControllerOnBottomBar: Boolean,
     val keyboardSpaceForPauseResume: Boolean = true,
     val keyboardUpDownForVolume: Boolean = true,
     val keyboardLeftRightToSeek: Boolean = true,
@@ -405,9 +406,10 @@ enum class GestureFamily(
         swipeRhsForVolume = true,
         swipeLhsForBrightness = true,
         longPressForFastSkip = true,
-        mouseHoverForController = false,
+        volumeControllerOnBottomBar = false,
         scrollForVolume = false,
         autoHideController = true,
+        mouseHoverForController = false,
     ),
     MOUSE(
         useDesktopGestureLayoutWorkaround = true,
@@ -421,6 +423,7 @@ enum class GestureFamily(
         longPressForFastSkip = false,
         scrollForVolume = true,
         autoHideController = false,
+        volumeControllerOnBottomBar = true,
     )
 }
 

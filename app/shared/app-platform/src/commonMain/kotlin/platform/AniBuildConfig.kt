@@ -27,6 +27,11 @@ interface AniBuildConfig {
     val analyticsServer: String
     val analyticsKey: String
 
+    val sentryEnabled: Boolean
+        get() = true
+    val analyticsEnabled: Boolean
+        get() = true
+
     companion object {
         @Stable
         fun current(): AniBuildConfig = currentAniBuildConfig

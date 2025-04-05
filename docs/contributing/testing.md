@@ -50,11 +50,13 @@ PC 版本有三种启动方式：
 
 ### 如何运行 iOS APP
 
-只有 macOS 才能运行 iOS APP。需要先在 App Store 安装 Xcode 并打开一次同意 Xcode 的协议。
+只有 macOS 才能运行 iOS APP。
 
-如果提示找不到模拟器，请安装一个 iPhone 15 模拟器。
+1. 在 App Store 安装 Xcode
+2. 在 Xcode 中打开项目 `app/ios/Animeko`
+3. 在 Xcode 内运行
 
-在 Android Studio 中，选择运行配置 `Run iOS Debug`，点击按钮运行即可。
+在 Android Studio 中，也可以选择运行配置 `Run iOS Debug`，点击按钮运行即可。
 
 ----
 

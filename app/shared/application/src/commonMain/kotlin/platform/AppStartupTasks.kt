@@ -28,7 +28,7 @@ import kotlin.coroutines.cancellation.CancellationException
 object AppStartupTasks {
     fun initializeSentry(userId: String) {
         initializeErrorReport(userId = userId)
-        if (!currentAniBuildConfig.isDebug) {
+        if (!currentAniBuildConfig.isDebug && currentAniBuildConfig.sentryEnabled) {
             ErrorReportHolder.init(SentryErrorReport)
         } else {
             Sentry.init {
@@ -39,7 +39,7 @@ object AppStartupTasks {
     }
 
     fun initializeAnalytics(instance: () -> IAnalytics) {
-        if (!currentAniBuildConfig.isDebug) {
+        if (!currentAniBuildConfig.isDebug && currentAniBuildConfig.analyticsEnabled) {
             AnalyticsHolder.init(instance())
         }
     }

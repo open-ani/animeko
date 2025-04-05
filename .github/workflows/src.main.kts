@@ -492,39 +492,37 @@ fun getBuildJobBody(matrix: MatrixInstance): JobBuilder<BuildJobOutputs>.() -> U
             name = "Update dev version name",
             tasks = ["updateDevVersionNameFromGit", "\"--no-configuration-cache\""],
         )
-        if (matrix.isUbuntu) {
-            compileAndAssemble()
 
-            val packageOutputs = packageDesktopAndUpload()
-            packageOutputs.linuxX64AppImageOutcome?.let {
-                jobOutputs.linuxX64AppImageSuccess = it.eq(AbstractResult.Status.Success)
-            }
-
-            androidConnectedTests()
-        } else {
-            val prepareSigningKey = prepareSigningKey()
-            compileAndAssemble()
-            prepareSigningKey?.let {
-                buildAndroidApk(it)
-            }
-            if (matrix.uploadIpa) {
-                prepareIosBuild()
-                buildIosIpaDebug()
-                // Don't upload Release - it takes 30 mins
-                // buildIosIpaRelease()
-            }
-            val packageOutputs = packageDesktopAndUpload()
-
-            packageOutputs.macosAarch64DmgOutcome?.let {
-                jobOutputs.macosAarch64DmgSuccess = it.eq(AbstractResult.Status.Success)
-            }
-
-            packageOutputs.windowsX64PortableOutcome?.let {
-                jobOutputs.windowsX64PortableSuccess = it.eq(AbstractResult.Status.Success)
-            }
-            gradleCheck()
-            androidConnectedTests()
+        val prepareSigningKey = prepareSigningKey()
+        compileAndAssemble()
+        prepareSigningKey?.let {
+            buildAndroidApk(it)
         }
+        if (matrix.uploadIpa) {
+            prepareIosBuild()
+            buildIosIpaDebug()
+            // Don't upload Release - it takes 30 mins
+            // buildIosIpaRelease()
+        }
+        val packageOutputs = packageDesktopAndUpload()
+
+        packageOutputs.macosAarch64DmgOutcome?.let {
+            jobOutputs.macosAarch64DmgSuccess = it.eq(AbstractResult.Status.Success)
+        }
+
+        packageOutputs.windowsX64PortableOutcome?.let {
+            jobOutputs.windowsX64PortableSuccess = it.eq(AbstractResult.Status.Success)
+        }
+
+        packageOutputs.linuxX64AppImageOutcome?.let {
+            jobOutputs.linuxX64AppImageSuccess = it.eq(AbstractResult.Status.Success)
+        }
+
+        if (!matrix.isUbuntu) {
+            gradleCheck() // save time
+        }
+        androidConnectedTests()
+
         cleanupTempFiles()
     }
 }
@@ -1395,6 +1393,15 @@ class WithMatrix(
                 name = "Pod Install",
                 tasks = [
                     ":app:ios:podInstall",
+                ],
+            )
+        }
+
+        if (matrix.uploadIpa) {
+            runGradle(
+                name = "Patch ios Plist",
+                tasks = [
+                    ":app:ios:patchInfoPlist",
                 ],
             )
         }

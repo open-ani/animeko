@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.UtcOffset
 import kotlinx.datetime.toInstant
+import kotlinx.io.IOException
 import me.him188.ani.datasources.api.paging.SinglePagePagedSource
 import me.him188.ani.datasources.api.paging.SizedSource
 import me.him188.ani.datasources.api.source.ConnectionStatus
@@ -50,7 +51,6 @@ import me.him188.ani.datasources.api.topic.titles.toTopicDetails
 import me.him188.ani.datasources.api.topic.toTopicCriteria
 import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.ktor.toSource
-import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.warn
 import me.him188.ani.utils.xml.Document
 import me.him188.ani.utils.xml.Xml
@@ -149,8 +149,7 @@ abstract class AbstractMikanMediaSource(
                 }
             }
             ConnectionStatus.SUCCESS
-        } catch (e: Exception) {
-            logger.error(e) { "Failed to connect to $baseUrl" }
+        } catch (_: Exception) {
             ConnectionStatus.FAILED
         }
     }
@@ -158,16 +157,35 @@ abstract class AbstractMikanMediaSource(
     override suspend fun fetch(query: MediaFetchRequest): SizedSource<MediaMatch> =
         SinglePagePagedSource {
             client.use {
+                var suppressed: Throwable? = null
                 val list = try {
 
                     searchByIndexOrNull(query)
+                } catch (e: IOException) {
+                    suppressed = e
+                    null
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Throwable) {
-                    logger.error(e) { "Failed to search by index for query=$query" }
+                    suppressed = e
+                    logger.warn(e) { "Failed to search by index for query=$query, see exception" }
                     null
-                } ?: searchByKeyword(query)
-                list.asFlow()
+                }
+
+                if (list != null) {
+                    return@SinglePagePagedSource list.asFlow()
+                }
+
+                try {
+                    searchByKeyword(query)
+                        .asFlow()
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Throwable) {
+                    suppressed?.let { e.addSuppressed(it) }
+                    logger.warn(e) { "Failed to search by keyword for query=$query, see exception" }
+                    throw e
+                }
             }
         }
 

@@ -26,6 +26,7 @@ tasks.register("podInstall", Exec::class) {
     description = "Builds the iOS framework"
     dependsOn(
         ":app:shared:application:podspec",
+        patchInfoPlist,
     )
 
     workingDir(projectDir)
@@ -233,4 +234,47 @@ tasks.register("launchAppOnSimulator", Exec::class) {
     dependsOn("installDebugOnSimulator")
 
     commandLine("xcrun", "simctl", "launch", "booted", "org.openani.Animeko")
+}
+
+val patchInfoPlist = tasks.register("patchInfoPlist") {
+    group = "run"
+    description = "Patches Info.plist"
+
+    val versionName = project.property("version.name").toString().substringBefore("-")
+    inputs.property("version.name", versionName)
+    val versionCode = project.property("android.version.code")
+    inputs.property("version.code", versionCode)
+
+    val templateFile = file("Animeko/Info.plist.template.txt")
+    val outputFile = file("Animeko/Info.plist")
+    inputs.file(templateFile)
+    outputs.file(outputFile)
+
+    doLast {
+        val text = templateFile.readText()
+
+        // Replace CFBundleShortVersionString with versionName
+        // and CFBundleVersion with versionCode using a simple regex
+        val updated = text
+            .replace(
+                Regex("""(<key>CFBundleShortVersionString</key>\s*<string>)([^<]+)(</string>)"""),
+                "$1$versionName$3",
+            )
+            .replace(
+                Regex("""(<key>CFBundleVersion</key>\s*<string>)([^<]+)(</string>)"""),
+                "$1$versionCode$3",
+            )
+
+        if (updated != text) {
+            outputFile.writeText(updated)
+            logger.lifecycle("Patched Info.plist with versionName=$versionName and versionCode=$versionCode")
+        } else {
+            logger.lifecycle("No changes needed or did not match expected patterns in Info.plist.")
+        }
+    }
+}
+
+tasks.matching { it.path == ":app:shared:application:embedAndSignPodAppleFrameworkForXcode" }.configureEach {
+    dependsOn(patchInfoPlist)
+    inputs.file(file("Animeko/Info.plist"))
 }

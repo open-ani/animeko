@@ -140,6 +140,7 @@ import me.him188.ani.app.ui.subject.episode.video.sidesheet.MediaSelectorSheet
 import me.him188.ani.app.ui.subject.episode.video.topbar.EpisodePlayerTitle
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
+import me.him188.ani.app.videoplayer.ui.gesture.LevelController
 import me.him188.ani.app.videoplayer.ui.gesture.NoOpLevelController
 import me.him188.ani.app.videoplayer.ui.gesture.asLevelController
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
@@ -149,6 +150,7 @@ import me.him188.ani.danmaku.api.DanmakuPresentation
 import me.him188.ani.danmaku.ui.DanmakuHostState
 import me.him188.ani.utils.platform.isDesktop
 import me.him188.ani.utils.platform.isMobile
+import org.openani.mediamp.features.AudioLevelController
 import org.openani.mediamp.features.PlaybackSpeed
 import org.openani.mediamp.features.Screenshots
 
@@ -833,11 +835,16 @@ private fun EpisodeVideo(
         },
         progressSliderState = progressSliderState,
         cacheProgressInfoFlow = vm.cacheProgressInfoFlow,
-        audioController = remember {
-            derivedStateOf {
-                platformComponents.audioManager?.asLevelController(StreamType.MUSIC) ?: NoOpLevelController
-            }
-        }.value,
+        audioController = run {
+            val playerAudioLevelController = vm.player.features[AudioLevelController]?.collectAsLevelController()
+            remember {
+                derivedStateOf {
+                    platformComponents.audioManager?.asLevelController(StreamType.MUSIC)
+                        ?: playerAudioLevelController
+                        ?: NoOpLevelController
+                }
+            }.value
+        },
         brightnessController = remember {
             derivedStateOf {
                 platformComponents.brightnessManager?.asLevelController() ?: NoOpLevelController
@@ -992,3 +999,22 @@ private fun AutoPauseEffect(viewModel: EpisodeViewModel) {
 
 @Composable
 internal expect fun DisplayModeEffect(config: VideoScaffoldConfig)
+
+@Composable
+private fun AudioLevelController.collectAsLevelController(): LevelController {
+    val volumeState = volume.collectAsStateWithLifecycle()
+
+    return remember(this, volumeState) {
+        object : LevelController {
+            override val level: Float get() = volumeState.value
+
+            override fun increaseLevel(step: Float) {
+                volumeUp(step)
+            }
+
+            override fun decreaseLevel(step: Float) {
+                volumeDown(step)
+            }
+        }
+    }
+}

@@ -41,7 +41,18 @@ class PlaybackSpeedControllerState(
     /**
      * `-1` represents a invalid index, which means the current speed is not in the list.
      */
-    val currentIndex: Int by derivedStateOf { speedList.indexOf(currentSpeed) }
+    val currentIndex: Int by derivedStateOf {
+        val index = speedList.indexOf(currentSpeed)
+        if (index == -1) {
+            speedList.indexOf(1f).also {
+                check(it != -1) {
+                    "Playback speed list must contain 1.0f, but was $speedList"
+                }
+            }
+        } else {
+            index
+        }
+    }
 
     init {
         require(speedList.isNotEmpty()) { "Playback speed list must not be empty" }

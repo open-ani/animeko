@@ -16,12 +16,25 @@ ani.dandanplay.app.secret=aaaaaaaaaaaaaaa
 ## 打包 Android APP
 
 在 IDE 中双击 Ctrl，可用的命令：
+
 - `./gradlew assembleRelease` - 编译发布版
 - `./gradlew assembleDebug` - 编译测试版
 - `./gradlew installRelease` - 构建发布版并安装到模拟器
 - `./gradlew installDebug` - 构建测试版并安装到模拟器
 
 在 IDE 上也可以选择 `Build -> Build Bundle(s) / APK(s) -> Build APK(s)` 来构建 APK。
+
+## 打包 iOS APP
+
+打包之前，需要运行以下命令初始化项目：
+
+1. `./gradlew podInstall`。如果找不到 pod，可以自行 `cd app/ios && pod install`。
+2. `./gradlew patchInfoPlist`
+
+在 IDE 中双击 Ctrl，可用的命令：
+
+- `./gradlew buildDebugIpa` - 构建测试版（安装需要自签）
+- `./gradlew buildReleaseIpa` - 构建发布版（安装需要自签）
 
 ## 打包桌面应用
 
