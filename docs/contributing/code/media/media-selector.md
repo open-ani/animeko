@@ -77,7 +77,7 @@ MediaSelector 主要包含以下四个阶段：
 
 过滤阶段目前是独立考虑每个 media 的。
 
-过滤算法可以用一下简化的代码描述：
+过滤算法可以用以下简化的代码描述：
 
 ```kotlin
 // class MediaSelectorFilterSortAlgorithm
