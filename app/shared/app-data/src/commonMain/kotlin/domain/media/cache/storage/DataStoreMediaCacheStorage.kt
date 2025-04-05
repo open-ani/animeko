@@ -172,8 +172,7 @@ class DataStoreMediaCacheStorage(
         @Suppress("NAME_SHADOWING")
         val metadata = metadata.withExtra(
             mapOf(
-                MediaCacheMetadata.KEY_CREATION_TIME to clock.now().toEpochMilliseconds()
-                    .toString(),
+                MediaCacheMetadata.KEY_CREATION_TIME to clock.now().toEpochMilliseconds().toString(),
             ),
         )
         return lock.withLock {
@@ -192,7 +191,7 @@ class DataStoreMediaCacheStorage(
             )
             withContext(Dispatchers.IO) {
                 store.updateData { list ->
-                    list + MediaCacheSave(cache.origin, cache.metadata, engine.engineKey)
+                    list + MediaCacheSave(media, metadata, engine.engineKey)
                 }
             }
             listFlow.value += cache
