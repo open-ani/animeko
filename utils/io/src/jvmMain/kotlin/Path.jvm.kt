@@ -9,7 +9,6 @@ import java.nio.file.Paths
 import java.nio.file.SimpleFileVisitor
 import java.nio.file.StandardCopyOption
 import java.nio.file.attribute.BasicFileAttributes
-import kotlin.io.path.pathString
 import kotlin.io.path.useDirectoryEntries
 import java.nio.file.Path as NioPath
 
@@ -55,12 +54,21 @@ fun SystemPath.moveDirectoryRecursively(target: SystemPath, visitor: ((SystemPat
     Files.walkFileTree(
         sourceDir,
         object : SimpleFileVisitor<NioPath>() {
+            private fun NioPath.deleteRecursively() {
+                if (Files.isDirectory(this)) {
+                    useDirectoryEntries { entries ->
+                        entries.forEach { it.deleteRecursively() }
+                    }
+                }
+                Files.delete(this)
+            }
+
             override fun visitFile(file: NioPath?, attrs: BasicFileAttributes?): FileVisitResult {
                 if (file == null) return FileVisitResult.CONTINUE
                 val targetFile = targetDir.resolve(sourceDir.relativize(file))
 
                 Files.createDirectories(targetFile.parent)
-                visitor?.invoke(Path(file.pathString).inSystem)
+                visitor?.invoke(file.toKtPath().inSystem)
                 Files.copy(file, targetFile, StandardCopyOption.REPLACE_EXISTING)
                 Files.delete(file)
 
@@ -75,7 +83,7 @@ fun SystemPath.moveDirectoryRecursively(target: SystemPath, visitor: ((SystemPat
                     Files.copy(dir, targetSubDir, StandardCopyOption.REPLACE_EXISTING)
                 }
                 if (Files.exists(dir)) {
-                    Files.delete(dir)
+                    dir.deleteRecursively()
                 }
                 return FileVisitResult.CONTINUE
             }
