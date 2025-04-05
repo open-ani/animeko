@@ -74,7 +74,6 @@ import io.github.typesafegithub.workflows.domain.Mode
 import io.github.typesafegithub.workflows.domain.Permission
 import io.github.typesafegithub.workflows.domain.RunnerType
 import io.github.typesafegithub.workflows.domain.Shell
-import io.github.typesafegithub.workflows.domain.Step
 import io.github.typesafegithub.workflows.domain.actions.Action
 import io.github.typesafegithub.workflows.domain.triggers.PullRequest
 import io.github.typesafegithub.workflows.domain.triggers.Push
@@ -471,10 +470,6 @@ run {
 
 
 class BuildJobOutputs : JobOutputs() {
-    var iosIpaSuccess by output()
-    var macosAarch64DmgSuccess by output()
-    var windowsX64PortableSuccess by output()
-    var linuxX64AppImageSuccess by output()
 }
 
 fun getBuildJobBody(matrix: MatrixInstance): JobBuilder<BuildJobOutputs>.() -> Unit = {
@@ -504,19 +499,7 @@ fun getBuildJobBody(matrix: MatrixInstance): JobBuilder<BuildJobOutputs>.() -> U
             // Don't upload Release - it takes 30 mins
             // buildIosIpaRelease()
         }
-        val packageOutputs = packageDesktopAndUpload()
-
-        packageOutputs.macosAarch64DmgOutcome?.let {
-            jobOutputs.macosAarch64DmgSuccess = it.eq(AbstractResult.Status.Success)
-        }
-
-        packageOutputs.windowsX64PortableOutcome?.let {
-            jobOutputs.windowsX64PortableSuccess = it.eq(AbstractResult.Status.Success)
-        }
-
-        packageOutputs.linuxX64AppImageOutcome?.let {
-            jobOutputs.linuxX64AppImageSuccess = it.eq(AbstractResult.Status.Success)
-        }
+        packageDesktopAndUpload()
 
         if (!matrix.isUbuntu) {
             gradleCheck() // save time
@@ -795,7 +778,7 @@ workflow(
             Runner.GithubWindowsServer2022,
             Runner.SelfHostedWindows10,
         ).forEach { runner ->
-            addVerifyJob(build, runner, build.outputs.windowsX64PortableSuccess)
+            addVerifyJob(build, runner, build.result.eq(AbstractResult.Status.Success))
         }
     }
 
@@ -809,7 +792,7 @@ workflow(
                 Runner.GithubMacOS14,
                 Runner.GithubMacOS15,
             ).forEach { runner ->
-                addVerifyJob(build, runner, build.outputs.macosAarch64DmgSuccess)
+                addVerifyJob(build, runner, build.result.eq(AbstractResult.Status.Success))
             }
         }
 
@@ -819,7 +802,7 @@ workflow(
         listOf(
             Runner.GithubUbuntu2404,
         ).forEach { runner ->
-            addVerifyJob(build, runner, build.outputs.linuxX64AppImageSuccess)
+            addVerifyJob(build, runner, build.result.eq(AbstractResult.Status.Success))
         }
     }
 }
@@ -1516,10 +1499,6 @@ class WithMatrix(
     }
 
     class PackageDesktopAndUploadOutputs {
-        // null means not enabled on this machine
-        var macosAarch64DmgOutcome: Step<*>.Outcome? = null
-        var windowsX64PortableOutcome: Step<*>.Outcome? = null
-        var linuxX64AppImageOutcome: Step<*>.Outcome? = null
     }
 
     fun JobBuilder<*>.packageDesktopAndUpload(): PackageDesktopAndUploadOutputs {
@@ -1563,7 +1542,7 @@ class WithMatrix(
 
         return PackageDesktopAndUploadOutputs().apply {
             if (matrix.isMacOS && matrix.isAArch64) {
-                val macosAarch64Dmg = uses(
+                usesWithAttempts(
                     name = "Upload macOS dmg",
                     action = UploadArtifact(
                         name = ArtifactNames.macosDmg(matrix.arch),
@@ -1572,12 +1551,10 @@ class WithMatrix(
                         ifNoFilesFound = UploadArtifact.BehaviorIfNoFilesFound.Error,
                     ),
                 )
-
-                this.macosAarch64DmgOutcome = macosAarch64Dmg.outcome
             }
 
             if (matrix.isMacOS && matrix.isX64) {
-                uses(
+                usesWithAttempts(
                     name = "Upload macOS dmg",
                     action = UploadArtifact(
                         name = ArtifactNames.macosPortable(matrix.arch),
@@ -1589,7 +1566,7 @@ class WithMatrix(
             }
 
             if (matrix.isWindows) {
-                val windowsX64Portable = uses(
+                usesWithAttempts(
                     name = "Upload Windows packages",
                     action = UploadArtifact(
                         name = ArtifactNames.windowsPortable(),
@@ -1598,8 +1575,6 @@ class WithMatrix(
                         ifNoFilesFound = UploadArtifact.BehaviorIfNoFilesFound.Error,
                     ),
                 )
-
-                this.windowsX64PortableOutcome = windowsX64Portable.outcome
             }
 
             if (matrix.isUbuntu && matrix.isX64) {
@@ -1630,7 +1605,7 @@ class WithMatrix(
                 // Expected output path: Animeko-x86_64.AppImage.
                 // If changed, change also uploadDesktopDistributions in :ci-helper
 
-                val linuxX64AppImage = uses(
+                usesWithAttempts(
                     name = "Upload Linux packages",
                     action = UploadArtifact(
                         name = ArtifactNames.linuxAppImage(matrix.arch),
@@ -1639,8 +1614,6 @@ class WithMatrix(
                         ifNoFilesFound = UploadArtifact.BehaviorIfNoFilesFound.Error,
                     ),
                 )
-
-                this.linuxX64AppImageOutcome = linuxX64AppImage.outcome
             }
         }
     }
