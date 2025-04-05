@@ -480,6 +480,7 @@ fun getBuildJobBody(matrix: MatrixInstance): JobBuilder<BuildJobOutputs>.() -> U
         freeSpace()
         enableSwap()
         deleteLocalProperties()
+        writeLocalProperties()
         installJbr21()
         chmod777()
         setupGradle()
@@ -890,6 +891,7 @@ workflow(
             freeSpace()
             enableSwap()
             deleteLocalProperties()
+            writeLocalProperties()
             installJbr21()
             chmod777()
             setupGradle()
@@ -1036,6 +1038,22 @@ class WithMatrix(
     fun JobBuilder<*>.deleteLocalProperties() {
         run(
             command = shell($$"""rm local.properties"""),
+            continueOnError = true,
+        )
+    }
+
+    // Must be run before starting Gradle daemon
+    fun JobBuilder<*>.writeLocalProperties() {
+        run(
+            command = shell(
+                $$"""
+                echo "ani.dandanplay.app.id=$${expr { secrets.DANDANPLAY_APP_ID }}" >> local.properties
+                echo "ani.dandanplay.app.secret=$${expr { secrets.DANDANPLAY_APP_SECRET }}" >> local.properties
+                echo "ani.sentry.dsn=$${expr { secrets.SENTRY_DSN }}" >> local.properties
+                echo "ani.analytics.server=$${expr { secrets.ANALYTICS_SERVER }}" >> local.properties
+                echo "ani.analytics.key=$${expr { secrets.ANALYTICS_KEY }}" >> local.properties
+            """.trimIndent(),
+            ),
             continueOnError = true,
         )
     }
