@@ -20,6 +20,7 @@ import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.platform.Platform
+import java.awt.Desktop
 import java.io.File
 import kotlin.io.path.createTempDirectory
 import kotlin.system.exitProcess
@@ -63,50 +64,34 @@ object MacOSUpdateInstaller : DesktopUpdateInstaller {
             )
         }
 
-        val updateFile = file.toFile()
-        if (!updateFile.exists()) {
-            return failed("Update file does not exist: ${updateFile.absolutePath}")
-        }
-
-        val extension = updateFile.extension.lowercase()
-        if (extension != "dmg" && extension != "zip") {
-            return failed("Unsupported update file format: $extension")
+        val dmgFile = file.toFile()
+        if (!dmgFile.exists()) {
+            return failed("DMG file does not exist: ${dmgFile.absolutePath}")
         }
 
         val tempDir = createTempDirectory(prefix = "ani-macos-update-").toFile()
-        logger.info { "tempDir: ${tempDir.absolutePath}" }
-
         val scriptFile = File(tempDir, "macos-update.command")
-        // We'll pass in essential parameters to the script.
+        logger.info { "tempMountDir: ${tempDir.absolutePath}" }
+
+        // We’ll pass in some essential parameters to the script.
+        // 1) oldPid = our current process PID
+        // 2) path to the DMG
+        // 3) path to the mount dir
+        // 4) the current .app name (e.g. Ani.app)
+        // 5) the parent directory where the new app should be copied
         val oldPid = ProcessHandle.current().pid()
         val appName = appDir.name  // e.g. Ani.app
         val targetParentDir = appDir.parentFile.absolutePath
 
-        // Generate the shell script content based on the extension
-        val scriptContent = when (extension) {
-            "dmg" -> {
-                logger.info { "tempMountDir: ${tempDir.absolutePath}" }
-
-                generateShellScriptForDmg(
-                    oldPid = oldPid,
-                    dmgFilePath = updateFile.absolutePath,
-                    convertedDmgFilePath = tempDir.resolve("converted.dmg").absolutePath,
-                    mountPath = tempDir.resolve("mount").absolutePath,
-                    appName = appName,
-                    targetParent = targetParentDir,
-                )
-            }
-
-            "zip" -> generateShellScriptForZip(
-                oldPid = oldPid,
-                zipFilePath = updateFile.absolutePath,
-                unzipPath = tempDir.resolve("unzip").absolutePath,
-                appName = appName,
-                targetParent = targetParentDir,
-            )
-
-            else -> return failed("Unsupported file format: $extension") // theoretically unreachable
-        }
+        // Generate the shell script content
+        val scriptContent = generateShellScript(
+            oldPid = oldPid,
+            dmgFilePath = dmgFile.absolutePath,
+            convertedDmgFilePath = tempDir.resolve("converted.dmg").absolutePath,
+            mountPath = tempDir.resolve("mount").absolutePath,
+            appName = appName,
+            targetParent = targetParentDir,
+        )
 
         // Write the script to disk and make it executable
         scriptFile.writeText(scriptContent)
@@ -125,7 +110,7 @@ object MacOSUpdateInstaller : DesktopUpdateInstaller {
     }
 
     /**
-     * Generates a shell script that handles .dmg files:
+     * Generates the shell script that:
      * 1) Waits for the old process to exit
      * 2) Converts + mounts the DMG
      * 3) Copies the .app into place
@@ -134,7 +119,7 @@ object MacOSUpdateInstaller : DesktopUpdateInstaller {
      * 6) Cleans up
      * 7) Launches the new app
      */
-    private fun generateShellScriptForDmg(
+    private fun generateShellScript(
         oldPid: Long,
         dmgFilePath: String,
         convertedDmgFilePath: String,
@@ -151,12 +136,12 @@ object MacOSUpdateInstaller : DesktopUpdateInstaller {
             MOUNT_DIR="$$mountPath"
             APP_NAME="$$appName"
             TARGET_PARENT="$$targetParent"
-            NEW_DMG_FILE="$$convertedDmgFilePath"
 
-            echo "Update script for DMG started."
+            echo "Update script started."
             echo "Will wait for process PID=$$oldPid to exit."
 
             # 1) Wait for the old process to fully exit.
+            #    We'll loop until kill -0 fails (meaning process does not exist).
             while kill -0 "$OLD_PID" 2>/dev/null; do
               echo "Waiting for old app process $OLD_PID to exit..."
               sleep 1
@@ -164,9 +149,10 @@ object MacOSUpdateInstaller : DesktopUpdateInstaller {
 
             # 2) Convert the DMG to a CDR (UDTO format)
             echo "Converting DMG into CDR..."
+            NEW_DMG_FILE="$$convertedDmgFilePath"
             hdiutil convert "$DMG_FILE" -format UDTO -o "$NEW_DMG_FILE"
 
-            # 3) Mount the converted DMG
+            # 3) Mount the converted DMG (the .cdr will appear after conversion)
             echo "Mounting the DMG at $MOUNT_DIR ..."
             hdiutil attach "${NEW_DMG_FILE}.cdr" -nobrowse -noverify -noautoopen -mountpoint "$MOUNT_DIR"
 
@@ -182,89 +168,20 @@ object MacOSUpdateInstaller : DesktopUpdateInstaller {
             echo "Removing quarantine..."
             xattr -r -d com.apple.quarantine "$TARGET_PARENT/$APP_NAME" || true
 
+            # 7) Clean up the temporary mount directory
             echo "Cleaning up temporary mount directory..."
             rm -rf "$MOUNT_DIR"
 
-            # 7) Launch the newly copied app
+            # 8) Launch the newly copied app
             echo "Launching updated app: $TARGET_PARENT/$APP_NAME"
             open "$TARGET_PARENT/$APP_NAME"
 
-            echo "Update script for DMG finished."
-        """.trimIndent()
-    }
-
-    /**
-     * Generates a shell script that handles .zip files:
-     * 1) Waits for the old process to exit
-     * 2) Unzips to a temp directory
-     * 3) Finds the .app inside the unzipped folder
-     * 4) Copies the .app into place
-     * 5) Removes the quarantine attribute
-     * 6) Cleans up
-     * 7) Launches the new app
-     */
-    private fun generateShellScriptForZip(
-        oldPid: Long,
-        zipFilePath: String,
-        unzipPath: String,
-        appName: String,
-        targetParent: String,
-    ): String {
-        return $$"""
-            #!/usr/bin/env bash
-            set -euo pipefail
-
-            OLD_PID=$$oldPid
-            ZIP_FILE="$$zipFilePath"
-            UNZIP_DIR="$$unzipPath"
-            APP_NAME="$$appName"
-            TARGET_PARENT="$$targetParent"
-
-            echo "Update script for ZIP started."
-            echo "Will wait for process PID=$$oldPid to exit."
-
-            # 1) Wait for the old process to fully exit.
-            while kill -0 "$OLD_PID" 2>/dev/null; do
-              echo "Waiting for old app process $OLD_PID to exit..."
-              sleep 1
-            done
-
-            # 2) Unzip the ZIP file into a temporary directory
-            echo "Unzipping update file into $UNZIP_DIR ..."
-            mkdir -p "$UNZIP_DIR"
-            unzip -q "$ZIP_FILE" -d "$UNZIP_DIR"
-
-            # 3) Within the unzipped folder, locate the .app folder
-            #    We'll assume the unzipped folder contains the correct .app we need, matching $APP_NAME
-            #    If the .zip file is structured differently, you'd adapt accordingly.
-            echo "Looking for $APP_NAME inside $UNZIP_DIR ..."
-            if [ ! -d "$UNZIP_DIR/$APP_NAME" ]; then
-              echo "Error: Could not find $APP_NAME in the extracted zip."
-              exit 1
-            fi
-
-            # 4) Copy the updated .app to the parent of the current .app
-            echo "Copying updated app to $TARGET_PARENT ..."
-            cp -R "$UNZIP_DIR/$APP_NAME" "$TARGET_PARENT"
-
-            # 5) Remove the com.apple.quarantine attribute
-            echo "Removing quarantine..."
-            xattr -r -d com.apple.quarantine "$TARGET_PARENT/$APP_NAME" || true
-
-            # 6) Clean up the unzipped folder
-            echo "Cleaning up temporary unzip directory..."
-            rm -rf "$UNZIP_DIR"
-
-            # 7) Launch the newly copied app
-            echo "Launching updated app: $TARGET_PARENT/$APP_NAME"
-            open "$TARGET_PARENT/$APP_NAME"
-
-            echo "Update script for ZIP finished."
+            echo "Update script finished."
         """.trimIndent()
     }
 
     override fun deleteOldUpdater() {
-        // Noop or your custom implementation
+        // Noop or your implementation
     }
 
     private fun failed(
