@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024-2025 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.utils.io
 
 import kotlinx.io.files.Path
@@ -9,6 +18,7 @@ import java.nio.file.Paths
 import java.nio.file.SimpleFileVisitor
 import java.nio.file.StandardCopyOption
 import java.nio.file.attribute.BasicFileAttributes
+import kotlin.io.path.pathString
 import kotlin.io.path.useDirectoryEntries
 import java.nio.file.Path as NioPath
 
@@ -54,21 +64,12 @@ fun SystemPath.moveDirectoryRecursively(target: SystemPath, visitor: ((SystemPat
     Files.walkFileTree(
         sourceDir,
         object : SimpleFileVisitor<NioPath>() {
-            private fun NioPath.deleteRecursively() {
-                if (Files.isDirectory(this)) {
-                    useDirectoryEntries { entries ->
-                        entries.forEach { it.deleteRecursively() }
-                    }
-                }
-                Files.delete(this)
-            }
-
             override fun visitFile(file: NioPath?, attrs: BasicFileAttributes?): FileVisitResult {
                 if (file == null) return FileVisitResult.CONTINUE
                 val targetFile = targetDir.resolve(sourceDir.relativize(file))
 
                 Files.createDirectories(targetFile.parent)
-                visitor?.invoke(file.toKtPath().inSystem)
+                visitor?.invoke(Path(file.pathString).inSystem)
                 Files.copy(file, targetFile, StandardCopyOption.REPLACE_EXISTING)
                 Files.delete(file)
 
@@ -83,7 +84,7 @@ fun SystemPath.moveDirectoryRecursively(target: SystemPath, visitor: ((SystemPat
                     Files.copy(dir, targetSubDir, StandardCopyOption.REPLACE_EXISTING)
                 }
                 if (Files.exists(dir)) {
-                    dir.deleteRecursively()
+                    Files.delete(dir)
                 }
                 return FileVisitResult.CONTINUE
             }

@@ -517,18 +517,7 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
 /**
  * 会在非 preview 环境调用. 用来初始化一些模块
  */
-fun KoinApplication.startCommonKoinModule(
-    context: Context,
-    coroutineScope: CoroutineScope,
-    /**
-     * Since 4.9 on Android,
-     * Default directory of torrent cache is changed to external/shared storage and
-     * cannot be changed. This is the workaround for startup migration.
-     *
-     * This is only used on Android for cache migration.
-     */
-    restorePersistedCaches: () -> Boolean = { true },
-): KoinApplication {
+fun KoinApplication.startCommonKoinModule(context: Context, coroutineScope: CoroutineScope): KoinApplication {
     // Start the proxy provider very soon (before initialization of any other components)
     runBlocking {
         // We have to block here to read the saved proxy settings
@@ -541,11 +530,6 @@ fun KoinApplication.startCommonKoinModule(
 
     coroutineScope.launch {
         val metadataStore = context.dataStores.mediaCacheMetadataStore
-
-        /**
-         * This will load MediaCacheManager, which will load TorrentManager.
-         * `AniApplication.instance.requiresTorrentCacheMigration` will be properly set.
-         */
         val storages = koin.get<MediaCacheManager>().storagesIncludingDisabled
         val legacyMetadataDir = context.getMediaMetadataDir()
 
@@ -557,22 +541,22 @@ fun KoinApplication.startCommonKoinModule(
             storages
                 .firstOrNull { it.engine is TorrentMediaCacheEngine }
                 .let { storage ->
-                    if (storage == null) return@let
-
-                    val dir = legacyMetadataDir.resolve("anitorrent")
-                    if (dir.exists() && dir.isDirectory()) {
-                        DataStoreMediaCacheStorage.migrateMetadataFromV47(metadataStore, storage, dir)
+                    if (storage != null) {
+                        val dir = legacyMetadataDir.resolve("anitorrent")
+                        if (dir.exists() && dir.isDirectory()) {
+                            DataStoreMediaCacheStorage.migrateMetadataFromV47(metadataStore, storage, dir)
+                        }
                     }
                 }
             storages
                 .filterIsInstance<DataStoreMediaCacheStorage>()
                 .firstOrNull { it.engine is HttpMediaCacheEngine }
                 .let { storage ->
-                    if (storage == null) return@let
-
-                    val dir = legacyMetadataDir.resolve("web-m3u")
-                    if (dir.exists() && dir.isDirectory()) {
-                        DataStoreMediaCacheStorage.migrateMetadataFromV47(metadataStore, storage, dir)
+                    if (storage != null) {
+                        val dir = legacyMetadataDir.resolve("web-m3u")
+                        if (dir.exists() && dir.isDirectory()) {
+                            DataStoreMediaCacheStorage.migrateMetadataFromV47(metadataStore, storage, dir)
+                        }
                     }
                 }
             // Delete the whole metadata dir
@@ -583,10 +567,7 @@ fun KoinApplication.startCommonKoinModule(
 
         val manager = koin.get<MediaCacheManager>()
         for (storage in manager.storages) {
-            /**
-             * Get `AniApplication.instance.requiresTorrentCacheMigration` lazily.
-             */
-            if (restorePersistedCaches()) storage.first()?.restorePersistedCaches()
+            storage.first()?.restorePersistedCaches()
         }
 
         koin.get<MediaAutoCacheService>().startRegularCheck(coroutineScope)
