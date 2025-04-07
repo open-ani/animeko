@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -14,6 +14,7 @@ import kotlinx.datetime.LocalDateTime
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 import me.him188.ani.datasources.api.topic.ResourceLocation
+import me.him188.ani.datasources.api.topic.guessTorrentFromUrl
 import me.him188.ani.utils.xml.Element
 
 
@@ -49,11 +50,7 @@ data class RssItem(
 
 fun RssItem.guessResourceLocation(): ResourceLocation? {
     val url = this.enclosure?.url ?: this.link.takeIf { it.isNotBlank() } ?: return null
-    return if (url.startsWith("magnet:")) {
-        ResourceLocation.MagnetLink(url)
-    } else {
-        ResourceLocation.HttpTorrentFile(url)
-    }
+    return ResourceLocation.guessTorrentFromUrl(url)
 }
 
 @Immutable

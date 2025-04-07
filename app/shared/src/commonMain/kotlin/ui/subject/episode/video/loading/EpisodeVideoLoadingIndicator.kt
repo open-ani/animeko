@@ -112,7 +112,7 @@ fun EpisodeVideoLoadingIndicator(
                         if (!state.isBt) {
                             "资源解析成功, 正在准备视频"
                         } else {
-                            "正在解析磁力链或查询元数据\n通常几秒内完成, 请尝试切换数据源或先缓存再看"
+                            "正在解析磁力链或查询元数据\n通常几秒内完成, 否则请尝试切换数据源或先缓存再看"
                         },
                         textAlign = TextAlign.Center,
                     )

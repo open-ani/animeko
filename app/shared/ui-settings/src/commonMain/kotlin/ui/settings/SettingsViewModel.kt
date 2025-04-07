@@ -40,6 +40,7 @@ import me.him188.ani.app.domain.mediasource.codec.serializeSubscriptionToString
 import me.him188.ani.app.domain.mediasource.subscription.MediaSourceSubscriptionUpdater
 import me.him188.ani.app.domain.settings.ProxyProvider
 import me.him188.ani.app.platform.PermissionManager
+import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.ui.foundation.launchInBackground
 import me.him188.ani.app.ui.settings.danmaku.DanmakuRegexFilterState
 import me.him188.ani.app.ui.settings.framework.AbstractSettingsViewModel
@@ -47,6 +48,7 @@ import me.him188.ani.app.ui.settings.framework.ConnectionTestResult
 import me.him188.ani.app.ui.settings.framework.ConnectionTester
 import me.him188.ani.app.ui.settings.framework.DefaultConnectionTesterRunner
 import me.him188.ani.app.ui.settings.framework.SettingsState
+import me.him188.ani.app.ui.settings.tabs.about.AboutTabInfo
 import me.him188.ani.app.ui.settings.tabs.app.SoftwareUpdateGroupState
 import me.him188.ani.app.ui.settings.tabs.media.CacheDirectoryGroupState
 import me.him188.ani.app.ui.settings.tabs.media.MediaSelectionGroupState
@@ -234,4 +236,5 @@ class SettingsViewModel : AbstractSettingsViewModel(), KoinComponent {
     )
 
     val debugTriggerState = DebugTriggerState(debugSettingsState, backgroundScope)
+    val aboutTabInfo = AboutTabInfo(currentAniBuildConfig.versionName)
 }

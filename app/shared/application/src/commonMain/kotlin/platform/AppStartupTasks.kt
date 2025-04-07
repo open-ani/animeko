@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.platform
 
+import io.sentry.kotlin.multiplatform.Sentry
 import me.him188.ani.app.domain.session.AuthorizationCancelledException
 import me.him188.ani.app.domain.session.AuthorizationFailedException
 import me.him188.ani.app.domain.session.SessionManager
@@ -16,6 +17,8 @@ import me.him188.ani.app.domain.session.SessionStatus
 import me.him188.ani.app.platform.trace.SentryErrorReport
 import me.him188.ani.app.trace.ErrorReportHolder
 import me.him188.ani.utils.analytics.AnalyticsConfig
+import me.him188.ani.utils.analytics.AnalyticsHolder
+import me.him188.ani.utils.analytics.IAnalytics
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
@@ -25,8 +28,19 @@ import kotlin.coroutines.cancellation.CancellationException
 object AppStartupTasks {
     fun initializeSentry(userId: String) {
         initializeErrorReport(userId = userId)
-        if (!currentAniBuildConfig.isDebug) {
+        if (!currentAniBuildConfig.isDebug && currentAniBuildConfig.sentryEnabled) {
             ErrorReportHolder.init(SentryErrorReport)
+        } else {
+            Sentry.init {
+                it.beforeBreadcrumb = { null }
+            }
+            Sentry.close()
+        }
+    }
+
+    fun initializeAnalytics(instance: () -> IAnalytics) {
+        if (!currentAniBuildConfig.isDebug && currentAniBuildConfig.analyticsEnabled) {
+            AnalyticsHolder.init(instance())
         }
     }
 
@@ -67,6 +81,5 @@ fun AnalyticsConfig.Companion.create(): AnalyticsConfig {
     return AnalyticsConfig(
         currentAniBuildConfig.versionName,
         currentAniBuildConfig.isDebug,
-        enabled = currentAniBuildConfig.isDebug, // todo: ask for consent then enable for production
     )
 }

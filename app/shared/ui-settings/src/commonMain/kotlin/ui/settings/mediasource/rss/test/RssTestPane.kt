@@ -36,6 +36,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.serialization.Serializable
 import me.him188.ani.app.tools.rememberUiMonoTasker
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.interaction.nestedScrollWorkaround
@@ -208,6 +209,7 @@ private fun EditTestDataCard(
 }
 
 @Immutable
+@Serializable
 enum class RssTestPaneTab {
     Overview,
     RssInfo,

@@ -108,6 +108,7 @@ class LifecycleAwareTorrentServiceConnection<T : Any>(
 
                 when (val result = startServiceAndGetBinder()) {
                     is ServiceStartResult.AlreadyStarted -> {
+                        logger.debug { "Service is already connected: ${binderDeferred.value.getCompleted()}" }
                         isServiceConnected.value = true
                     }
 
@@ -128,7 +129,7 @@ class LifecycleAwareTorrentServiceConnection<T : Any>(
             throw e
         }
     }
-    
+
     /**
      * 服务已断开连接, 通信对象变为不可用.
      * 如果目前 APP 还在前台, 就要尝试重启并重连服务.

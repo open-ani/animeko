@@ -31,11 +31,11 @@ import kotlinx.serialization.Serializable
 /**
  * 
  *
- * @param producer
- * @param mangaka
- * @param artist
- * @param seiyu
- * @param writer
+ * @param producer 
+ * @param mangaka 
+ * @param artist 
+ * @param seiyu 
+ * @param writer 
  * @param illustrator 
  * @param actor 
  */

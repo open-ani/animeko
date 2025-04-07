@@ -62,6 +62,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.Flow
 import me.him188.ani.app.data.models.episode.displayName
 import me.him188.ani.app.data.models.subject.SubjectInfo
+import me.him188.ani.app.data.models.subject.Tag
 import me.him188.ani.app.domain.danmaku.DanmakuLoadingState
 import me.him188.ani.app.domain.session.AuthState
 import me.him188.ani.app.navigation.LocalNavigator
@@ -76,7 +77,7 @@ import me.him188.ani.app.ui.subject.AiringLabelState
 import me.him188.ani.app.ui.subject.collection.SubjectCollectionTypeSuggestions
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeDialogsHost
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeState
-import me.him188.ani.app.ui.subject.details.SubjectDetailsScene
+import me.him188.ani.app.ui.subject.details.SubjectDetailsScreen
 import me.him188.ani.app.ui.subject.details.SubjectDetailsUIState
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateLoader
 import me.him188.ani.app.ui.subject.episode.details.components.DanmakuMatchInfoGrid
@@ -131,6 +132,7 @@ fun EpisodeDetails(
     onRestartSource: (instanceId: String) -> Unit,
     onSetDanmakuSourceEnabled: (providerId: String, enabled: Boolean) -> Unit,
     onClickLogin: () -> Unit,
+    onClickTag: (Tag) -> Unit,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
 ) {
@@ -148,11 +150,12 @@ fun EpisodeDetails(
                 modifier = Modifier.desktopTitleBarPadding().statusBarsPadding(),
                 contentWindowInsets = { BottomSheetDefaults.windowInsets.add(WindowInsets.desktopTitleBar()) },
             ) {
-                SubjectDetailsScene(
+                SubjectDetailsScreen(
                     subjectDetailsState,
                     authState,
                     onPlay = onSwitchEpisode,
                     onLoadErrorRetry = { state.subjectDetailsStateLoader.reload(state.subjectId) },
+                    onClickTag = onClickTag, 
                     showTopBar = false,
                     showBlurredBackground = false,
                     navigationIcon = {},

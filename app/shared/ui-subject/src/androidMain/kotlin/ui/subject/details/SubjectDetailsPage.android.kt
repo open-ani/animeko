@@ -12,6 +12,7 @@ package me.him188.ani.app.ui.subject.details
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import me.him188.ani.app.data.models.subject.TestSubjectInfo
 import me.him188.ani.app.domain.foundation.LoadError
@@ -31,12 +32,8 @@ internal fun PreviewSubjectDetails() = ProvideCompositionLocalsForPreview {
         createTestSubjectDetailsState(scope)
             .let { SubjectDetailsUIState.Ok(it.subjectId, it) }
     }
-    SubjectDetailsScene(
+    PreviewSubjectDetailsScreen(
         state,
-        TestAuthState,
-        onPlay = { },
-        onLoadErrorRetry = { },
-        navigationIcon = { BackNavigationIconButton({}) },
     )
 }
 
@@ -48,12 +45,8 @@ internal fun PreviewPlaceholderSubjectDetails() = ProvideCompositionLocalsForPre
     val state = remember {
         SubjectDetailsUIState.Placeholder(TestSubjectInfo.subjectId, TestSubjectInfo)
     }
-    SubjectDetailsScene(
+    PreviewSubjectDetailsScreen(
         state,
-        TestAuthState,
-        onPlay = { },
-        onLoadErrorRetry = { },
-        navigationIcon = { BackNavigationIconButton({}) },
     )
 }
 
@@ -66,11 +59,24 @@ internal fun PreviewErrorSubjectDetails() = ProvideCompositionLocalsForPreview {
     val state = remember {
         SubjectDetailsUIState.Err(TestSubjectInfo.subjectId, TestSubjectInfo, LoadError.NetworkError)
     }
-    SubjectDetailsScene(
+    PreviewSubjectDetailsScreen(
+        state,
+    )
+}
+
+@TestOnly
+@Composable
+private fun PreviewSubjectDetailsScreen(
+    state: SubjectDetailsUIState,
+    modifier: Modifier = Modifier
+) {
+    SubjectDetailsScreen(
         state,
         TestAuthState,
         onPlay = { },
         onLoadErrorRetry = { },
+        onClickTag = {},
         navigationIcon = { BackNavigationIconButton({}) },
+        modifier = modifier,
     )
 }

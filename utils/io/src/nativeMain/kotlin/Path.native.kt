@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -15,6 +15,7 @@ import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import kotlinx.io.files.SystemTemporaryDirectory
 import me.him188.ani.utils.platform.Uuid
+import platform.Foundation.NSApplicationSupportDirectory
 import platform.Foundation.NSCachesDirectory
 import platform.Foundation.NSDocumentDirectory
 import platform.Foundation.NSSearchPathForDirectoriesInDomains
@@ -44,12 +45,22 @@ private fun resolveImpl(parent: String, child: String): String {
     return "$parent/$child"
 }
 
+private const val appName = "org.openani.Animeko"
+
 @OptIn(ExperimentalForeignApi::class)
 val SystemDocumentDir by lazy {
     Path(
         NSSearchPathForDirectoriesInDomains(NSDocumentDirectory.convert(), NSUserDomainMask.convert(), true)
             .firstOrNull()?.toString() ?: error("Cannot get SystemDocumentDir"),
-    ).inSystem
+    ).inSystem.resolve(appName)
+}
+
+@OptIn(ExperimentalForeignApi::class)
+val SystemSupportDir by lazy {
+    Path(
+        NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory.convert(), NSUserDomainMask.convert(), true)
+            .firstOrNull()?.toString() ?: error("Cannot get SystemSupportDir"),
+    ).inSystem.resolve(appName)
 }
 
 @OptIn(ExperimentalForeignApi::class)
@@ -57,12 +68,12 @@ val SystemCacheDir by lazy {
     Path(
         NSSearchPathForDirectoriesInDomains(NSCachesDirectory.convert(), NSUserDomainMask.convert(), true)
             .firstOrNull()?.toString() ?: error("Cannot get SystemCacheDir"),
-    ).inSystem
+    ).inSystem.resolve(appName)
 }
 
 actual val SystemPath.absolutePath: String
     get() {
-        return resolveImpl(SystemDocumentDir.toString(), path.toString())
+        return resolveImpl("/", path.toString())
     }
 
 actual fun SystemPaths.createTempDirectory(

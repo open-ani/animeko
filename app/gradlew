@@ -1,1 +1,1 @@
-../gradlew embedAndSignAppleFrameworkForXcode
+../gradlew iosFramework --no-daemon

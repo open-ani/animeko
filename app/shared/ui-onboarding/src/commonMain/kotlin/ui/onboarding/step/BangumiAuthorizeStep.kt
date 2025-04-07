@@ -66,7 +66,7 @@ import me.him188.ani.app.ui.foundation.icons.BangumiNext
 import me.him188.ani.app.ui.foundation.icons.BangumiNextIconColor
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
-import me.him188.ani.app.ui.onboarding.HeroIcon
+import me.him188.ani.app.ui.foundation.widgets.HeroIcon
 import me.him188.ani.app.ui.onboarding.WizardLayoutParams
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope

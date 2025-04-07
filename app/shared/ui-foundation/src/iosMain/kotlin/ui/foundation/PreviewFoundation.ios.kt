@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -16,7 +16,7 @@ import me.him188.ani.app.platform.IosContext
 import me.him188.ani.app.platform.IosContextFiles
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.utils.io.SystemCacheDir
-import me.him188.ani.utils.io.SystemDocumentDir
+import me.him188.ani.utils.io.SystemSupportDir
 import me.him188.ani.utils.platform.annotations.TestOnly
 
 @Composable
@@ -28,7 +28,7 @@ internal actual inline fun ProvidePlatformCompositionLocalsForPreview(crossinlin
             IosContext(
                 IosContextFiles(
                     cacheDir = SystemCacheDir,
-                    dataDir = SystemDocumentDir,
+                    dataDir = SystemSupportDir,
                 ),
             )
         },

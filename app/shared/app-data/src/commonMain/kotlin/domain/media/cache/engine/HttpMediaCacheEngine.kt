@@ -25,6 +25,7 @@ import kotlinx.io.files.SystemFileSystem
 import me.him188.ani.app.data.persistent.DataStoreJson
 import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.MediaCacheState
+import me.him188.ani.app.domain.media.cache.engine.HttpMediaCacheEngine.Companion.EXTRA_URI
 import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
 import me.him188.ani.app.domain.media.resolver.MediaResolver
 import me.him188.ani.app.tools.Progress
@@ -34,10 +35,12 @@ import me.him188.ani.datasources.api.CachedMedia
 import me.him188.ani.datasources.api.DefaultMedia
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.MediaCacheMetadata
+import me.him188.ani.datasources.api.MediaCacheProperties
 import me.him188.ani.datasources.api.MetadataKey
 import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
 import me.him188.ani.datasources.api.topic.ResourceLocation
+import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.httpdownloader.DownloadId
 import me.him188.ani.utils.httpdownloader.DownloadOptions
 import me.him188.ani.utils.httpdownloader.DownloadStatus
@@ -58,7 +61,8 @@ import kotlin.coroutines.CoroutineContext
 
 class HttpMediaCacheEngine(
     private val downloader: HttpDownloader,
-    private val dataDir: Path,
+    override val engineKey: MediaCacheEngineKey,
+    private val saveDir: Path,
     private val mediaResolver: MediaResolver,
     private val mediaSourceId: String,
 ) : MediaCacheEngine {
@@ -155,7 +159,7 @@ class HttpMediaCacheEngine(
 
             is UriMediaData -> {
                 val downloadId = DownloadId(Uuid.randomString())
-                val outputPath = dataDir.resolve(downloadId.value)
+                val outputPath = saveDir.resolve(downloadId.value)
                 downloader.downloadWithId(
                     downloadId = downloadId,
                     mediaData.uri,
@@ -180,8 +184,20 @@ class HttpMediaCacheEngine(
         }
     }
 
+    override suspend fun modifyMetadataForMigration(
+        original: MediaCacheMetadata,
+        newSaveDir: Path
+    ): MediaCacheMetadata {
+        val downloadId = original.extra[EXTRA_DOWNLOAD_ID] ?: return original
+        return original.copy(
+            extra = original.extra.toMutableMap().apply {
+                put(EXTRA_OUTPUT_PATH, newSaveDir.resolve(downloadId).inSystem.absolutePath)
+            },
+        )
+    }
+
     override suspend fun deleteUnusedCaches(all: List<MediaCache>) {
-        if (!(SystemFileSystem.exists(dataDir))) return
+        if (!(SystemFileSystem.exists(saveDir))) return
 
 
         val allowedAbsolute = buildSet {
@@ -195,7 +211,7 @@ class HttpMediaCacheEngine(
             }
         }
         withContext(Dispatchers.IO) {
-            val saves = SystemFileSystem.list(dataDir)
+            val saves = SystemFileSystem.list(saveDir)
             for (save in saves) {
                 val myPath = save.inSystem.absolutePath
                 if (allowedAbsolute.none {
@@ -209,7 +225,7 @@ class HttpMediaCacheEngine(
 
     }
 
-    private companion object {
+    internal companion object {
         val EXTRA_DOWNLOAD_ID = MetadataKey("downloadId")
         val EXTRA_URI = MetadataKey("uri")
         val EXTRA_OUTPUT_PATH = MetadataKey("outputPath")
@@ -242,6 +258,11 @@ class HttpMediaCache(
                 -> MediaCacheState.PAUSED
         }
     }
+
+    override val canPlay: Flow<Boolean>
+        get() = downloader.getProgressFlow(downloadId).map {
+            it.status == DownloadStatus.COMPLETED
+        }
 
     override val fileStats: Flow<MediaCache.FileStats> = downloader.getProgressFlow(downloadId).map {
         val totalSize = it.totalBytes
@@ -285,16 +306,35 @@ class HttpMediaCache(
             DownloadStatus.MERGING,
             DownloadStatus.PAUSED,
                 -> {
-                TODO("Partial play is not supported")
+                error("Download not completed, cannot get cached media for $downloadId")
             }
 
             DownloadStatus.COMPLETED -> {
+                val actualFileSize = withContext(Dispatchers.IO_) {
+                    try {
+                        Path(state.outputPath).inSystem.actualSize().bytes
+                    } catch (_: Exception) {
+                        FileSize.Unspecified
+                    }
+                }
                 CachedMedia(
                     origin,
                     cacheMediaSourceId = mediaSourceId,
                     download = ResourceLocation.LocalFile(
                         state.outputPath,
                         state.mediaType.toFileType(),
+                        originalUri = metadata.extra[EXTRA_URI],
+                    ),
+                    properties = origin.properties.copy(
+                        size = if (actualFileSize.isUnspecified) {
+                            origin.properties.size
+                        } else {
+                            actualFileSize
+                        },
+                    ),
+                    cacheProperties = MediaCacheProperties(
+                        totalSegments = state.totalSegments,
+                        httpDownloaderStatus = state.status.toString(),
                     ),
                 )
             }
@@ -305,10 +345,6 @@ class HttpMediaCache(
                 error("Download failed or canceled")
             }
         }
-    }
-
-    override fun isValid(): Boolean {
-        return true
     }
 
     override suspend fun pause() {
@@ -341,6 +377,7 @@ private fun MediaType.toFileType(): ResourceLocation.LocalFile.FileType? {
     return when (this) {
         MediaType.M3U8 -> ResourceLocation.LocalFile.FileType.MPTS
         MediaType.MP4,
-        MediaType.MKV -> ResourceLocation.LocalFile.FileType.CONTAINED
+        MediaType.MKV,
+            -> ResourceLocation.LocalFile.FileType.CONTAINED
     }
 }

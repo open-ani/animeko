@@ -34,7 +34,7 @@ import kotlinx.serialization.Serializable
  * @param id 
  * @param name 
  * @param type `1`, `2`, `3` 表示 `个人`, `公司`, `组合`
- * @param career
+ * @param career 
  * @param summary 
  * @param locked 
  * @param lastModified currently it's latest user comment time, it will be replaced by wiki modified date in the future

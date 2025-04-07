@@ -31,11 +31,11 @@ import kotlinx.serialization.Serializable
 /**
  * 
  *
- * @param id
- * @param type
- * @param name
- * @param nameCn
- * @param summary
+ * @param id 
+ * @param type 
+ * @param name 
+ * @param nameCn 
+ * @param summary 
  * @param nsfw 
  * @param locked 
  * @param platform TV, Web, 欧美剧, PS4...
@@ -43,7 +43,7 @@ import kotlinx.serialization.Serializable
  * @param volumes 书籍条目的册数，由旧服务端从wiki中解析
  * @param eps 由旧服务端从wiki中解析，对于书籍条目为`话数`
  * @param totalEpisodes 数据库中的章节数量
- * @param rating
+ * @param rating 
  * @param collection 
  * @param tags 
  * @param date air date in `YYYY-MM-DD` format

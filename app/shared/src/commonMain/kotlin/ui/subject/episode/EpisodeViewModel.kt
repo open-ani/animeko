@@ -10,7 +10,7 @@
 package me.him188.ani.app.ui.subject.episode
 
 import androidx.annotation.UiThread
-import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -419,7 +419,7 @@ class EpisodeViewModel(
 
     var isFullscreen: Boolean by mutableStateOf(initialIsFullscreen)
     var sidebarVisible: Boolean by mutableStateOf(true)
-    val commentLazyStaggeredGirdState: LazyStaggeredGridState = LazyStaggeredGridState()
+    val commentLazyGirdState: LazyGridState = LazyGridState()
 
     /**
      * 播放器内切换剧集

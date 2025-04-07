@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -16,6 +16,12 @@ import androidx.compose.runtime.Stable
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import me.him188.ani.app.ui.foundation.layout.PaddingValuesSides.Companion.Bottom
+import me.him188.ani.app.ui.foundation.layout.PaddingValuesSides.Companion.End
+import me.him188.ani.app.ui.foundation.layout.PaddingValuesSides.Companion.Left
+import me.him188.ani.app.ui.foundation.layout.PaddingValuesSides.Companion.Right
+import me.him188.ani.app.ui.foundation.layout.PaddingValuesSides.Companion.Start
+import me.him188.ani.app.ui.foundation.layout.PaddingValuesSides.Companion.Top
 
 /**
  * @see WindowInsets.only
@@ -172,5 +178,26 @@ value class PaddingValuesSides private constructor(private val value: Int) {
          * Indicates a [PaddingValues] [Top] and [Bottom] sides.
          */
         val Vertical = Top + Bottom
+    }
+}
+
+operator fun PaddingValues.plus(
+    other: PaddingValues,
+): PaddingValues {
+    val first = this
+    return object : PaddingValues {
+        override fun calculateBottomPadding(): Dp = first.calculateBottomPadding() + other.calculateBottomPadding()
+
+        override fun calculateLeftPadding(layoutDirection: LayoutDirection): Dp {
+            return first.calculateLeftPadding(layoutDirection) + other.calculateLeftPadding(layoutDirection)
+        }
+
+        override fun calculateRightPadding(layoutDirection: LayoutDirection): Dp {
+            return first.calculateRightPadding(layoutDirection) + other.calculateRightPadding(layoutDirection)
+        }
+
+        override fun calculateTopPadding(): Dp {
+            return first.calculateTopPadding() + other.calculateTopPadding()
+        }
     }
 }

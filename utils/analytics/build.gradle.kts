@@ -9,17 +9,12 @@
 
 @file:Suppress("UnstableApiUsage")
 
-import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
-import org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType
-
 plugins {
     kotlin("multiplatform")
     id("com.android.library")
     `ani-mpp-lib-targets`
-    kotlin("native.cocoapods")
 }
 
-val enableIosFramework = enableIos && getPropertyOrNull("ani.build.framework") != "false"
 
 android {
     namespace = "me.him188.ani.utils.analytics"

@@ -69,7 +69,7 @@ data class SearchFilterState(
 
 @Immutable
 data class SearchFilterChipState(
-    val kind: CanonicalTagKind,
+    val kind: CanonicalTagKind?, // null for custom chips
     val values: List<String>,
     val selected: List<String>,
 ) {
@@ -177,6 +177,7 @@ private fun renderChipLabel(
         CanonicalTagKind.Setting -> "设定"
         CanonicalTagKind.Source -> "来源"
         CanonicalTagKind.Technology -> "技术"
+        null -> "自定义"
     }
 }
 

@@ -9,7 +9,7 @@
 
 package me.him188.ani.app.ui.exploration.search
 
-import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import me.him188.ani.app.data.models.subject.CanonicalTagKind
+import me.him188.ani.app.domain.search.SearchSort
 import me.him188.ani.app.domain.search.SubjectSearchQuery
 import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.ui.search.PagingSearchState
@@ -38,7 +39,7 @@ import me.him188.ani.utils.platform.annotations.TestOnly
 class SearchPageState(
     searchHistoryPager: Flow<PagingData<String>>,
     suggestionsPager: Flow<PagingData<String>>,
-    private val queryFlow: StateFlow<SubjectSearchQuery>,
+    val queryFlow: StateFlow<SubjectSearchQuery>,
     val setQuery: (SubjectSearchQuery) -> Unit,
     val onRequestPlay: suspend (SubjectPreviewItemInfo) -> EpisodeTarget?,
     val searchState: SearchState<SubjectPreviewItemInfo>,
@@ -65,17 +66,37 @@ class SearchPageState(
         },
         backgroundScope = backgroundScope,
     )
-    val gridState = LazyStaggeredGridState()
+    val gridState = LazyGridState()
+    var layoutKind: SearchResultLayoutKind by mutableStateOf(SearchResultLayoutKind.COVER)
 
     val searchFilterStateFlow = queryFlow.map { it.tags.orEmpty() }.map { selectedTags ->
-        SearchFilterState(
-            chips = tagKinds.map { kind ->
-                SearchFilterChipState(
-                    kind = kind,
-                    values = kind.values,
-                    selected = kind.values.filter { value -> value in selectedTags },
+        val groups = selectedTags.groupBy { tag ->
+            tagKinds.find { kind -> tag in kind.values }
+        }
+        val chips = buildList(capacity = tagKinds.size + 1) {
+            for (kind in tagKinds) {
+                add(
+                    SearchFilterChipState(
+                        kind = kind,
+                        values = kind.values,
+                        selected = groups[kind].orEmpty(),
+                    ),
                 )
-            },
+            }
+
+            // 加入自定义
+            groups[null]?.let { customValues ->
+                add(
+                    SearchFilterChipState(
+                        kind = null,
+                        values = customValues,
+                        selected = customValues,
+                    ),
+                )
+            }
+        }
+        SearchFilterState(
+            chips = chips,
         )
     }.stateIn(
         backgroundScope, started = SharingStarted.WhileSubscribed(),
@@ -110,10 +131,10 @@ class SearchPageState(
         value: String,
         unselectOthersOfSameKind: Boolean,
     ) {
-        val query = queryFlow.value
-        val existingTags = query.tags.orEmpty()
-        setQuery(
-            query.copy(
+        updateQuery {
+            val query = this
+            val existingTags = query.tags.orEmpty()
+            copy(
                 tags = if (value in existingTags) {
                     existingTags - value
                 } else {
@@ -124,9 +145,21 @@ class SearchPageState(
                         existingTags + value
                     }
                 },
-            ),
-        )
+            )
+        }
+    }
+
+    inline fun updateQuery(block: SubjectSearchQuery.() -> SubjectSearchQuery) {
+        setQuery(queryFlow.value.block())
         searchState.startSearch()
+    }
+
+    fun updateSort(
+        sort: SearchSort,
+    ) {
+        updateQuery {
+            copy(sort = sort)
+        }
     }
 }
 
@@ -159,9 +192,12 @@ fun createTestSearchPageState(
 
 @TestOnly
 fun createTestInteractiveSubjectSearchState(scope: CoroutineScope): SearchState<SubjectPreviewItemInfo> {
-    return PagingSearchState {
-        MutableStateFlow(PagingData.from(TestSubjectPreviewItemInfos))
-    }
+    return PagingSearchState(
+        {
+            MutableStateFlow(PagingData.from(TestSubjectPreviewItemInfos))
+        },
+        scope,
+    )
 }
 
 @TestOnly

@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.grid.LazyGridState
@@ -50,6 +51,7 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
@@ -67,6 +69,8 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
@@ -93,8 +97,10 @@ import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.ui.adaptive.AniTopAppBar
 import me.him188.ani.app.ui.adaptive.AniTopAppBarDefaults
 import me.him188.ani.app.ui.foundation.LocalPlatform
+import me.him188.ani.app.ui.foundation.ifNotNullThen
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
+import me.him188.ani.app.ui.foundation.layout.isHeightAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.paneHorizontalPadding
 import me.him188.ani.app.ui.foundation.session.SelfAvatar
@@ -111,6 +117,7 @@ import me.him188.ani.app.ui.subject.collection.progress.rememberEpisodeListState
 import me.him188.ani.app.ui.subject.collection.progress.rememberSubjectProgressState
 import me.him188.ani.app.ui.subject.episode.list.EpisodeListDialog
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
+import me.him188.ani.utils.platform.hasScrollingBug
 import me.him188.ani.utils.platform.isDesktop
 import me.him188.ani.utils.platform.isMobile
 
@@ -275,7 +282,7 @@ fun CollectionPage(
         },
         modifier,
         windowInsets,
-    ) {
+    ) { nestedScrollConnection ->
         when {
             // 假设没登录, 但是有缓存, 需要展示缓存
             authState.isKnownGuest && items.itemCount == 0 -> {
@@ -300,7 +307,7 @@ fun CollectionPage(
                         SubjectCollectionsColumn(
                             items,
                             item = { collection ->
-                                var nsfwModeState: NsfwMode by rememberSaveable { mutableStateOf(collection.nsfwMode) }
+                                var nsfwModeState: NsfwMode by rememberSaveable(collection) { mutableStateOf(collection.nsfwMode) }
                                 NsfwMask(
                                     nsfwModeState,
                                     onTemporarilyDisplay = { nsfwModeState = NsfwMode.DISPLAY },
@@ -314,7 +321,8 @@ fun CollectionPage(
                                     )
                                 }
                             },
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier.fillMaxSize()
+                                .ifNotNullThen(nestedScrollConnection) { nestedScroll(it) },
                             enableAnimation = enableAnimation,
                             gridState = lazyGridState,
                         )
@@ -339,8 +347,15 @@ private fun CollectionPageLayout(
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
-    content: @Composable () -> Unit,
+    content: @Composable (nestedScrollConnection: NestedScrollConnection?) -> Unit,
 ) {
+    val isHeightAtLeastMedium = currentWindowAdaptiveInfo1().windowSizeClass.isHeightAtLeastMedium
+    val scrollBehavior = if (LocalPlatform.current.hasScrollingBug() || isHeightAtLeastMedium) {
+        null // Can't use PinnedBehavior, because we have a TabRow in this page, which does not sync color
+    } else {
+        // 在紧凑高度时收起 Top bar
+        TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    }
     Scaffold(
         modifier,
         topBar = {
@@ -367,6 +382,7 @@ private fun CollectionPageLayout(
                     },
                     avatar = avatar,
                     windowInsets = AniWindowInsets.forTopAppBarWithoutDesktopTitle(),
+                    scrollBehavior = scrollBehavior,
                 )
 
                 filters(CollectionPageFilters)
@@ -375,8 +391,13 @@ private fun CollectionPageLayout(
         contentWindowInsets = windowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
         containerColor = AniThemeDefaults.pageContentBackgroundColor,
     ) { topBarPaddings ->
-        Box(modifier = Modifier.padding(topBarPaddings).fillMaxSize()) {
-            content()
+        Box(
+            modifier = Modifier.padding(topBarPaddings)
+                .fillMaxSize()
+                .wrapContentWidth()
+                .widthIn(max = 1300.dp),
+        ) {
+            content(scrollBehavior?.nestedScrollConnection)
         }
     }
 }

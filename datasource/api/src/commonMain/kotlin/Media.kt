@@ -196,17 +196,25 @@ class CachedMedia(
     override val download: ResourceLocation,
     override val location: MediaSourceLocation = MediaSourceLocation.Local,
     override val kind: MediaSourceKind = MediaSourceKind.LocalCache,
+    override val properties: MediaProperties = origin.properties,
+    val cacheProperties: MediaCacheProperties? = null,
 ) : Media by origin {
     override val mediaId: String = "${cacheMediaSourceId}:${origin.mediaId}"
     override val mediaSourceId: String = cacheMediaSourceId
 }
+
+// not serializable
+data class MediaCacheProperties(
+    val totalSegments: Int? = null,
+    val httpDownloaderStatus: String? = null,
+)
 
 /**
  * 用于播放或缓存时过滤选择资源的属性.
  * @see Media.properties
  */
 @Serializable
-class MediaProperties private constructor(
+data class MediaProperties @SerializationOnly constructor(
     /**
      * [Media] 所对应的条目的名称. 如果数据源支持, 则可提供此信息帮助后续 Media Selector 过滤.
      * @since 4.2
@@ -247,7 +255,7 @@ class MediaProperties private constructor(
     /**
      * 字幕组名称, 例如 "桜都字幕组", "北宇治字幕组".
      * 空字符串可能导致数据源选择器忽略掉这个资源.
-     * 
+     *
      * 对于在线数据源, 这会是线路名称.
      *
      * 对于无法确定字幕组的数据源, 可以使用数据源的 [MediaSource.mediaSourceId] 代替.
@@ -331,4 +339,8 @@ enum class SubtitleKind {
      * 可能是 [CLOSED] 或 [EXTERNAL_DISCOVER].
      */
     CLOSED_OR_EXTERNAL_DISCOVER,
+}
+
+fun Media.isLocalCache(): Boolean {
+    return kind == MediaSourceKind.LocalCache
 }

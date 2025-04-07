@@ -32,9 +32,9 @@ import kotlinx.serialization.Serializable
 /**
  * 
  *
- * @param wish
- * @param collect
- * @param doing
+ * @param wish 
+ * @param collect 
+ * @param doing 
  * @param onHold 
  * @param dropped 
  */

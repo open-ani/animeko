@@ -23,6 +23,7 @@ import me.him188.ani.app.data.repository.media.MediaSourceSubscriptionsSaveData
 import me.him188.ani.app.data.repository.media.MikanIndexes
 import me.him188.ani.app.data.repository.player.EpisodeHistories
 import me.him188.ani.app.data.repository.torrent.peer.PeerFilterSubscriptionsSaveData
+import me.him188.ani.app.domain.media.cache.storage.MediaCacheSave
 import me.him188.ani.utils.httpdownloader.DownloadState
 import me.him188.ani.utils.io.SystemPath
 
@@ -116,6 +117,11 @@ abstract class PlatformDataStoreManager {
     abstract val tokenStore: DataStore<Preferences>
     abstract val preferencesStore: DataStore<Preferences>
     abstract val preferredAllianceStore: DataStore<Preferences>
+
+    /**
+     * On Android, we use `MultiProcessDataStoreFactory` to create a [DataStore] that can be shared between torrent service and app process.
+     */
+    abstract val mediaCacheMetadataStore: DataStore<List<MediaCacheSave>>
 
     abstract fun resolveDataStoreFile(name: String): SystemPath
 

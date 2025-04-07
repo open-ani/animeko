@@ -11,6 +11,7 @@ package me.him188.ani.app.ui.cache.components
 
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -35,25 +36,27 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.State
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.navigation.LocalNavigator
+import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.datasources.api.CachedMedia
 import me.him188.ani.datasources.api.Media
-import me.him188.ani.datasources.api.topic.FileSize
+import me.him188.ani.utils.platform.annotations.TestOnly
+import org.jetbrains.compose.ui.tooling.preview.Preview
 
 /**
  * 一个组缓存的共同信息, 例如一个条目的十几个剧集的缓存 [CachedMedia] 都来自一个季度全集 [Media], 那它们就有相同的 [CacheGroupCommonInfo].
@@ -66,81 +69,6 @@ class CacheGroupCommonInfo(
     val allianceName: String,
     val imageUrl: String? = null,
 )
-
-/**
- * 表示一个合并的缓存组.
- * @see CacheGroupCommonInfo
- */
-@Stable
-class CacheGroupState(
-    /**
-     * 共同属于的 media.
-     */
-    val media: Media,
-    commonInfo: State<CacheGroupCommonInfo?>, // null means loading
-    episodes: List<CacheEpisodeState>,
-    stats: State<Stats>,
-) {
-    @Immutable
-    data class Stats(
-        val downloadSpeed: FileSize,
-        val downloadedSize: FileSize,
-        /**
-         * 上传速度, 每秒. 对于不支持上传的缓存, 该值为 [FileSize.Zero].
-         *
-         * - 若 emit [FileSize.Unspecified], 表示上传速度未知. 这只会在该缓存正在上传, 但无法知道具体速度时出现.
-         * - 若 emit [FileSize.Zero], 表示上传速度真的是零.
-         */
-        val uploadSpeed: FileSize,
-    )
-
-    val episodes = episodes.sortedBy { it.sort }
-    val cacheId = episodes.firstOrNull()?.cacheId
-
-    val latestCreationTime = episodes.asSequence().mapNotNull { it.creationTime }.maxOfOrNull { it }
-
-    private val allEpisodesFinished by derivedStateOf {
-        episodes.all { it.isFinished }
-    }
-    val downloadSpeedText by derivedStateOf {
-        computeSpeedText(
-            speed = if (allEpisodesFinished) FileSize.Unspecified else stats.value.downloadSpeed,
-            size = stats.value.downloadedSize,
-        )
-    }
-
-    val uploadSpeedText by derivedStateOf {
-        computeSpeedText(
-            speed = stats.value.uploadSpeed,
-            size = FileSize.Unspecified,
-        )
-    }
-
-    val subjectId by derivedStateOf {
-        commonInfo.value?.subjectId?.takeIf { it != 0 }
-    }
-
-    private val commonInfo by commonInfo
-    var expanded: Boolean by mutableStateOf(true)
-
-    /**
-     * null means loading
-     */
-    val cardTitle by derivedStateOf {
-        this.commonInfo?.subjectDisplayName
-    }
-
-    companion object {
-        fun computeSpeedText(speed: FileSize, size: FileSize): String {
-            return when {
-                size == FileSize.Unspecified && speed == FileSize.Unspecified -> ""
-                size == FileSize.Unspecified -> "$speed/s"
-                speed == FileSize.Unspecified -> "$size"
-                else -> "$size ($speed/s)"
-            }
-        }
-    }
-}
 
 @Immutable
 data class CacheGroupCardLayoutProperties(
@@ -178,11 +106,19 @@ object CacheGroupCardDefaults {
 @Composable
 fun CacheGroupCard(
     state: CacheGroupState,
+    onPlay: (CacheEpisodeState) -> Unit,
+    onResume: suspend (CacheEpisodeState) -> Unit,
+    onPause: suspend (CacheEpisodeState) -> Unit,
+    onDelete: suspend (CacheEpisodeState) -> Unit,
     modifier: Modifier = Modifier,
     layoutProperties: CacheGroupCardLayoutProperties = CacheGroupCardDefaults.LayoutProperties,
     shape: Shape = MaterialTheme.shapes.large,
 ) {
     val outerCardColors = AniThemeDefaults.primaryCardColors()
+    var expanded: Boolean by rememberSaveable {
+        mutableStateOf(true)
+    }
+
     Card(
         modifier,
         shape = shape,
@@ -190,7 +126,7 @@ fun CacheGroupCard(
     ) {
         Card(
             Modifier.fillMaxWidth()
-                .clickable { state.expanded = !state.expanded },
+                .clickable { expanded = !expanded },
             shape = shape,
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.secondaryContainer,
@@ -284,9 +220,8 @@ fun CacheGroupCard(
                 }
             }
         }
-        val navigator = LocalNavigator.current
 
-        AniAnimatedVisibility(state.expanded) {
+        AniAnimatedVisibility(expanded) {
             Column(
                 Modifier
                     .padding(
@@ -300,12 +235,25 @@ fun CacheGroupCard(
                     CacheEpisodeItem(
                         episode,
                         containerColor = outerCardColors.containerColor,
-                        onPlay = { subjectId, episodeId ->
-                            navigator.navigateEpisodeDetails(subjectId, episodeId)
+                        onPlay = {
+                            onPlay(episode)
                         },
+                        onResume = { onResume(episode) },
+                        onPause = { onPause(episode) },
+                        onDelete = { onDelete(episode) },
                     )
                 }
             }
         }
     }
 }
+
+@OptIn(TestOnly::class)
+@Preview
+@Composable
+private fun PreviewCacheGroupCard() = ProvideCompositionLocalsForPreview {
+    Box(Modifier.background(Color.DarkGray)) {
+        CacheGroupCard(TestCacheGroupSates[0], {}, {}, {}, {})
+    }
+}
+

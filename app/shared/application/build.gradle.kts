@@ -7,6 +7,8 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
+import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
+
 plugins {
     kotlin("multiplatform")
     id("com.android.library")
@@ -37,4 +39,25 @@ kotlin {
 
 android {
     namespace = "me.him188.ani.app.application"
+}
+
+kotlin {
+    if (enableIos) {
+        // Sentry requires cocoapods for its dependencies
+        if (getOs() == Os.MacOS) {
+            extensions.configure<org.jetbrains.kotlin.gradle.plugin.cocoapods.CocoapodsExtension> {
+                // https://kotlinlang.org/docs/native-cocoapods.html#configure-existing-project
+                framework {
+                    baseName = "application"
+                    isStatic = false
+                    @OptIn(ExperimentalKotlinGradlePluginApi::class)
+                    transitiveExport = true
+                }
+                pod("PostHog") {
+                    version = "~> 3.0"
+                    extraOpts += listOf("-compiler-option", "-fmodules")
+                }
+            }
+        }
+    }
 }

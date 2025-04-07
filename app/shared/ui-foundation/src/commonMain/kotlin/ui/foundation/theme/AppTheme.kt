@@ -100,7 +100,7 @@ object AniThemeDefaults {
     fun topAppBarColors(containerColor: Color = MaterialTheme.colorScheme.surfaceContainerLowest): TopAppBarColors =
         TopAppBarDefaults.topAppBarColors(
             containerColor = containerColor,
-            scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+            scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
         )
 
     /**

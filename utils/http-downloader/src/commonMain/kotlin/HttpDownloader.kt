@@ -170,6 +170,7 @@ data class DownloadState(
     val mediaType: MediaType,
 )
 
+@Serializable
 enum class MediaType {
     M3U8, MP4, MKV
 }
@@ -193,4 +194,6 @@ data class DownloadOptions(
     val readTimeoutMs: Long = 30_000,
     val autoSaveIntervalMs: Long = 5_000,
     val headers: Map<String, String> = emptyMap(),
+    val maxRetriesPerSegment: Int = 100,
+    val baseRetryDelayMillis: Long = 1000L,
 )

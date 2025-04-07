@@ -9,6 +9,8 @@
 
 package me.him188.ani.app.data.models.subject
 
+import me.him188.ani.app.domain.mediasource.MediaListFilters
+
 data class SubjectSeriesInfo(
 //    val subjectId: Int,
 //    /**
@@ -41,12 +43,18 @@ data class SubjectSeriesInfo(
             val sequelSubjectNames = sequelSubjects.flatMapTo(mutableSetOf()) { it.subjectInfo.allNames }.apply {
                 removeAll { sequelName ->
                     // 如果续集名称存在于当前名称中, 则删除, 否则可能导致过滤掉当前季度的条目
-                    requestingSubject.subjectInfo.allNames.any { it.contains(sequelName, ignoreCase = true) }
+                    requestingSubject.subjectInfo.allNames.any {
+                        MediaListFilters.specialContains(it, sequelName)
+                    }
                 }
             }
             val seriesSubjectNamesWithoutSelf: Set<String> =
                 seriesSubjects.flatMapTo(mutableSetOf()) { it.subjectInfo.allNames }
-                    .minus(requestingSubject.subjectInfo.allNames)
+                    .filterNotTo(mutableSetOf()) { seriesName ->
+                        requestingSubject.subjectInfo.allNames.any { subjectName ->
+                            MediaListFilters.specialEquals(subjectName, seriesName)
+                        }
+                    }
 
             val seasonSort = seriesSubjects.indexOfFirst { it.subjectId == requestingSubject.subjectId }
                 .let { if (it == -1) 1 else it + 1 }

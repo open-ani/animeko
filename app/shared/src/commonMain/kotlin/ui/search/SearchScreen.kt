@@ -14,8 +14,10 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.only
 import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
+import androidx.compose.material3.adaptive.navigation.BackNavigationBehavior
 import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
@@ -27,7 +29,7 @@ import me.him188.ani.app.ui.exploration.search.SearchPage
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.app.ui.main.SearchViewModel
-import me.him188.ani.app.ui.subject.details.SubjectDetailsScene
+import me.him188.ani.app.ui.subject.details.SubjectDetailsScreen
 
 @Composable
 fun SearchScreen(
@@ -46,7 +48,7 @@ fun SearchScreen(
                 .collectAsStateWithLifecycle(null)
             val authState by vm.authState.collectAsStateWithLifecycle(AuthState.NotAuthed)
 
-            SubjectDetailsScene(
+            SubjectDetailsScreen(
                 subjectDetailsState,
                 authState,
                 onPlay = { episodeId ->
@@ -56,6 +58,15 @@ fun SearchScreen(
                     }
                 },
                 onLoadErrorRetry = { vm.reloadCurrentSubjectDetails() },
+                onClickTag = { tag ->
+                    coroutineScope.launch {
+                        if (listDetailNavigator.currentDestination?.pane == ListDetailPaneScaffoldRole.Detail) {
+                            listDetailNavigator.navigateBack(BackNavigationBehavior.PopUntilScaffoldValueChange)
+                        }
+                        vm.searchPageState.updateQuery { copy(tags = listOf(tag.name)) }
+                        vm.searchPageState.gridState.animateScrollToItem(0)
+                    }
+                },
                 navigationIcon = {
                     // 只有在单面板模式下才显示返回按钮
                     if (listDetailLayoutParameters.isSinglePane) {
@@ -76,14 +87,13 @@ fun SearchScreen(
         onSelect = { index, item ->
             vm.searchPageState.selectedItemIndex = index
             vm.viewSubjectDetails(item)
-            coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
-                listDetailNavigator.navigateTo(ListDetailPaneScaffoldRole.Detail)
-            }
         },
         navigator = listDetailNavigator,
         navigationIcon = {
             BackNavigationIconButton(onNavigateBack)
         },
     )
-
+    SideEffect {
+        vm.startInitialSearch()
+    }
 }

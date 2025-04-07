@@ -52,6 +52,11 @@ kotlin {
         api(mediampLibs.mediamp.vlc)
         api(mediampLibs.mediamp.vlc.compose)
     }
+    sourceSets.appleMain.dependencies {
+        api(mediampLibs.mediamp.avkit)
+        api(mediampLibs.mediamp.avkit.compose)
+//        api(mediampLibs.mediamp.avkit.compose)
+    }
 }
 
 android {

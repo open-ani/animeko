@@ -87,6 +87,7 @@ import me.him188.ani.datasources.bangumi.processing.toSubjectCollectionType
 import me.him188.ani.utils.coroutines.combine
 import me.him188.ani.utils.coroutines.flows.flowOfEmptyList
 import me.him188.ani.utils.ktor.ApiInvoker
+import me.him188.ani.utils.logging.debug
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.platform.collections.toIntArray
 import me.him188.ani.utils.platform.currentTimeMillis
@@ -469,29 +470,13 @@ class SubjectCollectionRepositoryImpl(
             state: PagingState<Int, T>,
         ): MediatorResult = try {
             withContext(defaultDispatcher) {
-                val offset = when (loadType) {
-                    LoadType.REFRESH -> {
-                        0
-                    }
-
-                    LoadType.PREPEND -> return@withContext MediatorResult.Success(
-                        endOfPaginationReached = true,
-                    )
-
-                    LoadType.APPEND -> {
-                        val lastLoadedPage = state.pages.lastOrNull()
-//                        logger.warn { "Mediator APPEND, lastLoadedPage ${}" }
-                        if (lastLoadedPage != null) {
-                            lastLoadedPage.itemsBefore + lastLoadedPage.data.size
-                        } else {
-                            0
-                        }
-                    }
-                }
+                val (offset, limit) = calculateIndexBasedLoadInfo(loadType, state)
+                    ?: return@withContext MediatorResult.Success(endOfPaginationReached = true)
+                logger.debug { "${loadType}, Loading $offset, limit=$limit" }
 
                 fetchAndSaveSubjectCollectionsWithEpisodes(
                     type = query.type,
-                    limit = state.config.pageSize,
+                    limit = limit,
                     offset = offset,
                     onFetched = { items ->
                         if (loadType == LoadType.REFRESH) {
@@ -686,9 +671,66 @@ internal fun BatchSubjectCollection.toEntity(
     return subject.toEntity(
         collection?.type.toCollectionType(),
         collection.toSelfRatingInfo(),
-        lastUpdated = collection?.updatedAt?.toEpochMilliseconds() ?: 0,
+        lastUpdated = collection?.updatedAt?.toEpochMilliseconds() ?: lastFetched,
         lastFetched = lastFetched,
         recurrence = recurrence,
     )
 }
 
+
+data class LoadInfo(
+    val offset: Int,
+    val limit: Int,
+)
+
+fun <T : Any> calculateIndexBasedLoadInfo(
+    loadType: LoadType,
+    state: PagingState<Int, T>
+): LoadInfo? {
+    return when (loadType) {
+        LoadType.REFRESH -> {
+            LoadInfo(0, state.config.pageSize)
+        }
+
+        LoadType.PREPEND -> {
+            val firstLoadedPage = state.pages.firstOrNull()
+            if (firstLoadedPage != null) {
+                if (firstLoadedPage.itemsBefore == 0) {
+                    // 没有更多数据了
+                    return null
+                }
+                val offset = firstLoadedPage.itemsBefore - state.config.pageSize
+                if (offset >= 0) {
+                    LoadInfo(
+                        offset,
+                        state.config.pageSize,
+                    )
+                } else {
+                    LoadInfo(
+                        0,
+                        (state.config.pageSize + offset).coerceAtLeast(1),
+                    )
+                }
+            } else {
+                LoadInfo(
+                    0,
+                    state.config.pageSize,
+                )
+            }
+        }
+
+        LoadType.APPEND -> {
+            val lastLoadedPage = state.pages.lastOrNull()
+            //                        logger.warn { "Mediator APPEND, lastLoadedPage ${}" }
+            val offset = if (lastLoadedPage != null) {
+                lastLoadedPage.itemsBefore + lastLoadedPage.data.size
+            } else {
+                0
+            }
+            LoadInfo(
+                offset,
+                state.config.pageSize,
+            )
+        }
+    }
+}

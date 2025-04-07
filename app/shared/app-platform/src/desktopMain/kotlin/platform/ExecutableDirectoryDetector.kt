@@ -36,6 +36,16 @@ interface ExecutableDirectoryDetector {
 
 object SystemPropertyExecutableDirectoryDetector : ExecutableDirectoryDetector {
     override fun getExecutableDirectory(): File {
+        val composeDir: String? = System.getProperty("compose.application.resources.dir")
+        if (composeDir != null) {
+            // release mode:
+            val file = File(composeDir).parentFile?.parentFile?.absoluteFile
+            if (file != null && file.exists()) {
+                return file
+            }
+        }
+
+        // dev mode:
         val path = System.getProperty("user.dir")
         return File(path).absoluteFile
     }

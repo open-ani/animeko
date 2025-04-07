@@ -24,11 +24,10 @@
 @file:DependsOn("org.jetbrains:annotations:23.0.0")
 @file:DependsOn("actions:github-script:v7")
 @file:DependsOn("gradle:actions__setup-gradle:v3")
-@file:DependsOn("nick-fields:retry:v3")
 @file:DependsOn("timheuer:base64-to-file:v1.1")
 @file:DependsOn("actions:upload-artifact:v4")
 @file:DependsOn("actions:download-artifact:v4")
-@file:DependsOn("reactivecircus:android-emulator-runner:v2")
+@file:DependsOn("reactivecircus:android-emulator-runner:v2.33.0")
 @file:DependsOn("jlumbroso:free-disk-space:v1.3.1")
 
 // Release
@@ -36,7 +35,6 @@
 @file:DependsOn("bhowell2:github-substring-action:v1.0.0")
 @file:DependsOn("softprops:action-gh-release:v1")
 @file:DependsOn("snow-actions:qrcode:v1.0.0")
-
 
 import Secrets.ANALYTICS_KEY
 import Secrets.ANALYTICS_SERVER
@@ -62,13 +60,13 @@ import io.github.typesafegithub.workflows.actions.dawidd6.ActionGetTag_Untyped
 import io.github.typesafegithub.workflows.actions.gmitch215.SetupJava_Untyped
 import io.github.typesafegithub.workflows.actions.gradle.ActionsSetupGradle
 import io.github.typesafegithub.workflows.actions.jlumbroso.FreeDiskSpace_Untyped
-import io.github.typesafegithub.workflows.actions.nickfields.Retry_Untyped
 import io.github.typesafegithub.workflows.actions.reactivecircus.AndroidEmulatorRunner
 import io.github.typesafegithub.workflows.actions.snowactions.Qrcode_Untyped
 import io.github.typesafegithub.workflows.actions.softprops.ActionGhRelease
 import io.github.typesafegithub.workflows.actions.timheuer.Base64ToFile_Untyped
 import io.github.typesafegithub.workflows.domain.AbstractResult
 import io.github.typesafegithub.workflows.domain.ActionStep
+import io.github.typesafegithub.workflows.domain.CommandStep
 import io.github.typesafegithub.workflows.domain.Concurrency
 import io.github.typesafegithub.workflows.domain.Job
 import io.github.typesafegithub.workflows.domain.JobOutputs
@@ -76,7 +74,7 @@ import io.github.typesafegithub.workflows.domain.Mode
 import io.github.typesafegithub.workflows.domain.Permission
 import io.github.typesafegithub.workflows.domain.RunnerType
 import io.github.typesafegithub.workflows.domain.Shell
-import io.github.typesafegithub.workflows.domain.Step
+import io.github.typesafegithub.workflows.domain.actions.Action
 import io.github.typesafegithub.workflows.domain.triggers.PullRequest
 import io.github.typesafegithub.workflows.domain.triggers.Push
 import io.github.typesafegithub.workflows.dsl.JobBuilder
@@ -86,6 +84,7 @@ import io.github.typesafegithub.workflows.dsl.expressions.contexts.SecretsContex
 import io.github.typesafegithub.workflows.dsl.expressions.expr
 import io.github.typesafegithub.workflows.dsl.workflow
 import io.github.typesafegithub.workflows.yaml.ConsistencyCheckJobConfig
+import kotlinx.serialization.Contextual
 import org.intellij.lang.annotations.Language
 
 check(KotlinVersion.CURRENT.isAtLeast(2, 0, 0)) {
@@ -165,6 +164,7 @@ data class MatrixInstance(
      */
     val uploadApk: Boolean,
     val runAndroidInstrumentedTests: Boolean = uploadApk,
+    val uploadIpa: Boolean = false,
     /**
      * Compose for Desktop 的 resource 标识符, e.g. `windows-x64`
      */
@@ -386,27 +386,28 @@ run {
     )
     val ghUbuntu2404 = MatrixInstance(
         runner = Runner.GithubUbuntu2404,
-        uploadApk = false,
-        runAndroidInstrumentedTests = true, // 这其实有问题, GH 没有足够的空间安装 7GB 模拟器
+        uploadApk = true,
+        runAndroidInstrumentedTests = false,
         composeResourceTriple = "linux-x64",
         runTests = false,
-        uploadDesktopInstallers = false,
+        uploadDesktopInstallers = true,
         extraGradleArgs = listOf(
-            "-P$ANI_ANDROID_ABIS=x86_64",
         ),
-        buildAllAndroidAbis = false,
-        gradleHeap = "6g",
+        buildAllAndroidAbis = true,
+        gradleHeap = "8g",
         kotlinCompilerHeap = "6g",
     )
     val ghMac13 = MatrixInstance(
         runner = Runner.GithubMacOS13,
-        uploadApk = true, // all ABIs
+        uploadApk = false, // all ABIs
         runAndroidInstrumentedTests = false,
         composeResourceTriple = "macos-x64",
         uploadDesktopInstallers = true,
-        extraGradleArgs = listOf(),
+        extraGradleArgs = listOf(
+            "-P$ANI_ANDROID_ABIS=arm64-v8a",
+        ),
         buildIosFramework = false,
-        buildAllAndroidAbis = true,
+        buildAllAndroidAbis = false,
         gradleHeap = "6g",
         kotlinCompilerHeap = "6g",
     )
@@ -436,6 +437,7 @@ run {
             "-P$ANI_ANDROID_ABIS=arm64-v8a",
         ),
         buildAllAndroidAbis = false,
+        uploadIpa = true,
         gradleHeap = "6g",
         kotlinCompilerHeap = "4g",
         gradleParallel = true,
@@ -444,10 +446,13 @@ run {
     buildMatrixInstances = listOf(
         selfWin10,
         ghWin2019,
-//        ghUbuntu2404,
+        ghUbuntu2404,
         ghMac13,
-        selfMac15,
-        ghMac15,
+        selfMac15.copy(
+            // 即使自己机器上传的 dmg 安装时会有问题 (#1479), 也在 build 时使用它, 避免使用太多 GitHub 机器占用并行.
+            // 发版时还是使用 GitHub
+            uploadDesktopInstallers = true,
+        ),
     )
 
     releaseMatrixInstances = listOf(
@@ -458,14 +463,14 @@ run {
             uploadDesktopInstallers = false,
             extraGradleArgs = selfMac15.extraGradleArgs.filterNot { it.startsWith("-P$ANI_ANDROID_ABIS=") },
         ), // android apks
-        ghMac15, // macos installer
+        ghMac15, // macos AArch64 installer
+        ghMac13, // macos x64 portable
+        ghUbuntu2404, // linux app image
     )
 }
 
 
 class BuildJobOutputs : JobOutputs() {
-    var macosAarch64DmgSuccess by output()
-    var windowsX64PortableSuccess by output()
 }
 
 fun getBuildJobBody(matrix: MatrixInstance): JobBuilder<BuildJobOutputs>.() -> Unit = {
@@ -473,7 +478,9 @@ fun getBuildJobBody(matrix: MatrixInstance): JobBuilder<BuildJobOutputs>.() -> U
 
     with(WithMatrix(matrix)) {
         freeSpace()
+        enableSwap()
         deleteLocalProperties()
+        writeLocalProperties()
         installJbr21()
         chmod777()
         setupGradle()
@@ -482,27 +489,25 @@ fun getBuildJobBody(matrix: MatrixInstance): JobBuilder<BuildJobOutputs>.() -> U
             name = "Update dev version name",
             tasks = ["updateDevVersionNameFromGit", "\"--no-configuration-cache\""],
         )
-        if (matrix.isUbuntu) {
-            compileAndAssemble()
-            androidConnectedTests()
-        } else {
-            val prepareSigningKey = prepareSigningKey()
-            compileAndAssemble()
-            prepareSigningKey?.let {
-                buildAndroidApk(it)
-            }
-            val packageOutputs = packageDesktopAndUpload()
 
-            packageOutputs.macosAarch64DmgOutcome?.let {
-                jobOutputs.macosAarch64DmgSuccess = it.eq(AbstractResult.Status.Success)
-            }
-
-            packageOutputs.windowsX64PortableOutcome?.let {
-                jobOutputs.windowsX64PortableSuccess = it.eq(AbstractResult.Status.Success)
-            }
-            gradleCheck()
-            androidConnectedTests()
+        val prepareSigningKey = prepareSigningKey()
+        compileAndAssemble()
+        prepareSigningKey?.let {
+            buildAndroidApk(it)
         }
+        if (matrix.uploadIpa) {
+            prepareIosBuild()
+            buildIosIpaDebug()
+            // Don't upload Release - it takes 30 mins
+            // buildIosIpaRelease()
+        }
+        packageDesktopAndUpload()
+
+        if (!matrix.isUbuntu) {
+            gradleCheck() // save time
+        }
+        androidConnectedTests()
+
         cleanupTempFiles()
     }
 }
@@ -511,6 +516,8 @@ object ArtifactNames {
     fun windowsPortable() = "ani-windows-portable"
     fun macosDmg(arch: Arch) = "ani-macos-dmg-${arch}"
     fun macosPortable(arch: Arch) = "ani-macos-portable-${arch}"
+    fun iosIpa() = "ani-ios-ipa"
+    fun linuxAppImage(arch: Arch) = "ani-linux-appimage-${arch}"
 }
 
 fun getVerifyJobBody(
@@ -562,12 +569,21 @@ fun getVerifyJobBody(
         val step: String,
         val timeoutMinutes: Int = 5,
         val `if`: String? = null,
+        /**
+         * 指定此项, 则只在指定的 Runner 上执行.
+         */
+        val enabledOnlyOn: List<Runner>? = null,
+        /**
+         * 指定此项, 则在所有的 Runner 上执行, 但在指定的 Runner 上不执行.
+         */
+        val disabledOn: List<Runner>? = null,
     )
 
     val tasksToExecute = listOf(
         VerifyTask(
             name = "anitorrent-load-test",
             step = "Check that Anitorrent can be loaded",
+            disabledOn = listOf(Runner.GithubUbuntu2404),
         ),
         VerifyTask(
             name = "dandanplay-app-id",
@@ -584,11 +600,24 @@ fun getVerifyJobBody(
             step = "Check that analyticsServer is valid",
             `if` = expr { github.isAnimekoRepository and !github.isPullRequest },
         ),
-    )
+    ).filter { task ->
+        // Filter task that should execute on this runner.
+
+        check(task.enabledOnlyOn == null || task.disabledOn == null) {
+            "enabledOnlyOn and disabledOn must not be set at the same time (for task ${task.name})"
+        }
+        if (task.enabledOnlyOn != null) {
+            task.enabledOnlyOn.contains(runner)
+        } else if (task.disabledOn != null) {
+            !task.disabledOn.contains(runner)
+        } else {
+            true
+        }
+    }
 
     when (runner.os to runner.arch) {
         OS.WINDOWS to Arch.X64 -> {
-            uses(
+            usesWithAttempts(
                 name = "Download Windows x64 Portable",
                 action = DownloadArtifact(
                     name = ArtifactNames.windowsPortable(),
@@ -611,7 +640,7 @@ fun getVerifyJobBody(
         }
 
         OS.MACOS to Arch.AARCH64 -> {
-            uses(
+            usesWithAttempts(
                 name = "Download DMG",
                 action = DownloadArtifact(name = ArtifactNames.macosDmg(Arch.AARCH64)),
             )
@@ -619,6 +648,33 @@ fun getVerifyJobBody(
                 run(
                     name = task.step,
                     command = shell($$""""$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" "$GITHUB_WORKSPACE"/*.dmg $${task.name}"""),
+                    `if` = task.`if`,
+                    timeoutMinutes = task.timeoutMinutes,
+                )
+            }
+        }
+
+        OS.UBUNTU to Arch.X64 -> {
+            usesWithAttempts(
+                name = "Download Linux x64 AppImage",
+                action = DownloadArtifact(
+                    name = ArtifactNames.linuxAppImage(Arch.X64),
+                    path = "${expr { github.workspace }}/ci-helper/verify",
+                ),
+            )
+            tasksToExecute.forEach { task ->
+                val appimagePath =
+                    """${expr { github.workspace }}/ci-helper/verify/Animeko-x86_64.AppImage"""
+                run(
+                    name = task.step,
+                    shell = Shell.Bash,
+                    command = shell(
+                        $$"""
+                            ANI_APPIMAGE="$$appimagePath"
+                            chmod +x "$ANI_APPIMAGE"
+                            ANIMEKO_DESKTOP_TEST_TASK="$${task.name}" "$ANI_APPIMAGE"
+                        """.trimIndent(),
+                    ),
                     `if` = task.`if`,
                     timeoutMinutes = task.timeoutMinutes,
                 )
@@ -724,7 +780,7 @@ workflow(
             Runner.GithubWindowsServer2022,
             Runner.SelfHostedWindows10,
         ).forEach { runner ->
-            addVerifyJob(build, runner, build.outputs.windowsX64PortableSuccess)
+            addVerifyJob(build, runner, build.result.eq(AbstractResult.Status.Success))
         }
     }
 
@@ -738,9 +794,19 @@ workflow(
                 Runner.GithubMacOS14,
                 Runner.GithubMacOS15,
             ).forEach { runner ->
-                addVerifyJob(build, runner, build.outputs.macosAarch64DmgSuccess)
+                addVerifyJob(build, runner, build.result.eq(AbstractResult.Status.Success))
             }
         }
+
+    builds.filter { (matrix, _) ->
+        matrix.runner.os == OS.UBUNTU && matrix.uploadDesktopInstallers
+    }.forEach { (_, build) ->
+        listOf(
+            Runner.GithubUbuntu2404,
+        ).forEach { runner ->
+            addVerifyJob(build, runner, build.result.eq(AbstractResult.Status.Success))
+        }
+    }
 }
 
 operator fun List<Pair<MatrixInstance, Job<BuildJobOutputs>>>.get(runner: Runner): Job<BuildJobOutputs> {
@@ -823,7 +889,9 @@ workflow(
             val gitTag = getGitTag()
 
             freeSpace()
+            enableSwap()
             deleteLocalProperties()
+            writeLocalProperties()
             installJbr21()
             chmod777()
             setupGradle()
@@ -855,7 +923,17 @@ workflow(
             ) {
                 uploadAndroidApkToCloud()
                 generateQRCodeAndUpload()
+                if (matrix.isUbuntu) {
+                    // Ubuntu `uploadDesktopInstallers` assumes `Animeko-x86_64.AppImage` is already built
+                    packageDesktopAndUpload()
+                }
                 uploadDesktopInstallers()
+                if (matrix.uploadIpa) {
+                    prepareIosBuild()
+                    // Don't build debug
+                    buildIosIpaRelease()
+                }
+                uploadIosIpa()
                 uploadComposeLogs()
             }
             cleanupTempFiles()
@@ -917,20 +995,19 @@ class WithMatrix(
         env: Map<String, String> = emptyMap(),
         maxAttempts: Int = 2,
         timeoutMinutes: Int = 180,
-    ): ActionStep<Retry_Untyped.Outputs> = uses(
+        gradleArgs: String = matrix.gradleArgs,
+    ) = runWithAttempts(
         name = name,
         `if` = `if`,
-        action = Retry_Untyped(
-            maxAttempts_Untyped = "$maxAttempts",
-            timeoutMinutes_Untyped = "$timeoutMinutes",
-            command_Untyped = buildString {
-                append("./gradlew ")
-                tasks.joinTo(this, " ")
-                append(' ')
-                append(matrix.gradleArgs)
-            },
-        ),
+        timeoutMinutes = timeoutMinutes,
+        command = buildString {
+            append("./gradlew ")
+            tasks.joinTo(this, " ")
+            append(' ')
+            append(gradleArgs)
+        },
         env = env,
+        maxAttempts = maxAttempts,
     )
 
     /**
@@ -965,6 +1042,22 @@ class WithMatrix(
         )
     }
 
+    // Must be run before starting Gradle daemon
+    fun JobBuilder<*>.writeLocalProperties() {
+        run(
+            command = shell(
+                $$"""
+                echo "ani.dandanplay.app.id=$${expr { secrets.DANDANPLAY_APP_ID }}" >> local.properties
+                echo "ani.dandanplay.app.secret=$${expr { secrets.DANDANPLAY_APP_SECRET }}" >> local.properties
+                echo "ani.sentry.dsn=$${expr { secrets.SENTRY_DSN }}" >> local.properties
+                echo "ani.analytics.server=$${expr { secrets.ANALYTICS_SERVER }}" >> local.properties
+                echo "ani.analytics.key=$${expr { secrets.ANALYTICS_KEY }}" >> local.properties
+            """.trimIndent(),
+            ),
+            continueOnError = true,
+        )
+    }
+
     fun JobBuilder<*>.installJbr21() {
         // For mac
         fun downloadJbrUnix(
@@ -988,7 +1081,7 @@ class WithMatrix(
 //                env = mapOf("MY_PATH" to ),
             ).outputs["jbrLocation"]
 
-            run(
+            runWithAttempts(
                 name = "Get JBR 21 for macOS AArch64",
                 command = shell(
                     $$"""
@@ -1151,15 +1244,14 @@ class WithMatrix(
                 cacheDisabled = true,
             ),
         )
-        uses(
+        runGradle(
             name = "Clean and download dependencies",
-            action = Retry_Untyped(
-                maxAttempts_Untyped = "3",
-                timeoutMinutes_Untyped = "60",
-                command_Untyped = """./gradlew """ + matrix.gradleArgs.replace(
-                    "--scan",
-                    "--stacktrace",
-                ), // com.gradle.develocity.DevelocityException: Internal error in Develocity Gradle plugin: finished notification
+            tasks = [
+                "--scan",
+            ],
+            gradleArgs = matrix.gradleArgs.replace(
+                "--scan",
+                "--stacktrace", // com.gradle.develocity.DevelocityException: Internal error in Develocity Gradle plugin: finished notification
             ),
         )
     }
@@ -1181,6 +1273,22 @@ class WithMatrix(
             )
         } else {
             null
+        }
+    }
+
+    fun JobBuilder<*>.enableSwap() {
+        if (matrix.selfHosted) return
+
+        if (matrix.isUbuntu) {
+            run(
+                name = "Enable Swap",
+                command = """
+                sudo fallocate -l 10G /swapfile
+                sudo chmod 600 /swapfile
+                sudo mkswap /swapfile
+                sudo swapon /swapfile
+            """.trimIndent(),
+            )
         }
     }
 
@@ -1226,7 +1334,7 @@ class WithMatrix(
                 matrix.uploadApk
             }
             if (shouldUpload) {
-                uses(
+                usesWithAttempts(
                     name = "Upload Android Debug APK $arch",
                     action = UploadArtifact(
                         name = "ani-android-${arch}-debug",
@@ -1260,7 +1368,7 @@ class WithMatrix(
                 matrix.uploadApk
             }
             if (shouldUpload) {
-                uses(
+                usesWithAttempts(
                     name = "Upload Android Release APK $arch",
                     action = UploadArtifact(
                         name = "ani-android-${arch}-release",
@@ -1272,13 +1380,81 @@ class WithMatrix(
         }
     }
 
+    fun JobBuilder<*>.prepareIosBuild() {
+        if (matrix.uploadIpa) {
+            runGradle(
+                name = "generateDummyFramework",
+                tasks = [
+                    ":app:shared:application:generateDummyFramework",
+                ],
+            )
+        }
+
+        if (matrix.uploadIpa) {
+            runGradle(
+                name = "Pod Install",
+                tasks = [
+                    ":app:ios:podInstall",
+                ],
+            )
+        }
+
+        if (matrix.uploadIpa) {
+            runGradle(
+                name = "Patch ios Plist",
+                tasks = [
+                    ":app:ios:patchInfoPlist",
+                ],
+            )
+        }
+    }
+
+    fun JobBuilder<*>.buildIosIpaDebug() {
+        if (matrix.uploadIpa) {
+            runGradle(
+                name = "Build iOS Debug IPA",
+                tasks = [
+                    ":app:ios:buildDebugIpa",
+                ],
+            )
+            usesWithAttempts(
+                name = "Upload iOS Debug IPA",
+                action = UploadArtifact(
+                    name = "ani-ios-debug",
+                    path_Untyped = "app/ios/build/archives/debug/Animeko.ipa",
+                    overwrite = true,
+                ),
+            )
+        }
+    }
+
+    fun JobBuilder<*>.buildIosIpaRelease() {
+        if (matrix.uploadIpa) {
+            runGradle(
+                name = "Build iOS Release IPA",
+                tasks = [
+                    ":app:ios:buildReleaseIpa",
+                ],
+                maxAttempts = 3,
+            )
+            usesWithAttempts(
+                name = "Upload iOS Release IPA",
+                action = UploadArtifact(
+                    name = "ani-ios-release",
+                    path_Untyped = "app/ios/build/archives/release/Animeko.ipa",
+                    overwrite = true,
+                ),
+            )
+        }
+    }
+
     fun JobBuilder<*>.gradleCheck() {
         if (matrix.runTests) {
             runGradle(
                 name = "Check",
                 tasks = ["check"],
-                maxAttempts = 2,
-                timeoutMinutes = 120,
+                maxAttempts = 3,
+                timeoutMinutes = 180,
             )
         }
     }
@@ -1342,19 +1518,9 @@ class WithMatrix(
     }
 
     class PackageDesktopAndUploadOutputs {
-        // null means not enabled on this machine
-        var macosAarch64DmgOutcome: Step<*>.Outcome? = null
-        var windowsX64PortableOutcome: Step<*>.Outcome? = null
     }
 
     fun JobBuilder<*>.packageDesktopAndUpload(): PackageDesktopAndUploadOutputs {
-        if (matrix.isMacOSX64 // not supported
-            || !matrix.uploadDesktopInstallers // disabled
-        ) {
-
-            return PackageDesktopAndUploadOutputs()
-        }
-
         if (matrix.isWindows) {
             // Windows does not support installers
             runGradle(
@@ -1363,12 +1529,33 @@ class WithMatrix(
                     "createReleaseDistributable", // portable
                 ],
             )
-        } else {
-            // macOS uses installers
+        }
+
+        if (matrix.isMacOS) {
+            if (matrix.isAArch64) {
+                // macOS uses installers
+                runGradle(
+                    name = "Package Desktop",
+                    tasks = [
+                        "packageReleaseDistributionForCurrentOS", // dmg
+                    ],
+                )
+            } else {
+                // x64 uses portable
+                runGradle(
+                    name = "Package Desktop",
+                    tasks = [
+                        "createReleaseDistributable",
+                    ],
+                )
+            }
+        }
+
+        if (matrix.isUbuntu) {
             runGradle(
                 name = "Package Desktop",
                 tasks = [
-                    "packageReleaseDistributionForCurrentOS", // dmg
+                    "createReleaseDistributable",
                 ],
             )
         }
@@ -1377,8 +1564,8 @@ class WithMatrix(
 
         return PackageDesktopAndUploadOutputs().apply {
             if (matrix.isMacOS && matrix.isAArch64) {
-                val macosAarch64Dmg = uses(
-                    name = "Upload macOS dmg",
+                usesWithAttempts(
+                    name = "Upload macOS AArch64 dmg",
                     action = UploadArtifact(
                         name = ArtifactNames.macosDmg(matrix.arch),
                         path_Untyped = "app/desktop/build/compose/binaries/main-release/dmg/Ani-*.dmg",
@@ -1386,13 +1573,11 @@ class WithMatrix(
                         ifNoFilesFound = UploadArtifact.BehaviorIfNoFilesFound.Error,
                     ),
                 )
-
-                this.macosAarch64DmgOutcome = macosAarch64Dmg.outcome
             }
 
             if (matrix.isMacOS && matrix.isX64) {
-                uses(
-                    name = "Upload macOS dmg",
+                usesWithAttempts(
+                    name = "Upload macOS x86_64 ZIP",
                     action = UploadArtifact(
                         name = ArtifactNames.macosPortable(matrix.arch),
                         path_Untyped = "app/desktop/build/compose/binaries/main-release/app/Ani.app",
@@ -1403,7 +1588,7 @@ class WithMatrix(
             }
 
             if (matrix.isWindows) {
-                val windowsX64Portable = uses(
+                usesWithAttempts(
                     name = "Upload Windows packages",
                     action = UploadArtifact(
                         name = ArtifactNames.windowsPortable(),
@@ -1412,8 +1597,45 @@ class WithMatrix(
                         ifNoFilesFound = UploadArtifact.BehaviorIfNoFilesFound.Error,
                     ),
                 )
+            }
 
-                this.windowsX64PortableOutcome = windowsX64Portable.outcome
+            if (matrix.isUbuntu && matrix.isX64) {
+                run(
+                    name = "Build AppImage",
+                    command = $$"""
+                        # Download appimagetool
+                        wget https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+                        chmod +x appimagetool-x86_64.AppImage
+                        
+                        # Prepare AppDir
+                        mkdir -p AppDir/usr
+                        cp -r app/desktop/build/compose/binaries/main-release/app/Ani/* AppDir/usr
+                        
+                        cp app/desktop/appResources/linux-x64/AppRun AppDir/AppRun
+                        cp app/desktop/appResources/linux-x64/animeko.desktop AppDir/animeko.desktop
+                        cp app/desktop/appResources/linux-x64/icon.png AppDir/icon.png
+                        
+                        # Fix permissions
+                        chmod a+x AppDir/AppRun
+                        chmod a+x AppDir/usr/bin/Ani
+                        chmod a+x AppDir/usr/lib/runtime/lib/jcef_helper
+                        
+                        # Build AppImage
+                        ARCH=x86_64 ./appimagetool-x86_64.AppImage AppDir
+                        """.trimIndent(),
+                )
+                // Expected output path: Animeko-x86_64.AppImage.
+                // If changed, change also uploadDesktopDistributions in :ci-helper
+
+                usesWithAttempts(
+                    name = "Upload Linux packages",
+                    action = UploadArtifact(
+                        name = ArtifactNames.linuxAppImage(matrix.arch),
+                        path_Untyped = "Animeko-x86_64.AppImage",
+                        overwrite = true,
+                        ifNoFilesFound = UploadArtifact.BehaviorIfNoFilesFound.Error,
+                    ),
+                )
             }
         }
     }
@@ -1474,7 +1696,7 @@ class WithMatrix(
                     name = "Generate QR code for APK (GitHub)",
                     `if` = condition,
                     action = Qrcode_Untyped(
-                        text_Untyped = """https://github.com/Him188/ani/releases/download/${expr { gitTag.tagExpr }}/ani-${expr { gitTag.tagVersionExpr }}-universal.apk""",
+                        text_Untyped = """https://github.com/open-ani/animeko/releases/download/${expr { gitTag.tagExpr }}/ani-${expr { gitTag.tagVersionExpr }}-universal.apk""",
                         path_Untyped = "apk-qrcode-github.png",
                     ),
                 )
@@ -1492,6 +1714,28 @@ class WithMatrix(
                     tasks = [":ci-helper:uploadAndroidApkQR", "\"--no-configuration-cache\""],
                     env = ciHelperSecrets,
                 )
+                uses(
+                    name = "Generate QR code for iOS (GitHub)",
+                    `if` = condition,
+                    action = Qrcode_Untyped(
+                        text_Untyped = """https://github.com/open-ani/animeko/releases/download/${expr { gitTag.tagExpr }}/ani-${expr { gitTag.tagVersionExpr }}.ipa""",
+                        path_Untyped = "ipa-qrcode-github.png",
+                    ),
+                )
+                uses(
+                    name = "Generate QR code for iOS (Cloudflare)",
+                    `if` = condition,
+                    action = Qrcode_Untyped(
+                        text_Untyped = """https://d.myani.org/${expr { gitTag.tagExpr }}/ani-${expr { gitTag.tagVersionExpr }}.ipa""",
+                        path_Untyped = "ipa-qrcode-cloudflare.png",
+                    ),
+                )
+                runGradle(
+                    name = "Upload QR code",
+                    `if` = condition,
+                    tasks = [":ci-helper:uploadIosIpaQR", "\"--no-configuration-cache\""],
+                    env = ciHelperSecrets,
+                )
             }
         }
 
@@ -1500,6 +1744,16 @@ class WithMatrix(
                 runGradle(
                     name = "Upload Desktop Installers",
                     tasks = [":ci-helper:uploadDesktopInstallers", "\"--no-configuration-cache\""],
+                    env = ciHelperSecrets,
+                )
+            }
+        }
+
+        fun JobBuilder<*>.uploadIosIpa() {
+            if (matrix.uploadIpa) {
+                runGradle(
+                    name = "Upload iOS IPA",
+                    tasks = [":ci-helper:uploadIosIpa", "\"--no-configuration-cache\""],
                     env = ciHelperSecrets,
                 )
             }
@@ -1562,3 +1816,153 @@ fun String.neq(other: Boolean) = "($this != $other)"
 
 operator fun String.not() = "!($this)"
 
+/**
+ * Unroll attempts at compile time.
+ *
+ * 例如, [maxAttempts] 为 3 时, 这个函数将会添加三个 step.
+ * 当第一个 step 完成时, 后面的两个 step 都会被跳过.
+ * 如果第一个 step 失败了, 则继续执行第二个 step.
+ */
+fun <T : Action.Outputs> JobBuilder<*>.usesWithAttempts(
+    @Suppress("UNUSED_PARAMETER")
+    vararg pleaseUseNamedArguments: Unit,
+    action: Action<T>,
+    name: String? = null,
+    env: Map<String, String> = mapOf(),
+    @SuppressWarnings("FunctionParameterNaming")
+    `if`: String? = null,
+    condition: String? = null,
+    continueOnError: Boolean? = null,
+    timeoutMinutes: Int? = null,
+    @SuppressWarnings("FunctionParameterNaming")
+    _customArguments: Map<String, @Contextual Any> = mapOf(),
+
+    // ADDED:
+    maxAttempts: Int? = when (action) {
+        is DownloadArtifact -> 3
+        is UploadArtifact -> 3
+        else -> null
+    },
+) {
+    if (maxAttempts == null) {
+        uses(
+            // calls member
+            action = action,
+            name = name,
+            env = env,
+            `if` = `if`,
+            condition = condition,
+            continueOnError = continueOnError,
+            timeoutMinutes = timeoutMinutes,
+            _customArguments = _customArguments,
+        )
+        return
+    }
+    require(maxAttempts > 0) { "maxAttempts must be greater than 0" }
+
+    fun unroll(attemptNumber: Int, previousAttempt: ActionStep<T>?) = uses(
+        action = action,
+        name = "$name (Attempt #$attemptNumber)",
+        env = env,
+        `if` = if (previousAttempt == null) {
+            // First attempt
+            `if`
+        } else {
+            // 前一步失败了就重试, 否则跳过重试
+            expr { previousAttempt.outcome.eq(AbstractResult.Status.Failure) }
+        },
+        condition = condition,
+        continueOnError = if (continueOnError == true) {
+            // 整个 task 允许失败, 所以一直都 continueOnError
+            true
+        } else {
+            // Last step does not allow failure
+            attemptNumber != maxAttempts
+        },
+        timeoutMinutes = timeoutMinutes,
+        _customArguments = _customArguments,
+    )
+
+    // First attempt
+    var previousAttempt = unroll(1, null)
+    repeat(maxAttempts - 1) {
+        previousAttempt = unroll(it + 2, previousAttempt)
+    }
+}
+
+
+/**
+ * Unroll attempts at compile time.
+ *
+ * 例如, [maxAttempts] 为 3 时, 这个函数将会添加三个 step.
+ * 当第一个 step 完成时, 后面的两个 step 都会被跳过.
+ * 如果第一个 step 失败了, 则继续执行第二个 step.
+ */
+fun JobBuilder<*>.runWithAttempts(
+    @Suppress("UNUSED_PARAMETER")
+    vararg pleaseUseNamedArguments: Unit,
+    command: String,
+    name: String? = null,
+    env: Map<String, String> = mapOf(),
+    @SuppressWarnings("FunctionParameterNaming")
+    `if`: String? = null,
+    condition: String? = null,
+    continueOnError: Boolean? = null,
+    timeoutMinutes: Int? = 180, // CHANGED default
+    shell: Shell? = null,
+    workingDirectory: String? = null,
+    @SuppressWarnings("FunctionParameterNaming")
+    _customArguments: Map<String, @Contextual Any> = mapOf(),
+
+    // ADDED:
+    maxAttempts: Int? = 2,
+) {
+    if (maxAttempts == null) {
+        run(
+            // calls member
+            command = command,
+            name = name,
+            env = env,
+            `if` = `if`,
+            condition = condition,
+            continueOnError = continueOnError,
+            timeoutMinutes = timeoutMinutes,
+            shell = shell,
+            workingDirectory = workingDirectory,
+            _customArguments = _customArguments,
+        )
+        return
+    }
+    require(maxAttempts > 0) { "maxAttempts must be greater than 0" }
+
+    fun unroll(attemptNumber: Int, previousAttempt: CommandStep?) = run(
+        command = command,
+        name = "$name (Attempt #$attemptNumber)",
+        env = env,
+        `if` = if (previousAttempt == null) {
+            // First attempt
+            `if`
+        } else {
+            // 前一步失败了就重试, 否则跳过重试
+            expr { previousAttempt.outcome.eq(AbstractResult.Status.Failure) }
+        },
+        condition = condition,
+        continueOnError = if (continueOnError == true) {
+            // 整个 task 允许失败, 所以一直都 continueOnError
+            true
+        } else {
+            // Last step does not allow failure
+            attemptNumber != maxAttempts
+        },
+        timeoutMinutes = timeoutMinutes,
+        shell = shell,
+        workingDirectory = workingDirectory,
+        _customArguments = _customArguments,
+    )
+
+    // First attempt
+    var previousAttempt = unroll(1, null)
+    repeat(maxAttempts - 1) {
+        previousAttempt = unroll(it + 2, previousAttempt)
+    }
+}

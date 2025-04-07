@@ -29,7 +29,9 @@ kotlin {
 
     sourceSets.nativeMain {
         dependencies {
-            implementation(libs.oshai.kotlin.logging)
+//            implementation(libs.diamondedge.logging)
+            api(libs.kotlinx.io.core)
+            implementation(libs.kotlinx.io.bytestring)
         }
     }
 }

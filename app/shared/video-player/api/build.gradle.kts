@@ -34,6 +34,9 @@ kotlin {
     }
     sourceSets.desktopMain.dependencies {
     }
+    sourceSets.appleMain.dependencies {
+        api(mediampLibs.mediamp.avkit)
+    }
 }
 
 android {

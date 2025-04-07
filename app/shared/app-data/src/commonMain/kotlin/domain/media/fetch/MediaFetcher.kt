@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -236,7 +236,7 @@ class MediaSourceMediaFetcher(
         private fun logUpstreamException(exception: Throwable) {
             when (exception) {
                 is ServerResponseException -> {
-                    logger.error { "Failed to fetch media from ${sourceInfo.displayName} due to ${exception.response.status}" }
+                    logger.warn { "Failed to fetch media from ${sourceInfo.displayName} due to ${exception.response.status}" }
                 }
 
                 is IOException -> {
@@ -244,13 +244,13 @@ class MediaSourceMediaFetcher(
                 }
 
                 is CancellationException -> {
-                    logger.error { "Failed to fetch media from ${sourceInfo.displayName} due to CancellationException" }
+                    logger.warn { "Failed to fetch media from ${sourceInfo.displayName} due to CancellationException" }
                 }
 
                 is RepositoryException -> {
                     when (exception) {
                         is RepositoryAuthorizationException -> {
-                            logger.error { "Failed to fetch media from ${sourceInfo.displayName} due to forbidden" }
+                            logger.warn { "Failed to fetch media from ${sourceInfo.displayName} due to forbidden" }
                         }
 
                         is RepositoryNetworkException -> {
@@ -258,15 +258,15 @@ class MediaSourceMediaFetcher(
                         }
 
                         is RepositoryRateLimitedException -> {
-                            logger.error { "Failed to fetch media from ${sourceInfo.displayName} due to forbidden" }
+                            logger.warn { "Failed to fetch media from ${sourceInfo.displayName} due to rate limited" }
                         }
 
                         is RepositoryServiceUnavailableException -> {
-                            logger.error { "Failed to fetch media from ${sourceInfo.displayName} due to service unavailable" }
+                            logger.warn { "Failed to fetch media from ${sourceInfo.displayName} due to service unavailable" }
                         }
 
                         is RepositoryUnknownException -> {
-                            logger.error(exception) { "Failed to fetch media from ${sourceInfo.displayName} due to upstream error" }
+                            logger.error(exception) { "Failed to fetch media from ${sourceInfo.displayName} due to unknown error" }
                         }
                     }
                 }

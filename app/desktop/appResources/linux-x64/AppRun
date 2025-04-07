@@ -1,0 +1,17 @@
+#!/bin/bash
+
+#
+# Copyright (C) 2024-2025 OpenAni and contributors.
+#
+# 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+# Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+#
+# https://github.com/open-ani/ani/blob/main/LICENSE
+#
+
+export APPDIR="$(dirname "$(readlink -f "$0")")"
+export PATH="$APPDIR/usr/bin/:$PATH"
+export LD_LIBRARY_PATH="$APPDIR/usr/lib:$PATH"
+export XDG_DATA_DIRS="$APPDIR/usr/share/:/usr/share/:$XDG_DATA_DIRS"
+
+"$APPDIR"/usr/bin/Ani $@

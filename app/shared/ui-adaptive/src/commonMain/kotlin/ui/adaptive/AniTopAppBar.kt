@@ -15,6 +15,7 @@ import androidx.compose.animation.core.snap
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -27,6 +28,8 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.LargeTopAppBar
+import androidx.compose.material3.MediumTopAppBar
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarColors
@@ -34,6 +37,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,8 +46,11 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
 import androidx.window.core.layout.WindowSizeClass
+import me.him188.ani.app.ui.foundation.LocalPlatform
+import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.interaction.WindowDragArea
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
+import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.isHeightAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastExpanded
@@ -51,6 +58,7 @@ import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.paddingIfNotEmpty
 import me.him188.ani.app.ui.foundation.layout.paneHorizontalPadding
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
+import me.him188.ani.utils.platform.isDesktop
 
 /**
  * 符合 Ani 设计风格的 TopAppBar: [NavigationSuiteScaffold on Figma](https://www.figma.com/design/LET1n9mmDa6npDTIlUuJjU/Main?node-id=15-605&t=gmFJS6LFQudIIXfK-4).
@@ -88,68 +96,138 @@ fun AniTopAppBar(
     windowInsets: WindowInsets = AniWindowInsets.forTopAppBar()
         .only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal), // You would like to add only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
     scrollBehavior: TopAppBarScrollBehavior? = null,
+    size: TopAppBarSize = TopAppBarSize.SMALL,
 ) {
     val windowSizeClass = currentWindowAdaptiveInfo1().windowSizeClass
-    WindowDragArea {
+
+    val platformWindow = LocalPlatformWindow.current
+    WindowDragArea(
+        Modifier.ifThen(LocalPlatform.current.isDesktop()) {
+            // 双击标题栏全屏
+            combinedClickable(
+                onDoubleClick = {
+                    if (platformWindow.isExactlyMaximized) {
+                        platformWindow.floating()
+                    } else {
+                        platformWindow.maximize()
+                    }
+                },
+                interactionSource = null,
+                indication = null,
+            ) {}
+        },
+    ) {
         val additionalPadding =
             if (windowSizeClass.isWidthAtLeastMedium && windowSizeClass.isHeightAtLeastMedium) {
                 8.dp
             } else {
                 0.dp
             }
-        TopAppBar(
-            title,
-            modifier.padding(all = additionalPadding),
-            navigationIcon,
-            actions = {
-                val horizontalPadding =
-                    windowSizeClass.paneHorizontalPadding // refer to design on figma
+        val actionsDecorated: @Composable RowScope.() -> Unit = {
+            val horizontalPadding =
+                windowSizeClass.paneHorizontalPadding // refer to design on figma
 
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp, alignment = Alignment.End),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    AdaptiveSearchBarLayout(
-                        windowSizeClass,
-                        searchIconButton,
-                        Modifier.weight(1f, fill = false),
-                        searchBar,
-                    )
-                    actions()
-                }
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp, alignment = Alignment.End),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                AdaptiveSearchBarLayout(
+                    windowSizeClass,
+                    searchIconButton,
+                    Modifier.weight(1f, fill = false),
+                    searchBar,
+                )
+                actions()
+            }
 
-                Box(
-                    Modifier
-                        .minimumInteractiveComponentSize()
-                        .paddingIfNotEmpty(
-                            start = horizontalPadding,
-                            end = (horizontalPadding - 4.dp - additionalPadding).coerceAtLeast(0.dp), // `actions` 自带 4
-                        ),
-                ) {
-                    val minSize =
-                        if (windowSizeClass.isWidthAtLeastMedium
-                            && windowSizeClass.isHeightAtLeastMedium
-                        ) {
-                            48.dp
-                        } else {
-                            36.dp
-                        }
-                    Box(
-                        Modifier.sizeIn(
-                            minWidth = minSize, maxWidth = 128.dp,
-                            minHeight = minSize, maxHeight = minSize,
-                        ),
+            Box(
+                Modifier
+                    .minimumInteractiveComponentSize()
+                    .padding(end = additionalPadding)
+                    .paddingIfNotEmpty(
+                        start = horizontalPadding,
+                        end = (horizontalPadding - 4.dp - additionalPadding).coerceAtLeast(0.dp), // `actions` 自带 4
+                    ),
+            ) {
+                val minSize =
+                    if (windowSizeClass.isWidthAtLeastMedium
+                        && windowSizeClass.isHeightAtLeastMedium
                     ) {
-                        avatar(DpSize(minSize, minSize))
+                        48.dp
+                    } else {
+                        36.dp
                     }
+                Box(
+                    Modifier.sizeIn(
+                        minWidth = minSize, maxWidth = 128.dp,
+                        minHeight = minSize, maxHeight = minSize,
+                    ),
+                ) {
+                    avatar(DpSize(minSize, minSize))
                 }
-            },
-            expandedHeight,
-            windowInsets,
-            colors,
-            scrollBehavior,
-        )
+            }
+        }
+
+        when (size) {
+            TopAppBarSize.SMALL -> {
+                TopAppBar(
+                    title = {
+                        Row(Modifier.padding(start = additionalPadding).padding(vertical = additionalPadding)) {
+                            title()
+                        }
+                    },
+                    modifier = modifier,
+                    navigationIcon = navigationIcon,
+                    actions = actionsDecorated,
+                    expandedHeight = expandedHeight,
+                    windowInsets = windowInsets,
+                    colors = colors,
+                    scrollBehavior = scrollBehavior,
+                )
+            }
+
+            TopAppBarSize.MEDIUM -> {
+                MediumTopAppBar(
+                    title = {
+                        Row(Modifier.padding(start = additionalPadding).padding(vertical = additionalPadding)) {
+                            title()
+                        }
+                    },
+                    modifier = modifier,
+                    navigationIcon = navigationIcon,
+                    actions = actionsDecorated,
+                    collapsedHeight = expandedHeight,
+                    windowInsets = windowInsets,
+                    colors = colors,
+                    scrollBehavior = scrollBehavior,
+                )
+            }
+
+            TopAppBarSize.LARGE -> {
+                LargeTopAppBar(
+                    title = {
+                        Row(Modifier.padding(start = additionalPadding).padding(vertical = additionalPadding)) {
+                            title()
+                        }
+                    },
+                    modifier = modifier,
+                    navigationIcon = navigationIcon,
+                    actions = actionsDecorated,
+                    collapsedHeight = expandedHeight,
+                    windowInsets = windowInsets,
+                    colors = colors,
+                    scrollBehavior = scrollBehavior,
+                )
+            }
+        }
     }
+}
+
+@Immutable
+enum class TopAppBarSize {
+    SMALL,
+    MEDIUM,
+    LARGE
 }
 
 @Stable

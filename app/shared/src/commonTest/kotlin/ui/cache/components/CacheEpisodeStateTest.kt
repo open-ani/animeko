@@ -9,12 +9,9 @@
 
 package me.him188.ani.app.ui.cache.components
 
-import androidx.compose.runtime.mutableStateOf
 import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.GlobalScope
 import me.him188.ani.app.tools.Progress
 import me.him188.ani.app.tools.toProgress
-import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.framework.runComposeStateTest
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.topic.FileSize
@@ -68,7 +65,6 @@ class CacheEpisodeStateTest {
         progress: Progress = 0.9f.toProgress(),
         totalSize: FileSize = 200.megaBytes,
     ): CacheEpisodeState {
-        val state = mutableStateOf(initialPaused)
         return CacheEpisodeState(
             subjectId = subjectId,
             episodeId = episodeId,
@@ -76,19 +72,13 @@ class CacheEpisodeStateTest {
             sort = EpisodeSort(sort),
             displayName = displayName,
             creationTime = 100,
-            screenShots = stateOf(emptyList()),
-            stats = stateOf(
-                CacheEpisodeState.Stats(
-                    downloadSpeed = downloadSpeed,
-                    progress = progress,
-                    totalSize = totalSize,
-                ),
+            screenShots = emptyList(),
+            stats = CacheEpisodeState.Stats(
+                downloadSpeed = downloadSpeed,
+                progress = progress,
+                totalSize = totalSize,
             ),
-            state = state,
-            onPause = { state.value = CacheEpisodePaused.PAUSED },
-            onResume = { state.value = CacheEpisodePaused.IN_PROGRESS },
-            onDelete = {},
-            backgroundScope = GlobalScope,
+            state = initialPaused,
         )
     }
 

@@ -38,6 +38,9 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
+import androidx.compose.material.icons.rounded.AddComment
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -74,12 +77,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.compose.collectAsLazyPagingItemsWithLifecycle
 import coil3.compose.AsyncImagePainter
 import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
 import me.him188.ani.app.data.models.episode.findCacheStatus
 import me.him188.ani.app.data.models.subject.RatingInfo
 import me.him188.ani.app.data.models.subject.SelfRatingInfo
 import me.him188.ani.app.data.models.subject.SubjectCollectionStats
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
+import me.him188.ani.app.data.models.subject.Tag
 import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.domain.media.cache.EpisodeCacheStatus
 import me.him188.ani.app.domain.session.AuthState
@@ -138,6 +143,7 @@ fun SubjectDetailsScreen(
     vm: SubjectDetailsViewModel,
     onPlay: (episodeId: Int) -> Unit,
     onLoadErrorRetry: () -> Unit,
+    onClickTag: (Tag) -> Unit,
     modifier: Modifier = Modifier,
     showTopBar: Boolean = true,
     showBlurredBackground: Boolean = true,
@@ -151,11 +157,12 @@ fun SubjectDetailsScreen(
         vm.reload()
     }
 
-    SubjectDetailsScene(
+    SubjectDetailsScreen(
         state,
         authState,
         onPlay = onPlay,
         onLoadErrorRetry,
+        onClickTag,
         modifier,
         showTopBar,
         showBlurredBackground,
@@ -165,11 +172,12 @@ fun SubjectDetailsScreen(
 }
 
 @Composable
-fun SubjectDetailsScene(
+fun SubjectDetailsScreen(
     state: SubjectDetailsUIState?,
     authState: AuthState,
     onPlay: (episodeId: Int) -> Unit,
     onLoadErrorRetry: () -> Unit,
+    onClickTag: (Tag) -> Unit,
     modifier: Modifier = Modifier,
     showTopBar: Boolean = true,
     showBlurredBackground: Boolean = true,
@@ -184,7 +192,7 @@ fun SubjectDetailsScene(
 
     when (state) {
         null, is SubjectDetailsUIState.Placeholder -> PlaceholderSubjectDetailsPage(
-            (state as? SubjectDetailsUIState.Placeholder)?.subjectInfo,
+            state?.subjectInfo,
             modifier,
             showTopBar,
             windowInsets,
@@ -197,6 +205,7 @@ fun SubjectDetailsScene(
             authState,
             onPlay = onPlay,
             onClickLogin = { navigator.navigateBangumiAuthorize() },
+            onClickTag,
             modifier,
             showTopBar,
             showBlurredBackground,
@@ -228,6 +237,7 @@ private fun SubjectDetailsPage(
     authState: AuthState,
     onPlay: (episodeId: Int) -> Unit,
     onClickLogin: () -> Unit,
+    onClickTag: (Tag) -> Unit,
     modifier: Modifier = Modifier,
     showTopBar: Boolean = true,
     showBlurredBackground: Boolean = true,
@@ -307,10 +317,12 @@ private fun SubjectDetailsPage(
             SubjectDetailsContentPager(
                 paddingValues,
                 connectedScrollState,
+                onClickAddRating = { state.editableRatingState.requestEdit() },
                 detailsTab = { contentPadding ->
                     if (state.info == null) return@SubjectDetailsContentPager
                     SubjectDetailsDefaults.DetailsTab(
                         info = state.info,
+                        onClickTag,
                         staff = state.staffPager.collectAsLazyPagingItemsWithLifecycle(),
                         exposedStaff = state.exposedStaffPager.collectAsLazyPagingItemsWithLifecycle(),
                         totalStaffCount = state.totalStaffCountState.value,
@@ -334,7 +346,7 @@ private fun SubjectDetailsPage(
                         onClickImage = { imageViewer.viewImage(it) },
                         connectedScrollState,
                         Modifier.fillMaxSize(),
-                        lazyStaggeredGridState = state.commentTabLazyStaggeredGridState,
+                        gridState = state.commentTabLazyGridState,
                         contentPadding = contentPadding,
                     )
                 },
@@ -608,10 +620,12 @@ fun SubjectDetailsLayout(
 /**
  * Pager 页面
  */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun SubjectDetailsContentPager(
     paddingValues: PaddingValues,
     connectedScrollState: ConnectedScrollState,
+    onClickAddRating: () -> Unit,
     detailsTab: @Composable (contentPadding: PaddingValues) -> Unit,
     commentsTab: @Composable (contentPadding: PaddingValues) -> Unit,
     discussionsTab: @Composable (contentPadding: PaddingValues) -> Unit,
@@ -626,64 +640,86 @@ private fun SubjectDetailsContentPager(
         pageCount = { 3 },
     )
 
-    Column(
-        modifier
-            .fillMaxHeight()
-            .padding(paddingValues)
-            .consumeWindowInsets(paddingValues),
-    ) {
-        val tabContainerColor by animateColorAsState(
-            if (connectedScrollState.isScrolledTop) stickyTopBarColor else backgroundColor,
-            tween(),
-        )
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(tabContainerColor),
-            contentAlignment = Alignment.Center,
-        ) {
-            TabRow(
-                selectedTabIndex = pagerState.currentPage,
-                modifier = Modifier.widthIn(max = SubjectDetailsDefaults.TabRowWidth),
-                indicator = @Composable { tabPositions ->
-                    TabRowDefaults.PrimaryIndicator(
-                        Modifier.pagerTabIndicatorOffset(pagerState, tabPositions),
-                    )
-                },
-                containerColor = tabContainerColor,
-                contentColor = TabRowDefaults.secondaryContentColor,
-                divider = {},
-            ) {
-                SubjectDetailsTab.entries.forEachIndexed { index, tabId ->
-                    Tab(
-                        selected = pagerState.currentPage == index,
-                        modifier = Modifier.widthIn(max = SubjectDetailsDefaults.TabWidth),
-                        onClick = {
-                            scope.launch { pagerState.animateScrollToPage(index) }
+    Scaffold(
+        Modifier,
+        floatingActionButton = {
+            when (SubjectDetailsTab.entries.getOrNull(pagerState.currentPage)) {
+                SubjectDetailsTab.DETAILS -> {}
+                SubjectDetailsTab.COMMENTS -> {
+                    ExtendedFloatingActionButton(
+                        text = { Text("写评价") },
+                        icon = {
+                            Icon(Icons.Rounded.AddComment, null)
                         },
-                        text = {
-                            Text(text = renderSubjectDetailsTab(tabId))
-                        },
+                        onClickAddRating,
+                        expanded = !connectedScrollState.isScrolledTop,
                     )
                 }
-            }
-        }
 
-        HorizontalPager(
-            state = pagerState,
-            Modifier.fillMaxHeight(),
-            userScrollEnabled = LocalPlatform.current.isMobile(),
-            verticalAlignment = Alignment.Top,
-        ) { index ->
-            val type = SubjectDetailsTab.entries[index]
-            Column(Modifier.padding()) {
-                val panePaddingValues =
-                    PaddingValues(bottom = currentWindowAdaptiveInfo1().windowSizeClass.paneVerticalPadding)
-                when (type) {
-                    SubjectDetailsTab.DETAILS -> detailsTab(panePaddingValues)
-                    SubjectDetailsTab.COMMENTS -> commentsTab(panePaddingValues)
-                    SubjectDetailsTab.DISCUSSIONS -> discussionsTab(panePaddingValues)
+                SubjectDetailsTab.DISCUSSIONS -> {}
+                null -> {}
+            }
+        },
+    ) { _ -> // ignore window insets
+        Column(
+            modifier
+                .fillMaxHeight()
+                .padding(paddingValues)
+                .consumeWindowInsets(paddingValues),
+        ) {
+            val tabContainerColor by animateColorAsState(
+                if (connectedScrollState.isScrolledTop) stickyTopBarColor else backgroundColor,
+                tween(),
+            )
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(tabContainerColor),
+                contentAlignment = Alignment.Center,
+            ) {
+                TabRow(
+                    selectedTabIndex = pagerState.currentPage,
+                    modifier = Modifier.widthIn(max = SubjectDetailsDefaults.TabRowWidth),
+                    indicator = @Composable { tabPositions ->
+                        TabRowDefaults.PrimaryIndicator(
+                            Modifier.pagerTabIndicatorOffset(pagerState, tabPositions),
+                        )
+                    },
+                    containerColor = tabContainerColor,
+                    contentColor = TabRowDefaults.secondaryContentColor,
+                    divider = {},
+                ) {
+                    SubjectDetailsTab.entries.forEachIndexed { index, tabId ->
+                        Tab(
+                            selected = pagerState.currentPage == index,
+                            modifier = Modifier.widthIn(max = SubjectDetailsDefaults.TabWidth),
+                            onClick = {
+                                scope.launch { pagerState.animateScrollToPage(index) }
+                            },
+                            text = {
+                                Text(text = renderSubjectDetailsTab(tabId))
+                            },
+                        )
+                    }
+                }
+            }
+
+            HorizontalPager(
+                state = pagerState,
+                Modifier.fillMaxHeight(),
+                userScrollEnabled = LocalPlatform.current.isMobile(),
+                verticalAlignment = Alignment.Top,
+            ) { index ->
+                val type = SubjectDetailsTab.entries[index]
+                Column(Modifier.padding()) {
+                    val panePaddingValues =
+                        PaddingValues(bottom = currentWindowAdaptiveInfo1().windowSizeClass.paneVerticalPadding)
+                    when (type) {
+                        SubjectDetailsTab.DETAILS -> detailsTab(panePaddingValues)
+                        SubjectDetailsTab.COMMENTS -> commentsTab(panePaddingValues)
+                        SubjectDetailsTab.DISCUSSIONS -> discussionsTab(panePaddingValues)
+                    }
                 }
             }
         }
@@ -819,6 +855,7 @@ private fun PlaceholderSubjectDetailsContentPager(paddingValues: PaddingValues) 
 // endregion
 
 @Immutable
+@Serializable
 enum class SubjectDetailsTab {
     DETAILS,
     COMMENTS,

@@ -31,9 +31,9 @@ import kotlinx.serialization.Serializable
 /**
  * 
  *
- * @param id
- * @param type
- * @param summary
+ * @param id 
+ * @param type 
+ * @param summary 
  * @param createdAt 
  * @param creator 
  * @param `data` 编辑修改内容，响应类型不固定

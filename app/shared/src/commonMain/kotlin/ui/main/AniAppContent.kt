@@ -48,6 +48,7 @@ import androidx.window.core.layout.WindowSizeClass
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.domain.mediasource.rss.RssMediaSource
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSource
+import me.him188.ani.app.domain.search.SubjectSearchQuery
 import me.him188.ani.app.domain.session.AuthState
 import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.navigation.LocalNavigator
@@ -63,6 +64,7 @@ import me.him188.ani.app.ui.cache.CacheManagementScreen
 import me.him188.ani.app.ui.cache.CacheManagementViewModel
 import me.him188.ani.app.ui.cache.details.MediaCacheDetailsPageViewModel
 import me.him188.ani.app.ui.cache.details.MediaCacheDetailsScreen
+import me.him188.ani.app.ui.cache.details.MediaDetails
 import me.him188.ani.app.ui.cache.details.MediaDetailsLazyGrid
 import me.him188.ani.app.ui.exploration.schedule.ScheduleScreen
 import me.him188.ani.app.ui.exploration.schedule.ScheduleViewModel
@@ -278,8 +280,9 @@ private fun AniAppContentImpl(
                 popEnterTransition = popEnterTransition,
                 popExitTransition = popExitTransition,
             ) {
+                val route = it.toRoute<NavRoutes.SubjectSearch>()
                 val navigator = LocalNavigator.current
-                val vm = viewModel { SearchViewModel() }
+                val vm = viewModel(key = route.toString()) { SearchViewModel(route.toQuery()) }
 
                 SearchScreen(
                     vm,
@@ -338,6 +341,7 @@ private fun AniAppContentImpl(
                         vm,
                         onPlay = { aniNavigator.navigateEpisodeDetails(details.subjectId, it) },
                         onLoadErrorRetry = { vm.reload() },
+                        onClickTag = { aniNavigator.navigateSubjectSearch(NavRoutes.SubjectSearch(tags = listOf(it.name))) },
                         windowInsets = windowInsets,
                         navigationIcon = {
                             Row {
@@ -414,7 +418,11 @@ private fun AniAppContentImpl(
             ) { backStackEntry ->
                 val route = backStackEntry.toRoute<NavRoutes.Caches>()
                 CacheManagementScreen(
-                    viewModel { CacheManagementViewModel() },
+                    vm = viewModel { CacheManagementViewModel() },
+                    onPlay = {
+                        aniNavigator.navigateEpisodeDetails(it.subjectId, it.episodeId)
+                    },
+                    Modifier.fillMaxSize(),
                     navigationIcon = {
                         BackNavigationIconButton(
                             {
@@ -422,7 +430,6 @@ private fun AniAppContentImpl(
                             },
                         )
                     },
-                    Modifier.fillMaxSize(),
                 )
             }
             composable<NavRoutes.CacheDetail>(
@@ -481,8 +488,7 @@ private fun AniAppContentImpl(
                         },
                         mediaDetailsColumn = { media ->
                             MediaDetailsLazyGrid(
-                                media,
-                                null,
+                                MediaDetails.from(media, null, null),
                                 Modifier.fillMaxSize(),
                                 showSourceInfo = false,
                             )
@@ -583,4 +589,11 @@ private fun AniAppContentImpl(
             }
         }
     }
+}
+
+private fun NavRoutes.SubjectSearch.toQuery(): SubjectSearchQuery {
+    return SubjectSearchQuery(
+        keywords = keyword ?: "",
+        tags = tags,
+    )
 }

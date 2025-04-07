@@ -31,11 +31,11 @@ import kotlinx.serialization.Serializable
 /**
  * 
  *
- * @param id
+ * @param id 
  * @param title 
  * @param desc 
  * @param stat 目录评论及收藏数
- * @param createdAt
+ * @param createdAt 
  * @param updatedAt 
  * @param creator 
  * @param ban deprecated, always false.

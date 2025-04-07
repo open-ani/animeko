@@ -39,7 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
-import me.him188.ani.app.ui.onboarding.HeroIcon
+import me.him188.ani.app.ui.foundation.widgets.HeroIcon
 import me.him188.ani.app.ui.onboarding.WizardLayoutParams
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.rendering.P2p

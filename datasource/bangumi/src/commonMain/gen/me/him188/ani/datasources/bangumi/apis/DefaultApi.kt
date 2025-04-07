@@ -1726,6 +1726,7 @@ open class DefaultApi : ApiClient {
     }
 
 
+
     /**
      * Uncollect index for current user
      * 为当前用户取消收藏一条目录

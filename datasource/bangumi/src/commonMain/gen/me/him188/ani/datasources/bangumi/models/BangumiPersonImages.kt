@@ -32,8 +32,8 @@ import kotlinx.serialization.Serializable
 /**
  * 
  *
- * @param large
- * @param medium
+ * @param large 
+ * @param medium 
  * @param small 
  * @param grid 
  */

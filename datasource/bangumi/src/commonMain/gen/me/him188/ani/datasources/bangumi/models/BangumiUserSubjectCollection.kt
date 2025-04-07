@@ -31,15 +31,15 @@ import kotlinx.serialization.Serializable
 /**
  * 
  *
- * @param subjectId
- * @param subjectType
- * @param rate
- * @param type
- * @param tags
+ * @param subjectId 
+ * @param subjectType 
+ * @param rate 
+ * @param type 
+ * @param tags 
  * @param epStatus 
  * @param volStatus 
  * @param updatedAt 本时间并不代表条目的收藏时间。修改评分，评价，章节观看状态等收藏信息时未更新此时间是一个 bug。请不要依赖此特性
- * @param `private`
+ * @param `private` 
  * @param comment 
  * @param subject 
  */

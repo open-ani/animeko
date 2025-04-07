@@ -63,7 +63,10 @@ actual annotation class Preview(
     actual val showSystemUi: Boolean = false,
     actual val showBackground: Boolean = false,
     actual val backgroundColor: Long = 0,
+    @all:UiMode
     actual val uiMode: Int = 0,
+    @all:Device
     actual val device: String = "",
+    @all:Wallpaper
     actual val wallpaper: Int = -1,
 )

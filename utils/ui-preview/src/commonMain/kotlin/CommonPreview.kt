@@ -10,7 +10,9 @@
 package org.jetbrains.compose.ui.tooling.preview
 
 import androidx.annotation.FloatRange
+import androidx.annotation.IntDef
 import androidx.annotation.IntRange
+import androidx.annotation.StringDef
 import androidx.compose.runtime.Composable
 
 /**
@@ -64,7 +66,158 @@ expect annotation class Preview(
     val showSystemUi: Boolean = false,
     val showBackground: Boolean = false,
     val backgroundColor: Long = 0,
-    val uiMode: Int = 0,
-    val device: String = "",
+    @all:UiMode val uiMode: Int = 0,
+    @all:Device val device: String = "",
+    @all:Wallpaper
     val wallpaper: Int = -1,
 )
+
+@Suppress("ConstPropertyName")
+object Devices {
+    // Reference devices
+    const val PHONE = "spec:width=411dp,height=891dp"
+    const val FOLDABLE = "spec:width=673dp,height=841dp"
+    const val TABLET = "spec:width=1280dp,height=800dp,dpi=240"
+    const val DESKTOP = "spec:width=1920dp,height=1080dp,dpi=160"
+
+    // TV devices (not adding 4K since it will be very heavy for preview)
+    const val TV_720p = "spec:width=1280dp,height=720dp"
+    const val TV_1080p = "spec:width=1920dp,height=1080dp"
+}
+
+@StringDef(
+    Devices.PHONE,
+    Devices.FOLDABLE,
+    Devices.TABLET,
+    Devices.DESKTOP,
+    Devices.TV_720p,
+    Devices.TV_1080p,
+    open = true,
+)
+internal annotation class Device
+
+///////////////////////////////////////////////////////////////////////////
+// Below are copied from Android
+///////////////////////////////////////////////////////////////////////////
+
+/** Annotation for defining the wallpaper to use for dynamic theming in the [Preview]. */
+@Retention(AnnotationRetention.SOURCE)
+@IntDef(
+    Wallpapers.NONE,
+    Wallpapers.RED_DOMINATED_EXAMPLE,
+    Wallpapers.GREEN_DOMINATED_EXAMPLE,
+    Wallpapers.BLUE_DOMINATED_EXAMPLE,
+    Wallpapers.YELLOW_DOMINATED_EXAMPLE,
+)
+internal annotation class Wallpaper
+
+
+/** Annotation of setting uiMode in [Preview]. */
+@Suppress("UniqueConstants") // UI_MODE_NIGHT_UNDEFINED == UI_MODE_TYPE_UNDEFINED
+@Retention(AnnotationRetention.SOURCE)
+@IntDef(
+    value =
+        [
+            Configuration.UI_MODE_TYPE_MASK,
+            Configuration.UI_MODE_TYPE_UNDEFINED,
+            Configuration.UI_MODE_TYPE_APPLIANCE,
+            Configuration.UI_MODE_TYPE_CAR,
+            Configuration.UI_MODE_TYPE_DESK,
+            Configuration.UI_MODE_TYPE_NORMAL,
+            Configuration.UI_MODE_TYPE_TELEVISION,
+            Configuration.UI_MODE_TYPE_VR_HEADSET,
+            Configuration.UI_MODE_TYPE_WATCH,
+            Configuration.UI_MODE_NIGHT_MASK,
+            Configuration.UI_MODE_NIGHT_UNDEFINED,
+            Configuration.UI_MODE_NIGHT_NO,
+            Configuration.UI_MODE_NIGHT_YES,
+        ],
+)
+internal annotation class UiMode
+
+object Configuration {
+    /** Constant for [.uiMode]: bits that encode the mode type.  */
+    const val UI_MODE_TYPE_MASK: Int = 0x0f
+
+    /** Constant for [.uiMode]: a [.UI_MODE_TYPE_MASK]
+     * value indicating that no mode type has been set.  */
+    const val UI_MODE_TYPE_UNDEFINED: Int = 0x00
+
+    /** Constant for [.uiMode]: a [.UI_MODE_TYPE_MASK]
+     * value that corresponds to
+     * [no
+     * UI mode]({@docRoot}guide/topics/resources/providing-resources.html#UiModeQualifier) resource qualifier specified.  */
+    const val UI_MODE_TYPE_NORMAL: Int = 0x01
+
+    /** Constant for [.uiMode]: a [.UI_MODE_TYPE_MASK]
+     * value that corresponds to the
+     * [desk]({@docRoot}guide/topics/resources/providing-resources.html#UiModeQualifier)
+     * resource qualifier.  */
+    const val UI_MODE_TYPE_DESK: Int = 0x02
+
+    /** Constant for [.uiMode]: a [.UI_MODE_TYPE_MASK]
+     * value that corresponds to the
+     * [car]({@docRoot}guide/topics/resources/providing-resources.html#UiModeQualifier)
+     * resource qualifier.  */
+    const val UI_MODE_TYPE_CAR: Int = 0x03
+
+    /** Constant for [.uiMode]: a [.UI_MODE_TYPE_MASK]
+     * value that corresponds to the
+     * [television]({@docRoot}guide/topics/resources/providing-resources.html#UiModeQualifier)
+     * resource qualifier.  */
+    const val UI_MODE_TYPE_TELEVISION: Int = 0x04
+
+    /** Constant for [.uiMode]: a [.UI_MODE_TYPE_MASK]
+     * value that corresponds to the
+     * [appliance]({@docRoot}guide/topics/resources/providing-resources.html#UiModeQualifier)
+     * resource qualifier.  */
+    const val UI_MODE_TYPE_APPLIANCE: Int = 0x05
+
+    /** Constant for [.uiMode]: a [.UI_MODE_TYPE_MASK]
+     * value that corresponds to the
+     * [watch]({@docRoot}guide/topics/resources/providing-resources.html#UiModeQualifier)
+     * resource qualifier.  */
+    const val UI_MODE_TYPE_WATCH: Int = 0x06
+
+    /** Constant for [.uiMode]: a [.UI_MODE_TYPE_MASK]
+     * value that corresponds to the
+     * [vrheadset]({@docRoot}guide/topics/resources/providing-resources.html#UiModeQualifier)
+     * resource qualifier.  */
+    const val UI_MODE_TYPE_VR_HEADSET: Int = 0x07
+
+    /** Constant for [.uiMode]: bits that encode the night mode.  */
+    const val UI_MODE_NIGHT_MASK: Int = 0x30
+
+    /** Constant for [.uiMode]: a [.UI_MODE_NIGHT_MASK]
+     * value indicating that no mode type has been set.  */
+    const val UI_MODE_NIGHT_UNDEFINED: Int = 0x00
+
+    /** Constant for [.uiMode]: a [.UI_MODE_NIGHT_MASK]
+     * value that corresponds to the
+     * [notnight]({@docRoot}guide/topics/resources/providing-resources.html#NightQualifier)
+     * resource qualifier.  */
+    const val UI_MODE_NIGHT_NO: Int = 0x10
+
+    /** Constant for [.uiMode]: a [.UI_MODE_NIGHT_MASK]
+     * value that corresponds to the
+     * [night]({@docRoot}guide/topics/resources/providing-resources.html#NightQualifier)
+     * resource qualifier.  */
+    const val UI_MODE_NIGHT_YES: Int = 0x20
+}
+
+object Wallpapers {
+    /** Default value, representing dynamic theming not enabled. */
+    const val NONE = -1
+
+    /** Example wallpaper whose dominant colour is red. */
+    const val RED_DOMINATED_EXAMPLE = 0
+
+    /** Example wallpaper whose dominant colour is green. */
+    const val GREEN_DOMINATED_EXAMPLE = 1
+
+    /** Example wallpaper whose dominant colour is blue. */
+    const val BLUE_DOMINATED_EXAMPLE = 2
+
+    /** Example wallpaper whose dominant colour is yellow. */
+    const val YELLOW_DOMINATED_EXAMPLE = 3
+}

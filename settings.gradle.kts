@@ -36,11 +36,11 @@ dependencyResolutionManagement {
     }
     versionCatalogs {
         create("anitorrentLibs") {
-            from("org.openani.anitorrent:catalog:0.1.1")
+            from("org.openani.anitorrent:catalog:0.2.0")
         }
 
         create("mediampLibs") {
-            from("org.openani.mediamp:catalog:0.0.22")
+            from("org.openani.mediamp:catalog:0.0.25")
         }
     }
 }
@@ -103,6 +103,7 @@ includeProject(":app:shared:reorderable", "app/shared/thirdparty/reorderable")
 
 includeProject(":app:desktop", "app/desktop") // desktop JVM client for macOS, Windows, and Linux
 includeProject(":app:android", "app/android") // Android client
+includeProject(":app:ios", "app/ios") // iOS Launcher
 
 includeProject(":client")
 
@@ -176,6 +177,10 @@ findLocalProperty("ani.build.mediamp.path")?.let { mediampPath ->
                 .using(project(":mediamp-vlc-compose"))
             substitute(module("org.openani.mediamp:mediamp-source-ktxio"))
                 .using(project(":mediamp-source-ktxio"))
+            substitute(module("org.openani.mediamp:mediamp-avkit"))
+                .using(project(":mediamp-avkit"))
+            substitute(module("org.openani.mediamp:mediamp-avkit-compose"))
+                .using(project(":mediamp-avkit-compose"))
         }
     }
 }

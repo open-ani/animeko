@@ -58,6 +58,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.serialization.Serializable
 import me.him188.ani.app.domain.media.selector.UnsafeOriginalMediaAccess
 import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
@@ -280,6 +281,7 @@ private fun LegacyBTSourceColumn(
     }
 }
 
+@Serializable
 enum class ViewKind {
     WEB,
     BT,

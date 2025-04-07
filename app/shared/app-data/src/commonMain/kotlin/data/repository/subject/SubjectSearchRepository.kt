@@ -27,9 +27,11 @@ import me.him188.ani.app.data.network.BatchSubjectDetails
 import me.him188.ani.app.data.repository.Repository
 import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.domain.search.RatingRange
+import me.him188.ani.app.domain.search.SearchSort
 import me.him188.ani.app.domain.search.SubjectSearchQuery
 import me.him188.ani.app.domain.search.SubjectType
 import me.him188.ani.datasources.bangumi.models.BangumiSubjectType
+import me.him188.ani.datasources.bangumi.models.search.BangumiSort
 import me.him188.ani.utils.logging.logger
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.cancellation.CancellationException
@@ -76,6 +78,7 @@ class SubjectSearchRepository(
                     offset = offset,
                     limit = params.loadSize,
                     filters = filters,
+                    sort = searchQuery.sort.toBangumiSort(),
                 )
 
                 val subjectInfos = subjectService.batchGetSubjectDetails(res)
@@ -89,6 +92,14 @@ class SubjectSearchRepository(
                 throw e
             } catch (e: Exception) {
                 LoadResult.Error(RepositoryException.wrapOrThrowCancellation(e))
+            }
+        }
+
+        private fun SearchSort.toBangumiSort(): BangumiSort? {
+            return when (this) {
+                SearchSort.MATCH -> BangumiSort.MATCH
+                SearchSort.RANK -> BangumiSort.SCORE // 不能用 RANK, bangumi 会把 #0 也包含, 排在最前
+                SearchSort.COLLECTION -> BangumiSort.HEAT
             }
         }
 

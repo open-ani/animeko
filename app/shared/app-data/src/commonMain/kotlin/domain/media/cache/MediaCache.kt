@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import me.him188.ani.app.domain.media.cache.engine.TorrentMediaCacheEngine
 import me.him188.ani.app.tools.Progress
 import me.him188.ani.app.tools.toProgress
@@ -60,16 +61,14 @@ interface MediaCache {
 
     val state: Flow<MediaCacheState>
 
+    val canPlay: Flow<Boolean>
+        get() = flowOf(true)
+
     /**
      * Returns the [CachedMedia] instance for this cache.
      * The instance is cached so this function will immediately return the cached instance after the first successful call.
      */
     suspend fun getCachedMedia(): CachedMedia
-
-    /**
-     * 缓存
-     */
-    fun isValid(): Boolean // todo: deprecate this
 
     /**
      * @see TorrentFileEntry.Stats
@@ -281,7 +280,6 @@ open class TestMediaCache(
     )
 
     override suspend fun getCachedMedia(): CachedMedia = media
-    override fun isValid(): Boolean = true
 
     private val resumeCalled = atomic(0)
 

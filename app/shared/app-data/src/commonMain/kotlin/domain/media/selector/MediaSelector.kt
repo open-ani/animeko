@@ -10,7 +10,6 @@
 package me.him188.ani.app.domain.media.selector
 
 import androidx.compose.ui.util.fastFirstOrNull
-import androidx.compose.ui.util.fastMap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -23,24 +22,14 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.shareIn
-import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaPreference.Companion.ANY_FILTER
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
-import me.him188.ani.app.data.models.subject.SubjectInfo
-import me.him188.ani.app.domain.mediasource.MediaListFilter
-import me.him188.ani.app.domain.mediasource.MediaListFilterContext
-import me.him188.ani.app.domain.mediasource.MediaListFilters
-import me.him188.ani.app.domain.mediasource.StringMatcher
-import me.him188.ani.app.domain.mediasource.codec.MediaSourceTier
-import me.him188.ani.datasources.api.EpisodeSort
+import me.him188.ani.app.domain.media.selector.filter.MediaSelectorFilterSortAlgorithm
 import me.him188.ani.datasources.api.Media
+import me.him188.ani.datasources.api.isLocalCache
 import me.him188.ani.datasources.api.source.MediaSourceKind
-import me.him188.ani.datasources.api.source.MediaSourceLocation
-import me.him188.ani.datasources.api.topic.EpisodeRange
-import me.him188.ani.datasources.api.topic.contains
 import me.him188.ani.datasources.api.topic.hasSeason
-import me.him188.ani.datasources.api.topic.isSingleEpisode
 import kotlin.coroutines.CoroutineContext
 
 /**
@@ -127,17 +116,20 @@ import kotlin.coroutines.CoroutineContext
  * @see MediaSelectorSettings
  * @see MediaPreference
  * @see me.him188.ani.datasources.api.source.MediaSource
+ * @see MediaSelectorFilterSortAlgorithm
  */
 interface MediaSelector {
     /**
      * 搜索到的全部的列表, 经过了设置 [MediaSelectorSettings] 筛选.
      *
      * 返回 [MaybeExcludedMedia] 列表, 包含了被排除的原因.
+     * @see MediaSelectorFilterSortAlgorithm
      */
     val filteredCandidates: Flow<List<MaybeExcludedMedia>>
 
     /**
      * 搜索到的全部的列表, 经过了设置 [MediaSelectorSettings] 筛选.
+     * @see MediaSelectorFilterSortAlgorithm
      */
     val filteredCandidatesMedia: Flow<List<Media>>
 
@@ -301,41 +293,8 @@ class DefaultMediaSelector(
      * 是否将 [savedDefaultPreference] 和计算工作缓存. 这会导致有些许延迟. 在测试时需要关闭.
      */
     private val enableCaching: Boolean = true,
+    private val algorithm: MediaSelectorFilterSortAlgorithm = MediaSelectorFilterSortAlgorithm(),
 ) : MediaSelector {
-    companion object {
-        private fun isLocalCache(it: Media) = it.kind == MediaSourceKind.LocalCache
-
-        fun filterCandidates(
-            mediaList: List<MaybeExcludedMedia>,
-            mergedPreferences: MediaPreference,
-        ): List<MaybeExcludedMedia> {
-            infix fun <Pref : Any> Pref?.matches(prop: Pref): Boolean =
-                this == null || this == prop || this == ANY_FILTER
-
-            infix fun <Pref : Any> Pref?.matches(prop: List<Pref>): Boolean =
-                this == null || this in prop || this == ANY_FILTER
-
-            /**
-             * 当 [it] 满足当前筛选条件时返回 `true`.
-             */
-            fun filterCandidate(it: Media): Boolean {
-                if (isLocalCache(it)) {
-                    return true // always show local, so that [makeDefaultSelection] will select a local one
-                }
-
-                return mergedPreferences.alliance matches it.properties.alliance &&
-                        mergedPreferences.resolution matches it.properties.resolution &&
-                        mergedPreferences.subtitleLanguageId matches it.properties.subtitleLanguageIds &&
-                        mergedPreferences.mediaSourceId matches it.mediaSourceId
-            }
-
-            return mediaList.filter {
-                @OptIn(UnsafeOriginalMediaAccess::class)
-                filterCandidate(it.original)
-            }
-        }
-    }
-
     private fun <T> Flow<T>.cached(): Flow<T> {
         if (!enableCaching) return this
         // TODO: 2025/1/5 We need to correctly handle lifecycle. Let DefaultMediaSelector's caller control it.
@@ -353,229 +312,13 @@ class DefaultMediaSelector(
         this.mediaSelectorSettings,
         this.mediaSelectorContext,
     ) { list, pref, settings, context ->
-        filterMediaList(pref, settings, context, list)
-            .sortedWith(
-                // stable sort, 保证相同的元素顺序不变
-                compareBy<MaybeExcludedMedia> { 0 } // dummy, to use .then* syntax.
-                    // 排除的总是在最后
-                    .thenBy { maybe ->
-                        when (maybe) {
-                            is MaybeExcludedMedia.Included -> 0
-                            is MaybeExcludedMedia.Excluded -> 1
-                        }
-                    }
-                    // 将不能播放的放到后面
-                    .thenBy { maybe ->
-                        val subtitleKind = maybe.original.properties.subtitleKind
-                        if (context.subtitlePreferences != null && subtitleKind != null) {
-                            if (context.subtitlePreferences[subtitleKind] != SubtitleKindPreference.NORMAL) {
-                                return@thenBy 1
-                            }
-                        }
-                        0
-                    }
-                    // 按符合用户选择类型排序. 缓存 > 用户偏好的 > 不偏好的, #1522
-                    .thenByDescending { maybe ->
-                        when (maybe.original.kind) {
-                            // Show cache on top
-                            MediaSourceKind.LocalCache -> {
-                                2
-                            }
-
-                            MediaSourceKind.WEB,
-                            MediaSourceKind.BitTorrent -> {
-                                if (settings.preferKind == null) {
-                                    0
-                                } else {
-                                    if (maybe.original.kind == settings.preferKind) {
-                                        1
-                                    } else {
-                                        0
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    .then(
-                        compareBy { it.original.costForDownload },
-                    )
-                    .thenBy { maybe ->
-                        val tiers = context.mediaSourceTiers
-                        tiers?.get(maybe.original.mediaSourceId)
-                            ?: MediaSourceTier.MaximumValue // 还没加载出来, 先不排序
-                    }
-                    .thenByDescending {
-                        it.original.publishedTime
-                    }
-                    .thenByDescending {
-                        // 相似度越高, 排序越前
-                        when (it) {
-                            is MaybeExcludedMedia.Excluded -> 0
-                            is MaybeExcludedMedia.Included -> it.similarity
-                        }
-                    },
-            )
+        algorithm.filterMediaList(list, pref, settings, context)
+            .let { algorithm.sortMediaList(it, settings, context) }
     }.cached()
 
     override val filteredCandidatesMedia: Flow<List<Media>> = filteredCandidates.map { list ->
         list.mapNotNull { it.result }
     }.flowOn(flowCoroutineContext)
-
-    /**
-     * 过滤掉 [MediaSelectorSettings] 指定的内容. 例如过滤生肉, 对于完结番过滤掉单集
-     */
-    private fun filterMediaList(
-        preference: MediaPreference,
-        settings: MediaSelectorSettings,
-        context: MediaSelectorContext,
-        list: List<Media>
-    ): List<MaybeExcludedMedia> {
-        val subjectInfo = context.subjectInfo?.takeIf { info ->
-            info != SubjectInfo.Empty && info.allNames.any { it.isNotBlank() }
-        }
-        val episodeInfo = context.episodeInfo.takeIf { it != EpisodeInfo.Empty }
-
-        val mediaListFilterContext = if (subjectInfo != null && episodeInfo != null) {
-            MediaListFilterContext(
-                subjectNames = subjectInfo.allNames.toSet(),
-                episodeSort = episodeInfo.sort,
-                episodeEp = episodeInfo.ep,
-                episodeName = episodeInfo.name,
-            )
-        } else null
-
-        return list.fastMap filter@{ media ->
-            val mediaSubjectName = media.properties.subjectName ?: media.originalTitle
-            val contextSubjectNames = context.subjectInfo?.allNames.orEmpty().asSequence()
-
-            // 由下面实现调用, 方便创建 MaybeExcludedMedia
-            fun include(): MaybeExcludedMedia {
-                return MaybeExcludedMedia.Included(
-                    media,
-                    metadata = calculateMatchMetadata(
-                        contextSubjectNames,
-                        mediaSubjectName,
-                        media.episodeRange,
-                        context.episodeInfo?.sort,
-                        context.episodeInfo?.ep,
-                    ),
-                )
-            }
-
-            fun exclude(reason: MediaExclusionReason): MaybeExcludedMedia = MaybeExcludedMedia.Excluded(media, reason)
-
-            if (isLocalCache(media)) return@filter include() // 本地缓存总是要显示
-
-            if (settings.hideSingleEpisodeForCompleted
-                && context.subjectFinished == true // 还未加载到剧集信息时, 先显示
-                && media.kind == MediaSourceKind.BitTorrent
-            ) {
-                // 完结番隐藏单集资源
-                val range = media.episodeRange
-                    ?: return@filter exclude(MediaExclusionReason.SingleEpisodeForCompleteSubject(episodeRange = null))
-                if (range.isSingleEpisode()) return@filter exclude(
-                    MediaExclusionReason.SingleEpisodeForCompleteSubject(episodeRange = range),
-                )
-            }
-
-            if (!preference.showWithoutSubtitle &&
-                (media.properties.subtitleLanguageIds.isEmpty() && media.extraFiles.subtitles.isEmpty())
-            ) {
-                // 不显示无字幕的
-                return@filter exclude(MediaExclusionReason.MediaWithoutSubtitle)
-            }
-
-            val subtitleKind = media.properties.subtitleKind
-            if (context.subtitlePreferences != null && subtitleKind != null) {
-                if (context.subtitlePreferences[subtitleKind] == SubtitleKindPreference.HIDE) {
-                    return@filter exclude(MediaExclusionReason.UnsupportedByPlatformPlayer)
-                }
-            }
-
-            context.subjectSeriesInfo?.sequelSubjectNames?.forEach { name ->
-                if (name.isNotBlank() && MediaListFilters.specialContains(media.originalTitle, name)) {
-                    return@filter exclude(MediaExclusionReason.FromSequelSeason) // 是其他季度
-                }
-            }
-
-            media.properties.subjectName?.let { subjectName ->
-                context.subjectSeriesInfo?.seriesSubjectNamesWithoutSelf?.forEach { name ->
-                    if (MediaListFilters.specialEquals(subjectName, name)) {
-                        // 精确匹配到了是其他季度的名称. 这里只有用精确匹配才安全. 
-                        // 有些条目可能就只差距一个字母, 例如 "天降之物" 和 "天降之物f", 非常容易满足模糊匹配.
-                        return@filter exclude(MediaExclusionReason.FromSeriesSeason)
-                    }
-                }
-            }
-
-            if (mediaListFilterContext != null) {
-                val allow = when (media.kind) {
-                    MediaSourceKind.WEB -> {
-                        with(MediaListFilters.ContainsSubjectName) {
-                            mediaListFilterContext.applyOn(
-                                object : MediaListFilter.Candidate {
-                                    override val originalTitle: String get() = media.originalTitle
-                                    override val subjectName: String get() = mediaSubjectName
-                                    override val episodeRange: EpisodeRange? get() = media.episodeRange
-                                    override fun toString(): String {
-                                        return "Candidate(media=$media)"
-                                    }
-                                },
-                            )
-                        }
-                    }
-
-                    MediaSourceKind.BitTorrent -> true
-                    MediaSourceKind.LocalCache -> true
-                }
-
-                if (!allow) {
-                    return@filter exclude(MediaExclusionReason.SubjectNameMismatch)
-                }
-            }
-
-            include()
-        }
-
-    }
-
-    private fun calculateMatchMetadata(
-        contextSubjectNames: Sequence<String>,
-        mediaSubjectName: String,
-        mediaEpisodeRange: EpisodeRange?,
-        contextEpisodeSort: EpisodeSort?,
-        contextEpisodeEp: EpisodeSort?
-    ) = MatchMetadata(
-        subjectMatchKind = if (
-            contextSubjectNames.any {
-                MediaListFilters.specialEquals(mediaSubjectName, it)
-            }
-        ) {
-            MatchMetadata.SubjectMatchKind.EXACT
-        } else {
-            MatchMetadata.SubjectMatchKind.FUZZY
-        },
-        episodeMatchKind = if (mediaEpisodeRange != null) {
-            when {
-                contextEpisodeSort != null && contextEpisodeSort in mediaEpisodeRange -> {
-                    MatchMetadata.EpisodeMatchKind.SORT
-                }
-
-                contextEpisodeEp != null && contextEpisodeEp in mediaEpisodeRange -> {
-                    MatchMetadata.EpisodeMatchKind.EP
-                }
-
-                else -> {
-                    MatchMetadata.EpisodeMatchKind.NONE
-                }
-            }
-        } else {
-            MatchMetadata.EpisodeMatchKind.NONE
-        },
-        similarity = (contextSubjectNames + sequenceOfEmptyString)
-            .map { StringMatcher.calculateMatchRate(it, mediaSubjectName) }
-            .max(),
-    )
 
     private val savedUserPreferenceNotCached = savedUserPreference
     private val savedUserPreference: Flow<MediaPreference> = savedUserPreference.cached()
@@ -643,12 +386,12 @@ class DefaultMediaSelector(
     }.flowOn(flowCoroutineContext) // must not cache
 
     // collect 一定会计算
-    private val filteredCandidatesNotCached =
+    private val preferredCandidatesNotCached =
         combine(this.filteredCandidates, newPreferences) { mediaList, mergedPreferences ->
-            filterCandidates(mediaList, mergedPreferences)
+            algorithm.filterByPreference(mediaList, mergedPreferences)
         }
 
-    override val preferredCandidates: Flow<List<MaybeExcludedMedia>> = filteredCandidatesNotCached.cached()
+    override val preferredCandidates: Flow<List<MaybeExcludedMedia>> = preferredCandidatesNotCached.cached()
     override val preferredCandidatesMedia: Flow<List<Media>> =
         preferredCandidates.map { list -> list.mapNotNull { it.result } }
 
@@ -956,19 +699,19 @@ class DefaultMediaSelector(
         // 不管这个 media 能不能播放, 只要缓存了就行. 所以我们直接使用 `MaybeExcludedMedia.original`
 
         // 尽量选择满足用户偏好的缓存, 否则再随便挑一个缓存.
-        val cached = preferredCandidates.first().firstOrNull { isLocalCache(it.original) }
-            ?: filteredCandidates.first().firstOrNull { isLocalCache(it.original) } ?: return null
+        val cached = preferredCandidates.first().firstOrNull { it.original.isLocalCache() }
+            ?: filteredCandidates.first().firstOrNull { it.original.isLocalCache() } ?: return null
         return selectDefault(cached.original)
     }
 
     override suspend fun removePreferencesUntilFirstCandidate() {
         if (preferredCandidatesMedia.first().isNotEmpty()) return
         alliance.removePreference()
-        if (filteredCandidatesNotCached.first().isNotEmpty()) return
+        if (preferredCandidatesNotCached.first().isNotEmpty()) return
         resolution.removePreference()
-        if (filteredCandidatesNotCached.first().isNotEmpty()) return
+        if (preferredCandidatesNotCached.first().isNotEmpty()) return
         subtitleLanguageId.removePreference()
-        if (filteredCandidatesNotCached.first().isNotEmpty()) return
+        if (preferredCandidatesNotCached.first().isNotEmpty()) return
         mediaSourceId.removePreference()
     }
 
@@ -1026,12 +769,3 @@ class DefaultMediaSelector(
         override fun toString(): String = "MediaPreferenceItem($debugName)"
     }
 }
-
-private val Media.costForDownload
-    get() = when (location) {
-        MediaSourceLocation.Local -> 0
-        MediaSourceLocation.Lan -> 1
-        else -> 2
-    }
-
-private val sequenceOfEmptyString = sequenceOf("")

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -24,6 +24,7 @@ sealed interface NavigationSuiteScope {
     fun item(
         selected: Boolean,
         onClick: () -> Unit,
+        onDoubleClick: (() -> Unit)? = null,
         icon: @Composable () -> Unit,
         modifier: Modifier = Modifier,
         enabled: Boolean = true,
@@ -47,6 +48,7 @@ internal interface NavigationSuiteItemProvider {
 internal class NavigationSuiteItem(
     val selected: Boolean,
     val onClick: () -> Unit,
+    val onDoubleClick: (() -> Unit)?,
     val icon: @Composable () -> Unit,
     val modifier: Modifier,
     val enabled: Boolean,
@@ -62,6 +64,7 @@ private class NavigationSuiteScopeImpl : NavigationSuiteScope, NavigationSuiteIt
     override fun item(
         selected: Boolean,
         onClick: () -> Unit,
+        onDoubleClick: (() -> Unit)?,
         icon: @Composable () -> Unit,
         modifier: Modifier,
         enabled: Boolean,
@@ -75,6 +78,7 @@ private class NavigationSuiteScopeImpl : NavigationSuiteScope, NavigationSuiteIt
             NavigationSuiteItem(
                 selected = selected,
                 onClick = onClick,
+                onDoubleClick = onDoubleClick,
                 icon = icon,
                 modifier = modifier,
                 enabled = enabled,

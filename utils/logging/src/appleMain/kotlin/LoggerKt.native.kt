@@ -9,27 +9,12 @@
 
 package me.him188.ani.utils.logging
 
-import io.github.oshai.kotlinlogging.KLogger
-import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.cinterop.ExperimentalForeignApi
-import kotlinx.cinterop.toKString
-import platform.posix.getenv
 import kotlin.reflect.KClass
 
 @OptIn(ExperimentalForeignApi::class)
-private val isDebug = runCatching {
-    val value = getenv("kotlinx.coroutines.debug")?.toKString() ?: "off"
-    value.equals("on", ignoreCase = true)
-    true // TODO: ios logging debug. KLogger 在 test 中不会打印任何日志, 所以现在先临时使用 stdout
-}
-
-@OptIn(ExperimentalForeignApi::class)
-actual fun logger(name: String): Logger {
-    if (isDebug.getOrThrow()) {
-        return StdoutLogger(name)
-    }
-    return IosLoggerByKLogger(KotlinLogging.logger(name))
-}
+actual fun logger(name: String): Logger =
+    IosLoggingConfigurator.factory.createLogger(name)
 
 @PublishedApi
 internal fun logger(clazz: KClass<out Any>): Logger {
@@ -49,48 +34,60 @@ actual interface Logger {
     actual fun error(message: String?, throwable: Throwable?)
 }
 
-private class IosLoggerByKLogger(
-    private val delegate: KLogger,
+abstract class AbstractLogger(
+    protected val tag: String,
 ) : Logger {
-    override fun isTraceEnabled(): Boolean = delegate.isTraceEnabled()
+    protected abstract fun writeLog(
+        level: LogLevel,
+        tag: String,
+        message: String?,
+        throwable: Throwable?
+    )
 
-    override fun trace(message: String?, throwable: Throwable?) {
-        return delegate.trace(throwable) { message }
+    protected abstract fun isLoggingEnabled(
+        level: LogLevel
+    ): Boolean
+
+    final override fun trace(message: String?, throwable: Throwable?) {
+        writeLog(LogLevel.TRACE, tag, message, throwable)
     }
 
-    override fun isDebugEnabled(): Boolean {
-        return delegate.isDebugEnabled()
+    final override fun debug(message: String?, throwable: Throwable?) {
+        writeLog(LogLevel.DEBUG, tag, message, throwable)
     }
 
-    override fun debug(message: String?, throwable: Throwable?) {
-        return delegate.debug(throwable) { message }
+    final override fun info(message: String?, throwable: Throwable?) {
+        writeLog(LogLevel.INFO, tag, message, throwable)
     }
 
-    override fun isInfoEnabled(): Boolean {
-        return delegate.isInfoEnabled()
+    final override fun warn(message: String?, throwable: Throwable?) {
+        writeLog(LogLevel.WARN, tag, message, throwable)
     }
 
-    override fun info(message: String?, throwable: Throwable?) {
-        return delegate.info(throwable) { message }
+    final override fun error(message: String?, throwable: Throwable?) {
+        writeLog(LogLevel.ERROR, tag, message, throwable)
     }
 
-    override fun isWarnEnabled(): Boolean {
-        return delegate.isWarnEnabled()
+    final override fun isTraceEnabled(): Boolean {
+        return isLoggingEnabled(LogLevel.TRACE)
     }
 
-    override fun warn(message: String?, throwable: Throwable?) {
-        return delegate.warn(throwable) { message }
+    final override fun isDebugEnabled(): Boolean {
+        return isLoggingEnabled(LogLevel.DEBUG)
     }
 
-    override fun isErrorEnabled(): Boolean {
-        return delegate.isErrorEnabled()
+    final override fun isInfoEnabled(): Boolean {
+        return isLoggingEnabled(LogLevel.INFO)
     }
 
-    override fun error(message: String?, throwable: Throwable?) {
-        return delegate.error(throwable) { message }
+    final override fun isWarnEnabled(): Boolean {
+        return isLoggingEnabled(LogLevel.WARN)
+    }
+
+    final override fun isErrorEnabled(): Boolean {
+        return isLoggingEnabled(LogLevel.ERROR)
     }
 }
-
 
 actual inline fun <reified T : Any> logger(): Logger {
     return logger(T::class)
@@ -121,39 +118,5 @@ private object SilentLoggerImpl : Logger {
 
     override fun isErrorEnabled(): Boolean = false
     override fun error(message: String?, throwable: Throwable?) {
-    }
-}
-
-private class StdoutLogger(
-    private val name: String,
-) : Logger {
-    override fun isTraceEnabled(): Boolean = true
-    override fun trace(message: String?, throwable: Throwable?) {
-        println("[$name] TRACE: $message")
-        throwable?.printStackTrace()
-    }
-
-    override fun isDebugEnabled(): Boolean = true
-    override fun debug(message: String?, throwable: Throwable?) {
-        println("[$name] DEBUG: $message")
-        throwable?.printStackTrace()
-    }
-
-    override fun isInfoEnabled(): Boolean = true
-    override fun info(message: String?, throwable: Throwable?) {
-        println("[$name] INFO: $message")
-        throwable?.printStackTrace()
-    }
-
-    override fun isWarnEnabled(): Boolean = true
-    override fun warn(message: String?, throwable: Throwable?) {
-        println("[$name] WARN: $message")
-        throwable?.printStackTrace()
-    }
-
-    override fun isErrorEnabled(): Boolean = true
-    override fun error(message: String?, throwable: Throwable?) {
-        println("[$name] ERROR: $message")
-        throwable?.printStackTrace()
     }
 }

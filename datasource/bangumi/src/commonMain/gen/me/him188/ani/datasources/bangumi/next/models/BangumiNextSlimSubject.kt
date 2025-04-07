@@ -29,18 +29,18 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- *
+ * 
  *
  * @param id
  * @param info
  * @param locked
  * @param name
  * @param nameCN
- * @param nsfw
- * @param rating
- * @param type
- * @param images
- * @param interest
+ * @param nsfw 
+ * @param rating 
+ * @param type 
+ * @param images 
+ * @param interest 
  */
 @Serializable
 

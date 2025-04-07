@@ -214,6 +214,9 @@ fun SystemPath.metadataOrNull() = SystemFileSystem.metadataOrNull(path)
  */
 fun SystemPath.resolveToAbsolute() = SystemFileSystem.resolve(path)
 
+/**
+ * Will not throw if the file does not exist.
+ */
 expect val SystemPath.absolutePath: String
 
 ///////////////////////////////////////////////////////////////////////////

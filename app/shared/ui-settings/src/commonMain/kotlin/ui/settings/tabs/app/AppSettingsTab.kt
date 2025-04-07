@@ -12,9 +12,6 @@ package me.him188.ani.app.ui.settings.tabs.app
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowOutward
-import androidx.compose.material.icons.rounded.RocketLaunch
-import androidx.compose.material.icons.rounded.Science
-import androidx.compose.material.icons.rounded.Verified
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -55,6 +52,8 @@ import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.SwitchItem
 import me.him188.ani.app.ui.settings.framework.components.TextButtonItem
 import me.him188.ani.app.ui.settings.framework.components.TextItem
+import me.him188.ani.app.ui.settings.rendering.ReleaseClassIcon
+import me.him188.ani.app.ui.settings.rendering.guessReleaseClass
 import me.him188.ani.app.ui.settings.tabs.theme.ThemeGroup
 import me.him188.ani.app.ui.update.AutoUpdateViewModel
 import me.him188.ani.app.ui.update.ChangelogDialog
@@ -469,29 +468,14 @@ fun SettingsScope.PlayerGroup(
             },
             title = { Text("播放失败时自动切换资源") },
         )
-    }
-}
-
-@Composable
-private fun ReleaseClassIcon(releaseClass: ReleaseClass) {
-    when (releaseClass) {
-        ReleaseClass.ALPHA -> Icon(Icons.Rounded.RocketLaunch, null)
-        ReleaseClass.BETA -> Icon(Icons.Rounded.Science, null)
-        ReleaseClass.RC, ReleaseClass.STABLE -> Icon(Icons.Rounded.Verified, null)
-    }
-}
-
-@Stable
-private fun guessReleaseClass(version: String): ReleaseClass {
-    val metadata = version.substringAfter("-", "").lowercase()
-    return when {
-        metadata.isEmpty() -> ReleaseClass.STABLE
-        "alpha" in metadata || "dev" in metadata -> ReleaseClass.ALPHA
-        "beta" in metadata -> ReleaseClass.BETA
-        "rc" in metadata -> ReleaseClass.RC
-        else -> ReleaseClass.STABLE
+        PlayerGroupPlatform(videoScaffoldConfig)
     }
 }
 
 @Composable
 internal expect fun SettingsScope.AppSettingsTabPlatform()
+
+@Composable
+internal expect fun SettingsScope.PlayerGroupPlatform(
+    videoScaffoldConfig: SettingsState<VideoScaffoldConfig>,
+)

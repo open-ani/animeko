@@ -86,6 +86,10 @@ sealed class ResourceLocation {
          * `null` for unknown.
          */
         val fileType: FileType? = null,
+        /**
+         * m3u8 原始地址.
+         */
+        val originalUri: String? = null,
     ) : ResourceLocation() {
         /**
          * `file://`
@@ -106,5 +110,15 @@ sealed class ResourceLocation {
              */
             CONTAINED,
         }
+    }
+}
+
+@Suppress("HttpUrlsUsage")
+fun ResourceLocation.Companion.guessTorrentFromUrl(uri: String): ResourceLocation? {
+    val isHttp = uri.startsWith("http://", ignoreCase = true) || uri.startsWith("https://", ignoreCase = true)
+    return when {
+        uri.startsWith("magnet:") -> ResourceLocation.MagnetLink(uri)
+        isHttp && uri.endsWith(".torrent") -> ResourceLocation.HttpTorrentFile(uri)
+        else -> null
     }
 }

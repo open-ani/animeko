@@ -67,7 +67,7 @@ fun CarouselItemScope.CarouselItem(
         overlay,
         colors,
         maskShape,
-        image,
+        image = image,
     )
 }
 
@@ -85,13 +85,14 @@ fun BasicCarouselItem(
     overlay: @Composable BoxScope.() -> Unit = {},
     colors: CarouselItemColors = CarouselItemDefaults.colors(),
     maskShape: Shape = RectangleShape,
+    brushLayerModifier: Modifier = Modifier,
     image: @Composable () -> Unit,
 ) {
     Box(modifier) {
         Box(Modifier.clip(maskShape)) {
             image()
         }
-        Box(Modifier.matchParentSize().background(carouselBrush, maskShape)) {
+        Box(brushLayerModifier.matchParentSize().background(carouselBrush, maskShape)) {
             Column(
                 Modifier
                     .align(Alignment.BottomStart)
@@ -140,11 +141,15 @@ object CarouselItemDefaults {
     }
 
     @Composable
-    fun Text(value: String) {
+    fun Text(
+        value: String,
+        softWrap: Boolean = true,
+        maxLines: Int = 1
+    ) {
         androidx.compose.material3.Text(
             value,
-            softWrap = false,
-            maxLines = 1,
+            softWrap = softWrap,
+            maxLines = maxLines,
             overflow = TextOverflow.Ellipsis,
         )
     }
@@ -154,10 +159,10 @@ object CarouselItemDefaults {
         val windowSizeClass = currentWindowAdaptiveInfo1().windowSizeClass
         val preferredWidth =
             if (windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)) {
-            300.dp
-        } else {
-            240.dp
-        }
+                300.dp
+            } else {
+                240.dp
+            }
         return CarouselItemSize(
             preferredWidth = preferredWidth,
             imageHeight = 213.dp, // 120.dp / 9 * 16

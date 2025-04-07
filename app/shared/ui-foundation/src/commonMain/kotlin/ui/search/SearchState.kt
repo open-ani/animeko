@@ -26,12 +26,16 @@ import androidx.paging.compose.launchAsLazyPagingItemsIn
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.platform.annotations.TestOnly
 
 /**
@@ -39,7 +43,7 @@ import me.him188.ani.utils.platform.annotations.TestOnly
  *
  * 数据实现: [PagingSearchState]
  *
- * UI: [SearchResultLazyVerticalStaggeredGrid]
+ * UI: [SearchResultLazyVerticalGrid]
  *
  * All methods must be called on the main thread.
  */
@@ -124,17 +128,33 @@ class PagingSearchState<T : Any>(
     /**
      * 当 [startSearch] 时调用
      */
-    private val createPager: () -> Flow<PagingData<T>>,
+    private val createPager: (scope: CoroutineScope) -> Flow<PagingData<T>>,
+    // TODO: 2025/3/27 backgroundScope is just to fix a memory leak with minimal effort, see #1830. 
+    //  We should refactor searching in the future.
+    private val backgroundScope: CoroutineScope,
 ) : SearchState<T>() {
-    private val currentPager: MutableStateFlow<Flow<PagingData<T>>?> = MutableStateFlow(null)
-    override val pagerFlow: StateFlow<Flow<PagingData<T>>?> = currentPager.asStateFlow()
+    private data class State<T : Any>(
+        val scope: CoroutineScope,
+        val pager: Flow<PagingData<T>>,
+    )
+
+    private val currentPager: MutableStateFlow<PagingSearchState.State<T>?> = MutableStateFlow(null)
+    override val pagerFlow: StateFlow<Flow<PagingData<T>>?> = currentPager.map { it?.pager }
+        .stateIn(backgroundScope, started = SharingStarted.WhileSubscribed(5000), initialValue = null)
 
     override fun startSearch() {
         clear()
-        currentPager.value = createPager()
+
+        val scope = backgroundScope.childScope()
+        currentPager.value = State(
+            scope,
+            createPager(scope),
+        )
     }
 
     override fun clear() {
+        val prev = currentPager.value
+        prev?.scope?.cancel()
         currentPager.value = null
     }
 }

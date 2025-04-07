@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -9,12 +9,16 @@
 
 package me.him188.ani.app.domain.episode
 
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.test.TestScope
 import me.him188.ani.app.data.models.subject.TestSubjectCollections
-import me.him188.ani.app.domain.media.selector.MediaSelectorTestBuilder
+import me.him188.ani.app.domain.media.selector.legacy.MediaSelectorTestBuilder
 import org.koin.core.Koin
 import org.koin.dsl.module
 import org.openani.mediamp.DummyMediampPlayer

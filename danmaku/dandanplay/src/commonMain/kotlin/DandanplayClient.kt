@@ -145,10 +145,9 @@ internal class DandanplayClient(
                     setBody(
                         buildJsonObject {
                             put("fileName", filename)
-                            put("fileHash", fileHash)
-                            put("fileSize", fileSize)
+                            fileSize?.let { put("fileSize", fileSize) }
                             put("videoDuration", videoDuration.inWholeSeconds)
-                            put("matchMode", "hashAndFileName")
+                            put("matchMode", "fileNameOnly")
                         },
                     )
                     addAuthorizationHeaders()

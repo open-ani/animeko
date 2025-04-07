@@ -10,7 +10,7 @@
 package me.him188.ani.app.ui.subject.details.state
 
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
@@ -28,11 +28,11 @@ import me.him188.ani.app.data.models.subject.RelatedPersonInfo
 import me.him188.ani.app.data.models.subject.RelatedSubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.ui.comment.CommentState
+import me.him188.ani.app.ui.rating.EditableRatingState
 import me.him188.ani.app.ui.subject.AiringLabelState
 import me.him188.ani.app.ui.subject.SubjectProgressState
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeState
 import me.him188.ani.app.ui.subject.collection.progress.EpisodeListState
-import me.him188.ani.app.ui.rating.EditableRatingState
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 
 /**
@@ -84,5 +84,5 @@ class SubjectDetailsState(
     val selfCollected by derivedStateOf { this.selfCollectionType != UnifiedCollectionType.NOT_COLLECTED }
 
     val detailsTabLazyListState = LazyListState()
-    val commentTabLazyStaggeredGridState = LazyStaggeredGridState()
+    val commentTabLazyGridState = LazyGridState()
 }

@@ -48,7 +48,7 @@ value class MediaSelectorSubtitlePreferences(
         fun forPlatform(platform: Platform = currentPlatform()): MediaSelectorSubtitlePreferences {
             // 对于缺陷列表, 查看 https://github.com/open-ani/ani/issues/615
             val map = when (platform) {
-                is Platform.Linux, // TODO: check linux MediaSelectorSubtitlePreferences
+                // TODO: check linux MediaSelectorSubtitlePreferences
                 is Platform.MacOS -> ImmutableEnumMap<SubtitleKind, _> {
                     when (it) {
                         SubtitleKind.EMBEDDED -> NORMAL
@@ -60,6 +60,16 @@ value class MediaSelectorSubtitlePreferences(
                 }
 
                 is Platform.Windows -> ImmutableEnumMap<SubtitleKind, _> {
+                    when (it) {
+                        SubtitleKind.EMBEDDED -> NORMAL
+                        SubtitleKind.CLOSED -> NORMAL
+                        SubtitleKind.EXTERNAL_PROVIDED -> NORMAL
+                        SubtitleKind.EXTERNAL_DISCOVER -> HIDE
+                        SubtitleKind.CLOSED_OR_EXTERNAL_DISCOVER -> NORMAL
+                    }
+                }
+
+                is Platform.Linux -> ImmutableEnumMap<SubtitleKind, _> {
                     when (it) {
                         SubtitleKind.EMBEDDED -> NORMAL
                         SubtitleKind.CLOSED -> NORMAL

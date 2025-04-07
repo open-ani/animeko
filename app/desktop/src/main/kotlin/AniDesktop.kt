@@ -45,45 +45,25 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import kotlinx.io.files.Path
 import me.him188.ani.app.data.models.preference.DarkMode
-import me.him188.ani.app.data.persistent.dataStores
 import me.him188.ani.app.data.repository.SavedWindowState
 import me.him188.ani.app.data.repository.WindowStateRepository
-import me.him188.ani.app.data.repository.WindowStateRepositoryImpl
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.desktop.storage.AppFolderResolver
 import me.him188.ani.app.desktop.storage.AppInfo
 import me.him188.ani.app.desktop.window.WindowFrame
-import me.him188.ani.app.domain.foundation.HttpClientProvider
-import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
-import me.him188.ani.app.domain.foundation.get
-import me.him188.ani.app.domain.media.fetch.MediaSourceManager
-import me.him188.ani.app.domain.media.resolver.DesktopWebMediaResolver
-import me.him188.ani.app.domain.media.resolver.HttpStreamingMediaResolver
-import me.him188.ani.app.domain.media.resolver.LocalFileMediaResolver
-import me.him188.ani.app.domain.media.resolver.MediaResolver
-import me.him188.ani.app.domain.media.resolver.TorrentMediaResolver
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.settings.ProxyProvider
-import me.him188.ani.app.domain.torrent.DefaultTorrentManager
-import me.him188.ani.app.domain.torrent.TorrentManager
 import me.him188.ani.app.domain.update.UpdateManager
 import me.him188.ani.app.navigation.AniNavigator
-import me.him188.ani.app.navigation.BrowserNavigator
-import me.him188.ani.app.navigation.DesktopBrowserNavigator
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.platform.AniBuildConfigDesktop
 import me.him188.ani.app.platform.AniCefApp
 import me.him188.ani.app.platform.AppStartupTasks
-import me.him188.ani.app.platform.AppTerminator
-import me.him188.ani.app.platform.DefaultAppTerminator
 import me.him188.ani.app.platform.DesktopContext
 import me.him188.ani.app.platform.ExtraWindowProperties
-import me.him188.ani.app.platform.GrantedPermissionManager
 import me.him188.ani.app.platform.JvmLogHelper
 import me.him188.ani.app.platform.LocalContext
-import me.him188.ani.app.platform.PermissionManager
 import me.him188.ani.app.platform.PlatformWindow
 import me.him188.ani.app.platform.create
 import me.him188.ani.app.platform.createAppRootCoroutineScope
@@ -116,10 +96,7 @@ import me.him188.ani.app.ui.main.AniAppContent
 import me.him188.ani.desktop.generated.resources.Res
 import me.him188.ani.desktop.generated.resources.a_round
 import me.him188.ani.utils.analytics.AnalyticsConfig
-import me.him188.ani.utils.analytics.AnalyticsHolder
 import me.him188.ani.utils.analytics.AnalyticsImpl
-import me.him188.ani.utils.io.inSystem
-import me.him188.ani.utils.io.toKtPath
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
@@ -129,13 +106,7 @@ import me.him188.ani.utils.platform.isWindows
 import org.jetbrains.compose.reload.DevelopmentEntryPoint
 import org.jetbrains.compose.resources.painterResource
 import org.koin.core.context.startKoin
-import org.koin.dsl.module
-import org.openani.mediamp.MediampPlayerFactory
-import org.openani.mediamp.MediampPlayerFactoryLoader
-import org.openani.mediamp.compose.MediampPlayerSurfaceProviderLoader
 import org.openani.mediamp.vlc.VlcMediampPlayer
-import org.openani.mediamp.vlc.VlcMediampPlayerFactory
-import org.openani.mediamp.vlc.compose.VlcMediampPlayerSurfaceProvider
 import kotlin.io.path.absolutePathString
 import kotlin.system.exitProcess
 import kotlin.time.measureTime
@@ -257,55 +228,8 @@ object AniDesktop {
 
         val koin = startKoin {
             modules(getCommonKoinModule({ context }, coroutineScope))
-            modules(
-                module {
-//                single<SubjectNavigator> { AndroidSubjectNavigator() }
-//                single<AuthorizationNavigator> { AndroidAuthorizationNavigator() }
-//                single<BrowserNavigator> { AndroidBrowserNavigator() }
-                    single<TorrentManager> {
-                        DefaultTorrentManager.create(
-                            coroutineScope.coroutineContext,
-                            get(),
-                            client = get<HttpClientProvider>().get(ScopedHttpClientUserAgent.ANI),
-                            get(),
-                            get(),
-                            baseSaveDir = {
-                                val saveDir = runBlocking {
-                                    get<SettingsRepository>().mediaCacheSettings.flow.first().saveDir
-                                        ?.let(::Path)
-                                } ?: context.torrentDataCacheDir.toKtPath()
-                                toplevelLogger.info { "TorrentManager saveDir: $saveDir" }
-                                saveDir.inSystem
-                            },
-                        )
-                    }
-                    single<MediampPlayerFactory<*>> {
-                        MediampPlayerFactoryLoader.register(VlcMediampPlayerFactory())
-                        MediampPlayerSurfaceProviderLoader.register(VlcMediampPlayerSurfaceProvider())
-                        MediampPlayerFactoryLoader.first()
-                    }
-                    single<BrowserNavigator> { DesktopBrowserNavigator() }
-                    factory<MediaResolver> {
-                        MediaResolver.from(
-                            get<TorrentManager>().engines
-                                .map { TorrentMediaResolver(it) }
-                                .plus(LocalFileMediaResolver())
-                                .plus(HttpStreamingMediaResolver())
-                                .plus(
-                                    DesktopWebMediaResolver(
-                                        context,
-                                        get<MediaSourceManager>().webVideoMatcherLoader,
-                                    ),
-                                ),
-                        )
-                    }
-                    single<UpdateInstaller> { DesktopUpdateInstaller.currentOS() }
-                    single<PermissionManager> { GrantedPermissionManager }
-                    single<WindowStateRepository> { WindowStateRepositoryImpl(context.dataStores.savedWindowStateStore) }
-                    single<AppTerminator> { DefaultAppTerminator }
-                },
-            )
-        }.startCommonKoinModule(coroutineScope)
+            modules(getDesktopModules({ context }, coroutineScope))
+        }.startCommonKoinModule(context, coroutineScope)
 
 
         // Startup ok, run test task if needed
@@ -331,7 +255,7 @@ object AniDesktop {
                 AppStartupTasks.initializeSentry(settings.userId)
             }
             if (settings.allowAnonymousAnalytics) {
-                AnalyticsHolder.init(
+                AppStartupTasks.initializeAnalytics {
                     AnalyticsImpl(
                         AnalyticsConfig.create(),
                         settings.userId,
@@ -340,8 +264,8 @@ object AniDesktop {
                             apiKey = currentAniBuildConfig.analyticsKey,
                             host = currentAniBuildConfig.analyticsServer,
                         )
-                    },
-                )
+                    }
+                }
             }
         }
 
@@ -459,6 +383,7 @@ object AniDesktop {
                         // 防止闪眼
                         window.background = java.awt.Color.BLACK
                         window.contentPane.background = java.awt.Color.BLACK
+                        window.minimumSize = java.awt.Dimension(400, 400)
 
                         logger.info {
                             "renderApi: " + this.window.renderApi
@@ -551,9 +476,11 @@ private fun FrameWindowScope.MainWindowContent(
 
                 CompositionLocalProvider(
                     LocalNavigator provides aniNavigator,
-                    LocalToaster provides object : Toaster {
-                        override fun toast(text: String) {
-                            vm.show(text)
+                    LocalToaster provides remember(vm) {
+                        object : Toaster {
+                            override fun toast(text: String) {
+                                vm.show(text)
+                            }
                         }
                     },
                     LocalContextMenuRepresentation provides DesktopContextMenuRepresentation,
@@ -592,7 +519,8 @@ private fun WindowStateRecorder(
             val screenSize = ScreenUtils.getScreenSize()
             if (
                 (savedWindowState.size.width > minimumSize.width || savedWindowState.size.height > minimumSize.height)
-                && savedWindowState.position.x < screenSize.width && savedWindowState.position.y < screenSize.height
+                && savedWindowState.position.x > 0.dp && savedWindowState.position.y > 0.dp
+                && savedWindowState.position.x < screenSize.width - 200.dp && savedWindowState.position.y < screenSize.height - 200.dp
             ) {
                 windowState.apply {
                     position = savedWindowState.position

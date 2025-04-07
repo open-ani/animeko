@@ -29,7 +29,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- *
+ * 
  *
  * @param airdate
  * @param comment
@@ -39,11 +39,11 @@ import kotlinx.serialization.Serializable
  * @param name
  * @param nameCN
  * @param sort
- * @param subjectID
- * @param type
- * @param desc
- * @param status
- * @param subject
+ * @param subjectID 
+ * @param type 
+ * @param desc 
+ * @param status 
+ * @param subject 
  */
 @Serializable
 

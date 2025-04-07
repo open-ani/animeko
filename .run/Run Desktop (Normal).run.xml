@@ -13,7 +13,7 @@
         <module name="animeko.app.desktop.main" />
         <shortenClasspath name="ARGS_FILE" />
         <option name="VM_PARAMETERS"
-                value="-XX:+UseZGC -Dorg.slf4j.simpleLogger.defaultLogLevel=TRACE -Dkotlinx.coroutines.debug=on -Dani.debug=true -Xmx256m" />
+                value="-XX:+UseZGC -XX:+EnableDynamicAgentLoading -Dorg.slf4j.simpleLogger.defaultLogLevel=TRACE -Dkotlinx.coroutines.debug=on -Dani.debug=true -Xmx256m" />
         <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/app/desktop/test-sandbox" />
         <method v="2">
             <option name="Make" enabled="true" />

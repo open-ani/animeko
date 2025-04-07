@@ -216,6 +216,7 @@ private fun PreviewEpisodeDetailsImpl(
             onRestartSource = {},
             onSetDanmakuSourceEnabled = { _, _ -> },
             onClickLogin = { },
+            onClickTag = {},
             Modifier
                 .padding(bottom = 16.dp, top = 8.dp)
                 .padding(it)

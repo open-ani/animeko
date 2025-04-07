@@ -70,11 +70,11 @@ import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollect
 import me.him188.ani.app.ui.subject.details.components.COVER_WIDTH_TO_HEIGHT_RATIO
 
 /**
- * Lazy column of [item]s, designed for My Collections.
+ * 用户的收藏列表.
  *
  * 自带一圈 padding
  *
- * @param item composes each item. See [SubjectCollectionInfo]
+ * @param item 每个 item. 内容为 [SubjectCollectionItem]. 注意考虑 [me.him188.ani.app.ui.foundation.widgets.NsfwMask].
  */
 @Composable
 fun SubjectCollectionsColumn(
@@ -157,7 +157,7 @@ fun SubjectCollectionItem(
     playButton: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     height: Dp = SubjectCollectionItemDefaults.height,
-    shape: Shape = SubjectCollectionItemDefaults.shape, 
+    shape: Shape = SubjectCollectionItemDefaults.shape,
     colors: CardColors = CardDefaults.cardColors(),
 ) {
     Card(

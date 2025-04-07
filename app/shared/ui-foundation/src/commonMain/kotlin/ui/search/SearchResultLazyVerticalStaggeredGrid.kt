@@ -15,23 +15,22 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
-import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridScope
-import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridScope
+import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
-import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
-import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
-import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemColors
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.LoadingIndicator
-import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
@@ -52,16 +51,18 @@ import me.him188.ani.app.domain.foundation.LoadError
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun <T : Any> SearchResultLazyVerticalStaggeredGrid(
+fun <T : Any> SearchResultLazyVerticalGrid(
     items: LazyPagingItems<T>,
     error: @Composable (error: LoadError?) -> Unit,
     modifier: Modifier = Modifier,
-    cells: StaggeredGridCells = StaggeredGridCells.Adaptive(300.dp),
-    lazyStaggeredGridState: LazyStaggeredGridState = rememberLazyStaggeredGridState(),
+    cells: GridCells = GridCells.Adaptive(360.dp),
+    state: LazyGridState = rememberLazyGridState(),
     listItemColors: ListItemColors = ListItemDefaults.colors(containerColor = Color.Transparent),
     horizontalArrangement: Arrangement.Horizontal = Arrangement.spacedBy(0.dp),
+    verticalArrangement: Arrangement.Vertical = Arrangement.Top,
     contentPadding: PaddingValues = PaddingValues(0.dp),
-    content: LazyStaggeredGridScope.() -> Unit,
+    showLoadingIndicatorInFirstPage: Boolean = true,
+    content: LazyGridScope.() -> Unit,
 ) {
     Box(modifier) {
         Column(Modifier.zIndex(1f)) {
@@ -79,28 +80,29 @@ fun <T : Any> SearchResultLazyVerticalStaggeredGrid(
                 }
             }
 
-            LazyVerticalStaggeredGrid(
+            LazyVerticalGrid(
                 cells,
                 Modifier.fillMaxWidth(),
-                lazyStaggeredGridState,
+                state,
                 horizontalArrangement = horizontalArrangement,
+                verticalArrangement = verticalArrangement,
                 contentPadding = contentPadding,
             ) {
-                // 用于保持刷新时在顶部
-                item(span = StaggeredGridItemSpan.FullLine) { Spacer(Modifier.height(Dp.Hairline)) } // 如果空白内容, 它可能会有 bug
-
                 content()
 
-                if (items.isLoadingFirstPage || items.loadState.refresh is LoadState.Loading) {
-                    item(span = StaggeredGridItemSpan.FullLine) {
-                        ListItem(
-                            headlineContent = {
-                                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                                    LoadingIndicator()
-                                }
-                            },
-                            colors = listItemColors,
-                        )
+                // 在加载第一页时不显示, 避免有两个, #1835
+                if (items.loadState.refresh is LoadState.Loading) {
+                    if (showLoadingIndicatorInFirstPage || !items.isLoadingFirstPage) {
+                        item(span = { GridItemSpan(maxLineSpan) }) {
+                            ListItem(
+                                headlineContent = {
+                                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                        LoadingIndicator()
+                                    }
+                                },
+                                colors = listItemColors,
+                            )
+                        }
                     }
                 }
             }
@@ -111,34 +113,6 @@ fun <T : Any> SearchResultLazyVerticalStaggeredGrid(
 
 @Stable
 object SearchDefaults {
-    @Composable
-    fun SearchSummaryItem(
-        items: LazyPagingItems<*>,
-        modifier: Modifier = Modifier,
-        containerColor: Color = Color.Unspecified,
-    ) {
-        Box(modifier) {
-            when {
-                items.isFinishedAndEmpty -> {
-                    ListItem(
-                        headlineContent = { Text("无搜索结果") },
-                        colors = ListItemDefaults.colors(containerColor = containerColor),
-                    )
-                }
-
-                items.hasFirstPage -> {
-                    ListItem(
-                        headlineContent = { Text("搜索到 ${items.itemCount} 个结果") },
-                        colors = ListItemDefaults.colors(containerColor = containerColor),
-                    )
-                }
-
-                else -> {
-                    Spacer(Modifier.height(Dp.Hairline)) // 如果空白内容, 它可能会有 bug
-                }
-            }
-        }
-    }
 
     @Composable
     fun IconTextButton(

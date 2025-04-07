@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -21,6 +21,7 @@ import androidx.datastore.core.StorageConnection
 import androidx.datastore.core.WriteScope
 import androidx.datastore.core.createSingleProcessCoordinator
 import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
+import androidx.datastore.core.okio.OkioSerializer
 import androidx.datastore.core.use
 import kotlinx.atomicfu.atomic
 import kotlinx.atomicfu.locks.SynchronizedObject
@@ -33,6 +34,8 @@ import kotlinx.io.Sink
 import kotlinx.io.Source
 import kotlinx.io.files.FileNotFoundException
 import kotlinx.io.files.Path
+import kotlinx.io.okio.asOkioSink
+import kotlinx.io.okio.asOkioSource
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.io.decodeFromSource
@@ -46,6 +49,7 @@ import me.him188.ani.utils.io.delete
 import me.him188.ani.utils.io.exists
 import me.him188.ani.utils.io.inSystem
 import me.him188.ani.utils.io.moveTo
+import okio.buffer
 
 actual fun <T> ReplaceFileCorruptionHandler(produceNewData: (CorruptionException) -> T): ReplaceFileCorruptionHandler<T> {
     return ReplaceFileCorruptionHandler(produceNewData)
@@ -281,4 +285,19 @@ actual fun <T> DataStoreFactory.create(
         migrations = migrations,
         scope = scope,
     )
+}
+
+fun <T> OkioSerializer<T>.asDataStoreSerializer(defaultValue: T): DataStoreSerializer<T> {
+    val serializer = this
+    return object : DataStoreSerializer<T> {
+        override val defaultValue: T = defaultValue
+
+        override suspend fun readFrom(input: Source): T {
+            return serializer.readFrom(input.asOkioSource().buffer())
+        }
+
+        override suspend fun writeTo(t: T, output: Sink) {
+            serializer.writeTo(t, output.asOkioSink().buffer())
+        }
+    }
 }

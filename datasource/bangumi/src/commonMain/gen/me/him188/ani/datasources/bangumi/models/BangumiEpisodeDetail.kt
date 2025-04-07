@@ -37,7 +37,7 @@ import kotlinx.serialization.Serializable
  * @param name 
  * @param nameCn 
  * @param sort 同类条目的排序和集数
- * @param airdate
+ * @param airdate 
  * @param comment 
  * @param duration 
  * @param desc 简介

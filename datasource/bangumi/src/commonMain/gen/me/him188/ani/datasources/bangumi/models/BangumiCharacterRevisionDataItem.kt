@@ -31,8 +31,8 @@ import kotlinx.serialization.Serializable
 /**
  * 
  *
- * @param infobox
- * @param summary
+ * @param infobox 
+ * @param summary 
  * @param name 
  * @param extra 
  */

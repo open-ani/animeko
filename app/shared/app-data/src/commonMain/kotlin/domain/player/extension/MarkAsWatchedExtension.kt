@@ -100,6 +100,7 @@ class MarkAsWatchedExtension(
                 player.playbackState,
             ) { pos, videoLength, playback ->
                 if (videoLength == null || !playback.isPlaying) return@combine
+                if (videoLength < 10.seconds.inWholeMilliseconds) return@combine // 视频数据不正确, 忽略
                 if (pos >=
                     min(
                         (videoLength.toFloat() * 0.9).toLong(),

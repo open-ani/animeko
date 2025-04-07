@@ -88,6 +88,8 @@ import kotlin.time.Duration.Companion.seconds
 private const val TAG_DETACHED_PROGRESS_SLIDER = "detachedProgressSlider"
 private const val TAG_DANMAKU_EDITOR = "danmakuEditor"
 
+const val WAIT_TIMEOUT = 10_000L // Longer for slow CI
+
 /**
  * 测试显示/隐藏进度条和 [GestureFamily]
  */
@@ -289,7 +291,7 @@ class EpisodeVideoControllerTest {
         onRoot().performClick()
         runOnIdle {
             mainClock.advanceTimeBy(1000L)
-            waitUntil { topBar.exists() }
+            waitUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.exists() }
             assertEquals(
                 NORMAL_VISIBLE,
                 controllerState.visibility,
@@ -314,14 +316,14 @@ class EpisodeVideoControllerTest {
         root.performClick()
         runOnIdle {
             mainClock.advanceTimeBy(1000L)
-            waitUntil { topBar.exists() }
+            waitUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.exists() }
             assertEquals(NORMAL_VISIBLE, controllerState.visibility)
         }
 
         root.performClick()
         runOnIdle {
-            mainClock.advanceTimeUntil { topBar.doesNotExist() }
-            waitUntil { topBar.doesNotExist() }
+            mainClock.advanceTimeUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.doesNotExist() }
+            waitUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.doesNotExist() }
             assertEquals(NORMAL_INVISIBLE, controllerState.visibility)
         }
     }
@@ -334,7 +336,7 @@ class EpisodeVideoControllerTest {
         }
         runOnIdle {
             mainClock.advanceTimeBy(1000L)
-            waitUntil { topBar.exists() }
+            waitUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.exists() }
             assertEquals(
                 NORMAL_VISIBLE,
                 controllerState.visibility,
@@ -347,7 +349,7 @@ class EpisodeVideoControllerTest {
             mainClock.autoAdvance = true
         }
         runOnIdle {
-            waitUntil { topBar.doesNotExist() }
+            waitUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.doesNotExist() }
             assertEquals(
                 NORMAL_INVISIBLE,
                 controllerState.visibility,
@@ -388,7 +390,7 @@ class EpisodeVideoControllerTest {
         mainClock.advanceTimeBy(VIDEO_GESTURE_TOUCH_SHOW_CONTROLLER_DURATION.inWholeMilliseconds)
         mainClock.autoAdvance = true
         runOnIdle {
-            mainClock.advanceTimeUntil { topBar.doesNotExist() }
+            mainClock.advanceTimeUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.doesNotExist() }
             assertEquals(
                 NORMAL_INVISIBLE,
                 controllerState.visibility,
@@ -415,7 +417,7 @@ class EpisodeVideoControllerTest {
 
         mainClock.autoAdvance = false // 三秒后会自动隐藏, 这里不能让他自动前进时间
         root.performClick()
-        mainClock.advanceTimeUntil { topBar.exists() }
+        mainClock.advanceTimeUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.exists() }
         runOnIdle {
             assertEquals(
                 NORMAL_VISIBLE,
@@ -424,7 +426,7 @@ class EpisodeVideoControllerTest {
         }
 
         root.performClick()
-        mainClock.advanceTimeUntil { topBar.doesNotExist() }
+        mainClock.advanceTimeUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.doesNotExist() }
         runOnIdle {
             assertEquals(
                 NORMAL_INVISIBLE,
@@ -434,7 +436,7 @@ class EpisodeVideoControllerTest {
         // 过了 1 秒用户又点击显示
         mainClock.advanceTimeBy(1000L)
         root.performClick()
-        mainClock.advanceTimeUntil { topBar.exists() }
+        mainClock.advanceTimeUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.exists() }
         runOnIdle {
             assertEquals(
                 NORMAL_VISIBLE,
@@ -443,7 +445,7 @@ class EpisodeVideoControllerTest {
         }
         // advance 时间 2.5 秒, 控制器仍然显示
         mainClock.advanceTimeBy(VIDEO_GESTURE_TOUCH_SHOW_CONTROLLER_DURATION.inWholeMilliseconds - 500L)
-        mainClock.advanceTimeUntil { topBar.exists() }
+        mainClock.advanceTimeUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.exists() }
         runOnIdle {
             assertEquals(
                 NORMAL_VISIBLE,
@@ -452,7 +454,7 @@ class EpisodeVideoControllerTest {
         }
         // 再经过 0.5 秒, 也就是达到 VIDEO_GESTURE_TOUCH_SHOW_CONTROLLER_DURATION, 才会隐藏控制器
         mainClock.advanceTimeBy(500L)
-        mainClock.advanceTimeUntil { topBar.doesNotExist() }
+        mainClock.advanceTimeUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.doesNotExist() }
         runOnIdle {
             assertEquals(
                 NORMAL_INVISIBLE,
@@ -477,13 +479,13 @@ class EpisodeVideoControllerTest {
 
         mainClock.autoAdvance = false
         root.performClick()
-        mainClock.advanceTimeUntil { danmakuEditor.exists() }
+        mainClock.advanceTimeUntil(timeoutMillis = WAIT_TIMEOUT) { danmakuEditor.exists() }
         runOnIdle {
             assertEquals(NORMAL_VISIBLE, controllerState.visibility)
         }
         danmakuEditor.performClick()
         mainClock.advanceTimeBy((VIDEO_GESTURE_TOUCH_SHOW_CONTROLLER_DURATION + 1.seconds).inWholeMilliseconds)
-        mainClock.advanceTimeUntil { danmakuEditor.exists() }
+        mainClock.advanceTimeUntil(timeoutMillis = WAIT_TIMEOUT) { danmakuEditor.exists() }
         runOnIdle {
             assertEquals(NORMAL_VISIBLE, controllerState.visibility)
         }
@@ -505,13 +507,13 @@ class EpisodeVideoControllerTest {
 
             mainClock.autoAdvance = false
             root.performClick()
-            mainClock.advanceTimeUntil { topBar.exists() }
+            mainClock.advanceTimeUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.exists() }
             runOnIdle {
                 assertEquals(NORMAL_VISIBLE, controllerState.visibility)
             }
             danmakuIconButton.performClick()
             root.performClick()
-            mainClock.advanceTimeUntil { topBar.doesNotExist() }
+            mainClock.advanceTimeUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.doesNotExist() }
             runOnIdle {
                 assertEquals(NORMAL_INVISIBLE, controllerState.visibility)
             }
@@ -542,7 +544,7 @@ class EpisodeVideoControllerTest {
             moveBy(Offset(width / 2f, 0f))
         }
         runOnIdle {
-            waitUntil { detachedProgressSlider.exists() }
+            waitUntil(timeoutMillis = WAIT_TIMEOUT) { detachedProgressSlider.exists() }
             assertEquals(PREVIEW_DETACHED_SLIDER, controllerState.visibility)
 //            root.assertScreenshot("/screenshots/EpisodeVideoControllerTest.touch___swipeToSeek_shows_detached_slider.png")
         }
@@ -552,7 +554,7 @@ class EpisodeVideoControllerTest {
             up()
         }
         runOnIdle {
-            waitUntil { detachedProgressSlider.doesNotExist() }
+            waitUntil(timeoutMillis = WAIT_TIMEOUT) { detachedProgressSlider.doesNotExist() }
             assertEquals(NORMAL_INVISIBLE, controllerState.visibility)
         }
     }
@@ -574,7 +576,7 @@ class EpisodeVideoControllerTest {
         }
         runOnIdle {
             mainClock.advanceTimeBy(1000L)
-            waitUntil { topBar.exists() }
+            waitUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.exists() }
             detachedProgressSlider.assertDoesNotExist()
         }
 
@@ -585,7 +587,7 @@ class EpisodeVideoControllerTest {
             }
         }
         runOnIdle {
-            waitUntil { previewPopup.exists() }
+            waitUntil(timeoutMillis = WAIT_TIMEOUT) { previewPopup.exists() }
             detachedProgressSlider.assertDoesNotExist()
             assertEquals(NORMAL_VISIBLE, controllerState.visibility)
         }
@@ -596,7 +598,7 @@ class EpisodeVideoControllerTest {
             }
         }
         runOnIdle {
-            waitUntil { previewPopup.doesNotExist() }
+            waitUntil(timeoutMillis = WAIT_TIMEOUT) { previewPopup.doesNotExist() }
             detachedProgressSlider.assertDoesNotExist()
             assertEquals(NORMAL_VISIBLE, controllerState.visibility)
         }
@@ -637,7 +639,7 @@ class EpisodeVideoControllerTest {
         waitForIdle()
 
         runOnIdle {
-            waitUntil { onNodeWithText("00:47 / 01:40").exists() }
+            waitUntil(timeoutMillis = WAIT_TIMEOUT) { onNodeWithText("00:47 / 01:40").exists() }
             assertEquals(NORMAL_VISIBLE, controllerState.visibility)
         }
     }
@@ -655,7 +657,7 @@ class EpisodeVideoControllerTest {
             root.performClick() // 显示全部控制器
             runOnIdle {
                 mainClock.advanceTimeBy(1000L)
-                waitUntil { topBar.exists() }
+                waitUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.exists() }
                 detachedProgressSlider.assertDoesNotExist()
             }
 
@@ -666,7 +668,7 @@ class EpisodeVideoControllerTest {
                 }
             }
             runOnIdle {
-                waitUntil { onNodeWithText("00:48 / 01:40").exists() }
+                waitUntil(timeoutMillis = WAIT_TIMEOUT) { onNodeWithText("00:48 / 01:40").exists() }
                 assertEquals(NORMAL_VISIBLE, controllerState.visibility)
             }
 
@@ -678,14 +680,14 @@ class EpisodeVideoControllerTest {
             }
 
             runOnIdle {
-                waitUntil { onNodeWithText("00:48 / 01:40").exists() }
+                waitUntil(timeoutMillis = WAIT_TIMEOUT) { onNodeWithText("00:48 / 01:40").exists() }
                 assertEquals(NORMAL_VISIBLE, controllerState.visibility)
             }
 
             currentPositionMillis += 5000L // 播放 5 秒
 
             runOnIdle {
-                waitUntil { onNodeWithText("00:53 / 01:40").exists() }
+                waitUntil(timeoutMillis = WAIT_TIMEOUT) { onNodeWithText("00:53 / 01:40").exists() }
                 assertEquals(NORMAL_VISIBLE, controllerState.visibility)
             }
         }
@@ -717,7 +719,7 @@ class EpisodeVideoControllerTest {
             moveBy(Offset(width / 2f, 0f))
         }
         runOnIdle {
-            waitUntil { detachedProgressSlider.exists() }
+            waitUntil(timeoutMillis = WAIT_TIMEOUT) { detachedProgressSlider.exists() }
             assertEquals(PREVIEW_DETACHED_SLIDER, controllerState.visibility)
             assertEquals(true, progressSliderState.isPreviewing)
             assertEquals(0.47f, progressSliderState.displayPositionRatio)
@@ -728,7 +730,7 @@ class EpisodeVideoControllerTest {
             up()
         }
         runOnIdle {
-            waitUntil { detachedProgressSlider.doesNotExist() }
+            waitUntil(timeoutMillis = WAIT_TIMEOUT) { detachedProgressSlider.doesNotExist() }
             assertEquals(NORMAL_INVISIBLE, controllerState.visibility)
             assertEquals(false, progressSliderState.isPreviewing)
             assertEquals(0.47f, progressSliderState.displayPositionRatio)
@@ -740,7 +742,7 @@ class EpisodeVideoControllerTest {
         root.performClick()
         runOnIdle {
             mainClock.advanceTimeBy(1000L)
-            waitUntil { topBar.exists() }
+            waitUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.exists() }
             assertEquals(0.52f, progressSliderState.displayPositionRatio)
         }
     }
@@ -750,8 +752,8 @@ class EpisodeVideoControllerTest {
         testSideSheetRequestAlwaysOn(
             gestureFamily = GestureFamily.TOUCH,
             openSideSheet = { onNodeWithTag(TAG_SHOW_SETTINGS).performClick() },
-            waitForSideSheetOpen = { waitUntil { onNodeWithTag(TAG_DANMAKU_SETTINGS_SHEET).exists() } },
-            waitForSideSheetClose = { waitUntil { onNodeWithTag(TAG_DANMAKU_SETTINGS_SHEET).doesNotExist() } },
+            waitForSideSheetOpen = { waitUntil(timeoutMillis = WAIT_TIMEOUT) { onNodeWithTag(TAG_DANMAKU_SETTINGS_SHEET).exists() } },
+            waitForSideSheetClose = { waitUntil(timeoutMillis = WAIT_TIMEOUT) { onNodeWithTag(TAG_DANMAKU_SETTINGS_SHEET).doesNotExist() } },
         )
     }
 
@@ -761,8 +763,8 @@ class EpisodeVideoControllerTest {
         testSideSheetRequestAlwaysOn(
             gestureFamily = GestureFamily.TOUCH,
             openSideSheet = { onNodeWithTag(TAG_SHOW_MEDIA_SELECTOR).performClick() },
-            waitForSideSheetOpen = { waitUntil { onNodeWithTag(TAG_MEDIA_SELECTOR_SHEET).exists() } },
-            waitForSideSheetClose = { waitUntil { onNodeWithTag(TAG_MEDIA_SELECTOR_SHEET).doesNotExist() } },
+            waitForSideSheetOpen = { waitUntil(timeoutMillis = WAIT_TIMEOUT) { onNodeWithTag(TAG_MEDIA_SELECTOR_SHEET).exists() } },
+            waitForSideSheetClose = { waitUntil(timeoutMillis = WAIT_TIMEOUT) { onNodeWithTag(TAG_MEDIA_SELECTOR_SHEET).doesNotExist() } },
         )
     }
 
@@ -771,8 +773,8 @@ class EpisodeVideoControllerTest {
         testSideSheetRequestAlwaysOn(
             gestureFamily = GestureFamily.TOUCH,
             openSideSheet = { onNodeWithTag(TAG_SELECT_EPISODE_ICON_BUTTON).performClick() },
-            waitForSideSheetOpen = { waitUntil { onNodeWithTag(TAG_EPISODE_SELECTOR_SHEET).exists() } },
-            waitForSideSheetClose = { waitUntil { onNodeWithTag(TAG_EPISODE_SELECTOR_SHEET).doesNotExist() } },
+            waitForSideSheetOpen = { waitUntil(timeoutMillis = WAIT_TIMEOUT) { onNodeWithTag(TAG_EPISODE_SELECTOR_SHEET).exists() } },
+            waitForSideSheetClose = { waitUntil(timeoutMillis = WAIT_TIMEOUT) { onNodeWithTag(TAG_EPISODE_SELECTOR_SHEET).doesNotExist() } },
         )
     }
 
@@ -782,8 +784,20 @@ class EpisodeVideoControllerTest {
         testSideSheetRequestAlwaysOn(
             gestureFamily = GestureFamily.TOUCH,
             openSideSheet = { onNodeWithTag(TAG_SPEED_SWITCHER_TEXT_BUTTON).performClick() },
-            waitForSideSheetOpen = { waitUntil { onNodeWithTag(TAG_SPEED_SWITCHER_DROPDOWN_MENU).exists() } },
-            waitForSideSheetClose = { waitUntil { onNodeWithTag(TAG_SPEED_SWITCHER_DROPDOWN_MENU).doesNotExist() } },
+            waitForSideSheetOpen = {
+                waitUntil(timeoutMillis = WAIT_TIMEOUT) {
+                    onNodeWithTag(
+                        TAG_SPEED_SWITCHER_DROPDOWN_MENU,
+                    ).exists()
+                }
+            },
+            waitForSideSheetClose = {
+                waitUntil(timeoutMillis = WAIT_TIMEOUT) {
+                    onNodeWithTag(
+                        TAG_SPEED_SWITCHER_DROPDOWN_MENU,
+                    ).doesNotExist()
+                }
+            },
         )
     }
     ///////////////////////////////////////////////////////////////////////////
@@ -818,7 +832,7 @@ class EpisodeVideoControllerTest {
             }
         }
         runOnIdle {
-            waitUntil { topBar.exists() }
+            waitUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.exists() }
             assertEquals(
                 NORMAL_VISIBLE,
                 controllerState.visibility,
@@ -832,7 +846,7 @@ class EpisodeVideoControllerTest {
             mainClock.autoAdvance = true
         }
         runOnIdle {
-            waitUntil { topBar.doesNotExist() }
+            waitUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.doesNotExist() }
             assertEquals(
                 NORMAL_INVISIBLE,
                 controllerState.visibility,
@@ -964,8 +978,8 @@ class EpisodeVideoControllerTest {
         testSideSheetRequestAlwaysOn(
             gestureFamily = GestureFamily.MOUSE,
             openSideSheet = { onNodeWithTag(TAG_SHOW_SETTINGS).performClick() },
-            waitForSideSheetOpen = { waitUntil { onNodeWithTag(TAG_DANMAKU_SETTINGS_SHEET).exists() } },
-            waitForSideSheetClose = { waitUntil { onNodeWithTag(TAG_DANMAKU_SETTINGS_SHEET).doesNotExist() } },
+            waitForSideSheetOpen = { waitUntil(timeoutMillis = WAIT_TIMEOUT) { onNodeWithTag(TAG_DANMAKU_SETTINGS_SHEET).exists() } },
+            waitForSideSheetClose = { waitUntil(timeoutMillis = WAIT_TIMEOUT) { onNodeWithTag(TAG_DANMAKU_SETTINGS_SHEET).doesNotExist() } },
         )
     }
 
@@ -975,8 +989,8 @@ class EpisodeVideoControllerTest {
         testSideSheetRequestAlwaysOn(
             gestureFamily = GestureFamily.MOUSE,
             openSideSheet = { onNodeWithTag(TAG_SHOW_MEDIA_SELECTOR).performClick() },
-            waitForSideSheetOpen = { waitUntil { onNodeWithTag(TAG_MEDIA_SELECTOR_SHEET).exists() } },
-            waitForSideSheetClose = { waitUntil { onNodeWithTag(TAG_MEDIA_SELECTOR_SHEET).doesNotExist() } },
+            waitForSideSheetOpen = { waitUntil(timeoutMillis = WAIT_TIMEOUT) { onNodeWithTag(TAG_MEDIA_SELECTOR_SHEET).exists() } },
+            waitForSideSheetClose = { waitUntil(timeoutMillis = WAIT_TIMEOUT) { onNodeWithTag(TAG_MEDIA_SELECTOR_SHEET).doesNotExist() } },
         )
     }
 
@@ -985,8 +999,8 @@ class EpisodeVideoControllerTest {
         testSideSheetRequestAlwaysOn(
             gestureFamily = GestureFamily.MOUSE,
             openSideSheet = { onNodeWithTag(TAG_SELECT_EPISODE_ICON_BUTTON).performClick() },
-            waitForSideSheetOpen = { waitUntil { onNodeWithTag(TAG_EPISODE_SELECTOR_SHEET).exists() } },
-            waitForSideSheetClose = { waitUntil { onNodeWithTag(TAG_EPISODE_SELECTOR_SHEET).doesNotExist() } },
+            waitForSideSheetOpen = { waitUntil(timeoutMillis = WAIT_TIMEOUT) { onNodeWithTag(TAG_EPISODE_SELECTOR_SHEET).exists() } },
+            waitForSideSheetClose = { waitUntil(timeoutMillis = WAIT_TIMEOUT) { onNodeWithTag(TAG_EPISODE_SELECTOR_SHEET).doesNotExist() } },
         )
     }
 
@@ -996,8 +1010,20 @@ class EpisodeVideoControllerTest {
         testSideSheetRequestAlwaysOn(
             gestureFamily = GestureFamily.MOUSE,
             openSideSheet = { onNodeWithTag(TAG_SPEED_SWITCHER_TEXT_BUTTON).performClick() },
-            waitForSideSheetOpen = { waitUntil { onNodeWithTag(TAG_SPEED_SWITCHER_DROPDOWN_MENU).exists() } },
-            waitForSideSheetClose = { waitUntil { onNodeWithTag(TAG_SPEED_SWITCHER_DROPDOWN_MENU).doesNotExist() } },
+            waitForSideSheetOpen = {
+                waitUntil(timeoutMillis = WAIT_TIMEOUT) {
+                    onNodeWithTag(
+                        TAG_SPEED_SWITCHER_DROPDOWN_MENU,
+                    ).exists()
+                }
+            },
+            waitForSideSheetClose = {
+                waitUntil(timeoutMillis = WAIT_TIMEOUT) {
+                    onNodeWithTag(
+                        TAG_SPEED_SWITCHER_DROPDOWN_MENU,
+                    ).doesNotExist()
+                }
+            },
         )
     }
 
@@ -1101,13 +1127,13 @@ class EpisodeVideoControllerTest {
 
     private fun AniComposeUiTest.assertControllerVisible(visible: Boolean) = runOnIdle {
         if (visible) {
-            waitUntil { topBar.exists() }
+            waitUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.exists() }
             assertEquals(
                 NORMAL_VISIBLE,
                 controllerState.visibility,
             )
         } else {
-            waitUntil { topBar.doesNotExist() }
+            waitUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.doesNotExist() }
             assertEquals(
                 NORMAL_INVISIBLE,
                 controllerState.visibility,

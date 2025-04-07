@@ -18,6 +18,9 @@
 
 package me.him188.ani.datasources.api.topic
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 enum class MediaOrigin(
     val id: String,
     vararg val otherNames: String,

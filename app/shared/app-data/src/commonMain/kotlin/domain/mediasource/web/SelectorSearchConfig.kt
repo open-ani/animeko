@@ -30,6 +30,7 @@ import me.him188.ani.app.domain.mediasource.web.format.SelectorSubjectFormatJson
 import me.him188.ani.app.domain.mediasource.web.format.parseOrNull
 import me.him188.ani.datasources.api.MediaProperties
 import me.him188.ani.datasources.api.topic.Resolution
+import me.him188.ani.datasources.api.topic.SubtitleLanguage
 import org.intellij.lang.annotations.Language
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
@@ -87,6 +88,16 @@ data class SelectorSearchConfig(
      * @see MediaProperties.resolution
      */
     val defaultResolution: Resolution = Resolution.R1080P,
+    /**
+     * @since 4.9
+     */
+    val defaultSubtitleLanguage: SubtitleLanguage = SubtitleLanguage.ChineseSimplified,
+    /**
+     * `vlc`, `exoplayer`, `avkit`
+     *
+     * @since 4.9
+     */
+    val onlySupportsPlayers: List<String> = emptyList(),
 
     // Search done. Now we should have Medias.
     val filterByEpisodeSort: Boolean = true,

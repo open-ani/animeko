@@ -77,6 +77,10 @@ inline val WindowSizeClass.isHeightCompact: Boolean
 inline val WindowSizeClass.isHeightAtLeastMedium: Boolean
     get() = isHeightAtLeastBreakpoint(WindowSizeClass.HEIGHT_DP_MEDIUM_LOWER_BOUND)
 
+@Stable
+inline val WindowSizeClass.isHeightAtLeastExpanded: Boolean
+    get() = isHeightAtLeastBreakpoint(WindowSizeClass.HEIGHT_DP_EXPANDED_LOWER_BOUND)
+
 
 @Stable
 val WindowSizeClass.panePadding

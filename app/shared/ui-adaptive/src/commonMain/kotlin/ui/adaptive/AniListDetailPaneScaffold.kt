@@ -10,23 +10,33 @@
 package me.him188.ani.app.ui.adaptive
 
 import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.ZeroCornerSize
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardColors
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.VerticalDragHandle
 import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffold
 import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldDefaults
+import androidx.compose.material3.adaptive.layout.PaneExpansionState
 import androidx.compose.material3.adaptive.layout.PaneScaffoldDirective
+import androidx.compose.material3.adaptive.layout.ThreePaneScaffoldScope
+import androidx.compose.material3.adaptive.layout.ThreePaneScaffoldValue
+import androidx.compose.material3.adaptive.layout.defaultDragHandleSemantics
 import androidx.compose.material3.adaptive.navigation.ThreePaneScaffoldNavigator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -104,6 +114,20 @@ fun <T> AniListDetailPaneScaffold(
     contentWindowInsets: WindowInsets = ListDetailPaneScaffoldDefaults.windowInsets,
     useSharedTransition: Boolean = false,
     listPanePreferredWidth: Dp = Dp.Unspecified,
+    paneExpansionDragHandle: (@Composable ThreePaneScaffoldScope.(PaneExpansionState) -> Unit)? = { state ->
+        val interactionSource = remember { MutableInteractionSource() }
+        VerticalDragHandle(
+            modifier =
+                Modifier.paneExpansionDraggable(
+                    state,
+                    LocalMinimumInteractiveComponentSize.current,
+                    interactionSource,
+                    state.defaultDragHandleSemantics(),
+                ),
+            interactionSource = interactionSource,
+        )
+    },
+    scaffoldValue: ThreePaneScaffoldValue = navigator.scaffoldValue,
     layoutParameters: ListDetailLayoutParameters = ListDetailLayoutParameters.calculate(navigator.scaffoldDirective),
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -118,7 +142,7 @@ fun <T> AniListDetailPaneScaffold(
     SharedTransitionLayout {
         ListDetailPaneScaffold(
             navigator.scaffoldDirective,
-            navigator.scaffoldValue,
+            scaffoldValue,
             listPane = {
                 val threePaneScaffoldScope = this
                 ListDetailAnimatedPane(Modifier.preferredWidth(listPanePreferredWidth), useSharedTransition) {
@@ -165,8 +189,14 @@ fun <T> AniListDetailPaneScaffold(
                                 this@SharedTransitionLayout, this@ListDetailAnimatedPane,
                             ),
                         ) {
+                            val decoratedPaneContent = @Composable {
+                                Column(Modifier.fillMaxWidth().wrapContentWidth().widthIn(max = 1300.dp)) {
+                                    listPaneContent(scope)
+                                }
+                            }
+
                             if (listPaneTopAppBar == null) {
-                                listPaneContent(scope)
+                                decoratedPaneContent()
                             } else {
                                 listPaneTopAppBar(scope)
                                 Column(
@@ -174,7 +204,7 @@ fun <T> AniListDetailPaneScaffold(
                                         contentWindowInsets.only(WindowInsetsSides.Top),
                                     ),
                                 ) {
-                                    listPaneContent(scope)
+                                    decoratedPaneContent()
                                 }
                             }
                         }
@@ -229,6 +259,7 @@ fun <T> AniListDetailPaneScaffold(
                 }
             },
             modifier,
+            paneExpansionDragHandle = paneExpansionDragHandle,
         )
     }
 }

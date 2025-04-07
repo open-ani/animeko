@@ -42,6 +42,7 @@ inline fun IAnalytics.recordEvent(
 @JvmInline
 value class AnalyticsEvent(val event: String) {
     companion object {
+        val Screen = AnalyticsEvent($$"$screen")
     }
 }
 
@@ -53,7 +54,6 @@ value class AnalyticsEvent(val event: String) {
 data class AnalyticsConfig(
     val appVersion: String,
     val debugLogging: Boolean,
-    val enabled: Boolean,
 ) {
     companion object
 }
@@ -68,7 +68,7 @@ abstract class CommonAnalyticsImpl(
         val platform = currentPlatform()
         put("os", platform.name)
         put("arch", platform.arch.name)
-        put("version", config.appVersion)
+        put("\$app_version", config.appVersion)
     }
 
     final override fun recordEvent(event: AnalyticsEvent, properties: Map<String, Any>) {

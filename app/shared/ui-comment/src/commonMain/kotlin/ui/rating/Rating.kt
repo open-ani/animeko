@@ -55,7 +55,7 @@ fun Rating(
             if (selfRatingScore != 0) {
                 Row(Modifier.padding(horizontal = 2.dp).align(Alignment.End)) {
                     Text(
-                        remember(selfRatingScore) { "我的评分: $selfRatingScore" },
+                        remember(selfRatingScore) { "你的评分: $selfRatingScore" },
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,

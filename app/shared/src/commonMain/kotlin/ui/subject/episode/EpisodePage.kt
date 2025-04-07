@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -25,12 +26,13 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeContent
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
-import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
+import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
@@ -77,6 +79,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.preference.DarkMode
+import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.data.network.protocol.DanmakuInfo
 import me.him188.ani.app.data.network.protocol.DanmakuLocation
 import me.him188.ani.app.domain.comment.CommentContext
@@ -136,6 +139,7 @@ import me.him188.ani.app.ui.subject.episode.video.sidesheet.MediaSelectorSheet
 import me.him188.ani.app.ui.subject.episode.video.topbar.EpisodePlayerTitle
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
+import me.him188.ani.app.videoplayer.ui.gesture.LevelController
 import me.him188.ani.app.videoplayer.ui.gesture.NoOpLevelController
 import me.him188.ani.app.videoplayer.ui.gesture.asLevelController
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
@@ -145,6 +149,7 @@ import me.him188.ani.danmaku.api.DanmakuPresentation
 import me.him188.ani.danmaku.ui.DanmakuHostState
 import me.him188.ani.utils.platform.isDesktop
 import me.him188.ani.utils.platform.isMobile
+import org.openani.mediamp.features.AudioLevelController
 import org.openani.mediamp.features.PlaybackSpeed
 import org.openani.mediamp.features.Screenshots
 
@@ -222,6 +227,7 @@ private fun EpisodeScreenContent(
     }
 
     AutoPauseEffect(vm)
+    DisplayModeEffect(vm.videoScaffoldConfig)
 
     VideoNotifEffect(vm)
 
@@ -238,8 +244,9 @@ private fun EpisodeScreenContent(
         vm.isFullscreen = LocalPlatformWindow.current.isUndecoratedFullscreen
     }
 
-    SideEffect {
-        context.setSystemBarVisible(!vm.isFullscreen)
+    LaunchedEffect(vm.isFullscreen) {
+        // Update system bar visibility whenever fullscreen state changes
+        context.setSystemBarVisible(window, !vm.isFullscreen)
     }
 
     BoxWithConstraints(modifier) {
@@ -329,7 +336,7 @@ private fun EpisodeScreenContent(
             },
             onSendComplete = {
                 scope.launch {
-                    vm.commentLazyStaggeredGirdState.scrollToItem(0)
+                    vm.commentLazyGirdState.scrollToItem(0)
                 }
             },
         )
@@ -393,6 +400,19 @@ private fun EpisodeScreenTabletVeryWide(
                     .windowInsetsPadding(windowInsets.only(WindowInsetsSides.Right + WindowInsetsSides.Bottom))
                     .background(MaterialTheme.colorScheme.background), // scrollable background
             ) {
+                // 填充 insets 背景颜色
+                Surface(color = MaterialTheme.colorScheme.surfaceContainerLow) {
+                    Spacer(
+                        Modifier
+                            .fillMaxWidth()
+                            .windowInsetsPadding(
+                                // Consider #1767
+                                WindowInsets.safeContent // Note: this does not include desktop title bar.
+                                    .only(WindowInsetsSides.Top),
+                            ),
+                    )
+                }
+
                 TabRow(
                     pagerState, scope, { vm.episodeCommentState.count }, Modifier.fillMaxWidth(),
                     containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
@@ -431,6 +451,7 @@ private fun EpisodeScreenTabletVeryWide(
                                         vm.setDanmakuSourceEnabled(providerId, enabled)
                                     },
                                     onClickLogin = { navigator.navigateBangumiAuthorize() },
+                                    onClickTag = { navigator.navigateSubjectSearch(it.name) },
                                 )
                             }
                         }
@@ -443,7 +464,7 @@ private fun EpisodeScreenTabletVeryWide(
                                 episodeId = page.episodePresentation.episodeId,
                                 setShowEditCommentSheet = setShowEditCommentSheet,
                                 pauseOnPlaying = pauseOnPlaying,
-                                lazyStaggeredGridState = vm.commentLazyStaggeredGirdState,
+                                gridState = vm.commentLazyGirdState,
                             )
                         }
                     }
@@ -550,6 +571,7 @@ private fun EpisodeScreenContentPhone(
                         vm.setDanmakuSourceEnabled(providerId, enabled)
                     },
                     onClickLogin = { navigator.navigateBangumiAuthorize() },
+                    onClickTag = { navigator.navigateSubjectSearch(it.name) },
                     Modifier.fillMaxSize(),
                 )
             }
@@ -562,7 +584,7 @@ private fun EpisodeScreenContentPhone(
                 episodeId = page.episodePresentation.episodeId,
                 setShowEditCommentSheet = setShowEditCommentSheet,
                 pauseOnPlaying = pauseOnPlaying,
-                lazyStaggeredGridState = vm.commentLazyStaggeredGirdState,
+                gridState = vm.commentLazyGirdState,
             )
         },
         modifier.then(if (vm.isFullscreen) Modifier.fillMaxSize() else Modifier.navigationBarsPadding()),
@@ -811,11 +833,16 @@ private fun EpisodeVideo(
         },
         progressSliderState = progressSliderState,
         cacheProgressInfoFlow = vm.cacheProgressInfoFlow,
-        audioController = remember {
-            derivedStateOf {
-                platformComponents.audioManager?.asLevelController(StreamType.MUSIC) ?: NoOpLevelController
-            }
-        }.value,
+        audioController = run {
+            val playerAudioLevelController = vm.player.features[AudioLevelController]?.collectAsLevelController()
+            remember {
+                derivedStateOf {
+                    platformComponents.audioManager?.asLevelController(StreamType.MUSIC)
+                        ?: playerAudioLevelController
+                        ?: NoOpLevelController
+                }
+            }.value
+        },
         brightnessController = remember {
             derivedStateOf {
                 platformComponents.brightnessManager?.asLevelController() ?: NoOpLevelController
@@ -901,7 +928,7 @@ private fun EpisodeCommentColumn(
     setShowEditCommentSheet: (Boolean) -> Unit,
     pauseOnPlaying: () -> Unit,
     modifier: Modifier = Modifier,
-    lazyStaggeredGridState: LazyStaggeredGridState = rememberLazyStaggeredGridState(),
+    gridState: LazyGridState = rememberLazyGridState(),
 ) {
     val toaster = LocalToaster.current
     val browserNavigator = LocalUriHandler.current
@@ -932,7 +959,7 @@ private fun EpisodeCommentColumn(
             RichTextDefaults.checkSanityAndOpen(it, browserNavigator, toaster)
         },
         modifier = modifier.fillMaxSize(),
-        lazyStaggeredGridState = lazyStaggeredGridState,
+        gridState = gridState,
     )
 }
 
@@ -964,6 +991,28 @@ private fun AutoPauseEffect(viewModel: EpisodeViewModel) {
                 viewModel.player.resume() // 切回前台自动恢复, 当且仅当之前是自动暂停的
             }
             pausedVideo = false
+        }
+    }
+}
+
+@Composable
+internal expect fun DisplayModeEffect(config: VideoScaffoldConfig)
+
+@Composable
+private fun AudioLevelController.collectAsLevelController(): LevelController {
+    val volumeState = volume.collectAsStateWithLifecycle()
+
+    return remember(this, volumeState) {
+        object : LevelController {
+            override val level: Float get() = volumeState.value
+
+            override fun increaseLevel(step: Float) {
+                volumeUp(step)
+            }
+
+            override fun decreaseLevel(step: Float) {
+                volumeDown(step)
+            }
         }
     }
 }

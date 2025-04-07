@@ -59,6 +59,7 @@ import me.him188.ani.utils.io.delete
 import me.him188.ani.utils.io.deleteRecursively
 import me.him188.ani.utils.io.exists
 import me.him188.ani.utils.io.inSystem
+import me.him188.ani.utils.io.resolve
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
@@ -78,6 +79,7 @@ class TorrentMediaCacheEngine(
      * 创建的 [CachedMedia] 将会使用此 [mediaSourceId]
      */
     private val mediaSourceId: String,
+    override val engineKey: MediaCacheEngineKey,
     val torrentEngine: TorrentEngine,
     val flowDispatcher: CoroutineContext = Dispatchers.Default,
     private val onDownloadStarted: suspend (session: TorrentSession) -> Unit = {},
@@ -151,12 +153,6 @@ class TorrentMediaCacheEngine(
                     download = origin.download,
                 )
             }
-        }
-
-        override fun isValid(): Boolean {
-            return metadata.extra[EXTRA_TORRENT_CACHE_DIR]?.let {
-                Path(it).inSystem.exists()
-            } ?: false
         }
 
         override val fileStats: Flow<MediaCache.FileStats> = lazyFileHandle.entry.flatMapLatest { entry ->
@@ -365,6 +361,31 @@ class TorrentMediaCacheEngine(
         )
     }
 
+    override suspend fun modifyMetadataForMigration(
+        original: MediaCacheMetadata,
+        newSaveDir: Path
+    ): MediaCacheMetadata {
+        val currentTorrentData = original.extra[EXTRA_TORRENT_DATA]?.hexToByteArray() ?: return original
+
+        // TODO: The hardcoded path is for anitorrent only. 
+        // see AnitorrentTorrentDownloader
+        val newTorrentCacheDir = newSaveDir
+            .resolve(torrentEngine.type.id)
+            .resolve("pieces")
+            .resolve(currentTorrentData.contentHashCode().toString())
+            .inSystem.absolutePath
+
+        logger.info {
+            "Migrate metadata, EXTRA_TORRENT_CACHE_DIR prev: ${original.extra[EXTRA_TORRENT_CACHE_DIR]}, " +
+                    "new: $newTorrentCacheDir"
+        }
+
+        return original.copy(
+            extra = original.extra.toMutableMap()
+                .apply { put(EXTRA_TORRENT_CACHE_DIR, newTorrentCacheDir) },
+        )
+    }
+
     @OptIn(ExperimentalStdlibApi::class)
     override suspend fun deleteUnusedCaches(all: List<MediaCache>) {
         val downloader = torrentEngine.getDownloader()
@@ -385,7 +406,7 @@ class TorrentMediaCacheEngine(
             val saves = downloader.listSaves()
             for (save in saves) {
                 if (save.absolutePath !in allowedAbsolute) {
-                    logger.warn { "本地种子缓存文件未找到匹配的 MediaCache, 已释放 ${save.actualSize()}: ${save.absolutePath}" }
+                    logger.warn { "本地种子缓存文件未找到匹配的 MediaCache, 已释放 ${save.actualSize().bytes}: ${save.absolutePath}" }
                     save.deleteRecursively()
                 }
             }

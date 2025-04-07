@@ -329,7 +329,8 @@ tasks.register<ComposeHotRun>("runHot") {
     mainClass.set("me.him188.ani.app.desktop.AniDesktop")
     this.jvmArgs(
 //        "-XX:+UseZGC", // this may crash the VM
-        "-Xmx256m",
+        "-Xmx512m",
+        "-XX:+EnableDynamicAgentLoading",
     )
     systemProperty("org.slf4j.simpleLogger.defaultLogLevel", "TRACE")
     systemProperty("kotlinx.coroutines.debug", "on")

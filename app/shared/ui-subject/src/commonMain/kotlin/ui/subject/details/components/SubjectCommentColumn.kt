@@ -16,8 +16,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentWidth
-import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
-import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
+import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -43,7 +43,7 @@ fun SubjectDetailsDefaults.SubjectCommentColumn(
     onClickImage: (String) -> Unit,
     connectedScrollState: ConnectedScrollState,
     modifier: Modifier = Modifier,
-    lazyStaggeredGridState: LazyStaggeredGridState = rememberLazyStaggeredGridState(),
+    gridState: LazyGridState = rememberLazyGridState(),
     contentPadding: PaddingValues = PaddingValues(0.dp),
 ) {
     Box(modifier, contentAlignment = Alignment.TopCenter) {
@@ -55,7 +55,7 @@ fun SubjectDetailsDefaults.SubjectCommentColumn(
                 .widthIn(max = SubjectDetailsDefaults.MaximumContentWidth)
                 .fillMaxHeight(),
             contentPadding = contentPadding,
-            lazyStaggeredGridState = lazyStaggeredGridState,
+            state = gridState,
             connectedScrollState = connectedScrollState,
         ) { _, comment ->
             SubjectComment(

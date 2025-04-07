@@ -34,7 +34,7 @@ import kotlinx.serialization.Serializable
  * @param id 
  * @param name 
  * @param type `1`, `2`, `3` 表示 `个人`, `公司`, `组合`
- * @param career
+ * @param career 
  * @param shortSummary 
  * @param locked 
  * @param images object with some size of images, this object maybe `null`

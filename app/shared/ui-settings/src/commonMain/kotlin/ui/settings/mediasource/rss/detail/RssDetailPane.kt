@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -19,11 +19,11 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Hd
 import androidx.compose.material.icons.rounded.ArrowOutward
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Event
-import androidx.compose.material.icons.rounded.Hd
 import androidx.compose.material.icons.rounded.Layers
 import androidx.compose.material.icons.rounded.Subtitles
 import androidx.compose.material3.HorizontalDivider
@@ -164,7 +164,7 @@ private fun RssItemDetailColumn(
         item {
             ListItem(
                 headlineContent = { Text("分辨率") },
-                leadingContent = { Icon(Icons.Rounded.Hd, contentDescription = null) },
+                leadingContent = { Icon(Icons.Outlined.Hd, contentDescription = null) },
                 supportingContent = { SelectionContainer { Text(item.parsed.resolution?.displayName ?: "未知") } },
             )
         }

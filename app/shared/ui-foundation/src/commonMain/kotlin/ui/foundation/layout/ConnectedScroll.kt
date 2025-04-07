@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -18,7 +18,8 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -42,7 +43,7 @@ import kotlin.math.roundToInt
 fun rememberConnectedScrollState(
     flingBehavior: FlingBehavior = ScrollableDefaults.flingBehavior(),
 ): ConnectedScrollState {
-    return remember(flingBehavior) {
+    return rememberSaveable(flingBehavior, saver = ConnectedScrollState.saver(flingBehavior)) {
         ConnectedScrollState(flingBehavior)
     }
 }
@@ -50,6 +51,8 @@ fun rememberConnectedScrollState(
 @Stable
 class ConnectedScrollState(
     val flingBehavior: FlingBehavior,
+    initialContainerHeight: Int = 0,
+    initialScrolledOffset: Float = 0f,
 ) {
     val scrollableState = ScrollableState { available ->
         val previous = scrolledOffset
@@ -79,14 +82,14 @@ class ConnectedScrollState(
      * 最大能滑动的高度
      * 仅在第一个 measurement pass 后更新
      */
-    var containerHeight by mutableIntStateOf(0)
+    var containerHeight by mutableIntStateOf(initialContainerHeight)
         internal set
 
     /**
      * 当前已经滚动了的距离
      */
     // 范围为 -scrollableHeight ~ 0
-    var scrolledOffset by mutableFloatStateOf(0f)
+    var scrolledOffset by mutableFloatStateOf(initialScrolledOffset)
         internal set
 
     /**
@@ -138,6 +141,21 @@ class ConnectedScrollState(
             }
             return super.onPostScroll(consumed, available, source)
         }
+    }
+
+    companion object {
+        fun saver(flingBehavior: FlingBehavior) = Saver<ConnectedScrollState, Long>(
+            save = {
+                it.containerHeight.toLong() or (it.scrolledOffset.toRawBits().toUInt().toLong() shl 32)
+            },
+            restore = {
+                ConnectedScrollState(
+                    flingBehavior,
+                    initialContainerHeight = (it and 0xFFFFFFFF).toInt(),
+                    initialScrolledOffset = Float.fromBits((it shr 32).toInt()),
+                )
+            },
+        )
     }
 }
 

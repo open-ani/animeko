@@ -27,18 +27,19 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Feedback
+import androidx.compose.material.icons.outlined.FilterList
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.Science
+import androidx.compose.material.icons.outlined.SettingsApplications
+import androidx.compose.material.icons.outlined.SmartDisplay
+import androidx.compose.material.icons.outlined.Storage
+import androidx.compose.material.icons.outlined.Subscriptions
+import androidx.compose.material.icons.outlined.Subtitles
+import androidx.compose.material.icons.outlined.Update
+import androidx.compose.material.icons.outlined.VpnKey
 import androidx.compose.material.icons.rounded.Download
-import androidx.compose.material.icons.rounded.FilterList
-import androidx.compose.material.icons.rounded.Info
-import androidx.compose.material.icons.rounded.Palette
-import androidx.compose.material.icons.rounded.Science
-import androidx.compose.material.icons.rounded.SettingsApplications
-import androidx.compose.material.icons.rounded.SmartDisplay
-import androidx.compose.material.icons.rounded.Storage
-import androidx.compose.material.icons.rounded.Subscriptions
-import androidx.compose.material.icons.rounded.Subtitles
-import androidx.compose.material.icons.rounded.Update
-import androidx.compose.material.icons.rounded.VpnKey
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationDrawerItem
@@ -46,6 +47,7 @@ import androidx.compose.material3.PermanentDrawerSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
 import androidx.compose.material3.adaptive.layout.ThreePaneScaffoldDestinationItem
 import androidx.compose.material3.adaptive.navigation.BackNavigationBehavior
@@ -66,28 +68,40 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
+import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.ui.adaptive.AniListDetailPaneScaffold
 import me.him188.ani.app.ui.adaptive.AniTopAppBar
 import me.him188.ani.app.ui.adaptive.AniTopAppBarDefaults
 import me.him188.ani.app.ui.adaptive.ListDetailLayoutParameters
 import me.him188.ani.app.ui.adaptive.PaneScope
+import me.him188.ani.app.ui.adaptive.TopAppBarSize
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
-import me.him188.ani.app.ui.foundation.ifThen
+import me.him188.ani.app.ui.foundation.animation.NavigationMotionScheme
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
+import me.him188.ani.app.ui.foundation.layout.isHeightAtLeastExpanded
+import me.him188.ani.app.ui.foundation.layout.isHeightAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.paneVerticalPadding
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
+import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.rendering.P2p
-import me.him188.ani.app.ui.settings.tabs.AboutTab
+import me.him188.ani.app.ui.settings.tabs.AniHelpNavigator
 import me.him188.ani.app.ui.settings.tabs.DebugTab
+import me.him188.ani.app.ui.settings.tabs.about.AboutTab
 import me.him188.ani.app.ui.settings.tabs.app.AppearanceGroup
 import me.him188.ani.app.ui.settings.tabs.app.PlayerGroup
 import me.him188.ani.app.ui.settings.tabs.app.SoftwareUpdateGroup
+import me.him188.ani.app.ui.settings.tabs.log.LogTab
 import me.him188.ani.app.ui.settings.tabs.media.AutoCacheGroup
 import me.him188.ani.app.ui.settings.tabs.media.CacheDirectoryGroup
 import me.him188.ani.app.ui.settings.tabs.media.MediaSelectionGroup
@@ -125,6 +139,7 @@ fun SettingsScreen(
     )
     val layoutParameters = ListDetailLayoutParameters.calculate(navigator.scaffoldDirective)
     val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     SettingsPageLayout(
         navigator,
@@ -150,7 +165,6 @@ fun SettingsScreen(
             Title("应用与界面", paddingTop = 0.dp)
             Item(SettingsTab.APPEARANCE)
             Item(SettingsTab.THEME)
-            Item(SettingsTab.UPDATE)
 
             Title("数据源与播放")
             Item(SettingsTab.PLAYER)
@@ -165,6 +179,8 @@ fun SettingsScreen(
             Item(SettingsTab.STORAGE)
 
             Title("其他")
+            Item(SettingsTab.UPDATE)
+            Item(SettingsTab.LOG)
             Item(SettingsTab.ABOUT)
             if (vm.isInDebugMode) {
                 Item(SettingsTab.DEBUG)
@@ -172,13 +188,35 @@ fun SettingsScreen(
         },
         tabContent = { currentTab ->
             val tabModifier = Modifier
-            Column(
-                Modifier
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = SettingsScope.itemExtraHorizontalPadding),
-            ) {
+            val toaster = LocalToaster.current
+
+            Column {
                 when (currentTab) {
-                    SettingsTab.ABOUT -> AboutTab({ vm.debugTriggerState.triggerDebugMode() }, tabModifier)
+                    SettingsTab.ABOUT -> AboutTab(
+                        vm.aboutTabInfo,
+                        {
+                            if (vm.debugTriggerState.triggerDebugMode()) {
+                                toaster.toast("已进入调试模式")
+                            }
+                        },
+                        onClickReleaseNotes = { AniHelpNavigator.openGitHubRelease(context, vm.aboutTabInfo.version) },
+                        onClickWebsite = { AniHelpNavigator.openAniWebsite(context) },
+                        onClickFeedback = { AniHelpNavigator.openIssueTracker(context) },
+                        onClickSource = { AniHelpNavigator.openGitHubHome(context) },
+                        onClickDevelopers = {
+                            AniHelpNavigator.openGitHubContributors(context)
+//                            detailPaneNavController.navigate(DetailPaneRoutes.Developers)
+                        },
+                        onClickAcknowledgements = {
+//                            detailPaneNavController.navigate(DetailPaneRoutes.Acknowledgements)
+                        },
+                        modifier = tabModifier,
+                    )
+
+                    SettingsTab.LOG -> LogTab(
+                        onClickFeedback = { AniHelpNavigator.openIssueTracker(context) },
+                    )
+
                     SettingsTab.DEBUG -> DebugTab(
                         vm.debugSettingsState,
                         vm.uiSettings,
@@ -217,6 +255,7 @@ fun SettingsScreen(
                             SettingsTab.STORAGE -> CacheDirectoryGroup(vm.cacheDirectoryGroupState)
                             SettingsTab.ABOUT -> {} // see above
                             SettingsTab.DEBUG -> {}
+                            SettingsTab.LOG -> {}
                             null -> {}
                         }
                     }
@@ -243,7 +282,7 @@ internal fun SettingsPageLayout(
     onClickBackOnListPage: () -> Unit,
     onClickBackOnDetailPage: () -> Unit,
     navItems: @Composable (SettingsDrawerScope.() -> Unit),
-    tabContent: @Composable PaneScope.(currentTab: SettingsTab?) -> Unit,
+    tabContent: @Composable SettingsDetailPaneScope.(currentTab: SettingsTab?) -> Unit, // inside Column verticalScroll
     modifier: Modifier = Modifier,
     contentWindowInsets: WindowInsets = AniWindowInsets.forPageContent(),
     containerColor: Color = AniThemeDefaults.pageContentBackgroundColor,
@@ -263,13 +302,29 @@ internal fun SettingsPageLayout(
         }
     }
 
-    val topAppBarScrollBehavior = if (LocalPlatform.current.hasScrollingBug()) {
-        null
+    val listPaneTopAppBarScrollBehavior = if (LocalPlatform.current.hasScrollingBug()) {
+        TopAppBarDefaults.pinnedScrollBehavior()
     } else {
-        TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+        TopAppBarDefaults.enterAlwaysScrollBehavior()
+    }
+
+    val detailPaneTopAppBarScrollBehavior = if (LocalPlatform.current.hasScrollingBug()) {
+        TopAppBarDefaults.pinnedScrollBehavior()
+    } else {
+        TopAppBarDefaults.enterAlwaysScrollBehavior()
     }
 
     val listPaneScrollState = rememberScrollState()
+    val topAppBarSize = if (LocalPlatform.current.hasScrollingBug()) {
+        TopAppBarSize.SMALL
+    } else {
+        val windowSizeClass = currentWindowAdaptiveInfo1().windowSizeClass
+        when {
+            windowSizeClass.isHeightAtLeastExpanded -> TopAppBarSize.LARGE
+            windowSizeClass.isHeightAtLeastMedium -> TopAppBarSize.MEDIUM
+            else -> TopAppBarSize.SMALL
+        }
+    }
     AniListDetailPaneScaffold(
         navigator,
         listPaneTopAppBar = {
@@ -286,20 +341,29 @@ internal fun SettingsPageLayout(
                         navigationIcon()
                     }
                 },
-                colors = AniThemeDefaults.transparentAppBarColors(),
-                scrollBehavior = topAppBarScrollBehavior,
+                colors = if (isSinglePane) {
+                    TopAppBarDefaults.topAppBarColors(
+                        containerColor = containerColor,
+                        scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    )
+                } else {
+                    TopAppBarDefaults.topAppBarColors(
+                        containerColor = containerColor,
+                        scrolledContainerColor = containerColor,
+                    )
+                },
+                scrollBehavior = listPaneTopAppBarScrollBehavior,
                 windowInsets = paneContentWindowInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
+                size = topAppBarSize,
             )
         },
         listPaneContent = paneScope@{
             PermanentDrawerSheet(
                 Modifier
-                    .paneContentPadding()
+                    .paneContentPadding(extraStart = (-8).dp, extraEnd = (-8).dp)
                     .paneWindowInsetsPadding()
                     .fillMaxWidth()
-                    .ifThen(!LocalPlatform.current.hasScrollingBug()) {
-                        topAppBarScrollBehavior?.let { nestedScroll(it.nestedScrollConnection) }
-                    }
+                    .nestedScroll(listPaneTopAppBarScrollBehavior.nestedScrollConnection)
                     .verticalScroll(listPaneScrollState),
                 drawerContainerColor = Color.Unspecified,
             ) {
@@ -335,41 +399,114 @@ internal fun SettingsPageLayout(
                 Modifier.fillMaxSize(),
                 transitionSpec = LocalAniMotionScheme.current.animatedContent.topLevel,
             ) { navigationTab ->
-                val tab = navigationTab.orDefault()
-                Column {
-                    tab?.let {
-                        AniTopAppBar(
-                            title = {
-                                AniTopAppBarDefaults.Title(getName(tab))
-                            },
-                            navigationIcon = {
-                                if (listDetailLayoutParameters.isSinglePane) {
-                                    BackNavigationIconButton(
-                                        {
-                                            onClickBackOnDetailPage()
+                val navMotionScheme = NavigationMotionScheme.current
+                val topAppBarWindowInsets =
+                    paneContentWindowInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
+                val topAppBarColors = AniThemeDefaults.topAppBarColors(
+                    containerColor = if (isSinglePane) {
+                        containerColor
+                    } else {
+                        MaterialTheme.colorScheme.surfaceContainer
+                    },
+                )
+                val detailPaneNavController = rememberNavController()
+
+                @Composable
+                fun PaneScope.RouteContent(content: @Composable SettingsDetailPaneScope.() -> Unit) {
+                    val paneScope = this
+                    val scope = remember(paneScope, detailPaneNavController) {
+                        object : SettingsDetailPaneScope, PaneScope by paneScope {
+                            override val detailPaneNavController: NavHostController =
+                                detailPaneNavController
+
+                        }
+                    }
+                    Column(
+                        Modifier
+                            .verticalScroll(rememberScrollState())
+                            .padding(horizontal = SettingsScope.itemExtraHorizontalPadding),
+                    ) {
+                        scope.content()
+                    }
+                }
+
+                NavHost(
+                    detailPaneNavController,
+                    DetailPaneRoutes.Main,
+                    enterTransition = { navMotionScheme.enterTransition },
+                    exitTransition = { navMotionScheme.exitTransition },
+                    popEnterTransition = { navMotionScheme.popEnterTransition },
+                    popExitTransition = { navMotionScheme.popExitTransition },
+                ) {
+                    composable<DetailPaneRoutes.Main> {
+                        val tab = navigationTab.orDefault()
+                        DetailPaneRoute(
+                            topAppBar = {
+                                tab?.let {
+                                    AniTopAppBar(
+                                        title = {
+                                            AniTopAppBarDefaults.Title(getName(it))
                                         },
+                                        navigationIcon = {
+                                            if (listDetailLayoutParameters.isSinglePane) {
+                                                BackNavigationIconButton(onClickBackOnDetailPage)
+                                            }
+                                        },
+                                        colors = topAppBarColors,
+                                        windowInsets = topAppBarWindowInsets,
+                                        size = topAppBarSize,
+                                        scrollBehavior = detailPaneTopAppBarScrollBehavior,
                                     )
                                 }
                             },
-                            colors = AniThemeDefaults.transparentAppBarColors(),
-                            windowInsets = paneContentWindowInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
+                            detailPaneTopAppBarScrollBehavior,
+                            tabContent = {
+                                RouteContent {
+                                    tabContent(tab)
+                                }
+                            },
                         )
                     }
-
-                    Box(
-                        Modifier
-                            .fillMaxHeight()
-                            .consumeWindowInsets(paneContentWindowInsets.only(WindowInsetsSides.Top)),
-                    ) {
-                        Column(
-                            Modifier
-                                .paneContentPadding(
-                                    extraStart = -SettingsScope.itemHorizontalPadding,
-                                    extraEnd = -SettingsScope.itemHorizontalPadding,
+                    composable<DetailPaneRoutes.Acknowledgements> {
+                        DetailPaneRoute(
+                            topAppBar = {
+                                AniTopAppBar(
+                                    title = { AniTopAppBarDefaults.Title("鸣谢") },
+                                    navigationIcon = {
+                                        BackNavigationIconButton({ detailPaneNavController.navigateUp() })
+                                    },
+                                    colors = topAppBarColors,
+                                    windowInsets = topAppBarWindowInsets,
+                                    size = topAppBarSize,
+                                    scrollBehavior = detailPaneTopAppBarScrollBehavior,
                                 )
-                                .paneWindowInsetsPadding(),
+                            },
+                            detailPaneTopAppBarScrollBehavior,
                         ) {
-                            tabContent(tab)
+                            RouteContent {
+                                Text("haha")
+                            }
+                        }
+                    }
+                    composable<DetailPaneRoutes.Developers> {
+                        DetailPaneRoute(
+                            topAppBar = {
+                                AniTopAppBar(
+                                    title = { AniTopAppBarDefaults.Title("开发者名单") },
+                                    navigationIcon = {
+                                        BackNavigationIconButton({ detailPaneNavController.navigateUp() })
+                                    },
+                                    colors = topAppBarColors,
+                                    windowInsets = topAppBarWindowInsets,
+                                    size = topAppBarSize,
+                                    scrollBehavior = detailPaneTopAppBarScrollBehavior,
+                                )
+                            },
+                            detailPaneTopAppBarScrollBehavior,
+                        ) {
+                            RouteContent {
+                                Text("haha")
+                            }
                         }
                     }
                 }
@@ -382,6 +519,53 @@ internal fun SettingsPageLayout(
 }
 
 @Stable
+interface SettingsDetailPaneScope : PaneScope {
+    val detailPaneNavController: NavHostController
+}
+
+@Composable
+private fun PaneScope.DetailPaneRoute(
+    topAppBar: @Composable () -> Unit,
+    detailPaneTopAppBarScrollBehavior: TopAppBarScrollBehavior,
+    modifier: Modifier = Modifier,
+    tabContent: @Composable (PaneScope.() -> Unit),
+) {
+    Column(modifier) {
+        topAppBar()
+
+        Box(
+            Modifier
+                .fillMaxHeight()
+                .consumeWindowInsets(paneContentWindowInsets.only(WindowInsetsSides.Top)),
+        ) {
+            Column(
+                Modifier
+                    .paneContentPadding(
+                        extraStart = -SettingsScope.itemHorizontalPadding,
+                        extraEnd = -SettingsScope.itemHorizontalPadding,
+                    )
+                    .paneWindowInsetsPadding()
+                    .nestedScroll(detailPaneTopAppBarScrollBehavior.nestedScrollConnection),
+            ) {
+                tabContent()
+            }
+        }
+    }
+}
+
+@Serializable
+internal sealed class DetailPaneRoutes {
+    @Serializable
+    data object Main : DetailPaneRoutes()
+
+    @Serializable
+    data object Acknowledgements : DetailPaneRoutes()
+
+    @Serializable
+    data object Developers : DetailPaneRoutes()
+}
+
+@Stable
 abstract class SettingsDrawerScope internal constructor() : ColumnScope {
     @Composable
     abstract fun Item(item: SettingsTab)
@@ -391,7 +575,7 @@ abstract class SettingsDrawerScope internal constructor() : ColumnScope {
         Text(
             text,
             Modifier
-                .padding(horizontal = 8.dp)
+                .padding(horizontal = 16.dp)
                 .padding(top = paddingTop, bottom = 12.dp),
             color = MaterialTheme.colorScheme.primary,
         )
@@ -401,19 +585,20 @@ abstract class SettingsDrawerScope internal constructor() : ColumnScope {
 @Stable
 private fun getIcon(tab: SettingsTab): ImageVector {
     return when (tab) {
-        SettingsTab.APPEARANCE -> Icons.Rounded.SettingsApplications
-        SettingsTab.THEME -> Icons.Rounded.Palette
-        SettingsTab.UPDATE -> Icons.Rounded.Update
-        SettingsTab.PLAYER -> Icons.Rounded.SmartDisplay
-        SettingsTab.MEDIA_SOURCE -> Icons.Rounded.Subscriptions
-        SettingsTab.MEDIA_SELECTOR -> Icons.Rounded.FilterList
-        SettingsTab.DANMAKU -> Icons.Rounded.Subtitles
-        SettingsTab.PROXY -> Icons.Rounded.VpnKey
+        SettingsTab.APPEARANCE -> Icons.Outlined.SettingsApplications
+        SettingsTab.THEME -> Icons.Outlined.Palette
+        SettingsTab.UPDATE -> Icons.Outlined.Update
+        SettingsTab.PLAYER -> Icons.Outlined.SmartDisplay
+        SettingsTab.MEDIA_SOURCE -> Icons.Outlined.Subscriptions
+        SettingsTab.MEDIA_SELECTOR -> Icons.Outlined.FilterList
+        SettingsTab.DANMAKU -> Icons.Outlined.Subtitles
+        SettingsTab.PROXY -> Icons.Outlined.VpnKey
         SettingsTab.BT -> Icons.Filled.P2p
-        SettingsTab.CACHE -> Icons.Rounded.Download
-        SettingsTab.STORAGE -> Icons.Rounded.Storage
-        SettingsTab.ABOUT -> Icons.Rounded.Info
-        SettingsTab.DEBUG -> Icons.Rounded.Science
+        SettingsTab.CACHE -> Icons.Rounded.Download // Icons.Outlined.Download 太 sharp 了
+        SettingsTab.STORAGE -> Icons.Outlined.Storage
+        SettingsTab.ABOUT -> Icons.Outlined.Info
+        SettingsTab.LOG -> Icons.Outlined.Feedback
+        SettingsTab.DEBUG -> Icons.Outlined.Science
     }
 }
 
@@ -422,7 +607,6 @@ private fun getName(tab: SettingsTab): String {
     return when (tab) {
         SettingsTab.APPEARANCE -> "界面"
         SettingsTab.THEME -> "主题与色彩"
-        SettingsTab.UPDATE -> "软件更新"
         SettingsTab.PLAYER -> "播放器和弹幕过滤"
         SettingsTab.MEDIA_SOURCE -> "数据源管理"
         SettingsTab.MEDIA_SELECTOR -> "观看偏好"
@@ -431,7 +615,9 @@ private fun getName(tab: SettingsTab): String {
         SettingsTab.BT -> "BitTorrent"
         SettingsTab.CACHE -> "自动缓存"
         SettingsTab.STORAGE -> "存储空间"
-        SettingsTab.ABOUT -> "关于、反馈与日志"
+        SettingsTab.LOG -> "日志"
+        SettingsTab.UPDATE -> "软件更新"
+        SettingsTab.ABOUT -> "关于"
         SettingsTab.DEBUG -> "调试"
     }
 }

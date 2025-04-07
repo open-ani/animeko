@@ -1,2 +1,3 @@
-iosApp.xcodeproj/project.xcworkspace
-iosApp.xcodeproj/xcuserdata
+**/*.xcworkspace
+**/xcuserdata
+Pods/

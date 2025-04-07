@@ -1,4 +1,4 @@
-# 4. 构建打包
+# 构建打包
 
 如果遇到问题，请查看 [常见构建和运行问题](#常见构建和运行问题)。
 
@@ -24,6 +24,18 @@ ani.dandanplay.app.secret=aaaaaaaaaaaaaaa
 
 在 IDE 上也可以选择 `Build -> Build Bundle(s) / APK(s) -> Build APK(s)` 来构建 APK。
 
+## 打包 iOS APP
+
+打包之前，需要运行以下命令初始化项目：
+
+1. `./gradlew podInstall`。如果找不到 pod，可以自行 `cd app/ios && pod install`。
+2. `./gradlew patchInfoPlist`
+
+在 IDE 中双击 Ctrl，可用的命令：
+
+- `./gradlew buildDebugIpa` - 构建测试版（安装需要自签）
+- `./gradlew buildReleaseIpa` - 构建发布版（安装需要自签）
+
 ## 打包桌面应用
 
 要构建桌面应用，请参考 [Compose for Desktop]
@@ -32,11 +44,15 @@ ani.dandanplay.app.secret=aaaaaaaaaaaaaaa
 
 一个操作系统只能构建对应的桌面应用，例如 Windows 只能构建 Windows 应用，而不能构建 macOS 应用。
 
+## 运行测试版应用
+
+参考 [testing](testing.md)。
+
 ## 运行测试
 
 在 IDE 中双击 Ctrl，执行 `./gradlew check` 可以运行所有测试，包括单元测试和 UI 测试。
 
-在 macOS 上，这将会运行全部测试，总共约 8000 个 (如果未启用 iOS 目标，会少一些)。在 Windows 上只能运行安卓和
+在 macOS 上，这将会运行全部测试，总共约 11,000 个 (如果未启用 iOS 目标，会少一些)。在 Windows 上只能运行安卓和
 JVM 平台测试，无法运行
 iOS 测试。
 

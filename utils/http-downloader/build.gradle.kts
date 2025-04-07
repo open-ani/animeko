@@ -35,6 +35,9 @@ kotlin {
         implementation(projects.utils.ktorClient)
         api(libs.datastore.core)
     }
+    sourceSets.desktopMain.dependencies {
+        runtimeOnly(libs.slf4j.simple)
+    }
     sourceSets.commonTest.dependencies {
         implementation(libs.turbine)
         implementation(libs.ktor.client.mock)

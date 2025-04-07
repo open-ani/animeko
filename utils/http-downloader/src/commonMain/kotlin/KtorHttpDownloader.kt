@@ -9,22 +9,50 @@
 
 package me.him188.ani.utils.httpdownloader
 
-import io.ktor.client.request.*
-import io.ktor.client.statement.*
-import io.ktor.utils.io.*
-import kotlinx.coroutines.*
+import io.ktor.client.request.header
+import io.ktor.client.request.prepareGet
+import io.ktor.client.statement.HttpStatement
+import io.ktor.client.statement.bodyAsChannel
+import io.ktor.utils.io.ByteReadChannel
+import io.ktor.utils.io.readAvailable
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineName
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.BufferOverflow
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
 import kotlinx.io.buffered
 import kotlinx.io.files.FileSystem
 import kotlinx.io.files.Path
 import me.him188.ani.utils.coroutines.IO_
-import me.him188.ani.utils.httpdownloader.DownloadStatus.*
+import me.him188.ani.utils.httpdownloader.DownloadStatus.CANCELED
+import me.him188.ani.utils.httpdownloader.DownloadStatus.COMPLETED
+import me.him188.ani.utils.httpdownloader.DownloadStatus.DOWNLOADING
+import me.him188.ani.utils.httpdownloader.DownloadStatus.FAILED
+import me.him188.ani.utils.httpdownloader.DownloadStatus.INITIALIZING
+import me.him188.ani.utils.httpdownloader.DownloadStatus.MERGING
+import me.him188.ani.utils.httpdownloader.DownloadStatus.PAUSED
 import me.him188.ani.utils.httpdownloader.m3u.DefaultM3u8Parser
 import me.him188.ani.utils.httpdownloader.m3u.M3u8Parser
 import me.him188.ani.utils.httpdownloader.m3u.M3u8Playlist
@@ -32,6 +60,7 @@ import me.him188.ani.utils.io.DEFAULT_BUFFER_SIZE
 import me.him188.ani.utils.io.copyTo
 import me.him188.ani.utils.io.resolve
 import me.him188.ani.utils.ktor.ScopedHttpClient
+import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.platform.Uuid
@@ -63,9 +92,7 @@ open class KtorHttpDownloader(
 
     override fun getProgressFlow(downloadId: DownloadId): Flow<DownloadProgress> {
         return progressFlow.filter { it.downloadId == downloadId }.onStart {
-            emit(
-                createProgress(getState(downloadId) ?: return@onStart),
-            )
+            emit(createProgress(getState(downloadId) ?: return@onStart))
         }
     }
 
@@ -89,18 +116,24 @@ open class KtorHttpDownloader(
         outputPath: Path,
         options: DownloadOptions,
     ): DownloadId {
-        val downloadId = DownloadId(value = generateDownloadId(url))
+        val downloadId = DownloadId(value = Uuid.randomString())
         downloadWithId(downloadId, url, outputPath, options)
         return downloadId
     }
 
     protected fun getMediaTypeFromUrl(url: String): MediaType? {
-        return when {
-            url.endsWith(".m3u8", ignoreCase = true) -> MediaType.M3U8
-            url.endsWith(".mp4", ignoreCase = true) -> MediaType.MP4
-            url.endsWith(".mkv", ignoreCase = true) -> MediaType.MKV
-            else -> null
+        val parsed = io.ktor.http.Url(url)
+        val path = parsed.encodedPath // without query
+        fun guessFromValue(value: String): MediaType? {
+            return when {
+                value.endsWith(".m3u8", ignoreCase = true) -> MediaType.M3U8
+                value.endsWith(".mp4", ignoreCase = true) -> MediaType.MP4
+                value.endsWith(".mkv", ignoreCase = true) -> MediaType.MKV
+                else -> null
+            }
         }
+        return guessFromValue(path) // https://foo.com/bar.m3u8
+            ?: guessFromValue(url) // https://foo.com/index.php?key=video.m3u8
     }
 
     override suspend fun downloadWithId(
@@ -109,14 +142,14 @@ open class KtorHttpDownloader(
         outputPath: Path,
         options: DownloadOptions,
     ) {
-        val mediaType = getMediaTypeFromUrl(url) ?: MediaType.M3U8
+        val mediaType = getMediaTypeFromUrl(url) ?: MediaType.MP4
         logger.info { "Preparing to download with id=$downloadId, url=$url, mediaType=$mediaType" }
 
+        // 1) Set initial state if not present
         stateMutex.withLock {
             val currentMap = _downloadStatesFlow.value.toMutableMap()
-            val existing = currentMap[downloadId]
-            if (existing != null) {
-                // If there's already a state for this downloadId in COMPLETED, do nothing
+            if (currentMap[downloadId] != null) {
+                // If there's already a state in COMPLETED, do nothing
                 logger.info { "Existing completed download found for $downloadId, ignoring." }
                 return
             }
@@ -135,58 +168,23 @@ open class KtorHttpDownloader(
             )
             currentMap[downloadId] = DownloadEntry(job = null, state = initialState)
             _downloadStatesFlow.value = currentMap
-
-            logger.info { "Starting download '$url', initial state: $initialState" }
+            logger.info { "Created initial state for $downloadId" }
         }
-
         emitProgress(downloadId)
 
-        // -----------------------------------------------------------
-        // (1) Create segments *before* launching the job
-        // -----------------------------------------------------------
-        val segments: List<SegmentInfo> = try {
-            when (mediaType) {
-                MediaType.M3U8 -> {
-                    logger.info { "Resolving M3U8 media playlist for $downloadId" }
-                    val playlist = resolveM3u8MediaPlaylist(url, options)
-                    playlist.toSegments(Path(getState(downloadId)?.segmentCacheDir ?: return))
-                }
-
-                MediaType.MP4, MediaType.MKV -> {
-                    logger.info { "Creating range segments for $downloadId" }
-                    createRangeSegments(downloadId, url, options)
-                }
-            }
-        } catch (e: Throwable) {
-            // If segment creation fails (404, parse error, etc.), mark FAILED
-            logger.info { "Segment creation failed for $downloadId: ${e.message}" }
-            updateState(downloadId) {
-                it.copy(
-                    status = FAILED,
-                    error = DownloadError(
-                        code = if (e is M3u8Exception) e.errorCode else DownloadErrorCode.UNEXPECTED_ERROR,
-                        technicalMessage = e.message,
-                    ),
-                    timestamp = clock.now().toEpochMilliseconds()
-                )
-            }
-            emitProgress(downloadId)
+        // 2) Create segments
+        if (!createSegments(downloadId, url, mediaType, options)) {
+            // If creation failed, the state is set to FAILED. We stop here.
             return
         }
 
+        // 3) Mark status=DOWNLOADING and launch the job
         updateState(downloadId) {
-            it.copy(
-                segments = segments,
-                totalSegments = segments.size,
-                status = DOWNLOADING
-            )
+            it.copy(status = DOWNLOADING)
         }
         emitProgress(downloadId)
-        logger.info { "Created ${segments.size} segments for $downloadId" }
 
-        // -----------------------------------------------------------
-        // (2) Launch the coroutine that uses those segments
-        // -----------------------------------------------------------
+        logger.info { "Launching download job for $downloadId" }
         val job = scope.launch(start = CoroutineStart.UNDISPATCHED) {
             try {
                 logger.info { "Downloading segments for $downloadId" }
@@ -196,7 +194,7 @@ open class KtorHttpDownloader(
                     it.copy(status = MERGING, timestamp = clock.now().toEpochMilliseconds())
                 }
                 emitProgress(downloadId)
-                logger.info { "Merging segments for $downloadId into final output" }
+                logger.info { "Merging segments for $downloadId" }
 
                 mergeSegments(downloadId)
 
@@ -205,13 +203,10 @@ open class KtorHttpDownloader(
                 }
                 emitProgress(downloadId)
                 logger.info { "Download completed for $downloadId" }
-
             } catch (e: CancellationException) {
-                // Normal cancellation
                 logger.info { "Download cancelled for $downloadId" }
                 throw e
             } catch (e: Throwable) {
-                // Mark FAILED
                 logger.info { "Download failed for $downloadId: ${e.message}" }
                 updateState(downloadId) {
                     it.copy(
@@ -227,49 +222,66 @@ open class KtorHttpDownloader(
             }
         }
 
-        // Store the newly-created job
+        // 4) Store the job
         stateMutex.withLock {
             val currentMap = _downloadStatesFlow.value.toMutableMap()
-            val entry = currentMap[downloadId]
-            if (entry != null) {
-                currentMap[downloadId] = entry.copy(job = job)
-                _downloadStatesFlow.value = currentMap
-            }
+            val entry = currentMap[downloadId] ?: return
+            currentMap[downloadId] = entry.copy(job = job)
+            _downloadStatesFlow.value = currentMap
         }
     }
 
+    /**
+     * If segments are empty, tries to create them again.
+     * Returns false if creation fails (the state will be marked FAILED), otherwise true.
+     */
     override suspend fun resume(downloadId: DownloadId): Boolean {
         val st = getState(downloadId) ?: return false
         if (st.status != PAUSED && st.status != FAILED) {
-            logger.info { "Cannot resume $downloadId because status=${st.status}" }
+            if (st.status != COMPLETED) {
+                logger.info { "Cannot resume $downloadId because status=${st.status}" }
+            }
             return false
         }
 
         // Check if there's already an active job
-        val hasExistingJob = stateMutex.withLock {
-            val existing = _downloadStatesFlow.value[downloadId]
-            existing != null && existing.job?.isActive == true
+        val alreadyActive = stateMutex.withLock {
+            val existingEntry = _downloadStatesFlow.value[downloadId]
+            existingEntry?.job?.isActive == true
         }
-        if (hasExistingJob) {
+        if (alreadyActive) {
             logger.info { "Attempting to resume $downloadId but there's already an active job." }
             emitProgress(downloadId)
             return true
         }
 
         logger.info { "Resuming $downloadId with status=${st.status}" }
-        updateState(downloadId) { it.copy(status = DOWNLOADING) }
+
+        // If we have no segments, it means we failed during segment creation
+        if (st.segments.isEmpty()) {
+            if (!createSegments(downloadId, st.url, st.mediaType, DownloadOptions())) {
+                return false // Already marked as FAILED
+            }
+        }
+
+        // Mark status = DOWNLOADING
+        updateState(downloadId) {
+            it.copy(status = DOWNLOADING)
+        }
         emitProgress(downloadId)
 
         val job = scope.launch(start = CoroutineStart.UNDISPATCHED) {
             try {
                 logger.info { "Resumed: downloading segments for $downloadId" }
                 downloadSegments(downloadId, DownloadOptions())
+
                 updateState(downloadId) {
                     it.copy(status = MERGING)
                 }
                 emitProgress(downloadId)
                 logger.info { "Merging segments for resumed $downloadId" }
                 mergeSegments(downloadId)
+
                 updateState(downloadId) {
                     it.copy(status = COMPLETED)
                 }
@@ -289,13 +301,13 @@ open class KtorHttpDownloader(
                 emitProgress(downloadId)
             }
         }
+
+        // Store the new job
         stateMutex.withLock {
             val currentMap = _downloadStatesFlow.value.toMutableMap()
-            val entry = currentMap[downloadId]
-            if (entry != null) {
-                currentMap[downloadId] = entry.copy(job = job)
-                _downloadStatesFlow.value = currentMap
-            }
+            val entry = currentMap[downloadId] ?: return@withLock
+            currentMap[downloadId] = entry.copy(job = job)
+            _downloadStatesFlow.value = currentMap
         }
         return true
     }
@@ -453,6 +465,63 @@ open class KtorHttpDownloader(
     }
 
     /**
+     * Helper that attempts to create segments for the given [downloadId] & [url].
+     * Returns `true` if it succeeds, or `false` if it fails (the state is set to FAILED).
+     */
+    private suspend fun createSegments(
+        downloadId: DownloadId,
+        url: String,
+        mediaType: MediaType,
+        options: DownloadOptions,
+    ): Boolean {
+        try {
+            val newSegments = when (mediaType) {
+                MediaType.M3U8 -> {
+                    logger.info { "Resolving M3U8 media playlist for $downloadId" }
+                    val playlist = resolveM3u8MediaPlaylist(url, options)
+                    playlist.toSegments(Path(getState(downloadId)?.segmentCacheDir ?: return false))
+                }
+
+                MediaType.MP4, MediaType.MKV -> {
+                    logger.info { "Creating range segments for $downloadId" }
+                    createRangeSegments(downloadId, url, options)
+                }
+            }
+
+            updateState(downloadId) {
+                it.copy(
+                    segments = newSegments,
+                    totalSegments = newSegments.size,
+                )
+            }
+            emitProgress(downloadId)
+            logger.info { "Created ${newSegments.size} segments for $downloadId" }
+            return true
+        } catch (e: Throwable) {
+            handleSegmentCreationFailure(downloadId, e)
+            return false
+        }
+    }
+
+    /**
+     * If segment creation fails (404, parse error, OOM, etc.), mark the state as FAILED and emit progress.
+     */
+    private suspend fun handleSegmentCreationFailure(downloadId: DownloadId, e: Throwable) {
+        logger.error(e) { "Segment creation failed for $downloadId: ${e.message}" }
+        updateState(downloadId) {
+            it.copy(
+                status = FAILED,
+                error = DownloadError(
+                    code = if (e is M3u8Exception) e.errorCode else DownloadErrorCode.UNEXPECTED_ERROR,
+                    technicalMessage = e.message,
+                ),
+                timestamp = clock.now().toEpochMilliseconds(),
+            )
+        }
+        emitProgress(downloadId)
+    }
+
+    /**
      * Recursively resolves a MasterPlaylist to a MediaPlaylist (if needed).
      */
     private suspend fun resolveM3u8MediaPlaylist(
@@ -511,7 +580,7 @@ open class KtorHttpDownloader(
                     tempFilePath = cacheDir.resolve("0.part").toString(),
                     rangeStart = null,
                     rangeEnd = null,
-                )
+                ),
             )
 
         if (!rangeSupported) {
@@ -525,7 +594,7 @@ open class KtorHttpDownloader(
                     tempFilePath = cacheDir.resolve("0.part").toString(),
                     rangeStart = null,
                     rangeEnd = null,
-                )
+                ),
             )
         }
 
@@ -542,7 +611,7 @@ open class KtorHttpDownloader(
                     tempFilePath = cacheDir.resolve("0.part").toString(),
                     rangeStart = 0,
                     rangeEnd = contentLength - 1,
-                )
+                ),
             )
         }
 
@@ -561,7 +630,7 @@ open class KtorHttpDownloader(
                     tempFilePath = cacheDir.resolve("$index.part").toString(),
                     rangeStart = start,
                     rangeEnd = end,
-                )
+                ),
             )
             start = end + 1
             index++
@@ -580,7 +649,7 @@ open class KtorHttpDownloader(
         options: DownloadOptions,
     ): Pair<Long, Boolean>? {
         val rangeOptions = options.copy(
-            headers = options.headers + ("Range" to "bytes=0-0")
+            headers = options.headers + ("Range" to "bytes=0-0"),
         )
         return try {
             client.use {
@@ -617,7 +686,7 @@ open class KtorHttpDownloader(
         // If we have a range, add it to the request headers.
         val finalOptions = if (segmentInfo.rangeStart != null && segmentInfo.rangeEnd != null) {
             options.copy(
-                headers = options.headers + ("Range" to "bytes=${segmentInfo.rangeStart}-${segmentInfo.rangeEnd}")
+                headers = options.headers + ("Range" to "bytes=${segmentInfo.rangeStart}-${segmentInfo.rangeEnd}"),
             )
         } else {
             options
@@ -631,7 +700,7 @@ open class KtorHttpDownloader(
             val segmentPath = Path(segmentInfo.tempFilePath)
             withContext(ioDispatcher) {
                 fileSystem.createDirectories(
-                    segmentPath.parent ?: error("Parent dir not found for segmentInfo: $segmentInfo")
+                    segmentPath.parent ?: error("Parent dir not found for segmentInfo: $segmentInfo"),
                 )
             }
 
@@ -664,6 +733,7 @@ open class KtorHttpDownloader(
         return totalBytes.load()
     }
 
+    @OptIn(DelicateCoroutinesApi::class, ExperimentalAtomicApi::class)
     protected suspend fun downloadSegments(downloadId: DownloadId, options: DownloadOptions) {
         val snapshot = getState(downloadId) ?: return
         if (snapshot.segments.isEmpty()) {
@@ -675,13 +745,17 @@ open class KtorHttpDownloader(
 
         coroutineScope {
             snapshot.segments.forEach { seg ->
-                if (seg.isDownloaded) {
-                    return@forEach
-                }
+                if (seg.isDownloaded) return@forEach
                 semaphore.acquire()
                 launch(ioDispatcher, start = CoroutineStart.ATOMIC) {
                     try {
-                        val newSize = downloadSingleSegment(seg, options)
+                        // Retry with exponential backoff if download fails
+                        val newSize = withRetry(
+                            maxRetries = options.maxRetriesPerSegment,
+                            baseDelayMillis = options.baseRetryDelayMillis,
+                        ) {
+                            downloadSingleSegment(seg, options)
+                        }
                         markSegmentDownloaded(downloadId, seg.index, newSize)
                     } finally {
                         semaphore.release()
@@ -754,10 +828,6 @@ open class KtorHttpDownloader(
         }
     }
 
-    protected fun generateDownloadId(url: String): String {
-        return Uuid.randomString()
-    }
-
     suspend fun joinDownload(downloadId: DownloadId) {
         val job = stateMutex.withLock {
             _downloadStatesFlow.value[downloadId]?.job
@@ -766,6 +836,42 @@ open class KtorHttpDownloader(
             logger.info { "Waiting for download job to complete for $downloadId" }
             job.join()
             logger.info { "Download job completed for $downloadId" }
+        }
+    }
+
+    /**
+     * Helper to retry the [block] up to [maxRetries] times with exponential backoff.
+     * The backoff delay starts at [baseDelayMillis] and doubles each time.
+     */
+    private suspend fun <T> withRetry(
+        maxRetries: Int,
+        baseDelayMillis: Long,
+        block: suspend () -> T
+    ): T {
+        var attempt = 1
+        var currentDelay = baseDelayMillis
+        while (true) {
+            try {
+                return block()
+            } catch (ce: CancellationException) {
+                // Always rethrow cancellation
+                throw ce
+            } catch (ex: Throwable) {
+                if (attempt >= maxRetries) {
+                    logger.info {
+                        "Segment download failed after $attempt/$maxRetries attempts; no more retries. " +
+                                "Error: ${ex.message}"
+                    }
+                    throw ex
+                }
+                logger.info {
+                    "Segment download failed on attempt $attempt/$maxRetries: ${ex.message}. " +
+                            "Retrying after ${currentDelay}ms..."
+                }
+                delay(currentDelay)
+                currentDelay = (currentDelay * 2).coerceAtMost(30_000L) // cap at 30s
+                attempt++
+            }
         }
     }
 

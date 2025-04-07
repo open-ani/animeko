@@ -10,10 +10,8 @@
 package me.him188.ani.app.domain.torrent
 
 import kotlinx.coroutines.CoroutineName
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
-import me.him188.ani.app.data.models.preference.AnitorrentConfig
 import me.him188.ani.app.data.repository.torrent.peer.PeerFilterSubscriptionRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.torrent.peer.PeerFilterSettings
@@ -44,14 +42,17 @@ enum class TorrentEngineType(
     RemoteAnitorrent("anitorrent")
 }
 
+/**
+ * Default implementation of [TorrentManager], which manages parameters of the torrent engine.
+ */
 class DefaultTorrentManager(
     parentCoroutineContext: CoroutineContext,
     factory: TorrentEngineFactory,
-    private val saveDir: (type: TorrentEngineType) -> SystemPath,
-    private val client: ScopedHttpClient,
-    private val anitorrentConfigFlow: Flow<AnitorrentConfig>,
-    private val isMeteredNetworkFlow: Flow<Boolean>,
-    private val peerFilterSettings: Flow<PeerFilterSettings>
+    settingsRepository: SettingsRepository,
+    client: ScopedHttpClient,
+    subscriptionRepository: PeerFilterSubscriptionRepository,
+    meteredNetworkDetector: MeteredNetworkDetector,
+    baseSaveDir: () -> SystemPath,
 ) : TorrentManager {
     private val scope = parentCoroutineContext.childScope()
     private val logger = logger<DefaultTorrentManager>()
@@ -59,15 +60,26 @@ class DefaultTorrentManager(
     private val anitorrent: TorrentEngine by lazy {
         factory.createTorrentEngine(
             scope.coroutineContext + CoroutineName("AnitorrentEngine"),
-            combine(anitorrentConfigFlow, isMeteredNetworkFlow) { config, isMetered ->
+            combine(
+                settingsRepository.anitorrentConfig.flow,
+                meteredNetworkDetector.isMeteredNetworkFlow.distinctUntilChanged(),
+            ) { config, isMetered ->
                 val isUploadLimited = isMetered && config.limitUploadOnMeteredNetwork
                 val limit = if (isUploadLimited) 10.kiloBytes else config.uploadRateLimit
                 logger.debug { "Anitorrent upload rate limit: $limit/s" }
                 config.copy(uploadRateLimit = limit)
             },
             client = client,
-            peerFilterSettings,
-            saveDir(TorrentEngineType.Anitorrent),
+            combine(
+                settingsRepository.torrentPeerConfig.flow,
+                subscriptionRepository.rulesFlow,
+            ) { config, rules ->
+                PeerFilterSettings(
+                    rules + config.createRuleWithEnabled(),
+                    config.blockInvalidId,
+                )
+            },
+            baseSaveDir().resolve(TorrentEngineType.Anitorrent.id),
         )
     }
 
@@ -91,22 +103,14 @@ class DefaultTorrentManager(
             baseSaveDir: () -> SystemPath,
             torrentEngineFactory: TorrentEngineFactory = LocalAnitorrentEngineFactory,
         ): DefaultTorrentManager {
-            val saveDirLazy by lazy(baseSaveDir)
             return DefaultTorrentManager(
-                parentCoroutineContext,
-                torrentEngineFactory,
-                { type ->
-                    saveDirLazy.resolve(type.id)
-                },
-                client,
-                settingsRepository.anitorrentConfig.flow,
-                meteredNetworkDetector.isMeteredNetworkFlow.distinctUntilChanged(),
-                combine(settingsRepository.torrentPeerConfig.flow, subscriptionRepository.rulesFlow) { config, rules ->
-                    PeerFilterSettings(
-                        rules + config.createRuleWithEnabled(),
-                        config.blockInvalidId,
-                    )
-                },
+                parentCoroutineContext = parentCoroutineContext,
+                factory = torrentEngineFactory,
+                client = client,
+                settingsRepository = settingsRepository,
+                meteredNetworkDetector = meteredNetworkDetector,
+                subscriptionRepository = subscriptionRepository,
+                baseSaveDir = baseSaveDir,
             )
         }
     }

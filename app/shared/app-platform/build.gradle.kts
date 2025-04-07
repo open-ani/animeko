@@ -166,6 +166,9 @@ if (enableIos) {
 
         outputs.file(file)
 
+        val sentryEnabled = (getPropertyOrNull("ani.sentry.ios") ?: "true").toBooleanStrict()
+        val analyticsEnabled = (getPropertyOrNull("ani.analytics.ios") ?: "true").toBooleanStrict()
+
         val text = """
             package me.him188.ani.app.platform
             object AniBuildConfigIos : AniBuildConfig {
@@ -177,6 +180,8 @@ if (enableIos) {
                 override val sentryDsn = "$sentryDsn"
                 override val analyticsKey = "$analyticsKey"
                 override val analyticsServer = "$analyticsServer"
+                override val sentryEnabled = $sentryEnabled
+                override val analyticsEnabled = $analyticsEnabled
             }
             """.trimIndent()
 

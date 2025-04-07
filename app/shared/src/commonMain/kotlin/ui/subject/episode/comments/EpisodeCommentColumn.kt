@@ -13,8 +13,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
-import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
+import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -47,7 +47,7 @@ fun EpisodeCommentColumn(
     onClickEditCommentStubEmoji: () -> Unit,
     onClickUrl: (url: String) -> Unit,
     modifier: Modifier = Modifier,
-    lazyStaggeredGridState: LazyStaggeredGridState = rememberLazyStaggeredGridState(),
+    gridState: LazyGridState = rememberLazyGridState(),
     connectedScrollState: ConnectedScrollState? = null,
 ) {
     val imageViewer = LocalImageViewerHandler.current
@@ -55,7 +55,7 @@ fun EpisodeCommentColumn(
     Column(modifier) {
         CommentColumn(
             state.list.collectAsLazyPagingItemsWithLifecycle(),
-            lazyStaggeredGridState = lazyStaggeredGridState,
+            state = gridState,
             connectedScrollState = connectedScrollState,
             modifier = Modifier.weight(1f).fillMaxSize(),
         ) { _, comment ->

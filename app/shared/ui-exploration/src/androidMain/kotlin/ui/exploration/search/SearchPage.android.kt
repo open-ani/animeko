@@ -24,6 +24,7 @@ import androidx.paging.LoadStates
 import androidx.paging.PagingData
 import kotlinx.coroutines.flow.MutableStateFlow
 import me.him188.ani.app.data.repository.RepositoryNetworkException
+import me.him188.ani.app.domain.search.SearchSort
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.layout.CarouselItemDefaults.Text
 import me.him188.ani.app.ui.foundation.preview.PreviewSizeClasses
@@ -94,9 +95,17 @@ fun PreviewSearchPageError() = ProvideCompositionLocalsForPreview {
 fun PreviewSearchPageResultColumn() = ProvideCompositionLocalsForPreview {
     Surface(color = MaterialTheme.colorScheme.surfaceContainerLowest) {
         val state = createTestFinishedSubjectSearchState()
-        SearchPageResultColumn(
+        SearchResultColumn(
             items = state.collectItemsWithLifecycle(),
-            showSummary = { true },
+            layoutKind = SearchResultLayoutKind.PREVIEW,
+            summary = {
+                SearchSummary(
+                    layoutKind = SearchResultLayoutKind.PREVIEW,
+                    currentSort = SearchSort.MATCH,
+                    onLayoutKindChange = {},
+                    onSortChange = {},
+                )
+            },
             selectedItemIndex = { 1 },
             onSelect = {},
             onPlay = {},

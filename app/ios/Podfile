@@ -1,0 +1,6 @@
+target 'Animeko' do
+  use_frameworks!
+  platform :ios, '16.0'
+  pod 'application', :path => '../shared/application'
+  pod 'Sentry', '~> 8.44.0'
+end

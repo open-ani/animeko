@@ -13,18 +13,23 @@ import androidx.compose.runtime.Stable
 import androidx.paging.cachedIn
 import androidx.paging.map
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.models.subject.SubjectInfo
+import me.him188.ani.app.data.network.BatchSubjectDetails
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.subject.BangumiSubjectSearchCompletionRepository
 import me.him188.ani.app.data.repository.subject.SubjectSearchHistoryRepository
 import me.him188.ani.app.data.repository.subject.SubjectSearchRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
+import me.him188.ani.app.domain.search.SearchSort
 import me.him188.ani.app.domain.search.SubjectSearchQuery
 import me.him188.ani.app.domain.session.AniAuthStateProvider
 import me.him188.ani.app.ui.exploration.search.SearchPageState
@@ -39,7 +44,9 @@ import org.koin.core.component.inject
 import kotlin.time.Duration.Companion.milliseconds
 
 @Stable
-class SearchViewModel : AbstractViewModel(), KoinComponent {
+class SearchViewModel(
+    initialSearchQuery: SubjectSearchQuery,
+) : AbstractViewModel(), KoinComponent {
     private val searchHistoryRepository: SubjectSearchHistoryRepository by inject()
     private val bangumiSubjectSearchCompletionRepository: BangumiSubjectSearchCompletionRepository by inject()
 
@@ -50,8 +57,10 @@ class SearchViewModel : AbstractViewModel(), KoinComponent {
     private val authStateProvider: AniAuthStateProvider by inject()
 
     private val nsfwSettingFlow = settingsRepository.uiSettings.flow.map { it.searchSettings.nsfwMode }
+        .stateIn(backgroundScope, SharingStarted.Lazily, NsfwMode.HIDE)
 
-    private val queryFlow = MutableStateFlow(SubjectSearchQuery(""))
+    private val hasInitialSearchQuery = initialSearchQuery.keywords.isNotEmpty() || initialSearchQuery.hasFilters()
+    private val queryFlow = MutableStateFlow(initialSearchQuery)
 
     val authState = authStateProvider.state
     val searchPageState: SearchPageState = SearchPageState(
@@ -69,9 +78,20 @@ class SearchViewModel : AbstractViewModel(), KoinComponent {
             }
         },
         searchState = PagingSearchState(
-            createPager = {
-                // 搜索总是会包含 NSFW
-                val query = queryFlow.value
+            createPager = { scope ->
+                val rawQuery = queryFlow.value
+                // 搜索 R18 条目时, 需要强制显示
+                val explicitR18 = rawQuery.tags?.contains("R18") == true
+
+                val query = rawQuery
+                    .copy(
+                        nsfw = when {
+                            explicitR18 -> true
+                            nsfwSettingFlow.value == NsfwMode.HIDE -> false
+                            else -> null
+                        },
+                    )
+
                 subjectSearchRepository.searchSubjects(
                     query,
                     useNewApi = {
@@ -85,14 +105,21 @@ class SearchViewModel : AbstractViewModel(), KoinComponent {
                         SubjectPreviewItemInfo.compute(
                             subject.subjectInfo,
                             subject.mainEpisodeCount,
-                            nsfwMode,
-                            subject.lightSubjectRelations.lightRelatedPersonInfoList,
-                            subject.lightSubjectRelations.lightRelatedCharacterInfoList,
+                            nsfwModeSettings = if (explicitR18) {
+                                // 搜索 R18 条目时, 需要强制显示
+                                NsfwMode.DISPLAY
+                            } else {
+                                nsfwMode
+                            },
+                            relatedPersonList = subject.lightSubjectRelations.lightRelatedPersonInfoList,
+                            characters = subject.lightSubjectRelations.lightRelatedCharacterInfoList,
+                            hide = shouldHide(query, subject),
                         )
                     }
                     // 我们必须保证 data 的数量和 map 后的数量一致, 否则会导致 Pager 搜索下一页时使用的 offset 有误.
-                }.cachedIn(backgroundScope)
+                }.cachedIn(scope)
             },
+            backgroundScope,
         ),
         onRemoveHistory = {
             searchHistoryRepository.removeHistory(it)
@@ -105,6 +132,22 @@ class SearchViewModel : AbstractViewModel(), KoinComponent {
             }
         },
     )
+
+    private fun shouldHide(query: SubjectSearchQuery, subject: BatchSubjectDetails): Boolean {
+        when (query.sort) {
+            SearchSort.RANK -> {
+                if (subject.subjectInfo.ratingInfo.total < 50) {
+                    return true
+                }
+            }
+
+            SearchSort.MATCH,
+            SearchSort.COLLECTION -> {
+            }
+        }
+
+        return false
+    }
 
     val subjectDetailsStateLoader = SubjectDetailsStateLoader(subjectDetailsStateFactory, backgroundScope)
     private var currentPreviewingSubject: SubjectInfo? = null
@@ -125,6 +168,16 @@ class SearchViewModel : AbstractViewModel(), KoinComponent {
     fun reloadCurrentSubjectDetails() {
         val curr = currentPreviewingSubject ?: return
         subjectDetailsStateLoader.reload(curr.subjectId, curr)
+    }
+
+    private var initialSearchQueryStarted = false
+    fun startInitialSearch() {
+        if (initialSearchQueryStarted) return
+        initialSearchQueryStarted = true
+
+        if (hasInitialSearchQuery) {
+            searchPageState.searchState.startSearch()
+        }
     }
 
     override fun onCleared() {

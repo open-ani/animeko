@@ -34,7 +34,7 @@ import kotlinx.serialization.Serializable
  * @param id 
  * @param name 
  * @param type 角色，机体，舰船，组织...
- * @param subjectId
+ * @param subjectId 
  * @param subjectName 
  * @param subjectNameCn 
  * @param images object with some size of images, this object maybe `null`

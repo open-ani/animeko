@@ -12,6 +12,7 @@ package me.him188.ani.app.ui.cache.components
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -46,9 +47,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.Stable
-import androidx.compose.runtime.State
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -61,144 +59,22 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import kotlinx.coroutines.CoroutineScope
-import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.tools.Progress
 import me.him188.ani.app.tools.getOrZero
-import me.him188.ani.app.tools.toPercentageOrZero
+import me.him188.ani.app.tools.rememberUiMonoTasker
+import me.him188.ani.app.tools.toProgress
 import me.him188.ani.app.ui.foundation.AsyncImage
+import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.interaction.clickableAndMouseRightClick
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
-import me.him188.ani.datasources.api.EpisodeSort
-import me.him188.ani.datasources.api.topic.FileSize
-import me.him188.ani.utils.platform.format1f
-
-@Stable
-class CacheEpisodeState(
-    val subjectId: Int,
-    val episodeId: Int,
-    val cacheId: String,
-    val sort: EpisodeSort,
-    val displayName: String,
-    val creationTime: Long?,
-    screenShots: State<List<String>>, // url
-    stats: State<Stats>,
-    state: State<CacheEpisodePaused>,
-    private val onPause: suspend () -> Unit, // background scope
-    private val onResume: suspend () -> Unit, // background scope
-    private val onDelete: suspend () -> Unit, // background scope
-    backgroundScope: CoroutineScope,
-) {
-    @Immutable
-    data class Stats(
-        val downloadSpeed: FileSize,
-        val progress: Progress,
-        val totalSize: FileSize,
-    ) {
-        companion object {
-            val Unspecified = Stats(FileSize.Unspecified, Progress.Unspecified, FileSize.Unspecified)
-        }
-    }
-
-    val hasValidSubjectAndEpisodeId get() = subjectId != 0 && episodeId != 0
-
-    val progress by derivedStateOf { stats.value.progress }
-
-    val screenShots by screenShots
-
-    val isPaused by derivedStateOf { state.value == CacheEpisodePaused.PAUSED }
-    val isFinished by derivedStateOf { stats.value.progress.isFinished }
-
-    val totalSize: FileSize by derivedStateOf { stats.value.totalSize }
-
-    val sizeText by derivedStateOf {
-        // 原本打算展示 "888.88 MB / 888.88 MB" 的格式, 感觉比较啰嗦, 还是省略了
-        // 这个函数有正确的 testing, 应该切换就能用
-//        calculateSizeText(totalSize.value, progress.value)
-
-        val value = this.totalSize
-        if (value == FileSize.Unspecified) {
-            null
-        } else {
-            "$value"
-        }
-    }
-
-    val progressText by derivedStateOf {
-        val value = stats.value.progress
-        if (value.isUnspecified || this.isFinished) {
-            null
-        } else {
-            "${String.format1f(value.toPercentageOrZero())}%"
-        }
-    }
-
-    val speedText by derivedStateOf {
-        val progressValue = stats.value.progress
-        val speed = stats.value.downloadSpeed
-        if (!progressValue.isUnspecified) {
-            val showSpeed = !progressValue.isFinished && speed != FileSize.Unspecified
-            if (showSpeed) {
-                return@derivedStateOf "${speed}/s"
-            }
-        }
-        null
-    }
-
-    val isProgressUnspecified by derivedStateOf { stats.value.progress.isUnspecified }
-
-    private val actionTasker = MonoTasker(backgroundScope)
-
-    val isActionInProgress by actionTasker::isRunning
-
-    fun pause() {
-        actionTasker.launch {
-            onPause()
-        }
-    }
-
-    fun resume() {
-        actionTasker.launch {
-            onResume()
-        }
-    }
-
-    fun delete() {
-        actionTasker.launch {
-            onDelete()
-        }
-    }
-
-    companion object {
-        /**
-         * @sample me.him188.ani.app.ui.cache.components.CacheEpisodeStateTest.CalculateSizeTextTest
-         */
-        fun calculateSizeText(
-            totalSize: FileSize,
-            progress: Float?,
-        ): String? {
-            if (progress == null && totalSize == FileSize.Unspecified) {
-                return null
-            }
-            return when {
-                progress == null -> {
-                    if (totalSize != FileSize.Unspecified) {
-                        "$totalSize"
-                    } else null
-                }
-
-                totalSize == FileSize.Unspecified -> null
-
-                else -> {
-                    "${totalSize * progress} / $totalSize"
-                }
-            }
-        }
-    }
-}
+import me.him188.ani.app.ui.foundation.widgets.LocalToaster
+import me.him188.ani.datasources.api.topic.FileSize.Companion.Unspecified
+import me.him188.ani.datasources.api.topic.FileSize.Companion.megaBytes
+import me.him188.ani.utils.platform.annotations.TestOnly
+import org.jetbrains.compose.ui.tooling.preview.Preview
 
 @Immutable
 enum class CacheEpisodePaused {
@@ -209,12 +85,16 @@ enum class CacheEpisodePaused {
 @Composable
 fun CacheEpisodeItem(
     state: CacheEpisodeState,
-    onPlay: (subjectId: Int, episodeId: Int) -> Unit,
+    onPlay: () -> Unit,
+    onResume: suspend () -> Unit,
+    onPause: suspend () -> Unit,
+    onDelete: suspend () -> Unit,
     modifier: Modifier = Modifier,
     containerColor: Color = MaterialTheme.colorScheme.surface,
 ) {
     var showDropdown by remember { mutableStateOf(false) }
     val listItemColors = ListItemDefaults.colors(containerColor = containerColor)
+    val scope = rememberUiMonoTasker()
     ListItem(
         headlineContent = {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -311,7 +191,7 @@ fun CacheEpisodeItem(
             val showPrimaryAction = currentWindowAdaptiveInfo1().isWidthAtLeastMedium
             Row(horizontalArrangement = Arrangement.aligned(Alignment.End)) {
                 // 当前状态下的推荐操作
-                val isActionInProgress = state.isActionInProgress.collectAsStateWithLifecycle()
+                val isActionInProgress = scope.isRunning.collectAsStateWithLifecycle()
                 AnimatedVisibility(showPrimaryAction) {
                     if (isActionInProgress.value) {
                         IconButton(
@@ -328,11 +208,11 @@ fun CacheEpisodeItem(
                     } else {
                         if (!state.isFinished) {
                             if (state.isPaused) {
-                                IconButton({ state.resume() }) {
+                                IconButton({ scope.launch { onResume() } }) {
                                     Icon(Icons.Rounded.Restore, "继续下载")
                                 }
                             } else {
-                                IconButton({ state.pause() }) {
+                                IconButton({ scope.launch { onPause() } }) {
                                     Icon(Icons.Rounded.Pause, "暂停下载", Modifier.size(28.dp))
                                 }
                             }
@@ -348,7 +228,10 @@ fun CacheEpisodeItem(
             Dropdown(
                 showDropdown, { showDropdown = false },
                 state,
-                onPlay = { onPlay(state.subjectId, state.episodeId) }, 
+                onPlay = { onPlay() },
+                onResume = { scope.launch { onResume() } },
+                onPause = { scope.launch { onPause() } },
+                onDelete = { scope.launch { onDelete() } },
             )
         },
         colors = listItemColors,
@@ -361,6 +244,9 @@ private fun Dropdown(
     onDismissRequest: () -> Unit,
     state: CacheEpisodeState,
     onPlay: () -> Unit,
+    onResume: () -> Unit,
+    onPause: () -> Unit,
+    onDelete: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var showConfirm by rememberSaveable { mutableStateOf(false) }
@@ -373,7 +259,7 @@ private fun Dropdown(
             confirmButton = {
                 TextButton(
                     {
-                        state.delete()
+                        onDelete()
                         showConfirm = false
                     },
                 ) {
@@ -394,7 +280,7 @@ private fun Dropdown(
                     text = { Text("继续下载") },
                     leadingIcon = { Icon(Icons.Rounded.Restore, null) },
                     onClick = {
-                        state.resume()
+                        onResume()
                         onDismissRequest()
                     },
                 )
@@ -403,28 +289,41 @@ private fun Dropdown(
                     text = { Text("暂停下载") },
                     leadingIcon = { Icon(Icons.Rounded.Pause, null) },
                     onClick = {
-                        state.pause()
+                        onPause()
                         onDismissRequest()
                     },
                 )
             }
         }
-        if (state.hasValidSubjectAndEpisodeId) {
-            DropdownMenuItem(
-                text = { Text("播放") },
-                leadingIcon = {
-                    // 这个内容如果太大会导致影响 text
-                    Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
-                        // 这个图标比其他图标小
-                        Icon(Icons.Rounded.PlayArrow, null, Modifier.requiredSize(28.dp))
+
+        val toaster = LocalToaster.current
+        DropdownMenuItem(
+            text = { Text("播放") },
+            leadingIcon = {
+                // 这个内容如果太大会导致影响 text
+                Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+                    // 这个图标比其他图标小
+                    Icon(Icons.Rounded.PlayArrow, null, Modifier.requiredSize(28.dp))
+                }
+            },
+            onClick = {
+                when (state.playability) {
+                    CacheEpisodeState.Playability.PLAYABLE -> {
+                        onPlay()
+                        onDismissRequest()
                     }
-                },
-                onClick = {
-                    onPlay()
-                    onDismissRequest()
-                },
-            )
-        }
+
+                    CacheEpisodeState.Playability.INVALID_SUBJECT_EPISODE_ID -> {
+                        toaster.toast("信息无效，无法播放")
+                    }
+
+                    CacheEpisodeState.Playability.STREAMING_NOT_SUPPORTED -> {
+                        toaster.toast("此资源不支持边下边播，请等待下载完成")
+                    }
+                }
+            },
+        )
+
         ProvideContentColor(MaterialTheme.colorScheme.error) {
             DropdownMenuItem(
                 text = { Text("删除", color = MaterialTheme.colorScheme.error) },
@@ -436,4 +335,69 @@ private fun Dropdown(
             )
         }
     }
+}
+
+
+@OptIn(TestOnly::class)
+@Preview
+@Composable
+private fun PreviewCacheGroupCardMissingTotalSize() = ProvideCompositionLocalsForPreview {
+    Box(Modifier.background(Color.DarkGray)) {
+        PreviewCacheEpisodeItem(
+            createTestCacheEpisode(
+                1,
+                progress = 0.5f.toProgress(),
+                downloadSpeed = 233.megaBytes,
+                totalSize = Unspecified,
+            ),
+        )
+    }
+}
+
+@OptIn(TestOnly::class)
+@Preview
+@Composable
+private fun PreviewCacheGroupCardMissingProgress() = ProvideCompositionLocalsForPreview {
+    Box(Modifier.background(Color.DarkGray)) {
+        PreviewCacheEpisodeItem(
+            createTestCacheEpisode(
+                1,
+                progress = Progress.Unspecified,
+                downloadSpeed = 233.megaBytes,
+                totalSize = 888.megaBytes,
+            ),
+        )
+    }
+}
+
+@OptIn(TestOnly::class)
+@Preview
+@Composable
+private fun PreviewCacheGroupCardMissingDownloadSpeed() = ProvideCompositionLocalsForPreview {
+    Box(Modifier.background(Color.DarkGray)) {
+        PreviewCacheEpisodeItem(
+            createTestCacheEpisode(
+                1,
+                progress = 0.3f.toProgress(),
+                downloadSpeed = Unspecified,
+                totalSize = 888.megaBytes,
+            ),
+        )
+    }
+}
+
+@Composable
+private fun PreviewCacheEpisodeItem(
+    state: CacheEpisodeState,
+    modifier: Modifier = Modifier,
+) {
+    CacheEpisodeItem(
+        state,
+        onPlay = { },
+        onResume = {},
+        onPause = {},
+        onDelete = {},
+        modifier = modifier,
+    )
+
 }

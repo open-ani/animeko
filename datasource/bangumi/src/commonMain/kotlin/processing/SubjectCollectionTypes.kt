@@ -1,8 +1,18 @@
+/*
+ * Copyright (C) 2024-2025 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.datasources.bangumi.processing
 
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.bangumi.models.BangumiEpisodeCollectionType
 import me.him188.ani.datasources.bangumi.models.BangumiSubjectCollectionType
+import me.him188.ani.datasources.bangumi.next.models.BangumiNextCollectionType
 
 
 fun UnifiedCollectionType.toSubjectCollectionType(): BangumiSubjectCollectionType? {
@@ -16,6 +26,17 @@ fun UnifiedCollectionType.toSubjectCollectionType(): BangumiSubjectCollectionTyp
     }
 }
 
+fun UnifiedCollectionType.toBangumiNextCollectionType(): BangumiNextCollectionType? {
+    return when (this) {
+        UnifiedCollectionType.WISH -> BangumiNextCollectionType.Wish
+        UnifiedCollectionType.DOING -> BangumiNextCollectionType.Doing
+        UnifiedCollectionType.DONE -> BangumiNextCollectionType.Collect
+        UnifiedCollectionType.ON_HOLD -> BangumiNextCollectionType.OnHold
+        UnifiedCollectionType.DROPPED -> BangumiNextCollectionType.Dropped
+        UnifiedCollectionType.NOT_COLLECTED -> null
+    }
+}
+
 fun BangumiSubjectCollectionType?.toCollectionType(): UnifiedCollectionType {
     return when (this) {
         BangumiSubjectCollectionType.Wish -> UnifiedCollectionType.WISH
@@ -23,6 +44,17 @@ fun BangumiSubjectCollectionType?.toCollectionType(): UnifiedCollectionType {
         BangumiSubjectCollectionType.Done -> UnifiedCollectionType.DONE
         BangumiSubjectCollectionType.OnHold -> UnifiedCollectionType.ON_HOLD
         BangumiSubjectCollectionType.Dropped -> UnifiedCollectionType.DROPPED
+        null -> UnifiedCollectionType.NOT_COLLECTED
+    }
+}
+
+fun BangumiNextCollectionType?.toCollectionType(): UnifiedCollectionType {
+    return when (this) {
+        BangumiNextCollectionType.Wish -> UnifiedCollectionType.WISH
+        BangumiNextCollectionType.Doing -> UnifiedCollectionType.DOING
+        BangumiNextCollectionType.Collect -> UnifiedCollectionType.DONE
+        BangumiNextCollectionType.OnHold -> UnifiedCollectionType.ON_HOLD
+        BangumiNextCollectionType.Dropped -> UnifiedCollectionType.DROPPED
         null -> UnifiedCollectionType.NOT_COLLECTED
     }
 }

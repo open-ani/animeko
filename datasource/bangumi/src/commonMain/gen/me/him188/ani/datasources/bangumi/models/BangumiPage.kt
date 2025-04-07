@@ -32,7 +32,7 @@ import kotlinx.serialization.Serializable
 /**
  * 
  *
- * @param total
+ * @param total 
  * @param limit 
  * @param offset 
  */

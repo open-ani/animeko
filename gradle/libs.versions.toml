@@ -7,7 +7,7 @@ kotlinx-coroutines = "1.10.1" # https://github.com/Kotlin/kotlinx.coroutines/rel
 kotlinx-serialization = "1.8.0" # https://github.com/Kotlin/kotlinx.serialization/releases
 kotlinx-datetime = "0.6.2" # https://github.com/Kotlin/kotlinx-datetime/releases
 kotlinx-atomicfu = "0.27.0" # https://github.com/Kotlin/kotlinx-atomicfu/releases
-kotlinx-io = "0.6.0" # https://github.com/Kotlin/kotlinx-io/releases
+kotlinx-io = "0.7.0" # https://github.com/Kotlin/kotlinx-io/releases
 kotlinx-collections-immutable = "0.3.8" # https://github.com/Kotlin/kotlinx.collections.immutable/releases
 
 ### ANDROIDX ###
@@ -61,7 +61,7 @@ snakeyaml = "2.2"
 coil = "3.1.0" # https://github.com/coil-kt/coil/releases
 constraintlayout-compose = "0.4.0"
 antlr-kotlin = "1.0.2"
-oshai-kotlin-logging = "7.0.0" # Only for native. On JVM we use slf4j directly.
+diamondedge-logging = "2.0.3" # Only for native. On JVM we use slf4j directly.
 ipaddress-parser = "5.5.1"
 turbine = "1.2.0" # https://github.com/cashapp/turbine/releases/
 junit4 = "4.13.2"
@@ -93,6 +93,7 @@ kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", v
 atomicfu-gradle-plugin = { module = "org.jetbrains.kotlinx:atomicfu-gradle-plugin", version.ref = "kotlinx-atomicfu" }
 compose-multiplatfrom-gradle-plugin = { module = "org.jetbrains.compose:org.jetbrains.compose.gradle.plugin", version.ref = "compose-multiplatform" }
 kotlin-compose-compiler-gradle-plugin = { module = "org.jetbrains.kotlin:compose-compiler-gradle-plugin", version.ref = "kotlin" }
+kotlin-native-cocoapods-gradle-plugin = { module = "org.jetbrains.kotlin.native.cocoapods:org.jetbrains.kotlin.native.cocoapods.gradle.plugin", version.ref = "kotlin" }
 
 # JUnit
 # These are used dynamically
@@ -108,6 +109,7 @@ junit4 = { module = "junit:junit", version.ref = "junit4" }
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinx-datetime" }
 kotlinx-io-core = { module = "org.jetbrains.kotlinx:kotlinx-io-core", version.ref = "kotlinx-io" }
 kotlinx-io-bytestring = { module = "org.jetbrains.kotlinx:kotlinx-io-bytestring", version.ref = "kotlinx-io" }
+kotlinx-io-okio = { module = "org.jetbrains.kotlinx:kotlinx-io-okio", version.ref = "kotlinx-io" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "kotlinx-coroutines" }
 kotlinx-coroutines-swing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "kotlinx-coroutines" }
@@ -245,7 +247,7 @@ jna = { module = "net.java.dev.jna:jna", version.ref = "jna" }
 jna-platform = { module = "net.java.dev.jna:jna-platform", version.ref = "jna" }
 jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
 ksoup = { module = "com.fleeksoft.ksoup:ksoup", version.ref = "ksoup" }
-oshai-kotlin-logging = { module = "io.github.oshai:kotlin-logging", version.ref = "oshai-kotlin-logging" }
+diamondedge-logging = { module = "com.diamondedge:logging", version.ref = "diamondedge-logging" }
 jsonpathkt-kotlinx = { module = "com.eygraber:jsonpathkt-kotlinx", version.ref = "jsonpathkt-kotlinx" }
 filekit-compose = { module = "io.github.vinceglb:filekit-compose", version.ref = "filekit" }
 filekit-core = { module = "io.github.vinceglb:filekit-core", version.ref = "filekit" }

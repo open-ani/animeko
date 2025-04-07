@@ -1,0 +1,4 @@
+### Get macOS x64 update
+GET https://s1.animeko.openani.org/v1/updates/incremental/details
+        ?clientVersion=4.5.0&clientPlatform=macos&clientArch=x86_64&releaseClass=stable
+Accept: application/json

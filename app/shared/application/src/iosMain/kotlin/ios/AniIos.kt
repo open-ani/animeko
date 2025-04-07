@@ -29,10 +29,13 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.io.files.SystemFileSystem
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.get
+import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.resolver.HttpStreamingMediaResolver
+import me.him188.ani.app.domain.media.resolver.IosWebMediaResolver
 import me.him188.ani.app.domain.media.resolver.LocalFileMediaResolver
 import me.him188.ani.app.domain.media.resolver.MediaResolver
 import me.him188.ani.app.domain.media.resolver.TorrentMediaResolver
@@ -40,19 +43,19 @@ import me.him188.ani.app.domain.torrent.DefaultTorrentManager
 import me.him188.ani.app.domain.torrent.TorrentManager
 import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.navigation.BrowserNavigator
+import me.him188.ani.app.navigation.IosBrowserNavigator
 import me.him188.ani.app.navigation.LocalNavigator
-import me.him188.ani.app.navigation.NoopBrowserNavigator
 import me.him188.ani.app.platform.AppStartupTasks
 import me.him188.ani.app.platform.GrantedPermissionManager
 import me.him188.ani.app.platform.IosContext
 import me.him188.ani.app.platform.IosContextFiles
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.PermissionManager
-import me.him188.ani.app.platform.PlatformWindow
 import me.him188.ani.app.platform.create
 import me.him188.ani.app.platform.createAppRootCoroutineScope
 import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.platform.getCommonKoinModule
+import me.him188.ani.app.platform.rememberPlatformWindow
 import me.him188.ani.app.platform.startCommonKoinModule
 import me.him188.ani.app.tools.update.IosUpdateInstaller
 import me.him188.ani.app.tools.update.UpdateInstaller
@@ -69,18 +72,17 @@ import me.him188.ani.app.ui.foundation.widgets.Toaster
 import me.him188.ani.app.ui.main.AniApp
 import me.him188.ani.app.ui.main.AniAppContent
 import me.him188.ani.utils.analytics.AnalyticsConfig
-import me.him188.ani.utils.analytics.AnalyticsHolder
-import me.him188.ani.utils.analytics.AnalyticsImpl
 import me.him188.ani.utils.io.SystemCacheDir
-import me.him188.ani.utils.io.SystemDocumentDir
 import me.him188.ani.utils.io.SystemPath
+import me.him188.ani.utils.io.SystemSupportDir
 import me.him188.ani.utils.io.createDirectories
 import me.him188.ani.utils.io.resolve
+import me.him188.ani.utils.logging.IosLoggingConfigurator
 import me.him188.ani.utils.platform.annotations.TestOnly
 import org.koin.core.context.startKoin
 import org.koin.dsl.module
-import org.openani.mediamp.DummyMediampPlayer
 import org.openani.mediamp.MediampPlayerFactory
+import org.openani.mediamp.avkit.AVKitMediampPlayerFactory
 import platform.UIKit.UIViewController
 
 @Suppress("FunctionName", "unused") // used in Swift
@@ -90,15 +92,16 @@ fun MainViewController(): UIViewController {
     val context = IosContext(
         IosContextFiles(
             cacheDir = SystemCacheDir.apply { createDirectories() },
-            dataDir = SystemDocumentDir.apply { createDirectories() },
+            dataDir = SystemSupportDir.apply { createDirectories() },
         ),
     )
     AppStartupTasks.printVersions()
+    IosLoggingConfigurator.configure(context.files.logsDir.path, SystemFileSystem)
 
     val koin = startKoin {
         modules(getCommonKoinModule({ context }, scope))
-        modules(getIosModules(SystemDocumentDir.resolve("torrent"), scope))
-    }.startCommonKoinModule(scope).koin
+        modules(getIosModules(context, context.files.dataDir.resolve("torrent"), scope))
+    }.startCommonKoinModule(context, scope).koin
 
     val analyticsInitializer = scope.launch {
         val settingsRepository = koin.get<SettingsRepository>()
@@ -112,16 +115,17 @@ fun MainViewController(): UIViewController {
             AppStartupTasks.initializeSentry(settings.userId)
         }
         if (settings.allowAnonymousAnalytics) {
-            AnalyticsHolder.init(
-                AnalyticsImpl(
+            AppStartupTasks.initializeAnalytics {
+                IosAnalyticsImpl(
                     AnalyticsConfig.create(),
+                    settings.userId,
                 ).apply {
                     init(
                         apiKey = currentAniBuildConfig.analyticsKey,
                         host = currentAniBuildConfig.analyticsServer,
                     )
-                },
-            )
+                }
+            }
         }
     }
 
@@ -137,11 +141,10 @@ fun MainViewController(): UIViewController {
     runBlocking { analyticsInitializer.join() }
     return ComposeUIViewController {
         AniApp {
+            val platformWindow = rememberPlatformWindow()
             CompositionLocalProvider(
                 LocalContext provides context,
-                LocalPlatformWindow provides remember {
-                    PlatformWindow()
-                },
+                LocalPlatformWindow provides platformWindow,
                 LocalOnBackPressedDispatcherOwner provides onBackPressedDispatcherOwner,
             ) {
                 Box(
@@ -182,13 +185,14 @@ fun MainViewController(): UIViewController {
 }
 
 fun getIosModules(
+    context: IosContext,
     defaultTorrentCacheDir: SystemPath,
     coroutineScope: CoroutineScope,
 ) = module {
     single<PermissionManager> {
         GrantedPermissionManager
     }
-    single<BrowserNavigator> { NoopBrowserNavigator }
+    single<BrowserNavigator> { IosBrowserNavigator() }
     single<TorrentManager> {
         DefaultTorrentManager.create(
             coroutineScope.coroutineContext,
@@ -200,7 +204,7 @@ fun getIosModules(
         )
     }
     single<MediampPlayerFactory<*>> {
-        DummyMediampPlayer.Factory
+        AVKitMediampPlayerFactory()
     }
 
 
@@ -209,7 +213,8 @@ fun getIosModules(
             get<TorrentManager>().engines
                 .map { TorrentMediaResolver(it) }
                 .plus(LocalFileMediaResolver())
-                .plus(HttpStreamingMediaResolver()),
+                .plus(HttpStreamingMediaResolver())
+                .plus(IosWebMediaResolver(get<MediaSourceManager>().webVideoMatcherLoader, context)),
         )
     }
     single<UpdateInstaller> { IosUpdateInstaller }

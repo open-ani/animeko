@@ -20,10 +20,28 @@ data class SubjectSearchQuery(
     val rating: RatingRange? = null,
 //    val rank: Pair<String?, String?> = Pair(null, null),
     val nsfw: Boolean? = null,
+    val sort: SearchSort = SearchSort.MATCH,
 ) {
     fun hasFilters(): Boolean {
-        return tags != null || season != null || rating != null || nsfw != null
+        return tags != null || season != null || rating != null || nsfw != null || sort != SearchSort.MATCH
     }
+}
+
+/**
+ * @see me.him188.ani.datasources.bangumi.models.search.BangumiSort
+ */
+enum class SearchSort {
+    MATCH,
+
+    /**
+     * 排名
+     */
+    RANK,
+
+    /**
+     * 收藏人数
+     */
+    COLLECTION,
 }
 
 data class RatingRange(

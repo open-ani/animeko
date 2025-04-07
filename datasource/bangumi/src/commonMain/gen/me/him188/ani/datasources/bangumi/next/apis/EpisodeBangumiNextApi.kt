@@ -24,23 +24,26 @@
 
 package me.him188.ani.datasources.bangumi.next.apis
 
+import io.ktor.client.HttpClient
+import io.ktor.client.HttpClientConfig
+import io.ktor.client.engine.HttpClientEngine
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.serializer
+import me.him188.ani.datasources.bangumi.next.infrastructure.ApiClient
+import me.him188.ani.datasources.bangumi.next.infrastructure.HttpResponse
+import me.him188.ani.datasources.bangumi.next.infrastructure.RequestConfig
+import me.him188.ani.datasources.bangumi.next.infrastructure.RequestMethod
+import me.him188.ani.datasources.bangumi.next.infrastructure.map
+import me.him188.ani.datasources.bangumi.next.infrastructure.wrap
 import me.him188.ani.datasources.bangumi.next.models.BangumiNextCreateEpisodeComment200Response
 import me.him188.ani.datasources.bangumi.next.models.BangumiNextCreateEpisodeCommentRequest
 import me.him188.ani.datasources.bangumi.next.models.BangumiNextEpisode
-import me.him188.ani.datasources.bangumi.next.models.BangumiNextErrorResponse
 import me.him188.ani.datasources.bangumi.next.models.BangumiNextGetEpisodeComments200ResponseInner
 import me.him188.ani.datasources.bangumi.next.models.BangumiNextUpdateContent
-
-import me.him188.ani.datasources.bangumi.next.infrastructure.*
-import io.ktor.client.HttpClient
-import io.ktor.client.HttpClientConfig
-import io.ktor.client.request.forms.formData
-import io.ktor.client.engine.HttpClientEngine
-import kotlinx.serialization.json.Json
-import io.ktor.http.ParametersBuilder
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
 
 open class EpisodeBangumiNextApi : ApiClient {
 
@@ -125,8 +128,8 @@ open class EpisodeBangumiNextApi : ApiClient {
 
     /**
      * 获取剧集信息
-     *
-     * @param episodeID
+     * 
+     * @param episodeID 
      * @return BangumiNextEpisode
      */
     @Suppress("UNCHECKED_CAST")
@@ -134,7 +137,7 @@ open class EpisodeBangumiNextApi : ApiClient {
 
         val localVariableAuthNames = listOf<String>()
 
-        val localVariableBody =
+        val localVariableBody = 
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()

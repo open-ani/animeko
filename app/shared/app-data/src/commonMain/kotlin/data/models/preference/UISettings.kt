@@ -113,6 +113,7 @@ data class EpisodeProgressSettings(
 }
 
 @Immutable
+@Serializable
 enum class EpisodeListProgressTheme {
     /**
      * 点亮模式, 看过的是亮色

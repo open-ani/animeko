@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -44,25 +44,25 @@ actual suspend fun Context.setRequestFullScreen(window: PlatformWindowMP, fullsc
     }
 }
 
-actual fun Context.setSystemBarVisible(visible: Boolean) {
+actual fun Context.setSystemBarVisible(window: PlatformWindowMP, visible: Boolean) {
     if (this !is Activity) return
 
-    val insetsController = WindowCompat.getInsetsController(window, window.decorView)
+    val insetsController = WindowCompat.getInsetsController(this.window, this.window.decorView)
     val bitmask = WindowInsetsCompat.Type.statusBars() or WindowInsetsCompat.Type.navigationBars()
-    
+
     if (visible) {
         insetsController.show(bitmask)
         insetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
         if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q) {
             @Suppress("DEPRECATION")
-            window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_FULLSCREEN)
+            this.window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_FULLSCREEN)
         }
     } else {
         insetsController.hide(bitmask)
         insetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q) {
             @Suppress("DEPRECATION")
-            window.addFlags(android.view.WindowManager.LayoutParams.FLAG_FULLSCREEN)
+            this.window.addFlags(android.view.WindowManager.LayoutParams.FLAG_FULLSCREEN)
         }
     }
 }

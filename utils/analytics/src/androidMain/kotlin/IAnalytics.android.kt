@@ -36,7 +36,7 @@ class AnalyticsImpl(
     }
 
     override fun recordEventImpl(event: AnalyticsEvent, properties: Map<String, Any>) {
-        PostHog.capture(event = event.event)
+        PostHog.capture(event = event.event, properties = properties)
     }
 
     override fun onAppStart() {

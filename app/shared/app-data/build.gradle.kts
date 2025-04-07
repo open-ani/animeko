@@ -87,6 +87,7 @@ kotlin {
     }
     sourceSets.nativeMain.dependencies {
         implementation(libs.stately.common) // fixes koin bug
+        implementation(libs.kotlinx.io.okio)
     }
 }
 

@@ -80,6 +80,7 @@ object AnitorrentLibraryLoader : TorrentLibraryLoader {
                 loadLibraryFromResources("anitorrent", temp)
             } catch (e: Throwable) {
                 e.addSuppressed(firstE)
+                throw e
             }
             logger.info { "Loading anitorrent library: success (from resources)" }
         }

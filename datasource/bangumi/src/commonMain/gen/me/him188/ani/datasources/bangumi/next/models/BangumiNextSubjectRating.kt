@@ -30,12 +30,12 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
+ * 
  *
- *
- * @param count
- * @param rank
- * @param score
- * @param total
+ * @param count 
+ * @param rank 
+ * @param score 
+ * @param total 
  */
 @Serializable
 

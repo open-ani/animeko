@@ -31,6 +31,7 @@ private fun PreviewDetailsTab() {
         Scaffold {
             SubjectDetailsDefaults.DetailsTab(
                 TestSubjectInfo,
+                {},
                 rememberTestLazyPagingItems(TestSubjectStaffInfo),
                 exposedStaff = rememberTestLazyPagingItems(TestSubjectStaffInfo.take(6)),
                 totalStaffCount = TestSubjectStaffInfo.size,

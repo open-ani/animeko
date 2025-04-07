@@ -128,9 +128,10 @@ data object SelectorChannelFormatIndexGrouped :
         val selectLists = QueryParser.parseSelectorOrNull(config.selectEpisodeLists) ?: return null
         val matchEpisodeSortFromNameRegex = Regex.parseOrNull(config.matchEpisodeSortFromName) ?: return null
 
+        // null means no match, will be filtered out
         val channelNames = page.select(selectChannelNames)
-            .mapNotNull { e ->
-                val text = e.text().trim().takeIf { it.isNotBlank() } ?: return@mapNotNull null
+            .map { e ->
+                val text = e.text().trim().takeIf { it.isNotBlank() } ?: return@map null
                 if (matchChannelName == null) {
                     text
                 } else {
@@ -142,6 +143,9 @@ data object SelectorChannelFormatIndexGrouped :
 
         val episodes = lists.asSequence()
             .zip(channelNames.asSequence()) { list, channelName ->
+                if (channelName == null) {
+                    return@zip emptyList()
+                }
                 val links = selectLinksOrNull(config.selectEpisodeLinksFromList, list)
 
                 list.select(selectEpisodesFromList).mapIndexedNotNull { index, a ->
@@ -163,7 +167,7 @@ data object SelectorChannelFormatIndexGrouped :
             .flatten()
 
         return SelectedChannelEpisodes(
-            channelNames,
+            channelNames.filterNotNull(),
             episodes.toList(),
         )
     }

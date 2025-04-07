@@ -109,7 +109,8 @@ interface MediaSource : AutoCloseable {
      *
      * 当用户关闭设置中的所有自动过滤选项时, 将能够看到所有 [fetch] 返回的资源.
      *
-     * ###
+     * @throws kotlinx.io.IOException
+     * @throws kotlin.coroutines.cancellation.CancellationException
      */
     suspend fun fetch(query: MediaFetchRequest): SizedSource<MediaMatch>
 

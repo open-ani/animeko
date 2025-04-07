@@ -16,10 +16,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridItemScope
-import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
-import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
-import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyGridItemScope
+import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DividerDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -38,7 +38,7 @@ import me.him188.ani.app.ui.foundation.theme.stronglyWeaken
 import me.him188.ani.app.ui.foundation.thenNotNull
 import me.him188.ani.app.ui.foundation.widgets.PullToRefreshBox
 import me.him188.ani.app.ui.search.LoadErrorCard
-import me.him188.ani.app.ui.search.SearchResultLazyVerticalStaggeredGrid
+import me.him188.ani.app.ui.search.SearchResultLazyVerticalGrid
 import me.him188.ani.app.ui.search.isLoadingFirstPageOrRefreshing
 import me.him188.ani.app.ui.search.isLoadingNextPage
 import me.him188.ani.utils.platform.isMobile
@@ -50,8 +50,8 @@ fun CommentColumn(
     hasDividerLine: Boolean = true,
     contentPadding: PaddingValues = PaddingValues(0.dp),
     connectedScrollState: ConnectedScrollState? = null,
-    lazyStaggeredGridState: LazyStaggeredGridState = rememberLazyStaggeredGridState(),
-    commentItem: @Composable LazyStaggeredGridItemScope.(index: Int, item: UIComment) -> Unit
+    state: LazyGridState = rememberLazyGridState(),
+    commentItem: @Composable LazyGridItemScope.(index: Int, item: UIComment) -> Unit
 ) {
     PullToRefreshBox(
         isRefreshing = items.isLoadingFirstPageOrRefreshing,
@@ -60,7 +60,7 @@ fun CommentColumn(
         enabled = LocalPlatform.current.isMobile(),
         contentAlignment = Alignment.TopCenter,
     ) {
-        SearchResultLazyVerticalStaggeredGrid(
+        SearchResultLazyVerticalGrid(
             items,
             error = {
                 LoadErrorCard(
@@ -73,12 +73,12 @@ fun CommentColumn(
                 .thenNotNull(
                     connectedScrollState?.let {
                         Modifier.nestedScroll(connectedScrollState.nestedScrollConnection)
-                            .nestedScrollWorkaround(lazyStaggeredGridState, connectedScrollState)
+                            .nestedScrollWorkaround(state, connectedScrollState)
                     },
                 ),
-            lazyStaggeredGridState = lazyStaggeredGridState,
             contentPadding = contentPadding,
-            cells = StaggeredGridCells.Fixed(1),
+            cells = GridCells.Fixed(1),
+            showLoadingIndicatorInFirstPage = false, // Use PTR instead
         ) {
             item("spacer header") { Spacer(Modifier.height(1.dp)) }
 

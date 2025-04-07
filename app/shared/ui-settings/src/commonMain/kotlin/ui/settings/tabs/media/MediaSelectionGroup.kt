@@ -11,9 +11,9 @@ package me.him188.ani.app.ui.settings.tabs.media
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Hd
-import androidx.compose.material.icons.rounded.Language
-import androidx.compose.material.icons.rounded.Subtitles
+import androidx.compose.material.icons.outlined.Hd
+import androidx.compose.material.icons.outlined.Language
+import androidx.compose.material.icons.outlined.Subtitles
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -126,7 +126,7 @@ internal fun SettingsScope.MediaSelectionGroup(
                     TIPS_LONG_CLICK_SORT,
                 )
             },
-            icon = { Icon(Icons.Rounded.Language, null) },
+            icon = { Icon(Icons.Outlined.Language, null) },
             title = { Text("字幕语言") },
         )
 
@@ -160,7 +160,7 @@ internal fun SettingsScope.MediaSelectionGroup(
             item = { Text(renderResolution(it)) },
             key = { it },
             dialogDescription = { Text(TIPS_LONG_CLICK_SORT) },
-            icon = { Icon(Icons.Rounded.Hd, null) },
+            icon = { Icon(Icons.Outlined.Hd, null) },
             title = { Text("分辨率") },
             description = { Text("未选择的分辨率也会显示，但不会自动选择") },
         )
@@ -176,7 +176,7 @@ internal fun SettingsScope.MediaSelectionGroup(
             description = {
                 Text("支持使用正则表达式，使用逗号分隔。越靠前的表达式的优先级越高\n\n示例: 桜都, 喵萌, 北宇治\n将优先采用桜都字幕组资源，否则采用喵萌，以此类推")
             },
-            icon = { Icon(Icons.Rounded.Subtitles, null) },
+            icon = { Icon(Icons.Outlined.Subtitles, null) },
             placeholder = { Text(textAny) },
             onValueChangeCompleted = { new ->
                 state.defaultMediaPreferenceState.update(

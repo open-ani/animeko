@@ -32,11 +32,11 @@ import kotlinx.serialization.Serializable
  * 同名字段意义同<a href=\"#model-Subject\">Subject</a>
  *
  * @param id
- * @param type
- * @param name
- * @param comment
- * @param addedAt
- * @param images
+ * @param type 
+ * @param name 
+ * @param comment 
+ * @param addedAt 
+ * @param images 
  * @param infobox 
  * @param date 
  */

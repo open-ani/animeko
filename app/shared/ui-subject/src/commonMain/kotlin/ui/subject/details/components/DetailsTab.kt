@@ -63,6 +63,7 @@ import me.him188.ani.app.data.models.subject.RelatedCharacterInfo
 import me.him188.ani.app.data.models.subject.RelatedPersonInfo
 import me.him188.ani.app.data.models.subject.RelatedSubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectInfo
+import me.him188.ani.app.data.models.subject.Tag
 import me.him188.ani.app.data.models.subject.nameCn
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.SubjectDetailPlaceholder
@@ -120,6 +121,7 @@ fun SubjectDetailsDefaults.SeasonTag(
 @Composable
 fun SubjectDetailsDefaults.DetailsTab(
     info: SubjectInfo,
+    onClickTag: (Tag) -> Unit,
     staff: LazyPagingItems<RelatedPersonInfo>,
     exposedStaff: LazyPagingItems<RelatedPersonInfo>,
     totalStaffCount: Int?,
@@ -155,7 +157,11 @@ fun SubjectDetailsDefaults.DetailsTab(
                     )
                 }
 
-                TagsList(info, Modifier.padding(horizontal = horizontalPadding))
+                TagsList(
+                    info,
+                    onClickTag,
+                    Modifier.padding(horizontal = horizontalPadding),
+                )
             }
         }
 
@@ -244,6 +250,7 @@ private const val ALWAYS_SHOW_TAGS_COUNT = 8
 @Composable
 private fun TagsList(
     info: SubjectInfo,
+    onClickTag: (Tag) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier) {
@@ -278,7 +285,7 @@ private fun TagsList(
                     // 直接放 AssistChip 会导致垂直间距过大，不得不套一个 Box。可能是 workaround
                 ) {
                     AssistChip(
-                        onClick = { /* TODO */ },
+                        onClick = { onClickTag(tag) },
                         label = {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -14,6 +14,7 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,6 +32,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -45,8 +47,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.domain.session.AuthState
+import me.him188.ani.app.domain.session.TestAuthState
+import me.him188.ani.app.domain.session.TestGuestAuthState
+import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.layout.paddingIfNotEmpty
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
+import me.him188.ani.utils.platform.annotations.TestOnly
+import org.jetbrains.compose.ui.tooling.preview.PreviewLightDark
 
 // 留着以后可能要改成支持其他错误类型
 
@@ -285,3 +292,74 @@ fun SessionTipsIcon(
         }
     }
 }
+
+
+@Composable
+private fun PreviewSessionTipsAreaImpl(
+    authState: AuthState,
+    modifier: Modifier = Modifier,
+) {
+    Column {
+        Text(authState.toString(), Modifier.padding(bottom = 4.dp))
+        Surface(Modifier.fillMaxWidth(), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)) {
+            SessionTipsArea(authState, {}, {}, {}, modifier)
+        }
+    }
+}
+
+@Composable
+private fun PreviewSessionTipsIconImpl(
+    authState: AuthState,
+    modifier: Modifier = Modifier,
+) {
+    Column {
+        Text(authState.toString(), Modifier.padding(bottom = 4.dp))
+        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            SessionTipsIcon(authState, {}, {}, modifier)
+        }
+    }
+}
+
+@OptIn(TestOnly::class)
+@Composable
+@PreviewLightDark
+private fun PreviewSessionTipsArea() {
+    ProvideCompositionLocalsForPreview {
+        Surface {
+            Column(verticalArrangement = Arrangement.spacedBy(32.dp)) {
+                for (status in TestSessionStatuses) {
+                    PreviewSessionTipsAreaImpl(status)
+                }
+            }
+        }
+    }
+}
+
+@OptIn(TestOnly::class)
+@Composable
+@PreviewLightDark
+private fun PreviewSessionTipsIcon() {
+    ProvideCompositionLocalsForPreview {
+        Surface {
+            Column(verticalArrangement = Arrangement.spacedBy(32.dp)) {
+                for (status in TestSessionStatuses) {
+                    PreviewSessionTipsIconImpl(status)
+                }
+            }
+        }
+    }
+}
+
+@Stable
+@TestOnly
+val TestSessionStatuses
+    get() = listOf(
+        AuthState.NotAuthed,
+        AuthState.AwaitingToken("REFRESH"),
+        AuthState.AwaitingUserInfo("REFRESH"),
+        AuthState.NetworkError,
+        AuthState.TokenExpired,
+        AuthState.UnknownError(Exception()),
+        TestAuthState,
+        TestGuestAuthState,
+    )

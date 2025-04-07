@@ -121,7 +121,7 @@ abstract class AbstractTorrentEngine<Downloader : TorrentDownloader, Config : An
         }
         .retry(3) { e ->
             if (e is UnsupportedOperationException) {
-                logger.warn(e) { "Failed to create TorrentDownloader $type because it is not supported" }
+                logger.warn { "Failed to create TorrentDownloader $type because it is not supported" }
                 return@retry false
             }
             logger.warn(e) { "Failed to create TorrentDownloader $type, retrying later" }

@@ -30,8 +30,8 @@ import kotlinx.serialization.Serializable
 /**
  * 
  *
- * @param total
- * @param limit
+ * @param total 
+ * @param limit 
  * @param offset 
  * @param `data` 
  */

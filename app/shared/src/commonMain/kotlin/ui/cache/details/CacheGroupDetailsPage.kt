@@ -17,7 +17,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.material3.BottomSheetDefaults
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScaffoldDefaults
@@ -30,6 +30,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
@@ -41,8 +42,6 @@ import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.interaction.WindowDragArea
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
-import me.him188.ani.datasources.api.Media
-import me.him188.ani.datasources.api.source.MediaSourceInfo
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
@@ -63,15 +62,30 @@ class MediaCacheDetailsPageViewModel(
         ) { results ->
             results.firstNotNullOfOrNull { it }
         }
-    }
+    }.shareInBackground()
 
-    private val originMediaFlow = mediaCacheFlow.map { it?.origin }
+    private val sourceInfoFlow
+        get() = mediaCacheFlow
+            .map { it?.origin }
+            .flatMapLatest { media ->
+                media?.mediaSourceId?.let { mediaSourceManager.infoFlowByMediaSourceId(it) } ?: flowOf(null)
+            }
 
-    val media by originMediaFlow.produceState(null)
-    val sourceInfo: MediaSourceInfo? by originMediaFlow.flatMapLatest { media ->
-        media?.mediaSourceId?.let { mediaSourceManager.infoFlowByMediaSourceId(it) } ?: flowOf(null)
-    }.produceState(null)
+    val screenStateFlow =
+        combine(sourceInfoFlow, mediaCacheFlow) { sourceInfo, mediaCache ->
+            val originalMedia = mediaCache?.origin
+            if (originalMedia == null) {
+                MediaCacheDetailsScreenState(details = null)
+            } else {
+                val cachedMedia = mediaCache.getCachedMedia()
+                MediaCacheDetailsScreenState(MediaDetails.from(originalMedia, sourceInfo, cachedMedia))
+            }
+        }.stateInBackground(MediaCacheDetailsScreenState(null))
 }
+
+data class MediaCacheDetailsScreenState(
+    val details: MediaDetails?, // null for placeholder
+)
 
 @Composable
 fun MediaCacheDetailsScreen(
@@ -80,9 +94,9 @@ fun MediaCacheDetailsScreen(
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
 ) {
+    val screenState by vm.screenStateFlow.collectAsStateWithLifecycle()
     MediaCacheDetailsScreen(
-        media = vm.media,
-        sourceInfo = vm.sourceInfo,
+        state = screenState,
         navigationIcon = navigationIcon,
         modifier = modifier,
         windowInsets = windowInsets,
@@ -91,8 +105,7 @@ fun MediaCacheDetailsScreen(
 
 @Composable
 fun MediaCacheDetailsScreen(
-    media: Media?,
-    sourceInfo: MediaSourceInfo?,
+    state: MediaCacheDetailsScreenState,
     navigationIcon: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
@@ -111,33 +124,29 @@ fun MediaCacheDetailsScreen(
         },
         contentWindowInsets = windowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
     ) { paddingValues ->
-        Column(Modifier.fillMaxSize()) {
-            Column(
-                Modifier
-                    .align(Alignment.CenterHorizontally)
-                    .padding(paddingValues)
-                    .widthIn(max = BottomSheetDefaults.SheetMaxWidth),
+        Column(
+            Modifier
+                .fillMaxSize()
+                .wrapContentWidth(align = Alignment.CenterHorizontally)
+                .padding(paddingValues)
+                .widthIn(max = 1200.dp),
+        ) {
+            AniAnimatedVisibility(
+                visible = state.details != null,
+                enter = LocalAniMotionScheme.current.animatedVisibility.screenEnter,
+                exit = LocalAniMotionScheme.current.animatedVisibility.screenExit,
             ) {
-                Surface(Modifier.fillMaxHeight()) {
-                    AniAnimatedVisibility(
-                        visible = media != null,
-                        enter = LocalAniMotionScheme.current.animatedVisibility.screenEnter,
-                        exit = LocalAniMotionScheme.current.animatedVisibility.screenExit,
-                    ) {
-                        media?.let {
-                            Surface(
-                                Modifier
-                                    .padding(horizontal = 16.dp)
-                                    .padding(vertical = 16.dp),
-                                color = ListItemDefaults.containerColor, // fill gap between items
-                            ) {
-                                MediaDetailsLazyGrid(
-                                    it,
-                                    sourceInfo = sourceInfo,
-                                    Modifier.fillMaxHeight(),
-                                )
-                            }
-                        }
+                Surface(
+                    Modifier
+                        .padding(horizontal = 16.dp)
+                        .padding(vertical = 16.dp),
+                    color = ListItemDefaults.containerColor, // fill gap between items
+                ) {
+                    state.details?.let {
+                        MediaDetailsLazyGrid(
+                            it,
+                            Modifier.fillMaxHeight(),
+                        )
                     }
                 }
             }

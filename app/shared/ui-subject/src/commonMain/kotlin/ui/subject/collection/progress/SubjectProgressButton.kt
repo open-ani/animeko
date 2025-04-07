@@ -30,7 +30,7 @@ import me.him188.ani.app.ui.subject.episode.list.cacheStatusIndicationColor
 /**
  * 显示条目的当前观看进度或推荐观看下一集.
  *
- * 在我的追番中的每个卡片的右下角.
+ * 在追番中的每个卡片的右下角.
  */
 @Composable
 fun SubjectProgressButton(
