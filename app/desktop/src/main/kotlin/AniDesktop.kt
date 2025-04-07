@@ -551,9 +551,11 @@ private fun FrameWindowScope.MainWindowContent(
 
                 CompositionLocalProvider(
                     LocalNavigator provides aniNavigator,
-                    LocalToaster provides object : Toaster {
-                        override fun toast(text: String) {
-                            vm.show(text)
+                    LocalToaster provides remember(vm) {
+                        object : Toaster {
+                            override fun toast(text: String) {
+                                vm.show(text)
+                            }
                         }
                     },
                     LocalContextMenuRepresentation provides DesktopContextMenuRepresentation,

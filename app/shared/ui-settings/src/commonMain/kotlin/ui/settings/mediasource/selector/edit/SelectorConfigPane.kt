@@ -63,6 +63,7 @@ import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
 import me.him188.ani.app.ui.foundation.theme.EasingDurations
 import me.him188.ani.app.ui.settings.mediasource.rss.edit.MediaSourceHeadline
 import me.him188.ani.datasources.api.topic.Resolution
+import me.him188.ani.datasources.api.topic.SubtitleLanguage
 import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
@@ -379,6 +380,36 @@ internal fun SelectorConfigurationPane(
                                         text = { Text(resolution.displayName) },
                                         onClick = {
                                             state.defaultResolution = resolution
+                                            showMenu = false
+                                        },
+                                    )
+                                }
+                            }
+                        }
+                    },
+                    colors = listItemColors,
+                )
+            }
+
+            kotlin.run {
+                var showMenu by rememberSaveable { mutableStateOf(false) }
+                ListItem(
+                    headlineContent = { Text("标记字幕语言") },
+                    Modifier.focusable(false).clickable(
+                        enabled = state.enableEdit,
+                    ) { showMenu = !showMenu },
+                    supportingContent = { Text("将此数据源的资源都标记为该字幕语言。不影响查询，只在播放器中选择数据源时用做偏好和过滤选项。") },
+                    trailingContent = {
+                        TextButton(onClick = { showMenu = true }) {
+                            Text(state.defaultSubtitleLanguage.displayName)
+                        }
+                        if (showMenu) {
+                            DropdownMenu(showMenu, { showMenu = false }) {
+                                for (language in SubtitleLanguage.matchableEntries.asReversed()) {
+                                    DropdownMenuItem(
+                                        text = { Text(language.displayName) },
+                                        onClick = {
+                                            state.defaultSubtitleLanguage = language
                                             showMenu = false
                                         },
                                     )

@@ -51,6 +51,9 @@ import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.source.MediaSourceLocation
 import me.him188.ani.datasources.api.source.deserializeArgumentsOrNull
 import me.him188.ani.utils.ktor.ScopedHttpClient
+import me.him188.ani.utils.logging.warn
+import me.him188.ani.utils.platform.Platform
+import me.him188.ani.utils.platform.currentPlatform
 import kotlin.time.Duration
 
 @Suppress("unused") // bug
@@ -167,6 +170,26 @@ class SelectorMediaSource(
         query: SelectorSearchQuery,
         mediaSourceId: String,
     ): List<DefaultMedia> = withContext(Dispatchers.Default) {
+        val currentPlayerName = when (currentPlatform()) {
+            is Platform.Desktop -> "vlc"
+            is Platform.Android -> "exoplayer"
+            Platform.Ios -> "avkit"
+        }
+        if (
+            searchConfig.onlySupportsPlayers.isNotEmpty()
+            && currentPlayerName !in searchConfig.onlySupportsPlayers
+        ) {
+            logger.warn {
+                val supports =
+                    searchConfig.onlySupportsPlayers.joinToString(prefix = "[", postfix = "]")
+
+                "SelectorMediaSource '${info.displayName}' is not supported by the platform player. " +
+                        "Declared supported players: $supports, " +
+                        "current player: $currentPlayerName"
+            }
+            return@withContext emptyList()
+        }
+
         searchSubjects(
             searchConfig.searchUrl,
             subjectName = query.subjectName,

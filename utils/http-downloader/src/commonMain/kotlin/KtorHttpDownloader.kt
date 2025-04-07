@@ -124,12 +124,16 @@ open class KtorHttpDownloader(
     protected fun getMediaTypeFromUrl(url: String): MediaType? {
         val parsed = io.ktor.http.Url(url)
         val path = parsed.encodedPath // without query
-        return when {
-            path.endsWith(".m3u8", ignoreCase = true) -> MediaType.M3U8
-            path.endsWith(".mp4", ignoreCase = true) -> MediaType.MP4
-            path.endsWith(".mkv", ignoreCase = true) -> MediaType.MKV
-            else -> null
+        fun guessFromValue(value: String): MediaType? {
+            return when {
+                value.endsWith(".m3u8", ignoreCase = true) -> MediaType.M3U8
+                value.endsWith(".mp4", ignoreCase = true) -> MediaType.MP4
+                value.endsWith(".mkv", ignoreCase = true) -> MediaType.MKV
+                else -> null
+            }
         }
+        return guessFromValue(path) // https://foo.com/bar.m3u8
+            ?: guessFromValue(url) // https://foo.com/index.php?key=video.m3u8
     }
 
     override suspend fun downloadWithId(

@@ -243,7 +243,7 @@ abstract class SelectorMediaSourceEngine {
                 properties = MediaProperties(
                     subjectName = subjectName,
                     episodeName = info.name,
-                    subtitleLanguageIds = subtitleLanguages,
+                    subtitleLanguageIds = subtitleLanguages ?: listOf(config.defaultSubtitleLanguage.id),
                     resolution = config.defaultResolution.id,
                     alliance = info.channel ?: "",
                     size = FileSize.Unspecified,
@@ -270,12 +270,12 @@ abstract class SelectorMediaSourceEngine {
     private fun guessSubtitleLanguages(
         info: WebSearchEpisodeInfo,
         parser: LabelFirstRawTitleParser
-    ): List<String> {
+    ): List<String>? {
         val languagesFromChannel = info.channel?.let { parser.parseSubtitleLanguages(it) } ?: emptyList()
         val languagesFromName = info.name.let { parser.parseSubtitleLanguages(it) }
 
         return when {
-            languagesFromChannel.isEmpty() && languagesFromName.isEmpty() -> defaultSubtitleLanguages
+            languagesFromChannel.isEmpty() && languagesFromName.isEmpty() -> null
             else -> languagesFromChannel.asSequence()
                 .plus(languagesFromName)
                 .map {
@@ -283,7 +283,7 @@ abstract class SelectorMediaSourceEngine {
                 }
                 .toList()
                 .ifEmpty {
-                    defaultSubtitleLanguages
+                    null
                 }
         }
     }

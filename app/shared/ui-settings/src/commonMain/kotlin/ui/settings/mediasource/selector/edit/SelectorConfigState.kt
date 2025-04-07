@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -290,6 +290,11 @@ class SelectorConfigState(
     var defaultResolution by argumentsStorage.prop(
         { it.searchConfig.defaultResolution }, { copy(searchConfig = searchConfig.copy(defaultResolution = it)) },
         SelectorMediaSourceArguments.Default.searchConfig.defaultResolution,
+    )
+    var defaultSubtitleLanguage by argumentsStorage.prop(
+        { it.searchConfig.defaultSubtitleLanguage },
+        { copy(searchConfig = searchConfig.copy(defaultSubtitleLanguage = it)) },
+        SelectorMediaSourceArguments.Default.searchConfig.defaultSubtitleLanguage,
     )
     var filterByEpisodeSort by argumentsStorage.prop(
         { it.searchConfig.filterByEpisodeSort }, { copy(searchConfig = searchConfig.copy(filterByEpisodeSort = it)) },

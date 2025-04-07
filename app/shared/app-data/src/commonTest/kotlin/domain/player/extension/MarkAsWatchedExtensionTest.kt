@@ -290,6 +290,30 @@ class MarkAsWatchedExtensionTest : AbstractPlayerExtensionTest() {
         testScope.cancel()
     }
 
+    @Test
+    fun `does not mark when video is shorter than 10 seconds`() = runTest {
+        var setCalled = false
+        val (testScope, suite, _) = createCase(
+            getEpisodeCollectionType = { _, _ -> null }, // Not already marked
+            setEpisodeCollectionType = { _, _, _ ->
+                setCalled = true
+            },
+        )
+
+        // Set up a video shorter than 10 seconds (9 seconds)
+        suite.setMediaDuration(durationMillis = 9.seconds.inWholeMilliseconds)
+        // Position at 95% which would normally trigger marking
+        suite.player.currentPositionMillis.value = (9.seconds.inWholeMilliseconds * 0.95).toLong()
+        suite.player.playbackState.value = PlaybackState.PLAYING
+
+        advanceUntilIdle()
+
+        // Should not mark as watched because the video is shorter than 10 seconds
+        assertFalse(setCalled)
+
+        testScope.cancel()
+    }
+
     // TODO: 2025/1/5 This test sometimes fails on desktopMain.  
 //    @Test
 //    fun `handles exceptions from setEpisodeCollectionTypeUseCase`(): TestResult = runTest {

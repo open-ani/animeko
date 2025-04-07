@@ -38,6 +38,7 @@ import me.him188.ani.app.domain.mediasource.web.DefaultSelectorMediaSourceEngine
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSourceArguments
 import me.him188.ani.app.domain.settings.ProxyProvider
 import me.him188.ani.app.platform.Context
+import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.foundation.produceState
@@ -81,7 +82,8 @@ class EditSelectorMediaSourceViewModel(
                     ?: ArgumentsType.Default
                 withContext(Dispatchers.Main) {
                     arguments.value = persisted
-                    allowEdit.value = config != null && config.subscriptionId == null
+                    allowEdit.value = (config != null && config.subscriptionId == null)
+                            || currentAniBuildConfig.isDebug
                 }
             }
             emit(
