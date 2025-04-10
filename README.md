@@ -70,7 +70,7 @@ Animeko 支持云同步观看记录 ([Bangumi][Bangumi])、多视频数据源、
 | <img src=".readme/images/features/episode.png" alt="" width="300"/> | <img src=".readme/images/features/episode-scrolled.png" alt="" width="300"/> |
 |:-------------------------------------------------------------------:|:----------------------------------------------------------------------------:|
 
-| <video src=".readme/images/features/play.webm" alt="" width="300"/> |
+| <div style="width=300">![](.readme/images/features/play.webm)</div> |
 |:-------------------------------------------------------------------:|
 
 ### 离线缓存
