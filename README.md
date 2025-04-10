@@ -38,22 +38,22 @@ Animeko 支持云同步观看记录 ([Bangumi][Bangumi])、多视频数据源、
 
 ## 主要功能
 
-### 浏览来自 [Bangumi][Bangumi] 的番剧信息以及网友评价
+### 浏览来自 [Bangumi][Bangumi] 的番剧信息以及社区评价
 
 | <img src=".readme/images/features/subject-details.png" alt="" width="300"/> | <img src=".readme/images/features/subject-rating.png" alt="" width="300"/> | 
 |:---------------------------------------------------------------------------:|:--------------------------------------------------------------------------:|
 
 ### 丰富的检索方式：新番时间表、标签搜索
 
-- 由 Bangumi 和 Animeko 服务端共同提供的精确新番时间表
+> 由 Bangumi 和 Animeko 服务端共同提供的精确新番时间表
 
 | <img src=".readme/images/features/anime-schedule.png" alt="" width="300"/> | <img src=".readme/images/features/search-by-tag.png" alt="" width="300"/> | 
 |:--------------------------------------------------------------------------:|:-------------------------------------------------------------------------:|
 
 ### 云同步追番进度
 
-- 同步追番进度，方便多设备和长期使用
 - 省心的追番进度管理，看完视频自动更新进度
+- 打开 APP 立即继续观看，无需回想上次看到了哪
 
 | <img src=".readme/images/features/subject-collection.png" alt="" width="300"/> | <img src=".readme/images/features/home.png" alt="" width="300"/> | 
 |:------------------------------------------------------------------------------:|:----------------------------------------------------------------:|
@@ -70,8 +70,8 @@ Animeko 支持云同步观看记录 ([Bangumi][Bangumi])、多视频数据源、
 | <img src=".readme/images/features/episode.png" alt="" width="300"/> | <img src=".readme/images/features/episode-scrolled.png" alt="" width="300"/> |
 |:-------------------------------------------------------------------:|:----------------------------------------------------------------------------:|
 
-| <video src=".readme/images/features/play.mp4" alt="" width="300"/> |
-|:------------------------------------------------------------------:|
+| <video src=".readme/images/features/play.webm" alt="" width="300"/> |
+|:-------------------------------------------------------------------:|
 
 ### 离线缓存
 
