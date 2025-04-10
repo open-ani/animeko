@@ -2,7 +2,7 @@
 
 ![Animeko](https://socialify.git.ci/open-ani/animeko/image?description=1&descriptionEditable=%E9%9B%86%E6%89%BE%E7%95%AA%E3%80%81%E8%BF%BD%E7%95%AA%E3%80%81%E7%9C%8B%E7%95%AA%E7%9A%84%E4%B8%80%E7%AB%99%E5%BC%8F%E5%BC%B9%E5%B9%95%E8%BF%BD%E7%95%AA%E5%B9%B3%E5%8F%B0&font=Jost&logo=https%3A%2F%2Fraw.githubusercontent.com%2Fopen-ani%2Fanimeko%2Frefs%2Fheads%2Fmain%2F.github%2Fassets%2Flogo.png&name=1&owner=1&pattern=Plus&theme=Light)
 
-| 下載量                                                                                                                                                                                                                | 正式版↓                                                                                                                                                                         | 测试版↓                                                                                                                                                                                    | 讨论群                                                                                                                                                                                                                                                                                                                                                                                                           |
+| 下載量                                                                                                                                                                                                                | 正式版                                                                                                                                                                          | 测试版                                                                                                                                                                                     | 讨论群                                                                                                                                                                                                                                                                                                                                                                                                           |
 |--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | [![GitHub downloads](https://img.shields.io/github/downloads/open-ani/ani/total?label=Downloads&labelColor=27303D&color=0D1117&logo=github&logoColor=FFFFFF&style=flat)](https://github.com/open-ani/ani/releases) | [![Stable](https://img.shields.io/github/release/open-ani/ani.svg?maxAge=3600&label=Stable&labelColor=06599d&color=043b69)](https://github.com/open-ani/ani/releases/latest) | [![Beta](https://img.shields.io/github/v/release/open-ani/ani.svg?maxAge=3600&label=Beta&labelColor=2c2c47&color=1c1c39&include_prereleases)](https://github.com/open-ani/ani/releases) | [![Group](https://img.shields.io/badge/Telegram-2CA5E0?style=flat-squeare&logo=telegram&logoColor=white)](https://t.me/openani) [![QQ](https://img.shields.io/badge/927170241-EB1923?logo=tencent-qq&logoColor=white)](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=2EbZ0Qxe-fI_AHJLCMnSIOnqw-nfrFH5&authKey=L31zTMwfbMG0FhIgt8xNHGOFPHc531mSw2YzUVupHLRJ4L2f8xerAd%2ByNl4OigRK&noverify=0&group_code=927170241) |
 
@@ -32,35 +32,90 @@
 
 Animeko 支持云同步观看记录 ([Bangumi][Bangumi])、多视频数据源、缓存、弹幕、以及更多功能，提供尽可能简单且舒适的追番体验。
 
-## 技术总览
+> Animeko 曾用名 Ani，现在也简称 Ani。
 
-以下几点可以给你一个技术上的大概了解，不感兴趣的可以直接看[截图](#功能截图)。
+[立即下载](https://github.com/open-ani/animeko/releases/latest)
 
-- [Kotlin 多平台][Kotlin Multiplatform]架构，支持 Windows、macOS、Android 和 iOS (计划)
-- 基于 Kotlin 多平台架构，使用新一代响应式 UI 框架 [Compose Multiplatform][Compose Multiplatform] 构建
-  UI
-- 内置专为 Animeko 打造的基于 [libtorrent][libtorrent] 的 BitTorrent 引擎，优化边下边播的体验
-- 高性能弹幕引擎，公益弹幕服务器 + 网络弹幕源
-- 适配多平台的视频播放器，Android 底层为 [ExoPlayer][ExoPlayer]，PC 底层为 [VLC][VLC]
-- 多类型数据源适配，内置 [动漫花园][dmhy]， [Mikan]，拥有强大的自定义数据源编辑器
+## 主要功能
 
-### 参与开发
+### 浏览来自 [Bangumi][Bangumi] 的番剧信息以及网友评价
 
-欢迎你提交 PR 参与开发，
-有关项目技术细节请参考 [CONTRIBUTING](docs/contributing/README.md)。
+| <img src=".readme/images/features/subject-details.png" alt="" width="300"/> | <img src=".readme/images/features/subject-rating.png" alt="" width="300"/> | 
+|:---------------------------------------------------------------------------:|:--------------------------------------------------------------------------:|
+
+### 丰富的检索方式：新番时间表、标签搜索
+
+- 由 Bangumi 和 Animeko 服务端共同提供的精确新番时间表
+
+| <img src=".readme/images/features/anime-schedule.png" alt="" width="300"/> | <img src=".readme/images/features/search-by-tag.png" alt="" width="300"/> | 
+|:--------------------------------------------------------------------------:|:-------------------------------------------------------------------------:|
+
+### 云同步追番进度
+
+- 同步追番进度，方便多设备和长期使用
+- 省心的追番进度管理，看完视频自动更新进度
+
+| <img src=".readme/images/features/subject-collection.png" alt="" width="300"/> | <img src=".readme/images/features/home.png" alt="" width="300"/> | 
+|:------------------------------------------------------------------------------:|:----------------------------------------------------------------:|
+
+### 聚合数据源
+
+- 聚合视频数据源，全自动选择
+  > 还支持 BitTorrent、Jellyfin、Emby、以及自定义源
+- 聚合全网弹幕源（[弹弹play][ddplay]），以及 Animeko 自己的[弹幕服务](https://danmaku-cn.myani.org/swagger/index.html)
+
+| <img src=".readme/images/features/mediaselector-simple.png" alt="" width="300"/> | <img src=".readme/images/features/mediaselector-detailed.png" alt="" width="300"/> |
+|:--------------------------------------------------------------------------------:|:----------------------------------------------------------------------------------:|
+
+| <img src=".readme/images/features/episode.png" alt="" width="300"/> | <img src=".readme/images/features/episode-scrolled.png" alt="" width="300"/> |
+|:-------------------------------------------------------------------:|:----------------------------------------------------------------------------:|
+
+| <video src=".readme/images/features/play.mp4" alt="" width="300"/> |
+|:------------------------------------------------------------------:|
+
+### 离线缓存
+
+- 所有数据源都能缓存
+
+| <img src=".readme/images/features/cache-episode.png" alt="" width="300"/> | <img src=".readme/images/features/cache-list.png" alt="" width="300"/> |
+|:-------------------------------------------------------------------------:|:----------------------------------------------------------------------:|
+
+### 精美界面
+
+| <img src=".readme/images/features/player-fullscreen.png" alt="" width="600"/> |
+|:-----------------------------------------------------------------------------:|
+
+- 适配平板和大屏设备
+
+| <img src=".readme/images/features/pc-home.png" alt="" width="600"/> |
+|:-------------------------------------------------------------------:|
+
+| <img src=".readme/images/features/pc-search.png" alt="" width="600"/> |
+|:---------------------------------------------------------------------:|
+
+| <img src=".readme/images/features/pc-search-detail.png" alt="" width="600"/> |
+|:----------------------------------------------------------------------------:|
+
+### 更多个性设置
+
+| <img src=".readme/images/features/danmaku-settings.png" alt="" width="600"/> |
+|:----------------------------------------------------------------------------:|
+
+| <img src=".readme/images/features/theme-settings.png" alt="" width="300"/> | <img src=".readme/images/features/media-preferences.png" alt="" width="300"/> |
+|:--------------------------------------------------------------------------:|:-----------------------------------------------------------------------------:|
 
 ## 下载
 
-Animeko 支持 Android 和桌面端 (macOS、Windows)。
+Animeko 支持所有主流平台：Android、iOS、Windows、macOS、Linux。
 
 - 稳定版本: 每两周更新, 功能稳定  
-  [下载稳定版本](https://github.com/Him188/ani/releases/latest)
+  [下载稳定版本](https://github.com/open-ani/animeko/releases/latest)
 
 通常建议使用稳定版本. 如果你愿意参与测试并拥有一定的对 bug 的处理能力, 也欢迎使用测试版本更快体验新功能.
 具体版本类型可查看下方.
 
 - 测试版本: 每两天更新, 体验最新功能  
-  [下载测试版本](https://github.com/Him188/ani/releases)
+  [下载测试版本](https://github.com/open-ani/animeko/releases)
 
 <details>
 <summary> <b>点击查看具体版本类型</b> </summary>
@@ -79,35 +134,23 @@ Animeko 采用语义化版本号, 简单来说就是 `4.x.y` 的格式. 有以�
 
 </details>
 
-## 功能截图
+## 技术总览
 
-### 手机端
+如果你是开发者，我们总是欢迎你提交 PR 参与开发！
+以下几点可以给你一个技术上的大概了解。
 
-|            <img src=".readme/images/portrait/0_Onboarding_portrait.png" alt="Onboarding Screen Portrait" />             |  <img src=".readme/images/portrait/1_MainScreen_Exploration_portrait.png" alt="Main Screen Exploration Portrait" />  |      <img src=".readme/images/portrait/2_MainScreen_Collection_portrait.png" alt="Main Screen Collection Portrait"  />       | <img src=".readme/images/portrait/3_MainScreen_CacheManagement_portrait.png" alt="Main Screen Cache Management Portrait"  />  |            <img src=".readme/images/portrait/4_SubjectDetailsPage_portrait.png" alt="Subject Details Page Portrait"  />            | 
-|:-----------------------------------------------------------------------------------------------------------------------:|:--------------------------------------------------------------------------------------------------------------------:|:----------------------------------------------------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------------------------------------:|:----------------------------------------------------------------------------------------------------------------------------------:|
-| <img src=".readme/images/portrait/5_EpisodePage_selected_web_portrait.png" alt="Episode Page Selected Web Portrait"  /> | <img src=".readme/images/portrait/6_EpisodePage_selected_bt_portrait.png" alt="Episode Page Selected BT Portrait" /> | <img src=".readme/images/portrait/7_EpisodePage_selector_simple_portrait.png" alt="Episode Page Selector Simple Portrait" /> | <img src=".readme/images/portrait/8_EpisodePage_selector_detail_portrait.png" alt="Episode Page Selector Detail Portrait"  /> | <img src=".readme/images/portrait/11_SettingsPage_media_preference_portrait.png" alt="Settings Page Media Preference Portrait"  /> |
+- [Kotlin 多平台][Kotlin Multiplatform]架构；
+- 使用新一代响应式 UI 框架 [Compose Multiplatform][Compose Multiplatform] 构建
+  UI；
+- 内置专为 Animeko 打造的“基于 [libtorrent][libtorrent] 的 BitTorrent 引擎，优化边下边播的体验；
+- 高性能弹幕引擎，公益弹幕服务器 + 网络弹幕源；
+- 适配多平台的[视频播放器](https://github.com/open-ani/mediamp)，Android 底层为 [ExoPlayer][ExoPlayer]，PC 底层为 [VLC][VLC]；
+- 多类型数据源适配，内置 [动漫花园][dmhy]、[Mikan]，拥有强大的自定义数据源编辑器和自动数据源选择器。
 
-| <img src=".readme/images/portrait/9_EpisodePage_fullscreen_android.png" alt="Episode Page Fullscreen Android Portrait"  /> | <img src=".readme/images/portrait/10_EpisodePage_fullscreen_danmaku_settings_android.png" alt="Episode Page Fullscreen Danmaku Settings Android Portrait"  /> | 
-|:--------------------------------------------------------------------------------------------------------------------------:|:-------------------------------------------------------------------------------------------------------------------------------------------------------------:|
-|                                                                                                                            |                                                                                                                                                               |
+### 参与开发
 
-### PC 端
-
-|               <img src=".readme/images/landscape/0_Onboarding_landscape.png" alt="Onboarding Screen Landscape" />                |   <img src=".readme/images/landscape/1_MainScreen_Exploration_landscape.png" alt="Main Screen Exploration Landscape" />   |         <img src=".readme/images/landscape/2_MainScreen_Collection_landscape.png" alt="Main Screen Collection Landscape"  />          | <img src=".readme/images/landscape/3_MainScreen_CacheManagement_landscape.png" alt="Main Screen Cache Management Landscape"  />  |
-|:--------------------------------------------------------------------------------------------------------------------------------:|:-------------------------------------------------------------------------------------------------------------------------:|:-------------------------------------------------------------------------------------------------------------------------------------:|:--------------------------------------------------------------------------------------------------------------------------------:|
-|         <img src=".readme/images/landscape/4_SubjectDetailsPage_landscape.png" alt="Subject Details Page Landscape"  />          | <img src=".readme/images/landscape/5_EpisodePage_selected_web_landscape.png" alt="Episode Page Selected Web Landscape" /> |        <img src=".readme/images/landscape/6_EpisodePage_selected_bt_landscape.png" alt="Episode Page Selected BT Landscape" />        | <img src=".readme/images/landscape/7_EpisodePage_selector_simple_landscape.png" alt="Episode Page Selector Simple Landscape"  /> |
-| <img src=".readme/images/landscape/8_EpisodePage_selector_detail_landscape.png" alt="Episode Page Selector Detail Landscape"  /> |     <img src=".readme/images/landscape/9_EpisodePage_theater_landscape.png" alt="Episode Page Theater Landscape"  />      | <img src=".readme/images/landscape/12_SettingsPage_media_preference_landscape.png" alt="Settings Page Media Preference Landscape"  /> |               <img src=".readme/images/landscape/13_EpisodePage_macos.png" alt="Episode Page macOS Landscape"  />                |
-
-| <img src=".readme/images/landscape/10_EpisodePage_fullscreen_windows.png" alt="Episode Page Fullscreen Windows Landscape" /> | <img src=".readme/images/landscape/11_EpisodePage_fullscreen_danmaku_settings_windows.jpg" alt="Episode Page Fullscreen Danmaku Settings Windows Landscape" /> |
-|:----------------------------------------------------------------------------------------------------------------------------:|:--------------------------------------------------------------------------------------------------------------------------------------------------------------:|
-|                                                                                                                              |                                                                                                                                                                |
-
-### 完全免费无广告且开放源代码
-
-- 使用靠谱的 [Bangumi][Bangumi] 记录追番数据, 不怕网站跑路丢失数据
-- 视频播放使用 P2P 资源, 无服务器维护成本, ~即使我跑路了 Animeko 也能用~
-- 开放源代码, 公开自动构建, 无资料泄露风险
-- 可 PR 添加自己喜欢的功能
+欢迎你提交 PR 参与开发，
+有关项目技术细节请参考 [CONTRIBUTING](docs/contributing/README.md)。
 
 ## FAQ
 
