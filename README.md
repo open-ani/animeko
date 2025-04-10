@@ -70,9 +70,6 @@ Animeko 支持云同步观看记录 ([Bangumi][Bangumi])、多视频数据源、
 | <img src=".readme/images/features/episode.png" alt="" width="300"/> | <img src=".readme/images/features/episode-scrolled.png" alt="" width="300"/> |
 |:-------------------------------------------------------------------:|:----------------------------------------------------------------------------:|
 
-| <div style="width=300">![](.readme/images/features/play.webm)</div> |
-|:-------------------------------------------------------------------:|
-
 ### 离线缓存
 
 - 所有数据源都能缓存
@@ -84,6 +81,8 @@ Animeko 支持云同步观看记录 ([Bangumi][Bangumi])、多视频数据源、
 
 | <img src=".readme/images/features/player-fullscreen.png" alt="" width="600"/> |
 |:-----------------------------------------------------------------------------:|
+
+https://github.com/open-ani/animeko/raw/refs/heads/him188/update-readme/.readme/images/features/play.webm
 
 - 适配平板和大屏设备
 
