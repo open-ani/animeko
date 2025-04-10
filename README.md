@@ -40,14 +40,14 @@ Animeko 支持云同步观看记录 ([Bangumi][Bangumi])、多视频数据源、
 
 ### 浏览来自 [Bangumi][Bangumi] 的番剧信息以及社区评价
 
-| <img src=".readme/images/features/subject-details.png" alt="" width="300"/> | <img src=".readme/images/features/subject-rating.png" alt="" width="300"/> | 
+| <img src=".readme/images/features/subject-details.png" alt="" width="200"/> | <img src=".readme/images/features/subject-rating.png" alt="" width="200"/> | 
 |:---------------------------------------------------------------------------:|:--------------------------------------------------------------------------:|
 
 ### 丰富的检索方式：新番时间表、标签搜索
 
 > 由 Bangumi 和 Animeko 服务端共同提供的精确新番时间表
 
-| <img src=".readme/images/features/anime-schedule.png" alt="" width="300"/> | <img src=".readme/images/features/search-by-tag.png" alt="" width="300"/> | 
+| <img src=".readme/images/features/anime-schedule.png" alt="" width="200"/> | <img src=".readme/images/features/search-by-tag.png" alt="" width="200"/> | 
 |:--------------------------------------------------------------------------:|:-------------------------------------------------------------------------:|
 
 ### 云同步追番进度
@@ -55,7 +55,7 @@ Animeko 支持云同步观看记录 ([Bangumi][Bangumi])、多视频数据源、
 - 省心的追番进度管理，看完视频自动更新进度
 - 打开 APP 立即继续观看，无需回想上次看到了哪
 
-| <img src=".readme/images/features/subject-collection.png" alt="" width="300"/> | <img src=".readme/images/features/home.png" alt="" width="300"/> | 
+| <img src=".readme/images/features/subject-collection.png" alt="" width="200"/> | <img src=".readme/images/features/home.png" alt="" width="200"/> | 
 |:------------------------------------------------------------------------------:|:----------------------------------------------------------------:|
 
 ### 聚合数据源
@@ -64,17 +64,17 @@ Animeko 支持云同步观看记录 ([Bangumi][Bangumi])、多视频数据源、
   > 还支持 BitTorrent、Jellyfin、Emby、以及自定义源
 - 聚合全网弹幕源（[弹弹play][ddplay]），以及 Animeko 自己的[弹幕服务](https://danmaku-cn.myani.org/swagger/index.html)
 
-| <img src=".readme/images/features/mediaselector-simple.png" alt="" width="300"/> | <img src=".readme/images/features/mediaselector-detailed.png" alt="" width="300"/> |
+| <img src=".readme/images/features/mediaselector-simple.png" alt="" width="200"/> | <img src=".readme/images/features/mediaselector-detailed.png" alt="" width="200"/> |
 |:--------------------------------------------------------------------------------:|:----------------------------------------------------------------------------------:|
 
-| <img src=".readme/images/features/episode.png" alt="" width="300"/> | <img src=".readme/images/features/episode-scrolled.png" alt="" width="300"/> |
+| <img src=".readme/images/features/episode.png" alt="" width="200"/> | <img src=".readme/images/features/episode-scrolled.png" alt="" width="200"/> |
 |:-------------------------------------------------------------------:|:----------------------------------------------------------------------------:|
 
 ### 离线缓存
 
 - 所有数据源都能缓存
 
-| <img src=".readme/images/features/cache-episode.png" alt="" width="300"/> | <img src=".readme/images/features/cache-list.png" alt="" width="300"/> |
+| <img src=".readme/images/features/cache-episode.png" alt="" width="200"/> | <img src=".readme/images/features/cache-list.png" alt="" width="200"/> |
 |:-------------------------------------------------------------------------:|:----------------------------------------------------------------------:|
 
 ### 精美界面
@@ -100,7 +100,7 @@ https://github.com/user-attachments/assets/e63636c9-30b7-411c-aa6b-e5b78b900726
 | <img src=".readme/images/features/danmaku-settings.png" alt="" width="600"/> |
 |:----------------------------------------------------------------------------:|
 
-| <img src=".readme/images/features/theme-settings.png" alt="" width="300"/> | <img src=".readme/images/features/media-preferences.png" alt="" width="300"/> |
+| <img src=".readme/images/features/theme-settings.png" alt="" width="200"/> | <img src=".readme/images/features/media-preferences.png" alt="" width="200"/> |
 |:--------------------------------------------------------------------------:|:-----------------------------------------------------------------------------:|
 
 ## 下载
