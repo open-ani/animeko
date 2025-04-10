@@ -82,7 +82,7 @@ Animeko 支持云同步观看记录 ([Bangumi][Bangumi])、多视频数据源、
 | <img src=".readme/images/features/player-fullscreen.png" alt="" width="600"/> |
 |:-----------------------------------------------------------------------------:|
 
-https://github.com/open-ani/animeko/raw/refs/heads/him188/update-readme/.readme/images/features/play.webm
+https://github.com/user-attachments/assets/e63636c9-30b7-411c-aa6b-e5b78b900726
 
 - 适配平板和大屏设备
 
