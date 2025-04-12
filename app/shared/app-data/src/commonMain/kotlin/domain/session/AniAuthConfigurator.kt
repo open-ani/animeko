@@ -134,7 +134,7 @@ class AniAuthConfigurator(
                 .collectLatest { authStateNew -> emit(authStateNew) }
         }
         .distinctUntilChanged()
-        .shareIn(scope, SharingStarted.WhileSubscribed(), replay = 1)
+        .shareIn(scope, SharingStarted.Lazily, replay = 1)
 
     /**
      * 启动授权请求检查循环.
