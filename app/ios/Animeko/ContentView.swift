@@ -32,7 +32,11 @@ struct ComposeView: UIViewControllerRepresentable {
 		kmpViewController.didMove(toParent: containerController)
 		// --- End Embed KMP View Controller ---
 
-		kmpViewController.setNeedsUpdateOfSupportedInterfaceOrientations()
+		if #available(iOS 16.0, *) {
+			kmpViewController.setNeedsUpdateOfSupportedInterfaceOrientations()
+		} else {
+			UIViewController.attemptRotationToDeviceOrientation()
+		}
 
 		return containerController
 	}
