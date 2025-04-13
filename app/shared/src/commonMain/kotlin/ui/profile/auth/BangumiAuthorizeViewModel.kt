@@ -84,7 +84,7 @@ class BangumiAuthorizeViewModel : AbstractViewModel(), KoinComponent {
         backgroundScope.launch { authConfigurator.setAuthorizationToken(token) }
     }
 
-    suspend fun startAuthCheckLoop() {
+    suspend fun authCheckLoop() {
         authLoopTasker.invoke {
             authConfigurator.authorizeRequestCheckLoop()
         }

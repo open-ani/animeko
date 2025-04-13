@@ -27,7 +27,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.session.AuthState
@@ -52,7 +51,6 @@ fun BangumiAuthorizePage(
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     val state by vm.state.collectAsStateWithLifecycle(BangumiAuthorizeState.Placeholder)
 
     LaunchedEffect(vm) {
@@ -61,9 +59,9 @@ fun BangumiAuthorizePage(
         }
     }
 
-    LifecycleResumeEffect(vm) {
-        val job = scope.launch { vm.startAuthCheckLoop() }
-        onPauseOrDispose { job.cancel() }
+    // 这里不可以在无 lifecycle 时停止 loop, 因为服务器收到请求就会删掉库里的内容, 客户端如果 cancel 就再也收不到登录结果了
+    LaunchedEffect(vm) {
+        vm.authCheckLoop()
     }
 
     Surface(color = AniThemeDefaults.pageContentBackgroundColor) {
