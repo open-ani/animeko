@@ -289,7 +289,7 @@ class EpisodeCollectionRepository(
                     )
                 }
 
-                MediatorResult.Success(endOfPaginationReached = episodes.page.isEmpty())
+                MediatorResult.Success(endOfPaginationReached = episodes.hasMore)
             } catch (e: Exception) {
                 return@withContext MediatorResult.Error(RepositoryException.wrapOrThrowCancellation(e))
             }
