@@ -1,7 +1,7 @@
 <!--
   ~ Copyright (C) 2024-2025 OpenAni and contributors.
   ~
-  ~ 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+  ~ 此原始碼的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 授權條款的約束, 可以在以下連結找到該授權條款.
   ~ Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
   ~
   ~ https://github.com/open-ani/ani/blob/main/LICENSE
@@ -10,7 +10,7 @@
 <!--
   ~ 版權所有 (C) 2024-2025 OpenAni 及其貢獻者.
   ~
-  ~ 此源程式碼的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 之限制，可在以下連結找到該授權條款。
+  ~ 此原始程式碼的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 之限制，可在以下連結找到該授權條款。
   ~ Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
   ~
   ~ https://github.com/open-ani/ani/blob/main/LICENSE
@@ -49,7 +49,7 @@
     </string>
     <string name="settings_debug_metered_network">計費網路資訊</string>
     <string name="settings_debug_onboarding">新手引導設定</string>
-    <string name="settings_debug_enter_onboarding">進入新手向導</string>
+    <string name="settings_debug_enter_onboarding">進入新手嚮導</string>
     <string name="settings_debug_reset_onboarding">重設新手引導狀態</string>
     <string name="settings_debug_reset_onboarding_description">重設後，下次啟動 APP 會進入新手引導</string>
     <string name="settings_debug_reset_onboarding_toast">已重設新手引導狀態</string>
@@ -102,15 +102,15 @@
     <string name="settings_mediasource_selector_step3">步驟 3：匹配影片</string>
     <string name="settings_mediasource_selector_enable_nested_link">啟用巢狀連結</string>
     <string name="settings_mediasource_selector_enable_nested_link_description">
-        當遇到匹配的連結時，終止父頁面載入並跳轉到匹配的連結，在巢狀頁面中繼續查找影片連結。支援任意次數的巢狀
+        當遇到匹配的連結時，終止父頁面載入並跳轉到匹配的連結，在巢狀頁面中繼續尋找影片連結。支援任意次數的巢狀
     </string>
     <string name="settings_mediasource_selector_match_nested_link">匹配巢狀連結</string>
     <string name="settings_mediasource_selector_match_nested_link_description">
-        正則表達式，從播放頁面中載入的所有資源連結中匹配出需要跳轉進入的連結。若正則包含名為 v 的分組則使用該分組，否則使用整個
+        正規表示式，從播放頁面中載入的所有資源連結中匹配出需要跳轉進入的連結。若正則包含名為 v 的分組則使用該分組，否則使用整個
         URL
     </string>
     <string name="settings_mediasource_selector_match_video_link">匹配影片連結</string>
-    <string name="settings_mediasource_selector_match_video_link_description">正則表達式，從播放頁面中載入的所有資源連結中匹配出影片連結。若正則包含名為
+    <string name="settings_mediasource_selector_match_video_link_description">正規表示式，從播放頁面中載入的所有資源連結中匹配出影片連結。若正則包含名為
         v 的分組則使用該分組，否則使用整個 URL
     </string>
     <string name="settings_mediasource_selector_cookies">Cookies (可選)</string>
@@ -126,7 +126,7 @@
         text 作為線路名稱
     </string>
     <string name="settings_mediasource_selector_match_channel_name_label">匹配線路名稱 (可選)</string>
-    <string name="settings_mediasource_selector_match_channel_name_supporting">正則表達式。從上面提取到的元素 text
+    <string name="settings_mediasource_selector_match_channel_name_supporting">正規表示式。從上面提取到的元素 text
         中，匹配線路名稱。期望名為 ch 的分組，留空則使用整個 text。
     </string>
     <string name="settings_mediasource_selector_episode_lists_label">從頁面中提取劇集面板列表</string>
@@ -145,7 +145,7 @@
         表達式。如果上個設定中提取到的劇集元素不是 &lt;a&gt;，則需要配置此項提取連結
     </string>
     <string name="settings_mediasource_selector_match_episode_sort_from_name_label">從劇集名稱中匹配序號</string>
-    <string name="settings_mediasource_selector_match_episode_sort_from_name_supporting">正則表達式查找。期望名為 ep
+    <string name="settings_mediasource_selector_match_episode_sort_from_name_supporting">正規表示式尋找。期望名為 ep
         的分組，數字為佳
     </string>
     <string name="settings_mediasource_selector_episodes_label">提取劇集列表</string>
@@ -157,12 +157,12 @@
     <string name="settings_mediasource_selector_episode_links_supporting">可選的 CSS Selector 表達式。如果上個設定中提取到的劇集元素不是
         &lt;a&gt;，則需要配置此項提取連結
     </string>
-    <string name="settings_mediasource_selector_unsupported_format">當前版本不支援該配置類型：%1$s
+    <string name="settings_mediasource_selector_unsupported_format">目前版本不支援該配置類型：%1$s
 
         這可能是匯入了在更高版本編輯的配置導致的
         可升級 Ani 或切換到其他配置類型
     </string>
-    <string name="settings_mediasource_test_keyword">關鍵詞</string>
+    <string name="settings_mediasource_test_keyword">關鍵字</string>
     <string name="settings_mediasource_test_random">隨機</string>
     <string name="settings_mediasource_test_episode_sort">劇集序號</string>
 
@@ -191,7 +191,7 @@
 
     <!-- SoftwareUpdateGroup -->
     <string name="settings_update_software">軟體更新</string>
-    <string name="settings_update_current_version">當前版本</string>
+    <string name="settings_update_current_version">目前版本</string>
     <string name="settings_update_view_changelog">查看更新日誌</string>
     <string name="settings_update_auto_check">自動檢查更新</string>
     <string name="settings_update_auto_check_description">只會顯示一個更新圖示，不會自動下載</string>
@@ -223,7 +223,7 @@
     <string name="settings_player_enable_regex_filter">啟用正則彈幕過濾器</string>
     <string name="settings_player_pause_on_edit_danmaku">發送彈幕時自動暫停播放</string>
     <string name="settings_player_auto_mark_done">觀看 90% 後自動標記為看過</string>
-    <string name="settings_player_hide_selector_on_select">選擇資料源後自動關閉彈窗</string>
+    <string name="settings_player_hide_selector_on_select">選擇資料源後自動關閉彈出視窗</string>
     <string name="settings_player_auto_fullscreen_on_landscape">旋轉螢幕時自動全螢幕</string>
     <string name="settings_player_auto_play_next">自動連播</string>
     <string name="settings_player_auto_skip_op_ed">自動跳過 OP 和 ED</string>
@@ -238,7 +238,7 @@
 
         重新啟動生效
     </string>
-    <string name="settings_storage_choose_directory">選擇視訊保存目錄</string>
+    <string name="settings_storage_choose_directory">選擇視訊儲存目錄</string>
     <string name="settings_storage_open_directory_chooser">打開目錄選擇</string>
     <string name="settings_storage_open_bt_cache_directory">打開 BT 快取目錄</string>
     <string name="settings_storage_directory_not_exist">該目錄不存在</string>
@@ -250,7 +250,7 @@
     </string>
     <string name="settings_media_source_cancel_sort">取消排序</string>
     <string name="settings_media_source_add">新增資料源</string>
-    <string name="settings_media_source_save_sort">保存排序</string>
+    <string name="settings_media_source_save_sort">儲存排序</string>
     <string name="settings_media_source_sort">排序</string>
     <string name="settings_media_source_stop_test">終止測試</string>
     <string name="settings_media_source_start_test">開始測試</string>
@@ -258,7 +258,7 @@
     <string name="settings_media_source_delete_no_config">該資料源無特殊配置，刪除後可以重新從模板直接添加，確認刪除嗎？
     </string>
     <string name="settings_media_source_delete_with_config">
-        該資料源有配置，刪除後將丟失配置，之後從模板添加時需要重新配置，確認刪除嗎？
+        該資料源有配置，刪除後將遺失配置，之後從模板添加時需要重新配置，確認刪除嗎？
     </string>
     <string name="settings_media_source_delete_confirm">刪除</string>
     <string name="settings_media_source_cancel">取消</string>
@@ -285,7 +285,7 @@
     <string name="settings_media_source_subscription_auto_update">每 %1$s 自動更新，</string>
     <string name="settings_media_source_subscription_copy_link">複製連結</string>
     <string name="settings_media_source_subscription_copied">已複製</string>
-    <string name="settings_media_source_subscription_export_all">全部匯出到剪貼板</string>
+    <string name="settings_media_source_subscription_export_all">全部匯出到剪貼簿</string>
     <string name="settings_media_source_subscription_delete">刪除</string>
     <string name="settings_media_source_subscription_delete_dialog">刪除資料源訂閱</string>
     <string name="settings_media_source_subscription_delete_description">將會同時刪除來自該訂閱的所有資料源 (共 %1$d
@@ -297,7 +297,7 @@
     <string name="settings_media_source_subscription_unknown_error">未知錯誤</string>
     <string name="settings_media_source_subscription_network_error">網路錯誤，請檢查網路連線</string>
     <string name="settings_media_source_subscription_service_unavailable">服務暫不可用，請稍後重試</string>
-    <string name="settings_media_source_subscription_unauthorized">服務禁止訪問，請聯繫服務提供者</string>
+    <string name="settings_media_source_subscription_unauthorized">服務禁止訪問，請聯絡服務提供者</string>
 
     <!-- ConfimExitDialog -->
     <string name="settings_media_source_discard_changes">捨棄更改?</string>
@@ -307,12 +307,12 @@
     <!-- EditMediaSourceLayout -->
     <string name="settings_media_source_no_config">無配置項</string>
     <string name="settings_media_source_add_button">添加</string>
-    <string name="settings_media_source_save_button">保存</string>
+    <string name="settings_media_source_save_button">儲存</string>
 
     <!-- MediaSourceConfigurationDefaults -->
     <string name="settings_mediasource_import_from_clipboard">從剪貼簿匯入配置</string>
     <string name="settings_mediasource_import_title">匯入配置</string>
-    <string name="settings_mediasource_import_warning">將會覆蓋現有配置，且不能撤銷</string>
+    <string name="settings_mediasource_import_warning">將會覆蓋現有配置，且不能復原</string>
     <string name="settings_mediasource_override">覆蓋</string>
     <string name="settings_mediasource_cancel">取消</string>
     <string name="settings_mediasource_clipboard_empty">剪貼簿內容為空</string>
@@ -358,9 +358,9 @@
     <string name="settings_mediasource_rss_search_link_placeholder">
         範例：https://acg.rip/page/{page}.xml?term={keyword}
     </string>
-    <string name="settings_mediasource_rss_search_link_supporting_text">替換規則：
-        {keyword} 替換為條目 (番劇) 名稱
-        {page} 替換為頁碼, 如果不需要分頁則忽略
+    <string name="settings_mediasource_rss_search_link_supporting_text">取代規則：
+        {keyword} 取代為條目 (番劇) 名稱
+        {page} 取代為頁碼, 如果不需要分頁則忽略
     </string>
     <string name="settings_mediasource_rss_filter_by_episode">使用劇集序號過濾</string>
     <string name="settings_mediasource_rss_filter_by_episode_description">
@@ -370,7 +370,7 @@
     <string name="settings_mediasource_rss_filter_by_subject_description">要求資源標題包含條目名稱。適用於資料源可能搜到無關內容的情況。此功能只對
         4.4.0 以前版本有效，對其他版本無效
     </string>
-    <string name="settings_mediasource_rss_auto_save_hint">提示：修改自動保存</string>
+    <string name="settings_mediasource_rss_auto_save_hint">提示：修改自動儲存</string>
 
     <!-- OutlinedMatchTag -->
     <string name="settings_mediasource_rss_match_tag_match">符合匹配</string>
