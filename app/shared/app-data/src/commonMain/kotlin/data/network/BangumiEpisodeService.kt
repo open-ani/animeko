@@ -13,11 +13,16 @@ import io.ktor.client.plugins.ClientRequestException
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.data.models.episode.EpisodeInfo
+import me.him188.ani.app.data.repository.RepositoryAuthorizationException
+import me.him188.ani.app.domain.session.OpaqueSession
+import me.him188.ani.app.domain.session.SessionManager
+import me.him188.ani.app.domain.session.verifiedAccessToken
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.EpisodeType
 import me.him188.ani.datasources.api.EpisodeType.ED
@@ -94,6 +99,7 @@ class BangumiEpisodeServiceImpl(
 ) : BangumiEpisodeService, KoinComponent {
     private val client by inject<BangumiClient>()
     private val logger = logger<BangumiEpisodeServiceImpl>()
+    private val sessionManager: SessionManager by inject()
 
     override suspend fun getEpisodeCollectionInfosBySubjectId(
         subjectId: Int,
@@ -113,45 +119,62 @@ class BangumiEpisodeServiceImpl(
         episodeType: BangumiEpType?
     ): Paged<EpisodeCollectionInfo> {
         return withContext(ioDispatcher) {
-            client.api {
-                getUserSubjectEpisodeCollection(
-                    subjectId,
-                    episodeType = episodeType,
-                    offset = offset,
-                    limit = limit,
-                ).body()
-            }.run {
-                Paged.processPagedResponse(total, limit ?: 100, data)
-            }.map {
-                it.toEpisodeCollectionInfo()
+            if (isLoggedIn()) {
+                client.api {
+                    getUserSubjectEpisodeCollection(
+                        subjectId,
+                        episodeType = episodeType,
+                        offset = offset,
+                        limit = limit,
+                    ).body()
+                }.run {
+                    Paged.processPagedResponse(total, limit ?: 100, data)
+                }.map {
+                    it.toEpisodeCollectionInfo()
+                }
+            } else {
+                getEpisodesBySubjectIdPage(subjectId, episodeType, offset = offset ?: 0, limit = limit ?: 100).map {
+                    it.toEpisodeInfo().createNotCollected()
+                }
             }
         }
     }
 
     private fun getEpisodesBySubjectId(subjectId: Int, type: BangumiEpType?): Flow<BangumiEpisode> {
         val episodes = PageBasedPagedSource { page ->
-            withContext(ioDispatcher) {
-                try {
-                    client.api { getEpisodes(subjectId, type, offset = page * 100, limit = 100).body() }.run {
-                        Paged(this.total ?: 0, !this.data.isNullOrEmpty(), this.data.orEmpty())
-                    }
-                } catch (e: ClientRequestException) {
-                    if (e.response.status == HttpStatusCode.BadRequest
-                        || e.response.status == HttpStatusCode.NotFound
-                    ) {
-                        return@withContext Paged.empty()
-                    }
-                    throw e
-                }
-            }
+            getEpisodesBySubjectIdPage(subjectId, type, page * 100, 100)
         }
         return episodes.results
+    }
+
+    private suspend fun getEpisodesBySubjectIdPage(
+        subjectId: Int,
+        type: BangumiEpType?,
+        offset: Int,
+        limit: Int
+    ): Paged<BangumiEpisode> = withContext(ioDispatcher) {
+        try {
+            client.api { getEpisodes(subjectId, type, offset = offset, limit = limit).body() }.run {
+                Paged(this.total ?: 0, !this.data.isNullOrEmpty(), this.data.orEmpty())
+            }
+        } catch (e: ClientRequestException) {
+            if (e.response.status == HttpStatusCode.BadRequest
+                || e.response.status == HttpStatusCode.NotFound
+            ) {
+                return@withContext Paged.empty()
+            }
+            throw e
+        }
     }
 
     private suspend fun getSubjectEpisodeCollections(
         subjectId: Int,
         type: BangumiEpType?
     ): Flow<BangumiUserEpisodeCollection>? {
+        if (!isLoggedIn()) {
+            return null
+        }
+
         val firstPage = try {
             withContext(ioDispatcher) {
                 client.api {
@@ -206,25 +229,24 @@ class BangumiEpisodeServiceImpl(
     }
 
     override suspend fun getEpisodeCollectionById(episodeId: Int): EpisodeCollectionInfo? = withContext(ioDispatcher) {
-        kotlin.runCatching {
-            client.api { getUserEpisodeCollection(episodeId).body().toEpisodeCollectionInfo() }
-        }.recoverCatching { e ->
-            if (e is ClientRequestException) {
+        if (isLoggedIn()) {
+            try {
+                return@withContext client.api { getUserEpisodeCollection(episodeId).body().toEpisodeCollectionInfo() }
+            } catch (e: ClientRequestException) {
                 if (e.response.status != HttpStatusCode.NotFound && !e.response.status.isUnauthorized()) {
                     throw e
                 }
             }
+        }
 
+        try {
             client.api { getEpisodeById(episodeId).body().toEpisodeInfo().createNotCollected() }
-        }.fold(
-            onSuccess = { it },
-            onFailure = { e ->
-                if (e is ClientRequestException && e.response.status == HttpStatusCode.NotFound) {
-                    return@fold null
-                }
-                throw e
-            },
-        )
+        } catch (e: Exception) {
+            if (e is ClientRequestException && e.response.status == HttpStatusCode.NotFound) {
+                return@withContext null
+            }
+            throw e
+        }
     }
 
     override suspend fun setEpisodeCollection(
@@ -232,6 +254,9 @@ class BangumiEpisodeServiceImpl(
         episodeId: List<Int>,
         type: UnifiedCollectionType
     ): Boolean = withContext(ioDispatcher) {
+        if (!isLoggedIn()) {
+            return@withContext false
+        }
         try {
             client.api {
                 patchUserSubjectEpisodeCollection(
@@ -260,6 +285,18 @@ class BangumiEpisodeServiceImpl(
             return this.value in 500..599
         }
     }
+
+    @OptIn(OpaqueSession::class)
+    private suspend fun checkToken() {
+        val session = sessionManager.verifiedAccessToken.first()
+        if (session == null) {
+            // 没 token 肯定会失败, 就别发请求了
+            throw RepositoryAuthorizationException("Precondition failed: verifiedAccessToken is null, aborting request.")
+        }
+    }
+
+    @OptIn(OpaqueSession::class)
+    private suspend fun isLoggedIn(): Boolean = sessionManager.verifiedAccessToken.first() != null
 }
 
 private fun EpisodeInfo.createNotCollected(): EpisodeCollectionInfo {
