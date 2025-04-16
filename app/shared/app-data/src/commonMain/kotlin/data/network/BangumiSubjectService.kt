@@ -42,12 +42,14 @@ import me.him188.ani.app.data.models.subject.RelatedPersonInfo
 import me.him188.ani.app.data.models.subject.SelfRatingInfo
 import me.him188.ani.app.data.models.subject.SubjectCollectionCounts
 import me.him188.ani.app.data.models.subject.SubjectInfo
+import me.him188.ani.app.data.repository.RepositoryAuthorizationException
 import me.him188.ani.app.data.repository.RepositoryUsernameProvider
 import me.him188.ani.app.data.repository.getOrThrow
 import me.him188.ani.app.domain.search.SubjectType
 import me.him188.ani.app.domain.session.OpaqueSession
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.session.username
+import me.him188.ani.app.domain.session.verifiedAccessToken
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.bangumi.BangumiClient
 import me.him188.ani.datasources.bangumi.apis.DefaultApi
@@ -99,7 +101,7 @@ interface BangumiSubjectService {
     ): List<LightSubjectAndEpisodes>
 
     /**
-     * 获取用户对这个条目的收藏状态. flow 一定会 emit 至少一个值或抛出异常. 当用户没有收藏这个条目时 emit `null`.
+     * 获取用户对这个条目的收藏状态. flow 一定会 emit 至少一个值或抛出异常. 当用户没有收藏这个条目时 emit `null`. 当没有登录时 emit `null`.
      */
     fun subjectCollectionById(subjectId: Int): Flow<BangumiUserSubjectCollection?>
 
@@ -151,6 +153,7 @@ class RemoteBangumiSubjectService(
         offset: Int,
         limit: Int
     ): List<BatchSubjectCollection> = withContext(ioDispatcher) {
+        checkToken()
         val username = usernameProvider.getOrThrow()
         val collections = try {
             api {
@@ -382,18 +385,21 @@ class RemoteBangumiSubjectService(
 
 
     override suspend fun patchSubjectCollection(subjectId: Int, payload: BangumiUserSubjectCollectionModifyPayload) {
+        checkToken()
         withContext(ioDispatcher) {
             api { postUserCollection(subjectId, payload) }
         }
     }
 
     override suspend fun deleteSubjectCollection(subjectId: Int) {
+        checkToken()
         // TODO:  deleteSubjectCollection
     }
 
     @OptIn(OpaqueSession::class)
     override fun subjectCollectionCountsFlow(): Flow<SubjectCollectionCounts> {
         return sessionManager.username.filterNotNull().map { username ->
+            checkToken()
             val types = UnifiedCollectionType.entries - UnifiedCollectionType.NOT_COLLECTED
             val totals = IntArray(types.size) { type ->
                 api {
@@ -416,10 +422,15 @@ class RemoteBangumiSubjectService(
         }.flowOn(ioDispatcher)
     }
 
+    @OptIn(OpaqueSession::class)
     override fun subjectCollectionById(subjectId: Int): Flow<BangumiUserSubjectCollection?> {
         return flow {
             emit(
                 try {
+                    if (sessionManager.verifiedAccessToken.first() == null) {
+                        emit(null)
+                        return@flow
+                    }
                     @OptIn(OpaqueSession::class)
                     api { getUserCollection(sessionManager.username.first() ?: "-", subjectId).body() }
                 } catch (e: ResponseException) {
@@ -452,6 +463,15 @@ class RemoteBangumiSubjectService(
     }
 
     private companion object {
+    }
+
+    @OptIn(OpaqueSession::class)
+    private suspend fun checkToken() {
+        val session = sessionManager.verifiedAccessToken.first()
+        if (session == null) {
+            // 没 token 肯定会失败, 就别发请求了
+            throw RepositoryAuthorizationException("Precondition failed: verifiedAccessToken is null, aborting request.")
+        }
     }
 }
 
