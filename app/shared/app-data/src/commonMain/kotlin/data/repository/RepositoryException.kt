@@ -101,3 +101,22 @@ class RepositoryUnknownException(throwable: Throwable) : RepositoryException(nul
 
 val PagingSource.LoadResult.Error<*, *>.repositoryException: RepositoryException?
     get() = throwable as? RepositoryException
+
+
+fun RepositoryException.shouldRetry() = when (this) {
+    is RepositoryAuthorizationException -> false
+    is RepositoryNetworkException -> true
+    is RepositoryRateLimitedException -> false
+    is RepositoryServiceUnavailableException -> false
+    is RepositoryUnknownException -> false
+}
+
+fun RepositoryException.Companion.shouldRetry(throwable: Throwable): Boolean {
+    return when (throwable) {
+        is RepositoryException -> throwable.shouldRetry()
+        is CancellationException -> false
+        else -> {
+            RepositoryException.wrapOrThrowCancellation(throwable).shouldRetry()
+        }
+    }
+}

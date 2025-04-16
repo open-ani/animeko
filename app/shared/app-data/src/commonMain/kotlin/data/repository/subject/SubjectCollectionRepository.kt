@@ -73,6 +73,7 @@ import me.him188.ani.app.data.repository.episode.AnimeScheduleRepository
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.episode.toEntity
 import me.him188.ani.app.data.repository.episode.toEpisodeCollectionInfo
+import me.him188.ani.app.data.repository.shouldRetry
 import me.him188.ani.app.domain.search.SubjectType
 import me.him188.ani.app.domain.session.OpaqueSession
 import me.him188.ani.app.domain.session.SessionManager
@@ -192,7 +193,9 @@ class SubjectCollectionRepositoryImpl(
     override fun subjectCollectionCountsFlow(): Flow<SubjectCollectionCounts?> {
         return (bangumiSubjectService.subjectCollectionCountsFlow() as Flow<SubjectCollectionCounts?>)
             .restartOnNewLogin()
-            .retry(2)
+            .retry(2) { e ->
+                RepositoryException.shouldRetry(e)
+            }
             .catch {
                 logger.error("Failed to get subject collection counts", it)
                 emit(null)
