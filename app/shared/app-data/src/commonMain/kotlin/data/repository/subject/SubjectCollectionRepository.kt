@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
@@ -184,7 +185,9 @@ class SubjectCollectionRepositoryImpl(
 ) : SubjectCollectionRepository(defaultDispatcher) {
     @OptIn(OpaqueSession::class)
     private fun <T> Flow<T>.restartOnNewLogin(): Flow<T> =
-        sessionManager.verifiedAccessToken.flatMapLatest { this }
+        sessionManager.verifiedAccessToken.distinctUntilChanged().flatMapLatest {
+            this
+        }
 
     override fun subjectCollectionCountsFlow(): Flow<SubjectCollectionCounts?> {
         return (bangumiSubjectService.subjectCollectionCountsFlow() as Flow<SubjectCollectionCounts?>)
