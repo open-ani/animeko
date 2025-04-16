@@ -71,7 +71,7 @@
     <string name="settings_developers_daily_maintenance">日常维护</string>
     <string name="settings_developers_outstanding_contributors">卓越贡献者 (按字母排序)</string>
     <string name="settings_developers_server_development">服务端开发</string>
-    <string name="settings_developers_bangumi_upstream">Banugmi 上游贡献</string>
+    <string name="settings_developers_bangumi_upstream">Bangumi 上游贡献</string>
     <string name="settings_developers_icon_drawing">图标绘制</string>
     <string name="settings_developers_website_development">官网开发</string>
     <string name="settings_developers_contributor">贡献者</string>
