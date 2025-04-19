@@ -1,14 +1,10 @@
 Automatically created from tag $GIT_TAG. Do not change anything until assets are
 uploaded.
 
-----
 
-### 下载
+[//]: # (ANI-SERVER-MAGIC-SEPARATOR)
 
-<details>
-<summary>>> <h2>点我展开下载列表</h2> <<</summary>
-
-[//]: # (注意, `checkLatestVersion` 有字符串处理, 修改标题和分隔符前务必查询)
+[//]: # (注意: api server 依赖这个特殊分隔符)
 
 [//]: # (对于所有可用的变量列表, 参考 CI release.yml 的 step release-notes)
 
@@ -94,8 +90,6 @@ uploaded.
 |------------------------------|--------------------------|
 | ![Cloudflare][cf-android-qr] | ![Cloudflare][cf-ios-qr] |
 
-> - 安卓版本支持 arm64-v8a、armeabi-v7a、x86_64 架构 (几乎所有设备)。
-
 
 <details>
 <summary> Android 细分架构下载 </summary>
@@ -112,7 +106,5 @@ uploaded.
 | arm64-v8a (64 位)   | 几乎所有手机和平板       | [主线][cf-android-arm64-v8a] / [备线][ghproxy-android-arm64-v8a] / [GitHub][github-android-arm64-v8a]       |
 | armeabi-v7a (32 位) | 旧手机             | [主线][cf-android-armeabi-v7a] / [备线][ghproxy-android-armeabi-v7a] / [GitHub][github-android-armeabi-v7a] |
 | x86_64             | Chromebook 及模拟器 | [主线][cf-android-x86_64] / [备线][ghproxy-android-x86_64] / [GitHub][github-android-x86_64]                |
-
-</details>
 
 </details>
