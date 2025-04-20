@@ -12,11 +12,13 @@ package me.him188.ani.app.domain.media.resolver
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.io.IOException
+import me.him188.ani.app.domain.media.cache.engine.EnsureTorrentEngineIsAccessible
+import me.him188.ani.app.domain.media.cache.engine.TorrentEngineAccess
+import me.him188.ani.app.domain.media.cache.engine.withEngineAccessible
 import me.him188.ani.app.domain.media.player.data.MediaDataProvider
 import me.him188.ani.app.domain.media.player.data.TorrentMediaData
 import me.him188.ani.app.domain.torrent.TorrentEngine
@@ -35,6 +37,7 @@ import kotlin.coroutines.cancellation.CancellationException
 
 class TorrentMediaResolver(
     private val engine: TorrentEngine,
+    private val engineAccess: TorrentEngineAccess,
 ) : MediaResolver {
     override fun supports(media: Media): Boolean {
         if (!engine.isSupported) return false
@@ -43,37 +46,41 @@ class TorrentMediaResolver(
 
     @Throws(MediaResolutionException::class, CancellationException::class)
     override suspend fun resolve(media: Media, episode: EpisodeMetadata): MediaDataProvider<*> {
-        val downloader = try {
-            engine.getDownloader()
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Throwable) {
-            throw MediaResolutionException(ResolutionFailures.ENGINE_ERROR, e)
-        }
-
-        return when (val location = media.download) {
-            is ResourceLocation.HttpTorrentFile,
-            is ResourceLocation.MagnetLink
-                -> {
-                try {
-                    TorrentMediaDataProvider(
-                        engine,
-                        encodedTorrentInfo = downloader.fetchTorrent(location.uri),
-                        episodeMetadata = episode,
-                        extraFiles = media.extraFiles.toMediampMediaExtraFiles(),
-                    )
-                } catch (e: FetchTorrentTimeoutException) {
-                    throw MediaResolutionException(ResolutionFailures.FETCH_TIMEOUT)
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: IOException) {
-                    throw MediaResolutionException(ResolutionFailures.NETWORK_ERROR, e)
-                } catch (e: Exception) {
-                    throw MediaResolutionException(ResolutionFailures.ENGINE_ERROR, e)
-                }
+        @OptIn(EnsureTorrentEngineIsAccessible::class)
+        engineAccess.withEngineAccessible {
+            val downloader = try {
+                engine.getDownloader()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                throw MediaResolutionException(ResolutionFailures.ENGINE_ERROR, e)
             }
 
-            else -> throw UnsupportedMediaException(media)
+            return when (val location = media.download) {
+                is ResourceLocation.HttpTorrentFile,
+                is ResourceLocation.MagnetLink
+                    -> {
+                    try {
+                        TorrentMediaDataProvider(
+                            engine,
+                            engineAccess = engineAccess,
+                            encodedTorrentInfo = downloader.fetchTorrent(location.uri),
+                            episodeMetadata = episode,
+                            extraFiles = media.extraFiles.toMediampMediaExtraFiles(),
+                        )
+                    } catch (e: FetchTorrentTimeoutException) {
+                        throw MediaResolutionException(ResolutionFailures.FETCH_TIMEOUT)
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: IOException) {
+                        throw MediaResolutionException(ResolutionFailures.NETWORK_ERROR, e)
+                    } catch (e: Exception) {
+                        throw MediaResolutionException(ResolutionFailures.ENGINE_ERROR, e)
+                    }
+                }
+
+                else -> throw UnsupportedMediaException(media)
+            }
         }
     }
 
@@ -175,6 +182,7 @@ class TorrentMediaResolver(
 
 class TorrentMediaDataProvider(
     private val engine: TorrentEngine,
+    private val engineAccess: TorrentEngineAccess,
     private val encodedTorrentInfo: EncodedTorrentInfo,
     private val episodeMetadata: EpisodeMetadata,
     override val extraFiles: org.openani.mediamp.source.MediaExtraFiles,
@@ -191,33 +199,38 @@ class TorrentMediaDataProvider(
         logger.info {
             "TorrentVideoSource '${episodeMetadata.title}' opening a VideoData"
         }
-        val downloader = engine.getDownloader()
-        val handle = withContext(Dispatchers.IO) {
-            logger.info {
-                "TorrentVideoSource '${episodeMetadata.title}' waiting for files"
-            }
-            val files = downloader.startDownload(encodedTorrentInfo)
-                .getFiles()
 
-            TorrentMediaResolver.selectVideoFileEntry(
-                files,
-                { pathInTorrent },
-                listOf(episodeMetadata.title),
-                episodeSort = episodeMetadata.sort,
-                episodeEp = episodeMetadata.ep,
-            )?.also {
+        // 下载缓存需要保证 torrent engine 一直可用, startDownload 返回就保证了
+        @OptIn(EnsureTorrentEngineIsAccessible::class)
+        val handle = engineAccess.withEngineAccessible {
+            val downloader = engine.getDownloader()
+            withContext(Dispatchers.IO) {
                 logger.info {
-                    "TorrentVideoSource selected file: ${it.pathInTorrent}"
+                    "TorrentVideoSource '${episodeMetadata.title}' waiting for files"
                 }
-            }?.createHandle()?.also {
-                it.resume(FilePriority.HIGH)
-            } ?: throw MediaSourceOpenException(
-                OpenFailures.NO_MATCHING_FILE,
-                """
+                val files = downloader.startDownload(encodedTorrentInfo)
+                    .getFiles()
+
+                TorrentMediaResolver.selectVideoFileEntry(
+                    files,
+                    { pathInTorrent },
+                    listOf(episodeMetadata.title),
+                    episodeSort = episodeMetadata.sort,
+                    episodeEp = episodeMetadata.ep,
+                )?.also {
+                    logger.info {
+                        "TorrentVideoSource selected file: ${it.pathInTorrent}"
+                    }
+                }?.createHandle()?.also {
+                    it.resume(FilePriority.HIGH)
+                } ?: throw MediaSourceOpenException(
+                    OpenFailures.NO_MATCHING_FILE,
+                    """
                                 Torrent files: ${files.joinToString { it.pathInTorrent }}
                                 Episode metadata: $episodeMetadata
                             """.trimIndent(),
-            )
+                )
+            }
         }
         return TorrentMediaData(
             handle,

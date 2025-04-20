@@ -25,6 +25,7 @@ import kotlinx.serialization.json.JsonObjectBuilder
 import kotlinx.serialization.json.buildJsonObject
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
 import me.him188.ani.app.data.persistent.MemoryDataStore
+import me.him188.ani.app.domain.media.cache.engine.AlwaysUseTorrentEngineAccess
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.domain.media.cache.engine.TorrentMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.storage.DataStoreMediaCacheStorage
@@ -112,6 +113,9 @@ class DirectoryMediaCacheStorageTest {
                 parentCoroutineContext = coroutineContext,
                 anitorrentFactory = TestAnitorrentTorrentDownloader.Factory,
             ).also { torrentEngine = it },
+            engineAccess = AlwaysUseTorrentEngineAccess,
+            mediaCacheMetadataStore = MemoryDataStore(listOf()),
+            shareRatioLimitFlow = flowOf(1.2f),
             flowDispatcher = coroutineContext[ContinuationInterceptor]!!,
             onDownloadStarted = { onDownloadStarted(it as AnitorrentDownloadSession) },
         )
@@ -171,7 +175,7 @@ class DirectoryMediaCacheStorageTest {
     }
 
     private suspend fun TorrentMediaCacheEngine.TorrentMediaCache.getSession() =
-        lazyFileHandle.state.first()!!.session as AnitorrentDownloadSession
+        fileHandle.state.first()!!.session as AnitorrentDownloadSession
 
     private fun amendJsonString(
         @Language("json") string: String,
@@ -285,7 +289,7 @@ class DirectoryMediaCacheStorageTest {
             assertEquals(cache.origin.mediaId, first().origin.mediaId)
         }
 
-        assertNotNull(cache.lazyFileHandle.state.first()).run {
+        assertNotNull(cache.fileHandle.state.first()).run {
             assertNotNull(handle)
             assertNotNull(entry)
         }
@@ -365,7 +369,7 @@ class DirectoryMediaCacheStorageTest {
         val cache =
             storage.cache(media, mediaCacheMetadata(), resume = false) as TorrentMediaCacheEngine.TorrentMediaCache
 
-        assertNotNull(cache.lazyFileHandle.state.first()).run {
+        assertNotNull(cache.fileHandle.state.first()).run {
             assertNotNull(handle)
         }
 

@@ -29,7 +29,9 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
@@ -112,12 +114,27 @@ sealed class AniTorrentService : LifecycleService() {
 
         scope.launch {
             val anitorrentDownloader = anitorrent.await().getDownloader()
-            anitorrentDownloader.openSessions
-            anitorrentDownloader.totalStats.sampleWithInitial(5000).collect { stat ->
+
+            combine(
+                anitorrentDownloader.openSessions.flatMapLatest { sessionMap ->
+                    combine(sessionMap.values.map { it.sessionStats }) { sessions ->
+                        sessions.count { it?.isDownloadFinished != true }
+                    }
+                },
+                anitorrentDownloader.totalStats.sampleWithInitial(2000),
+            ) { downloadingSessionCount, stats ->
                 notification.updateNotification(
-                    NotificationDisplayStrategy.Idle(stat.downloadSpeed.bytes, stat.uploadSpeed.bytes),
+                    if (downloadingSessionCount > 0) {
+                        NotificationDisplayStrategy.Working(
+                            stats.downloadSpeed.bytes,
+                            stats.uploadSpeed.bytes,
+                            downloadingSessionCount,
+                        )
+                    } else {
+                        NotificationDisplayStrategy.Idle(stats.downloadSpeed.bytes, stats.uploadSpeed.bytes)
+                    },
                 )
-            }
+            }.collect()
         }
     }
 
@@ -220,9 +237,9 @@ sealed class AniTorrentService : LifecycleService() {
          */
         const val INTENT_STARTUP = "me.him188.ani.android.ANI_TORRENT_SERVICE_STARTUP"
         const val INTENT_STARTUP_EXTRA = "success"
-        
+
         const val INTENT_BACKGROUND_TIMEOUT = "me.him188.ani.android.ANI_TORRENT_SERVICE_BACKGROUND_TIMEOUT"
-        
+
         val actualServiceClass = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             AniTorrentServiceApi34::class.java
         } else {
@@ -241,7 +258,7 @@ class AniTorrentServiceApi34 : AniTorrentService()
 
 /**
  * Android 34 以下使用
- * 
+ *
  * 在 manifest 的 fgsType 是 dataSync
  */
 class AniTorrentServiceApiDefault : AniTorrentService()

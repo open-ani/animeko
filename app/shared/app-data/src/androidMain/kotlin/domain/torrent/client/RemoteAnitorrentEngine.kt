@@ -19,6 +19,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -27,6 +28,7 @@ import kotlinx.serialization.builtins.nullable
 import kotlinx.serialization.json.Json
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
 import me.him188.ani.app.data.models.preference.ProxyConfig
+import me.him188.ani.app.domain.media.cache.engine.TorrentEngineAccess
 import me.him188.ani.app.domain.torrent.IRemoteAniTorrentEngine
 import me.him188.ani.app.domain.torrent.TorrentEngine
 import me.him188.ani.app.domain.torrent.TorrentEngineType
@@ -54,6 +56,7 @@ import kotlin.coroutines.CoroutineContext
 @RequiresApi(Build.VERSION_CODES.O_MR1)
 class RemoteAnitorrentEngine(
     private val connection: TorrentServiceConnection<IRemoteAniTorrentEngine>,
+    private val engineAccess: TorrentEngineAccess,
     anitorrentConfigFlow: Flow<AnitorrentConfig>,
     proxyConfig: Flow<ProxyConfig?>,
     peerFilterConfig: Flow<PeerFilterSettings>,
@@ -114,6 +117,7 @@ class RemoteAnitorrentEngine(
     }
 
     override suspend fun getDownloader(): TorrentDownloader {
+        engineAccess.useEngine.first { it } // await for engine access
         return RemoteTorrentDownloader(
             fetchRemoteScope,
             RetryRemoteObject(fetchRemoteScope) { getBinderOrFail().downlaoder },

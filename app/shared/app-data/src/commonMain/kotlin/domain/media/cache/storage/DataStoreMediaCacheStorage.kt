@@ -14,7 +14,6 @@ import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.plus
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,6 +34,7 @@ import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.engine.InvalidMediaCacheEngineKey
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngine
 import me.him188.ani.app.domain.media.cache.engine.MediaStats
+import me.him188.ani.app.domain.media.cache.engine.TorrentMediaCacheEngine
 import me.him188.ani.app.domain.media.fetch.MediaFetcher
 import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
 import me.him188.ani.datasources.api.Media
@@ -61,9 +61,6 @@ import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
-
-@Deprecated("Since 4.8, metadata is stored in the datastore. This will be removed in the future.")
-const val METADATA_FILE_EXTENSION = "metadata"
 
 /**
  * 本地目录缓存, 管理本地目录以及元数据的存储, 调用 [MediaCacheEngine] 进行缓存的实际创建
@@ -121,24 +118,37 @@ class DataStoreMediaCacheStorage(
         try {
             val cache = engine.restore(origin, metadata, scope.coroutineContext)
             logger.info { "Cache restored: ${origin.mediaId}, result=${cache}" }
+            if (cache == null) return@withContext
 
-            if (cache != null) {
-                reportRecovered(cache)
-                cache.resume()
+            reportRecovered(cache)
+            cache.resume()
+            logger.info { "Cache resumed: $cache" }
+
+            if (cache !is TorrentMediaCacheEngine.TorrentMediaCache) {
                 logger.info { "Cache resumed: $cache" }
+                return@withContext
             }
 
-            // try to migrate
-            /*if (cache != null) {
-                val newSaveName = getSaveFilename(cache)
-                if (file.name != newSaveName) {
-                    logger.warn {
-                        "Metadata file name mismatch, renaming: " +
-                                "${file.name} -> $newSaveName"
+            logger.info { "Cache resumed: $cache, subscribe to media cache stats." }
+            scope.launch {
+                cache.subscribeStats { newMetadata ->
+                    store.updateData { originalList ->
+                        val existing = originalList.indexOfFirst {
+                            it.origin.mediaId == cache.origin.mediaId &&
+                                    it.metadata.subjectId == cache.metadata.subjectId &&
+                                    it.metadata.episodeId == cache.metadata.episodeId
+                        }
+                        if (existing != -1) {
+                            originalList.toMutableList().apply {
+                                removeAt(existing)
+                                add(MediaCacheSave(cache.origin, newMetadata, engine.engineKey))
+                            }
+                        } else {
+                            originalList + MediaCacheSave(cache.origin, newMetadata, engine.engineKey)
+                        }
                     }
-                    file.moveTo(metadataDir.resolve(newSaveName))
                 }
-            }*/
+            }
         } catch (e: Exception) {
             logger.error(e) { "Failed to restore cache for ${origin.mediaId}" }
         }

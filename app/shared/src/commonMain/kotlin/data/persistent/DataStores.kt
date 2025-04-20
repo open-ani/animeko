@@ -32,11 +32,11 @@ private object PlatformDataStoreManagerHolder : SynchronizedObject() {
     private var initialized: Initialized? = null
 
     fun get(context: Context): PlatformDataStoreManager {
-        getInitializedAndCheck(context)?.let { 
+        getInitialized()?.let {
             return it
         }
         kotlinx.atomicfu.locks.synchronized(this) {
-            getInitializedAndCheck(context)?.let {
+            getInitialized()?.let {
                 return it
             }
             return context.createPlatformDataStoreManager().also {
@@ -48,13 +48,8 @@ private object PlatformDataStoreManagerHolder : SynchronizedObject() {
         }
     }
 
-    private fun getInitializedAndCheck(context: Context): PlatformDataStoreManager? {
-        initialized?.let {
-            check(it.contextHashCode == context.hashCode()) {
-                "PlatformDataStoreManager already initialized with another Context instance"
-            }
-            return it.instance
-        }
+    private fun getInitialized(): PlatformDataStoreManager? {
+        initialized?.let { return it.instance }
         return null
     }
 }

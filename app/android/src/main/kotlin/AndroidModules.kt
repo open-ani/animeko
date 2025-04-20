@@ -22,6 +22,7 @@ import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
 import me.him188.ani.app.domain.foundation.get
+import me.him188.ani.app.domain.media.cache.engine.TorrentEngineAccess
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.resolver.AndroidWebMediaResolver
 import me.him188.ani.app.domain.media.resolver.HttpStreamingMediaResolver
@@ -35,6 +36,7 @@ import me.him188.ani.app.domain.torrent.LocalAnitorrentEngineFactory
 import me.him188.ani.app.domain.torrent.RemoteAnitorrentEngineFactory
 import me.him188.ani.app.domain.torrent.TorrentManager
 import me.him188.ani.app.domain.torrent.service.AniTorrentService
+import me.him188.ani.app.domain.torrent.service.TorrentResumptionLifecycle
 import me.him188.ani.app.domain.torrent.service.TorrentServiceConnection
 import me.him188.ani.app.navigation.BrowserNavigator
 import me.him188.ani.app.platform.AndroidPermissionManager
@@ -66,6 +68,7 @@ import kotlin.concurrent.thread
 import kotlin.system.exitProcess
 
 fun getAndroidModules(
+    torrentResumptionLifecycle: TorrentResumptionLifecycle,
     torrentServiceConnection: TorrentServiceConnection<IRemoteAniTorrentEngine>,
     coroutineScope: CoroutineScope,
 ) = module {
@@ -74,6 +77,7 @@ fun getAndroidModules(
     }
     single<BrowserNavigator> { AndroidBrowserNavigator() }
 
+    single<TorrentEngineAccess> { torrentResumptionLifecycle }
     single<TorrentServiceConnection<IRemoteAniTorrentEngine>> { torrentServiceConnection }
 
     single<TorrentManager> {
@@ -140,7 +144,7 @@ fun getAndroidModules(
             get(),
             baseSaveDir = { Path(saveDir).inSystem },
             if (AniApplication.FEATURE_USE_TORRENT_SERVICE) {
-                RemoteAnitorrentEngineFactory(get(), get<ProxyProvider>().proxy)
+                RemoteAnitorrentEngineFactory(get(), get(), get<ProxyProvider>().proxy)
             } else {
                 LocalAnitorrentEngineFactory
             },

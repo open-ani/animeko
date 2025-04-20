@@ -19,6 +19,8 @@ import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
 import me.him188.ani.app.domain.foundation.get
+import me.him188.ani.app.domain.media.cache.engine.AlwaysUseTorrentEngineAccess
+import me.him188.ani.app.domain.media.cache.engine.TorrentEngineAccess
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.resolver.DesktopWebMediaResolver
 import me.him188.ani.app.domain.media.resolver.HttpStreamingMediaResolver
@@ -50,6 +52,8 @@ import java.io.File
 import kotlin.io.path.Path
 
 fun getDesktopModules(getContext: () -> DesktopContext, scope: CoroutineScope) = module {
+    single<TorrentEngineAccess> { AlwaysUseTorrentEngineAccess }
+
     single<TorrentManager> {
         val defaultTorrentCachePath = getContext().torrentDataCacheDir
 

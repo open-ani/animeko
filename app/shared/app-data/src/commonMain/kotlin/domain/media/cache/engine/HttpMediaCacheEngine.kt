@@ -12,7 +12,6 @@ package me.him188.ani.app.domain.media.cache.engine
 import androidx.compose.runtime.Composable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
@@ -61,12 +60,13 @@ import kotlin.coroutines.CoroutineContext
 
 class HttpMediaCacheEngine(
     private val downloader: HttpDownloader,
-    override val engineKey: MediaCacheEngineKey,
     private val saveDir: Path,
     private val mediaResolver: MediaResolver,
     private val mediaSourceId: String,
 ) : MediaCacheEngine {
     private val json get() = DataStoreJson
+
+    override val engineKey: MediaCacheEngineKey = Companion.engineKey
 
     override val stats: Flow<MediaStats> = run {
         val downloadSpeedFlow =
@@ -225,11 +225,13 @@ class HttpMediaCacheEngine(
 
     }
 
-    internal companion object {
-        val EXTRA_DOWNLOAD_ID = MetadataKey("downloadId")
-        val EXTRA_URI = MetadataKey("uri")
-        val EXTRA_OUTPUT_PATH = MetadataKey("outputPath")
-        val EXTRA_HEADERS = MetadataKey("headers")
+    companion object {
+        internal val EXTRA_DOWNLOAD_ID = MetadataKey("downloadId")
+        internal val EXTRA_URI = MetadataKey("uri")
+        internal val EXTRA_OUTPUT_PATH = MetadataKey("outputPath")
+        internal val EXTRA_HEADERS = MetadataKey("headers")
+
+        val engineKey = MediaCacheEngineKey("web-m3u")
 
         private val logger = logger<HttpMediaCacheEngine>()
     }

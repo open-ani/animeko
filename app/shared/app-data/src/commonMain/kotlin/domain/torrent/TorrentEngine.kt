@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.retry
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
+import me.him188.ani.app.domain.media.cache.engine.TorrentEngineAccess
 import me.him188.ani.app.domain.torrent.peer.PeerFilterSettings
 import me.him188.ani.app.torrent.api.TorrentDownloader
 import me.him188.ani.app.torrent.api.peer.PeerFilter
@@ -72,6 +73,8 @@ interface TorrentEngine : AutoCloseable {
      *
      * 返回的 [TorrentDownloader] 不应当被[关闭][TorrentDownloader.close].
      * 如过关闭了, 下次调用 [getDownloader] 仍然会返回同一个已经被关闭的实例.
+     *
+     * 注意: 在一些平台上需要考虑 [TorrentEngineAccess], 否则可能会导致此函数永久挂起.
      *
      * @throws UnsupportedOperationException 当 [isSupported] emit 了 `false` 时抛出
      * @throws TorrentDownloaderInitializationException 当创建失败时抛出

@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.newSingleThreadContext
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
 import me.him188.ani.app.data.models.preference.ProxyConfig
+import me.him188.ani.app.domain.media.cache.engine.TorrentEngineAccess
 import me.him188.ani.app.domain.torrent.client.RemoteAnitorrentEngine
 import me.him188.ani.app.domain.torrent.peer.PeerFilterSettings
 import me.him188.ani.app.domain.torrent.service.TorrentServiceConnection
@@ -27,6 +28,7 @@ import kotlin.coroutines.CoroutineContext
 @RequiresApi(Build.VERSION_CODES.O_MR1)
 class RemoteAnitorrentEngineFactory(
     private val serviceConnection: TorrentServiceConnection<IRemoteAniTorrentEngine>,
+    private val torrentEngineAccess: TorrentEngineAccess,
     private val proxyConfig: Flow<ProxyConfig?>,
     private val defaultDispatcher: CoroutineDispatcher =
         @OptIn(DelicateCoroutinesApi::class) newSingleThreadContext("RemoteAnitorrentEngine"),
@@ -40,6 +42,7 @@ class RemoteAnitorrentEngineFactory(
     ): TorrentEngine {
         return RemoteAnitorrentEngine(
             serviceConnection,
+            torrentEngineAccess,
             config,
             proxyConfig,
             peerFilterSettings,

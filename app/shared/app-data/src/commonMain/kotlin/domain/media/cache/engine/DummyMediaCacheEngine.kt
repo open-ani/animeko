@@ -28,9 +28,10 @@ import kotlin.coroutines.CoroutineContext
  */
 class DummyMediaCacheEngine(
     private val mediaSourceId: String,
-    override val engineKey: MediaCacheEngineKey,
     private val location: MediaSourceLocation = MediaSourceLocation.Local,
 ) : MediaCacheEngine {
+    override val engineKey: MediaCacheEngineKey = Companion.engineKey
+    
     override val stats: Flow<MediaStats> = flowOf(MediaStats.Unspecified)
 
     override fun supports(media: Media): Boolean = true
@@ -49,6 +50,10 @@ class DummyMediaCacheEngine(
     ): MediaCache = DummyMediaCache(origin, metadata, mediaSourceId, location)
 
     override suspend fun deleteUnusedCaches(all: List<MediaCache>) {
+    }
+
+    companion object {
+        val engineKey = MediaCacheEngineKey("test-in-memory")
     }
 }
 
