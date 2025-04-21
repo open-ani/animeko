@@ -71,6 +71,7 @@ fun DownloadingUpdatePopupCard(
             // 直接关闭
             is FileDownloaderState.Succeed,
             is FileDownloaderState.Failed,
+            is FileDownloaderState.Cancelled,
             FileDownloaderState.Idle -> onCancelClick()
         }
 
