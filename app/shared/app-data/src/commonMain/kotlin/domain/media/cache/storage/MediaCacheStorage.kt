@@ -186,7 +186,7 @@ class TestMediaCacheStorage : MediaCacheStorage {
         get() = MediaCacheManager.LOCAL_FS_MEDIA_SOURCE_ID
     override val cacheMediaSource: MediaSource
         get() = throw UnsupportedOperationException()
-    override val engine: MediaCacheEngine = DummyMediaCacheEngine(mediaSourceId, MediaCacheEngineKey("dummy-cache"))
+    override val engine: MediaCacheEngine = DummyMediaCacheEngine(mediaSourceId)
     override val listFlow: MutableStateFlow<List<MediaCache>> =
         MutableStateFlow(listOf())
 

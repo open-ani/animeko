@@ -20,10 +20,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.emitAll
-import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
@@ -33,7 +32,6 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.job
 import kotlinx.coroutines.withContext
 import kotlinx.io.IOException
@@ -64,6 +62,7 @@ import me.him188.ani.datasources.api.MetadataKey
 import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
 import me.him188.ani.datasources.api.topic.ResourceLocation
+import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.io.absolutePath
 import me.him188.ani.utils.io.actualSize
@@ -305,7 +304,7 @@ class TorrentMediaCacheEngine(
                 handle
             }
 
-            withContext(Dispatchers.IO) {
+            withContext(Dispatchers.IO_) {
                 val file = handle.entry.resolveFileMaybeEmptyOrNull() ?: return@withContext
                 if (file.exists()) {
                     logger.info { "Deleting torrent cache: $file" }
@@ -336,41 +335,39 @@ class TorrentMediaCacheEngine(
         /**
          * 订阅当前 TorrentMediaCache 的统计信息以更新它的 metadata
          */
-        suspend fun subscribeStats(onUpdateMetadata: suspend (MediaCacheMetadata) -> Unit) {
-            engineAccess.useEngine
-                .filter { it }
-                .transformLatest { emitAll(fileHandle.entry.filterNotNull()) }
+        suspend fun subscribeStats(onUpdateMetadata: suspend (Map<MetadataKey, String>) -> Unit) {
+            fileHandle.entry
+                .filterNotNull()
                 .collectLatest { entry ->
-                    // 立刻更新 torrent relative path
-                    if (metadata.extra[EXTRA_TORRENT_CACHE_FILE] != entry.pathInTorrent) {
-                        onUpdateMetadata(
-                            metadata.withExtra(mapOf(EXTRA_TORRENT_CACHE_FILE to entry.pathInTorrent)),
-                        )
-                    }
+                    // 更新 torrent 信息不需要维持运行 torrent engine
+                    @OptIn(EnsureTorrentEngineIsAccessible::class)
+                    engineAccess.withEngineAccessible {
+                        // 立刻更新 torrent relative path
+                        onUpdateMetadata(mapOf(EXTRA_TORRENT_CACHE_FILE to entry.pathInTorrent))
 
-                    combine(
-                        fileHandle.session.filterNotNull()
-                            .flatMapLatest { it.sessionStats }.filterNotNull(),
-                        entry.fileStats.filterNotNull(),
-                        shareRatioLimitFlow,
-                    ) { sessionStats, fileStats, shareRatioLimit ->
-                        if (!fileStats.isDownloadFinished) return@combine
+                        combine(
+                            fileHandle.session.filterNotNull()
+                                .flatMapLatest { it.sessionStats }.filterNotNull(),
+                            entry.fileStats.filterNotNull(),
+                            shareRatioLimitFlow,
+                        ) { sessionStats, fileStats, shareRatioLimit ->
+                            if (!fileStats.isDownloadFinished) return@combine
 
-                        // val shareRatio = sessionStats.uploadedBytes / fileStats.downloadedBytes.coerceAtLeast(1)
-                        // if (shareRatio < shareRatioLimit) return@combine
+                            // val shareRatio = sessionStats.uploadedBytes / fileStats.downloadedBytes.coerceAtLeast(1).toFloat()
+                            // if (shareRatio < shareRatioLimit) return@combine
 
-                        val completedMetadata = metadata.extra[EXTRA_TORRENT_COMPLETED]
-                        if (completedMetadata == "true") return@combine
+                            val completedMetadata = metadata.extra[EXTRA_TORRENT_COMPLETED]
+                            if (completedMetadata == "true") return@combine
 
-                        onUpdateMetadata(
-                            metadata.withExtra(
+                            onUpdateMetadata(
                                 mapOf(
                                     EXTRA_TORRENT_COMPLETED to "true",
                                     EXTRA_TORRENT_CACHE_FILE_SIZE to fileStats.downloadedBytes.toString(),
                                     EXTRA_TORRENT_CACHE_UPLOADED_SIZE to sessionStats.uploadedBytes.toString(),
                                 ),
-                            ),
-                        )
+                            )
+                        }
+                            .collect()
                     }
                 }
         }

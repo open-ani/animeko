@@ -125,7 +125,7 @@ class LifecycleAwareTorrentServiceConnection<T : Any>(
                 }
             }
         } catch (e: CancellationException) {
-            logger.debug { "App moved to background." }
+            logger.debug { "Current lifecycle state RESUMED is cancelled." }
             throw e
         }
     }

@@ -159,7 +159,7 @@ fun getAndroidModules(
     factory<MediaResolver> {
         MediaResolver.from(
             get<TorrentManager>().engines
-                .map { TorrentMediaResolver(it) }
+                .map { TorrentMediaResolver(it, get()) }
                 .plus(LocalFileMediaResolver())
                 .plus(HttpStreamingMediaResolver())
                 .plus(AndroidWebMediaResolver(get<MediaSourceManager>().webVideoMatcherLoader)),

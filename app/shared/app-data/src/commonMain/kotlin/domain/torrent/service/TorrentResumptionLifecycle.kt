@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
@@ -55,13 +56,14 @@ class TorrentResumptionLifecycle(
 
     override val useEngine: StateFlow<Boolean> =
         combine(
-            dataStoreFlow.value.data.map(::checkIfAllTorrentMediaCacheCompleted),
+            dataStoreFlow.flatMapLatest { it.data.map(::checkIfAllTorrentMediaCacheCompleted) },
             keepResumed,
             processLifecycle.currentStateFlow,
         ) { allCompleted, keep, currentState ->
             withContext(Dispatchers.Main) {
                 if (currentState != Lifecycle.State.RESUMED) {
                     registry.currentState = currentState
+                    return@withContext false
                 }
                 val shouldMoveToResumed = keep || !allCompleted
                 // We should not move state to RESUMED if all torrent media cache were completed.

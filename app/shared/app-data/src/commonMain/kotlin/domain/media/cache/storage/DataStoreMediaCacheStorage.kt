@@ -114,7 +114,6 @@ class DataStoreMediaCacheStorage(
         metadata: MediaCacheMetadata,
         reportRecovered: suspend (MediaCache) -> Unit,
     ) = withContext(Dispatchers.IO) {
-
         try {
             val cache = engine.restore(origin, metadata, scope.coroutineContext)
             logger.info { "Cache restored: ${origin.mediaId}, result=${cache}" }
@@ -122,7 +121,6 @@ class DataStoreMediaCacheStorage(
 
             reportRecovered(cache)
             cache.resume()
-            logger.info { "Cache resumed: $cache" }
 
             if (cache !is TorrentMediaCacheEngine.TorrentMediaCache) {
                 logger.info { "Cache resumed: $cache" }
@@ -131,7 +129,8 @@ class DataStoreMediaCacheStorage(
 
             logger.info { "Cache resumed: $cache, subscribe to media cache stats." }
             scope.launch {
-                cache.subscribeStats { newMetadata ->
+                cache.subscribeStats { newMetadataExtras ->
+                    logger.info { "Cache update new metadata: ${cache.origin.mediaId}." }
                     store.updateData { originalList ->
                         val existing = originalList.indexOfFirst {
                             it.origin.mediaId == cache.origin.mediaId &&
@@ -140,11 +139,21 @@ class DataStoreMediaCacheStorage(
                         }
                         if (existing != -1) {
                             originalList.toMutableList().apply {
-                                removeAt(existing)
-                                add(MediaCacheSave(cache.origin, newMetadata, engine.engineKey))
+                                val existingSave = removeAt(existing)
+                                add(
+                                    MediaCacheSave(
+                                        cache.origin,
+                                        existingSave.metadata.withExtra(newMetadataExtras),
+                                        engine.engineKey,
+                                    ),
+                                )
                             }
                         } else {
-                            originalList + MediaCacheSave(cache.origin, newMetadata, engine.engineKey)
+                            originalList + MediaCacheSave(
+                                cache.origin,
+                                cache.metadata.withExtra(newMetadataExtras),
+                                engine.engineKey,
+                            )
                         }
                     }
                 }
