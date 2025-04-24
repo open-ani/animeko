@@ -55,6 +55,7 @@ fun BoxScope.UpdateNotifier(
     layoutKind: UpdateNotifierLayoutKind = UpdateNotifierDefaults.layoutKind(),
 ) {
     SideEffect {
+        // 用户每次从别的页面回到主页, 都会触发一次检查.
         viewModel.startAutomaticCheckLatestVersion()
     }
 
@@ -116,7 +117,11 @@ fun BoxScope.UpdateNotifier(
     val uriHandler = LocalUriHandler.current
 
     // Track whether the user dismisses the notification in this session
-    var dismissedManually by rememberSaveable { mutableStateOf(false) }
+    var dismissedManually by rememberSaveable(
+        presentation.newVersion?.name, // 当有新版本时, 重新显示
+    ) {
+        mutableStateOf(false)
+    }
 
     val newVersion = presentation.newVersion
     if (newVersion != null) {
