@@ -248,7 +248,13 @@ private fun MobileSnackbar(
 ) {
     LaunchedEffect(version.name) {
         val result = hostState.showSnackbar(
-            message = "发现新版本 ${version.name}",
+            message = buildString {
+                append("新版本")
+
+                version.majorChanges.firstOrNull()?.let {
+                    append("：$it")
+                }
+            },
             actionLabel = "查看",
             withDismissAction = true,
             duration = SnackbarDuration.Indefinite,
