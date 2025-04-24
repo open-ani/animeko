@@ -116,12 +116,17 @@ class CacheManagementViewModel : AbstractViewModel(), KoinComponent {
                 if (storages.isEmpty()) {
                     flowOfEmptyList()
                 } else {
-                    combine(storages.map { it.listFlow }) { it.asSequence().flatten().toList() }
-                        .transformLatest { allCaches ->
-                            supervisorScope {
-                                emitAll(createCacheGroupStates(allCaches))
-                            } // supervisorScope won't finish itself
-                        }
+                    val listFlow = storages.map { it.listFlow }
+                    if (listFlow.isEmpty()) {
+                        flowOfEmptyList()
+                    } else {
+                        combine(listFlow) { it.asSequence().flatten().toList() }
+                            .transformLatest { allCaches ->
+                                supervisorScope {
+                                    emitAll(createCacheGroupStates(allCaches))
+                                } // supervisorScope won't finish itself
+                            }
+                    }
                 }
             }
             .shareInBackground()
@@ -188,7 +193,11 @@ class CacheManagementViewModel : AbstractViewModel(), KoinComponent {
                 val episodeFlows = mediaCaches.map { mediaCache ->
                     createCacheEpisodeFlow(mediaCache)
                 }.let { episodeFlows ->
-                    combine(episodeFlows) { it.toList() }
+                    if (episodeFlows.isEmpty()) {
+                        flowOfEmptyList()
+                    } else {
+                        combine(episodeFlows) { it.toList() }
+                    }
                 }.shareInBackground()
 
                 combine(
@@ -205,6 +214,9 @@ class CacheManagementViewModel : AbstractViewModel(), KoinComponent {
                 }
             }
 
+        if (groupStateFlows.isEmpty()) {
+            return flowOfEmptyList()
+        }
         return combine(groupStateFlows) { array ->
             array.sortedWith(
                 compareByDescending<CacheGroupState> { it.latestCreationTime }
