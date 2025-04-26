@@ -14,7 +14,6 @@ import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.coroutineScope
@@ -174,7 +173,7 @@ class TorrentMediaCacheEngine(
 
             // 获取 cached media 不需要让 torrent engine 一直可用
             @OptIn(EnsureTorrentEngineIsAccessible::class)
-            engineAccess.withEngineAccessible {
+            engineAccess.withEngineAccessible("TorrentMediaCache#$this-getCachedMedia:${origin.mediaId}") {
                 val file = fileHandle.handle.first()
                 if (file != null && file.entry.isFinished()) {
                     val filePath = file.entry.resolveFile()
@@ -293,23 +292,24 @@ class TorrentMediaCacheEngine(
 
             // 只需要在删除缓存的时候 torrent engine 可用, 不需要保证一直可用
             @OptIn(EnsureTorrentEngineIsAccessible::class)
-            val handle = engineAccess.withEngineAccessible {
-                logger.info { "Getting handle" }
-                val handle = fileHandle.handle.first() ?: kotlin.run {
-                    // did not even selected a file
-                    logger.info { "Deleting torrent cache: No file selected" }
+            val handle =
+                engineAccess.withEngineAccessible("TorrentMediaCache#$this-closeAndDeleteFiles:${origin.mediaId}") {
+                    logger.info { "Getting handle" }
+                    val handle = fileHandle.handle.first() ?: kotlin.run {
+                        // did not even selected a file
+                        logger.info { "Deleting torrent cache: No file selected" }
+                        close()
+                        return
+                    }
+
+                    logger.info { "Closing TorrentCache" }
                     close()
-                    return
+
+                    logger.info { "Closing torrent file handle" }
+                    handle.closeAndDelete()
+
+                    handle
                 }
-
-                logger.info { "Closing TorrentCache" }
-                close()
-                
-                logger.info { "Closing torrent file handle" }
-                handle.closeAndDelete()
-
-                handle
-            }
 
             withContext(Dispatchers.IO_) {
                 val file = handle.entry.resolveFileMaybeEmptyOrNull() ?: kotlin.run {
@@ -542,7 +542,7 @@ class TorrentMediaCacheEngine(
         if (!supports(origin)) throw UnsupportedOperationException("Media is not supported by this engine $this: ${origin.download}")
         // 创建缓存需要保证 torrent engine 一直可用, 所以 getFileHandle 直接启动协程创建好缓存.
         @OptIn(EnsureTorrentEngineIsAccessible::class)
-        engineAccess.withEngineAccessible {
+        engineAccess.withEngineAccessible("TorrentMediaCacheEngine#$this-createCache:${origin.mediaId}") {
             val downloader = torrentEngine.getDownloader()
             val data = downloader.fetchTorrent(origin.download.uri)
             val newMetadata = metadata.withExtra(
@@ -590,7 +590,7 @@ class TorrentMediaCacheEngine(
     override suspend fun deleteUnusedCaches(all: List<MediaCache>) {
         // 只需要在删除缓存的时候 torrent engine 可用, 不需要保证一直可用
         @OptIn(EnsureTorrentEngineIsAccessible::class)
-        engineAccess.withEngineAccessible {
+        engineAccess.withEngineAccessible("TorrentMediaCacheEngine#$this-deleteUnusedCaches") {
             val downloader = torrentEngine.getDownloader()
             val allowedAbsolute = buildSet(capacity = all.size) {
                 for (mediaCache in all) {

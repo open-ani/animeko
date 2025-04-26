@@ -15,8 +15,6 @@ import kotlinx.coroutines.flow.StateFlow
 import me.him188.ani.app.data.persistent.PlatformDataStoreManager
 import me.him188.ani.app.domain.media.cache.storage.MediaCacheStorage
 import me.him188.ani.app.domain.torrent.TorrentEngine
-import me.him188.ani.utils.logging.debug
-import me.him188.ani.utils.logging.logger
 
 /**
  * [TorrentMediaCacheEngine] 是否使用 [TorrentEngine] 来执行[恢复缓存][MediaCacheEngine.restore] 操作.
@@ -43,7 +41,7 @@ interface TorrentEngineAccess {
      * 会在请求时使用 [TorrentEngine] 之后, 启动 torrent service 服务.
      */
     @UnsafeTorrentEngineAccessApi
-    fun requestUseEngine(use: Boolean): Boolean
+    fun requestUseEngine(token: Any, use: Boolean): Boolean
 }
 
 /**
@@ -63,13 +61,12 @@ interface TorrentEngineAccess {
  */
 @EnsureTorrentEngineIsAccessible
 @OptIn(UnsafeTorrentEngineAccessApi::class)
-inline fun <T> TorrentEngineAccess.withEngineAccessible(block: () -> T): T {
-    logger<TorrentEngineAccess>().debug(Exception("show stacktrace"))
+inline fun <T> TorrentEngineAccess.withEngineAccessible(token: Any, block: () -> T): T {
     try {
-        requestUseEngine(true)
+        requestUseEngine(token, true)
         return block()
     } finally {
-        requestUseEngine(false)
+        requestUseEngine(token, false)
     }
 }
 
@@ -80,7 +77,7 @@ object AlwaysUseTorrentEngineAccess : TorrentEngineAccess {
     override val useEngine: StateFlow<Boolean> = MutableStateFlow(true)
 
     @UnsafeTorrentEngineAccessApi
-    override fun requestUseEngine(use: Boolean): Boolean {
+    override fun requestUseEngine(token: Any, use: Boolean): Boolean {
         return true
     }
 }

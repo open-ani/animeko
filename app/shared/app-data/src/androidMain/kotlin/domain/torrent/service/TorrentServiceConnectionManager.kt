@@ -47,6 +47,7 @@ import me.him188.ani.app.domain.torrent.IRemoteAniTorrentEngine
 import me.him188.ani.app.domain.torrent.TorrentEngineType
 import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.coroutines.update
+import me.him188.ani.utils.logging.debug
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
@@ -144,14 +145,15 @@ class TorrentServiceConnectionManager(
     }
 
     @UnsafeTorrentEngineAccessApi
-    override fun requestUseEngine(use: Boolean): Boolean {
+    override fun requestUseEngine(token: Any, use: Boolean): Boolean {
+        logger.debug(Exception("show stacktrace")) {
+            "Request ${if (use) "use" else "release"} torrent engine with token $token"
+        }
         requestQueue.update {
             if (use) {
-                add(Any())
-            } else if (size > 0) {
-                removeAt(0)
+                add(token)
             } else {
-                this
+                removeAll { it == token }
             }
         }
         return true
