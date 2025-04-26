@@ -176,12 +176,12 @@ class TorrentServiceConnectionManager(
                             // 应用不在前台时始终不保持服务连接, 用户可以随时点通知消息的停止来停止服务
                             currentState != Lifecycle.State.RESUMED -> currentState
                             // 应用在前台并且需要服务时 (requestUseEngine(true) 或有未完成的 BT 任务), 必须保持服务的连接
-                            shouldMoveToResumed -> Lifecycle.State.RESUMED
+                            shouldMoveToResumed -> Lifecycle.State.RESUMED // 随后 LifecycleAwareTorrentServiceConnection 会监听到状态并启动 service
                             // 所有 BT 任务都完成了并且 requestUseEngine(false) 则不保持服务连接
                             else -> Lifecycle.State.STARTED
                         }
 
-                        // 无论用户是否在前台, 只要服务还在连接并且不再需要 BT 服务了, 就一定发送关闭服务的任务
+                        // 手动停止不需要的 service, 因为 LifecycleAwareTorrentServiceConnection 只会启动 service, 不会停止.
                         if (!shouldMoveToResumed && connected) {
                             val message = Message.obtain(stopServiceHandler, MSG_STOP_SERVICE)
                             stopServiceHandler.sendMessageDelayed(message, 5000)
