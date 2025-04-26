@@ -19,7 +19,7 @@ import kotlinx.io.IOException
 import me.him188.ani.app.domain.media.cache.engine.EnsureTorrentEngineIsAccessible
 import me.him188.ani.app.domain.media.cache.engine.TorrentEngineAccess
 import me.him188.ani.app.domain.media.cache.engine.UnsafeTorrentEngineAccessApi
-import me.him188.ani.app.domain.media.cache.engine.withEngineAccessible
+import me.him188.ani.app.domain.media.cache.engine.withServiceRequest
 import me.him188.ani.app.domain.media.player.data.MediaDataProvider
 import me.him188.ani.app.domain.media.player.data.TorrentMediaData
 import me.him188.ani.app.domain.torrent.TorrentEngine
@@ -49,7 +49,7 @@ class TorrentMediaResolver(
     @Throws(MediaResolutionException::class, CancellationException::class)
     override suspend fun resolve(media: Media, episode: EpisodeMetadata): MediaDataProvider<*> {
         @OptIn(EnsureTorrentEngineIsAccessible::class)
-        engineAccess.withEngineAccessible("TorrentMediaResolver#$this-resolve:${media.mediaId}") {
+        engineAccess.withServiceRequest("TorrentMediaResolver#$this-resolve:${media.mediaId}") {
             val downloader = try {
                 engine.getDownloader()
             } catch (e: CancellationException) {

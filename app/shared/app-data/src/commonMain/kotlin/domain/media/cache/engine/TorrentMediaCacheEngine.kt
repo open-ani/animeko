@@ -24,7 +24,6 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
@@ -150,8 +149,11 @@ class TorrentMediaCacheEngine(
             MediaCacheState.IN_PROGRESS,
         )
 
+        // TODO: 2025/4/26 这里实际上应该在 commonMain 引入 torrent lifecycle 后监听实际 lifecycle.
+        private val isServiceStared = engineAccess.isServiceConnected
+
         override suspend fun getCachedMedia(): CachedMedia {
-            val useEngineAccess = engineAccess.isServiceRequested.value
+            val useEngineAccess = isServiceStared.value
             logger.info { "getCachedMedia: start, useEngine: $useEngineAccess" }
 
             // 先判断是否使用 data store 的数据, 如果用就不 access file handle
@@ -173,7 +175,7 @@ class TorrentMediaCacheEngine(
 
             // 获取 cached media 不需要让 torrent engine 一直可用
             @OptIn(EnsureTorrentEngineIsAccessible::class)
-            engineAccess.withEngineAccessible("TorrentMediaCache#$this-getCachedMedia:${origin.mediaId}") {
+            engineAccess.withServiceRequest("TorrentMediaCache#$this-getCachedMedia:${origin.mediaId}") {
                 val file = fileHandle.handle.first()
                 if (file != null && file.entry.isFinished()) {
                     val filePath = file.entry.resolveFile()
@@ -197,7 +199,7 @@ class TorrentMediaCacheEngine(
             }
         }
 
-        override val fileStats: Flow<MediaCache.FileStats> = engineAccess.isServiceRequested
+        override val fileStats: Flow<MediaCache.FileStats> = isServiceStared
             .flatMapLatest { useEngine ->
                 // 先判断是否使用 data store 的数据, 如果用就不 access file handle
                 if (!useEngine) {
@@ -218,7 +220,7 @@ class TorrentMediaCacheEngine(
             }
             .flowOn(flowDispatcher)
 
-        override val sessionStats: Flow<MediaCache.SessionStats> = engineAccess.isServiceRequested
+        override val sessionStats: Flow<MediaCache.SessionStats> = isServiceStared
             .flatMapLatest { useEngine ->
                 // 先判断是否使用 data store 的数据, 如果用就不 access file handle
                 if (!useEngine) {
@@ -255,20 +257,20 @@ class TorrentMediaCacheEngine(
             .flowOn(flowDispatcher)
 
         override suspend fun pause() {
-            if (!engineAccess.isServiceRequested.value) return
+            if (!isServiceStared.value) return
             if (isDeleted.value) return
             fileHandle.handle.first()?.pause()
             state.value = MediaCacheState.PAUSED
         }
 
         override suspend fun close() {
-            if (!engineAccess.isServiceRequested.value) return
+            if (!isServiceStared.value) return
             if (isDeleted.value) return
             fileHandle.close()
         }
 
         override suspend fun resume() {
-            if (!engineAccess.isServiceRequested.value) {
+            if (!isServiceStared.value) {
                 // todo: 目前不支持已经完成的缓存继续手动开启做种
                 state.value = MediaCacheState.IN_PROGRESS
                 return
@@ -293,7 +295,7 @@ class TorrentMediaCacheEngine(
             // 只需要在删除缓存的时候 torrent engine 可用, 不需要保证一直可用
             @OptIn(EnsureTorrentEngineIsAccessible::class)
             val handle =
-                engineAccess.withEngineAccessible("TorrentMediaCache#$this-closeAndDeleteFiles:${origin.mediaId}") {
+                engineAccess.withServiceRequest("TorrentMediaCache#$this-closeAndDeleteFiles:${origin.mediaId}") {
                     logger.info { "Getting handle" }
                     val handle = fileHandle.handle.first() ?: kotlin.run {
                         // did not even selected a file
@@ -410,7 +412,7 @@ class TorrentMediaCacheEngine(
         }
     }
 
-    override val stats: Flow<MediaStats> = engineAccess.isServiceRequested
+    override val stats: Flow<MediaStats> = engineAccess.isServiceConnected
         .flatMapLatest { useEngine ->
             // 先判断是否使用 data store 的数据, 如果用就不 downloader
             if (!useEngine) {
@@ -542,7 +544,7 @@ class TorrentMediaCacheEngine(
         if (!supports(origin)) throw UnsupportedOperationException("Media is not supported by this engine $this: ${origin.download}")
         // 创建缓存需要保证 torrent engine 一直可用, 所以 getFileHandle 直接启动协程创建好缓存.
         @OptIn(EnsureTorrentEngineIsAccessible::class)
-        engineAccess.withEngineAccessible("TorrentMediaCacheEngine#$this-createCache:${origin.mediaId}") {
+        engineAccess.withServiceRequest("TorrentMediaCacheEngine#$this-createCache:${origin.mediaId}") {
             val downloader = torrentEngine.getDownloader()
             val data = downloader.fetchTorrent(origin.download.uri)
             val newMetadata = metadata.withExtra(
@@ -590,7 +592,7 @@ class TorrentMediaCacheEngine(
     override suspend fun deleteUnusedCaches(all: List<MediaCache>) {
         // 只需要在删除缓存的时候 torrent engine 可用, 不需要保证一直可用
         @OptIn(EnsureTorrentEngineIsAccessible::class)
-        engineAccess.withEngineAccessible("TorrentMediaCacheEngine#$this-deleteUnusedCaches") {
+        engineAccess.withServiceRequest("TorrentMediaCacheEngine#$this-deleteUnusedCaches") {
             val downloader = torrentEngine.getDownloader()
             val allowedAbsolute = buildSet(capacity = all.size) {
                 for (mediaCache in all) {
@@ -622,7 +624,7 @@ class TorrentMediaCacheEngine(
      * 订阅 torrent engine 状态, torrent engine 状态改变后其 MediaCacheStorage 可能要重新 restore 缓存
      */
     suspend fun subscribeTorrentAccess(block: suspend (Boolean) -> Unit) {
-        engineAccess.isServiceRequested
+        engineAccess.isServiceConnected
             .filterNotNull()
             .collectLatest(block)
     }

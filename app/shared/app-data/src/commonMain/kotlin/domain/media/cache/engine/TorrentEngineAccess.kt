@@ -17,11 +17,11 @@ import me.him188.ani.app.domain.media.cache.storage.MediaCacheStorage
 import me.him188.ani.app.domain.torrent.TorrentEngine
 
 /**
- * [TorrentEngine] 是否被需要使用. 如果 [isServiceRequested] 为 `true`,
+ * [TorrentEngine] 是否被需要使用. 如果 [isServiceConnected] 为 `true`,
  * 即时此时没有进行中的 torrent 任务, `TorrentServiceConnectionManager` 也会保证 service 可以使用.
  * 该行为只在安卓有效, 其他平台一直可以使用 service.
  *
- * 如果 [isServiceRequested] 为 `false`, 则 [TorrentEngine] 的后台 service 可能会被释放,
+ * 如果 [isServiceConnected] 为 `false`, 则 [TorrentEngine] 的后台 service 可能会被释放,
  * 调用 [me.him188.ani.app.torrent.api.TorrentDownloader] 和 [TorrentMediaCacheEngine.FileHandle] 的方法将会永远挂起.
  *
  * ## 缓存相关
@@ -35,16 +35,19 @@ import me.him188.ani.app.domain.torrent.TorrentEngine
  *
  * 此接口的其中一个实现 [TorrentServiceConnectionManager][me.him188.ani.app.domain.torrent.service.TorrentServiceConnectionManager]
  * 会在其 [Lifecycle] 转变为 [Lifecycle.State.RESUMED] 时
- * 使 [isServiceRequested] 返回 `true`, 并且保持 [TorrentEngine] 处于可用状态.
+ * 使 [isServiceConnected] 返回 `true`, 并且保持 [TorrentEngine] 处于可用状态.
  *
  * @see me.him188.ani.app.domain.torrent.service.TorrentServiceConnectionManager
  */
 interface TorrentEngineAccess {
-    val isServiceRequested: StateFlow<Boolean>
+    /**
+     * 此时 service 是否已经启动.
+     */
+    val isServiceConnected: StateFlow<Boolean>
 
     /**
      * 请求使用 [TorrentEngine] 来执行[恢复缓存][MediaCacheEngine.restore] 操作.
-     * 在请求使用 [TorrentEngine] 之后, [isServiceRequested] 无论如何都返回 `true`.
+     * 在请求使用 [TorrentEngine] 之后, [isServiceConnected] 无论如何都返回 `true`.
      *
      * 此接口的其中一个实现 [TorrentServiceConnectionManager][me.him188.ani.app.domain.torrent.service.TorrentServiceConnectionManager]
      * 会在请求时使用 [TorrentEngine] 之后, 启动 torrent service 服务.
@@ -54,23 +57,23 @@ interface TorrentEngineAccess {
 }
 
 /**
- * 保证 [block] 调用中 [TorrentEngine] 可用.
+ * 保证 [block] 调用中 torrent service 是启用的. See [TorrentEngineAccess].
  *
  * 注意: 若在 [block] 中调用了需要 [TorrentEngine] 长期可用的方法, 例如[创建缓存][MediaCacheEngine.createCache],
- * 需要保证在 [block] 返回前使 [useEngine][TorrentEngineAccess.isServiceRequested] 已经置为 `true`.
+ * 需要保证在 [block] 返回前使 [useEngine][TorrentEngineAccess.isServiceConnected] 已经置为 `true`.
  * 否则, 若在 [block] 返回后, [TorrentEngine] 可能立刻变得不可用, 进而导致无法继续访问 [TorrentEngine]
  * (因为 block 返回后立刻使用 [requestUseEngine][TorrentEngineAccess.requestService] 释放了 [TorrentEngine] 存活需求,
- * 而 [useEngine][TorrentEngineAccess.isServiceRequested] 又为 `false`).
+ * 而 [useEngine][TorrentEngineAccess.isServiceConnected] 又为 `false`).
  *
  * 此接口的其中一个实现 [TorrentServiceConnectionManager][me.him188.ani.app.domain.torrent.service.TorrentServiceConnectionManager]
  * 会在其 [Lifecycle] 转变为 [Lifecycle.State.RESUMED] 时使
- * [useEngine][TorrentEngineAccess.isServiceRequested] 返回 `true`, 并且保持 [TorrentEngine] 处于可用状态.
+ * [useEngine][TorrentEngineAccess.isServiceConnected] 返回 `true`, 并且保持 [TorrentEngine] 处于可用状态.
  * 也就是说需要在 [block] 返回前必须使其 [Lifecycle] 转变为 [Lifecycle.State.RESUMED]
  * (a.k.a. [TorrentEngine] 创建好了新的缓存并且写到了 metadata datastore 里).
  */
 @EnsureTorrentEngineIsAccessible
 @OptIn(UnsafeTorrentEngineAccessApi::class)
-inline fun <T> TorrentEngineAccess.withEngineAccessible(token: Any, block: () -> T): T {
+inline fun <T> TorrentEngineAccess.withServiceRequest(token: Any, block: () -> T): T {
     try {
         requestService(token, true)
         return block()
@@ -83,7 +86,7 @@ inline fun <T> TorrentEngineAccess.withEngineAccessible(token: Any, block: () ->
  * 总是在 [TorrentMediaCacheEngine] 使用 [TorrentEngine].
  */
 object AlwaysUseTorrentEngineAccess : TorrentEngineAccess {
-    override val isServiceRequested: StateFlow<Boolean> = MutableStateFlow(true)
+    override val isServiceConnected: StateFlow<Boolean> = MutableStateFlow(true)
 
     @UnsafeTorrentEngineAccessApi
     override fun requestService(token: Any, use: Boolean): Boolean {
