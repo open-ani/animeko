@@ -12,6 +12,7 @@ package me.him188.ani.app.domain.media.cache.storage
 import androidx.datastore.core.DataStore
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.plus
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -19,8 +20,6 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asFlow
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -95,19 +94,19 @@ class DataStoreMediaCacheStorage(
     /**
      * App 必须先在启动时候恢复过一次之后才能启动监听
      */
-    private val appStartupRestored = MutableStateFlow(false)
+    private val appStartupRestored = CompletableDeferred<Unit>()
 
     init {
         if (engine is TorrentMediaCacheEngine) {
             scope.launch {
                 // 每次 torrent engine 可用状态改变都需要重新载入它的缓存.
-                appStartupRestored.filter { it }.collectLatest {
-                    engine.subscribeTorrentAccess {
-                        statSubscriptionScope.cancel()
-                        lock.withLock {
-                            listFlow.update { emptyList() }
-                            restorePersistedCachesImpl { }
-                        }
+                appStartupRestored.await()
+
+                engine.subscribeTorrentAccess {
+                    statSubscriptionScope.cancel()
+                    lock.withLock {
+                        listFlow.update { emptyList() }
+                        restorePersistedCachesImpl { }
                     }
                 }
             }
@@ -122,7 +121,7 @@ class DataStoreMediaCacheStorage(
                 engine.deleteUnusedCaches(allRecovered.value)
             }
         } finally {
-            appStartupRestored.value = true
+            appStartupRestored.complete(Unit)
         }
     }
 
