@@ -349,9 +349,9 @@ class TorrentMediaCacheEngine(
             // TorrentMediaCache 的构造函数中的 metadata 没有检测更新的能力, 用一个变量来表示已完成
             var completed = false
 
-            engineAccess.isServiceRequested
-                .filter { it }
-                .collectLatest {
+            isServiceStared
+                .collectLatest { serviceStarted ->
+                    if (!serviceStarted) return@collectLatest
                     coroutineScope {
                         val fileEntryFlow = fileHandle.entry.filterNotNull().shareIn(this, SharingStarted.Lazily)
                         val sessionStatsFlow = fileHandle.session.filterNotNull()
