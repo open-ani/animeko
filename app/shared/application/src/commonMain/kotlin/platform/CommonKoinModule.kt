@@ -614,11 +614,11 @@ fun KoinApplication.startCommonKoinModule(
         koin.get<HttpDownloader>().init() // 这涉及读取 DownloadState, 需要在加载 storage metadata 前调用.
 
         val manager = koin.get<MediaCacheManager>()
-        for (storage in manager.storages) {
+        for (storage in manager.storagesIncludingDisabled) {
             /**
              * Get `AniApplication.instance.requiresTorrentCacheMigration` lazily.
              */
-            if (restorePersistedCaches()) storage.first()?.restorePersistedCaches()
+            if (restorePersistedCaches()) storage.restorePersistedCaches()
         }
 
         koin.get<MediaAutoCacheService>().startRegularCheck(coroutineScope)

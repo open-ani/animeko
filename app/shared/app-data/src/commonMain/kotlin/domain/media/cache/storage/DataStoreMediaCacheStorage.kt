@@ -14,10 +14,13 @@ import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.plus
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -39,6 +42,7 @@ import me.him188.ani.app.domain.media.fetch.MediaFetcher
 import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.MediaCacheMetadata
+import me.him188.ani.datasources.api.MetadataKey
 import me.him188.ani.datasources.api.paging.SinglePagePagedSource
 import me.him188.ani.datasources.api.paging.SizedSource
 import me.him188.ani.datasources.api.source.ConnectionStatus
@@ -49,6 +53,7 @@ import me.him188.ani.datasources.api.source.MediaSourceInfo
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.source.MediaSourceLocation
 import me.him188.ani.datasources.api.source.matches
+import me.him188.ani.utils.coroutines.RestartableCoroutineScope
 import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.coroutines.update
 import me.him188.ani.utils.io.SystemPath
@@ -74,6 +79,7 @@ class DataStoreMediaCacheStorage(
     private val clock: Clock = Clock.System,
 ) : MediaCacheStorage {
     private val scope: CoroutineScope = parentCoroutineContext.childScope()
+    private val statSubscriptionScope = RestartableCoroutineScope(scope.coroutineContext)
 
     private val metadataFlow = store.data
         .map { list ->
@@ -81,10 +87,47 @@ class DataStoreMediaCacheStorage(
                 .sortedBy { it.origin.mediaId } // consistent stable order
         }
 
-    override suspend fun restorePersistedCaches() {
-        val metadataFlowSnapshot = metadataFlow.first()
+    /**
+     * Locks access to mutable operations.
+     */
+    private val lock = Mutex()
 
-        val allRecovered = MutableStateFlow(persistentListOf<MediaCache>())
+    /**
+     * App 必须先在启动时候恢复过一次之后才能启动监听
+     */
+    private val appStartupRestored = MutableStateFlow(false)
+
+    init {
+        if (engine is TorrentMediaCacheEngine) {
+            scope.launch {
+                // 每次 torrent engine 可用状态改变都需要重新载入它的缓存.
+                appStartupRestored.filter { it }.collectLatest {
+                    engine.subscribeTorrentAccess {
+                        statSubscriptionScope.cancel()
+                        lock.withLock {
+                            listFlow.update { emptyList() }
+                            restorePersistedCachesImpl { }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    override suspend fun restorePersistedCaches() {
+        try {
+            lock.withLock {
+                val allRecovered = MutableStateFlow(persistentListOf<MediaCache>())
+                restorePersistedCachesImpl { allRecovered.update { plus(it) } }
+                engine.deleteUnusedCaches(allRecovered.value)
+            }
+        } finally {
+            appStartupRestored.value = true
+        }
+    }
+
+    private suspend fun restorePersistedCachesImpl(reportRecovered: (MediaCache) -> Unit) {
+        val metadataFlowSnapshot = metadataFlow.first()
         val semaphore = Semaphore(8)
 
         supervisorScope {
@@ -95,18 +138,14 @@ class DataStoreMediaCacheStorage(
                             origin,
                             metadata,
                             reportRecovered = { cache ->
-                                lock.withLock {
-                                    listFlow.value += cache
-                                }
-                                allRecovered.update { plus(cache) }
+                                listFlow.update { plus(cache) }
+                                reportRecovered(cache)
                             },
                         )
                     }
                 }
             }
         }
-
-        engine.deleteUnusedCaches(allRecovered.value)
     }
 
     private suspend fun restoreFile(
@@ -128,35 +167,8 @@ class DataStoreMediaCacheStorage(
             }
 
             logger.info { "Cache resumed: $cache, subscribe to media cache stats." }
-            scope.launch {
-                cache.subscribeStats { newMetadataExtras ->
-                    logger.info { "Cache update new metadata: ${cache.origin.mediaId}." }
-                    store.updateData { originalList ->
-                        val existing = originalList.indexOfFirst {
-                            it.origin.mediaId == cache.origin.mediaId &&
-                                    it.metadata.subjectId == cache.metadata.subjectId &&
-                                    it.metadata.episodeId == cache.metadata.episodeId
-                        }
-                        if (existing != -1) {
-                            originalList.toMutableList().apply {
-                                val existingSave = removeAt(existing)
-                                add(
-                                    MediaCacheSave(
-                                        cache.origin,
-                                        existingSave.metadata.withExtra(newMetadataExtras),
-                                        engine.engineKey,
-                                    ),
-                                )
-                            }
-                        } else {
-                            originalList + MediaCacheSave(
-                                cache.origin,
-                                cache.metadata.withExtra(newMetadataExtras),
-                                engine.engineKey,
-                            )
-                        }
-                    }
-                }
+            statSubscriptionScope.launch {
+                cache.subscribeStats { cache.appendExtra(it) }
             }
         } catch (e: Exception) {
             logger.error(e) { "Failed to restore cache for ${origin.mediaId}" }
@@ -176,11 +188,6 @@ class DataStoreMediaCacheStorage(
             downloadSpeed = stats.downloadSpeed,
         )
     }
-
-    /**
-     * Locks accesses to [listFlow]
-     */
-    private val lock = Mutex()
 
     override suspend fun cache(
         media: Media,
@@ -209,12 +216,21 @@ class DataStoreMediaCacheStorage(
                 episodeMetadata,
                 scope.coroutineContext,
             )
+
             withContext(Dispatchers.IO) {
                 store.updateData { list ->
                     list + MediaCacheSave(cache.origin, cache.metadata, engine.engineKey)
                 }
             }
-            listFlow.value += cache
+
+            if (cache is TorrentMediaCacheEngine.TorrentMediaCache) {
+                logger.info { "Cache created: $cache, subscribe to media cache stats." }
+                statSubscriptionScope.launch {
+                    cache.subscribeStats { cache.appendExtra(it) }
+                }
+            }
+
+            listFlow.update { plus(cache) }
             cache
         }.also {
             if (resume) {
@@ -232,7 +248,7 @@ class DataStoreMediaCacheStorage(
     override suspend fun deleteFirst(predicate: (MediaCache) -> Boolean): Boolean {
         lock.withLock {
             val cache = listFlow.value.firstOrNull(predicate) ?: return false
-            listFlow.value -= cache
+            listFlow.update { minus(cache) }
             withContext(Dispatchers.IO) {
                 store.updateData { list ->
                     list.filterNot { it.engine == engine.engineKey && it.origin.mediaId == cache.origin.mediaId }
@@ -248,6 +264,35 @@ class DataStoreMediaCacheStorage(
             engine.close()
         }
         scope.cancel()
+    }
+
+    private suspend fun MediaCache.appendExtra(newMetadataExtras: Map<MetadataKey, String>) {
+        logger.info { "Cache ${origin.mediaId} append new extras, size = ${newMetadataExtras.size}." }
+        store.updateData { originalList ->
+            val existing = originalList.indexOfFirst {
+                it.origin.mediaId == origin.mediaId &&
+                        it.metadata.subjectId == metadata.subjectId &&
+                        it.metadata.episodeId == metadata.episodeId
+            }
+            if (existing != -1) {
+                originalList.toMutableList().apply {
+                    val existingSave = removeAt(existing)
+                    add(
+                        MediaCacheSave(
+                            origin,
+                            existingSave.metadata.withExtra(newMetadataExtras),
+                            engine.engineKey,
+                        ),
+                    )
+                }
+            } else {
+                originalList + MediaCacheSave(
+                    origin,
+                    metadata.withExtra(newMetadataExtras),
+                    engine.engineKey,
+                )
+            }
+        }
     }
 
     companion object {

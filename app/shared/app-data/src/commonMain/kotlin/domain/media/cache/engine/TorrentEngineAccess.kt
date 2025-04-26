@@ -15,7 +15,8 @@ import kotlinx.coroutines.flow.StateFlow
 import me.him188.ani.app.data.persistent.PlatformDataStoreManager
 import me.him188.ani.app.domain.media.cache.storage.MediaCacheStorage
 import me.him188.ani.app.domain.torrent.TorrentEngine
-import me.him188.ani.app.domain.torrent.service.TorrentResumptionLifecycle
+import me.him188.ani.utils.logging.debug
+import me.him188.ani.utils.logging.logger
 
 /**
  * [TorrentMediaCacheEngine] 是否使用 [TorrentEngine] 来执行[恢复缓存][MediaCacheEngine.restore] 操作.
@@ -25,10 +26,11 @@ import me.him188.ani.app.domain.torrent.service.TorrentResumptionLifecycle
  * [TorrentMediaCacheEngine] 将会使用 [datastore][PlatformDataStoreManager.mediaCacheMetadataStore] 内存储的本地信息来恢复操作.
  * 不会访问 [TorrentEngine]. 这样可以省去启动 AniTorrentService 的过程, 节省设备电量.
  *
- * 此接口的其中一个实现 [TorrentResumptionLifecycle] 会在其 [Lifecycle] 转变为 [Lifecycle.State.RESUMED] 时
+ * 此接口的其中一个实现 [TorrentServiceConnectionManager][me.him188.ani.app.domain.torrent.service.TorrentServiceConnectionManager]
+ * 会在其 [Lifecycle] 转变为 [Lifecycle.State.RESUMED] 时
  * 使 [useEngine] 返回 `true`, 并且保持 [TorrentEngine] 处于可用状态.
  *
- * @see TorrentResumptionLifecycle
+ * @see me.him188.ani.app.domain.torrent.service.TorrentServiceConnectionManager
  */
 interface TorrentEngineAccess {
     val useEngine: StateFlow<Boolean>
@@ -37,7 +39,8 @@ interface TorrentEngineAccess {
      * 请求使用 [TorrentEngine] 来执行[恢复缓存][MediaCacheEngine.restore] 操作.
      * 在请求使用 [TorrentEngine] 之后, [useEngine] 无论如何都返回 `true`.
      *
-     * 此接口的其中一个实现 [TorrentResumptionLifecycle] 会在请求时使用 [TorrentEngine] 之后, 启动 torrent service 服务.
+     * 此接口的其中一个实现 [TorrentServiceConnectionManager][me.him188.ani.app.domain.torrent.service.TorrentServiceConnectionManager]
+     * 会在请求时使用 [TorrentEngine] 之后, 启动 torrent service 服务.
      */
     @UnsafeTorrentEngineAccessApi
     fun requestUseEngine(use: Boolean): Boolean
@@ -52,7 +55,8 @@ interface TorrentEngineAccess {
  * (因为 block 返回后立刻使用 [requestUseEngine][TorrentEngineAccess.requestUseEngine] 释放了 [TorrentEngine] 存活需求,
  * 而 [useEngine][TorrentEngineAccess.useEngine] 又为 `false`).
  *
- * 此接口的其中一个实现 [TorrentResumptionLifecycle] 会在其 [Lifecycle] 转变为 [Lifecycle.State.RESUMED] 时使
+ * 此接口的其中一个实现 [TorrentServiceConnectionManager][me.him188.ani.app.domain.torrent.service.TorrentServiceConnectionManager]
+ * 会在其 [Lifecycle] 转变为 [Lifecycle.State.RESUMED] 时使
  * [useEngine][TorrentEngineAccess.useEngine] 返回 `true`, 并且保持 [TorrentEngine] 处于可用状态.
  * 也就是说需要在 [block] 返回前必须使其 [Lifecycle] 转变为 [Lifecycle.State.RESUMED]
  * (a.k.a. [TorrentEngine] 创建好了新的缓存并且写到了 metadata datastore 里).
@@ -60,6 +64,7 @@ interface TorrentEngineAccess {
 @EnsureTorrentEngineIsAccessible
 @OptIn(UnsafeTorrentEngineAccessApi::class)
 inline fun <T> TorrentEngineAccess.withEngineAccessible(block: () -> T): T {
+    logger<TorrentEngineAccess>().debug(Exception("show stacktrace"))
     try {
         requestUseEngine(true)
         return block()
@@ -82,7 +87,11 @@ object AlwaysUseTorrentEngineAccess : TorrentEngineAccess {
 
 @RequiresOptIn(
     message = "若在 block 中调用了需要 TorrentEngine 长期可用的方法, " +
-            "请确保在此函数返回后 TorrentEngine 一定可用, 否则会导致错误的 useEngine 状态被 emit.",
+            "请确保在此函数返回后 TorrentEngine 一定可用 " +
+            "(例如在其中一个实现 TorrentServiceConnectionManager 中, " +
+            "使 checkIfAllTorrentMediaCacheCompleted 为 false, 也就是创建了 BT 媒体缓存), " +
+            "否则会导致错误的 useEngine 状态被 emit. " +
+            "调用此函数需要有明确的注释来说明必须调用此函数的原因和合理性, 方便后人理解这里的逻辑",
     level = RequiresOptIn.Level.ERROR,
 )
 annotation class EnsureTorrentEngineIsAccessible
@@ -90,7 +99,8 @@ annotation class EnsureTorrentEngineIsAccessible
 
 @RequiresOptIn(
     message = "请总是使用 TorrentEngineAccess.withEngineAccessible 来使 TorrentEngine 可用, " +
-            "除非你能确保请求 TorrentEngine 可用后有对应的 `requestUseEngine(false)` 来释放 TorrentEngine 可用状态.",
+            "除非你能确保请求 TorrentEngine 可用后有对应的 `requestUseEngine(false)` 来释放 TorrentEngine 可用状态. " +
+            "调用此函数需要有明确的注释来说明必须调用此函数的原因和合理性, 方便后人理解这里的逻辑",
     level = RequiresOptIn.Level.ERROR,
 )
 annotation class UnsafeTorrentEngineAccessApi

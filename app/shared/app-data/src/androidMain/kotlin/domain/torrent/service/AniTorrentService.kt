@@ -139,7 +139,7 @@ sealed class AniTorrentService : LifecycleService() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.getBooleanExtra("stopService", false) == true) {
+        if (intent?.getBooleanExtra(INTENT_STOP_EXTRA, false) == true) {
             stopSelf()
             return super.onStartCommand(intent, flags, startId)
         }
@@ -237,6 +237,8 @@ sealed class AniTorrentService : LifecycleService() {
          */
         const val INTENT_STARTUP = "me.him188.ani.android.ANI_TORRENT_SERVICE_STARTUP"
         const val INTENT_STARTUP_EXTRA = "success"
+
+        const val INTENT_STOP_EXTRA = "stopService"
 
         const val INTENT_BACKGROUND_TIMEOUT = "me.him188.ani.android.ANI_TORRENT_SERVICE_BACKGROUND_TIMEOUT"
 

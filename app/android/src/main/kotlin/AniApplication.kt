@@ -22,7 +22,6 @@ import androidx.core.os.LocaleListCompat
 import androidx.datastore.core.DataStore
 import androidx.lifecycle.ProcessLifecycleOwner
 import io.ktor.client.engine.okhttp.OkHttp
-import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
@@ -33,10 +32,8 @@ import me.him188.ani.app.data.persistent.MemoryDataStore
 import me.him188.ani.app.data.persistent.dataStores
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.media.cache.storage.MediaCacheSave
-import me.him188.ani.app.domain.torrent.TorrentManager
 import me.him188.ani.app.domain.torrent.service.AniTorrentService
-import me.him188.ani.app.domain.torrent.service.ServiceConnectionManager
-import me.him188.ani.app.domain.torrent.service.TorrentResumptionLifecycle
+import me.him188.ani.app.domain.torrent.service.TorrentServiceConnectionManager
 import me.him188.ani.app.platform.AndroidLoggingConfigurator
 import me.him188.ani.app.platform.AppStartupTasks
 import me.him188.ani.app.platform.JvmLogHelper
@@ -60,6 +57,7 @@ import java.nio.file.Paths
 
 
 class AniApplication : Application() {
+
     companion object {
         init {
             if (BuildConfig.DEBUG) {
@@ -116,23 +114,16 @@ class AniApplication : Application() {
 
         val mediaCacheDataStore: MutableStateFlow<DataStore<List<MediaCacheSave>>> =
             MutableStateFlow(MemoryDataStore(emptyList()))
-        val torrentResumptionLifecycle = TorrentResumptionLifecycle(
-            dataStoreFlow = mediaCacheDataStore,
-            processLifecycle = ProcessLifecycleOwner.get().lifecycle,
-            scope = scope,
-        )
-        val connectionManager = ServiceConnectionManager(
+        val connectionManager = TorrentServiceConnectionManager(
             this,
-            ::startAniTorrentService,
-            scope.coroutineContext,
-            torrentResumptionLifecycle.lifecycle,
+            dataStoreFlow = mediaCacheDataStore,
+            startServiceImpl = ::startAniTorrentService,
+            stopServiceImpl = ::stopService,
+            processLifecycle = ProcessLifecycleOwner.get().lifecycle,
+            parentCoroutineContext = scope.coroutineContext,
         )
 
         instance = Instance() // set instance
-
-        if (FEATURE_USE_TORRENT_SERVICE) {
-            connectionManager.startLifecycleLoop()
-        }
 
         scope.launch(Dispatchers.IO_) {
             runCatching {
@@ -148,7 +139,7 @@ class AniApplication : Application() {
             androidContext(this@AniApplication)
             modules(getCommonKoinModule({ this@AniApplication }, scope))
 
-            modules(getAndroidModules(torrentResumptionLifecycle, connectionManager.connection, scope))
+            modules(getAndroidModules(connectionManager, scope))
         }.startCommonKoinModule(
             this@AniApplication,
             scope,
@@ -186,6 +177,11 @@ class AniApplication : Application() {
             }
         }
 
+        if (FEATURE_USE_TORRENT_SERVICE) {
+            mediaCacheDataStore.value = applicationContext.dataStores.mediaCacheMetadataStore
+            connectionManager.launchCheckLoop()
+        }
+
         scope.launch {
             val settingsRepository = koin.get<SettingsRepository>()
             settingsRepository.uiSettings.flow.collect { settings ->
@@ -197,11 +193,6 @@ class AniApplication : Application() {
                     }
                 }
             }
-        }
-
-        scope.launch(CoroutineName("TorrentManager initializer")) {
-            mediaCacheDataStore.value = applicationContext.dataStores.mediaCacheMetadataStore
-            koin.get<TorrentManager>() // start sharing, connect to DHT now
         }
 
         runBlocking { analyticsInitializer.join() }
@@ -244,6 +235,15 @@ class AniApplication : Application() {
                 putExtra("open_activity_intent", Intent(this@AniApplication, MainActivity::class.java))
             },
         )
+    }
+
+    private fun stopService() {
+        // 延迟 3s 后再停止 service
+        startService(
+            Intent(this, AniTorrentService.actualServiceClass)
+                .apply { putExtra(AniTorrentService.INTENT_STOP_EXTRA, true) },
+        )
+
     }
 
     fun Context.applyLanguage(languageTag: String) {

@@ -31,11 +31,6 @@ abstract class MediaCacheManager(
     final override val backgroundScope: CoroutineScope,
 ) : HasBackgroundScope { // available via inject
     val enabledStorages: Flow<List<MediaCacheStorage>> = flowOf(storagesIncludingDisabled)
-    val storages: List<Flow<MediaCacheStorage?>> by lazy {
-        storagesIncludingDisabled.map { storage ->
-            flowOf(storage)
-        }
-    }
 
     private val cacheListFlow: Flow<List<MediaCache>> by lazy {
         val flows = storagesIncludingDisabled.map { it.listFlow }

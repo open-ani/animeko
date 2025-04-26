@@ -73,13 +73,9 @@ class AniAppViewModel : AbstractViewModel(), KoinComponent {
 
     private val imageLoaderClient = httpClientProvider.get(ScopedHttpClientUserAgent.ANI)
 
-    private val mediaCacheComposablesFlow = combine(mediaCacheManager.storages) { array ->
-        array.mapNotNull { storage ->
-            storage?.engine
-        }
-    }.distinctUntilChanged()
-        .map { list ->
-            list.map { @Composable { it.ComposeContent() } }
+    private val mediaCacheComposablesFlow = mediaCacheManager.enabledStorages
+        .map { storages ->
+            storages.map { @Composable { it.engine.ComposeContent() } }
         }
 
     val appState: Flow<AniAppState?> = combine(

@@ -14,8 +14,10 @@ import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -23,6 +25,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
@@ -151,10 +154,11 @@ class TorrentMediaCacheEngine(
         )
 
         override suspend fun getCachedMedia(): CachedMedia {
-            logger.info { "getCachedMedia: start" }
+            val useEngineAccess = engineAccess.useEngine.value
+            logger.info { "getCachedMedia: start, useEngine: $useEngineAccess" }
 
             // 先判断是否使用 data store 的数据, 如果用就不 access file handle
-            if (!engineAccess.useEngine.value) {
+            if (!useEngineAccess) {
                 val localFile = resolveFromDataStore()
                 if (localFile != null) {
                     return CachedMedia(
@@ -336,38 +340,58 @@ class TorrentMediaCacheEngine(
          * 订阅当前 TorrentMediaCache 的统计信息以更新它的 metadata
          */
         suspend fun subscribeStats(onUpdateMetadata: suspend (Map<MetadataKey, String>) -> Unit) {
-            fileHandle.entry
-                .filterNotNull()
-                .collectLatest { entry ->
-                    // 更新 torrent 信息不需要维持运行 torrent engine
-                    @OptIn(EnsureTorrentEngineIsAccessible::class)
-                    engineAccess.withEngineAccessible {
-                        // 立刻更新 torrent relative path
-                        onUpdateMetadata(mapOf(EXTRA_TORRENT_CACHE_FILE to entry.pathInTorrent))
+            // TorrentMediaCache 的构造函数中的 metadata 没有检测更新的能力, 用一个变量来表示已完成
+            var completed = false
 
-                        combine(
-                            fileHandle.session.filterNotNull()
-                                .flatMapLatest { it.sessionStats }.filterNotNull(),
-                            entry.fileStats.filterNotNull(),
-                            shareRatioLimitFlow,
-                        ) { sessionStats, fileStats, shareRatioLimit ->
-                            if (!fileStats.isDownloadFinished) return@combine
+            engineAccess.useEngine
+                .filter { it }
+                .collectLatest {
+                    coroutineScope {
+                        val fileEntryFlow = fileHandle.entry.filterNotNull().shareIn(this, SharingStarted.Lazily)
+                        val sessionStatsFlow = fileHandle.session.filterNotNull()
+                            .flatMapLatest { it.sessionStats }.filterNotNull()
+                            .shareIn(this, SharingStarted.Lazily)
 
-                            // val shareRatio = sessionStats.uploadedBytes / fileStats.downloadedBytes.coerceAtLeast(1).toFloat()
-                            // if (shareRatio < shareRatioLimit) return@combine
+                        val fileEntry = fileEntryFlow.first()
+                        val entryFileStats = fileEntry.fileStats.filterNotNull().first()
+                        val sessionStats = sessionStatsFlow.first()
+                        // 无论如何都先更新一次数据
+                        onUpdateMetadata(
+                            buildMap {
+                                // todo: 没检测分享率
+                                if (entryFileStats.isDownloadFinished) {
+                                    put(EXTRA_TORRENT_COMPLETED, "true")
+                                    completed = true
+                                }
+                                put(EXTRA_TORRENT_CACHE_FILE, fileEntry.pathInTorrent)
+                                put(EXTRA_TORRENT_CACHE_FILE_SIZE, entryFileStats.downloadedBytes.toString())
+                                put(EXTRA_TORRENT_CACHE_UPLOADED_SIZE, sessionStats.uploadedBytes.toString())
+                            },
+                        )
+                        fileEntryFlow.collectLatest { entry ->
+                            combine(
+                                sessionStatsFlow,
+                                entry.fileStats.filterNotNull(),
+                                shareRatioLimitFlow,
+                            ) { sessionStats, fileStats, shareRatioLimit ->
+                                if (!fileStats.isDownloadFinished) return@combine
 
-                            val completedMetadata = metadata.extra[EXTRA_TORRENT_COMPLETED]
-                            if (completedMetadata == "true") return@combine
+                                // todo: 没检测分享率
+                                // val shareRatio = sessionStats.uploadedBytes / fileStats.downloadedBytes.coerceAtLeast(1).toFloat()
+                                // if (shareRatio < shareRatioLimit) return@combine
 
-                            onUpdateMetadata(
-                                mapOf(
-                                    EXTRA_TORRENT_COMPLETED to "true",
-                                    EXTRA_TORRENT_CACHE_FILE_SIZE to fileStats.downloadedBytes.toString(),
-                                    EXTRA_TORRENT_CACHE_UPLOADED_SIZE to sessionStats.uploadedBytes.toString(),
-                                ),
-                            )
+                                if (completed || metadata.extra[EXTRA_TORRENT_COMPLETED] == "true") return@combine
+
+                                completed = true
+                                onUpdateMetadata(
+                                    mapOf(
+                                        EXTRA_TORRENT_COMPLETED to "true",
+                                        EXTRA_TORRENT_CACHE_FILE_SIZE to fileStats.downloadedBytes.toString(),
+                                        EXTRA_TORRENT_CACHE_UPLOADED_SIZE to sessionStats.uploadedBytes.toString(),
+                                    ),
+                                )
+                            }.collect()
                         }
-                            .collect()
                     }
                 }
         }
@@ -586,6 +610,15 @@ class TorrentMediaCacheEngine(
                 }
             }
         }
+    }
+
+    /**
+     * 订阅 torrent engine 状态, torrent engine 状态改变后其 MediaCacheStorage 可能要重新 restore 缓存
+     */
+    suspend fun subscribeTorrentAccess(block: suspend (Boolean) -> Unit) {
+        engineAccess.useEngine
+            .filterNotNull()
+            .collectLatest(block)
     }
 
     override fun close() {

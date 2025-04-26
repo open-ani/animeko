@@ -36,7 +36,7 @@ import me.him188.ani.app.domain.torrent.LocalAnitorrentEngineFactory
 import me.him188.ani.app.domain.torrent.RemoteAnitorrentEngineFactory
 import me.him188.ani.app.domain.torrent.TorrentManager
 import me.him188.ani.app.domain.torrent.service.AniTorrentService
-import me.him188.ani.app.domain.torrent.service.TorrentResumptionLifecycle
+import me.him188.ani.app.domain.torrent.service.TorrentServiceConnectionManager
 import me.him188.ani.app.domain.torrent.service.TorrentServiceConnection
 import me.him188.ani.app.navigation.BrowserNavigator
 import me.him188.ani.app.platform.AndroidPermissionManager
@@ -68,8 +68,7 @@ import kotlin.concurrent.thread
 import kotlin.system.exitProcess
 
 fun getAndroidModules(
-    torrentResumptionLifecycle: TorrentResumptionLifecycle,
-    torrentServiceConnection: TorrentServiceConnection<IRemoteAniTorrentEngine>,
+    serviceConnectionManager: TorrentServiceConnectionManager,
     coroutineScope: CoroutineScope,
 ) = module {
     single<PermissionManager> {
@@ -77,8 +76,8 @@ fun getAndroidModules(
     }
     single<BrowserNavigator> { AndroidBrowserNavigator() }
 
-    single<TorrentEngineAccess> { torrentResumptionLifecycle }
-    single<TorrentServiceConnection<IRemoteAniTorrentEngine>> { torrentServiceConnection }
+    single<TorrentEngineAccess> { serviceConnectionManager }
+    single<TorrentServiceConnection<IRemoteAniTorrentEngine>> { serviceConnectionManager.connection }
 
     single<TorrentManager> {
         val context = androidContext()
