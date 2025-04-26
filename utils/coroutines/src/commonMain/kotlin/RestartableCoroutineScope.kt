@@ -51,7 +51,7 @@ class RestartableCoroutineScope(
      * allowing new coroutines to be launched later.
      * Thread-safe.
      */
-    fun cancel() {
+    fun restart() {
         val oldJob = childJobRef.getAndSet(SupervisorJob())
         oldJob.cancel()
     }
@@ -61,7 +61,7 @@ class RestartableCoroutineScope(
      * Thread-safe.
      */
     fun close() {
-        cancel() // Cancel any active child jobs
+        restart() // Cancel any active child jobs
         parentScope.cancel() // Cancel the parent scope
     }
 }

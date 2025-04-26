@@ -99,11 +99,11 @@ class DataStoreMediaCacheStorage(
     init {
         if (engine is TorrentMediaCacheEngine) {
             scope.launch {
-                // 每次 torrent engine 可用状态改变都需要重新载入它的缓存.
+                // 等待 [restorePersistedCaches]
                 appStartupRestored.await()
 
-                engine.subscribeTorrentAccess {
-                    statSubscriptionScope.cancel()
+                engine.whenServiceConnected {
+                    statSubscriptionScope.restart()
                     lock.withLock {
                         listFlow.update { emptyList() }
                         restorePersistedCachesImpl { }
@@ -125,6 +125,7 @@ class DataStoreMediaCacheStorage(
         }
     }
 
+    // must be used under lock
     private suspend fun restorePersistedCachesImpl(reportRecovered: (MediaCache) -> Unit) {
         val metadataFlowSnapshot = metadataFlow.first()
         val semaphore = Semaphore(8)

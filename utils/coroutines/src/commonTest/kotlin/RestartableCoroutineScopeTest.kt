@@ -62,7 +62,7 @@ class RestartableCoroutineScopeTest {
         delay(10)
         assertTrue(job.isActive)
 
-        scope.cancel()
+        scope.restart()
         assertFalse(job.isActive)
         assertFalse(isRunning.await())
     }
@@ -71,7 +71,7 @@ class RestartableCoroutineScopeTest {
     fun `can launch new coroutines after cancel`() = runTest {
         // Start and cancel initial coroutines
         val job1 = scope.launch { delay(1000) }
-        scope.cancel()
+        scope.restart()
         assertFalse(job1.isActive)
 
         // Launch a new coroutine after cancellation
@@ -103,7 +103,7 @@ class RestartableCoroutineScopeTest {
         val initialActiveState = parentJob.isActive
 
         scope.launch { delay(1000) }
-        scope.cancel()
+        scope.restart()
 
         assertEquals(initialActiveState, parentJob.isActive)
     }
@@ -135,7 +135,7 @@ class RestartableCoroutineScopeTest {
         }
 
         // Cancel before the first job completes
-        scope.cancel()
+        scope.restart()
 
         // Launch a new job after cancellation
         scope.launch {
@@ -189,7 +189,7 @@ class RestartableCoroutineScopeTest {
         // Launch multiple cancellations and new jobs concurrently
         val cancellationJobs = List(10) {
             async {
-                scope.cancel()
+                scope.restart()
                 scope.launch {
                     // These should run
                     delay(10.milliseconds)
