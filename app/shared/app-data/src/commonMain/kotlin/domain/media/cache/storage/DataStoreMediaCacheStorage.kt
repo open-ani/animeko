@@ -14,6 +14,7 @@ import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.plus
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.cancel
@@ -27,7 +28,6 @@ import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
 import kotlinx.serialization.SerializationException
@@ -132,8 +132,9 @@ class DataStoreMediaCacheStorage(
 
         supervisorScope {
             metadataFlowSnapshot.forEach { (origin, metadata, _) ->
-                launch {
-                    semaphore.withPermit {
+                semaphore.acquire()
+                launch(start = CoroutineStart.ATOMIC) {
+                    try {
                         restoreFile(
                             origin,
                             metadata,
@@ -142,6 +143,8 @@ class DataStoreMediaCacheStorage(
                                 reportRecovered(cache)
                             },
                         )
+                    } finally {
+                        semaphore.release()
                     }
                 }
             }
