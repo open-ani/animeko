@@ -239,6 +239,10 @@ class DataStoreMediaCacheStorage(
         }
     }
 
+    override suspend fun delete(cache: MediaCache): Boolean {
+        return deleteFirst { cacheEquals(it, cache.origin, cache.metadata) }
+    }
+
     private fun cacheEquals(
         it: MediaCache,
         media: Media,
@@ -269,6 +273,7 @@ class DataStoreMediaCacheStorage(
         scope.cancel()
     }
 
+    // 添加额外的 metadata extras, 如果 datastore 中没有这个 media cache, 则不添加
     private suspend fun MediaCache.appendExtra(newMetadataExtras: Map<MetadataKey, String>) {
         logger.info { "Cache ${origin.mediaId} append new extras, size = ${newMetadataExtras.size}." }
         store.updateData { originalList ->
@@ -277,22 +282,17 @@ class DataStoreMediaCacheStorage(
                         it.metadata.subjectId == metadata.subjectId &&
                         it.metadata.episodeId == metadata.episodeId
             }
-            if (existing != -1) {
-                originalList.toMutableList().apply {
-                    val existingSave = removeAt(existing)
-                    add(
-                        MediaCacheSave(
-                            origin,
-                            existingSave.metadata.withExtra(newMetadataExtras),
-                            engine.engineKey,
-                        ),
-                    )
-                }
-            } else {
-                originalList + MediaCacheSave(
-                    origin,
-                    metadata.withExtra(newMetadataExtras),
-                    engine.engineKey,
+            if (existing == -1) return@updateData originalList
+
+            originalList.toMutableList().apply {
+                val existingSave = removeAt(existing)
+                add(
+                    // 更新时只使用 datastore 的数据
+                    MediaCacheSave(
+                        existingSave.origin,
+                        existingSave.metadata.withExtra(newMetadataExtras),
+                        existingSave.engine,
+                    ),
                 )
             }
         }
