@@ -117,7 +117,7 @@ class RemoteAnitorrentEngine(
     }
 
     override suspend fun getDownloader(): TorrentDownloader {
-        engineAccess.useEngine.first { it } // await for engine access
+        engineAccess.isServiceRequested.first { it } // await for engine access
         return RemoteTorrentDownloader(
             fetchRemoteScope,
             RetryRemoteObject(fetchRemoteScope) { getBinderOrFail().downlaoder },

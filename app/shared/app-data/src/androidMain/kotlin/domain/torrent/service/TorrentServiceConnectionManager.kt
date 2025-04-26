@@ -67,7 +67,7 @@ import kotlin.coroutines.CoroutineContext
  * - Observes Android's background service time limits (particularly for Android 15)
  *
  * @property connection Provides access to the remote torrent engine
- * @property useEngine StateFlow indicating if the engine is connected
+ * @property isServiceRequested StateFlow indicating if the engine is connected
  * @property lifecycle Manages the service connection lifecycle
  *
  * @see androidx.lifecycle.ProcessLifecycleOwner
@@ -123,7 +123,7 @@ class TorrentServiceConnectionManager(
     private val requestQueue = MutableStateFlow(persistentListOf<Any>())
 
     val connection: TorrentServiceConnection<IRemoteAniTorrentEngine> get() = _connection
-    override val useEngine: StateFlow<Boolean> = connection.connected
+    override val isServiceRequested: StateFlow<Boolean> = connection.connected
 
     @Volatile
     private var started = false
@@ -145,7 +145,7 @@ class TorrentServiceConnectionManager(
     }
 
     @UnsafeTorrentEngineAccessApi
-    override fun requestUseEngine(token: Any, use: Boolean): Boolean {
+    override fun requestService(token: Any, use: Boolean): Boolean {
         logger.debug(Exception("show stacktrace")) {
             "Request ${if (use) "use" else "release"} torrent engine with token $token"
         }
@@ -164,7 +164,7 @@ class TorrentServiceConnectionManager(
             combine(
                 dataStoreFlow.flatMapLatest { it.data.map(::checkIfAllTorrentMediaCacheCompleted) },
                 requestQueue.map { it.isNotEmpty() },
-                useEngine,
+                isServiceRequested,
                 processLifecycle.currentStateFlow,
             ) { allCompleted, keep, connected, currentState ->
                 Triple(currentState, keep || !allCompleted, connected)

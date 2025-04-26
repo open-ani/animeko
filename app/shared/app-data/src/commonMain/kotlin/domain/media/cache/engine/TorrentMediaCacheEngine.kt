@@ -151,7 +151,7 @@ class TorrentMediaCacheEngine(
         )
 
         override suspend fun getCachedMedia(): CachedMedia {
-            val useEngineAccess = engineAccess.useEngine.value
+            val useEngineAccess = engineAccess.isServiceRequested.value
             logger.info { "getCachedMedia: start, useEngine: $useEngineAccess" }
 
             // 先判断是否使用 data store 的数据, 如果用就不 access file handle
@@ -197,7 +197,7 @@ class TorrentMediaCacheEngine(
             }
         }
 
-        override val fileStats: Flow<MediaCache.FileStats> = engineAccess.useEngine
+        override val fileStats: Flow<MediaCache.FileStats> = engineAccess.isServiceRequested
             .flatMapLatest { useEngine ->
                 // 先判断是否使用 data store 的数据, 如果用就不 access file handle
                 if (!useEngine) {
@@ -218,7 +218,7 @@ class TorrentMediaCacheEngine(
             }
             .flowOn(flowDispatcher)
 
-        override val sessionStats: Flow<MediaCache.SessionStats> = engineAccess.useEngine
+        override val sessionStats: Flow<MediaCache.SessionStats> = engineAccess.isServiceRequested
             .flatMapLatest { useEngine ->
                 // 先判断是否使用 data store 的数据, 如果用就不 access file handle
                 if (!useEngine) {
@@ -255,20 +255,20 @@ class TorrentMediaCacheEngine(
             .flowOn(flowDispatcher)
 
         override suspend fun pause() {
-            if (!engineAccess.useEngine.value) return
+            if (!engineAccess.isServiceRequested.value) return
             if (isDeleted.value) return
             fileHandle.handle.first()?.pause()
             state.value = MediaCacheState.PAUSED
         }
 
         override suspend fun close() {
-            if (!engineAccess.useEngine.value) return
+            if (!engineAccess.isServiceRequested.value) return
             if (isDeleted.value) return
             fileHandle.close()
         }
 
         override suspend fun resume() {
-            if (!engineAccess.useEngine.value) {
+            if (!engineAccess.isServiceRequested.value) {
                 // todo: 目前不支持已经完成的缓存继续手动开启做种
                 state.value = MediaCacheState.IN_PROGRESS
                 return
@@ -349,7 +349,7 @@ class TorrentMediaCacheEngine(
             // TorrentMediaCache 的构造函数中的 metadata 没有检测更新的能力, 用一个变量来表示已完成
             var completed = false
 
-            engineAccess.useEngine
+            engineAccess.isServiceRequested
                 .filter { it }
                 .collectLatest {
                     coroutineScope {
@@ -410,7 +410,7 @@ class TorrentMediaCacheEngine(
         }
     }
 
-    override val stats: Flow<MediaStats> = engineAccess.useEngine
+    override val stats: Flow<MediaStats> = engineAccess.isServiceRequested
         .flatMapLatest { useEngine ->
             // 先判断是否使用 data store 的数据, 如果用就不 downloader
             if (!useEngine) {
@@ -622,7 +622,7 @@ class TorrentMediaCacheEngine(
      * 订阅 torrent engine 状态, torrent engine 状态改变后其 MediaCacheStorage 可能要重新 restore 缓存
      */
     suspend fun subscribeTorrentAccess(block: suspend (Boolean) -> Unit) {
-        engineAccess.useEngine
+        engineAccess.isServiceRequested
             .filterNotNull()
             .collectLatest(block)
     }

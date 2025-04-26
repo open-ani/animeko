@@ -206,7 +206,7 @@ class TorrentMediaDataProvider(
         // 使用 MediaDataProvider.open 通常是在播放临时 BT 源, 在下面的 onClose 里再释放.
         // 也就是说进入从开启这个 MediaData 开始, 到下面 onClose 释放期间, 需要始终保持 BT 服务可用.
         @OptIn(UnsafeTorrentEngineAccessApi::class)
-        engineAccess.requestUseEngine(requestToken, true)
+        engineAccess.requestService(requestToken, true)
 
         val downloader = engine.getDownloader()
         val handle = withContext(Dispatchers.IO_) {
@@ -248,7 +248,7 @@ class TorrentMediaDataProvider(
                     } finally {
                         // 对应了上面的 requestUseEngine(true)
                         @OptIn(UnsafeTorrentEngineAccessApi::class)
-                        engineAccess.requestUseEngine(requestToken, false)
+                        engineAccess.requestService(requestToken, false)
                     }
                 }
             },
