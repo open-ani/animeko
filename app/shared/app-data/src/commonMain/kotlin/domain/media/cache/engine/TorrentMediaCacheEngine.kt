@@ -382,8 +382,8 @@ class TorrentMediaCacheEngine(
                         var lastUploadActivity = currentTimeMillis()
                         val finished = MutableStateFlow(false)
 
-                        combine(finished, fileEntryFlow) { f, entry ->
-                            if (f) return@combine
+                        combine(finished, fileEntryFlow) { f, entry -> f to entry }.collectLatest f@{ (f, entry) ->
+                            if (f) return@f
 
                             combine(
                                 sessionStatsFlow,
@@ -418,10 +418,9 @@ class TorrentMediaCacheEngine(
                                     ),
                                 )
 
-                                finished.value = true
-
+                                finished.value = true // side effect.
                             }.collect()
-                        }.collect()
+                        }
                     }
                 }
         }
