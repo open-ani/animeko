@@ -209,7 +209,7 @@ class DataStoreMediaCacheStorage(
         return lock.withLock {
             logger.info { "$mediaSourceId creating cache, metadata=$metadata" }
             listFlow.value.firstOrNull {
-                cacheEquals(it, media, metadata)
+                isSameMediaAndEpisode(it, media, metadata)
             }?.let { return@withLock it }
 
             if (!engine.supports(media)) {
@@ -244,14 +244,8 @@ class DataStoreMediaCacheStorage(
     }
 
     override suspend fun delete(cache: MediaCache): Boolean {
-        return deleteFirst { cacheEquals(it, cache.origin, cache.metadata) }
+        return deleteFirst { isSameMediaAndEpisode(it, cache.origin, cache.metadata) }
     }
-
-    private fun cacheEquals(
-        it: MediaCache,
-        media: Media,
-        metadata: MediaCacheMetadata = it.metadata
-    ) = it.origin.mediaId == media.mediaId && it.metadata.episodeSort == metadata.episodeSort
 
     override suspend fun deleteFirst(predicate: (MediaCache) -> Boolean): Boolean {
         lock.withLock {
@@ -260,8 +254,7 @@ class DataStoreMediaCacheStorage(
             withContext(Dispatchers.IO) {
                 store.updateData { list ->
                     list.filterNot {
-                        it.engine == engine.engineKey && it.origin.mediaId == cache.origin.mediaId
-                                && it.metadata.episodeSort == cache.metadata.episodeSort
+                        isSameMediaAndEpisode(cache, it)
                     }
                 }
             }
@@ -282,9 +275,7 @@ class DataStoreMediaCacheStorage(
         logger.info { "Cache ${origin.mediaId} append new extras, size = ${newMetadataExtras.size}." }
         store.updateData { originalList ->
             val existing = originalList.indexOfFirst {
-                it.origin.mediaId == origin.mediaId &&
-                        it.metadata.subjectId == metadata.subjectId &&
-                        it.metadata.episodeId == metadata.episodeId
+                isSameMediaAndEpisode(this, it)
             }
             if (existing == -1) return@updateData originalList
 
@@ -301,6 +292,17 @@ class DataStoreMediaCacheStorage(
             }
         }
     }
+
+    private fun isSameMediaAndEpisode(
+        cache: MediaCache,
+        media: Media,
+        metadata: MediaCacheMetadata = cache.metadata
+    ) = cache.origin.mediaId == media.mediaId &&
+            metadata.subjectId == cache.metadata.subjectId &&
+            metadata.episodeId == cache.metadata.episodeId
+
+    private fun isSameMediaAndEpisode(cache: MediaCache, save: MediaCacheSave): Boolean =
+        isSameMediaAndEpisode(cache, save.origin, save.metadata)
 
     companion object {
         private val logger = logger<DataStoreMediaCacheStorage>()
