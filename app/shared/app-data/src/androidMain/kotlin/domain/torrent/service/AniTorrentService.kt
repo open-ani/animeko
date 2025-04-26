@@ -115,6 +115,7 @@ sealed class AniTorrentService : LifecycleService() {
         scope.launch {
             val anitorrentDownloader = anitorrent.await().getDownloader()
 
+            // 用来更新通知的状态, 有 BT 任务时显示下载数量. 没任务时显示 BT 服务运行中.
             combine(
                 anitorrentDownloader.openSessions.flatMapLatest { sessionMap ->
                     combine(sessionMap.values.map { it.sessionStats }) { sessions ->

@@ -134,9 +134,7 @@ class TorrentServiceConnectionManager(
         kotlinx.atomicfu.locks.synchronized(this) {
             if (started) return
 
-            // 启动决定 service 是否启动的 lifecycle 的任务, 这个任务会决定 service 的生命周期.
             startObserveServiceLifecycle()
-            // connection 会根据上面的 service 生命周期来决定合适真正连接 service.
             _connection.startLifecycleLoop()
             lifecycle.addObserver(serviceTimeLimitObserver)
 
@@ -159,10 +157,20 @@ class TorrentServiceConnectionManager(
         return true
     }
 
+    /**
+     * 启动监控服务生命周期的协程。
+     * 通过组合多个数据流来决定服务的运行状态：
+     * 1. 所有 Torrent 下载任务是否完成
+     * 2. 是否有显式的请求保持服务运行（通过 requestQueue）
+     * 3. 服务当前是否已连接
+     * 4. 应用程序当前的生命周期状态
+     *
+     * 根据这些因素决定是否将服务生命周期保持在 RESUMED 状态 (保持连接) 或 STARTED 状态 (允许断开连接).
+     */
     private fun startObserveServiceLifecycle() {
         scope.launch {
             combine(
-                dataStoreFlow.flatMapLatest { it.data.map(::checkIfAllTorrentMediaCacheCompleted) },
+                dataStoreFlow.flatMapLatest { it.data.map(::allTorrentMediaCacheCompleted) },
                 requestQueue.map { it.isNotEmpty() },
                 isServiceConnected,
                 processLifecycle.currentStateFlow,
@@ -199,7 +207,7 @@ class TorrentServiceConnectionManager(
     /**
      * Check if all torrent media cache is completed. If not, the service will be kept alive.
      */
-    private fun checkIfAllTorrentMediaCacheCompleted(list: List<MediaCacheSave>): Boolean {
+    private fun allTorrentMediaCacheCompleted(list: List<MediaCacheSave>): Boolean {
         list.forEach { save ->
             if (save.engine != MediaCacheEngineKey(TorrentEngineType.Anitorrent.id)) {
                 return@forEach
@@ -209,7 +217,6 @@ class TorrentServiceConnectionManager(
                 return false
             }
         }
-
 
         return true
     }

@@ -158,7 +158,7 @@ class AniApplication : Application() {
             restorePersistedCaches = { !instance.requiresTorrentCacheMigration },
         )
         startupTimeMonitor.mark(StepName.Modules)
-        
+
         val koin = getKoin()
         val analyticsInitializer = scope.launch {
             val settingsRepository = koin.get<SettingsRepository>()
@@ -254,7 +254,6 @@ class AniApplication : Application() {
     }
 
     private fun stopService() {
-        // 延迟 3s 后再停止 service
         startService(
             Intent(this, AniTorrentService.actualServiceClass)
                 .apply { putExtra(AniTorrentService.INTENT_STOP_EXTRA, true) },

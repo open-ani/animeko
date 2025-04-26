@@ -208,34 +208,43 @@ class TorrentMediaDataProvider(
         @OptIn(UnsafeTorrentEngineAccessApi::class)
         engineAccess.requestService(requestToken, true)
 
-        val downloader = engine.getDownloader()
-        val handle = withContext(Dispatchers.IO_) {
-            logger.info {
-                "TorrentVideoSource '${episodeMetadata.title}' waiting for files"
-            }
-            val files = downloader.startDownload(encodedTorrentInfo)
-                .getFiles()
-
-            TorrentMediaResolver.selectVideoFileEntry(
-                files,
-                { pathInTorrent },
-                listOf(episodeMetadata.title),
-                episodeSort = episodeMetadata.sort,
-                episodeEp = episodeMetadata.ep,
-            )?.also {
+        val handle = try {
+            val downloader = engine.getDownloader()
+            withContext(Dispatchers.IO_) {
                 logger.info {
-                    "TorrentVideoSource selected file: ${it.pathInTorrent}"
+                    "TorrentVideoSource '${episodeMetadata.title}' waiting for files"
                 }
-            }?.createHandle()?.also {
-                it.resume(FilePriority.HIGH)
-            } ?: throw MediaSourceOpenException(
-                OpenFailures.NO_MATCHING_FILE,
-                """
+                val files = downloader.startDownload(encodedTorrentInfo)
+                    .getFiles()
+
+                TorrentMediaResolver.selectVideoFileEntry(
+                    files,
+                    { pathInTorrent },
+                    listOf(episodeMetadata.title),
+                    episodeSort = episodeMetadata.sort,
+                    episodeEp = episodeMetadata.ep,
+                )?.also {
+                    logger.info {
+                        "TorrentVideoSource selected file: ${it.pathInTorrent}"
+                    }
+                }?.createHandle()?.also {
+                    it.resume(FilePriority.HIGH)
+                } ?: throw MediaSourceOpenException(
+                    OpenFailures.NO_MATCHING_FILE,
+                    """
                                 Torrent files: ${files.joinToString { it.pathInTorrent }}
                                 Episode metadata: $episodeMetadata
                             """.trimIndent(),
-            )
+                )
+            }
+        } catch (ex: Exception) {
+            // 如果上面发生了异常或被取消, 下面的 onClose 就永远不会被调用, 需要手动释放.
+            @OptIn(UnsafeTorrentEngineAccessApi::class)
+            engineAccess.requestService(requestToken, false)
+            
+            throw ex // just re-throw it
         }
+
         return TorrentMediaData(
             handle,
             onClose = {
