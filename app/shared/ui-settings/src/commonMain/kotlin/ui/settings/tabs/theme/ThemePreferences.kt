@@ -24,10 +24,22 @@ import androidx.compose.ui.unit.dp
 import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.theme.isPlatformSupportDynamicTheme
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.settings_theme_always_dark_episode
+import me.him188.ani.app.ui.lang.settings_theme_always_dark_episode_description
+import me.him188.ani.app.ui.lang.settings_theme_dynamic_colors
+import me.him188.ani.app.ui.lang.settings_theme_dynamic_colors_description
+import me.him188.ani.app.ui.lang.settings_theme_dynamic_subject
+import me.him188.ani.app.ui.lang.settings_theme_dynamic_subject_description
+import me.him188.ani.app.ui.lang.settings_theme_high_contrast
+import me.him188.ani.app.ui.lang.settings_theme_high_contrast_description
+import me.him188.ani.app.ui.lang.settings_theme_palette
+import me.him188.ani.app.ui.lang.settings_theme_title
 import me.him188.ani.app.ui.settings.framework.SettingsState
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.SwitchItem
 import me.him188.ani.app.ui.theme.themeColorOptions
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun SettingsScope.ThemeGroup(
@@ -36,7 +48,7 @@ fun SettingsScope.ThemeGroup(
     val themeSettings by state
 
     Group(
-        title = { Text("主题") },
+        title = { Text(stringResource(Lang.settings_theme_title)) },
     ) {
         DarkModeSelectPanel(
             currentMode = themeSettings.darkMode,
@@ -50,8 +62,8 @@ fun SettingsScope.ThemeGroup(
                 onCheckedChange = { checked ->
                     state.update(themeSettings.copy(useDynamicTheme = checked))
                 },
-                title = { Text("动态色彩") },
-                description = { Text("使用系统强调色") },
+                title = { Text(stringResource(Lang.settings_theme_dynamic_colors)) },
+                description = { Text(stringResource(Lang.settings_theme_dynamic_colors_description)) },
             )
         }
 
@@ -60,8 +72,8 @@ fun SettingsScope.ThemeGroup(
             onCheckedChange = { checked ->
                 state.update(themeSettings.copy(useBlackBackground = checked))
             },
-            title = { Text("高对比度深色主题") },
-            description = { Text("深色模式使用纯黑背景，在 AMOLED 屏幕使用纯黑背景可以省电") },
+            title = { Text(stringResource(Lang.settings_theme_high_contrast)) },
+            description = { Text(stringResource(Lang.settings_theme_high_contrast_description)) },
         )
 
         SwitchItem(
@@ -69,8 +81,8 @@ fun SettingsScope.ThemeGroup(
             onCheckedChange = { checked ->
                 state.update(themeSettings.copy(alwaysDarkInEpisodePage = checked))
             },
-            title = { Text("播放页始终使用深色主题") },
-            description = { Text("提供更加沉浸的播放体验") },
+            title = { Text(stringResource(Lang.settings_theme_always_dark_episode)) },
+            description = { Text(stringResource(Lang.settings_theme_always_dark_episode_description)) },
         )
 
         SwitchItem(
@@ -78,15 +90,15 @@ fun SettingsScope.ThemeGroup(
             onCheckedChange = { checked ->
                 state.update(themeSettings.copy(useDynamicSubjectPageTheme = checked))
             },
-            title = { Text("条目详情页使用动态主题") },
-            description = { Text("根据封面生成动态主题") },
+            title = { Text(stringResource(Lang.settings_theme_dynamic_subject)) },
+            description = { Text(stringResource(Lang.settings_theme_dynamic_subject_description)) },
         )
     }
 
     Box(
         modifier = Modifier.alpha(if (themeSettings.useDynamicTheme) 0.5f else 1f),
     ) {
-        Group(title = { Text("调色板") }) {
+        Group(title = { Text(stringResource(Lang.settings_theme_palette)) }) {
             FlowRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center,

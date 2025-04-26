@@ -32,8 +32,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.VerticalDragHandle
 import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffold
 import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldDefaults
+import androidx.compose.material3.adaptive.layout.PaneAdaptedValue
 import androidx.compose.material3.adaptive.layout.PaneExpansionState
 import androidx.compose.material3.adaptive.layout.PaneScaffoldDirective
+import androidx.compose.material3.adaptive.layout.ThreePaneScaffoldRole
 import androidx.compose.material3.adaptive.layout.ThreePaneScaffoldScope
 import androidx.compose.material3.adaptive.layout.ThreePaneScaffoldValue
 import androidx.compose.material3.adaptive.layout.defaultDragHandleSemantics
@@ -98,7 +100,7 @@ import me.him188.ani.app.ui.foundation.navigation.BackHandler
  * @param listPaneContent 列表内容, 可以是 [Column] 或者 Grid. 需要自行实现 vertical scroll.
  * @param detailPane 详情页内容.
  * @param listPanePreferredWidth See also [androidx.compose.material3.adaptive.layout.PaneScaffoldScope.preferredWidth]
- * @param useSharedTransition 是否在[单页模式][ListDetailLayoutParameters.isSinglePane]时使用 Container Transform 等 [SharedTransitionLayout] 的动画.
+ * @param useSharedTransition 是否在[单页模式][ListDetailLayoutParameters.preferSinglePane]时使用 Container Transform 等 [SharedTransitionLayout] 的动画.
  * 启用后将会调整切换 pane 时的 fade 动画逻辑来支持 Container Transform.
  * @param contentWindowInsets 内容的 [WindowInsets]. 这会影响 [PaneScope.paneContentWindowInsets].
  *
@@ -138,6 +140,7 @@ fun <T> AniListDetailPaneScaffold(
     }
     val layoutParametersState by rememberUpdatedState(layoutParameters)
     val contentWindowInsetsState by rememberUpdatedState(contentWindowInsets)
+    val scaffoldValueState by rememberUpdatedState(scaffoldValue)
 
     SharedTransitionLayout {
         ListDetailPaneScaffold(
@@ -153,6 +156,9 @@ fun <T> AniListDetailPaneScaffold(
                                     override val listDetailLayoutParameters: ListDetailLayoutParameters
                                         get() = layoutParametersState
 
+                                    override val isSinglePane: Boolean
+                                        get() = scaffoldValueState.isSinglePane
+
                                     override val paneContentWindowInsets: WindowInsets
                                         get() = when {
                                             isSinglePane -> contentWindowInsetsState
@@ -163,12 +169,17 @@ fun <T> AniListDetailPaneScaffold(
                                         extraStart: Dp,
                                         extraEnd: Dp,
                                     ): Modifier {
+                                        val endPadding = if (isSinglePane) {
+                                            layoutParametersState.listPaneContentEndPadding
+                                        } else {
+                                            0.dp // ListDetail 两个 pane 之间自带 24.dp
+                                        }
                                         return Modifier
                                             .padding(
                                                 PaddingValues(
                                                     start = (layoutParametersState.listPaneContentStartPadding + extraStart)
                                                         .coerceAtLeast(0.dp),
-                                                    end = (layoutParametersState.listPaneContentEndPadding + extraEnd)
+                                                    end = (endPadding + extraEnd)
                                                         .coerceAtLeast(0.dp),
                                                 ),
                                             )
@@ -176,8 +187,8 @@ fun <T> AniListDetailPaneScaffold(
                                                 PaddingValues(
                                                     start = (layoutParametersState.listPaneContentStartPadding + extraStart)
                                                         .coerceAtLeast(layoutParametersState.listPaneContentStartPadding),
-                                                    end = (layoutParametersState.listPaneContentEndPadding + extraEnd)
-                                                        .coerceAtLeast(layoutParametersState.listPaneContentEndPadding),
+                                                    end = (endPadding + extraEnd)
+                                                        .coerceAtLeast(endPadding),
                                                 ),
                                             )
                                     }
@@ -223,6 +234,9 @@ fun <T> AniListDetailPaneScaffold(
                                 object : PaneScope {
                                     override val listDetailLayoutParameters: ListDetailLayoutParameters
                                         get() = layoutParametersState
+
+                                    override val isSinglePane: Boolean
+                                        get() = scaffoldValueState.isSinglePane
 
                                     override val paneContentWindowInsets: WindowInsets
                                         get() = when {
@@ -275,10 +289,10 @@ interface PaneScope {
     val listDetailLayoutParameters: ListDetailLayoutParameters
 
     /**
-     * @see ListDetailLayoutParameters.isSinglePane
+     * @see ListDetailLayoutParameters.preferSinglePane
      */
     @Stable
-    val isSinglePane get() = listDetailLayoutParameters.isSinglePane
+    val isSinglePane get() = listDetailLayoutParameters.preferSinglePane
 
     /**
      * 此 Pane 需要 consume 的 [WindowInsets].
@@ -350,11 +364,11 @@ data class ListDetailLayoutParameters(
     /**
      * 是否为单页模式, 即整个屏幕上只会同时出现一个 pane. 通常在一个 COMPACT 设备上.
      */
-    val isSinglePane: Boolean,
+    val preferSinglePane: Boolean,
     /**
      * 在 list pane 中高亮选中的 item.
      */
-    val highlightSelectedItem: Boolean = !isSinglePane,
+    val highlightSelectedItem: Boolean = !preferSinglePane,
 ) {
     companion object {
         @Composable
@@ -364,7 +378,7 @@ data class ListDetailLayoutParameters(
             return if (isTwoPane) {
                 ListDetailLayoutParameters(
                     listPaneContentStartPadding = windowSizeClass.paneHorizontalPadding,
-                    listPaneContentEndPadding = 0.dp, // ListDetail 两个 pane 之间自带 24.dp
+                    listPaneContentEndPadding = windowSizeClass.paneHorizontalPadding,
                     detailPaneContentStartPadding = windowSizeClass.paneHorizontalPadding,
                     detailPaneContentEndPadding = windowSizeClass.paneHorizontalPadding,
                     detailPaneShape = MaterialTheme.shapes.extraLarge.copy(
@@ -372,7 +386,7 @@ data class ListDetailLayoutParameters(
                         bottomEnd = ZeroCornerSize,
                     ),
                     detailPaneColors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-                    isSinglePane = false,
+                    preferSinglePane = false,
                 )
             } else {
                 ListDetailLayoutParameters(
@@ -382,7 +396,7 @@ data class ListDetailLayoutParameters(
                     detailPaneContentEndPadding = windowSizeClass.paneHorizontalPadding,
                     detailPaneShape = RectangleShape,
                     detailPaneColors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
-                    isSinglePane = true,
+                    preferSinglePane = true,
                 )
             }
         }
@@ -393,3 +407,12 @@ data class ListDetailLayoutParameters(
 val ListDetailPaneScaffoldDefaults.windowInsets
     @Composable
     get() = AniWindowInsets.forPageContent()
+
+private val ThreePaneScaffoldValue.isSinglePane: Boolean
+    get() {
+        var count = 0
+        if (this[ThreePaneScaffoldRole.Primary] == PaneAdaptedValue.Expanded) count++
+        if (this[ThreePaneScaffoldRole.Secondary] == PaneAdaptedValue.Expanded) count++
+        if (this[ThreePaneScaffoldRole.Tertiary] == PaneAdaptedValue.Expanded) count++
+        return count <= 1
+    }

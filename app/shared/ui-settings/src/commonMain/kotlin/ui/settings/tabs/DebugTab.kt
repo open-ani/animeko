@@ -159,6 +159,14 @@ fun DebugTab(
                     }
                 },
             )
+            TextItem(
+                title = { Text("Crash") },
+                onClick = {
+                    throw ManualCrashException()
+                },
+            )
         }
     }
 }
+
+private class ManualCrashException : Throwable("Manual crash for testing")

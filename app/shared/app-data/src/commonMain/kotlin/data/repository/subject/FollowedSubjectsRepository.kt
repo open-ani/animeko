@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -16,6 +16,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
@@ -33,6 +34,9 @@ import me.him188.ani.app.data.repository.RepositoryUnknownException
 import me.him188.ani.app.data.repository.episode.AnimeScheduleRepository
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
+import me.him188.ani.app.domain.session.OpaqueSession
+import me.him188.ani.app.domain.session.SessionManager
+import me.him188.ani.app.domain.session.verifiedAccessToken
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.logging.error
@@ -50,10 +54,17 @@ class FollowedSubjectsRepository(
     private val episodeCollectionRepository: EpisodeCollectionRepository,
 //    private val subjectProgressRepository: EpisodeProgressRepository,
 //    private val subjectCollectionDao: SubjectCollectionDao,
+    private val sessionManager: SessionManager,
     settingsRepository: SettingsRepository,
     defaultDispatcher: CoroutineContext = Dispatchers.Default,
 ) : Repository(defaultDispatcher) {
     private val nsfwModeSettingsFlow = settingsRepository.uiSettings.flow.map { it.searchSettings.nsfwMode }
+
+    @OptIn(OpaqueSession::class)
+    private fun <T> Flow<T>.restartOnNewLogin(): Flow<T> =
+        sessionManager.verifiedAccessToken.distinctUntilChanged().flatMapLatest {
+            this
+        }
 
     private fun followedSubjectsFlow(
         updatePeriod: Duration = 1.hours,
@@ -148,6 +159,7 @@ class FollowedSubjectsRepository(
     fun followedSubjectsPager(
         updatePeriod: Duration = 1.hours,
     ) = followedSubjectsFlow(updatePeriod)
+        .restartOnNewLogin()
         .map {
             PagingData.from(
                 it,

@@ -35,6 +35,11 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.domain.settings.ServiceConnectionTester
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.settings_framework_not_enabled
+import me.him188.ani.app.ui.lang.settings_framework_timeout
+import me.him188.ani.app.ui.lang.settings_framework_waiting_for_test
+import org.jetbrains.compose.resources.stringResource
 import kotlin.time.Duration
 import kotlin.time.DurationUnit
 import kotlin.time.measureTimedValue
@@ -143,7 +148,7 @@ fun ConnectionTesterResultIndicator(
                     Icon(Icons.Rounded.Check, null, tint = MaterialTheme.colorScheme.primary)
                     if (showTime) {
                         if (tester.time == Duration.INFINITE) {
-                            Text("超时")
+                            Text(stringResource(Lang.settings_framework_timeout))
                         } else {
                             Text(
                                 tester.time?.toString(
@@ -161,12 +166,12 @@ fun ConnectionTesterResultIndicator(
             }
 
             ConnectionTestResult.NOT_ENABLED -> {
-                Text("未启用")
+                Text(stringResource(Lang.settings_framework_not_enabled))
             }
 
             null -> {
                 if (showIdle) {
-                    Text("等待测试")
+                    Text(stringResource(Lang.settings_framework_waiting_for_test))
                 }
             }
         }

@@ -9,15 +9,36 @@
 
 package me.him188.ani.app.ui.mediaselect.selector
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material3.*
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.InputChip
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.domain.mediasource.instance.MediaSourceInstance
@@ -58,6 +79,7 @@ fun MediaSelectorWebSourcesColumn(
     selectedChannel: () -> WebSourceChannel?,
     onSelect: (WebSource, WebSourceChannel) -> Unit,
     onRefresh: (WebSource) -> Unit,
+    onRequestQueryEdit: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val card = @Composable { source: WebSource ->
@@ -82,6 +104,26 @@ fun MediaSelectorWebSourcesColumn(
         // not scrollable. 否则会跟 bottom sheet 的 scroll 冲突. 
         list.forEach { source ->
             card(source)
+        }
+
+        TextButton(
+            onRequestQueryEdit,
+            Modifier
+                .align(Alignment.CenterHorizontally),
+        ) {
+            Text(
+                buildAnnotatedString {
+                    append("都不对？")
+                    pushStyle(
+                        SpanStyle(
+                            textDecoration = TextDecoration.Underline,
+                        ),
+                    )
+                    append("修改查询")
+                },
+                color = MaterialTheme.colorScheme.outline,
+                textAlign = TextAlign.Center,
+            )
         }
     }
 }
@@ -182,6 +224,25 @@ private fun PreviewMediaSelectorWebColumn() {
                 selectedChannel = { TestWebSources[0].channels[1] },
                 onSelect = { _, _ -> },
                 onRefresh = {},
+                onRequestQueryEdit = {},
+            )
+        }
+    }
+}
+
+@OptIn(TestOnly::class)
+@Composable
+@Preview
+private fun PreviewMediaSelectorWebColumn3() {
+    ProvideCompositionLocalsForPreview {
+        Surface {
+            MediaSelectorWebSourcesColumn(
+                TestWebSources.take(3),
+                selectedSource = { TestWebSources[0] },
+                selectedChannel = { TestWebSources[0].channels[1] },
+                onSelect = { _, _ -> },
+                onRefresh = {},
+                onRequestQueryEdit = {},
             )
         }
     }

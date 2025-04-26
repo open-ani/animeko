@@ -33,6 +33,11 @@ import androidx.compose.ui.unit.dp
 import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
 import me.him188.ani.app.ui.foundation.theme.appColorScheme
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.settings_theme_mode_auto
+import me.him188.ani.app.ui.lang.settings_theme_mode_dark
+import me.him188.ani.app.ui.lang.settings_theme_mode_light
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun DarkModeSelectPanel(
@@ -119,8 +124,8 @@ private fun ColorSchemePreviewItem(
 @Composable
 private fun renderThemeModeText(mode: DarkMode): String {
     return when (mode) {
-        DarkMode.LIGHT -> "浅色"
-        DarkMode.DARK -> "深色"
-        DarkMode.AUTO -> "自动"
+        DarkMode.LIGHT -> stringResource(Lang.settings_theme_mode_light)
+        DarkMode.DARK -> stringResource(Lang.settings_theme_mode_dark)
+        DarkMode.AUTO -> stringResource(Lang.settings_theme_mode_auto)
     }
 }

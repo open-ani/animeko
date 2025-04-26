@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import me.him188.ani.app.domain.media.TestMediaList
 import me.him188.ani.app.domain.media.TestMediaSourceInfo
 import me.him188.ani.app.domain.player.VideoLoadingState
+import me.him188.ani.app.ui.episode.share.MediaShareData
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.media.renderProperties
 import me.him188.ani.app.ui.subject.episode.statistics.VideoLoadingSummary
@@ -89,7 +90,7 @@ private fun PreviewEpisodeItemImpl(
                 )
             },
             actions = {
-                PlayingEpisodeItemDefaults.ActionShare(media)
+                PlayingEpisodeItemDefaults.ActionShare(MediaShareData.from(media, null))
                 PlayingEpisodeItemDefaults.ActionCache({ })
             },
         )

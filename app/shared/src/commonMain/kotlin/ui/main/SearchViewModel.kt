@@ -29,6 +29,7 @@ import me.him188.ani.app.data.repository.subject.BangumiSubjectSearchCompletionR
 import me.him188.ani.app.data.repository.subject.SubjectSearchHistoryRepository
 import me.him188.ani.app.data.repository.subject.SubjectSearchRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
+import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeUseCase
 import me.him188.ani.app.domain.search.SearchSort
 import me.him188.ani.app.domain.search.SubjectSearchQuery
 import me.him188.ani.app.domain.session.AniAuthStateProvider
@@ -55,6 +56,7 @@ class SearchViewModel(
     private val subjectDetailsStateFactory: SubjectDetailsStateFactory by inject()
     private val settingsRepository: SettingsRepository by inject()
     private val authStateProvider: AniAuthStateProvider by inject()
+    val setEpisodeCollectionType: SetEpisodeCollectionTypeUseCase by inject()
 
     private val nsfwSettingFlow = settingsRepository.uiSettings.flow.map { it.searchSettings.nsfwMode }
         .stateIn(backgroundScope, SharingStarted.Lazily, NsfwMode.HIDE)

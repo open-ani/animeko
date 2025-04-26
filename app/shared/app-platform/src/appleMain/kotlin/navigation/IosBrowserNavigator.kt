@@ -25,7 +25,7 @@ class IosBrowserNavigator : BrowserNavigator {
         }
     }
 
-    override fun openMagnetLink(context: Context, url: String) {
+    override fun intentActionView(context: Context, url: String) {
         runCatching {
             openUrl(url)
         }.onFailure {

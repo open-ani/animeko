@@ -41,10 +41,13 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sun.jna.platform.win32.Advapi32Util
 import com.sun.jna.platform.win32.WinReg
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.data.repository.SavedWindowState
 import me.him188.ani.app.data.repository.WindowStateRepository
@@ -65,6 +68,8 @@ import me.him188.ani.app.platform.ExtraWindowProperties
 import me.him188.ani.app.platform.JvmLogHelper
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.PlatformWindow
+import me.him188.ani.app.platform.StartupTimeMonitor
+import me.him188.ani.app.platform.StepName
 import me.him188.ani.app.platform.create
 import me.him188.ani.app.platform.createAppRootCoroutineScope
 import me.him188.ani.app.platform.currentAniBuildConfig
@@ -95,22 +100,23 @@ import me.him188.ani.app.ui.main.AniApp
 import me.him188.ani.app.ui.main.AniAppContent
 import me.him188.ani.desktop.generated.resources.Res
 import me.him188.ani.desktop.generated.resources.a_round
+import me.him188.ani.utils.analytics.Analytics
 import me.him188.ani.utils.analytics.AnalyticsConfig
+import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.AppStart
 import me.him188.ani.utils.analytics.AnalyticsImpl
+import me.him188.ani.utils.analytics.recordEvent
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.trace
 import me.him188.ani.utils.platform.currentPlatform
 import me.him188.ani.utils.platform.isWindows
-import org.jetbrains.compose.reload.DevelopmentEntryPoint
 import org.jetbrains.compose.resources.painterResource
 import org.koin.core.context.startKoin
 import org.openani.mediamp.vlc.VlcMediampPlayer
 import java.util.Locale
 import kotlin.io.path.absolutePathString
 import kotlin.system.exitProcess
-import kotlin.time.measureTime
 
 
 private val logger by lazy { logger("Ani") }
@@ -150,6 +156,8 @@ object AniDesktop {
 
     @JvmStatic
     fun main(args: Array<String>) {
+        val startupTimeMonitor = StartupTimeMonitor()
+
         val originalExceptionHandler = Thread.currentThread().uncaughtExceptionHandler
         Thread.currentThread().uncaughtExceptionHandler = Thread.UncaughtExceptionHandler { t, e ->
             logger.error(e) { "!!!ANI FATAL EXCEPTION!!!" }
@@ -159,6 +167,7 @@ object AniDesktop {
             Thread.sleep(5000)
             exitProcess(1)
         }
+        startupTimeMonitor.mark(StepName.UncaughtExceptionHandler)
 
         val projectDirectories = AppFolderResolver.INSTANCE.resolve(
             AppInfo(
@@ -169,6 +178,7 @@ object AniDesktop {
         )
         val dataDir = projectDirectories.data
         val cacheDir = projectDirectories.cache
+        startupTimeMonitor.mark(StepName.ProjectDirectories)
 
         val logsDir = dataDir.resolve("logs").toFile().apply { mkdirs() }
 
@@ -178,6 +188,7 @@ object AniDesktop {
             logger.info { "Debug mode enabled" }
         }
         AppStartupTasks.printVersions()
+        startupTimeMonitor.mark(StepName.Logging)
 
         logger.info { "dataDir: file://${dataDir.absolutePathString().replace(" ", "%20")}" }
         logger.info { "cacheDir: file://${cacheDir.absolutePathString().replace(" ", "%20")}" }
@@ -212,11 +223,10 @@ object AniDesktop {
             logsDir,
             ExtraWindowProperties(),
         )
+        startupTimeMonitor.mark(StepName.WindowAndContext)
 
-        val time = measureTime {
-            SingleInstanceChecker.instance.ensureSingleInstance()
-        }
-        logger.info { "Single instance check took $time" }
+        SingleInstanceChecker.instance.ensureSingleInstance()
+        startupTimeMonitor.mark(StepName.SingletonChecker)
 
         coroutineScope.launch(Dispatchers.IO) {
             // since 3.4.0, anitorrent 增加后不兼容 QB 数据
@@ -231,7 +241,7 @@ object AniDesktop {
             modules(getCommonKoinModule({ context }, coroutineScope))
             modules(getDesktopModules({ context }, coroutineScope))
         }.startCommonKoinModule(context, coroutineScope)
-
+        startupTimeMonitor.mark(StepName.Modules)
 
         // Startup ok, run test task if needed
         System.getenv("ANIMEKO_DESKTOP_TEST_TASK")?.let { taskName ->
@@ -277,7 +287,7 @@ object AniDesktop {
             }
         }
 
-        val loadAnitorrentJob = coroutineScope.launch {
+        val loadAnitorrentJob = coroutineScope.launch(Dispatchers.IO) {
             try {
                 AnitorrentLibraryLoader.loadLibraries()
             } catch (e: Throwable) {
@@ -314,7 +324,9 @@ object AniDesktop {
 
             // 预先加载 VLC, https://github.com/open-ani/ani/issues/618
             kotlin.runCatching {
-                VlcMediampPlayer.prepareLibraries()
+                withContext(Dispatchers.IO) {
+                    VlcMediampPlayer.prepareLibraries()
+                }
             }.onFailure {
                 logger.error(it) { "Failed to prepare VLC" }
             }
@@ -336,11 +348,16 @@ object AniDesktop {
                 logger.error(it) { "Failed to delete installed files" }
             }
         }
-        runCatching {
-            PagingLoggingHack.install()
-            logger.trace { "Successfully instrumented PagingLogging" }
-        }.onFailure {
-            logger.error(it) { "Failed to install paging logging hack" }
+        startupTimeMonitor.mark(StepName.LaunchAsyncInitializers)
+
+        if (currentAniBuildConfig.isDebug) {
+            runCatching {
+                PagingLoggingHack.install()
+                logger.trace { "Successfully instrumented PagingLogging" }
+            }.onFailure {
+                logger.error(it) { "Failed to install paging logging hack" }
+            }
+            startupTimeMonitor.mark(StepName.PagingHack)
         }
 
         val navigator = AniNavigator()
@@ -352,19 +369,34 @@ object AniDesktop {
         }
 
         val windowStateRepository = koin.koin.get<WindowStateRepository>()
-        val savedWindowState: SavedWindowState? = runBlocking {
+        val savedWindowStateDeferred = coroutineScope.async {
             windowStateRepository.flow.firstOrNull()
         }
 
-        val systemThemeDetector = SystemThemeDetector()
 
         val jobsToWait = listOf(
             setLocaleJob,
             analyticsInitializer,
+            savedWindowStateDeferred,
         )
         if (jobsToWait.any { it.isActive }) {
-            runBlocking { jobsToWait.forEach { it.join() } }
+            runBlocking { jobsToWait.joinAll() }
         }
+        startupTimeMonitor.mark(StepName.Analytics)
+
+        val systemThemeDetector = SystemThemeDetector()
+        startupTimeMonitor.mark(StepName.ThemeDetector)
+
+        Analytics.recordEvent(AppStart) {
+            putAll(startupTimeMonitor.getMarks())
+            put("total_time", startupTimeMonitor.getTotalDuration().inWholeMilliseconds)
+        }
+        logger.info {
+            "App startup breakdown: \n" +
+                    startupTimeMonitor.getMarks().entries.joinToString("\n") { " - ${it.key}: ${it.value}ms" } +
+                    "\nTotal time: ${startupTimeMonitor.getTotalDuration().inWholeMilliseconds}ms"
+        }
+        val savedWindowState: SavedWindowState? = savedWindowStateDeferred.getCompleted()
 
         application {
             WindowStateRecorder(
@@ -385,57 +417,55 @@ object AniDesktop {
             ) {
                 // In dev mode this enables hot reload,
                 // In release mode this just executes the content
-                DevelopmentEntryPoint {
-                    val lifecycleOwner = LocalLifecycleOwner.current
-                    val backPressedDispatcherOwner = remember {
-                        SkikoOnBackPressedDispatcherOwner(navigator, lifecycleOwner)
+                val lifecycleOwner = LocalLifecycleOwner.current
+                val backPressedDispatcherOwner = remember {
+                    SkikoOnBackPressedDispatcherOwner(navigator, lifecycleOwner)
+                }
+
+                SideEffect {
+                    // 防止闪眼
+                    window.background = java.awt.Color.BLACK
+                    window.contentPane.background = java.awt.Color.BLACK
+                    window.minimumSize = java.awt.Dimension(400, 400)
+
+                    logger.info {
+                        "renderApi: " + this.window.renderApi
                     }
+                }
 
-                    SideEffect {
-                        // 防止闪眼
-                        window.background = java.awt.Color.BLACK
-                        window.contentPane.background = java.awt.Color.BLACK
-                        window.minimumSize = java.awt.Dimension(400, 400)
-
-                        logger.info {
-                            "renderApi: " + this.window.renderApi
-                        }
-                    }
-
-                    val systemTheme by systemThemeDetector.current.collectAsStateWithLifecycle()
-                    val platform = LocalPlatform.current
-                    // We need layout hit test owner to do hit test on windows.
-                    val layoutHitTestOwner = if (platform.isWindows()) {
-                        rememberLayoutHitTestOwner()
+                val systemTheme by systemThemeDetector.current.collectAsStateWithLifecycle()
+                val platform = LocalPlatform.current
+                // We need layout hit test owner to do hit test on windows.
+                val layoutHitTestOwner = if (platform.isWindows()) {
+                    rememberLayoutHitTestOwner()
+                } else {
+                    null
+                }
+                CompositionLocalProvider(
+                    LocalContext provides context,
+                    LocalWindowState provides windowState,
+                    LocalPlatformWindow provides remember(window.windowHandle, this, platform, windowState) {
+                        PlatformWindow(
+                            windowHandle = window.windowHandle,
+                            windowScope = this,
+                            platform = platform,
+                            windowState = windowState,
+                            layoutHitTestOwner = layoutHitTestOwner,
+                        )
+                    },
+                    LocalOnBackPressedDispatcherOwner provides backPressedDispatcherOwner,
+                    @OptIn(InternalComposeUiApi::class)
+                    LocalSystemTheme provides systemTheme,
+                ) {
+                    if (isRunningUnderWine()) {
+                        MainWindowContent(navigator)
                     } else {
-                        null
-                    }
-                    CompositionLocalProvider(
-                        LocalContext provides context,
-                        LocalWindowState provides windowState,
-                        LocalPlatformWindow provides remember(window.windowHandle, this, platform, windowState) {
-                            PlatformWindow(
-                                windowHandle = window.windowHandle,
-                                windowScope = this,
-                                platform = platform,
-                                windowState = windowState,
-                                layoutHitTestOwner = layoutHitTestOwner,
-                            )
-                        },
-                        LocalOnBackPressedDispatcherOwner provides backPressedDispatcherOwner,
-                        @OptIn(InternalComposeUiApi::class)
-                        LocalSystemTheme provides systemTheme,
-                    ) {
-                        if (isRunningUnderWine()) {
+                        HandleWindowsWindowProc()
+                        WindowFrame(
+                            windowState = windowState,
+                            onCloseRequest = { exitApplication() },
+                        ) {
                             MainWindowContent(navigator)
-                        } else {
-                            HandleWindowsWindowProc()
-                            WindowFrame(
-                                windowState = windowState,
-                                onCloseRequest = { exitApplication() },
-                            ) {
-                                MainWindowContent(navigator)
-                            }
                         }
                     }
                 }

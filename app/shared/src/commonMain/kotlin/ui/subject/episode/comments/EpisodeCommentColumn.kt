@@ -9,17 +9,20 @@
 
 package me.him188.ani.app.ui.subject.episode.comments
 
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AddComment
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -29,35 +32,39 @@ import me.him188.ani.app.ui.comment.Comment
 import me.him188.ani.app.ui.comment.CommentColumn
 import me.him188.ani.app.ui.comment.CommentDefaults
 import me.him188.ani.app.ui.comment.CommentState
-import me.him188.ani.app.ui.comment.EditCommentBottomStubPanel
 import me.him188.ani.app.ui.comment.UIComment
 import me.him188.ani.app.ui.foundation.LocalImageViewerHandler
-import me.him188.ani.app.ui.foundation.LocalIsPreviewing
-import me.him188.ani.app.ui.foundation.LocalPlatform
-import me.him188.ani.app.ui.foundation.layout.ConnectedScrollState
 import me.him188.ani.app.ui.richtext.RichText
-import me.him188.ani.utils.platform.isAndroid
 
 @Composable
 fun EpisodeCommentColumn(
     state: CommentState,
-    editCommentStubText: TextFieldValue,
     onClickReply: (commentId: Long) -> Unit,
-    onClickEditCommentStub: () -> Unit,
-    onClickEditCommentStubEmoji: () -> Unit,
+    onNewCommentClick: () -> Unit,
     onClickUrl: (url: String) -> Unit,
     modifier: Modifier = Modifier,
     gridState: LazyGridState = rememberLazyGridState(),
-    connectedScrollState: ConnectedScrollState? = null,
 ) {
     val imageViewer = LocalImageViewerHandler.current
 
-    Column(modifier) {
+    Scaffold(
+        modifier,
+        floatingActionButton = {
+            ExtendedFloatingActionButton(
+                text = { Text("写评论") },
+                icon = {
+                    Icon(Icons.Rounded.AddComment, null)
+                },
+                onNewCommentClick,
+                expanded = !gridState.canScrollBackward,
+            )
+        },
+    ) { _ ->
         CommentColumn(
             state.list.collectAsLazyPagingItemsWithLifecycle(),
             state = gridState,
-            connectedScrollState = connectedScrollState,
-            modifier = Modifier.weight(1f).fillMaxSize(),
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(bottom = 72.dp), // 允许滚动到 FAB 上面
         ) { _, comment ->
             EpisodeComment(
                 comment = comment,
@@ -69,14 +76,6 @@ fun EpisodeCommentColumn(
                 onClickImage = { imageViewer.viewImage(it) },
                 onActionReply = { onClickReply(comment.id) },
                 onClickUrl = onClickUrl,
-            )
-        }
-        if (LocalPlatform.current.isAndroid() || LocalIsPreviewing.current) {
-            HorizontalDivider()
-            EditCommentBottomStubPanel(
-                text = editCommentStubText,
-                onClickEditText = onClickEditCommentStub,
-                onClickEmoji = onClickEditCommentStubEmoji,
             )
         }
     }
@@ -136,7 +135,7 @@ fun EpisodeComment(
                 CommentDefaults.ReplyList(
                     replies = comment.briefReplies,
                     modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                    hiddenReplyCount = comment.replyCount - comment.briefReplies.size,
+                    hiddenReplyCount = 0, //comment.replyCount - comment.briefReplies.size,
                     onClickUrl = { },
                     onClickExpand = { },
                 )

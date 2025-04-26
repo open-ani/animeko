@@ -65,7 +65,7 @@ fun PeerFilterSettingsScreen(
             navigator = navigator,
             listPaneTopAppBar = {
                 SearchBlockedIpTopAppBar(
-                    enableSearch = !listDetailLayoutParameters.isSinglePane,
+                    enableSearch = !listDetailLayoutParameters.preferSinglePane,
                     title = { AniTopAppBarDefaults.Title("Peer 过滤和屏蔽设置") },
                     state = state,
                     windowInsets = paneContentWindowInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
@@ -87,7 +87,7 @@ fun PeerFilterSettingsScreen(
             listPaneContent = {
                 PeerFilterEditPane(
                     state = state,
-                    showIpBlockingItem = listDetailLayoutParameters.isSinglePane,
+                    showIpBlockingItem = listDetailLayoutParameters.preferSinglePane,
                     onClickIpBlockSettings = {
                         coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
                             navigator.navigateTo(ThreePaneScaffoldRole.Primary)
@@ -105,7 +105,7 @@ fun PeerFilterSettingsScreen(
             detailPane = {
                 val filteredList by state.searchedIpBlockList.collectAsStateWithLifecycle(emptyList())
 
-                if (listDetailLayoutParameters.isSinglePane) {
+                if (listDetailLayoutParameters.preferSinglePane) {
                     SearchBlockedIpTopAppBar(
                         enableSearch = true,
                         title = { AniTopAppBarDefaults.Title("管理 IP 黑名单") },
@@ -128,7 +128,7 @@ fun PeerFilterSettingsScreen(
                 Box(Modifier.consumeWindowInsets(paneContentWindowInsets.only(WindowInsetsSides.Top))) {
                     BlackListEditPane(
                         ipBlackList = filteredList,
-                        showTitle = !listDetailLayoutParameters.isSinglePane,
+                        showTitle = !listDetailLayoutParameters.preferSinglePane,
                         modifier = Modifier
                             .paneContentPadding(
                                 extraStart = -SettingsScope.itemHorizontalPadding,

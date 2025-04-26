@@ -20,7 +20,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import me.him188.ani.app.domain.media.cache.EpisodeCacheStatus
 import me.him188.ani.app.ui.subject.SubjectProgressState
 import me.him188.ani.app.ui.subject.collection.progress.SubjectProgressButton
 
@@ -28,7 +27,6 @@ import me.him188.ani.app.ui.subject.collection.progress.SubjectProgressButton
 @Composable
 fun SubjectDetailsDefaults.SelectEpisodeButtons(
     state: SubjectProgressState,
-    episodeCacheStatus: (episodeId: Int) -> EpisodeCacheStatus?,
     onShowEpisodeList: () -> Unit,
     onPlay: (episodeId: Int) -> Unit,
     modifier: Modifier = Modifier
@@ -41,7 +39,6 @@ fun SubjectDetailsDefaults.SelectEpisodeButtons(
         Box(Modifier.weight(1f)) {
             SubjectProgressButton(
                 state,
-                episodeCacheStatus = episodeCacheStatus,
                 onPlay = {
                     state.episodeIdToPlay?.let(onPlay)
                 },

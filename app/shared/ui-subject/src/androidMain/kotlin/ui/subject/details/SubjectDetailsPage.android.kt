@@ -76,7 +76,8 @@ private fun PreviewSubjectDetailsScreen(
         onPlay = { },
         onLoadErrorRetry = { },
         onClickTag = {},
-        navigationIcon = { BackNavigationIconButton({}) },
+        {},
         modifier = modifier,
+        navigationIcon = { BackNavigationIconButton({}) },
     )
 }

@@ -287,6 +287,7 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
             animeScheduleRepository = get(),
             episodeCollectionRepository = get(),
             settingsRepository = get(),
+            sessionManager = get(),
         )
     }
     single<BangumiSubjectSearchService> {

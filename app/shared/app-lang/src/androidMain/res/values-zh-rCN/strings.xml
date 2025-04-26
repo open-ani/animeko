@@ -377,6 +377,93 @@
     <string name="main_screen_page_exploration">探索</string>
     <string name="main_screen_page_collection">追番</string>
     <string name="main_screen_page_cache_management">缓存</string>
+
+    <!-- ThemePreferences -->
+    <string name="settings_theme_title">主题</string>
+    <string name="settings_theme_dynamic_colors">动态色彩</string>
+    <string name="settings_theme_dynamic_colors_description">使用系统强调色</string>
+    <string name="settings_theme_high_contrast">高对比度深色主题</string>
+    <string name="settings_theme_high_contrast_description">深色模式使用纯黑背景，在 AMOLED 屏幕使用纯黑背景可以省电</string>
+    <string name="settings_theme_always_dark_episode">播放页始终使用深色主题</string>
+    <string name="settings_theme_always_dark_episode_description">提供更加沉浸的播放体验</string>
+    <string name="settings_theme_dynamic_subject">条目详情页使用动态主题</string>
+    <string name="settings_theme_dynamic_subject_description">根据封面生成动态主题</string>
+    <string name="settings_theme_palette">调色板</string>
+    <string name="settings_theme_mode_light">浅色</string>
+    <string name="settings_theme_mode_dark">深色</string>
+    <string name="settings_theme_mode_auto">自动</string>
+
+    <!-- DanmakuGroup -->
+    <string name="settings_network_danmaku">弹幕</string>
+    <string name="settings_network_danmaku_global_acceleration">全球加速</string>
+    <string name="settings_network_danmaku_global_acceleration_description">提升在获取弹幕数据的速度\n在中国大陆内启用会减速</string>
+    <string name="settings_network_danmaku_connection_test">连接速度测试</string>
+    <string name="settings_network_danmaku_currently_using">当前使用</string>
+    <string name="settings_network_danmaku_recommended_other_regions">建议在其他地区使用</string>
+    <string name="settings_network_danmaku_recommended_mainland_hk">建议在中国大陆和香港使用</string>
+    <string name="settings_network_danmaku_global">全球</string>
+    <string name="settings_network_danmaku_mainland">中国大陆</string>
+    <string name="settings_network_danmaku_stop_test">终止测试</string>
+    <string name="settings_network_danmaku_start_test">开始测试</string>
+
+    <!-- DanmakuRegexFilterGroup -->
+    <string name="settings_danmaku_regex_filter_group">弹幕正则过滤器管理</string>
+    <string name="settings_danmaku_add_regex_filter">添加正则过滤器</string>
+    <string name="settings_danmaku_add_regex">添加正则</string>
+    <string name="settings_danmaku_confirm">确认</string>
+    <string name="settings_danmaku_cancel">取消</string>
+    <string name="settings_danmaku_regex_expression">正则表达式</string>
+    <string name="settings_danmaku_regex_invalid">正则表达式语法不正确</string>
+    <string name="settings_danmaku_regex_description">填写用于屏蔽的正则表达式，例如：\'.*签.*\' 会屏蔽所有含有文字\'签\'的弹幕。</string>
+
+    <!-- ConnectionTesterResultIndicator -->
+    <string name="settings_framework_timeout">超时</string>
+    <string name="settings_framework_not_enabled">未启用</string>
+    <string name="settings_framework_waiting_for_test">等待测试</string>
+
+    <!-- GlobalProxyGroup -->
+    <string name="settings_network_proxy_title">全局代理设置</string>
+    <string name="settings_network_proxy_description">应用于所有数据源以及 Bangumi</string>
+    <string name="settings_network_proxy_type">代理类型</string>
+    <string name="settings_network_proxy_disabled">禁用</string>
+    <string name="settings_network_proxy_system">系统代理</string>
+    <string name="settings_network_proxy_custom">自定义</string>
+    <string name="settings_network_proxy_detection_result">自动检测结果</string>
+    <string name="settings_network_proxy_detecting">正在检测</string>
+    <string name="settings_network_proxy_not_detected">未检测到系统代理</string>
+    <string name="settings_network_proxy_address">代理地址</string>
+    <string name="settings_network_proxy_address_example">示例: http://127.0.0.1:7890 或 socks5://127.0.0.1:1080</string>
+    <string name="settings_network_proxy_username">用户名</string>
+    <string name="settings_network_proxy_optional">可选</string>
+    <string name="settings_network_proxy_none">无</string>
+    <string name="settings_network_proxy_password">密码</string>
+
+    <!-- TorrentEngineGroup -->
+    <string name="settings_media_torrent_title">BT 设置</string>
+    <string name="settings_media_torrent_download_rate_limit">下载速度限制</string>
+    <string name="settings_media_torrent_sharing_settings">分享设置</string>
+    <string name="settings_media_torrent_sharing_description">BT 网络依赖用户间分享，你所看的视频均来自其他用户的分享。允许上传，共同维护健康的 BT 分享环境。</string>
+    <string name="settings_media_torrent_upload_rate_limit">上传速度限制</string>
+    <string name="settings_media_torrent_share_ratio_limit">分享率限制</string>
+    <string name="settings_media_torrent_share_ratio_description">分享率 = 上传量 / 下载量。大于 1 说明上传量大于下载量。资源达到分享率限制后，将停止上传。</string>
+    <string name="settings_media_torrent_unlimited">无限制</string>
+    <string name="settings_media_torrent_speed_format">%1$s MB/s</string>
+    <string name="settings_media_torrent_limit_upload_on_metered">计费网络限制上传</string>
+    <string name="settings_media_torrent_limit_upload_on_metered_description">在计费网络环境下限制上传速度为 1 KB/s</string>
+    <string name="settings_media_torrent_peer_filter">Peer 过滤和屏蔽设置</string>
+    <string name="settings_media_torrent_peer_filter_description">在下载或上传缓存的番剧时不与黑名单或命中过滤规则的客户端连接</string>
+
+    <!-- AutoCacheGroup -->
+    <string name="settings_media_auto_cache_title">自动缓存</string>
+    <string name="settings_media_auto_cache_description">自动缓存 \"在看\" 分类中未观看的剧集</string>
+    <string name="settings_media_auto_cache_enable">启用自动缓存</string>
+    <string name="settings_media_auto_cache_max_count">最大自动缓存话数</string>
+    <string name="settings_media_auto_cache_max_count_description">若手动缓存数量超过该设置值，将不会自动缓存</string>
+    <string name="settings_media_auto_cache_space_warning">可能会占用大量空间</string>
+    <string name="settings_media_auto_cache_recent_only">仅缓存最近看过的番剧</string>
+    <string name="settings_media_auto_cache_count">缓存数量</string>
+    <string name="settings_media_auto_cache_count_description">当前设置: 仅缓存最近看过的 %d 部番剧</string>
+    <string name="settings_media_auto_cache_manage">管理已缓存的剧集</string>
 </resources>
 
 <!--@formatter:on-->

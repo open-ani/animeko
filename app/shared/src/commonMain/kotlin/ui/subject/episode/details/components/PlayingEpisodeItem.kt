@@ -51,6 +51,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import me.him188.ani.app.ui.episode.share.MediaShareData
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.icons.PlayingIcon
@@ -222,7 +223,7 @@ object PlayingEpisodeItemDefaults {
 
     @Composable
     fun ActionShare(
-        playingMedia: Media?,
+        data: MediaShareData,
         modifier: Modifier = Modifier,
     ) {
         var showShareDropdown by rememberSaveable { mutableStateOf(false) }
@@ -231,8 +232,8 @@ object PlayingEpisodeItemDefaults {
                 Icon(Icons.Rounded.Outbox, "分享")
             }
             ShareEpisodeDropdown(
-                showShareDropdown, { showShareDropdown = false },
-                playingMedia = playingMedia,
+                data, showShareDropdown,
+                { showShareDropdown = false },
             )
         }
     }

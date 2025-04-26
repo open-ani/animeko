@@ -52,6 +52,9 @@ import me.him188.ani.app.ui.onboarding.step.ThemeSelectStep
 import me.him188.ani.app.ui.onboarding.step.ThemeSelectUIState
 import me.him188.ani.app.ui.settings.framework.SettingsState
 import me.him188.ani.app.ui.settings.tabs.network.SystemProxyPresentation
+import me.him188.ani.utils.analytics.Analytics
+import me.him188.ani.utils.analytics.AnalyticsEvent
+import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.OnboardingStart
 import me.him188.ani.utils.platform.annotations.TestOnly
 
 @Composable
@@ -116,6 +119,11 @@ fun OnboardingScreen(
     val grantNotificationPermissionState by state.bitTorrentFeatureState.grantNotificationPermissionState
         .collectAsStateWithLifecycle(GrantNotificationPermissionState.Placeholder)
 
+    DisposableEffect(Unit) {
+        Analytics.recordEvent(OnboardingStart)
+        onDispose { }
+    }
+
     WizardNavHost(
         controller,
         onCompleted = onFinishOnboarding,
@@ -165,6 +173,11 @@ fun OnboardingScreen(
 
             DisposableEffect(Unit) {
                 configureProxyState.onRequestReTest()
+                onDispose { }
+            }
+
+            DisposableEffect(Unit) {
+                Analytics.recordEvent(AnalyticsEvent.OnboardingNetworkEnter)
                 onDispose { }
             }
 
@@ -232,6 +245,7 @@ fun OnboardingScreen(
 
         val onSkipLogin: () -> Unit = {
             scope.launch {
+                Analytics.recordEvent(AnalyticsEvent.LoginSkipClick)
                 state.bangumiAuthorizeState.onUseGuestMode()
                 controller.goForward()
             }
@@ -271,6 +285,11 @@ fun OnboardingScreen(
                 )
             },
         ) {
+            DisposableEffect(Unit) {
+                Analytics.recordEvent(AnalyticsEvent.OnboardingLoginEnter)
+                onDispose { }
+            }
+
             DisposableEffect(bangumiShowTokenAuthorizePage) {
                 if (!bangumiShowTokenAuthorizePage) {
                     state.bangumiAuthorizeState.onCheckCurrentToken()

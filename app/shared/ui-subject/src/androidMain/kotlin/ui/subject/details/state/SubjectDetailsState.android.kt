@@ -19,13 +19,11 @@ import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.rating.createTestEditableRatingState
 import me.him188.ani.app.ui.search.createTestPager
 import me.him188.ani.app.ui.subject.collection.components.createTestEditableSubjectCollectionTypeState
-import me.him188.ani.app.ui.subject.collection.progress.createTestEpisodeListState
 import me.him188.ani.app.ui.subject.collection.progress.createTestSubjectProgressState
 import me.him188.ani.app.ui.subject.createTestAiringLabelState
 import me.him188.ani.app.ui.subject.details.TestRelatedSubjects
 import me.him188.ani.app.ui.subject.details.TestSubjectCharacterList
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
-import me.him188.ani.utils.coroutines.flows.flowOfEmptyList
 import me.him188.ani.utils.platform.annotations.TestOnly
 
 
@@ -47,7 +45,6 @@ fun createTestSubjectDetailsState(
         exposedStaffPager = createTestPager(emptyList()),
         totalStaffCountState = stateOf(0),
         relatedSubjectsPager = createTestPager(TestRelatedSubjects),
-        episodeListState = createTestEpisodeListState(subjectInfo.subjectId, backgroundScope),
         editableSubjectCollectionTypeState = createTestEditableSubjectCollectionTypeState(
             MutableStateFlow(
                 UnifiedCollectionType.WISH,
@@ -60,8 +57,7 @@ fun createTestSubjectDetailsState(
             backgroundScope = backgroundScope,
         ),
         subjectProgressState = createTestSubjectProgressState(),
-        episodeProgressInfoFlow = flowOfEmptyList(),
         subjectCommentState = createTestCommentState(backgroundScope),
-        backgroundScope = backgroundScope,
+        presentation = MutableStateFlow(SubjectDetailsPresentation.Placeholder),
     )
 }

@@ -32,7 +32,8 @@
             android:roundIcon="@mipmap/ic_launcher"
             android:supportsRtl="true"
             android:theme="@style/Theme.AppCompat.DayNight.NoActionBar"
-            android:usesCleartextTraffic="true">
+            android:usesCleartextTraffic="true"
+            android:largeHeap="true">
 
         <activity
                 android:name=".activity.MainActivity"

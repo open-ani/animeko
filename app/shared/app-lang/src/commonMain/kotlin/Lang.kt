@@ -18,6 +18,7 @@ val Lang get() = me.him188.ani.app.ui.lang.Res.string
 
 val SupportedLocales = listOf(
     Locale("zh-CN"),
+    Locale("zh-HK"),
     Locale("zh-TW"),
     Locale("en"),
 )

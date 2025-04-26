@@ -28,6 +28,8 @@ import me.him188.ani.app.domain.session.AuthState
 import me.him188.ani.app.ui.exploration.search.SearchPage
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
+import me.him188.ani.app.ui.foundation.widgets.LocalToaster
+import me.him188.ani.app.ui.foundation.widgets.showLoadError
 import me.him188.ani.app.ui.main.SearchViewModel
 import me.him188.ani.app.ui.subject.details.SubjectDetailsScreen
 
@@ -41,6 +43,8 @@ fun SearchScreen(
 ) {
     val listDetailNavigator = rememberListDetailPaneScaffoldNavigator()
     val coroutineScope = rememberCoroutineScope()
+    val toast = LocalToaster.current
+
     SearchPage(
         vm.searchPageState,
         detailContent = {
@@ -67,9 +71,17 @@ fun SearchScreen(
                         vm.searchPageState.gridState.animateScrollToItem(0)
                     }
                 },
+                onEpisodeCollectionUpdate = { request ->
+                    coroutineScope.launch {
+                        vm.setEpisodeCollectionType.invokeSafe(request)?.let {
+                            toast.showLoadError(it)
+                        }
+                    }
+                },
+                windowInsets = paneContentWindowInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Right),
                 navigationIcon = {
                     // 只有在单面板模式下才显示返回按钮
-                    if (listDetailLayoutParameters.isSinglePane) {
+                    if (listDetailLayoutParameters.preferSinglePane) {
                         BackNavigationIconButton(
                             onNavigateBack = {
                                 coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
@@ -79,7 +91,6 @@ fun SearchScreen(
                         )
                     }
                 },
-                windowInsets = paneContentWindowInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Right),
             )
         },
         modifier.fillMaxSize(),

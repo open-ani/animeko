@@ -44,7 +44,6 @@ private fun PreviewSelectEpisodeButtons(
                 state = rememberTestSubjectProgressState(
                     progressInfo,
                 ),
-                episodeCacheStatus = { null },
                 onShowEpisodeList = {},
                 onPlay = {},
             )

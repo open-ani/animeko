@@ -122,6 +122,7 @@ import me.him188.ani.app.ui.foundation.theme.AniTheme
 import me.him188.ani.app.ui.foundation.theme.LocalThemeSettings
 import me.him188.ani.app.ui.foundation.theme.weaken
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
+import me.him188.ani.app.ui.foundation.widgets.showLoadError
 import me.him188.ani.app.ui.richtext.RichTextDefaults
 import me.him188.ani.app.ui.subject.episode.comments.EpisodeCommentColumn
 import me.him188.ani.app.ui.subject.episode.comments.EpisodeEditCommentSheet
@@ -408,7 +409,8 @@ private fun EpisodeScreenTabletVeryWide(
                     windowInsets
                 } else {
                     // 非全屏右边还有东西
-                    windowInsets.only(WindowInsetsSides.Left + WindowInsetsSides.Top)
+                    // Consider #1923 平板横屏模式下播放器底栏和导航栏重合
+                    windowInsets.only(WindowInsetsSides.Left + WindowInsetsSides.Vertical)
                 },
             )
 
@@ -456,6 +458,7 @@ private fun EpisodeScreenTabletVeryWide(
                         0 -> Box(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                             val navigator = LocalNavigator.current
                             val pageState by vm.pageState.collectAsStateWithLifecycle()
+                            val toaster = LocalToaster.current
                             pageState?.let { page ->
                                 EpisodeDetails(
                                     page.mediaSelectorSummary,
@@ -484,6 +487,20 @@ private fun EpisodeScreenTabletVeryWide(
                                     onClickTag = { navigator.navigateSubjectSearch(it.name) },
                                     onManualMatchDanmaku = {
                                         vm.startMatchingDanmaku(it)
+                                    },
+                                    onEpisodeCollectionUpdate = { request ->
+                                        scope.launch {
+                                            vm.setEpisodeCollectionType.invokeSafe(request)?.let {
+                                                toaster.showLoadError(it)
+                                            }
+                                        }
+                                    },
+                                    shareData = page.shareData,
+                                    page.loadError,
+                                    onRetryLoad = {
+                                        page.loadError?.let {
+                                            vm.retryLoad(it)
+                                        }
                                     },
                                 )
                             }
@@ -566,6 +583,7 @@ private fun EpisodeScreenContentPhone(
     windowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
 ) {
     var showDanmakuEditor by rememberSaveable { mutableStateOf(false) }
+    val toaster = LocalToaster.current
 
     EpisodeScreenContentPhoneScaffold(
         videoOnly = vm.isFullscreen,
@@ -581,6 +599,8 @@ private fun EpisodeScreenContentPhone(
         episodeDetails = {
             val navigator = LocalNavigator.current
             val pageState by vm.pageState.collectAsStateWithLifecycle()
+            val scope = rememberCoroutineScope()
+
             pageState?.let { page ->
                 EpisodeDetails(
                     page.mediaSelectorSummary,
@@ -610,7 +630,19 @@ private fun EpisodeScreenContentPhone(
                     onManualMatchDanmaku = {
                         vm.startMatchingDanmaku(it)
                     },
-                    Modifier.fillMaxSize(),
+                    onEpisodeCollectionUpdate = { request ->
+                        scope.launch {
+                            vm.setEpisodeCollectionType.invokeSafe(request)?.let {
+                                toaster.showLoadError(it)
+                            }
+                        }
+                    },
+                    shareData = page.shareData,
+                    loadError = page.loadError,
+                    onRetryLoad = {
+                        page.loadError?.let { vm.retryLoad(it) }
+                    },
+                    modifier = Modifier.fillMaxSize(),
                 )
             }
         },
@@ -976,24 +1008,16 @@ private fun EpisodeCommentColumn(
 
     EpisodeCommentColumn(
         state = commentState,
-        editCommentStubText = commentEditorState.content,
         onClickReply = {
             setShowEditCommentSheet(true)
             commentEditorState.startEdit(CommentContext.EpisodeReply(subjectId, episodeId, it.toInt()))
             pauseOnPlaying()
 
         },
-        onClickEditCommentStub = {
+        onNewCommentClick = {
             commentEditorState.startEdit(
                 CommentContext.Episode(subjectId, episodeId),
             )
-            setShowEditCommentSheet(true)
-        },
-        onClickEditCommentStubEmoji = {
-            commentEditorState.startEdit(
-                CommentContext.Episode(subjectId, episodeId),
-            )
-            commentEditorState.toggleStickerPanelState(true)
             setShowEditCommentSheet(true)
         },
         onClickUrl = {

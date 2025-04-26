@@ -65,6 +65,8 @@ import me.him188.ani.app.ui.foundation.layout.isHeightAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.isTopRight
 import me.him188.ani.app.ui.foundation.layout.setRequestFullScreen
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
+import me.him188.ani.app.ui.foundation.widgets.LocalToaster
+import me.him188.ani.app.ui.foundation.widgets.showLoadError
 import me.him188.ani.app.ui.subject.collection.CollectionPage
 import me.him188.ani.app.ui.subject.collection.UserCollectionsViewModel
 import me.him188.ani.app.ui.update.UpdateNotifier
@@ -194,6 +196,8 @@ private fun MainScreenContent(
         val navigator by navigatorState
         // Windows caption button 在右侧, 没有足够空间放置按钮, 需要保留 title bar insets
         val isRightCaptionButton = WindowInsets.desktopCaptionButton.isTopRight()
+        val toaster = LocalToaster.current
+
         TabContent(
             layoutType = navigationLayoutType,
             Modifier.ifThen(navigationLayoutType != NavigationSuiteType.NavigationBar && !isRightCaptionButton) {
@@ -230,10 +234,19 @@ private fun MainScreenContent(
                             authState = authState,
                             items = userCollectionsViewModel.items.collectAsLazyPagingItems(),
                             onClickSearch = onNavigateToSearch,
-                            onClickSettings = { navigator.navigateSettings() },
                             onClickLogin = { navigator.navigateBangumiAuthorize() },
                             onClickRetryRefreshSession = {
                                 coroutineScope.launch { userCollectionsViewModel.refreshLoginSession() }
+                            },
+                            onClickSettings = { navigator.navigateSettings() },
+                            onCollectionUpdate = { subjectId, episode ->
+                                coroutineScope.launch {
+                                    userCollectionsViewModel.toggleEpisodeCollection(
+                                        subjectId,
+                                        episode.episodeId,
+                                        episode.collectionType,
+                                    )?.let { toaster.showLoadError(it) }
+                                }
                             },
                             modifier = Modifier.fillMaxSize(),
                             enableAnimation = userCollectionsViewModel.myCollectionsSettings.enableListAnimation1,

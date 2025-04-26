@@ -65,6 +65,7 @@ import me.him188.ani.app.domain.episode.EpisodeCompletionContext.isKnownComplete
 import me.him188.ani.app.domain.episode.EpisodeDanmakuLoader
 import me.him188.ani.app.domain.episode.EpisodeFetchSelectPlayState
 import me.him188.ani.app.domain.episode.EpisodeSession
+import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeUseCase
 import me.him188.ani.app.domain.episode.SubjectEpisodeInfoBundle
 import me.him188.ani.app.domain.episode.UnsafeEpisodeSessionApi
 import me.him188.ani.app.domain.episode.episodeIdFlow
@@ -101,6 +102,7 @@ import me.him188.ani.app.ui.danmaku.UIDanmakuEvent
 import me.him188.ani.app.ui.episode.PlayingEpisodeSummary
 import me.him188.ani.app.ui.episode.danmaku.MatchingDanmakuPresenter
 import me.him188.ani.app.ui.episode.danmaku.MatchingDanmakuUiState
+import me.him188.ani.app.ui.episode.share.MediaShareData
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.foundation.HasBackgroundScope
 import me.him188.ani.app.ui.foundation.launchInBackground
@@ -171,7 +173,7 @@ data class EpisodePageState(
     val danmakuEnabled: Boolean,
     val danmakuConfig: DanmakuConfig,
     val isLoading: Boolean = false,
-    val loadError: LoadError? = null,
+    val loadError: EpisodePageLoadError? = null,
     val isPlaceholder: Boolean = false,
     val playingEpisodeSummary: PlayingEpisodeSummary?, // null means placeholder TODO: should distinguish placeholder
     val mediaSelectorSummary: MediaSelectorSummary,
@@ -179,7 +181,34 @@ data class EpisodePageState(
     val matchingDanmakuPresenter: MatchingDanmakuPresenter?,
     val matchingDanmakuUiState: MatchingDanmakuUiState?,
     val fetchRequest: MediaFetchRequest?,
+    val shareData: MediaShareData,
 )
+
+/**
+ * 播放页的加载错误
+ */
+sealed class EpisodePageLoadError {
+    /**
+     * 关键的条目和剧集信息加载错误.
+     *
+     * 这只包含 [SubjectEpisodeInfoBundle.subjectInfo] 和 [SubjectEpisodeInfoBundle.episodeInfo].
+     *
+     * 这两个信息是极其关键的信息, 如果加载错误就无法显示整个页面.
+     */
+    data class SubjectError(
+        val loadError: LoadError,
+    ) : EpisodePageLoadError()
+
+    /**
+     * [SubjectEpisodeInfoBundle.seriesInfo] 或者 [SubjectEpisodeInfoBundle.subjectCompleted] 等用来让查询更准确的信息加载错误.
+     *
+     * 缺少这些信息仍然可以继续查询和播放, 只是不太准确.
+     * 注意, 这可能会在离线播放时发生.
+     */
+    data class SeriesError(
+        val loadError: LoadError,
+    ) : EpisodePageLoadError()
+}
 
 /**
  * 要查看有关剧集播放页的详细信息，请参阅 PR 文档 [#1439](https://github.com/open-ani/animeko/pull/1439).
@@ -211,6 +240,7 @@ class EpisodeViewModel(
     private val getMediaSelectorSettings: GetMediaSelectorSettingsUseCase by inject()
     private val getMediaSourceInstances: GetMediaSourceInstancesUseCase by inject()
     val turnstileState: TurnstileState by inject()
+    val setEpisodeCollectionType: SetEpisodeCollectionTypeUseCase by inject()
     // endregion
 
     val player: MediampPlayer =
@@ -246,6 +276,11 @@ class EpisodeViewModel(
         ),
         koin,
         sharingStarted = SharingStarted.WhileSubscribed(5_000),
+        analyticsContext = object : EpisodeFetchSelectPlayState.AnalyticsContext {
+            override suspend fun isFullscreen(): Boolean? {
+                return withContext(Dispatchers.Main) { this@EpisodeViewModel.isFullscreen }
+            }
+        },
     )
 
     val mediaResolver: MediaResolver get() = fetchPlayState.playerSession.mediaResolver
@@ -608,6 +643,8 @@ class EpisodeViewModel(
             initialValue = MediaSelectorSummary.AutoSelecting(listOf(), estimate = 10.seconds),
         )
 
+        val selectedMediaFlow =
+            episodeSession.fetchSelectFlow.flatMapLatest { it?.mediaSelector?.selected ?: flowOfNull() }
         return me.him188.ani.utils.coroutines.flows.combine(
             authStateProvider.state,
             episodeSession.infoBundleFlow.distinctUntilChanged().onStart { emit(null) },
@@ -641,7 +678,10 @@ class EpisodeViewModel(
             initialMediaSelectorViewKindFlow(),
             matchingDanmakuPresenter,
             matchingDanmakuPresenter.flatMapLatest { it?.uiState ?: flowOfNull() },
-        ) { authState, subjectEpisodeBundle, loadError, fetchSelect, danmakuStatistics, danmakuEnabled, danmakuConfig, mediaSelectorState, mediaSourceResultsPresentation, mediaSelectorSummary, initialMediaSelectorViewKind, matchingDanmakuPresenter, matchingDanmaku ->
+            combine(selectedMediaFlow, player.mediaData) { selectedMedia, mediaData ->
+                MediaShareData.from(selectedMedia, mediaData)
+            },
+        ) { authState, subjectEpisodeBundle, subjectLoadError, fetchSelect, danmakuStatistics, danmakuEnabled, danmakuConfig, mediaSelectorState, mediaSourceResultsPresentation, mediaSelectorSummary, initialMediaSelectorViewKind, matchingDanmakuPresenter, matchingDanmaku, shareData ->
 
             val (subject, episode) = if (subjectEpisodeBundle == null) {
                 SubjectPresentation.Placeholder to EpisodePresentation.Placeholder
@@ -652,8 +692,22 @@ class EpisodeViewModel(
                 )
             }
 
-            if (loadError != null) { // TODO: 2025/1/6 display load error in UI 
-                logger.warn { "InfoBundle load error: $loadError" }
+            if (subjectLoadError != null) { // TODO: 2025/1/6 display load error in UI 
+                logger.warn { "InfoBundle load error: $subjectLoadError" }
+            }
+
+            fun getLoadError(): EpisodePageLoadError? {
+                // 注意, 这是有显示优先级的. 优先显示重大错误.
+                subjectLoadError?.let {
+                    return EpisodePageLoadError.SubjectError(subjectLoadError)
+                }
+                subjectEpisodeBundle?.seriesInfoLoadError?.let {
+                    return EpisodePageLoadError.SeriesError(it)
+                }
+                subjectEpisodeBundle?.subjectCompletedLoadError?.let {
+                    return EpisodePageLoadError.SeriesError(it)
+                }
+                return null
             }
 
             EpisodePageState(
@@ -666,7 +720,7 @@ class EpisodeViewModel(
                 danmakuEnabled = danmakuEnabled,
                 danmakuConfig = danmakuConfig,
                 isLoading = subjectEpisodeBundle == null,
-                loadError = loadError,
+                loadError = getLoadError(),
                 playingEpisodeSummary = if (subjectEpisodeBundle == null) {
                     null
                 } else {
@@ -687,6 +741,7 @@ class EpisodeViewModel(
                     initialQuery = subjectEpisodeBundle?.subjectInfo?.nameCnOrName ?: "",
                 ),
                 fetchRequest = fetchSelect?.mediaFetchSession?.request?.first(),
+                shareData = shareData,
             )
         }
     }
@@ -814,6 +869,21 @@ class EpisodeViewModel(
                 ?.firstOrNull()
                 ?.mediaFetchSession
                 ?.setFetchRequest(request)
+        }
+    }
+
+    @OptIn(UnsafeEpisodeSessionApi::class)
+    fun retryLoad(error: EpisodePageLoadError) {
+        launchInBackground {
+            when (error) {
+                is EpisodePageLoadError.SeriesError -> {
+                    fetchPlayState.restartLoad()
+                }
+
+                is EpisodePageLoadError.SubjectError -> {
+                    fetchPlayState.restartLoad()
+                }
+            }
         }
     }
 }

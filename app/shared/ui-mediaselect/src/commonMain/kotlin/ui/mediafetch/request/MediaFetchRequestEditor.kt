@@ -23,8 +23,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
@@ -35,6 +38,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,6 +46,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.IconButton
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
+import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.utils.platform.annotations.TestOnly
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
@@ -68,7 +73,7 @@ fun MediaFetchRequestEditor(
         modifier = modifier
             .verticalScroll(scrollState),
     ) {
-        val horizontalPadding = 8.dp
+        val horizontalPadding = 16.dp
         val verticalSpacing = 16.dp
 
         // 没必要允许编辑 bangumi id
@@ -101,6 +106,7 @@ fun MediaFetchRequestEditor(
 
         // --- Subject complementary names -------------------------------------------------------------------
 
+        var showComplementaryNames by rememberSaveable { mutableStateOf(false) }
         ListItem(
             headlineContent = {
                 Text(
@@ -110,52 +116,76 @@ fun MediaFetchRequestEditor(
                 )
             },
             Modifier.padding(top = 8.dp),
+            supportingContent = {
+                Text("在线源会忽略这些名称")
+            },
             colors = listItemColors,
-        )
-
-        Column(
-            verticalArrangement = Arrangement.spacedBy(verticalSpacing),
-        ) {
-            fetchRequest.complementaryNames.forEachIndexed { index, name ->
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedTextField(
-                        value = name,
-                        onValueChange = { newName ->
-                            val updated =
-                                fetchRequest.complementaryNames.toMutableList().apply { this[index] = newName }
-                            onFetchRequestChange(fetchRequest.copy(complementaryNames = updated))
-                        },
-                        modifier = Modifier.weight(1f).padding(horizontal = horizontalPadding),
-                        singleLine = true,
-                        label = { Text("Name #${index + 1}") },
-                    )
-                    IconButton(
-                        onClick = {
-                            val updated = fetchRequest.complementaryNames.toMutableList().also { it.removeAt(index) }
-                            onFetchRequestChange(fetchRequest.copy(complementaryNames = updated))
-                        },
-                    ) {
-                        Icon(Icons.Default.Delete, contentDescription = "删除名称 #$index")
+            trailingContent = {
+                IconToggleButton(
+                    showComplementaryNames,
+                    onCheckedChange = { showComplementaryNames = it },
+                ) {
+                    // expand/collapse
+                    if (showComplementaryNames) {
+                        Icon(Icons.Default.KeyboardArrowUp, contentDescription = "收起")
+                    } else {
+                        Icon(Icons.Default.KeyboardArrowDown, contentDescription = "展开")
                     }
                 }
-            }
-        }
-
-        TextButton(
-            onClick = {
-                val updated = fetchRequest.complementaryNames + ""
-                onFetchRequestChange(fetchRequest.copy(complementaryNames = updated))
             },
-            Modifier.align(Alignment.Start),
-            contentPadding = ButtonDefaults.TextButtonWithIconContentPadding,
-        ) {
-            Icon(
-                Icons.Default.Add,
-                contentDescription = null,
-                Modifier.size(ButtonDefaults.IconSize),
-            )
-            Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-            Text("添加名称")
+        )
+
+        AniAnimatedVisibility(showComplementaryNames) {
+            Column {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(verticalSpacing),
+                ) {
+                    fetchRequest.complementaryNames.forEachIndexed { index, name ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            OutlinedTextField(
+                                value = name,
+                                onValueChange = { newName ->
+                                    val updated =
+                                        fetchRequest.complementaryNames.toMutableList().apply { this[index] = newName }
+                                    onFetchRequestChange(fetchRequest.copy(complementaryNames = updated))
+                                },
+                                modifier = Modifier.weight(1f).padding(start = horizontalPadding),
+                                singleLine = true,
+                                label = { Text("Name #${index + 1}") },
+                            )
+                            IconButton(
+                                onClick = {
+                                    val updated =
+                                        fetchRequest.complementaryNames.toMutableList().also { it.removeAt(index) }
+                                    onFetchRequestChange(fetchRequest.copy(complementaryNames = updated))
+                                },
+                                Modifier.padding(end = horizontalPadding - 8.dp),
+                            ) {
+                                Icon(Icons.Default.Delete, contentDescription = "删除名称 #$index")
+                            }
+                        }
+                    }
+                }
+
+                TextButton(
+                    onClick = {
+                        val updated = fetchRequest.complementaryNames + ""
+                        onFetchRequestChange(fetchRequest.copy(complementaryNames = updated))
+                    },
+                    Modifier.align(Alignment.End)
+                        .padding(top = verticalSpacing - 8.dp)
+                        .padding(horizontal = horizontalPadding),
+                    contentPadding = ButtonDefaults.TextButtonWithIconContentPadding,
+                ) {
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = null,
+                        Modifier.size(ButtonDefaults.IconSize),
+                    )
+                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                    Text("添加名称")
+                }
+            }
         }
 
         // --- Episode naming -------------------------------------------------------------------
@@ -171,8 +201,7 @@ fun MediaFetchRequestEditor(
             Modifier.padding(vertical = 8.dp),
             supportingContent = {
                 Text(
-                    "资源必须至少匹配以下三种信息中的一种，否则不会显示",
-                    Modifier.padding(top = 4.dp),
+                    "资源必须至少匹配以下两种信息中的一种，否则不会显示。可以只修改其中一种",
                 )
             },
             colors = listItemColors,
@@ -181,14 +210,15 @@ fun MediaFetchRequestEditor(
         Column(
             verticalArrangement = Arrangement.spacedBy(verticalSpacing),
         ) {
-            OutlinedTextField(
-                value = fetchRequest.episodeName,
-                onValueChange = { onFetchRequestChange(fetchRequest.copy(episodeName = it)) },
-                label = { Text("剧集名称") },
-                supportingText = { Text("可留空") },
-                modifier = Modifier.fillMaxWidth().padding(horizontal = horizontalPadding),
-                singleLine = true,
-            )
+            // 没必要允许编辑名称，因为序号也可以作为名称匹配（需要支持 Unknown）
+//            OutlinedTextField(
+//                value = fetchRequest.episodeName,
+//                onValueChange = { onFetchRequestChange(fetchRequest.copy(episodeName = it)) },
+//                label = { Text("剧集名称") },
+//                supportingText = { Text("可留空") },
+//                modifier = Modifier.fillMaxWidth().padding(horizontal = horizontalPadding),
+//                singleLine = true,
+//            )
 
             // --- Episode sort ---------------------------------------------------------------------
             val sortAndEpAreError = fetchRequest.episodeSort.isEmpty() && fetchRequest.episodeEp.isEmpty()

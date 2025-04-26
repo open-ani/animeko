@@ -10,6 +10,7 @@
 package me.him188.ani.app.ui.subject.episode.video.components
 
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
@@ -37,7 +38,7 @@ fun rememberStatusBarHeightAsState(
     val density by rememberUpdatedState(LocalDensity.current)
     if (LocalPlatform.current.isMobile() && !isSystemInLandscapeMode) {
         // TODO: 2024/12/28 We should actually consider insets from all sides and write a proper layout algorithm.
-        val insets = WindowInsets.systemBars // composable
+        val insets = WindowInsets.displayCutout // composable
         SideEffect {
             statusBarHeight = insets.getTop(density)
         }

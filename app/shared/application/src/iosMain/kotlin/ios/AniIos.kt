@@ -44,12 +44,15 @@ import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.navigation.BrowserNavigator
 import me.him188.ani.app.navigation.IosBrowserNavigator
 import me.him188.ani.app.navigation.LocalNavigator
+import me.him188.ani.app.platform.AniHostingUIViewController
 import me.him188.ani.app.platform.AppStartupTasks
 import me.him188.ani.app.platform.GrantedPermissionManager
 import me.him188.ani.app.platform.IosContext
 import me.him188.ani.app.platform.IosContextFiles
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.PermissionManager
+import me.him188.ani.app.platform.StartupTimeMonitor
+import me.him188.ani.app.platform.StepName
 import me.him188.ani.app.platform.create
 import me.him188.ani.app.platform.createAppRootCoroutineScope
 import me.him188.ani.app.platform.currentAniBuildConfig
@@ -68,7 +71,10 @@ import me.him188.ani.app.ui.foundation.widgets.ToastViewModel
 import me.him188.ani.app.ui.foundation.widgets.Toaster
 import me.him188.ani.app.ui.main.AniApp
 import me.him188.ani.app.ui.main.AniAppContent
+import me.him188.ani.utils.analytics.Analytics
 import me.him188.ani.utils.analytics.AnalyticsConfig
+import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.AppStart
+import me.him188.ani.utils.analytics.recordEvent
 import me.him188.ani.utils.io.SystemCacheDir
 import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.io.SystemSupportDir
@@ -80,10 +86,21 @@ import org.koin.core.context.startKoin
 import org.koin.dsl.module
 import org.openani.mediamp.MediampPlayerFactory
 import org.openani.mediamp.avkit.AVKitMediampPlayerFactory
+import platform.UIKit.NSLayoutConstraint
 import platform.UIKit.UIViewController
+import platform.UIKit.addChildViewController
+import platform.UIKit.didMoveToParentViewController
 
-@Suppress("FunctionName", "unused") // used in Swift
-fun MainViewController(): UIViewController {
+class AniIosApplication(
+    val context: IosContext,
+    val aniNavigator: AniNavigator,
+    val onBackPressedDispatcherOwner: SkikoOnBackPressedDispatcherOwner
+)
+
+// Called from Swift
+@Suppress("unused")
+fun startIosApp(): AniIosApplication {
+    val startupTimeMonitor = StartupTimeMonitor()
     val scope = createAppRootCoroutineScope()
 
     val context = IosContext(
@@ -92,13 +109,17 @@ fun MainViewController(): UIViewController {
             dataDir = SystemSupportDir.apply { createDirectories() },
         ),
     )
+    startupTimeMonitor.mark(StepName.WindowAndContext)
+
     AppStartupTasks.printVersions()
     IosLoggingConfigurator.configure(context.files.logsDir.path, SystemFileSystem)
+    startupTimeMonitor.mark(StepName.Logging)
 
     val koin = startKoin {
         modules(getCommonKoinModule({ context }, scope))
         modules(getIosModules(context, context.files.dataDir.resolve("torrent"), scope))
     }.startCommonKoinModule(context, scope).koin
+    startupTimeMonitor.mark(StepName.Modules)
 
     val analyticsInitializer = scope.launch {
         val settingsRepository = koin.get<SettingsRepository>()
@@ -136,13 +157,29 @@ fun MainViewController(): UIViewController {
     )
 
     runBlocking { analyticsInitializer.join() }
-    return ComposeUIViewController {
+    startupTimeMonitor.mark(StepName.Analytics)
+
+    Analytics.recordEvent(AppStart) {
+        putAll(startupTimeMonitor.getMarks())
+        put("total_time", startupTimeMonitor.getTotalDuration().inWholeMilliseconds)
+    }
+
+    return AniIosApplication(
+        context = context,
+        aniNavigator = aniNavigator,
+        onBackPressedDispatcherOwner = onBackPressedDispatcherOwner,
+    )
+}
+
+@Suppress("FunctionName", "unused") // used in Swift
+fun MainViewController(app: AniIosApplication): UIViewController {
+    val contentViewController = ComposeUIViewController {
         AniApp {
             val platformWindow = rememberPlatformWindow()
             CompositionLocalProvider(
-                LocalContext provides context,
+                LocalContext provides app.context,
                 LocalPlatformWindow provides platformWindow,
-                LocalOnBackPressedDispatcherOwner provides onBackPressedDispatcherOwner,
+                LocalOnBackPressedDispatcherOwner provides app.onBackPressedDispatcherOwner,
             ) {
                 Box(
                     Modifier.background(color = MaterialTheme.colorScheme.surfaceContainerLowest)
@@ -157,7 +194,7 @@ fun MainViewController(): UIViewController {
                         val content by vm.content.collectAsStateWithLifecycle()
 
                         CompositionLocalProvider(
-                            LocalNavigator provides aniNavigator,
+                            LocalNavigator provides app.aniNavigator,
                             LocalToaster provides remember {
                                 object : Toaster {
                                     override fun toast(text: String) {
@@ -167,7 +204,7 @@ fun MainViewController(): UIViewController {
                             },
                         ) {
                             Box(Modifier.padding(all = paddingByWindowSize)) {
-                                AniAppContent(aniNavigator)
+                                AniAppContent(app.aniNavigator)
                                 Toast({ showing }, { Text(content) })
                             }
                         }
@@ -176,6 +213,26 @@ fun MainViewController(): UIViewController {
             }
         }
     }
+
+    return AniHostingUIViewController().apply {
+        addChildViewController(contentViewController)
+        view.addSubview(contentViewController.view)
+        fillMaxSize(this, contentViewController)
+    }
+}
+
+private fun fillMaxSize(container: AniHostingUIViewController, contentViewController: UIViewController) {
+    contentViewController.didMoveToParentViewController(container)
+    contentViewController.view.translatesAutoresizingMaskIntoConstraints = false
+
+    NSLayoutConstraint.activateConstraints(
+        listOf(
+            contentViewController.view.topAnchor.constraintEqualToAnchor(container.view.topAnchor),
+            contentViewController.view.bottomAnchor.constraintEqualToAnchor(container.view.bottomAnchor),
+            contentViewController.view.leadingAnchor.constraintEqualToAnchor(container.view.leadingAnchor),
+            contentViewController.view.trailingAnchor.constraintEqualToAnchor(container.view.trailingAnchor),
+        ),
+    )
 }
 
 fun getIosModules(

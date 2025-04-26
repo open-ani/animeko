@@ -32,6 +32,7 @@ import me.him188.ani.app.domain.media.cache.EpisodeCacheStatus
 import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.domain.session.AuthState
 import me.him188.ani.app.domain.session.TestAuthState
+import me.him188.ani.app.ui.episode.share.MediaShareData
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.mediafetch.MediaSelectorState
 import me.him188.ani.app.ui.mediafetch.TestMediaSourceResultListPresentation
@@ -222,6 +223,9 @@ private fun PreviewEpisodeDetailsImpl(
             onClickTag = {},
             onManualMatchDanmaku = {
             },
+            onEpisodeCollectionUpdate = {},
+            shareData = MediaShareData.from(null, null),
+            null, {},
             Modifier
                 .padding(bottom = 16.dp, top = 8.dp)
                 .padding(it)

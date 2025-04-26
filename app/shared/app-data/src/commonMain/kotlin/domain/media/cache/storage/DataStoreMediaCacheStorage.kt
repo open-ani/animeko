@@ -251,7 +251,10 @@ class DataStoreMediaCacheStorage(
             listFlow.update { minus(cache) }
             withContext(Dispatchers.IO) {
                 store.updateData { list ->
-                    list.filterNot { it.engine == engine.engineKey && it.origin.mediaId == cache.origin.mediaId }
+                    list.filterNot {
+                        it.engine == engine.engineKey && it.origin.mediaId == cache.origin.mediaId
+                                && it.metadata.episodeSort == cache.metadata.episodeSort
+                    }
                 }
             }
             cache.closeAndDeleteFiles()

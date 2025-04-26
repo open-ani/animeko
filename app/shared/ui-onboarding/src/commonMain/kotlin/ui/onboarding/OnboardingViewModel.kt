@@ -69,6 +69,8 @@ import me.him188.ani.app.ui.onboarding.step.ThemeSelectUIState
 import me.him188.ani.app.ui.settings.framework.AbstractSettingsViewModel
 import me.him188.ani.app.ui.settings.framework.SettingsState
 import me.him188.ani.app.ui.settings.tabs.network.SystemProxyPresentation
+import me.him188.ani.utils.analytics.Analytics
+import me.him188.ani.utils.analytics.AnalyticsEvent
 import me.him188.ani.utils.coroutines.SingleTaskExecutor
 import me.him188.ani.utils.coroutines.update
 import org.koin.core.component.KoinComponent
@@ -212,6 +214,7 @@ class OnboardingViewModel : AbstractSettingsViewModel(), KoinComponent {
     private val bangumiAuthorizeState = BangumiAuthorizeStepState(
         authConfigurator.state,
         onClickNavigateAuthorize = {
+            Analytics.recordEvent(AnalyticsEvent.LoginClick)
             currentAppContext = it
             backgroundScope.launch { authConfigurator.startAuthorize() }
         },

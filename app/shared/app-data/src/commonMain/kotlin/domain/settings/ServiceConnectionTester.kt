@@ -24,7 +24,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import me.him188.ani.app.domain.settings.ServiceConnectionTester.Service
-import me.him188.ani.app.domain.settings.ServiceConnectionTester.TestState
 import me.him188.ani.client.apis.TrendsAniApi
 import me.him188.ani.datasources.api.source.ConnectionStatus
 import me.him188.ani.datasources.bangumi.BangumiClient
@@ -141,6 +140,17 @@ class ServiceConnectionTester(
         val idToStateMap: Map<String, TestState> by lazy { states.mapKeys { it.key.id } }
 
         fun findStateById(id: String): TestState? = states.keys.find { it.id == id }?.let { states[it] }
+
+        fun anyFailed() = states.values.any { it is TestState.Failed }
+        fun allCompleted() = states.values.all {
+            when (it) {
+                is TestState.Error -> true
+                TestState.Failed -> true
+                TestState.Idle -> false
+                is TestState.Success -> true
+                TestState.Testing -> false
+            }
+        }
     }
 
     private class ServiceImpl(

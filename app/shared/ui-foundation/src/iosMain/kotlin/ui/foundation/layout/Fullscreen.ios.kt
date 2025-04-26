@@ -10,6 +10,7 @@
 package me.him188.ani.app.ui.foundation.layout
 
 import me.him188.ani.app.platform.Context
+import me.him188.ani.app.platform.MainViewControllerPropertyProvider
 import org.jetbrains.skiko.OS
 import org.jetbrains.skiko.OSVersion
 import org.jetbrains.skiko.available
@@ -23,7 +24,7 @@ import platform.UIKit.UIInterfaceOrientationMaskPortrait
 import platform.UIKit.UINavigationController
 import platform.UIKit.UIWindowSceneGeometryPreferencesIOS
 import platform.UIKit.attemptRotationToDeviceOrientation
-import platform.UIKit.setStatusBarHidden
+import platform.UIKit.setNeedsUpdateOfHomeIndicatorAutoHidden
 import platform.darwin.dispatch_async
 import platform.darwin.dispatch_get_main_queue
 
@@ -85,8 +86,10 @@ actual suspend fun Context.setRequestFullScreen(window: PlatformWindowMP, fullsc
 
 actual fun Context.setSystemBarVisible(window: PlatformWindowMP, visible: Boolean) {
     ensureMainThread {
-        UIApplication.sharedApplication.setStatusBarHidden(!visible, animated = true)
-        window.uiViewController.setNeedsStatusBarAppearanceUpdate()
+        window.uiViewController.statusBarHidden = !visible
+
+        MainViewControllerPropertyProvider.prefersHomeIndicatorAutoHidden = !visible
+        window.uiViewController.setNeedsUpdateOfHomeIndicatorAutoHidden()
     }
 }
 

@@ -44,6 +44,8 @@ import me.him188.ani.app.domain.player.extension.EpisodePlayerExtensionFactory
 import me.him188.ani.app.domain.player.extension.ExtensionBackgroundTaskScope
 import me.him188.ani.app.domain.player.extension.PlayerExtension
 import me.him188.ani.app.domain.usecase.GlobalKoin
+import me.him188.ani.utils.analytics.Analytics
+import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.EpisodeSwitch
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import org.koin.core.Koin
@@ -82,7 +84,12 @@ class EpisodeFetchSelectPlayState(
     private val koin: Koin = GlobalKoin,
     private val sharingStarted: SharingStarted = SharingStarted.WhileSubscribed(),
     private val mainDispatcher: CoroutineContext = Dispatchers.Main.immediate,
+    private val analyticsContext: AnalyticsContext = object : AnalyticsContext {},
 ) {
+    interface AnalyticsContext {
+        suspend fun isFullscreen(): Boolean? = false
+    }
+
     private val _episodeSessionFlow = MutableStateFlow(
         newEpisodeSession(initialEpisodeId),
     )
@@ -118,6 +125,15 @@ class EpisodeFetchSelectPlayState(
      * This function flushes all background tasks and starts new ones.
      */
     suspend fun switchEpisode(episodeId: Int) {
+        Analytics.recordEvent(
+            EpisodeSwitch,
+            mapOf(
+                "subject_id" to subjectId,
+                "episode_id" to episodeId,
+                "is_fullscreen" to analyticsContext.isFullscreen(),
+            ),
+        )
+
         currentCoroutineContext()[InSwitchEpisode]?.let { element ->
             error(
                 "Recursive switchEpisode call detected. " +
@@ -204,6 +220,13 @@ class EpisodeFetchSelectPlayState(
      */
     suspend fun onClose() {
         extensionManager.call { it.onClose() }
+    }
+
+    /**
+     * @see EpisodeSession.restartLoad
+     */
+    fun restartLoad() {
+        episodeSessionFlow.value.restartLoad()
     }
 
     private suspend fun EpisodeSession.startSessionScopeTasks() {

@@ -64,16 +64,18 @@ interface MediaSelectorFactory {
                 flowCoroutineContext: CoroutineContext
             ): MediaSelector {
                 return DefaultMediaSelector(
-                    MediaSelectorContext.createFlow(
+                    MediaSelectorContextFlowProducer(
                         episodeCollectionRepository.subjectCompletedFlow(subjectId),
-                        mediaSourceManager.allInstances,
-                        flowOf(subtitlePreferences),
+                        mediaSourceManager.allInstances.map { list ->
+                            list.map { it.mediaSourceId }
+                        },
                         subjectRelationsRepository.subjectSeriesInfoFlow(subjectId),
                         subjectCollectionRepository.subjectCollectionFlow(subjectId).map { it.subjectInfo },
                         episodeCollectionRepository.episodeCollectionInfoFlow(subjectId, episodeId)
                             .map { it.episodeInfo },
                         mediaSourceManager.mediaSourceTiersFlow(),
-                    ),
+                        flowOf(subtitlePreferences),
+                    ).flow,
                     mediaList,
                     savedUserPreference = episodePreferencesRepository.mediaPreferenceFlow(subjectId),
                     savedDefaultPreference = settingsRepository.defaultMediaPreference.flow,

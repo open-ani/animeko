@@ -65,8 +65,10 @@ import me.him188.ani.app.data.models.episode.displayName
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.Tag
 import me.him188.ani.app.domain.danmaku.DanmakuLoadingState
+import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeRequest
 import me.him188.ani.app.domain.session.AuthState
 import me.him188.ani.app.navigation.LocalNavigator
+import me.him188.ani.app.ui.episode.share.MediaShareData
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBarPadding
@@ -77,6 +79,7 @@ import me.him188.ani.app.ui.mediafetch.MediaSourceResultListPresentation
 import me.him188.ani.app.ui.mediafetch.ViewKind
 import me.him188.ani.app.ui.mediaselect.summary.MediaSelectorSummary
 import me.him188.ani.app.ui.mediaselect.summary.MediaSelectorSummaryCard
+import me.him188.ani.app.ui.search.LoadErrorCard
 import me.him188.ani.app.ui.subject.AiringLabel
 import me.him188.ani.app.ui.subject.AiringLabelState
 import me.him188.ani.app.ui.subject.collection.SubjectCollectionTypeSuggestions
@@ -85,6 +88,7 @@ import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollect
 import me.him188.ani.app.ui.subject.details.SubjectDetailsScreen
 import me.him188.ani.app.ui.subject.details.SubjectDetailsUIState
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateLoader
+import me.him188.ani.app.ui.subject.episode.EpisodePageLoadError
 import me.him188.ani.app.ui.subject.episode.details.components.DanmakuMatchInfoGrid
 import me.him188.ani.app.ui.subject.episode.details.components.DanmakuSourceCard
 import me.him188.ani.app.ui.subject.episode.details.components.DanmakuSourceSettingsDropdown
@@ -141,6 +145,10 @@ fun EpisodeDetails(
     onClickLogin: () -> Unit,
     onClickTag: (Tag) -> Unit,
     onManualMatchDanmaku: (DanmakuProviderId) -> Unit,
+    onEpisodeCollectionUpdate: (SetEpisodeCollectionTypeRequest) -> Unit,
+    shareData: MediaShareData,
+    loadError: EpisodePageLoadError?,
+    onRetryLoad: () -> Unit,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
 ) {
@@ -164,9 +172,9 @@ fun EpisodeDetails(
                     onPlay = onSwitchEpisode,
                     onLoadErrorRetry = { state.subjectDetailsStateLoader.reload(state.subjectId) },
                     onClickTag = onClickTag,
+                    onEpisodeCollectionUpdate = onEpisodeCollectionUpdate,
                     showTopBar = false,
                     showBlurredBackground = false,
-                    navigationIcon = {},
                 )
             }
         }
@@ -190,7 +198,6 @@ fun EpisodeDetails(
 
     EditableSubjectCollectionTypeDialogsHost(editableSubjectCollectionTypeState)
 
-    val videoStatistics by videoStatisticsFlow.collectAsStateWithLifecycle(VideoStatistics.Placeholder)
     val navigator = LocalNavigator.current
     EpisodeDetailsScaffold(
         subjectTitle = { Text(state.subjectTitle) },
@@ -203,11 +210,25 @@ fun EpisodeDetails(
                         style = MaterialTheme.typography.bodyLarge,
                     )
 
-                    val mediaSelectorPresentation by mediaSelectorState.presentationFlow.collectAsStateWithLifecycle()
 
-                    PlayingEpisodeItemDefaults.ActionShare(mediaSelectorPresentation.selected)
+                    PlayingEpisodeItemDefaults.ActionShare(shareData)
                     PlayingEpisodeItemDefaults.ActionCache({ navigator.navigateSubjectCaches(state.subjectId) })
                 }
+            }
+        },
+        loadError = {
+            when (loadError) {
+                is EpisodePageLoadError.SeriesError -> LoadErrorCard(
+                    loadError.loadError,
+                    onRetryLoad,
+                )
+
+                is EpisodePageLoadError.SubjectError -> LoadErrorCard(
+                    loadError.loadError,
+                    onRetryLoad,
+                )
+
+                null -> {}
             }
         },
         airingStatus = {
@@ -373,6 +394,7 @@ private fun SectionTitle(
 fun EpisodeDetailsScaffold(
     subjectTitle: @Composable () -> Unit,
     episodeInfo: @Composable () -> Unit,
+    loadError: @Composable () -> Unit,
     airingStatus: @Composable (FlowRowScope.() -> Unit),
     subjectSuggestions: @Composable (FlowRowScope.() -> Unit),
     exposedEpisodeItem: @Composable (contentPadding: PaddingValues) -> Unit,
@@ -441,6 +463,10 @@ fun EpisodeDetailsScaffold(
 
         Row(Modifier.padding(horizontalPaddingValues).paddingIfNotEmpty(top = 12.dp)) {
             episodeInfo()
+        }
+
+        Row(Modifier.padding(horizontalPaddingValues).paddingIfNotEmpty(top = 12.dp)) {
+            loadError()
         }
 
         SectionTitle(

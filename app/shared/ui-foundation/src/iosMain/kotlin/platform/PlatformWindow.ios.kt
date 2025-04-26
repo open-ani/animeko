@@ -23,7 +23,7 @@ import platform.UIKit.UIDeviceOrientationDidChangeNotification
 import platform.darwin.NSObjectProtocol
 
 actual class PlatformWindow(
-    val uiViewController: platform.UIKit.UIViewController,
+    val uiViewController: AniHostingUIViewController,
 ) {
     private var _deviceOrientation by mutableStateOf(getCurrentOrientation())
     actual val deviceOrientation: DeviceOrientation get() = _deviceOrientation
@@ -75,7 +75,7 @@ actual class PlatformWindow(
 fun rememberPlatformWindow(): PlatformWindow {
     val uiViewController = LocalUIViewController.current
     val platformWindow = remember(uiViewController) {
-        PlatformWindow(uiViewController)
+        PlatformWindow(uiViewController.parentViewController!! as AniHostingUIViewController)
     }
     DisposableEffect(platformWindow) {
         platformWindow.register()

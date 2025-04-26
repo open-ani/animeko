@@ -326,6 +326,16 @@ idea {
 }
 
 tasks.register<ComposeHotRun>("runHot") {
+    configureDevProperties()
+}
+
+afterEvaluate {
+    tasks.named("run", JavaExec::class) {
+        configureDevProperties()
+    }
+}
+
+fun JavaExec.configureDevProperties() {
     mainClass.set("me.him188.ani.app.desktop.AniDesktop")
     this.jvmArgs(
 //        "-XX:+UseZGC", // this may crash the VM

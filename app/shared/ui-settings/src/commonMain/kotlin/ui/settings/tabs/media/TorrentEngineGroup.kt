@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -28,6 +28,20 @@ import me.him188.ani.app.data.models.preference.AnitorrentConfig.Companion.SHARE
 import me.him188.ani.app.data.models.preference.supportsLimitUploadOnMeteredNetwork
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.ui.foundation.LocalPlatform
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.settings_media_torrent_download_rate_limit
+import me.him188.ani.app.ui.lang.settings_media_torrent_limit_upload_on_metered
+import me.him188.ani.app.ui.lang.settings_media_torrent_limit_upload_on_metered_description
+import me.him188.ani.app.ui.lang.settings_media_torrent_peer_filter
+import me.him188.ani.app.ui.lang.settings_media_torrent_peer_filter_description
+import me.him188.ani.app.ui.lang.settings_media_torrent_share_ratio_description
+import me.him188.ani.app.ui.lang.settings_media_torrent_share_ratio_limit
+import me.him188.ani.app.ui.lang.settings_media_torrent_sharing_description
+import me.him188.ani.app.ui.lang.settings_media_torrent_sharing_settings
+import me.him188.ani.app.ui.lang.settings_media_torrent_speed_format
+import me.him188.ani.app.ui.lang.settings_media_torrent_title
+import me.him188.ani.app.ui.lang.settings_media_torrent_unlimited
+import me.him188.ani.app.ui.lang.settings_media_torrent_upload_rate_limit
 import me.him188.ani.app.ui.settings.framework.SettingsState
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.SliderItem
@@ -35,15 +49,15 @@ import me.him188.ani.app.ui.settings.framework.components.SwitchItem
 import me.him188.ani.app.ui.settings.framework.components.TextItem
 import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.FileSize.Companion.Unspecified
-import me.him188.ani.datasources.api.topic.FileSize.Companion.kiloBytes
 import me.him188.ani.datasources.api.topic.FileSize.Companion.megaBytes
 import me.him188.ani.utils.platform.format1f
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 internal fun SettingsScope.TorrentEngineGroup(
     torrentSettingsState: SettingsState<AnitorrentConfig>
 ) {
-    Group({ Text("BT 设置") }) {
+    Group({ Text(stringResource(Lang.settings_media_torrent_title)) }) {
         val torrentSettings by torrentSettingsState
 
         RateSliderItem(
@@ -51,12 +65,12 @@ internal fun SettingsScope.TorrentEngineGroup(
             onValueChangeFinished = {
                 torrentSettingsState.update(torrentSettings.copy(downloadRateLimit = it))
             },
-            title = { Text("下载速度限制") },
+            title = { Text(stringResource(Lang.settings_media_torrent_download_rate_limit)) },
         )
 
         Group(
-            title = { Text("分享设置") },
-            description = { Text("BT 网络依赖用户间分享，你所看的视频均来自其他用户的分享。允许上传，共同维护健康的 BT 分享环境。") },
+            title = { Text(stringResource(Lang.settings_media_torrent_sharing_settings)) },
+            description = { Text(stringResource(Lang.settings_media_torrent_sharing_description)) },
             useThinHeader = true,
         ) {
 //            val allowUpload by remember {
@@ -98,7 +112,7 @@ internal fun SettingsScope.TorrentEngineGroup(
                 onValueChangeFinished = {
                     torrentSettingsState.update(torrentSettings.copy(uploadRateLimit = it))
                 },
-                title = { Text("上传速度限制") },
+                title = { Text(stringResource(Lang.settings_media_torrent_upload_rate_limit)) },
             )
             var shareRatioLimit by remember {
                 mutableStateOf(torrentSettings.shareRatioLimit)
@@ -110,12 +124,12 @@ internal fun SettingsScope.TorrentEngineGroup(
                 onValueChangeFinished = {
                     torrentSettingsState.update(torrentSettings.copy(shareRatioLimit = shareRatioLimit))
                 },
-                title = { Text("分享率限制") },
-                description = { Text("分享率 = 上传量 / 下载量。大于 1 说明上传量大于下载量。资源达到分享率限制后，将停止上传。") },
+                title = { Text(stringResource(Lang.settings_media_torrent_share_ratio_limit)) },
+                description = { Text(stringResource(Lang.settings_media_torrent_share_ratio_description)) },
                 valueLabel = {
                     Text(
                         if (shareRatioLimit == SHARE_RATIO_LIMIT_INFINITE) {
-                            "无限制"
+                            stringResource(Lang.settings_media_torrent_unlimited)
                         } else {
                             String.format1f(shareRatioLimit)
                         },
@@ -126,15 +140,15 @@ internal fun SettingsScope.TorrentEngineGroup(
                 SwitchItem(
                     checked = torrentSettings.limitUploadOnMeteredNetwork,
                     onCheckedChange = { torrentSettingsState.update(torrentSettings.copy(limitUploadOnMeteredNetwork = it)) },
-                    title = { Text("计费网络限制上传") },
-                    description = { Text("在计费网络环境下限制上传速度为 1 KB/s") },
+                    title = { Text(stringResource(Lang.settings_media_torrent_limit_upload_on_metered)) },
+                    description = { Text(stringResource(Lang.settings_media_torrent_limit_upload_on_metered_description)) },
                 )
             }
         }
         val navigator by rememberUpdatedState(LocalNavigator.current)
         TextItem(
-            title = { Text("Peer 过滤和屏蔽设置") },
-            description = { Text("在下载或上传缓存的番剧时不与黑名单或命中过滤规则的客户端连接") },
+            title = { Text(stringResource(Lang.settings_media_torrent_peer_filter)) },
+            description = { Text(stringResource(Lang.settings_media_torrent_peer_filter_description)) },
             action = {
                 IconButton({ navigator.navigateTorrentPeerSettings() }) {
                     Icon(Icons.Rounded.ArrowOutward, null)
@@ -172,8 +186,8 @@ private fun SettingsScope.RateSliderItem(
         modifier = modifier,
         valueLabel = {
             Text(
-                if (editingValue == 10f) "无限制"
-                else "${String.format1f(editingValue)} MB/s",
+                if (editingValue == 10f) stringResource(Lang.settings_media_torrent_unlimited)
+                else stringResource(Lang.settings_media_torrent_speed_format, String.format1f(editingValue)),
             )
         },
     )
@@ -201,14 +215,3 @@ private fun SettingsScope.RateSliderItem(
 //        },
 //    )
 //}
-
-@Composable
-private fun renderRateValue(text: String): String {
-    val toLongOrNull = text.toLongOrNull()
-    val size = toLongOrNull?.kiloBytes ?: Unspecified
-    return if (toLongOrNull == -1L || size == Unspecified) {
-        "无限制"
-    } else {
-        "$size/s"
-    }
-}

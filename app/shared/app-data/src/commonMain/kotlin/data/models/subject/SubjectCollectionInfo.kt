@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -11,16 +11,23 @@ package me.him188.ani.app.data.models.subject
 
 import androidx.compose.runtime.Immutable
 import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atStartOfDayIn
+import kotlinx.datetime.daysUntil
+import kotlinx.datetime.toLocalDateTime
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.EpisodeType
 import me.him188.ani.datasources.api.PackedDate
+import me.him188.ani.datasources.api.toLocalDateOrNull
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.platform.annotations.TestOnly
 import kotlin.random.Random
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.days
 
 /**
  * 用户对一个条目的收藏情况
@@ -54,9 +61,65 @@ data class SubjectCollectionInfo(
 }
 
 data class SubjectRecurrence(
+    /** 首播时间 (UTC) */
     val startTime: Instant,
+    /** 两集之间的时间间隔，例如一周 = `7.days` */
     val interval: Duration,
-)
+) {
+    /**
+     * 根据首播时间和两集间隔，**猜测**某个日期对应集数的大致首播时间。
+     *
+     * * `packedDate` 会被转换为本地日历日 (`LocalDate`)；
+     * * 只要候选时间与该日期 *午夜* 的差值不超过 **24 小时** (±1 day) 就视为有效；
+     * * 若待估日期早于首播日、间隔为 0/负数，或无法在容差内匹配，则返回 `null`。
+     */
+    fun calculateEpisodeAirTime(
+        packedDate: PackedDate,
+        zone: TimeZone = TimeZone.currentSystemDefault()
+    ): Instant? { // Written by o3.
+        val localDate: LocalDate = packedDate.toLocalDateOrNull() ?: return null
+
+        // 使用系统默认时区把 Instant ↔ LocalDate 互转
+        val zone: TimeZone = zone
+        val startDate: LocalDate = startTime.toLocalDateTime(zone).date
+
+        // 目标日期不能早于首播日
+        if (localDate < startDate) return null
+
+        val intervalDays: Long = interval.inWholeDays
+        if (intervalDays <= 0) return null  // 非法或零间隔
+
+        val elapsedDays: Int = startDate.daysUntil(localDate)
+        val approxIndex: Long = elapsedDays / intervalDays
+
+        // 在 ±1 区间内尝试，允许 24 小时误差
+        val candidateIndices = listOf(approxIndex - 1, approxIndex, approxIndex + 1)
+            .filter { it >= 0 }
+
+        val targetMidnight: Instant = localDate.atStartOfDayIn(zone)
+        val tolerance: Duration = 1.days
+
+        for (idx in candidateIndices) {
+            val candidate: Instant = startTime + interval * idx.toInt()
+            val diff: Duration = (candidate - targetMidnight).absoluteValue
+            if (diff <= tolerance) return candidate
+        }
+
+        return null
+    }
+
+    /**
+     * @see [calculateEpisodeAirTime]
+     */
+    fun isEpisodeBroadcast(
+        packedDate: PackedDate,
+        currentTime: Instant,
+        zone: TimeZone = TimeZone.currentSystemDefault()
+    ): Boolean {
+        val time = calculateEpisodeAirTime(packedDate, zone) ?: return false
+        return time <= currentTime
+    }
+}
 
 @TestOnly
 val TestSubjectCollections
@@ -92,20 +155,20 @@ val TestSubjectCollections
 
             )
         add(
-            testSubjectCollection(++id, eps, UnifiedCollectionType.DOING),
+            createTestSubjectCollection(++id, eps, UnifiedCollectionType.DOING),
         )
         add(
-            testSubjectCollection(++id, eps, UnifiedCollectionType.DOING),
+            createTestSubjectCollection(++id, eps, UnifiedCollectionType.DOING),
         )
         add(
-            testSubjectCollection(++id, eps, UnifiedCollectionType.DOING),
+            createTestSubjectCollection(++id, eps, UnifiedCollectionType.DOING),
         )
         add(
-            testSubjectCollection(++id, eps, collectionType = UnifiedCollectionType.WISH),
+            createTestSubjectCollection(++id, eps, collectionType = UnifiedCollectionType.WISH),
         )
         repeat(10) {
             add(
-                testSubjectCollection(
+                createTestSubjectCollection(
                     ++id,
                     episodes = eps + EpisodeCollectionInfo(
                         episodeInfo = EpisodeInfo(
@@ -128,7 +191,7 @@ val TestSubjectCollections
 
 
 @TestOnly
-private fun testSubjectCollection(
+fun createTestSubjectCollection(
     id: Int,
     episodes: List<EpisodeCollectionInfo>,
     collectionType: UnifiedCollectionType,

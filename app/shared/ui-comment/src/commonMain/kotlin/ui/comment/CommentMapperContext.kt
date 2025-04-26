@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -43,11 +43,11 @@ object CommentMapperContext {
             content = parseBBCode(comment.content),
             createdAt = comment.createdAt,
             reactions = emptyList(),
-            briefReplies = comment.replies.take(3).map { reply ->
+            briefReplies = comment.replies.map { reply ->
                 UIComment(
                     id = reply.commentId.toLong(),
                     author = reply.author,
-                    content = parseBBCodeAsReply(reply.content),
+                    content = parseBBCode(reply.content),
                     createdAt = reply.createdAt,
                     reactions = emptyList(),
                     briefReplies = emptyList(),

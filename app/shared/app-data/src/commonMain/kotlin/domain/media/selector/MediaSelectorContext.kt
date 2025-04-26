@@ -10,20 +10,19 @@
 package me.him188.ani.app.domain.media.selector
 
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.onStart
 import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectSeriesInfo
 import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.data.repository.RepositoryUnknownException
+import me.him188.ani.app.domain.media.selector.MediaSelectorContext.Companion.Initial
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceTier
-import me.him188.ani.app.domain.mediasource.instance.MediaSourceInstance
 import me.him188.ani.utils.coroutines.retryWithBackoffDelay
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
-import kotlin.jvm.JvmName
 
 data class MediaSelectorContext(
     /**
@@ -76,72 +75,47 @@ data class MediaSelectorContext(
     }
 }
 
-/**
- * 便捷地根据 flow 参数创建一个 flow [MediaSelectorContext].
- */
-fun MediaSelectorContext.Companion.createFlow(
+class MediaSelectorContextFlowProducer(
     subjectCompleted: Flow<Boolean>,
     mediaSourcePrecedence: Flow<List<String>>,
-    subtitleKindFilters: Flow<MediaSelectorSubtitlePreferences>,
     subjectSeriesInfo: Flow<SubjectSeriesInfo>,
     subjectInfoFlow: Flow<SubjectInfo>,
     episodeInfoFlow: Flow<EpisodeInfo>,
     mediaSourceTiersFlow: Flow<MediaSelectorSourceTiers>,
-): Flow<MediaSelectorContext> = me.him188.ani.utils.coroutines.flows.combine(
-    // 都 emit null, debug 时能知道是谁没 emit
-    subjectCompleted.onStart<Boolean?> { emit(null) },
-    mediaSourcePrecedence.onStart<List<String>?> { emit(null) },
-    subtitleKindFilters.onStart<MediaSelectorSubtitlePreferences?> { emit(null) },
-    subjectSeriesInfo.retryWithBackoffDelay { e, _ ->
-        val wrapped = RepositoryException.wrapOrThrowCancellation(e)
-        if (wrapped is RepositoryUnknownException) {
-            logger.warn { "Failed to load related subject names due to $wrapped" }
-        } else {
-            logger.error(wrapped) { "Failed to load related subject names" }
-        }
-        emit(SubjectSeriesInfo.Fallback)
-        true
-    }.onStart<SubjectSeriesInfo?> { emit(null) },
-    subjectInfoFlow.onStart<SubjectInfo?> { emit(null) },
-    episodeInfoFlow.onStart<EpisodeInfo?> { emit(null) },
-    mediaSourceTiersFlow.onStart<MediaSelectorSourceTiers?> { emit(null) },
-) { completed, instances, filters, seriesInfo, subjectInfo, episodeInfo, mediaSourceTiers ->
-    MediaSelectorContext(
-        subjectFinished = completed,
-        mediaSourcePrecedence = instances,
-        subtitlePreferences = filters,
-        subjectSeriesInfo = seriesInfo,
-        subjectInfo = subjectInfo,
-        episodeInfo = episodeInfo,
-        mediaSourceTiers = mediaSourceTiers,
-    )
-}.onStart {
-    emit(Initial) // 否则如果一直没获取到剧集信息, 就无法选集, #385
+    subtitleKindFilters: Flow<MediaSelectorSubtitlePreferences> = flowOf(MediaSelectorSubtitlePreferences.CurrentPlatform),
+) {
+    val flow = me.him188.ani.utils.coroutines.flows.combine(
+        // 都 emit null, debug 时能知道是谁没 emit
+        subjectCompleted.onStart<Boolean?> { emit(null) },
+        mediaSourcePrecedence.onStart<List<String>?> { emit(null) },
+        subtitleKindFilters.onStart<MediaSelectorSubtitlePreferences?> { emit(null) },
+        subjectSeriesInfo.retryWithBackoffDelay { e, _ ->
+            val wrapped = RepositoryException.wrapOrThrowCancellation(e)
+            if (wrapped is RepositoryUnknownException) {
+                MediaSelectorContext.Companion.logger.warn { "Failed to load related subject names due to $wrapped" }
+            } else {
+                MediaSelectorContext.Companion.logger.error(wrapped) { "Failed to load related subject names" }
+            }
+            emit(SubjectSeriesInfo.Fallback)
+            true
+        }.onStart<SubjectSeriesInfo?> { emit(null) },
+        subjectInfoFlow.onStart<SubjectInfo?> { emit(null) },
+        episodeInfoFlow.onStart<EpisodeInfo?> { emit(null) },
+        mediaSourceTiersFlow.onStart<MediaSelectorSourceTiers?> { emit(null) },
+    ) { completed, instances, filters, seriesInfo, subjectInfo, episodeInfo, mediaSourceTiers ->
+        MediaSelectorContext(
+            subjectFinished = completed,
+            mediaSourcePrecedence = instances,
+            subtitlePreferences = filters,
+            subjectSeriesInfo = seriesInfo,
+            subjectInfo = subjectInfo,
+            episodeInfo = episodeInfo,
+            mediaSourceTiers = mediaSourceTiers,
+        )
+    }.onStart {
+        emit(Initial) // 否则如果一直没获取到剧集信息, 就无法选集, #385
+    }
 }
-
-/**
- * 便捷地根据 flow 参数创建一个 flow [MediaSelectorContext].
- */
-@JvmName("createFlow2")
-fun MediaSelectorContext.Companion.createFlow(
-    subjectCompleted: Flow<Boolean>,
-    mediaSourcePrecedence: Flow<List<MediaSourceInstance>>,
-    subtitleKindFilters: Flow<MediaSelectorSubtitlePreferences>,
-    subjectSeriesInfo: Flow<SubjectSeriesInfo>,
-    subjectInfo: Flow<SubjectInfo>,
-    episodeInfo: Flow<EpisodeInfo>,
-    mediaSourceTiers: Flow<MediaSelectorSourceTiers>,
-): Flow<MediaSelectorContext> = createFlow(
-    subjectCompleted,
-    mediaSourcePrecedence.map { list ->
-        list.map { it.mediaSourceId }
-    },
-    subtitleKindFilters,
-    subjectSeriesInfo,
-    subjectInfo,
-    episodeInfo,
-    mediaSourceTiers,
-)
 
 
 /**

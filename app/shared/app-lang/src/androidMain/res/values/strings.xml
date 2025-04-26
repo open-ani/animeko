@@ -339,6 +339,93 @@
     <string name="main_screen_page_exploration">Explore</string>
     <string name="main_screen_page_collection">Collection</string>
     <string name="main_screen_page_cache_management">Cache</string>
+
+    <!-- ThemePreferences -->
+    <string name="settings_theme_title">Theme</string>
+    <string name="settings_theme_dynamic_colors">Dynamic Colors</string>
+    <string name="settings_theme_dynamic_colors_description">Use system accent color</string>
+    <string name="settings_theme_high_contrast">High Contrast Dark Theme</string>
+    <string name="settings_theme_high_contrast_description">Dark mode uses pure black background, which can save power on AMOLED screens</string>
+    <string name="settings_theme_always_dark_episode">Always Use Dark Theme in Playback Page</string>
+    <string name="settings_theme_always_dark_episode_description">Provides a more immersive playback experience</string>
+    <string name="settings_theme_dynamic_subject">Use Dynamic Theme in Item Detail Page</string>
+    <string name="settings_theme_dynamic_subject_description">Generate dynamic theme based on cover image</string>
+    <string name="settings_theme_palette">Color Palette</string>
+    <string name="settings_theme_mode_light">Light</string>
+    <string name="settings_theme_mode_dark">Dark</string>
+    <string name="settings_theme_mode_auto">Auto</string>
+
+    <!-- DanmakuGroup -->
+    <string name="settings_network_danmaku">Danmaku</string>
+    <string name="settings_network_danmaku_global_acceleration">Global Acceleration</string>
+    <string name="settings_network_danmaku_global_acceleration_description">Improves speed when fetching danmaku data\nEnabling this within mainland China will slow it down</string>
+    <string name="settings_network_danmaku_connection_test">Connection Speed Test</string>
+    <string name="settings_network_danmaku_currently_using">Currently using</string>
+    <string name="settings_network_danmaku_recommended_other_regions">Recommended for other regions</string>
+    <string name="settings_network_danmaku_recommended_mainland_hk">Recommended for mainland China and Hong Kong</string>
+    <string name="settings_network_danmaku_global">Global</string>
+    <string name="settings_network_danmaku_mainland">Mainland China</string>
+    <string name="settings_network_danmaku_stop_test">Stop Test</string>
+    <string name="settings_network_danmaku_start_test">Start Test</string>
+
+    <!-- DanmakuRegexFilterGroup -->
+    <string name="settings_danmaku_regex_filter_group">Danmaku Regex Filter Management</string>
+    <string name="settings_danmaku_add_regex_filter">Add Regex Filter</string>
+    <string name="settings_danmaku_add_regex">Add Regex</string>
+    <string name="settings_danmaku_confirm">Confirm</string>
+    <string name="settings_danmaku_cancel">Cancel</string>
+    <string name="settings_danmaku_regex_expression">Regular Expression</string>
+    <string name="settings_danmaku_regex_invalid">Invalid regular expression syntax</string>
+    <string name="settings_danmaku_regex_description">Enter a regular expression for filtering, e.g.: \'.*sign.*\' will filter all danmaku containing the word \'sign\'.</string>
+
+    <!-- ConnectionTesterResultIndicator -->
+    <string name="settings_framework_timeout">Timeout</string>
+    <string name="settings_framework_not_enabled">Not enabled</string>
+    <string name="settings_framework_waiting_for_test">Waiting for test</string>
+
+    <!-- GlobalProxyGroup -->
+    <string name="settings_network_proxy_title">Global Proxy Settings</string>
+    <string name="settings_network_proxy_description">Applied to all data sources and Bangumi</string>
+    <string name="settings_network_proxy_type">Proxy Type</string>
+    <string name="settings_network_proxy_disabled">Disabled</string>
+    <string name="settings_network_proxy_system">System Proxy</string>
+    <string name="settings_network_proxy_custom">Custom</string>
+    <string name="settings_network_proxy_detection_result">Auto-detection Result</string>
+    <string name="settings_network_proxy_detecting">Detecting</string>
+    <string name="settings_network_proxy_not_detected">No system proxy detected</string>
+    <string name="settings_network_proxy_address">Proxy Address</string>
+    <string name="settings_network_proxy_address_example">Example: http://127.0.0.1:7890 or socks5://127.0.0.1:1080</string>
+    <string name="settings_network_proxy_username">Username</string>
+    <string name="settings_network_proxy_optional">Optional</string>
+    <string name="settings_network_proxy_none">None</string>
+    <string name="settings_network_proxy_password">Password</string>
+
+    <!-- TorrentEngineGroup -->
+    <string name="settings_media_torrent_title">BT Settings</string>
+    <string name="settings_media_torrent_download_rate_limit">Download Speed Limit</string>
+    <string name="settings_media_torrent_sharing_settings">Sharing Settings</string>
+    <string name="settings_media_torrent_sharing_description">The BT network relies on sharing between users. The videos you watch come from other users\' sharing. Allow uploading to help maintain a healthy BT sharing environment.</string>
+    <string name="settings_media_torrent_upload_rate_limit">Upload Speed Limit</string>
+    <string name="settings_media_torrent_share_ratio_limit">Share Ratio Limit</string>
+    <string name="settings_media_torrent_share_ratio_description">Share ratio = Upload amount / Download amount. Greater than 1 means upload amount is greater than download amount. After reaching the share ratio limit, uploading will stop.</string>
+    <string name="settings_media_torrent_unlimited">Unlimited</string>
+    <string name="settings_media_torrent_speed_format">%1$s MB/s</string>
+    <string name="settings_media_torrent_limit_upload_on_metered">Limit Upload on Metered Network</string>
+    <string name="settings_media_torrent_limit_upload_on_metered_description">Limit upload speed to 1 KB/s on metered networks</string>
+    <string name="settings_media_torrent_peer_filter">Peer Filtering and Blocking Settings</string>
+    <string name="settings_media_torrent_peer_filter_description">Do not connect with blacklisted clients or those that match filter rules when downloading or uploading cached anime</string>
+
+    <!-- AutoCacheGroup -->
+    <string name="settings_media_auto_cache_title">Auto Cache</string>
+    <string name="settings_media_auto_cache_description">Automatically cache unwatched episodes in the \"Watching\" category</string>
+    <string name="settings_media_auto_cache_enable">Enable auto cache</string>
+    <string name="settings_media_auto_cache_max_count">Maximum auto cache episodes</string>
+    <string name="settings_media_auto_cache_max_count_description">If the number of manually cached episodes exceeds this value, auto cache will not be performed</string>
+    <string name="settings_media_auto_cache_space_warning">May use a lot of storage space</string>
+    <string name="settings_media_auto_cache_recent_only">Only cache recently watched anime</string>
+    <string name="settings_media_auto_cache_count">Cache count</string>
+    <string name="settings_media_auto_cache_count_description">Current setting: Only cache the most recent %d anime</string>
+    <string name="settings_media_auto_cache_manage">Manage cached episodes</string>
 </resources>
 
 <!--@formatter:on-->

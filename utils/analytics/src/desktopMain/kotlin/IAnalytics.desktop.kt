@@ -31,7 +31,14 @@ class AnalyticsImpl(
 
     private val logger = logger<AnalyticsImpl>()
     override fun recordEventImpl(event: AnalyticsEvent, properties: Map<String, Any>) {
-        postHog.capture(userId, event.event, properties)
+        postHog.capture(
+            userId, event.event,
+            if (properties.isEmpty()) {
+                intrinsicProperties
+            } else {
+                intrinsicProperties + properties
+            },
+        )
     }
 
     private fun Logger.asPosthogLogger() = object : PostHogLogger {
@@ -58,7 +65,6 @@ class AnalyticsImpl(
     }
 
     override fun onAppStart() {
-        postHog.capture(userId, "\$screen", intrinsicProperties)
 //        postHog.identify(userId, intrinsicProperties)
     }
 }

@@ -29,5 +29,6 @@ kotlin {
 
     sourceSets.nativeMain.dependencies {
         api(libs.ksoup)
+        api(libs.ksoup.kotlinx)
     }
 }

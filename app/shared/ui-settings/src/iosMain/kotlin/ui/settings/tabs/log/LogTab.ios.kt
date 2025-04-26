@@ -19,9 +19,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.uikit.LocalUIViewController
+import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.io.files.Path
+import kotlinx.io.files.SystemTemporaryDirectory
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.utils.io.absolutePath
+import me.him188.ani.utils.io.copyTo
 import me.him188.ani.utils.io.inSystem
 import me.him188.ani.utils.io.readText
 import me.him188.ani.utils.logging.DefaultLoggerFactory
@@ -29,8 +32,7 @@ import me.him188.ani.utils.logging.IosLoggingConfigurator
 import me.him188.ani.utils.logging.writer.DailyRollingFileLogWriter
 import platform.Foundation.NSURL
 import platform.UIKit.UIActivityViewController
-import platform.UIKit.UIDevice
-import platform.UIKit.UIUserInterfaceIdiomPad
+import platform.UIKit.UIPopoverArrowDirectionAny
 import platform.UIKit.UIViewController
 import platform.UIKit.popoverPresentationController
 
@@ -71,26 +73,29 @@ internal actual fun ColumnScope.PlatformLoggingItems(listItemColors: ListItemCol
     )
 }
 
-private fun shareFile(filePath: String, uiViewController: UIViewController) {
-    // 1. Create a NSURL from the local file path
-    val fileURL = NSURL.fileURLWithPath(filePath)
+@OptIn(ExperimentalForeignApi::class)
+private fun shareFile(originalPath: String, hostVC: UIViewController) {
+    // 1. Guarantee the file is inside our container
+    val temp = SystemTemporaryDirectory
 
-    // 2. Create a UIActivityViewController with the file URL as an "activity item"
-    val activityVC = UIActivityViewController(
-        activityItems = listOf(fileURL),
-        applicationActivities = null,
+    val targetPath = Path(temp, originalPath.substringAfterLast("/").substringBeforeLast(".") + ".txt")
+    Path(originalPath).inSystem.copyTo(
+        targetPath.inSystem,
     )
 
-    // 3. On iPad, UIActivityViewController must be presented as a popover,
-    //    so configure the popover anchor to avoid crashes.
-    if (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad) {
-        activityVC.popoverPresentationController?.sourceView = uiViewController.view
+    // 2. Build and present the share sheet on the **main queue**
+    val activityVC = UIActivityViewController(
+        activityItems = listOf(NSURL.fileURLWithPath(targetPath.toString())),
+        applicationActivities = null,
+    )
+    activityVC.popoverPresentationController?.apply {
+        sourceView = hostVC.view
+        sourceRect = hostVC.view.bounds
+        permittedArrowDirections = UIPopoverArrowDirectionAny
     }
 
-    // 4. Present the share sheet from the top-level ViewController
-    uiViewController.presentViewController(activityVC, animated = true, completion = null)
+    hostVC.presentViewController(activityVC, animated = true, completion = null)
 }
-
 
 private fun getTodayLogFile(): Path? {
     val factory = IosLoggingConfigurator.factory as? DefaultLoggerFactory

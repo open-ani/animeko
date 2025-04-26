@@ -78,15 +78,14 @@ import androidx.paging.compose.collectAsLazyPagingItemsWithLifecycle
 import coil3.compose.AsyncImagePainter
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
-import me.him188.ani.app.data.models.episode.findCacheStatus
 import me.him188.ani.app.data.models.subject.RatingInfo
 import me.him188.ani.app.data.models.subject.SelfRatingInfo
 import me.him188.ani.app.data.models.subject.SubjectCollectionStats
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
 import me.him188.ani.app.data.models.subject.Tag
+import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeRequest
 import me.him188.ani.app.domain.foundation.LoadError
-import me.him188.ani.app.domain.media.cache.EpisodeCacheStatus
 import me.him188.ani.app.domain.session.AuthState
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.ui.external.placeholder.placeholder
@@ -115,6 +114,7 @@ import me.him188.ani.app.ui.foundation.theme.LocalThemeSettings
 import me.him188.ani.app.ui.foundation.theme.MaterialThemeFromImage
 import me.him188.ani.app.ui.foundation.toComposeImageBitmap
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
+import me.him188.ani.app.ui.foundation.widgets.showLoadError
 import me.him188.ani.app.ui.rating.EditableRating
 import me.him188.ani.app.ui.rating.EditableRatingState
 import me.him188.ani.app.ui.richtext.RichTextDefaults
@@ -134,6 +134,7 @@ import me.him188.ani.app.ui.subject.details.components.SubjectDetailsHeader
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsState
 import me.him188.ani.app.ui.subject.episode.list.EpisodeListDialog
 import me.him188.ani.datasources.api.PackedDate
+import me.him188.ani.datasources.api.topic.toggleCollected
 import me.him188.ani.utils.platform.isMobile
 
 // region screen
@@ -152,6 +153,8 @@ fun SubjectDetailsScreen(
 ) {
     val state by vm.state.collectAsStateWithLifecycle(null)
     val authState by vm.authState.collectAsStateWithLifecycle(AuthState.DummyAwaitingResult)
+    val toaster = LocalToaster.current
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
         vm.reload()
@@ -163,6 +166,13 @@ fun SubjectDetailsScreen(
         onPlay = onPlay,
         onLoadErrorRetry,
         onClickTag,
+        { request ->
+            scope.launch {
+                vm.setEpisodeCollectionType.invokeSafe(request)?.let {
+                    toaster.showLoadError(it)
+                }
+            }
+        },
         modifier,
         showTopBar,
         showBlurredBackground,
@@ -178,6 +188,7 @@ fun SubjectDetailsScreen(
     onPlay: (episodeId: Int) -> Unit,
     onLoadErrorRetry: () -> Unit,
     onClickTag: (Tag) -> Unit,
+    onEpisodeCollectionUpdate: (SetEpisodeCollectionTypeRequest) -> Unit,
     modifier: Modifier = Modifier,
     showTopBar: Boolean = true,
     showBlurredBackground: Boolean = true,
@@ -206,6 +217,7 @@ fun SubjectDetailsScreen(
             onPlay = onPlay,
             onClickLogin = { navigator.navigateBangumiAuthorize() },
             onClickTag,
+            onEpisodeCollectionUpdate = onEpisodeCollectionUpdate,
             modifier,
             showTopBar,
             showBlurredBackground,
@@ -238,6 +250,7 @@ private fun SubjectDetailsPage(
     onPlay: (episodeId: Int) -> Unit,
     onClickLogin: () -> Unit,
     onClickTag: (Tag) -> Unit,
+    onEpisodeCollectionUpdate: (SetEpisodeCollectionTypeRequest) -> Unit,
     modifier: Modifier = Modifier,
     showTopBar: Boolean = true,
     showBlurredBackground: Boolean = true,
@@ -247,6 +260,7 @@ private fun SubjectDetailsPage(
 ) {
     val toaster = LocalToaster.current
     val browserNavigator = LocalUriHandler.current
+    val navigator = LocalNavigator.current
 
     var showSelectEpisode by rememberSaveable { mutableStateOf(false) }
     val connectedScrollState = rememberConnectedScrollState()
@@ -255,18 +269,26 @@ private fun SubjectDetailsPage(
     val imageViewer = rememberImageViewerHandler()
     BackHandler(enabled = imageViewer.viewing.value) { imageViewer.clear() }
 
-    val presentation by state.presentationFlow.collectAsStateWithLifecycle()
+    val presentation by state.presentation.collectAsStateWithLifecycle()
 
     val themeSettings = LocalThemeSettings.current
     var bitmap by remember { mutableStateOf<ImageBitmap?>(null) }
     MaterialThemeFromImage(bitmap) {
         if (showSelectEpisode) {
             EpisodeListDialog(
-                state.episodeListState,
-                title = {
-                    Text(state.info?.displayName ?: "")
-                },
+                presentation.episodeListUiState,
                 onDismissRequest = { showSelectEpisode = false },
+                { navigator.navigateSubjectCaches(presentation.subjectId) },
+                { navigator.navigateEpisodeDetails(presentation.subjectId, it.episodeId) },
+                {
+                    onEpisodeCollectionUpdate(
+                        SetEpisodeCollectionTypeRequest(
+                            presentation.subjectId,
+                            it.episodeId,
+                            it.collectionType.toggleCollected(),
+                        ),
+                    )
+                },
             )
         }
 
@@ -296,7 +318,6 @@ private fun SubjectDetailsPage(
             selectEpisodeButton = {
                 SubjectDetailsDefaults.SelectEpisodeButtons(
                     state.subjectProgressState,
-                    episodeCacheStatus = { presentation.episodeCacheInfo.findCacheStatus(it) },
                     onShowEpisodeList = { showSelectEpisode = true },
                     onPlay = onPlay,
                 )
@@ -425,7 +446,6 @@ private fun PlaceholderSubjectDetailsPage(
         selectEpisodeButton = {
             SubjectDetailsDefaults.SelectEpisodeButtons(
                 remember { SubjectProgressState(stateOf(SubjectProgressInfo.Done)) },
-                episodeCacheStatus = { EpisodeCacheStatus.NotCached },
                 onShowEpisodeList = { },
                 onPlay = { },
                 modifier = Modifier.placeholder(true),

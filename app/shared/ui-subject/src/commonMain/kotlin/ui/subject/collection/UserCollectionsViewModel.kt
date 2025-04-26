@@ -27,6 +27,7 @@ import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.episode.EpisodeProgressRepository
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
+import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.domain.session.OpaqueSession
 import me.him188.ani.app.domain.session.SessionEvent
 import me.him188.ani.app.domain.session.SessionManager
@@ -35,8 +36,8 @@ import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.foundation.launchInBackground
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeState
-import me.him188.ani.app.ui.subject.collection.progress.EpisodeListStateFactory
 import me.him188.ani.app.ui.subject.collection.progress.SubjectProgressStateFactory
+import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
 import me.him188.ani.utils.logging.info
 import org.koin.core.component.KoinComponent
@@ -55,12 +56,6 @@ class UserCollectionsViewModel : AbstractViewModel(), KoinComponent {
 
     val lazyGridState = LazyGridState()
 
-    private val episodeListStateFactory: EpisodeListStateFactory = EpisodeListStateFactory(
-        settingsRepository,
-        episodeCollectionRepository,
-        episodeProgressRepository,
-        backgroundScope,
-    )
     private val subjectProgressStateFactory: SubjectProgressStateFactory = SubjectProgressStateFactory(
         episodeProgressRepository,
     )
@@ -76,7 +71,6 @@ class UserCollectionsViewModel : AbstractViewModel(), KoinComponent {
         startSearch = { subjectCollectionRepository.subjectCollectionsPager(it) },
         sessionManager.userInfo.produceState(null),
         collectionCountsState = subjectCollectionRepository.subjectCollectionCountsFlow().produceState(null),
-        episodeListStateFactory,
         subjectProgressStateFactory,
         createEditableSubjectCollectionTypeState = {
             createEditableSubjectCollectionTypeState(it)
@@ -145,5 +139,17 @@ class UserCollectionsViewModel : AbstractViewModel(), KoinComponent {
                 state.refresh()
             }
         }
+    }
+
+    suspend fun toggleEpisodeCollection(
+        subjectId: Int,
+        episodeId: Int,
+        collectionType: UnifiedCollectionType
+    ): LoadError? = LoadError.runAndWrapOrThrowCancellation {
+        episodeCollectionRepository.setEpisodeCollectionType(
+            subjectId,
+            episodeId,
+            collectionType,
+        )
     }
 }

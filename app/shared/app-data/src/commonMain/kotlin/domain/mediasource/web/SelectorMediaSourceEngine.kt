@@ -11,15 +11,18 @@ package me.him188.ani.app.domain.mediasource.web
 
 import io.ktor.client.plugins.ClientRequestException
 import io.ktor.client.request.accept
-import io.ktor.client.request.get
-import io.ktor.client.statement.HttpResponse
-import io.ktor.client.statement.bodyAsText
+import io.ktor.client.request.prepareGet
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.URLBuilder
 import io.ktor.http.Url
+import io.ktor.utils.io.ByteReadChannel
+import io.ktor.utils.io.peek
+import io.ktor.utils.io.readRemaining
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.io.bytestring.decodeToString
+import kotlinx.io.readString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonPrimitive
 import me.him188.ani.app.data.repository.RepositoryException
@@ -48,6 +51,7 @@ import me.him188.ani.datasources.api.topic.SubtitleLanguage
 import me.him188.ani.datasources.api.topic.titles.LabelFirstRawTitleParser
 import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.ktor.ScopedHttpClient
+import me.him188.ani.utils.ktor.toSource
 import me.him188.ani.utils.xml.Document
 import me.him188.ani.utils.xml.Element
 import me.him188.ani.utils.xml.Html
@@ -363,10 +367,10 @@ class DefaultSelectorMediaSourceEngine(
         try {
             val document = try {
                 client.use {
-                    get(finalUrl) {
+                    prepareGet(finalUrl) {
                         accept(ContentType.Text.Html)
-                    }.let { resp ->
-                        parseResp(resp)
+                    }.body<ByteReadChannel, _> { channel ->
+                        parseResp(channel)
                     }
                 }
             } catch (e: ClientRequestException) {
@@ -394,10 +398,10 @@ class DefaultSelectorMediaSourceEngine(
     public override suspend fun doHttpGet(uri: String): Document = withContext(ioDispatcher) {
         try {
             client.use {
-                get(uri) {
+                prepareGet(uri) {
                     accept(ContentType.Text.Html)
-                }.let { resp ->
-                    parseResp(resp)
+                }.body<ByteReadChannel, _> { channel ->
+                    parseResp(channel)
                 }
             }
         } catch (e: Exception) {
@@ -405,12 +409,24 @@ class DefaultSelectorMediaSourceEngine(
         }
     }
 
-    private suspend fun parseResp(resp: HttpResponse): Document {
-        var body = resp.bodyAsText()
-        // 非常奇怪, 有时候会是一个字符串
-        if (body.startsWith("\"")) {
-            body = runCatching { Json.parseToJsonElement(body).jsonPrimitive.content }.getOrNull() ?: body
+    private suspend fun parseResp(channel: ByteReadChannel): Document {
+        if (channel.peek(1)?.decodeToString() == "\"") {
+            // 非常奇怪, 有时候会是一个字符串
+            // slow path
+
+            // Channel can only read once, and we may need to read twice, so we must cache
+            var body = channel.readRemaining().readString()
+            if (body.startsWith("\"")) {
+                body = runCatching {
+                    Json.parseToJsonElement(body).jsonPrimitive.content
+                }.getOrNull() ?: body
+            }
+            return Html.parse(body)
+        } else {
+            // fast path, no copy, streaming
+            return channel.toSource().use {
+                Html.parse(it)
+            }
         }
-        return Html.parse(body)
     }
 }

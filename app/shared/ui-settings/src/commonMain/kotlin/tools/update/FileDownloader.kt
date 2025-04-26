@@ -18,7 +18,6 @@ import io.ktor.client.statement.bodyAsChannel
 import io.ktor.http.contentLength
 import io.ktor.utils.io.readAvailable
 import kotlinx.atomicfu.atomic
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -46,6 +45,7 @@ import me.him188.ani.utils.io.resolve
 import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -101,6 +101,8 @@ sealed class FileDownloaderState {
         val file: SystemPath,
         val checked: Boolean,
     ) : Completed()
+
+    data class Cancelled(val throwable: CancellationException) : Completed()
 
     /**
      * 所有地址均下载失败, 或其他异常.
@@ -194,6 +196,7 @@ class DefaultFileDownloader(
 
                 } catch (e: CancellationException) {
                     // Propagate cancellation
+                    state.value = FileDownloaderState.Cancelled(e)
                     throw e
                 } catch (e: Throwable) {
                     // Collect, mark as failed, and try next URL
@@ -215,7 +218,7 @@ class DefaultFileDownloader(
         return try {
             // The server should serve the checksum as plain text
             client.use { get("$url.sha1").body() }
-        } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+        } catch (e: CancellationException) {
             throw e
         } catch (e: ClientRequestException) {
             if (e.response.status == io.ktor.http.HttpStatusCode.NotFound) {
@@ -276,7 +279,7 @@ class DefaultFileDownloader(
                         logger.info { "Successfully downloaded: $url" }
                     }
                 }
-            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+            } catch (e: CancellationException) {
                 throw e
             } catch (e: Throwable) {
                 logger.info(e) { "Failed to download $url" }

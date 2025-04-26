@@ -25,7 +25,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.data.models.subject.TestSubjectCollections
 import me.him188.ani.app.data.models.subject.TestSubjectProgressInfos
-import me.him188.ani.app.domain.media.cache.EpisodeCacheStatus
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.subject.collection.components.rememberTestEditableSubjectCollectionTypeState
 import me.him188.ani.app.ui.subject.collection.progress.SubjectProgressButton
@@ -89,7 +88,6 @@ private fun TestSubjectCollectionItem(it: SubjectCollectionInfo) {
                         else -> TestSubjectProgressInfos.Done
                     },
                 ),
-                episodeCacheStatus = { EpisodeCacheStatus.NotCached },
                 {},
             )
         },

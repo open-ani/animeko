@@ -54,6 +54,9 @@ import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.logging.warn
 import me.him188.ani.utils.platform.Platform
 import me.him188.ani.utils.platform.currentPlatform
+import me.him188.ani.utils.platform.currentTimeMillis
+import kotlin.concurrent.atomics.AtomicLong
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.time.Duration
 
 @Suppress("unused") // bug
@@ -165,12 +168,35 @@ class SelectorMediaSource(
         tier = arguments.tier,
     )
 
+    @OptIn(ExperimentalAtomicApi::class)
+    private val lastSearchTime = AtomicLong(0L)
+
+    @OptIn(ExperimentalAtomicApi::class)
+    private suspend fun delayUntilNextAllowedSearch() {
+        val interval = searchConfig.requestInterval.inWholeMilliseconds
+        while (true) {
+            val now = currentTimeMillis()
+            val last = lastSearchTime.load()
+            val wait = (last + interval) - now
+            if (wait > 0) {
+                delay(wait)
+                continue
+            }
+            // try to claim the slot
+            if (lastSearchTime.compareAndSet(last, now)) return
+            // someone else just took it – retry
+        }
+    }
+
     // all-in-one search
+    @OptIn(ExperimentalAtomicApi::class)
     private suspend fun EngineType.search(
         searchConfig: SelectorSearchConfig,
         query: SelectorSearchQuery,
         mediaSourceId: String,
     ): List<DefaultMedia> = withContext(Dispatchers.Default) {
+        delayUntilNextAllowedSearch()
+
         val currentPlayerName = when (currentPlatform()) {
             is Platform.Desktop -> "vlc"
             is Platform.Android -> "exoplayer"

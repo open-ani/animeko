@@ -17,6 +17,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.test.TestScope
+import me.him188.ani.app.data.models.subject.SubjectSeriesInfo
 import me.him188.ani.app.data.models.subject.TestSubjectCollections
 import org.koin.core.Koin
 import org.koin.dsl.module
@@ -52,6 +53,8 @@ class EpisodePlayerTestSuite(
                                     TestSubjectCollections[0].episodes[0].run {
                                         copy(episodeInfo = episodeInfo.copy(episodeId = episodeId))
                                     },
+                                    seriesInfo = SubjectSeriesInfo.Fallback,
+                                    subjectCompleted = false,
                                 )
                             }
                         }

@@ -85,8 +85,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
 import me.him188.ani.app.data.models.UserInfo
-import me.him188.ani.app.data.models.episode.findCacheStatus
 import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.models.subject.SubjectCollectionCounts
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
@@ -112,12 +112,12 @@ import me.him188.ani.app.ui.foundation.widgets.NsfwMask
 import me.him188.ani.app.ui.foundation.widgets.PullToRefreshBox
 import me.him188.ani.app.ui.foundation.widgets.showLoadError
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeState
-import me.him188.ani.app.ui.subject.collection.progress.EpisodeListStateFactory
 import me.him188.ani.app.ui.subject.collection.progress.SubjectProgressButton
 import me.him188.ani.app.ui.subject.collection.progress.SubjectProgressStateFactory
-import me.him188.ani.app.ui.subject.collection.progress.rememberEpisodeListState
 import me.him188.ani.app.ui.subject.collection.progress.rememberSubjectProgressState
 import me.him188.ani.app.ui.subject.episode.list.EpisodeListDialog
+import me.him188.ani.app.ui.subject.episode.list.EpisodeListItem
+import me.him188.ani.app.ui.subject.episode.list.EpisodeListUiState
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.platform.hasScrollingBug
 import me.him188.ani.utils.platform.isDesktop
@@ -139,7 +139,6 @@ class UserCollectionsState(
     private val startSearch: (filterQuery: CollectionsFilterQuery) -> Flow<PagingData<SubjectCollectionInfo>>,
     selfInfoState: State<UserInfo?>,
     collectionCountsState: State<SubjectCollectionCounts?>,
-    val episodeListStateFactory: EpisodeListStateFactory,
     val subjectProgressStateFactory: SubjectProgressStateFactory,
     val createEditableSubjectCollectionTypeState: (subjectCollection: SubjectCollectionInfo) -> EditableSubjectCollectionTypeState,
     defaultQuery: CollectionsFilterQuery = CollectionsFilterQuery(
@@ -203,6 +202,7 @@ fun CollectionPage(
     onClickLogin: () -> Unit,
     onClickRetryRefreshSession: () -> Unit,
     onClickSettings: () -> Unit,
+    onCollectionUpdate: (subjectId: Int, episode: EpisodeListItem) -> Unit,
     modifier: Modifier = Modifier,
     actions: @Composable RowScope.() -> Unit = {},
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
@@ -317,7 +317,7 @@ fun CollectionPage(
                                 ) {
                                     SubjectCollectionItem(
                                         collection,
-                                        state.episodeListStateFactory,
+                                        { onCollectionUpdate(collection.subjectId, it) },
                                         state.subjectProgressStateFactory,
                                         state.createEditableSubjectCollectionTypeState(collection),
                                     )
@@ -474,7 +474,7 @@ object CollectionPageFilters {
 @Composable
 private fun SubjectCollectionItem(
     subjectCollection: SubjectCollectionInfo,
-    episodeListStateFactory: EpisodeListStateFactory,
+    onCollectionUpdate: (episode: EpisodeListItem) -> Unit,
     subjectProgressStateFactory: SubjectProgressStateFactory,
     editableSubjectCollectionTypeState: EditableSubjectCollectionTypeState,
     type: UnifiedCollectionType = subjectCollection.collectionType,
@@ -483,29 +483,29 @@ private fun SubjectCollectionItem(
     var showEpisodeProgressDialog by rememberSaveable { mutableStateOf(false) }
 
     // 即使对话框不显示也加载, 避免打开对话框要等待一秒才能看到进度
-    val episodeProgressState = episodeListStateFactory
-        .rememberEpisodeListState(subjectCollection.subjectId)
-
     val navigator = LocalNavigator.current
     if (showEpisodeProgressDialog) {
         EpisodeListDialog(
-            episodeProgressState,
-            title = {
-                Text(subjectCollection.subjectInfo.displayName)
+            remember(subjectCollection.subjectId) {
+                EpisodeListUiState.from(subjectCollection, Clock.System.now())
             },
             onDismissRequest = { showEpisodeProgressDialog = false },
-            actions = {
-                OutlinedButton(
-                    {
-                        navigator.navigateSubjectDetails(
-                            subjectCollection.subjectId,
-                            placeholder = subjectCollection.subjectInfo.toNavPlaceholder(),
-                        )
-                    },
-                ) {
-                    Text("条目详情")
-                }
+            onCacheClick = {
+                navigator.navigateSubjectCaches(subjectCollection.subjectId)
             },
+            onEpisodeClick = {
+                navigator.navigateEpisodeDetails(
+                    subjectCollection.subjectId,
+                    it.episodeId,
+                )
+            },
+            onSubjectDetailsClick = {
+                navigator.navigateSubjectDetails(
+                    subjectCollection.subjectId,
+                    placeholder = subjectCollection.subjectInfo.toNavPlaceholder(),
+                )
+            },
+            onCollectionUpdate = onCollectionUpdate,
         )
     }
 
@@ -544,11 +544,8 @@ private fun SubjectCollectionItem(
                         Text("移至\"看过\"", Modifier.requiredWidth(IntrinsicSize.Max), softWrap = false)
                     }
                 } else {
-                    val episodeProgressInfos by subjectProgressStateFactory.episodeProgressInfoList(subjectCollection.subjectId)
-                        .collectAsStateWithLifecycle(null)
                     SubjectProgressButton(
                         subjectProgressState,
-                        episodeCacheStatus = { episodeProgressInfos?.findCacheStatus(it) },
                         onPlay = {
                             subjectProgressState.episodeIdToPlay?.let {
                                 navigator.navigateEpisodeDetails(subjectCollection.subjectId, it)

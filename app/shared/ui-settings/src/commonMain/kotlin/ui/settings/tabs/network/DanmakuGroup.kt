@@ -21,6 +21,18 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import me.him188.ani.app.data.models.preference.DanmakuSettings
 import me.him188.ani.app.data.network.danmaku.AniBangumiSeverBaseUrls
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.settings_network_danmaku
+import me.him188.ani.app.ui.lang.settings_network_danmaku_connection_test
+import me.him188.ani.app.ui.lang.settings_network_danmaku_currently_using
+import me.him188.ani.app.ui.lang.settings_network_danmaku_global
+import me.him188.ani.app.ui.lang.settings_network_danmaku_global_acceleration
+import me.him188.ani.app.ui.lang.settings_network_danmaku_global_acceleration_description
+import me.him188.ani.app.ui.lang.settings_network_danmaku_mainland
+import me.him188.ani.app.ui.lang.settings_network_danmaku_recommended_mainland_hk
+import me.him188.ani.app.ui.lang.settings_network_danmaku_recommended_other_regions
+import me.him188.ani.app.ui.lang.settings_network_danmaku_start_test
+import me.him188.ani.app.ui.lang.settings_network_danmaku_stop_test
 import me.him188.ani.app.ui.settings.framework.ConnectionTester
 import me.him188.ani.app.ui.settings.framework.ConnectionTesterResultIndicator
 import me.him188.ani.app.ui.settings.framework.ConnectionTesterRunner
@@ -29,6 +41,7 @@ import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.SwitchItem
 import me.him188.ani.app.ui.settings.framework.components.TextButtonItem
 import me.him188.ani.app.ui.settings.framework.components.TextItem
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 internal fun SettingsScope.DanmakuGroup(
@@ -36,19 +49,19 @@ internal fun SettingsScope.DanmakuGroup(
     danmakuServerTesters: ConnectionTesterRunner<ConnectionTester>,
 ) {
     Group(
-        title = { Text("弹幕") },
+        title = { Text(stringResource(Lang.settings_network_danmaku)) },
     ) {
         val danmakuSettings by danmakuSettingsState
         SwitchItem(
             checked = danmakuSettings.useGlobal,
             onCheckedChange = { danmakuSettingsState.update(danmakuSettings.copy(useGlobal = it)) },
-            title = { Text("全球加速") },
-            description = { Text("提升在获取弹幕数据的速度\n在中国大陆内启用会减速") },
+            title = { Text(stringResource(Lang.settings_network_danmaku_global_acceleration)) },
+            description = { Text(stringResource(Lang.settings_network_danmaku_global_acceleration_description)) },
         )
 
         SubGroup {
             Group(
-                title = { Text("连接速度测试") },
+                title = { Text(stringResource(Lang.settings_network_danmaku_connection_test)) },
                 useThinHeader = true,
             ) {
                 for (tester in danmakuServerTesters.testers) {
@@ -58,15 +71,15 @@ internal fun SettingsScope.DanmakuGroup(
                     TextItem(
                         description = when {
                             currentlySelected -> {
-                                { Text("当前使用") }
+                                { Text(stringResource(Lang.settings_network_danmaku_currently_using)) }
                             }
 
                             tester.id == AniBangumiSeverBaseUrls.GLOBAL -> {
-                                { Text("建议在其他地区使用") }
+                                { Text(stringResource(Lang.settings_network_danmaku_recommended_other_regions)) }
                             }
 
                             else -> {
-                                { Text("建议在中国大陆和香港使用") }
+                                { Text(stringResource(Lang.settings_network_danmaku_recommended_mainland_hk)) }
                             }
                         },
                         icon = {
@@ -92,9 +105,9 @@ internal fun SettingsScope.DanmakuGroup(
                                     Color.Unspecified
                                 }
                             if (tester.id == AniBangumiSeverBaseUrls.GLOBAL) {
-                                Text("全球", color = textColor)
+                                Text(stringResource(Lang.settings_network_danmaku_global), color = textColor)
                             } else {
-                                Text("中国大陆", color = textColor)
+                                Text(stringResource(Lang.settings_network_danmaku_mainland), color = textColor)
                             }
                         },
                     )
@@ -106,9 +119,9 @@ internal fun SettingsScope.DanmakuGroup(
                     },
                     title = {
                         if (danmakuServerTesters.anyTesting) {
-                            Text("终止测试")
+                            Text(stringResource(Lang.settings_network_danmaku_stop_test))
                         } else {
-                            Text("开始测试")
+                            Text(stringResource(Lang.settings_network_danmaku_start_test))
                         }
                     },
                 )

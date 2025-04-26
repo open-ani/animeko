@@ -20,9 +20,10 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyGridItemScope
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DividerDefaults
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,6 +44,7 @@ import me.him188.ani.app.ui.search.isLoadingFirstPageOrRefreshing
 import me.him188.ani.app.ui.search.isLoadingNextPage
 import me.him188.ani.utils.platform.isMobile
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun CommentColumn(
     items: LazyPagingItems<UIComment>,
@@ -79,6 +81,7 @@ fun CommentColumn(
             contentPadding = contentPadding,
             cells = GridCells.Fixed(1),
             showLoadingIndicatorInFirstPage = false, // Use PTR instead
+            state = state,
         ) {
             item("spacer header") { Spacer(Modifier.height(1.dp)) }
 
@@ -103,7 +106,7 @@ fun CommentColumn(
             if (items.isLoadingNextPage) {
                 item("dummy loader") {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-                        CircularProgressIndicator()
+                        LoadingIndicator()
                     }
                 }
             }

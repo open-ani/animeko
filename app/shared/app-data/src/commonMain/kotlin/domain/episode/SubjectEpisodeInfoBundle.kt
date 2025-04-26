@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -9,15 +9,23 @@
 
 package me.him188.ani.app.domain.episode
 
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.transformLatest
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.data.models.subject.SubjectInfo
+import me.him188.ani.app.data.models.subject.SubjectSeriesInfo
 import me.him188.ani.app.data.models.subject.TestSubjectCollections
 import me.him188.ani.app.domain.foundation.FlowLoadErrorObserver
 import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.domain.foundation.catchLoadError
+import me.him188.ani.utils.coroutines.flows.FlowRestarter
+import me.him188.ani.utils.coroutines.flows.restartable
 import me.him188.ani.utils.platform.annotations.TestOnly
 import org.koin.core.Koin
 
@@ -32,9 +40,27 @@ import org.koin.core.Koin
 data class SubjectEpisodeInfoBundle(
     val subjectId: Int,
     val episodeId: Int,
+    // 基础信息
     val subjectCollectionInfo: SubjectCollectionInfo,
     val episodeCollectionInfo: EpisodeCollectionInfo,
+
+    // 帮助查询更准确的信息
+    /**
+     * @since 4.10
+     * @see anyLoading
+     */
+    val seriesInfo: SubjectSeriesInfo?, // null means either loading or error.
+    /**
+     * @see anyLoading
+     */
+    val seriesInfoLoadError: LoadError? = null, // 有错误可能也不要紧, 考虑离线播放, 一定会网络错误.
+    val subjectCompleted: Boolean?,
+    val subjectCompletedLoadError: LoadError? = null,
 ) {
+    fun anyLoading() =
+        (seriesInfo == null && seriesInfoLoadError == null)
+                || (subjectCompleted == null && subjectCompletedLoadError == null)
+
     /**
      * Convenience accessor for the [SubjectInfo] associated with [subjectId].
      */
@@ -46,10 +72,13 @@ data class SubjectEpisodeInfoBundle(
     val episodeInfo: EpisodeInfo get() = episodeCollectionInfo.episodeInfo
 }
 
+
 @TestOnly
 fun createTestSubjectEpisodeInfoBundle(
     subjectId: Int,
     episodeId: Int,
+    seriesInfo: SubjectSeriesInfo = SubjectSeriesInfo.Fallback,
+    subjectCompleted: Boolean = false,
 ): SubjectEpisodeInfoBundle {
     return SubjectEpisodeInfoBundle(
         subjectId,
@@ -60,6 +89,8 @@ fun createTestSubjectEpisodeInfoBundle(
         TestSubjectCollections[0].episodes[0].run {
             copy(episodeInfo = episodeInfo.copy(episodeId = episodeId))
         },
+        seriesInfo,
+        subjectCompleted = subjectCompleted,
     )
 }
 
@@ -87,6 +118,7 @@ class SubjectEpisodeInfoBundleLoader(
      */
     private val getSubjectEpisodeInfoBundleFlowUseCase: GetSubjectEpisodeInfoBundleFlowUseCase by koin.inject()
 
+    private val restarter = FlowRestarter()
     private val flowLoadErrorObserver = FlowLoadErrorObserver()
 
     /**
@@ -104,9 +136,7 @@ class SubjectEpisodeInfoBundleLoader(
      * This flow is intended to be shared in a view model or other long-lived scope.
      * Do not collect it multiple times concurrently.
      *
-     * The flow may or may not complete. If the [episodeIdFlow] completes, this flow will also complete,
-     * and it's guaranteed to complete normally without throwing an exception,
-     * as all exceptions are caught and handled by [flowLoadErrorObserver].
+     * The flow does not complete. Even if the [episodeIdFlow] completes, this flow will NOT complete, as you may still call [restart].
      */
     val infoBundleFlow: Flow<SubjectEpisodeInfoBundle?> =
         episodeIdFlow.map { GetSubjectEpisodeInfoBundleFlowUseCase.SubjectIdAndEpisodeId(subjectId, it) }
@@ -120,5 +150,9 @@ class SubjectEpisodeInfoBundleLoader(
                         .catchLoadError(flowLoadErrorObserver),
                 )
             }
+            .restartable(restarter)
 
+    fun restart() {
+        restarter.restart()
+    }
 }

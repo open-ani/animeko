@@ -324,7 +324,7 @@ internal fun SettingsPageLayout(
 
     @Stable
     fun SettingsTab?.orDefault(): SettingsTab? {
-        return if (layoutParametersState.isSinglePane) {
+        return if (layoutParametersState.preferSinglePane) {
             // 单页模式, 自动选择传入的 tab
             this
         } else {
@@ -479,7 +479,7 @@ internal fun SettingsPageLayout(
                                             AniTopAppBarDefaults.Title(getName(it))
                                         },
                                         navigationIcon = {
-                                            if (listDetailLayoutParameters.isSinglePane) {
+                                            if (listDetailLayoutParameters.preferSinglePane) {
                                                 BackNavigationIconButton(onClickBackOnDetailPage)
                                             }
                                         },

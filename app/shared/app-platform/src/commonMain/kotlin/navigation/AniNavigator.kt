@@ -26,6 +26,9 @@ import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.first
 import me.him188.ani.datasources.api.source.FactoryId
+import me.him188.ani.utils.analytics.Analytics
+import me.him188.ani.utils.analytics.AnalyticsEvent
+import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.EpisodeEnter
 
 /**
  * Supports navigation to any page in the app.
@@ -80,6 +83,10 @@ interface AniNavigator {
     fun navigateEpisodeDetails(subjectId: Int, episodeId: Int, fullscreen: Boolean = false) {
         currentNavigator.popBackStack(NavRoutes.EpisodeDetail(subjectId, episodeId), inclusive = true)
         currentNavigator.navigate(NavRoutes.EpisodeDetail(subjectId, episodeId))
+        Analytics.recordEvent(
+            EpisodeEnter,
+            mapOf("subject_id" to subjectId, "episode_id" to episodeId),
+        )
     }
 
     fun navigateWelcome() {
@@ -102,6 +109,7 @@ interface AniNavigator {
      */
     fun navigateOnboardingComplete(completionPopUpTargetInclusive: NavRoutes?) {
         currentNavigator.navigate(NavRoutes.OnboardingComplete(completionPopUpTargetInclusive))
+        Analytics.recordEvent(AnalyticsEvent.OnboardingDone)
     }
 
     fun navigateMain(

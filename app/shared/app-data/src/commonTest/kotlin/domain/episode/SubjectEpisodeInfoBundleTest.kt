@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.domain.episode
 
+import app.cash.turbine.test
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
@@ -20,7 +21,6 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -31,6 +31,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNotEquals
+import kotlin.test.assertNotNull
 
 class SubjectEpisodeInfoBundleTest {
     private val subjectId = 1
@@ -73,13 +74,14 @@ class SubjectEpisodeInfoBundleTest {
     }
 
     @Test
-    fun `infoBundleFlow completes when episodeId completes`() = runTest {
+    fun `infoBundleFlow does not complete when episodeId complete`() = runTest {
         val episodeIdFlow = flowOf(2)
         val suite = createSuite()
         val state = suite.createState(episodeIdFlow)
-        state.infoBundleFlow.drop(1).toList().run {
-            assertEquals(1, size)
-            assertNotEquals(null, first())
+        state.infoBundleFlow.test {
+            assertEquals(null, awaitItem())
+            assertNotNull(awaitItem())
+            cancelAndIgnoreRemainingEvents()
         }
     }
 

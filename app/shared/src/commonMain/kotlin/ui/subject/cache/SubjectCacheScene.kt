@@ -69,6 +69,10 @@ import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.mediafetch.MediaSourceInfoProvider
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
+import me.him188.ani.datasources.api.source.MediaSourceKind
+import me.him188.ani.utils.analytics.Analytics
+import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.CacheCreate
+import me.him188.ani.utils.analytics.recordEvent
 import me.him188.ani.utils.coroutines.flows.combine
 import me.him188.ani.utils.coroutines.retryWithBackoffDelay
 import org.koin.core.component.KoinComponent
@@ -187,10 +191,24 @@ class SubjectCacheViewModelImpl(
                         episodeCollectionsFlow.first().joinToString { it.episodeId.toString() }
                     }",
                 )
+
             target.storage.cache(
                 target.media, target.metadata,
                 episodeInfo.episodeInfo.toEpisodeMetadata(),
             )
+            Analytics.recordEvent(CacheCreate) {
+                val subjectInfo = subjectInfoFlow.first()
+                put("subject_id", subjectInfo.subjectId)
+                put("episode_id", episodeInfo.episodeId)
+                put(
+                    "media_source_name",
+                    when (target.media.kind) {
+                        MediaSourceKind.WEB -> "web"
+                        MediaSourceKind.BitTorrent -> "bt"
+                        MediaSourceKind.LocalCache -> null // impossible
+                    },
+                )
+            }
         },
         onDeleteCache = { episode ->
             val episodeId = episode.episodeId.toString()

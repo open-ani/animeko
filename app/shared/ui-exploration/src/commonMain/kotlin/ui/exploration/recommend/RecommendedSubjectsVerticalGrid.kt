@@ -11,6 +11,7 @@ package me.him188.ani.app.ui.exploration.recommend
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -98,6 +99,7 @@ private fun RecommendedSubjectCard(
         onClick = onClick,
         modifier = modifier,
         shape = shape,
+        imageModifier = Modifier.sizeIn(maxWidth = 300.dp, maxHeight = (300f / 9 * 16).dp), // 限制最大宽度, 可以让 iOS 不卡一点
     )
 }
 

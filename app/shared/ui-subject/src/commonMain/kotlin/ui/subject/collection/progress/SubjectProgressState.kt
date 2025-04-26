@@ -15,9 +15,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.flowOn
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
 import me.him188.ani.app.data.repository.episode.EpisodeProgressRepository
@@ -38,9 +36,6 @@ class SubjectProgressStateFactory(
 //        subjectManager.subjectCollectionFlow(subjectId)
 //            .flowOn(flowCoroutineContext)
 
-    fun episodeProgressInfoList(subjectId: Int) = episodeProgressRepository
-        .subjectEpisodeProgressesInfoFlow(subjectId)
-        .flowOn(flowCoroutineContext)
 }
 
 /**
@@ -52,8 +47,6 @@ fun SubjectProgressStateFactory.rememberSubjectProgressState(
 ): SubjectProgressState {
     val subjectId: Int = subjectCollection.subjectId
     val subjectCollectionState by rememberUpdatedState(subjectCollection)
-    val episodeProgressInfoList = remember(subjectId) { episodeProgressInfoList(subjectId) }
-        .collectAsStateWithLifecycle(emptyList())
 
     val info = remember {
         derivedStateOf {

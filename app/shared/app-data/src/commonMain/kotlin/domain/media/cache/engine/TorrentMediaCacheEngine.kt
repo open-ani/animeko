@@ -88,8 +88,6 @@ import kotlin.coroutines.CoroutineContext
 /**
  * 以 [TorrentEngine] 实现的 [MediaCacheEngine], 意味着通过 BT 缓存 media.
  * 为每个 [MediaCache] 创建一个 [TorrentSession].
- *
- * ## [TorrentEngine]
  */
 class TorrentMediaCacheEngine(
     /**
@@ -286,6 +284,7 @@ class TorrentMediaCacheEngine(
         override val isDeleted: MutableStateFlow<Boolean> = MutableStateFlow(false)
 
         override suspend fun closeAndDeleteFiles() {
+            logger.info { "closeAndDeleteFiles is called" }
             if (isDeleted.value) return
             synchronized(this) {
                 if (isDeleted.value) return
@@ -295,6 +294,7 @@ class TorrentMediaCacheEngine(
             // 只需要在删除缓存的时候 torrent engine 可用, 不需要保证一直可用
             @OptIn(EnsureTorrentEngineIsAccessible::class)
             val handle = engineAccess.withEngineAccessible {
+                logger.info { "Getting handle" }
                 val handle = fileHandle.handle.first() ?: kotlin.run {
                     // did not even selected a file
                     logger.info { "Deleting torrent cache: No file selected" }
@@ -302,14 +302,20 @@ class TorrentMediaCacheEngine(
                     return
                 }
 
+                logger.info { "Closing TorrentCache" }
                 close()
+                
+                logger.info { "Closing torrent file handle" }
                 handle.closeAndDelete()
 
                 handle
             }
 
             withContext(Dispatchers.IO_) {
-                val file = handle.entry.resolveFileMaybeEmptyOrNull() ?: return@withContext
+                val file = handle.entry.resolveFileMaybeEmptyOrNull() ?: kotlin.run {
+                    logger.warn { "No file resolved for torrent entry '${handle.entry.pathInTorrent}'" }
+                    return@withContext
+                }
                 if (file.exists()) {
                     logger.info { "Deleting torrent cache: $file" }
                     try {

@@ -30,7 +30,7 @@ androidx-window = { strictly = "1.4.0-beta02" }
 
 # https://github.com/JetBrains/compose-multiplatform/releases
 compose-multiplatform = "1.8.0-alpha04"
-compose-hot-reload = "1.0.0-alpha03" # https://github.com/JetBrains/compose-hot-reload/releases
+compose-hot-reload = "1.0.0-alpha05" # https://github.com/JetBrains/compose-hot-reload/releases
 
 # JetBrains compose libraries. Follow the release notes for main Compose Multiplatform for versoins.
 compose-lifecycle = "2.9.0-alpha04"
@@ -48,7 +48,7 @@ androidx-compose-material3-adaptive = "1.1.0-beta01"
 bytebuddy = "1.17.4" # https://github.com/raphw/byte-buddy/releases
 jna = "5.13.0" # 不要轻易改这个版本, 它可能导致 VLC 兼容性问题
 jsonpathkt-kotlinx = "3.0.2"
-ksoup = "0.1.4"
+ksoup = "0.2.2"
 filekit = "0.8.1" # https://github.com/vinceglb/FileKit/releases
 kotlinpoet = "1.18.1" # https://github.com/square/kotlinpoet/releases
 log4j-core = "2.20.0"
@@ -247,6 +247,8 @@ jna = { module = "net.java.dev.jna:jna", version.ref = "jna" }
 jna-platform = { module = "net.java.dev.jna:jna-platform", version.ref = "jna" }
 jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
 ksoup = { module = "com.fleeksoft.ksoup:ksoup", version.ref = "ksoup" }
+ksoup-kotlinx = { module = "com.fleeksoft.ksoup:ksoup-kotlinx", version.ref = "ksoup" }
+ksoup-network = { module = "com.fleeksoft.ksoup:ksoup-network", version.ref = "ksoup" }
 diamondedge-logging = { module = "com.diamondedge:logging", version.ref = "diamondedge-logging" }
 jsonpathkt-kotlinx = { module = "com.eygraber:jsonpathkt-kotlinx", version.ref = "jsonpathkt-kotlinx" }
 filekit-compose = { module = "io.github.vinceglb:filekit-compose", version.ref = "filekit" }

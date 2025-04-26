@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -51,8 +51,18 @@ import androidx.compose.ui.text.style.TextOverflow.Companion.Ellipsis
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.data.models.danmaku.DanmakuRegexFilter
 import me.him188.ani.app.ui.foundation.ifThen
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.settings_danmaku_add_regex
+import me.him188.ani.app.ui.lang.settings_danmaku_add_regex_filter
+import me.him188.ani.app.ui.lang.settings_danmaku_cancel
+import me.him188.ani.app.ui.lang.settings_danmaku_confirm
+import me.him188.ani.app.ui.lang.settings_danmaku_regex_description
+import me.him188.ani.app.ui.lang.settings_danmaku_regex_expression
+import me.him188.ani.app.ui.lang.settings_danmaku_regex_filter_group
+import me.him188.ani.app.ui.lang.settings_danmaku_regex_invalid
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.utils.platform.Uuid
+import org.jetbrains.compose.resources.stringResource
 
 fun isValidRegex(pattern: String): Boolean {
     return try {
@@ -75,12 +85,17 @@ internal fun SettingsScope.DanmakuRegexFilterGroup(
                 showAdd = false
             },
             onAdd = state.add,
-            title = { Text("添加正则过滤器") },
+            title = { Text(stringResource(Lang.settings_danmaku_add_regex_filter)) },
         )
     }
 
     Group(
-        title = { Text("弹幕正则过滤器管理", color = MaterialTheme.colorScheme.onSurface) },
+        title = {
+            Text(
+                stringResource(Lang.settings_danmaku_regex_filter_group),
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+        },
         actions = {
             Row {
                 IconButton(
@@ -88,7 +103,7 @@ internal fun SettingsScope.DanmakuRegexFilterGroup(
                         showAdd = true
                     },
                 ) {
-                    Icon(Icons.Rounded.Add, contentDescription = "添加正则")
+                    Icon(Icons.Rounded.Add, contentDescription = stringResource(Lang.settings_danmaku_add_regex))
                 }
             }
         },
@@ -208,12 +223,12 @@ fun AddRegexFilterDialog(
                 }, // Pass the text field value to onConfirm
                 enabled = !isBlank,
             ) {
-                Text("确认")
+                Text(stringResource(Lang.settings_danmaku_confirm))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismissRequest) {
-                Text("取消")
+                Text(stringResource(Lang.settings_danmaku_cancel))
             }
         },
         title = title,
@@ -224,7 +239,7 @@ fun AddRegexFilterDialog(
                     regexTextFieldValue = it
                     isError = false
                 },
-                label = { Text("正则表达式") },
+                label = { Text(stringResource(Lang.settings_danmaku_regex_expression)) },
                 modifier = Modifier.fillMaxWidth()
                     .focusRequester(focusRequester)
                     .onKeyEvent { event: KeyEvent ->
@@ -245,12 +260,12 @@ fun AddRegexFilterDialog(
                     if (isError) {
                         Text(
                             modifier = Modifier.fillMaxWidth(),
-                            text = "正则表达式语法不正确",
+                            text = stringResource(Lang.settings_danmaku_regex_invalid),
                         )
                     } else {
                         Text(
                             modifier = Modifier.fillMaxWidth(),
-                            text = "填写用于屏蔽的正则表达式，例如：‘.*签.*’ 会屏蔽所有含有文字‘签’的弹幕。",
+                            text = stringResource(Lang.settings_danmaku_regex_description),
                         )
                     }
                 },
@@ -263,4 +278,3 @@ fun AddRegexFilterDialog(
         },
     )
 }
-

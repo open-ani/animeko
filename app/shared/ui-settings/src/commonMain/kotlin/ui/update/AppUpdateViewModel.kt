@@ -96,6 +96,11 @@ class AppUpdateViewModel : AbstractViewModel(), KoinComponent {
 
                     is FileDownloaderState.Succeed ->
                         AppUpdateState.Downloaded(latestVersion, fileDownloaderStats.state.file)
+
+                    is FileDownloaderState.Cancelled -> {
+                        // 用户取消, 则不算失败, ClickToCheck 可以隐藏 UI 弹窗
+                        AppUpdateState.ClickToCheck
+                    }
                 }
             }
         }

@@ -35,6 +35,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.him188.ani.danmaku.api.DanmakuInfo
 import me.him188.ani.danmaku.api.DanmakuLocation
+import me.him188.ani.utils.logging.logger
+import me.him188.ani.utils.logging.warn
 import kotlin.math.absoluteValue
 import kotlin.math.floor
 
@@ -161,7 +163,7 @@ class DanmakuHostState(
         currentFrameTimeNanosState = elapsedFrameTimeNanoState,
         onSend = { danmaku, placeFrameTimeNanos -> trySend(danmaku, placeFrameTimeNanos) },
     )
-    
+
     /**
      * Sets the [UIContext] required for text layout, styling, and density.
      * Must be called before any layout or rendering logic.
@@ -623,8 +625,7 @@ class DanmakuHostState(
                     }
                 }
 
-                val track = sendTrack
-                checkNotNull(track) { "danmaku track must be found when sending danmaku." }
+                val track = ensureTrackNotNull(sendTrack, floatingTrack) ?: return@withContext
                 val placeTimeNanos = (maxDanmakuRight.absoluteValue / floatingTrackSpeed * 1_000_000_000f).toLong()
                 track.place(styledDanmaku, currentElapsedFrameTimeNanos + placeTimeNanos)
                     .also(presentFloatingDanmaku::add)
@@ -655,8 +656,7 @@ class DanmakuHostState(
                     }
                 }
 
-                val track = sendTrack
-                checkNotNull(track) { "danmaku track must be found when sending danmaku." }
+                val track = ensureTrackNotNull(sendTrack, tracks) ?: return@withContext
                 if (track.pendingDanmaku == null) {
                     // 如果这个轨道没有等待发送的弹幕, 那就把这条弹幕放进去等待发送
                     track.setPending(styledDanmaku)?.also(presentFixedDanmaku::add)
@@ -673,6 +673,18 @@ class DanmakuHostState(
                 tracks.random().setPending(styledDanmaku)?.also(presentFixedDanmaku::add)
             }
         }
+    }
+
+    private fun <T : DanmakuTrack<*, *>> ensureTrackNotNull(sendTrack: T?, tracks: List<T>): T? {
+        if (sendTrack == null) {
+            val firstOrNull = tracks.firstOrNull()
+            if (firstOrNull == null) {
+                logger.warn { "Did not find track to send danmaku. floatingTrack was empty." }
+            }
+            return firstOrNull
+        }
+
+        return sendTrack
     }
 
     /**
@@ -697,12 +709,15 @@ class DanmakuHostState(
         topTrack.forEach { it.clearAll() }
         bottomTrack.forEach { it.clearAll() }
 
-        check(presentFloatingDanmaku.size == 0) {
-            "presentFloatingDanmaku is not totally cleared after releasing track."
-        }
-        check(presentFixedDanmaku.size == 0) {
-            "presentFloatingDanmaku is not totally cleared after releasing track."
-        }
+        // We expect presentFloatingDanmaku.size and presentFixedDanmaku.size to be zero, but we don't crash UI here if they are not the case.
+        // It's possible some thread
+
+//        check(presentFloatingDanmaku.size == 0) {
+//            "presentFloatingDanmaku is not totally cleared after releasing track."
+//        }
+//        check(presentFixedDanmaku.size == 0) {
+//            "presentFloatingDanmaku is not totally cleared after releasing track."
+//        }
     }
 
     /**
@@ -744,6 +759,10 @@ class DanmakuHostState(
          * are initialized before proceeding.
          */
         suspend fun await() = setDeferred.await()
+    }
+
+    private companion object {
+        val logger = logger<DanmakuHostState>()
     }
 }
 

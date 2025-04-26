@@ -12,8 +12,10 @@ package me.him188.ani.datasources.mikan
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
+import io.ktor.client.request.prepareGet
 import io.ktor.client.statement.bodyAsChannel
 import io.ktor.http.isSuccess
+import io.ktor.utils.io.ByteReadChannel
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.filter
@@ -191,10 +193,10 @@ abstract class AbstractMikanMediaSource(
 
     private suspend fun HttpClient.searchByKeyword(query: MediaFetchRequest): List<MediaMatch> {
         val client = this
-        val resp = client.get("$baseUrl/RSS/Search") {
+        val resp = client.prepareGet("$baseUrl/RSS/Search") {
             parameter("searchstr", query.subjectNameCN?.take(10))
         }
-        return resp.bodyAsChannel().toSource().use {
+        return resp.body<ByteReadChannel>().toSource().use {
             parseRssTopicList(Xml.parse(it, baseUrl), query.toTopicCriteria(), allowEpMatch = false, baseUrl)
         }.map {
             MediaMatch(it.toOnlineMedia(mediaSourceId), MatchKind.FUZZY)
@@ -225,7 +227,7 @@ abstract class AbstractMikanMediaSource(
                 ?: return null
 
         // https://mikanani.me/RSS/Bangumi?bangumiId=3060
-        return client.get("$baseUrl/RSS/Bangumi?bangumiId=$subjectId").bodyAsChannel().toSource().use {
+        return client.prepareGet("$baseUrl/RSS/Bangumi?bangumiId=$subjectId").body<ByteReadChannel>().toSource().use {
             parseRssTopicList(Xml.parse(it, baseUrl), request.toTopicCriteria(), allowEpMatch = true, baseUrl = baseUrl)
         }.map {
             MediaMatch(it.toOnlineMedia(mediaSourceId), MatchKind.EXACT)
@@ -237,36 +239,38 @@ abstract class AbstractMikanMediaSource(
         bangumiSubjectId: String,
     ): String? {
         val client = this
-        val resp = client.get("$baseUrl/Home/Search") {
+        return client.prepareGet("$baseUrl/Home/Search") {
             parameter("searchstr", name.trim().substringBefore(" ").take(19))
-        }
-        if (!resp.status.isSuccess()) {
-            logger.warn { "Failed to search by index for name '$name', resp=$resp" }
-            return null
-        }
-
-        val mikanIds = resp.bodyAsChannel().toSource().use {
-            Xml.parse(it, baseUrl)
-        }.let {
-            parseMikanSubjectIdsFromSearch(it)
-        }
-
-        if (mikanIds.isEmpty()) return null
-
-        // pick the fastest correct one
-        mikanIds.asFlow()
-            .flatMapMerge(4) { mikanId ->
-                flow {
-                    val document = client.get("$baseUrl/Home/Bangumi/$mikanId").bodyAsChannel().toSource().use {
-                        Xml.parse(it, baseUrl)
-                    }
-                    emit(mikanId to parseBangumiSubjectIdFromMikanSubjectDetails(document))
-                }.catch { }
+        }.execute { resp ->
+            if (!resp.status.isSuccess()) {
+                logger.warn { "Failed to search by index for name '$name', resp=$resp" }
+                return@execute null
             }
-            .filter { it.second == bangumiSubjectId }
-            .firstOrNull()?.let { return it.first }
 
-        return null
+            val mikanIds = resp.bodyAsChannel().toSource().use {
+                Xml.parse(it, baseUrl)
+            }.let {
+                parseMikanSubjectIdsFromSearch(it)
+            }
+
+            if (mikanIds.isEmpty()) return@execute null
+
+            // pick the fastest correct one
+            mikanIds.asFlow()
+                .flatMapMerge(4) { mikanId ->
+                    flow {
+                        val document =
+                            client.prepareGet("$baseUrl/Home/Bangumi/$mikanId").body<ByteReadChannel>().toSource().use {
+                                Xml.parse(it, baseUrl)
+                            }
+                        emit(mikanId to parseBangumiSubjectIdFromMikanSubjectDetails(document))
+                    }.catch { }
+                }
+                .filter { it.second == bangumiSubjectId }
+                .firstOrNull()?.let { return@execute it.first }
+
+            return@execute null
+        }
     }
 
     companion object {

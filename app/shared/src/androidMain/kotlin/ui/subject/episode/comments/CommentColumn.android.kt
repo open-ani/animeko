@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Preview
 import me.him188.ani.app.ui.comment.UIRichText
 import me.him188.ani.app.ui.comment.generateUiComment
@@ -59,10 +58,8 @@ private fun PreviewEpisodeCommentColumn() {
     ProvideCompositionLocalsForPreview {
         EpisodeCommentColumn(
             state = rememberTestCommentState(commentList = generateUiComment(4)),
-            editCommentStubText = TextFieldValue("this is my new pending comment"),
             onClickReply = { },
-            onClickEditCommentStub = { },
-            onClickEditCommentStubEmoji = { },
+            onNewCommentClick = { },
             onClickUrl = { },
         )
     }

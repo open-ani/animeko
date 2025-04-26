@@ -23,13 +23,13 @@ import me.him188.ani.app.data.models.subject.TestCoverImage
 import me.him188.ani.app.data.models.subject.TestSubjectInfo
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.stateOf
+import me.him188.ani.app.ui.rating.EditableRating
+import me.him188.ani.app.ui.rating.rememberTestEditableRatingState
 import me.him188.ani.app.ui.subject.AiringLabelState
 import me.him188.ani.app.ui.subject.TestSubjectAiringInfo
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeButton
 import me.him188.ani.app.ui.subject.collection.components.rememberTestEditableSubjectCollectionTypeState
 import me.him188.ani.app.ui.subject.collection.progress.rememberTestSubjectProgressState
-import me.him188.ani.app.ui.rating.EditableRating
-import me.him188.ani.app.ui.rating.rememberTestEditableRatingState
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.utils.platform.annotations.TestOnly
@@ -139,7 +139,7 @@ fun PreviewSubjectDetailsHeader(
             )
         },
         selectEpisodeButton = {
-            SubjectDetailsDefaults.SelectEpisodeButtons(rememberTestSubjectProgressState(), { null }, {}, {})
+            SubjectDetailsDefaults.SelectEpisodeButtons(rememberTestSubjectProgressState(), {}, {})
         },
         rating = {
             EditableRating(

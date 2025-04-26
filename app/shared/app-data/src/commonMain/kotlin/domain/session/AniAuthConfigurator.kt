@@ -38,6 +38,9 @@ import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.data.repository.user.AccessTokenSession
 import me.him188.ani.app.data.repository.user.GuestSession
 import me.him188.ani.app.tools.MonoTasker
+import me.him188.ani.app.trace.ErrorReport
+import me.him188.ani.utils.analytics.Analytics
+import me.him188.ani.utils.analytics.AnalyticsEvent
 import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.coroutines.update
 import me.him188.ani.utils.logging.debug
@@ -234,6 +237,10 @@ class AniAuthConfigurator(
                                 "Check OAuth result success, request is $processingRequest, " +
                                 "token expires in ${result.expiresIn}"
                     }
+                    Analytics.recordEvent(
+                        AnalyticsEvent.LoginBangumiSuccess,
+                        mapOf("login_type" to "bangumi_oauth"),
+                    )
                     // resume sessionManager.requireAuthorize
                     processingRequest.onCallback(Result.success(result))
                 }
@@ -254,7 +261,9 @@ class AniAuthConfigurator(
                                     "[AuthCheckLoop][${requestAuthorizeId.idStr}] Failed to check authorize status."
                                 }
                                 // cancel processingRequest 会间接 cancel 整个 requireAuthorize
-                                processingRequest.completeExceptionally(GetAuthTokenFromAniServerException(e))
+                                val ex = GetAuthTokenFromAniServerException(e)
+                                processingRequest.completeExceptionally(ex)
+                                ErrorReport.captureException(ex)
                                 false
                             }
                         }
@@ -292,6 +301,11 @@ class AniAuthConfigurator(
                 tokens = tokenPair,
                 expiresAtMillis = currentTimeMillis() + 100.days.inWholeMilliseconds,
             ),
+        )
+
+        Analytics.recordEvent(
+            AnalyticsEvent.LoginBangumiSuccess,
+            mapOf("login_type" to "bangumi_token"),
         )
         // trigger ui update
         currentRequestAuthorizeId.value = REFRESH

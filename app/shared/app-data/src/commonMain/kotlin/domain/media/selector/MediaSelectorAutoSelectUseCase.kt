@@ -51,15 +51,7 @@ class MediaSelectorAutoSelectUseCaseImpl(
             val preferKindFlow = mediaSelectorSettingsFlow.map { it.preferKind }
 
             mediaSelector.autoSelect.run {
-                launch {
-                    awaitCompletedAndSelectDefault(
-                        session,
-                        preferKindFlow,
-                    ).also {
-                        logger.info { "[MediaSelectorAutoSelect] awaitCompletedAndSelectDefault result: $it" }
-                    }
-                }
-                launch {
+                val fastSelectJob = launch {
                     // 快速自动选择数据源. 当按数据源顺序排序, 当最高排序的数据源查询完成后立即自动选择. #1322
                     val mediaSelectorSettings = mediaSelectorSettingsFlow.first()
                     if (!mediaSelectorSettings.fastSelectWebKind) {
@@ -110,6 +102,16 @@ class MediaSelectorAutoSelectUseCaseImpl(
                         )
                     }
                     logger.info { "[MediaSelectorAutoSelect] fastSelectSources result: $result" }
+                }
+                launch {
+                    fastSelectJob.join() // 等待 fast select (tier-based) 结束, 再进行 fallback 选择.
+                    awaitCompletedAndSelectDefault(
+                        // 这个不会考虑 tier
+                        session,
+                        preferKindFlow,
+                    ).also {
+                        logger.info { "[MediaSelectorAutoSelect] awaitCompletedAndSelectDefault result: $it" }
+                    }
                 }
                 launch {
                     selectCached(session).also {

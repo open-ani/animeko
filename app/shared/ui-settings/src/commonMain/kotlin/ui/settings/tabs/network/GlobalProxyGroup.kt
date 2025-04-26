@@ -28,11 +28,28 @@ import me.him188.ani.app.data.models.preference.ProxyConfig
 import me.him188.ani.app.data.models.preference.ProxyMode
 import me.him188.ani.app.data.models.preference.ProxySettings
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.settings_network_proxy_address
+import me.him188.ani.app.ui.lang.settings_network_proxy_address_example
+import me.him188.ani.app.ui.lang.settings_network_proxy_custom
+import me.him188.ani.app.ui.lang.settings_network_proxy_description
+import me.him188.ani.app.ui.lang.settings_network_proxy_detecting
+import me.him188.ani.app.ui.lang.settings_network_proxy_detection_result
+import me.him188.ani.app.ui.lang.settings_network_proxy_disabled
+import me.him188.ani.app.ui.lang.settings_network_proxy_none
+import me.him188.ani.app.ui.lang.settings_network_proxy_not_detected
+import me.him188.ani.app.ui.lang.settings_network_proxy_optional
+import me.him188.ani.app.ui.lang.settings_network_proxy_password
+import me.him188.ani.app.ui.lang.settings_network_proxy_system
+import me.him188.ani.app.ui.lang.settings_network_proxy_title
+import me.him188.ani.app.ui.lang.settings_network_proxy_type
+import me.him188.ani.app.ui.lang.settings_network_proxy_username
 import me.him188.ani.app.ui.settings.framework.SettingsState
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.TextFieldItem
 import me.him188.ani.app.ui.settings.framework.components.TextItem
 import me.him188.ani.utils.ktor.ClientProxyConfigValidator
+import org.jetbrains.compose.resources.stringResource
 
 @Immutable
 sealed class SystemProxyPresentation {
@@ -53,15 +70,15 @@ internal fun SettingsScope.GlobalProxyGroup(
 ) {
     val proxySettings: ProxySettings by proxySettingsState
     Group(
-        title = { Text("全局代理设置") },
+        title = { Text(stringResource(Lang.settings_network_proxy_title)) },
         description = {
-            Text("应用于所有数据源以及 Bangumi")
+            Text(stringResource(Lang.settings_network_proxy_description))
         },
     ) {
         val selectedMode = proxySettings.default.mode
 
         Item(
-            headlineContent = { Text("代理类型") },
+            headlineContent = { Text(stringResource(Lang.settings_network_proxy_type)) },
             supportingContent = {
                 val selectedIndex = ProxyMode.entries.indexOf(selectedMode)
                 val options = ProxyMode.entries
@@ -86,9 +103,9 @@ internal fun SettingsScope.GlobalProxyGroup(
                         ) {
                             Text(
                                 when (mode) {
-                                    ProxyMode.DISABLED -> "禁用"
-                                    ProxyMode.SYSTEM -> "系统代理"
-                                    ProxyMode.CUSTOM -> "自定义"
+                                    ProxyMode.DISABLED -> stringResource(Lang.settings_network_proxy_disabled)
+                                    ProxyMode.SYSTEM -> stringResource(Lang.settings_network_proxy_system)
+                                    ProxyMode.CUSTOM -> stringResource(Lang.settings_network_proxy_custom)
                                 },
                                 softWrap = false,
                             )
@@ -125,7 +142,7 @@ fun SettingsScope.SystemProxyConfig(
     proxyConfig: SystemProxyPresentation,
 ) {
     TextItem(
-        title = { Text("自动检测结果") },
+        title = { Text(stringResource(Lang.settings_network_proxy_detection_result)) },
         description = {
             Text(renderSystemProxyPresentation(proxyConfig))
         },
@@ -136,8 +153,8 @@ fun SettingsScope.SystemProxyConfig(
 fun renderSystemProxyPresentation(systemProxy: SystemProxyPresentation): String {
     return when (systemProxy) {
         is SystemProxyPresentation.Detected -> systemProxy.proxyConfig.url
-        SystemProxyPresentation.Detecting -> "正在检测"
-        SystemProxyPresentation.NotDetected -> "未检测到系统代理"
+        SystemProxyPresentation.Detecting -> stringResource(Lang.settings_network_proxy_detecting)
+        SystemProxyPresentation.NotDetected -> stringResource(Lang.settings_network_proxy_not_detected)
     }
 }
 
@@ -149,10 +166,10 @@ fun SettingsScope.CustomProxyConfig(
 ) {
     TextFieldItem(
         proxySettings.default.customConfig.url,
-        title = { Text("代理地址") },
+        title = { Text(stringResource(Lang.settings_network_proxy_address)) },
         description = {
             Text(
-                "示例: http://127.0.0.1:7890 或 socks5://127.0.0.1:1080",
+                stringResource(Lang.settings_network_proxy_address_example),
             )
         },
         onValueChangeCompleted = {
@@ -176,9 +193,9 @@ fun SettingsScope.CustomProxyConfig(
 
     TextFieldItem(
         proxySettings.default.customConfig.authorization?.username ?: "",
-        title = { Text("用户名") },
-        description = { Text("可选") },
-        placeholder = { Text("无") },
+        title = { Text(stringResource(Lang.settings_network_proxy_username)) },
+        description = { Text(stringResource(Lang.settings_network_proxy_optional)) },
+        placeholder = { Text(stringResource(Lang.settings_network_proxy_none)) },
         onValueChangeCompleted = {
             val newAuth = proxySettings.default.customConfig.authorization?.copy(username = it)
                 ?: ProxyAuthorization(username = it, password = "")
@@ -199,9 +216,9 @@ fun SettingsScope.CustomProxyConfig(
 
     TextFieldItem(
         proxySettings.default.customConfig.authorization?.password ?: "",
-        title = { Text("密码") },
-        description = { Text("可选") },
-        placeholder = { Text("无") },
+        title = { Text(stringResource(Lang.settings_network_proxy_password)) },
+        description = { Text(stringResource(Lang.settings_network_proxy_optional)) },
+        placeholder = { Text(stringResource(Lang.settings_network_proxy_none)) },
         onValueChangeCompleted = {
             val newAuth = proxySettings.default.customConfig.authorization?.copy(password = it)
                 ?: ProxyAuthorization(username = "", password = it)
@@ -218,4 +235,3 @@ fun SettingsScope.CustomProxyConfig(
         sanitizeValue = { it },
     )
 }
-

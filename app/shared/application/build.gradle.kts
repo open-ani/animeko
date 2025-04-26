@@ -51,7 +51,8 @@ kotlin {
                     baseName = "application"
                     isStatic = false
                     @OptIn(ExperimentalKotlinGradlePluginApi::class)
-                    transitiveExport = true
+                    transitiveExport = false
+                    export(projects.app.shared.appPlatform)
                 }
                 pod("PostHog") {
                     version = "~> 3.0"
