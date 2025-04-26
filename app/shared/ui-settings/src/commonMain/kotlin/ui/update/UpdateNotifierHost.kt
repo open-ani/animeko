@@ -249,7 +249,7 @@ private fun MobileSnackbar(
     LaunchedEffect(version.name) {
         val result = hostState.showSnackbar(
             message = buildString {
-                append("新版本")
+                append("新版本 ${version.name}")
 
                 version.majorChanges.firstOrNull()?.let {
                     append("：$it")
