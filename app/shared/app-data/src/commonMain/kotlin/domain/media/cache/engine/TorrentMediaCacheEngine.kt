@@ -606,7 +606,7 @@ class TorrentMediaCacheEngine(
                 }
             }
 
-            withContext(Dispatchers.IO) {
+            withContext(Dispatchers.IO_) {
                 val saves = downloader.listSaves()
                 for (save in saves) {
                     if (save.absolutePath !in allowedAbsolute) {

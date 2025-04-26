@@ -32,6 +32,7 @@ import me.him188.ani.datasources.api.topic.ResourceLocation
 import me.him188.ani.datasources.api.topic.contains
 import me.him188.ani.datasources.api.topic.titles.RawTitleParser
 import me.him188.ani.datasources.api.topic.titles.parse
+import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import kotlin.coroutines.cancellation.CancellationException
@@ -208,7 +209,7 @@ class TorrentMediaDataProvider(
         engineAccess.requestUseEngine(requestToken, true)
 
         val downloader = engine.getDownloader()
-        val handle = withContext(Dispatchers.IO) {
+        val handle = withContext(Dispatchers.IO_) {
             logger.info {
                 "TorrentVideoSource '${episodeMetadata.title}' waiting for files"
             }
