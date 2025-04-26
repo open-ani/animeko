@@ -12,11 +12,13 @@ package me.him188.ani.app.domain.media.cache.engine
 import androidx.datastore.core.DataStore
 import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -34,6 +36,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.job
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.io.IOException
 import kotlinx.io.files.FileNotFoundException
@@ -78,6 +81,7 @@ import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
 import kotlin.coroutines.CoroutineContext
+import kotlin.time.Duration.Companion.minutes
 
 
 //private const val EXTRA_TORRENT_CACHE_FILE =
@@ -366,7 +370,6 @@ class TorrentMediaCacheEngine(
                         // 无论如何都先更新一次数据
                         onUpdateMetadata(
                             buildMap {
-                                // todo: 没检测分享率
                                 if (entryFileStats.isDownloadFinished) {
                                     put(EXTRA_TORRENT_COMPLETED, "true")
                                     completed = true
@@ -376,6 +379,18 @@ class TorrentMediaCacheEngine(
                                 put(EXTRA_TORRENT_CACHE_UPLOADED_SIZE, sessionStats.uploadedBytes.toString())
                             },
                         )
+                        // 10 分钟没有上传那我们认为没人要我们的上传, 所以直接设为完成
+                        var noUploadFor10Minutes = false
+                        // 如果当前有上传, 那我们重置计时器
+                        val resetTimerFlow = MutableStateFlow(Any())
+
+                        launch {
+                            resetTimerFlow.collectLatest {
+                                delay(10.minutes)
+                                noUploadFor10Minutes = true
+                            }
+                        }
+
                         fileEntryFlow.collectLatest { entry ->
                             combine(
                                 sessionStatsFlow,
@@ -384,10 +399,18 @@ class TorrentMediaCacheEngine(
                             ) { sessionStats, fileStats, shareRatioLimit ->
                                 if (!fileStats.isDownloadFinished) return@combine
 
-                                // todo: 没检测分享率
-                                // val shareRatio = sessionStats.uploadedBytes / fileStats.downloadedBytes.coerceAtLeast(1).toFloat()
-                                // if (shareRatio < shareRatioLimit) return@combine
+                                val shareRatio =
+                                    sessionStats.uploadedBytes / fileStats.downloadedBytes.coerceAtLeast(1).toFloat()
 
+                                // 如果当前有上传, 重置计时器
+                                if (sessionStats.uploadSpeed > 0L) {
+                                    resetTimerFlow.emit(Any())
+                                }
+
+                                // 如果分享率不够并且当前在 10 分钟内有上传, 那还需要继续做种.
+                                if (shareRatio < shareRatioLimit && !noUploadFor10Minutes) return@combine
+                                // TorrentMediaCache 的构造函数中的 metadata 没有检测更新的能力, 用一个变量来表示已完成
+                                // 这个判断是防止下面 update metadata 一直调用, 因因为只需要一次.
                                 if (completed || metadata.extra[EXTRA_TORRENT_COMPLETED] == "true") return@combine
 
                                 completed = true
