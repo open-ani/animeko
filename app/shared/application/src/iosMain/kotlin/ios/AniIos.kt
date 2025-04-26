@@ -32,6 +32,8 @@ import kotlinx.io.files.SystemFileSystem
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.get
+import me.him188.ani.app.domain.media.cache.engine.AlwaysUseTorrentEngineAccess
+import me.him188.ani.app.domain.media.cache.engine.TorrentEngineAccess
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.resolver.HttpStreamingMediaResolver
 import me.him188.ani.app.domain.media.resolver.IosWebMediaResolver
@@ -240,6 +242,8 @@ fun getIosModules(
     defaultTorrentCacheDir: SystemPath,
     coroutineScope: CoroutineScope,
 ) = module {
+    single<TorrentEngineAccess> { AlwaysUseTorrentEngineAccess }
+
     single<PermissionManager> {
         GrantedPermissionManager
     }
@@ -262,7 +266,7 @@ fun getIosModules(
     factory<MediaResolver> {
         MediaResolver.from(
             get<TorrentManager>().engines
-                .map { TorrentMediaResolver(it) }
+                .map { TorrentMediaResolver(it, get()) }
                 .plus(LocalFileMediaResolver())
                 .plus(HttpStreamingMediaResolver())
                 .plus(IosWebMediaResolver(get<MediaSourceManager>().webVideoMatcherLoader, context)),
