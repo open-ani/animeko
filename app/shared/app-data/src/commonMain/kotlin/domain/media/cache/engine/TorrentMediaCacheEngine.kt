@@ -80,6 +80,7 @@ import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
+import me.him188.ani.utils.platform.currentTimeMillis
 import kotlin.coroutines.CoroutineContext
 import kotlin.time.Duration.Companion.minutes
 
@@ -352,9 +353,6 @@ class TorrentMediaCacheEngine(
          * 订阅当前 TorrentMediaCache 的统计信息以更新它的 metadata
          */
         suspend fun subscribeStats(onUpdateMetadata: suspend (Map<MetadataKey, String>) -> Unit) {
-            // TorrentMediaCache 的构造函数中的 metadata 没有检测更新的能力, 用一个变量来表示已完成
-            var completed = false
-
             isServiceStared
                 .collectLatest { serviceStarted ->
                     if (!serviceStarted) return@collectLatest
@@ -367,53 +365,51 @@ class TorrentMediaCacheEngine(
                         val fileEntry = fileEntryFlow.first()
                         val entryFileStats = fileEntry.fileStats.filterNotNull().first()
                         val sessionStats = sessionStatsFlow.first()
+
                         // 无论如何都先更新一次数据
                         onUpdateMetadata(
                             buildMap {
                                 if (entryFileStats.isDownloadFinished) {
                                     put(EXTRA_TORRENT_COMPLETED, "true")
-                                    completed = true
                                 }
                                 put(EXTRA_TORRENT_CACHE_FILE, fileEntry.pathInTorrent)
                                 put(EXTRA_TORRENT_CACHE_FILE_SIZE, entryFileStats.downloadedBytes.toString())
                                 put(EXTRA_TORRENT_CACHE_UPLOADED_SIZE, sessionStats.uploadedBytes.toString())
                             },
                         )
-                        // 10 分钟没有上传那我们认为没人要我们的上传, 所以直接设为完成
-                        var noUploadFor10Minutes = false
-                        // 如果当前有上传, 那我们重置计时器
-                        val resetTimerFlow = MutableStateFlow(Any())
 
-                        launch {
-                            resetTimerFlow.collectLatest {
-                                delay(10.minutes)
-                                noUploadFor10Minutes = true
-                            }
-                        }
+                        // 最后一次有上传活动的时间
+                        var lastUploadActivity = currentTimeMillis()
+                        val finished = MutableStateFlow(false)
 
-                        fileEntryFlow.collectLatest { entry ->
+                        combine(finished, fileEntryFlow) { f, entry ->
+                            if (f) return@combine
+
                             combine(
                                 sessionStatsFlow,
                                 entry.fileStats.filterNotNull(),
                                 shareRatioLimitFlow,
-                            ) { sessionStats, fileStats, shareRatioLimit ->
-                                if (!fileStats.isDownloadFinished) return@combine
+                            ) check@{ sessionStats, fileStats, shareRatioLimit ->
+                                if (!fileStats.isDownloadFinished) return@check
 
                                 val shareRatio =
                                     sessionStats.uploadedBytes / fileStats.downloadedBytes.coerceAtLeast(1).toFloat()
 
-                                // 如果当前有上传, 重置计时器
-                                if (sessionStats.uploadSpeed > 0L) {
-                                    resetTimerFlow.emit(Any())
+                                // 没达到分享率才进入这里的逻辑, 达到分享率直接更新 metadata
+                                if (shareRatio < shareRatioLimit) {
+                                    val currentTimeMillis = currentTimeMillis()
+
+                                    // 如果距离上次上传活动小于 10 分钟, 不能更新 metadata, 因为 10 分钟内还可能有上传
+                                    if (currentTimeMillis - lastUploadActivity < 10.minutes.inWholeMilliseconds) {
+                                        // 如果有上传活动, 更新最后的活动时间
+                                        if (sessionStats.uploadSpeed > 0L) {
+                                            lastUploadActivity = currentTimeMillis
+                                        }
+                                        return@check
+                                    }
+                                    // 如果距离上次上传活动大于 10 分钟, 直接更新 metadata
                                 }
 
-                                // 如果分享率不够并且当前在 10 分钟内有上传, 那还需要继续做种.
-                                if (shareRatio < shareRatioLimit && !noUploadFor10Minutes) return@combine
-                                // TorrentMediaCache 的构造函数中的 metadata 没有检测更新的能力, 用一个变量来表示已完成
-                                // 这个判断是防止下面 update metadata 一直调用, 因因为只需要一次.
-                                if (completed || metadata.extra[EXTRA_TORRENT_COMPLETED] == "true") return@combine
-
-                                completed = true
                                 onUpdateMetadata(
                                     mapOf(
                                         EXTRA_TORRENT_COMPLETED to "true",
@@ -421,8 +417,11 @@ class TorrentMediaCacheEngine(
                                         EXTRA_TORRENT_CACHE_UPLOADED_SIZE to sessionStats.uploadedBytes.toString(),
                                     ),
                                 )
+
+                                finished.value = true
+
                             }.collect()
-                        }
+                        }.collect()
                     }
                 }
         }
