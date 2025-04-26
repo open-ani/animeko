@@ -9,12 +9,12 @@
 
 package me.him188.ani.utils.coroutines
 
+import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
-import java.util.concurrent.atomic.AtomicReference
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 
@@ -26,14 +26,14 @@ class RestartableCoroutineScope(
     parentContext: CoroutineContext = EmptyCoroutineContext
 ) {
     private val parentScope = CoroutineScope(parentContext + SupervisorJob())
-    private val childJobRef = AtomicReference(SupervisorJob())
+    private val childJobRef = atomic(SupervisorJob())
 
     /**
      * Thread-safely gets the current child scope for launching coroutines
      */
     private val childScope: CoroutineScope
         get() {
-            val job = childJobRef.get()
+            val job = childJobRef.value
             return CoroutineScope(parentScope.coroutineContext + job)
         }
 
