@@ -161,14 +161,18 @@ class DataStoreMediaCacheStorage(
             reportRecovered(cache)
             cache.resume()
 
-            if (cache !is TorrentMediaCacheEngine.TorrentMediaCache) {
-                logger.info { "Cache resumed: $cache" }
-                return@withContext
-            }
+            when (cache) {
+                is TorrentMediaCacheEngine.TorrentMediaCache -> {
+                    logger.info { "Cache resumed: $cache, subscribe to media cache stats." }
+                    statSubscriptionScope.launch {
+                        cache.subscribeStats { cache.appendExtra(it) }
+                    }
+                }
 
-            logger.info { "Cache resumed: $cache, subscribe to media cache stats." }
-            statSubscriptionScope.launch {
-                cache.subscribeStats { cache.appendExtra(it) }
+                else -> {
+                    logger.info { "Cache resumed: $cache" }
+                    return@withContext
+                }
             }
         } catch (e: Exception) {
             logger.error(e) { "Failed to restore cache for ${origin.mediaId}" }
