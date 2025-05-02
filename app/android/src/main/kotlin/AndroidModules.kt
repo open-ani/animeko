@@ -167,7 +167,7 @@ fun getAndroidModules(
             // 如果 defaultMediaCacheDir 不是内部目录, 则说明是外部目录, 并且外部目录如果是可用的, 则需要进行迁移. 
             // 这是绝大部分用户更新到 4.11 后的 path.
             if (!defaultMediaCacheDir.absolutePath.startsWith(context.filesDir.absolutePath) &&
-                Environment.getExternalStorageState(defaultMediaCacheDir.toFile()) != Environment.MEDIA_MOUNTED
+                Environment.getExternalStorageState(defaultMediaCacheDir.toFile()) == Environment.MEDIA_MOUNTED
             ) {
                 AniApplication.instance.requiresWebM3uCacheMigration.value = true
             }
