@@ -19,7 +19,9 @@ import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
 import me.him188.ani.app.domain.foundation.get
+import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.cache.engine.AlwaysUseTorrentEngineAccess
+import me.him188.ani.app.domain.media.cache.engine.HttpMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.engine.TorrentEngineAccess
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.resolver.DesktopWebMediaResolver
@@ -36,12 +38,19 @@ import me.him188.ani.app.platform.DefaultAppTerminator
 import me.him188.ani.app.platform.DesktopContext
 import me.him188.ani.app.platform.GrantedPermissionManager
 import me.him188.ani.app.platform.PermissionManager
+import me.him188.ani.app.platform.files
 import me.him188.ani.app.tools.update.DesktopUpdateInstaller
 import me.him188.ani.app.tools.update.UpdateInstaller
+import me.him188.ani.utils.httpdownloader.HttpDownloader
+import me.him188.ani.utils.io.absolutePath
+import me.him188.ani.utils.io.exists
 import me.him188.ani.utils.io.inSystem
+import me.him188.ani.utils.io.list
+import me.him188.ani.utils.io.resolve
 import me.him188.ani.utils.io.toKtPath
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
+import me.him188.ani.utils.logging.warn
 import org.koin.dsl.module
 import org.openani.mediamp.MediampPlayerFactory
 import org.openani.mediamp.MediampPlayerFactoryLoader
@@ -55,7 +64,7 @@ fun getDesktopModules(getContext: () -> DesktopContext, scope: CoroutineScope) =
     single<TorrentEngineAccess> { AlwaysUseTorrentEngineAccess }
 
     single<TorrentManager> {
-        val defaultTorrentCachePath = getContext().torrentDataCacheDir
+        val defaultTorrentCachePath = getContext().files.defaultMediaCacheDir
 
         val saveDir = runBlocking {
             val settings = get<SettingsRepository>().mediaCacheSettings
@@ -86,6 +95,42 @@ fun getDesktopModules(getContext: () -> DesktopContext, scope: CoroutineScope) =
             get(),
             get(),
             baseSaveDir = { Path(saveDir).toKtPath().inSystem },
+        )
+    }
+    single<HttpMediaCacheEngine> {
+        val context = getContext()
+
+        val baseSaveDir = runBlocking {
+            val dirFromSettings = get<SettingsRepository>().mediaCacheSettings.flow.first().saveDir
+            if (dirFromSettings == null) {
+                // 不能为 null, 因为 startCommonModule 一定先加载了上面的 TorrentManager, 
+                // 而上面的 TorrentManager 初始化了这个 settings.
+                logger("HttpMediaCacheEngineInKoinInitialization").warn {
+                    "Save directory from settings repository should not be null. " +
+                            "It should be set by dependency injection initialization of TorrentManager. " +
+                            "Use default save directory instead."
+                }
+            }
+
+            dirFromSettings ?: context.files.defaultMediaCacheDir.absolutePath
+        }
+
+        val fallbackInternalPath =
+            context.files.dataDir.resolve("web-m3u-cache") // hard-coded directory name before 4.11
+
+        // 旧的缓存目录如果有内容，则考虑需要迁移
+        if (fallbackInternalPath.exists() && fallbackInternalPath.list().isNotEmpty()) {
+            // 有权限才去移动
+            if (File(baseSaveDir).run { canRead() && canWrite() }) {
+                AniDesktop.requiresWebM3uCacheMigration.value = true
+            }
+        }
+
+        HttpMediaCacheEngine(
+            mediaSourceId = MediaCacheManager.LOCAL_FS_MEDIA_SOURCE_ID,
+            downloader = get<HttpDownloader>(),
+            saveDir = Path(baseSaveDir).resolve("web-m3u").toKtPath(),
+            mediaResolver = get<MediaResolver>(),
         )
     }
     single<MediampPlayerFactory<*>> {

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -18,6 +18,7 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.window.WindowState
 import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.io.inSystem
+import me.him188.ani.utils.io.resolve
 import me.him188.ani.utils.io.toKtPath
 import java.io.File
 import kotlin.contracts.contract
@@ -33,7 +34,6 @@ class DesktopContext(
     val extraWindowProperties: ExtraWindowProperties,
 ) : Context() {
     val dataStoreDir = dataDir.resolve("datastore")
-    val torrentDataCacheDir = cacheDir.resolve("torrent-data")
 }
 
 @Stable
@@ -64,4 +64,6 @@ internal actual val Context.filesImpl: ContextFiles
     get() = object : ContextFiles {
         override val cacheDir: SystemPath = (this@filesImpl as DesktopContext).cacheDir.toKtPath().inSystem
         override val dataDir: SystemPath = (this@filesImpl as DesktopContext).dataDir.toKtPath().inSystem
+
+        override val defaultMediaCacheDir: SystemPath = dataDir.resolve("media-cache")
     }

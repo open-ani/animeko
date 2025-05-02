@@ -20,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -42,19 +43,24 @@ import com.sun.jna.platform.win32.Advapi32Util
 import com.sun.jna.platform.win32.WinReg
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import kotlinx.io.files.Path
 import me.him188.ani.app.data.models.preference.DarkMode
+import me.him188.ani.app.data.persistent.dataStores
 import me.him188.ani.app.data.repository.SavedWindowState
 import me.him188.ani.app.data.repository.WindowStateRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.desktop.storage.AppFolderResolver
 import me.him188.ani.app.desktop.storage.AppInfo
 import me.him188.ani.app.desktop.window.WindowFrame
+import me.him188.ani.app.domain.media.cache.storage.MediaCacheMigrator
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.settings.ProxyProvider
 import me.him188.ani.app.domain.update.UpdateManager
@@ -73,6 +79,7 @@ import me.him188.ani.app.platform.StepName
 import me.him188.ani.app.platform.create
 import me.him188.ani.app.platform.createAppRootCoroutineScope
 import me.him188.ani.app.platform.currentAniBuildConfig
+import me.him188.ani.app.platform.files
 import me.him188.ani.app.platform.getCommonKoinModule
 import me.him188.ani.app.platform.startCommonKoinModule
 import me.him188.ani.app.platform.trace.recordAppStart
@@ -99,11 +106,14 @@ import me.him188.ani.app.ui.foundation.widgets.ToastViewModel
 import me.him188.ani.app.ui.foundation.widgets.Toaster
 import me.him188.ani.app.ui.main.AniApp
 import me.him188.ani.app.ui.main.AniAppContent
+import me.him188.ani.app.ui.media.cache.storage.MediaCacheMigrationDialog
 import me.him188.ani.desktop.generated.resources.Res
 import me.him188.ani.desktop.generated.resources.a_round
 import me.him188.ani.utils.analytics.Analytics
 import me.him188.ani.utils.analytics.AnalyticsConfig
 import me.him188.ani.utils.analytics.AnalyticsImpl
+import me.him188.ani.utils.io.inSystem
+import me.him188.ani.utils.io.toKtPath
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
@@ -133,6 +143,11 @@ object AniDesktop {
         System.setProperty("native.encoding", "UTF-8")
     }
 
+    /**
+     * Since 4.11. Default directory of web m3u cache is changed to external/shared storage and
+     * cannot be changed. This is the workaround for startup migration.
+     */
+    val requiresWebM3uCacheMigration = MutableStateFlow(false)
 
     private fun calculateWindowSize(
         desiredWidth: Dp,
@@ -396,6 +411,24 @@ object AniDesktop {
         }
         val savedWindowState: SavedWindowState? = savedWindowStateDeferred.getCompleted()
 
+        val mediaCacheMigrator = MediaCacheMigrator(
+            context = context,
+            metadataStore = context.dataStores.mediaCacheMetadataStore,
+            mediaCacheManager = koin.koin.get(),
+            settingsRepo = koin.koin.get(),
+            appTerminator = koin.koin.get(),
+            migrateTorrent = MutableStateFlow(false),
+            migrateWebM3u = requiresWebM3uCacheMigration,
+            getNewBaseSaveDir = {
+                koin.koin.get<SettingsRepository>().mediaCacheSettings.flow.first().saveDir?.let { Path(it).inSystem }
+            },
+            getPrevTorrentSaveDir = { context.files.defaultMediaCacheDir },
+        ).apply {
+            if (requiresWebM3uCacheMigration.value) {
+                migrate()
+            }
+        }
+
         application {
             WindowStateRecorder(
                 windowState = windowState,
@@ -456,14 +489,14 @@ object AniDesktop {
                     LocalSystemTheme provides systemTheme,
                 ) {
                     if (isRunningUnderWine()) {
-                        MainWindowContent(navigator)
+                        MainWindowContent(navigator, requiresWebM3uCacheMigration, mediaCacheMigrator.status)
                     } else {
                         HandleWindowsWindowProc()
                         WindowFrame(
                             windowState = windowState,
                             onCloseRequest = { exitApplication() },
                         ) {
-                            MainWindowContent(navigator)
+                            MainWindowContent(navigator, requiresWebM3uCacheMigration, mediaCacheMigrator.status)
                         }
                     }
                 }
@@ -478,6 +511,8 @@ object AniDesktop {
 @Composable
 private fun FrameWindowScope.MainWindowContent(
     aniNavigator: AniNavigator,
+    requiresWebM3uCacheMigration: StateFlow<Boolean>,
+    migrationStatus: StateFlow<MediaCacheMigrator.Status?>,
 ) {
     AniApp {
         val themeSettings = LocalThemeSettings.current
@@ -530,6 +565,12 @@ private fun FrameWindowScope.MainWindowContent(
                         Toast({ showing }, { Text(content) })
                     }
                 }
+            }
+
+            val requiresWebM3uMigration by requiresWebM3uCacheMigration.collectAsState(false)
+            if (requiresWebM3uMigration) {
+                val status by migrationStatus.collectAsStateWithLifecycle()
+                status?.let { MediaCacheMigrationDialog(status = it) }
             }
         }
     }

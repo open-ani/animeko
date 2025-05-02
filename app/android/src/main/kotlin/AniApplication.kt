@@ -91,6 +91,12 @@ class AniApplication : Application() {
          * @see Context.getExternalFilesDir
          */
         val requiresTorrentCacheMigration = MutableStateFlow(false)
+
+        /**
+         * Since 4.11. Default directory of web m3u cache is changed to external/shared storage and
+         * cannot be changed. This is the workaround for startup migration.
+         */
+        val requiresWebM3uCacheMigration = MutableStateFlow(false)
     }
 
     override fun onCreate() {
@@ -115,7 +121,7 @@ class AniApplication : Application() {
             return
         }
 
-
+        instance = Instance() // set instance
         val scope = createAppRootCoroutineScope()
 
         val mediaCacheDataStore: MutableStateFlow<DataStore<List<MediaCacheSave>>> =
@@ -130,7 +136,6 @@ class AniApplication : Application() {
             parentCoroutineContext = scope.coroutineContext,
         )
 
-        instance = Instance() // set instance
         startupTimeMonitor.mark(StepName.WindowAndContext)
 
         scope.launch(Dispatchers.IO_) {

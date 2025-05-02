@@ -11,40 +11,26 @@ package me.him188.ani.android.activity
 
 import android.content.Intent
 import android.os.Bundle
+import android.os.Environment
 import android.widget.Toast
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import me.him188.ani.android.AniApplication
 import me.him188.ani.app.data.persistent.dataStores
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.media.cache.MediaCacheManager
+import me.him188.ani.app.domain.media.cache.storage.MediaCacheMigrator
 import me.him188.ani.app.domain.session.SessionManager
-import me.him188.ani.app.domain.torrent.TorrentCacheMigrator
 import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.platform.AppStartupTasks
 import me.him188.ani.app.platform.AppTerminator
@@ -55,7 +41,9 @@ import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.Toaster
 import me.him188.ani.app.ui.main.AniApp
 import me.him188.ani.app.ui.main.AniAppContent
-import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
+import me.him188.ani.app.ui.media.cache.storage.MediaCacheMigrationDialog
+import me.him188.ani.utils.io.inSystem
+import me.him188.ani.utils.io.toKtPath
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.logger
 import org.koin.android.ext.android.inject
@@ -70,17 +58,21 @@ class MainActivity : AniComponentActivity() {
     private val logger = logger<MainActivity>()
     private val aniNavigator = AniNavigator()
 
-    private val torrentCacheMigrator by lazy {
-        TorrentCacheMigrator(
+    private val mediaCacheMigrator by lazy {
+        MediaCacheMigrator(
             context = this,
             metadataStore = applicationContext.dataStores.mediaCacheMetadataStore,
             mediaCacheManager = mediaCacheManager,
             settingsRepo = settingsRepo,
             appTerminator = appTerminator,
+            migrateTorrent = AniApplication.instance.requiresTorrentCacheMigration,
+            migrateWebM3u = AniApplication.instance.requiresWebM3uCacheMigration,
+            getNewBaseSaveDir = { getExternalFilesDir(Environment.DIRECTORY_MOVIES)?.toPath()?.toKtPath()?.inSystem },
+            getPrevTorrentSaveDir = { filesDir.resolve("torrent-caches").toPath().toKtPath().inSystem },
         )
     }
-    private val migrationStatus: StateFlow<TorrentCacheMigrator.Status?> by lazy {
-        torrentCacheMigrator.status
+    private val migrationStatus: StateFlow<MediaCacheMigrator.Status?> by lazy {
+        mediaCacheMigrator.status
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -141,8 +133,10 @@ class MainActivity : AniComponentActivity() {
          * This class should be called only `AniApplication.Instance.requiresTorrentCacheMigration` is true,
          * which means we are going to migrate torrent caches from internal storage to shared/external storage.
          */
-        if (AniApplication.instance.requiresTorrentCacheMigration.value) {
-            torrentCacheMigrator.migrateTorrentCache()
+        if (AniApplication.instance.requiresTorrentCacheMigration.value ||
+            AniApplication.instance.requiresWebM3uCacheMigration.value
+        ) {
+            mediaCacheMigrator.migrate()
         }
 
         setContent {
@@ -156,10 +150,13 @@ class MainActivity : AniComponentActivity() {
                     AniAppContent(aniNavigator)
                 }
 
-                val requiresMigration by AniApplication.instance.requiresTorrentCacheMigration.collectAsState(false)
-                if (requiresMigration) {
+                val requiresTorrentMigration by AniApplication.instance.requiresTorrentCacheMigration.collectAsState(
+                    false,
+                )
+                val requiresWebM3uMigration by AniApplication.instance.requiresWebM3uCacheMigration.collectAsState(false)
+                if (requiresTorrentMigration || requiresWebM3uMigration) {
                     val status by migrationStatus.collectAsStateWithLifecycle()
-                    status?.let { MigrationDialog(status = it) }
+                    status?.let { MediaCacheMigrationDialog(status = it) }
                 }
             }
         }
@@ -167,65 +164,5 @@ class MainActivity : AniComponentActivity() {
         lifecycleScope.launch {
             AppStartupTasks.verifySession(sessionManager)
         }
-    }
-
-    @Composable
-    private fun MigrationDialog(
-        status: TorrentCacheMigrator.Status,
-    ) {
-        AlertDialog(
-            title = { Text(if (status !is TorrentCacheMigrator.Status.Error) "正在迁移缓存" else "迁移发生错误") },
-            text = {
-                Column {
-                    Text(renderMigrationStatus(status = status))
-                    if (status !is TorrentCacheMigrator.Status.Error) {
-                        Spacer(modifier = Modifier.height(24.dp))
-                        if (status is TorrentCacheMigrator.Status.Cache) {
-                            LinearProgressIndicator(
-                                progress = { status.migratedSize.toFloat() / status.totalSize.coerceAtLeast(1L) },
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-                        } else {
-                            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                        }
-                        Spacer(modifier = Modifier.height(24.dp))
-                        Text("迁移过程中设备可能会轻微卡顿，请不要强制关闭 Ani，否则可能导致闪退")
-                    }
-                }
-            },
-            onDismissRequest = { /* not dismiss-able */ },
-            confirmButton = {
-                if (status !is TorrentCacheMigrator.Status.Error) return@AlertDialog
-                val clipboard = LocalClipboardManager.current
-                TextButton(
-                    {
-                        val errorMessage = status.throwable?.stackTraceToString()
-                        if (errorMessage != null) {
-                            clipboard.setText(AnnotatedString(errorMessage))
-                        }
-                    },
-                ) { Text(text = "复制") }
-            },
-        )
-    }
-
-    @Composable
-    private fun renderMigrationStatus(status: TorrentCacheMigrator.Status) = when (status) {
-        is TorrentCacheMigrator.Status.Init -> "正在准备..."
-        is TorrentCacheMigrator.Status.Cache ->
-            if (status.currentFile != null)
-                "迁移缓存（${status.migratedSize.bytes} / ${status.totalSize.bytes}）:\n${status.currentFile}"
-            else "迁移缓存..."
-
-        is TorrentCacheMigrator.Status.Metadata -> "合并元数据..."
-
-        is TorrentCacheMigrator.Status.Error ->
-            """
-            迁移时发生错误，将会忽略迁移。
-            请进入 APP 设置中将日志反馈到 GitHub。
-            
-            错误信息:
-            ${status.throwable}
-        """.trimIndent()
     }
 }

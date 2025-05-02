@@ -111,7 +111,6 @@ import me.him188.ani.app.domain.media.cache.engine.TorrentMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.storage.DataStoreMediaCacheStorage
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.fetch.MediaSourceManagerImpl
-import me.him188.ani.app.domain.media.resolver.MediaResolver
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceCodecManager
 import me.him188.ani.app.domain.mediasource.subscription.MediaSourceSubscriptionRequesterImpl
 import me.him188.ani.app.domain.mediasource.subscription.MediaSourceSubscriptionUpdater
@@ -461,12 +460,7 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
                     DataStoreMediaCacheStorage(
                         mediaSourceId = id,
                         store = metadataStore,
-                        engine = HttpMediaCacheEngine(
-                            mediaSourceId = id,
-                            downloader = get<HttpDownloader>(),
-                            saveDir = getContext().files.dataDir.resolve("web-m3u-cache").path,
-                            mediaResolver = get<MediaResolver>(),
-                        ),
+                        engine = get<HttpMediaCacheEngine>(),
                         displayName = "本地",
                         coroutineScope.childScopeContext(),
                     ),
@@ -563,6 +557,10 @@ fun KoinApplication.startCommonKoinModule(
         }
     }
     // Now, the proxy settings is ready. Other components can use http clients.
+
+    // initialize TorrentManager first.
+    // TorrentManager initialize media cache save directory. 
+    koin.get<TorrentManager>()
 
     coroutineScope.launch {
         val metadataStore = context.dataStores.mediaCacheMetadataStore
