@@ -36,7 +36,7 @@ interface ContextFiles {
      *
      * * Android: external private storage or internal private if external is unavailable.
      * * Desktop: [dataDir]`/media-downloads` by default, can be changed by settings.
-     * * iOS: [dataDir]`/media-downloads`
+     * * iOS: [dataDir]
      */
     val defaultBaseMediaCacheDir: SystemPath
 }
