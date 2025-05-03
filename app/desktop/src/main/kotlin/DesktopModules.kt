@@ -23,6 +23,7 @@ import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.cache.engine.AlwaysUseTorrentEngineAccess
 import me.him188.ani.app.domain.media.cache.engine.HttpMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.engine.TorrentEngineAccess
+import me.him188.ani.app.domain.media.cache.engine.TorrentMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.storage.MediaCacheMigrator
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.resolver.DesktopWebMediaResolver
@@ -61,15 +62,27 @@ import org.openani.mediamp.vlc.compose.VlcMediampPlayerSurfaceProvider
 import java.io.File
 import kotlin.io.path.Path
 
+private interface SaveDirProvider {
+    val saveDir: String?
+}
+
 fun getDesktopModules(getContext: () -> DesktopContext, scope: CoroutineScope) = module {
     single<TorrentEngineAccess> { AlwaysUseTorrentEngineAccess }
+
+    single<SaveDirProvider> {
+        object : SaveDirProvider {
+            override val saveDir: String? = runBlocking {
+                get<SettingsRepository>().mediaCacheSettings.flow.first().saveDir
+            }
+        }
+    }
 
     single<TorrentManager> {
         val defaultTorrentCachePath = getContext().files.defaultBaseMediaCacheDir
 
         val saveDir = runBlocking {
             val settings = get<SettingsRepository>().mediaCacheSettings
-            val dir = settings.flow.first().saveDir
+            val dir = get<SaveDirProvider>().saveDir
 
             // 首次启动设置默认 dir
             if (dir == null) {
@@ -102,7 +115,7 @@ fun getDesktopModules(getContext: () -> DesktopContext, scope: CoroutineScope) =
         val context = getContext()
 
         val baseSaveDir = runBlocking {
-            val dirFromSettings = get<SettingsRepository>().mediaCacheSettings.flow.first().saveDir
+            val dirFromSettings = get<SaveDirProvider>().saveDir
             if (dirFromSettings == null) {
                 // 不能为 null, 因为 startCommonModule 一定先加载了上面的 TorrentManager, 
                 // 而上面的 TorrentManager 初始化了这个 settings.
@@ -162,7 +175,9 @@ fun getDesktopModules(getContext: () -> DesktopContext, scope: CoroutineScope) =
                 get<SettingsRepository>().mediaCacheSettings.flow.first().saveDir
                     ?.let { kotlinx.io.files.Path(it).inSystem }
             },
-            getPrevTorrentSaveDir = { getContext().files.defaultBaseMediaCacheDir },
+            getLegacyTorrentSaveDir = {
+                error("Media caches on desktop should not be migrated by MediaCacheMigrator")
+            },
         )
     }
 

@@ -60,7 +60,7 @@ class MediaCacheMigrator(
     private val appTerminator: AppTerminator,
     private val migrationChecker: MigrationChecker,
     private val getNewBaseSaveDir: suspend () -> SystemPath?,
-    private val getPrevTorrentSaveDir: suspend () -> SystemPath
+    private val getLegacyTorrentSaveDir: suspend () -> SystemPath
 ) : KoinComponent {
     private val logger = logger<MediaCacheMigrator>()
 
@@ -142,7 +142,7 @@ class MediaCacheMigrator(
             if (migrateTorrent) {
                 _status.value = Status.TorrentCache(null, 0, 0)
                 // hard-coded directory name before 4.9
-                val prevPath = getPrevTorrentSaveDir()
+                val prevPath = getLegacyTorrentSaveDir()
                 logger.info { "[migration] Start move torrent cache from $prevPath to $newBasePath" }
 
                 if (prevPath.exists() && prevPath.isDirectory()) {

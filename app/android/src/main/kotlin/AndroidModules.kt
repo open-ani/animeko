@@ -14,18 +14,17 @@ import android.os.Environment
 import android.widget.Toast
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.io.files.Path
 import me.him188.ani.android.navigation.AndroidBrowserNavigator
 import me.him188.ani.app.data.persistent.dataStores
-import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
 import me.him188.ani.app.domain.foundation.get
 import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.cache.engine.HttpMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.engine.TorrentEngineAccess
+import me.him188.ani.app.domain.media.cache.engine.TorrentMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.storage.MediaCacheMigrator
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.resolver.AndroidWebMediaResolver
@@ -93,39 +92,23 @@ fun getAndroidModules(
         val context = androidContext()
         val logger = logger<TorrentManager>()
 
-        val defaultTorrentCachePath = context.files.defaultBaseMediaCacheDir.absolutePath
-        val fallbackInternalPath = context.filesDir.resolve("torrent-caches") // hard-coded directory name before 4.9
+        val defaultBaseMediaCacheDir = context.files.defaultBaseMediaCacheDir.absolutePath
+        val fallbackInternalPath =
+            context.filesDir.resolve("torrent-caches").absolutePath // hard-coded directory name before 4.9
 
-        val saveDir = runBlocking {
-            val settings = get<SettingsRepository>().mediaCacheSettings
-            val dir = settings.flow.first().saveDir
-
-            // 首次启动设置空间
-            if (dir == null) {
-                settings.update { copy(saveDir = defaultTorrentCachePath) }
-                return@runBlocking defaultTorrentCachePath
-            }
-
-            // dir != null 可能是外部或者内部
-            if (dir.startsWith(context.filesDir.absolutePath)) {
-                return@runBlocking dir
+        // 如果外部目录没 mounted, 那也要使用内部目录
+        val saveDir =
+            if (!defaultBaseMediaCacheDir.startsWith(context.filesDir.absolutePath) &&
+                Environment.getExternalStorageState(File(defaultBaseMediaCacheDir)) == Environment.MEDIA_MOUNTED
+            ) {
+                logger.info { "TorrentManager base save dir: $defaultBaseMediaCacheDir" }
+                defaultBaseMediaCacheDir
             } else {
-                // 如果当前目录是外部但是外部不可用，可能是因为 SD 卡或者其他可移动存储被移除, 直接使用 fallback.
-                if (Environment.getExternalStorageState(File(dir)) != Environment.MEDIA_MOUNTED) {
-                    val fallbackPathString = fallbackInternalPath.absolutePath
-                    settings.update { copy(saveDir = fallbackPathString) }
-                    Toast.makeText(context, "BT 存储位置不可用，已切换回应用私有存储位置", Toast.LENGTH_LONG).show()
-                    return@runBlocking fallbackPathString
-                }
+                logger.info { "TorrentManager base save dir: $fallbackInternalPath, because external storage is not found or mounted." }
+                fallbackInternalPath
             }
 
-            // 外部私有目录可用
-            dir
-        }
-
-        logger.info { "TorrentManager base save dir: $saveDir" }
-
-        val oldCacheDir = Path(saveDir).resolve("api").inSystem
+        val oldCacheDir = Path(fallbackInternalPath).resolve("api").inSystem
         if (oldCacheDir.exists() && oldCacheDir.isDirectory()) {
             val piecesDir = oldCacheDir.resolve("pieces")
             if (piecesDir.exists() && piecesDir.isDirectory() && piecesDir.list().isNotEmpty()) {
@@ -184,13 +167,17 @@ fun getAndroidModules(
             appTerminator = get(),
             migrationChecker = object : MediaCacheMigrator.MigrationChecker {
                 override suspend fun requireMigrateTorrentCache(): Boolean {
-                    val defaultTorrentCachePath = context.files.defaultBaseMediaCacheDir.absolutePath
-                    val settingsDir = get<SettingsRepository>().mediaCacheSettings.flow.first().saveDir ?: return false
+                    val defaultMediaCacheDir = context.files.defaultBaseMediaCacheDir
+                    val fallbackInternalPath =
+                        context.files.dataDir.resolve("torrent-caches") // hard-coded directory name before 4.9
 
-                    // dir != null 可能是外部或者内部
-                    if (settingsDir.startsWith(context.filesDir.absolutePath)) {
-                        if (!defaultTorrentCachePath.startsWith(context.filesDir.absolutePath)) {
-                            // 如果当前是内部但是默认外部目录可用，则请求迁移. 这是绝大部分用户更新到 4.9 后的 path
+                    // 旧的缓存目录如果有内容，则考虑需要迁移
+                    if (fallbackInternalPath.exists() && fallbackInternalPath.list().isNotEmpty()) {
+                        // 如果 defaultMediaCacheDir 不是内部目录, 则说明是外部目录, 并且外部目录如果是可用的, 则需要进行迁移. 
+                        // 这是绝大部分用户更新到 4.11 后的 path.
+                        if (!defaultMediaCacheDir.absolutePath.startsWith(context.filesDir.absolutePath) &&
+                            Environment.getExternalStorageState(defaultMediaCacheDir.toFile()) == Environment.MEDIA_MOUNTED
+                        ) {
                             return true
                         }
                     }
@@ -222,7 +209,10 @@ fun getAndroidModules(
             getNewBaseSaveDir = {
                 context.getExternalFilesDir(Environment.DIRECTORY_MOVIES)?.toPath()?.toKtPath()?.inSystem
             },
-            getPrevTorrentSaveDir = { context.filesDir.resolve("torrent-caches").toPath().toKtPath().inSystem },
+            getLegacyTorrentSaveDir = {
+                context.filesDir.resolve(TorrentMediaCacheEngine.LEGACY_MEDIA_CACHE_DIR)
+                    .toPath().toKtPath().inSystem
+            },
         )
     }
 
