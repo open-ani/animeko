@@ -18,6 +18,10 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
@@ -30,22 +34,17 @@ fun MediaCacheMigrationDialog(
     status: MediaCacheMigrator.Status,
 ) {
     when (status) {
-        is MediaCacheMigrator.Status.Error -> AlertDialog(
-            title = { Text("迁移发生错误") },
-            text = { Text(renderMigrationStatus(status = status)) },
-            onDismissRequest = { /* not dismiss-able */ },
-            confirmButton = {
-                val clipboard = LocalClipboardManager.current
-                TextButton(
-                    {
-                        val errorMessage = status.throwable?.stackTraceToString()
-                        if (errorMessage != null) {
-                            clipboard.setText(AnnotatedString(errorMessage))
-                        }
-                    },
-                ) { Text(text = "复制") }
-            },
-        )
+        is MediaCacheMigrator.Status.Error -> {
+            var dismissed by rememberSaveable { mutableStateOf(false) }
+            if (dismissed) return
+
+            AlertDialog(
+                title = { Text("迁移发生错误") },
+                text = { Text(renderMigrationStatus(status = status)) },
+                onDismissRequest = { /* not dismiss-able */ },
+                confirmButton = { dismissed = true },
+            )
+        }
 
         else -> AlertDialog(
             title = { Text("正在迁移缓存") },
@@ -57,7 +56,7 @@ fun MediaCacheMigrationDialog(
                         LinearProgressIndicator(
                             progress = {
                                 status.migratedSize.toFloat() / status.totalSize.coerceAtLeast(
-                                    1L
+                                    1L,
                                 )
                             },
                             modifier = Modifier.fillMaxWidth(),
@@ -70,7 +69,7 @@ fun MediaCacheMigrationDialog(
                 }
             },
             onDismissRequest = { /* not dismiss-able */ },
-            confirmButton = { }
+            confirmButton = { },
         )
     }
 }
