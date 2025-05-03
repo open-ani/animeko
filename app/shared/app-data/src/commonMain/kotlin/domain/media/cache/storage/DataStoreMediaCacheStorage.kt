@@ -30,7 +30,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.produceIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.select
-import kotlinx.coroutines.selects.whileSelect
 import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
@@ -47,6 +46,8 @@ import me.him188.ani.app.domain.media.cache.engine.MediaStats
 import me.him188.ani.app.domain.media.cache.engine.TorrentMediaCacheEngine
 import me.him188.ani.app.domain.media.fetch.MediaFetcher
 import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
+import me.him188.ani.app.platform.Context
+import me.him188.ani.app.platform.files
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.MediaCacheMetadata
 import me.him188.ani.datasources.api.MetadataKey
@@ -67,6 +68,7 @@ import me.him188.ani.utils.coroutines.update
 import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.io.name
 import me.him188.ani.utils.io.readText
+import me.him188.ani.utils.io.resolve
 import me.him188.ani.utils.io.useDirectoryEntries
 import me.him188.ani.utils.logging.debug
 import me.him188.ani.utils.logging.error
@@ -345,7 +347,15 @@ class DataStoreMediaCacheStorage(
     companion object {
         private val logger = logger<DataStoreMediaCacheStorage>()
 
-        @Deprecated("Since 4.8, metadata is stored in the datastore. This method is for migration only.")
+        /**
+         * @see me.him188.ani.app.data.persistent.PlatformDataStoreManager.mediaCacheMetadataStore
+         */
+        @Deprecated("Since 4.8, metadata is now stored in the datastore. This will be removed in the future.")
+        fun Context.getMediaMetadataDir(): SystemPath {
+            return files.dataDir.resolve("media-cache")
+        }
+
+        @Deprecated("Since 4.8, metadata is now stored in the datastore. This method is for migration only.")
         @InvalidMediaCacheEngineKey
         suspend fun migrateMetadataFromV47(
             metadataStore: DataStore<List<MediaCacheSave>>,

@@ -23,6 +23,7 @@ import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.cache.engine.AlwaysUseTorrentEngineAccess
 import me.him188.ani.app.domain.media.cache.engine.HttpMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.engine.TorrentEngineAccess
+import me.him188.ani.app.domain.media.cache.storage.MediaCacheMigrator
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.resolver.DesktopWebMediaResolver
 import me.him188.ani.app.domain.media.resolver.HttpStreamingMediaResolver
@@ -115,24 +116,56 @@ fun getDesktopModules(getContext: () -> DesktopContext, scope: CoroutineScope) =
             dirFromSettings ?: context.files.defaultBaseMediaCacheDir.absolutePath
         }
 
-        val fallbackInternalPath =
-            context.files.dataDir.resolve("web-m3u-cache") // hard-coded directory name before 4.11
-
-        // 旧的缓存目录如果有内容，则考虑需要迁移
-        if (fallbackInternalPath.exists() && fallbackInternalPath.list().isNotEmpty()) {
-            // 有权限才去移动
-            if (File(baseSaveDir).run { canRead() && canWrite() }) {
-                AniDesktop.requiresWebM3uCacheMigration.value = true
-            }
-        }
-
         HttpMediaCacheEngine(
             mediaSourceId = MediaCacheManager.LOCAL_FS_MEDIA_SOURCE_ID,
             downloader = get<HttpDownloader>(),
-            saveDir = Path(baseSaveDir).resolve("web-m3u").toKtPath(),
+            saveDir = Path(baseSaveDir).resolve(HttpMediaCacheEngine.MEDIA_CACHE_DIR).toKtPath(),
             mediaResolver = get<MediaResolver>(),
         )
     }
+
+    single<MediaCacheMigrator> {
+        get<TorrentManager>()
+        get<HttpMediaCacheEngine>()
+
+        MediaCacheMigrator(
+            context = getContext(),
+            metadataStore = getContext().dataStores.mediaCacheMetadataStore,
+            m3u8DownloaderStore = getContext().dataStores.m3u8DownloaderStore,
+            mediaCacheManager = get(),
+            settingsRepo = get(),
+            appTerminator = get(),
+            migrationChecker = object : MediaCacheMigrator.MigrationChecker {
+                override suspend fun requireMigrateTorrentCache(): Boolean {
+                    return false
+                }
+
+                override suspend fun requireMigrateWebM3uCache(): Boolean {
+                    val baseSaveDir = get<SettingsRepository>().mediaCacheSettings.flow.first().saveDir
+                        ?: getContext().files.defaultBaseMediaCacheDir.absolutePath
+
+                    @Suppress("DEPRECATION")
+                    val legacySaveDir = getContext().files.dataDir.resolve(HttpMediaCacheEngine.LEGACY_MEDIA_CACHE_DIR)
+
+                    // 旧的缓存目录如果有内容，则考虑需要迁移
+                    if (legacySaveDir.exists() && legacySaveDir.list().isNotEmpty()) {
+                        // 有权限才去迁移
+                        if (File(baseSaveDir).run { canRead() && canWrite() }) {
+                            return true
+                        }
+                    }
+
+                    return false
+                }
+            },
+            getNewBaseSaveDir = {
+                get<SettingsRepository>().mediaCacheSettings.flow.first().saveDir
+                    ?.let { kotlinx.io.files.Path(it).inSystem }
+            },
+            getPrevTorrentSaveDir = { getContext().files.defaultBaseMediaCacheDir },
+        )
+    }
+
     single<MediampPlayerFactory<*>> {
         MediampPlayerFactoryLoader.register(VlcMediampPlayerFactory())
         MediampPlayerSurfaceProviderLoader.register(VlcMediampPlayerSurfaceProvider())

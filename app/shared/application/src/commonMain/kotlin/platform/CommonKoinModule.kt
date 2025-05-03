@@ -17,14 +17,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withContext
 import kotlinx.io.files.SystemFileSystem
 import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.data.network.AniSubjectRelationIndexService
@@ -105,10 +102,10 @@ import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.cache.MediaCacheManagerImpl
 import me.him188.ani.app.domain.media.cache.engine.DummyMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.engine.HttpMediaCacheEngine
-import me.him188.ani.app.domain.media.cache.engine.InvalidMediaCacheEngineKey
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.domain.media.cache.engine.TorrentMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.storage.DataStoreMediaCacheStorage
+import me.him188.ani.app.domain.media.cache.storage.MediaCacheMigrator
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.fetch.MediaSourceManagerImpl
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceCodecManager
@@ -142,10 +139,6 @@ import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.coroutines.childScopeContext
 import me.him188.ani.utils.httpdownloader.HttpDownloader
 import me.him188.ani.utils.httpdownloader.KtorPersistentHttpDownloader
-import me.him188.ani.utils.io.SystemPath
-import me.him188.ani.utils.io.deleteRecursively
-import me.him188.ani.utils.io.exists
-import me.him188.ani.utils.io.isDirectory
 import me.him188.ani.utils.io.resolve
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
@@ -160,14 +153,6 @@ private val Scope.client get() = get<BangumiClient>()
 private val Scope.database get() = get<AniDatabase>()
 private val Scope.settingsRepository get() = get<SettingsRepository>()
 private val Scope.aniApiProvider get() = get<AniApiProvider>()
-
-/**
- * @see me.him188.ani.app.data.persistent.PlatformDataStoreManager.mediaCacheMetadataStore
- */
-@Deprecated("Since 4.8, metadata is now stored in the datastore. This will be removed in the future.")
-fun Context.getMediaMetadataDir(): SystemPath {
-    return files.dataDir.resolve("media-cache")
-}
 
 fun KoinApplication.getCommonKoinModule(getContext: () -> Context, coroutineScope: CoroutineScope) =
     listOf(useCaseModules(), repositoryModules(), otherModules(getContext, coroutineScope))
@@ -539,18 +524,6 @@ private suspend fun Scope.refreshTokens(
 fun KoinApplication.startCommonKoinModule(
     context: Context,
     coroutineScope: CoroutineScope,
-    /**
-     * Since 4.9 on Android,
-     * Default directory of torrent cache is changed to external/shared storage and
-     * cannot be changed. This is the workaround for startup migration.
-     *
-     * Since 4.11 on Android and Desktop,
-     * Default directory of web m3u cache is changed to external/shared storage (Android) and
-     * media cache directory (Desktop). This is the workaround for startup migration.
-     *
-     * This is only used on Android for cache migration.
-     */
-    restorePersistedCaches: Flow<Boolean> = flowOf(true),
 ): KoinApplication {
     // Start the proxy provider very soon (before initialization of any other components)
     runBlocking {
@@ -562,61 +535,18 @@ fun KoinApplication.startCommonKoinModule(
     }
     // Now, the proxy settings is ready. Other components can use http clients.
 
-    // initialize TorrentManager first.
-    // TorrentManager initialize media cache save directory. 
-    koin.get<TorrentManager>()
-
     coroutineScope.launch {
-        val metadataStore = context.dataStores.mediaCacheMetadataStore
+        val mediaCacheMigrator = koin.get<MediaCacheMigrator>()
+        val requiresMigration = mediaCacheMigrator.startupMigrationCheckAndGetIfRequiresMigration()
 
-        /**
-         * This will load MediaCacheManager, which will load TorrentManager.
-         * `AniApplication.instance.requiresTorrentCacheMigration` will be properly set.
-         */
-        val storages = koin.get<MediaCacheManager>().storagesIncludingDisabled
-
-        @Suppress("DEPRECATION")
-        val legacyMetadataDir = context.getMediaMetadataDir()
-
-        // Since 4.8, metadata is stored in the datastore. Migration workaround.
-        // remove in 5.x
-        @Suppress("DEPRECATION")
-        @OptIn(InvalidMediaCacheEngineKey::class)
-        withContext(Dispatchers.IO_) {
-            storages
-                .firstOrNull { it.engine is TorrentMediaCacheEngine }
-                .let { storage ->
-                    if (storage == null) return@let
-
-                    val dir = legacyMetadataDir.resolve("anitorrent")
-                    if (dir.exists() && dir.isDirectory()) {
-                        DataStoreMediaCacheStorage.migrateMetadataFromV47(metadataStore, storage, dir)
-                    }
-                }
-            storages
-                .filterIsInstance<DataStoreMediaCacheStorage>()
-                .firstOrNull { it.engine is HttpMediaCacheEngine }
-                .let { storage ->
-                    if (storage == null) return@let
-
-                    val dir = legacyMetadataDir.resolve("web-m3u")
-                    if (dir.exists() && dir.isDirectory()) {
-                        DataStoreMediaCacheStorage.migrateMetadataFromV47(metadataStore, storage, dir)
-                    }
-                }
-            // Delete the whole metadata dir
-            legacyMetadataDir.deleteRecursively()
-        }
-
-        // 只有需要恢复缓存, 才初始化 http downloader 
-        if (restorePersistedCaches.first()) {
+        // 只有不需要迁移的时候才能, 才初始化 http downloader 
+        if (!requiresMigration) {
             koin.get<HttpDownloader>().init() // 这涉及读取 DownloadState, 需要在加载 storage metadata 前调用.
         }
 
         val manager = koin.get<MediaCacheManager>()
         for (storage in manager.storagesIncludingDisabled) {
-            // get MediaCacheManager 会 get TorrentManager, TorrentManager 初始化会立刻更新 restorePersistedCaches flow.
-            if (restorePersistedCaches.first()) storage.restorePersistedCaches()
+            if (!requiresMigration) storage.restorePersistedCaches()
         }
     }
 

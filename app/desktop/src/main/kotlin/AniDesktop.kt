@@ -20,7 +20,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -47,14 +46,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
-import kotlinx.io.files.Path
 import me.him188.ani.app.data.models.preference.DarkMode
-import me.him188.ani.app.data.persistent.dataStores
 import me.him188.ani.app.data.repository.SavedWindowState
 import me.him188.ani.app.data.repository.WindowStateRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
@@ -80,7 +76,6 @@ import me.him188.ani.app.platform.StepName
 import me.him188.ani.app.platform.create
 import me.him188.ani.app.platform.createAppRootCoroutineScope
 import me.him188.ani.app.platform.currentAniBuildConfig
-import me.him188.ani.app.platform.files
 import me.him188.ani.app.platform.getCommonKoinModule
 import me.him188.ani.app.platform.startCommonKoinModule
 import me.him188.ani.app.platform.trace.recordAppStart
@@ -113,7 +108,6 @@ import me.him188.ani.desktop.generated.resources.a_round
 import me.him188.ani.utils.analytics.Analytics
 import me.him188.ani.utils.analytics.AnalyticsConfig
 import me.him188.ani.utils.analytics.AnalyticsImpl
-import me.him188.ani.utils.io.inSystem
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
@@ -255,7 +249,7 @@ object AniDesktop {
         val koin = startKoin {
             modules(getCommonKoinModule({ context }, coroutineScope))
             modules(getDesktopModules({ context }, coroutineScope))
-        }.startCommonKoinModule(context, coroutineScope, requiresWebM3uCacheMigration.map { !it })
+        }.startCommonKoinModule(context, coroutineScope)
         startupTimeMonitor.mark(StepName.Modules)
 
         // Startup ok, run test task if needed
@@ -411,25 +405,7 @@ object AniDesktop {
                     "\nTotal time: ${startupTimeMonitor.getTotalDuration().inWholeMilliseconds}ms"
         }
         val savedWindowState: SavedWindowState? = savedWindowStateDeferred.getCompleted()
-
-        val mediaCacheMigrator = MediaCacheMigrator(
-            context = context,
-            metadataStore = context.dataStores.mediaCacheMetadataStore,
-            m3u8DownloaderStore = context.dataStores.m3u8DownloaderStore,
-            mediaCacheManager = koin.koin.get(),
-            settingsRepo = koin.koin.get(),
-            appTerminator = koin.koin.get(),
-            migrateTorrent = MutableStateFlow(false),
-            migrateWebM3u = requiresWebM3uCacheMigration,
-            getNewBaseSaveDir = {
-                koin.koin.get<SettingsRepository>().mediaCacheSettings.flow.first().saveDir?.let { Path(it).inSystem }
-            },
-            getPrevTorrentSaveDir = { context.files.defaultBaseMediaCacheDir },
-        ).apply {
-            if (requiresWebM3uCacheMigration.value) {
-                migrate()
-            }
-        }
+        val mediaCacheMigrator: MediaCacheMigrator = koin.koin.get()
 
         application {
             WindowStateRecorder(
@@ -491,14 +467,14 @@ object AniDesktop {
                     LocalSystemTheme provides systemTheme,
                 ) {
                     if (isRunningUnderWine()) {
-                        MainWindowContent(navigator, requiresWebM3uCacheMigration, mediaCacheMigrator.status)
+                        MainWindowContent(navigator, mediaCacheMigrator.status)
                     } else {
                         HandleWindowsWindowProc()
                         WindowFrame(
                             windowState = windowState,
                             onCloseRequest = { exitApplication() },
                         ) {
-                            MainWindowContent(navigator, requiresWebM3uCacheMigration, mediaCacheMigrator.status)
+                            MainWindowContent(navigator, mediaCacheMigrator.status)
                         }
                     }
                 }
@@ -513,7 +489,6 @@ object AniDesktop {
 @Composable
 private fun FrameWindowScope.MainWindowContent(
     aniNavigator: AniNavigator,
-    requiresWebM3uCacheMigration: StateFlow<Boolean>,
     migrationStatus: StateFlow<MediaCacheMigrator.Status?>,
 ) {
     AniApp {
@@ -569,11 +544,8 @@ private fun FrameWindowScope.MainWindowContent(
                 }
             }
 
-            val requiresWebM3uMigration by requiresWebM3uCacheMigration.collectAsState(false)
-            if (requiresWebM3uMigration) {
-                val status by migrationStatus.collectAsStateWithLifecycle()
-                status?.let { MediaCacheMigrationDialog(status = it) }
-            }
+            val migrationStatus by migrationStatus.collectAsStateWithLifecycle()
+            migrationStatus?.let { MediaCacheMigrationDialog(status = it) }
         }
     }
 }

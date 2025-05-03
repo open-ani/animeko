@@ -85,21 +85,7 @@ class AniApplication : Application() {
         val FEATURE_USE_TORRENT_SERVICE = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1
     }
 
-    inner class Instance {
-        /**
-         * Since 4.9, Default directory of torrent cache is changed to external/shared storage and
-         * cannot be changed. This is the workaround for startup migration.
-         *
-         * @see Context.getExternalFilesDir
-         */
-        val requiresTorrentCacheMigration = MutableStateFlow(false)
-
-        /**
-         * Since 4.11. Default directory of web m3u cache is changed to external/shared storage and
-         * cannot be changed. This is the workaround for startup migration.
-         */
-        val requiresWebM3uCacheMigration = MutableStateFlow(false)
-    }
+    inner class Instance()
 
     override fun onCreate() {
         super.onCreate()
@@ -132,7 +118,6 @@ class AniApplication : Application() {
         val connectionManager = TorrentServiceConnectionManager(
             this,
             dataStoreFlow = mediaCacheDataStore,
-            requiresTorrentCacheMigration = instance.requiresTorrentCacheMigration,
             startServiceImpl = ::startAniTorrentService,
             stopServiceImpl = ::stopService,
             processLifecycle = ProcessLifecycleOwner.get().lifecycle,
@@ -156,15 +141,7 @@ class AniApplication : Application() {
             modules(getCommonKoinModule({ this@AniApplication }, scope))
 
             modules(getAndroidModules(connectionManager, scope))
-        }.startCommonKoinModule(
-            this@AniApplication,
-            scope,
-            /**
-             * If the torrent cache migration is required, we need to restore the caches.
-             */
-            restorePersistedCaches = instance.requiresTorrentCacheMigration
-                .combine(instance.requiresWebM3uCacheMigration) { t, w -> !t && !w },
-        )
+        }.startCommonKoinModule(this@AniApplication, scope)
         startupTimeMonitor.mark(StepName.Modules)
 
         val koin = getKoin()

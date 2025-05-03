@@ -11,13 +11,11 @@ package me.him188.ani.android.activity
 
 import android.content.Intent
 import android.os.Bundle
-import android.os.Environment
 import android.widget.Toast
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -25,15 +23,10 @@ import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import me.him188.ani.android.AniApplication
-import me.him188.ani.app.data.persistent.dataStores
-import me.him188.ani.app.data.repository.user.SettingsRepository
-import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.cache.storage.MediaCacheMigrator
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.platform.AppStartupTasks
-import me.him188.ani.app.platform.AppTerminator
 import me.him188.ani.app.platform.rememberPlatformWindow
 import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
 import me.him188.ani.app.ui.foundation.theme.SystemBarColorEffect
@@ -42,8 +35,6 @@ import me.him188.ani.app.ui.foundation.widgets.Toaster
 import me.him188.ani.app.ui.main.AniApp
 import me.him188.ani.app.ui.main.AniAppContent
 import me.him188.ani.app.ui.media.cache.storage.MediaCacheMigrationDialog
-import me.him188.ani.utils.io.inSystem
-import me.him188.ani.utils.io.toKtPath
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.logger
 import org.koin.android.ext.android.inject
@@ -51,30 +42,11 @@ import org.koin.android.ext.android.inject
 class MainActivity : AniComponentActivity() {
     private val sessionManager: SessionManager by inject()
 
-    private val appTerminator: AppTerminator by inject()
-    private val mediaCacheManager: MediaCacheManager by inject()
-    private val settingsRepo: SettingsRepository by inject()
-
     private val logger = logger<MainActivity>()
     private val aniNavigator = AniNavigator()
 
-    private val mediaCacheMigrator by lazy {
-        MediaCacheMigrator(
-            context = this,
-            metadataStore = applicationContext.dataStores.mediaCacheMetadataStore,
-            m3u8DownloaderStore = applicationContext.dataStores.m3u8DownloaderStore,
-            mediaCacheManager = mediaCacheManager,
-            settingsRepo = settingsRepo,
-            appTerminator = appTerminator,
-            migrateTorrent = AniApplication.instance.requiresTorrentCacheMigration,
-            migrateWebM3u = AniApplication.instance.requiresWebM3uCacheMigration,
-            getNewBaseSaveDir = { getExternalFilesDir(Environment.DIRECTORY_MOVIES)?.toPath()?.toKtPath()?.inSystem },
-            getPrevTorrentSaveDir = { filesDir.resolve("torrent-caches").toPath().toKtPath().inSystem },
-        )
-    }
-    private val migrationStatus: StateFlow<MediaCacheMigrator.Status?> by lazy {
-        mediaCacheMigrator.status
-    }
+    private val mediaCacheMigrator: MediaCacheMigrator by inject()
+    private val migrationStatus: StateFlow<MediaCacheMigrator.Status?> by lazy { mediaCacheMigrator.status }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
@@ -127,19 +99,6 @@ class MainActivity : AniComponentActivity() {
             }
         }
 
-        /**
-         * Since 4.9, Default directory of torrent cache is changed to external/shared storage and
-         * cannot be changed. This is the workaround for startup migration.
-         *
-         * This class should be called only `AniApplication.Instance.requiresTorrentCacheMigration` is true,
-         * which means we are going to migrate torrent caches from internal storage to shared/external storage.
-         */
-        if (AniApplication.instance.requiresTorrentCacheMigration.value ||
-            AniApplication.instance.requiresWebM3uCacheMigration.value
-        ) {
-            mediaCacheMigrator.migrate()
-        }
-
         setContent {
             AniApp {
                 SystemBarColorEffect()
@@ -151,14 +110,8 @@ class MainActivity : AniComponentActivity() {
                     AniAppContent(aniNavigator)
                 }
 
-                val requiresTorrentMigration by AniApplication.instance.requiresTorrentCacheMigration.collectAsState(
-                    false,
-                )
-                val requiresWebM3uMigration by AniApplication.instance.requiresWebM3uCacheMigration.collectAsState(false)
-                if (requiresTorrentMigration || requiresWebM3uMigration) {
-                    val status by migrationStatus.collectAsStateWithLifecycle()
-                    status?.let { MediaCacheMigrationDialog(status = it) }
-                }
+                val migrationStatus by migrationStatus.collectAsStateWithLifecycle()
+                migrationStatus?.let { MediaCacheMigrationDialog(status = it) }
             }
         }
 

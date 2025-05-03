@@ -262,10 +262,12 @@ fun getIosModules(
         )
     }
     single<HttpMediaCacheEngine> {
+        @Suppress("DEPRECATION")
         HttpMediaCacheEngine(
             mediaSourceId = MediaCacheManager.LOCAL_FS_MEDIA_SOURCE_ID,
             downloader = get<HttpDownloader>(),
-            saveDir = getContext().files.defaultMediaCacheDir.resolve("web-m3u-cache").path,
+            saveDir = getContext().files.defaultMediaCacheDir
+                .resolve(HttpMediaCacheEngine.LEGACY_MEDIA_CACHE_DIR).path,
             mediaResolver = get<MediaResolver>(),
         )
     }

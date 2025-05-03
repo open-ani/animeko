@@ -234,6 +234,10 @@ class HttpMediaCacheEngine(
         val engineKey = MediaCacheEngineKey("web-m3u")
 
         private val logger = logger<HttpMediaCacheEngine>()
+
+        @Deprecated("Use HttpMediaCacheEngine.MEDIA_CACHE_DIR instead")
+        const val LEGACY_MEDIA_CACHE_DIR = "web-m3u-cache"
+        const val MEDIA_CACHE_DIR = "web-m3u"
     }
 }
 

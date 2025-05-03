@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.io.files.Path
 import me.him188.ani.android.navigation.AndroidBrowserNavigator
+import me.him188.ani.app.data.persistent.dataStores
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
@@ -25,6 +26,7 @@ import me.him188.ani.app.domain.foundation.get
 import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.cache.engine.HttpMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.engine.TorrentEngineAccess
+import me.him188.ani.app.domain.media.cache.storage.MediaCacheMigrator
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.resolver.AndroidWebMediaResolver
 import me.him188.ani.app.domain.media.resolver.HttpStreamingMediaResolver
@@ -59,6 +61,7 @@ import me.him188.ani.utils.io.isDirectory
 import me.him188.ani.utils.io.list
 import me.him188.ani.utils.io.resolve
 import me.him188.ani.utils.io.toFile
+import me.him188.ani.utils.io.toKtPath
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
@@ -71,6 +74,7 @@ import org.openani.mediamp.exoplayer.ExoPlayerMediampPlayerFactory
 import org.openani.mediamp.exoplayer.compose.ExoPlayerMediampPlayerSurfaceProvider
 import java.io.File
 import kotlin.concurrent.thread
+import kotlin.io.resolve
 import kotlin.system.exitProcess
 
 fun getAndroidModules(
@@ -104,10 +108,6 @@ fun getAndroidModules(
 
             // dir != null 可能是外部或者内部
             if (dir.startsWith(context.filesDir.absolutePath)) {
-                if (!defaultTorrentCachePath.startsWith(context.filesDir.absolutePath)) {
-                    // 如果当前是内部但是默认外部目录可用，则请求迁移. 这是绝大部分用户更新到 4.9 后的 path
-                    AniApplication.instance.requiresTorrentCacheMigration.value = true
-                }
                 return@runBlocking dir
             } else {
                 // 如果当前目录是外部但是外部不可用，可能是因为 SD 卡或者其他可移动存储被移除, 直接使用 fallback.
@@ -159,22 +159,7 @@ fun getAndroidModules(
         val context = androidContext()
         val logger = logger<TorrentManager>()
 
-        val defaultMediaCacheDir = context.files.defaultBaseMediaCacheDir
-        val fallbackInternalPath =
-            context.files.dataDir.resolve("web-m3u-cache") // hard-coded directory name before 4.11
-
-        // 旧的缓存目录如果有内容，则考虑需要迁移
-        if (fallbackInternalPath.exists() && fallbackInternalPath.list().isNotEmpty()) {
-            // 如果 defaultMediaCacheDir 不是内部目录, 则说明是外部目录, 并且外部目录如果是可用的, 则需要进行迁移. 
-            // 这是绝大部分用户更新到 4.11 后的 path.
-            if (!defaultMediaCacheDir.absolutePath.startsWith(context.filesDir.absolutePath) &&
-                Environment.getExternalStorageState(defaultMediaCacheDir.toFile()) == Environment.MEDIA_MOUNTED
-            ) {
-                AniApplication.instance.requiresWebM3uCacheMigration.value = true
-            }
-        }
-
-        val saveDir = defaultMediaCacheDir.resolve("web-m3u")
+        val saveDir = context.files.defaultBaseMediaCacheDir.resolve(HttpMediaCacheEngine.MEDIA_CACHE_DIR)
         logger.info { "HttpMediaCacheEngine base save dir: $saveDir" }
 
         HttpMediaCacheEngine(
@@ -182,6 +167,62 @@ fun getAndroidModules(
             downloader = get<HttpDownloader>(),
             saveDir = saveDir.path,
             mediaResolver = get<MediaResolver>(),
+        )
+    }
+
+    single<MediaCacheMigrator> {
+        val context = androidContext()
+        get<TorrentManager>()
+        get<HttpMediaCacheEngine>()
+
+        MediaCacheMigrator(
+            context = context,
+            metadataStore = context.dataStores.mediaCacheMetadataStore,
+            m3u8DownloaderStore = context.dataStores.m3u8DownloaderStore,
+            mediaCacheManager = get(),
+            settingsRepo = get(),
+            appTerminator = get(),
+            migrationChecker = object : MediaCacheMigrator.MigrationChecker {
+                override suspend fun requireMigrateTorrentCache(): Boolean {
+                    val defaultTorrentCachePath = context.files.defaultBaseMediaCacheDir.absolutePath
+                    val settingsDir = get<SettingsRepository>().mediaCacheSettings.flow.first().saveDir ?: return false
+
+                    // dir != null 可能是外部或者内部
+                    if (settingsDir.startsWith(context.filesDir.absolutePath)) {
+                        if (!defaultTorrentCachePath.startsWith(context.filesDir.absolutePath)) {
+                            // 如果当前是内部但是默认外部目录可用，则请求迁移. 这是绝大部分用户更新到 4.9 后的 path
+                            return true
+                        }
+                    }
+
+                    return false
+                }
+
+                override suspend fun requireMigrateWebM3uCache(): Boolean {
+                    val defaultMediaCacheDir = context.files.defaultBaseMediaCacheDir
+
+                    @Suppress("DEPRECATION")
+                    val fallbackInternalPath =
+                        context.files.dataDir.resolve(HttpMediaCacheEngine.LEGACY_MEDIA_CACHE_DIR)
+
+                    // 旧的缓存目录如果有内容，则考虑需要迁移
+                    if (fallbackInternalPath.exists() && fallbackInternalPath.list().isNotEmpty()) {
+                        // 如果 defaultMediaCacheDir 不是内部目录, 则说明是外部目录, 并且外部目录如果是可用的, 则需要进行迁移. 
+                        // 这是绝大部分用户更新到 4.11 后的 path.
+                        if (!defaultMediaCacheDir.absolutePath.startsWith(context.filesDir.absolutePath) &&
+                            Environment.getExternalStorageState(defaultMediaCacheDir.toFile()) == Environment.MEDIA_MOUNTED
+                        ) {
+                            return true
+                        }
+                    }
+
+                    return false
+                }
+            },
+            getNewBaseSaveDir = {
+                context.getExternalFilesDir(Environment.DIRECTORY_MOVIES)?.toPath()?.toKtPath()?.inSystem
+            },
+            getPrevTorrentSaveDir = { context.filesDir.resolve("torrent-caches").toPath().toKtPath().inSystem },
         )
     }
 

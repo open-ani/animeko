@@ -17,10 +17,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.cache.engine.HttpMediaCacheEngine
+import me.him188.ani.app.domain.media.cache.engine.InvalidMediaCacheEngineKey
 import me.him188.ani.app.domain.media.cache.engine.TorrentMediaCacheEngine
 import me.him188.ani.app.platform.AppTerminator
 import me.him188.ani.app.platform.ContextMP
@@ -30,6 +30,7 @@ import me.him188.ani.utils.httpdownloader.DownloadState
 import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.io.absolutePath
 import me.him188.ani.utils.io.actualSize
+import me.him188.ani.utils.io.deleteRecursively
 import me.him188.ani.utils.io.exists
 import me.him188.ani.utils.io.isDirectory
 import me.him188.ani.utils.io.moveDirectoryRecursively
@@ -41,14 +42,14 @@ import me.him188.ani.utils.logging.logger
 import org.koin.core.component.KoinComponent
 
 /**
+ * Since 4.8, metadata of media cache is stored in the datastore. Migration workaround.
+ *
  * Since 4.9, Default directory of torrent cache is changed to external/shared storage and
  * cannot be changed. This is the workaround for startup migration.
  *
- * Since 4.11, Default directory of web m3u cache is changed to external/shared storage and
- * cannot be changed. This is the workaround for startup migration.
+ * Since 4.11, Default directory of web m3u cache is changed to external/shared storage (Android) and
+ * media cache directory (Desktop). This is the workaround for startup migration.
  *
- * This class should be called only `AniApplication.Instance.requiresTorrentCacheMigration` is true,
- * which means we are going to migrate torrent caches from internal storage to shared/external storage.
  */
 class MediaCacheMigrator(
     private val context: ContextMP,
@@ -57,9 +58,7 @@ class MediaCacheMigrator(
     private val mediaCacheManager: MediaCacheManager,
     private val settingsRepo: SettingsRepository,
     private val appTerminator: AppTerminator,
-    private val migrateTorrent: StateFlow<Boolean>,
-    private val migrateWebM3u: StateFlow<Boolean>,
-
+    private val migrationChecker: MigrationChecker,
     private val getNewBaseSaveDir: suspend () -> SystemPath?,
     private val getPrevTorrentSaveDir: suspend () -> SystemPath
 ) : KoinComponent {
@@ -69,20 +68,75 @@ class MediaCacheMigrator(
     val status: StateFlow<Status?> = _status
 
     @OptIn(DelicateCoroutinesApi::class)
-    fun migrate() = GlobalScope.launch(Dispatchers.IO_) {
+    suspend fun startupMigrationCheckAndGetIfRequiresMigration(): Boolean {
+        try {
+            migrateMediaCacheMetadata() // 无条件尝试迁移元数据
+
+            val migrateTorrent = migrationChecker.requireMigrateTorrentCache()
+            val migrateWebM3u = migrationChecker.requireMigrateWebM3uCache()
+
+            val requiresMigration = migrateTorrent || migrateWebM3u
+            if (requiresMigration) {
+                GlobalScope.launch(Dispatchers.IO_) {
+                    migrateMediaCacheDownloads(migrateTorrent, migrateWebM3u)
+                }
+            }
+
+            return requiresMigration
+        } catch (e: Exception) {
+            logger.error(e) { "[migration] Failed to migrate media cache." }
+            return false
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    @OptIn(InvalidMediaCacheEngineKey::class)
+    private suspend fun migrateMediaCacheMetadata() {
+        val storages = mediaCacheManager.storagesIncludingDisabled
+
+        val legacyMetadataDir = with(DataStoreMediaCacheStorage) { context.getMediaMetadataDir() }
+
+        storages
+            .firstOrNull { it.engine is TorrentMediaCacheEngine }
+            .let { storage ->
+                if (storage == null) return@let
+
+                val dir = legacyMetadataDir.resolve("anitorrent")
+                if (dir.exists() && dir.isDirectory()) {
+                    DataStoreMediaCacheStorage.migrateMetadataFromV47(metadataStore, storage, dir)
+                }
+            }
+        storages
+            .filterIsInstance<DataStoreMediaCacheStorage>()
+            .firstOrNull { it.engine is HttpMediaCacheEngine }
+            .let { storage ->
+                if (storage == null) return@let
+
+                val dir = legacyMetadataDir.resolve("web-m3u")
+                if (dir.exists() && dir.isDirectory()) {
+                    DataStoreMediaCacheStorage.migrateMetadataFromV47(metadataStore, storage, dir)
+                }
+            }
+
+        // Delete the whole metadata dir
+        legacyMetadataDir.deleteRecursively()
+    }
+
+    @Suppress("DEPRECATION")
+    private suspend fun migrateMediaCacheDownloads(
+        migrateTorrent: Boolean,
+        migrateWebM3u: Boolean
+    ) {
         try {
             _status.value = Status.Init
-
-            val migrateTorrent = migrateTorrent.value
-            val migrateWebM3u = migrateWebM3u.value
             logger.info { "[migration] Migration started. torrent: $migrateTorrent, web: $migrateWebM3u" }
 
             val newBasePath = getNewBaseSaveDir()
             if (newBasePath == null) {
-                logger.error { "[migration] Failed to get external files directory while migrating cache." }
+                logger.error { "[migration] Failed to get base directory path of media cache while migrating cache." }
                 _status.value =
-                    Status.Error(IllegalStateException("Shared storage is not currently available."))
-                return@launch
+                    Status.Error(IllegalStateException("Directory path of media cache is not available."))
+                return
             }
 
             if (migrateTorrent) {
@@ -107,11 +161,9 @@ class MediaCacheMigrator(
 
                 if (torrentStorage == null) {
                     logger.error("[migration] Failed to get TorrentMediaCacheEngine, it is null.")
-                    withContext(Dispatchers.Main) {
-                        _status.value =
-                            Status.Error(IllegalStateException("Media cache storage with engine TorrentMediaCacheEngine is not found."))
-                    }
-                    return@launch
+                    _status.value =
+                        Status.Error(IllegalStateException("Media cache storage with engine TorrentMediaCacheEngine is not found."))
+                    return
                 }
 
                 _status.value = Status.Metadata
@@ -134,10 +186,9 @@ class MediaCacheMigrator(
 
             if (migrateWebM3u) {
                 _status.value = Status.WebM3uCache(null, 0, 0)
-                // hard-coded directory name before 4.11
-                val prevPath = context.files.dataDir.resolve("web-m3u-cache")
-                // new path is also hard coded, see android koin modules.
-                val newPath = newBasePath.resolve("web-m3u")
+                val prevPath =
+                    context.files.dataDir.resolve(HttpMediaCacheEngine.LEGACY_MEDIA_CACHE_DIR)
+                val newPath = newBasePath.resolve(HttpMediaCacheEngine.MEDIA_CACHE_DIR)
                 logger.info { "[migration] Start move web m3u cache from $prevPath to $newPath" }
 
                 if (prevPath.exists() && prevPath.isDirectory()) {
@@ -156,11 +207,9 @@ class MediaCacheMigrator(
 
                 if (webStorage == null) {
                     logger.error("[migration] Failed to get HttpMediaCacheEngine, it is null.")
-                    withContext(Dispatchers.Main) {
-                        _status.value =
-                            Status.Error(IllegalStateException("Media cache storage with engine HttpMediaCacheEngine is not found."))
-                    }
-                    return@launch
+                    _status.value =
+                        Status.Error(IllegalStateException("Media cache storage with engine HttpMediaCacheEngine is not found."))
+                    return
                 }
 
                 _status.value = Status.Metadata
@@ -183,15 +232,19 @@ class MediaCacheMigrator(
                     original.map { state ->
                         state.copy(
                             outputPath = newPath
-                                .resolve(state.outputPath.substringAfter("web-m3u-cache"))
+                                .resolve(state.outputPath.substringAfter(HttpMediaCacheEngine.LEGACY_MEDIA_CACHE_DIR))
                                 .absolutePath,
                             segmentCacheDir = newPath
-                                .resolve(state.segmentCacheDir.substringAfter("web-m3u-cache"))
+                                .resolve(state.segmentCacheDir.substringAfter(HttpMediaCacheEngine.LEGACY_MEDIA_CACHE_DIR))
                                 .absolutePath,
                             segments = state.segments.map { seg ->
                                 seg.copy(
                                     tempFilePath = newPath
-                                        .resolve(seg.tempFilePath.substringAfter("web-m3u-cache"))
+                                        .resolve(
+                                            seg.tempFilePath.substringAfter(
+                                                HttpMediaCacheEngine.LEGACY_MEDIA_CACHE_DIR
+                                            )
+                                        )
                                         .absolutePath,
                                 )
                             },
@@ -230,4 +283,8 @@ class MediaCacheMigrator(
         class Error(val throwable: Throwable? = null) : Status
     }
 
+    interface MigrationChecker {
+        suspend fun requireMigrateTorrentCache(): Boolean
+        suspend fun requireMigrateWebM3uCache(): Boolean
+    }
 }
