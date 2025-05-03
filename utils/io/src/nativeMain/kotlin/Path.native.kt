@@ -15,11 +15,8 @@ import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import kotlinx.io.files.SystemTemporaryDirectory
 import me.him188.ani.utils.platform.Uuid
-import platform.Foundation.NSApplicationSupportDirectory
-import platform.Foundation.NSCachesDirectory
-import platform.Foundation.NSDocumentDirectory
-import platform.Foundation.NSSearchPathForDirectoriesInDomains
-import platform.Foundation.NSUserDomainMask
+import platform.Foundation.*
+import kotlinx.cinterop.*
 
 actual fun SystemPath.length(): Long = SystemFileSystem.metadataOrNull(path)?.size ?: 0
 
@@ -70,6 +67,86 @@ val SystemCacheDir by lazy {
             .firstOrNull()?.toString() ?: error("Cannot get SystemCacheDir"),
     ).inSystem.resolve(appName)
 }
+
+/**
+ * Recursively move (i.e. rename-if-possible, otherwise copy-then-delete) the directory represented
+ * by this [SystemPath] to [target].
+ *
+ * If [visitor] is supplied it is invoked *once* with the *target* directory after the move finishes
+ * (useful for cache invalidation, DB re-opening, etc.).
+ *
+ * ⚠️  Preconditions:
+ *  * `this` **must** be a directory.
+ *  * The call is **best-effort** – any Foundation error bubbles up as `IllegalStateException`.
+ */
+// todo: test
+@OptIn(ExperimentalForeignApi::class)
+actual fun SystemPath.moveDirectoryRecursively(
+    target: SystemPath,
+    visitor: ((SystemPath) -> Unit)?
+) {
+    val fm = NSFileManager.defaultManager
+    val src = path.toString()
+    val dst = target.path.toString()
+
+    // Trivial no-op.
+    if (src == dst) return
+
+    memScoped {
+        val errPtr = alloc<ObjCObjectVar<NSError?>>(null)
+
+        // Create the parent directories for the destination so that the rename can succeed.
+        val dstParent = target.path.parent?.toString() ?: "/"
+        if (!fm.fileExistsAtPath(dstParent)) {
+            fm.createDirectoryAtPath(dstParent, /*withIntermediateDirectories = */ true, null, errPtr.ptr)
+            errPtr.value?.let { throw IllegalStateException(it.localizedDescription) }
+        }
+
+        // ---------- 1) Cheap path : atomic rename ----------
+        if (fm.moveItemAtPath(src, dst, errPtr.ptr)) {
+            visitor?.invoke(target)
+            return
+        }
+
+        // If we are here the rename failed – most often “cross-device link”.
+        // Clear the error object so we can reuse the pointer.
+        errPtr.value = null
+
+        // ---------- 2) Manual copy-then-delete fallback ----------
+        // (a) Create the destination directory.
+        fm.createDirectoryAtPath(dst, true, null, errPtr.ptr)
+        errPtr.value?.let { throw IllegalStateException(it.localizedDescription) }
+
+        // (b) Enumerate source tree and copy every item.
+        val enumerator: NSDirectoryEnumerator =
+            fm.enumeratorAtPath(src) ?: error("Cannot enumerate $src")
+
+        var next = enumerator.nextObject() as NSString?
+        while (next != null) {
+            val rel = next as String
+            val fromPath = "$src/$rel"
+            val toPath = "$dst/$rel"
+
+            // Directory? -> create, otherwise copy file
+            val isDir = enumerator.fileAttributes()["NSFileType"] as? String == NSFileTypeDirectory
+            if (isDir) {
+                fm.createDirectoryAtPath(toPath, true, null, errPtr.ptr)
+            } else {
+                fm.copyItemAtPath(fromPath, toPath, errPtr.ptr)
+            }
+            errPtr.value?.let { throw IllegalStateException(it.localizedDescription) }
+
+            next = enumerator.nextObject() as NSString?
+        }
+
+        // (c) Delete the original tree – we only attempt this after a *complete* copy.
+        fm.removeItemAtPath(src, errPtr.ptr)
+        errPtr.value?.let { throw IllegalStateException(it.localizedDescription) }
+    }
+
+    visitor?.invoke(target)
+}
+
 
 actual val SystemPath.absolutePath: String
     get() {
