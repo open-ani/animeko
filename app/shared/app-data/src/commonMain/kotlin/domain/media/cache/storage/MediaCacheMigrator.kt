@@ -10,6 +10,7 @@
 package me.him188.ani.app.domain.media.cache.storage
 
 import androidx.datastore.core.DataStore
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
@@ -74,7 +75,7 @@ class MediaCacheMigrator(
     val status: StateFlow<Status?> = _status
 
     @OptIn(DelicateCoroutinesApi::class)
-    suspend fun startupMigrationCheckAndGetIfRequiresMigration(): Boolean {
+    suspend fun startupMigrationCheckAndGetIfRequiresMigration(scope: CoroutineScope): Boolean {
         try {
             migrateMediaCacheMetadata() // 无条件尝试迁移元数据
 
@@ -83,7 +84,7 @@ class MediaCacheMigrator(
 
             val requiresMigration = migrateTorrent || migrateWebM3u
             if (requiresMigration) {
-                GlobalScope.launch(Dispatchers.IO_) {
+                scope.launch(Dispatchers.IO_) {
                     migrateMediaCacheDownloads(migrateTorrent, migrateWebM3u)
                 }
             }

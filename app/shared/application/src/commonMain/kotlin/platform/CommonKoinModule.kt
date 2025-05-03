@@ -537,7 +537,7 @@ fun KoinApplication.startCommonKoinModule(
 
     coroutineScope.launch {
         val mediaCacheMigrator = koin.get<MediaCacheMigrator>()
-        val requiresMigration = mediaCacheMigrator.startupMigrationCheckAndGetIfRequiresMigration()
+        val requiresMigration = mediaCacheMigrator.startupMigrationCheckAndGetIfRequiresMigration(coroutineScope)
 
         // 只有不需要迁移的时候才能, 才初始化 http downloader 
         if (!requiresMigration) {
