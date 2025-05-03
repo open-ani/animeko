@@ -25,6 +25,7 @@ import io.ktor.client.engine.okhttp.OkHttp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import me.him188.ani.android.activity.MainActivity
@@ -122,6 +123,7 @@ class AniApplication : Application() {
         }
 
         instance = Instance() // set instance
+
         val scope = createAppRootCoroutineScope()
 
         val mediaCacheDataStore: MutableStateFlow<DataStore<List<MediaCacheSave>>> =
@@ -159,7 +161,7 @@ class AniApplication : Application() {
             /**
              * If the torrent cache migration is required, we need to restore the caches.
              */
-            restorePersistedCaches = instance.requiresTorrentCacheMigration,
+            restorePersistedCaches = instance.requiresTorrentCacheMigration.map { !it },
         )
         startupTimeMonitor.mark(StepName.Modules)
 
