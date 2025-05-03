@@ -93,7 +93,7 @@ actual fun SystemPath.moveDirectoryRecursively(
     if (src == dst) return
 
     memScoped {
-        val errPtr = alloc<ObjCObjectVar<NSError?>>(null)
+        val errPtr = alloc<ObjCObjectVar<NSError?>> { }
 
         // Create the parent directories for the destination so that the rename can succeed.
         val dstParent = target.path.parent?.toString() ?: "/"
@@ -128,7 +128,7 @@ actual fun SystemPath.moveDirectoryRecursively(
             val toPath = "$dst/$rel"
 
             // Directory? -> create, otherwise copy file
-            val isDir = enumerator.fileAttributes()["NSFileType"] as? String == NSFileTypeDirectory
+            val isDir = enumerator.fileAttributes()?.get("NSFileType") as? String == NSFileTypeDirectory
             if (isDir) {
                 fm.createDirectoryAtPath(toPath, true, null, errPtr.ptr)
             } else {
