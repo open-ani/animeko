@@ -31,9 +31,9 @@ internal actual val Context.filesImpl: ContextFiles
         override val dataDir: SystemPath =
             (this@filesImpl.filesDir ?: File("")).toKtPath().inSystem // can be null when previewing
 
-        override val defaultMediaCacheDir: SystemPath =
+        override val defaultBaseMediaCacheDir: SystemPath =
             getExternalFilesDir(Environment.DIRECTORY_MOVIES)?.toKtPath()?.inSystem
-                ?: dataDir.resolve("media-cache")
+                ?: dataDir.resolve("media-downloads")
 
     }
 

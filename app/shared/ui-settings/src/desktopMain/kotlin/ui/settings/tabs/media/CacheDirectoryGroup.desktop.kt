@@ -45,7 +45,7 @@ actual fun SettingsScope.CacheDirectoryGroup(state: CacheDirectoryGroupState) {
 
         val context = LocalDesktopContext.current
 
-        val defaultSaveDir = remember { context.files.defaultMediaCacheDir.absolutePath }
+        val defaultSaveDir = remember { context.files.defaultBaseMediaCacheDir.absolutePath }
         val currentSaveDir: String by remember {
             derivedStateOf {
                 mediaCacheSettings.saveDir ?: defaultSaveDir

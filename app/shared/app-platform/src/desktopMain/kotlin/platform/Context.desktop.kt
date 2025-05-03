@@ -65,5 +65,5 @@ internal actual val Context.filesImpl: ContextFiles
         override val cacheDir: SystemPath = (this@filesImpl as DesktopContext).cacheDir.toKtPath().inSystem
         override val dataDir: SystemPath = (this@filesImpl as DesktopContext).dataDir.toKtPath().inSystem
 
-        override val defaultMediaCacheDir: SystemPath = dataDir.resolve("media-cache")
+        override val defaultBaseMediaCacheDir: SystemPath = dataDir.resolve("media-downloads")
     }

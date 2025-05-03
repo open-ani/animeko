@@ -89,7 +89,7 @@ fun getAndroidModules(
         val context = androidContext()
         val logger = logger<TorrentManager>()
 
-        val defaultTorrentCachePath = context.files.defaultMediaCacheDir.absolutePath
+        val defaultTorrentCachePath = context.files.defaultBaseMediaCacheDir.absolutePath
         val fallbackInternalPath = context.filesDir.resolve("torrent-caches") // hard-coded directory name before 4.9
 
         val saveDir = runBlocking {
@@ -159,7 +159,7 @@ fun getAndroidModules(
         val context = androidContext()
         val logger = logger<TorrentManager>()
 
-        val defaultMediaCacheDir = context.files.defaultMediaCacheDir
+        val defaultMediaCacheDir = context.files.defaultBaseMediaCacheDir
         val fallbackInternalPath =
             context.files.dataDir.resolve("web-m3u-cache") // hard-coded directory name before 4.11
 

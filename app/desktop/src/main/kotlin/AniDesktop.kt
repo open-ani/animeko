@@ -114,7 +114,6 @@ import me.him188.ani.utils.analytics.Analytics
 import me.him188.ani.utils.analytics.AnalyticsConfig
 import me.him188.ani.utils.analytics.AnalyticsImpl
 import me.him188.ani.utils.io.inSystem
-import me.him188.ani.utils.io.toKtPath
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
@@ -425,7 +424,7 @@ object AniDesktop {
             getNewBaseSaveDir = {
                 koin.koin.get<SettingsRepository>().mediaCacheSettings.flow.first().saveDir?.let { Path(it).inSystem }
             },
-            getPrevTorrentSaveDir = { context.files.defaultMediaCacheDir },
+            getPrevTorrentSaveDir = { context.files.defaultBaseMediaCacheDir },
         ).apply {
             if (requiresWebM3uCacheMigration.value) {
                 migrate()

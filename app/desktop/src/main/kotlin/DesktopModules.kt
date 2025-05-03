@@ -64,7 +64,7 @@ fun getDesktopModules(getContext: () -> DesktopContext, scope: CoroutineScope) =
     single<TorrentEngineAccess> { AlwaysUseTorrentEngineAccess }
 
     single<TorrentManager> {
-        val defaultTorrentCachePath = getContext().files.defaultMediaCacheDir
+        val defaultTorrentCachePath = getContext().files.defaultBaseMediaCacheDir
 
         val saveDir = runBlocking {
             val settings = get<SettingsRepository>().mediaCacheSettings
@@ -112,7 +112,7 @@ fun getDesktopModules(getContext: () -> DesktopContext, scope: CoroutineScope) =
                 }
             }
 
-            dirFromSettings ?: context.files.defaultMediaCacheDir.absolutePath
+            dirFromSettings ?: context.files.defaultBaseMediaCacheDir.absolutePath
         }
 
         val fallbackInternalPath =
