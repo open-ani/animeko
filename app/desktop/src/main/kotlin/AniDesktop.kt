@@ -137,13 +137,6 @@ object AniDesktop {
         System.setProperty("native.encoding", "UTF-8")
     }
 
-    /**
-     * Since 4.11 on Android and Desktop,
-     * Default directory of web m3u cache is changed to external/shared storage (Android) and
-     * media cache directory (Desktop). This is the workaround for startup migration.
-     */
-    val requiresWebM3uCacheMigration = MutableStateFlow(false)
-
     private fun calculateWindowSize(
         desiredWidth: Dp,
         desiredHeight: Dp,
