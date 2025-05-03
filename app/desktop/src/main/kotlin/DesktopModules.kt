@@ -23,7 +23,6 @@ import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.cache.engine.AlwaysUseTorrentEngineAccess
 import me.him188.ani.app.domain.media.cache.engine.HttpMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.engine.TorrentEngineAccess
-import me.him188.ani.app.domain.media.cache.engine.TorrentMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.storage.MediaCacheMigrator
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.resolver.DesktopWebMediaResolver
@@ -52,7 +51,6 @@ import me.him188.ani.utils.io.resolve
 import me.him188.ani.utils.io.toKtPath
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
-import me.him188.ani.utils.logging.warn
 import org.koin.dsl.module
 import org.openani.mediamp.MediampPlayerFactory
 import org.openani.mediamp.MediampPlayerFactoryLoader
@@ -63,43 +61,42 @@ import java.io.File
 import kotlin.io.path.Path
 
 private interface SaveDirProvider {
-    val saveDir: String?
+    val saveDir: String
 }
 
 fun getDesktopModules(getContext: () -> DesktopContext, scope: CoroutineScope) = module {
     single<TorrentEngineAccess> { AlwaysUseTorrentEngineAccess }
 
     single<SaveDirProvider> {
-        object : SaveDirProvider {
-            override val saveDir: String? = runBlocking {
-                get<SettingsRepository>().mediaCacheSettings.flow.first().saveDir
-            }
-        }
-    }
-
-    single<TorrentManager> {
+        val settings = get<SettingsRepository>().mediaCacheSettings
         val defaultTorrentCachePath = getContext().files.defaultBaseMediaCacheDir
 
-        val saveDir = runBlocking {
-            val settings = get<SettingsRepository>().mediaCacheSettings
-            val dir = get<SaveDirProvider>().saveDir
-
+        val baseSaveDir = runBlocking {
+            val saveDirSettings = settings.flow.first().saveDir
             // 首次启动设置默认 dir
-            if (dir == null) {
+            if (saveDirSettings == null) {
                 val finalPathString = defaultTorrentCachePath.absolutePath
                 settings.update { copy(saveDir = finalPathString) }
                 return@runBlocking finalPathString
             }
 
             // 如果当前目录没有权限读写, 直接使用默认目录
-            if (!File(dir).run { canRead() && canWrite() }) {
+            if (!File(saveDirSettings).run { canRead() && canWrite() }) {
                 val fallbackPathString = defaultTorrentCachePath.absolutePath
                 settings.update { copy(saveDir = fallbackPathString) }
                 return@runBlocking fallbackPathString
             }
 
-            dir
+            saveDirSettings
         }
+
+        object : SaveDirProvider {
+            override val saveDir: String = baseSaveDir
+        }
+    }
+
+    single<TorrentManager> {
+        val saveDir = get<SaveDirProvider>().saveDir
         logger<TorrentManager>().info { "TorrentManager base save dir: $saveDir" }
 
         DefaultTorrentManager.create(
@@ -112,27 +109,13 @@ fun getDesktopModules(getContext: () -> DesktopContext, scope: CoroutineScope) =
         )
     }
     single<HttpMediaCacheEngine> {
-        val context = getContext()
-
-        val baseSaveDir = runBlocking {
-            val dirFromSettings = get<SaveDirProvider>().saveDir
-            if (dirFromSettings == null) {
-                // 不能为 null, 因为 startCommonModule 一定先加载了上面的 TorrentManager, 
-                // 而上面的 TorrentManager 初始化了这个 settings.
-                logger("HttpMediaCacheEngineInKoinInitialization").warn {
-                    "Save directory from settings repository should not be null. " +
-                            "It should be set by dependency injection initialization of TorrentManager. " +
-                            "Use default save directory instead."
-                }
-            }
-
-            dirFromSettings ?: context.files.defaultBaseMediaCacheDir.absolutePath
-        }
+        val saveDir = Path(get<SaveDirProvider>().saveDir).resolve(HttpMediaCacheEngine.MEDIA_CACHE_DIR)
+        logger<TorrentManager>().info { "HttpMediaCacheEngine base save dir: $saveDir" }
 
         HttpMediaCacheEngine(
             mediaSourceId = MediaCacheManager.LOCAL_FS_MEDIA_SOURCE_ID,
             downloader = get<HttpDownloader>(),
-            saveDir = Path(baseSaveDir).resolve(HttpMediaCacheEngine.MEDIA_CACHE_DIR).toKtPath(),
+            saveDir = saveDir.toKtPath(),
             mediaResolver = get<MediaResolver>(),
         )
     }

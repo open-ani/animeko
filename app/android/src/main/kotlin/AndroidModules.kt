@@ -94,7 +94,7 @@ fun getAndroidModules(
 
         val defaultBaseMediaCacheDir = context.files.defaultBaseMediaCacheDir.absolutePath
         val fallbackInternalPath =
-            context.filesDir.resolve("torrent-caches").absolutePath // hard-coded directory name before 4.9
+            context.filesDir.resolve(TorrentMediaCacheEngine.LEGACY_MEDIA_CACHE_DIR).absolutePath
 
         // 如果外部目录没 mounted, 那也要使用内部目录
         val saveDir =
@@ -155,9 +155,6 @@ fun getAndroidModules(
 
     single<MediaCacheMigrator> {
         val context = androidContext()
-        get<TorrentManager>()
-        get<HttpMediaCacheEngine>()
-
         MediaCacheMigrator(
             context = context,
             metadataStore = context.dataStores.mediaCacheMetadataStore,
@@ -169,7 +166,7 @@ fun getAndroidModules(
                 override suspend fun requireMigrateTorrentCache(): Boolean {
                     val defaultMediaCacheDir = context.files.defaultBaseMediaCacheDir
                     val fallbackInternalPath =
-                        context.files.dataDir.resolve("torrent-caches") // hard-coded directory name before 4.9
+                        context.files.dataDir.resolve(TorrentMediaCacheEngine.LEGACY_MEDIA_CACHE_DIR)
 
                     // 旧的缓存目录如果有内容，则考虑需要迁移
                     if (fallbackInternalPath.exists() && fallbackInternalPath.list().isNotEmpty()) {

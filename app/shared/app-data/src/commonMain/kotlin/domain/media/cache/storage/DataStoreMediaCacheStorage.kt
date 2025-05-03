@@ -36,18 +36,13 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
-import kotlinx.serialization.SerializationException
-import me.him188.ani.app.data.persistent.DataStoreJson
 import me.him188.ani.app.domain.media.cache.LocalFileMediaCache
 import me.him188.ani.app.domain.media.cache.MediaCache
-import me.him188.ani.app.domain.media.cache.engine.InvalidMediaCacheEngineKey
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngine
 import me.him188.ani.app.domain.media.cache.engine.MediaStats
 import me.him188.ani.app.domain.media.cache.engine.TorrentMediaCacheEngine
 import me.him188.ani.app.domain.media.fetch.MediaFetcher
 import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
-import me.him188.ani.app.platform.Context
-import me.him188.ani.app.platform.files
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.MediaCacheMetadata
 import me.him188.ani.datasources.api.MetadataKey
@@ -65,16 +60,10 @@ import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.coroutines.RestartableCoroutineScope
 import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.coroutines.update
-import me.him188.ani.utils.io.SystemPath
-import me.him188.ani.utils.io.name
-import me.him188.ani.utils.io.readText
-import me.him188.ani.utils.io.resolve
-import me.him188.ani.utils.io.useDirectoryEntries
 import me.him188.ani.utils.logging.debug
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
-import me.him188.ani.utils.logging.warn
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 
