@@ -25,6 +25,7 @@ import me.him188.ani.app.domain.media.cache.engine.TorrentMediaCacheEngine
 import me.him188.ani.app.platform.AppTerminator
 import me.him188.ani.app.platform.ContextMP
 import me.him188.ani.app.platform.files
+import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.httpdownloader.DownloadState
 import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.io.absolutePath
@@ -68,7 +69,7 @@ class MediaCacheMigrator(
     val status: StateFlow<Status?> = _status
 
     @OptIn(DelicateCoroutinesApi::class)
-    fun migrate() = GlobalScope.launch(Dispatchers.IO) {
+    fun migrate() = GlobalScope.launch(Dispatchers.IO_) {
         try {
             _status.value = Status.Init
 
@@ -79,7 +80,8 @@ class MediaCacheMigrator(
             val newBasePath = getNewBaseSaveDir()
             if (newBasePath == null) {
                 logger.error { "[migration] Failed to get external files directory while migrating cache." }
-                _status.value = Status.Error(IllegalStateException("Shared storage is not currently available."))
+                _status.value =
+                    Status.Error(IllegalStateException("Shared storage is not currently available."))
                 return@launch
             }
 
@@ -114,8 +116,10 @@ class MediaCacheMigrator(
 
                 _status.value = Status.Metadata
                 metadataStore.updateData { original ->
-                    val nonTorrentMetadata = original.filter { it.engine != torrentStorage.engine.engineKey }
-                    val torrentMetadata = original.filter { it.engine == torrentStorage.engine.engineKey }
+                    val nonTorrentMetadata =
+                        original.filter { it.engine != torrentStorage.engine.engineKey }
+                    val torrentMetadata =
+                        original.filter { it.engine == torrentStorage.engine.engineKey }
 
                     nonTorrentMetadata + torrentMetadata.map { save ->
                         save.copy(
@@ -161,12 +165,16 @@ class MediaCacheMigrator(
 
                 _status.value = Status.Metadata
                 metadataStore.updateData { original ->
-                    val nonWebMetadata = original.filter { it.engine != webStorage.engine.engineKey }
+                    val nonWebMetadata =
+                        original.filter { it.engine != webStorage.engine.engineKey }
                     val webMetadata = original.filter { it.engine == webStorage.engine.engineKey }
 
                     nonWebMetadata + webMetadata.map { save ->
                         save.copy(
-                            metadata = webStorage.engine.modifyMetadataForMigration(save.metadata, newPath.path),
+                            metadata = webStorage.engine.modifyMetadataForMigration(
+                                save.metadata,
+                                newPath.path
+                            ),
                         )
                     }
                 }
@@ -208,7 +216,8 @@ class MediaCacheMigrator(
     sealed interface Status {
         object Init : Status
 
-        sealed class Cache(val currentFile: String?, val totalSize: Long, val migratedSize: Long) : Status
+        sealed class Cache(val currentFile: String?, val totalSize: Long, val migratedSize: Long) :
+            Status
 
         class TorrentCache(currentFile: String?, totalSize: Long, migratedSize: Long) :
             Cache(currentFile, totalSize, migratedSize)
