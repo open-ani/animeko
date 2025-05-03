@@ -52,6 +52,7 @@ import me.him188.ani.app.platform.findActivity
 import me.him188.ani.app.tools.update.AndroidUpdateInstaller
 import me.him188.ani.app.tools.update.UpdateInstaller
 import me.him188.ani.utils.httpdownloader.HttpDownloader
+import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.io.absolutePath
 import me.him188.ani.utils.io.deleteRecursively
 import me.him188.ani.utils.io.exists
@@ -164,33 +165,19 @@ fun getAndroidModules(
             appTerminator = get(),
             migrationChecker = object : MediaCacheMigrator.MigrationChecker {
                 override suspend fun requireMigrateTorrentCache(): Boolean {
-                    val defaultMediaCacheDir = context.files.defaultBaseMediaCacheDir
-                    val fallbackInternalPath =
-                        context.files.dataDir.resolve(TorrentMediaCacheEngine.LEGACY_MEDIA_CACHE_DIR)
-
-                    // 旧的缓存目录如果有内容，则考虑需要迁移
-                    if (fallbackInternalPath.exists() && fallbackInternalPath.list().isNotEmpty()) {
-                        // 如果 defaultMediaCacheDir 不是内部目录, 则说明是外部目录, 并且外部目录如果是可用的, 则需要进行迁移. 
-                        // 这是绝大部分用户更新到 4.11 后的 path.
-                        if (!defaultMediaCacheDir.absolutePath.startsWith(context.filesDir.absolutePath) &&
-                            Environment.getExternalStorageState(defaultMediaCacheDir.toFile()) == Environment.MEDIA_MOUNTED
-                        ) {
-                            return true
-                        }
-                    }
-
-                    return false
+                    return requireMigrate(context.files.dataDir.resolve(TorrentMediaCacheEngine.LEGACY_MEDIA_CACHE_DIR))
                 }
 
                 override suspend fun requireMigrateWebM3uCache(): Boolean {
+                    @Suppress("DEPRECATION")
+                    return requireMigrate(context.files.dataDir.resolve(HttpMediaCacheEngine.LEGACY_MEDIA_CACHE_DIR))
+                }
+
+                private fun requireMigrate(fallbackPath: SystemPath): Boolean {
                     val defaultMediaCacheDir = context.files.defaultBaseMediaCacheDir
 
-                    @Suppress("DEPRECATION")
-                    val fallbackInternalPath =
-                        context.files.dataDir.resolve(HttpMediaCacheEngine.LEGACY_MEDIA_CACHE_DIR)
-
                     // 旧的缓存目录如果有内容，则考虑需要迁移
-                    if (fallbackInternalPath.exists() && fallbackInternalPath.list().isNotEmpty()) {
+                    if (fallbackPath.exists() && fallbackPath.list().isNotEmpty()) {
                         // 如果 defaultMediaCacheDir 不是内部目录, 则说明是外部目录, 并且外部目录如果是可用的, 则需要进行迁移. 
                         // 这是绝大部分用户更新到 4.11 后的 path.
                         if (!defaultMediaCacheDir.absolutePath.startsWith(context.filesDir.absolutePath) &&
