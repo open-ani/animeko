@@ -56,7 +56,7 @@ actual fun SystemPath.isRegularFile(): Boolean {
 
 private val logger = logger<SystemPath>()
 
-actual fun SystemPath.moveDirectoryRecursively(target: SystemPath, visitor: ((SystemPath) -> Unit)?) {
+actual fun SystemPath.moveDirectoryRecursively(target: SystemPath, onBeforeMove: ((SystemPath) -> Unit)?) {
     val sourceDir = this.toNioPath()
     val targetDir = target.toNioPath()
 
@@ -82,7 +82,7 @@ actual fun SystemPath.moveDirectoryRecursively(target: SystemPath, visitor: ((Sy
 
             override fun visitFile(file: NioPath, attrs: BasicFileAttributes): FileVisitResult {
                 val targetFile = targetDir.resolve(sourceDir.relativize(file))
-                visitor?.invoke(file.toKtPath().inSystem)
+                onBeforeMove?.invoke(file.toKtPath().inSystem)
 
                 Files.move(file, targetFile, StandardCopyOption.REPLACE_EXISTING)
                 return FileVisitResult.CONTINUE

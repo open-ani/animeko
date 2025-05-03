@@ -13,10 +13,16 @@ import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.convert
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
+import kotlinx.io.files.SystemFileSystem.metadataOrNull
+import kotlinx.io.files.SystemFileSystem.atomicMove
+import kotlinx.io.files.SystemFileSystem.copy
+import kotlinx.io.files.SystemFileSystem.createDirectories
+import kotlinx.io.files.SystemFileSystem.delete
+import kotlinx.io.files.SystemFileSystem.list
 import kotlinx.io.files.SystemTemporaryDirectory
 import me.him188.ani.utils.platform.Uuid
 import platform.Foundation.*
-import kotlinx.cinterop.*
+import kotlinx.io.files.Path
 
 actual fun SystemPath.length(): Long = SystemFileSystem.metadataOrNull(path)?.size ?: 0
 
@@ -69,82 +75,60 @@ val SystemCacheDir by lazy {
 }
 
 /**
- * Recursively move (i.e. rename-if-possible, otherwise copy-then-delete) the directory represented
- * by this [SystemPath] to [target].
+ * Move a directory tree to [target].
  *
- * If [visitor] is supplied it is invoked *once* with the *target* directory after the move finishes
- * (useful for cache invalidation, DB re-opening, etc.).
+ * 1. We **first try** `FileSystem.atomicMove` (O(1) on the same volume).
+ * 2. If that fails (most often because the source & target are on different
+ *    iOS “containers”), we **fall back** to a manual *copy-then-delete*.
  *
- * ⚠️  Preconditions:
- *  * `this` **must** be a directory.
- *  * The call is **best-effort** – any Foundation error bubbles up as `IllegalStateException`.
+ * After every file or directory is placed at its new location the optional
+ * [onBeforeMove] is invoked with the *destination* path – mirroring the JVM
+ * implementation used on desktop.
  */
-// todo: test
-@OptIn(ExperimentalForeignApi::class)
 actual fun SystemPath.moveDirectoryRecursively(
     target: SystemPath,
-    visitor: ((SystemPath) -> Unit)?
+    onBeforeMove: ((SystemPath) -> Unit)?
 ) {
-    val fm = NSFileManager.defaultManager
-    val src = path.toString()
-    val dst = target.path.toString()
+    val fs = SystemFileSystem
+    val src = path
+    val dst = target.path
 
-    // Trivial no-op.
     if (src == dst) return
 
-    memScoped {
-        val errPtr = alloc<ObjCObjectVar<NSError?>> { }
-
-        // Create the parent directories for the destination so that the rename can succeed.
-        val dstParent = target.path.parent?.toString() ?: "/"
-        if (!fm.fileExistsAtPath(dstParent)) {
-            fm.createDirectoryAtPath(dstParent, /*withIntermediateDirectories = */ true, null, errPtr.ptr)
-            errPtr.value?.let { throw IllegalStateException(it.localizedDescription) }
-        }
-
-        // ---------- 1) Cheap path : atomic rename ----------
-        if (fm.moveItemAtPath(src, dst, errPtr.ptr)) {
-            visitor?.invoke(target)
-            return
-        }
-
-        // If we are here the rename failed – most often “cross-device link”.
-        // Clear the error object so we can reuse the pointer.
-        errPtr.value = null
-
-        // ---------- 2) Manual copy-then-delete fallback ----------
-        // (a) Create the destination directory.
-        fm.createDirectoryAtPath(dst, true, null, errPtr.ptr)
-        errPtr.value?.let { throw IllegalStateException(it.localizedDescription) }
-
-        // (b) Enumerate source tree and copy every item.
-        val enumerator: NSDirectoryEnumerator =
-            fm.enumeratorAtPath(src) ?: error("Cannot enumerate $src")
-
-        var next = enumerator.nextObject() as NSString?
-        while (next != null) {
-            val rel = next as String
-            val fromPath = "$src/$rel"
-            val toPath = "$dst/$rel"
-
-            // Directory? -> create, otherwise copy file
-            val isDir = enumerator.fileAttributes()?.get("NSFileType") as? String == NSFileTypeDirectory
-            if (isDir) {
-                fm.createDirectoryAtPath(toPath, true, null, errPtr.ptr)
-            } else {
-                fm.copyItemAtPath(fromPath, toPath, errPtr.ptr)
-            }
-            errPtr.value?.let { throw IllegalStateException(it.localizedDescription) }
-
-            next = enumerator.nextObject() as NSString?
-        }
-
-        // (c) Delete the original tree – we only attempt this after a *complete* copy.
-        fm.removeItemAtPath(src, errPtr.ptr)
-        errPtr.value?.let { throw IllegalStateException(it.localizedDescription) }
+    // ────────── fast path: atomic rename ──────────
+    runCatching {
+        fs.createDirectories(dst.parent ?: return@runCatching) // ensure parent exists
+        fs.atomicMove(src, dst)
+    }.onSuccess {
+        onBeforeMove?.invoke(target)
+        return
     }
 
-    visitor?.invoke(target)
+    // ────────── slow path: copy everything, then delete originals ──────────
+    fun copyDirectoryRecursively(from: Path, into: Path) {
+        fs.createDirectories(into, mustCreate = false)
+
+        for (child in fs.list(from)) {
+            val destChild = into.resolve(child.name)
+
+            if (fs.metadata(child).isDirectory) {
+                copyDirectoryRecursively(child, destChild)
+                // after the subtree is moved notify visitor
+                onBeforeMove?.invoke(SystemPath(destChild))
+            } else {
+                // file: copy ➜ delete original
+                fs.copy(child, destChild, overwrite = true)
+                fs.delete(child)
+                onBeforeMove?.invoke(SystemPath(destChild))
+            }
+        }
+        // remove the now-empty source dir
+        fs.delete(from, mustExist = false)
+    }
+
+    copyDirectoryRecursively(src, dst)
+    // Finally notify for the root directory.
+    onBeforeMove?.invoke(target)
 }
 
 
