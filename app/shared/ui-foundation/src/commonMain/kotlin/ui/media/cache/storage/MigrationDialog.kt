@@ -29,16 +29,37 @@ import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
 fun MediaCacheMigrationDialog(
     status: MediaCacheMigrator.Status,
 ) {
-    AlertDialog(
-        title = { Text(if (status !is MediaCacheMigrator.Status.Error) "正在迁移缓存" else "迁移发生错误") },
-        text = {
-            Column {
-                Text(renderMigrationStatus(status = status))
-                if (status !is MediaCacheMigrator.Status.Error) {
+    when (status) {
+        is MediaCacheMigrator.Status.Error -> AlertDialog(
+            title = { Text("迁移发生错误") },
+            text = { Text(renderMigrationStatus(status = status)) },
+            onDismissRequest = { /* not dismiss-able */ },
+            confirmButton = {
+                val clipboard = LocalClipboardManager.current
+                TextButton(
+                    {
+                        val errorMessage = status.throwable?.stackTraceToString()
+                        if (errorMessage != null) {
+                            clipboard.setText(AnnotatedString(errorMessage))
+                        }
+                    },
+                ) { Text(text = "复制") }
+            },
+        )
+
+        else -> AlertDialog(
+            title = { Text("正在迁移缓存") },
+            text = {
+                Column {
+                    Text(renderMigrationStatus(status = status))
                     Spacer(modifier = Modifier.height(24.dp))
                     if (status is MediaCacheMigrator.Status.Cache) {
                         LinearProgressIndicator(
-                            progress = { status.migratedSize.toFloat() / status.totalSize.coerceAtLeast(1L) },
+                            progress = {
+                                status.migratedSize.toFloat() / status.totalSize.coerceAtLeast(
+                                    1L
+                                )
+                            },
                             modifier = Modifier.fillMaxWidth(),
                         )
                     } else {
@@ -47,22 +68,11 @@ fun MediaCacheMigrationDialog(
                     Spacer(modifier = Modifier.height(24.dp))
                     Text("迁移过程中设备可能会轻微卡顿，请不要强制关闭 Ani，否则可能导致闪退")
                 }
-            }
-        },
-        onDismissRequest = { /* not dismiss-able */ },
-        confirmButton = {
-            if (status !is MediaCacheMigrator.Status.Error) return@AlertDialog
-            val clipboard = LocalClipboardManager.current
-            TextButton(
-                {
-                    val errorMessage = status.throwable?.stackTraceToString()
-                    if (errorMessage != null) {
-                        clipboard.setText(AnnotatedString(errorMessage))
-                    }
-                },
-            ) { Text(text = "复制") }
-        },
-    )
+            },
+            onDismissRequest = { /* not dismiss-able */ },
+            confirmButton = { }
+        )
+    }
 }
 
 @Composable
