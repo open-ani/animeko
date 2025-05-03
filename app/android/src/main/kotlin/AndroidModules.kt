@@ -9,6 +9,7 @@
 
 package me.him188.ani.android
 
+import android.content.Context
 import android.content.Intent
 import android.os.Environment
 import android.widget.Toast
@@ -39,9 +40,10 @@ import me.him188.ani.app.domain.torrent.LocalAnitorrentEngineFactory
 import me.him188.ani.app.domain.torrent.RemoteAnitorrentEngineFactory
 import me.him188.ani.app.domain.torrent.TorrentManager
 import me.him188.ani.app.domain.torrent.service.AniTorrentService
-import me.him188.ani.app.domain.torrent.service.TorrentServiceConnectionManager
 import me.him188.ani.app.domain.torrent.service.TorrentServiceConnection
+import me.him188.ani.app.domain.torrent.service.TorrentServiceConnectionManager
 import me.him188.ani.app.navigation.BrowserNavigator
+import me.him188.ani.app.platform.AndroidContextFiles
 import me.him188.ani.app.platform.AndroidPermissionManager
 import me.him188.ani.app.platform.AppTerminator
 import me.him188.ani.app.platform.BaseComponentActivity
@@ -74,8 +76,20 @@ import org.openani.mediamp.exoplayer.ExoPlayerMediampPlayerFactory
 import org.openani.mediamp.exoplayer.compose.ExoPlayerMediampPlayerSurfaceProvider
 import java.io.File
 import kotlin.concurrent.thread
-import kotlin.io.resolve
 import kotlin.system.exitProcess
+
+private fun resolveBaseMediaCacheDir(context: Context): String {
+    val defaultBaseMediaCacheDir = context.files.defaultBaseMediaCacheDir.absolutePath
+
+    // 如果外部目录没 mounted, 那也要使用内部目录
+    return if (!defaultBaseMediaCacheDir.startsWith(context.filesDir.absolutePath) &&
+        Environment.getExternalStorageState(File(defaultBaseMediaCacheDir)) == Environment.MEDIA_MOUNTED
+    ) {
+        defaultBaseMediaCacheDir
+    } else {
+        (context.files as AndroidContextFiles).fallbackInternalBaseMediaCacheDir.absolutePath
+    }
+}
 
 fun getAndroidModules(
     serviceConnectionManager: TorrentServiceConnectionManager,
@@ -93,23 +107,9 @@ fun getAndroidModules(
         val context = androidContext()
         val logger = logger<TorrentManager>()
 
-        val defaultBaseMediaCacheDir = context.files.defaultBaseMediaCacheDir.absolutePath
-        val fallbackInternalPath =
-            context.filesDir.resolve(TorrentMediaCacheEngine.LEGACY_MEDIA_CACHE_DIR).absolutePath
+        val legacyInternalPath = context.filesDir.resolve(TorrentMediaCacheEngine.LEGACY_MEDIA_CACHE_DIR).absolutePath
+        val oldCacheDir = Path(legacyInternalPath).resolve("api").inSystem
 
-        // 如果外部目录没 mounted, 那也要使用内部目录
-        val saveDir =
-            if (!defaultBaseMediaCacheDir.startsWith(context.filesDir.absolutePath) &&
-                Environment.getExternalStorageState(File(defaultBaseMediaCacheDir)) == Environment.MEDIA_MOUNTED
-            ) {
-                logger.info { "TorrentManager base save dir: $defaultBaseMediaCacheDir" }
-                defaultBaseMediaCacheDir
-            } else {
-                logger.info { "TorrentManager base save dir: $fallbackInternalPath, because external storage is not found or mounted." }
-                fallbackInternalPath
-            }
-
-        val oldCacheDir = Path(fallbackInternalPath).resolve("api").inSystem
         if (oldCacheDir.exists() && oldCacheDir.isDirectory()) {
             val piecesDir = oldCacheDir.resolve("pieces")
             if (piecesDir.exists() && piecesDir.isDirectory() && piecesDir.list().isNotEmpty()) {
@@ -123,6 +123,9 @@ fun getAndroidModules(
                 }
             }
         }
+
+        val saveDir = resolveBaseMediaCacheDir(context)
+        logger.info { "TorrentManager base save directory: $saveDir" }
 
         DefaultTorrentManager.create(
             coroutineScope.coroutineContext,
@@ -143,13 +146,15 @@ fun getAndroidModules(
         val context = androidContext()
         val logger = logger<TorrentManager>()
 
-        val saveDir = context.files.defaultBaseMediaCacheDir.resolve(HttpMediaCacheEngine.MEDIA_CACHE_DIR)
-        logger.info { "HttpMediaCacheEngine base save dir: $saveDir" }
+        @Suppress("DEPRECATION")
+        val saveDir = resolveBaseMediaCacheDir(context)
+            .let { Path(it).resolve(HttpMediaCacheEngine.MEDIA_CACHE_DIR) }
+        logger.info { "HttpMediaCacheEngine base save directory: $saveDir" }
 
         HttpMediaCacheEngine(
             mediaSourceId = MediaCacheManager.LOCAL_FS_MEDIA_SOURCE_ID,
             downloader = get<HttpDownloader>(),
-            saveDir = saveDir.path,
+            saveDir = saveDir,
             mediaResolver = get<MediaResolver>(),
         )
     }

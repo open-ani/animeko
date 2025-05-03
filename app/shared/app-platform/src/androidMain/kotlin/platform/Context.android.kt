@@ -23,17 +23,19 @@ actual typealias Context = android.content.Context
 actual val LocalContext: ProvidableCompositionLocal<Context>
     get() = androidx.compose.ui.platform.LocalContext
 
+class AndroidContextFiles(context: android.content.Context) : ContextFiles {
+    override val cacheDir: SystemPath =
+        (context.cacheDir ?: File("")).toKtPath().inSystem // can be null when previewing
+    override val dataDir: SystemPath =
+        (context.filesDir ?: File("")).toKtPath().inSystem // can be null when previewing
+
+    val fallbackInternalBaseMediaCacheDir = dataDir.resolve("media-downloads")
+
+    override val defaultBaseMediaCacheDir: SystemPath =
+        context.getExternalFilesDir(Environment.DIRECTORY_MOVIES)?.toKtPath()?.inSystem
+            ?: fallbackInternalBaseMediaCacheDir
+}
 
 internal actual val Context.filesImpl: ContextFiles
-    get() = object : ContextFiles {
-        override val cacheDir: SystemPath =
-            (this@filesImpl.cacheDir ?: File("")).toKtPath().inSystem // can be null when previewing
-        override val dataDir: SystemPath =
-            (this@filesImpl.filesDir ?: File("")).toKtPath().inSystem // can be null when previewing
-
-        override val defaultBaseMediaCacheDir: SystemPath =
-            getExternalFilesDir(Environment.DIRECTORY_MOVIES)?.toKtPath()?.inSystem
-                ?: dataDir.resolve("media-downloads")
-
-    }
+    get() = AndroidContextFiles(this)
 
