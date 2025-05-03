@@ -17,6 +17,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.serialization.SerializationException
+import me.him188.ani.app.data.persistent.DataStoreJson
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.cache.engine.HttpMediaCacheEngine
@@ -35,11 +37,15 @@ import me.him188.ani.utils.io.exists
 import me.him188.ani.utils.io.isDirectory
 import me.him188.ani.utils.io.moveDirectoryRecursively
 import me.him188.ani.utils.io.name
+import me.him188.ani.utils.io.readText
 import me.him188.ani.utils.io.resolve
+import me.him188.ani.utils.io.useDirectoryEntries
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
+import me.him188.ani.utils.logging.warn
 import org.koin.core.component.KoinComponent
+import kotlin.sequences.forEach
 
 /**
  * Since 4.8, metadata of media cache is stored in the datastore. Migration workaround.
@@ -93,8 +99,7 @@ class MediaCacheMigrator(
     @OptIn(InvalidMediaCacheEngineKey::class)
     private suspend fun migrateMediaCacheMetadata() {
         val storages = mediaCacheManager.storagesIncludingDisabled
-
-        val legacyMetadataDir = with(DataStoreMediaCacheStorage) { context.getMediaMetadataDir() }
+        val legacyMetadataDir = context.files.dataDir.resolve("media-cache")
 
         storages
             .firstOrNull { it.engine is TorrentMediaCacheEngine }
@@ -103,7 +108,7 @@ class MediaCacheMigrator(
 
                 val dir = legacyMetadataDir.resolve("anitorrent")
                 if (dir.exists() && dir.isDirectory()) {
-                    DataStoreMediaCacheStorage.migrateMetadataFromV47(metadataStore, storage, dir)
+                    migrateMetadata(metadataStore, storage, dir)
                 }
             }
         storages
@@ -114,7 +119,7 @@ class MediaCacheMigrator(
 
                 val dir = legacyMetadataDir.resolve("web-m3u")
                 if (dir.exists() && dir.isDirectory()) {
-                    DataStoreMediaCacheStorage.migrateMetadataFromV47(metadataStore, storage, dir)
+                    migrateMetadata(metadataStore, storage, dir)
                 }
             }
 
@@ -263,6 +268,45 @@ class MediaCacheMigrator(
         } catch (e: Exception) {
             _status.value = Status.Error(e)
             logger.error(e) { "[migration] Failed to migrate torrent cache." }
+        }
+    }
+
+    @Deprecated("Since 4.8, metadata is now stored in the datastore. This method is for migration only.")
+    @OptIn(InvalidMediaCacheEngineKey::class)
+    private suspend fun migrateMetadata(
+        metadataStore: DataStore<List<MediaCacheSave>>,
+        storage: MediaCacheStorage,
+        dir: SystemPath
+    ) = dir.useDirectoryEntries { entries ->
+        entries.forEach { file ->
+            val save = try {
+                DataStoreJson.decodeFromString(LegacyMediaCacheSaveSerializer, file.readText())
+                    .copy(engine = storage.engine.engineKey)
+            } catch (e: SerializationException) {
+                logger.error(e) { "[migration] Failed to deserialize metadata file ${file.name}, ignoring migration." }
+                return@useDirectoryEntries
+            }
+
+            metadataStore.updateData { originalList ->
+                val existing = originalList.indexOfFirst {
+                    it.origin.mediaId == save.origin.mediaId &&
+                            it.metadata.subjectId == save.metadata.subjectId &&
+                            it.metadata.episodeId == save.metadata.episodeId
+                }
+                if (existing != -1) {
+                    logger.warn {
+                        "[migration] Duplicated media cache metadata ${originalList[existing].origin.mediaId} found while migrating, " +
+                                "override to new ${save.origin.mediaId}, engine: ${save.engine}."
+                    }
+                    originalList.toMutableList().apply {
+                        removeAt(existing)
+                        add(save)
+                    }
+                } else {
+                    logger.info { "[migration] Migrating media cache metadata ${save.origin.mediaId}, engine: ${storage.engine.engineKey}." }
+                    originalList + save
+                }
+            }
         }
     }
 
