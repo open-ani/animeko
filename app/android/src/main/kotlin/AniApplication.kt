@@ -24,6 +24,7 @@ import androidx.lifecycle.ProcessLifecycleOwner
 import io.ktor.client.engine.okhttp.OkHttp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -161,7 +162,8 @@ class AniApplication : Application() {
             /**
              * If the torrent cache migration is required, we need to restore the caches.
              */
-            restorePersistedCaches = instance.requiresTorrentCacheMigration.map { !it },
+            restorePersistedCaches = instance.requiresTorrentCacheMigration
+                .combine(instance.requiresWebM3uCacheMigration) { t, w -> !t && !w },
         )
         startupTimeMonitor.mark(StepName.Modules)
 

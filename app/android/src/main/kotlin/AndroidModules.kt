@@ -157,6 +157,7 @@ fun getAndroidModules(
 
     single<HttpMediaCacheEngine> {
         val context = androidContext()
+        val logger = logger<TorrentManager>()
 
         val defaultMediaCacheDir = context.files.defaultMediaCacheDir
         val fallbackInternalPath =
@@ -173,10 +174,13 @@ fun getAndroidModules(
             }
         }
 
+        val saveDir = defaultMediaCacheDir.resolve("web-m3u")
+        logger.info { "HttpMediaCacheEngine base save dir: $saveDir" }
+
         HttpMediaCacheEngine(
             mediaSourceId = MediaCacheManager.LOCAL_FS_MEDIA_SOURCE_ID,
             downloader = get<HttpDownloader>(),
-            saveDir = defaultMediaCacheDir.resolve("web-m3u").path,
+            saveDir = saveDir.path,
             mediaResolver = get<MediaResolver>(),
         )
     }

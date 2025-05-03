@@ -544,6 +544,10 @@ fun KoinApplication.startCommonKoinModule(
      * Default directory of torrent cache is changed to external/shared storage and
      * cannot be changed. This is the workaround for startup migration.
      *
+     * Since 4.11 on Android and Desktop,
+     * Default directory of web m3u cache is changed to external/shared storage (Android) and
+     * media cache directory (Desktop). This is the workaround for startup migration.
+     *
      * This is only used on Android for cache migration.
      */
     restorePersistedCaches: Flow<Boolean> = flowOf(true),
@@ -604,7 +608,10 @@ fun KoinApplication.startCommonKoinModule(
             legacyMetadataDir.deleteRecursively()
         }
 
-        koin.get<HttpDownloader>().init() // 这涉及读取 DownloadState, 需要在加载 storage metadata 前调用.
+        // 只有需要恢复缓存, 才初始化 http downloader 
+        if (restorePersistedCaches.first()) {
+            koin.get<HttpDownloader>().init() // 这涉及读取 DownloadState, 需要在加载 storage metadata 前调用.
+        }
 
         val manager = koin.get<MediaCacheManager>()
         for (storage in manager.storagesIncludingDisabled) {

@@ -47,6 +47,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -144,8 +145,9 @@ object AniDesktop {
     }
 
     /**
-     * Since 4.11. Default directory of web m3u cache is changed to external/shared storage and
-     * cannot be changed. This is the workaround for startup migration.
+     * Since 4.11 on Android and Desktop,
+     * Default directory of web m3u cache is changed to external/shared storage (Android) and
+     * media cache directory (Desktop). This is the workaround for startup migration.
      */
     val requiresWebM3uCacheMigration = MutableStateFlow(false)
 
@@ -254,7 +256,7 @@ object AniDesktop {
         val koin = startKoin {
             modules(getCommonKoinModule({ context }, coroutineScope))
             modules(getDesktopModules({ context }, coroutineScope))
-        }.startCommonKoinModule(context, coroutineScope)
+        }.startCommonKoinModule(context, coroutineScope, requiresWebM3uCacheMigration.map { !it })
         startupTimeMonitor.mark(StepName.Modules)
 
         // Startup ok, run test task if needed
@@ -414,6 +416,7 @@ object AniDesktop {
         val mediaCacheMigrator = MediaCacheMigrator(
             context = context,
             metadataStore = context.dataStores.mediaCacheMetadataStore,
+            m3u8DownloaderStore = context.dataStores.m3u8DownloaderStore,
             mediaCacheManager = koin.koin.get(),
             settingsRepo = koin.koin.get(),
             appTerminator = koin.koin.get(),

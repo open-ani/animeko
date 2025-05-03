@@ -25,6 +25,7 @@ import me.him188.ani.app.domain.media.cache.engine.TorrentMediaCacheEngine
 import me.him188.ani.app.platform.AppTerminator
 import me.him188.ani.app.platform.ContextMP
 import me.him188.ani.app.platform.files
+import me.him188.ani.utils.httpdownloader.DownloadState
 import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.io.absolutePath
 import me.him188.ani.utils.io.actualSize
@@ -51,6 +52,7 @@ import org.koin.core.component.KoinComponent
 class MediaCacheMigrator(
     private val context: ContextMP,
     private val metadataStore: DataStore<List<MediaCacheSave>>,
+    private val m3u8DownloaderStore: DataStore<List<DownloadState>>,
     private val mediaCacheManager: MediaCacheManager,
     private val settingsRepo: SettingsRepository,
     private val appTerminator: AppTerminator,
@@ -165,6 +167,26 @@ class MediaCacheMigrator(
                     nonWebMetadata + webMetadata.map { save ->
                         save.copy(
                             metadata = webStorage.engine.modifyMetadataForMigration(save.metadata, newPath.path),
+                        )
+                    }
+                }
+
+                m3u8DownloaderStore.updateData { original ->
+                    original.map { state ->
+                        state.copy(
+                            outputPath = newPath
+                                .resolve(state.outputPath.substringAfter("web-m3u-cache"))
+                                .absolutePath,
+                            segmentCacheDir = newPath
+                                .resolve(state.segmentCacheDir.substringAfter("web-m3u-cache"))
+                                .absolutePath,
+                            segments = state.segments.map { seg ->
+                                seg.copy(
+                                    tempFilePath = newPath
+                                        .resolve(seg.tempFilePath.substringAfter("web-m3u-cache"))
+                                        .absolutePath,
+                                )
+                            },
                         )
                     }
                 }

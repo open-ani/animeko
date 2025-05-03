@@ -62,6 +62,7 @@ class MainActivity : AniComponentActivity() {
         MediaCacheMigrator(
             context = this,
             metadataStore = applicationContext.dataStores.mediaCacheMetadataStore,
+            m3u8DownloaderStore = applicationContext.dataStores.m3u8DownloaderStore,
             mediaCacheManager = mediaCacheManager,
             settingsRepo = settingsRepo,
             appTerminator = appTerminator,
