@@ -24,6 +24,8 @@ import me.him188.ani.client.models.AniBangumiUserToken
 import me.him188.ani.client.models.AniRefreshBangumiTokenRequest
 import me.him188.ani.utils.ktor.ApiInvoker
 import me.him188.ani.utils.platform.currentPlatform
+import me.him188.ani.utils.platform.currentTimeMillis
+import kotlin.time.Duration.Companion.seconds
 
 interface AniAuthClient {
     /**
@@ -39,7 +41,7 @@ interface AniAuthClient {
     /**
      * 用 [bangumiAccessToken] 登录 ani 账户, 返回 tokens.
      */
-    suspend fun getAccessTokensByBangumiToken(bangumiAccessToken: String): AccessTokenPair
+    suspend fun getAccessTokensByBangumiToken(bangumiAccessToken: String): String
 }
 
 data class AniAuthResult(
@@ -64,6 +66,7 @@ class AniAuthClientImpl(
                     tokens = AccessTokenPair(
                         bangumiAccessToken = bangumiToken.accessToken,
                         aniAccessToken = aniToken,
+                        expiresAtMillis = bangumiToken.expiresIn.seconds.inWholeMilliseconds + currentTimeMillis(),
                     ),
                     expiresInSeconds = bangumiToken.expiresIn,
                     refreshToken = bangumiToken.refreshToken,
@@ -91,6 +94,7 @@ class AniAuthClientImpl(
                     tokens = AccessTokenPair(
                         bangumiAccessToken = bangumiToken.accessToken,
                         aniAccessToken = aniToken,
+                        expiresAtMillis = bangumiToken.expiresIn.seconds.inWholeMilliseconds + currentTimeMillis(),
                     ),
                     expiresInSeconds = bangumiToken.expiresIn,
                     refreshToken = bangumiToken.refreshToken,
@@ -101,14 +105,11 @@ class AniAuthClientImpl(
         }
     }
 
-    override suspend fun getAccessTokensByBangumiToken(bangumiAccessToken: String): AccessTokenPair {
+    override suspend fun getAccessTokensByBangumiToken(bangumiAccessToken: String): String {
         try {
             return oauthApiInvoker {
                 val aniToken = bangumiLogin(bangumiAccessToken).body().token
-                AccessTokenPair(
-                    bangumiAccessToken = bangumiAccessToken,
-                    aniAccessToken = aniToken,
-                )
+                aniToken
             }
         } catch (e: Throwable) {
             throw RepositoryException.wrapOrThrowCancellation(e)
@@ -138,7 +139,7 @@ object ConstantFailureAniAuthClient : AniAuthClient {
         throw RepositoryServiceUnavailableException()
     }
 
-    override suspend fun getAccessTokensByBangumiToken(bangumiAccessToken: String): AccessTokenPair {
+    override suspend fun getAccessTokensByBangumiToken(bangumiAccessToken: String): String {
         throw RepositoryServiceUnavailableException()
     }
 }

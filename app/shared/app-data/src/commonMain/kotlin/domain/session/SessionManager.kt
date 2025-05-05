@@ -16,12 +16,14 @@ import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.filterNot
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.datetime.Clock
 import me.him188.ani.app.data.models.ApiFailure
 import me.him188.ani.app.data.repository.RepositoryAuthorizationException
 import me.him188.ani.app.data.repository.user.Session
 import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.utils.platform.annotations.TestOnly
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.time.Duration.Companion.hours
 
 /**
  * 授权状态管理器.
@@ -157,16 +159,28 @@ val SessionManager.verifiedAccessToken: Flow<AccessTokenPair?>
  * @throws RepositoryAuthorizationException
  */
 @OptIn(OpaqueSession::class)
-suspend fun SessionManager.checkTokenNow() {
+suspend fun SessionManager.checkTokenNow(
+    clock: Clock = Clock.System,
+) {
     val session = verifiedAccessToken.first()
-    if (session == null) {
+    if (session == null || session.isExpired(clock)) {
         // 没 token 肯定会失败, 就别发请求了
         throw RepositoryAuthorizationException("Precondition failed: verifiedAccessToken is null, aborting request.")
     }
 }
 
 @OptIn(OpaqueSession::class)
-suspend fun SessionManager.isLoggedInNow(): Boolean = verifiedAccessToken.first() != null
+suspend fun SessionManager.isLoggedInNow(
+    clock: Clock = Clock.System,
+): Boolean {
+    val token = verifiedAccessToken.first() ?: return false
+    return !token.isExpired(clock)
+}
+
+fun AccessTokenPair.isExpired(clock: Clock = Clock.System): Boolean {
+    return expiresAtMillis <= (clock.now()
+        .toEpochMilliseconds() + 13.hours.inWholeMilliseconds) // 提前 13 小时让 token 过期. 因为某些地方 shareIn cache 是 12h
+}
 
 /**
  * 当用户希望以游客身份登录时抛出的异常.

@@ -140,9 +140,8 @@ class DataStoreMediaCacheStorage(
     }
 
     private suspend fun refreshCache(): List<MediaCache> {
-        statSubscriptionScope.restart()
-
         return lock.withLock {
+            statSubscriptionScope.restart()
             val allRecovered = MutableStateFlow(persistentListOf<MediaCache>())
             val metadataFlowSnapshot = metadataFlow.first()
             val semaphore = Semaphore(8)

@@ -19,8 +19,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.serialization.Serializable
 import me.him188.ani.app.domain.session.AccessTokenPair
 import me.him188.ani.app.domain.session.SessionManager
-import me.him188.ani.utils.platform.currentTimeMillis
-import kotlin.time.Duration.Companion.hours
+import me.him188.ani.app.domain.session.isExpired
 
 /**
  * Do not access directly. Use [SessionManager] instead.
@@ -46,8 +45,8 @@ class TokenRepository(
                     AccessTokenPair(
                         bangumiAccessToken = save.accessTokens.bangumiAccessToken,
                         aniAccessToken = save.accessTokens.aniAccessToken,
+                        expiresAtMillis = save.accessTokens.expiresAtMillis,
                     ),
-                    expiresAtMillis = save.accessTokens.expiresAtMillis,
                 )
             }
 
@@ -68,7 +67,7 @@ class TokenRepository(
                         accessTokens = TokenSave.AccessTokens(
                             bangumiAccessToken = session.tokens.bangumiAccessToken,
                             aniAccessToken = session.tokens.aniAccessToken,
-                            expiresAtMillis = session.expiresAtMillis,
+                            expiresAtMillis = session.tokens.expiresAtMillis,
                         ),
                         isGuest = false,
                     )
@@ -130,11 +129,28 @@ data object GuestSession : Session
 // don't remove `data`. required for equals
 data class AccessTokenSession(
     val tokens: AccessTokenPair,
-    val expiresAtMillis: Long,
-) : Session
+) : Session {
+    @Deprecated("Use this.tokens.expiresAtMillis instead.", replaceWith = ReplaceWith("this.tokens.expiresAtMillis"))
+    val expiresAtMillis: Long get() = tokens.expiresAtMillis
+}
 
-fun AccessTokenSession.isValid() = !isExpired()
-fun AccessTokenSession.isExpired() = expiresAtMillis <= currentTimeMillis() + 1.hours.inWholeMilliseconds
+@Deprecated(
+    "",
+    replaceWith = ReplaceWith(
+        "!tokens.isExpired()",
+        "me.him188.ani.app.domain.session.isExpired",
+    ),
+)
+fun AccessTokenSession.isValid() = !tokens.isExpired()
+
+@Deprecated(
+    "",
+    replaceWith = ReplaceWith(
+        "tokens.isExpired()",
+        "me.him188.ani.app.domain.session.isExpired",
+    ),
+)
+fun AccessTokenSession.isExpired() = tokens.isExpired()
 
 
 /**
@@ -177,8 +193,8 @@ class LegacyTokenRepository(
                 AccessTokenPair(
                     accessToken,
                     "",
+                    expiresAtMillis = expireAt,
                 ),
-                expiresAtMillis = expireAt,
             )
         }
     }

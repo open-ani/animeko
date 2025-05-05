@@ -79,7 +79,6 @@ import me.him188.ani.app.data.repository.user.LegacyTokenRepository
 import me.him188.ani.app.data.repository.user.PreferencesRepositoryImpl
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.data.repository.user.TokenRepository
-import me.him188.ani.app.data.repository.user.isValid
 import me.him188.ani.app.domain.comment.TurnstileState
 import me.him188.ani.app.domain.danmaku.DanmakuManager
 import me.him188.ani.app.domain.foundation.ConvertSendCountExceedExceptionFeature
@@ -111,6 +110,7 @@ import me.him188.ani.app.domain.media.fetch.MediaSourceManagerImpl
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceCodecManager
 import me.him188.ani.app.domain.mediasource.subscription.MediaSourceSubscriptionRequesterImpl
 import me.him188.ani.app.domain.mediasource.subscription.MediaSourceSubscriptionUpdater
+import me.him188.ani.app.domain.session.AccessTokenPair
 import me.him188.ani.app.domain.session.AniApiProvider
 import me.him188.ani.app.domain.session.AniAuthClient
 import me.him188.ani.app.domain.session.AniAuthClientImpl
@@ -122,6 +122,7 @@ import me.him188.ani.app.domain.session.OpaqueSession
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.session.SessionStatus
 import me.him188.ani.app.domain.session.finalState
+import me.him188.ani.app.domain.session.isExpired
 import me.him188.ani.app.domain.session.unverifiedAccessToken
 import me.him188.ani.app.domain.session.unverifiedAccessTokenOrNull
 import me.him188.ani.app.domain.settings.ProxyProvider
@@ -611,7 +612,7 @@ fun KoinApplication.startCommonKoinModule(
         when (legacySession) {
             is AccessTokenSession -> {
                 val authClient = koin.get<AniAuthClient>()
-                if (!legacySession.isValid()) {
+                if (legacySession.tokens.isExpired()) {
                     val refreshToken = legacyRepo.refreshToken.first()
                     if (refreshToken == null) {
                         logger.info { "Legacy session is AccessTokenSession but invalid, skipping migrate and deleting legacy info" }
@@ -637,7 +638,6 @@ fun KoinApplication.startCommonKoinModule(
                     newRepo.setSession(
                         AccessTokenSession(
                             tokens = authResult.tokens,
-                            expiresAtMillis = legacySession.expiresAtMillis,
                         ),
                     )
                     sessionManager.retry()
@@ -650,7 +650,7 @@ fun KoinApplication.startCommonKoinModule(
                     val legacyBangumiToken = legacySession.tokens.bangumiAccessToken
                     // legacy aniAccessToken is always empty.
 
-                    val tokens = try {
+                    val aniToken = try {
                         authClient.getAccessTokensByBangumiToken(legacyBangumiToken)
                     } catch (e: Throwable) {
                         logger.warn(
@@ -666,8 +666,11 @@ fun KoinApplication.startCommonKoinModule(
 
                     newRepo.setSession(
                         AccessTokenSession(
-                            tokens = tokens,
-                            expiresAtMillis = legacySession.expiresAtMillis,
+                            tokens = AccessTokenPair(
+                                bangumiAccessToken = legacyBangumiToken,
+                                aniAccessToken = aniToken,
+                                expiresAtMillis = legacySession.tokens.expiresAtMillis,
+                            ),
                         ),
                     )
                     sessionManager.retry()

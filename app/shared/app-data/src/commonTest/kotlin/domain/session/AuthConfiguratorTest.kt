@@ -18,12 +18,14 @@ import me.him188.ani.app.data.repository.RepositoryNetworkException
 import me.him188.ani.app.data.repository.user.AccessTokenSession
 import me.him188.ani.client.models.AniAnonymousBangumiUserToken
 import me.him188.ani.client.models.AniBangumiUserToken
+import me.him188.ani.utils.platform.currentTimeMillis
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.test.runTest as runCoroutineTest
 
 class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
@@ -537,7 +539,11 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
             override suspend fun getResult(requestId: String): AniAuthResult? {
                 return getResult()?.let {
                     AniAuthResult(
-                        AccessTokenPair(it.accessToken, it.accessToken),
+                        AccessTokenPair(
+                            it.accessToken,
+                            it.accessToken,
+                            expiresAtMillis = it.expiresIn.seconds.inWholeMilliseconds + currentTimeMillis(),
+                        ),
                         it.expiresIn,
                         it.refreshToken,
                     )
@@ -548,7 +554,10 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
                 val result = refreshAccessToken()
                 return if (result != null) {
                     AniAuthResult(
-                        AccessTokenPair(result.accessToken, result.accessToken),
+                        AccessTokenPair(
+                            result.accessToken, result.accessToken,
+                            expiresAtMillis = result.expiresIn.seconds.inWholeMilliseconds + currentTimeMillis(),
+                        ),
                         result.expiresIn,
                         result.refreshToken,
                     )
@@ -557,8 +566,8 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
                 }
             }
 
-            override suspend fun getAccessTokensByBangumiToken(bangumiAccessToken: String): AccessTokenPair {
-                return AccessTokenPair(bangumiAccessToken, bangumiAccessToken)
+            override suspend fun getAccessTokensByBangumiToken(bangumiAccessToken: String): String {
+                return bangumiAccessToken
             }
         }
     }
@@ -571,5 +580,5 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
     private fun AccessTokenSession(
         accessToken: String, // bangumi
         expiresAtMillis: Long,
-    ) = AccessTokenSession(tokens = AccessTokenPair(accessToken, accessToken), expiresAtMillis)
+    ) = AccessTokenSession(tokens = AccessTokenPair(accessToken, accessToken, expiresAtMillis))
 }

@@ -106,10 +106,11 @@ sealed interface SessionStatus {
 data class AccessTokenPair(
     val bangumiAccessToken: String,
     val aniAccessToken: String,
+    val expiresAtMillis: Long,
 ) {
     override fun toString(): String {
         // 日志不打印 token
-        return "AccessTokenPair(bangumiAccessToken.hashCode=${bangumiAccessToken.hashCode()}, aniAccessToken.hashCode=${aniAccessToken.hashCode()})"
+        return "AccessTokenPair(bangumiAccessToken.hashCode=${bangumiAccessToken.hashCode()}, aniAccessToken.hashCode=${aniAccessToken.hashCode()}, expiresAtMillis=$expiresAtMillis)"
     }
 }
 

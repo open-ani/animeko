@@ -78,11 +78,11 @@ object BangumiSubjectGraphQLParser {
             val characters = element.getOrFail("characters").jsonArray.mapIndexed { index, relatedCharacter ->
                 check(relatedCharacter is JsonObject)
 
-                val role = when (relatedCharacter.getIntOrFail("type")) {
+                val role = when (val type = relatedCharacter.getIntOrFail("type")) {
                     1 -> CharacterRole.MAIN
                     2 -> CharacterRole.SUPPORTING
                     3 -> CharacterRole.GUEST
-                    else -> throw IllegalStateException("Unexpected character type: $relatedCharacter")
+                    else -> CharacterRole(type)
                 }
 
                 val character = relatedCharacter.getOrFail("character").jsonObject
@@ -142,11 +142,11 @@ object BangumiSubjectGraphQLParser {
         val characters = getOrFail("characters").jsonArray.mapIndexed { _, relatedCharacter ->
             check(relatedCharacter is JsonObject)
 
-            val role = when (relatedCharacter.getIntOrFail("type")) {
+            val role = when (val type = relatedCharacter.getIntOrFail("type")) {
                 1 -> CharacterRole.MAIN
                 2 -> CharacterRole.SUPPORTING
                 3 -> CharacterRole.GUEST
-                else -> throw IllegalStateException("Unexpected character type: $relatedCharacter")
+                else -> CharacterRole(type)
             }
 
             val character = relatedCharacter.getOrFail("character").jsonObject

@@ -290,16 +290,20 @@ class AniAuthConfigurator(
      * 通过 token 授权
      */
     suspend fun authorizeByBangumiToken(bangumiToken: String) {
-        val tokenPair = try {
+        val aniAccessToken = try {
             authClient.getAccessTokensByBangumiToken(bangumiToken) // This may throw
         } catch (e: Throwable) {
             lastAuthException.value = e
             throw e
         }
+        val expiresAtMillis = currentTimeMillis() + 365.days.inWholeMilliseconds
         sessionManager.setSession(
             AccessTokenSession(
-                tokens = tokenPair,
-                expiresAtMillis = currentTimeMillis() + 100.days.inWholeMilliseconds,
+                tokens = AccessTokenPair(
+                    bangumiAccessToken = bangumiToken,
+                    aniAccessToken = aniAccessToken,
+                    expiresAtMillis = expiresAtMillis,
+                ),
             ),
         )
 

@@ -39,7 +39,6 @@ import me.him188.ani.app.data.repository.user.AccessTokenSession
 import me.him188.ani.app.data.repository.user.GuestSession
 import me.him188.ani.app.data.repository.user.Session
 import me.him188.ani.app.data.repository.user.TokenRepository
-import me.him188.ani.app.data.repository.user.isValid
 import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.ui.foundation.BackgroundScope
 import me.him188.ani.app.ui.foundation.HasBackgroundScope
@@ -199,7 +198,7 @@ class BangumiSessionManager(
             }
 
             is AccessTokenSession -> {
-                if (savedSession.isValid()) {
+                if (!savedSession.tokens.isExpired()) {
                     // token 有效, 尝试登录
                     emit(SessionStatus.Verifying(savedSession.tokens))
 
@@ -400,7 +399,7 @@ class BangumiSessionManager(
         logger.info { "Bangumi session refreshed, new expiresAtMillis=${newSession.expiresAtMillis}" }
 
         tokenRepository.setRefreshToken(newSession.bangumiRefreshToken)
-        setSessionImpl(AccessTokenSession(newSession.accessTokens, newSession.expiresAtMillis))
+        setSessionImpl(AccessTokenSession(newSession.accessTokens))
         if (isNewLogin) {
             events.tryEmit(SessionEvent.Login)
         } else {
@@ -444,7 +443,7 @@ class BangumiSessionManager(
         tokenRepository.session.first()?.let {
             when (it) {
                 is AccessTokenSession -> {
-                    tokenRepository.setSession(it.copy(expiresAtMillis = 1L))
+                    tokenRepository.setSession(it.copy())
                 }
 
                 GuestSession -> {

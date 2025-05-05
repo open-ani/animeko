@@ -9,13 +9,14 @@
 
 package me.him188.ani.utils.coroutines
 
-import kotlinx.atomicfu.atomic
+import kotlinx.atomicfu.locks.ReentrantLock
+import kotlinx.atomicfu.locks.withLock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlin.concurrent.Volatile
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 
@@ -24,22 +25,16 @@ import kotlin.coroutines.EmptyCoroutineContext
  * cancelling all existing ones without closing the scope, and launching new ones later.
  */
 class RestartableCoroutineScope(
-    parentContext: CoroutineContext = EmptyCoroutineContext
+    private val parentContext: CoroutineContext = EmptyCoroutineContext
 ) {
-    private val parentScope = CoroutineScope(parentContext + SupervisorJob())
-    private val childJobRef = atomic(SupervisorJob())
-
-    /**
-     * Thread-safely gets the current child scope for launching coroutines
-     */
-    private val childScope: CoroutineScope
-        get() {
-            val job = childJobRef.value
-            return CoroutineScope(parentScope.coroutineContext + job)
-        }
+    @Volatile
+    private var scope: CoroutineScope = newScope()
+    private val lock = ReentrantLock()
 
     val currentCoroutineContext: CoroutineContext
-        get() = childJobRef.value
+        get() = lock.withLock {
+            scope.coroutineContext
+        }
 
     /**
      * Launches a new coroutine in the current child scope in a thread-safe manner
@@ -51,7 +46,9 @@ class RestartableCoroutineScope(
         start: CoroutineStart = CoroutineStart.DEFAULT,
         block: suspend CoroutineScope.() -> Unit
     ): Job {
-        return childScope.launch(context, start, block)
+        lock.withLock {
+            return scope.launch(context, start, block)
+        }
     }
 
     /**
@@ -60,16 +57,29 @@ class RestartableCoroutineScope(
      * Thread-safe.
      */
     fun restart() {
-        val oldJob = childJobRef.getAndSet(SupervisorJob())
-        oldJob.cancel()
+        lock.withLock {
+            scope.cancel() // Cancel all active coroutines
+            scope = newScope() // Create a new child scope
+        }
     }
+
+    private fun newScope(): CoroutineScope = parentContext.childScope()
 
     /**
      * Completely closes this scope and all its coroutines.
      * Thread-safe.
      */
     fun close() {
-        restart() // Cancel any active child jobs
-        parentScope.cancel() // Cancel the parent scope
+        lock.withLock {
+            scope.cancel()
+        }
+    }
+
+    suspend fun closeAndJoin() {
+        val scope = lock.withLock {
+            scope.cancel()
+            scope
+        }
+        scope.coroutineContext[Job]!!.join()
     }
 }
