@@ -117,6 +117,6 @@ private fun BangumiNextSubjectInterestComment.toSubjectReview(subjectId: Int) = 
         id = user.id,
         nickname = user.nickname,
         username = null,
-        avatarUrl = user.avatar.medium,
+        avatarUrl = user.avatar.large,
     ), // 没有username,
 )

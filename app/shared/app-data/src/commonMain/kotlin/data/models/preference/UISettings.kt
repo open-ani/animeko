@@ -109,7 +109,7 @@ enum class NsfwMode {
 @Immutable
 data class SearchSettings(
     val enableNewSearchSubjectApi: Boolean = false,
-    val nsfwMode: NsfwMode = NsfwMode.HIDE,
+    val nsfwMode: NsfwMode = NsfwMode.BLUR,
 ) {
     companion object {
         @Stable

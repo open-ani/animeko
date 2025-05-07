@@ -56,6 +56,10 @@ kotlin {
         api(libs.jna)
         api(libs.jna.platform)
     }
+    sourceSets.iosMain.dependencies {
+        // Workaround for CMP bug since 1.8.0. Removing this will cause IDE sync failure and may break ios build.
+        api("androidx.performance:performance-annotation:1.0.0-alpha01")
+    }
 }
 
 android {
