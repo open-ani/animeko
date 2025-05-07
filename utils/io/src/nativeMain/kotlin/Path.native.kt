@@ -13,16 +13,9 @@ import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.convert
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
-import kotlinx.io.files.SystemFileSystem.metadataOrNull
-import kotlinx.io.files.SystemFileSystem.atomicMove
-import kotlinx.io.files.SystemFileSystem.copy
-import kotlinx.io.files.SystemFileSystem.createDirectories
-import kotlinx.io.files.SystemFileSystem.delete
-import kotlinx.io.files.SystemFileSystem.list
 import kotlinx.io.files.SystemTemporaryDirectory
 import me.him188.ani.utils.platform.Uuid
 import platform.Foundation.*
-import kotlinx.io.files.Path
 
 actual fun SystemPath.length(): Long = SystemFileSystem.metadataOrNull(path)?.size ?: 0
 
@@ -77,13 +70,15 @@ val SystemCacheDir by lazy {
 /**
  * Move a directory tree to [target].
  *
- * 1. We **first try** `FileSystem.atomicMove` (O(1) on the same volume).
- * 2. If that fails (most often because the source & target are on different
- *    iOS “containers”), we **fall back** to a manual *copy-then-delete*.
+ * 1. First attempt an atomic move (O(1) on the same volume).
+ * 2. If that fails (typically due to cross-container moves in iOS),
+ *    fall back to a recursive copy-then-delete operation.
  *
- * After every file or directory is placed at its new location the optional
- * [onBeforeMove] is invoked with the *destination* path – mirroring the JVM
- * implementation used on desktop.
+ * The optional [onBeforeMove] callback is invoked with the destination path
+ * before each move operation.
+ *
+ * @param target The destination path
+ * @param onBeforeMove Optional callback invoked with each destination path before moving
  */
 actual fun SystemPath.moveDirectoryRecursively(
     target: SystemPath,
@@ -95,40 +90,45 @@ actual fun SystemPath.moveDirectoryRecursively(
 
     if (src == dst) return
 
-    // ────────── fast path: atomic rename ──────────
-    runCatching {
-        fs.createDirectories(dst.parent ?: return@runCatching) // ensure parent exists
+    // Create parent directories if they don't exist
+    fs.createDirectories(dst.parent ?: return)
+
+    try {
+        // First try atomic move (optimal if on same volume)
         fs.atomicMove(src, dst)
-    }.onSuccess {
         onBeforeMove?.invoke(target)
-        return
-    }
+    } catch (e: Throwable) {
+        // Fall back to recursive copy-then-delete
+        if (isDirectory()) {
+            // Create target directory
+            fs.createDirectories(dst)
+            onBeforeMove?.invoke(target)
 
-    // ────────── slow path: copy everything, then delete originals ──────────
-    fun copyDirectoryRecursively(from: Path, into: Path) {
-        fs.createDirectories(into, mustCreate = false)
+            // Copy all contents recursively
+            useDirectoryEntries { entries ->
+                entries.forEach { childPath ->
+                    val childName = childPath.path.name ?: return@forEach
+                    val targetChild = target.resolve(childName)
 
-        for (child in fs.list(from)) {
-            val destChild = into.resolve(child.name)
-
-            if (fs.metadata(child).isDirectory) {
-                copyDirectoryRecursively(child, destChild)
-                // after the subtree is moved notify visitor
-                onBeforeMove?.invoke(SystemPath(destChild))
-            } else {
-                // file: copy ➜ delete original
-                fs.copy(child, destChild, overwrite = true)
-                fs.delete(child)
-                onBeforeMove?.invoke(SystemPath(destChild))
+                    if (childPath.isDirectory()) {
+                        childPath.moveDirectoryRecursively(targetChild, onBeforeMove)
+                    } else {
+                        fs.createDirectories(targetChild.path.parent ?: return@forEach)
+                        onBeforeMove?.invoke(childPath)
+                        fs.atomicMove(childPath.path, targetChild.path)
+                    }
+                }
             }
-        }
-        // remove the now-empty source dir
-        fs.delete(from, mustExist = false)
-    }
 
-    copyDirectoryRecursively(src, dst)
-    // Finally notify for the root directory.
-    onBeforeMove?.invoke(target)
+            // Delete source directory after copying all contents
+            fs.delete(src)
+        } else {
+            onBeforeMove?.invoke(src.inSystem)
+            // For single files, just copy and delete
+            fs.atomicMove(src, dst)
+            fs.delete(src)
+        }
+    }
 }
 
 
