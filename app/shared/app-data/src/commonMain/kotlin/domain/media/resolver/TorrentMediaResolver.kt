@@ -149,10 +149,15 @@ class TorrentMediaResolver(
             // 解析标题匹配集数
             val parsedTitles = buildMap { // similar to `associateWith`, but ignores nulls
                 for (entry in videos) {
-                    val title = RawTitleParser.getDefault().parse(
-                        entry.getPath().substringBeforeLast("."),
-                        null,
-                    ).episodeRange
+                    val title = RawTitleParser.getDefault()
+                        .parse(
+                            entry.getPath()
+                                .substringBeforeLast(".")
+                                .substringAfterLast("\\")
+                                .substringAfterLast("/"),
+                            null,
+                        )
+                        .episodeRange
                     if (title != null) { // difference between `associateWith`
                         put(entry, title)
                     }

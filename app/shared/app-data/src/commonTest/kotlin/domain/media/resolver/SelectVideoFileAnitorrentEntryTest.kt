@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.domain.media.resolver
 
+import kotlinx.io.files.SystemPathSeparator
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
@@ -353,4 +354,33 @@ class SelectVideoFileAnitorrentEntryTest {
             }
         },
     )
+
+    @Test
+    fun `select of full path`() {
+        val selected = TorrentMediaResolver.selectVideoFileEntry(
+            listOf(
+                "[DBD制作组][4K_HDR][BanG Dream! Ave Mujica][01-13TV全集][2160P][WEB-DL][简日双语内嵌][AAC][MKV]$SystemPathSeparator[DBD-SUB][4K_HDR][BanG Dream! Ave Mujica][01][2160P][WEB-DL][H265-10bit][SCJP][AAC].mkv",
+                "[DBD制作组][4K_HDR][BanG Dream! Ave Mujica][01-13TV全集][2160P][WEB-DL][简日双语内嵌][AAC][MKV]$SystemPathSeparator[DBD-SUB][4K_HDR][BanG Dream! Ave Mujica][02][2160P][WEB-DL][H265-10bit][SCJP][AAC].mkv",
+                "[DBD制作组][4K_HDR][BanG Dream! Ave Mujica][01-13TV全集][2160P][WEB-DL][简日双语内嵌][AAC][MKV]$SystemPathSeparator[DBD-SUB][4K_HDR][BanG Dream! Ave Mujica][04][2160P][WEB-DL][H265-10bit][SCJP][AAC].mkv",
+                "[DBD制作组][4K_HDR][BanG Dream! Ave Mujica][01-13TV全集][2160P][WEB-DL][简日双语内嵌][AAC][MKV]$SystemPathSeparator[DBD-SUB][4K_HDR][BanG Dream! Ave Mujica][05][2160P][WEB-DL][H265-10bit][SCJP][AAC].mkv",
+                "[DBD制作组][4K_HDR][BanG Dream! Ave Mujica][01-13TV全集][2160P][WEB-DL][简日双语内嵌][AAC][MKV]$SystemPathSeparator[DBD-SUB][4K_HDR][BanG Dream! Ave Mujica][06][2160P][WEB-DL][H265-10bit][SCJP][AAC].mkv",
+                "[DBD制作组][4K_HDR][BanG Dream! Ave Mujica][01-13TV全集][2160P][WEB-DL][简日双语内嵌][AAC][MKV]$SystemPathSeparator[DBD-SUB][4K_HDR][BanG Dream! Ave Mujica][07][2160P][WEB-DL][H265-10bit][SCJP][AAC].mkv",
+                "[DBD制作组][4K_HDR][BanG Dream! Ave Mujica][01-13TV全集][2160P][WEB-DL][简日双语内嵌][AAC][MKV]$SystemPathSeparator[DBD-SUB][4K_HDR][BanG Dream! Ave Mujica][08][2160P][WEB-DL][H265-10bit][SCJP][AAC].mkv",
+                "[DBD制作组][4K_HDR][BanG Dream! Ave Mujica][01-13TV全集][2160P][WEB-DL][简日双语内嵌][AAC][MKV]$SystemPathSeparator[DBD-SUB][4K_HDR][BanG Dream! Ave Mujica][09][2160P][WEB-DL][H265-10bit][SCJP][AAC].mkv",
+                "[DBD制作组][4K_HDR][BanG Dream! Ave Mujica][01-13TV全集][2160P][WEB-DL][简日双语内嵌][AAC][MKV]$SystemPathSeparator[DBD-SUB][4K_HDR][BanG Dream! Ave Mujica][10][2160P][WEB-DL][H265-10bit][SCJP][AAC].mkv",
+                "[DBD制作组][4K_HDR][BanG Dream! Ave Mujica][01-13TV全集][2160P][WEB-DL][简日双语内嵌][AAC][MKV]$SystemPathSeparator[DBD-SUB][4K_HDR][BanG Dream! Ave Mujica][11][2160P][WEB-DL][H265-10bit][SCJP][AAC].mkv",
+                "[DBD制作组][4K_HDR][BanG Dream! Ave Mujica][01-13TV全集][2160P][WEB-DL][简日双语内嵌][AAC][MKV]$SystemPathSeparator[DBD-SUB][4K_HDR][BanG Dream! Ave Mujica][12][2160P][WEB-DL][H265-10bit][SCJP][AAC].mkv",
+                "[DBD制作组][4K_HDR][BanG Dream! Ave Mujica][01-13TV全集][2160P][WEB-DL][简日双语内嵌][AAC][MKV]$SystemPathSeparator[DBD-SUB][4K_HDR][BanG Dream! Ave Mujica][13][2160P][WEB-DL][H265-10bit][SCJP][AAC].mkv",
+                "[DBD制作组][4K_HDR][BanG Dream! Ave Mujica][01-13TV全集][2160P][WEB-DL][简日双语内嵌][AAC][MKV]$SystemPathSeparator[DBD-SUB][4K_HDR][Bang Dream! Ave Mujica][03][2160P][WEB-DL][H265-10bit][SCJP][AAC].mkv",
+            ),
+            { this },
+            episodeTitles = listOf("纵使焚身成灰，我亦要爱你。"),
+            episodeSort = EpisodeSort(11),
+            episodeEp = EpisodeSort(11),
+        )
+        assertEquals(
+            "[DBD制作组][4K_HDR][BanG Dream! Ave Mujica][01-13TV全集][2160P][WEB-DL][简日双语内嵌][AAC][MKV]$SystemPathSeparator[DBD-SUB][4K_HDR][BanG Dream! Ave Mujica][11][2160P][WEB-DL][H265-10bit][SCJP][AAC].mkv",
+            selected,
+        )
+    }
 }

@@ -14,6 +14,7 @@ import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
@@ -38,7 +39,6 @@ import kotlin.concurrent.Volatile
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.time.Duration.Companion.seconds
-import kotlinx.coroutines.IO
 
 /**
  * 表示 [BT 资源][TorrentSession] 中的一个文件.
@@ -220,7 +220,10 @@ abstract class AbstractTorrentFileEntry(
      */
     abstract override val pieces: PieceList
 
-    final override val fileName: String get() = relativePath.substringAfter("/")
+    final override val fileName: String
+        get() = relativePath
+            .substringAfterLast("\\")
+            .substringAfterLast("/")
 
     final override val pathInTorrent: String = relativePath
 
