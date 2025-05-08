@@ -23,7 +23,7 @@ kotlin {
         api(projects.app.shared.appPlatform)
         api(projects.app.shared.uiFoundation)
         api(projects.app.shared.videoPlayer.videoPlayerApi)
-        api(mediampLibs.mediamp.compose)
+        api(mediampLibs.mediamp.api)
         api(libs.kotlinx.coroutines.core)
         api(projects.utils.coroutines)
         api(projects.danmaku.danmakuApi)
@@ -40,7 +40,6 @@ kotlin {
         implementation(libs.androidx.media3.exoplayer.dash)
         implementation(libs.androidx.media3.exoplayer.hls)
         api(mediampLibs.mediamp.exoplayer)
-        api(mediampLibs.mediamp.exoplayer.compose)
     }
     sourceSets.desktopMain.dependencies {
         api(compose.desktop.currentOs) {
@@ -50,11 +49,9 @@ kotlin {
         api(libs.kotlinx.coroutines.swing)
         implementation(libs.vlcj)
         api(mediampLibs.mediamp.vlc)
-        api(mediampLibs.mediamp.vlc.compose)
     }
     sourceSets.appleMain.dependencies {
         api(mediampLibs.mediamp.avkit)
-        api(mediampLibs.mediamp.avkit.compose)
 //        api(mediampLibs.mediamp.avkit.compose)
     }
 }
