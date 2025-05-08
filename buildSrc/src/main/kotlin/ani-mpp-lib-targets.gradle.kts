@@ -173,6 +173,13 @@ configure<KotlinMultiplatformExtension> {
     }
 }
 
+if (enableHotReload && composeCompilerExtension != null) {
+    composeCompilerExtension.apply {
+        // Required by Compose hot reload
+        featureFlags.add(ComposeFeatureFlag.OptimizeNonSkippingGroups)
+    }
+}
+
 if (enableIos) {
     // ios testing workaround
     // https://developer.squareup.com/blog/kotlin-multiplatform-shared-test-resources/

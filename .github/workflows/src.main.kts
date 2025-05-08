@@ -1054,6 +1054,7 @@ class WithMatrix(
                 echo "ani.sentry.dsn=$${expr { secrets.SENTRY_DSN }}" >> local.properties
                 echo "ani.analytics.server=$${expr { secrets.ANALYTICS_SERVER }}" >> local.properties
                 echo "ani.analytics.key=$${expr { secrets.ANALYTICS_KEY }}" >> local.properties
+                echo "kotlin.native.ignoreDisabledTargets=true" >> local.properties
             """.trimIndent(),
             ),
             continueOnError = true,

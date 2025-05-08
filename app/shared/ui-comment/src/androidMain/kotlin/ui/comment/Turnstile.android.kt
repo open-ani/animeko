@@ -199,6 +199,7 @@ actual fun ActualTurnstile(
 /**
  * This preview is only available when running at real device.
  */
+@SuppressLint("UnusedBoxWithConstraintsScope", "RememberReturnType")
 @Preview
 @Composable
 fun PreviewBangumi38DevTurnstile() {

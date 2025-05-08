@@ -104,6 +104,7 @@ jobs:
         echo "ani.sentry.dsn=${{ secrets.SENTRY_DSN }}" >> local.properties
         echo "ani.analytics.server=${{ secrets.ANALYTICS_SERVER }}" >> local.properties
         echo "ani.analytics.key=${{ secrets.ANALYTICS_KEY }}" >> local.properties
+        echo "kotlin.native.ignoreDisabledTargets=true" >> local.properties
     - id: 'step-5'
       name: 'Get JBR (Windows)'
       env:
@@ -257,6 +258,7 @@ jobs:
         echo "ani.sentry.dsn=${{ secrets.SENTRY_DSN }}" >> local.properties
         echo "ani.analytics.server=${{ secrets.ANALYTICS_SERVER }}" >> local.properties
         echo "ani.analytics.key=${{ secrets.ANALYTICS_KEY }}" >> local.properties
+        echo "kotlin.native.ignoreDisabledTargets=true" >> local.properties
     - id: 'step-5'
       name: 'Update JVM args in gradle.properties'
       run: |-
@@ -566,6 +568,7 @@ jobs:
         echo "ani.sentry.dsn=${{ secrets.SENTRY_DSN }}" >> local.properties
         echo "ani.analytics.server=${{ secrets.ANALYTICS_SERVER }}" >> local.properties
         echo "ani.analytics.key=${{ secrets.ANALYTICS_KEY }}" >> local.properties
+        echo "kotlin.native.ignoreDisabledTargets=true" >> local.properties
     - id: 'step-6'
       name: 'Resolve JBR location'
       shell: 'bash'
@@ -777,6 +780,7 @@ jobs:
           echo "ani.sentry.dsn=${{ secrets.SENTRY_DSN }}" >> local.properties
           echo "ani.analytics.server=${{ secrets.ANALYTICS_SERVER }}" >> local.properties
           echo "ani.analytics.key=${{ secrets.ANALYTICS_KEY }}" >> local.properties
+          echo "kotlin.native.ignoreDisabledTargets=true" >> local.properties
       - id: 'step-6'
         name: 'Resolve JBR location'
         shell: 'bash'
@@ -998,6 +1002,7 @@ jobs:
         echo "ani.sentry.dsn=${{ secrets.SENTRY_DSN }}" >> local.properties
         echo "ani.analytics.server=${{ secrets.ANALYTICS_SERVER }}" >> local.properties
         echo "ani.analytics.key=${{ secrets.ANALYTICS_KEY }}" >> local.properties
+        echo "kotlin.native.ignoreDisabledTargets=true" >> local.properties
     - id: 'step-7'
       name: 'Get JBR (Windows)'
       env:

@@ -54,6 +54,7 @@ jobs:
         echo "ani.sentry.dsn=${{ secrets.SENTRY_DSN }}" >> local.properties
         echo "ani.analytics.server=${{ secrets.ANALYTICS_SERVER }}" >> local.properties
         echo "ani.analytics.key=${{ secrets.ANALYTICS_KEY }}" >> local.properties
+        echo "kotlin.native.ignoreDisabledTargets=true" >> local.properties
     - id: 'step-3'
       name: 'Get JBR (Windows)'
       env:
@@ -202,6 +203,7 @@ jobs:
         echo "ani.sentry.dsn=${{ secrets.SENTRY_DSN }}" >> local.properties
         echo "ani.analytics.server=${{ secrets.ANALYTICS_SERVER }}" >> local.properties
         echo "ani.analytics.key=${{ secrets.ANALYTICS_KEY }}" >> local.properties
+        echo "kotlin.native.ignoreDisabledTargets=true" >> local.properties
     - id: 'step-3'
       name: 'Get JBR (Windows)'
       env:
@@ -371,6 +373,7 @@ jobs:
         echo "ani.sentry.dsn=${{ secrets.SENTRY_DSN }}" >> local.properties
         echo "ani.analytics.server=${{ secrets.ANALYTICS_SERVER }}" >> local.properties
         echo "ani.analytics.key=${{ secrets.ANALYTICS_KEY }}" >> local.properties
+        echo "kotlin.native.ignoreDisabledTargets=true" >> local.properties
     - id: 'step-5'
       name: 'Get JBR (Windows)'
       env:
@@ -787,6 +790,7 @@ jobs:
         echo "ani.sentry.dsn=${{ secrets.SENTRY_DSN }}" >> local.properties
         echo "ani.analytics.server=${{ secrets.ANALYTICS_SERVER }}" >> local.properties
         echo "ani.analytics.key=${{ secrets.ANALYTICS_KEY }}" >> local.properties
+        echo "kotlin.native.ignoreDisabledTargets=true" >> local.properties
     - id: 'step-4'
       name: 'Resolve JBR location'
       shell: 'bash'
@@ -985,6 +989,7 @@ jobs:
         echo "ani.sentry.dsn=${{ secrets.SENTRY_DSN }}" >> local.properties
         echo "ani.analytics.server=${{ secrets.ANALYTICS_SERVER }}" >> local.properties
         echo "ani.analytics.key=${{ secrets.ANALYTICS_KEY }}" >> local.properties
+        echo "kotlin.native.ignoreDisabledTargets=true" >> local.properties
     - id: 'step-3'
       name: 'Resolve JBR location'
       shell: 'bash'

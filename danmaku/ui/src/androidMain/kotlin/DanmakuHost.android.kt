@@ -9,6 +9,7 @@
 
 package me.him188.ani.danmaku.ui
 
+import android.annotation.SuppressLint
 import android.content.res.Configuration.UI_MODE_NIGHT_YES
 import android.content.res.Configuration.UI_MODE_TYPE_NORMAL
 import androidx.annotation.IntRange
@@ -275,7 +276,9 @@ private fun PreviewDanmakuText() {
     val baseStyle = MaterialTheme.typography.bodyMedium
     val density = LocalDensity.current
     val iter = remember { (0..360 step 36).map { with(density) { it.dp.toPx() } } }
-    val danmaku = remember { dummyDanmaku(measurer, baseStyle, DanmakuStyle.Default) }
+
+    // 这里用 remember 会导致 Android lint bug, 反正是 preview, 就别用了
+    val danmaku = dummyDanmaku(measurer, baseStyle, DanmakuStyle.Default)
 
     Canvas(modifier = Modifier.size(width = 450.dp, height = 360.dp)) {
         iter.forEach { off ->
@@ -440,6 +443,8 @@ private fun DanmakuConfig(
 
                 val isDesktop =
                     currentWindowAdaptiveInfo().windowSizeClass.containsWidthDp(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
+
+                @SuppressLint("RememberReturnType")
                 val displayDensityRange = remember(isDesktop) {
                     // 100% .. 0%
                     36.dp..(if (isDesktop) 720.dp else 240.dp)
