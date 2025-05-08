@@ -85,6 +85,14 @@ data class VideoScaffoldConfig @SerializationOnly constructor(
      * @since 4.9
      */
     val fastForwardSpeed: Float = 2.5f, // 3 倍弹幕会跳, 所以慢点, see #1524
+    /**
+     * 播放器的音量.
+     *
+     * 仅在 Desktop 使用, Android 和 iOS 总是使用系统音量.
+     *
+     * @since 4.11
+     */
+    val playerVolume: PlayerVolume = PlayerVolume(1f, false),
     // WARNING: if you add new property here, review Companion properties.
     @Suppress("PropertyName") @Transient val _placeholder: Int = 0,
 ) {
@@ -105,4 +113,7 @@ data class VideoScaffoldConfig @SerializationOnly constructor(
             autoSwitchMediaOnPlayerError = false,
         )
     }
+
+    @Serializable
+    data class PlayerVolume(val level: Float, val mute: Boolean)
 }

@@ -345,6 +345,9 @@ class EpisodeViewModel(
     val videoScaffoldConfig: VideoScaffoldConfig by settingsRepository.videoScaffoldConfig
         .flow.produceState(VideoScaffoldConfig.Default)
 
+    val playerVolumeFlow: Flow<VideoScaffoldConfig.PlayerVolume> =
+        settingsRepository.videoScaffoldConfig.flow.map { it.playerVolume }
+
     val danmakuRegexFilterState = DanmakuRegexFilterState(
         list = danmakuRegexFilterRepository.flow.produceState(emptyList()),
         add = {
@@ -770,6 +773,13 @@ class EpisodeViewModel(
     fun setDanmakuEnabled(enabled: Boolean) {
         launchInBackground {
             setDanmakuEnabledUseCase(enabled)
+        }
+    }
+
+    fun savePlayerVolume(volume: Float, mute: Boolean) {
+        launchInBackground {
+            settingsRepository.videoScaffoldConfig
+                .update { copy(playerVolume = VideoScaffoldConfig.PlayerVolume(volume, mute)) }
         }
     }
 

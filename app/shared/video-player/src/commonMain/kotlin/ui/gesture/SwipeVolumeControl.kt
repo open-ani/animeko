@@ -42,6 +42,26 @@ object NoOpLevelController : LevelController {
     }
 }
 
+class ObservableLevelController(
+    private val levelController: LevelController,
+    val onLevelChanged: (Float) -> Unit,
+) : LevelController {
+    override val level: Float
+        get() = levelController.level
+
+    override fun increaseLevel(step: Float) {
+        val currentLevel = level
+        levelController.increaseLevel(step)
+        onLevelChanged(currentLevel + step)
+    }
+
+    override fun decreaseLevel(step: Float) {
+        val currentLevel = level
+        levelController.decreaseLevel(step)
+        onLevelChanged(currentLevel + step)
+    }
+}
+
 fun AudioManager.asLevelController(
     streamType: StreamType,
 ): LevelController = object : LevelController {

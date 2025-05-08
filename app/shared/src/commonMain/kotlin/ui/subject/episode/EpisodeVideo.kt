@@ -128,6 +128,7 @@ internal fun EpisodeVideoImpl(
     cacheProgressInfoFlow: Flow<MediaCacheProgressInfo>,
     audioController: LevelController,
     brightnessController: LevelController,
+    onVolumeChanged: (volume: Float, mute: Boolean) -> Unit,
     playbackSpeedControllerState: PlaybackSpeedControllerState?,
     leftBottomTips: @Composable () -> Unit,
     fullscreenSwitchButton: @Composable () -> Unit,
@@ -349,10 +350,13 @@ internal fun EpisodeVideoImpl(
                                 isMute = volumeMute,
                                 maxValue = audioLevelController.maxVolume,
                                 onClick = {
+                                    val targetState = !volumeMute
                                     audioLevelController.toggleMute()
+                                    onVolumeChanged(audioLevelController.volume.value, targetState)
                                 },
                                 onchange = {
                                     audioLevelController.setVolume(it)
+                                    onVolumeChanged(it, volumeMute)
                                 },
                                 controllerState = playerControllerState,
                             )

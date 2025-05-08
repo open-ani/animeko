@@ -76,6 +76,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.preference.DarkMode
@@ -141,6 +143,7 @@ import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
 import me.him188.ani.app.videoplayer.ui.gesture.LevelController
 import me.him188.ani.app.videoplayer.ui.gesture.NoOpLevelController
+import me.him188.ani.app.videoplayer.ui.gesture.ObservableLevelController
 import me.him188.ani.app.videoplayer.ui.gesture.asLevelController
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults.randomDanmakuPlaceholder
@@ -250,6 +253,16 @@ private fun EpisodeScreenContent(
     LaunchedEffect(vm.isFullscreen) {
         // Update system bar visibility whenever fullscreen state changes
         context.setSystemBarVisible(window, !vm.isFullscreen)
+    }
+
+    // 只有在首次进入的时候需要设置
+    LaunchedEffect(Unit) {
+        val audioController = vm.player.features[AudioLevelController]
+        if (audioController != null) {
+            val persistedPlayerVolume = vm.playerVolumeFlow.first()
+            audioController.setVolume(persistedPlayerVolume.level)
+            audioController.setMute(persistedPlayerVolume.mute)
+        }
     }
 
     BoxWithConstraints(modifier) {
@@ -840,6 +853,16 @@ private fun EpisodeVideo(
         }
     }
 
+    val tasker = rememberUiMonoTasker()
+    val savePlayerVolume: (Float, Boolean) -> Unit = { volume, mute ->
+        tasker.launch {
+            // 在滑动 level controller 时会频繁更新 level. 
+            // 为了避免过于频繁的更新 preference, 这里使用 mono tasker 并延迟更新.
+            delay(200)
+            vm.savePlayerVolume(volume, mute)
+        }
+    }
+
     EpisodeVideoImpl(
         vm.player,
         expanded = expanded,
@@ -905,14 +928,20 @@ private fun EpisodeVideo(
         cacheProgressInfoFlow = vm.cacheProgressInfoFlow,
         audioController = run {
             val playerAudioLevelController = vm.player.features[AudioLevelController]?.collectAsLevelController()
+
             remember {
                 derivedStateOf {
                     platformComponents.audioManager?.asLevelController(StreamType.MUSIC)
-                        ?: playerAudioLevelController
+                        ?: playerAudioLevelController?.let {
+                            ObservableLevelController(it) { volume ->
+                                savePlayerVolume(volume, false)
+                            }
+                        }
                         ?: NoOpLevelController
                 }
             }.value
         },
+        onVolumeChanged = savePlayerVolume,
         brightnessController = remember {
             derivedStateOf {
                 platformComponents.brightnessManager?.asLevelController() ?: NoOpLevelController
