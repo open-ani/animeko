@@ -58,7 +58,7 @@ class ObservableLevelController(
     override fun decreaseLevel(step: Float) {
         val currentLevel = level
         levelController.decreaseLevel(step)
-        onLevelChanged(currentLevel + step)
+        onLevelChanged(currentLevel - step)
     }
 }
 

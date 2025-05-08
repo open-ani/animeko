@@ -88,7 +88,7 @@ data class VideoScaffoldConfig @SerializationOnly constructor(
     /**
      * 播放器的音量.
      *
-     * 仅在 Desktop 使用, Android 和 iOS 总是使用系统音量.
+     * 在 Desktop 和 iOS 使用, Android 总是使用系统音量.
      *
      * @since 4.11
      */
