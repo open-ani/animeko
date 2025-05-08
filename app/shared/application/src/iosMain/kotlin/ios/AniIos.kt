@@ -266,7 +266,7 @@ fun getIosModules(
         HttpMediaCacheEngine(
             mediaSourceId = MediaCacheManager.LOCAL_FS_MEDIA_SOURCE_ID,
             downloader = get<HttpDownloader>(),
-            saveDir = context.files.defaultMediaCacheDir
+            saveDir = context.files.defaultBaseMediaCacheDir
                 .resolve(HttpMediaCacheEngine.LEGACY_MEDIA_CACHE_DIR).path,
             mediaResolver = get<MediaResolver>(),
         )
