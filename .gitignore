@@ -30,3 +30,6 @@ out/
 
 ### Mac OS ###
 .DS_Store
+
+### Continue ###
+/.continue/

@@ -1,12 +1,3 @@
-/*
- * Copyright (C) 2024-2025 OpenAni and contributors.
- *
- * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
- * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
- *
- * https://github.com/open-ani/ani/blob/main/LICENSE
- */
-
 /**
  *
  * Please note:
@@ -19,25 +10,28 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.datasources.bangumi.next.apis
 
-import io.ktor.client.HttpClient
-import io.ktor.client.HttpClientConfig
-import io.ktor.client.engine.HttpClientEngine
-import kotlinx.serialization.json.Json
-import me.him188.ani.datasources.bangumi.next.infrastructure.ApiClient
-import me.him188.ani.datasources.bangumi.next.infrastructure.HttpResponse
-import me.him188.ani.datasources.bangumi.next.infrastructure.RequestConfig
-import me.him188.ani.datasources.bangumi.next.infrastructure.RequestMethod
-import me.him188.ani.datasources.bangumi.next.infrastructure.wrap
 import me.him188.ani.datasources.bangumi.next.models.BangumiNextCollectSubject
 import me.him188.ani.datasources.bangumi.next.models.BangumiNextCollectionType
+import me.him188.ani.datasources.bangumi.next.models.BangumiNextErrorResponse
 import me.him188.ani.datasources.bangumi.next.models.BangumiNextGetMySubjectCollections200Response
 import me.him188.ani.datasources.bangumi.next.models.BangumiNextSubjectType
 import me.him188.ani.datasources.bangumi.next.models.BangumiNextUpdateSubjectProgress
+
+import me.him188.ani.datasources.bangumi.next.infrastructure.*
+import io.ktor.client.HttpClient
+import io.ktor.client.HttpClientConfig
+import io.ktor.client.request.forms.formData
+import io.ktor.client.engine.HttpClientEngine
+import kotlinx.serialization.json.Json
+import io.ktor.http.ParametersBuilder
+import kotlinx.serialization.*
+import kotlinx.serialization.descriptors.*
+import kotlinx.serialization.encoding.*
 
 open class CollectionBangumiNextApi : ApiClient {
 
@@ -46,17 +40,12 @@ open class CollectionBangumiNextApi : ApiClient {
         httpClientEngine: HttpClientEngine? = null,
         httpClientConfig: ((HttpClientConfig<*>) -> Unit)? = null,
         jsonSerializer: Json = ApiClient.JSON_DEFAULT
-    ) : super(
-        baseUrl = baseUrl,
-        httpClientEngine = httpClientEngine,
-        httpClientConfig = httpClientConfig,
-        jsonBlock = jsonSerializer,
-    )
+    ) : super(baseUrl = baseUrl, httpClientEngine = httpClientEngine, httpClientConfig = httpClientConfig, jsonBlock = jsonSerializer)
 
     constructor(
         baseUrl: String,
         httpClient: HttpClient
-    ) : super(baseUrl = baseUrl, httpClient = httpClient)
+    ): super(baseUrl = baseUrl, httpClient = httpClient)
 
     /**
      * 获取当前用户的条目收藏
@@ -69,13 +58,7 @@ open class CollectionBangumiNextApi : ApiClient {
      * @return BangumiNextGetMySubjectCollections200Response
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun getMySubjectCollections(
-        subjectType: BangumiNextSubjectType? = null,
-        type: BangumiNextCollectionType? = null,
-        since: kotlin.Int? = null,
-        limit: kotlin.Int? = 20,
-        offset: kotlin.Int? = 0
-    ): HttpResponse<BangumiNextGetMySubjectCollections200Response> {
+    open suspend fun getMySubjectCollections(subjectType: BangumiNextSubjectType? = null, type: BangumiNextCollectionType? = null, since: kotlin.Int? = null, limit: kotlin.Int? = 20, offset: kotlin.Int? = 0): HttpResponse<BangumiNextGetMySubjectCollections200Response> {
 
         val localVariableAuthNames = listOf<String>()
 
@@ -101,7 +84,7 @@ open class CollectionBangumiNextApi : ApiClient {
         return request(
             localVariableConfig,
             localVariableBody,
-            localVariableAuthNames,
+            localVariableAuthNames
         ).wrap()
     }
 
@@ -114,10 +97,7 @@ open class CollectionBangumiNextApi : ApiClient {
      * @return kotlin.String
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun updateSubjectCollection(
-        subjectID: kotlin.Int,
-        bangumiNextCollectSubject: BangumiNextCollectSubject? = null
-    ): HttpResponse<kotlin.String> {
+    open suspend fun updateSubjectCollection(subjectID: kotlin.Int, bangumiNextCollectSubject: BangumiNextCollectSubject? = null): HttpResponse<kotlin.String> {
 
         val localVariableAuthNames = listOf<String>()
 
@@ -137,7 +117,7 @@ open class CollectionBangumiNextApi : ApiClient {
         return jsonRequest(
             localVariableConfig,
             localVariableBody,
-            localVariableAuthNames,
+            localVariableAuthNames
         ).wrap()
     }
 
@@ -151,10 +131,7 @@ open class CollectionBangumiNextApi : ApiClient {
      * @return kotlin.String
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun updateSubjectProgress(
-        subjectID: kotlin.Int,
-        bangumiNextUpdateSubjectProgress: BangumiNextUpdateSubjectProgress? = null
-    ): HttpResponse<kotlin.String> {
+    open suspend fun updateSubjectProgress(subjectID: kotlin.Int, bangumiNextUpdateSubjectProgress: BangumiNextUpdateSubjectProgress? = null): HttpResponse<kotlin.String> {
 
         val localVariableAuthNames = listOf<String>()
 
@@ -174,9 +151,10 @@ open class CollectionBangumiNextApi : ApiClient {
         return jsonRequest(
             localVariableConfig,
             localVariableBody,
-            localVariableAuthNames,
+            localVariableAuthNames
         ).wrap()
     }
+
 
 
 }

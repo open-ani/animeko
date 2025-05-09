@@ -3,7 +3,7 @@
     <module2copyright>
       <element module="mediamp-vlc" copyright="openani-gpl-v3" />
       <element module="Mediamp" copyright="openani-apache-v2" />
-      <element module="Project Files" copyright="openani-animeko" />
+      <element module="Project Files" copyright="kasumi-ushio-and-openani-agplv3-later" />
     </module2copyright>
   </settings>
 </component>

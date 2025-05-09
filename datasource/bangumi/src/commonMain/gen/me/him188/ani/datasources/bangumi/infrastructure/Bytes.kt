@@ -1,13 +1,6 @@
 package me.him188.ani.datasources.bangumi.infrastructure
 
-import io.ktor.utils.io.core.ByteReadPacket
-import io.ktor.utils.io.core.Input
-import io.ktor.utils.io.core.buildPacket
-import io.ktor.utils.io.core.readAvailable
-import io.ktor.utils.io.core.readBytes
-import io.ktor.utils.io.core.remaining
-import io.ktor.utils.io.core.writeFully
-import io.ktor.utils.io.core.writeText
+import io.ktor.utils.io.core.*
 import kotlin.experimental.and
 
 private val digits = "0123456789abcdef".toCharArray()
@@ -21,8 +14,7 @@ private fun ByteArray.clearFrom(from: Int) = (from until size).forEach { this[it
 private fun Int.toBase64(): Char = BASE64_ALPHABET[this]
 private fun Byte.fromBase64(): Byte = BASE64_INVERSE_ALPHABET[toInt() and 0xff].toByte() and BASE64_MASK
 internal fun ByteArray.encodeBase64(): String = buildPacket { writeFully(this@encodeBase64) }.encodeBase64()
-internal fun String.decodeBase64Bytes(): ByteArray =
-    buildPacket { writeText(dropLastWhile { it == BASE64_PAD }) }.decodeBase64Bytes().readBytes()
+internal fun String.decodeBase64Bytes(): ByteArray = buildPacket { writeText(dropLastWhile { it == BASE64_PAD }) }.decodeBase64Bytes().readBytes()
 
 /**
  * Encode [bytes] as a HEX string with no spaces, newlines and `0x` prefixes.

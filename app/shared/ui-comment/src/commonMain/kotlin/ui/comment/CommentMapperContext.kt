@@ -10,7 +10,7 @@
 package me.him188.ani.app.ui.comment
 
 import me.him188.ani.app.data.models.episode.EpisodeComment
-import me.him188.ani.app.data.models.subject.SubjectReview
+import me.him188.ani.app.data.models.subject.SubjectComment
 import me.him188.ani.app.ui.richtext.toUIBriefText
 import me.him188.ani.app.ui.richtext.toUIRichElements
 import me.him188.ani.utils.bbcode.BBCode
@@ -23,7 +23,7 @@ object CommentMapperContext {
     fun parseBBCodeAsReply(code: String): UIRichText =
         UIRichText(listOf(BBCode.parse(code).toUIBriefText().copy(maxLine = 2)))
 
-    fun SubjectReview.parseToUIComment() =
+    fun SubjectComment.parseToUIComment() =
         UIComment(
             id = id,
             author = creator,

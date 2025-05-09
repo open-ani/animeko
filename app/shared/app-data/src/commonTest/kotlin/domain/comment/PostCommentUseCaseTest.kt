@@ -16,7 +16,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.runTest
 import kotlinx.io.IOException
 import me.him188.ani.app.data.models.episode.EpisodeComment
-import me.him188.ani.app.data.models.subject.SubjectReview
+import me.him188.ani.app.data.models.subject.SubjectComment
 import me.him188.ani.app.data.network.BangumiCommentService
 import me.him188.ani.datasources.api.paging.Paged
 import kotlin.test.Test
@@ -129,7 +129,7 @@ class PostCommentUseCaseTest {
         onPostEpisodeComment: () -> Unit = { }
     ): BangumiCommentService {
         return object : BangumiCommentService {
-            override suspend fun getSubjectComments(subjectId: Int, offset: Int, limit: Int): Paged<SubjectReview>? {
+            override suspend fun getSubjectComments(subjectId: Int, offset: Int, limit: Int): Paged<SubjectComment>? {
                 error("unreachable test")
             }
 

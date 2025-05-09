@@ -1,12 +1,3 @@
-/*
- * Copyright (C) 2024-2025 OpenAni and contributors.
- *
- * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
- * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
- *
- * https://github.com/open-ani/ani/blob/main/LICENSE
- */
-
 /**
  *
  * Please note:
@@ -19,26 +10,29 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.datasources.bangumi.next.models
 
-import kotlinx.serialization.Required
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
+import me.him188.ani.datasources.bangumi.next.models.BangumiNextSlimCharacter
+import me.him188.ani.datasources.bangumi.next.models.BangumiNextSlimPerson
+
+import kotlinx.serialization.*
+import kotlinx.serialization.descriptors.*
+import kotlinx.serialization.encoding.*
 
 /**
  * 
  *
- * @param actors
- * @param character
- * @param order
+ * @param actors 
+ * @param character 
+ * @param order 
  * @param type 
  */
 @Serializable
 
-data class BangumiNextSubjectCharacter(
+data class BangumiNextSubjectCharacter (
 
     @SerialName(value = "actors") @Required val actors: kotlin.collections.List<BangumiNextSlimPerson>,
 

@@ -1,12 +1,3 @@
-/*
- * Copyright (C) 2024-2025 OpenAni and contributors.
- *
- * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
- * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
- *
- * https://github.com/open-ani/ani/blob/main/LICENSE
- */
-
 /**
  *
  * Please note:
@@ -19,22 +10,25 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.datasources.bangumi.next.apis
 
-import io.ktor.client.HttpClient
-import io.ktor.client.HttpClientConfig
-import io.ktor.client.engine.HttpClientEngine
-import kotlinx.serialization.json.Json
-import me.him188.ani.datasources.bangumi.next.infrastructure.ApiClient
-import me.him188.ani.datasources.bangumi.next.infrastructure.HttpResponse
-import me.him188.ani.datasources.bangumi.next.infrastructure.RequestConfig
-import me.him188.ani.datasources.bangumi.next.infrastructure.RequestMethod
-import me.him188.ani.datasources.bangumi.next.infrastructure.wrap
+import me.him188.ani.datasources.bangumi.next.models.BangumiNextErrorResponse
 import me.him188.ani.datasources.bangumi.next.models.BangumiNextGetTrendingSubjects200Response
 import me.him188.ani.datasources.bangumi.next.models.BangumiNextSubjectType
+
+import me.him188.ani.datasources.bangumi.next.infrastructure.*
+import io.ktor.client.HttpClient
+import io.ktor.client.HttpClientConfig
+import io.ktor.client.request.forms.formData
+import io.ktor.client.engine.HttpClientEngine
+import kotlinx.serialization.json.Json
+import io.ktor.http.ParametersBuilder
+import kotlinx.serialization.*
+import kotlinx.serialization.descriptors.*
+import kotlinx.serialization.encoding.*
 
 open class TrendingBangumiNextApi : ApiClient {
 
@@ -43,17 +37,12 @@ open class TrendingBangumiNextApi : ApiClient {
         httpClientEngine: HttpClientEngine? = null,
         httpClientConfig: ((HttpClientConfig<*>) -> Unit)? = null,
         jsonSerializer: Json = ApiClient.JSON_DEFAULT
-    ) : super(
-        baseUrl = baseUrl,
-        httpClientEngine = httpClientEngine,
-        httpClientConfig = httpClientConfig,
-        jsonBlock = jsonSerializer,
-    )
+    ) : super(baseUrl = baseUrl, httpClientEngine = httpClientEngine, httpClientConfig = httpClientConfig, jsonBlock = jsonSerializer)
 
     constructor(
         baseUrl: String,
         httpClient: HttpClient
-    ) : super(baseUrl = baseUrl, httpClient = httpClient)
+    ): super(baseUrl = baseUrl, httpClient = httpClient)
 
     /**
      * 获取热门条目
@@ -64,11 +53,7 @@ open class TrendingBangumiNextApi : ApiClient {
      * @return BangumiNextGetTrendingSubjects200Response
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun getTrendingSubjects(
-        type: BangumiNextSubjectType,
-        limit: kotlin.Int? = 20,
-        offset: kotlin.Int? = 0
-    ): HttpResponse<BangumiNextGetTrendingSubjects200Response> {
+    open suspend fun getTrendingSubjects(type: BangumiNextSubjectType, limit: kotlin.Int? = 20, offset: kotlin.Int? = 0): HttpResponse<BangumiNextGetTrendingSubjects200Response> {
 
         val localVariableAuthNames = listOf<String>()
 
@@ -92,7 +77,7 @@ open class TrendingBangumiNextApi : ApiClient {
         return request(
             localVariableConfig,
             localVariableBody,
-            localVariableAuthNames,
+            localVariableAuthNames
         ).wrap()
     }
 

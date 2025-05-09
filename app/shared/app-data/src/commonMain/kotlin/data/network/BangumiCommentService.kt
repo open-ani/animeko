@@ -17,7 +17,7 @@ import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.UserInfo
 import me.him188.ani.app.data.models.episode.EpisodeComment
 import me.him188.ani.app.data.models.episode.toEpisodeComment
-import me.him188.ani.app.data.models.subject.SubjectReview
+import me.him188.ani.app.data.models.subject.SubjectComment
 import me.him188.ani.datasources.api.paging.Paged
 import me.him188.ani.datasources.api.paging.processPagedResponse
 import me.him188.ani.datasources.bangumi.BangumiClient
@@ -30,7 +30,7 @@ interface BangumiCommentService {
     /**
      * @return `null` if [subjectId] is invalid
      */
-    suspend fun getSubjectComments(subjectId: Int, offset: Int, limit: Int): Paged<SubjectReview>?
+    suspend fun getSubjectComments(subjectId: Int, offset: Int, limit: Int): Paged<SubjectComment>?
 
     /**
      * @return `null` if [episodeId] is invalid
@@ -50,7 +50,7 @@ class BangumiBangumiCommentServiceImpl(
     private val client: BangumiClient,
     private val ioDispatcher: CoroutineContext = Dispatchers.IO_,
 ) : BangumiCommentService {
-    override suspend fun getSubjectComments(subjectId: Int, offset: Int, limit: Int): Paged<SubjectReview>? {
+    override suspend fun getSubjectComments(subjectId: Int, offset: Int, limit: Int): Paged<SubjectComment>? {
         return withContext(ioDispatcher) {
             val response = try {
                 client.nextSubjectApi {
@@ -108,7 +108,7 @@ class BangumiBangumiCommentServiceImpl(
     }
 }
 
-private fun BangumiNextSubjectInterestComment.toSubjectReview(subjectId: Int) = SubjectReview(
+private fun BangumiNextSubjectInterestComment.toSubjectReview(subjectId: Int) = SubjectComment(
     id = packInts(subjectId, user.id),
     content = comment,
     updatedAt = updatedAt * 1000L,
