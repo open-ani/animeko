@@ -60,14 +60,14 @@ import org.openani.mediamp.vlc.compose.VlcMediampPlayerSurfaceProvider
 import java.io.File
 import kotlin.io.path.Path
 
-private interface SaveDirProvider {
+private interface MediaSaveDirProvider {
     val saveDir: String
 }
 
 fun getDesktopModules(getContext: () -> DesktopContext, scope: CoroutineScope) = module {
     single<TorrentEngineAccess> { AlwaysUseTorrentEngineAccess }
 
-    single<SaveDirProvider> {
+    single<MediaSaveDirProvider> {
         val settings = get<SettingsRepository>().mediaCacheSettings
         val defaultTorrentCachePath = getContext().files.defaultBaseMediaCacheDir
 
@@ -90,13 +90,13 @@ fun getDesktopModules(getContext: () -> DesktopContext, scope: CoroutineScope) =
             saveDirSettings
         }
 
-        object : SaveDirProvider {
+        object : MediaSaveDirProvider {
             override val saveDir: String = baseSaveDir
         }
     }
 
     single<TorrentManager> {
-        val saveDir = get<SaveDirProvider>().saveDir
+        val saveDir = get<MediaSaveDirProvider>().saveDir
         logger<TorrentManager>().info { "TorrentManager base save dir: $saveDir" }
 
         DefaultTorrentManager.create(
@@ -109,7 +109,7 @@ fun getDesktopModules(getContext: () -> DesktopContext, scope: CoroutineScope) =
         )
     }
     single<HttpMediaCacheEngine> {
-        val saveDir = Path(get<SaveDirProvider>().saveDir).resolve(HttpMediaCacheEngine.MEDIA_CACHE_DIR)
+        val saveDir = Path(get<MediaSaveDirProvider>().saveDir).resolve(HttpMediaCacheEngine.MEDIA_CACHE_DIR)
         logger<TorrentManager>().info { "HttpMediaCacheEngine base save dir: $saveDir" }
 
         HttpMediaCacheEngine(
