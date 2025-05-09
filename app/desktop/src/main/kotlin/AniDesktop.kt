@@ -42,6 +42,8 @@ import com.sun.jna.platform.win32.Advapi32Util
 import com.sun.jna.platform.win32.WinReg
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.joinAll
@@ -55,6 +57,7 @@ import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.desktop.storage.AppFolderResolver
 import me.him188.ani.app.desktop.storage.AppInfo
 import me.him188.ani.app.desktop.window.WindowFrame
+import me.him188.ani.app.domain.media.cache.storage.MediaCacheMigrator
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.settings.ProxyProvider
 import me.him188.ani.app.domain.update.UpdateManager
@@ -99,6 +102,7 @@ import me.him188.ani.app.ui.foundation.widgets.ToastViewModel
 import me.him188.ani.app.ui.foundation.widgets.Toaster
 import me.him188.ani.app.ui.main.AniApp
 import me.him188.ani.app.ui.main.AniAppContent
+import me.him188.ani.app.ui.media.cache.storage.MediaCacheMigrationDialog
 import me.him188.ani.desktop.generated.resources.Res
 import me.him188.ani.desktop.generated.resources.a_round
 import me.him188.ani.utils.analytics.Analytics
@@ -132,7 +136,6 @@ object AniDesktop {
     init {
         System.setProperty("native.encoding", "UTF-8")
     }
-
 
     private fun calculateWindowSize(
         desiredWidth: Dp,
@@ -395,6 +398,7 @@ object AniDesktop {
                     "\nTotal time: ${startupTimeMonitor.getTotalDuration().inWholeMilliseconds}ms"
         }
         val savedWindowState: SavedWindowState? = savedWindowStateDeferred.getCompleted()
+        val mediaCacheMigrator: MediaCacheMigrator = koin.koin.get()
 
         application {
             WindowStateRecorder(
@@ -456,14 +460,14 @@ object AniDesktop {
                     LocalSystemTheme provides systemTheme,
                 ) {
                     if (isRunningUnderWine()) {
-                        MainWindowContent(navigator)
+                        MainWindowContent(navigator, mediaCacheMigrator.status)
                     } else {
                         HandleWindowsWindowProc()
                         WindowFrame(
                             windowState = windowState,
                             onCloseRequest = { exitApplication() },
                         ) {
-                            MainWindowContent(navigator)
+                            MainWindowContent(navigator, mediaCacheMigrator.status)
                         }
                     }
                 }
@@ -478,6 +482,7 @@ object AniDesktop {
 @Composable
 private fun FrameWindowScope.MainWindowContent(
     aniNavigator: AniNavigator,
+    migrationStatus: StateFlow<MediaCacheMigrator.Status?>,
 ) {
     AniApp {
         val themeSettings = LocalThemeSettings.current
@@ -531,6 +536,9 @@ private fun FrameWindowScope.MainWindowContent(
                     }
                 }
             }
+
+            val migrationStatus by migrationStatus.collectAsStateWithLifecycle()
+            migrationStatus?.let { MediaCacheMigrationDialog(status = it) }
         }
     }
 }

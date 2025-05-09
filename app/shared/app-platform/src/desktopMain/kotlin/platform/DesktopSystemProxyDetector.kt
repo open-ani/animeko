@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -31,7 +31,13 @@ class WindowsSystemProxyDetector : DesktopSystemProxyDetector() {
     override fun detect(): SystemProxyInfo? {
         val proxyConfig = getWindowsProxySettings()
             ?: return null
-        val urlString = pointerToString(proxyConfig.lpszProxy) ?: return null
+        var urlString = pointerToString(proxyConfig.lpszProxy) ?: return null
+        if (urlString.startsWith("http=")) {
+            // io.ktor.http.URLParserException: Fail to parse url: http=http://127.0.0.1:7890;https=http://127.0.0.1:7890
+            // https://github.com/open-ani/animeko/issues/2095#issuecomment-2866556548
+
+            urlString = urlString.removePrefix("http=").substringBefore(";")
+        }
 
         val url = if (urlString.contains("://")) {
             Url(urlString)

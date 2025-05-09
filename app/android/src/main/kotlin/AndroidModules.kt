@@ -9,20 +9,24 @@
 
 package me.him188.ani.android
 
+import android.content.Context
 import android.content.Intent
 import android.os.Environment
 import android.widget.Toast
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.io.files.Path
 import me.him188.ani.android.navigation.AndroidBrowserNavigator
-import me.him188.ani.app.data.repository.user.SettingsRepository
+import me.him188.ani.app.data.persistent.dataStores
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
 import me.him188.ani.app.domain.foundation.get
+import me.him188.ani.app.domain.media.cache.MediaCacheManager
+import me.him188.ani.app.domain.media.cache.engine.HttpMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.engine.TorrentEngineAccess
+import me.him188.ani.app.domain.media.cache.engine.TorrentMediaCacheEngine
+import me.him188.ani.app.domain.media.cache.storage.MediaCacheMigrator
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.resolver.AndroidWebMediaResolver
 import me.him188.ani.app.domain.media.resolver.HttpStreamingMediaResolver
@@ -36,23 +40,30 @@ import me.him188.ani.app.domain.torrent.LocalAnitorrentEngineFactory
 import me.him188.ani.app.domain.torrent.RemoteAnitorrentEngineFactory
 import me.him188.ani.app.domain.torrent.TorrentManager
 import me.him188.ani.app.domain.torrent.service.AniTorrentService
-import me.him188.ani.app.domain.torrent.service.TorrentServiceConnectionManager
 import me.him188.ani.app.domain.torrent.service.TorrentServiceConnection
+import me.him188.ani.app.domain.torrent.service.TorrentServiceConnectionManager
 import me.him188.ani.app.navigation.BrowserNavigator
+import me.him188.ani.app.platform.AndroidContextFiles
 import me.him188.ani.app.platform.AndroidPermissionManager
 import me.him188.ani.app.platform.AppTerminator
 import me.him188.ani.app.platform.BaseComponentActivity
 import me.him188.ani.app.platform.ContextMP
 import me.him188.ani.app.platform.PermissionManager
+import me.him188.ani.app.platform.files
 import me.him188.ani.app.platform.findActivity
 import me.him188.ani.app.tools.update.AndroidUpdateInstaller
 import me.him188.ani.app.tools.update.UpdateInstaller
+import me.him188.ani.utils.httpdownloader.HttpDownloader
+import me.him188.ani.utils.io.SystemPath
+import me.him188.ani.utils.io.absolutePath
 import me.him188.ani.utils.io.deleteRecursively
 import me.him188.ani.utils.io.exists
 import me.him188.ani.utils.io.inSystem
 import me.him188.ani.utils.io.isDirectory
 import me.him188.ani.utils.io.list
 import me.him188.ani.utils.io.resolve
+import me.him188.ani.utils.io.toFile
+import me.him188.ani.utils.io.toKtPath
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
@@ -66,6 +77,19 @@ import org.openani.mediamp.exoplayer.compose.ExoPlayerMediampPlayerSurfaceProvid
 import java.io.File
 import kotlin.concurrent.thread
 import kotlin.system.exitProcess
+
+private fun resolveBaseMediaCacheDir(context: Context): String {
+    val defaultBaseMediaCacheDir = context.files.defaultBaseMediaCacheDir.absolutePath
+
+    // 如果外部目录没 mounted, 那也要使用内部目录
+    return if (!defaultBaseMediaCacheDir.startsWith(context.filesDir.absolutePath) &&
+        Environment.getExternalStorageState(File(defaultBaseMediaCacheDir)) == Environment.MEDIA_MOUNTED
+    ) {
+        defaultBaseMediaCacheDir
+    } else {
+        (context.files as AndroidContextFiles).fallbackInternalBaseMediaCacheDir.absolutePath
+    }
+}
 
 fun getAndroidModules(
     serviceConnectionManager: TorrentServiceConnectionManager,
@@ -83,44 +107,9 @@ fun getAndroidModules(
         val context = androidContext()
         val logger = logger<TorrentManager>()
 
-        val defaultTorrentCachePath = context.getExternalFilesDir(Environment.DIRECTORY_MOVIES)
-        val fallbackInternalPath = context.filesDir.resolve("torrent-caches") // hard-coded directory name before 4.9
+        val legacyInternalPath = context.filesDir.resolve(TorrentMediaCacheEngine.LEGACY_MEDIA_CACHE_DIR).absolutePath
+        val oldCacheDir = Path(legacyInternalPath).resolve("api").inSystem
 
-        val saveDir = runBlocking {
-            val settings = get<SettingsRepository>().mediaCacheSettings
-            val dir = settings.flow.first().saveDir
-
-            // 首次启动设置空间
-            if (dir == null) {
-                val finalPathString = (defaultTorrentCachePath ?: fallbackInternalPath).absolutePath
-                settings.update { copy(saveDir = finalPathString) }
-                return@runBlocking finalPathString
-            }
-
-            // dir != null 可能是外部或者内部
-            if (dir.startsWith(context.filesDir.absolutePath)) {
-                if (defaultTorrentCachePath != null) {
-                    // 如果当前是内部但是默认外部目录可用，则请求迁移. 这是绝大部分用户更新到 4.9 后的 path
-                    AniApplication.instance.requiresTorrentCacheMigration.value = true
-                }
-                return@runBlocking dir
-            } else {
-                // 如果当前目录是外部但是外部不可用，可能是因为 SD 卡或者其他可移动存储被移除, 直接使用 fallback.
-                if (Environment.getExternalStorageState(File(dir)) != Environment.MEDIA_MOUNTED) {
-                    val fallbackPathString = fallbackInternalPath.absolutePath
-                    settings.update { copy(saveDir = fallbackPathString) }
-                    Toast.makeText(context, "BT 存储位置不可用，已切换回默认存储位置", Toast.LENGTH_LONG).show()
-                    return@runBlocking fallbackPathString
-                }
-            }
-
-            // 外部私有目录可用
-            dir
-        }
-
-        logger.info { "TorrentManager base save dir: $saveDir" }
-
-        val oldCacheDir = Path(saveDir).resolve("api").inSystem
         if (oldCacheDir.exists() && oldCacheDir.isDirectory()) {
             val piecesDir = oldCacheDir.resolve("pieces")
             if (piecesDir.exists() && piecesDir.isDirectory() && piecesDir.list().isNotEmpty()) {
@@ -134,6 +123,9 @@ fun getAndroidModules(
                 }
             }
         }
+
+        val saveDir = resolveBaseMediaCacheDir(context)
+        logger.info { "TorrentManager base save directory: $saveDir" }
 
         DefaultTorrentManager.create(
             coroutineScope.coroutineContext,
@@ -149,6 +141,70 @@ fun getAndroidModules(
             },
         )
     }
+
+    single<HttpMediaCacheEngine> {
+        val context = androidContext()
+        val logger = logger<TorrentManager>()
+
+        @Suppress("DEPRECATION")
+        val saveDir = resolveBaseMediaCacheDir(context)
+            .let { Path(it).resolve(HttpMediaCacheEngine.MEDIA_CACHE_DIR) }
+        logger.info { "HttpMediaCacheEngine base save directory: $saveDir" }
+
+        HttpMediaCacheEngine(
+            mediaSourceId = MediaCacheManager.LOCAL_FS_MEDIA_SOURCE_ID,
+            downloader = get<HttpDownloader>(),
+            saveDir = saveDir,
+            mediaResolver = get<MediaResolver>(),
+        )
+    }
+
+    single<MediaCacheMigrator> {
+        val context = androidContext()
+        MediaCacheMigrator(
+            context = context,
+            metadataStore = context.dataStores.mediaCacheMetadataStore,
+            m3u8DownloaderStore = context.dataStores.m3u8DownloaderStore,
+            mediaCacheManager = get(),
+            settingsRepo = get(),
+            appTerminator = get(),
+            migrationChecker = object : MediaCacheMigrator.MigrationChecker {
+                override suspend fun requireMigrateTorrentCache(): Boolean {
+                    return requireMigrate(context.files.dataDir.resolve(TorrentMediaCacheEngine.LEGACY_MEDIA_CACHE_DIR))
+                }
+
+                override suspend fun requireMigrateWebM3uCache(): Boolean {
+                    @Suppress("DEPRECATION")
+                    return requireMigrate(context.files.dataDir.resolve(HttpMediaCacheEngine.LEGACY_MEDIA_CACHE_DIR))
+                }
+
+                private fun requireMigrate(fallbackPath: SystemPath): Boolean {
+                    val defaultMediaCacheDir = context.files.defaultBaseMediaCacheDir
+
+                    // 旧的缓存目录如果有内容，则考虑需要迁移
+                    if (fallbackPath.exists() && fallbackPath.list().isNotEmpty()) {
+                        // 如果 defaultMediaCacheDir 不是内部目录, 则说明是外部目录, 并且外部目录如果是可用的, 则需要进行迁移. 
+                        // 这是绝大部分用户更新到 4.11 后的 path.
+                        if (!defaultMediaCacheDir.absolutePath.startsWith(context.filesDir.absolutePath) &&
+                            Environment.getExternalStorageState(defaultMediaCacheDir.toFile()) == Environment.MEDIA_MOUNTED
+                        ) {
+                            return true
+                        }
+                    }
+
+                    return false
+                }
+            },
+            getNewBaseSaveDir = {
+                context.getExternalFilesDir(Environment.DIRECTORY_MOVIES)?.toPath()?.toKtPath()?.inSystem
+            },
+            getLegacyTorrentSaveDir = {
+                context.filesDir.resolve(TorrentMediaCacheEngine.LEGACY_MEDIA_CACHE_DIR)
+                    .toPath().toKtPath().inSystem
+            },
+        )
+    }
+
     single<MediampPlayerFactory<*>> {
         MediampPlayerFactoryLoader.register(ExoPlayerMediampPlayerFactory())
         MediampPlayerSurfaceProviderLoader.register(ExoPlayerMediampPlayerSurfaceProvider())

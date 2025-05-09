@@ -19,8 +19,11 @@ import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
 import me.him188.ani.app.domain.foundation.get
+import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.cache.engine.AlwaysUseTorrentEngineAccess
+import me.him188.ani.app.domain.media.cache.engine.HttpMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.engine.TorrentEngineAccess
+import me.him188.ani.app.domain.media.cache.storage.MediaCacheMigrator
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.resolver.DesktopWebMediaResolver
 import me.him188.ani.app.domain.media.resolver.HttpStreamingMediaResolver
@@ -36,9 +39,15 @@ import me.him188.ani.app.platform.DefaultAppTerminator
 import me.him188.ani.app.platform.DesktopContext
 import me.him188.ani.app.platform.GrantedPermissionManager
 import me.him188.ani.app.platform.PermissionManager
+import me.him188.ani.app.platform.files
 import me.him188.ani.app.tools.update.DesktopUpdateInstaller
 import me.him188.ani.app.tools.update.UpdateInstaller
+import me.him188.ani.utils.httpdownloader.HttpDownloader
+import me.him188.ani.utils.io.absolutePath
+import me.him188.ani.utils.io.exists
 import me.him188.ani.utils.io.inSystem
+import me.him188.ani.utils.io.list
+import me.him188.ani.utils.io.resolve
 import me.him188.ani.utils.io.toKtPath
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
@@ -51,32 +60,43 @@ import org.openani.mediamp.vlc.compose.VlcMediampPlayerSurfaceProvider
 import java.io.File
 import kotlin.io.path.Path
 
+private interface MediaSaveDirProvider {
+    val saveDir: String
+}
+
 fun getDesktopModules(getContext: () -> DesktopContext, scope: CoroutineScope) = module {
     single<TorrentEngineAccess> { AlwaysUseTorrentEngineAccess }
 
-    single<TorrentManager> {
-        val defaultTorrentCachePath = getContext().torrentDataCacheDir
+    single<MediaSaveDirProvider> {
+        val settings = get<SettingsRepository>().mediaCacheSettings
+        val defaultTorrentCachePath = getContext().files.defaultBaseMediaCacheDir
 
-        val saveDir = runBlocking {
-            val settings = get<SettingsRepository>().mediaCacheSettings
-            val dir = settings.flow.first().saveDir
-
+        val baseSaveDir = runBlocking {
+            val saveDirSettings = settings.flow.first().saveDir
             // 首次启动设置默认 dir
-            if (dir == null) {
+            if (saveDirSettings == null) {
                 val finalPathString = defaultTorrentCachePath.absolutePath
                 settings.update { copy(saveDir = finalPathString) }
                 return@runBlocking finalPathString
             }
 
             // 如果当前目录没有权限读写, 直接使用默认目录
-            if (!File(dir).run { canRead() && canWrite() }) {
+            if (!File(saveDirSettings).run { canRead() && canWrite() }) {
                 val fallbackPathString = defaultTorrentCachePath.absolutePath
                 settings.update { copy(saveDir = fallbackPathString) }
                 return@runBlocking fallbackPathString
             }
 
-            dir
+            saveDirSettings
         }
+
+        object : MediaSaveDirProvider {
+            override val saveDir: String = baseSaveDir
+        }
+    }
+
+    single<TorrentManager> {
+        val saveDir = get<MediaSaveDirProvider>().saveDir
         logger<TorrentManager>().info { "TorrentManager base save dir: $saveDir" }
 
         DefaultTorrentManager.create(
@@ -88,6 +108,62 @@ fun getDesktopModules(getContext: () -> DesktopContext, scope: CoroutineScope) =
             baseSaveDir = { Path(saveDir).toKtPath().inSystem },
         )
     }
+    single<HttpMediaCacheEngine> {
+        val saveDir = Path(get<MediaSaveDirProvider>().saveDir).resolve(HttpMediaCacheEngine.MEDIA_CACHE_DIR)
+        logger<TorrentManager>().info { "HttpMediaCacheEngine base save dir: $saveDir" }
+
+        HttpMediaCacheEngine(
+            mediaSourceId = MediaCacheManager.LOCAL_FS_MEDIA_SOURCE_ID,
+            downloader = get<HttpDownloader>(),
+            saveDir = saveDir.toKtPath(),
+            mediaResolver = get<MediaResolver>(),
+        )
+    }
+
+    single<MediaCacheMigrator> {
+        get<TorrentManager>()
+        get<HttpMediaCacheEngine>()
+
+        MediaCacheMigrator(
+            context = getContext(),
+            metadataStore = getContext().dataStores.mediaCacheMetadataStore,
+            m3u8DownloaderStore = getContext().dataStores.m3u8DownloaderStore,
+            mediaCacheManager = get(),
+            settingsRepo = get(),
+            appTerminator = get(),
+            migrationChecker = object : MediaCacheMigrator.MigrationChecker {
+                override suspend fun requireMigrateTorrentCache(): Boolean {
+                    return false
+                }
+
+                override suspend fun requireMigrateWebM3uCache(): Boolean {
+                    val baseSaveDir = get<SettingsRepository>().mediaCacheSettings.flow.first().saveDir
+                        ?: getContext().files.defaultBaseMediaCacheDir.absolutePath
+
+                    @Suppress("DEPRECATION")
+                    val legacySaveDir = getContext().files.dataDir.resolve(HttpMediaCacheEngine.LEGACY_MEDIA_CACHE_DIR)
+
+                    // 旧的缓存目录如果有内容，则考虑需要迁移
+                    if (legacySaveDir.exists() && legacySaveDir.list().isNotEmpty()) {
+                        // 有权限才去迁移
+                        if (File(baseSaveDir).run { canRead() && canWrite() }) {
+                            return true
+                        }
+                    }
+
+                    return false
+                }
+            },
+            getNewBaseSaveDir = {
+                get<SettingsRepository>().mediaCacheSettings.flow.first().saveDir
+                    ?.let { kotlinx.io.files.Path(it).inSystem }
+            },
+            getLegacyTorrentSaveDir = {
+                error("Media caches on desktop should not be migrated by MediaCacheMigrator")
+            },
+        )
+    }
+
     single<MediampPlayerFactory<*>> {
         MediampPlayerFactoryLoader.register(VlcMediampPlayerFactory())
         MediampPlayerSurfaceProviderLoader.register(VlcMediampPlayerSurfaceProvider())

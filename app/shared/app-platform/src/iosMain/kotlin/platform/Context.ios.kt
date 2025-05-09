@@ -39,4 +39,5 @@ class IosContextFiles(
 ) : ContextFiles {
     val datastoreDir = dataDir.resolve("datastores")
     val logsDir = dataDir.resolve("logs")
+    override val defaultBaseMediaCacheDir: SystemPath = dataDir
 }

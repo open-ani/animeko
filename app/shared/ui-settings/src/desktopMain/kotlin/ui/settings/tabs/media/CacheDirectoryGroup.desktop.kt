@@ -20,6 +20,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import io.github.vinceglb.filekit.compose.rememberDirectoryPickerLauncher
 import me.him188.ani.app.platform.LocalDesktopContext
+import me.him188.ani.app.platform.files
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_storage_bt_cache_location
@@ -32,6 +33,7 @@ import me.him188.ani.app.ui.lang.settings_storage_title
 import me.him188.ani.app.ui.settings.framework.components.RowButtonItem
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.TextFieldItem
+import me.him188.ani.utils.io.absolutePath
 import org.jetbrains.compose.resources.stringResource
 import java.awt.Desktop
 import java.io.File
@@ -43,7 +45,7 @@ actual fun SettingsScope.CacheDirectoryGroup(state: CacheDirectoryGroupState) {
 
         val context = LocalDesktopContext.current
 
-        val defaultSaveDir = remember { context.torrentDataCacheDir.absolutePath }
+        val defaultSaveDir = remember { context.files.defaultBaseMediaCacheDir.absolutePath }
         val currentSaveDir: String by remember {
             derivedStateOf {
                 mediaCacheSettings.saveDir ?: defaultSaveDir
@@ -78,7 +80,7 @@ actual fun SettingsScope.CacheDirectoryGroup(state: CacheDirectoryGroupState) {
             title = { Text(stringResource(Lang.settings_storage_open_bt_cache_directory)) },
             icon = { Icon(Icons.Rounded.ArrowOutward, null) },
             onClick = {
-                val file = File(mediaCacheSettings.saveDir ?: context.torrentDataCacheDir.absolutePath)
+                val file = File(mediaCacheSettings.saveDir ?: defaultSaveDir)
                 if (file.exists()) {
                     Desktop.getDesktop().open(file)
                 } else {

@@ -20,6 +20,8 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
 import kotlinx.serialization.Serializable
 import me.him188.ani.app.data.repository.RepositoryException
+import me.him188.ani.app.data.repository.RepositoryNetworkException
+import me.him188.ani.app.data.repository.RepositoryServiceUnavailableException
 import me.him188.ani.app.domain.mediasource.MediaListFilters
 import me.him188.ani.app.domain.mediasource.MediaSourceEngineHelpers
 import me.him188.ani.app.domain.mediasource.asCandidate
@@ -181,8 +183,18 @@ class DefaultRssMediaSourceEngine(
             val document = try {
                 client.first().use {
                     get(finalUrl).let { resp ->
-                        resp.bodyAsChannel().toSource().use {
-                            Xml.parse(it)
+                        when (resp.status.value) {
+                            in 500..599 -> throw RepositoryServiceUnavailableException()
+                            in 200..299 -> resp.bodyAsChannel().toSource().use {
+                                Xml.parse(it)
+                            }
+
+                            else -> {
+                                throw RepositoryNetworkException(
+                                    "HTTP ${resp.status.value} ${resp.status.description}",
+                                    null,
+                                )
+                            }
                         }
                     }
                 }

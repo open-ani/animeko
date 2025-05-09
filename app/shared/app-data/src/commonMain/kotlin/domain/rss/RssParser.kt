@@ -49,7 +49,7 @@ class RssParser(
                 return parseImpl(it as Element)
             }
 
-        throw IllegalArgumentException("Invalid RSS document: $document")
+        return null
     }
 
     private fun parseImpl(element: Element): RssChannel {

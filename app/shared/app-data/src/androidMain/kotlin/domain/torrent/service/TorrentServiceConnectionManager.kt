@@ -47,7 +47,6 @@ import me.him188.ani.app.domain.torrent.IRemoteAniTorrentEngine
 import me.him188.ani.app.domain.torrent.TorrentEngineType
 import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.coroutines.update
-import me.him188.ani.utils.logging.debug
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
@@ -79,7 +78,6 @@ import kotlin.coroutines.CoroutineContext
 class TorrentServiceConnectionManager(
     context: Context,
     private val dataStoreFlow: StateFlow<DataStore<List<MediaCacheSave>>>,
-    private val requiresTorrentCacheMigration: StateFlow<Boolean>,
     startServiceImpl: () -> ComponentName?,
     private val stopServiceImpl: () -> Unit,
     private val processLifecycle: Lifecycle,
@@ -146,9 +144,6 @@ class TorrentServiceConnectionManager(
 
     @UnsafeTorrentEngineAccessApi
     override fun requestService(token: Any, use: Boolean): Boolean {
-        logger.debug(Exception("show stacktrace")) {
-            "Request ${if (use) "use" else "release"} torrent engine with token $token"
-        }
         requestQueue.update {
             if (use) {
                 add(token)
@@ -173,12 +168,11 @@ class TorrentServiceConnectionManager(
         scope.launch {
             combine(
                 dataStoreFlow.flatMapLatest { it.data.map(::allTorrentMediaCacheCompleted) },
-                requiresTorrentCacheMigration,
                 requestQueue.map { it.isNotEmpty() },
                 isServiceConnected,
                 processLifecycle.currentStateFlow,
-            ) { allCompleted, requiredMigration, keep, connected, currentState ->
-                Triple(currentState, !requiredMigration && (keep || !allCompleted), connected)
+            ) { allCompleted, keep, connected, currentState ->
+                Triple(currentState, keep || !allCompleted, connected)
             }
                 .distinctUntilChanged()
                 .map { (currentState, shouldMoveToResumed, connected) ->

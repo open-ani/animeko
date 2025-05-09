@@ -24,6 +24,7 @@ import androidx.lifecycle.ProcessLifecycleOwner
 import io.ktor.client.engine.okhttp.OkHttp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -84,15 +85,7 @@ class AniApplication : Application() {
         val FEATURE_USE_TORRENT_SERVICE = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1
     }
 
-    inner class Instance {
-        /**
-         * Since 4.9, Default directory of torrent cache is changed to external/shared storage and
-         * cannot be changed. This is the workaround for startup migration.
-         *
-         * @see Context.getExternalFilesDir
-         */
-        val requiresTorrentCacheMigration = MutableStateFlow(false)
-    }
+    inner class Instance()
 
     override fun onCreate() {
         super.onCreate()
@@ -125,12 +118,12 @@ class AniApplication : Application() {
         val connectionManager = TorrentServiceConnectionManager(
             this,
             dataStoreFlow = mediaCacheDataStore,
-            requiresTorrentCacheMigration = instance.requiresTorrentCacheMigration,
             startServiceImpl = ::startAniTorrentService,
             stopServiceImpl = ::stopService,
             processLifecycle = ProcessLifecycleOwner.get().lifecycle,
             parentCoroutineContext = scope.coroutineContext,
         )
+
         startupTimeMonitor.mark(StepName.WindowAndContext)
 
         scope.launch(Dispatchers.IO_) {
@@ -148,14 +141,7 @@ class AniApplication : Application() {
             modules(getCommonKoinModule({ this@AniApplication }, scope))
 
             modules(getAndroidModules(connectionManager, scope))
-        }.startCommonKoinModule(
-            this@AniApplication,
-            scope,
-            /**
-             * If the torrent cache migration is required, we need to restore the caches.
-             */
-            restorePersistedCaches = instance.requiresTorrentCacheMigration.map { !it },
-        )
+        }.startCommonKoinModule(this@AniApplication, scope)
         startupTimeMonitor.mark(StepName.Modules)
 
         val koin = getKoin()

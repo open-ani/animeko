@@ -33,7 +33,9 @@ import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.get
 import me.him188.ani.app.domain.media.cache.engine.AlwaysUseTorrentEngineAccess
+import me.him188.ani.app.domain.media.cache.engine.HttpMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.engine.TorrentEngineAccess
+import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.resolver.HttpStreamingMediaResolver
 import me.him188.ani.app.domain.media.resolver.IosWebMediaResolver
@@ -49,6 +51,7 @@ import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.platform.AniHostingUIViewController
 import me.him188.ani.app.platform.AppStartupTasks
 import me.him188.ani.app.platform.GrantedPermissionManager
+import me.him188.ani.app.platform.files
 import me.him188.ani.app.platform.IosContext
 import me.him188.ani.app.platform.IosContextFiles
 import me.him188.ani.app.platform.LocalContext
@@ -76,6 +79,8 @@ import me.him188.ani.app.ui.main.AniApp
 import me.him188.ani.app.ui.main.AniAppContent
 import me.him188.ani.utils.analytics.Analytics
 import me.him188.ani.utils.analytics.AnalyticsConfig
+import me.him188.ani.utils.httpdownloader.HttpDownloader
+import me.him188.ani.utils.io.absolutePath
 import me.him188.ani.utils.io.SystemCacheDir
 import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.io.SystemSupportDir
@@ -254,6 +259,16 @@ fun getIosModules(
             subscriptionRepository = get(),
             meteredNetworkDetector = get(),
             baseSaveDir = { defaultTorrentCacheDir },
+        )
+    }
+    single<HttpMediaCacheEngine> {
+        @Suppress("DEPRECATION")
+        HttpMediaCacheEngine(
+            mediaSourceId = MediaCacheManager.LOCAL_FS_MEDIA_SOURCE_ID,
+            downloader = get<HttpDownloader>(),
+            saveDir = context.files.defaultBaseMediaCacheDir
+                .resolve(HttpMediaCacheEngine.LEGACY_MEDIA_CACHE_DIR).path,
+            mediaResolver = get<MediaResolver>(),
         )
     }
     single<MediampPlayerFactory<*>> {

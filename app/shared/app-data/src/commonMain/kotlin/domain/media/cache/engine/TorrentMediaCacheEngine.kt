@@ -13,17 +13,12 @@ import androidx.datastore.core.DataStore
 import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
@@ -36,8 +31,6 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.shareIn
-import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.io.IOException
@@ -54,7 +47,6 @@ import me.him188.ani.app.domain.media.cache.storage.MediaCacheSave
 import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
 import me.him188.ani.app.domain.media.resolver.TorrentMediaResolver
 import me.him188.ani.app.domain.torrent.TorrentEngine
-import me.him188.ani.app.tools.Progress
 import me.him188.ani.app.tools.toProgress
 import me.him188.ani.app.torrent.api.TorrentSession
 import me.him188.ani.app.torrent.api.files.EncodedTorrentInfo
@@ -122,6 +114,8 @@ class TorrentMediaCacheEngine(
         private val unspecifiedFileStatsFlow = flowOf(MediaCache.FileStats.Unspecified)
         private val unspecifiedSessionStatsFlow = flowOf(MediaCache.SessionStats.Unspecified)
         private val unspecifiedFileSizeFlow = flowOf(FileSize.Unspecified)
+
+        const val LEGACY_MEDIA_CACHE_DIR = "torrent-caches"
     }
 
     val isServiceConnected = engineAccess.isServiceConnected

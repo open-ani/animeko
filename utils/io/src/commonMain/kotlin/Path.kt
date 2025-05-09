@@ -225,6 +225,8 @@ expect val SystemPath.absolutePath: String
 
 expect inline fun <T> SystemPath.useDirectoryEntries(block: (Sequence<SystemPath>) -> T): T
 
+expect fun SystemPath.moveDirectoryRecursively(target: SystemPath, onBeforeMove: ((SystemPath) -> Unit)? = null)
+
 /**
  * 以 UTF-8 读取文件的所有内容
  */

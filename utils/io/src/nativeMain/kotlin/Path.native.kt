@@ -15,11 +15,7 @@ import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import kotlinx.io.files.SystemTemporaryDirectory
 import me.him188.ani.utils.platform.Uuid
-import platform.Foundation.NSApplicationSupportDirectory
-import platform.Foundation.NSCachesDirectory
-import platform.Foundation.NSDocumentDirectory
-import platform.Foundation.NSSearchPathForDirectoriesInDomains
-import platform.Foundation.NSUserDomainMask
+import platform.Foundation.*
 
 actual fun SystemPath.length(): Long = SystemFileSystem.metadataOrNull(path)?.size ?: 0
 
@@ -70,6 +66,71 @@ val SystemCacheDir by lazy {
             .firstOrNull()?.toString() ?: error("Cannot get SystemCacheDir"),
     ).inSystem.resolve(appName)
 }
+
+/**
+ * Move a directory tree to [target].
+ *
+ * 1. First attempt an atomic move (O(1) on the same volume).
+ * 2. If that fails (typically due to cross-container moves in iOS),
+ *    fall back to a recursive copy-then-delete operation.
+ *
+ * The optional [onBeforeMove] callback is invoked with the destination path
+ * before each move operation.
+ *
+ * @param target The destination path
+ * @param onBeforeMove Optional callback invoked with each destination path before moving
+ */
+actual fun SystemPath.moveDirectoryRecursively(
+    target: SystemPath,
+    onBeforeMove: ((SystemPath) -> Unit)?
+) {
+    val fs = SystemFileSystem
+    val src = path
+    val dst = target.path
+
+    if (src == dst) return
+
+    // Create parent directories if they don't exist
+    fs.createDirectories(dst.parent ?: return)
+
+    try {
+        // First try atomic move (optimal if on same volume)
+        fs.atomicMove(src, dst)
+        onBeforeMove?.invoke(target)
+    } catch (e: Throwable) {
+        // Fall back to recursive copy-then-delete
+        if (isDirectory()) {
+            // Create target directory
+            fs.createDirectories(dst)
+            onBeforeMove?.invoke(target)
+
+            // Copy all contents recursively
+            useDirectoryEntries { entries ->
+                entries.forEach { childPath ->
+                    val childName = childPath.path.name ?: return@forEach
+                    val targetChild = target.resolve(childName)
+
+                    if (childPath.isDirectory()) {
+                        childPath.moveDirectoryRecursively(targetChild, onBeforeMove)
+                    } else {
+                        fs.createDirectories(targetChild.path.parent ?: return@forEach)
+                        onBeforeMove?.invoke(childPath)
+                        fs.atomicMove(childPath.path, targetChild.path)
+                    }
+                }
+            }
+
+            // Delete source directory after copying all contents
+            fs.delete(src)
+        } else {
+            onBeforeMove?.invoke(src.inSystem)
+            // For single files, just copy and delete
+            fs.atomicMove(src, dst)
+            fs.delete(src)
+        }
+    }
+}
+
 
 actual val SystemPath.absolutePath: String
     get() {

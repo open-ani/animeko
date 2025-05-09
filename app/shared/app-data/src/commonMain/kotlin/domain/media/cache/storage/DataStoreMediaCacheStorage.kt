@@ -36,11 +36,8 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
-import kotlinx.serialization.SerializationException
-import me.him188.ani.app.data.persistent.DataStoreJson
 import me.him188.ani.app.domain.media.cache.LocalFileMediaCache
 import me.him188.ani.app.domain.media.cache.MediaCache
-import me.him188.ani.app.domain.media.cache.engine.InvalidMediaCacheEngineKey
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngine
 import me.him188.ani.app.domain.media.cache.engine.MediaStats
 import me.him188.ani.app.domain.media.cache.engine.TorrentMediaCacheEngine
@@ -63,15 +60,10 @@ import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.coroutines.RestartableCoroutineScope
 import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.coroutines.update
-import me.him188.ani.utils.io.SystemPath
-import me.him188.ani.utils.io.name
-import me.him188.ani.utils.io.readText
-import me.him188.ani.utils.io.useDirectoryEntries
 import me.him188.ani.utils.logging.debug
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
-import me.him188.ani.utils.logging.warn
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 
@@ -342,45 +334,6 @@ class DataStoreMediaCacheStorage(
 
     companion object {
         private val logger = logger<DataStoreMediaCacheStorage>()
-
-        @Deprecated("Since 4.8, metadata is stored in the datastore. This method is for migration only.")
-        @InvalidMediaCacheEngineKey
-        suspend fun migrateMetadataFromV47(
-            metadataStore: DataStore<List<MediaCacheSave>>,
-            storage: MediaCacheStorage,
-            dir: SystemPath
-        ) = dir.useDirectoryEntries { entries ->
-            entries.forEach { file ->
-                val save = try {
-                    DataStoreJson.decodeFromString(LegacyMediaCacheSaveSerializer, file.readText())
-                        .copy(engine = storage.engine.engineKey)
-                } catch (e: SerializationException) {
-                    logger.error(e) { "Failed to deserialize metadata file ${file.name}, ignoring migration." }
-                    return@useDirectoryEntries
-                }
-
-                metadataStore.updateData { originalList ->
-                    val existing = originalList.indexOfFirst {
-                        it.origin.mediaId == save.origin.mediaId &&
-                                it.metadata.subjectId == save.metadata.subjectId &&
-                                it.metadata.episodeId == save.metadata.episodeId
-                    }
-                    if (existing != -1) {
-                        logger.warn {
-                            "Duplicated media cache metadata ${originalList[existing].origin.mediaId} found while migrating, " +
-                                    "override to new ${save.origin.mediaId}, engine: ${save.engine}."
-                        }
-                        originalList.toMutableList().apply {
-                            removeAt(existing)
-                            add(save)
-                        }
-                    } else {
-                        logger.info { "Migrating media cache metadata ${save.origin.mediaId}, engine: ${storage.engine.engineKey}." }
-                        originalList + save
-                    }
-                }
-            }
-        }
     }
 }
 
