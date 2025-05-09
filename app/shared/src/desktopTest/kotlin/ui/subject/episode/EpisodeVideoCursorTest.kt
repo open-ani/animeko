@@ -123,7 +123,6 @@ class EpisodeVideoCursorTest {
                     cacheProgressInfoFlow = cacheProgressInfoFlow,
                     audioController = NoOpLevelController,
                     brightnessController = NoOpLevelController,
-                    onVolumeChanged = { _, _ -> },
                     playbackSpeedControllerState = remember {
                         PlaybackSpeedControllerState(NoOpPlaybackSpeedController, scope = scope)
                     },

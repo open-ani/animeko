@@ -119,6 +119,7 @@ import me.him188.ani.app.ui.foundation.layout.setRequestFullScreen
 import me.him188.ani.app.ui.foundation.layout.setSystemBarVisible
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.pagerTabIndicatorOffset
+import me.him188.ani.app.ui.foundation.produceState
 import me.him188.ani.app.ui.foundation.rememberImageViewerHandler
 import me.him188.ani.app.ui.foundation.theme.AniTheme
 import me.him188.ani.app.ui.foundation.theme.LocalThemeSettings
@@ -143,7 +144,6 @@ import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
 import me.him188.ani.app.videoplayer.ui.gesture.LevelController
 import me.him188.ani.app.videoplayer.ui.gesture.NoOpLevelController
-import me.him188.ani.app.videoplayer.ui.gesture.ObservableLevelController
 import me.him188.ani.app.videoplayer.ui.gesture.asLevelController
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults.randomDanmakuPlaceholder
@@ -158,6 +158,7 @@ import me.him188.ani.utils.platform.isMobile
 import org.openani.mediamp.features.AudioLevelController
 import org.openani.mediamp.features.PlaybackSpeed
 import org.openani.mediamp.features.Screenshots
+import org.openani.mediamp.features.toggleMute
 
 
 /**
@@ -853,16 +854,6 @@ private fun EpisodeVideo(
         }
     }
 
-    val tasker = rememberUiMonoTasker()
-    val savePlayerVolume: (Float, Boolean) -> Unit = { volume, mute ->
-        tasker.launch {
-            // 在滑动 level controller 时会频繁更新 level. 
-            // 为了避免过于频繁的更新 preference, 这里使用 mono tasker 并延迟更新.
-            delay(200)
-            vm.savePlayerVolume(volume, mute)
-        }
-    }
-
     EpisodeVideoImpl(
         vm.player,
         expanded = expanded,
@@ -926,22 +917,14 @@ private fun EpisodeVideo(
         },
         progressSliderState = progressSliderState,
         cacheProgressInfoFlow = vm.cacheProgressInfoFlow,
-        audioController = run {
-            val playerAudioLevelController = vm.player.features[AudioLevelController]?.collectAsLevelController()
-
-            remember {
-                derivedStateOf {
-                    platformComponents.audioManager?.asLevelController(StreamType.MUSIC)
-                        ?: playerAudioLevelController?.let {
-                            ObservableLevelController(it) { volume ->
-                                savePlayerVolume(volume, false)
-                            }
-                        }
-                        ?: NoOpLevelController
-                }
-            }.value
-        },
-        onVolumeChanged = savePlayerVolume,
+        audioController = remember {
+            derivedStateOf {
+                platformComponents.audioManager?.asLevelController(StreamType.MUSIC)
+                    ?: vm.player.features[AudioLevelController]
+                        ?.let { MediampAudioLevelController(it, scope, vm::savePlayerVolume) }
+                    ?: NoOpLevelController
+            }
+        }.value,
         brightnessController = remember {
             derivedStateOf {
                 platformComponents.brightnessManager?.asLevelController() ?: NoOpLevelController
@@ -1092,21 +1075,29 @@ private fun AutoPauseEffect(viewModel: EpisodeViewModel) {
 @Composable
 internal expect fun DisplayModeEffect(config: VideoScaffoldConfig)
 
-@Composable
-private fun AudioLevelController.collectAsLevelController(): LevelController {
-    val volumeState = volume.collectAsStateWithLifecycle()
+/**
+ * Delegation of [AudioLevelController], which allows observing volume state changes.
+ */
+class MediampAudioLevelController(
+    private val controller: AudioLevelController,
+    scope: CoroutineScope,
+    private val onVolumeStateChanged: (level: Float, mute: Boolean) -> Unit,
+) : LevelController {
+    override val level: Float by controller.volume.produceState(controller.volume.value, scope)
 
-    return remember(this, volumeState) {
-        object : LevelController {
-            override val level: Float get() = volumeState.value
+    val isMute: Boolean by controller.isMute.produceState(controller.isMute.value, scope)
 
-            override fun increaseLevel(step: Float) {
-                volumeUp(step)
-            }
+    override val range: ClosedRange<Float> = 0f..controller.maxVolume
 
-            override fun decreaseLevel(step: Float) {
-                volumeDown(step)
-            }
-        }
+    override fun setLevel(level: Float) {
+        val newLevel = level.coerceIn(range)
+        controller.setVolume(newLevel)
+        onVolumeStateChanged(newLevel, controller.isMute.value)
+    }
+
+    fun toggleMute() {
+        val targetIsMute = !isMute
+        controller.toggleMute()
+        onVolumeStateChanged(level, targetIsMute)
     }
 }

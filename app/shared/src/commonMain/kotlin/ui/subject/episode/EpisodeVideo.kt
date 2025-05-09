@@ -128,7 +128,6 @@ internal fun EpisodeVideoImpl(
     cacheProgressInfoFlow: Flow<MediaCacheProgressInfo>,
     audioController: LevelController,
     brightnessController: LevelController,
-    onVolumeChanged: (volume: Float, mute: Boolean) -> Unit,
     playbackSpeedControllerState: PlaybackSpeedControllerState?,
     leftBottomTips: @Composable () -> Unit,
     fullscreenSwitchButton: @Composable () -> Unit,
@@ -339,24 +338,18 @@ internal fun EpisodeVideoImpl(
                             danmakuEnabled,
                             onClick = { onToggleDanmaku() },
                         )
-                        val audioLevelController = playerState.features[AudioLevelController]
-                        if (expanded && audioLevelController != null
-                            && gestureFamily == GestureFamily.MOUSE
-                        ) {
-                            val volumeState by audioLevelController.volume.collectAsStateWithLifecycle()
-                            val volumeMute by audioLevelController.isMute.collectAsStateWithLifecycle()
+
+                        val audioLevelController = audioController as? MediampAudioLevelController
+                        if (expanded && audioLevelController != null && gestureFamily == GestureFamily.MOUSE) {
                             PlayerControllerDefaults.AudioIcon(
-                                volumeState,
-                                isMute = volumeMute,
-                                maxValue = audioLevelController.maxVolume,
+                                audioLevelController.level,
+                                isMute = audioLevelController.isMute,
+                                maxValue = audioLevelController.range.endInclusive,
                                 onClick = {
-                                    val targetState = !volumeMute
                                     audioLevelController.toggleMute()
-                                    onVolumeChanged(audioLevelController.volume.value, targetState)
                                 },
                                 onchange = {
-                                    audioLevelController.setVolume(it)
-                                    onVolumeChanged(it, volumeMute)
+                                    audioLevelController.setLevel(it)
                                 },
                                 controllerState = playerControllerState,
                             )
