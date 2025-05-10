@@ -119,7 +119,6 @@ import me.him188.ani.app.ui.foundation.layout.setRequestFullScreen
 import me.him188.ani.app.ui.foundation.layout.setSystemBarVisible
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.pagerTabIndicatorOffset
-import me.him188.ani.app.ui.foundation.produceState
 import me.him188.ani.app.ui.foundation.rememberImageViewerHandler
 import me.him188.ani.app.ui.foundation.theme.AniTheme
 import me.him188.ani.app.ui.foundation.theme.LocalThemeSettings
@@ -921,7 +920,7 @@ private fun EpisodeVideo(
             derivedStateOf {
                 platformComponents.audioManager?.asLevelController(StreamType.MUSIC)
                     ?: vm.player.features[AudioLevelController]
-                        ?.let { MediampAudioLevelController(it, scope, vm::savePlayerVolume) }
+                        ?.let { MediampAudioLevelController(it, vm::savePlayerVolume) }
                     ?: NoOpLevelController
             }
         }.value,
@@ -1080,12 +1079,12 @@ internal expect fun DisplayModeEffect(config: VideoScaffoldConfig)
  */
 class MediampAudioLevelController(
     private val controller: AudioLevelController,
-    scope: CoroutineScope,
     private val onVolumeStateChanged: (level: Float, mute: Boolean) -> Unit,
 ) : LevelController {
-    override val level: Float by controller.volume.produceState(controller.volume.value, scope)
+    override val level: Float get() = controller.volume.value
 
-    val isMute: Boolean by controller.isMute.produceState(controller.isMute.value, scope)
+    val levelFlow = controller.volume
+    val muteFlow = controller.isMute
 
     override val range: ClosedRange<Float> = 0f..controller.maxVolume
 
@@ -1096,7 +1095,7 @@ class MediampAudioLevelController(
     }
 
     fun toggleMute() {
-        val targetIsMute = !isMute
+        val targetIsMute = !muteFlow.value
         controller.toggleMute()
         onVolumeStateChanged(level, targetIsMute)
     }
