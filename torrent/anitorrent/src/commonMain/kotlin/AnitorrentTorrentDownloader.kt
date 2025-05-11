@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -273,12 +273,11 @@ abstract class AnitorrentTorrentDownloader<THandle : TorrentHandle, TAddInfo : T
     override suspend fun startDownload(
         data: EncodedTorrentInfo,
         parentCoroutineContext: CoroutineContext,
-        overrideSaveDir: SystemPath?
     ): TorrentSession = withHandleTaskQueue {
         // 这个函数的 native 部分跑得也都很快, 整个函数十几毫秒就可以跑完, 所以 lock 也不会影响性能 (刚启动时需要尽快恢复 resume)
 
         val info = AnitorrentAddTorrentInfo.decodeFrom(data)
-        val saveDir = overrideSaveDir ?: getSaveDirForTorrent(data)
+        val saveDir = getSaveDirForTorrent(data)
         val fastResumeFile = saveDir.resolve(FAST_RESUME_FILENAME)
 
         openSessions.value[data.data.contentHashCode().toString()]?.let {

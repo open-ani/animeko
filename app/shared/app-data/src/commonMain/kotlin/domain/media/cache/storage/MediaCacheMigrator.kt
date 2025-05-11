@@ -13,7 +13,6 @@ import androidx.datastore.core.DataStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -172,21 +171,6 @@ class MediaCacheMigrator(
                     return
                 }
 
-                _status.value = Status.Metadata
-                metadataStore.updateData { original ->
-                    val nonTorrentMetadata =
-                        original.filter { it.engine != torrentStorage.engine.engineKey }
-                    val torrentMetadata =
-                        original.filter { it.engine == torrentStorage.engine.engineKey }
-
-                    nonTorrentMetadata + torrentMetadata.map { save ->
-                        save.copy(
-                            metadata = torrentStorage.engine
-                                .modifyMetadataForMigration(save.metadata, newBasePath.path),
-                        )
-                    }
-                }
-
                 logger.info { "[migration] Migrate metadata of torrent cache complete." }
             }
 
@@ -216,46 +200,6 @@ class MediaCacheMigrator(
                     _status.value =
                         Status.Error(IllegalStateException("Media cache storage with engine HttpMediaCacheEngine is not found."))
                     return
-                }
-
-                _status.value = Status.Metadata
-                metadataStore.updateData { original ->
-                    val nonWebMetadata =
-                        original.filter { it.engine != webStorage.engine.engineKey }
-                    val webMetadata = original.filter { it.engine == webStorage.engine.engineKey }
-
-                    nonWebMetadata + webMetadata.map { save ->
-                        save.copy(
-                            metadata = webStorage.engine.modifyMetadataForMigration(
-                                save.metadata,
-                                newPath.path
-                            ),
-                        )
-                    }
-                }
-
-                m3u8DownloaderStore.updateData { original ->
-                    original.map { state ->
-                        state.copy(
-                            outputPath = newPath
-                                .resolve(state.outputPath.substringAfter(HttpMediaCacheEngine.LEGACY_MEDIA_CACHE_DIR))
-                                .absolutePath,
-                            segmentCacheDir = newPath
-                                .resolve(state.segmentCacheDir.substringAfter(HttpMediaCacheEngine.LEGACY_MEDIA_CACHE_DIR))
-                                .absolutePath,
-                            segments = state.segments.map { seg ->
-                                seg.copy(
-                                    tempFilePath = newPath
-                                        .resolve(
-                                            seg.tempFilePath.substringAfter(
-                                                HttpMediaCacheEngine.LEGACY_MEDIA_CACHE_DIR
-                                            )
-                                        )
-                                        .absolutePath,
-                                )
-                            },
-                        )
-                    }
                 }
 
                 logger.info { "[migration] Migrate metadata of web m3u cache complete." }

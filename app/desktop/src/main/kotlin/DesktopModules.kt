@@ -24,6 +24,7 @@ import me.him188.ani.app.domain.media.cache.engine.AlwaysUseTorrentEngineAccess
 import me.him188.ani.app.domain.media.cache.engine.HttpMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.engine.TorrentEngineAccess
 import me.him188.ani.app.domain.media.cache.storage.MediaCacheMigrator
+import me.him188.ani.app.domain.media.cache.storage.MediaSaveDirProvider
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.resolver.DesktopWebMediaResolver
 import me.him188.ani.app.domain.media.resolver.HttpStreamingMediaResolver
@@ -59,10 +60,6 @@ import org.openani.mediamp.vlc.VlcMediampPlayerFactory
 import org.openani.mediamp.vlc.compose.VlcMediampPlayerSurfaceProvider
 import java.io.File
 import kotlin.io.path.Path
-
-private interface MediaSaveDirProvider {
-    val saveDir: String
-}
 
 fun getDesktopModules(getContext: () -> DesktopContext, scope: CoroutineScope) = module {
     single<TorrentEngineAccess> { AlwaysUseTorrentEngineAccess }

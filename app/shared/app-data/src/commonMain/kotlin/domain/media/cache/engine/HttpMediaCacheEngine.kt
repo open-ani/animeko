@@ -121,7 +121,6 @@ class HttpMediaCacheEngine(
 
         val downloadId = metadata.extra[EXTRA_DOWNLOAD_ID]?.let { DownloadId(it) } ?: return null
         val uri = metadata.extra[EXTRA_URI] ?: return null
-        val outputPath = metadata.extra[EXTRA_OUTPUT_PATH] ?: return null
         val headers = json.decodeFromString<Map<String, String>>(metadata.extra[EXTRA_HEADERS] ?: return null)
 
         // 注意, getState 一般不会返回 null, 除非 downloader 的 persistent datastore 出问题了 (例如文件损坏).
@@ -129,17 +128,16 @@ class HttpMediaCacheEngine(
             downloader.resume(downloadId) // ignore result.
             // Task already exists
             logger.info { "Resumed download $downloadId" }
-            return HttpMediaCache(mediaSourceId, downloader, downloadId, origin, metadata)
+            return HttpMediaCache(origin, downloadId, metadata)
         }
 
         logger.info { "Download not found, recreating $downloadId" }
         downloader.downloadWithId(
             downloadId = downloadId,
             uri,
-            outputPath = Path(outputPath),
             options = DownloadOptions(headers = headers),
         )
-        return HttpMediaCache(mediaSourceId, downloader, downloadId, origin, metadata)
+        return HttpMediaCache(origin, downloadId, metadata)
     }
 
     override suspend fun createCache(
@@ -160,22 +158,21 @@ class HttpMediaCacheEngine(
             is UriMediaData -> {
                 val downloadId = DownloadId(Uuid.randomString())
                 val outputPath = saveDir.resolve(downloadId.value)
-                downloader.downloadWithId(
+                val state = downloader.downloadWithId(
                     downloadId = downloadId,
                     mediaData.uri,
-                    outputPath = outputPath,
                     options = DownloadOptions(headers = mediaData.headers),
                 )
                 return HttpMediaCache(
-                    mediaSourceId,
-                    downloader,
-                    downloadId,
                     origin,
+                    downloadId,
                     metadata.copy(
                         extra = metadata.extra.toMutableMap().apply {
                             put(EXTRA_DOWNLOAD_ID, downloadId.value)
                             put(EXTRA_URI, mediaData.uri)
-                            put(EXTRA_OUTPUT_PATH, outputPath.inSystem.absolutePath)
+                            if (state != null) {
+                                put(EXTRA_OUTPUT_PATH, state.relativeOutputPath)
+                            }
                             put(EXTRA_HEADERS, json.encodeToString(mediaData.headers))
                         },
                     ),
@@ -184,30 +181,16 @@ class HttpMediaCacheEngine(
         }
     }
 
-    override suspend fun modifyMetadataForMigration(
-        original: MediaCacheMetadata,
-        newSaveDir: Path
-    ): MediaCacheMetadata {
-        val downloadId = original.extra[EXTRA_DOWNLOAD_ID] ?: return original
-        return original.copy(
-            extra = original.extra.toMutableMap().apply {
-                put(EXTRA_OUTPUT_PATH, newSaveDir.resolve(downloadId).inSystem.absolutePath)
-            },
-        )
-    }
-
     override suspend fun deleteUnusedCaches(all: List<MediaCache>) {
         if (!(SystemFileSystem.exists(saveDir))) return
 
 
         val allowedAbsolute = buildSet {
             for (mediaCache in all.filterIsInstance<HttpMediaCache>()) {
-                mediaCache.metadata.extra[EXTRA_OUTPUT_PATH]?.let {
-                    add(it) // 上次记录的位置
-                }
-                downloader.getState(mediaCache.downloadId)?.let {
-                    add(it.segmentCacheDir)
-                }
+                mediaCache.metadata.extra[EXTRA_OUTPUT_PATH]
+                    ?.let { add(Path(saveDir, it).inSystem.absolutePath) }
+                downloader.getState(mediaCache.downloadId)
+                    ?.let { add(Path(saveDir, it.relativeSegmentCacheDir).inSystem.absolutePath) }
             }
         }
         withContext(Dispatchers.IO_) {
@@ -225,9 +208,149 @@ class HttpMediaCacheEngine(
 
     }
 
+    inner class HttpMediaCache(
+        override val origin: Media,
+        internal val downloadId: DownloadId,
+        override val metadata: MediaCacheMetadata,
+    ) : MediaCache {
+        override val state: Flow<MediaCacheState> = downloader.getProgressFlow(downloadId).map {
+            when (it.status) {
+                DownloadStatus.DOWNLOADING,
+                DownloadStatus.MERGING,
+                DownloadStatus.COMPLETED,
+                    -> MediaCacheState.IN_PROGRESS
+
+                DownloadStatus.INITIALIZING,
+                DownloadStatus.PAUSED,
+                    -> MediaCacheState.PAUSED
+
+                DownloadStatus.FAILED,
+                DownloadStatus.CANCELED,
+                    -> MediaCacheState.PAUSED
+            }
+        }
+
+        override val canPlay: Flow<Boolean>
+            get() = downloader.getProgressFlow(downloadId).map {
+                it.status == DownloadStatus.COMPLETED
+            }
+
+        override val fileStats: Flow<MediaCache.FileStats> = downloader.getProgressFlow(downloadId).map {
+            val totalSize = it.totalBytes
+            val downloadedBytes = it.downloadedBytes
+            MediaCache.FileStats(
+                totalSize = totalSize.bytes,
+                downloadedBytes = downloadedBytes.bytes,
+                downloadProgress = if (
+                    it.status == DownloadStatus.COMPLETED
+                ) {
+                    1f.toProgress()
+                } else {
+                    Progress.Unspecified
+                }, // m3u8 has no total size.
+            )
+        }
+        override val sessionStats: Flow<MediaCache.SessionStats> = run {
+            val downloadSpeedFlow = fileStats.map { it.downloadedBytes.inBytes }.averageRate()
+
+            combine(downloadSpeedFlow, fileStats) { speed, stats ->
+                MediaCache.SessionStats(
+                    totalSize = stats.totalSize,
+                    downloadedBytes = stats.downloadedBytes,
+                    downloadSpeed = speed.bytes,
+                    uploadedBytes = FileSize.Zero,
+                    uploadSpeed = FileSize.Zero,
+                    downloadProgress = stats.downloadProgress,
+                )
+            }
+        }
+        override val isDeleted: MutableStateFlow<Boolean> = MutableStateFlow(false)
+        private val closeMutex = Mutex()
+
+        override suspend fun getCachedMedia(): CachedMedia {
+            val state = downloader.getState(downloadId)
+                ?: throw IllegalStateException("Download state not found for $downloadId")
+
+            return when (state.status) {
+                DownloadStatus.INITIALIZING,
+                DownloadStatus.DOWNLOADING,
+                DownloadStatus.MERGING,
+                DownloadStatus.PAUSED,
+                    -> {
+                    error("Download not completed, cannot get cached media for $downloadId")
+                }
+
+                DownloadStatus.COMPLETED -> {
+                    val actualFileSize = withContext(Dispatchers.IO_) {
+                        try {
+                            Path(saveDir, state.relativeOutputPath).inSystem.actualSize().bytes
+                        } catch (_: Exception) {
+                            FileSize.Unspecified
+                        }
+                    }
+                    CachedMedia(
+                        origin,
+                        cacheMediaSourceId = mediaSourceId,
+                        download = ResourceLocation.LocalFile(
+                            Path(saveDir, state.relativeOutputPath).inSystem.absolutePath,
+                            state.mediaType.toFileType(),
+                            originalUri = metadata.extra[EXTRA_URI],
+                        ),
+                        properties = origin.properties.copy(
+                            size = if (actualFileSize.isUnspecified) {
+                                origin.properties.size
+                            } else {
+                                actualFileSize
+                            },
+                        ),
+                        cacheProperties = MediaCacheProperties(
+                            totalSegments = state.totalSegments,
+                            httpDownloaderStatus = state.status.toString(),
+                        ),
+                    )
+                }
+
+                DownloadStatus.FAILED,
+                DownloadStatus.CANCELED,
+                    -> {
+                    error("Download failed or canceled")
+                }
+            }
+        }
+
+        override suspend fun pause() {
+            downloader.pause(downloadId)
+        }
+
+        override suspend fun close() {
+            if (isDeleted.value) return
+            closeMutex.withLock {
+                if (isDeleted.value) return
+                downloader.cancel(downloadId)
+            }
+        }
+
+        override suspend fun resume() {
+            downloader.resume(downloadId)
+        }
+
+        override suspend fun closeAndDeleteFiles() {
+            if (isDeleted.value) return
+            closeMutex.withLock {
+                if (isDeleted.value) return
+                downloader.cancel(downloadId)
+                isDeleted.value = true
+            }
+        }
+    }
+
     companion object {
         internal val EXTRA_DOWNLOAD_ID = MetadataKey("downloadId")
         internal val EXTRA_URI = MetadataKey("uri")
+
+        /**
+         * 缓存的相对路径, 相对于 [HttpMediaCacheEngine.saveDir].
+         */
         internal val EXTRA_OUTPUT_PATH = MetadataKey("outputPath")
         internal val EXTRA_HEADERS = MetadataKey("headers")
 
@@ -238,144 +361,6 @@ class HttpMediaCacheEngine(
         @Deprecated("Use HttpMediaCacheEngine.MEDIA_CACHE_DIR instead")
         const val LEGACY_MEDIA_CACHE_DIR = "web-m3u-cache"
         const val MEDIA_CACHE_DIR = "web-m3u"
-    }
-}
-
-class HttpMediaCache(
-    private val mediaSourceId: String,
-    private val downloader: HttpDownloader,
-    internal val downloadId: DownloadId,
-    override val origin: Media,
-    override val metadata: MediaCacheMetadata,
-) : MediaCache {
-    override val state: Flow<MediaCacheState> = downloader.getProgressFlow(downloadId).map {
-        when (it.status) {
-            DownloadStatus.DOWNLOADING,
-            DownloadStatus.MERGING,
-            DownloadStatus.COMPLETED,
-                -> MediaCacheState.IN_PROGRESS
-
-            DownloadStatus.INITIALIZING,
-            DownloadStatus.PAUSED,
-                -> MediaCacheState.PAUSED
-
-            DownloadStatus.FAILED,
-            DownloadStatus.CANCELED,
-                -> MediaCacheState.PAUSED
-        }
-    }
-
-    override val canPlay: Flow<Boolean>
-        get() = downloader.getProgressFlow(downloadId).map {
-            it.status == DownloadStatus.COMPLETED
-        }
-
-    override val fileStats: Flow<MediaCache.FileStats> = downloader.getProgressFlow(downloadId).map {
-        val totalSize = it.totalBytes
-        val downloadedBytes = it.downloadedBytes
-        MediaCache.FileStats(
-            totalSize = totalSize.bytes,
-            downloadedBytes = downloadedBytes.bytes,
-            downloadProgress = if (
-                it.status == DownloadStatus.COMPLETED
-            ) {
-                1f.toProgress()
-            } else {
-                Progress.Unspecified
-            }, // m3u8 has no total size.
-        )
-    }
-    override val sessionStats: Flow<MediaCache.SessionStats> = run {
-        val downloadSpeedFlow = fileStats.map { it.downloadedBytes.inBytes }.averageRate()
-
-        combine(downloadSpeedFlow, fileStats) { speed, stats ->
-            MediaCache.SessionStats(
-                totalSize = stats.totalSize,
-                downloadedBytes = stats.downloadedBytes,
-                downloadSpeed = speed.bytes,
-                uploadedBytes = FileSize.Zero,
-                uploadSpeed = FileSize.Zero,
-                downloadProgress = stats.downloadProgress,
-            )
-        }
-    }
-    override val isDeleted: MutableStateFlow<Boolean> = MutableStateFlow(false)
-    private val closeMutex = Mutex()
-
-    override suspend fun getCachedMedia(): CachedMedia {
-        val state = downloader.getState(downloadId)
-            ?: throw IllegalStateException("Download state not found for $downloadId")
-
-        return when (state.status) {
-            DownloadStatus.INITIALIZING,
-            DownloadStatus.DOWNLOADING,
-            DownloadStatus.MERGING,
-            DownloadStatus.PAUSED,
-                -> {
-                error("Download not completed, cannot get cached media for $downloadId")
-            }
-
-            DownloadStatus.COMPLETED -> {
-                val actualFileSize = withContext(Dispatchers.IO_) {
-                    try {
-                        Path(state.outputPath).inSystem.actualSize().bytes
-                    } catch (_: Exception) {
-                        FileSize.Unspecified
-                    }
-                }
-                CachedMedia(
-                    origin,
-                    cacheMediaSourceId = mediaSourceId,
-                    download = ResourceLocation.LocalFile(
-                        state.outputPath,
-                        state.mediaType.toFileType(),
-                        originalUri = metadata.extra[EXTRA_URI],
-                    ),
-                    properties = origin.properties.copy(
-                        size = if (actualFileSize.isUnspecified) {
-                            origin.properties.size
-                        } else {
-                            actualFileSize
-                        },
-                    ),
-                    cacheProperties = MediaCacheProperties(
-                        totalSegments = state.totalSegments,
-                        httpDownloaderStatus = state.status.toString(),
-                    ),
-                )
-            }
-
-            DownloadStatus.FAILED,
-            DownloadStatus.CANCELED,
-                -> {
-                error("Download failed or canceled")
-            }
-        }
-    }
-
-    override suspend fun pause() {
-        downloader.pause(downloadId)
-    }
-
-    override suspend fun close() {
-        if (isDeleted.value) return
-        closeMutex.withLock {
-            if (isDeleted.value) return
-            downloader.cancel(downloadId)
-        }
-    }
-
-    override suspend fun resume() {
-        downloader.resume(downloadId)
-    }
-
-    override suspend fun closeAndDeleteFiles() {
-        if (isDeleted.value) return
-        closeMutex.withLock {
-            if (isDeleted.value) return
-            downloader.cancel(downloadId)
-            isDeleted.value = true
-        }
     }
 }
 

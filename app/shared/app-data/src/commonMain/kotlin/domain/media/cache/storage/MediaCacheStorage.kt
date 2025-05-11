@@ -181,6 +181,15 @@ val MediaCacheStorage.count: Flow<Int>
 suspend inline fun MediaCacheStorage.contains(cache: MediaCache): Boolean =
     listFlow.first().any { it === cache }
 
+/**
+ * Provide base directory of [MediaCacheEngine].
+ *
+ * All [MediaCacheEngine]s should create their caches in this directory.
+ */
+interface MediaSaveDirProvider {
+    val saveDir: String
+}
+
 class TestMediaCacheStorage : MediaCacheStorage {
     override val mediaSourceId: String
         get() = MediaCacheManager.LOCAL_FS_MEDIA_SOURCE_ID
