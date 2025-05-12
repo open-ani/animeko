@@ -553,10 +553,10 @@ class TorrentMediaCacheEngine(
                     EXTRA_TORRENT_CACHE_DIR to downloader.getSaveDirForTorrent(data).absolutePath.let { path ->
                         val stripped = path.substringAfter(baseSaveDirProvider.saveDir)
                         if (path == stripped) {
-                            logger.warn {
+                            throw UnsupportedOperationException(
                                 "Failed to strip torrent save path of media ${origin.mediaId}, " +
-                                        "path: $path, base: ${baseSaveDirProvider.saveDir}"
-                            }
+                                        "path: $path, base: ${baseSaveDirProvider.saveDir}",
+                            )
                         }
                         stripped
                     },

@@ -157,12 +157,12 @@ class HttpMediaCacheEngine(
 
             is UriMediaData -> {
                 val downloadId = DownloadId(Uuid.randomString())
-                val outputPath = saveDir.resolve(downloadId.value)
                 val state = downloader.downloadWithId(
                     downloadId = downloadId,
                     mediaData.uri,
                     options = DownloadOptions(headers = mediaData.headers),
-                )
+                ) ?: throw UnsupportedOperationException("Failed to create download job of $downloadId, state is null.")
+
                 return HttpMediaCache(
                     origin,
                     downloadId,
@@ -170,9 +170,7 @@ class HttpMediaCacheEngine(
                         extra = metadata.extra.toMutableMap().apply {
                             put(EXTRA_DOWNLOAD_ID, downloadId.value)
                             put(EXTRA_URI, mediaData.uri)
-                            if (state != null) {
-                                put(EXTRA_OUTPUT_PATH, state.relativeOutputPath)
-                            }
+                            put(EXTRA_OUTPUT_PATH, state.relativeOutputPath)
                             put(EXTRA_HEADERS, json.encodeToString(mediaData.headers))
                         },
                     ),

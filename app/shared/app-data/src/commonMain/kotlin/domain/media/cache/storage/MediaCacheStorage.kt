@@ -185,6 +185,9 @@ suspend inline fun MediaCacheStorage.contains(cache: MediaCache): Boolean =
  * Provide base directory of [MediaCacheEngine].
  *
  * All [MediaCacheEngine]s should create their caches in this directory.
+ *
+ * 读取和写入缓存的目录的操作使用此目录, 不要读取 SettingsRepository 保存的目录.
+ * 只有修改缓存目录和迁移可以从 SettingsRepository 中读取.
  */
 interface MediaSaveDirProvider {
     val saveDir: String

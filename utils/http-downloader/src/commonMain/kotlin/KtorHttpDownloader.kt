@@ -148,7 +148,7 @@ open class KtorHttpDownloader(
         logger.info { "Preparing to download with id=$downloadId, url=$url, mediaType=$mediaType" }
 
         // 1) Set initial state if not present
-        val initialState = stateMutex.withLock {
+        stateMutex.withLock {
             val currentMap = _downloadStatesFlow.value.toMutableMap()
             val existingEntry = currentMap[downloadId]
             if (existingEntry != null) {
@@ -173,8 +173,6 @@ open class KtorHttpDownloader(
             currentMap[downloadId] = DownloadEntry(job = null, state = initialState)
             _downloadStatesFlow.value = currentMap
             logger.info { "Created initial state for $downloadId" }
-
-            initialState
         }
         emitProgress(downloadId)
 
@@ -229,15 +227,15 @@ open class KtorHttpDownloader(
         }
 
         // 4) Store the job
-        stateMutex.withLock {
+        return stateMutex.withLock {
             val currentMap = _downloadStatesFlow.value.toMutableMap()
             val entry = currentMap[downloadId]
                 ?: error("Job of new download request $downloadId is created, but the download state is not found.")
             currentMap[downloadId] = entry.copy(job = job)
             _downloadStatesFlow.value = currentMap
-        }
 
-        return initialState
+            entry.state
+        }
     }
 
     /**
@@ -489,13 +487,8 @@ open class KtorHttpDownloader(
                     logger.info { "Resolving M3U8 media playlist for $downloadId" }
                     val playlist = resolveM3u8MediaPlaylist(url, options)
 
-                    val segmentCacheDir = getState(downloadId)?.relativeSegmentCacheDir
-                        ?.let { baseSaveDir.resolve(it) }
-                        ?: return false
-                    playlist.toSegments {
-                        segmentCacheDir.resolve(it).inSystem.absolutePath
-                            .substringAfter(baseSaveDir.inSystem.absolutePath)
-                    }
+                    val segmentCacheDir = getState(downloadId)?.relativeSegmentCacheDir ?: return false
+                    playlist.toSegments { Path(segmentCacheDir).resolve(it).toString() }
                 }
 
                 MediaType.MP4, MediaType.MKV -> {
@@ -596,8 +589,8 @@ open class KtorHttpDownloader(
                     url = url,
                     isDownloaded = false,
                     byteSize = -1,
-                    relativeTempFilePath = cacheDir.resolve("0.part").toString()
-                        .substringAfter(cacheDir.inSystem.absolutePath),
+                    relativeTempFilePath = cacheDir.resolve("0.part").inSystem.absolutePath
+                        .substringAfter(baseSaveDir.inSystem.absolutePath),
                     rangeStart = null,
                     rangeEnd = null,
                 ),
@@ -611,8 +604,8 @@ open class KtorHttpDownloader(
                     url = url,
                     isDownloaded = false,
                     byteSize = contentLength, // might be -1 if unknown
-                    relativeTempFilePath = cacheDir.resolve("0.part").toString()
-                        .substringAfter(cacheDir.inSystem.absolutePath),
+                    relativeTempFilePath = cacheDir.resolve("0.part").inSystem.absolutePath
+                        .substringAfter(baseSaveDir.inSystem.absolutePath),
                     rangeStart = null,
                     rangeEnd = null,
                 ),
@@ -629,8 +622,8 @@ open class KtorHttpDownloader(
                     url = url,
                     isDownloaded = false,
                     byteSize = contentLength,
-                    relativeTempFilePath = cacheDir.resolve("0.part").toString()
-                        .substringAfter(cacheDir.inSystem.absolutePath),
+                    relativeTempFilePath = cacheDir.resolve("0.part").inSystem.absolutePath
+                        .substringAfter(baseSaveDir.inSystem.absolutePath),
                     rangeStart = 0,
                     rangeEnd = contentLength - 1,
                 ),
@@ -649,8 +642,8 @@ open class KtorHttpDownloader(
                     url = url,
                     isDownloaded = false,
                     byteSize = (end - start + 1),
-                    relativeTempFilePath = cacheDir.resolve("$index.part").toString()
-                        .substringAfter(cacheDir.inSystem.absolutePath),
+                    relativeTempFilePath = cacheDir.resolve("$index.part").inSystem.absolutePath
+                        .substringAfter(baseSaveDir.inSystem.absolutePath),
                     rangeStart = start,
                     rangeEnd = end,
                 ),
