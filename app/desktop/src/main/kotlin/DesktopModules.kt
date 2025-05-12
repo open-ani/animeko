@@ -128,6 +128,7 @@ fun getDesktopModules(getContext: () -> DesktopContext, scope: CoroutineScope) =
             mediaCacheManager = get(),
             settingsRepo = get(),
             appTerminator = get(),
+            mediaCacheBaseDirProvider = get(),
             migrationChecker = object : MediaCacheMigrator.MigrationChecker {
                 override suspend fun requireMigrateTorrentCache(): Boolean {
                     return false

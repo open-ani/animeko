@@ -168,6 +168,7 @@ fun getAndroidModules(
             mediaCacheManager = get(),
             settingsRepo = get(),
             appTerminator = get(),
+            mediaCacheBaseDirProvider = get(),
             migrationChecker = object : MediaCacheMigrator.MigrationChecker {
                 override suspend fun requireMigrateTorrentCache(): Boolean {
                     return requireMigrate(context.files.dataDir.resolve(TorrentMediaCacheEngine.LEGACY_MEDIA_CACHE_DIR))
