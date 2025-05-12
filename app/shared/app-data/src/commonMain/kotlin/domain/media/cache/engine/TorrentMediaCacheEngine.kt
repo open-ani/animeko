@@ -616,7 +616,7 @@ class TorrentMediaCacheEngine(
         val cacheDir = extra[EXTRA_TORRENT_CACHE_DIR] ?: return null
         val cacheRelativeFilePath = extra[EXTRA_TORRENT_CACHE_FILE] ?: return null
 
-        val file = Path(cacheDir, cacheRelativeFilePath).inSystem
+        val file = Path(baseSaveDirProvider.saveDir, cacheDir).resolve(cacheRelativeFilePath).inSystem
         if (!file.exists() || file.isDirectory()) {
             return null
         }

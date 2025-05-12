@@ -146,7 +146,6 @@ fun getAndroidModules(
     single<HttpMediaCacheEngine> {
         val logger = logger<TorrentManager>()
 
-        @Suppress("DEPRECATION")
         val saveDir = get<MediaSaveDirProvider>().saveDir
             .let { Path(it).resolve(HttpMediaCacheEngine.MEDIA_CACHE_DIR) }
         logger.info { "HttpMediaCacheEngine base save directory: $saveDir" }

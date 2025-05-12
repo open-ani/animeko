@@ -400,7 +400,8 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
             dataStore = getContext().dataStores.m3u8DownloaderStore,
             get<HttpClientProvider>().get(),
             fileSystem = SystemFileSystem,
-            Path(get<MediaSaveDirProvider>().saveDir),
+            baseSaveDir = get<MediaSaveDirProvider>().saveDir
+                .let { Path(it).resolve(HttpMediaCacheEngine.MEDIA_CACHE_DIR) },
         )
     }
 

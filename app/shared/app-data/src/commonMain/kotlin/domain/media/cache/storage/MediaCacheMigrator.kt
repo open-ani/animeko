@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.io.files.Path
 import kotlinx.serialization.SerializationException
 import me.him188.ani.app.data.persistent.DataStoreJson
 import me.him188.ani.app.data.repository.user.SettingsRepository
@@ -35,6 +36,7 @@ import me.him188.ani.utils.io.absolutePath
 import me.him188.ani.utils.io.actualSize
 import me.him188.ani.utils.io.deleteRecursively
 import me.him188.ani.utils.io.exists
+import me.him188.ani.utils.io.inSystem
 import me.him188.ani.utils.io.isDirectory
 import me.him188.ani.utils.io.moveDirectoryRecursively
 import me.him188.ani.utils.io.name
@@ -158,6 +160,7 @@ class MediaCacheMigrator(
             .find { it is DataStoreMediaCacheStorage && it.engine is HttpMediaCacheEngine }
 
         val baseSaveDir = mediaCacheBaseDirProvider.saveDir
+        val webBaseSaveDir = Path(baseSaveDir, HttpMediaCacheEngine.MEDIA_CACHE_DIR).inSystem.absolutePath
 
         metadataStore.updateData { original ->
             original.map { save ->
@@ -186,7 +189,7 @@ class MediaCacheMigrator(
                                     extra = save.metadata.extra.toMutableMap().apply {
                                         put(
                                             HttpMediaCacheEngine.EXTRA_OUTPUT_PATH,
-                                            outputPath.substringAfter(baseSaveDir),
+                                            outputPath.substringAfter(webBaseSaveDir),
                                         )
                                     },
                                 ),
@@ -202,18 +205,18 @@ class MediaCacheMigrator(
         m3u8DownloaderStore.updateData { states ->
             states.map { state ->
                 state.copy(
-                    relativeOutputPath = state.relativeOutputPath.substringAfter(baseSaveDir),
-                    relativeSegmentCacheDir = state.relativeSegmentCacheDir.substringAfter(baseSaveDir),
+                    relativeOutputPath = state.relativeOutputPath.substringAfter(webBaseSaveDir),
+                    relativeSegmentCacheDir = state.relativeSegmentCacheDir.substringAfter(webBaseSaveDir),
                     segments = state.segments.map { seg ->
                         seg.copy(
-                            relativeTempFilePath = seg.relativeTempFilePath.substringAfter(baseSaveDir),
+                            relativeTempFilePath = seg.relativeTempFilePath.substringAfter(webBaseSaveDir),
                         )
                     },
                 )
             }
         }
 
-        // settingsRepo.oneshotActionConfig.update { copy(metadataMigratedFor411 = true) }
+        settingsRepo.oneshotActionConfig.update { copy(metadataMigratedFor411 = true) }
     }
 
     @Suppress("DEPRECATION")
