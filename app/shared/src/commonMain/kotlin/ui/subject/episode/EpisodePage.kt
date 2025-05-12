@@ -76,6 +76,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.preference.DarkMode
@@ -155,6 +157,7 @@ import me.him188.ani.utils.platform.isMobile
 import org.openani.mediamp.features.AudioLevelController
 import org.openani.mediamp.features.PlaybackSpeed
 import org.openani.mediamp.features.Screenshots
+import org.openani.mediamp.features.toggleMute
 
 
 /**
@@ -250,6 +253,16 @@ private fun EpisodeScreenContent(
     LaunchedEffect(vm.isFullscreen) {
         // Update system bar visibility whenever fullscreen state changes
         context.setSystemBarVisible(window, !vm.isFullscreen)
+    }
+
+    // 只有在首次进入的时候需要设置
+    LaunchedEffect(Unit) {
+        val audioController = vm.player.features[AudioLevelController]
+        if (audioController != null) {
+            val persistedPlayerVolume = vm.playerVolumeFlow.first()
+            audioController.setVolume(persistedPlayerVolume.level)
+            audioController.setMute(persistedPlayerVolume.mute)
+        }
     }
 
     BoxWithConstraints(modifier) {
@@ -903,16 +916,14 @@ private fun EpisodeVideo(
         },
         progressSliderState = progressSliderState,
         cacheProgressInfoFlow = vm.cacheProgressInfoFlow,
-        audioController = run {
-            val playerAudioLevelController = vm.player.features[AudioLevelController]?.collectAsLevelController()
-            remember {
-                derivedStateOf {
-                    platformComponents.audioManager?.asLevelController(StreamType.MUSIC)
-                        ?: playerAudioLevelController
-                        ?: NoOpLevelController
-                }
-            }.value
-        },
+        audioController = remember {
+            derivedStateOf {
+                platformComponents.audioManager?.asLevelController(StreamType.MUSIC)
+                    ?: vm.player.features[AudioLevelController]
+                        ?.let { MediampAudioLevelController(it, vm::savePlayerVolume) }
+                    ?: NoOpLevelController
+            }
+        }.value,
         brightnessController = remember {
             derivedStateOf {
                 platformComponents.brightnessManager?.asLevelController() ?: NoOpLevelController
@@ -1063,21 +1074,29 @@ private fun AutoPauseEffect(viewModel: EpisodeViewModel) {
 @Composable
 internal expect fun DisplayModeEffect(config: VideoScaffoldConfig)
 
-@Composable
-private fun AudioLevelController.collectAsLevelController(): LevelController {
-    val volumeState = volume.collectAsStateWithLifecycle()
+/**
+ * Delegation of [AudioLevelController], which allows observing volume state changes.
+ */
+class MediampAudioLevelController(
+    private val controller: AudioLevelController,
+    private val onVolumeStateChanged: (level: Float, mute: Boolean) -> Unit,
+) : LevelController {
+    override val level: Float get() = controller.volume.value
 
-    return remember(this, volumeState) {
-        object : LevelController {
-            override val level: Float get() = volumeState.value
+    val levelFlow = controller.volume
+    val muteFlow = controller.isMute
 
-            override fun increaseLevel(step: Float) {
-                volumeUp(step)
-            }
+    override val range: ClosedRange<Float> = 0f..controller.maxVolume
 
-            override fun decreaseLevel(step: Float) {
-                volumeDown(step)
-            }
-        }
+    override fun setLevel(level: Float) {
+        val newLevel = level.coerceIn(range)
+        controller.setVolume(newLevel)
+        onVolumeStateChanged(newLevel, controller.isMute.value)
+    }
+
+    fun toggleMute() {
+        val targetIsMute = !muteFlow.value
+        controller.toggleMute()
+        onVolumeStateChanged(level, targetIsMute)
     }
 }

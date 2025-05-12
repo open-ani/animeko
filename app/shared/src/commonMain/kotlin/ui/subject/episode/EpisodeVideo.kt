@@ -85,10 +85,8 @@ import me.him188.ani.app.videoplayer.ui.top.PlayerTopBar
 import me.him188.ani.utils.platform.annotations.TestOnly
 import me.him188.ani.utils.platform.isDesktop
 import org.openani.mediamp.MediampPlayer
-import org.openani.mediamp.features.AudioLevelController
 import org.openani.mediamp.features.audioTracks
 import org.openani.mediamp.features.subtitleTracks
-import org.openani.mediamp.features.toggleMute
 import org.openani.mediamp.togglePause
 
 internal const val TAG_EPISODE_VIDEO_TOP_BAR = "EpisodeVideoTopBar"
@@ -338,21 +336,21 @@ internal fun EpisodeVideoImpl(
                             danmakuEnabled,
                             onClick = { onToggleDanmaku() },
                         )
-                        val audioLevelController = playerState.features[AudioLevelController]
-                        if (expanded && audioLevelController != null
-                            && gestureFamily == GestureFamily.MOUSE
-                        ) {
-                            val volumeState by audioLevelController.volume.collectAsStateWithLifecycle()
-                            val volumeMute by audioLevelController.isMute.collectAsStateWithLifecycle()
+
+                        val audioLevelController = audioController as? MediampAudioLevelController
+                        if (expanded && audioLevelController != null && gestureFamily == GestureFamily.MOUSE) {
+                            val level by audioLevelController.levelFlow.collectAsState()
+                            val isMute by audioLevelController.muteFlow.collectAsState()
+
                             PlayerControllerDefaults.AudioIcon(
-                                volumeState,
-                                isMute = volumeMute,
-                                maxValue = audioLevelController.maxVolume,
+                                level,
+                                isMute = isMute,
+                                maxValue = audioLevelController.range.endInclusive,
                                 onClick = {
                                     audioLevelController.toggleMute()
                                 },
                                 onchange = {
-                                    audioLevelController.setVolume(it)
+                                    audioLevelController.setLevel(it)
                                 },
                                 controllerState = playerControllerState,
                             )
