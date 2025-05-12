@@ -90,9 +90,7 @@ class MediaCacheMigrator(
                 }
             }
 
-            scope.launch(Dispatchers.IO_) {
-                migratePathInMetadataToRelative()
-            }
+            migratePathInMetadataToRelative() // 无条件尝试迁移元数据
 
             return requiresMigration
         } catch (e: Exception) {
