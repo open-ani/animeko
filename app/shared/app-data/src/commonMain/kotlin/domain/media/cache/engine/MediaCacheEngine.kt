@@ -93,15 +93,6 @@ interface MediaCacheEngine {
     ): MediaCache
 
     /**
-     * 修改 [MediaCacheMetadata] 以适配下载的缓存的位置迁移.
-     * 下载的视频的存放位置由引擎决定, 所以迁移缓存后需要引擎修改元数据以适配新的存放位置.
-     */
-    suspend fun modifyMetadataForMigration(
-        original: MediaCacheMetadata,
-        newSaveDir: Path,
-    ): MediaCacheMetadata = original
-
-    /**
      * 删除所有未在 [all] 中找到对应 [MediaCache] 的文件. 这通常包括在线播放的视频. 不会包括通过缓存功能创建的.
      */
     suspend fun deleteUnusedCaches(all: List<MediaCache>)

@@ -20,9 +20,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
 import kotlinx.io.files.FileSystem
+import kotlinx.io.files.Path
 import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.httpdownloader.m3u.DefaultM3u8Parser
 import me.him188.ani.utils.httpdownloader.m3u.M3u8Parser
+import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
@@ -37,6 +39,7 @@ class KtorPersistentHttpDownloader(
     private val dataStore: DataStore<List<DownloadState>>,
     client: ScopedHttpClient,
     fileSystem: FileSystem,
+    baseSaveDir: Path,
     computeDispatcher: CoroutineContext = Dispatchers.Default,
     ioDispatcher: CoroutineContext = Dispatchers.IO_,
     clock: Clock = Clock.System,
@@ -44,6 +47,7 @@ class KtorPersistentHttpDownloader(
 ) : KtorHttpDownloader(
     client = client,
     fileSystem = fileSystem,
+    baseSaveDir = baseSaveDir,
     computeDispatcher = computeDispatcher,
     ioDispatcher = ioDispatcher,
     clock = clock,

@@ -12,7 +12,6 @@ package me.him188.ani.app.ui.subject.episode.comments
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Preview
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -20,7 +19,6 @@ import me.him188.ani.app.domain.comment.CommentSendResult
 import me.him188.ani.app.ui.comment.CommentEditorState
 import me.him188.ani.app.ui.comment.CommentMapperContext
 import me.him188.ani.app.ui.comment.EditComment
-import me.him188.ani.app.ui.comment.EditCommentBottomStubPanel
 import me.him188.ani.app.ui.comment.EditCommentDefaults
 import me.him188.ani.app.ui.comment.EditCommentSticker
 import me.him188.ani.app.ui.comment.createPreviewTurnstileState
@@ -66,18 +64,6 @@ fun PreviewEditCommentStickerPanel() {
                 .map { EditCommentSticker(it, null) }
                 .toList(),
             onClickItem = { },
-        )
-    }
-}
-
-@Preview
-@Composable
-fun PreviewEditCommentBottomStubPanel() {
-    ProvideCompositionLocalsForPreview {
-        EditCommentBottomStubPanel(
-            text = TextFieldValue("发送评论"),
-            onClickEditText = { },
-            onClickEmoji = { },
         )
     }
 }

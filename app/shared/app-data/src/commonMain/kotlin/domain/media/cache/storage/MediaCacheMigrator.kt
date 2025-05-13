@@ -13,11 +13,12 @@ import androidx.datastore.core.DataStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.io.files.Path
 import kotlinx.serialization.SerializationException
 import me.him188.ani.app.data.persistent.DataStoreJson
 import me.him188.ani.app.data.repository.user.SettingsRepository
@@ -35,6 +36,7 @@ import me.him188.ani.utils.io.absolutePath
 import me.him188.ani.utils.io.actualSize
 import me.him188.ani.utils.io.deleteRecursively
 import me.him188.ani.utils.io.exists
+import me.him188.ani.utils.io.inSystem
 import me.him188.ani.utils.io.isDirectory
 import me.him188.ani.utils.io.moveDirectoryRecursively
 import me.him188.ani.utils.io.name
@@ -66,6 +68,7 @@ class MediaCacheMigrator(
     private val settingsRepo: SettingsRepository,
     private val appTerminator: AppTerminator,
     private val migrationChecker: MigrationChecker,
+    private val mediaCacheBaseDirProvider: MediaSaveDirProvider,
     private val getNewBaseSaveDir: suspend () -> SystemPath?,
     private val getLegacyTorrentSaveDir: suspend () -> SystemPath
 ) : KoinComponent {
@@ -77,7 +80,7 @@ class MediaCacheMigrator(
     @OptIn(DelicateCoroutinesApi::class)
     suspend fun startupMigrationCheckAndGetIfRequiresMigration(scope: CoroutineScope): Boolean {
         try {
-            migrateMediaCacheMetadata() // 无条件尝试迁移元数据
+            migrateMediaCacheMetadataFromFileToDataStore() // 无条件尝试迁移元数据
 
             val migrateTorrent = migrationChecker.requireMigrateTorrentCache()
             val migrateWebM3u = migrationChecker.requireMigrateWebM3uCache()
@@ -89,6 +92,8 @@ class MediaCacheMigrator(
                 }
             }
 
+            migratePathInMetadataToRelative() // 无条件尝试迁移元数据
+
             return requiresMigration
         } catch (e: Exception) {
             logger.error(e) { "[migration] Failed to migrate media cache." }
@@ -96,9 +101,17 @@ class MediaCacheMigrator(
         }
     }
 
+    /**
+     * Migrate media cache metadata storage from file to datastore.
+     *
+     * @since 4.8
+     */
     @Suppress("DEPRECATION")
-    @OptIn(InvalidMediaCacheEngineKey::class)
-    private suspend fun migrateMediaCacheMetadata() {
+    private suspend fun migrateMediaCacheMetadataFromFileToDataStore() {
+        if (settingsRepo.oneshotActionConfig.flow.first().metadataMigratedFor408) {
+            return
+        }
+
         val storages = mediaCacheManager.storagesIncludingDisabled
         val legacyMetadataDir = context.files.dataDir.resolve("media-cache")
 
@@ -126,6 +139,84 @@ class MediaCacheMigrator(
 
         // Delete the whole metadata dir
         legacyMetadataDir.deleteRecursively()
+
+        settingsRepo.oneshotActionConfig.update { copy(metadataMigratedFor408 = true) }
+    }
+
+    /**
+     * Migrate all stored path in media cache metadata datastore and m3u downloader datastore
+     * to relative path.
+     *
+     * @since 4.11
+     */
+    private suspend fun migratePathInMetadataToRelative() {
+        if (settingsRepo.oneshotActionConfig.flow.first().metadataMigratedFor411) {
+            return
+        }
+
+        val torrentStorage = mediaCacheManager.storagesIncludingDisabled
+            .find { it is DataStoreMediaCacheStorage && it.engine is TorrentMediaCacheEngine }
+        val webStorage = mediaCacheManager.storagesIncludingDisabled
+            .find { it is DataStoreMediaCacheStorage && it.engine is HttpMediaCacheEngine }
+
+        val baseSaveDir = mediaCacheBaseDirProvider.saveDir
+        val webBaseSaveDir = Path(baseSaveDir, HttpMediaCacheEngine.MEDIA_CACHE_DIR).inSystem.absolutePath
+
+        metadataStore.updateData { original ->
+            original.map { save ->
+                when (save.engine) {
+                    torrentStorage?.engine?.engineKey -> {
+                        val torrentCacheDir = save.metadata.extra[TorrentMediaCacheEngine.EXTRA_TORRENT_CACHE_DIR]
+                        if (torrentCacheDir != null) {
+                            save.copy(
+                                metadata = save.metadata.copy(
+                                    extra = save.metadata.extra.toMutableMap().apply {
+                                        put(
+                                            TorrentMediaCacheEngine.EXTRA_TORRENT_CACHE_DIR,
+                                            torrentCacheDir.substringAfter(baseSaveDir),
+                                        )
+                                    },
+                                ),
+                            )
+                        } else save
+                    }
+
+                    webStorage?.engine?.engineKey -> {
+                        val outputPath = save.metadata.extra[HttpMediaCacheEngine.EXTRA_OUTPUT_PATH]
+                        if (outputPath != null) {
+                            save.copy(
+                                metadata = save.metadata.copy(
+                                    extra = save.metadata.extra.toMutableMap().apply {
+                                        put(
+                                            HttpMediaCacheEngine.EXTRA_OUTPUT_PATH,
+                                            outputPath.substringAfter(webBaseSaveDir),
+                                        )
+                                    },
+                                ),
+                            )
+                        } else save
+                    }
+
+                    else -> save
+                }
+            }
+        }
+
+        m3u8DownloaderStore.updateData { states ->
+            states.map { state ->
+                state.copy(
+                    relativeOutputPath = state.relativeOutputPath.substringAfter(webBaseSaveDir),
+                    relativeSegmentCacheDir = state.relativeSegmentCacheDir.substringAfter(webBaseSaveDir),
+                    segments = state.segments.map { seg ->
+                        seg.copy(
+                            relativeTempFilePath = seg.relativeTempFilePath.substringAfter(webBaseSaveDir),
+                        )
+                    },
+                )
+            }
+        }
+
+        settingsRepo.oneshotActionConfig.update { copy(metadataMigratedFor411 = true) }
     }
 
     @Suppress("DEPRECATION")
@@ -172,21 +263,6 @@ class MediaCacheMigrator(
                     return
                 }
 
-                _status.value = Status.Metadata
-                metadataStore.updateData { original ->
-                    val nonTorrentMetadata =
-                        original.filter { it.engine != torrentStorage.engine.engineKey }
-                    val torrentMetadata =
-                        original.filter { it.engine == torrentStorage.engine.engineKey }
-
-                    nonTorrentMetadata + torrentMetadata.map { save ->
-                        save.copy(
-                            metadata = torrentStorage.engine
-                                .modifyMetadataForMigration(save.metadata, newBasePath.path),
-                        )
-                    }
-                }
-
                 logger.info { "[migration] Migrate metadata of torrent cache complete." }
             }
 
@@ -216,46 +292,6 @@ class MediaCacheMigrator(
                     _status.value =
                         Status.Error(IllegalStateException("Media cache storage with engine HttpMediaCacheEngine is not found."))
                     return
-                }
-
-                _status.value = Status.Metadata
-                metadataStore.updateData { original ->
-                    val nonWebMetadata =
-                        original.filter { it.engine != webStorage.engine.engineKey }
-                    val webMetadata = original.filter { it.engine == webStorage.engine.engineKey }
-
-                    nonWebMetadata + webMetadata.map { save ->
-                        save.copy(
-                            metadata = webStorage.engine.modifyMetadataForMigration(
-                                save.metadata,
-                                newPath.path
-                            ),
-                        )
-                    }
-                }
-
-                m3u8DownloaderStore.updateData { original ->
-                    original.map { state ->
-                        state.copy(
-                            outputPath = newPath
-                                .resolve(state.outputPath.substringAfter(HttpMediaCacheEngine.LEGACY_MEDIA_CACHE_DIR))
-                                .absolutePath,
-                            segmentCacheDir = newPath
-                                .resolve(state.segmentCacheDir.substringAfter(HttpMediaCacheEngine.LEGACY_MEDIA_CACHE_DIR))
-                                .absolutePath,
-                            segments = state.segments.map { seg ->
-                                seg.copy(
-                                    tempFilePath = newPath
-                                        .resolve(
-                                            seg.tempFilePath.substringAfter(
-                                                HttpMediaCacheEngine.LEGACY_MEDIA_CACHE_DIR
-                                            )
-                                        )
-                                        .absolutePath,
-                                )
-                            },
-                        )
-                    }
                 }
 
                 logger.info { "[migration] Migrate metadata of web m3u cache complete." }

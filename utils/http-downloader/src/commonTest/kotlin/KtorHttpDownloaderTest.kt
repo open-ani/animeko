@@ -240,6 +240,7 @@ class KtorHttpDownloaderTest {
             ioDispatcher = testDispatcher,
             computeDispatcher = testDispatcher,
             clock = mockClock,
+            baseSaveDir = Path(tempDir),
         )
     }
 
@@ -330,10 +331,11 @@ class KtorHttpDownloaderTest {
 
     @Test
     fun `download - should complete successfully`() = testScope.runTest {
-        val downloadId = downloader.download(
+        val downloadId = downloader.downloadWithId(
             url = "https://example.com/master.m3u8",
-            outputPath = "$tempDir/output.ts",
-        )
+            downloadId = DownloadId("output.ts"),
+        )?.downloadId
+        assertNotNull(downloadId)
         // Wait for actual completion
         downloader.joinDownload(downloadId)
 
@@ -343,7 +345,7 @@ class KtorHttpDownloaderTest {
         assertTrue(fileSystem.exists(Path("$tempDir/output.ts")))
 
         // Merged segments directory should be cleaned
-        assertFalse(fileSystem.exists(Path("$tempDir/output.ts_segments_$downloadId")))
+        assertFalse(fileSystem.exists(Path("$tempDir/segments_$downloadId")))
 
         // New: check final file size (segment1 + segment2 + segment3 => 1024 + 2048 + 3072 = 6144)
         val outputFileSize = fileSystem.metadata(Path("$tempDir/output.ts")).size
@@ -356,7 +358,6 @@ class KtorHttpDownloaderTest {
         downloader.downloadWithId(
             downloadId = customId,
             url = "https://example.com/master.m3u8",
-            outputPath = Path("$tempDir/custom-output.ts"),
         )
         downloader.joinDownload(customId)
 
@@ -372,7 +373,6 @@ class KtorHttpDownloaderTest {
         downloader.downloadWithId(
             downloadId = customId,
             url = "https://example.com/master.m3u8",
-            outputPath = Path("$tempDir/custom-output.ts"),
         )
         downloader.joinDownload(customId)
 
@@ -381,7 +381,6 @@ class KtorHttpDownloaderTest {
         downloader.downloadWithId(
             downloadId = customId,
             url = "https://example.com/master.m3u8",
-            outputPath = Path("$tempDir/custom-output.ts"),
         )
         val state = downloader.getState(customId)
         assertNotNull(state)
@@ -393,7 +392,6 @@ class KtorHttpDownloaderTest {
     fun `pause - should pause download and save state`() = testScope.runTest {
         val downloadId = downloader.download(
             url = "https://example.com/master.m3u8",
-            outputPath = "$tempDir/pausable.ts",
         )
 
         val result = downloader.pause(downloadId)
@@ -409,7 +407,6 @@ class KtorHttpDownloaderTest {
     fun `resume - should continue from paused state`() = testScope.runTest {
         val downloadId = downloader.download(
             url = "https://example.com/master.m3u8",
-            outputPath = "$tempDir/resumable.ts",
         )
         downloader.pause(downloadId)
 
@@ -427,10 +424,12 @@ class KtorHttpDownloaderTest {
 
     @Test
     fun `cancel - should stop download and mark canceled`() = testScope.runTest {
-        val downloadId = downloader.download(
-            url = "https://example.com/master.m3u8",
-            outputPath = "$tempDir/cancellable.ts",
+        val downloadId = DownloadId("cancellable.ts")
+        downloader.downloadWithId(
+            url = "https://example.com/unstable-playlist1.m3u8",
+            downloadId = downloadId,
         )
+
         val result = downloader.cancel(downloadId)
         assertTrue(result)
 
@@ -439,7 +438,7 @@ class KtorHttpDownloaderTest {
         assertEquals(DownloadStatus.CANCELED, state.status)
         assertFalse(downloadId in downloader.getActiveDownloadIds())
         // Temporary segment directory should NOT be removed
-        assertTrue(fileSystem.exists(Path("$tempDir/cancellable.ts_segments_$downloadId")))
+        assertTrue(fileSystem.exists(Path("$tempDir/segments_$downloadId")))
     }
 
     // ----------------------------------------------------
@@ -455,7 +454,6 @@ class KtorHttpDownloaderTest {
 
         val downloadId = downloader.download(
             url = "https://example.com/master.m3u8",
-            outputPath = "$tempDir/progress-test.ts",
         )
         downloader.joinDownload(downloadId)
 
@@ -481,7 +479,6 @@ class KtorHttpDownloaderTest {
     fun `getProgressFlow - should provide flow for a single download`() = testScope.runTest {
         val downloadId = downloader.download(
             url = "https://example.com/master.m3u8",
-            outputPath = "$tempDir/specific-progress.ts",
         )
 
         downloader.getProgressFlow(downloadId).test {
@@ -505,7 +502,6 @@ class KtorHttpDownloaderTest {
     fun `download - 404 error should end in FAILED state`() = testScope.runTest {
         val downloadId = downloader.download(
             url = "https://example.com/error.m3u8",
-            outputPath = "$tempDir/error.ts",
         )
         downloader.joinDownload(downloadId)
 
@@ -524,7 +520,6 @@ class KtorHttpDownloaderTest {
         )
         val downloadId = downloader.download(
             url = "https://example.com/timeout.m3u8",
-            outputPath = "$tempDir/timeout.ts",
             options = options,
         )
         downloader.joinDownload(downloadId)
@@ -539,7 +534,6 @@ class KtorHttpDownloaderTest {
     fun `download - missing segments should end in FAILED state`() = testScope.runTest {
         val downloadId = downloader.download(
             url = "https://example.com/bad-segments.m3u8",
-            outputPath = "$tempDir/bad-segments.ts",
         )
         downloader.joinDownload(downloadId)
 
@@ -555,10 +549,11 @@ class KtorHttpDownloaderTest {
 
     @Test
     fun `download - mp4 file should complete successfully`() = testScope.runTest {
-        val downloadId = downloader.download(
+        val downloadId = downloader.downloadWithId(
             url = "https://example.com/sample.mp4",
-            outputPath = "$tempDir/sample.mp4",
-        )
+            downloadId = DownloadId("sample.mp4"),
+        )?.downloadId
+        assertNotNull(downloadId)
         // Wait for actual completion
         downloader.joinDownload(downloadId)
 
@@ -568,7 +563,7 @@ class KtorHttpDownloaderTest {
         assertTrue(fileSystem.exists(Path("$tempDir/sample.mp4")))
 
         // Merged segments directory should be cleaned
-        assertFalse(fileSystem.exists(Path("$tempDir/sample.mp4_segments_$downloadId")))
+        assertFalse(fileSystem.exists(Path("$tempDir/segments_$downloadId")))
 
         // New: check final file size and partial content
         val fileSize = fileSystem.metadata(Path("$tempDir/sample.mp4")).size
@@ -608,10 +603,11 @@ class KtorHttpDownloaderTest {
 
     @Test
     fun `download - mkv file should complete successfully`() = testScope.runTest {
-        val downloadId = downloader.download(
+        val downloadId = downloader.downloadWithId(
             url = "https://example.com/sample.mkv",
-            outputPath = "$tempDir/sample.mkv",
-        )
+            downloadId = DownloadId("sample.mkv"),
+        )?.downloadId
+        assertNotNull(downloadId)
         // Wait for actual completion
         downloader.joinDownload(downloadId)
 
@@ -621,7 +617,7 @@ class KtorHttpDownloaderTest {
         assertTrue(fileSystem.exists(Path("$tempDir/sample.mkv")))
 
         // Merged segments directory should be cleaned
-        assertFalse(fileSystem.exists(Path("$tempDir/sample.mkv_segments_$downloadId")))
+        assertFalse(fileSystem.exists(Path("$tempDir/segments_$downloadId")))
 
         // New: check final file size and partial content
         val fileSize = fileSystem.metadata(Path("$tempDir/sample.mkv")).size
@@ -637,7 +633,6 @@ class KtorHttpDownloaderTest {
     fun `download - mp4 file with error should end in FAILED state`() = testScope.runTest {
         val downloadId = downloader.download(
             url = "https://example.com/error.mp4",
-            outputPath = "$tempDir/error.mp4",
         )
         downloader.joinDownload(downloadId)
 
@@ -651,7 +646,6 @@ class KtorHttpDownloaderTest {
     fun `download - mkv file with error should end in FAILED state`() = testScope.runTest {
         val downloadId = downloader.download(
             url = "https://example.com/error.mkv",
-            outputPath = "$tempDir/error.mkv",
         )
         downloader.joinDownload(downloadId)
 
@@ -663,10 +657,11 @@ class KtorHttpDownloaderTest {
 
     @Test
     fun `pause and resume - mp4 file should continue from paused state`() = testScope.runTest {
-        val downloadId = downloader.download(
+        val downloadId = downloader.downloadWithId(
             url = "https://example.com/sample.mp4",
-            outputPath = "$tempDir/resumable.mp4",
-        )
+            downloadId = DownloadId("resumable.mp4"),
+        )?.downloadId
+        assertNotNull(downloadId)
         downloader.pause(downloadId)
 
         // Resume
@@ -686,7 +681,6 @@ class KtorHttpDownloaderTest {
     fun `cancel - mp4 file should stop download and mark canceled`() = testScope.runTest {
         val downloadId = downloader.download(
             url = "https://example.com/sample.mp4",
-            outputPath = "$tempDir/cancellable.mp4",
         )
         val result = downloader.cancel(downloadId)
         assertTrue(result)
@@ -706,7 +700,6 @@ class KtorHttpDownloaderTest {
 
         val downloadId = downloader.download(
             url = "https://example.com/sample.mp4",
-            outputPath = "$tempDir/progress-test.mp4",
         )
         downloader.joinDownload(downloadId)
 
@@ -724,10 +717,11 @@ class KtorHttpDownloaderTest {
 
     @Test
     fun `download - server without range support should still complete successfully`() = testScope.runTest {
-        val downloadId = downloader.download(
+        val downloadId = downloader.downloadWithId(
             url = "https://example.com/no-range-support.mp4",
-            outputPath = "$tempDir/no-range-support.mp4",
-        )
+            downloadId = DownloadId("no-range-support.mp4"),
+        )?.downloadId
+        assertNotNull(downloadId)
         // Wait for actual completion
         downloader.joinDownload(downloadId)
 
@@ -747,9 +741,10 @@ class KtorHttpDownloaderTest {
         // Set a small max concurrent segments value to ensure multiple segments are created
         val options = DownloadOptions(maxConcurrentSegments = 3)
 
-        val downloadId = downloader.download(
+        val downloadId = DownloadId("multi-segment.mp4")
+        downloader.downloadWithId(
             url = "https://example.com/sample.mp4",
-            outputPath = "$tempDir/multi-segment.mp4",
+            downloadId = downloadId,
             options = options,
         )
 
@@ -785,11 +780,9 @@ class KtorHttpDownloaderTest {
     fun `multiple downloads - should complete concurrently`() = testScope.runTest {
         val id1 = downloader.download(
             url = "https://example.com/master.m3u8",
-            outputPath = "$tempDir/concurrent1.ts",
         )
         val id2 = downloader.download(
             url = "https://example.com/master.m3u8",
-            outputPath = "$tempDir/concurrent2.ts",
         )
 
         // Wait for both
@@ -804,11 +797,9 @@ class KtorHttpDownloaderTest {
     fun `pauseAll - should pause all downloads`() = testScope.runTest {
         val id1 = downloader.download(
             url = "https://example.com/master.m3u8",
-            outputPath = "$tempDir/pause-all1.ts",
         )
         val id2 = downloader.download(
             url = "https://example.com/master.m3u8",
-            outputPath = "$tempDir/pause-all2.ts",
         )
 
         assertEquals(2, downloader.getActiveDownloadIds().size)
@@ -827,11 +818,9 @@ class KtorHttpDownloaderTest {
     fun `cancelAll - should cancel all downloads`() = testScope.runTest {
         val id1 = downloader.download(
             url = "https://example.com/master.m3u8",
-            outputPath = "$tempDir/cancel-all1.ts",
         )
         val id2 = downloader.download(
             url = "https://example.com/master.m3u8",
-            outputPath = "$tempDir/cancel-all2.ts",
         )
         assertEquals(2, downloader.getActiveDownloadIds().size)
 
@@ -847,7 +836,6 @@ class KtorHttpDownloaderTest {
     fun `close - should clean up resources and cancel active jobs`() = testScope.runTest {
         val downloadId = downloader.download(
             url = "https://example.com/master.m3u8",
-            outputPath = "$tempDir/close-test.ts",
         )
         // Let it run briefly
 
@@ -859,7 +847,6 @@ class KtorHttpDownloaderTest {
         // If you want to test what happens if we try to start a new one:
         val newId = downloader.download(
             url = "https://example.com/master.m3u8",
-            outputPath = "$tempDir/after-close.ts",
         )
         // Because the scope is canceled, that job won't actually proceed.
         downloader.joinDownload(newId)
@@ -876,9 +863,10 @@ class KtorHttpDownloaderTest {
     @Test
     fun `resume - segment creation fails first time - success second time`() = testScope.runTest {
         // 1) Download (which will fail on first attempt because of internal server error).
-        val downloadId = downloader.download(
+        val downloadId = DownloadId("unstable1.ts")
+        downloader.downloadWithId(
             url = "https://example.com/unstable-playlist1.m3u8",
-            outputPath = "$tempDir/unstable1.ts",
+            downloadId = downloadId,
         )
         downloader.joinDownload(downloadId)
 
@@ -903,7 +891,6 @@ class KtorHttpDownloaderTest {
         // 1) Download => always fails
         val downloadId = downloader.download(
             url = "https://example.com/unstable-playlist2.m3u8",
-            outputPath = "$tempDir/unstable2.ts",
         )
         downloader.joinDownload(downloadId)
 
@@ -943,7 +930,6 @@ class KtorHttpDownloaderTest {
 
         val downloadId = downloader.download(
             url = "https://example.com/unstable-segments.m3u8",
-            outputPath = "$tempDir/unstable-failure.ts",
             options = options,
         )
         downloader.joinDownload(downloadId)
@@ -1020,11 +1006,13 @@ class KtorHttpDownloaderTest {
             maxRetriesPerSegment = 2,
             baseRetryDelayMillis = 10, // short delay for test
         )
-        val downloadId = downloader.download(
+        val downloadId = downloader.downloadWithId(
             url = "https://example.com/unstable-single.m3u8",
-            outputPath = "$tempDir/unstable-single.ts",
+            downloadId = DownloadId("unstable-single.ts"),
             options = options,
-        )
+        )?.downloadId
+        assertNotNull(downloadId)
+
         downloader.joinDownload(downloadId)
 
         // Final state => should be COMPLETED since the single segment recovers on 2nd attempt
@@ -1091,13 +1079,6 @@ class KtorHttpDownloaderTest {
         }
     }
 }
-
-// Helper extension for convenience
-private suspend inline fun HttpDownloader.download(
-    url: String,
-    outputPath: String,
-    options: DownloadOptions = DownloadOptions(),
-): DownloadId = download(url, Path(outputPath), options)
 
 private fun FileSystem.metadata(path: Path): FileMetadata = metadataOrNull(path)!!
 

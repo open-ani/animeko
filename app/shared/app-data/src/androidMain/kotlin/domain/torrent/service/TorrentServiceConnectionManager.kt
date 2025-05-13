@@ -33,6 +33,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -77,7 +78,8 @@ import kotlin.coroutines.CoroutineContext
  */
 class TorrentServiceConnectionManager(
     context: Context,
-    private val dataStoreFlow: StateFlow<DataStore<List<MediaCacheSave>>>,
+    private val dataStoreFlow: StateFlow<DataStore<List<MediaCacheSave>>?>,
+    private val mediaCacheBaseSaveDirFlow: StateFlow<File?>,
     startServiceImpl: () -> ComponentName?,
     private val stopServiceImpl: () -> Unit,
     private val processLifecycle: Lifecycle,
@@ -167,7 +169,9 @@ class TorrentServiceConnectionManager(
     private fun startObserveServiceLifecycle() {
         scope.launch {
             combine(
-                dataStoreFlow.flatMapLatest { it.data.map(::allTorrentMediaCacheCompleted) },
+                dataStoreFlow.flatMapLatest {
+                    it?.data?.map(::allTorrentMediaCacheCompleted) ?: emptyFlow()
+                },
                 requestQueue.map { it.isNotEmpty() },
                 isServiceConnected,
                 processLifecycle.currentStateFlow,
@@ -205,6 +209,7 @@ class TorrentServiceConnectionManager(
      * Check if all torrent media cache is completed. If not, the service will be kept alive.
      */
     private fun allTorrentMediaCacheCompleted(list: List<MediaCacheSave>): Boolean {
+        val baseSaveDir = mediaCacheBaseSaveDirFlow.value ?: return true
         list.forEach { save ->
             if (save.engine != MediaCacheEngineKey(TorrentEngineType.Anitorrent.id)) {
                 return@forEach
@@ -216,7 +221,7 @@ class TorrentServiceConnectionManager(
             val cacheDir = extra[TorrentMediaCacheEngine.EXTRA_TORRENT_CACHE_DIR] ?: return false
             val cacheRelativeFilePath = extra[TorrentMediaCacheEngine.EXTRA_TORRENT_CACHE_FILE] ?: return false
 
-            val file = File(cacheDir, cacheRelativeFilePath)
+            val file = File(baseSaveDir, cacheDir).resolve(cacheRelativeFilePath)
             if (!file.exists() || file.isDirectory()) {
                 return false
             }

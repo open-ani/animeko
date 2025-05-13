@@ -30,6 +30,7 @@ import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.domain.media.cache.engine.TorrentMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.storage.DataStoreMediaCacheStorage
 import me.him188.ani.app.domain.media.cache.storage.MediaCacheSave
+import me.him188.ani.app.domain.media.cache.storage.MediaSaveDirProvider
 import me.him188.ani.app.domain.media.createTestDefaultMedia
 import me.him188.ani.app.domain.media.createTestMediaProperties
 import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
@@ -48,6 +49,7 @@ import me.him188.ani.datasources.api.topic.EpisodeRange
 import me.him188.ani.datasources.api.topic.FileSize.Companion.megaBytes
 import me.him188.ani.datasources.api.topic.ResourceLocation
 import me.him188.ani.datasources.api.unwrapCached
+import me.him188.ani.utils.io.absolutePath
 import me.him188.ani.utils.io.inSystem
 import me.him188.ani.utils.io.toKtPath
 import me.him188.ani.utils.ktor.asScopedHttpClient
@@ -117,6 +119,9 @@ class DirectoryMediaCacheStorageTest {
             mediaCacheMetadataStore = MemoryDataStore(listOf()),
             shareRatioLimitFlow = flowOf(1.2f),
             flowDispatcher = coroutineContext[ContinuationInterceptor]!!,
+            baseSaveDirProvider = object : MediaSaveDirProvider {
+                override val saveDir: String = dir.absolutePath
+            },
             onDownloadStarted = { onDownloadStarted(it as AnitorrentDownloadSession) },
         )
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -24,6 +24,21 @@ data class OneshotActionConfig(
      */
     val deleteSearchTagTip: Boolean = true,
     val horizontalScrollTip: Boolean = true,
+
+    /**
+     * Migrate media cache metadata storage from file to datastore.
+     *
+     * @since 4.8
+     */
+    val metadataMigratedFor408: Boolean = false,
+
+    /**
+     * Migrate all stored path in media cache metadata datastore and m3u downloader datastore
+     * to relative path.
+     *
+     * @since 4.11
+     */
+    val metadataMigratedFor411: Boolean = false,
 ) {
     companion object {
         @Stable

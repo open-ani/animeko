@@ -34,6 +34,7 @@ import me.him188.ani.app.data.persistent.MemoryDataStore
 import me.him188.ani.app.data.persistent.dataStores
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.media.cache.storage.MediaCacheSave
+import me.him188.ani.app.domain.media.cache.storage.MediaSaveDirProvider
 import me.him188.ani.app.domain.torrent.service.AniTorrentService
 import me.him188.ani.app.domain.torrent.service.TorrentServiceConnectionManager
 import me.him188.ani.app.platform.AndroidLoggingConfigurator
@@ -57,6 +58,7 @@ import me.him188.ani.utils.logging.logger
 import org.koin.android.ext.android.getKoin
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.startKoin
+import java.io.File
 import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Method
 import java.nio.file.Paths
@@ -82,7 +84,7 @@ class AniApplication : Application() {
          * Only use torrent service at Android 8.1 (27) or above.
          * Our minimal support is Android 8.0 (26).
          */
-        val FEATURE_USE_TORRENT_SERVICE = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1
+        val FEATURE_USE_TORRENT_SERVICE = true
     }
 
     inner class Instance()
@@ -113,11 +115,12 @@ class AniApplication : Application() {
 
         val scope = createAppRootCoroutineScope()
 
-        val mediaCacheDataStore: MutableStateFlow<DataStore<List<MediaCacheSave>>> =
-            MutableStateFlow(MemoryDataStore(emptyList()))
+        val mediaCacheDataStore: MutableStateFlow<DataStore<List<MediaCacheSave>>?> = MutableStateFlow(null)
+        val mediaCacheBaseSaveDir: MutableStateFlow<File?> = MutableStateFlow(null)
         val connectionManager = TorrentServiceConnectionManager(
             this,
             dataStoreFlow = mediaCacheDataStore,
+            mediaCacheBaseSaveDirFlow = mediaCacheBaseSaveDir,
             startServiceImpl = ::startAniTorrentService,
             stopServiceImpl = ::stopService,
             processLifecycle = ProcessLifecycleOwner.get().lifecycle,
@@ -172,10 +175,9 @@ class AniApplication : Application() {
             }
         }
 
-        if (FEATURE_USE_TORRENT_SERVICE) {
-            mediaCacheDataStore.value = applicationContext.dataStores.mediaCacheMetadataStore
-            connectionManager.launchCheckLoop()
-        }
+        mediaCacheDataStore.value = applicationContext.dataStores.mediaCacheMetadataStore
+        mediaCacheBaseSaveDir.value = File(koin.get<MediaSaveDirProvider>().saveDir)
+        connectionManager.launchCheckLoop()
 
         scope.launch {
             val settingsRepository = koin.get<SettingsRepository>()
