@@ -45,7 +45,7 @@ class CacheOnBtPlayExtension(
                         cleanup()
                         if (media.kind == MediaSourceKind.BitTorrent) {
                             logger.info {
-                                "CacheOnBtPlay: "
+                                "CacheOnBtPlay: creating cache for BT media: $media"
                             }
 
                             val storage = mediaCacheManager.enabledStorages.first()
