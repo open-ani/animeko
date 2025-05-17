@@ -15,12 +15,14 @@ import kotlinx.coroutines.flow.first
 import me.him188.ani.app.domain.episode.EpisodeSession
 import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.MediaCacheManager
-import me.him188.ani.app.domain.media.cache.engine.DummyMediaCacheEngine
+import me.him188.ani.app.domain.media.cache.engine.TorrentMediaCacheEngine
+import me.him188.ani.app.domain.media.cache.storage.DataStoreMediaCacheStorage
 import me.him188.ani.app.domain.media.resolver.toEpisodeMetadata
 import me.him188.ani.datasources.api.MediaCacheMetadata
 import me.him188.ani.datasources.api.MetadataKey
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.utils.logging.info
+import me.him188.ani.utils.logging.warn
 import me.him188.ani.utils.logging.logger
 import org.koin.core.Koin
 
@@ -37,21 +39,28 @@ class CacheOnBtPlayExtension(
 
     override fun onStart(episodeSession: EpisodeSession, backgroundTaskScope: ExtensionBackgroundTaskScope) {
         backgroundTaskScope.launch("CacheOnBtPlay") {
+            val storage = mediaCacheManager.storagesIncludingDisabled
+                .find { it is DataStoreMediaCacheStorage && it.engine is TorrentMediaCacheEngine }
+            if (storage == null) {
+                logger.warn { "TorrentMediaCacheEngine is not found in MediaCachedManager." }
+                return@launch
+            }
+
             context.sessionFlow.collectLatest { session ->
                 val episodeMetadata = session.infoBundleFlow.filterNotNull().first().episodeInfo.toEpisodeMetadata()
-                session.fetchSelectFlow.collectLatest { bundle ->
-                    if (bundle == null) return@collectLatest
-                    bundle.mediaSelector.selected.filterNotNull().collectLatest { media ->
-                        cleanup()
-                        if (media.kind == MediaSourceKind.BitTorrent) {
-                            logger.info {
-                                "CacheOnBtPlay: creating cache for BT media: $media"
-                            }
 
-                            val storage = mediaCacheManager.enabledStorages.first()
-                                .find { it.engine.engineKey != DummyMediaCacheEngine.engineKey } ?: return@collectLatest
+                session.fetchSelectFlow.collectLatest fsf@{ bundle ->
+                    if (bundle == null) return@fsf
+
+                    bundle.mediaSelector.selected.filterNotNull().collectLatest { media ->
+                        deleteCurrentAutoSelectedIfNotStarted()
+
+                        if (media.kind == MediaSourceKind.BitTorrent) {
+                            logger.info { "Auto cache BitTorrent media on play: $media" }
+
                             val metadata = MediaCacheMetadata(bundle.mediaFetchSession.request.first())
                                 .withExtra(mapOf(EXTRA_AUTO_CACHE to "true"))
+
                             val cache = storage.cache(media, metadata, episodeMetadata, resume = true)
                             if (cache.metadata.extra[EXTRA_AUTO_CACHE] == "true") {
                                 currentCache = cache
@@ -64,20 +73,18 @@ class CacheOnBtPlayExtension(
     }
 
     override suspend fun onBeforeSwitchEpisode(newEpisodeId: Int) {
-        cleanup()
+        deleteCurrentAutoSelectedIfNotStarted()
     }
 
     override suspend fun onClose() {
-        cleanup()
+        deleteCurrentAutoSelectedIfNotStarted()
     }
 
-    private suspend fun cleanup() {
+    private suspend fun deleteCurrentAutoSelectedIfNotStarted() {
         val cache = currentCache ?: return
         val progress = cache.fileStats.first().downloadedBytes.inBytes
         if (progress == 0L) {
-            logger.info {
-                "CacheOnBtPlay: Cache ${cache.metadata} progress is zero, deleting it"
-            }
+            logger.info { "Auto-cached media ${cache.metadata} hasn't started downloading, deleting it." }
             mediaCacheManager.deleteCache(cache)
         }
         currentCache = null
