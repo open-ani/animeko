@@ -84,6 +84,7 @@ import me.him188.ani.app.domain.mediasource.instance.GetMediaSourceInstancesUseC
 import me.him188.ani.app.domain.player.CacheProgressProvider
 import me.him188.ani.app.domain.player.extension.AnalyticsExtension
 import me.him188.ani.app.domain.player.extension.AutoSelectExtension
+import me.him188.ani.app.domain.player.extension.CacheOnBtPlayExtension
 import me.him188.ani.app.domain.player.extension.MarkAsWatchedExtension
 import me.him188.ani.app.domain.player.extension.RememberPlayProgressExtension
 import me.him188.ani.app.domain.player.extension.SaveMediaPreferenceExtension
@@ -258,6 +259,7 @@ class EpisodeViewModel(
             AnalyticsExtension,
             RememberPlayProgressExtension,
             MarkAsWatchedExtension,
+            CacheOnBtPlayExtension,
             SwitchNextEpisodeExtension.Factory(
                 getNextEpisode = { currentEpisodeId ->
                     val list = episodeCollectionsFlow.first()
