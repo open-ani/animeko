@@ -24,6 +24,7 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.io.files.SystemTemporaryDirectory
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
 import me.him188.ani.app.domain.episode.EpisodeFetchSelectPlayState
 import me.him188.ani.app.domain.episode.EpisodePlayerTestSuite
@@ -62,6 +63,7 @@ import me.him188.ani.datasources.api.source.TestHttpMediaSource
 import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
 import me.him188.ani.datasources.api.topic.ResourceLocation
 import me.him188.ani.utils.coroutines.childScope
+import me.him188.ani.utils.io.resolve
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
 import kotlin.test.Test
@@ -69,7 +71,9 @@ import kotlin.test.assertEquals
 
 @OptIn(UnsafeEpisodeSessionApi::class)
 class CacheOnBtPlayExtensionTest : AbstractPlayerExtensionTest() {
-    private class RecordingStorage : MediaCacheStorage {
+    private val nullFilePath = SystemTemporaryDirectory.resolve("null.tmp").toString()
+
+    private inner class RecordingStorage : MediaCacheStorage {
         override val mediaSourceId = MediaCacheManager.LOCAL_FS_MEDIA_SOURCE_ID
         override val cacheMediaSource: MediaSource get() = throw UnsupportedOperationException()
         override val engine = DummyMediaCacheEngine(mediaSourceId)
@@ -92,7 +96,7 @@ class CacheOnBtPlayExtensionTest : AbstractPlayerExtensionTest() {
                 CachedMedia(
                     media,
                     "local",
-                    ResourceLocation.LocalFile("/dev/null"),
+                    ResourceLocation.LocalFile(nullFilePath),
                     MediaSourceLocation.Local,
                     MediaSourceKind.LocalCache,
                 ),
@@ -322,7 +326,7 @@ class CacheOnBtPlayExtensionTest : AbstractPlayerExtensionTest() {
                 CachedMedia(
                     TestMediaList[0],
                     "local",
-                    ResourceLocation.LocalFile("/dev/null"),
+                    ResourceLocation.LocalFile(nullFilePath),
                     MediaSourceLocation.Local,
                     MediaSourceKind.LocalCache,
                 ),
