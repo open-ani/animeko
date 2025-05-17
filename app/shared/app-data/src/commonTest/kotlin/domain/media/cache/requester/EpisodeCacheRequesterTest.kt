@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
+import kotlinx.io.files.SystemTemporaryDirectory
 import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
@@ -53,6 +54,7 @@ import me.him188.ani.datasources.api.topic.Resolution
 import me.him188.ani.datasources.api.topic.ResourceLocation
 import me.him188.ani.datasources.api.topic.SubtitleLanguage.ChineseSimplified
 import me.him188.ani.datasources.api.topic.SubtitleLanguage.ChineseTraditional
+import me.him188.ani.utils.io.resolve
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.test.Test
@@ -65,6 +67,7 @@ import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class EpisodeCacheRequesterTest {
+    private val nullFilePath = SystemTemporaryDirectory.resolve("null.tmp").toString()
     companion object {
         private val DEFAULT_PREFERENCE = MediaPreference.Empty.copy(
             fallbackResolutions = listOf(
@@ -313,7 +316,7 @@ class EpisodeCacheRequesterTest {
         val mediaCache = TestMediaCache(
             CachedMedia(
                 originalMedia, "local",
-                ResourceLocation.LocalFile("/dev/null"),
+                ResourceLocation.LocalFile(nullFilePath),
                 MediaSourceLocation.Local,
                 MediaSourceKind.LocalCache,
             ),
@@ -362,7 +365,7 @@ class EpisodeCacheRequesterTest {
         val mediaCache = TestMediaCache(
             CachedMedia(
                 originalMedia, "local",
-                ResourceLocation.LocalFile("/dev/null"),
+                ResourceLocation.LocalFile(nullFilePath),
                 MediaSourceLocation.Local,
                 MediaSourceKind.LocalCache,
             ),
@@ -418,7 +421,7 @@ class EpisodeCacheRequesterTest {
         CachedMedia(
             originalMedia,
             "local",
-            ResourceLocation.LocalFile("/dev/null"),
+            ResourceLocation.LocalFile(nullFilePath),
             MediaSourceLocation.Local,
             MediaSourceKind.LocalCache,
         ),
