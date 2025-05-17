@@ -24,7 +24,6 @@
 
 package me.him188.ani.client.models
 
-
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -32,13 +31,16 @@ import kotlinx.serialization.Serializable
 /**
  * 
  *
- * @param token 
+ * @param token
+ * @param user 
  */
 @Serializable
 
 data class AniBangumiLoginResponse(
 
-    @SerialName(value = "token") @Required val token: kotlin.String
+    @SerialName(value = "token") @Required val token: kotlin.String,
+
+    @SerialName(value = "user") @Required val user: AniAniSelfUser
 
 ) {
 

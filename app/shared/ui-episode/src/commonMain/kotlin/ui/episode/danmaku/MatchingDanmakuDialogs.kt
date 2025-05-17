@@ -205,7 +205,7 @@ fun SubjectPickerDialog(
         title = { Text("选择条目") },
         text = {
             LazyColumn {
-                items(subjects, key = { it.id }, contentType = { 1 }) { subject ->
+                items(subjects, key = { "MatchingDanmakuDialog-" + it.id }, contentType = { 1 }) { subject ->
                     ListItem(
                         headlineContent = { Text(subject.name) },
                         Modifier.clickable { onSelect(subject) },
@@ -233,7 +233,7 @@ fun EpisodePickerDialog(
         title = { Text("选择剧集") },
         text = {
             LazyColumn {
-                items(episodes, key = { it.id }, contentType = { 1 }) { episode ->
+                items(episodes, key = { "MatchingDanmakuDialog-" + it.id }, contentType = { 1 }) { episode ->
                     ListItem(
                         headlineContent = {
                             Text(episode.name)

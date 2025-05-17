@@ -165,12 +165,13 @@ private fun PreviewVideoScaffoldImpl(
                 onClickFullScreen,
             )
         },
-        sideSheets = { sheetsController ->
+        sideSheets = { sheetsController, contentPadding ->
             EpisodeVideoDefaults.SideSheets(
                 sheetsController,
                 controllerState,
                 playerSettingsPage = {
                     EpisodeVideoSideSheets.DanmakuSettingsSheet(
+                        contentPadding = contentPadding,
                         onDismissRequest = { goBack() },
                         onNavigateToFilterSettings = {
                             sheetsController.navigateTo(EpisodeVideoSideSheetPage.EDIT_DANMAKU_REGEX_FILTER)
@@ -182,6 +183,7 @@ private fun PreviewVideoScaffoldImpl(
                         state = createTestDanmakuRegexFilterState(),
                         onDismissRequest = { goBack() },
                         expanded = expanded,
+                        contentPadding = contentPadding,
                     )
                 },
                 mediaSelectorPage = {
@@ -196,10 +198,12 @@ private fun PreviewVideoScaffoldImpl(
                         onDismissRequest = { goBack() },
                         onRefresh = {},
                         onRestartSource = {},
+                        contentPadding = contentPadding,
                     )
                 },
                 episodeSelectorPage = {
                     EpisodeVideoSideSheets.EpisodeSelectorSheet(
+                        contentPadding = contentPadding,
                         state = rememberTestEpisodeSelectorState(),
                         onDismissRequest = { goBack() },
                     )

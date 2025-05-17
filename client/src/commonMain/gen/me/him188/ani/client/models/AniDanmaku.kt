@@ -31,19 +31,19 @@ import kotlinx.serialization.Serializable
 /**
  * 
  *
- * @param danmakuInfo 
  * @param id 
- * @param senderId 
+ * @param senderId
+ * @param danmakuInfo 
  */
 @Serializable
 
 data class AniDanmaku(
 
-    @SerialName(value = "danmakuInfo") @Required val danmakuInfo: AniDanmakuInfo,
-
     @SerialName(value = "id") @Required val id: kotlin.String,
 
-    @SerialName(value = "senderId") @Required val senderId: kotlin.String
+    @SerialName(value = "senderId") @Required val senderId: kotlin.String,
+
+    @SerialName(value = "danmakuInfo") @Required val danmakuInfo: AniDanmakuInfo
 
 ) {
 

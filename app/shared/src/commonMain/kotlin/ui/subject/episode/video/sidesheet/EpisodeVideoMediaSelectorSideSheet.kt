@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.ui.subject.episode.video.sidesheet
 
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -53,11 +54,13 @@ fun EpisodeVideoSideSheets.MediaSelectorSheet(
     onRefresh: () -> Unit,
     onRestartSource: (instanceId: String) -> Unit,
     modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(0.dp),
 ) {
     SideSheetLayout(
         title = { Text(text = "选择数据源") },
         onDismissRequest = onDismissRequest,
         Modifier.testTag(TAG_MEDIA_SELECTOR_SHEET),
+        contentPadding = contentPadding,
         closeButton = {
             IconButton(onClick = onDismissRequest) {
                 Icon(Icons.Rounded.Close, contentDescription = "关闭")

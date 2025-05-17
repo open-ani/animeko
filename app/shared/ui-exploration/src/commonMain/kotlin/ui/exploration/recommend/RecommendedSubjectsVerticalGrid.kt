@@ -61,7 +61,7 @@ fun LazyGridScope.recommendationItems(
     }
     items(
         data.itemCount,
-        key = data.itemKey { it.id },
+        key = data.itemKey { "recommendation-" + it.id },
         contentType = data.itemContentType { it.type },
     ) { index ->
         val aniMotionScheme = LocalAniMotionScheme.current

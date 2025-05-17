@@ -28,17 +28,11 @@ package me.him188.ani.client.apis
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.engine.HttpClientEngine
-import kotlinx.serialization.KSerializer
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.encoding.Decoder
-import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.serializer
 import me.him188.ani.client.infrastructure.ApiClient
 import me.him188.ani.client.infrastructure.HttpResponse
 import me.him188.ani.client.infrastructure.RequestConfig
 import me.him188.ani.client.infrastructure.RequestMethod
-import me.him188.ani.client.infrastructure.map
 import me.him188.ani.client.infrastructure.wrap
 
 open class SubscriptionsAniApi : ApiClient {
@@ -63,11 +57,11 @@ open class SubscriptionsAniApi : ApiClient {
     /**
      * 获取订阅数据
      * 获取订阅数据
-     * @param url 
-     * @return kotlin.collections.Map<kotlin.String, kotlin.String>
+     * @param url
+     * @return kotlin.String
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun getSubscriptionData(url: kotlin.String): HttpResponse<kotlin.collections.Map<kotlin.String, kotlin.String>> {
+    open suspend fun proxy(url: kotlin.String): HttpResponse<kotlin.String> {
 
         val localVariableAuthNames = listOf<String>()
 
@@ -75,11 +69,12 @@ open class SubscriptionsAniApi : ApiClient {
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
+        url?.apply { localVariableQuery["url"] = listOf("$url") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
         val localVariableConfig = RequestConfig<kotlin.Any?>(
             RequestMethod.GET,
-            "/v1/subs/proxy".replace("{" + "url" + "}", "$url"),
+            "/v1/subs/proxy",
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = false,
@@ -89,19 +84,8 @@ open class SubscriptionsAniApi : ApiClient {
             localVariableConfig,
             localVariableBody,
             localVariableAuthNames,
-        ).wrap<GetSubscriptionDataResponse>().map { value }
+        ).wrap()
     }
 
-    @Serializable(GetSubscriptionDataResponse.Companion::class)
-    private class GetSubscriptionDataResponse(val value: Map<kotlin.String, kotlin.String>) {
-        companion object : KSerializer<GetSubscriptionDataResponse> {
-            private val serializer: KSerializer<Map<kotlin.String, kotlin.String>> =
-                serializer<Map<String, kotlin.String>>()
-            override val descriptor = serializer.descriptor
-            override fun serialize(encoder: Encoder, value: GetSubscriptionDataResponse) =
-                serializer.serialize(encoder, value.value)
-            override fun deserialize(decoder: Decoder) = GetSubscriptionDataResponse(serializer.deserialize(decoder))
-        }
-    }
 
 }

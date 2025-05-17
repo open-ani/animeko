@@ -61,7 +61,7 @@ open class ScheduleAniApi : ApiClient {
     /**
      * 获取一个季度的新番时间表
      * 获取一个季度的新番时间表
-     * @param seasonId 格式为 \&quot;{年份}q{季度序号}\&quot;. 例如 \&quot;2024q3\&quot;. 季度序号范围为 1..3 (包含), 分别对应春季, 夏季, 秋季, 冬季
+     * @param seasonId 
      * @return AniAnimeSchedule
      */
     @Suppress("UNCHECKED_CAST")
@@ -158,11 +158,11 @@ open class ScheduleAniApi : ApiClient {
     /**
      * 查询一些条目的连载信息
      * 查询一些条目的连载信息
-     * @param ids 需要查询的条目 ID 列表, 以英文逗号分隔. (optional)
+     * @param ids 
      * @return AniBatchGetSubjectRecurrenceResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun getSubjectRecurrences(ids: kotlin.collections.List<kotlin.Int>? = null): HttpResponse<AniBatchGetSubjectRecurrenceResponse> {
+    open suspend fun getSubjectRecurrences(ids: kotlin.collections.List<kotlin.Int>): HttpResponse<AniBatchGetSubjectRecurrenceResponse> {
 
         val localVariableAuthNames = listOf<String>()
 

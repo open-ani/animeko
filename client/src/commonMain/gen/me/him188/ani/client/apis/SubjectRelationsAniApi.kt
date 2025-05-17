@@ -61,7 +61,7 @@ open class SubjectRelationsAniApi : ApiClient {
      * @return AniSubjectRelations
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun getSubjectRelations(subjectId: kotlin.String): HttpResponse<AniSubjectRelations> {
+    open suspend fun getSubjectRelations(subjectId: kotlin.Int): HttpResponse<AniSubjectRelations> {
 
         val localVariableAuthNames = listOf<String>()
 

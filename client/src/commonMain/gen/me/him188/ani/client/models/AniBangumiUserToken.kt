@@ -32,22 +32,22 @@ import kotlinx.serialization.Serializable
 /**
  * 
  *
- * @param accessToken 
+ * @param userId
  * @param expiresIn 
+ * @param accessToken 
  * @param refreshToken 
- * @param userId 
  */
 @Serializable
 
 data class AniBangumiUserToken(
 
-    @SerialName(value = "accessToken") @Required val accessToken: kotlin.String,
+    @SerialName(value = "userId") @Required val userId: kotlin.Int,
 
     @SerialName(value = "expiresIn") @Required val expiresIn: kotlin.Long,
 
-    @SerialName(value = "refreshToken") @Required val refreshToken: kotlin.String,
+    @SerialName(value = "accessToken") @Required val accessToken: kotlin.String,
 
-    @SerialName(value = "userId") @Required val userId: kotlin.Int
+    @SerialName(value = "refreshToken") @Required val refreshToken: kotlin.String
 
 ) {
 

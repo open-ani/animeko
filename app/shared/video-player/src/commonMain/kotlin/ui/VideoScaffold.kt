@@ -18,11 +18,13 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.BoxWithConstraintsScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -94,7 +96,7 @@ fun VideoScaffold(
     bottomBar: @Composable RowScope.() -> Unit = {},
     detachedProgressSlider: @Composable () -> Unit = {},
     floatingBottomEnd: @Composable RowScope.() -> Unit = {},
-    rhsSheet: @Composable () -> Unit = {},
+    rhsSheet: @Composable (PaddingValues) -> Unit = {},
     leftBottomTips: @Composable () -> Unit = {},
 ) {
     val controllerVisibility = controllerState.visibility
@@ -329,8 +331,8 @@ fun VideoScaffold(
             }
 
             // 右侧 sheet
-            Box(Modifier.matchParentSize().windowInsetsPadding(contentWindowInsets)) {
-                rhsSheet()
+            Box(Modifier.matchParentSize()) {
+                rhsSheet(contentWindowInsets.asPaddingValues())
             }
         }
     }

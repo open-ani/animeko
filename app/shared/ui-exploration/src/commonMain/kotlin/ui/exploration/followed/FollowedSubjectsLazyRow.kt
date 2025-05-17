@@ -134,7 +134,7 @@ fun FollowedSubjectsLazyRow(
         }
         items(
             items.itemCount,
-            key = items.itemKey { it.subjectInfo.subjectId },
+            key = items.itemKey { "FollowedSubjectsLazyRow-" + it.subjectInfo.subjectId },
             contentType = items.itemContentType { it.subjectProgressInfo.hasNewEpisodeToPlay },
         ) { index ->
             val item = items[index]

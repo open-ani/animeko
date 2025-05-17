@@ -150,7 +150,7 @@ internal fun SearchResultColumn(
 
         items(
             items.itemCount,
-            key = items.itemKey { it.subjectId },
+            key = items.itemKey { "SearchResultColumn-" + it.subjectId },
             contentType = items.itemContentType { 1 },
         ) { index ->
             val info = items[index]

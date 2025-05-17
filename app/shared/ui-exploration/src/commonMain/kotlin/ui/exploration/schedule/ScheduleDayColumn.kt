@@ -79,7 +79,7 @@ fun ScheduleDayColumn(
             items(
                 items,
                 key = { item ->
-                    when (item) {
+                    "ScheduleDayColumn-" + when (item) {
                         is AiringScheduleColumnItem.Data -> packInts(item.item.subjectId, item.item.episodeId)
                         is AiringScheduleColumnItem.CurrentTimeIndicator -> item.hashCode()
                         is AiringScheduleColumnItem.PlaceholderData -> item.id

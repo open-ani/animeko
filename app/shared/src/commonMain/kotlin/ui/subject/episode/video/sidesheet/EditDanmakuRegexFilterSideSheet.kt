@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -12,6 +12,7 @@ package me.him188.ani.app.ui.subject.episode.video.sidesheet
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -61,6 +62,7 @@ fun EpisodeVideoSideSheets.DanmakuRegexFilterSettings(
     state: DanmakuRegexFilterState,
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(0.dp),
     expanded: Boolean = true,  // Use the expanded parameter
 ) {
     val focusManager = LocalFocusManager.current
@@ -90,6 +92,7 @@ fun EpisodeVideoSideSheets.DanmakuRegexFilterSettings(
 
     SideSheetLayout(
         title = { Text(text = "正则弹幕过滤管理") },
+        contentPadding = contentPadding,
         onDismissRequest = onDismissRequest,
         closeButton = {
             IconButton(onClick = onDismissRequest) {

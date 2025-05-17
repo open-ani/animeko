@@ -33,7 +33,7 @@ import me.him188.ani.client.infrastructure.HttpResponse
 import me.him188.ani.client.infrastructure.RequestConfig
 import me.him188.ani.client.infrastructure.RequestMethod
 import me.him188.ani.client.infrastructure.wrap
-import me.him188.ani.client.models.AniAniUser
+import me.him188.ani.client.models.AniAniSelfUser
 
 open class UserAniApi : ApiClient {
 
@@ -57,10 +57,10 @@ open class UserAniApi : ApiClient {
     /**
      * 查看当前用户信息
      * 查看当前携带的 token 对应用户的信息，包含其 Ani ID，Bangumi 昵称以及 Bangumi 头像 URL。
-     * @return AniAniUser
+     * @return AniAniSelfUser
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun getUser(): HttpResponse<AniAniUser> {
+    open suspend fun getUser(): HttpResponse<AniAniSelfUser> {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 

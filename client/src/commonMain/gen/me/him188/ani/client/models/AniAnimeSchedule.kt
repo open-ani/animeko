@@ -31,16 +31,16 @@ import kotlinx.serialization.Serializable
 /**
  * 
  *
+ * @param seasonId
  * @param list 
- * @param seasonId 
  */
 @Serializable
 
 data class AniAnimeSchedule(
 
-    @SerialName(value = "list") @Required val list: kotlin.collections.List<AniOnAirAnimeInfo>,
+    @SerialName(value = "seasonId") @Required val seasonId: AniAnimeSeasonId,
 
-    @SerialName(value = "seasonId") @Required val seasonId: AniAnimeSeasonId
+    @SerialName(value = "list") @Required val list: kotlin.collections.List<AniOnAirAnimeInfo>
 
 ) {
 

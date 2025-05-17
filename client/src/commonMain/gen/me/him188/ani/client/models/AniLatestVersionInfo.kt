@@ -32,22 +32,22 @@ import kotlinx.serialization.Serializable
 /**
  * 
  *
+ * @param version 
  * @param downloadUrlAlternativesMap 
  * @param publishTime 
  * @param qrcodeUrls 
- * @param version 
  */
 @Serializable
 
 data class AniLatestVersionInfo(
 
+    @SerialName(value = "version") @Required val version: kotlin.String,
+
     @SerialName(value = "downloadUrlAlternativesMap") @Required val downloadUrlAlternativesMap: kotlin.collections.Map<kotlin.String, kotlin.collections.List<kotlin.String>>,
 
     @SerialName(value = "publishTime") @Required val publishTime: kotlin.Long,
 
-    @SerialName(value = "qrcodeUrls") @Required val qrcodeUrls: kotlin.collections.List<kotlin.String>,
-
-    @SerialName(value = "version") @Required val version: kotlin.String
+    @SerialName(value = "qrcodeUrls") @Required val qrcodeUrls: kotlin.collections.List<kotlin.String>
 
 ) {
 

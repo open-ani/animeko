@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.ui.subject.episode.video.components
 
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.Icon
@@ -19,6 +20,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import kotlinx.serialization.Serializable
 import me.him188.ani.app.ui.subject.episode.EpisodeVideoDefaults
 import me.him188.ani.app.ui.subject.episode.video.settings.EpisodeVideoSettings
@@ -88,11 +90,13 @@ fun EpisodeVideoSideSheets.DanmakuSettingsSheet(
     onDismissRequest: () -> Unit,
     onNavigateToFilterSettings: () -> Unit,
     modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(0.dp),
 ) {
     SideSheetLayout(
         title = { Text(text = "弹幕设置") },
         onDismissRequest = onDismissRequest,
         modifier,
+        contentPadding = contentPadding,
         closeButton = {
             IconButton(onClick = onDismissRequest) {
                 Icon(Icons.Rounded.Close, contentDescription = "关闭")
@@ -118,11 +122,13 @@ fun EpisodeVideoSideSheets.DanmakuSettingsSheet(
 
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(0.dp)
 ) {
     SideSheetLayout(
         title = { Text(text = "弹幕设置") },
         onDismissRequest = onDismissRequest,
         modifier,
+        contentPadding = contentPadding,
         closeButton = {
             IconButton(onClick = onDismissRequest) {
                 Icon(Icons.Rounded.Close, contentDescription = "关闭")

@@ -31,19 +31,19 @@ import kotlinx.serialization.Serializable
 /**
  * 
  *
+ * @param year
+ * @param season
  * @param id 
- * @param season 
- * @param year 
  */
 @Serializable
 
 data class AniAnimeSeasonId(
 
-    @SerialName(value = "id") @Required val id: kotlin.String,
+    @SerialName(value = "year") @Required val year: kotlin.Int,
 
     @SerialName(value = "season") @Required val season: AniAnimeSeason,
 
-    @SerialName(value = "year") @Required val year: kotlin.Int
+    @SerialName(value = "id") @Required val id: kotlin.String
 
 ) {
 

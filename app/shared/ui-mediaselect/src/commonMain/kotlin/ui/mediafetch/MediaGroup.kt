@@ -49,13 +49,14 @@ internal typealias MediaGroupId = String
 
 object MediaGrouper {
     fun getGroupId(media: Media): String {
-        return when (media.kind) {
+        // 添加一个 prefix, 这样在 UI crash LazyColumn key 时能知道.
+        return "media-group-" + when (media.kind) {
             MediaSourceKind.BitTorrent -> {
                 var title = media.originalTitle
                 if (title.startsWith('[')) {
                     title = title.substringAfter(']')
                 }
-                return title
+                title
             }
 
             MediaSourceKind.WEB,

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -10,6 +10,7 @@
 package me.him188.ani.app.ui.subject.episode.video.sidesheet
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -122,10 +123,12 @@ fun EpisodeVideoSideSheets.EpisodeSelectorSheet(
     state: EpisodeSelectorState,
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(0.dp)
 ) {
     SideSheetLayout(
         onDismissRequest = onDismissRequest,
         modifier = modifier.testTag(TAG_EPISODE_SELECTOR_SHEET),
+        contentPadding = contentPadding,
         title = { Text(text = "选择剧集") },
         closeButton = {
             IconButton(onClick = onDismissRequest) {

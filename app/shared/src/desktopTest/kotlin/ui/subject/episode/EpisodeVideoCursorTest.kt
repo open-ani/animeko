@@ -134,7 +134,7 @@ class EpisodeVideoCursorTest {
                             onClickFullScreen,
                         )
                     },
-                    sideSheets = {},
+                    sideSheets = { _, _ -> },
                     modifier = Modifier.weight(1f),
                     gestureFamily = gestureFamily,
                 )

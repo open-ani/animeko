@@ -526,13 +526,13 @@ class AuthConfiguratorTest : AbstractBangumiSessionManagerTest() {
     }
 
     private fun checkAuthorizeResultSuccess(): AniBangumiUserToken {
-        return AniBangumiUserToken(ACCESS_TOKEN, 100.days.inWholeMilliseconds, REFRESH_TOKEN, TestUserInfo.id)
+        return AniBangumiUserToken(TestUserInfo.id, 100.days.inWholeMilliseconds, ACCESS_TOKEN, REFRESH_TOKEN)
     }
 
     private fun createTestAuthClient(
         getResult: suspend () -> AniBangumiUserToken?,
         refreshAccessToken: suspend () -> AniAnonymousBangumiUserToken? = {
-            AniAnonymousBangumiUserToken(ACCESS_TOKEN, 100.days.inWholeMilliseconds, REFRESH_TOKEN)
+            AniAnonymousBangumiUserToken(ACCESS_TOKEN, REFRESH_TOKEN, 100.days.inWholeMilliseconds)
         },
     ): AniAuthClient {
         return object : AniAuthClient {

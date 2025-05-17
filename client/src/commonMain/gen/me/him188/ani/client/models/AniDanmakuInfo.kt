@@ -31,22 +31,22 @@ import kotlinx.serialization.Serializable
 /**
  * 
  *
- * @param color 
- * @param location 
  * @param playTime 
- * @param text 
+ * @param color 
+ * @param text
+ * @param location 
  */
 @Serializable
 
 data class AniDanmakuInfo(
 
-    @SerialName(value = "color") @Required val color: kotlin.Int,
-
-    @SerialName(value = "location") @Required val location: AniDanmakuLocation,
-
     @SerialName(value = "playTime") @Required val playTime: kotlin.Long,
 
-    @SerialName(value = "text") @Required val text: kotlin.String
+    @SerialName(value = "color") @Required val color: kotlin.Int,
+
+    @SerialName(value = "text") @Required val text: kotlin.String,
+
+    @SerialName(value = "location") @Required val location: AniDanmakuLocation
 
 ) {
 

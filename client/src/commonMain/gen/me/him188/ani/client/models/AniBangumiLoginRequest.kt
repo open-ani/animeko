@@ -32,10 +32,10 @@ import kotlinx.serialization.Serializable
 /**
  * 
  *
- * @param bangumiToken 
- * @param clientArch 
+ * @param bangumiToken
+ * @param clientVersion
  * @param clientOS 
- * @param clientVersion 
+ * @param clientArch 
  */
 @Serializable
 
@@ -43,11 +43,11 @@ data class AniBangumiLoginRequest(
 
     @SerialName(value = "bangumiToken") @Required val bangumiToken: kotlin.String,
 
-    @SerialName(value = "clientArch") val clientArch: kotlin.String? = null,
+    @SerialName(value = "clientVersion") val clientVersion: kotlin.String? = null,
 
     @SerialName(value = "clientOS") val clientOS: kotlin.String? = null,
 
-    @SerialName(value = "clientVersion") val clientVersion: kotlin.String? = null
+    @SerialName(value = "clientArch") val clientArch: kotlin.String? = null
 
 ) {
 

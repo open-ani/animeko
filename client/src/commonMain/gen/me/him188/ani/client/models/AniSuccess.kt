@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -24,7 +24,6 @@
 
 package me.him188.ani.client.models
 
-
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -32,16 +31,22 @@ import kotlinx.serialization.Serializable
 /**
  *
  *
- * @param epochSeconds
- * @param nanosecondsOfSecond
+ * @param userId
+ * @param tokens
+ * @param user
  */
 @Serializable
 
-data class AniKotlinxdatetimeInstant(
+data class AniSuccess(
 
-    @SerialName(value = "epochSeconds") @Required val epochSeconds: kotlin.Long,
+    @SerialName(value = "userId") @Required val userId: kotlin.String,
 
-    @SerialName(value = "nanosecondsOfSecond") @Required val nanosecondsOfSecond: kotlin.Int
+    @SerialName(value = "tokens") @Required val tokens: AniAniTokens,
 
-)
+    @SerialName(value = "user") @Required val user: AniAniSelfUser
+
+) {
+
+
+}
 

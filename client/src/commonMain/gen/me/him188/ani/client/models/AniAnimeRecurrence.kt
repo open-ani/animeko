@@ -32,16 +32,16 @@ import kotlinx.serialization.Serializable
 /**
  * 
  *
+ * @param startTime
  * @param intervalMillis 
- * @param startTime 
  */
 @Serializable
 
 data class AniAnimeRecurrence(
 
-    @SerialName(value = "intervalMillis") @Required val intervalMillis: kotlin.Long,
+    @SerialName(value = "startTime") @Required val startTime: kotlin.String,
 
-    @SerialName(value = "startTime") @Required val startTime: kotlin.String
+    @SerialName(value = "intervalMillis") @Required val intervalMillis: kotlin.Long
 
 ) {
 

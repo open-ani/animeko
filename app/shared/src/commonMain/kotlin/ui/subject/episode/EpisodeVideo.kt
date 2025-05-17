@@ -14,6 +14,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.offset
@@ -129,7 +130,10 @@ internal fun EpisodeVideoImpl(
     playbackSpeedControllerState: PlaybackSpeedControllerState?,
     leftBottomTips: @Composable () -> Unit,
     fullscreenSwitchButton: @Composable () -> Unit,
-    sideSheets: @Composable (controller: VideoSideSheetsController<EpisodeVideoSideSheetPage>) -> Unit,
+    sideSheets: @Composable (
+        controller: VideoSideSheetsController<EpisodeVideoSideSheetPage>,
+        contentPadding: PaddingValues
+    ) -> Unit,
     modifier: Modifier = Modifier,
     maintainAspectRatio: Boolean = !expanded,
     gestureFamily: GestureFamily = LocalPlatform.current.mouseFamily,
@@ -404,7 +408,7 @@ internal fun EpisodeVideoImpl(
             },
             detachedProgressSlider = detachedProgressSlider,
             floatingBottomEnd = { fullscreenSwitchButton() },
-            rhsSheet = { sideSheets(sheetsController) },
+            rhsSheet = { sideSheets(sheetsController, it) },
             leftBottomTips = leftBottomTips,
         )
     }

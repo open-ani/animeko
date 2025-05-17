@@ -30,37 +30,40 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- * 
  *
- * @param clientPlatforms 
- * @param id 
- * @param largeAvatar 
- * @param lastLoginTime 
- * @param mediumAvatar 
- * @param nickname 
- * @param registerTime 
- * @param smallAvatar 
- * @param clientVersion 
+ *
+ * @param id
+ * @param nickname
+ * @param hasPassword
+ * @param email
+ * @param smallAvatar
+ * @param mediumAvatar
+ * @param largeAvatar
+ * @param registerTime
+ * @param lastLoginTime
+ * @param clientVersion
  */
 @Serializable
 
-data class AniAniUser(
-
-    @SerialName(value = "clientPlatforms") @Required val clientPlatforms: kotlin.collections.Set<kotlin.String>,
+data class AniAniSelfUser(
 
     @SerialName(value = "id") @Required val id: kotlin.String,
 
-    @SerialName(value = "largeAvatar") @Required val largeAvatar: kotlin.String,
-
-    @SerialName(value = "lastLoginTime") @Required val lastLoginTime: kotlin.Long,
-
-    @SerialName(value = "mediumAvatar") @Required val mediumAvatar: kotlin.String,
-
     @SerialName(value = "nickname") @Required val nickname: kotlin.String,
 
-    @SerialName(value = "registerTime") @Required val registerTime: kotlin.Long,
+    @SerialName(value = "hasPassword") @Required val hasPassword: kotlin.Boolean,
 
-    @SerialName(value = "smallAvatar") @Required val smallAvatar: kotlin.String,
+    @SerialName(value = "email") val email: kotlin.String? = null,
+
+    @SerialName(value = "smallAvatar") val smallAvatar: kotlin.String? = null,
+
+    @SerialName(value = "mediumAvatar") val mediumAvatar: kotlin.String? = null,
+
+    @SerialName(value = "largeAvatar") val largeAvatar: kotlin.String? = null,
+
+    @SerialName(value = "registerTime") val registerTime: kotlin.Long? = null,
+
+    @SerialName(value = "lastLoginTime") val lastLoginTime: kotlin.Long? = null,
 
     @SerialName(value = "clientVersion") val clientVersion: kotlin.String? = null
 

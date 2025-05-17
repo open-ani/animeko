@@ -108,7 +108,7 @@ fun SubjectCollectionsColumn(
 
         items(
             items.itemCount,
-            items.itemKey { it.subjectId },
+            items.itemKey { "SubjectCollectionsColumn-" + it.subjectId },
             contentType = items.itemContentType { it.progressInfo.nextEpisodeIdToPlay != null },
         ) { index ->
             items[index]?.let {

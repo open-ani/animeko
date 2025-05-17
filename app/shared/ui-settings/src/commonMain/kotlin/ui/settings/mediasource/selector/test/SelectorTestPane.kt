@@ -222,7 +222,7 @@ fun SharedTransitionScope.SelectorTestPane(
 
                 items(
                     presentation.filteredEpisodes ?: emptyList(),
-                    key = { it.id.toString() },
+                    key = { "selector-test-filteredEpisodes-" + it.id.toString() },
                     contentType = { 1 },
                 ) { episode ->
                     SelectorTestEpisodeListGridDefaults.EpisodeCard(

@@ -88,7 +88,7 @@ fun BlackListEditPane(
             modifier = Modifier.fillMaxSize(),
             contentPadding = WindowInsets.ime.asPaddingValues(),
         ) {
-            items(items = ipBlackList, key = { it }) { item ->
+            items(items = ipBlackList, key = { "ipBlackList-$it" }) { item ->
                 ListItem(
                     headlineContent = { Text(item) },
                     trailingContent = {

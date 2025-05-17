@@ -950,12 +950,13 @@ private fun EpisodeVideo(
                 onClickFullScreen,
             )
         },
-        sideSheets = { sheetsController ->
+        sideSheets = { sheetsController, contentPadding ->
             EpisodeVideoDefaults.SideSheets(
                 sheetsController,
                 playerControllerState,
                 playerSettingsPage = {
                     EpisodeVideoSideSheets.DanmakuSettingsSheet(
+                        contentPadding = contentPadding,
                         onDismissRequest = { goBack() },
                         onNavigateToFilterSettings = {
                             sheetsController.navigateTo(EpisodeVideoSideSheetPage.EDIT_DANMAKU_REGEX_FILTER)
@@ -965,6 +966,7 @@ private fun EpisodeVideo(
                 editDanmakuRegexFilterPage = {
                     EpisodeVideoSideSheets.DanmakuRegexFilterSettings(
                         state = vm.danmakuRegexFilterState,
+                        contentPadding = contentPadding,
                         onDismissRequest = { goBack() },
                         expanded = expanded,
                     )
@@ -980,6 +982,7 @@ private fun EpisodeVideo(
                             onViewKindChange,
                             page.fetchRequest,
                             { vm.updateFetchRequest(it) },
+                            contentPadding = contentPadding,
                             onDismissRequest = { goBack() },
                             onRefresh = { vm.refreshFetch() },
                             onRestartSource = { vm.restartSource(it) },

@@ -32,22 +32,22 @@ import kotlinx.serialization.Serializable
 /**
  * 
  *
- * @param description 
- * @param downloadUrlAlternatives 
- * @param publishTime 
  * @param version 
+ * @param downloadUrlAlternatives 
+ * @param publishTime
+ * @param description 
  */
 @Serializable
 
 data class AniUpdateInfo(
 
-    @SerialName(value = "description") @Required val description: kotlin.String,
+    @SerialName(value = "version") @Required val version: kotlin.String,
 
     @SerialName(value = "downloadUrlAlternatives") @Required val downloadUrlAlternatives: kotlin.collections.List<kotlin.String>,
 
     @SerialName(value = "publishTime") @Required val publishTime: kotlin.Long,
 
-    @SerialName(value = "version") @Required val version: kotlin.String
+    @SerialName(value = "description") @Required val description: kotlin.String
 
 ) {
 

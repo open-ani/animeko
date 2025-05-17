@@ -33,8 +33,8 @@ import kotlinx.serialization.Serializable
  * 
  *
  * @param bangumiId 
+ * @param nameCn
  * @param imageLarge 
- * @param nameCn 
  */
 @Serializable
 
@@ -42,9 +42,9 @@ data class AniTrendingSubject(
 
     @SerialName(value = "bangumiId") @Required val bangumiId: kotlin.Int,
 
-    @SerialName(value = "imageLarge") @Required val imageLarge: kotlin.String,
+    @SerialName(value = "nameCn") @Required val nameCn: kotlin.String,
 
-    @SerialName(value = "nameCn") @Required val nameCn: kotlin.String
+    @SerialName(value = "imageLarge") @Required val imageLarge: kotlin.String
 
 ) {
 

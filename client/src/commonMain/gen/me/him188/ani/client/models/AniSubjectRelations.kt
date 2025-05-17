@@ -32,19 +32,19 @@ import kotlinx.serialization.Serializable
 /**
  * 
  *
+ * @param subjectId
+ * @param seriesMainSubjectIds
  * @param sequelSubjects 
- * @param seriesMainSubjectIds 
- * @param subjectId 
  */
 @Serializable
 
 data class AniSubjectRelations(
 
-    @SerialName(value = "sequelSubjects") @Required val sequelSubjects: kotlin.collections.List<kotlin.Int>,
+    @SerialName(value = "subjectId") @Required val subjectId: kotlin.Int,
 
     @SerialName(value = "seriesMainSubjectIds") @Required val seriesMainSubjectIds: kotlin.collections.List<kotlin.Int>,
 
-    @SerialName(value = "subjectId") @Required val subjectId: kotlin.Int
+    @SerialName(value = "sequelSubjects") @Required val sequelSubjects: kotlin.collections.List<kotlin.Int>
 
 ) {
 
