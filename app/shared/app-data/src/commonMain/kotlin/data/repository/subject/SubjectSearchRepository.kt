@@ -17,7 +17,6 @@ import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
@@ -89,16 +88,9 @@ class SubjectSearchRepository(
                 )
 
                 val filteredIds = if (ignoreDoneAndDropped()) {
-                    val excludedIds = combine(
-                        subjectCollectionRepository.getSubjectIdsByCollectionType(
-                            type = UnifiedCollectionType.DONE,
-                        ),
-                        subjectCollectionRepository.getSubjectIdsByCollectionType(
-                            type = UnifiedCollectionType.DROPPED,
-                        ),
-                    ) { doneIds, droppedIds ->
-                        (doneIds + droppedIds).map { it }
-                    }.first()
+                    val excludedIds = subjectCollectionRepository.getSubjectIdsByCollectionType(
+                        types = listOf(UnifiedCollectionType.DONE, UnifiedCollectionType.DROPPED),
+                    ).first()
 
                     MutableIntList().apply {
                         res.forEach { if (it !in excludedIds) add(it) }

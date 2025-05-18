@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -14,7 +14,6 @@ import androidx.paging.PagingData
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
@@ -56,16 +55,9 @@ class BangumiSubjectSearchCompletionRepository(
                     )
 
                     val filteredCompletions = if (ignoreDoneAndDroppedFlow.first()) {
-                        val excludedNames = combine(
-                            subjectCollectionRepository.getSubjectNamesCnByCollectionType(
-                                type = UnifiedCollectionType.DONE,
-                            ),
-                            subjectCollectionRepository.getSubjectNamesCnByCollectionType(
-                                type = UnifiedCollectionType.DROPPED,
-                            ),
-                        ) { doneNames, droppedNames ->
-                            (doneNames + droppedNames).map { it }
-                        }.first()
+                        val excludedNames = subjectCollectionRepository.getSubjectNamesCnByCollectionType(
+                            types = listOf(UnifiedCollectionType.DONE, UnifiedCollectionType.DROPPED),
+                        ).first()
 
                         completions.filter { it !in excludedNames }
                     } else {

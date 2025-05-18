@@ -230,19 +230,19 @@ interface SubjectCollectionDao {
         """
         SELECT sc.subjectId FROM subject_collection sc
         WHERE collectionType IS NOT NULL
-        AND (collectionType = :collectionType)
+        AND (collectionType IN (:collectionTypes))
         """,
     )
-    fun subjectIdsByCollectionType(collectionType: UnifiedCollectionType): Flow<List<Int>>
+    fun subjectIdsByCollectionType(collectionTypes: List<UnifiedCollectionType>): Flow<List<Int>>
 
     @Query(
         """
         SELECT sc.nameCn FROM subject_collection sc
         WHERE collectionType IS NOT NULL
-        AND (collectionType = :collectionType)
+        AND (collectionType IN (:collectionTypes))
         """,
     )
-    fun subjectNamesCnByCollectionType(collectionType: UnifiedCollectionType): Flow<List<String>>
+    fun subjectNamesCnByCollectionType(collectionTypes: List<UnifiedCollectionType>): Flow<List<String>>
 }
 
 suspend inline fun SubjectCollectionDao.deleteAll(type: UnifiedCollectionType?) {
