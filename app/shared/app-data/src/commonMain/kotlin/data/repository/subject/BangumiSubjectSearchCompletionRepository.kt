@@ -14,6 +14,7 @@ import androidx.paging.PagingData
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
@@ -22,15 +23,19 @@ import me.him188.ani.app.data.network.BangumiSubjectSearchService
 import me.him188.ani.app.data.repository.Repository
 import me.him188.ani.app.data.repository.runWrappingExceptionAsLoadResult
 import me.him188.ani.app.data.repository.user.SettingsRepository
+import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 
 /**
  * 搜索补全 (推荐)
  */
 class BangumiSubjectSearchCompletionRepository(
     private val bangumiSubjectSearchService: BangumiSubjectSearchService,
+    private val subjectCollectionRepository: SubjectCollectionRepository,
     settingsRepository: SettingsRepository,
 ) : Repository() {
     private val useNewApiFlow = settingsRepository.uiSettings.flow.map { it.searchSettings.enableNewSearchSubjectApi }
+    private val ignoreDoneAndDroppedFlow =
+        settingsRepository.uiSettings.flow.map { it.searchSettings.ignoreDoneAndDroppedSubjects }
     private val nsfwSettings = settingsRepository.uiSettings.flow.map { it.searchSettings.nsfwMode }
 
     fun completionsFlow(query: String): Flow<PagingData<String>> = Pager(
@@ -50,8 +55,25 @@ class BangumiSubjectSearchCompletionRepository(
                         limit = params.loadSize,
                     )
 
+                    val filteredCompletions = if (ignoreDoneAndDroppedFlow.first()) {
+                        val excludedNames = combine(
+                            subjectCollectionRepository.getSubjectNamesCnByCollectionType(
+                                type = UnifiedCollectionType.DONE,
+                            ),
+                            subjectCollectionRepository.getSubjectNamesCnByCollectionType(
+                                type = UnifiedCollectionType.DROPPED,
+                            ),
+                        ) { doneNames, droppedNames ->
+                            (doneNames + droppedNames).map { it }
+                        }.first()
+
+                        completions.filter { it !in excludedNames }
+                    } else {
+                        completions
+                    }
+
                     LoadResult.Page(
-                        data = completions.distinct(),
+                        data = filteredCompletions.distinct(),
                         prevKey = null,
                         nextKey = null,
                     )

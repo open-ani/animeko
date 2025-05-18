@@ -128,6 +128,7 @@
     <string name="settings_app_search">Search</string>
     <string name="settings_app_use_new_search_api">Use the new entry search API</string>
     <string name="settings_app_use_new_search_api_description">Experimental API. May miss some entries. Use with caution</string>
+    <string name="settings_app_not_show_done_and_dropped_subjects">Do not show done and dropped subjects</string>
     <string name="settings_app_nsfw_hide">Hide</string>
     <string name="settings_app_nsfw_blur">Blur</string>
     <string name="settings_app_nsfw_display">Show</string>

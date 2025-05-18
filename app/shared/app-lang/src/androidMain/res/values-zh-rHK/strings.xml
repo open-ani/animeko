@@ -136,6 +136,7 @@
     <string name="settings_app_search">搜索</string>
     <string name="settings_app_use_new_search_api">使用新版條目查詢接口</string>
     <string name="settings_app_use_new_search_api_description">實驗性接口，可能會缺失部分條目，謹慎啟用</string>
+    <string name="settings_app_not_show_done_and_dropped_subjects">不顯示看過和抛棄的條目</string>
     <string name="settings_app_nsfw_hide">隱藏</string>
     <string name="settings_app_nsfw_blur">模糊</string>
     <string name="settings_app_nsfw_display">顯示</string>

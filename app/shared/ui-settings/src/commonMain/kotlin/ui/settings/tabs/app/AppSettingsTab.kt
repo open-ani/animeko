@@ -53,6 +53,7 @@ import me.him188.ani.app.ui.lang.settings_app_light_up_mode_description
 import me.him188.ani.app.ui.lang.settings_app_list_animation
 import me.him188.ani.app.ui.lang.settings_app_list_animation_description
 import me.him188.ani.app.ui.lang.settings_app_my_collections
+import me.him188.ani.app.ui.lang.settings_app_not_show_done_and_dropped_subjects
 import me.him188.ani.app.ui.lang.settings_app_nsfw_blur
 import me.him188.ani.app.ui.lang.settings_app_nsfw_content
 import me.him188.ani.app.ui.lang.settings_app_nsfw_display
@@ -208,6 +209,19 @@ fun SettingsScope.AppearanceGroup(
             },
             title = { Text(stringResource(Lang.settings_app_use_new_search_api)) },
             description = { Text(stringResource(Lang.settings_app_use_new_search_api_description)) },
+        )
+        SwitchItem(
+            checked = uiSettings.searchSettings.ignoreDoneAndDroppedSubjects,
+            onCheckedChange = {
+                state.update(
+                    uiSettings.copy(
+                        searchSettings = uiSettings.searchSettings.copy(
+                            ignoreDoneAndDroppedSubjects = !uiSettings.searchSettings.ignoreDoneAndDroppedSubjects,
+                        ),
+                    ),
+                )
+            },
+            title = { Text(stringResource(Lang.settings_app_not_show_done_and_dropped_subjects)) },
         )
         DropdownItem(
             selected = { uiSettings.searchSettings.nsfwMode },

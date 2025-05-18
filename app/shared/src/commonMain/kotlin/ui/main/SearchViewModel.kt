@@ -101,6 +101,10 @@ class SearchViewModel(
                                 settingsRepository.uiSettings.flow.map { it.searchSettings.enableNewSearchSubjectApi }
                                     .first()
                     },
+                    ignoreDoneAndDropped = {
+                        settingsRepository.uiSettings.flow.map { it.searchSettings.ignoreDoneAndDroppedSubjects }
+                            .first()
+                    },
                 ).combine(nsfwSettingFlow) { data, nsfwMode ->
                     // 当 settings 变更时, 会重新计算所有的 SubjectPreviewItemInfo 以更新其显示状态, 但不会重新搜索.
                     data.map { subject ->

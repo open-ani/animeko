@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.data.repository.subject
 
+import androidx.collection.MutableIntList
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
@@ -16,6 +17,8 @@ import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.schedule.AnimeSeasonId
@@ -30,6 +33,7 @@ import me.him188.ani.app.domain.search.RatingRange
 import me.him188.ani.app.domain.search.SearchSort
 import me.him188.ani.app.domain.search.SubjectSearchQuery
 import me.him188.ani.app.domain.search.SubjectType
+import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.bangumi.models.BangumiSubjectType
 import me.him188.ani.datasources.bangumi.models.search.BangumiSort
 import me.him188.ani.utils.logging.logger
@@ -38,6 +42,7 @@ import kotlin.coroutines.cancellation.CancellationException
 
 class SubjectSearchRepository(
     private val bangumiSubjectSearchService: BangumiSubjectSearchService,
+    private val subjectCollectionRepository: SubjectCollectionRepository,
     private val subjectService: BangumiSubjectService,
     defaultDispatcher: CoroutineContext = Dispatchers.Default,
 ) : Repository(defaultDispatcher) {
@@ -50,18 +55,20 @@ class SubjectSearchRepository(
     fun searchSubjects(
         searchQuery: SubjectSearchQuery,
         useNewApi: suspend () -> Boolean = { false },
+        ignoreDoneAndDropped: suspend () -> Boolean = { false },
         pagingConfig: PagingConfig = Repository.defaultPagingConfig
     ): Flow<PagingData<BatchSubjectDetails>> = Pager(
         config = pagingConfig,
         initialKey = 0,
 //        remoteMediator = SubjectSearchRemoteMediator(useNewApi, searchQuery, pagingConfig),
         pagingSourceFactory = {
-            SubjectSearchPagingSource(useNewApi, searchQuery)
+            SubjectSearchPagingSource(useNewApi, ignoreDoneAndDropped, searchQuery)
         },
     ).flow.flowOn(defaultDispatcher)
 
     private inner class SubjectSearchPagingSource(
         private val useNewApi: suspend () -> Boolean,
+        private val ignoreDoneAndDropped: suspend () -> Boolean,
         private val searchQuery: SubjectSearchQuery
     ) : PagingSource<Int, BatchSubjectDetails>() {
         private val filters = searchQuery.toBangumiSearchFilters()
@@ -81,7 +88,26 @@ class SubjectSearchRepository(
                     sort = searchQuery.sort.toBangumiSort(),
                 )
 
-                val subjectInfos = subjectService.batchGetSubjectDetails(res)
+                val filteredIds = if (ignoreDoneAndDropped()) {
+                    val excludedIds = combine(
+                        subjectCollectionRepository.getSubjectIdsByCollectionType(
+                            type = UnifiedCollectionType.DONE,
+                        ),
+                        subjectCollectionRepository.getSubjectIdsByCollectionType(
+                            type = UnifiedCollectionType.DROPPED,
+                        ),
+                    ) { doneIds, droppedIds ->
+                        (doneIds + droppedIds).map { it }
+                    }.first()
+
+                    MutableIntList().apply {
+                        res.forEach { if (it !in excludedIds) add(it) }
+                    }
+                } else {
+                    res
+                }
+
+                val subjectInfos = subjectService.batchGetSubjectDetails(filteredIds)
 
                 return@withContext LoadResult.Page(
                     subjectInfos,

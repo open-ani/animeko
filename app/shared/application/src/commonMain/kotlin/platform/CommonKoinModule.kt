@@ -285,12 +285,14 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
     single<SubjectSearchRepository> {
         SubjectSearchRepository(
             bangumiSubjectSearchService = get(),
+            subjectCollectionRepository = get(),
             subjectService = get(),
         )
     }
     single<BangumiSubjectSearchCompletionRepository> {
         BangumiSubjectSearchCompletionRepository(
             bangumiSubjectSearchService = get(),
+            subjectCollectionRepository = get(),
             settingsRepository = get(),
         )
     }
