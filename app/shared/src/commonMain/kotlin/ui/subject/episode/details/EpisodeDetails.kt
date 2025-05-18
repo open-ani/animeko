@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.add
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -40,7 +39,6 @@ import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ProvideTextStyle
-import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.contentColorFor
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -73,10 +71,6 @@ import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBarPadding
 import me.him188.ani.app.ui.foundation.layout.paddingIfNotEmpty
-import me.him188.ani.app.ui.mediafetch.MediaSelectorState
-import me.him188.ani.app.ui.mediafetch.MediaSelectorView
-import me.him188.ani.app.ui.mediafetch.MediaSourceResultListPresentation
-import me.him188.ani.app.ui.mediafetch.ViewKind
 import me.him188.ani.app.ui.mediaselect.summary.MediaSelectorSummary
 import me.him188.ani.app.ui.mediaselect.summary.MediaSelectorSummaryCard
 import me.him188.ani.app.ui.search.LoadErrorCard
@@ -98,7 +92,6 @@ import me.him188.ani.app.ui.subject.episode.statistics.DanmakuStatistics
 import me.him188.ani.app.ui.subject.episode.statistics.VideoStatistics
 import me.him188.ani.danmaku.api.DanmakuServiceId
 import me.him188.ani.danmaku.api.provider.DanmakuProviderId
-import me.him188.ani.datasources.api.source.MediaFetchRequest
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.platform.isDesktop
 
@@ -128,22 +121,16 @@ class EpisodeDetailsState(
 fun EpisodeDetails(
     mediaSelectorSummary: MediaSelectorSummary,
     state: EpisodeDetailsState,
-    initialMediaSelectorViewKind: ViewKind,
-    fetchRequest: MediaFetchRequest?,
-    onFetchRequestChange: (MediaFetchRequest) -> Unit,
     episodeCarouselState: EpisodeCarouselState,
     editableSubjectCollectionTypeState: EditableSubjectCollectionTypeState,
     danmakuStatistics: DanmakuStatistics,
     videoStatisticsFlow: Flow<VideoStatistics>,
-    mediaSelectorState: MediaSelectorState,
-    mediaSourceResultListPresentation: () -> MediaSourceResultListPresentation,
     authState: AuthState,
     onSwitchEpisode: (Int) -> Unit,
-    onRefreshMediaSources: () -> Unit,
-    onRestartSource: (String) -> Unit,
     onSetDanmakuSourceEnabled: (DanmakuServiceId, Boolean) -> Unit,
     onClickLogin: () -> Unit,
     onClickTag: (Tag) -> Unit,
+    onRequestManualSelectMedia: () -> Unit,
     onManualMatchDanmaku: (DanmakuProviderId) -> Unit,
     onEpisodeCollectionUpdate: (SetEpisodeCollectionTypeRequest) -> Unit,
     shareData: MediaShareData,
@@ -266,42 +253,9 @@ fun EpisodeDetails(
             }
         },
         exposedEpisodeItem = { innerPadding ->
-            var showMediaSelector by rememberSaveable { mutableStateOf(false) }
-            if (showMediaSelector) {
-                val sheetState =
-                    rememberModalBottomSheetState(skipPartiallyExpanded = LocalPlatform.current.isDesktop())
-                ModalBottomSheet(
-                    { showMediaSelector = false },
-                    sheetState = sheetState,
-                    modifier = Modifier.desktopTitleBarPadding().statusBarsPadding(),
-                    contentWindowInsets = { BottomSheetDefaults.windowInsets.add(WindowInsets.desktopTitleBar()) },
-                ) {
-                    val (viewKind, onViewKindChange) = rememberSaveable { mutableStateOf(initialMediaSelectorViewKind) }
-                    MediaSelectorView(
-                        mediaSelectorState,
-                        viewKind,
-                        onViewKindChange,
-                        fetchRequest,
-                        onFetchRequestChange,
-                        mediaSourceResultListPresentation(),
-                        onRestartSource = onRestartSource,
-                        onRefresh = onRefreshMediaSources,
-                        modifier = Modifier.padding(vertical = 12.dp, horizontal = 16.dp)
-                            .fillMaxWidth()
-                            .navigationBarsPadding(),
-                        stickyHeaderBackgroundColor = BottomSheetDefaults.ContainerColor,
-                        onClickItem = {
-                            mediaSelectorState.select(it)
-                            showMediaSelector = false
-                        },
-                        scrollable = sheetState.targetValue == SheetValue.Expanded,
-                    )
-                }
-            }
-
             MediaSelectorSummaryCard(
                 mediaSelectorSummary,
-                onClickManualSelect = { showMediaSelector = true },
+                onClickManualSelect = onRequestManualSelectMedia,
                 Modifier.fillMaxWidth().padding(innerPadding),
             )
         },

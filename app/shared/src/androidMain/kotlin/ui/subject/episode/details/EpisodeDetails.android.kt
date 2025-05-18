@@ -35,10 +35,7 @@ import me.him188.ani.app.domain.session.TestAuthState
 import me.him188.ani.app.ui.episode.share.MediaShareData
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.mediafetch.MediaSelectorState
-import me.him188.ani.app.ui.mediafetch.TestMediaSourceResultListPresentation
-import me.him188.ani.app.ui.mediafetch.ViewKind
 import me.him188.ani.app.ui.mediafetch.rememberTestMediaSelectorState
-import me.him188.ani.app.ui.mediafetch.request.TestMediaFetchRequest
 import me.him188.ani.app.ui.mediaselect.summary.createTestMediaSelectorSummaryAutoSelecting
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeState
 import me.him188.ani.app.ui.subject.collection.components.rememberTestEditableSubjectCollectionTypeState
@@ -188,9 +185,6 @@ private fun PreviewEpisodeDetailsImpl(
         EpisodeDetails(
             mediaSelectorSummary = createTestMediaSelectorSummaryAutoSelecting(),
             state,
-            initialMediaSelectorViewKind = ViewKind.WEB,
-            TestMediaFetchRequest,
-            { },
             episodeCarouselState = remember {
                 EpisodeCarouselState(
                     mutableStateOf(TestEpisodeCollections),
@@ -212,12 +206,8 @@ private fun PreviewEpisodeDetailsImpl(
                     ),
                 )
             },
-            mediaSelectorState = mediaSelectorState,
-            mediaSourceResultListPresentation = { TestMediaSourceResultListPresentation },
             authState = authState,
             onSwitchEpisode = {},
-            onRefreshMediaSources = {},
-            onRestartSource = {},
             onSetDanmakuSourceEnabled = { _, _ -> },
             onClickLogin = { },
             onClickTag = {},
@@ -225,8 +215,10 @@ private fun PreviewEpisodeDetailsImpl(
             },
             onEpisodeCollectionUpdate = {},
             shareData = MediaShareData.from(null, null),
-            null, {},
-            Modifier
+            loadError = null,
+            onRetryLoad = {},
+            onRequestManualSelectMedia = {},
+            modifier = Modifier
                 .padding(bottom = 16.dp, top = 8.dp)
                 .padding(it)
                 .verticalScroll(rememberScrollState()),

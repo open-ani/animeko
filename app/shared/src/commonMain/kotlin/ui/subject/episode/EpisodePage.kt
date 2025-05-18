@@ -76,7 +76,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -124,7 +123,10 @@ import me.him188.ani.app.ui.foundation.theme.AniTheme
 import me.him188.ani.app.ui.foundation.theme.LocalThemeSettings
 import me.him188.ani.app.ui.foundation.theme.weaken
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
+import me.him188.ani.app.ui.foundation.widgets.ModalSideSheet
+import me.him188.ani.app.ui.foundation.widgets.rememberModalSideSheetState
 import me.him188.ani.app.ui.foundation.widgets.showLoadError
+import me.him188.ani.app.ui.mediafetch.MediaSelectorView
 import me.him188.ani.app.ui.richtext.RichTextDefaults
 import me.him188.ani.app.ui.subject.episode.comments.EpisodeCommentColumn
 import me.him188.ani.app.ui.subject.episode.comments.EpisodeEditCommentSheet
@@ -137,7 +139,6 @@ import me.him188.ani.app.ui.subject.episode.video.components.FloatingFullscreenS
 import me.him188.ani.app.ui.subject.episode.video.components.SideSheets
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.DanmakuRegexFilterSettings
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.EpisodeSelectorSheet
-import me.him188.ani.app.ui.subject.episode.video.sidesheet.MediaSelectorSheet
 import me.him188.ani.app.ui.subject.episode.video.topbar.EpisodePlayerTitle
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
@@ -151,7 +152,6 @@ import me.him188.ani.danmaku.api.DanmakuContent
 import me.him188.ani.danmaku.api.DanmakuLocation
 import me.him188.ani.danmaku.ui.DanmakuHostState
 import me.him188.ani.danmaku.ui.DanmakuPresentation
-import me.him188.ani.datasources.api.source.MediaFetchRequest
 import me.him188.ani.utils.platform.isDesktop
 import me.him188.ani.utils.platform.isMobile
 import org.openani.mediamp.features.AudioLevelController
@@ -216,6 +216,7 @@ private fun EpisodeScreenContent(
 
     var showEditCommentSheet by rememberSaveable { mutableStateOf(false) }
     var didSetPaused by rememberSaveable { mutableStateOf(false) }
+    var showMediaSelectorSheet by rememberSaveable { mutableStateOf(false) }
 
     val pauseOnPlaying: () -> Unit = {
         if (vm.player.playbackState.value.isPlaying) {
@@ -265,6 +266,8 @@ private fun EpisodeScreenContent(
         }
     }
 
+    val page = vm.pageState.collectAsStateWithLifecycle().value
+
     BoxWithConstraints(modifier) {
         val windowSizeClass = currentWindowAdaptiveInfo1().windowSizeClass
 
@@ -281,9 +284,7 @@ private fun EpisodeScreenContent(
             OverrideCaptionButtonAppearance(isDark = true)
         }
 
-        val pageState = vm.pageState.collectAsStateWithLifecycle()
-
-        when (val page = pageState.value) {
+        when (page) {
             null -> {
                 // TODO: EpisodePage loading
             }
@@ -337,11 +338,10 @@ private fun EpisodeScreenContent(
                                 page,
                                 vm.danmakuHostState,
                                 danmakuEditorState,
-                                page.fetchRequest,
-                                { vm.updateFetchRequest(it) },
                                 pauseOnPlaying = pauseOnPlaying,
                                 tryUnpause = tryUnpause,
                                 setShowEditCommentSheet = { showEditCommentSheet = it },
+                                onRequestManualSelectMedia = { showMediaSelectorSheet = true },
                                 modifier = Modifier.fillMaxSize(),
                                 windowInsets = windowInsets,
                             )
@@ -355,6 +355,7 @@ private fun EpisodeScreenContent(
                             pauseOnPlaying = pauseOnPlaying,
                             tryUnpause = tryUnpause,
                             setShowEditCommentSheet = { showEditCommentSheet = it },
+                            onRequestManualSelectMedia = { showMediaSelectorSheet = true },
                             windowInsets,
                         )
                     }
@@ -362,6 +363,37 @@ private fun EpisodeScreenContent(
             }
         }
         ImageViewer(imageViewer) { imageViewer.clear() }
+    }
+
+    if (showMediaSelectorSheet && page != null) {
+        val sheetState = rememberModalSideSheetState()
+        ModalSideSheet(
+            { showMediaSelectorSheet = false },
+            state = sheetState,
+            modifier = Modifier.desktopTitleBarPadding().statusBarsPadding(),
+            scrimColor = Color.Red,
+        ) {
+            val (viewKind, onViewKindChange) = rememberSaveable { mutableStateOf(page.initialMediaSelectorViewKind) }
+            MediaSelectorView(
+                page.mediaSelectorState,
+                viewKind,
+                onViewKindChange,
+                page.fetchRequest,
+                { vm.updateFetchRequest(it) },
+                page.mediaSourceResultListPresentation,
+                onRefresh = { vm.refreshFetch() },
+                onRestartSource = { vm.restartSource(it) },
+                modifier = Modifier.padding(vertical = 12.dp, horizontal = 16.dp)
+                    .fillMaxWidth()
+                    .navigationBarsPadding(),
+                stickyHeaderBackgroundColor = BottomSheetDefaults.ContainerColor,
+                onClickItem = {
+                    page.mediaSelectorState.select(it)
+                    showMediaSelectorSheet = false
+                },
+                scrollable = true,
+            )
+        }
     }
 
     if (showEditCommentSheet) {
@@ -391,10 +423,9 @@ private fun EpisodeScreenTabletVeryWide(
     page: EpisodePageState,
     danmakuHostState: DanmakuHostState,
     danmakuEditorState: DanmakuEditorState,
-    fetchRequest: MediaFetchRequest?,
-    onFetchRequestChange: (MediaFetchRequest) -> Unit,
     pauseOnPlaying: () -> Unit,
     tryUnpause: () -> Unit,
+    onRequestManualSelectMedia: () -> Unit,
     setShowEditCommentSheet: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
@@ -418,6 +449,7 @@ private fun EpisodeScreenTabletVeryWide(
                 expanded = true,
                 modifier = Modifier.weight(1f).fillMaxHeight(),
                 maintainAspectRatio = false,
+                onRequestSelectMedia = onRequestManualSelectMedia,
                 windowInsets = if (vm.isFullscreen) {
                     windowInsets
                 } else {
@@ -470,53 +502,45 @@ private fun EpisodeScreenTabletVeryWide(
                     when (index) {
                         0 -> Box(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                             val navigator = LocalNavigator.current
-                            val pageState by vm.pageState.collectAsStateWithLifecycle()
                             val toaster = LocalToaster.current
-                            pageState?.let { page ->
-                                EpisodeDetails(
-                                    page.mediaSelectorSummary,
-                                    vm.episodeDetailsState,
-                                    page.initialMediaSelectorViewKind,
-                                    fetchRequest,
-                                    onFetchRequestChange,
-                                    vm.episodeCarouselState,
-                                    vm.editableSubjectCollectionTypeState,
-                                    page.danmakuStatistics,
-                                    vm.videoStatisticsFlow,
-                                    page.mediaSelectorState,
-                                    { page.mediaSourceResultListPresentation },
-                                    page.authState,
-                                    onSwitchEpisode = { episodeId ->
-                                        if (!vm.episodeSelectorState.selectEpisodeId(episodeId)) {
-                                            navigator.navigateEpisodeDetails(vm.subjectId, episodeId)
+
+                            EpisodeDetails(
+                                page.mediaSelectorSummary,
+                                vm.episodeDetailsState,
+                                vm.episodeCarouselState,
+                                vm.editableSubjectCollectionTypeState,
+                                page.danmakuStatistics,
+                                vm.videoStatisticsFlow,
+                                page.authState,
+                                onSwitchEpisode = { episodeId ->
+                                    if (!vm.episodeSelectorState.selectEpisodeId(episodeId)) {
+                                        navigator.navigateEpisodeDetails(vm.subjectId, episodeId)
+                                    }
+                                },
+                                onSetDanmakuSourceEnabled = { providerId, enabled ->
+                                    vm.setDanmakuSourceEnabled(providerId, enabled)
+                                },
+                                onClickLogin = { navigator.navigateBangumiAuthorize() },
+                                onClickTag = { navigator.navigateSubjectSearch(it.name) },
+                                onManualMatchDanmaku = {
+                                    vm.startMatchingDanmaku(it)
+                                },
+                                onEpisodeCollectionUpdate = { request ->
+                                    scope.launch {
+                                        vm.setEpisodeCollectionType.invokeSafe(request)?.let {
+                                            toaster.showLoadError(it)
                                         }
-                                    },
-                                    onRefreshMediaSources = { vm.refreshFetch() },
-                                    onRestartSource = { vm.restartSource(it) },
-                                    onSetDanmakuSourceEnabled = { providerId, enabled ->
-                                        vm.setDanmakuSourceEnabled(providerId, enabled)
-                                    },
-                                    onClickLogin = { navigator.navigateBangumiAuthorize() },
-                                    onClickTag = { navigator.navigateSubjectSearch(it.name) },
-                                    onManualMatchDanmaku = {
-                                        vm.startMatchingDanmaku(it)
-                                    },
-                                    onEpisodeCollectionUpdate = { request ->
-                                        scope.launch {
-                                            vm.setEpisodeCollectionType.invokeSafe(request)?.let {
-                                                toaster.showLoadError(it)
-                                            }
-                                        }
-                                    },
-                                    shareData = page.shareData,
-                                    page.loadError,
-                                    onRetryLoad = {
-                                        page.loadError?.let {
-                                            vm.retryLoad(it)
-                                        }
-                                    },
-                                )
-                            }
+                                    }
+                                },
+                                shareData = page.shareData,
+                                loadError = page.loadError,
+                                onRequestManualSelectMedia = onRequestManualSelectMedia,
+                                onRetryLoad = {
+                                    page.loadError?.let {
+                                        vm.retryLoad(it)
+                                    }
+                                },
+                            )
                         }
 
                         1 -> {
@@ -593,6 +617,7 @@ private fun EpisodeScreenContentPhone(
     pauseOnPlaying: () -> Unit,
     tryUnpause: () -> Unit,
     setShowEditCommentSheet: (Boolean) -> Unit,
+    onRequestManualSelectMedia: () -> Unit,
     windowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
 ) {
     var showDanmakuEditor by rememberSaveable { mutableStateOf(false) }
@@ -606,58 +631,50 @@ private fun EpisodeScreenContentPhone(
                 vm, page,
                 danmakuHostState,
                 danmakuEditorState, vm.playerControllerState, vm.isFullscreen,
+                onRequestSelectMedia = onRequestManualSelectMedia,
                 windowInsets = ScaffoldDefaults.contentWindowInsets.union(WindowInsets.desktopTitleBar),
             )
         },
         episodeDetails = {
             val navigator = LocalNavigator.current
-            val pageState by vm.pageState.collectAsStateWithLifecycle()
             val scope = rememberCoroutineScope()
 
-            pageState?.let { page ->
-                EpisodeDetails(
-                    page.mediaSelectorSummary,
-                    vm.episodeDetailsState,
-                    page.initialMediaSelectorViewKind,
-                    page.fetchRequest,
-                    { vm.updateFetchRequest(it) },
-                    vm.episodeCarouselState,
-                    vm.editableSubjectCollectionTypeState,
-                    page.danmakuStatistics,
-                    vm.videoStatisticsFlow,
-                    page.mediaSelectorState,
-                    { page.mediaSourceResultListPresentation },
-                    page.authState,
-                    onSwitchEpisode = { episodeId ->
-                        if (!vm.episodeSelectorState.selectEpisodeId(episodeId)) {
-                            navigator.navigateEpisodeDetails(vm.subjectId, episodeId)
+            EpisodeDetails(
+                page.mediaSelectorSummary,
+                vm.episodeDetailsState,
+                vm.episodeCarouselState,
+                vm.editableSubjectCollectionTypeState,
+                page.danmakuStatistics,
+                vm.videoStatisticsFlow,
+                page.authState,
+                onSwitchEpisode = { episodeId ->
+                    if (!vm.episodeSelectorState.selectEpisodeId(episodeId)) {
+                        navigator.navigateEpisodeDetails(vm.subjectId, episodeId)
+                    }
+                },
+                onSetDanmakuSourceEnabled = { providerId, enabled ->
+                    vm.setDanmakuSourceEnabled(providerId, enabled)
+                },
+                onClickLogin = { navigator.navigateBangumiAuthorize() },
+                onClickTag = { navigator.navigateSubjectSearch(it.name) },
+                onManualMatchDanmaku = {
+                    vm.startMatchingDanmaku(it)
+                },
+                onEpisodeCollectionUpdate = { request ->
+                    scope.launch {
+                        vm.setEpisodeCollectionType.invokeSafe(request)?.let {
+                            toaster.showLoadError(it)
                         }
-                    },
-                    onRefreshMediaSources = { vm.refreshFetch() },
-                    onRestartSource = { vm.restartSource(it) },
-                    onSetDanmakuSourceEnabled = { providerId, enabled ->
-                        vm.setDanmakuSourceEnabled(providerId, enabled)
-                    },
-                    onClickLogin = { navigator.navigateBangumiAuthorize() },
-                    onClickTag = { navigator.navigateSubjectSearch(it.name) },
-                    onManualMatchDanmaku = {
-                        vm.startMatchingDanmaku(it)
-                    },
-                    onEpisodeCollectionUpdate = { request ->
-                        scope.launch {
-                            vm.setEpisodeCollectionType.invokeSafe(request)?.let {
-                                toaster.showLoadError(it)
-                            }
-                        }
-                    },
-                    shareData = page.shareData,
-                    loadError = page.loadError,
-                    onRetryLoad = {
-                        page.loadError?.let { vm.retryLoad(it) }
-                    },
-                    modifier = Modifier.fillMaxSize(),
-                )
-            }
+                    }
+                },
+                shareData = page.shareData,
+                loadError = page.loadError,
+                onRetryLoad = {
+                    page.loadError?.let { vm.retryLoad(it) }
+                },
+                onRequestManualSelectMedia = onRequestManualSelectMedia,
+                modifier = Modifier.fillMaxSize(),
+            )
         },
         commentColumn = {
             EpisodeCommentColumn(
@@ -803,6 +820,7 @@ private fun EpisodeVideo(
     danmakuEditorState: DanmakuEditorState,
     playerControllerState: PlayerControllerState,
     expanded: Boolean,
+    onRequestSelectMedia: () -> Unit,
     modifier: Modifier = Modifier,
     maintainAspectRatio: Boolean = !expanded,
     windowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
@@ -903,6 +921,7 @@ private fun EpisodeVideo(
                 vm.player.features[Screenshots]?.takeScreenshot(filename)
             }
         },
+        onRequestSelectMedia = onRequestSelectMedia,
         detachedProgressSlider = {
             PlayerControllerDefaults.MediaProgressSlider(
                 progressSliderState,
@@ -970,24 +989,6 @@ private fun EpisodeVideo(
                         onDismissRequest = { goBack() },
                         expanded = expanded,
                     )
-                },
-                mediaSelectorPage = {
-                    val pageState by vm.pageState.collectAsStateWithLifecycle()
-                    pageState?.let { page ->
-                        val (viewKind, onViewKindChange) = rememberSaveable { mutableStateOf(page.initialMediaSelectorViewKind) }
-                        EpisodeVideoSideSheets.MediaSelectorSheet(
-                            page.mediaSelectorState,
-                            page.mediaSourceResultListPresentation,
-                            viewKind,
-                            onViewKindChange,
-                            page.fetchRequest,
-                            { vm.updateFetchRequest(it) },
-                            contentPadding = contentPadding,
-                            onDismissRequest = { goBack() },
-                            onRefresh = { vm.refreshFetch() },
-                            onRestartSource = { vm.restartSource(it) },
-                        )
-                    }
                 },
                 episodeSelectorPage = {
                     EpisodeVideoSideSheets.EpisodeSelectorSheet(

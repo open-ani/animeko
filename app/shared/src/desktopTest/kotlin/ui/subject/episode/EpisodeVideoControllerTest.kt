@@ -12,10 +12,8 @@ package me.him188.ani.app.ui.subject.episode
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -47,10 +45,6 @@ import me.him188.ani.app.ui.framework.AniComposeUiTest
 import me.him188.ani.app.ui.framework.doesNotExist
 import me.him188.ani.app.ui.framework.exists
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
-import me.him188.ani.app.ui.mediafetch.TestMediaSourceResultListPresentation
-import me.him188.ani.app.ui.mediafetch.ViewKind
-import me.him188.ani.app.ui.mediafetch.rememberTestMediaSelectorState
-import me.him188.ani.app.ui.mediafetch.request.TestMediaFetchRequest
 import me.him188.ani.app.ui.settings.danmaku.createTestDanmakuRegexFilterState
 import me.him188.ani.app.ui.subject.episode.video.components.DanmakuSettingsSheet
 import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheetPage
@@ -59,7 +53,6 @@ import me.him188.ani.app.ui.subject.episode.video.components.FloatingFullscreenS
 import me.him188.ani.app.ui.subject.episode.video.components.SideSheets
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.DanmakuRegexFilterSettings
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.EpisodeSelectorSheet
-import me.him188.ani.app.ui.subject.episode.video.sidesheet.MediaSelectorSheet
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.rememberTestEpisodeSelectorState
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
 import me.him188.ani.app.videoplayer.ui.NoOpPlaybackSpeedController
@@ -197,6 +190,7 @@ class EpisodeVideoControllerTest {
                     )
                 },
                 onClickScreenshot = {},
+                onRequestSelectMedia = {},
                 detachedProgressSlider = {
                     PlayerControllerDefaults.MediaProgressSlider(
                         progressSliderState,
@@ -244,25 +238,6 @@ class EpisodeVideoControllerTest {
                                 state = createTestDanmakuRegexFilterState(),
                                 onDismissRequest = { goBack() },
                                 expanded = expanded,
-                            )
-                        },
-                        mediaSelectorPage = {
-                            val (viewKind, onViewKindChange) = rememberSaveable { mutableStateOf(ViewKind.WEB) }
-                            val (fetchRequest, onFetchRequestChange) = rememberSaveable {
-                                mutableStateOf(
-                                    TestMediaFetchRequest,
-                                )
-                            }
-                            EpisodeVideoSideSheets.MediaSelectorSheet(
-                                mediaSelectorState = rememberTestMediaSelectorState(),
-                                mediaSourceResultListPresentation = TestMediaSourceResultListPresentation,
-                                viewKind = viewKind,
-                                onViewKindChange = onViewKindChange,
-                                fetchRequest = fetchRequest,
-                                onFetchRequestChange = onFetchRequestChange,
-                                onDismissRequest = { goBack() },
-                                onRefresh = {},
-                                onRestartSource = {},
                             )
                         },
                         episodeSelectorPage = {

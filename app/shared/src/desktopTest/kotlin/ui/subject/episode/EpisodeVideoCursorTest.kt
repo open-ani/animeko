@@ -110,6 +110,7 @@ class EpisodeVideoCursorTest {
                     onExitFullscreen = {},
                     danmakuEditor = {},
                     onClickScreenshot = {},
+                    onRequestSelectMedia = {},
                     detachedProgressSlider = {
                         PlayerControllerDefaults.MediaProgressSlider(
                             progressSliderState,

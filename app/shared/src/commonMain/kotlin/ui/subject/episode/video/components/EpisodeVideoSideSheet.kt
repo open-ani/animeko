@@ -45,7 +45,6 @@ fun EpisodeVideoDefaults.SideSheets(
     playerControllerState: PlayerControllerState,
     playerSettingsPage: @Composable VideoSideSheetScope.() -> Unit,
     editDanmakuRegexFilterPage: @Composable VideoSideSheetScope.() -> Unit,
-    mediaSelectorPage: @Composable VideoSideSheetScope.() -> Unit,
     episodeSelectorPage: @Composable VideoSideSheetScope.() -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -56,7 +55,6 @@ fun EpisodeVideoDefaults.SideSheets(
         when (page) {
             EpisodeVideoSideSheetPage.PLAYER_SETTINGS -> playerSettingsPage()
             EpisodeVideoSideSheetPage.EDIT_DANMAKU_REGEX_FILTER -> editDanmakuRegexFilterPage()
-            EpisodeVideoSideSheetPage.MEDIA_SELECTOR -> mediaSelectorPage()
             EpisodeVideoSideSheetPage.EPISODE_SELECTOR -> episodeSelectorPage()
         }
     }
@@ -78,7 +76,6 @@ fun EpisodeVideoDefaults.SideSheets(
 enum class EpisodeVideoSideSheetPage {
     PLAYER_SETTINGS,
     EDIT_DANMAKU_REGEX_FILTER,
-    MEDIA_SELECTOR,
     EPISODE_SELECTOR,
 }
 

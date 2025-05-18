@@ -120,6 +120,7 @@ internal fun EpisodeVideoImpl(
     onExitFullscreen: () -> Unit,
     danmakuEditor: @Composable() (RowScope.() -> Unit),
     onClickScreenshot: () -> Unit,
+    onRequestSelectMedia: () -> Unit,
     detachedProgressSlider: @Composable () -> Unit,
     sidebarVisible: Boolean,
     onToggleSidebar: (isCollapsed: Boolean) -> Unit,
@@ -181,7 +182,7 @@ internal fun EpisodeVideoImpl(
                             }
                             if (expanded) {
                                 IconButton(
-                                    { sheetsController.navigateTo(EpisodeVideoSideSheetPage.MEDIA_SELECTOR) },
+                                    onRequestSelectMedia,
                                     Modifier.testTag(TAG_SHOW_MEDIA_SELECTOR),
                                 ) {
                                     Icon(Icons.Rounded.DisplaySettings, contentDescription = "数据源")
