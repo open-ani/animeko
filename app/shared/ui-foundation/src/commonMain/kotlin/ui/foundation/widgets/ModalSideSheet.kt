@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.material3.DrawerDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -81,7 +82,12 @@ fun ModalSideSheet(
     modifier: Modifier = Modifier,
     state: ModalSideSheetState = rememberModalSideSheetState(),
     side: SheetSide = SheetSide.End,
-    shape: Shape = MaterialTheme.shapes.extraLarge,
+    shape: Shape = MaterialTheme.shapes.extraLarge.copy(
+        topStart = if (side == SheetSide.Start) CornerSize(0f) else MaterialTheme.shapes.extraLarge.topStart,
+        topEnd = if (side == SheetSide.End) CornerSize(0f) else MaterialTheme.shapes.extraLarge.topEnd,
+        bottomStart = if (side == SheetSide.Start) CornerSize(0f) else MaterialTheme.shapes.extraLarge.bottomStart,
+        bottomEnd = if (side == SheetSide.End) CornerSize(0f) else MaterialTheme.shapes.extraLarge.bottomEnd,
+    ),
     containerColor: Color = MaterialTheme.colorScheme.surface,
     contentColor: Color = contentColorFor(containerColor),
     tonalElevation: Dp = 0.dp,

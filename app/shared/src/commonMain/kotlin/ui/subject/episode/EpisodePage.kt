@@ -122,6 +122,7 @@ import me.him188.ani.app.ui.foundation.rememberImageViewerHandler
 import me.him188.ani.app.ui.foundation.theme.AniTheme
 import me.him188.ani.app.ui.foundation.theme.LocalThemeSettings
 import me.him188.ani.app.ui.foundation.theme.weaken
+import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.ModalSideSheet
 import me.him188.ani.app.ui.foundation.widgets.rememberModalSideSheetState
@@ -137,6 +138,7 @@ import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideShe
 import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheets
 import me.him188.ani.app.ui.subject.episode.video.components.FloatingFullscreenSwitchButton
 import me.him188.ani.app.ui.subject.episode.video.components.SideSheets
+import me.him188.ani.app.ui.subject.episode.video.settings.SideSheetLayout
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.DanmakuRegexFilterSettings
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.EpisodeSelectorSheet
 import me.him188.ani.app.ui.subject.episode.video.topbar.EpisodePlayerTitle
@@ -370,29 +372,40 @@ private fun EpisodeScreenContent(
         ModalSideSheet(
             { showMediaSelectorSheet = false },
             state = sheetState,
-            modifier = Modifier.desktopTitleBarPadding().statusBarsPadding(),
-            scrimColor = Color.Red,
         ) {
             val (viewKind, onViewKindChange) = rememberSaveable { mutableStateOf(page.initialMediaSelectorViewKind) }
-            MediaSelectorView(
-                page.mediaSelectorState,
-                viewKind,
-                onViewKindChange,
-                page.fetchRequest,
-                { vm.updateFetchRequest(it) },
-                page.mediaSourceResultListPresentation,
-                onRefresh = { vm.refreshFetch() },
-                onRestartSource = { vm.restartSource(it) },
-                modifier = Modifier.padding(vertical = 12.dp, horizontal = 16.dp)
-                    .fillMaxWidth()
-                    .navigationBarsPadding(),
-                stickyHeaderBackgroundColor = BottomSheetDefaults.ContainerColor,
-                onClickItem = {
-                    page.mediaSelectorState.select(it)
-                    showMediaSelectorSheet = false
+
+            SideSheetLayout(
+                title = { Text("选择数据源") },
+                onDismissRequest = { sheetState.close() },
+                navigationButton = {
+                    BackNavigationIconButton({ sheetState.close() })
                 },
-                scrollable = true,
-            )
+                modifier = Modifier
+                    .navigationBarsPadding()
+                    .desktopTitleBarPadding()
+                    .statusBarsPadding()
+                    .fillMaxWidth(),
+                containerColor = MaterialTheme.colorScheme.surface,
+            ) {
+                MediaSelectorView(
+                    page.mediaSelectorState,
+                    viewKind,
+                    onViewKindChange,
+                    page.fetchRequest,
+                    { vm.updateFetchRequest(it) },
+                    page.mediaSourceResultListPresentation,
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    onRefresh = { vm.refreshFetch() },
+                    onRestartSource = { vm.restartSource(it) },
+                    stickyHeaderBackgroundColor = MaterialTheme.colorScheme.surface,
+                    onClickItem = {
+                        page.mediaSelectorState.select(it)
+                        sheetState.close()
+                    },
+                    scrollable = true,
+                )
+            }
         }
     }
 
