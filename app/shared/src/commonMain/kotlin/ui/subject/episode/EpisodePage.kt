@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.add
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -51,6 +52,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.contentColorFor
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -75,6 +77,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.window.core.layout.WindowSizeClass
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -368,18 +371,16 @@ private fun EpisodeScreenContent(
     }
 
     if (showMediaSelectorSheet && page != null) {
-        val sheetState = rememberModalSideSheetState()
-        ModalSideSheet(
+        EpisodeMediaSelectorDialog(
             { showMediaSelectorSheet = false },
-            state = sheetState,
-        ) {
+        ) { requestDismiss ->
             val (viewKind, onViewKindChange) = rememberSaveable { mutableStateOf(page.initialMediaSelectorViewKind) }
 
             SideSheetLayout(
                 title = { Text("选择数据源") },
-                onDismissRequest = { sheetState.close() },
+                onDismissRequest = requestDismiss,
                 navigationButton = {
-                    BackNavigationIconButton({ sheetState.close() })
+                    BackNavigationIconButton(requestDismiss)
                 },
                 modifier = Modifier
                     .navigationBarsPadding()
@@ -401,7 +402,7 @@ private fun EpisodeScreenContent(
                     stickyHeaderBackgroundColor = MaterialTheme.colorScheme.surface,
                     onClickItem = {
                         page.mediaSelectorState.select(it)
-                        sheetState.close()
+                        requestDismiss()
                     },
                     scrollable = true,
                 )
@@ -1018,6 +1019,45 @@ private fun EpisodeVideo(
         contentWindowInsets = windowInsets,
         fastForwardSpeed = vm.videoScaffoldConfig.fastForwardSpeed,
     )
+}
+
+@Composable
+private fun EpisodeMediaSelectorDialog(
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+    windowSizeClass: WindowSizeClass = currentWindowAdaptiveInfo1().windowSizeClass,
+    content: @Composable (
+        requestDismiss: () -> Unit,
+    ) -> Unit,
+) {
+    if (windowSizeClass.isWidthAtLeastMedium) {
+        val sideSheetState = rememberModalSideSheetState()
+        ModalSideSheet(
+            onDismiss,
+            state = sideSheetState,
+            modifier = modifier,
+            content = {
+                content { sideSheetState.close() }
+            },
+        )
+    } else {
+        val bottomSheetState = rememberModalBottomSheetState(true)
+        val scope = rememberCoroutineScope()
+        ModalBottomSheet(
+            onDismiss,
+            sheetState = bottomSheetState,
+            modifier = modifier.desktopTitleBarPadding().statusBarsPadding(),
+            contentWindowInsets = { BottomSheetDefaults.windowInsets.add(WindowInsets.desktopTitleBar()) },
+            content = {
+                content {
+                    scope.launch {
+                        bottomSheetState.hide()
+                        onDismiss()
+                    }
+                }
+            },
+        )
+    }
 }
 
 @Composable
