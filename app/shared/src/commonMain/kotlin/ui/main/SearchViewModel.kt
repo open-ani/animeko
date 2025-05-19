@@ -32,7 +32,7 @@ import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeUseCase
 import me.him188.ani.app.domain.search.SearchSort
 import me.him188.ani.app.domain.search.SubjectSearchQuery
-import me.him188.ani.app.domain.session.AniAuthStateProvider
+import me.him188.ani.app.domain.session.auth.AniAuthStateProvider
 import me.him188.ani.app.ui.exploration.search.SearchPageState
 import me.him188.ani.app.ui.exploration.search.SubjectPreviewItemInfo
 import me.him188.ani.app.ui.foundation.AbstractViewModel

@@ -46,9 +46,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
-import me.him188.ani.app.domain.session.AuthState
-import me.him188.ani.app.domain.session.TestAuthState
-import me.him188.ani.app.domain.session.TestGuestAuthState
+import me.him188.ani.app.domain.session.auth.AuthState
+import me.him188.ani.app.domain.session.auth.TestAuthState
+import me.him188.ani.app.domain.session.auth.TestGuestAuthState
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.layout.paddingIfNotEmpty
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor

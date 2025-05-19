@@ -26,7 +26,6 @@ import me.him188.ani.app.data.network.TrendsRepository
 import me.him188.ani.app.data.repository.subject.FollowedSubjectsRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.session.OpaqueSession
-import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.session.userInfo
 import me.him188.ani.app.ui.exploration.ExplorationPageState
 import me.him188.ani.app.ui.foundation.AbstractViewModel
@@ -49,7 +48,6 @@ class ExplorationPageViewModel : AbstractViewModel(), KoinComponent {
         settingsRepository.oneshotActionConfig.flow.map { it.horizontalScrollTip }
 
     val explorationPageState: ExplorationPageState = ExplorationPageState(
-        selfInfoState,
         trendingSubjectInfoPager = trendsRepository.trendsInfoPager()
             .map { pagingData ->
                 pagingData.flatMap { it.subjects.take(10) }

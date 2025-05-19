@@ -19,11 +19,8 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.filterIsInstance
-import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -31,12 +28,8 @@ import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.data.models.preference.ProxyMode
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.foundation.HttpClientProvider
-import me.him188.ani.app.domain.session.AniAuthClient
-import me.him188.ani.app.domain.session.AniAuthConfigurator
-import me.him188.ani.app.domain.session.AuthState
-import me.him188.ani.app.domain.session.SessionEvent
 import me.him188.ani.app.domain.session.SessionManager
-import me.him188.ani.app.domain.session.userInfoOrNull
+import me.him188.ani.app.domain.session.auth.OAuthClient
 import me.him188.ani.app.domain.settings.ProxySettingsFlowProxyProvider
 import me.him188.ani.app.domain.settings.ProxyTester
 import me.him188.ani.app.domain.settings.ServiceConnectionTester
@@ -59,10 +52,7 @@ import me.him188.ani.app.ui.settings.tabs.network.ProxyTestCaseState
 import me.him188.ani.app.ui.settings.tabs.network.ProxyTestItem
 import me.him188.ani.app.ui.settings.tabs.network.ProxyTestState
 import me.him188.ani.app.ui.settings.tabs.network.SystemProxyPresentation
-import me.him188.ani.app.ui.settings.tabs.network.toDataSettings
-import me.him188.ani.app.ui.settings.tabs.network.toUIConfig
-import me.him188.ani.utils.analytics.Analytics
-import me.him188.ani.utils.analytics.AnalyticsEvent
+import me.him188.ani.app.ui.user.SelfInfoUiState
 import me.him188.ani.utils.coroutines.SingleTaskExecutor
 import me.him188.ani.utils.coroutines.update
 import org.koin.core.component.KoinComponent
@@ -189,61 +179,21 @@ class OnboardingViewModel : AbstractSettingsViewModel(), KoinComponent {
     // region BangumiAuthorize
     private val sessionManager: SessionManager by inject()
     private val browserNavigator: BrowserNavigator by inject()
-    private val authClient: AniAuthClient by inject()
+    private val authClient: OAuthClient by inject()
 
     private var currentAppContext: ContextMP? = null
     private val authLoopTasker = SingleTaskExecutor(backgroundScope.coroutineContext)
-
-    private val authConfigurator = AniAuthConfigurator(
-        sessionManager = sessionManager,
-        authClient = authClient,
-        onLaunchAuthorize = { requestId ->
-            currentAppContext?.let { openBrowserAuthorize(it, requestId) }
-        },
-        parentCoroutineContext = backgroundScope.coroutineContext,
-    )
-
-    private val bangumiAuthorizeState = BangumiAuthorizeStepState(
-        authConfigurator.state,
-        onClickNavigateAuthorize = {
-            Analytics.recordEvent(AnalyticsEvent.LoginClick)
-            currentAppContext = it
-            backgroundScope.launch { authConfigurator.startAuthorize() }
-        },
-        onCancelAuthorize = { authConfigurator.cancelAuthorize() },
-        onCheckCurrentToken = { authConfigurator.checkAuthorizeState() },
-        onClickNavigateToBangumiDev = {
-            browserNavigator.openBrowser(it, "https://next.bgm.tv/demo/access-token/create")
-        },
-        onUseGuestMode = {
-            // 如果是 Idle, TokenExpired, UnknownError, 则使用 GuestSession
-            when (authConfigurator.state.first()) {
-                is AuthState.NotAuthed,
-                is AuthState.TokenExpired,
-                is AuthState.UnknownError -> {
-                    authConfigurator.setGuestSession()
-                }
-
-                else -> {}
-            }
-        },
-        onAuthorizeByToken = {
-            backgroundScope.launch { authConfigurator.authorizeByBangumiToken(it) }
-        },
-    )
 
     val wizardController = WizardController()
     val onboardingState = OnboardingPresentationState(
         themeSelectState = themeSelectState,
         configureProxyState = configureProxyState,
         bitTorrentFeatureState = bitTorrentFeatureState,
-        bangumiAuthorizeState = bangumiAuthorizeState,
     )
     // endregion
 
     suspend fun startAuthorizeCheckAndProxyTesterLoop() {
         authLoopTasker.invoke {
-            launch { authConfigurator.authorizeRequestCheckLoop() }
             launch { proxyTester.testRunnerLoop() }
         }
     }
@@ -277,15 +227,6 @@ class OnboardingViewModel : AbstractSettingsViewModel(), KoinComponent {
         }
     }
 
-    suspend fun collectNewLoginEvent(onLogin: suspend () -> Unit) {
-        sessionManager.events
-            .filterIsInstance<SessionEvent.Login>()
-            .collectLatest {
-                sessionManager.state.map { it.userInfoOrNull }.filterNotNull().first() // wait for userInfo loading
-                onLogin()
-            }
-    }
-
     fun finishOnboarding() {
         // 因为更新设置之后会马上进入主界面, backgroundScope 会被取消
         // 所以这里使用 GlobalScope 确保这个任务能完成, 
@@ -301,7 +242,6 @@ class OnboardingPresentationState(
     val themeSelectState: ThemeSelectStepState,
     val configureProxyState: ConfigureProxyState,
     val bitTorrentFeatureState: BitTorrentFeatureStepState,
-    val bangumiAuthorizeState: BangumiAuthorizeStepState,
 )
 
 @Stable
@@ -323,7 +263,7 @@ class BitTorrentFeatureStepState(
 
 @Stable
 class BangumiAuthorizeStepState(
-    val state: Flow<AuthState>,
+    val state: StateFlow<SelfInfoUiState>,
     val onCheckCurrentToken: () -> Unit,
     val onClickNavigateAuthorize: (ContextMP) -> Unit,
     val onCancelAuthorize: () -> Unit,

@@ -41,7 +41,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.paging.compose.collectAsLazyPagingItems
 import kotlinx.coroutines.launch
-import me.him188.ani.app.domain.session.AuthState
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.MainScreenPage
 import me.him188.ani.app.navigation.getIcon
@@ -70,13 +69,14 @@ import me.him188.ani.app.ui.foundation.widgets.showLoadError
 import me.him188.ani.app.ui.subject.collection.CollectionPage
 import me.him188.ani.app.ui.subject.collection.UserCollectionsViewModel
 import me.him188.ani.app.ui.update.UpdateNotifier
+import me.him188.ani.app.ui.user.SelfInfoUiState
 import me.him188.ani.utils.platform.isAndroid
 
 
 @Composable
 fun MainScreen(
     page: MainScreenPage,
-    authState: AuthState,
+    selfInfo: SelfInfoUiState,
     modifier: Modifier = Modifier,
     onNavigateToPage: (MainScreenPage) -> Unit,
     onNavigateToSettings: () -> Unit,
@@ -95,7 +95,7 @@ fun MainScreen(
 
     MainScreenContent(
         page,
-        authState,
+        selfInfo,
         onNavigateToPage,
         onNavigateToSettings,
         onNavigateToSearch,
@@ -107,7 +107,7 @@ fun MainScreen(
 @Composable
 private fun MainScreenContent(
     page: MainScreenPage,
-    authState: AuthState,
+    selfInfo: SelfInfoUiState,
     onNavigateToPage: (MainScreenPage) -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToSearch: () -> Unit,
@@ -217,7 +217,7 @@ private fun MainScreenContent(
                     MainScreenPage.Exploration -> {
                         ExplorationScreen(
                             explorationPageViewModel.explorationPageState,
-                            authState,
+                            selfInfo,
                             onSearch = onNavigateToSearch,
                             onClickSettings = { navigator.navigateSettings() },
                             onClickLogin = { navigator.navigateBangumiAuthorize() },
@@ -231,7 +231,7 @@ private fun MainScreenContent(
                     MainScreenPage.Collection -> {
                         CollectionPage(
                             state = userCollectionsViewModel.state,
-                            authState = authState,
+                            selfInfo = selfInfo,
                             items = userCollectionsViewModel.items.collectAsLazyPagingItems(),
                             onClickSearch = onNavigateToSearch,
                             onClickLogin = { navigator.navigateBangumiAuthorize() },

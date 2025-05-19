@@ -92,7 +92,6 @@ import me.him188.ani.app.data.models.subject.SubjectCollectionCounts
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.data.models.subject.toNavPlaceholder
 import me.him188.ani.app.data.repository.subject.CollectionsFilterQuery
-import me.him188.ani.app.domain.session.AuthState
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.ui.adaptive.AniTopAppBar
 import me.him188.ani.app.ui.adaptive.AniTopAppBarDefaults
@@ -118,6 +117,7 @@ import me.him188.ani.app.ui.subject.collection.progress.rememberSubjectProgressS
 import me.him188.ani.app.ui.subject.episode.list.EpisodeListDialog
 import me.him188.ani.app.ui.subject.episode.list.EpisodeListItem
 import me.him188.ani.app.ui.subject.episode.list.EpisodeListUiState
+import me.him188.ani.app.ui.user.SelfInfoUiState
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.platform.hasScrollingBug
 import me.him188.ani.utils.platform.isDesktop
@@ -196,7 +196,7 @@ class UserCollectionsState(
 @Composable
 fun CollectionPage(
     state: UserCollectionsState,
-    authState: AuthState,
+    selfInfo: SelfInfoUiState,
     items: LazyPagingItems<SubjectCollectionInfo>,
     onClickSearch: () -> Unit,
     onClickLogin: () -> Unit,
@@ -230,10 +230,8 @@ fun CollectionPage(
         },
         avatar = { recommendedSize ->
             SelfAvatar(
-                authState,
-                state.selfInfo,
-                onClickLogin = onClickLogin,
-                onClickRetryRefreshSession = onClickRetryRefreshSession,
+                selfInfo,
+                onClick = onClickLogin,
                 size = recommendedSize,
             )
         },

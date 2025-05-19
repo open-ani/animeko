@@ -23,7 +23,6 @@ import me.him188.ani.app.data.network.danmaku.AniDanmakuSender
 import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.get
-import me.him188.ani.app.domain.session.OpaqueSession
 import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.ui.foundation.BackgroundScope
 import me.him188.ani.app.ui.foundation.HasBackgroundScope
@@ -68,7 +67,6 @@ class DanmakuManager(
         )
     }
 
-    @OptIn(OpaqueSession::class)
     private val sender by lazy { AniDanmakuSender(danmakuApi) }
 
     val selfId: Flow<String?> get() = sender.selfId

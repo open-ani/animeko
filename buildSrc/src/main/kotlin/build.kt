@@ -86,6 +86,7 @@ val optInAnnotations = arrayOf(
     "androidx.compose.animation.ExperimentalSharedTransitionApi",
     "androidx.paging.ExperimentalPagingApi",
     "kotlin.ExperimentalSubclassOptIn",
+    "kotlin.uuid.ExperimentalUuidApi",
 )
 
 val testLanguageFeatures: List<String> = listOf(

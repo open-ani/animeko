@@ -48,6 +48,7 @@
     <string name="settings_debug_others">Others</string>
     <string name="settings_debug_get_bangumi_token">Obtain Bangumi access token</string>
     <string name="settings_debug_get_ani_token">Obtain Ani access token</string>
+    <string name="settings_debug_get_ani_access_token">Obtain Ani access token</string>
     <string name="settings_debug_copied">Copied: %1$s</string>
     <string name="settings_help_qq">QQ</string>
     <string name="settings_help_telegram">Telegram</string>

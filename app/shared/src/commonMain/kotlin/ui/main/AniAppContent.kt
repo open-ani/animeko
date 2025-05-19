@@ -29,6 +29,7 @@ import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,7 +50,6 @@ import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.domain.mediasource.rss.RssMediaSource
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSource
 import me.him188.ani.app.domain.search.SubjectSearchQuery
-import me.him188.ani.app.domain.session.AuthState
 import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.MainScreenPage
@@ -262,7 +262,7 @@ private fun AniAppContentImpl(
                             this@SharedTransitionLayout, this,
                         ),
                     ) {
-                        val authState by vm.authState.collectAsStateWithLifecycle(AuthState.DummyAwaitingResult)
+                        val authState by vm.authState.collectAsState() // not -WithLifecycle
                         MainScreen(
                             page = currentPage,
                             authState = authState,

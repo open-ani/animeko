@@ -14,7 +14,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import me.him188.ani.app.domain.session.OpaqueSession
-import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.session.userInfo
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.foundation.launchInBackground

@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.app.domain.session
+package me.him188.ani.app.domain.session.auth
 
 import io.ktor.client.plugins.ClientRequestException
 import io.ktor.http.HttpStatusCode
@@ -15,6 +15,7 @@ import io.ktor.util.reflect.typeInfo
 import me.him188.ani.app.data.models.ApiFailure
 import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.data.repository.RepositoryServiceUnavailableException
+import me.him188.ani.app.domain.session.AccessTokenPair
 import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.client.apis.BangumiOAuthAniApi
 import me.him188.ani.client.infrastructure.HttpResponse
@@ -27,33 +28,25 @@ import me.him188.ani.utils.platform.currentPlatform
 import me.him188.ani.utils.platform.currentTimeMillis
 import kotlin.time.Duration.Companion.seconds
 
-interface AniAuthClient {
-    /**
-     * 获取使用 Ani OAuth 登录的结果. 同时返回 bangumi 和 ani tokens.
-     */
-    suspend fun getResult(requestId: String): AniAuthResult?
-
-    /**
-     * 使用 refresh token 刷新得到新的 bangumi 和 ani tokens.
-     */
-    suspend fun refreshAccessToken(refreshToken: String): AniAuthResult
-
-    /**
-     * 用 [bangumiAccessToken] 登录 ani 账户, 返回 tokens.
-     */
+/**
+ *
+ */
+interface OAuthClient {
+    suspend fun getResult(requestId: String): OAuthResult?
+    suspend fun refreshAccessToken(refreshToken: String): OAuthResult
     suspend fun getAccessTokensByBangumiToken(bangumiAccessToken: String): String
 }
 
-data class AniAuthResult(
+data class OAuthResult(
     val tokens: AccessTokenPair,
     val expiresInSeconds: Long,
     val refreshToken: String,
 )
 
-class AniAuthClientImpl(
+class OAuthClientImpl(
     private val oauthApiInvoker: ApiInvoker<BangumiOAuthAniApi>,
-) : AniAuthClient {
-    override suspend fun getResult(requestId: String): AniAuthResult? {
+) : OAuthClient {
+    override suspend fun getResult(requestId: String): OAuthResult? {
         return try {
             oauthApiInvoker {
                 // TODO: 2025/4/8 未来我们需要在 Ani 服务器直接返回两个 token, 避免多次请求 
@@ -62,11 +55,11 @@ class AniAuthClientImpl(
 
                 val aniToken = bangumiLogin(bangumiToken.accessToken).body().token
 
-                AniAuthResult(
+                OAuthResult(
                     tokens = AccessTokenPair(
-                        bangumiAccessToken = bangumiToken.accessToken,
                         aniAccessToken = aniToken,
                         expiresAtMillis = bangumiToken.expiresIn.seconds.inWholeMilliseconds + currentTimeMillis(),
+                        bangumiAccessToken = bangumiToken.accessToken,
                     ),
                     expiresInSeconds = bangumiToken.expiresIn,
                     refreshToken = bangumiToken.refreshToken,
@@ -83,18 +76,18 @@ class AniAuthClientImpl(
         }
     }
 
-    override suspend fun refreshAccessToken(refreshToken: String): AniAuthResult {
+    override suspend fun refreshAccessToken(refreshToken: String): OAuthResult {
         return try {
             oauthApiInvoker {
                 // TODO: 2025/4/8 未来我们需要在 Ani 服务器直接返回两个 token, 避免多次请求 
                 val bangumiToken = refreshBangumiToken(AniRefreshBangumiTokenRequest(refreshToken)).body()
                 val aniToken = bangumiLogin(bangumiToken.accessToken).body().token
 
-                AniAuthResult(
+                OAuthResult(
                     tokens = AccessTokenPair(
-                        bangumiAccessToken = bangumiToken.accessToken,
                         aniAccessToken = aniToken,
                         expiresAtMillis = bangumiToken.expiresIn.seconds.inWholeMilliseconds + currentTimeMillis(),
+                        bangumiAccessToken = bangumiToken.accessToken,
                     ),
                     expiresInSeconds = bangumiToken.expiresIn,
                     refreshToken = bangumiToken.refreshToken,
@@ -128,14 +121,14 @@ class AniAuthClientImpl(
 }
 
 /**
- * A [AniAuthClient] that does nothing. Always get failure response [ApiFailure.ServiceUnavailable].
+ * A [OAuthClient] that does nothing. Always get failure response [ApiFailure.ServiceUnavailable].
  */
-object ConstantFailureAniAuthClient : AniAuthClient {
-    override suspend fun getResult(requestId: String): AniAuthResult? {
+object ConstantFailureOAuthClient : OAuthClient {
+    override suspend fun getResult(requestId: String): OAuthResult? {
         throw RepositoryServiceUnavailableException()
     }
 
-    override suspend fun refreshAccessToken(refreshToken: String): AniAuthResult {
+    override suspend fun refreshAccessToken(refreshToken: String): OAuthResult {
         throw RepositoryServiceUnavailableException()
     }
 

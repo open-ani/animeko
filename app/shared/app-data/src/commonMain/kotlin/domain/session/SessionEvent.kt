@@ -12,10 +12,13 @@ package me.him188.ani.app.domain.session
 sealed interface SessionEvent {
     sealed interface UserChanged : SessionEvent
 
-    data object Login : UserChanged
+    /**
+     * 有一个新用户登录. 启动 APP 时的登录不会触发这个事件.
+     */
+    data object NewLogin : UserChanged
+
+    /**
+     * 用户主动退出登录, 或者我们发现 token 过期了.
+     */
     data object Logout : UserChanged
-
-    data object SwitchToGuest : SessionEvent
-
-    data object TokenRefreshed : SessionEvent
 }

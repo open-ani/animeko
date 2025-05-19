@@ -86,7 +86,6 @@ import me.him188.ani.app.data.models.subject.SubjectProgressInfo
 import me.him188.ani.app.data.models.subject.Tag
 import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeRequest
 import me.him188.ani.app.domain.foundation.LoadError
-import me.him188.ani.app.domain.session.AuthState
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.ImageViewer
@@ -133,6 +132,7 @@ import me.him188.ani.app.ui.subject.details.components.SubjectDetailsDefaults.Ma
 import me.him188.ani.app.ui.subject.details.components.SubjectDetailsHeader
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsState
 import me.him188.ani.app.ui.subject.episode.list.EpisodeListDialog
+import me.him188.ani.app.ui.user.SelfInfoUiState
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.topic.toggleCollected
 import me.him188.ani.utils.platform.isMobile
@@ -152,7 +152,7 @@ fun SubjectDetailsScreen(
     navigationIcon: @Composable () -> Unit = {},
 ) {
     val state by vm.state.collectAsStateWithLifecycle(null)
-    val authState by vm.authState.collectAsStateWithLifecycle(AuthState.DummyAwaitingResult)
+    val selfInfo by vm.authState.collectAsStateWithLifecycle()
     val toaster = LocalToaster.current
     val scope = rememberCoroutineScope()
 
@@ -162,7 +162,7 @@ fun SubjectDetailsScreen(
 
     SubjectDetailsScreen(
         state,
-        authState,
+        selfInfo,
         onPlay = onPlay,
         onLoadErrorRetry,
         onClickTag,
@@ -184,7 +184,7 @@ fun SubjectDetailsScreen(
 @Composable
 fun SubjectDetailsScreen(
     state: SubjectDetailsUIState?,
-    authState: AuthState,
+    selfInfo: SelfInfoUiState,
     onPlay: (episodeId: Int) -> Unit,
     onLoadErrorRetry: () -> Unit,
     onClickTag: (Tag) -> Unit,
@@ -213,7 +213,7 @@ fun SubjectDetailsScreen(
 
         is SubjectDetailsUIState.Ok -> SubjectDetailsPage(
             state.value,
-            authState,
+            selfInfo,
             onPlay = onPlay,
             onClickLogin = { navigator.navigateBangumiAuthorize() },
             onClickTag,
@@ -246,7 +246,7 @@ fun SubjectDetailsScreen(
 @Composable
 private fun SubjectDetailsPage(
     state: SubjectDetailsState,
-    authState: AuthState,
+    selfInfo: SelfInfoUiState,
     onPlay: (episodeId: Int) -> Unit,
     onClickLogin: () -> Unit,
     onClickTag: (Tag) -> Unit,
@@ -304,7 +304,7 @@ private fun SubjectDetailsPage(
                 SubjectDetailsDefaults.CollectionData(state.info?.collectionStats ?: SubjectCollectionStats.Zero)
             },
             collectionActions = {
-                if (authState.isKnownExpired) {
+                if (selfInfo.isSessionValid == false) {
                     OutlinedButton(onClickLogin) {
                         Text("登录后可收藏")
                     }

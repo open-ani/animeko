@@ -25,7 +25,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
@@ -75,10 +74,9 @@ import me.him188.ani.app.data.repository.episode.toEntity
 import me.him188.ani.app.data.repository.episode.toEpisodeCollectionInfo
 import me.him188.ani.app.data.repository.shouldRetry
 import me.him188.ani.app.domain.search.SubjectType
-import me.him188.ani.app.domain.session.OpaqueSession
-import me.him188.ani.app.domain.session.SessionManager
-import me.him188.ani.app.domain.session.checkTokenNow
-import me.him188.ani.app.domain.session.verifiedAccessToken
+import me.him188.ani.app.domain.session.SessionStateProvider
+import me.him188.ani.app.domain.session.checkAccessBangumiApiNow
+import me.him188.ani.app.domain.session.restartOnNewLogin
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.UTC9
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
@@ -185,22 +183,16 @@ class SubjectCollectionRepositoryImpl(
     private val animeScheduleRepository: AnimeScheduleRepository,
     private val bangumiEpisodeService: BangumiEpisodeService,
     private val episodeCollectionDao: EpisodeCollectionDao,
-    private val sessionManager: SessionManager,
+    private val sessionManager: SessionStateProvider,
     private val nsfwModeSettingsFlow: Flow<NsfwMode>,
     private val getCurrentDate: () -> PackedDate = { PackedDate.now() },
     private val getEpisodeTypeFiltersUseCase: GetEpisodeTypeFiltersUseCase,
     defaultDispatcher: CoroutineContext = Dispatchers.Default,
     private val cacheExpiry: Duration = 1.hours,
 ) : SubjectCollectionRepository(defaultDispatcher) {
-    @OptIn(OpaqueSession::class)
-    private fun <T> Flow<T>.restartOnNewLogin(): Flow<T> =
-        sessionManager.verifiedAccessToken.distinctUntilChanged().flatMapLatest {
-            this
-        }
-
     override fun subjectCollectionCountsFlow(): Flow<SubjectCollectionCounts?> {
         return (bangumiSubjectService.subjectCollectionCountsFlow() as Flow<SubjectCollectionCounts?>)
-            .restartOnNewLogin()
+            .restartOnNewLogin(sessionManager)
             .retry(2) { e ->
                 RepositoryException.shouldRetry(e)
             }
@@ -233,7 +225,7 @@ class SubjectCollectionRepositoryImpl(
 
     override fun subjectCollectionFlow(subjectId: Int): Flow<SubjectCollectionInfo> =
         subjectCollectionDao.findById(subjectId)
-            .restartOnNewLogin()
+            .restartOnNewLogin(sessionManager)
             .onEach {
                 // 如果没有缓存, 则 fetch 然后插入 subject 缓存
                 if (it == null || it.isExpired()) {
@@ -305,7 +297,7 @@ class SubjectCollectionRepositoryImpl(
         limit: Int,
         types: List<UnifiedCollectionType>?, // null for all
     ): Flow<List<SubjectCollectionInfo>> = subjectCollectionDao.filterMostRecentUpdated(types, limit)
-        .restartOnNewLogin()
+        .restartOnNewLogin(sessionManager)
         .combine(nsfwModeSettingsFlow) { list, nsfwModeSettings ->
             list to nsfwModeSettings
         }
@@ -335,7 +327,7 @@ class SubjectCollectionRepositoryImpl(
     ): Flow<PagingData<SubjectCollectionInfo>> =
         combine(getEpisodeTypeFiltersUseCase(), nsfwModeSettingsFlow) { epTypes, nsfwModeSettings ->
             epTypes to nsfwModeSettings
-        }.restartOnNewLogin().flatMapLatest { (epTypes, nsfwModeSettings) ->
+        }.restartOnNewLogin(sessionManager).flatMapLatest { (epTypes, nsfwModeSettings) ->
             Pager(
                 config = pagingConfig,
                 initialKey = 0,
@@ -539,7 +531,7 @@ class SubjectCollectionRepositoryImpl(
         type: UnifiedCollectionType?,
     ) {
         return withContext(defaultDispatcher) {
-            sessionManager.checkTokenNow()
+            sessionManager.checkAccessBangumiApiNow()
             if (type == null) {
                 deleteSubjectCollection(subjectId)
             } else {
@@ -564,7 +556,10 @@ class SubjectCollectionRepositoryImpl(
         payload: BangumiUserSubjectCollectionModifyPayload,
     ) {
         withContext(defaultDispatcher) {
-            api { postUserCollection(subjectId, payload) }
+            api {
+                postUserCollection(subjectId, payload)
+                Unit
+            }
             subjectCollectionDao.updateType(subjectId, payload.type.toCollectionType())
         }
     }

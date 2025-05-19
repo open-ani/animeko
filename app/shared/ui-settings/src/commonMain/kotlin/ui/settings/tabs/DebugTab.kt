@@ -23,9 +23,8 @@ import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.preference.DebugSettings
 import me.him188.ani.app.data.models.preference.UISettings
 import me.him188.ani.app.data.models.preference.supportsLimitUploadOnMeteredNetwork
-import me.him188.ani.app.domain.session.OpaqueSession
+import me.him188.ani.app.data.repository.user.AccessTokenSession
 import me.him188.ani.app.domain.session.SessionManager
-import me.him188.ani.app.domain.session.unverifiedAccessToken
 import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.NavRoutes
@@ -38,7 +37,6 @@ import me.him188.ani.app.ui.lang.settings_debug_copied
 import me.him188.ani.app.ui.lang.settings_debug_enter_onboarding
 import me.him188.ani.app.ui.lang.settings_debug_episodes
 import me.him188.ani.app.ui.lang.settings_debug_get_ani_token
-import me.him188.ani.app.ui.lang.settings_debug_get_bangumi_token
 import me.him188.ani.app.ui.lang.settings_debug_metered_network
 import me.him188.ani.app.ui.lang.settings_debug_mode
 import me.him188.ani.app.ui.lang.settings_debug_mode_description
@@ -58,7 +56,6 @@ import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 import org.koin.mp.KoinPlatform
 
-@OptIn(OpaqueSession::class)
 @Composable
 fun DebugTab(
     debugSettingsState: SettingsState<DebugSettings>,
@@ -138,22 +135,11 @@ fun DebugTab(
         }
         Group(title = { Text(stringResource(Lang.settings_debug_others)) }, useThinHeader = true) {
             TextItem(
-                title = { Text(stringResource(Lang.settings_debug_get_bangumi_token)) },
-                onClick = {
-                    scope.launch {
-                        val value =
-                            GlobalKoin.get<SessionManager>().unverifiedAccessToken.firstOrNull()?.bangumiAccessToken
-                        toaster.toast(getString(Lang.settings_debug_copied, value.toString()))
-                        clipboard.setText(AnnotatedString(value.toString()))
-                    }
-                },
-            )
-            TextItem(
                 title = { Text(stringResource(Lang.settings_debug_get_ani_token)) },
                 onClick = {
                     scope.launch {
                         val value =
-                            GlobalKoin.get<SessionManager>().unverifiedAccessToken.firstOrNull()?.aniAccessToken
+                            (GlobalKoin.get<SessionManager>().sessionFlow.firstOrNull() as? AccessTokenSession)?.tokens?.aniAccessToken
                         toaster.toast(getString(Lang.settings_debug_copied, value.toString()))
                         clipboard.setText(AnnotatedString(value.toString()))
                     }

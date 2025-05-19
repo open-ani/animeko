@@ -30,8 +30,8 @@ import me.him188.ani.app.domain.danmaku.DanmakuLoadingState
 import me.him188.ani.app.domain.media.TestMediaList
 import me.him188.ani.app.domain.media.cache.EpisodeCacheStatus
 import me.him188.ani.app.domain.player.VideoLoadingState
-import me.him188.ani.app.domain.session.AuthState
-import me.him188.ani.app.domain.session.TestAuthState
+import me.him188.ani.app.domain.session.auth.AuthState
+import me.him188.ani.app.domain.session.auth.TestAuthState
 import me.him188.ani.app.ui.episode.share.MediaShareData
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.mediafetch.MediaSelectorState

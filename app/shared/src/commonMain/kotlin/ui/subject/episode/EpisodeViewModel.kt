@@ -90,8 +90,8 @@ import me.him188.ani.app.domain.player.extension.RememberPlayProgressExtension
 import me.him188.ani.app.domain.player.extension.SaveMediaPreferenceExtension
 import me.him188.ani.app.domain.player.extension.SwitchMediaOnPlayerErrorExtension
 import me.him188.ani.app.domain.player.extension.SwitchNextEpisodeExtension
-import me.him188.ani.app.domain.session.AniAuthStateProvider
-import me.him188.ani.app.domain.session.AuthState
+import me.him188.ani.app.domain.session.auth.AniAuthStateProvider
+import me.him188.ani.app.domain.session.auth.AuthState
 import me.him188.ani.app.domain.settings.GetMediaSelectorSettingsUseCase
 import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.app.platform.Context

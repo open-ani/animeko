@@ -20,11 +20,10 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.repository.user.SettingsRepository
-import me.him188.ani.app.domain.session.AniAuthClient
-import me.him188.ani.app.domain.session.AniAuthConfigurator
-import me.him188.ani.app.domain.session.AuthState
 import me.him188.ani.app.domain.session.SessionEvent
-import me.him188.ani.app.domain.session.SessionManager
+import me.him188.ani.app.domain.session.auth.AniAuthConfigurator
+import me.him188.ani.app.domain.session.auth.AuthState
+import me.him188.ani.app.domain.session.auth.OAuthClient
 import me.him188.ani.app.navigation.BrowserNavigator
 import me.him188.ani.app.platform.ContextMP
 import me.him188.ani.app.platform.currentAniBuildConfig
@@ -36,7 +35,7 @@ import org.koin.core.component.inject
 class BangumiAuthorizeViewModel : AbstractViewModel(), KoinComponent {
     private val sessionManager: SessionManager by inject()
     private val browserNavigator: BrowserNavigator by inject()
-    private val authClient: AniAuthClient by inject()
+    private val authClient: OAuthClient by inject()
     private val settings: SettingsRepository by inject()
 
     private var currentAppContext: ContextMP? = null
@@ -101,7 +100,7 @@ class BangumiAuthorizeViewModel : AbstractViewModel(), KoinComponent {
 
     suspend fun collectNewLoginEvent(onLogin: suspend () -> Unit) {
         sessionManager.events
-            .filterIsInstance<SessionEvent.Login>()
+            .filterIsInstance<SessionEvent.NewLogin>()
             .collectLatest { onLogin() }
     }
 }
