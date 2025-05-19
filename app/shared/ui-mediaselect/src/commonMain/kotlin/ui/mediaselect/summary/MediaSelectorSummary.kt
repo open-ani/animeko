@@ -17,8 +17,7 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.FlowRowOverflow
+import androidx.compose.foundation.layout.ContextualFlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -59,7 +58,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collectLatest
@@ -359,16 +357,14 @@ private fun QueriedSources(
             style = MaterialTheme.typography.labelMedium,
             color = contentColorFor(MaterialTheme.colorScheme.surfaceContainerHigh),
         )
-        FlowRow(
-            Modifier.fillMaxWidth(),
+        @Suppress("DEPRECATION")
+        ContextualFlowRow(
+            sources.size,
             maxLines = 1,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
-            overflow = FlowRowOverflow.expandIndicator {
-                val shownItemCount by remember(this) {
-                    snapshotFlow { shownItemCount }
-                }.collectAsStateWithLifecycle(0)
-
+            overflow = androidx.compose.foundation.layout.ContextualFlowRowOverflow.expandIndicator {
+                val shownItemCount = shownItemCount
                 Box(Modifier.widthIn(min = 24.dp).heightIn(min = 24.dp), contentAlignment = Alignment.Center) {
                     Text(
                         remember(sources.size, shownItemCount) {
@@ -382,10 +378,37 @@ private fun QueriedSources(
                 }
             },
         ) {
-            for (source in sources) {
-                SourceIcon(source, Modifier.size(24.dp))
-            }
+            val source = sources[it]
+            SourceIcon(source, Modifier.size(24.dp))
         }
+//        FlowRow(
+//            Modifier.fillMaxWidth(),
+//            maxLines = 2,
+//            horizontalArrangement = Arrangement.spacedBy(4.dp),
+//            verticalArrangement = Arrangement.spacedBy(4.dp),
+//            overflow = FlowRowOverflow.expandIndicator {
+//                // Workaround for compose limitation (1.8.0-aloha02). `shownItemCount` cannot be accessed at composition time.
+//                val shownItemCount by remember(this) {
+//                    snapshotFlow { shownItemCount }
+//                }.collectAsStateWithLifecycle(0) // in preview this might not work.
+//
+//                Box(Modifier.widthIn(min = 24.dp).heightIn(min = 24.dp), contentAlignment = Alignment.Center) {
+//                    Text(
+//                        remember(sources.size, shownItemCount) {
+//                            "+${sources.size - shownItemCount}"
+//                        },
+//                        style = MaterialTheme.typography.labelMedium,
+//                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+//                        textAlign = TextAlign.Center,
+//                        softWrap = false,
+//                    )
+//                }
+//            },
+//        ) {
+//            for (source in sources) {
+//                SourceIcon(source, Modifier.size(24.dp))
+//            }
+//        }
 
     }
 }
