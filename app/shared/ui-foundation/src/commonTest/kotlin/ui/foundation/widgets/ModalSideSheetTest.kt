@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForTest
 import me.him188.ani.app.ui.foundation.widgets.ModalSideSheet
+import me.him188.ani.app.ui.foundation.widgets.ModalSideSheetState
 import me.him188.ani.app.ui.foundation.widgets.rememberModalSideSheetState
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import kotlin.test.Test
@@ -25,7 +26,7 @@ class ModalSideSheetTest {
     @Test
     fun closeInvokesOnDismiss() = runAniComposeUiTest {
         var dismissed = false
-        val state = rememberModalSideSheetState()
+        val state = ModalSideSheetState()
         setContent {
             ProvideFoundationCompositionLocalsForTest {
                 ModalSideSheet(
