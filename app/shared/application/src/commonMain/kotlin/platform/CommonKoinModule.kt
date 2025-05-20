@@ -25,6 +25,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import me.him188.ani.app.data.models.preference.ThemeSettings
+import me.him188.ani.app.data.network.AniApiProvider
 import me.him188.ani.app.data.network.AniSubjectRelationIndexService
 import me.him188.ani.app.data.network.AnimeScheduleService
 import me.him188.ani.app.data.network.BangumiBangumiCommentServiceImpl
@@ -113,7 +114,6 @@ import me.him188.ani.app.domain.mediasource.codec.MediaSourceCodecManager
 import me.him188.ani.app.domain.mediasource.subscription.MediaSourceSubscriptionRequesterImpl
 import me.him188.ani.app.domain.mediasource.subscription.MediaSourceSubscriptionUpdater
 import me.him188.ani.app.domain.session.AccessTokenPair
-import me.him188.ani.app.domain.session.AniApiProvider
 import me.him188.ani.app.domain.session.AniAuthClient
 import me.him188.ani.app.domain.session.AniAuthClientImpl
 import me.him188.ani.app.domain.session.AniAuthConfigurator
@@ -142,7 +142,6 @@ import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.coroutines.childScopeContext
 import me.him188.ani.utils.httpdownloader.HttpDownloader
 import me.him188.ani.utils.httpdownloader.KtorPersistentHttpDownloader
-import me.him188.ani.utils.io.inSystem
 import me.him188.ani.utils.io.resolve
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
@@ -285,12 +284,14 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
     single<SubjectSearchRepository> {
         SubjectSearchRepository(
             bangumiSubjectSearchService = get(),
+            subjectCollectionRepository = get(),
             subjectService = get(),
         )
     }
     single<BangumiSubjectSearchCompletionRepository> {
         BangumiSubjectSearchCompletionRepository(
             bangumiSubjectSearchService = get(),
+            subjectCollectionRepository = get(),
             settingsRepository = get(),
         )
     }
@@ -360,11 +361,11 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
     }
 
     single<PeerFilterSubscriptionRepository> {
-        val client = koin.get<HttpClientProvider>().get(ScopedHttpClientUserAgent.ANI)
         PeerFilterSubscriptionRepository(
             dataStore = getContext().dataStores.peerFilterSubscriptionStore,
             ruleSaveDir = getContext().files.dataDir.resolve("peerfilter-subs"),
-            httpClient = client,
+            httpClient = get<HttpClientProvider>().get(ScopedHttpClientUserAgent.ANI),
+            builtinPeerFilterRuleApi = get<AniApiProvider>().pfRuleApi,
         )
     }
     single<BangumiProfileService> { BangumiProfileService() }
@@ -578,7 +579,7 @@ fun KoinApplication.startCommonKoinModule(
 
     coroutineScope.launch {
         val peerFilterRepo = koin.get<PeerFilterSubscriptionRepository>()
-        peerFilterRepo.loadOrUpdateAll()
+        peerFilterRepo.updateOrLoadAll()
     }
 
     // TODO: For ThemeSettings migration. Delete in the future.

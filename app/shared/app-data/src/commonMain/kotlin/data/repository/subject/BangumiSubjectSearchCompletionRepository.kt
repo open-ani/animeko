@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -22,15 +22,19 @@ import me.him188.ani.app.data.network.BangumiSubjectSearchService
 import me.him188.ani.app.data.repository.Repository
 import me.him188.ani.app.data.repository.runWrappingExceptionAsLoadResult
 import me.him188.ani.app.data.repository.user.SettingsRepository
+import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 
 /**
  * 搜索补全 (推荐)
  */
 class BangumiSubjectSearchCompletionRepository(
     private val bangumiSubjectSearchService: BangumiSubjectSearchService,
+    private val subjectCollectionRepository: SubjectCollectionRepository,
     settingsRepository: SettingsRepository,
 ) : Repository() {
     private val useNewApiFlow = settingsRepository.uiSettings.flow.map { it.searchSettings.enableNewSearchSubjectApi }
+    private val ignoreDoneAndDroppedFlow =
+        settingsRepository.uiSettings.flow.map { it.searchSettings.ignoreDoneAndDroppedSubjects }
     private val nsfwSettings = settingsRepository.uiSettings.flow.map { it.searchSettings.nsfwMode }
 
     fun completionsFlow(query: String): Flow<PagingData<String>> = Pager(
@@ -50,8 +54,18 @@ class BangumiSubjectSearchCompletionRepository(
                         limit = params.loadSize,
                     )
 
+                    val filteredCompletions = if (ignoreDoneAndDroppedFlow.first()) {
+                        val excludedNames = subjectCollectionRepository.getSubjectNamesCnByCollectionType(
+                            types = listOf(UnifiedCollectionType.DONE, UnifiedCollectionType.DROPPED),
+                        ).first()
+
+                        completions.filter { it !in excludedNames }
+                    } else {
+                        completions
+                    }
+
                     LoadResult.Page(
-                        data = completions.distinct(),
+                        data = filteredCompletions.distinct(),
                         prevKey = null,
                         nextKey = null,
                     )

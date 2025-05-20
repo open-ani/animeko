@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -33,7 +33,7 @@ import org.koin.core.component.inject
 class PeerFilterSettingsViewModel : AbstractViewModel(), KoinComponent {
     private val settingsRepository: SettingsRepository by inject()
     private val subscriptionRepo: PeerFilterSubscriptionRepository by inject()
-    
+
     private val peerFilterConfig = settingsRepository.torrentPeerConfig.flow
     private val updateTasker = MonoTasker(backgroundScope)
     private val localConfig: MutableState<TorrentPeerConfig?> = mutableStateOf(null)
@@ -41,7 +41,7 @@ class PeerFilterSettingsViewModel : AbstractViewModel(), KoinComponent {
     private val builtInSubPresentation = subscriptionRepo.presentationFlow
         .map { list -> list.filter { it.subscriptionId == PeerFilterSubscription.BUILTIN_SUBSCRIPTION_ID } }
         .stateInBackground(initialValue = emptyList())
-    
+
     val state = PeerFilterSettingsState(
         subscriptions = builtInSubPresentation,
         storage = SaveableStorage(
@@ -50,7 +50,7 @@ class PeerFilterSettingsViewModel : AbstractViewModel(), KoinComponent {
             isSavingFlow = updateTasker.isRunning,
         ),
         backgroundScope,
-        updateSubscriptions = { subscriptionRepo.updateAll() },
+        updateSubscriptions = { subscriptionRepo.updateOrLoadAll() },
         toggleSubscription = { id, enable ->
             launchInBackground {
                 if (enable) subscriptionRepo.enable(id) else subscriptionRepo.disable(id)

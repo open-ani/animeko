@@ -170,6 +170,10 @@ sealed class SubjectCollectionRepository(
         subjectId: Int,
         type: UnifiedCollectionType?,
     )
+
+    abstract suspend fun getSubjectIdsByCollectionType(types: List<UnifiedCollectionType>): Flow<List<Int>>
+
+    abstract suspend fun getSubjectNamesCnByCollectionType(types: List<UnifiedCollectionType>): Flow<List<String>>
 }
 
 class SubjectCollectionRepositoryImpl(
@@ -545,6 +549,14 @@ class SubjectCollectionRepositoryImpl(
                 )
             }
         }
+    }
+
+    override suspend fun getSubjectIdsByCollectionType(types: List<UnifiedCollectionType>): Flow<List<Int>> {
+        return subjectCollectionDao.subjectIdsByCollectionType(types).flowOn(defaultDispatcher)
+    }
+
+    override suspend fun getSubjectNamesCnByCollectionType(types: List<UnifiedCollectionType>): Flow<List<String>> {
+        return subjectCollectionDao.subjectNamesCnByCollectionType(types).flowOn(defaultDispatcher)
     }
 
     private suspend fun patchSubjectCollection(

@@ -225,6 +225,24 @@ interface SubjectCollectionDao {
 
     @Query("""UPDATE subject_collection SET cachedStaffUpdated = :time, cachedCharactersUpdated = :time WHERE subjectId = :subjectId""")
     suspend fun updateCachedRelationsUpdated(subjectId: Int, time: Long = currentTimeMillis())
+
+    @Query(
+        """
+        SELECT sc.subjectId FROM subject_collection sc
+        WHERE collectionType IS NOT NULL
+        AND (collectionType IN (:collectionTypes))
+        """,
+    )
+    fun subjectIdsByCollectionType(collectionTypes: List<UnifiedCollectionType>): Flow<List<Int>>
+
+    @Query(
+        """
+        SELECT sc.nameCn FROM subject_collection sc
+        WHERE collectionType IS NOT NULL
+        AND (collectionType IN (:collectionTypes))
+        """,
+    )
+    fun subjectNamesCnByCollectionType(collectionTypes: List<UnifiedCollectionType>): Flow<List<String>>
 }
 
 suspend inline fun SubjectCollectionDao.deleteAll(type: UnifiedCollectionType?) {

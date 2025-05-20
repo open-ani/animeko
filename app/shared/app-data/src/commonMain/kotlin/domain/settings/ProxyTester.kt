@@ -16,11 +16,11 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.shareIn
+import me.him188.ani.app.data.network.AniApiProvider
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.ServerListFeature
 import me.him188.ani.app.domain.foundation.ServerListFeatureConfig
 import me.him188.ani.app.domain.foundation.withValue
-import me.him188.ani.app.domain.session.AniApiProvider
 import me.him188.ani.app.trace.ErrorReport
 import me.him188.ani.datasources.bangumi.BangumiClientImpl
 import me.him188.ani.utils.analytics.Analytics

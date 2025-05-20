@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -13,6 +13,7 @@ import kotlinx.serialization.Serializable
 import me.him188.ani.app.data.models.preference.TorrentPeerConfig
 import me.him188.ani.app.data.repository.torrent.peer.PeerFilterSubscriptionRepository
 import me.him188.ani.app.torrent.api.peer.PeerInfo
+import me.him188.ani.client.models.AniPeerFilterRule
 
 /**
  * 一个 Peer 过滤规则, 此规则可以从[订阅][PeerFilterSubscriptionRepository]或[本地 preference][TorrentPeerConfig] 构建.
@@ -48,4 +49,12 @@ data class PeerFilterRule(
     companion object {
         val Empty = PeerFilterRule(emptyList(), emptyList(), emptyList())
     }
+}
+
+fun AniPeerFilterRule.toPeerFilterRule(): PeerFilterRule {
+    return PeerFilterRule(
+        blockedIpPattern = blockedIpPattern,
+        blockedIdRegex = blockedIdRegex,
+        blockedClientRegex = blockedClientRegex,
+    )
 }
