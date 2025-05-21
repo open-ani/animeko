@@ -90,8 +90,6 @@ import me.him188.ani.app.domain.player.extension.RememberPlayProgressExtension
 import me.him188.ani.app.domain.player.extension.SaveMediaPreferenceExtension
 import me.him188.ani.app.domain.player.extension.SwitchMediaOnPlayerErrorExtension
 import me.him188.ani.app.domain.player.extension.SwitchNextEpisodeExtension
-import me.him188.ani.app.domain.session.auth.AniAuthStateProvider
-import me.him188.ani.app.domain.session.auth.AuthState
 import me.him188.ani.app.domain.settings.GetMediaSelectorSettingsUseCase
 import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.app.platform.Context
@@ -131,6 +129,8 @@ import me.him188.ani.app.ui.subject.episode.statistics.VideoStatistics
 import me.him188.ani.app.ui.subject.episode.statistics.VideoStatisticsCollector
 import me.him188.ani.app.ui.subject.episode.video.PlayerSkipOpEdState
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.EpisodeSelectorState
+import me.him188.ani.app.ui.user.SelfInfoStateProducer
+import me.him188.ani.app.ui.user.SelfInfoUiState
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
 import me.him188.ani.danmaku.api.DanmakuContent
@@ -168,7 +168,7 @@ import kotlin.time.Duration.Companion.seconds
 
 @Stable
 data class EpisodePageState(
-    val authState: AuthState,
+    val selfInfo: SelfInfoUiState,
     val mediaSelectorState: MediaSelectorState,
     val mediaSourceResultListPresentation: MediaSourceResultListPresentation,
     val danmakuStatistics: DanmakuStatistics,
@@ -375,7 +375,7 @@ class EpisodeViewModel(
     )
 
 
-    private val authStateProvider: AniAuthStateProvider by inject()
+    private val selfInfoFlow = SelfInfoStateProducer(koin = getKoin()).flow
 
     private fun initialMediaSelectorViewKindFlow(): Flow<ViewKind> =
         settingsRepository.mediaSelectorSettings.flow.map { settings ->
@@ -657,7 +657,7 @@ class EpisodeViewModel(
         val selectedMediaFlow =
             episodeSession.fetchSelectFlow.flatMapLatest { it?.mediaSelector?.selected ?: flowOfNull() }
         return me.him188.ani.utils.coroutines.flows.combine(
-            authStateProvider.state,
+            selfInfoFlow,
             episodeSession.infoBundleFlow.distinctUntilChanged().onStart { emit(null) },
             episodeSession.infoLoadErrorStateFlow,
             episodeSession.fetchSelectFlow,
@@ -722,7 +722,7 @@ class EpisodeViewModel(
             }
 
             EpisodePageState(
-                authState = authState,
+                selfInfo = authState,
                 mediaSelectorState = mediaSelectorState,
                 mediaSourceResultListPresentation = mediaSourceResultsPresentation,
                 danmakuStatistics = danmakuStatistics,

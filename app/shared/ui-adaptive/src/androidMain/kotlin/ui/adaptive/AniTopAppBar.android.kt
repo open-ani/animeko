@@ -43,9 +43,8 @@ private fun PreviewAniTopAppBar() = ProvideCompositionLocalsForPreview {
         avatar = { recommendedSize ->
             SelfAvatar(
                 TestSelfInfoUiState,
-                onClickLogin = { },
-                onClickRetryRefreshSession = { },
                 size = recommendedSize,
+                onClick = { },
             )
         },
         searchIconButton = {

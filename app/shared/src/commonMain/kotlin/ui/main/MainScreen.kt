@@ -221,9 +221,6 @@ private fun MainScreenContent(
                             onSearch = onNavigateToSearch,
                             onClickSettings = { navigator.navigateSettings() },
                             onClickLogin = { navigator.navigateLogin() },
-                            onClickRetryRefreshSession = {
-                                coroutineScope.launch { explorationPageViewModel.refreshLoginSession() }
-                            },
                             modifier = Modifier.fillMaxSize(),
                         )
                     }
@@ -235,9 +232,6 @@ private fun MainScreenContent(
                             items = userCollectionsViewModel.items.collectAsLazyPagingItems(),
                             onClickSearch = onNavigateToSearch,
                             onClickLogin = { navigator.navigateLogin() },
-                            onClickRetryRefreshSession = {
-                                coroutineScope.launch { userCollectionsViewModel.refreshLoginSession() }
-                            },
                             onClickSettings = { navigator.navigateSettings() },
                             onCollectionUpdate = { subjectId, episode ->
                                 coroutineScope.launch {

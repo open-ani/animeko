@@ -147,7 +147,6 @@ fun ExplorationScreen(
     selfInfo: SelfInfoUiState,
     onSearch: () -> Unit,
     onClickLogin: () -> Unit,
-    onClickRetryRefreshSession: () -> Unit,
     onClickSettings: () -> Unit,
     modifier: Modifier = Modifier,
     actions: @Composable () -> Unit = {},

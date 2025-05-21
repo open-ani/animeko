@@ -86,7 +86,6 @@ import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
-import me.him188.ani.app.data.models.UserInfo
 import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.models.subject.SubjectCollectionCounts
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
@@ -135,7 +134,6 @@ val COLLECTION_TABS_SORTED = listOf(
 @Stable
 class UserCollectionsState(
     private val startSearch: (filterQuery: CollectionsFilterQuery) -> Flow<PagingData<SubjectCollectionInfo>>,
-    selfInfoState: State<UserInfo?>,
     collectionCountsState: State<SubjectCollectionCounts?>,
     val subjectProgressStateFactory: SubjectProgressStateFactory,
     val createEditableSubjectCollectionTypeState: (subjectCollection: SubjectCollectionInfo) -> EditableSubjectCollectionTypeState,
@@ -174,8 +172,6 @@ class UserCollectionsState(
                 emitAll(startSearch(it))
             }
 
-    val selfInfo: UserInfo? by selfInfoState
-
     val collectionCounts: SubjectCollectionCounts? by collectionCountsState
 
     val tabRowScrollState = ScrollState(selectedTypeIndex)
@@ -198,7 +194,6 @@ fun CollectionPage(
     items: LazyPagingItems<SubjectCollectionInfo>,
     onClickSearch: () -> Unit,
     onClickLogin: () -> Unit,
-    onClickRetryRefreshSession: () -> Unit,
     onClickSettings: () -> Unit,
     onCollectionUpdate: (subjectId: Int, episode: EpisodeListItem) -> Unit,
     modifier: Modifier = Modifier,

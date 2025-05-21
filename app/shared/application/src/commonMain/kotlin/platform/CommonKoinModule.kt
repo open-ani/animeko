@@ -271,7 +271,6 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
             client,
             client.api,
             sessionManager = get(),
-            usernameProvider = get(),
         )
     }
     single<BangumiEpisodeService> { BangumiEpisodeServiceImpl() }
@@ -537,6 +536,8 @@ fun KoinApplication.startCommonKoinModule(
             uiSettings.update { uiSettingsContent.copy(theme = null) }
         }
     }
+    
+    koin.get<SessionManager>().startBackgroundJob()
     return this
 }
 

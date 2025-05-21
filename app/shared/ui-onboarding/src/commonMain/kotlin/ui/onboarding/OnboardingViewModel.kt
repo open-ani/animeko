@@ -52,6 +52,8 @@ import me.him188.ani.app.ui.settings.tabs.network.ProxyTestCaseState
 import me.him188.ani.app.ui.settings.tabs.network.ProxyTestItem
 import me.him188.ani.app.ui.settings.tabs.network.ProxyTestState
 import me.him188.ani.app.ui.settings.tabs.network.SystemProxyPresentation
+import me.him188.ani.app.ui.settings.tabs.network.toDataSettings
+import me.him188.ani.app.ui.settings.tabs.network.toUIConfig
 import me.him188.ani.app.ui.user.SelfInfoUiState
 import me.him188.ani.utils.coroutines.SingleTaskExecutor
 import me.him188.ani.utils.coroutines.update

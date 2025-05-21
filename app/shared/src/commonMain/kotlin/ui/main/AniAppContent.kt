@@ -57,7 +57,6 @@ import me.him188.ani.app.navigation.NavRoutes
 import me.him188.ani.app.navigation.OverrideNavigation
 import me.him188.ani.app.navigation.SettingsTab
 import me.him188.ani.app.navigation.SubjectDetailPlaceholder
-import me.him188.ani.app.navigation.findLast
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.ui.adaptive.navigation.AniNavigationSuiteDefaults
 import me.him188.ani.app.ui.cache.CacheManagementScreen
@@ -84,8 +83,6 @@ import me.him188.ani.app.ui.onboarding.OnboardingScreen
 import me.him188.ani.app.ui.onboarding.OnboardingViewModel
 import me.him188.ani.app.ui.onboarding.WelcomeScreen
 import me.him188.ani.app.ui.profile.auth.AniContactList
-import me.him188.ani.app.ui.profile.auth.BangumiAuthorizePage
-import me.him188.ani.app.ui.profile.auth.BangumiAuthorizeViewModel
 import me.him188.ani.app.ui.search.SearchScreen
 import me.him188.ani.app.ui.settings.SettingsScreen
 import me.him188.ani.app.ui.settings.SettingsViewModel
@@ -307,10 +304,10 @@ private fun AniAppContentImpl(
                             this@SharedTransitionLayout, this,
                         ),
                     ) {
-                        val authState by vm.authState.collectAsState() // not -WithLifecycle
+                        val selfInfo by vm.selfInfo.collectAsState() // not -WithLifecycle
                         MainScreen(
                             page = currentPage,
-                            authState = authState,
+                            selfInfo = selfInfo,
                             onNavigateToPage = { currentPage = it },
                             onNavigateToSettings = { aniNavigator.navigateSettings() },
                             onNavigateToSearch = { aniNavigator.navigateSubjectSearch() },
@@ -346,20 +343,7 @@ private fun AniAppContentImpl(
                 popEnterTransition = popEnterTransition,
                 popExitTransition = popExitTransition,
             ) {
-                BangumiAuthorizePage(
-                    viewModel { BangumiAuthorizeViewModel() },
-                    onClickBackNavigation = { aniNavigator.popBackStack() },
-                    onFinishLogin = {
-                        aniNavigator.navigateMain(
-                            mainSceneInitialPage,
-                            aniNavigator.currentNavigator.findLast<NavRoutes.Main>(),
-                        )
-                    },
-                    modifier = Modifier
-                        .widthIn(max = WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND.dp)
-                        .fillMaxHeight(),
-                    windowInsets = windowInsets,
-                )
+                TODO()
             }
             composable<NavRoutes.SubjectDetail>(
                 enterTransition = enterTransition,

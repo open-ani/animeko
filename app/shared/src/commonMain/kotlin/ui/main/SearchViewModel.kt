@@ -32,7 +32,6 @@ import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeUseCase
 import me.him188.ani.app.domain.search.SearchSort
 import me.him188.ani.app.domain.search.SubjectSearchQuery
-import me.him188.ani.app.domain.session.auth.AniAuthStateProvider
 import me.him188.ani.app.ui.exploration.search.SearchPageState
 import me.him188.ani.app.ui.exploration.search.SubjectPreviewItemInfo
 import me.him188.ani.app.ui.foundation.AbstractViewModel
@@ -40,6 +39,7 @@ import me.him188.ani.app.ui.foundation.launchInBackground
 import me.him188.ani.app.ui.search.PagingSearchState
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateFactory
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateLoader
+import me.him188.ani.app.ui.user.SelfInfoStateProducer
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import kotlin.time.Duration.Companion.milliseconds
@@ -55,7 +55,6 @@ class SearchViewModel(
     private val subjectSearchRepository: SubjectSearchRepository by inject()
     private val subjectDetailsStateFactory: SubjectDetailsStateFactory by inject()
     private val settingsRepository: SettingsRepository by inject()
-    private val authStateProvider: AniAuthStateProvider by inject()
     val setEpisodeCollectionType: SetEpisodeCollectionTypeUseCase by inject()
 
     private val nsfwSettingFlow = settingsRepository.uiSettings.flow.map { it.searchSettings.nsfwMode }
@@ -64,7 +63,7 @@ class SearchViewModel(
     private val hasInitialSearchQuery = initialSearchQuery.keywords.isNotEmpty() || initialSearchQuery.hasFilters()
     private val queryFlow = MutableStateFlow(initialSearchQuery)
 
-    val authState = authStateProvider.state
+    val selfInfoFlow = SelfInfoStateProducer(koin = getKoin()).flow
     val searchPageState: SearchPageState = SearchPageState(
         searchHistoryPager = searchHistoryRepository.getHistoryPager(),
         suggestionsPager = queryFlow.debounce(200.milliseconds).flatMapLatest {
