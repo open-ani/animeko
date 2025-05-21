@@ -80,7 +80,7 @@ fun LoadErrorCard(
     modifier: Modifier = Modifier,
     onLogin: () -> Unit = run {
         val navigator = LocalNavigator.current
-        { navigator.navigateBangumiAuthorize() }
+        { navigator.navigateLogin() }
     },
     shape: Shape = MaterialTheme.shapes.large, // behave like Dialogs.
     containerColor: Color = LoadErrorDefaults.containerColor,

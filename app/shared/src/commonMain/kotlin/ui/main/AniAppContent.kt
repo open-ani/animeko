@@ -76,6 +76,8 @@ import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.app.ui.foundation.widgets.TopAppBarActionButton
+import me.him188.ani.app.ui.login.EmailLoginStartScreen
+import me.him188.ani.app.ui.login.EmailLoginVerifyScreen
 import me.him188.ani.app.ui.onboarding.OnboardingCompleteScreen
 import me.him188.ani.app.ui.onboarding.OnboardingCompleteViewModel
 import me.him188.ani.app.ui.onboarding.OnboardingScreen
@@ -168,6 +170,49 @@ private fun AniAppContentImpl(
                     contactActions = { AniContactList() },
                     Modifier.fillMaxSize(),
                     windowInsets,
+                )
+            }
+            composable<NavRoutes.EmailLoginStart>(
+                enterTransition = enterTransition,
+                exitTransition = exitTransition,
+                popEnterTransition = popEnterTransition,
+                popExitTransition = popExitTransition,
+            ) {
+                EmailLoginStartScreen(
+                    onOtpSent = {
+                        aniNavigator.navigateEmailLoginVerify()
+                    },
+                    onBangumiLoginClick = {
+                        aniNavigator.navigateBangumiAuthorize()
+                    },
+                    onNavigateSettings = {
+                        aniNavigator.navigateSettings()
+                    },
+                    onNavigateBack = {
+                        aniNavigator.popBackStack(NavRoutes.Welcome, true)
+                    },
+                )
+            }
+            composable<NavRoutes.EmailLoginVerify>(
+                enterTransition = enterTransition,
+                exitTransition = exitTransition,
+                popEnterTransition = popEnterTransition,
+                popExitTransition = popExitTransition,
+            ) {
+                EmailLoginVerifyScreen(
+                    onSuccess = {
+                        aniNavigator.popBackStack(NavRoutes.EmailLoginVerify, true)
+                        aniNavigator.popBackStack(NavRoutes.EmailLoginStart, true)
+                    },
+                    onBangumiLoginClick = {
+                        aniNavigator.navigateBangumiAuthorize()
+                    },
+                    onNavigateSettings = {
+                        aniNavigator.navigateSettings()
+                    },
+                    onNavigateBack = {
+                        aniNavigator.popBackStack(NavRoutes.Welcome, true)
+                    },
                 )
             }
             composable<NavRoutes.Onboarding>(

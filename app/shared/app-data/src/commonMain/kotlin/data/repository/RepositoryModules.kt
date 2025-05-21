@@ -26,7 +26,10 @@ fun KoinApplication.repositoryModules(dataStores: PlatformDataStoreManager) = mo
     single<UserRepository> {
         UserRepository(
             dataStores.selfInfoStore,
-            get(), aniApiProvider.userApi,
+            get(),
+            aniApiProvider.userApi,
+            aniApiProvider.userAuthApi,
+            get(),
         )
     }
 }

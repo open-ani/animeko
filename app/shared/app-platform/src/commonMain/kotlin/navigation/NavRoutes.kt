@@ -30,6 +30,12 @@ sealed class NavRoutes {
     data object Welcome : NavRoutes()
 
     @Serializable
+    data object EmailLoginStart : NavRoutes()
+
+    @Serializable
+    data object EmailLoginVerify : NavRoutes()
+
+    @Serializable
     data class Onboarding(
         /**
          * 在这个界面, 用户只能导航到 [OnboardingComplete] 随后导航到 [Main],

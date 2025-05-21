@@ -220,7 +220,7 @@ private fun MainScreenContent(
                             selfInfo,
                             onSearch = onNavigateToSearch,
                             onClickSettings = { navigator.navigateSettings() },
-                            onClickLogin = { navigator.navigateBangumiAuthorize() },
+                            onClickLogin = { navigator.navigateLogin() },
                             onClickRetryRefreshSession = {
                                 coroutineScope.launch { explorationPageViewModel.refreshLoginSession() }
                             },
@@ -234,7 +234,7 @@ private fun MainScreenContent(
                             selfInfo = selfInfo,
                             items = userCollectionsViewModel.items.collectAsLazyPagingItems(),
                             onClickSearch = onNavigateToSearch,
-                            onClickLogin = { navigator.navigateBangumiAuthorize() },
+                            onClickLogin = { navigator.navigateLogin() },
                             onClickRetryRefreshSession = {
                                 coroutineScope.launch { userCollectionsViewModel.refreshLoginSession() }
                             },

@@ -215,7 +215,7 @@ fun SubjectDetailsScreen(
             state.value,
             selfInfo,
             onPlay = onPlay,
-            onClickLogin = { navigator.navigateBangumiAuthorize() },
+            onClickLogin = { navigator.navigateLogin() },
             onClickTag,
             onEpisodeCollectionUpdate = onEpisodeCollectionUpdate,
             modifier,
