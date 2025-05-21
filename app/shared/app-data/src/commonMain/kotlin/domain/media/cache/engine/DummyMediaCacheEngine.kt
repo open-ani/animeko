@@ -29,8 +29,8 @@ import kotlin.coroutines.CoroutineContext
 class DummyMediaCacheEngine(
     private val mediaSourceId: String,
     private val location: MediaSourceLocation = MediaSourceLocation.Local,
+    override val engineKey: MediaCacheEngineKey = Companion.engineKey,
 ) : MediaCacheEngine {
-    override val engineKey: MediaCacheEngineKey = Companion.engineKey
     
     override val stats: Flow<MediaStats> = flowOf(MediaStats.Unspecified)
 

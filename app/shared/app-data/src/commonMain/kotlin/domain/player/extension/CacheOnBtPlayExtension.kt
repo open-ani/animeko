@@ -15,15 +15,14 @@ import kotlinx.coroutines.flow.first
 import me.him188.ani.app.domain.episode.EpisodeSession
 import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.MediaCacheManager
-import me.him188.ani.app.domain.media.cache.engine.TorrentMediaCacheEngine
-import me.him188.ani.app.domain.media.cache.storage.DataStoreMediaCacheStorage
+import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.domain.media.resolver.toEpisodeMetadata
 import me.him188.ani.datasources.api.MediaCacheMetadata
 import me.him188.ani.datasources.api.MetadataKey
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.utils.logging.info
-import me.him188.ani.utils.logging.warn
 import me.him188.ani.utils.logging.logger
+import me.him188.ani.utils.logging.warn
 import org.koin.core.Koin
 
 /**
@@ -39,13 +38,6 @@ class CacheOnBtPlayExtension(
 
     override fun onStart(episodeSession: EpisodeSession, backgroundTaskScope: ExtensionBackgroundTaskScope) {
         backgroundTaskScope.launch("CacheOnBtPlay") {
-            val storage = mediaCacheManager.storagesIncludingDisabled
-                .find { it is DataStoreMediaCacheStorage && it.engine is TorrentMediaCacheEngine }
-            if (storage == null) {
-                logger.warn { "TorrentMediaCacheEngine is not found in MediaCachedManager." }
-                return@launch
-            }
-
             context.sessionFlow.collectLatest { session ->
                 val episodeMetadata = session.infoBundleFlow.filterNotNull().first().episodeInfo.toEpisodeMetadata()
 
@@ -56,6 +48,13 @@ class CacheOnBtPlayExtension(
                         deleteCurrentAutoSelectedIfNotStarted()
 
                         if (media.kind == MediaSourceKind.BitTorrent) {
+                            val storage = mediaCacheManager.storagesIncludingDisabled
+                                .find { it.engine.engineKey == MediaCacheEngineKey.Anitorrent }
+                            if (storage == null) {
+                                logger.warn { "TorrentMediaCacheEngine is not found in MediaCachedManager." }
+                                return@collectLatest
+                            }
+                            
                             logger.info { "Auto cache BitTorrent media on play: $media" }
 
                             val metadata = MediaCacheMetadata(bundle.mediaFetchSession.request.first())

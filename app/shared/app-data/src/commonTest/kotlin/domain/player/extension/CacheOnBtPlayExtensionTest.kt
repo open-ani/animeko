@@ -37,6 +37,7 @@ import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.cache.MediaCacheManagerImpl
 import me.him188.ani.app.domain.media.cache.TestMediaCache
 import me.him188.ani.app.domain.media.cache.engine.DummyMediaCacheEngine
+import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.domain.media.cache.engine.MediaStats
 import me.him188.ani.app.domain.media.cache.storage.MediaCacheStorage
 import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
@@ -69,6 +70,9 @@ import kotlin.contracts.contract
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
+/**
+ * @see CacheOnBtPlayExtension
+ */
 @OptIn(UnsafeEpisodeSessionApi::class)
 class CacheOnBtPlayExtensionTest : AbstractPlayerExtensionTest() {
     private val nullFilePath = SystemTemporaryDirectory.resolve("null.tmp").toString()
@@ -76,7 +80,7 @@ class CacheOnBtPlayExtensionTest : AbstractPlayerExtensionTest() {
     private inner class RecordingStorage : MediaCacheStorage {
         override val mediaSourceId = MediaCacheManager.LOCAL_FS_MEDIA_SOURCE_ID
         override val cacheMediaSource: MediaSource get() = throw UnsupportedOperationException()
-        override val engine = DummyMediaCacheEngine(mediaSourceId)
+        override val engine = DummyMediaCacheEngine(mediaSourceId, engineKey = MediaCacheEngineKey.Anitorrent)
         override val listFlow = MutableStateFlow<List<MediaCache>>(emptyList())
         override val stats = MutableStateFlow(MediaStats.Unspecified)
 

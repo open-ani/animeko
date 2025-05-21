@@ -11,12 +11,12 @@ package me.him188.ani.app.domain.media.cache.engine
 
 import androidx.compose.runtime.Composable
 import kotlinx.coroutines.flow.Flow
-import kotlinx.io.files.Path
 import kotlinx.serialization.Serializable
 import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.storage.MediaCacheSave
 import me.him188.ani.app.domain.media.cache.storage.MediaCacheStorage
 import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
+import me.him188.ani.app.domain.torrent.TorrentEngineType
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.MediaCacheMetadata
 import kotlin.coroutines.CoroutineContext
@@ -112,6 +112,8 @@ value class MediaCacheEngineKey(val key: String) {
          */
         @InvalidMediaCacheEngineKey
         val Invalid = MediaCacheEngineKey("Invalid")
+
+        val Anitorrent = MediaCacheEngineKey(TorrentEngineType.Anitorrent.id)
     }
 }
 

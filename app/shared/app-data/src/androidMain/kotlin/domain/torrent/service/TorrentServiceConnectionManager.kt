@@ -45,7 +45,6 @@ import me.him188.ani.app.domain.media.cache.engine.TorrentMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.engine.UnsafeTorrentEngineAccessApi
 import me.him188.ani.app.domain.media.cache.storage.MediaCacheSave
 import me.him188.ani.app.domain.torrent.IRemoteAniTorrentEngine
-import me.him188.ani.app.domain.torrent.TorrentEngineType
 import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.coroutines.update
 import me.him188.ani.utils.logging.info
@@ -211,7 +210,7 @@ class TorrentServiceConnectionManager(
     private fun allTorrentMediaCacheCompleted(list: List<MediaCacheSave>): Boolean {
         val baseSaveDir = mediaCacheBaseSaveDirFlow.value ?: return true
         list.forEach { save ->
-            if (save.engine != MediaCacheEngineKey(TorrentEngineType.Anitorrent.id)) {
+            if (save.engine != MediaCacheEngineKey.Anitorrent) {
                 return@forEach
             }
 
