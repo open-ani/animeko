@@ -437,7 +437,7 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
             get<MediaSourceSubscriptionRepository>(),
             get<MediaSourceManager>(),
             get<MediaSourceCodecManager>(),
-            requester = MediaSourceSubscriptionRequesterImpl(client),
+            requester = MediaSourceSubscriptionRequesterImpl(client, get<AniApiProvider>().subscriptionApi),
         )
     }
     single<SelectorMediaSourceEpisodeCacheRepository> {
