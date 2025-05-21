@@ -1,12 +1,3 @@
-/*
- * Copyright (C) 2024-2025 OpenAni and contributors.
- *
- * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
- * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
- *
- * https://github.com/open-ani/ani/blob/main/LICENSE
- */
-
 /**
  *
  * Please note:
@@ -24,22 +15,29 @@
 
 package me.him188.ani.client.models
 
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
+import me.him188.ani.client.models.AniAniSelfUser
+import me.him188.ani.client.models.AniAniTokens
+
+import kotlinx.serialization.*
+import kotlinx.serialization.descriptors.*
+import kotlinx.serialization.encoding.*
 
 /**
+ * 
  *
- *
- * @param `data`
- * @param error
+ * @param userId
+ * @param tokens
+ * @param user 
  */
 @Serializable
 
 data class AniAuthenticationResponse(
 
-    @SerialName(value = "data") val `data`: AniSuccess? = null,
+    @SerialName(value = "userId") @Required val userId: kotlin.String,
 
-    @SerialName(value = "error") val error: AniRegisterErrors? = null
+    @SerialName(value = "tokens") @Required val tokens: AniAniTokens,
+
+    @SerialName(value = "user") @Required val user: AniAniSelfUser
 
 ) {
 

@@ -1,12 +1,3 @@
-/*
- * Copyright (C) 2024-2025 OpenAni and contributors.
- *
- * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
- * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
- *
- * https://github.com/open-ani/ani/blob/main/LICENSE
- */
-
 /**
  *
  * Please note:
@@ -61,14 +52,14 @@ open class BangumiAniApi : ApiClient {
      * 绑定 Bangumi 账号
      * @param requestId
      * @param os
-     * @param arch
+     * @param arch 
      * @return void
      */
     open suspend fun bind(requestId: kotlin.String, os: kotlin.String, arch: kotlin.String): HttpResponse<Unit> {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
-        val localVariableBody =
+        val localVariableBody = 
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
@@ -96,7 +87,7 @@ open class BangumiAniApi : ApiClient {
     /**
      * 获取登录结果
      * 获取登录结果
-     * @param requestId
+     * @param requestId 
      * @return AniLoginResponse
      */
     @Suppress("UNCHECKED_CAST")
@@ -104,7 +95,7 @@ open class BangumiAniApi : ApiClient {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
-        val localVariableBody =
+        val localVariableBody = 
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
@@ -132,14 +123,14 @@ open class BangumiAniApi : ApiClient {
      * 获取 Bangumi OAuth 授权链接
      * @param requestId
      * @param os
-     * @param arch
+     * @param arch 
      * @return void
      */
     open suspend fun oauth(requestId: kotlin.String, os: kotlin.String, arch: kotlin.String): HttpResponse<Unit> {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
-        val localVariableBody =
+        val localVariableBody = 
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
@@ -168,14 +159,14 @@ open class BangumiAniApi : ApiClient {
      * Bangumi OAuth 回调
      * Bangumi OAuth 回调
      * @param code
-     * @param state
+     * @param state 
      * @return void
      */
     open suspend fun oauthCallback(code: kotlin.String, state: kotlin.String): HttpResponse<Unit> {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
-        val localVariableBody =
+        val localVariableBody = 
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()

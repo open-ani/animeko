@@ -889,6 +889,46 @@
         "deprecated": false
       }
     },
+    "/v2/users/auth/refresh": {
+      "post": {
+        "tags": [ "User Authentication" ],
+        "summary": "刷新会话 token",
+        "description": "刷新会话 token",
+        "operationId": "refreshToken",
+        "parameters": [ ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "headers": { },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "refresh token invalid",
+            "headers": { }
+          }
+        },
+        "deprecated": false,
+        "security": [ {
+          "auth-jwt": [ ]
+        } ]
+      }
+    },
     "/v2/users/auth/email": {
       "post": {
         "tags": [ "User Authentication" ],
@@ -917,6 +957,10 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "OTP ID 格式错误",
+            "headers": { }
           },
           "422": {
             "description": "验证码错误",
@@ -1412,7 +1456,201 @@
           "deprecated": false,
           "explode": false,
           "schema": {
-            "$ref": "#/components/schemas/SubjectCollectionType"
+            "$ref": "#/components/schemas/CollectionType"
+          }
+        } ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "headers": { },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": false,
+        "security": [ {
+          "auth-jwt": [ ]
+        } ]
+      }
+    },
+    "/v2/episodes/{episodeId}": {
+      "get": {
+        "tags": [ "Episodes" ],
+        "summary": "获取单个剧集信息",
+        "description": "获取单个剧集信息",
+        "operationId": "getEpisodeCollection",
+        "parameters": [ {
+          "name": "episodeId",
+          "in": "path",
+          "description": "",
+          "required": true,
+          "deprecated": false,
+          "explode": false,
+          "schema": {
+            "type": "integer",
+            "format": "int64",
+            "title": "Long"
+          }
+        } ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "headers": { },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EpisodeCollectionEntity"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": false,
+        "security": [ {
+          "auth-jwt": [ ]
+        } ]
+      },
+      "delete": {
+        "tags": [ "Episodes" ],
+        "summary": "删除剧集收藏",
+        "description": "删除剧集收藏",
+        "operationId": "deleteEpisodeCollection",
+        "parameters": [ {
+          "name": "episodeId",
+          "in": "path",
+          "description": "",
+          "required": true,
+          "deprecated": false,
+          "explode": false,
+          "schema": {
+            "type": "integer",
+            "format": "int64",
+            "title": "Long"
+          }
+        } ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "headers": { },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "null",
+                  "title": "Unit"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": false,
+        "security": [ {
+          "auth-jwt": [ ]
+        } ]
+      },
+      "patch": {
+        "tags": [ "Episodes" ],
+        "summary": "更新剧集收藏",
+        "description": "更新剧集收藏",
+        "operationId": "updateEpisodeCollection",
+        "parameters": [ {
+          "name": "episodeId",
+          "in": "path",
+          "description": "",
+          "required": true,
+          "deprecated": false,
+          "explode": false,
+          "schema": {
+            "type": "integer",
+            "format": "int64",
+            "title": "Long"
+          }
+        } ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEpisodeCollectionRequest"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "headers": { },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "null",
+                  "title": "Unit"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": false,
+        "security": [ {
+          "auth-jwt": [ ]
+        } ]
+      }
+    },
+    "/v2/episodes/list": {
+      "get": {
+        "tags": [ "Episodes" ],
+        "summary": "获取某条目的剧集收藏列表",
+        "description": "获取某条目的剧集收藏列表",
+        "operationId": "getEpisodeCollections",
+        "parameters": [ {
+          "name": "subjectId",
+          "in": "query",
+          "description": "",
+          "required": true,
+          "deprecated": false,
+          "explode": false,
+          "schema": {
+            "type": "integer",
+            "format": "int64",
+            "title": "Long"
+          }
+        }, {
+          "name": "offset",
+          "in": "query",
+          "description": "",
+          "required": false,
+          "deprecated": false,
+          "explode": false,
+          "schema": {
+            "type": "integer",
+            "format": "int32",
+            "title": "Int"
+          }
+        }, {
+          "name": "limit",
+          "in": "query",
+          "description": "",
+          "required": false,
+          "deprecated": false,
+          "explode": false,
+          "schema": {
+            "type": "integer",
+            "format": "int32",
+            "title": "Int"
+          }
+        }, {
+          "name": "type",
+          "in": "query",
+          "description": "",
+          "required": false,
+          "deprecated": false,
+          "explode": false,
+          "schema": {
+            "$ref": "#/components/schemas/CollectionType"
           }
         } ],
         "responses": {
@@ -1955,6 +2193,58 @@
         "required": [ "sequelSubjects", "seriesMainSubjectIds", "subjectId" ],
         "title": "SubjectRelations"
       },
+      "RefreshTokenRequest": {
+        "type": "object",
+        "properties": {
+          "refreshToken": {
+            "type": "string",
+            "title": "String"
+          }
+        },
+        "required": [ "refreshToken" ],
+        "title": "RefreshTokenRequest"
+      },
+      "AniTokens": {
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string",
+            "title": "String"
+          },
+          "refreshToken": {
+            "type": "string",
+            "title": "String"
+          },
+          "expiresAtMillis": {
+            "type": "integer",
+            "format": "int64",
+            "title": "Long"
+          },
+          "bangumiAccessToken": {
+            "type": [ "null", "string" ],
+            "title": "String"
+          }
+        },
+        "required": [ "accessToken", "expiresAtMillis", "refreshToken" ],
+        "title": "AniTokens"
+      },
+      "LoginResponse": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "title": "String"
+          },
+          "tokens": {
+            "$ref": "#/components/schemas/AniTokens"
+          },
+          "user": {
+            "$ref": "#/components/schemas/AniSelfUser"
+          }
+        },
+        "required": [ "tokens", "user", "userId" ],
+        "title": "LoginResponse"
+      },
       "RegisterOrLoginByEmailOtpRequest": {
         "type": "object",
         "properties": {
@@ -1970,7 +2260,7 @@
         "required": [ "otpId", "otpValue" ],
         "title": "RegisterOrLoginByEmailOtpRequest"
       },
-      "Success": {
+      "AuthenticationResponse": {
         "type": "object",
         "properties": {
           "userId": {
@@ -1985,51 +2275,6 @@
           }
         },
         "required": [ "tokens", "user", "userId" ],
-        "title": "Success"
-      },
-      "AniTokens": {
-        "type": "object",
-        "properties": {
-          "accessToken": {
-            "type": "string",
-            "title": "String"
-          },
-          "expiresAtMillis": {
-            "type": "integer",
-            "format": "int64",
-            "title": "Long"
-          },
-          "bangumiAccessToken": {
-            "type": [ "null", "string" ],
-            "title": "String"
-          }
-        },
-        "required": [ "accessToken", "expiresAtMillis" ],
-        "title": "AniTokens"
-      },
-      "RegisterErrors": {
-        "type": "string",
-        "enum": [ "INVALID_PASSWORD", "USERNAME_ALREADY_EXIST", "INVALID_USERNAME" ],
-        "title": "RegisterErrors"
-      },
-      "AuthenticationResponse": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "oneOf": [ {
-              "type": "null"
-            }, {
-              "$ref": "#/components/schemas/Success"
-            } ]
-          },
-          "error": {
-            "oneOf": [ {
-              "type": "null"
-            }, {
-              "$ref": "#/components/schemas/RegisterErrors"
-            } ]
-          }
-        },
         "title": "AuthenticationResponse"
       },
       "EmailLanguage": {
@@ -2072,23 +2317,6 @@
         },
         "required": [ "password" ],
         "title": "SetPasswordRequest"
-      },
-      "LoginResponse": {
-        "type": "object",
-        "properties": {
-          "userId": {
-            "type": "string",
-            "title": "String"
-          },
-          "tokens": {
-            "$ref": "#/components/schemas/AniTokens"
-          },
-          "user": {
-            "$ref": "#/components/schemas/AniSelfUser"
-          }
-        },
-        "required": [ "tokens", "user", "userId" ],
-        "title": "LoginResponse"
       },
       "PeerFilterRule": {
         "type": "object",
@@ -2188,10 +2416,10 @@
         "required": [ "count", "name" ],
         "title": "TagEntity"
       },
-      "SubjectCollectionType": {
+      "CollectionType": {
         "type": "string",
         "enum": [ "WISH", "DONE", "DOING", "ON_HOLD", "DROPPED" ],
-        "title": "SubjectCollectionType"
+        "title": "CollectionType"
       },
       "SubjectCollectionEntity": {
         "type": "object",
@@ -2286,7 +2514,7 @@
             "oneOf": [ {
               "type": "null"
             }, {
-              "$ref": "#/components/schemas/SubjectCollectionType"
+              "$ref": "#/components/schemas/CollectionType"
             } ]
           }
         },
@@ -2304,9 +2532,9 @@
           "items": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/SubjectCollectionEntity"
+              "$ref": "#/components/schemas/EpisodeCollectionEntity"
             },
-            "title": "ArrayList<SubjectCollectionEntity>"
+            "title": "ArrayList<EpisodeCollectionEntity>"
           }
         },
         "required": [ "items", "total" ],
@@ -2319,11 +2547,82 @@
             "oneOf": [ {
               "type": "null"
             }, {
-              "$ref": "#/components/schemas/SubjectCollectionType"
+              "$ref": "#/components/schemas/CollectionType"
             } ]
           }
         },
         "title": "UpdateSubjectCollectionRequest"
+      },
+      "EpisodeCollectionEntity": {
+        "type": "object",
+        "properties": {
+          "episodeId": {
+            "type": "integer",
+            "format": "int64",
+            "title": "Long"
+          },
+          "subjectId": {
+            "type": "integer",
+            "format": "int64",
+            "title": "Long"
+          },
+          "sort": {
+            "type": "string",
+            "title": "String"
+          },
+          "type": {
+            "type": "integer",
+            "format": "int32",
+            "title": "Int"
+          },
+          "name": {
+            "type": [ "null", "string" ],
+            "title": "String"
+          },
+          "nameCn": {
+            "type": [ "null", "string" ],
+            "title": "String"
+          },
+          "description": {
+            "type": [ "null", "string" ],
+            "title": "String"
+          },
+          "airdate": {
+            "type": [ "null", "string" ],
+            "title": "String"
+          },
+          "disc": {
+            "type": [ "null", "integer" ],
+            "format": "int32",
+            "title": "Int"
+          },
+          "duration": {
+            "type": [ "null", "string" ],
+            "title": "String"
+          },
+          "collectionType": {
+            "oneOf": [ {
+              "type": "null"
+            }, {
+              "$ref": "#/components/schemas/CollectionType"
+            } ]
+          }
+        },
+        "required": [ "episodeId", "sort", "subjectId", "type" ],
+        "title": "EpisodeCollectionEntity"
+      },
+      "UpdateEpisodeCollectionRequest": {
+        "type": "object",
+        "properties": {
+          "collectionType": {
+            "oneOf": [ {
+              "type": "null"
+            }, {
+              "$ref": "#/components/schemas/CollectionType"
+            } ]
+          }
+        },
+        "title": "UpdateEpisodeCollectionRequest"
       }
     },
     "examples": { },
