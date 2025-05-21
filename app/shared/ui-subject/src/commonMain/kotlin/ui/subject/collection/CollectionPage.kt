@@ -103,8 +103,6 @@ import me.him188.ani.app.ui.foundation.layout.isHeightAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.paneHorizontalPadding
 import me.him188.ani.app.ui.foundation.session.SelfAvatar
-import me.him188.ani.app.ui.foundation.session.SessionTipsArea
-import me.him188.ani.app.ui.foundation.session.SessionTipsIcon
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.NsfwMask
@@ -212,7 +210,7 @@ fun CollectionPage(
     // 如果有缓存, 列表区域要展示缓存, 错误就用图标放在角落
     CollectionPageLayout(
         settingsIcon = {
-            if (authState.isKnownGuestOrLoggedOut // #1269 游客模式下无法打开设置界面
+            if (selfInfo.isSessionValid == false // #1269 游客模式下无法打开设置界面
                 || currentWindowAdaptiveInfo1().windowSizeClass.isWidthAtLeastMedium
             ) {
                 IconButton(onClick = onClickSettings) {
@@ -221,11 +219,6 @@ fun CollectionPage(
             }
         },
         actions = {
-            SessionTipsIcon(
-                authState,
-                onLogin = onClickLogin,
-                onRetry = onClickRetryRefreshSession,
-            )
             actions()
         },
         avatar = { recommendedSize ->
@@ -283,54 +276,37 @@ fun CollectionPage(
         modifier,
         windowInsets,
     ) { nestedScrollConnection ->
-        when {
-            // 假设没登录, 但是有缓存, 需要展示缓存
-            authState.isKnownGuest && items.itemCount == 0 -> {
-                SessionTipsArea(
-                    authState,
-                    guest = { GuestTips(onClickSearch = onClickSearch, onClickLogin = onClickLogin) },
-                    onLogin = onClickLogin,
-                    onRetry = onClickRetryRefreshSession,
-                    modifier = Modifier.padding(top = 32.dp)
-                        .padding(horizontal = 16.dp),
+        key(state.selectedTypeIndex) {
+            PullToRefreshBox(
+                items.loadState.refresh is LoadState.Loading,
+                onRefresh = { items.refresh() },
+                state = rememberPullToRefreshState(),
+                enabled = LocalPlatform.current.isMobile(),
+            ) {
+                SubjectCollectionsColumn(
+                    items,
+                    item = { collection ->
+                        var nsfwModeState: NsfwMode by rememberSaveable(collection) { mutableStateOf(collection.nsfwMode) }
+                        NsfwMask(
+                            nsfwModeState,
+                            onTemporarilyDisplay = { nsfwModeState = NsfwMode.DISPLAY },
+                            shape = SubjectCollectionItemDefaults.shape,
+                        ) {
+                            SubjectCollectionItem(
+                                collection,
+                                { onCollectionUpdate(collection.subjectId, it) },
+                                state.subjectProgressStateFactory,
+                                state.createEditableSubjectCollectionTypeState(collection),
+                            )
+                        }
+                    },
+                    modifier = Modifier.fillMaxSize()
+                        .ifNotNullThen(nestedScrollConnection) { nestedScroll(it) },
+                    enableAnimation = enableAnimation,
+                    gridState = lazyGridState,
                 )
             }
-
-            else -> {
-                key(state.selectedTypeIndex) {
-                    PullToRefreshBox(
-                        items.loadState.refresh is LoadState.Loading,
-                        onRefresh = { items.refresh() },
-                        state = rememberPullToRefreshState(),
-                        enabled = LocalPlatform.current.isMobile(),
-                    ) {
-                        SubjectCollectionsColumn(
-                            items,
-                            item = { collection ->
-                                var nsfwModeState: NsfwMode by rememberSaveable(collection) { mutableStateOf(collection.nsfwMode) }
-                                NsfwMask(
-                                    nsfwModeState,
-                                    onTemporarilyDisplay = { nsfwModeState = NsfwMode.DISPLAY },
-                                    shape = SubjectCollectionItemDefaults.shape,
-                                ) {
-                                    SubjectCollectionItem(
-                                        collection,
-                                        { onCollectionUpdate(collection.subjectId, it) },
-                                        state.subjectProgressStateFactory,
-                                        state.createEditableSubjectCollectionTypeState(collection),
-                                    )
-                                }
-                            },
-                            modifier = Modifier.fillMaxSize()
-                                .ifNotNullThen(nestedScrollConnection) { nestedScroll(it) },
-                            enableAnimation = enableAnimation,
-                            gridState = lazyGridState,
-                        )
-                    }
-                }
-            }
         }
-
     }
 }
 
