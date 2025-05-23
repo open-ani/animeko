@@ -12,9 +12,7 @@ package me.him188.ani.app.ui.onboarding
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.Color
-import io.ktor.http.encodeURLParameter
 import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,7 +21,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.data.models.preference.ProxyMode
 import me.him188.ani.app.data.repository.user.SettingsRepository
@@ -38,7 +35,6 @@ import me.him188.ani.app.navigation.BrowserNavigator
 import me.him188.ani.app.platform.ContextMP
 import me.him188.ani.app.platform.GrantedPermissionManager
 import me.him188.ani.app.platform.PermissionManager
-import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.ui.foundation.launchInBackground
 import me.him188.ani.app.ui.onboarding.navigation.WizardController
 import me.him188.ani.app.ui.onboarding.step.GrantNotificationPermissionState
@@ -218,15 +214,6 @@ class OnboardingViewModel : AbstractSettingsViewModel(), KoinComponent {
         val result = permissionManager.checkNotificationPermission(context)
         notificationPermissionGrant.update { result }
         if (result) lastGrantPermissionResult.update { null }
-    }
-
-    private suspend fun openBrowserAuthorize(context: ContextMP, requestId: String) {
-        val base = currentAniBuildConfig.aniAuthServerUrl.removeSuffix("/")
-        val url = "${base}/v1/login/bangumi/oauth?requestId=${requestId.encodeURLParameter()}"
-
-        withContext(Dispatchers.Main) {
-            browserNavigator.openBrowser(context, url)
-        }
     }
 
     fun finishOnboarding() {

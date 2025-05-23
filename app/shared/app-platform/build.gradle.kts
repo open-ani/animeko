@@ -139,7 +139,6 @@ val generateAniBuildConfigDesktop = tasks.register("generateAniBuildConfigDeskto
             object AniBuildConfigDesktop : AniBuildConfig {
                 override val versionName = "${project.version}"
                 override val isDebug = System.getenv("ANI_DEBUG") == "true" || System.getProperty("ani.debug") == "true"
-                override val aniAuthServerUrl = if (isDebug) "$aniAuthServerUrlDebug" else "$aniAuthServerUrlRelease"
                 override val dandanplayAppId = "$dandanplayAppId"
                 override val dandanplayAppSecret = "$dandanplayAppSecret"
                 override val sentryDsn = "$sentryDsn"
@@ -179,7 +178,6 @@ if (enableIos) {
             object AniBuildConfigIos : AniBuildConfig {
                 override val versionName = "${project.version}"
                 override val isDebug = false
-                override val aniAuthServerUrl = if (isDebug) "$aniAuthServerUrlDebug" else "$aniAuthServerUrlRelease"
                 override val dandanplayAppId = "$dandanplayAppId"
                 override val dandanplayAppSecret = "$dandanplayAppSecret"
                 override val sentryDsn = "$sentryDsn"

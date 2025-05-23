@@ -20,7 +20,6 @@ interface AniBuildConfig {
      */
     val versionName: String
     val isDebug: Boolean
-    val aniAuthServerUrl: String
     val dandanplayAppId: String
     val dandanplayAppSecret: String
     val sentryDsn: String

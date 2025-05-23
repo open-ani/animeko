@@ -17,8 +17,6 @@ private object AniBuildConfigAndroid : AniBuildConfig {
         get() = BuildConfig.VERSION_NAME
     override val isDebug: Boolean
         get() = BuildConfig.DEBUG
-    override val aniAuthServerUrl: String
-        get() = BuildConfig.ANI_AUTH_SERVER_URL
     override val dandanplayAppId: String
         get() = BuildConfig.DANDANPLAY_APP_ID
     override val dandanplayAppSecret: String
