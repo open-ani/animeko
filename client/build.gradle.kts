@@ -7,6 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
+import de.undercouch.gradle.tasks.download.Download
 import org.openapitools.generator.gradle.plugin.tasks.GenerateTask
 
 /*
@@ -64,11 +65,22 @@ idea {
     }
 }
 
+val apiServer = getPropertyOrNull("ani.api.server")?.takeIf { it.isNotBlank() }
+    ?: "https://api.animeko.org"
+
+val downloadSpec = tasks.register<Download>("downloadSpec") {
+    src("$apiServer/openapi.json")
+    dest(layout.buildDirectory.file("temp/downloadSpec/openapi.json").get())
+    onlyIfModified(false)
+    overwrite(true)
+}
+
 // https://github.com/OpenAPITools/openapi-generator/blob/master/modules/openapi-generator-gradle-plugin/README.adoc
 val generateApi = tasks.register("generateApiV0", GenerateTask::class) {
+    dependsOn(downloadSpec)
     generatorName.set("kotlin")
-    inputSpec.set("$projectDir/openapi.yaml")
-    outputDir.set(layout.buildDirectory.file(generatedRoot).get().asFile.absolutePath)
+    inputSpec.set(downloadSpec.map { it.dest.absolutePath })
+    outputDir.set(layout.buildDirectory.file(generatedRoot).map { it.asFile.absolutePath })
     packageName.set("me.him188.ani.client")
     modelNamePrefix.set("Ani")
     apiNameSuffix.set("Ani")
@@ -114,6 +126,6 @@ val copyGeneratedToSrc = tasks.register("copyGeneratedToSrc", Copy::class) {
     into("src/commonMain/gen")
 }
 
-tasks.register("generateOpenApi") {
+tasks.register("generateOpenApiForAnimeko") {
     dependsOn(copyGeneratedToSrc)
 }
