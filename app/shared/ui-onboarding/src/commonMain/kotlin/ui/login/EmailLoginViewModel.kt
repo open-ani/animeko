@@ -1,6 +1,10 @@
 package me.him188.ani.app.ui.login
 
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.Stable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
@@ -19,6 +23,8 @@ class EmailLoginViewModel : AbstractViewModel(), KoinComponent {
     var state by mutableStateOf(EmailLoginUiState.Initial)
         private set
 
+    private var otpId = ""
+
     private inline fun updateState(block: EmailLoginUiState.() -> EmailLoginUiState) {
         state = state.block()
     }
@@ -32,7 +38,7 @@ class EmailLoginViewModel : AbstractViewModel(), KoinComponent {
             // fail fast
             throw RepositoryRateLimitedException()
         }
-        withContext(Dispatchers.Default) {
+        otpId = withContext(Dispatchers.Default) {
             userRepository.sendEmailOtpForLogin(state.email)
         }
         updateState {
@@ -43,7 +49,7 @@ class EmailLoginViewModel : AbstractViewModel(), KoinComponent {
     }
 
     suspend fun submitEmailOtp(otp: String) = withContext(Dispatchers.Default) {
-        userRepository.registerOrLoginByEmailOtp(state.email, otp)
+        userRepository.registerOrLoginByEmailOtp(otpId, otp)
     }
 }
 

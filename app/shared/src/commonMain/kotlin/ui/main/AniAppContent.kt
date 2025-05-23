@@ -77,6 +77,7 @@ import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.app.ui.foundation.widgets.TopAppBarActionButton
 import me.him188.ani.app.ui.login.EmailLoginStartScreen
 import me.him188.ani.app.ui.login.EmailLoginVerifyScreen
+import me.him188.ani.app.ui.login.EmailLoginViewModel
 import me.him188.ani.app.ui.onboarding.OnboardingCompleteScreen
 import me.him188.ani.app.ui.onboarding.OnboardingCompleteViewModel
 import me.him188.ani.app.ui.onboarding.OnboardingScreen
@@ -141,6 +142,7 @@ private fun AniAppContentImpl(
     val windowInsets = ScaffoldDefaults.contentWindowInsets
         .add(WindowInsets.desktopTitleBar()) // Compose 目前不支持这个所以我们要自己加上
     val navMotionScheme by rememberUpdatedState(NavigationMotionScheme.current)
+    val emailLoginViewModel = viewModel<EmailLoginViewModel> { EmailLoginViewModel() }
 
     SharedTransitionLayout {
         NavHost(navController, startDestination = initialRoute, modifier) {
@@ -186,8 +188,9 @@ private fun AniAppContentImpl(
                         aniNavigator.navigateSettings()
                     },
                     onNavigateBack = {
-                        aniNavigator.popBackStack(NavRoutes.Welcome, true)
+                        aniNavigator.popBackStack(NavRoutes.EmailLoginStart, true)
                     },
+                    vm = emailLoginViewModel,
                 )
             }
             composable<NavRoutes.EmailLoginVerify>(
@@ -208,8 +211,9 @@ private fun AniAppContentImpl(
                         aniNavigator.navigateSettings()
                     },
                     onNavigateBack = {
-                        aniNavigator.popBackStack(NavRoutes.Welcome, true)
+                        aniNavigator.popBackStack(NavRoutes.EmailLoginVerify, true)
                     },
+                    vm = emailLoginViewModel,
                 )
             }
             composable<NavRoutes.Onboarding>(
