@@ -41,19 +41,24 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
+import kotlinx.datetime.Instant
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.models.subject.LightEpisodeInfo
 import me.him188.ani.app.data.models.subject.LightSubjectAndEpisodes
 import me.him188.ani.app.data.models.subject.LightSubjectInfo
+import me.him188.ani.app.data.models.subject.RatingCounts
+import me.him188.ani.app.data.models.subject.RatingInfo
 import me.him188.ani.app.data.models.subject.SelfRatingInfo
 import me.him188.ani.app.data.models.subject.SubjectAiringInfo
 import me.him188.ani.app.data.models.subject.SubjectCollectionCounts
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
+import me.him188.ani.app.data.models.subject.SubjectCollectionStats
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
 import me.him188.ani.app.data.models.subject.SubjectRecurrence
+import me.him188.ani.app.data.models.subject.Tag
 import me.him188.ani.app.data.network.BangumiEpisodeService
 import me.him188.ani.app.data.network.BangumiSubjectService
 import me.him188.ani.app.data.network.BatchSubjectCollection
@@ -77,6 +82,16 @@ import me.him188.ani.app.domain.search.SubjectType
 import me.him188.ani.app.domain.session.SessionStateProvider
 import me.him188.ani.app.domain.session.checkAccessBangumiApiNow
 import me.him188.ani.app.domain.session.restartOnNewLogin
+import me.him188.ani.client.models.AniAnimeRecurrence
+import me.him188.ani.client.models.AniCollectionType
+import me.him188.ani.client.models.AniEpisodeCollection
+import me.him188.ani.client.models.AniEpisodeCollectionType
+import me.him188.ani.client.models.AniEpisodeType
+import me.him188.ani.client.models.AniFavourite
+import me.him188.ani.client.models.AniSubjectCollection
+import me.him188.ani.client.models.AniTag
+import me.him188.ani.datasources.api.EpisodeSort
+import me.him188.ani.datasources.api.EpisodeType
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.UTC9
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
@@ -389,7 +404,7 @@ class SubjectCollectionRepositoryImpl(
         type: UnifiedCollectionType?,
         limit: Int,
         offset: Int,
-        onFetched: (items: List<BatchSubjectCollection>) -> Unit = {},
+        onFetched: (items: List<AniSubjectCollection>) -> Unit = {},
     ) {
         require(type != UnifiedCollectionType.NOT_COLLECTED) { "type must not be NOT_COLLECTED" }
         require(limit > 0) { "limit must be positive" }
@@ -401,30 +416,27 @@ class SubjectCollectionRepositoryImpl(
             limit = limit,
         )
 
-        // 提前'批量'查询剧集收藏状态, 防止在收藏页显示结果时一个一个查导致太慢
-        val episodes: List<EpisodeCollectionEntity>
-        val recurrences: List<SubjectRecurrence?>
-        coroutineScope {
-            // 并行加载
-            val episodesDeferred = async { batchGetSubjectEpisodes(items) }
-            val recurrencesDeferred =
-                async { animeScheduleRepository.batchGetSubjectRecurrence(items.map { it.batchSubjectDetails.subjectInfo.subjectId }) }
-            episodes = episodesDeferred.await()
-            recurrences = recurrencesDeferred.await()
-        }
-
         onFetched(items)
 
         // 批量插入条目信息
         val lastFetched = currentTimeMillis()
         subjectCollectionDao.upsert(
             items.mapIndexed { index, batchSubjectCollection ->
-                batchSubjectCollection.toEntity(lastFetched, recurrences[index])
+                batchSubjectCollection.toEntity(lastFetched = lastFetched)
             },
         )
 
         // 必须先插入好条目信息, 否则插入 episode 会 foreign key constraint failed
-        episodeCollectionDao.upsert(episodes)
+        episodeCollectionDao.upsert(
+            items
+                .flatMap { it.episodes }
+                .map { episode ->
+                    episode.toEntity1(
+                        subjectId = episode.subjectId.toInt(),
+                        lastFetched = lastFetched,
+                    )
+                },
+        )
     }
 
     override suspend fun updateRating(
@@ -746,5 +758,121 @@ fun <T : Any> calculateIndexBasedLoadInfo(
                 state.config.pageSize,
             )
         }
+    }
+}
+
+fun AniSubjectCollection.toEntity(
+    lastFetched: Long,
+): SubjectCollectionEntity {
+    return SubjectCollectionEntity(
+        subjectId = id.toInt(),
+        name = name,
+        nameCn = nameCn,
+        summary = summary,
+        nsfw = nsfw,
+        imageLarge = "https://api.bgm.tv/v0/subjects/${id}/image?type=large",
+        totalEpisodes = episodes.size,
+        airDate = PackedDate.parseFromDate(airDate),
+        aliases = aliases,
+        tags = tags.map { it.toTag() },
+        collectionStats = favorite.toSubjectCollectionStats(),
+        ratingInfo = RatingInfo(
+            rank = rank ?: 0,
+            total = scoreDetails.values.sum(),
+            count = RatingCounts(
+                s1 = scoreDetails["1"] ?: 0,
+                s2 = scoreDetails["2"] ?: 0,
+                s3 = scoreDetails["3"] ?: 0,
+                s4 = scoreDetails["4"] ?: 0,
+                s5 = scoreDetails["5"] ?: 0,
+                s6 = scoreDetails["6"] ?: 0,
+                s7 = scoreDetails["7"] ?: 0,
+                s8 = scoreDetails["8"] ?: 0,
+                s9 = scoreDetails["9"] ?: 0,
+                s10 = scoreDetails["10"] ?: 0,
+            ),
+            score = score ?: "0",
+        ),
+        completeDate = PackedDate.Invalid,
+        selfRatingInfo = SelfRatingInfo.Empty, // TODO(him188): SelfRatingInfo
+        collectionType = collectionType.toUnifiedCollectionType(),
+        recurrence = airingInfo?.recurrence?.toSubjectRecurrence(),
+        lastUpdated = updatedAt?.let { Instant.parse(it) }?.toEpochMilliseconds() ?: 0,
+        lastFetched = lastFetched,
+        cachedStaffUpdated = lastFetched,
+        cachedCharactersUpdated = lastFetched,
+    )
+}
+
+fun AniTag.toTag(): Tag = Tag(
+    name = name,
+    count = count,
+)
+
+fun AniFavourite.toSubjectCollectionStats(): SubjectCollectionStats {
+    return SubjectCollectionStats(
+        wish = wish,
+        doing = doing,
+        done = done,
+        onHold = onHold,
+        dropped = dropped,
+    )
+}
+
+fun AniAnimeRecurrence.toSubjectRecurrence(): SubjectRecurrence? {
+    return SubjectRecurrence(
+        Instant.parse(startTime),
+        interval = intervalMillis.milliseconds,
+    )
+}
+
+fun AniCollectionType?.toUnifiedCollectionType(): UnifiedCollectionType {
+    return when (this) {
+        AniCollectionType.WISH -> UnifiedCollectionType.WISH
+        AniCollectionType.DOING -> UnifiedCollectionType.DOING
+        AniCollectionType.DONE -> UnifiedCollectionType.DONE
+        AniCollectionType.ON_HOLD -> UnifiedCollectionType.ON_HOLD
+        AniCollectionType.DROPPED -> UnifiedCollectionType.DROPPED
+        null -> UnifiedCollectionType.NOT_COLLECTED
+    }
+}
+
+fun AniEpisodeCollection.toEntity1(
+    subjectId: Int,
+    lastFetched: Long,
+): EpisodeCollectionEntity {
+    return EpisodeCollectionEntity(
+        subjectId = subjectId,
+        episodeId = episodeId.toInt(),
+        episodeType = type.toEpisodeType(),
+        name = name,
+        nameCn = nameCn,
+        airDate = airdate?.let { PackedDate.parseFromDate(it) } ?: PackedDate.Invalid,
+        comment = 0,
+        desc = description,
+        sort = EpisodeSort(sort),
+        sortNumber = sort.toFloatOrNull() ?: 0f,
+        selfCollectionType = collectionType.toUnifiedCollectionType(),
+        lastFetched = lastFetched,
+    )
+}
+
+fun AniEpisodeType.toEpisodeType(): EpisodeType? {
+    return when (this) {
+        AniEpisodeType.MAIN -> EpisodeType.MainStory
+        AniEpisodeType.SPECIAL -> EpisodeType.SP
+        AniEpisodeType.OP -> EpisodeType.OP
+        AniEpisodeType.ED -> EpisodeType.ED
+        AniEpisodeType.TRAILER -> EpisodeType.PV
+        AniEpisodeType.MAD -> EpisodeType.MAD
+        AniEpisodeType.OTHER -> null
+    }
+}
+
+fun AniEpisodeCollectionType?.toUnifiedCollectionType(): UnifiedCollectionType {
+    return when (this) {
+        AniEpisodeCollectionType.WISH -> UnifiedCollectionType.WISH
+        AniEpisodeCollectionType.DONE -> UnifiedCollectionType.DONE
+        null -> UnifiedCollectionType.NOT_COLLECTED
     }
 }

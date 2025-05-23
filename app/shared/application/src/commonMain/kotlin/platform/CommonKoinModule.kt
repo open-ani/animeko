@@ -270,6 +270,7 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
         RemoteBangumiSubjectService(
             client,
             client.api,
+            aniApiProvider.subjectApi,
             sessionManager = get(),
         )
     }

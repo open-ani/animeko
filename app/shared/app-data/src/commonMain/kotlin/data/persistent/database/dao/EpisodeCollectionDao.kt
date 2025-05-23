@@ -57,6 +57,7 @@ data class EpisodeCollectionEntity(
     val name: String,
     val nameCn: String,
     val airDate: PackedDate,
+    @Deprecated("Not available anymore")
     val comment: Int,
     val desc: String,
     val sort: EpisodeSort,
