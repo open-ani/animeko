@@ -198,6 +198,14 @@ class BuildConfigPlugin : Plugin<Project> {
                     dependsOn(generateTaskName)
                 }
 
+                // Android compilation tasks
+                platformName.lowercase() == "android" && (
+                        name.contains("compileKotlinAndroid") ||
+                                name.contains("KotlinAndroid")
+                        ) -> {
+                    dependsOn(generateTaskName)
+                }
+
                 // iOS compilation tasks
                 platformName.lowercase() == "ios" && (
                         name.contains("compileKotlinIos") ||

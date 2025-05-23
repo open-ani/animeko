@@ -80,14 +80,6 @@ val analyticsKey = getPropertyOrNull("ani.analytics.key") ?: ""
 //}
 
 android {
-    defaultConfig {
-        buildConfigField("String", "VERSION_NAME", "\"${getProperty("version.name")}\"")
-        buildConfigField("String", "DANDANPLAY_APP_ID", "\"$dandanplayAppId\"")
-        buildConfigField("String", "DANDANPLAY_APP_SECRET", "\"$dandanplayAppSecret\"")
-        buildConfigField("String", "SENTRY_DSN", "\"$sentryDsn\"")
-        buildConfigField("String", "ANALYTICS_KEY", "\"$analyticsKey\"")
-        buildConfigField("String", "ANALYTICS_SERVER", "\"$analyticsServer\"")
-    }
     buildTypes.getByName("release") {
         isMinifyEnabled = false
         isShrinkResources = false
@@ -96,11 +88,9 @@ android {
             *sharedAndroidProguardRules(),
         )
         buildConfigField("String", "APP_APPLICATION_ID", "\"me.him188.ani\"")
-        buildConfigField("String", "ANI_AUTH_SERVER_URL", "\"$aniAuthServerUrlRelease\"")
     }
     buildTypes.getByName("debug") {
         buildConfigField("String", "APP_APPLICATION_ID", "\"me.him188.ani.debug2\"")
-        buildConfigField("String", "ANI_AUTH_SERVER_URL", "\"$aniAuthServerUrlDebug\"")
     }
     buildFeatures {
         buildConfig = true
@@ -121,6 +111,17 @@ buildConfig {
             "isDebug",
             "System.getenv(\"ANI_DEBUG\") == \"true\" || System.getProperty(\"ani.debug\") == \"true\"",
         )
+        stringField("dandanplayAppId", dandanplayAppId)
+        stringField("dandanplayAppSecret", dandanplayAppSecret)
+        stringField("sentryDsn", sentryDsn)
+        stringField("analyticsKey", analyticsKey)
+        stringField("analyticsServer", analyticsServer)
+    }
+
+    // Android platform configuration
+    platform("android") {
+        stringField("versionName", project.version.toString())
+        expressionField("isDebug", "BuildConfig.DEBUG")
         stringField("dandanplayAppId", dandanplayAppId)
         stringField("dandanplayAppSecret", dandanplayAppSecret)
         stringField("sentryDsn", sentryDsn)
