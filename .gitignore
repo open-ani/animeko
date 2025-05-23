@@ -9,6 +9,8 @@ local.properties
 **/*.podspec
 /venv/
 /*.patch
+bin/
+Podfile.lock
 
 # Local source files
 **/local.kt

@@ -1,5 +1,5 @@
 [versions]
-kotlin = "2.1.20"
+kotlin = "2.1.21"
 android-gradle-plugin = "8.9.2"
 
 ### KOTLINX ###
@@ -16,7 +16,7 @@ androidx-media3 = "1.6.1" # https://developer.android.com/jetpack/androidx/relea
 androidx-lifecycle = "2.8.7" # https://developer.android.com/jetpack/androidx/releases/lifecycle
 paging = "3.3.6" # https://developer.android.com/jetpack/androidx/releases/paging
 datastore = "1.1.3" # https://developer.android.com/jetpack/androidx/releases/datastore
-ksp = "2.1.20-1.0.31" # https://github.com/google/ksp/releases
+ksp = "2.1.21-2.0.1" # https://github.com/google/ksp/releases
 # note: room 2.7.0-rc01 cannot compile
 room = "2.7.1" # https://developer.android.com/jetpack/androidx/releases/room#declaring_dependencies
 sentry-kotlin-multiplatform = "0.11.0"
