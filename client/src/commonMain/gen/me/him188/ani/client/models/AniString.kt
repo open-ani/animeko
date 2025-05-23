@@ -15,22 +15,16 @@
 
 package me.him188.ani.client.models
 
-import me.him188.ani.client.models.AniUpdateInfo
 
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Serializable
 
 /**
- * 
+ * 如果不为空, 则必定为浮点
  *
- * @param updates 
  */
 @Serializable
 
-data class AniReleaseUpdatesDetailedResponse(
-
-    @SerialName(value = "updates") @Required val updates: kotlin.collections.List<AniUpdateInfo>
+class AniString(
 
 ) {
 

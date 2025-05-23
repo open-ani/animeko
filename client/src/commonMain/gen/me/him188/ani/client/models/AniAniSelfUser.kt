@@ -30,8 +30,8 @@ import kotlinx.serialization.encoding.*
  * @param smallAvatar
  * @param mediumAvatar
  * @param largeAvatar
- * @param registerTime
- * @param lastLoginTime
+ * @param registerTime 
+ * @param lastLoginTime 
  * @param clientVersion 
  */
 @Serializable

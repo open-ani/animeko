@@ -48,7 +48,7 @@ open class PeerFilterRuleAniApi : ApiClient {
     ) : super(baseUrl = baseUrl, httpClient = httpClient)
 
     /**
-     *
+     * 
      * 
      * @return AniPeerFilterRule
      */

@@ -24,8 +24,8 @@ import kotlinx.serialization.encoding.*
  * 
  *
  * @param accessToken
- * @param refreshToken
- * @param expiresAtMillis
+ * @param refreshToken 
+ * @param expiresAtMillis 
  * @param bangumiAccessToken 
  */
 @Serializable

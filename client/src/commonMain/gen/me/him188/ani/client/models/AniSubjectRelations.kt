@@ -16,14 +16,14 @@
 package me.him188.ani.client.models
 
 
-import kotlinx.serialization.Required
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
+import kotlinx.serialization.*
+import kotlinx.serialization.descriptors.*
+import kotlinx.serialization.encoding.*
 
 /**
- * 
+ * 系列信息
  *
- * @param subjectId
+ * @param subjectId 
  * @param seriesMainSubjectIds 
  * @param sequelSubjects 
  */
@@ -31,7 +31,7 @@ import kotlinx.serialization.Serializable
 
 data class AniSubjectRelations(
 
-    @SerialName(value = "subjectId") @Required val subjectId: kotlin.Int,
+    @SerialName(value = "subjectId") @Required val subjectId: kotlin.Long,
 
     @SerialName(value = "seriesMainSubjectIds") @Required val seriesMainSubjectIds: kotlin.collections.List<kotlin.Int>,
 

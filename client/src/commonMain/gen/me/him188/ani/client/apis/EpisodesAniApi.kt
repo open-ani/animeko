@@ -16,9 +16,9 @@
 package me.him188.ani.client.apis
 
 import me.him188.ani.client.models.AniCollectionType
+import me.him188.ani.client.models.AniEpisodeCollectionEntity
 import me.him188.ani.client.models.AniPaginatedResponse
-import me.him188.ani.client.models.AniSubjectCollection
-import me.him188.ani.client.models.AniUpdateSubjectCollectionRequest
+import me.him188.ani.client.models.AniUpdateEpisodeCollectionRequest
 
 import me.him188.ani.client.infrastructure.*
 import io.ktor.client.HttpClient
@@ -31,7 +31,7 @@ import kotlinx.serialization.*
 import kotlinx.serialization.descriptors.*
 import kotlinx.serialization.encoding.*
 
-open class SubjectsAniApi : ApiClient {
+open class EpisodesAniApi : ApiClient {
 
     constructor(
         baseUrl: String = ApiClient.BASE_URL,
@@ -51,45 +51,13 @@ open class SubjectsAniApi : ApiClient {
     ) : super(baseUrl = baseUrl, httpClient = httpClient)
 
     /**
-     * Bangumi 全量同步
-     * Bangumi 全量同步
+     * 删除剧集收藏
+     * 删除剧集收藏
+     * @param episodeId 
      * @return kotlin.Any
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun bangumiFullSync(): HttpResponse<kotlin.Any> {
-
-        val localVariableAuthNames = listOf<String>("auth-jwt")
-
-        val localVariableBody = 
-            io.ktor.client.utils.EmptyContent
-
-        val localVariableQuery = mutableMapOf<String, List<String>>()
-        val localVariableHeaders = mutableMapOf<String, String>()
-
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
-            RequestMethod.POST,
-            "/v2/subjects/bangumi/full-sync",
-            query = localVariableQuery,
-            headers = localVariableHeaders,
-            requiresAuthentication = true,
-        )
-
-        return request(
-            localVariableConfig,
-            localVariableBody,
-            localVariableAuthNames,
-        ).wrap()
-    }
-
-
-    /**
-     * 删除自己的收藏
-     * 删除自己的收藏
-     * @param subjectId 
-     * @return kotlin.Any
-     */
-    @Suppress("UNCHECKED_CAST")
-    open suspend fun deleteSubjectCollection(subjectId: kotlin.Long): HttpResponse<kotlin.Any> {
+    open suspend fun deleteEpisodeCollection(episodeId: kotlin.Long): HttpResponse<kotlin.Any> {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
@@ -101,7 +69,7 @@ open class SubjectsAniApi : ApiClient {
 
         val localVariableConfig = RequestConfig<kotlin.Any?>(
             RequestMethod.DELETE,
-            "/v2/subjects/{subjectId}".replace("{" + "subjectId" + "}", "$subjectId"),
+            "/v2/episodes/{episodeId}".replace("{" + "episodeId" + "}", "$episodeId"),
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,
@@ -116,13 +84,13 @@ open class SubjectsAniApi : ApiClient {
 
 
     /**
-     * 获取单个条目信息. 如果已登录, 还会返回 collectionType 等字段.
-     * 获取单个条目信息. 如果已登录, 还会返回 collectionType 等字段.
-     * @param subjectId 
-     * @return AniSubjectCollection
+     * 获取单个剧集信息
+     * 获取单个剧集信息
+     * @param episodeId 
+     * @return AniEpisodeCollectionEntity
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun getSubject(subjectId: kotlin.Long): HttpResponse<AniSubjectCollection> {
+    open suspend fun getEpisodeCollection(episodeId: kotlin.Long): HttpResponse<AniEpisodeCollectionEntity> {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
@@ -134,7 +102,7 @@ open class SubjectsAniApi : ApiClient {
 
         val localVariableConfig = RequestConfig<kotlin.Any?>(
             RequestMethod.GET,
-            "/v2/subjects/{subjectId}".replace("{" + "subjectId" + "}", "$subjectId"),
+            "/v2/episodes/{episodeId}".replace("{" + "episodeId" + "}", "$episodeId"),
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,
@@ -149,15 +117,17 @@ open class SubjectsAniApi : ApiClient {
 
 
     /**
-     * 获取收藏的条目列表
-     * 获取收藏的条目列表
+     * 获取某条目的剧集收藏列表
+     * 获取某条目的剧集收藏列表
+     * @param subjectId 
      * @param offset  (optional)
      * @param limit  (optional)
      * @param type  (optional)
      * @return AniPaginatedResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun getSubjectCollections(
+    open suspend fun getEpisodeCollections(
+        subjectId: kotlin.Long,
         offset: kotlin.Int? = null,
         limit: kotlin.Int? = null,
         type: AniCollectionType? = null
@@ -169,6 +139,7 @@ open class SubjectsAniApi : ApiClient {
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
+        subjectId?.apply { localVariableQuery["subjectId"] = listOf("$subjectId") }
         offset?.apply { localVariableQuery["offset"] = listOf("$offset") }
         limit?.apply { localVariableQuery["limit"] = listOf("$limit") }
         type?.apply { localVariableQuery["type"] = listOf("$type") }
@@ -176,7 +147,7 @@ open class SubjectsAniApi : ApiClient {
 
         val localVariableConfig = RequestConfig<kotlin.Any?>(
             RequestMethod.GET,
-            "/v2/subjects/list",
+            "/v2/episodes/list",
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,
@@ -191,28 +162,28 @@ open class SubjectsAniApi : ApiClient {
 
 
     /**
-     * 编辑自己的收藏
-     * 编辑自己的收藏
-     * @param subjectId 
-     * @param aniUpdateSubjectCollectionRequest  (optional)
+     * 更新剧集收藏
+     * 更新剧集收藏
+     * @param episodeId 
+     * @param aniUpdateEpisodeCollectionRequest  (optional)
      * @return kotlin.Any
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun updateSubjectCollection(
-        subjectId: kotlin.Long,
-        aniUpdateSubjectCollectionRequest: AniUpdateSubjectCollectionRequest? = null
+    open suspend fun updateEpisodeCollection(
+        episodeId: kotlin.Long,
+        aniUpdateEpisodeCollectionRequest: AniUpdateEpisodeCollectionRequest? = null
     ): HttpResponse<kotlin.Any> {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
-        val localVariableBody = aniUpdateSubjectCollectionRequest
+        val localVariableBody = aniUpdateEpisodeCollectionRequest
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
         val localVariableHeaders = mutableMapOf<String, String>()
 
         val localVariableConfig = RequestConfig<kotlin.Any?>(
             RequestMethod.PATCH,
-            "/v2/subjects/{subjectId}".replace("{" + "subjectId" + "}", "$subjectId"),
+            "/v2/episodes/{episodeId}".replace("{" + "episodeId" + "}", "$episodeId"),
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,

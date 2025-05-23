@@ -23,7 +23,7 @@ import kotlinx.serialization.encoding.*
 /**
  * 
  *
- * @param bangumiToken
+ * @param bangumiToken 
  * @param clientVersion 
  * @param clientOS 
  * @param clientArch 

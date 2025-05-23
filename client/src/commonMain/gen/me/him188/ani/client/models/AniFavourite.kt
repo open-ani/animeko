@@ -15,7 +15,6 @@
 
 package me.him188.ani.client.models
 
-import me.him188.ani.client.models.AniDanmakuLocationEntity
 
 import kotlinx.serialization.*
 import kotlinx.serialization.descriptors.*
@@ -24,22 +23,25 @@ import kotlinx.serialization.encoding.*
 /**
  * 
  *
- * @param playTime
- * @param color 
- * @param text 
- * @param location 
+ * @param wish
+ * @param done
+ * @param doing
+ * @param onHold
+ * @param dropped 
  */
 @Serializable
 
-data class AniDanmakuInfoEntity(
+data class AniFavourite(
 
-    @SerialName(value = "playTime") @Required val playTime: kotlin.Long,
+    @SerialName(value = "wish") @Required val wish: kotlin.Int,
 
-    @SerialName(value = "color") @Required val color: kotlin.Int,
+    @SerialName(value = "done") @Required val done: kotlin.Int,
 
-    @SerialName(value = "text") @Required val text: kotlin.String,
+    @SerialName(value = "doing") @Required val doing: kotlin.Int,
 
-    @SerialName(value = "location") @Required val location: AniDanmakuLocationEntity
+    @SerialName(value = "onHold") @Required val onHold: kotlin.Int,
+
+    @SerialName(value = "dropped") @Required val dropped: kotlin.Int
 
 ) {
 

@@ -15,31 +15,28 @@
 
 package me.him188.ani.client.models
 
-import me.him188.ani.client.models.AniDanmakuLocationEntity
+import me.him188.ani.client.models.AniAnimeRecurrence
 
 import kotlinx.serialization.*
 import kotlinx.serialization.descriptors.*
 import kotlinx.serialization.encoding.*
 
 /**
- * 
+ * 新番连载信息, 如果是完结番则为 null
  *
- * @param playTime
- * @param color 
- * @param text 
- * @param location 
+ * @param begin
+ * @param recurrence
+ * @param end 
  */
 @Serializable
 
-data class AniDanmakuInfoEntity(
+data class AniSubjectAiringInfo(
 
-    @SerialName(value = "playTime") @Required val playTime: kotlin.Long,
+    @SerialName(value = "begin") val begin: kotlin.String? = null,
 
-    @SerialName(value = "color") @Required val color: kotlin.Int,
+    @SerialName(value = "recurrence") val recurrence: AniAnimeRecurrence? = null,
 
-    @SerialName(value = "text") @Required val text: kotlin.String,
-
-    @SerialName(value = "location") @Required val location: AniDanmakuLocationEntity
+    @SerialName(value = "end") val end: kotlin.String? = null
 
 ) {
 

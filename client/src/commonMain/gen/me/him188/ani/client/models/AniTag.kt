@@ -15,7 +15,6 @@
 
 package me.him188.ani.client.models
 
-import me.him188.ani.client.models.AniDanmakuLocationEntity
 
 import kotlinx.serialization.*
 import kotlinx.serialization.descriptors.*
@@ -24,22 +23,16 @@ import kotlinx.serialization.encoding.*
 /**
  * 
  *
- * @param playTime
- * @param color 
- * @param text 
- * @param location 
+ * @param name
+ * @param count 
  */
 @Serializable
 
-data class AniDanmakuInfoEntity(
+data class AniTag(
 
-    @SerialName(value = "playTime") @Required val playTime: kotlin.Long,
+    @SerialName(value = "name") @Required val name: kotlin.String,
 
-    @SerialName(value = "color") @Required val color: kotlin.Int,
-
-    @SerialName(value = "text") @Required val text: kotlin.String,
-
-    @SerialName(value = "location") @Required val location: AniDanmakuLocationEntity
+    @SerialName(value = "count") @Required val count: kotlin.Int
 
 ) {
 

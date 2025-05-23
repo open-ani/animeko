@@ -15,9 +15,14 @@
 
 package me.him188.ani.client.models
 
-import kotlinx.serialization.Required
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
+import me.him188.ani.client.models.AniCollectionType
+import me.him188.ani.client.models.AniFavouriteEntity
+import me.him188.ani.client.models.AniInfoboxEntity
+import me.him188.ani.client.models.AniTagEntity
+
+import kotlinx.serialization.*
+import kotlinx.serialization.descriptors.*
+import kotlinx.serialization.encoding.*
 
 /**
  * 
@@ -36,8 +41,8 @@ import kotlinx.serialization.Serializable
  * @param date
  * @param favorite
  * @param series
- * @param score
- * @param rank
+ * @param score 
+ * @param rank 
  * @param collectionType 
  */
 @Serializable

@@ -15,14 +15,16 @@
 
 package me.him188.ani.client.models
 
-import kotlinx.serialization.Required
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
+import me.him188.ani.client.models.AniSubjectCollection
+
+import kotlinx.serialization.*
+import kotlinx.serialization.descriptors.*
+import kotlinx.serialization.encoding.*
 
 /**
  * 
  *
- * @param total
+ * @param total 
  * @param items 
  */
 @Serializable
@@ -31,7 +33,7 @@ data class AniPaginatedResponse(
 
     @SerialName(value = "total") @Required val total: kotlin.Long,
 
-    @SerialName(value = "items") @Required val items: kotlin.collections.List<AniEpisodeCollectionEntity>
+    @SerialName(value = "items") @Required val items: kotlin.collections.List<AniSubjectCollection>
 
 ) {
 

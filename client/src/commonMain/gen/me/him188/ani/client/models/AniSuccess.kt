@@ -15,15 +15,18 @@
 
 package me.him188.ani.client.models
 
-import kotlinx.serialization.Required
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
+import me.him188.ani.client.models.AniAniSelfUser
+import me.him188.ani.client.models.AniAniTokens
+
+import kotlinx.serialization.*
+import kotlinx.serialization.descriptors.*
+import kotlinx.serialization.encoding.*
 
 /**
  * 
  *
- * @param userId
- * @param tokens
+ * @param userId 
+ * @param tokens 
  * @param user 
  */
 @Serializable

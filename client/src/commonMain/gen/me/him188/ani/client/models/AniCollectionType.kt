@@ -21,19 +21,25 @@ import kotlinx.serialization.*
 /**
  * 
  *
- * Values: EN,ZH_HANS,ZH_HANT
+ * Values: WISH,DONE,DOING,ON_HOLD,DROPPED
  */
 @Serializable
-enum class AniEmailLanguage(val value: kotlin.String) {
+enum class AniCollectionType(val value: kotlin.String) {
 
-    @SerialName(value = "EN")
-    EN("EN"),
+    @SerialName(value = "WISH")
+    WISH("WISH"),
 
-    @SerialName(value = "ZH_HANS")
-    ZH_HANS("ZH_HANS"),
+    @SerialName(value = "DONE")
+    DONE("DONE"),
 
-    @SerialName(value = "ZH_HANT")
-    ZH_HANT("ZH_HANT");
+    @SerialName(value = "DOING")
+    DOING("DOING"),
+
+    @SerialName(value = "ON_HOLD")
+    ON_HOLD("ON_HOLD"),
+
+    @SerialName(value = "DROPPED")
+    DROPPED("DROPPED");
 
     /**
      * Override [toString()] to avoid using the enum variable name as the value, and instead use
@@ -48,12 +54,12 @@ enum class AniEmailLanguage(val value: kotlin.String) {
         /**
          * Converts the provided [data] to a [String] on success, null otherwise.
          */
-        fun encode(data: kotlin.Any?): kotlin.String? = if (data is AniEmailLanguage) "$data" else null
+        fun encode(data: kotlin.Any?): kotlin.String? = if (data is AniCollectionType) "$data" else null
 
         /**
-         * Returns a valid [AniEmailLanguage] for [data], null otherwise.
+         * Returns a valid [AniCollectionType] for [data], null otherwise.
          */
-        fun decode(data: kotlin.Any?): AniEmailLanguage? = data?.let {
+        fun decode(data: kotlin.Any?): AniCollectionType? = data?.let {
             val normalizedData = "$it".lowercase()
             values().firstOrNull { value ->
                 it == value || normalizedData == "$value".lowercase()

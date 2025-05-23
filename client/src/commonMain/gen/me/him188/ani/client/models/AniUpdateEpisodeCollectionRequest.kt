@@ -15,7 +15,7 @@
 
 package me.him188.ani.client.models
 
-import me.him188.ani.client.models.AniDanmakuLocationEntity
+import me.him188.ani.client.models.AniCollectionType
 
 import kotlinx.serialization.*
 import kotlinx.serialization.descriptors.*
@@ -24,22 +24,13 @@ import kotlinx.serialization.encoding.*
 /**
  * 
  *
- * @param playTime
- * @param color 
- * @param text 
- * @param location 
+ * @param collectionType 
  */
 @Serializable
 
-data class AniDanmakuInfoEntity(
+data class AniUpdateEpisodeCollectionRequest(
 
-    @SerialName(value = "playTime") @Required val playTime: kotlin.Long,
-
-    @SerialName(value = "color") @Required val color: kotlin.Int,
-
-    @SerialName(value = "text") @Required val text: kotlin.String,
-
-    @SerialName(value = "location") @Required val location: AniDanmakuLocationEntity
+    @SerialName(value = "collectionType") val collectionType: AniCollectionType? = null
 
 ) {
 

@@ -16,24 +16,37 @@
 package me.him188.ani.client.models
 
 
-import kotlinx.serialization.*
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
- * 
  *
- * Values: EN,ZH_HANS,ZH_HANT
+ *
+ * Values: MAIN,SPECIAL,OP,ED,TRAILER,MAD,OTHER
  */
 @Serializable
-enum class AniEmailLanguage(val value: kotlin.String) {
+enum class AniEpisodeType(val value: kotlin.String) {
 
-    @SerialName(value = "EN")
-    EN("EN"),
+    @SerialName(value = "MAIN")
+    MAIN("MAIN"),
 
-    @SerialName(value = "ZH_HANS")
-    ZH_HANS("ZH_HANS"),
+    @SerialName(value = "SPECIAL")
+    SPECIAL("SPECIAL"),
 
-    @SerialName(value = "ZH_HANT")
-    ZH_HANT("ZH_HANT");
+    @SerialName(value = "OP")
+    OP("OP"),
+
+    @SerialName(value = "ED")
+    ED("ED"),
+
+    @SerialName(value = "TRAILER")
+    TRAILER("TRAILER"),
+
+    @SerialName(value = "MAD")
+    MAD("MAD"),
+
+    @SerialName(value = "OTHER")
+    OTHER("OTHER");
 
     /**
      * Override [toString()] to avoid using the enum variable name as the value, and instead use
@@ -48,12 +61,12 @@ enum class AniEmailLanguage(val value: kotlin.String) {
         /**
          * Converts the provided [data] to a [String] on success, null otherwise.
          */
-        fun encode(data: kotlin.Any?): kotlin.String? = if (data is AniEmailLanguage) "$data" else null
+        fun encode(data: kotlin.Any?): kotlin.String? = if (data is AniEpisodeType) "$data" else null
 
         /**
-         * Returns a valid [AniEmailLanguage] for [data], null otherwise.
+         * Returns a valid [AniEpisodeType] for [data], null otherwise.
          */
-        fun decode(data: kotlin.Any?): AniEmailLanguage? = data?.let {
+        fun decode(data: kotlin.Any?): AniEpisodeType? = data?.let {
             val normalizedData = "$it".lowercase()
             values().firstOrNull { value ->
                 it == value || normalizedData == "$value".lowercase()

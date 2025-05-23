@@ -16,15 +16,15 @@
 package me.him188.ani.client.models
 
 
-import kotlinx.serialization.Required
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
+import kotlinx.serialization.*
+import kotlinx.serialization.descriptors.*
+import kotlinx.serialization.encoding.*
 
 /**
  * 
  *
- * @param blockedIpPattern
- * @param blockedIdRegex
+ * @param blockedIpPattern 
+ * @param blockedIdRegex 
  * @param blockedClientRegex 
  */
 @Serializable

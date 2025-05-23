@@ -15,10 +15,11 @@
 
 package me.him188.ani.client.apis
 
-import me.him188.ani.client.models.AniCollectionType
-import me.him188.ani.client.models.AniPaginatedResponse
-import me.him188.ani.client.models.AniSubjectCollection
-import me.him188.ani.client.models.AniUpdateSubjectCollectionRequest
+import me.him188.ani.client.models.AniAnonymousBangumiUserToken
+import me.him188.ani.client.models.AniBangumiLoginRequest
+import me.him188.ani.client.models.AniBangumiLoginResponse
+import me.him188.ani.client.models.AniBangumiUserToken
+import me.him188.ani.client.models.AniRefreshBangumiTokenRequest
 
 import me.him188.ani.client.infrastructure.*
 import io.ktor.client.HttpClient
@@ -31,7 +32,7 @@ import kotlinx.serialization.*
 import kotlinx.serialization.descriptors.*
 import kotlinx.serialization.encoding.*
 
-open class SubjectsAniApi : ApiClient {
+open class BangumiOAuthLegacyAniApi : ApiClient {
 
     constructor(
         baseUrl: String = ApiClient.BASE_URL,
@@ -51,30 +52,30 @@ open class SubjectsAniApi : ApiClient {
     ) : super(baseUrl = baseUrl, httpClient = httpClient)
 
     /**
-     * Bangumi 全量同步
-     * Bangumi 全量同步
-     * @return kotlin.Any
+     * 使用 Bangumi token 登录
+     * 使用 Bangumi token 登录并获取用户会话 token。
+     * @param aniBangumiLoginRequest Bangumi token 字符串以及客户端版本与平台架构信息。 clientOS参数可选值：&#x60;windows, macos, android, ios, linux, debian, ubuntu, redhat&#x60;；clientArch参数可选值：&#x60;aarch64, x86, x86_64&#x60;。 (optional)
+     * @return AniBangumiLoginResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun bangumiFullSync(): HttpResponse<kotlin.Any> {
+    open suspend fun bangumiLogin(aniBangumiLoginRequest: AniBangumiLoginRequest? = null): HttpResponse<AniBangumiLoginResponse> {
 
-        val localVariableAuthNames = listOf<String>("auth-jwt")
+        val localVariableAuthNames = listOf<String>()
 
-        val localVariableBody = 
-            io.ktor.client.utils.EmptyContent
+        val localVariableBody = aniBangumiLoginRequest
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
         val localVariableHeaders = mutableMapOf<String, String>()
 
         val localVariableConfig = RequestConfig<kotlin.Any?>(
             RequestMethod.POST,
-            "/v2/subjects/bangumi/full-sync",
+            "/v1/login/bangumi",
             query = localVariableQuery,
             headers = localVariableHeaders,
-            requiresAuthentication = true,
+            requiresAuthentication = false,
         )
 
-        return request(
+        return jsonRequest(
             localVariableConfig,
             localVariableBody,
             localVariableAuthNames,
@@ -82,62 +83,32 @@ open class SubjectsAniApi : ApiClient {
     }
 
 
-    /**
-     * 删除自己的收藏
-     * 删除自己的收藏
-     * @param subjectId 
-     * @return kotlin.Any
-     */
-    @Suppress("UNCHECKED_CAST")
-    open suspend fun deleteSubjectCollection(subjectId: kotlin.Long): HttpResponse<kotlin.Any> {
 
-        val localVariableAuthNames = listOf<String>("auth-jwt")
+    /**
+     * Bangumi OAuth 回调
+     * 用于 Bangumi OAuth 授权回调，用户不应自行调用该接口。
+     * @param code Bangumi OAuth 授权码
+     * @param state 获取 OAuth 链接时提供的请求 ID
+     * @return void
+     */
+    open suspend fun bangumiOauthCallback(code: kotlin.String, state: kotlin.String): HttpResponse<Unit> {
+
+        val localVariableAuthNames = listOf<String>()
 
         val localVariableBody = 
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
-        val localVariableHeaders = mutableMapOf<String, String>()
-
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
-            RequestMethod.DELETE,
-            "/v2/subjects/{subjectId}".replace("{" + "subjectId" + "}", "$subjectId"),
-            query = localVariableQuery,
-            headers = localVariableHeaders,
-            requiresAuthentication = true,
-        )
-
-        return request(
-            localVariableConfig,
-            localVariableBody,
-            localVariableAuthNames,
-        ).wrap()
-    }
-
-
-    /**
-     * 获取单个条目信息. 如果已登录, 还会返回 collectionType 等字段.
-     * 获取单个条目信息. 如果已登录, 还会返回 collectionType 等字段.
-     * @param subjectId 
-     * @return AniSubjectCollection
-     */
-    @Suppress("UNCHECKED_CAST")
-    open suspend fun getSubject(subjectId: kotlin.Long): HttpResponse<AniSubjectCollection> {
-
-        val localVariableAuthNames = listOf<String>("auth-jwt")
-
-        val localVariableBody = 
-            io.ktor.client.utils.EmptyContent
-
-        val localVariableQuery = mutableMapOf<String, List<String>>()
+        code?.apply { localVariableQuery["code"] = listOf("$code") }
+        state?.apply { localVariableQuery["state"] = listOf("$state") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
         val localVariableConfig = RequestConfig<kotlin.Any?>(
             RequestMethod.GET,
-            "/v2/subjects/{subjectId}".replace("{" + "subjectId" + "}", "$subjectId"),
+            "/v1/login/bangumi/oauth/callback",
             query = localVariableQuery,
             headers = localVariableHeaders,
-            requiresAuthentication = true,
+            requiresAuthentication = false,
         )
 
         return request(
@@ -149,37 +120,28 @@ open class SubjectsAniApi : ApiClient {
 
 
     /**
-     * 获取收藏的条目列表
-     * 获取收藏的条目列表
-     * @param offset  (optional)
-     * @param limit  (optional)
-     * @param type  (optional)
-     * @return AniPaginatedResponse
+     * 获取 Bangumi OAuth 授权链接
+     * 获取 Bangumi OAuth 授权链接，用于获取 Bangumi token。
+     * @param requestId 唯一请求 ID，建议使用随机生成的 UUID
+     * @return void
      */
-    @Suppress("UNCHECKED_CAST")
-    open suspend fun getSubjectCollections(
-        offset: kotlin.Int? = null,
-        limit: kotlin.Int? = null,
-        type: AniCollectionType? = null
-    ): HttpResponse<AniPaginatedResponse> {
+    open suspend fun getBangumiOauthUrl(requestId: kotlin.String): HttpResponse<Unit> {
 
-        val localVariableAuthNames = listOf<String>("auth-jwt")
+        val localVariableAuthNames = listOf<String>()
 
         val localVariableBody = 
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
-        offset?.apply { localVariableQuery["offset"] = listOf("$offset") }
-        limit?.apply { localVariableQuery["limit"] = listOf("$limit") }
-        type?.apply { localVariableQuery["type"] = listOf("$type") }
+        requestId?.apply { localVariableQuery["requestId"] = listOf("$requestId") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
         val localVariableConfig = RequestConfig<kotlin.Any?>(
             RequestMethod.GET,
-            "/v2/subjects/list",
+            "/v1/login/bangumi/oauth",
             query = localVariableQuery,
             headers = localVariableHeaders,
-            requiresAuthentication = true,
+            requiresAuthentication = false,
         )
 
         return request(
@@ -191,31 +153,61 @@ open class SubjectsAniApi : ApiClient {
 
 
     /**
-     * 编辑自己的收藏
-     * 编辑自己的收藏
-     * @param subjectId 
-     * @param aniUpdateSubjectCollectionRequest  (optional)
-     * @return kotlin.Any
+     * 获取 Bangumi token
+     * 获取 Bangumi token，用于登录。
+     * @param requestId 获取 OAuth 链接时提供的请求 ID
+     * @return AniBangumiUserToken
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun updateSubjectCollection(
-        subjectId: kotlin.Long,
-        aniUpdateSubjectCollectionRequest: AniUpdateSubjectCollectionRequest? = null
-    ): HttpResponse<kotlin.Any> {
+    open suspend fun getBangumiToken(requestId: kotlin.String): HttpResponse<AniBangumiUserToken> {
 
-        val localVariableAuthNames = listOf<String>("auth-jwt")
+        val localVariableAuthNames = listOf<String>()
 
-        val localVariableBody = aniUpdateSubjectCollectionRequest
+        val localVariableBody = 
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        requestId?.apply { localVariableQuery["requestId"] = listOf("$requestId") }
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.GET,
+            "/v1/login/bangumi/oauth/token",
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = false,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames,
+        ).wrap()
+    }
+
+
+    /**
+     * 刷新 Bangumi token
+     * 刷新 Bangumi token。
+     * @param aniRefreshBangumiTokenRequest 上次登录时提供的刷新 token (optional)
+     * @return AniAnonymousBangumiUserToken
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun refreshBangumiToken(aniRefreshBangumiTokenRequest: AniRefreshBangumiTokenRequest? = null): HttpResponse<AniAnonymousBangumiUserToken> {
+
+        val localVariableAuthNames = listOf<String>()
+
+        val localVariableBody = aniRefreshBangumiTokenRequest
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
         val localVariableHeaders = mutableMapOf<String, String>()
 
         val localVariableConfig = RequestConfig<kotlin.Any?>(
-            RequestMethod.PATCH,
-            "/v2/subjects/{subjectId}".replace("{" + "subjectId" + "}", "$subjectId"),
+            RequestMethod.POST,
+            "/v1/login/bangumi/oauth/refresh",
             query = localVariableQuery,
             headers = localVariableHeaders,
-            requiresAuthentication = true,
+            requiresAuthentication = false,
         )
 
         return jsonRequest(
