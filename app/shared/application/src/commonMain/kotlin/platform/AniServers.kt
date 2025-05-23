@@ -21,6 +21,19 @@ object AniServers {
     val optimizedForGlobalWithName: List<AniServer>
 
     init {
+        val override = currentAniBuildConfig.overrideAniApiServer.takeIf { it.isNotBlank() }
+
+        val (cn, global) = if (override != null) {
+            val server = AniServer("api", Url(override))
+            Pair(listOf(server), listOf(server))
+        } else {
+            getServers()
+        }
+        optimizedForCNWithName = cn
+        optimizedForGlobalWithName = global
+    }
+
+    private fun getServers(): Pair<List<AniServer>, List<AniServer>> {
         val cnServers = arrayOf(
             AniServer("api", Url("https://api.animeko.org")),
             AniServer("danmaku-cn", Url("https://danmaku-cn.myani.org")),
@@ -31,14 +44,15 @@ object AniServers {
             AniServer("danmaku-global", Url("https://danmaku-global.myani.org")),
         )
 
-        optimizedForCNWithName = buildList(cnServers.size + globalServers.size) {
+        val cn = buildList(cnServers.size + globalServers.size) {
             cnServers.forEach { add(it) }
             globalServers.forEach { add(it) }
         }
-        optimizedForGlobalWithName = buildList(globalServers.size + cnServers.size) {
+        val global = buildList(globalServers.size + cnServers.size) {
             globalServers.forEach { add(it) }
             cnServers.forEach { add(it) }
         }
+        return Pair(cn, global)
     }
 
     val optimizedForCN: List<Url> = optimizedForCNWithName.map { it.url }

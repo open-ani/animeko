@@ -74,6 +74,7 @@ val dandanplayAppSecret = getPropertyOrNull("ani.dandanplay.app.secret") ?: ""
 val sentryDsn = getPropertyOrNull("ani.sentry.dsn") ?: ""
 val analyticsServer = getPropertyOrNull("ani.analytics.server") ?: ""
 val analyticsKey = getPropertyOrNull("ani.analytics.key") ?: ""
+val overrideAniApiServer = getPropertyOrNull("ani.api.server")?.takeIf { it.isNotBlank() }
 
 //if (bangumiClientDesktopAppId == null || bangumiClientDesktopSecret == null) {
 //    logger.warn("bangumi.oauth.client.desktop.appId or bangumi.oauth.client.desktop.secret is not set. Bangumi authorization will not work. Get a token from https://bgm.tv/dev/app and set them in local.properties.")
@@ -116,6 +117,7 @@ buildConfig {
         stringField("sentryDsn", sentryDsn)
         stringField("analyticsKey", analyticsKey)
         stringField("analyticsServer", analyticsServer)
+        stringField("overrideAniApiServer", overrideAniApiServer ?: "")
     }
 
     // Android platform configuration
@@ -127,6 +129,7 @@ buildConfig {
         stringField("sentryDsn", sentryDsn)
         stringField("analyticsKey", analyticsKey)
         stringField("analyticsServer", analyticsServer)
+        stringField("overrideAniApiServer", overrideAniApiServer ?: "")
     }
 
     // iOS platform configuration (only if enabled)
@@ -145,6 +148,7 @@ buildConfig {
 
             booleanField("sentryEnabled", sentryEnabled)
             booleanField("analyticsEnabled", analyticsEnabled)
+            stringField("overrideAniApiServer", overrideAniApiServer ?: "")
         }
     }
 }

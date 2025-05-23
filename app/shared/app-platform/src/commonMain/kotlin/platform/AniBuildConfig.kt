@@ -25,6 +25,8 @@ interface AniBuildConfig {
     val sentryDsn: String
     val analyticsServer: String
     val analyticsKey: String
+    val overrideAniApiServer: String
+        get() = ""
 
     val sentryEnabled: Boolean
         get() = true
