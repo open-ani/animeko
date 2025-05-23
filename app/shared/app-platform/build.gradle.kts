@@ -7,8 +7,6 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompileTool
-
 plugins {
     kotlin("multiplatform")
     id("com.android.library")
@@ -19,6 +17,7 @@ plugins {
     kotlin("plugin.serialization")
     id("org.jetbrains.kotlinx.atomicfu")
     idea
+    `build-config`
 }
 
 kotlin {
@@ -110,102 +109,41 @@ android {
 
 /// BUILD CONFIG
 
-val buildConfigDesktopDir = layout.buildDirectory.file("generated/source/buildConfigDesktop")
-val buildConfigIosDir = layout.buildDirectory.file("generated/source/buildConfigIos")
+buildConfig {
+    packageName.set("me.him188.ani.app.platform")
+    className.set("AniBuildConfig")
+    outputDir.set(layout.buildDirectory.dir("generated/buildconfig"))
 
-idea {
-    module {
-        generatedSourceDirs.add(buildConfigDesktopDir.get().asFile)
-        generatedSourceDirs.add(buildConfigIosDir.get().asFile)
-    }
-}
-
-kotlin.sourceSets.getByName("desktopMain") {
-    kotlin.srcDirs(buildConfigDesktopDir)
-}
-
-val generateAniBuildConfigDesktop = tasks.register("generateAniBuildConfigDesktop") {
-    val file = buildConfigDesktopDir.get().asFile.resolve("AniBuildConfig.kt").apply {
-        parentFile.mkdirs()
-        createNewFile()
-    }
-
-    inputs.property("project.version", project.version)
-
-    outputs.file(file)
-
-    val text = """
-            package me.him188.ani.app.platform
-            object AniBuildConfigDesktop : AniBuildConfig {
-                override val versionName = "${project.version}"
-                override val isDebug = System.getenv("ANI_DEBUG") == "true" || System.getProperty("ani.debug") == "true"
-                override val dandanplayAppId = "$dandanplayAppId"
-                override val dandanplayAppSecret = "$dandanplayAppSecret"
-                override val sentryDsn = "$sentryDsn"
-                override val analyticsKey = "$analyticsKey"
-                override val analyticsServer = "$analyticsServer"
-            }
-            """.trimIndent()
-
-    outputs.upToDateWhen {
-        file.exists() && file.readText().trim() == text.trim()
+    // Desktop platform configuration
+    platform("desktop") {
+        stringField("versionName", project.version.toString())
+        expressionField(
+            "isDebug",
+            "System.getenv(\"ANI_DEBUG\") == \"true\" || System.getProperty(\"ani.debug\") == \"true\"",
+        )
+        stringField("dandanplayAppId", dandanplayAppId)
+        stringField("dandanplayAppSecret", dandanplayAppSecret)
+        stringField("sentryDsn", sentryDsn)
+        stringField("analyticsKey", analyticsKey)
+        stringField("analyticsServer", analyticsServer)
     }
 
-    doLast {
-        file.writeText(text)
-    }
-}
+    // iOS platform configuration (only if enabled)
+    if (enableIos) {
+        platform("ios") {
+            stringField("versionName", project.version.toString())
+            booleanField("isDebug", false)
+            stringField("dandanplayAppId", dandanplayAppId)
+            stringField("dandanplayAppSecret", dandanplayAppSecret)
+            stringField("sentryDsn", sentryDsn)
+            stringField("analyticsKey", analyticsKey)
+            stringField("analyticsServer", analyticsServer)
 
-if (enableIos) {
-    kotlin.sourceSets.getByName("iosMain") {
-        kotlin.srcDirs(buildConfigIosDir)
-    }
-    val generateAniBuildConfigIos = tasks.register("generateAniBuildConfigIos") {
-        val file = buildConfigIosDir.get().asFile.resolve("AniBuildConfig.kt").apply {
-            parentFile.mkdirs()
-            createNewFile()
-        }
+            val sentryEnabled = (getPropertyOrNull("ani.sentry.ios") ?: "true").toBooleanStrict()
+            val analyticsEnabled = (getPropertyOrNull("ani.analytics.ios") ?: "true").toBooleanStrict()
 
-        inputs.property("project.version", project.version)
-
-        outputs.file(file)
-
-        val sentryEnabled = (getPropertyOrNull("ani.sentry.ios") ?: "true").toBooleanStrict()
-        val analyticsEnabled = (getPropertyOrNull("ani.analytics.ios") ?: "true").toBooleanStrict()
-
-        val text = """
-            package me.him188.ani.app.platform
-            object AniBuildConfigIos : AniBuildConfig {
-                override val versionName = "${project.version}"
-                override val isDebug = false
-                override val dandanplayAppId = "$dandanplayAppId"
-                override val dandanplayAppSecret = "$dandanplayAppSecret"
-                override val sentryDsn = "$sentryDsn"
-                override val analyticsKey = "$analyticsKey"
-                override val analyticsServer = "$analyticsServer"
-                override val sentryEnabled = $sentryEnabled
-                override val analyticsEnabled = $analyticsEnabled
-            }
-            """.trimIndent()
-
-        outputs.upToDateWhen {
-            file.exists() && file.readText().trim() == text.trim()
-        }
-
-        doLast {
-            file.writeText(text)
+            booleanField("sentryEnabled", sentryEnabled)
+            booleanField("analyticsEnabled", analyticsEnabled)
         }
     }
-    tasks.withType(KotlinCompileTool::class) {
-        dependsOn(generateAniBuildConfigIos)
-    }
-} else {
-    tasks.register("generateAniBuildConfigIos") {
-        inputs.property("project.version", project.version) // 如果没有 input 会不能 cache
-    }
 }
-
-tasks.named("compileKotlinDesktop") {
-    dependsOn(generateAniBuildConfigDesktop)
-}
-
