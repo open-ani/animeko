@@ -113,6 +113,9 @@ private suspend fun BangumiCommentService.postEpisodeComment(
         is CommentContext.EpisodeReply ->
             postEpisodeComment(context.episodeId, content, turnstileToken, context.commentId)
 
-        is CommentContext.SubjectReview -> error("unreachable on postEpisodeComment")
+        is CommentContext.BlogReply -> 
+            postBlogComment(context.blogId, content, turnstileToken, null)
+        else -> 
+            error("Invalid Comment target.")
     }
 }

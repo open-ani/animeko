@@ -15,5 +15,37 @@
 
 package me.him188.ani.app.data.models.subject
 
-class SubjectReview {
-}
+import me.him188.ani.app.data.models.Blog.BlogEntry
+import me.him188.ani.app.data.models.Blog.toBlogEntry
+import me.him188.ani.app.data.models.UserInfo
+import me.him188.ani.datasources.bangumi.next.models.BangumiNextSubjectReview
+import me.him188.ani.datasources.bangumi.next.models.BangumiNextGetSubjectReviews200Response
+
+data class SubjectReview(
+    val reviewId: Int,
+    val entry: BlogEntry,
+    val author: UserInfo
+)
+
+data class SubjectReviewResponse(
+    val data: List<SubjectReview>,
+    val total: Int
+)
+
+fun BangumiNextSubjectReview.toSubjectReview(): SubjectReview =
+    SubjectReview(
+        reviewId = id,
+        entry = entry.toBlogEntry(),
+        author = UserInfo(
+            id = user.id,
+            nickname = user.nickname,
+            username = null, // 没有 username 字段
+            avatarUrl = user.avatar.large
+        )
+    )
+
+fun BangumiNextGetSubjectReviews200Response.toSubjectReviewResponse(): SubjectReviewResponse =
+    SubjectReviewResponse(
+        data = data.map { it.toSubjectReview() },
+        total = total
+    )

@@ -15,14 +15,15 @@
 
 package me.him188.ani.app.data.models.Blog
 
-import androidx.compose.runtime.Immutable
-import me.him188.ani.datasources.bangumi.next.models.BangumiNextSlimUser
 
+import androidx.compose.runtime.Immutable
+import me.him188.ani.app.data.models.UserInfo
+import me.him188.ani.datasources.bangumi.next.models.BangumiNextBlogEntry
 
 @Immutable
-data class BlogEntry (
+data class BlogEntry(
     val content: String,
-    val createdAt: Int,
+    val createdAt: Long,
     val icon: String,
     val id: Int,
     val noreply: Int,
@@ -32,7 +33,30 @@ data class BlogEntry (
     val tags: List<String>,
     val title: String,
     val type: Int,
-    val updatedAt: Int,
-    val user: BangumiNextSlimUser,
+    val updatedAt: Long,
+    val user: UserInfo,
     val views: Int
 )
+
+fun BangumiNextBlogEntry.toBlogEntry(): BlogEntry =
+    BlogEntry(
+        content = content,
+        createdAt = createdAt * 1000L, // 转为毫秒
+        icon = icon,
+        id = id,
+        noreply = noreply,
+        public = `public`,
+        related = related,
+        replies = replies,
+        tags = tags,
+        title = title,
+        type = type,
+        updatedAt = updatedAt * 1000L, // 转为毫秒
+        user = UserInfo(
+            id = user.id,
+            nickname = user.nickname,
+            username = null,   // 无 username 字段
+            avatarUrl = user.avatar.large
+        ),
+        views = views
+    )

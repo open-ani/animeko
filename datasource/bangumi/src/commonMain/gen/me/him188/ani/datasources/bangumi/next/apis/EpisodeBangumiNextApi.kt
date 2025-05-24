@@ -15,23 +15,19 @@
 
 package me.him188.ani.datasources.bangumi.next.apis
 
-import me.him188.ani.datasources.bangumi.next.models.BangumiNextCreateEpisodeComment200Response
-import me.him188.ani.datasources.bangumi.next.models.BangumiNextCreateEpisodeCommentRequest
+import me.him188.ani.datasources.bangumi.next.models.BangumiNextCreateBlogComment200Response
 import me.him188.ani.datasources.bangumi.next.models.BangumiNextEpisode
-import me.him188.ani.datasources.bangumi.next.models.BangumiNextErrorResponse
-import me.him188.ani.datasources.bangumi.next.models.BangumiNextGetEpisodeComments200ResponseInner
+import me.him188.ani.datasources.bangumi.next.models.BangumiNextGetBlogComments200ResponseInner
 import me.him188.ani.datasources.bangumi.next.models.BangumiNextUpdateContent
 
 import me.him188.ani.datasources.bangumi.next.infrastructure.*
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
-import io.ktor.client.request.forms.formData
 import io.ktor.client.engine.HttpClientEngine
 import kotlinx.serialization.json.Json
-import io.ktor.http.ParametersBuilder
 import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
 import kotlinx.serialization.encoding.*
+import me.him188.ani.datasources.bangumi.next.models.BangumiNextCreateEpisodeCommentRequest
 
 open class EpisodeBangumiNextApi : ApiClient {
 
@@ -51,15 +47,15 @@ open class EpisodeBangumiNextApi : ApiClient {
      * 创建条目的剧集吐槽
      * 
      * @param episodeID 
-     * @param bangumiNextCreateEpisodeCommentRequest  (optional)
-     * @return BangumiNextCreateEpisodeComment200Response
+     * @param bangumiNextCreateBlogCommentRequest  (optional)
+     * @return BangumiNextCreateBlogComment200Response
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun createEpisodeComment(episodeID: kotlin.Int, bangumiNextCreateEpisodeCommentRequest: BangumiNextCreateEpisodeCommentRequest? = null): HttpResponse<BangumiNextCreateEpisodeComment200Response> {
+    open suspend fun createEpisodeComment(episodeID: Int, bangumiNextCreateBlogCommentRequest: BangumiNextCreateEpisodeCommentRequest = null): HttpResponse<BangumiNextCreateBlogComment200Response> {
 
         val localVariableAuthNames = listOf<String>()
 
-        val localVariableBody = bangumiNextCreateEpisodeCommentRequest
+        val localVariableBody = bangumiNextCreateBlogCommentRequest
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
         val localVariableHeaders = mutableMapOf<String, String>()
@@ -151,10 +147,10 @@ open class EpisodeBangumiNextApi : ApiClient {
      * 获取条目的剧集吐槽箱
      * 
      * @param episodeID 
-     * @return kotlin.collections.List<BangumiNextGetEpisodeComments200ResponseInner>
+     * @return kotlin.collections.List<BangumiNextGetBlogComments200ResponseInner>
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun getEpisodeComments(episodeID: kotlin.Int): HttpResponse<kotlin.collections.List<BangumiNextGetEpisodeComments200ResponseInner>> {
+    open suspend fun getEpisodeComments(episodeID: kotlin.Int): HttpResponse<kotlin.collections.List<BangumiNextGetBlogComments200ResponseInner>> {
 
         val localVariableAuthNames = listOf<String>()
 
@@ -180,9 +176,9 @@ open class EpisodeBangumiNextApi : ApiClient {
     }
 
     @Serializable(GetEpisodeCommentsResponse.Companion::class)
-    private class GetEpisodeCommentsResponse(val value: List<BangumiNextGetEpisodeComments200ResponseInner>) {
+    private class GetEpisodeCommentsResponse(val value: List<BangumiNextGetBlogComments200ResponseInner>) {
         companion object : KSerializer<GetEpisodeCommentsResponse> {
-            private val serializer: KSerializer<List<BangumiNextGetEpisodeComments200ResponseInner>> = serializer<List<BangumiNextGetEpisodeComments200ResponseInner>>()
+            private val serializer: KSerializer<List<BangumiNextGetBlogComments200ResponseInner>> = serializer<List<BangumiNextGetBlogComments200ResponseInner>>()
             override val descriptor = serializer.descriptor
             override fun serialize(encoder: Encoder, value: GetEpisodeCommentsResponse) = serializer.serialize(encoder, value.value)
             override fun deserialize(decoder: Decoder) = GetEpisodeCommentsResponse(serializer.deserialize(decoder))

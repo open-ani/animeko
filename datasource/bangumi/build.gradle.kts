@@ -123,6 +123,10 @@ val stripeApiP1 = tasks.register("stripeApiP1") {
             "/p1/subjects/{subjectID}/comments", // 条目吐槽箱, 作为条目评论
             "/p1/trending/subjects",
             "/p1/collections/subjects",
+            "/p1/blogs/{entryID}",
+            "/p1/blogs/{entryID}/comments",
+            "/p1/blogs/{entryID}/photos",
+            "/p1/blogs/{entryID}/subjects"
         )
         val subjectPaths = paths.filter { (path, _) -> keepPaths.any { path.startsWith(it) } }
         println("The following paths are kept: ${subjectPaths.keys}")
