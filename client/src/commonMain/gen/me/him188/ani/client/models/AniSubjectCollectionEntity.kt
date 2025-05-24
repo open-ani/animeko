@@ -1,3 +1,4 @@
+// @formatter:off
 /**
  *
  * Please note:
@@ -10,7 +11,7 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.client.models
@@ -22,18 +23,18 @@ import kotlinx.serialization.Serializable
 /**
  * 
  *
- * @param id
- * @param type
- * @param tags
- * @param metaTags
- * @param scoreDetails
- * @param name
- * @param nameCn
- * @param infobox
- * @param platform
- * @param summary
- * @param nsfw
- * @param date
+ * @param id 
+ * @param type 
+ * @param tags 
+ * @param metaTags 
+ * @param scoreDetails 
+ * @param name 
+ * @param nameCn 
+ * @param infobox 
+ * @param platform 
+ * @param summary 
+ * @param nsfw 
+ * @param date 
  * @param favorite 
  * @param series 
  * @param score 
@@ -42,7 +43,7 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 
-data class AniSubjectCollectionEntity(
+data class AniSubjectCollectionEntity (
 
     @SerialName(value = "id") @Required val id: kotlin.Long,
 
@@ -83,3 +84,5 @@ data class AniSubjectCollectionEntity(
 
 }
 
+
+// @formatter:on

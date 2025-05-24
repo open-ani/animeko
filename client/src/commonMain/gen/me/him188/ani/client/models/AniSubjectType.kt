@@ -1,3 +1,4 @@
+// @formatter:off
 /**
  *
  * Please note:
@@ -10,7 +11,7 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.client.models
@@ -49,11 +50,13 @@ enum class AniSubjectType(val value: kotlin.String) {
          * Returns a valid [AniSubjectType] for [data], null otherwise.
          */
         fun decode(data: kotlin.Any?): AniSubjectType? = data?.let {
-            val normalizedData = "$it".lowercase()
-            values().firstOrNull { value ->
-                it == value || normalizedData == "$value".lowercase()
-            }
+          val normalizedData = "$it".lowercase()
+          values().firstOrNull { value ->
+            it == value || normalizedData == "$value".lowercase()
+          }
         }
     }
 }
 
+
+// @formatter:on

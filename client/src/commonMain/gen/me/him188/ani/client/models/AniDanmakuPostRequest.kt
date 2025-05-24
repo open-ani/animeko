@@ -1,3 +1,4 @@
+// @formatter:off
 /**
  *
  * Please note:
@@ -10,7 +11,7 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.client.models
@@ -26,7 +27,7 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 
-data class AniDanmakuPostRequest(
+data class AniDanmakuPostRequest (
 
     @SerialName(value = "danmakuInfo") @Required val danmakuInfo: AniDanmakuInfo
 
@@ -35,3 +36,5 @@ data class AniDanmakuPostRequest(
 
 }
 
+
+// @formatter:on

@@ -1,3 +1,4 @@
+// @formatter:off
 /**
  *
  * Please note:
@@ -10,7 +11,7 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.client.models
@@ -22,32 +23,32 @@ import kotlinx.serialization.Serializable
 /**
  * 
  *
- * @param id
- * @param type
- * @param name
- * @param nameCn
- * @param summary
- * @param nsfw
- * @param airDate
- * @param aliases
- * @param favorite
+ * @param id 
+ * @param type 
+ * @param name 
+ * @param nameCn 
+ * @param summary 
+ * @param nsfw 
+ * @param airDate 
+ * @param aliases 
+ * @param favorite 
  * @param tags 
- * @param metaTags
+ * @param metaTags 
  * @param scoreDetails 
  * @param selfRating 
  * @param episodes 条目对应的剧集的收藏状态
  * @param infobox 
  * @param platform 
  * @param score 如果不为空, 则必定为浮点
- * @param rank
- * @param collectionType
+ * @param rank 
+ * @param collectionType 
  * @param airingInfo 
  * @param relations 
  * @param updatedAt 收藏更新的时间. 如果没有收藏, 则为 `null`.
  */
 @Serializable
 
-data class AniSubjectCollection(
+data class AniSubjectCollection (
 
     @SerialName(value = "id") @Required val id: kotlin.Long,
 
@@ -101,3 +102,5 @@ data class AniSubjectCollection(
 
 }
 
+
+// @formatter:on

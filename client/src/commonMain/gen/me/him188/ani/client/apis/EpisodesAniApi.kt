@@ -1,3 +1,4 @@
+// @formatter:off
 /**
  *
  * Please note:
@@ -10,26 +11,24 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.client.apis
 
+import io.ktor.client.HttpClient
+import io.ktor.client.HttpClientConfig
+import io.ktor.client.engine.HttpClientEngine
+import kotlinx.serialization.json.Json
+import me.him188.ani.client.infrastructure.ApiClient
+import me.him188.ani.client.infrastructure.HttpResponse
+import me.him188.ani.client.infrastructure.RequestConfig
+import me.him188.ani.client.infrastructure.RequestMethod
+import me.him188.ani.client.infrastructure.wrap
 import me.him188.ani.client.models.AniCollectionType
 import me.him188.ani.client.models.AniEpisodeCollectionEntity
 import me.him188.ani.client.models.AniPaginatedResponse
 import me.him188.ani.client.models.AniUpdateEpisodeCollectionRequest
-
-import me.him188.ani.client.infrastructure.*
-import io.ktor.client.HttpClient
-import io.ktor.client.HttpClientConfig
-import io.ktor.client.request.forms.formData
-import io.ktor.client.engine.HttpClientEngine
-import kotlinx.serialization.json.Json
-import io.ktor.http.ParametersBuilder
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
 
 open class EpisodesAniApi : ApiClient {
 
@@ -38,17 +37,12 @@ open class EpisodesAniApi : ApiClient {
         httpClientEngine: HttpClientEngine? = null,
         httpClientConfig: ((HttpClientConfig<*>) -> Unit)? = null,
         jsonSerializer: Json = ApiClient.JSON_DEFAULT
-    ) : super(
-        baseUrl = baseUrl,
-        httpClientEngine = httpClientEngine,
-        httpClientConfig = httpClientConfig,
-        jsonBlock = jsonSerializer,
-    )
+    ) : super(baseUrl = baseUrl, httpClientEngine = httpClientEngine, httpClientConfig = httpClientConfig, jsonBlock = jsonSerializer)
 
     constructor(
         baseUrl: String,
         httpClient: HttpClient
-    ) : super(baseUrl = baseUrl, httpClient = httpClient)
+    ): super(baseUrl = baseUrl, httpClient = httpClient)
 
     /**
      * 删除剧集收藏
@@ -78,7 +72,7 @@ open class EpisodesAniApi : ApiClient {
         return request(
             localVariableConfig,
             localVariableBody,
-            localVariableAuthNames,
+            localVariableAuthNames
         ).wrap()
     }
 
@@ -111,7 +105,7 @@ open class EpisodesAniApi : ApiClient {
         return request(
             localVariableConfig,
             localVariableBody,
-            localVariableAuthNames,
+            localVariableAuthNames
         ).wrap()
     }
 
@@ -126,12 +120,7 @@ open class EpisodesAniApi : ApiClient {
      * @return AniPaginatedResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun getEpisodeCollections(
-        subjectId: kotlin.Long,
-        offset: kotlin.Int? = null,
-        limit: kotlin.Int? = null,
-        type: AniCollectionType? = null
-    ): HttpResponse<AniPaginatedResponse> {
+    open suspend fun getEpisodeCollections(subjectId: kotlin.Long, offset: kotlin.Int? = null, limit: kotlin.Int? = null, type: AniCollectionType? = null): HttpResponse<AniPaginatedResponse> {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
@@ -156,7 +145,7 @@ open class EpisodesAniApi : ApiClient {
         return request(
             localVariableConfig,
             localVariableBody,
-            localVariableAuthNames,
+            localVariableAuthNames
         ).wrap()
     }
 
@@ -169,10 +158,7 @@ open class EpisodesAniApi : ApiClient {
      * @return kotlin.Any
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun updateEpisodeCollection(
-        episodeId: kotlin.Long,
-        aniUpdateEpisodeCollectionRequest: AniUpdateEpisodeCollectionRequest? = null
-    ): HttpResponse<kotlin.Any> {
+    open suspend fun updateEpisodeCollection(episodeId: kotlin.Long, aniUpdateEpisodeCollectionRequest: AniUpdateEpisodeCollectionRequest? = null): HttpResponse<kotlin.Any> {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
@@ -192,9 +178,12 @@ open class EpisodesAniApi : ApiClient {
         return jsonRequest(
             localVariableConfig,
             localVariableBody,
-            localVariableAuthNames,
+            localVariableAuthNames
         ).wrap()
     }
 
 
+
 }
+
+// @formatter:on

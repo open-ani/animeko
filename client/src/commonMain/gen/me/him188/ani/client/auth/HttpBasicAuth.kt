@@ -1,3 +1,4 @@
+// @formatter:off
 package me.him188.ani.client.auth
 
 import io.ktor.util.encodeBase64
@@ -13,3 +14,5 @@ class HttpBasicAuth : Authentication {
         headers["Authorization"] = "Basic $auth"
     }
 }
+
+// @formatter:on

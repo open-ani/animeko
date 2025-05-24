@@ -1,3 +1,4 @@
+// @formatter:off
 /**
  *
  * Please note:
@@ -10,7 +11,7 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.client.models
@@ -27,7 +28,7 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 
-data class AniSendEmailOtpRequest(
+data class AniSendEmailOtpRequest (
 
     @SerialName(value = "email") @Required val email: kotlin.String,
 
@@ -38,3 +39,5 @@ data class AniSendEmailOtpRequest(
 
 }
 
+
+// @formatter:on

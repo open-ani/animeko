@@ -1,3 +1,4 @@
+// @formatter:off
 /**
  *
  * Please note:
@@ -10,7 +11,7 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.client.models
@@ -27,7 +28,7 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 
-data class AniAnimeSchedule(
+data class AniAnimeSchedule (
 
     @SerialName(value = "seasonId") @Required val seasonId: AniAnimeSeasonId,
 
@@ -38,3 +39,5 @@ data class AniAnimeSchedule(
 
 }
 
+
+// @formatter:on

@@ -1,3 +1,4 @@
+// @formatter:off
 /**
  *
  * Please note:
@@ -10,7 +11,7 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.client.models
@@ -29,7 +30,7 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 
-data class AniDanmakuInfoEntity(
+data class AniDanmakuInfoEntity (
 
     @SerialName(value = "playTime") @Required val playTime: kotlin.Long,
 
@@ -44,3 +45,5 @@ data class AniDanmakuInfoEntity(
 
 }
 
+
+// @formatter:on

@@ -1,3 +1,4 @@
+// @formatter:off
 package me.him188.ani.client.infrastructure
 
 import io.ktor.http.Headers
@@ -29,24 +30,25 @@ interface BodyProvider<T : Any> {
 class TypedBodyProvider<T : Any>(private val type: TypeInfo) : BodyProvider<T> {
     @Suppress("UNCHECKED_CAST")
     override suspend fun body(response: io.ktor.client.statement.HttpResponse): T =
-        response.call.body(type) as T
+            response.call.body(type) as T
 
     @Suppress("UNCHECKED_CAST")
     override suspend fun <V : Any> typedBody(response: io.ktor.client.statement.HttpResponse, type: TypeInfo): V =
-        response.call.body(type) as V
+            response.call.body(type) as V
 }
 
-class MappedBodyProvider<S : Any, T : Any>(private val provider: BodyProvider<S>, private val block: S.() -> T) :
-    BodyProvider<T> {
+class MappedBodyProvider<S : Any, T : Any>(private val provider: BodyProvider<S>, private val block: S.() -> T) : BodyProvider<T> {
     override suspend fun body(response: io.ktor.client.statement.HttpResponse): T =
-        block(provider.body(response))
+            block(provider.body(response))
 
     override suspend fun <V : Any> typedBody(response: io.ktor.client.statement.HttpResponse, type: TypeInfo): V =
-        provider.typedBody(response, type)
+            provider.typedBody(response, type)
 }
 
 inline fun <reified T : Any> io.ktor.client.statement.HttpResponse.wrap(): HttpResponse<T> =
-    HttpResponse(this, TypedBodyProvider(typeInfo<T>()))
+        HttpResponse(this, TypedBodyProvider(typeInfo<T>()))
 
 fun <T : Any, V : Any> HttpResponse<T>.map(block: T.() -> V): HttpResponse<V> =
-    HttpResponse(response, MappedBodyProvider(provider, block))
+        HttpResponse(response, MappedBodyProvider(provider, block))
+
+// @formatter:on

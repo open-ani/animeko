@@ -1,3 +1,4 @@
+// @formatter:off
 /**
  *
  * Please note:
@@ -10,7 +11,7 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.client.models
@@ -23,11 +24,11 @@ import kotlinx.serialization.Serializable
 /**
  * 
  *
- * @param id
- * @param nickname
- * @param hasPassword
- * @param email
- * @param smallAvatar
+ * @param id 
+ * @param nickname 
+ * @param hasPassword 
+ * @param email 
+ * @param smallAvatar 
  * @param mediumAvatar 
  * @param largeAvatar 
  * @param registerTime 
@@ -36,7 +37,7 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 
-data class AniAniSelfUser(
+data class AniAniSelfUser (
 
     @SerialName(value = "id") @Required val id: kotlin.String,
 
@@ -63,3 +64,5 @@ data class AniAniSelfUser(
 
 }
 
+
+// @formatter:on

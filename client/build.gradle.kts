@@ -115,8 +115,12 @@ val generateApi = tasks.register("generateApiV0", GenerateTask::class) {
 
 val fixGeneratedOpenApi = tasks.register("fixGeneratedOpenApi") {
     dependsOn(generateApi)
+    val outputDir = file(generateApi.get().outputDir.get())
 
     doLast {
+        outputDir.walk().filter { it.isFile }.forEach {
+            it.writeText("// @formatter:off\n" + it.readText() + "\n// @formatter:on\n")
+        }
     }
 }
 

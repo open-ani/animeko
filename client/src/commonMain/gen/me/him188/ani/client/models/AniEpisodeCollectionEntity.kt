@@ -1,3 +1,4 @@
+// @formatter:off
 /**
  *
  * Please note:
@@ -10,7 +11,7 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.client.models
@@ -22,21 +23,21 @@ import kotlinx.serialization.Serializable
 /**
  * 
  *
- * @param episodeId
- * @param subjectId
- * @param sort
- * @param type
- * @param name
- * @param nameCn
- * @param description
- * @param airdate
+ * @param episodeId 
+ * @param subjectId 
+ * @param sort 
+ * @param type 
+ * @param name 
+ * @param nameCn 
+ * @param description 
+ * @param airdate 
  * @param disc 
  * @param duration 
  * @param collectionType 
  */
 @Serializable
 
-data class AniEpisodeCollectionEntity(
+data class AniEpisodeCollectionEntity (
 
     @SerialName(value = "episodeId") @Required val episodeId: kotlin.Long,
 
@@ -65,3 +66,5 @@ data class AniEpisodeCollectionEntity(
 
 }
 
+
+// @formatter:on

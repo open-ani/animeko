@@ -1,3 +1,4 @@
+// @formatter:off
 /**
  *
  * Please note:
@@ -10,7 +11,7 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.client.models
@@ -28,7 +29,7 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 
-data class AniAnimeRecurrence(
+data class AniAnimeRecurrence (
 
     @SerialName(value = "startTime") @Required val startTime: kotlin.String,
 
@@ -39,3 +40,5 @@ data class AniAnimeRecurrence(
 
 }
 
+
+// @formatter:on

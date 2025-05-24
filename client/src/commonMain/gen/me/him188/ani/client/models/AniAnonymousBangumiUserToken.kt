@@ -1,3 +1,4 @@
+// @formatter:off
 /**
  *
  * Please note:
@@ -10,7 +11,7 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.client.models
@@ -29,7 +30,7 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 
-data class AniAnonymousBangumiUserToken(
+data class AniAnonymousBangumiUserToken (
 
     @SerialName(value = "accessToken") @Required val accessToken: kotlin.String,
 
@@ -42,3 +43,5 @@ data class AniAnonymousBangumiUserToken(
 
 }
 
+
+// @formatter:on

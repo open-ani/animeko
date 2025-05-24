@@ -1,3 +1,4 @@
+// @formatter:off
 /**
  *
  * Please note:
@@ -10,7 +11,7 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.client.models
@@ -31,7 +32,7 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 
-data class AniFavouriteEntity(
+data class AniFavouriteEntity (
 
     @SerialName(value = "wish") @Required val wish: kotlin.Int,
 
@@ -48,3 +49,5 @@ data class AniFavouriteEntity(
 
 }
 
+
+// @formatter:on

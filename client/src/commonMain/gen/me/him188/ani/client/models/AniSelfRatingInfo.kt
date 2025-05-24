@@ -1,3 +1,4 @@
+// @formatter:off
 /**
  *
  * Please note:
@@ -10,7 +11,7 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.client.models
@@ -23,14 +24,14 @@ import kotlinx.serialization.Serializable
 /**
  * 
  *
- * @param score
- * @param tags
- * @param isPrivate
+ * @param score 
+ * @param tags 
+ * @param isPrivate 
  * @param comment 
  */
 @Serializable
 
-data class AniSelfRatingInfo(
+data class AniSelfRatingInfo (
 
     @SerialName(value = "score") @Required val score: kotlin.Int,
 
@@ -45,3 +46,5 @@ data class AniSelfRatingInfo(
 
 }
 
+
+// @formatter:on

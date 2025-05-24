@@ -1,3 +1,4 @@
+// @formatter:off
 /**
  *
  * Please note:
@@ -26,7 +27,7 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 
-data class AniTrends(
+data class AniTrends (
 
     @SerialName(value = "trendingSubjects") @Required val trendingSubjects: kotlin.collections.List<AniTrendingSubject>
 
@@ -35,3 +36,5 @@ data class AniTrends(
 
 }
 
+
+// @formatter:on

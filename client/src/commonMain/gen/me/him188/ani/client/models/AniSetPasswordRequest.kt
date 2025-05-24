@@ -1,3 +1,4 @@
+// @formatter:off
 /**
  *
  * Please note:
@@ -10,7 +11,7 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.client.models
@@ -27,7 +28,7 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 
-data class AniSetPasswordRequest(
+data class AniSetPasswordRequest (
 
     @SerialName(value = "password") @Required val password: kotlin.String
 
@@ -36,3 +37,5 @@ data class AniSetPasswordRequest(
 
 }
 
+
+// @formatter:on

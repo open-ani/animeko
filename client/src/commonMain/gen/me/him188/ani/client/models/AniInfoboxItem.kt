@@ -1,3 +1,4 @@
+// @formatter:off
 /**
  *
  * Please note:
@@ -10,7 +11,7 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.client.models
@@ -22,12 +23,12 @@ import kotlinx.serialization.Serializable
 /**
  * 
  *
- * @param key
+ * @param key 
  * @param propertyValues 
  */
 @Serializable
 
-data class AniInfoboxItem(
+data class AniInfoboxItem (
 
     @SerialName(value = "key") @Required val key: kotlin.String,
 
@@ -38,3 +39,5 @@ data class AniInfoboxItem(
 
 }
 
+
+// @formatter:on

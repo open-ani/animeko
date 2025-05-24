@@ -1,3 +1,4 @@
+// @formatter:off
 /**
  *
  * Please note:
@@ -10,7 +11,7 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.client.models
@@ -25,7 +26,7 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 
-data class AniUpdateEpisodeCollectionRequest(
+data class AniUpdateEpisodeCollectionRequest (
 
     @SerialName(value = "collectionType") val collectionType: AniCollectionType? = null
 
@@ -34,3 +35,5 @@ data class AniUpdateEpisodeCollectionRequest(
 
 }
 
+
+// @formatter:on

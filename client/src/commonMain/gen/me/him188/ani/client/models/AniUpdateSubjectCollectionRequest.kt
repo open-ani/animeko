@@ -1,3 +1,4 @@
+// @formatter:off
 /**
  *
  * Please note:
@@ -10,17 +11,13 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.client.models
 
-import me.him188.ani.client.models.AniCollectionType
-import me.him188.ani.client.models.AniSelfRatingInfo
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * 
@@ -30,7 +27,7 @@ import kotlinx.serialization.encoding.*
  */
 @Serializable
 
-data class AniUpdateSubjectCollectionRequest(
+data class AniUpdateSubjectCollectionRequest (
 
     @SerialName(value = "collectionType") val collectionType: AniCollectionType? = null,
 
@@ -41,3 +38,5 @@ data class AniUpdateSubjectCollectionRequest(
 
 }
 
+
+// @formatter:on

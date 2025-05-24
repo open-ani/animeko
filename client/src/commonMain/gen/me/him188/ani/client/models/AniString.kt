@@ -1,3 +1,4 @@
+// @formatter:off
 /**
  *
  * Please note:
@@ -10,7 +11,7 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.client.models
@@ -24,10 +25,12 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 
-class AniString(
+class AniString (
 
 ) {
 
 
 }
 
+
+// @formatter:on
