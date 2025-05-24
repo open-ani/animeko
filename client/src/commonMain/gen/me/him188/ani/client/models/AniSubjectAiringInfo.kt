@@ -21,7 +21,7 @@ import kotlinx.serialization.Serializable
 /**
  * 新番连载信息, 如果是完结番则为 null
  *
- * @param begin
+ * @param begin 
  * @param recurrence 
  * @param end 
  */

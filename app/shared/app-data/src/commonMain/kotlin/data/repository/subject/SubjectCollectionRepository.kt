@@ -242,23 +242,17 @@ class SubjectCollectionRepositoryImpl(
     override fun subjectCollectionFlow(subjectId: Int): Flow<SubjectCollectionInfo> =
         subjectCollectionDao.findById(subjectId)
             .restartOnNewLogin(sessionManager)
-            .onEach {
+            .onEach { existing ->
                 // 如果没有缓存, 则 fetch 然后插入 subject 缓存
-                if (it == null || it.isExpired()) {
-                    coroutineScope {
-                        val subjectCollectionDeferred = async { bangumiSubjectService.getSubjectCollection(subjectId) }
-                        val recurrenceDeferred = async { animeScheduleRepository.getSubjectRecurrence(subjectId) }
-
-                        val (batch, collection) = subjectCollectionDeferred.await()
-                        val entity = batch.toEntity(
-                            collection?.type.toCollectionType(),
-                            selfRatingInfo = collection?.toSelfRatingInfo() ?: SelfRatingInfo.Empty,
-                            lastUpdated = collection?.updatedAt?.toEpochMilliseconds() ?: 0,
-                            lastFetched = currentTimeMillis(),
-                            recurrence = recurrenceDeferred.await(),
-                        )
-                        subjectCollectionDao.upsert(entity) // 插入后, `subjectCollectionDao.findById(subjectId)` 会重新 emit
+                if (existing == null || existing.isExpired()) {
+                    val subject = bangumiSubjectService.getSubjectCollection(subjectId)
+                    val entity = subject?.toEntity(
+                        lastFetched = currentTimeMillis(),
+                    )
+                    entity?.let {
+                        subjectCollectionDao.upsert(it) // 插入后, `subjectCollectionDao.findById(subjectId)` 会重新 emit
                     }
+                    // TODO: 2025/5/24 handle subject not found 
                 }
             }
             .filterNotNull()
@@ -578,7 +572,9 @@ class SubjectCollectionRepositoryImpl(
     }
 
     private suspend fun deleteSubjectCollection(subjectId: Int) {
-        // TODO: deleteSubjectCollection
+        withContext(defaultDispatcher) {
+            bangumiSubjectService.deleteSubjectCollection(subjectId)
+        }
     }
 
     private companion object {

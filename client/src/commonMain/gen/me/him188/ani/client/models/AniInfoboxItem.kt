@@ -20,10 +20,10 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- *
+ * 
  *
  * @param key
- * @param propertyValues
+ * @param propertyValues 
  */
 @Serializable
 

@@ -34,7 +34,7 @@ import kotlinx.serialization.Serializable
  * @param summary
  * @param nsfw
  * @param date
- * @param favorite
+ * @param favorite 
  * @param series 
  * @param score 
  * @param rank 

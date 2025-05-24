@@ -46,7 +46,6 @@ import me.him188.ani.app.domain.session.checkAccessBangumiApiNow
 import me.him188.ani.client.apis.SubjectsAniApi
 import me.him188.ani.client.models.AniCollectionType
 import me.him188.ani.client.models.AniSubjectCollection
-import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.bangumi.BangumiClient
 import me.him188.ani.datasources.bangumi.apis.DefaultApi
 import me.him188.ani.datasources.bangumi.models.BangumiCount
@@ -76,7 +75,10 @@ interface BangumiSubjectService {
         limit: Int
     ): List<AniSubjectCollection>
 
-    suspend fun getSubjectCollection(subjectId: Int): BatchSubjectCollection
+    /**
+     * 当 [subjectId] 不存在时, 返回 `null`.
+     */
+    suspend fun getSubjectCollection(subjectId: Int): AniSubjectCollection?
 
     suspend fun batchGetSubjectDetails(
         ids: IntList,
@@ -95,7 +97,7 @@ interface BangumiSubjectService {
     /**
      * 获取用户对这个条目的收藏状态. flow 一定会 emit 至少一个值或抛出异常. 当用户没有收藏这个条目时 emit `null`. 当没有登录时 emit `null`.
      */
-    fun subjectCollectionById(subjectId: Int): Flow<BangumiUserSubjectCollection?>
+    fun subjectCollectionById(subjectId: Int): Flow<AniSubjectCollection?>
 
     suspend fun patchSubjectCollection(subjectId: Int, payload: BangumiUserSubjectCollectionModifyPayload)
     suspend fun deleteSubjectCollection(subjectId: Int)
@@ -163,12 +165,8 @@ class RemoteBangumiSubjectService(
         return@withContext collections
     }
 
-    override suspend fun getSubjectCollection(subjectId: Int): BatchSubjectCollection {
-        val collection = subjectCollectionById(subjectId).first()
-        return BatchSubjectCollection(
-            batchGetSubjectDetails(intListOf(subjectId)).first(),
-            collection,
-        )
+    override suspend fun getSubjectCollection(subjectId: Int): AniSubjectCollection? {
+        return subjectCollectionById(subjectId).first()
     }
 
     override suspend fun batchGetSubjectDetails(
@@ -406,17 +404,13 @@ class RemoteBangumiSubjectService(
 //        }.flowOn(ioDispatcher)
     }
 
-    override fun subjectCollectionById(subjectId: Int): Flow<BangumiUserSubjectCollection?> {
+    override fun subjectCollectionById(subjectId: Int): Flow<AniSubjectCollection?> {
         return flow {
             emit(
                 try {
-                    TODO("subjectCollectionById")
-//                    if (sessionManager.verifiedAccessToken.first() == null) {
-//                        emit(null)
-//                        return@flow
-//                    }
-//                    @OptIn(OpaqueSession::class)
-//                    api { getUserCollection(sessionManager.username.first() ?: "-", subjectId).body() }
+                    subjectApi {
+                        this.getSubject(subjectId.toLong()).body()
+                    }
                 } catch (e: ResponseException) {
                     if (e.response.status == HttpStatusCode.NotFound) {
                         null

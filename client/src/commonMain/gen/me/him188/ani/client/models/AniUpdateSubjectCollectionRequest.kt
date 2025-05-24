@@ -15,13 +15,17 @@
 
 package me.him188.ani.client.models
 
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
+import me.him188.ani.client.models.AniCollectionType
+import me.him188.ani.client.models.AniSelfRatingInfo
+
+import kotlinx.serialization.*
+import kotlinx.serialization.descriptors.*
+import kotlinx.serialization.encoding.*
 
 /**
  * 
  *
- * @param collectionType
+ * @param collectionType 
  * @param selfRating 
  */
 @Serializable

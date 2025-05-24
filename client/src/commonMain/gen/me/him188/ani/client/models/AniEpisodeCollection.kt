@@ -30,7 +30,7 @@ import kotlinx.serialization.Serializable
  * @param nameCn
  * @param description
  * @param airdate
- * @param disc
+ * @param disc 
  * @param duration 
  * @param collectionType 
  */

@@ -21,12 +21,12 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- *
+ * 
  *
  * @param score
  * @param tags
  * @param isPrivate
- * @param comment
+ * @param comment 
  */
 @Serializable
 
