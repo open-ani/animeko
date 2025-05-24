@@ -9,194 +9,261 @@
 
 package me.him188.ani.app.domain.session
 
+import kotlinx.coroutines.CoroutineName
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.filterIsInstance
-import kotlinx.coroutines.flow.filterNot
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
-import me.him188.ani.app.data.models.ApiFailure
 import me.him188.ani.app.data.repository.RepositoryAuthorizationException
+import me.him188.ani.app.data.repository.RepositoryException
+import me.him188.ani.app.data.repository.RepositoryNetworkException
+import me.him188.ani.app.data.repository.RepositoryRateLimitedException
+import me.him188.ani.app.data.repository.RepositoryServiceUnavailableException
+import me.him188.ani.app.data.repository.RepositoryUnknownException
+import me.him188.ani.app.data.repository.user.AccessTokenSession
+import me.him188.ani.app.data.repository.user.GuestSession
 import me.him188.ani.app.data.repository.user.Session
-import me.him188.ani.app.navigation.AniNavigator
-import me.him188.ani.utils.platform.annotations.TestOnly
+import me.him188.ani.app.data.repository.user.TokenRepository
+import me.him188.ani.app.domain.session.auth.OAuthResult
+import me.him188.ani.utils.logging.debug
+import me.him188.ani.utils.logging.info
+import me.him188.ani.utils.logging.thisLogger
+import me.him188.ani.utils.logging.warn
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
+import kotlin.time.Duration.Companion.milliseconds
+
+class AniSessionRefresher(
+) : SessionManager.SessionRefresher {
+    override suspend fun refresh(refreshToken: String): OAuthResult {
+        TODO("AniSessionRefresher")
+    }
+}
 
 /**
- * 授权状态管理器.
+ * 维护 [AccessTokenPair] 的管理器.
  *
- * 设计上是通用的, 但目前把它当 [BangumiSessionManager] inject.
+ * 它负责持久化 [AccessTokenPair] 和 refreshToken, 以及在 accessToken 过期前使用 refreshToken 刷新两个 token (调用 [refreshSession]).
+ * [SessionManager] 不处理登录和登出, 只负责维护 token 的有效性.
+ *
+ * 注意, [SessionManager] 已经涉及登录的内部逻辑. 如果你只需要知道当前用户是否有登录, 使用 [SessionStateProvider].
+ * @since 5.0
  */
-interface SessionManager { // For unit tests, see BangumiSessionManagerTest
-    /**
-     * 当前的授权状态. 注意, 此状态会包含 [SessionStatus.Loading] 这种中间状态. 可使用:
-     * ```
-     * state.filterNot { it is SessionStatus.Loading }
-     * ```
-     * 来过滤掉中间状态.
-     */
-    val state: Flow<SessionStatus>
-
-    /**
-     * 当前正在进行中的授权请求.
-     */
-    val processingRequest: StateFlow<ExternalOAuthRequest?>
-
-    /**
-     * 登录/退出登录事件流. 只有当用户主动操作 (例如点击按钮) 时才会广播事件. 刚启动 app 时的自动登录不会触发事件.
-     */
-    val events: SharedFlow<SessionEvent>
-
-    /**
-     * 请求为线上状态.
-     *
-     * 1. 若用户已经登录且会话有效 ([isSessionVerified] 为 `true`), 则此函数会立即返回.
-     * 2. 若用户登录过, 但是当前会话已经过期, 则此函数会尝试使用 refresh token 刷新会话.
-     *    - 若刷新成功, 此函数会返回, 不会弹出任何 UI 提示.
-     *    - 若刷新失败, 则进行下一步.
-     * 3. 若用户不是第一次启动, 而且他曾经选择了以游客身份登录, 则抛出异常 [AuthorizationCancelledException].
-     * 4. 取决于 [onLaunch], 通过 [AniNavigator] 跳转到欢迎页或者登录页面, 并等待用户的登录结果.
-     *    - 若用户取消登录 (选择游客), 此函数会抛出 [AuthorizationCancelledException].
-     *    - 若用户成功登录, 此函数正常返回
-     *
-     * ## Cancellation Support
-     *
-     * 此函数支持 coroutine cancellation. 当 coroutine 被取消时, 此函数会中断授权请求并抛出 [CancellationException].
-     *
-     * @param onLaunch 此函数内只能抛出 [CancellationException] 来正常地取消授权请求 (see [ExternalOAuthRequest.invoke]). 其他所有异常都将会被视为是内部 bug.
-     * @param skipOnGuest 当用户使用游客模式时, 若此参数为 `true`, 本函数正常返回, 不会尝试登录. 若为 `false`, 本函数继续尝试登录 (OAuth).
-     *
-     * @throws AuthorizationCancelledException 当用户选择以游客身份登录时抛出
-     * @throws AuthorizationFailedException 当登录因为已知的错误, 如网络错误 [ApiFailure.NetworkError], [ApiFailure.Unauthorized], 以及 oauth 异常时抛出
-     */
-    @Throws(AuthorizationException::class, CancellationException::class)
-    suspend fun requireAuthorize(
-        onLaunch: suspend () -> Unit, // will be in background scope
-        skipOnGuest: Boolean,
-    )
-
-    fun requireAuthorizeAsync(
-        onLaunch: suspend () -> Unit, // will be in background scope
-        skipOnGuest: Boolean,
-    )
-
-    /**
-     * 设置一个新的会话. 将会替换当前的会话 (如果有).
-     *
-     * 当此函数返回时, 会话一定已经持久化, 但 [state] 不一定更新.
-     *
-     * 本函数不会立即验证会话的有效性.
-     * 在 [Flow.collect] [state] 时才会从服务器验证, 验证成功后 [state] 才会变为 [SessionStatus.Verified].
-     *
-     * 此函数会通过 [events] 广播 [SessionEvent.Login] 事件.
-     */
-    suspend fun setSession(session: Session)
-
-    /**
-     * 重新尝试使用已保存的会话登录. 若没有已保存的会话, 本函数不会做任何事.
-     */
-    suspend fun retry()
-
-    /**
-     * 清空当前会话.
-     *
-     * 当此函数返回时, 会话一定已经从持久化存储中移除.
-     *
-     * 仅当之前有 session 时, 此函数才会通过 [events] 广播 [SessionEvent.Logout] 事件.
-     */
-    suspend fun clearSession()
-
-    /**
-     * 将当前会话复写为过期会话, 以触发 refresh. 仅供 debug 用, 未经过测试.
-     */
-    @TestOnly
-    suspend fun invalidateSession() {
-    }
-}
-
-/**
- * 获取去除加载中 [SessionStatus.Loading] 的最终授权状态.
- */
-val SessionManager.finalState: Flow<SessionStatus.Final>
-    get() = state.filterIsInstance()
-
-@RequiresOptIn(
-    "该接口将所有失败状态都归为一类, 这通常会导致问题, 例如忽略了因为网路错误导致的临时性失败. " +
-            "当网络错误时, UI 应当提示网络错误, 并提供按钮允许重试. " +
-            "仅当你已经通过其他方式处理了网络错误时, 才 @OptIn",
-    level = RequiresOptIn.Level.ERROR,
-)
-annotation class OpaqueSession
-
-/**
- * `false` 并不一定代表未登录, 也可能是网络错误
- */
-@OpaqueSession
-val SessionManager.isSessionVerified
-    get() = state
-        .filterNot { it is SessionStatus.Verifying || it is SessionStatus.Refreshing }
-        .map { it is SessionStatus.Verified }
-
-@OpaqueSession
-val SessionManager.unverifiedAccessToken get() = state.map { it.unverifiedAccessTokenOrNull }
-
-@OpaqueSession
-val SessionManager.userInfo get() = state.map { it.userInfoOrNull }
-
-@OpaqueSession
-val SessionManager.username get() = state.map { it.usernameOrNull }
-
-@OpaqueSession
-val SessionManager.verifiedAccessToken: Flow<AccessTokenPair?>
-    get() = state.map {
-        (it as? SessionStatus.Verified)?.accessToken
-    }
-
-/**
- * @throws RepositoryAuthorizationException
- */
-@OptIn(OpaqueSession::class)
-suspend fun SessionManager.checkTokenNow(
-    clock: Clock = Clock.System,
+class SessionManager(
+    private val tokenRepository: TokenRepository,
+    private val coroutineScope: CoroutineScope,
+    private val refreshSession: SessionRefresher,
+    private val clock: Clock = Clock.System,
+    private val config: Config = Config(),
 ) {
-    val session = verifiedAccessToken.first()
-    if (session == null || session.isExpired(clock)) {
-        // 没 token 肯定会失败, 就别发请求了
-        throw RepositoryAuthorizationException("Precondition failed: verifiedAccessToken is null, aborting request.")
+    fun interface SessionRefresher {
+        /**
+         * @throws RepositoryException
+         */
+        suspend fun refresh(refreshToken: String): OAuthResult
+    }
+
+    data class Config(
+        /**
+         * 在 accessToken 过期前多久提前刷新 accessToken.
+         *
+         * 刷新失败会在一段时间后自动重试. [refreshTokenBefore] 时间长一点可以增加更多重试机会.
+         */
+        val refreshTokenBefore: Duration = 24.hours, // 注意, Ani 服务器会至少给 31 天 accessToken.
+        /**
+         * 在刷新失败后, 等待多久再尝试刷新.
+         */
+        val refreshAttemptInterval: Duration = 1.hours,
+    )
+
+    private val logger = thisLogger()
+
+    val sessionFlow: Flow<Session> = tokenRepository.session
+    val accessTokenSessionFlow: Flow<AccessTokenSession?> = sessionFlow.map {
+        when (it) {
+            is AccessTokenSession -> it
+            is GuestSession -> null
+        }
+    }
+
+
+    private val _stateProvider = object : SessionStateProvider {
+        override val stateFlow =
+            MutableSharedFlow<SessionState>(replay = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+        override val eventFlow = MutableSharedFlow<SessionEvent>(extraBufferCapacity = 1)
+    }
+
+    val stateProvider get() = _stateProvider
+
+    private val backgroundJob by lazy {
+        fun emitState(state: SessionState) {
+            check(_stateProvider.stateFlow.tryEmit(state))
+        }
+
+        /**
+         * 维护 accessToken 的有效性. 此函数可在有新的 session 时被 cancel.
+         *
+         * 只有这里会修改 [stateProvider].
+         */
+        suspend fun maintainAccessTokenLoop(session: AccessTokenSession) {
+            logger.debug {
+                "SessionManager: maintainAccessTokenLoop started with session: $session"
+            }
+
+            if (session.tokens.isExpired(clock)) {
+                // 我们确定此时已经过期了. 但是先别急, 可以刷新
+
+                try {
+                    // 目前不支持检查 refreshToken 是否过期, 所以直接请求刷新
+                    refreshSession() // This is expected to throw RepositoryException
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: RepositoryException) {
+                    // 翻译错误为 InvalidSessionReason, emit 给其他人
+                    val reason = when (e) {
+                        is RepositoryAuthorizationException -> {
+                            // 说明 refreshToken 都过期了, 那就真没办法了
+                            clearSession()
+                            InvalidSessionReason.NO_TOKEN
+                        }
+
+                        is RepositoryNetworkException -> InvalidSessionReason.NETWORK_ERROR
+
+                        // 服务器不太可能会返回 429, 就把它当做网络错误了
+                        is RepositoryRateLimitedException -> InvalidSessionReason.NETWORK_ERROR
+
+                        is RepositoryServiceUnavailableException -> InvalidSessionReason.NO_TOKEN
+                        is RepositoryUnknownException -> InvalidSessionReason.UNKNOWN
+                    }
+
+                    if (reason == InvalidSessionReason.UNKNOWN) {
+                        logger.error("Refresh session failed with unknown error", e)
+                    } else {
+                        // 对于已知的错误, 不要记录冗长的堆栈
+                        logger.warn { "Refresh session failed with known error: $reason" }
+                    }
+
+                    emitState(SessionState.Invalid(reason))
+                } catch (e: Exception) {
+                    emitState(SessionState.Invalid(InvalidSessionReason.NETWORK_ERROR))
+                    logger.error("Refresh session failed", e)
+                }
+            } else {
+                // token 还没有过期, 直接发出有效的状态
+                emitState(SessionState.Valid(bangumiConnected = session.tokens.bangumiAccessToken != null))
+
+                // Token 会在未来过期, 所以我们延迟到那个时候
+                val ttl = (session.tokens.expiresAtMillis - clock.now().toEpochMilliseconds()).milliseconds
+                    .minus(config.refreshTokenBefore) // 提前一小会
+
+                logger.debug {
+                    "SessionManager: access token is valid, will refresh in $ttl ms"
+                }
+
+                delay(ttl)
+
+                logger.info {
+                    "SessionManager: access token is about to expire, refreshing now"
+                }
+
+                // 每小时尝试一次
+                while (session.tokens.isExpired(clock)) {
+                    try {
+                        refreshSession()
+                    } catch (e: Exception) {
+                        // 不管是什么错误, 反正失败了就等
+                        val re = RepositoryException.wrapOrThrowCancellation(e)
+                        if (re is RepositoryUnknownException) {
+                            logger.error(
+                                "Refresh session failed with unknown exception, see cause. Retrying in ${config.refreshAttemptInterval}",
+                                e,
+                            )
+                        } else {
+                            logger.warn("Refresh session failed with $re. Retrying in ${config.refreshAttemptInterval}")
+                        }
+                        delay(config.refreshAttemptInterval)
+                    }
+                }
+            }
+        }
+
+
+        // 启动后台任务, 定时刷新 token
+        coroutineScope.launch(CoroutineName("SessionManager auto refresh")) {
+            tokenRepository.session.collectLatest { session ->
+                when (session) {
+                    is GuestSession -> emitState(SessionState.Invalid(InvalidSessionReason.NO_TOKEN))
+                    is AccessTokenSession -> maintainAccessTokenLoop(session)
+                }
+            }
+        }
+
+        Unit // 不存储 Job
+    }
+
+    fun startBackgroundJob() {
+        backgroundJob // lazy init
+    }
+
+    /**
+     * 登录成功后调用, 设置一个会话. 这也会导致 [stateProvider] [SessionStateProvider.stateFlow] 更新.
+     */
+    suspend fun setSession(
+        session: AccessTokenSession,
+        // Ani 登录保证每次登录都返回新的 refreshToken, 所以我们要求都更新
+        refreshToken: String,
+    ) {
+        tokenRepository.setSession(session)
+        tokenRepository.setRefreshToken(refreshToken)
+    }
+
+
+    /**
+     * 设置为未登录状态. 同时清空 accessToken 和 refreshToken. 这也会导致 [stateProvider] [SessionStateProvider.stateFlow] 更新.
+     */
+    suspend fun clearSession() {
+        tokenRepository.clear()
+        // 注意, 我们这里不修改公开的 state. background task 会帮我们修改.
+    }
+
+    private val refreshSessionLock = Mutex()
+
+    /**
+     * 使用 refreshToken 刷新 accessToken. 刷新成功后会自动持久化. 这也会导致 [stateProvider] [SessionStateProvider.stateFlow] 更新.
+     *
+     * 只有当 [SessionStateProvider.stateFlow] 为网络错误, 并且用户主动点击了刷新按钮时, 才应当调用此函数.
+     *
+     * @throws RepositoryException
+     */
+    suspend fun refreshSession() = refreshSessionLock.withLock {
+        val refreshToken = tokenRepository.refreshToken.first()
+        if (refreshToken == null) {
+            return
+        }
+
+        try {
+            val result = refreshSession.refresh(refreshToken)
+            setSession(
+                session = AccessTokenSession(
+                    tokens = result.tokens,
+                ),
+                refreshToken = result.refreshToken,
+            )
+            // 注意, 我们这里不修改公开的 state. background task 会帮我们修改.
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // refresh 只应该 throw RepositoryException, 但是我们还是保险起见封装
+            throw RepositoryException.wrapOrThrowCancellation(e)
+        }
     }
 }
-
-@OptIn(OpaqueSession::class)
-suspend fun SessionManager.isLoggedInNow(
-    clock: Clock = Clock.System,
-): Boolean {
-    val token = verifiedAccessToken.first() ?: return false
-    return !token.isExpired(clock)
-}
-
-fun AccessTokenPair.isExpired(clock: Clock = Clock.System): Boolean {
-    return expiresAtMillis <= (clock.now()
-        .toEpochMilliseconds() + 13.hours.inWholeMilliseconds) // 提前 13 小时让 token 过期. 因为某些地方 shareIn cache 是 12h
-}
-
-/**
- * 当用户希望以游客身份登录时抛出的异常.
- */
-class AuthorizationCancelledException(
-    override val message: String?,
-    override val cause: Throwable? = null
-) : AuthorizationException()
-
-/**
- * 本次操作失败, 但还有重试的机会. 一般是有保存的 token, 但本次网络请求失败了.
- */
-class AuthorizationFailedException(
-    val status: SessionStatus,
-    override val message: String? = null,
-    override val cause: Throwable? = null,
-) : AuthorizationException()
-
-sealed class AuthorizationException : Exception()

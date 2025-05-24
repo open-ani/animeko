@@ -1,12 +1,5 @@
-/*
- * Copyright (C) 2024-2025 OpenAni and contributors.
- *
- * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
- * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
- *
- * https://github.com/open-ani/ani/blob/main/LICENSE
- */
-
+// @formatter:off
+// @formatter:off
 /**
  *
  * Please note:
@@ -19,7 +12,7 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.client.models
@@ -29,29 +22,29 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
+ * 
  *
- *
- * @param id
- * @param type
- * @param tags
- * @param metaTags
- * @param scoreDetails
- * @param name
- * @param nameCn
- * @param infobox
- * @param platform
- * @param summary
- * @param nsfw
- * @param date
- * @param favorite
- * @param series
- * @param score
- * @param rank
- * @param collectionType
+ * @param id 
+ * @param type 
+ * @param tags 
+ * @param metaTags 
+ * @param scoreDetails 
+ * @param name 
+ * @param nameCn 
+ * @param infobox 
+ * @param platform 
+ * @param summary 
+ * @param nsfw 
+ * @param date 
+ * @param favorite 
+ * @param series 
+ * @param score 
+ * @param rank 
+ * @param collectionType 
  */
 @Serializable
 
-data class AniSubjectCollectionEntity(
+data class AniSubjectCollectionEntity (
 
     @SerialName(value = "id") @Required val id: kotlin.Long,
 
@@ -85,10 +78,14 @@ data class AniSubjectCollectionEntity(
 
     @SerialName(value = "rank") val rank: kotlin.Int? = null,
 
-    @SerialName(value = "collectionType") val collectionType: AniSubjectCollectionType? = null
+    @SerialName(value = "collectionType") val collectionType: AniCollectionType? = null
 
 ) {
 
 
 }
 
+
+// @formatter:on
+
+// @formatter:on

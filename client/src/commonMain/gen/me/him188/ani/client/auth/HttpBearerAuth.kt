@@ -1,3 +1,4 @@
+// @formatter:off
 package me.him188.ani.client.auth
 
 class HttpBearerAuth(private val scheme: String?) : Authentication {
@@ -12,3 +13,5 @@ class HttpBearerAuth(private val scheme: String?) : Authentication {
         return if ("bearer".equals(scheme, ignoreCase = true)) "Bearer" else scheme
     }
 }
+
+// @formatter:on

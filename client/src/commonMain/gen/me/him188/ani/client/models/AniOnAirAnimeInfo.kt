@@ -1,12 +1,4 @@
-/*
- * Copyright (C) 2024-2025 OpenAni and contributors.
- *
- * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
- * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
- *
- * https://github.com/open-ani/ani/blob/main/LICENSE
- */
-
+// @formatter:off
 /**
  *
  * Please note:
@@ -19,7 +11,7 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.client.models
@@ -32,16 +24,16 @@ import kotlinx.serialization.Serializable
  * 
  *
  * @param bangumiId 
- * @param name
+ * @param name 
  * @param aliases 
- * @param begin
+ * @param begin 
  * @param recurrence 
  * @param end 
  * @param mikanId 
  */
 @Serializable
 
-data class AniOnAirAnimeInfo(
+data class AniOnAirAnimeInfo (
 
     @SerialName(value = "bangumiId") @Required val bangumiId: kotlin.Int,
 
@@ -62,3 +54,5 @@ data class AniOnAirAnimeInfo(
 
 }
 
+
+// @formatter:on

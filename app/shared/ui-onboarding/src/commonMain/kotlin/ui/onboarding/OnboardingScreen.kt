@@ -16,7 +16,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -29,17 +28,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
-import me.him188.ani.app.domain.session.AuthState
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
-import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
-import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.app.ui.onboarding.navigation.WizardController
 import me.him188.ani.app.ui.onboarding.navigation.WizardDefaults
 import me.him188.ani.app.ui.onboarding.navigation.WizardNavHost
-import me.him188.ani.app.ui.onboarding.step.BangumiAuthorizeStep
 import me.him188.ani.app.ui.onboarding.step.ConfigureProxyStep
 import me.him188.ani.app.ui.onboarding.step.GrantNotificationPermissionState
 import me.him188.ani.app.ui.onboarding.step.ThemeSelectStep
@@ -71,10 +66,6 @@ fun OnboardingScreen(
     val finishOnboarding = {
         vm.finishOnboarding()
         onFinishOnboarding()
-    }
-
-    LaunchedEffect(vm) {
-        vm.collectNewLoginEvent(finishOnboarding)
     }
 
     val scope = rememberCoroutineScope()
@@ -116,7 +107,6 @@ fun OnboardingScreen(
 
     var bangumiShowTokenAuthorizePage by remember { mutableStateOf(false) }
 
-    val authorizeState by state.bangumiAuthorizeState.state.collectAsStateWithLifecycle(AuthState.DummyAwaitingResult)
     val proxyState by state.configureProxyState.state.collectAsStateWithLifecycle(ConfigureProxyUIState.Placeholder)
     val grantNotificationPermissionState by state.bitTorrentFeatureState.grantNotificationPermissionState
         .collectAsStateWithLifecycle(GrantNotificationPermissionState.Placeholder)
@@ -244,84 +234,6 @@ fun OnboardingScreen(
                 } else null,
             )
         }*/
-
-        val onSkipLogin: () -> Unit = {
-            scope.launch {
-                Analytics.recordEvent(AnalyticsEvent.LoginSkipClick)
-                state.bangumiAuthorizeState.onUseGuestMode()
-                controller.goForward()
-            }
-        }
-        step(
-            "bangumi",
-            { Text("登录 Bangumi 账号") },
-            forwardButton = {
-                WizardDefaults.GoForwardButton(
-                    {
-                        scope.launch {
-                            controller.goForward()
-                        }
-                    },
-                    text = "完成",
-                    enabled = authorizeState is AuthState.Success,
-                )
-            },
-            navigationIcon = {
-                BackNavigationIconButton(
-                    {
-                        if (bangumiShowTokenAuthorizePage) {
-                            bangumiShowTokenAuthorizePage = false
-                            state.bangumiAuthorizeState.onCheckCurrentToken()
-                        } else {
-                            scope.launch {
-                                controller.goBackward()
-                            }
-                        }
-                    },
-                )
-            },
-            skipButton = {
-                WizardDefaults.SkipButton(
-                    onSkipLogin,
-                    text = "跳过",
-                )
-            },
-        ) {
-            DisposableEffect(Unit) {
-                Analytics.recordEvent(AnalyticsEvent.OnboardingLoginEnter)
-                onDispose { }
-            }
-
-            DisposableEffect(bangumiShowTokenAuthorizePage) {
-                if (!bangumiShowTokenAuthorizePage) {
-                    state.bangumiAuthorizeState.onCheckCurrentToken()
-                }
-                onDispose {
-                    state.bangumiAuthorizeState.onCancelAuthorize()
-                }
-            }
-
-            BackHandler(bangumiShowTokenAuthorizePage) {
-                bangumiShowTokenAuthorizePage = false
-            }
-
-            BangumiAuthorizeStep(
-                authorizeState = authorizeState,
-                showTokenAuthorizePage = bangumiShowTokenAuthorizePage,
-                contactActions = contactActions,
-                onSetShowTokenAuthorizePage = {
-                    bangumiShowTokenAuthorizePage = it
-                    if (it) scope.launch { scrollTopAppBarExpanded() }
-                },
-                onClickAuthorize = { state.bangumiAuthorizeState.onClickNavigateAuthorize(context) },
-                onCancelAuthorize = { state.bangumiAuthorizeState.onCancelAuthorize() },
-                onAuthorizeByToken = { state.bangumiAuthorizeState.onAuthorizeByToken(it) },
-                onSkip = onSkipLogin,
-                onClickNavigateToBangumiDev = {
-                    state.bangumiAuthorizeState.onClickNavigateToBangumiDev(context)
-                },
-            )
-        }
     }
 }
 
@@ -369,15 +281,6 @@ internal fun createTestOnboardingPresentationState(scope: CoroutineScope): Onboa
             onCheckPermissionState = { },
             onRequestNotificationPermission = { false },
             onOpenSystemNotificationSettings = { },
-        ),
-        bangumiAuthorizeState = BangumiAuthorizeStepState(
-            state = flowOf(AuthState.NotAuthed),
-            onClickNavigateAuthorize = { },
-            onCheckCurrentToken = { },
-            onCancelAuthorize = { },
-            onClickNavigateToBangumiDev = { },
-            onAuthorizeByToken = { },
-            onUseGuestMode = { },
         ),
     )
 }

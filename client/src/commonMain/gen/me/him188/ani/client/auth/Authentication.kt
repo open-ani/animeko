@@ -1,3 +1,4 @@
+// @formatter:off
 package me.him188.ani.client.auth
 
 interface Authentication {
@@ -11,3 +12,5 @@ interface Authentication {
     fun apply(query: MutableMap<String, List<String>>, headers: MutableMap<String, String>)
 
 }
+
+// @formatter:on

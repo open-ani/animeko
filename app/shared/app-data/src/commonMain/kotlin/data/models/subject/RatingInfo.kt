@@ -29,7 +29,7 @@ data class RatingInfo(
     val count: RatingCounts,
     val score: String, // big decimal
 ) {
-    val scoreFloat get() = score.toFloat()
+    val scoreFloat get() = score.toFloatOrNull() ?: 0f
 
     companion object {
         @Stable

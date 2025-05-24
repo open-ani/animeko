@@ -34,7 +34,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,6 +47,7 @@ import me.him188.ani.app.ui.foundation.avatar.AvatarImage
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
+import me.him188.ani.app.ui.user.SelfInfoUiState
 
 @Composable
 fun OnboardingCompleteScreen(
@@ -57,7 +57,7 @@ fun OnboardingCompleteScreen(
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
 ) {
-    val state by vm.state.collectAsStateWithLifecycle(OnboardingCompleteState.Placeholder)
+    val state by vm.state.collectAsStateWithLifecycle()
 
     Surface(color = AniThemeDefaults.pageContentBackgroundColor) {
         OnboardingCompleteScreen(
@@ -72,9 +72,9 @@ fun OnboardingCompleteScreen(
 
 @Composable
 internal fun OnboardingCompleteScreen(
-    state: OnboardingCompleteState,
+    state: SelfInfoUiState,
     onClickContinue: () -> Unit,
-    backNavigation: @Composable () -> Unit,
+    backNavigation: @Composable (() -> Unit),
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
     layoutParams: WizardLayoutParams = WizardLayoutParams.calculate(currentWindowAdaptiveInfo1().windowSizeClass),
@@ -108,7 +108,7 @@ internal fun OnboardingCompleteScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text(
-                    text = if (state.username != null) "欢迎，${state.username}" else "欢迎",
+                    text = if (state.selfInfo?.nickname != null) "欢迎，${state.selfInfo?.nickname}" else "欢迎",
                     modifier = Modifier
                         .widthIn(max = 240.dp)
                         .animateContentSize(),
@@ -119,7 +119,7 @@ internal fun OnboardingCompleteScreen(
                 )
                 Column(modifier = Modifier.padding(vertical = 16.dp)) {
                     AvatarImage(
-                        url = state.avatarUrl,
+                        url = state.selfInfo?.avatarUrl,
                         modifier = Modifier.size(96.dp).clip(CircleShape),
                     )
                 }
@@ -140,15 +140,5 @@ internal fun OnboardingCompleteScreen(
                 }
             }
         }
-    }
-}
-
-@Stable
-class OnboardingCompleteState(
-    val username: String?, // guest has no username
-    val avatarUrl: String, // guest use default avatar
-) {
-    companion object {
-        val Placeholder = OnboardingCompleteState(null, OnboardingCompleteViewModel.DEFAULT_AVATAR)
     }
 }

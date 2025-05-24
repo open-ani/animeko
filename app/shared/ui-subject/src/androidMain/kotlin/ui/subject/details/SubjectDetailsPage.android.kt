@@ -16,10 +16,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import me.him188.ani.app.data.models.subject.TestSubjectInfo
 import me.him188.ani.app.domain.foundation.LoadError
-import me.him188.ani.app.domain.session.TestAuthState
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.app.ui.subject.details.state.createTestSubjectDetailsState
+import me.him188.ani.app.ui.user.TestSelfInfoUiState
 import me.him188.ani.utils.platform.annotations.TestOnly
 
 @OptIn(TestOnly::class)
@@ -72,7 +72,7 @@ private fun PreviewSubjectDetailsScreen(
 ) {
     SubjectDetailsScreen(
         state,
-        TestAuthState,
+        TestSelfInfoUiState,
         onPlay = { },
         onLoadErrorRetry = { },
         onClickTag = {},

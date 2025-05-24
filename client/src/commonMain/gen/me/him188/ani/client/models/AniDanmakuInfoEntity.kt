@@ -1,12 +1,5 @@
-/*
- * Copyright (C) 2024-2025 OpenAni and contributors.
- *
- * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
- * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
- *
- * https://github.com/open-ani/ani/blob/main/LICENSE
- */
-
+// @formatter:off
+// @formatter:off
 /**
  *
  * Please note:
@@ -19,7 +12,7 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.client.models
@@ -29,16 +22,16 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
+ * 
  *
- *
- * @param playTime
- * @param color
- * @param text
- * @param location
+ * @param playTime 
+ * @param color 
+ * @param text 
+ * @param location 
  */
 @Serializable
 
-data class AniDanmakuInfoEntity(
+data class AniDanmakuInfoEntity (
 
     @SerialName(value = "playTime") @Required val playTime: kotlin.Long,
 
@@ -53,3 +46,7 @@ data class AniDanmakuInfoEntity(
 
 }
 
+
+// @formatter:on
+
+// @formatter:on

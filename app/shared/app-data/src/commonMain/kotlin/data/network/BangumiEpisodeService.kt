@@ -18,8 +18,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.data.models.episode.EpisodeInfo
-import me.him188.ani.app.domain.session.SessionManager
-import me.him188.ani.app.domain.session.isLoggedInNow
+import me.him188.ani.app.domain.session.SessionStateProvider
+import me.him188.ani.app.domain.session.canAccessBangumiApiNow
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.EpisodeType
 import me.him188.ani.datasources.api.EpisodeType.ED
@@ -96,7 +96,7 @@ class BangumiEpisodeServiceImpl(
 ) : BangumiEpisodeService, KoinComponent {
     private val client by inject<BangumiClient>()
     private val logger = logger<BangumiEpisodeServiceImpl>()
-    private val sessionManager: SessionManager by inject()
+    private val sessionManager: SessionStateProvider by inject()
 
     override suspend fun getEpisodeCollectionInfosBySubjectId(
         subjectId: Int,
@@ -116,7 +116,7 @@ class BangumiEpisodeServiceImpl(
         episodeType: BangumiEpType?
     ): Paged<EpisodeCollectionInfo> {
         return withContext(ioDispatcher) {
-            if (sessionManager.isLoggedInNow()) {
+            if (sessionManager.canAccessBangumiApiNow()) {
                 client.api {
                     getUserSubjectEpisodeCollection(
                         subjectId,
@@ -168,7 +168,7 @@ class BangumiEpisodeServiceImpl(
         subjectId: Int,
         type: BangumiEpType?
     ): Flow<BangumiUserEpisodeCollection>? {
-        if (!sessionManager.isLoggedInNow()) {
+        if (!sessionManager.canAccessBangumiApiNow()) {
             return null
         }
 
