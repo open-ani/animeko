@@ -44,31 +44,25 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-	<key>CADisableMinimumFrameDurationOnPhone</key><true/>
-	
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
 	<key>CFBundleURLTypes</key>
-    <array>
-        <dict>
-            <!-- Name used just to group related URL schemes -->
-            <key>CFBundleURLName</key>
-            <string>ani.bangumi.oauth.callback</string>
-            
-            <!-- Array of schemes your app should handle -->
-            <key>CFBundleURLSchemes</key>
-            <array>
-                <string>ani</string>
-            </array>
-        </dict>
-    </array>
-    
-    <key>CFBundleLocalizations</key>
-    <array>
-        <array>
-            <string>en</string>
-			<string>zh-Hans</string>
-			<string>zh-Hant-TW</string>
-			<string>zh-Hant-HK</string>
-        </array>
-    </array>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>ani.bangumi.oauth.callback</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>ani</string>
+			</array>
+		</dict>
+	</array>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>zh-Hans</string>
+		<string>zh-Hant-TW</string>
+		<string>zh-Hant-HK</string>
+	</array>
 </dict>
 </plist>
