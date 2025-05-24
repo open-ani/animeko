@@ -26,7 +26,6 @@ import me.him188.ani.app.data.models.preference.ProxyMode
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.session.SessionManager
-import me.him188.ani.app.domain.session.auth.OAuthClient
 import me.him188.ani.app.domain.settings.ProxySettingsFlowProxyProvider
 import me.him188.ani.app.domain.settings.ProxyTester
 import me.him188.ani.app.domain.settings.ServiceConnectionTester
@@ -177,7 +176,6 @@ class OnboardingViewModel : AbstractSettingsViewModel(), KoinComponent {
     // region BangumiAuthorize
     private val sessionManager: SessionManager by inject()
     private val browserNavigator: BrowserNavigator by inject()
-    private val authClient: OAuthClient by inject()
 
     private var currentAppContext: ContextMP? = null
     private val authLoopTasker = SingleTaskExecutor(backgroundScope.coroutineContext)

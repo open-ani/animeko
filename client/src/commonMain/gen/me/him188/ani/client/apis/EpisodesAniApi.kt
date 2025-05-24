@@ -1,4 +1,5 @@
 // @formatter:off
+// @formatter:off
 /**
  *
  * Please note:
@@ -185,5 +186,7 @@ open class EpisodesAniApi : ApiClient {
 
 
 }
+
+// @formatter:on
 
 // @formatter:on

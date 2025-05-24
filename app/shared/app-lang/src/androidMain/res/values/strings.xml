@@ -426,7 +426,7 @@
     <string name="settings_media_auto_cache_recent_only">Only cache recently watched anime</string>
     <string name="settings_media_auto_cache_count">Cache count</string>
     <string name="settings_media_auto_cache_count_description">Current setting: Only cache the most recent %d anime</string>
-    <string name="settings_media_auto_cache_manage">Manage cached episodes</string>
+    <string name="settings_media_auto_cache_manage">Manage cached episodes</string><string name="settings_debug_logout">Logout</string><string name="settings_debug_logged_out">Logged out</string>
 </resources>
 
 <!--@formatter:on-->

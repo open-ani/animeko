@@ -1,4 +1,12 @@
-// @formatter:off
+/*
+ * Copyright (C) 2024-2025 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 // @formatter:off
 /**
  *
@@ -17,7 +25,6 @@
 
 package me.him188.ani.client.models
 
-
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -25,32 +32,18 @@ import kotlinx.serialization.Serializable
 /**
  * 
  *
- * @param wish 
- * @param done 
- * @param doing 
- * @param onHold 
- * @param dropped 
+ * @param url
  */
 @Serializable
 
-data class AniFavouriteEntity (
+data class AniOAuthRedirectResponse (
 
-    @SerialName(value = "wish") @Required val wish: kotlin.Int,
-
-    @SerialName(value = "done") @Required val done: kotlin.Int,
-
-    @SerialName(value = "doing") @Required val doing: kotlin.Int,
-
-    @SerialName(value = "onHold") @Required val onHold: kotlin.Int,
-
-    @SerialName(value = "dropped") @Required val dropped: kotlin.Int
+    @SerialName(value = "url") @Required val url: kotlin.String,
 
 ) {
 
 
 }
 
-
-// @formatter:on
 
 // @formatter:on

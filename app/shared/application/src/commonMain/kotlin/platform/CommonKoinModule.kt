@@ -107,8 +107,8 @@ import me.him188.ani.app.domain.mediasource.subscription.MediaSourceSubscription
 import me.him188.ani.app.domain.session.AniSessionRefresher
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.session.SessionStateProvider
+import me.him188.ani.app.domain.session.auth.BangumiOAuthClient
 import me.him188.ani.app.domain.session.auth.OAuthClient
-import me.him188.ani.app.domain.session.auth.OAuthClientImpl
 import me.him188.ani.app.domain.settings.ProxyProvider
 import me.him188.ani.app.domain.settings.SettingsBasedProxyProvider
 import me.him188.ani.app.domain.torrent.TorrentManager
@@ -186,9 +186,6 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
         )
     }
     single<AniApiProvider> { AniApiProvider(get<HttpClientProvider>().get(useAniToken = true)) }
-    single<OAuthClient> {
-        OAuthClientImpl(get<AniApiProvider>().oauthApi)
-    }
     single<TokenRepository> { TokenRepository(getContext().dataStores.tokenStore) }
     single<EpisodePreferencesRepository> { EpisodePreferencesRepositoryImpl(getContext().dataStores.preferredAllianceStore) }
     single<BangumiClient> {
@@ -537,7 +534,7 @@ fun KoinApplication.startCommonKoinModule(
             uiSettings.update { uiSettingsContent.copy(theme = null) }
         }
     }
-    
+
     koin.get<SessionManager>().startBackgroundJob()
     return this
 }

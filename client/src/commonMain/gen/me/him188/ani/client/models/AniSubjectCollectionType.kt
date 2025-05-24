@@ -1,4 +1,5 @@
 // @formatter:off
+// @formatter:off
 /**
  *
  * Please note:
@@ -70,5 +71,7 @@ enum class AniSubjectCollectionType(val value: kotlin.String) {
     }
 }
 
+
+// @formatter:on
 
 // @formatter:on

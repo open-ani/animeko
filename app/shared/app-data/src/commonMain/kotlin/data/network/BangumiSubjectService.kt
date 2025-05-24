@@ -12,7 +12,6 @@ package me.him188.ani.app.data.network
 import androidx.collection.IntList
 import androidx.collection.IntObjectMap
 import androidx.collection.IntSet
-import androidx.collection.intListOf
 import androidx.collection.mutableIntObjectMapOf
 import androidx.collection.mutableIntSetOf
 import io.ktor.client.plugins.ClientRequestException
@@ -42,10 +41,11 @@ import me.him188.ani.app.data.models.subject.SubjectCollectionCounts
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.domain.search.SubjectType
 import me.him188.ani.app.domain.session.SessionStateProvider
-import me.him188.ani.app.domain.session.checkAccessBangumiApiNow
+import me.him188.ani.app.domain.session.checkAccessAniApiNow
 import me.him188.ani.client.apis.SubjectsAniApi
 import me.him188.ani.client.models.AniCollectionType
 import me.him188.ani.client.models.AniSubjectCollection
+import me.him188.ani.client.models.AniUpdateSubjectCollectionRequest
 import me.him188.ani.datasources.bangumi.BangumiClient
 import me.him188.ani.datasources.bangumi.apis.DefaultApi
 import me.him188.ani.datasources.bangumi.models.BangumiCount
@@ -145,7 +145,7 @@ class RemoteBangumiSubjectService(
         offset: Int,
         limit: Int
     ): List<AniSubjectCollection> = withContext(ioDispatcher) {
-        sessionManager.checkAccessBangumiApiNow()
+        sessionManager.checkAccessAniApiNow()
         val collections = try {
             subjectApi {
                 getSubjectCollections(
@@ -359,17 +359,22 @@ class RemoteBangumiSubjectService(
 
 
     override suspend fun patchSubjectCollection(subjectId: Int, payload: BangumiUserSubjectCollectionModifyPayload) {
-        sessionManager.checkAccessBangumiApiNow()
+        sessionManager.checkAccessAniApiNow()
         withContext(ioDispatcher) {
-            api {
-                postUserCollection(subjectId, payload)
+            subjectApi {
+                this.updateSubjectCollection(
+                    subjectId.toLong(),
+                    AniUpdateSubjectCollectionRequest(
+                        collectionType = payload.type?.toAniCollectionType(),
+                    ),
+                )
                 Unit
             }
         }
     }
 
     override suspend fun deleteSubjectCollection(subjectId: Int) {
-        sessionManager.checkAccessBangumiApiNow()
+        sessionManager.checkAccessAniApiNow()
         subjectApi {
             this.deleteSubjectCollection(subjectId.toLong()).body()
         }

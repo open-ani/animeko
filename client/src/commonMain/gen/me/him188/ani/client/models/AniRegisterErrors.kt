@@ -1,4 +1,5 @@
 // @formatter:off
+// @formatter:off
 /**
  *
  * Please note:
@@ -64,5 +65,7 @@ enum class AniRegisterErrors(val value: kotlin.String) {
     }
 }
 
+
+// @formatter:on
 
 // @formatter:on

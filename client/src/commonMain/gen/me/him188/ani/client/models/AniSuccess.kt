@@ -1,4 +1,5 @@
 // @formatter:off
+// @formatter:off
 /**
  *
  * Please note:
@@ -42,5 +43,7 @@ data class AniSuccess (
 
 }
 
+
+// @formatter:on
 
 // @formatter:on

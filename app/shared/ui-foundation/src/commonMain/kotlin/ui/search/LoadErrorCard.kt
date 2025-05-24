@@ -61,7 +61,6 @@ fun <T : Any> LazyPagingItems<T>.rememberLoadErrorState(): State<LoadError?> {
     }
 }
 
-
 /**
  * 一个卡片, 展示搜索时遇到的问题, 例如网络错误, 无搜索结果等.
  *
@@ -114,7 +113,7 @@ fun LoadErrorCard(
             LoadError.NetworkError -> {
                 ListItem(
                     leadingContent = { Icon(Icons.Rounded.WifiOff, null) },
-                    headlineContent = { Text("网络错误") },
+                    headlineContent = { Text(renderLoadErrorMessage(error)) },
                     trailingContent = retryButton,
                     colors = listItemColors,
                 )
@@ -123,7 +122,7 @@ fun LoadErrorCard(
             LoadError.RateLimited -> {
                 ListItem(
                     leadingContent = { Icon(Icons.Rounded.ErrorOutline, null) },
-                    headlineContent = { Text("操作过快，请重试") },
+                    headlineContent = { Text(renderLoadErrorMessage(error)) },
                     trailingContent = retryButton,
                     colors = listItemColors,
                 )
@@ -132,7 +131,7 @@ fun LoadErrorCard(
             LoadError.ServiceUnavailable -> {
                 ListItem(
                     leadingContent = { Icon(Icons.Rounded.CloudOff, null) },
-                    headlineContent = { Text("服务暂不可用") },
+                    headlineContent = { Text(renderLoadErrorMessage(error)) },
                     trailingContent = retryButton,
                     colors = listItemColors,
                 )
@@ -141,7 +140,7 @@ fun LoadErrorCard(
             LoadError.NoResults -> {
                 ListItem(
                     leadingContent = { Spacer(Modifier.size(24.dp)) }, // spacer
-                    headlineContent = { Text("无搜索结果") },
+                    headlineContent = { Text(renderLoadErrorMessage(error)) },
                     colors = listItemColors,
                 )
             }
@@ -149,7 +148,7 @@ fun LoadErrorCard(
             LoadError.RequiresLogin -> {
                 ListItem(
                     leadingContent = { Icon(Icons.Outlined.Passkey_24dp_E8EAED_FILL0_wght400_GRAD0_opsz24, null) },
-                    headlineContent = { Text("此功能需要登录") },
+                    headlineContent = { Text(renderLoadErrorMessage(error)) },
                     trailingContent = {
                         SearchDefaults.IconTextButton(
                             onLogin,
@@ -169,7 +168,7 @@ fun LoadErrorCard(
             is LoadError.UnknownError -> {
                 ListItem(
                     leadingContent = { Icon(Icons.Rounded.ErrorOutline, null) },
-                    headlineContent = { Text("未知错误") },
+                    headlineContent = { Text(renderLoadErrorMessage(error)) },
                     trailingContent = {
                         Row {
                             if (currentAniBuildConfig.isDebug) {
@@ -261,4 +260,18 @@ object LoadErrorDefaults {
     val containerColor
         @Composable
         get() = MaterialTheme.colorScheme.surfaceContainerHighest
+}
+
+fun renderLoadErrorMessage(error: LoadError): String {
+    return when (error) {
+        LoadError.NetworkError -> "网络错误"
+        LoadError.RateLimited -> "操作过快，请重试"
+        LoadError.ServiceUnavailable -> "服务暂不可用"
+        LoadError.NoResults -> "无搜索结果"
+        LoadError.RequiresLogin -> "此功能需要登录"
+        is LoadError.UnknownError -> {
+            error.throwable?.printStackTrace()
+            "未知错误: ${error.throwable?.message ?: "无详细信息"}"
+        }
+    }
 }

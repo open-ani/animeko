@@ -1,4 +1,5 @@
 // @formatter:off
+// @formatter:off
 /**
  *
  * Please note:
@@ -45,5 +46,7 @@ data class AniDanmakuInfoEntity (
 
 }
 
+
+// @formatter:on
 
 // @formatter:on

@@ -1,4 +1,5 @@
 // @formatter:off
+// @formatter:off
 /**
  *
  * Please note:
@@ -40,5 +41,7 @@ data class AniTagEntity (
 
 }
 
+
+// @formatter:on
 
 // @formatter:on

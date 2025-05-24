@@ -1,4 +1,5 @@
 // @formatter:off
+// @formatter:off
 /**
  *
  * Please note:
@@ -214,5 +215,7 @@ open class BangumiOAuthLegacyAniApi : ApiClient {
 
 
 }
+
+// @formatter:on
 
 // @formatter:on

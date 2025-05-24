@@ -1,4 +1,5 @@
 // @formatter:off
+// @formatter:off
 /**
  *
  * Please note:
@@ -32,5 +33,7 @@ class AniString (
 
 }
 
+
+// @formatter:on
 
 // @formatter:on

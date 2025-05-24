@@ -119,7 +119,11 @@ val fixGeneratedOpenApi = tasks.register("fixGeneratedOpenApi") {
 
     doLast {
         outputDir.walk().filter { it.isFile }.forEach {
-            it.writeText("// @formatter:off\n" + it.readText() + "\n// @formatter:on\n")
+            val text = it.readText()
+            val off = "off" // 防止 IDE 把我们这个代码识别成指令
+            if (!text.contains("// @formatter:$off")) {
+                it.writeText("// @formatter:$off\n$text\n// @formatter:on\n")
+            }
         }
     }
 }

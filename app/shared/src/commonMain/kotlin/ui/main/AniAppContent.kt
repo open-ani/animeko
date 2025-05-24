@@ -78,6 +78,8 @@ import me.him188.ani.app.ui.foundation.widgets.TopAppBarActionButton
 import me.him188.ani.app.ui.login.EmailLoginStartScreen
 import me.him188.ani.app.ui.login.EmailLoginVerifyScreen
 import me.him188.ani.app.ui.login.EmailLoginViewModel
+import me.him188.ani.app.ui.oauth.BangumiAuthorizeScreen
+import me.him188.ani.app.ui.oauth.BangumiAuthorizeViewModel
 import me.him188.ani.app.ui.onboarding.OnboardingCompleteScreen
 import me.him188.ani.app.ui.onboarding.OnboardingCompleteViewModel
 import me.him188.ani.app.ui.onboarding.OnboardingScreen
@@ -201,8 +203,7 @@ private fun AniAppContentImpl(
             ) {
                 EmailLoginVerifyScreen(
                     onSuccess = {
-                        aniNavigator.popBackStack(NavRoutes.EmailLoginVerify, true)
-                        aniNavigator.popBackStack(NavRoutes.EmailLoginStart, true)
+                        aniNavigator.popBackOrNavigateToMain(mainSceneInitialPage)
                     },
                     onBangumiLoginClick = {
                         aniNavigator.navigateBangumiAuthorize()
@@ -214,6 +215,26 @@ private fun AniAppContentImpl(
                         aniNavigator.popBackStack(NavRoutes.EmailLoginVerify, true)
                     },
                     vm = emailLoginViewModel,
+                )
+            }
+            composable<NavRoutes.BangumiAuthorize>(
+                enterTransition = enterTransition,
+                exitTransition = exitTransition,
+                popEnterTransition = popEnterTransition,
+                popExitTransition = popExitTransition,
+            ) {
+                val vm = viewModel<BangumiAuthorizeViewModel> { BangumiAuthorizeViewModel() }
+                BangumiAuthorizeScreen(
+                    vm,
+                    onNavigateBack = {
+                        aniNavigator.popBackStack(NavRoutes.BangumiAuthorize, true)
+                    },
+                    onNavigateSettings = {
+                        aniNavigator.navigateSettings()
+                    },
+                    contactActions = {
+                        AniContactList()
+                    },
                 )
             }
             composable<NavRoutes.Onboarding>(
@@ -340,14 +361,6 @@ private fun AniAppContentImpl(
                     },
                     windowInsets = windowInsets,
                 )
-            }
-            composable<NavRoutes.BangumiAuthorize>(
-                enterTransition = enterTransition,
-                exitTransition = exitTransition,
-                popEnterTransition = popEnterTransition,
-                popExitTransition = popExitTransition,
-            ) {
-                TODO()
             }
             composable<NavRoutes.SubjectDetail>(
                 enterTransition = enterTransition,

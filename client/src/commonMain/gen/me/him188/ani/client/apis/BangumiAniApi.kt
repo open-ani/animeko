@@ -26,6 +26,7 @@ import me.him188.ani.client.infrastructure.RequestConfig
 import me.him188.ani.client.infrastructure.RequestMethod
 import me.him188.ani.client.infrastructure.wrap
 import me.him188.ani.client.models.AniLoginResponse
+import me.him188.ani.client.models.AniOAuthRedirectResponse
 
 open class BangumiAniApi : ApiClient {
 
@@ -47,9 +48,10 @@ open class BangumiAniApi : ApiClient {
      * @param requestId 
      * @param os 
      * @param arch 
-     * @return void
+     * @return AniOAuthRedirectResponse
      */
-    open suspend fun bind(requestId: kotlin.String, os: kotlin.String, arch: kotlin.String): HttpResponse<Unit> {
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun bind(requestId: kotlin.String, os: kotlin.String, arch: kotlin.String): HttpResponse<AniOAuthRedirectResponse> {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
@@ -118,9 +120,10 @@ open class BangumiAniApi : ApiClient {
      * @param requestId 
      * @param os 
      * @param arch 
-     * @return void
+     * @return AniOAuthRedirectResponse
      */
-    open suspend fun oauth(requestId: kotlin.String, os: kotlin.String, arch: kotlin.String): HttpResponse<Unit> {
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun oauth(requestId: kotlin.String, os: kotlin.String, arch: kotlin.String): HttpResponse<AniOAuthRedirectResponse> {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 

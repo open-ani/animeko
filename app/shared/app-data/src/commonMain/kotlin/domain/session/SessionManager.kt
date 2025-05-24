@@ -15,9 +15,13 @@ import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.shareIn
+import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -38,7 +42,9 @@ import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.thisLogger
 import me.him188.ani.utils.logging.warn
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.properties.Delegates
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -78,7 +84,7 @@ class SessionManager(
          *
          * 刷新失败会在一段时间后自动重试. [refreshTokenBefore] 时间长一点可以增加更多重试机会.
          */
-        val refreshTokenBefore: Duration = 24.hours, // 注意, Ani 服务器会至少给 31 天 accessToken.
+        val refreshTokenBefore: Duration = 7.days, // 注意, Ani 服务器会至少给 31 天 accessToken.
         /**
          * 在刷新失败后, 等待多久再尝试刷新.
          */
@@ -99,7 +105,23 @@ class SessionManager(
     private val _stateProvider = object : SessionStateProvider {
         override val stateFlow =
             MutableSharedFlow<SessionState>(replay = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
-        override val eventFlow = MutableSharedFlow<SessionEvent>(extraBufferCapacity = 1)
+
+        private var lastLogon: Boolean by Delegates.notNull()
+
+        override val eventFlow = stateFlow
+            .onStart { lastLogon = stateFlow.first() is SessionState.Valid }
+            .transformLatest { state ->
+                if (state is SessionState.Valid && !lastLogon) {
+                    emit(SessionEvent.NewLogin)
+                } else if (state is SessionState.Invalid && lastLogon) {
+                    if (state.reason == InvalidSessionReason.NO_TOKEN) {
+                        emit(SessionEvent.Logout)
+                    }
+                }
+                lastLogon = !(state is SessionState.Invalid && state.reason == InvalidSessionReason.NO_TOKEN)
+            }
+            // We share this flow to avoid `lastLogon` to be accessed from multiple collectors.
+            .shareIn(coroutineScope, SharingStarted.WhileSubscribed())
     }
 
     val stateProvider get() = _stateProvider

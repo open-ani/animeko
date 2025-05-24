@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024-2025 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.app.ui.login
 
 import androidx.compose.foundation.layout.Arrangement
@@ -19,6 +28,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MediumFlexibleTopAppBar
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -40,14 +50,16 @@ internal fun EmailLoginScreenLayout(
     onNavigateSettings: () -> Unit,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
+    title: @Composable () -> Unit = { Text("登录") },
+    showThirdPartyLogin: Boolean = true,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     Scaffold(
         modifier,
         topBar = {
-            MediumFlexibleTopAppBar(
-                title = { Text("登录") },
+            TopAppBar(
+                title = title,
                 navigationIcon = { BackNavigationIconButton(onNavigateBack) },
                 scrollBehavior = scrollBehavior,
                 actions = { IconButton(onNavigateSettings) { Icon(Icons.Outlined.Settings, "设置") } },
@@ -77,10 +89,12 @@ internal fun EmailLoginScreenLayout(
                 content()
             }
 
-            ThirdPartyLoginMethods(
-                onBangumiLoginClick,
-                Modifier.heightIn(min = 180.dp).wrapContentHeight(align = Alignment.Top),
-            )
+            if (showThirdPartyLogin) {
+                ThirdPartyLoginMethods(
+                    onBangumiLoginClick,
+                    Modifier.heightIn(min = 180.dp).wrapContentHeight(align = Alignment.Top),
+                )
+            }
         }
     }
 }

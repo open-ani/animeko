@@ -1,4 +1,5 @@
 // @formatter:off
+// @formatter:off
 /**
  *
  * Please note:
@@ -66,5 +67,7 @@ data class AniEpisodeCollectionEntity (
 
 }
 
+
+// @formatter:on
 
 // @formatter:on
