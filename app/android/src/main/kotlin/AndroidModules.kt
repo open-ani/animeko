@@ -9,7 +9,6 @@
 
 package me.him188.ani.android
 
-import android.content.Context
 import android.content.Intent
 import android.os.Environment
 import android.widget.Toast
@@ -27,6 +26,7 @@ import me.him188.ani.app.domain.media.cache.engine.HttpMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.engine.TorrentEngineAccess
 import me.him188.ani.app.domain.media.cache.engine.TorrentMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.storage.MediaCacheMigrator
+import me.him188.ani.app.domain.media.cache.storage.MediaSaveDirProvider
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.resolver.AndroidWebMediaResolver
 import me.him188.ani.app.domain.media.resolver.HttpStreamingMediaResolver
@@ -78,19 +78,6 @@ import java.io.File
 import kotlin.concurrent.thread
 import kotlin.system.exitProcess
 
-private fun resolveBaseMediaCacheDir(context: Context): String {
-    val defaultBaseMediaCacheDir = context.files.defaultBaseMediaCacheDir.absolutePath
-
-    // 如果外部目录没 mounted, 那也要使用内部目录
-    return if (!defaultBaseMediaCacheDir.startsWith(context.filesDir.absolutePath) &&
-        Environment.getExternalStorageState(File(defaultBaseMediaCacheDir)) == Environment.MEDIA_MOUNTED
-    ) {
-        defaultBaseMediaCacheDir
-    } else {
-        (context.files as AndroidContextFiles).fallbackInternalBaseMediaCacheDir.absolutePath
-    }
-}
-
 fun getAndroidModules(
     serviceConnectionManager: TorrentServiceConnectionManager,
     coroutineScope: CoroutineScope,
@@ -102,6 +89,24 @@ fun getAndroidModules(
 
     single<TorrentEngineAccess> { serviceConnectionManager }
     single<TorrentServiceConnection<IRemoteAniTorrentEngine>> { serviceConnectionManager.connection }
+
+    single<MediaSaveDirProvider> {
+        val context = androidContext()
+        val defaultBaseMediaCacheDir = context.files.defaultBaseMediaCacheDir.absolutePath
+
+        // 如果外部目录没 mounted, 那也要使用内部目录
+        val saveDir = if (!defaultBaseMediaCacheDir.startsWith(context.filesDir.absolutePath) &&
+            Environment.getExternalStorageState(File(defaultBaseMediaCacheDir)) == Environment.MEDIA_MOUNTED
+        ) {
+            defaultBaseMediaCacheDir
+        } else {
+            (context.files as AndroidContextFiles).fallbackInternalBaseMediaCacheDir.absolutePath
+        }
+
+        object : MediaSaveDirProvider {
+            override val saveDir: String = saveDir
+        }
+    }
 
     single<TorrentManager> {
         val context = androidContext()
@@ -124,7 +129,7 @@ fun getAndroidModules(
             }
         }
 
-        val saveDir = resolveBaseMediaCacheDir(context)
+        val saveDir = get<MediaSaveDirProvider>().saveDir
         logger.info { "TorrentManager base save directory: $saveDir" }
 
         DefaultTorrentManager.create(
@@ -134,20 +139,14 @@ fun getAndroidModules(
             get(),
             get(),
             baseSaveDir = { Path(saveDir).inSystem },
-            if (AniApplication.FEATURE_USE_TORRENT_SERVICE) {
-                RemoteAnitorrentEngineFactory(get(), get(), get<ProxyProvider>().proxy)
-            } else {
-                LocalAnitorrentEngineFactory
-            },
+            RemoteAnitorrentEngineFactory(get(), get(), get<ProxyProvider>().proxy),
         )
     }
 
     single<HttpMediaCacheEngine> {
-        val context = androidContext()
         val logger = logger<TorrentManager>()
 
-        @Suppress("DEPRECATION")
-        val saveDir = resolveBaseMediaCacheDir(context)
+        val saveDir = get<MediaSaveDirProvider>().saveDir
             .let { Path(it).resolve(HttpMediaCacheEngine.MEDIA_CACHE_DIR) }
         logger.info { "HttpMediaCacheEngine base save directory: $saveDir" }
 
@@ -168,6 +167,7 @@ fun getAndroidModules(
             mediaCacheManager = get(),
             settingsRepo = get(),
             appTerminator = get(),
+            mediaCacheBaseDirProvider = get(),
             migrationChecker = object : MediaCacheMigrator.MigrationChecker {
                 override suspend fun requireMigrateTorrentCache(): Boolean {
                     return requireMigrate(context.files.dataDir.resolve(TorrentMediaCacheEngine.LEGACY_MEDIA_CACHE_DIR))

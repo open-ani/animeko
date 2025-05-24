@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.data.network.AniSubjectRelationIndexService
@@ -105,6 +106,7 @@ import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.domain.media.cache.engine.TorrentMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.storage.DataStoreMediaCacheStorage
 import me.him188.ani.app.domain.media.cache.storage.MediaCacheMigrator
+import me.him188.ani.app.domain.media.cache.storage.MediaSaveDirProvider
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.fetch.MediaSourceManagerImpl
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceCodecManager
@@ -140,6 +142,7 @@ import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.coroutines.childScopeContext
 import me.him188.ani.utils.httpdownloader.HttpDownloader
 import me.him188.ani.utils.httpdownloader.KtorPersistentHttpDownloader
+import me.him188.ani.utils.io.inSystem
 import me.him188.ani.utils.io.resolve
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
@@ -397,6 +400,8 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
             dataStore = getContext().dataStores.m3u8DownloaderStore,
             get<HttpClientProvider>().get(),
             fileSystem = SystemFileSystem,
+            baseSaveDir = get<MediaSaveDirProvider>().saveDir
+                .let { Path(it).resolve(HttpMediaCacheEngine.MEDIA_CACHE_DIR) },
         )
     }
 
@@ -433,6 +438,7 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
                                 torrentEngine = engine,
                                 engineAccess = get(),
                                 mediaCacheMetadataStore = metadataStore,
+                                baseSaveDirProvider = get(),
                                 shareRatioLimitFlow = settingsRepository.anitorrentConfig.flow
                                     .map { it.shareRatioLimit },
                             ),

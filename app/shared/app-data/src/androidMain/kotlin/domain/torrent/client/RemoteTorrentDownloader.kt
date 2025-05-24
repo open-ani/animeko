@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -90,7 +90,6 @@ class RemoteTorrentDownloader(
     override suspend fun startDownload(
         data: EncodedTorrentInfo,
         parentCoroutineContext: CoroutineContext,
-        overrideSaveDir: SystemPath?
     ): TorrentSession {
         return RemoteTorrentSession(
             fetchRemoteScope,
@@ -98,7 +97,6 @@ class RemoteTorrentDownloader(
                 remote.callSuspendCancellable { cont ->
                     startDownload(
                         data.toParceled(),
-                        overrideSaveDir?.absolutePath,
                         object : ContTorrentDownloaderStartDownload.Stub() {
                             override fun resume(value: IRemoteTorrentSession?) {
                                 cont.resume(value)

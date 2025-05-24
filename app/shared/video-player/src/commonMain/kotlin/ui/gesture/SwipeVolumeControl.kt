@@ -24,22 +24,31 @@ import me.him188.ani.app.platform.features.StreamType
 interface LevelController {
     val level: Float
 
-    @MainThread
-    fun increaseLevel(step: Float = 0.05f)
+    val range: ClosedRange<Float>
 
     @MainThread
-    fun decreaseLevel(step: Float = 0.05f)
+    fun setLevel(level: Float)
 }
 
 object NoOpLevelController : LevelController {
     override val level: Float
         get() = 0f
 
-    override fun increaseLevel(step: Float) {
-    }
+    override val range: ClosedRange<Float> = 0f..1f
 
-    override fun decreaseLevel(step: Float) {
+    override fun setLevel(level: Float) {
+
     }
+}
+
+@MainThread
+fun LevelController.increaseLevel(step: Float = 0.05f) {
+    setLevel((level + step).coerceAtMost(range.endInclusive))
+}
+
+@MainThread
+fun LevelController.decreaseLevel(step: Float = 0.05f) {
+    setLevel((level - step).coerceAtLeast(range.start))
 }
 
 fun AudioManager.asLevelController(
@@ -48,14 +57,10 @@ fun AudioManager.asLevelController(
     override val level: Float
         get() = getVolume(streamType)
 
-    override fun increaseLevel(step: Float) {
-        val current = getVolume(streamType)
-        setVolume(streamType, (current + step).coerceAtMost(1f))
-    }
+    override val range: ClosedRange<Float> = 0f..1f
 
-    override fun decreaseLevel(step: Float) {
-        val current = getVolume(streamType)
-        setVolume(streamType, (current - step).coerceAtLeast(0f))
+    override fun setLevel(level: Float) {
+        setVolume(streamType, level.coerceIn(range))
     }
 }
 
@@ -63,14 +68,10 @@ fun BrightnessManager.asLevelController(): LevelController = object : LevelContr
     override val level: Float
         get() = getBrightness()
 
-    override fun increaseLevel(step: Float) {
-        val current = getBrightness()
-        setBrightness((current + step).coerceAtMost(1f))
-    }
+    override val range: ClosedRange<Float> = 0f..1f
 
-    override fun decreaseLevel(step: Float) {
-        val current = getBrightness()
-        setBrightness((current - step).coerceAtLeast(0f))
+    override fun setLevel(level: Float) {
+        setBrightness(level.coerceIn(range))
     }
 }
 

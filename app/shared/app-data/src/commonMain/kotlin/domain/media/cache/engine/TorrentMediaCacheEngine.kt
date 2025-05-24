@@ -44,6 +44,7 @@ import me.him188.ani.app.domain.media.cache.engine.TorrentMediaCacheEngine.Compa
 import me.him188.ani.app.domain.media.cache.engine.TorrentMediaCacheEngine.Companion.EXTRA_TORRENT_CACHE_UPLOADED_SIZE
 import me.him188.ani.app.domain.media.cache.engine.TorrentMediaCacheEngine.Companion.EXTRA_TORRENT_DATA
 import me.him188.ani.app.domain.media.cache.storage.MediaCacheSave
+import me.him188.ani.app.domain.media.cache.storage.MediaSaveDirProvider
 import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
 import me.him188.ani.app.domain.media.resolver.TorrentMediaResolver
 import me.him188.ani.app.domain.torrent.TorrentEngine
@@ -71,6 +72,7 @@ import me.him188.ani.utils.io.exists
 import me.him188.ani.utils.io.inSystem
 import me.him188.ani.utils.io.isDirectory
 import me.him188.ani.utils.io.resolve
+import me.him188.ani.utils.io.resolveSibling
 import me.him188.ani.utils.logging.debug
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
@@ -99,11 +101,18 @@ class TorrentMediaCacheEngine(
     private val mediaCacheMetadataStore: DataStore<List<MediaCacheSave>>,
     private val shareRatioLimitFlow: Flow<Float>,
     val flowDispatcher: CoroutineContext = Dispatchers.Default,
+    private val baseSaveDirProvider: MediaSaveDirProvider,
     private val onDownloadStarted: suspend (session: TorrentSession) -> Unit = {},
 ) : MediaCacheEngine, AutoCloseable {
     companion object {
         private val EXTRA_TORRENT_DATA = MetadataKey("torrentData")
-        val EXTRA_TORRENT_CACHE_DIR = MetadataKey("torrentCacheDir") // 种子的缓存目录, 注意, 一个 MediaCache 可能只对应该种子资源的其中一个文件
+
+        /**
+         * 种子的缓存目录, 相对于 [MediaSaveDirProvider.saveDir] 的相对路径.
+         *
+         * 注意, 一个 MediaCache 可能只对应该种子资源的其中一个文件
+         */
+        val EXTRA_TORRENT_CACHE_DIR = MetadataKey("torrentCacheDir")
         val EXTRA_TORRENT_COMPLETED = MetadataKey("torrentCompleted") // torrent 是否已经完成, 意味着已经下载完并达到分享率
         val EXTRA_TORRENT_CACHE_FILE =
             MetadataKey("torrentCacheFile") // MediaCache 所对应的视频文件相对路径. 该文件一定是 [EXTRA_TORRENT_CACHE_DIR] 目录中的文件 (的其中一个)
@@ -541,7 +550,16 @@ class TorrentMediaCacheEngine(
             val newMetadata = metadata.withExtra(
                 mapOf(
                     EXTRA_TORRENT_DATA to data.data.toHexString(),
-                    EXTRA_TORRENT_CACHE_DIR to downloader.getSaveDirForTorrent(data).absolutePath,
+                    EXTRA_TORRENT_CACHE_DIR to downloader.getSaveDirForTorrent(data).absolutePath.let { path ->
+                        val stripped = path.substringAfter(baseSaveDirProvider.saveDir)
+                        if (path == stripped) {
+                            throw UnsupportedOperationException(
+                                "Failed to strip torrent save path of media ${origin.mediaId}, " +
+                                        "path: $path, base: ${baseSaveDirProvider.saveDir}",
+                            )
+                        }
+                        stripped
+                    },
                 ),
             )
 
@@ -553,31 +571,6 @@ class TorrentMediaCacheEngine(
         }
     }
 
-    override suspend fun modifyMetadataForMigration(
-        original: MediaCacheMetadata,
-        newSaveDir: Path
-    ): MediaCacheMetadata {
-        val currentTorrentData = original.extra[EXTRA_TORRENT_DATA]?.hexToByteArray() ?: return original
-
-        // TODO: The hardcoded path is for anitorrent only. 
-        // see AnitorrentTorrentDownloader
-        val newTorrentCacheDir = newSaveDir
-            .resolve(torrentEngine.type.id)
-            .resolve("pieces")
-            .resolve(currentTorrentData.contentHashCode().toString())
-            .inSystem.absolutePath
-
-        logger.info {
-            "Migrate metadata, EXTRA_TORRENT_CACHE_DIR prev: ${original.extra[EXTRA_TORRENT_CACHE_DIR]}, " +
-                    "new: $newTorrentCacheDir"
-        }
-
-        return original.copy(
-            extra = original.extra.toMutableMap()
-                .apply { put(EXTRA_TORRENT_CACHE_DIR, newTorrentCacheDir) },
-        )
-    }
-
     @OptIn(ExperimentalStdlibApi::class)
     override suspend fun deleteUnusedCaches(all: List<MediaCache>) {
         // 只需要在删除缓存的时候 torrent engine 可用, 不需要保证一直可用
@@ -586,15 +579,19 @@ class TorrentMediaCacheEngine(
             val downloader = torrentEngine.getDownloader()
             val allowedAbsolute = buildSet(capacity = all.size) {
                 for (mediaCache in all) {
-                    add(mediaCache.metadata.extra[EXTRA_TORRENT_CACHE_DIR]) // 上次记录的位置
+                    mediaCache.metadata.extra[EXTRA_TORRENT_CACHE_DIR] // 上次记录的位置
+                        ?.let {
+                            add(Path(baseSaveDirProvider.saveDir).resolve(it).inSystem.absolutePath)
+                        }
 
-                    val data =
-                        mediaCache.metadata.extra[EXTRA_TORRENT_DATA]?.runCatching { hexToByteArray() }?.getOrNull()
-                    if (data != null) {
-                        // 如果新版本 ani 的缓存目录有变, 对于旧版本的 metadata, 存的缓存目录会是旧版本的, 
-                        // 就需要用 `getSaveDirForTorrent` 重新计算新目录
-                        add(downloader.getSaveDirForTorrent(EncodedTorrentInfo.createRaw(data)).absolutePath)
-                    }
+                    mediaCache.metadata.extra[EXTRA_TORRENT_DATA]
+                        ?.runCatching { hexToByteArray() }
+                        ?.getOrNull()
+                        ?.let {
+                            // 如果新版本 ani 的缓存目录有变, 对于旧版本的 metadata, 存的缓存目录会是旧版本的, 
+                            // 就需要用 `getSaveDirForTorrent` 重新计算新目录
+                            add(downloader.getSaveDirForTorrent(EncodedTorrentInfo.createRaw(it)).absolutePath)
+                        }
                 }
             }
 
@@ -619,7 +616,7 @@ class TorrentMediaCacheEngine(
         val cacheDir = extra[EXTRA_TORRENT_CACHE_DIR] ?: return null
         val cacheRelativeFilePath = extra[EXTRA_TORRENT_CACHE_FILE] ?: return null
 
-        val file = Path(cacheDir, cacheRelativeFilePath).inSystem
+        val file = Path(baseSaveDirProvider.saveDir, cacheDir).resolve(cacheRelativeFilePath).inSystem
         if (!file.exists() || file.isDirectory()) {
             return null
         }

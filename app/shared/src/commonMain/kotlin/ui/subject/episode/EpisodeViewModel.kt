@@ -23,6 +23,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -145,6 +146,7 @@ import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.source.MediaFetchRequest
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
+import me.him188.ani.utils.coroutines.SingleTaskExecutor
 import me.him188.ani.utils.coroutines.flows.FlowRestarter
 import me.him188.ani.utils.coroutines.flows.flowOfEmptyList
 import me.him188.ani.utils.coroutines.flows.flowOfNull
@@ -243,6 +245,8 @@ class EpisodeViewModel(
     val turnstileState: TurnstileState by inject()
     val setEpisodeCollectionType: SetEpisodeCollectionTypeUseCase by inject()
     // endregion
+
+    private val tasker = SingleTaskExecutor(backgroundScope.coroutineContext)
 
     val player: MediampPlayer =
         playerStateFactory.create(context, backgroundScope.coroutineContext)
@@ -344,6 +348,9 @@ class EpisodeViewModel(
 
     val videoScaffoldConfig: VideoScaffoldConfig by settingsRepository.videoScaffoldConfig
         .flow.produceState(VideoScaffoldConfig.Default)
+
+    val playerVolumeFlow: Flow<VideoScaffoldConfig.PlayerVolume> =
+        settingsRepository.videoScaffoldConfig.flow.map { it.playerVolume }
 
     val danmakuRegexFilterState = DanmakuRegexFilterState(
         list = danmakuRegexFilterRepository.flow.produceState(emptyList()),
@@ -770,6 +777,16 @@ class EpisodeViewModel(
     fun setDanmakuEnabled(enabled: Boolean) {
         launchInBackground {
             setDanmakuEnabledUseCase(enabled)
+        }
+    }
+
+    fun savePlayerVolume(volume: Float, mute: Boolean) {
+        launchInBackground {
+            tasker.invoke {
+                delay(200)
+                settingsRepository.videoScaffoldConfig
+                    .update { copy(playerVolume = VideoScaffoldConfig.PlayerVolume(volume, mute)) }
+            }
         }
     }
 

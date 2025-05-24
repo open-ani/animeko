@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -70,15 +70,10 @@ interface TorrentDownloader : AutoCloseable {
      * Starts download of a torrent using the torrent data.
      *
      * This function may involve I/O operation e.g. to compare with local caches.
-     *
-     * @param overrideSaveDir 覆盖的保存目录. 注意, 若这是季度全集资源, 他可能会在 qBit 平台上出问题.
-     * 因为 qBit 依赖保存目录获取已有资源.
-     * 于是这个参数目前一直没使用.
      */
     suspend fun startDownload(
         data: EncodedTorrentInfo,
         parentCoroutineContext: CoroutineContext = EmptyCoroutineContext,
-        overrideSaveDir: SystemPath? = null,
     ): TorrentSession
 
     fun getSaveDirForTorrent(

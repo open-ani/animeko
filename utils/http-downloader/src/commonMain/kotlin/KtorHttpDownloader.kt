@@ -45,6 +45,7 @@ import kotlinx.datetime.Clock
 import kotlinx.io.buffered
 import kotlinx.io.files.FileSystem
 import kotlinx.io.files.Path
+import kotlinx.io.files.SystemPathSeparator
 import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.httpdownloader.DownloadStatus.CANCELED
 import me.him188.ani.utils.httpdownloader.DownloadStatus.COMPLETED
@@ -57,7 +58,10 @@ import me.him188.ani.utils.httpdownloader.m3u.DefaultM3u8Parser
 import me.him188.ani.utils.httpdownloader.m3u.M3u8Parser
 import me.him188.ani.utils.httpdownloader.m3u.M3u8Playlist
 import me.him188.ani.utils.io.DEFAULT_BUFFER_SIZE
+import me.him188.ani.utils.io.SystemPath
+import me.him188.ani.utils.io.absolutePath
 import me.him188.ani.utils.io.copyTo
+import me.him188.ani.utils.io.inSystem
 import me.him188.ani.utils.io.resolve
 import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.logging.error
@@ -75,6 +79,7 @@ import kotlin.coroutines.CoroutineContext
 open class KtorHttpDownloader(
     protected val client: ScopedHttpClient,
     private val fileSystem: FileSystem,
+    private val baseSaveDir: Path,
     computeDispatcher: CoroutineContext = Dispatchers.Default,
     private val ioDispatcher: CoroutineContext = Dispatchers.IO_,
     val clock: Clock = Clock.System,
@@ -113,12 +118,10 @@ open class KtorHttpDownloader(
 
     override suspend fun download(
         url: String,
-        outputPath: Path,
         options: DownloadOptions,
     ): DownloadId {
         val downloadId = DownloadId(value = Uuid.randomString())
-        downloadWithId(downloadId, url, outputPath, options)
-        return downloadId
+        return downloadWithId(downloadId, url, options)?.downloadId ?: downloadId
     }
 
     protected fun getMediaTypeFromUrl(url: String): MediaType? {
@@ -139,31 +142,32 @@ open class KtorHttpDownloader(
     override suspend fun downloadWithId(
         downloadId: DownloadId,
         url: String,
-        outputPath: Path,
         options: DownloadOptions,
-    ) {
+    ): DownloadState? {
         val mediaType = getMediaTypeFromUrl(url) ?: MediaType.MP4
         logger.info { "Preparing to download with id=$downloadId, url=$url, mediaType=$mediaType" }
 
         // 1) Set initial state if not present
         stateMutex.withLock {
             val currentMap = _downloadStatesFlow.value.toMutableMap()
-            if (currentMap[downloadId] != null) {
+            val existingEntry = currentMap[downloadId]
+            if (existingEntry != null) {
                 // If there's already a state in COMPLETED, do nothing
                 logger.info { "Existing completed download found for $downloadId, ignoring." }
-                return
+                return existingEntry.state
             }
-            val segmentCacheDir = createSegmentCacheDir(outputPath, downloadId)
+            val segmentCacheDir = ("segments_" + downloadId.value)
+                .also { fileSystem.createDirectories(baseSaveDir.resolve(it)) }
             val initialState = DownloadState(
                 downloadId = downloadId,
                 url = url,
-                outputPath = outputPath.toString(),
+                relativeOutputPath = downloadId.value,
                 segments = emptyList(),
                 totalSegments = 0,
                 downloadedBytes = 0L,
                 timestamp = clock.now().toEpochMilliseconds(),
                 status = INITIALIZING,
-                segmentCacheDir = segmentCacheDir.toString(),
+                relativeSegmentCacheDir = segmentCacheDir,
                 mediaType = mediaType,
             )
             currentMap[downloadId] = DownloadEntry(job = null, state = initialState)
@@ -175,7 +179,7 @@ open class KtorHttpDownloader(
         // 2) Create segments
         if (!createSegments(downloadId, url, mediaType, options)) {
             // If creation failed, the state is set to FAILED. We stop here.
-            return
+            return null
         }
 
         // 3) Mark status=DOWNLOADING and launch the job
@@ -223,11 +227,14 @@ open class KtorHttpDownloader(
         }
 
         // 4) Store the job
-        stateMutex.withLock {
+        return stateMutex.withLock {
             val currentMap = _downloadStatesFlow.value.toMutableMap()
-            val entry = currentMap[downloadId] ?: return
+            val entry = currentMap[downloadId]
+                ?: error("Job of new download request $downloadId is created, but the download state is not found.")
             currentMap[downloadId] = entry.copy(job = job)
             _downloadStatesFlow.value = currentMap
+
+            entry.state
         }
     }
 
@@ -479,7 +486,9 @@ open class KtorHttpDownloader(
                 MediaType.M3U8 -> {
                     logger.info { "Resolving M3U8 media playlist for $downloadId" }
                     val playlist = resolveM3u8MediaPlaylist(url, options)
-                    playlist.toSegments(Path(getState(downloadId)?.segmentCacheDir ?: return false))
+
+                    val segmentCacheDir = getState(downloadId)?.relativeSegmentCacheDir ?: return false
+                    playlist.toSegments { Path(segmentCacheDir).resolve(it).toString() }
                 }
 
                 MediaType.MP4, MediaType.MKV -> {
@@ -566,7 +575,10 @@ open class KtorHttpDownloader(
         url: String,
         options: DownloadOptions,
     ): List<SegmentInfo> {
-        val cacheDir = Path(getState(downloadId)?.segmentCacheDir ?: error("Cache dir not found"))
+        val cacheDir = baseSaveDir.resolve(
+            getState(downloadId)?.relativeSegmentCacheDir ?: error("Cache dir not found"),
+        )
+
         val rangeProbe = probeRangeSupport(url, options)
 
         // If the probe fails or the server doesn't support range => single segment
@@ -577,7 +589,8 @@ open class KtorHttpDownloader(
                     url = url,
                     isDownloaded = false,
                     byteSize = -1,
-                    tempFilePath = cacheDir.resolve("0.part").toString(),
+                    relativeTempFilePath = cacheDir.resolve("0.part").inSystem.absolutePath
+                        .substringAfter(baseSaveDir.inSystem.absolutePath),
                     rangeStart = null,
                     rangeEnd = null,
                 ),
@@ -591,7 +604,8 @@ open class KtorHttpDownloader(
                     url = url,
                     isDownloaded = false,
                     byteSize = contentLength, // might be -1 if unknown
-                    tempFilePath = cacheDir.resolve("0.part").toString(),
+                    relativeTempFilePath = cacheDir.resolve("0.part").inSystem.absolutePath
+                        .substringAfter(baseSaveDir.inSystem.absolutePath),
                     rangeStart = null,
                     rangeEnd = null,
                 ),
@@ -608,7 +622,8 @@ open class KtorHttpDownloader(
                     url = url,
                     isDownloaded = false,
                     byteSize = contentLength,
-                    tempFilePath = cacheDir.resolve("0.part").toString(),
+                    relativeTempFilePath = cacheDir.resolve("0.part").inSystem.absolutePath
+                        .substringAfter(baseSaveDir.inSystem.absolutePath),
                     rangeStart = 0,
                     rangeEnd = contentLength - 1,
                 ),
@@ -627,7 +642,8 @@ open class KtorHttpDownloader(
                     url = url,
                     isDownloaded = false,
                     byteSize = (end - start + 1),
-                    tempFilePath = cacheDir.resolve("$index.part").toString(),
+                    relativeTempFilePath = cacheDir.resolve("$index.part").inSystem.absolutePath
+                        .substringAfter(baseSaveDir.inSystem.absolutePath),
                     rangeStart = start,
                     rangeEnd = end,
                 ),
@@ -697,7 +713,7 @@ open class KtorHttpDownloader(
             val response = statement.execute()
             val channel = response.bodyAsChannel()
 
-            val segmentPath = Path(segmentInfo.tempFilePath)
+            val segmentPath = baseSaveDir.resolve(segmentInfo.relativeTempFilePath)
             withContext(ioDispatcher) {
                 fileSystem.createDirectories(
                     segmentPath.parent ?: error("Parent dir not found for segmentInfo: $segmentInfo"),
@@ -779,12 +795,12 @@ open class KtorHttpDownloader(
 
     protected suspend fun mergeSegments(downloadId: DownloadId) = withContext(ioDispatcher) {
         val st = getState(downloadId) ?: return@withContext
-        val cacheDir = Path(st.segmentCacheDir)
-        val finalOutput = Path(st.outputPath)
+        val cacheDir = baseSaveDir.resolve(st.relativeSegmentCacheDir)
+        val finalOutput = baseSaveDir.resolve(st.relativeOutputPath)
 
         fileSystem.sink(finalOutput).buffered().use { out ->
             st.segments.sortedBy { it.index }.forEach { seg ->
-                fileSystem.source(Path(seg.tempFilePath)).buffered().use { input ->
+                fileSystem.source(baseSaveDir.resolve(seg.relativeTempFilePath)).buffered().use { input ->
                     input.copyTo(out)
                 }
             }
@@ -792,7 +808,7 @@ open class KtorHttpDownloader(
 
         // remove segment files
         st.segments.forEach { seg ->
-            fileSystem.delete(Path(seg.tempFilePath))
+            fileSystem.delete(baseSaveDir.resolve(seg.relativeTempFilePath))
         }
         // remove the cache dir
         fileSystem.delete(cacheDir)
@@ -882,7 +898,7 @@ open class KtorHttpDownloader(
 
 private class M3u8Exception(val errorCode: DownloadErrorCode) : Exception()
 
-private fun M3u8Playlist.MediaPlaylist.toSegments(cacheDir: Path): List<SegmentInfo> {
+private fun M3u8Playlist.MediaPlaylist.toSegments(resolveSegmentPath: (String) -> String): List<SegmentInfo> {
     return segments.mapIndexed { i, seg ->
         val idx = mediaSequence + i
         SegmentInfo(
@@ -890,7 +906,7 @@ private fun M3u8Playlist.MediaPlaylist.toSegments(cacheDir: Path): List<SegmentI
             url = seg.uri,
             isDownloaded = false,
             byteSize = seg.byteRange?.length ?: -1,
-            tempFilePath = cacheDir.resolve("$idx.ts").toString(),
+            relativeTempFilePath = resolveSegmentPath("$idx.ts"),
         )
     }
 }

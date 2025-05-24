@@ -18,7 +18,7 @@ interface IRemoteTorrentDownloader {
     
     IDisposableHandle fetchTorrent(in String uri, int timeoutSeconds, in ContTorrentDownloaderFetchTorrent cont);
     
-    IDisposableHandle startDownload(in PEncodedTorrentInfo data, in String overrideSaveDir, in ContTorrentDownloaderStartDownload cont);
+    IDisposableHandle startDownload(in PEncodedTorrentInfo data, in ContTorrentDownloaderStartDownload cont);
     
     String getSaveDirForTorrent(in PEncodedTorrentInfo data);
     

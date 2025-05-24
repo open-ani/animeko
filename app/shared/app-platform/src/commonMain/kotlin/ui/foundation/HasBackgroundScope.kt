@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -32,15 +32,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.WhileSubscribed
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
@@ -171,73 +168,6 @@ interface HasBackgroundScope {
         started: SharingStarted = SharingStarted.WhileSubscribed(5.seconds),
     ): StateFlow<T?> = stateIn(backgroundScope, started, null)
 
-    /**
-     * Converts a _cold_ [Flow] into a _hot_ [StateFlow] that is started in the **background scope**,
-     * and merge it with a mutable local cache.
-     *
-     * The returned flow is a [MutableStateFlow], which acts like a local cache and allows you to update it.
-     * When [this] emits a new value, the resulting flow is updated with the new value.
-     *
-     * ## No UI actions in flow operations
-     *
-     * Since the flow is started in the background scope, you must not perform any UI actions in the flow operations.
-     * All UI actions will fail with an exception.
-     *
-     * ## Example usage
-     * ```
-     * val allGames: MutableStateFlow<List<GameDataGet>> = time.map {
-     *     gameDataService.getGames()
-     * }.localCachedStateFlow(emptyList())
-     * ```
-     *
-     * The example example converts the mapped flow to a locally cached state flow.
-     * When `time` changes, `gameDataService.getGames()` executes and the flow emits a new list of games fetched from the server.
-     *
-     * When the user deletes a game, the local cache can be updated with the new list of games without the deleted game,
-     * so that we do not need to prefetch the entire list of games from the server.
-     *
-     * ```
-     * suspend fun deleteGame(id: String) {
-     *     runCatching {
-     *         gameDataService.deleteGame(id) // Send a request to the server to delete the game
-     *     }.onSuccess {
-     *         // When the request is successful, update the local cache to remove the deleted game
-     *         allGames.value = allGames.value.filter { it.id != id }
-     *     }
-     * }
-     * ```
-     */
-    fun <T> Flow<T>.localCachedStateFlow(
-        initialValue: T,
-//        started: SharingStarted = SharingStarted.WhileSubscribed(5.seconds),
-    ): MutableStateFlow<T> {
-        val localFlow = MutableStateFlow(initialValue)
-        launchInBackground {
-            collect { localFlow.value = it }
-        }
-        return localFlow
-    }
-
-    fun <T> deferFlowInBackground(value: suspend () -> T): MutableStateFlow<T?> {
-        val flow = MutableStateFlow<T?>(null)
-        launchInBackground {
-            flow.value = value()
-        }
-        return flow
-    }
-
-    fun <T> Flow<T>.localCachedSharedFlow(
-        started: SharingStarted = SharingStarted.WhileSubscribed(5.seconds),
-        replay: Int = 1,
-        onBufferOverflow: BufferOverflow = BufferOverflow.DROP_OLDEST,
-    ): MutableSharedFlow<T> {
-        val localFlow = MutableSharedFlow<T>(replay, onBufferOverflow = onBufferOverflow)
-        launchInBackground {
-            collect { localFlow.emit(it) }
-        }
-        return localFlow
-    }
-
     private val <T> Flow<T>.valueOrNull: T?
         get() = when (this) {
             is StateFlow<T> -> this.value
@@ -245,30 +175,6 @@ interface HasBackgroundScope {
             else -> null
         }
 
-    /**
-     * Produce first emitted value into a [State].
-     * After the first value is emitted, the state is no longer changed.
-     */
-    fun <T> Flow<T>.collectFirstAsState(
-        initialValue: T,
-        coroutineContext: CoroutineContext = EmptyCoroutineContext,
-    ): State<T> {
-        val current = valueOrNull
-        val state = mutableStateOf(current ?: initialValue)
-        if (current != null) return state
-
-        launchInBackground(coroutineContext) {
-            flowOn(Dispatchers.Default) // compute in background
-                .first()
-                .also {
-                    withContext(Dispatchers.Main) { // ensure a dispatch happens
-                        state.value = it
-                    }
-                }
-        }
-        return state
-    }
-    
     /**
      * Collects the flow on the main thread into a [State].
      */

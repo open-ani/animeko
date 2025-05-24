@@ -11,6 +11,7 @@ package me.him188.ani.utils.httpdownloader
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.io.files.Path
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlin.jvm.JvmInline
 
@@ -49,23 +50,26 @@ interface HttpDownloader : AutoCloseable {
     suspend fun init()
 
     /**
-     * Starts a new download and returns its unique ID.
+     * Starts a new download and returns its initial download state.
+     *
+     * @param parentDirectory absolute path
      */
     suspend fun download(
         url: String,
-        outputPath: Path,
         options: DownloadOptions = DownloadOptions(),
     ): DownloadId
 
     /**
      * Starts a new download with a specific ID.
+     *
+     * @return initial download state if the download job is newly created,
+     *  or the snapshot state of the download job if job with [downloadId] already exists.
      */
     suspend fun downloadWithId(
         downloadId: DownloadId,
         url: String,
-        outputPath: Path,
         options: DownloadOptions = DownloadOptions(),
-    )
+    ): DownloadState?
 
     /**
      * Resumes a previously paused or failed download by ID.
@@ -159,14 +163,16 @@ enum class DownloadStatus {
 data class DownloadState(
     val downloadId: DownloadId,
     val url: String,
-    val outputPath: String,
+    @SerialName("outputPath")
+    val relativeOutputPath: String,
     val segments: List<SegmentInfo>,
     val totalSegments: Int,
     val downloadedBytes: Long,
     val timestamp: Long,
     val status: DownloadStatus,
     val error: DownloadError? = null,
-    val segmentCacheDir: String,
+    @SerialName("segmentCacheDir")
+    val relativeSegmentCacheDir: String,
     val mediaType: MediaType,
 )
 
@@ -181,7 +187,8 @@ data class SegmentInfo(
     val url: String,
     val isDownloaded: Boolean,
     val byteSize: Long = -1,
-    val tempFilePath: String,
+    @SerialName("tempFilePath")
+    val relativeTempFilePath: String,
     val rangeStart: Long? = null,
     val rangeEnd: Long? = null,
 )

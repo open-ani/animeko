@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -44,12 +44,12 @@ class TorrentDownloaderProxy(
 ) : IRemoteTorrentDownloader.Stub() {
     private val logger = logger<TorrentDownloaderProxy>()
     private val scope = context.childScope()
-    
+
     override fun getTotalStatus(flow: ITorrentDownloaderStatsCallback?): IDisposableHandle {
         val job = scope.launch(Dispatchers.IO_) {
             delegate.totalStats.collect {
                 if (!connectivityAware.isConnected) return@collect
-                
+
                 try {
                     flow?.onEmit(
                         PTorrentDownloaderStats(
@@ -66,17 +66,17 @@ class TorrentDownloaderProxy(
                 }
             }
         }
-        
+
         return DisposableHandleProxy { job.cancel() }
     }
 
     override fun getVendor(): PTorrentLibInfo {
         val vendor = delegate.vendor
-        
+
         return PTorrentLibInfo(
             vendor.vendor,
             vendor.version,
-            vendor.supportsStreaming
+            vendor.supportsStreaming,
         )
     }
 
@@ -106,7 +106,6 @@ class TorrentDownloaderProxy(
     @RequiresApi(Build.VERSION_CODES.O_MR1)
     override fun startDownload(
         data: PEncodedTorrentInfo?,
-        overrideSaveDir: String?,
         cont: ContTorrentDownloaderStartDownload?
     ): IDisposableHandle? {
         if (data == null) return null
@@ -118,10 +117,7 @@ class TorrentDownloaderProxy(
                 cont.resumeWithException(throwable.toRemoteContinuationException())
             } + Dispatchers.IO_,
         ) {
-            val result = delegate.startDownload(
-                withContext(Dispatchers.IO_) { data.toEncodedTorrentInfo() },
-                overrideSaveDir = overrideSaveDir?.run { Path(this).inSystem },
-            )
+            val result = delegate.startDownload(withContext(Dispatchers.IO_) { data.toEncodedTorrentInfo() })
             if (!connectivityAware.isConnected) return@launch
             cont.resume(TorrentSessionProxy(result, connectivityAware, scope.coroutineContext))
         }
@@ -132,14 +128,14 @@ class TorrentDownloaderProxy(
     @RequiresApi(Build.VERSION_CODES.O_MR1)
     override fun getSaveDirForTorrent(data: PEncodedTorrentInfo?): String? {
         if (data == null) return null
-        
+
         val path = delegate.getSaveDirForTorrent(data.toEncodedTorrentInfo())
         return path.absolutePath
     }
 
     override fun listSaves(): Array<String> {
         val saves = delegate.listSaves()
-        
+
         return saves.map { it.absolutePath }.toTypedArray()
     }
 
