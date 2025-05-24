@@ -58,6 +58,10 @@ kotlin {
                     version = "~> 3.0"
                     extraOpts += listOf("-compiler-option", "-fmodules")
                 }
+                pod("Sentry") {
+                    version = "~> 8.51.0"
+                    extraOpts += listOf("-compiler-option", "-fmodules")
+                }
             }
         }
     }
