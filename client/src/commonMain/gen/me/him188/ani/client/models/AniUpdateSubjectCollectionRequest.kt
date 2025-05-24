@@ -15,22 +15,22 @@
 
 package me.him188.ani.client.models
 
-import me.him188.ani.client.models.AniCollectionType
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * 
  *
- * @param collectionType 
+ * @param collectionType
+ * @param selfRating 
  */
 @Serializable
 
 data class AniUpdateSubjectCollectionRequest(
 
-    @SerialName(value = "collectionType") val collectionType: AniCollectionType? = null
+    @SerialName(value = "collectionType") val collectionType: AniCollectionType? = null,
+
+    @SerialName(value = "selfRating") val selfRating: AniSelfRatingInfo? = null
 
 ) {
 

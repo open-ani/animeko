@@ -21,18 +21,24 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- * 
  *
- * @param template 
- * @param fields 
+ *
+ * @param score
+ * @param tags
+ * @param isPrivate
+ * @param comment
  */
 @Serializable
 
-data class AniInfoboxEntity(
+data class AniSelfRatingInfo(
 
-    @SerialName(value = "template") @Required val template: kotlin.String,
+    @SerialName(value = "score") @Required val score: kotlin.Int,
 
-    @SerialName(value = "fields") @Required val fields: kotlin.collections.Map<kotlin.String, kotlin.String>
+    @SerialName(value = "tags") @Required val tags: kotlin.collections.List<kotlin.String>,
+
+    @SerialName(value = "isPrivate") @Required val isPrivate: kotlin.Boolean,
+
+    @SerialName(value = "comment") val comment: kotlin.String? = null
 
 ) {
 

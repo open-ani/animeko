@@ -20,7 +20,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- *
+ * 
  *
  * Values: MAIN,SPECIAL,OP,ED,TRAILER,MAD,OTHER
  */

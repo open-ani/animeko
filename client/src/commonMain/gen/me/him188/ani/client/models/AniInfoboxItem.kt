@@ -15,24 +15,23 @@
 
 package me.him188.ani.client.models
 
-
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- * 
  *
- * @param template 
- * @param fields 
+ *
+ * @param key
+ * @param propertyValues
  */
 @Serializable
 
-data class AniInfoboxEntity(
+data class AniInfoboxItem(
 
-    @SerialName(value = "template") @Required val template: kotlin.String,
+    @SerialName(value = "key") @Required val key: kotlin.String,
 
-    @SerialName(value = "fields") @Required val fields: kotlin.collections.Map<kotlin.String, kotlin.String>
+    @SerialName(value = "values") @Required val propertyValues: kotlin.collections.List<AniInfoboxValue>
 
 ) {
 

@@ -15,18 +15,9 @@
 
 package me.him188.ani.client.models
 
-import me.him188.ani.client.models.AniCollectionType
-import me.him188.ani.client.models.AniEpisodeCollection
-import me.him188.ani.client.models.AniFavourite
-import me.him188.ani.client.models.AniInfobox
-import me.him188.ani.client.models.AniSubjectAiringInfo
-import me.him188.ani.client.models.AniSubjectRelations
-import me.him188.ani.client.models.AniSubjectType
-import me.him188.ani.client.models.AniTag
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * 
@@ -41,16 +32,17 @@ import kotlinx.serialization.encoding.*
  * @param aliases
  * @param favorite
  * @param tags
- * @param metaTags
- * @param scoreDetails 
+ * @param metaTags 
+ * @param scoreDetails
+ * @param selfRating 
  * @param episodes 条目对应的剧集的收藏状态
  * @param infobox
- * @param platform
+ * @param platform 
  * @param score 如果不为空, 则必定为浮点
  * @param rank
  * @param collectionType
  * @param airingInfo
- * @param relations
+ * @param relations 
  * @param updatedAt 收藏更新的时间. 如果没有收藏, 则为 `null`.
  */
 @Serializable
@@ -81,6 +73,8 @@ data class AniSubjectCollection(
 
     @SerialName(value = "scoreDetails") @Required val scoreDetails: kotlin.collections.Map<kotlin.String, kotlin.Int>,
 
+    @SerialName(value = "selfRating") @Required val selfRating: AniSelfRatingInfo,
+
     /* 条目对应的剧集的收藏状态 */
     @SerialName(value = "episodes") @Required val episodes: kotlin.collections.List<AniEpisodeCollection>,
 
@@ -106,4 +100,3 @@ data class AniSubjectCollection(
 
 
 }
-

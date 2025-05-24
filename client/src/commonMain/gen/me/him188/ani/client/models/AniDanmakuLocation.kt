@@ -16,7 +16,8 @@
 package me.him188.ani.client.models
 
 
-import kotlinx.serialization.*
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * 

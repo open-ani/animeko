@@ -15,15 +15,14 @@
 
 package me.him188.ani.client.models
 
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * 
  *
- * @param template
+ * @param template 
  * @param fields 
  */
 @Serializable
@@ -32,7 +31,7 @@ data class AniInfobox(
 
     @SerialName(value = "template") @Required val template: kotlin.String,
 
-    @SerialName(value = "fields") @Required val fields: kotlin.collections.Map<kotlin.String, kotlin.String>
+    @SerialName(value = "fields") @Required val fields: kotlin.collections.List<AniInfoboxItem>
 
 ) {
 

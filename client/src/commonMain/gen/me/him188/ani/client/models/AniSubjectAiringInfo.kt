@@ -15,17 +15,14 @@
 
 package me.him188.ani.client.models
 
-import me.him188.ani.client.models.AniAnimeRecurrence
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * 新番连载信息, 如果是完结番则为 null
  *
  * @param begin
- * @param recurrence
+ * @param recurrence 
  * @param end 
  */
 @Serializable

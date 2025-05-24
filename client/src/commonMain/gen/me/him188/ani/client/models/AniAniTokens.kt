@@ -16,14 +16,14 @@
 package me.him188.ani.client.models
 
 
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * 
  *
- * @param accessToken
+ * @param accessToken 
  * @param refreshToken 
  * @param expiresAtMillis 
  * @param bangumiAccessToken 

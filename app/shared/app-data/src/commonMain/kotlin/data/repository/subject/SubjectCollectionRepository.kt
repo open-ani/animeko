@@ -88,6 +88,7 @@ import me.him188.ani.client.models.AniEpisodeCollection
 import me.him188.ani.client.models.AniEpisodeCollectionType
 import me.him188.ani.client.models.AniEpisodeType
 import me.him188.ani.client.models.AniFavourite
+import me.him188.ani.client.models.AniSelfRatingInfo
 import me.him188.ani.client.models.AniSubjectCollection
 import me.him188.ani.client.models.AniTag
 import me.him188.ani.datasources.api.EpisodeSort
@@ -794,7 +795,7 @@ fun AniSubjectCollection.toEntity(
             score = score ?: "0",
         ),
         completeDate = PackedDate.Invalid,
-        selfRatingInfo = SelfRatingInfo.Empty, // TODO(him188): SelfRatingInfo
+        selfRatingInfo = selfRating.toSelfRatingInfo(),
         collectionType = collectionType.toUnifiedCollectionType(),
         recurrence = airingInfo?.recurrence?.toSubjectRecurrence(),
         lastUpdated = updatedAt?.let { Instant.parse(it) }?.toEpochMilliseconds() ?: 0,
@@ -875,4 +876,10 @@ fun AniEpisodeCollectionType?.toUnifiedCollectionType(): UnifiedCollectionType {
         AniEpisodeCollectionType.DONE -> UnifiedCollectionType.DONE
         null -> UnifiedCollectionType.NOT_COLLECTED
     }
+}
+
+fun AniSelfRatingInfo.toSelfRatingInfo(): SelfRatingInfo {
+    return SelfRatingInfo(
+        score = score, comment = comment, tags = tags, isPrivate = isPrivate,
+    )
 }

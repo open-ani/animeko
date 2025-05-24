@@ -97,8 +97,6 @@ interface BangumiSubjectService {
      */
     fun subjectCollectionById(subjectId: Int): Flow<BangumiUserSubjectCollection?>
 
-    fun subjectCollectionTypeById(subjectId: Int): Flow<UnifiedCollectionType>
-
     suspend fun patchSubjectCollection(subjectId: Int, payload: BangumiUserSubjectCollectionModifyPayload)
     suspend fun deleteSubjectCollection(subjectId: Int)
 
@@ -374,7 +372,9 @@ class RemoteBangumiSubjectService(
 
     override suspend fun deleteSubjectCollection(subjectId: Int) {
         sessionManager.checkAccessBangumiApiNow()
-        // TODO:  deleteSubjectCollection
+        subjectApi {
+            this.deleteSubjectCollection(subjectId.toLong()).body()
+        }
     }
 
     override fun subjectCollectionCountsFlow(): Flow<SubjectCollectionCounts> {
@@ -420,24 +420,6 @@ class RemoteBangumiSubjectService(
                 } catch (e: ResponseException) {
                     if (e.response.status == HttpStatusCode.NotFound) {
                         null
-                    } else {
-                        throw e
-                    }
-                },
-            )
-        }.flowOn(ioDispatcher)
-    }
-
-    override fun subjectCollectionTypeById(subjectId: Int): Flow<UnifiedCollectionType> {
-        return flow {
-            emit(
-                try {
-                    TODO("subjectCollectionTypeById")
-//                    val username = sessionManager.username.first() ?: "-"
-//                    api { getUserCollection(username, subjectId).body().type.toCollectionType() }
-                } catch (e: ResponseException) {
-                    if (e.response.status == HttpStatusCode.NotFound) {
-                        UnifiedCollectionType.NOT_COLLECTED
                     } else {
                         throw e
                     }
