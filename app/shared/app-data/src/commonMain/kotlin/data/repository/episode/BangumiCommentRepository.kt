@@ -21,7 +21,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.UserInfo
 import me.him188.ani.app.data.models.episode.EpisodeComment
-import me.him188.ani.app.data.models.subject.SubjectReview
+import me.him188.ani.app.data.models.subject.SubjectComment
 import me.him188.ani.app.data.network.BangumiCommentService
 import me.him188.ani.app.data.persistent.database.dao.EpisodeCommentDao
 import me.him188.ani.app.data.persistent.database.dao.SubjectReviewDao
@@ -78,7 +78,7 @@ class BangumiCommentRepository(
     }
 
 
-    fun subjectCommentsPager(subjectId: Int): Flow<PagingData<SubjectReview>> {
+    fun subjectCommentsPager(subjectId: Int): Flow<PagingData<SubjectComment>> {
         return Pager(
             config = defaultPagingConfig,
             initialKey = 0,
@@ -151,7 +151,7 @@ private fun EpisodeComment.toEntity(parentCommentId: Int?): EpisodeCommentEntity
     )
 }
 
-private fun SubjectReview.toEntity(subjectId: Int): SubjectReviewEntity? {
+private fun SubjectComment.toEntity(subjectId: Int): SubjectReviewEntity? {
     return SubjectReviewEntity(
         subjectId = subjectId,
         authorId = creator?.id ?: return null,
@@ -163,8 +163,8 @@ private fun SubjectReview.toEntity(subjectId: Int): SubjectReviewEntity? {
     )
 }
 
-private fun SubjectReviewEntity.toInfo(): SubjectReview {
-    return SubjectReview(
+private fun SubjectReviewEntity.toInfo(): SubjectComment {
+    return SubjectComment(
         id = packInts(subjectId, authorId),
         updatedAt = updatedAt,
         content = content,

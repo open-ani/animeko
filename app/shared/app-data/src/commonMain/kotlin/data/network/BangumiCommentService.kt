@@ -15,9 +15,11 @@ import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.UserInfo
+import me.him188.ani.app.data.models.blog.BlogComment
+import me.him188.ani.app.data.models.blog.toBlogComment
 import me.him188.ani.app.data.models.episode.EpisodeComment
 import me.him188.ani.app.data.models.episode.toEpisodeComment
-import me.him188.ani.app.data.models.subject.SubjectReview
+import me.him188.ani.app.data.models.subject.SubjectComment
 import me.him188.ani.datasources.api.paging.Paged
 import me.him188.ani.datasources.api.paging.processPagedResponse
 import me.him188.ani.datasources.bangumi.BangumiClient
@@ -30,7 +32,7 @@ interface BangumiCommentService {
     /**
      * @return `null` if [subjectId] is invalid
      */
-    suspend fun getSubjectComments(subjectId: Int, offset: Int, limit: Int): Paged<SubjectReview>?
+    suspend fun getSubjectComments(subjectId: Int, offset: Int, limit: Int): Paged<SubjectComment>?
 
     /**
      * @return `null` if [episodeId] is invalid
@@ -44,13 +46,22 @@ interface BangumiCommentService {
         cfTurnstileResponse: String,
         replyToCommentId: Int? = null
     )
+    
+    suspend fun getBlogComment(blogId: Int): List<BlogComment>?
+    
+    suspend fun postBlogComment(
+        blogId: Int,
+        content: String,
+        cfTurnstileResponse: String,
+        replyToblogId: Int?
+    )
 }
 
 class BangumiBangumiCommentServiceImpl(
     private val client: BangumiClient,
     private val ioDispatcher: CoroutineContext = Dispatchers.IO_,
 ) : BangumiCommentService {
-    override suspend fun getSubjectComments(subjectId: Int, offset: Int, limit: Int): Paged<SubjectReview>? {
+    override suspend fun getSubjectComments(subjectId: Int, offset: Int, limit: Int): Paged<SubjectComment>? {
         return withContext(ioDispatcher) {
             val response = try {
                 client.nextSubjectApi {
@@ -63,7 +74,7 @@ class BangumiBangumiCommentServiceImpl(
                 }
                 throw e
             }
-            val list = response.data.map { it.toSubjectReview(subjectId) }
+            val list = response.data.map { it.toSubjectComment(subjectId) }
             Paged.processPagedResponse(total = response.total, pageSize = limit, data = list)
         }
     }
@@ -106,9 +117,48 @@ class BangumiBangumiCommentServiceImpl(
             response
         }
     }
+
+    override suspend fun getBlogComment(blogId: Int): List<BlogComment>? {
+        return withContext(ioDispatcher) {
+            val response = try {
+                client.nextBlogApi {
+                    getBlogComments(blogId)
+                        .body()
+                        .map { it.toBlogComment(blogId) }
+                }
+            } catch (e: ClientRequestException) {
+                if (e.response.status == HttpStatusCode.NotFound || e.response.status == HttpStatusCode.BadRequest) {
+                    return@withContext null
+                }
+                throw e
+            }
+            response
+        }
+    }
+
+    override suspend fun postBlogComment(
+        blogId: Int,
+        content: String,
+        cfTurnstileResponse: String,
+        replyToblogId: Int?
+    ) {
+        withContext(ioDispatcher) {
+            client.nextEpisodeApi {
+                createEpisodeComment(
+                    blogId,
+                    BangumiNextCreateEpisodeCommentRequest(
+                        content,
+                        cfTurnstileResponse,
+                        replyToblogId,
+                    ),
+                )
+                Unit // suppress inspection
+            }
+        }
+    }
 }
 
-private fun BangumiNextSubjectInterestComment.toSubjectReview(subjectId: Int) = SubjectReview(
+private fun BangumiNextSubjectInterestComment.toSubjectComment(subjectId: Int) = SubjectComment(
     id = packInts(subjectId, user.id),
     content = comment,
     updatedAt = updatedAt * 1000L,

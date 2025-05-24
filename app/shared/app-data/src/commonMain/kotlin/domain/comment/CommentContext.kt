@@ -10,6 +10,7 @@
 package me.him188.ani.app.domain.comment
 
 import androidx.compose.runtime.Immutable
+import me.him188.ani.app.torrent.anitorrent.HandleId
 
 /**
  * 评论发送的对象
@@ -24,10 +25,15 @@ sealed interface CommentContext {
     /**
      * 条目吐槽箱
      */
-    data class SubjectReview(val subjectId: Int) : CommentContext
+    data class SubjectComment(val subjectId: Int) : CommentContext
 
     /**
      * 剧集回复某个人的评论
      */
     data class EpisodeReply(val subjectId: Int, val episodeId: Int, val commentId: Int) : CommentContext
+
+    /**
+     * 长评论回复某个人的评论
+     */
+    data class BlogReply(val blogId: Int, val commentId: Int) : CommentContext
 }
